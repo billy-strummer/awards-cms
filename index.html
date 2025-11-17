@@ -250,7 +250,28 @@
         <div class="tab-pane fade" id="organisations" role="tabpanel">
           <div class="container mt-3">
             <h5>All Organisations</h5>
-            <p>Organisations content here</p>
+            <div class="row mb-3 g-2">
+              <div class="col-md-4">
+                <label class="form-label">Search:</label>
+                <input type="text" id="orgSearchInput" class="form-control" placeholder="Company name...">
+              </div>
+            </div>
+            <table class="table table-hover table-bordered bg-white shadow-sm">
+              <thead class="table-dark">
+                <tr>
+                  <th>Company Name</th>
+                  <th>Email</th>
+                  <th>Website</th>
+                  <th>Address</th>
+                  <th>Region</th>
+                  <th>Award Name</th>
+                  <th>Notes</th>
+                </tr>
+              </thead>
+              <tbody id="organisationsTableBody">
+                <tr><td colspan="7" class="text-center">Loading...</td></tr>
+              </tbody>
+            </table>
           </div>
         </div>
 
@@ -404,6 +425,7 @@
       } else {
         showDashboard();
         await loadAwards();
+        await loadOrganisations();
       }
     });
 
@@ -422,6 +444,7 @@
       if (session) {
         showDashboard();
         await loadAwards();
+        await loadOrganisations();
       } else {
         showLogin();
       }

@@ -35,9 +35,8 @@
     .dark-mode .activity-item { border-bottom-color: #333; }
     .dark-mode .table { color: #fff; }
     .dark-mode .table-dark { background-color: #2a2a2a; }
-    .dark-mode .card { background-color: #2a2a2a; color: #fff; border-color: #444; }
+    .dark-mode .card { background-color: #2a2a2a; color: #fff; }
     .dark-mode .form-control, .dark-mode .form-select { background-color: #333; color: #fff; border-color: #555; }
-    .dark-mode .navbar { background-color: #111 !important; }
     @media (max-width: 768px) {
       .table { font-size: 0.9rem; }
       .btn-sm { padding: 0.25rem 0.5rem; }
@@ -53,11 +52,11 @@
         <h2 class="text-center mb-4">British Trade Awards Admin</h2>
         <div class="mb-3">
           <label class="form-label">Email</label>
-          <input type="email" class="form-control" id="loginEmail" placeholder="admin@example.com">
+          <input type="email" class="form-control" id="loginEmail">
         </div>
         <div class="mb-3">
           <label class="form-label">Password</label>
-          <input type="password" class="form-control" id="loginPassword" placeholder="Enter password">
+          <input type="password" class="form-control" id="loginPassword">
         </div>
         <button class="btn btn-primary w-100" id="loginBtn">Login</button>
         <div id="loginMessage" class="mt-3"></div>
@@ -74,7 +73,7 @@
         <div class="d-flex align-items-center gap-3">
           <div class="input-group input-group-sm" style="width: 250px;">
             <input type="text" class="form-control" id="globalSearch" placeholder="Search companies..." title="Keyboard: Ctrl+K">
-            <button class="btn btn-outline-light" type="button" id="searchBtn"><i class="bi bi-search"></i></button>
+            <button class="btn btn-outline-light" type="button" id="searchBtn" title="Search all fields"><i class="bi bi-search"></i></button>
           </div>
           <button class="btn btn-outline-light" id="darkModeToggle" title="Toggle Dark Mode"><i class="bi bi-moon"></i></button>
           <button class="btn btn-outline-light" id="logoutBtn">Logout</button>
@@ -96,6 +95,8 @@
         <li class="nav-item"><a class="nav-link" id="awards-tab" data-bs-toggle="tab" href="#awards">Awards</a></li>
         <li class="nav-item"><a class="nav-link" id="organisations-tab" data-bs-toggle="tab" href="#organisations">Organisations</a></li>
         <li class="nav-item"><a class="nav-link" id="analytics-tab" data-bs-toggle="tab" href="#analytics">Analytics</a></li>
+        <li class="nav-item"><a class="nav-link" id="details-tab" data-bs-toggle="tab" href="#details">Details</a></li>
+        <li class="nav-item"><a class="nav-link" id="reports-tab" data-bs-toggle="tab" href="#reports">Reports</a></li>
         <li class="nav-item"><a class="nav-link" id="settings-tab" data-bs-toggle="tab" href="#settings">Settings</a></li>
       </ul>
 
@@ -151,8 +152,37 @@
                     <h5 class="mb-0">Quick Actions</h5>
                   </div>
                   <div class="card-body">
+                    <button class="btn btn-primary w-100 mb-2" data-bs-toggle="tab" href="#organisations"><i class="bi bi-plus"></i> Add Company</button>
                     <button class="btn btn-outline-primary w-100 mb-2" id="exportBtn"><i class="bi bi-download"></i> Export Data</button>
+                    <button class="btn btn-outline-warning w-100 mb-2" id="duplicateCheckBtn"><i class="bi bi-exclamation-triangle"></i> Check Duplicates</button>
                     <button class="btn btn-outline-secondary w-100" onclick="location.reload()"><i class="bi bi-arrow-clockwise"></i> Refresh</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="row g-3 mb-4">
+              <div class="col-md-6">
+                <div class="card shadow-sm">
+                  <div class="card-header bg-light">
+                    <h5 class="mb-0">Saved Views</h5>
+                  </div>
+                  <div class="card-body">
+                    <div id="savedViews"></div>
+                    <button class="btn btn-sm btn-success w-100 mt-2" id="saveViewBtn"><i class="bi bi-bookmark"></i> Save Current View</button>
+                  </div>
+                </div>
+              </div>
+
+              <div class="col-md-6">
+                <div class="card shadow-sm">
+                  <div class="card-header bg-light">
+                    <h5 class="mb-0">Quick Filters</h5>
+                  </div>
+                  <div class="card-body">
+                    <button class="btn btn-sm btn-outline-info quick-filter-btn" onclick="quickFilter('missing-data')"><i class="bi bi-exclamation-circle"></i> Missing Data</button>
+                    <button class="btn btn-sm btn-outline-info quick-filter-btn" onclick="quickFilter('recent')"><i class="bi bi-clock"></i> Recent</button>
+                    <button class="btn btn-sm btn-outline-info quick-filter-btn" onclick="quickFilter('incomplete')"><i class="bi bi-percent"></i> Incomplete</button>
                   </div>
                 </div>
               </div>
@@ -192,6 +222,18 @@
                 </select>
               </div>
               <div class="col-md-3">
+                <label class="form-label">Sector:</label>
+                <select id="sectorFilter" class="form-select">
+                  <option value="">All Sectors</option>
+                </select>
+              </div>
+              <div class="col-md-3">
+                <label class="form-label">Region:</label>
+                <select id="regionFilter" class="form-select">
+                  <option value="">All Regions</option>
+                </select>
+              </div>
+              <div class="col-md-3">
                 <label class="form-label">Search:</label>
                 <input type="text" id="searchInput" class="form-control" placeholder="Award name...">
               </div>
@@ -200,14 +242,17 @@
             <table class="table table-hover table-bordered bg-white shadow-sm">
               <thead class="table-dark">
                 <tr>
-                  <th>Award</th>
+                  <th>Sector</th>
                   <th>Region</th>
+                  <th>Award</th>
                   <th>Winner</th>
+                  <th>Nominees</th>
+                  <th>Votes</th>
                   <th>Status</th>
                 </tr>
               </thead>
               <tbody id="awardsTableBody">
-                <tr><td colspan="4" class="text-center">Loading...</td></tr>
+                <tr><td colspan="7" class="text-center">Loading...</td></tr>
               </tbody>
             </table>
           </div>
@@ -217,23 +262,42 @@
         <div class="tab-pane fade" id="organisations" role="tabpanel">
           <h5>All Organisations</h5>
           <div class="row mb-3 g-2">
+            <div class="col-md-2">
+              <button class="btn btn-success w-100" data-bs-toggle="modal" data-bs-target="#bulkImportModal"><i class="bi bi-upload"></i> Import CSV</button>
+            </div>
+            <div class="col-md-2">
+              <button class="btn btn-outline-primary w-100" id="exportOrgBtn"><i class="bi bi-download"></i> Export</button>
+            </div>
+            <div class="col-md-2">
+              <select id="regionFilterOrg" class="form-select">
+                <option value="">All Regions</option>
+              </select>
+            </div>
+            <div class="col-md-2">
+              <select id="awardFilterOrg" class="form-select">
+                <option value="">All Awards</option>
+              </select>
+            </div>
             <div class="col-md-4">
-              <input type="text" id="orgSearchInput" class="form-control" placeholder="Search organisations...">
+              <input type="text" id="orgSearchInput" class="form-control" placeholder="Search...">
             </div>
           </div>
           <table class="table table-hover table-bordered bg-white shadow-sm">
             <thead class="table-dark">
               <tr>
+                <th><input type="checkbox" id="selectAllCheckbox"></th>
                 <th>Region</th>
                 <th>Award Name</th>
                 <th>Company Name</th>
                 <th>Email</th>
                 <th>Website</th>
+                <th>Address</th>
                 <th>Quality</th>
+                <th>Actions</th>
               </tr>
             </thead>
             <tbody id="organisationsTableBody">
-              <tr><td colspan="6" class="text-center">Loading...</td></tr>
+              <tr><td colspan="9" class="text-center">Loading...</td></tr>
             </tbody>
           </table>
         </div>
@@ -242,20 +306,57 @@
         <div class="tab-pane fade" id="analytics" role="tabpanel">
           <div class="container-fluid">
             <div class="row g-3">
-              <div class="col-12">
+              <div class="col-md-6">
                 <div class="card shadow-sm">
                   <div class="card-header bg-light">
-                    <h5 class="mb-0">Data Summary</h5>
+                    <h5 class="mb-0">Awards by Region</h5>
                   </div>
                   <div class="card-body">
-                    <div id="dataSummary">
-                      <p>Total Records: <strong id="totalRecords">0</strong></p>
-                      <p>Average Quality: <strong id="avgQuality">0%</strong></p>
-                    </div>
+                    <div id="chartAwardsByRegion"></div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="col-md-6">
+                <div class="card shadow-sm">
+                  <div class="card-header bg-light">
+                    <h5 class="mb-0">Companies by Sector</h5>
+                  </div>
+                  <div class="card-body">
+                    <div id="chartCompaniesBySector"></div>
                   </div>
                 </div>
               </div>
             </div>
+
+            <div class="row g-3 mt-3">
+              <div class="col-12">
+                <div class="card shadow-sm">
+                  <div class="card-header bg-light">
+                    <h5 class="mb-0">Data Quality Summary</h5>
+                  </div>
+                  <div class="card-body">
+                    <div id="dataQualitySummary"></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Details Tab -->
+        <div class="tab-pane fade" id="details" role="tabpanel">
+          <div class="container mt-3">
+            <h5>Detail Information</h5>
+            <p>Details content here</p>
+          </div>
+        </div>
+
+        <!-- Reports Tab -->
+        <div class="tab-pane fade" id="reports" role="tabpanel">
+          <div class="container mt-3">
+            <h5>Reports Overview</h5>
+            <p>Total Awards: <strong id="reportsTotal">0</strong></p>
           </div>
         </div>
 
@@ -281,17 +382,73 @@
       </div>
     </div>
   </div>
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.34.0/dist/supabase.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/supabase/2.39.0/supabase.min.js"></script>
+
+  <!-- Preview Modal -->
+  <div class="modal fade" id="previewModal" tabindex="-1">
+    <div class="modal-dialog preview-modal">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="previewTitle">Company Preview</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body" id="previewBody">
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+          <button type="button" class="btn btn-primary" id="editFromPreview">Edit</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Bulk Import Modal -->
+  <div class="modal fade" id="bulkImportModal" tabindex="-1">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">Import Companies from CSV</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <input type="file" id="csvFile" class="form-control" accept=".csv">
+          <small class="text-muted d-block mt-2">CSV should have columns: region, award_name, company_name, email, website, address, notes</small>
+          <div id="importPreview" class="mt-3"></div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="button" class="btn btn-primary" id="confirmImport">Import</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Duplicates Modal -->
+  <div class="modal fade" id="duplicatesModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">Duplicate Detection</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body" id="duplicatesContent">
+          <p class="text-muted">Scanning for duplicates...</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
   <script>
     const SUPABASE_URL = 'https://bipndtstiqdydtdegjdx.supabase.co';
     const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJpcG5kdHN0aXFkeWR0ZGVnamR4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjI0NDE4OTksImV4cCI6MjA3ODAxNzg5OX0.c6ImTKoKuJHRE6H9kPTVp56kjQ5i3Y2AAPgx2N_Bw6A';
-    
+
     const client = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
     let allAwards = [];
     let allOrganisations = [];
+    let activityLog = [];
+    let savedViews = JSON.parse(localStorage.getItem('savedViews')) || [];
+    let importedData = [];
 
     function showLogin() {
       document.getElementById('loginPage').style.display = 'block';
@@ -303,7 +460,48 @@
       document.getElementById('dashboardPage').style.display = 'block';
     }
 
+    // Keyboard shortcut
+    document.addEventListener('keydown', (e) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
+        e.preventDefault();
+        document.getElementById('globalSearch').focus();
+      }
+    });
+
+    // Dark Mode
+    document.getElementById('darkModeToggle').addEventListener('click', () => {
+      document.body.classList.toggle('dark-mode');
+      localStorage.setItem('darkMode', document.body.classList.contains('dark-mode'));
+    });
+
+    if (localStorage.getItem('darkMode') === 'true') {
+      document.body.classList.add('dark-mode');
+      document.getElementById('darkModeCheckbox').checked = true;
+    }
+
+    document.getElementById('darkModeCheckbox').addEventListener('change', () => {
+      document.body.classList.toggle('dark-mode');
+      localStorage.setItem('darkMode', document.body.classList.contains('dark-mode'));
+    });
+
+    // Global Search
+    document.getElementById('globalSearch').addEventListener('keyup', (e) => {
+      const query = e.target.value.toLowerCase();
+      if (query.length > 0) {
+        const results = allOrganisations.filter(org =>
+          org.company_name.toLowerCase().includes(query) ||
+          org.email.toLowerCase().includes(query) ||
+          org.award_name.toLowerCase().includes(query) ||
+          org.region.toLowerCase().includes(query)
+        );
+        displayOrganisations(results);
+      } else {
+        displayOrganisations(allOrganisations);
+      }
+    });
+
     async function loadAwards() {
+      showLoadingBar();
       let allData = [];
       let offset = 0;
       let hasMore = true;
@@ -320,10 +518,12 @@
         populateFilters();
         displayAwards(allAwards);
         updateDashboard();
+        hideLoadingBar();
       }, 100);
     }
 
     async function loadOrganisations() {
+      showLoadingBar();
       let allData = [];
       let offset = 0;
       let hasMore = true;
@@ -338,198 +538,70 @@
       }
       
       allOrganisations = allData;
+      populateOrgFilters();
       displayOrganisations(allOrganisations);
+      addActivityLog('Loaded organisations');
+      hideLoadingBar();
+    }
+
+    function calculateDataQuality(org) {
+      let score = 0;
+      if (org.company_name) score += 20;
+      if (org.email && org.email.includes('@')) score += 20;
+      if (org.website && org.website.includes('.')) score += 20;
+      if (org.address) score += 20;
+      if (org.award_name) score += 20;
+      return score;
     }
 
     function displayOrganisations(organisations) {
       const tbody = document.getElementById('organisationsTableBody');
       if (organisations.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="7" class="text-center">No organisations found</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="9" class="text-center">No organisations found</td></tr>';
         return;
       }
-      tbody.innerHTML = organisations.map(org => `<tr><td>${org.region || ''}</td><td><a href="javascript:void(0);" onclick="viewAwardNominees('${(org.award_name || '').replace(/'/g, "\\'")}')" class="text-decoration-none">${org.award_name || ''}</a></td><td><a class="company-link" onclick="openCompanyProfile('${org.id}', '${(org.company_name || '').replace(/'/g, "\\'")}')">${org.company_name || ''}</a></td><td><a href="mailto:${org.email}">${org.email || ''}</a></td><td><a href="${org.website}" target="_blank">${org.website || ''}</a></td><td>${org.address || ''}</td><td>${org.notes || ''}</td></tr>`).join('');
-    }
-
-    function openCompanyProfile(companyId, companyName) {
-      if (!companyId || companyId.includes(' ') || !companyId.includes('-')) {
-        const company = allOrganisations.find(org => org.company_name === companyId || org.company_name === companyName);
-        if (company) {
-          companyId = company.id;
-          companyName = company.company_name;
-        }
-      }
-      sessionStorage.setItem('selectedCompanyId', companyId);
-      sessionStorage.setItem('selectedCompanyName', companyName);
-      window.location.href = 'company-profile.html';
-    }
-
-    function viewAwardNominees(awardName) {
-      sessionStorage.setItem('selectedAwardName', awardName);
-      window.location.href = 'award-nominees.html';
-    }
-
-    function filterOrganisations() {
-      const searchInput = document.getElementById('orgSearchInput').value.toLowerCase();
-      const filtered = allOrganisations.filter(org => {
-        const companyName = (org.company_name || '').toLowerCase();
-        return companyName.includes(searchInput);
-      });
-      displayOrganisations(filtered);
-    }
-
-    function sortOrgsColumn(columnName) {
-      allOrganisations.sort((a, b) => {
-        const valA = (a[columnName] || '').toString().toLowerCase();
-        const valB = (b[columnName] || '').toString().toLowerCase();
-        return valA.localeCompare(valB);
-      });
-      displayOrganisations(allOrganisations);
-    }
-
-    function updateDashboard() {
-      const total = allAwards.length;
-      const pending = allAwards.filter(a => a.status === 'Draft').length;
-      if (document.getElementById('totalAwards')) document.getElementById('totalAwards').textContent = total;
-      if (document.getElementById('pendingAwards')) document.getElementById('pendingAwards').textContent = pending;
-      if (document.getElementById('reportsTotal')) document.getElementById('reportsTotal').textContent = total;
-      
-      if (allOrganisations.length > 0) {
-        const topCompanies = allOrganisations.slice(0, 3);
-        const tbody = document.getElementById('topCompaniesTableBody');
-        tbody.innerHTML = topCompanies.map((org, idx) => `
-          <tr>
-            <td>${idx + 1}</td>
-            <td><a class="company-link" onclick="openCompanyProfile('${org.id}', '${(org.company_name || '').replace(/'/g, "\\'")}')">${org.company_name || ''}</a></td>
-            <td>${org.email || ''}</td>
-            <td><a href="${org.website}" target="_blank">${org.website || ''}</a></td>
-            <td>${org.address || ''}</td>
-            <td>${org.region || ''}</td>
-          </tr>
-        `).join('');
-      }
-    }
-
-    function populateFilters() {
-      const sectorSelect = document.getElementById('sectorFilter');
-      const regionSelect = document.getElementById('regionFilter');
-      
-      if (!sectorSelect || !regionSelect) {
-        console.error('Dropdowns not found');
-        return;
-      }
-      
-      const sectors = [...new Set(allAwards.map(a => a.sector).filter(Boolean))].sort();
-      const regions = [...new Set(allAwards.map(a => a.region).filter(Boolean))].sort();
-      
-      sectorSelect.innerHTML = '<option value="">All Sectors</option>';
-      sectors.forEach(s => {
-        const opt = document.createElement('option');
-        opt.value = s;
-        opt.textContent = s;
-        sectorSelect.appendChild(opt);
-      });
-      
-      regionSelect.innerHTML = '<option value="">All Regions</option>';
-      regions.forEach(r => {
-        const opt = document.createElement('option');
-        opt.value = r;
-        opt.textContent = r;
-        regionSelect.appendChild(opt);
-      });
-    }
-
-    function displayAwards(awards) {
-      const tbody = document.getElementById('awardsTableBody');
-      if (awards.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="7">No awards found</td></tr>';
-        return;
-      }
-      tbody.innerHTML = awards.map(a => `
-        <tr>
-          <td>${a.sector}</td>
-          <td>${a.region}</td>
-          <td><a href="javascript:void(0);" onclick="viewAwardNominees('${(a.award_name || '').replace(/'/g, "\\'")}')" class="text-decoration-none">${a.award_name}</a></td>
-          <td><a class="company-link" onclick="openCompanyProfile('${a.winner}', '${(a.winner || '').replace(/'/g, "\\'")}')">${a.winner}</a></td>
-          <td>${a.nominees_count}</td>
-          <td>${a.votes_count}</td>
-          <td>${a.status}</td>
-        </tr>
-      `).join('');
-    }
-
-    function filterAwards() {
-      const year = document.getElementById('yearSelect').value;
-      const sector = document.getElementById('sectorFilter').value;
-      const region = document.getElementById('regionFilter').value;
-      const search = document.getElementById('searchInput').value.toLowerCase();
-      
-      const filtered = allAwards.filter(a => {
-        return (!year || (a.year && a.year.toString() === year)) &&
-               (!sector || a.sector === sector) &&
-               (!region || a.region === region) &&
-               (!search || a.award_name.toLowerCase().includes(search) || a.winner.toLowerCase().includes(search));
-      });
-      displayAwards(filtered);
-    }
-
-    document.getElementById('loginBtn').addEventListener('click', async function() {
-      const email = document.getElementById('loginEmail').value;
-      const password = document.getElementById('loginPassword').value;
-      const { error } = await client.auth.signInWithPassword({ email, password });
-      if (error) {
-        document.getElementById('loginMessage').innerHTML = '<div class="alert alert-danger">' + error.message + '</div>';
-      } else {
-        showDashboard();
-        await loadAwards();
-        await loadOrganisations();
-      }
-    });
-
-    document.getElementById('logoutBtn').addEventListener('click', async function() {
-      await client.auth.signOut();
-      showLogin();
-    });
-
-    document.getElementById('yearSelect').addEventListener('change', filterAwards);
-    document.getElementById('sectorFilter').addEventListener('change', filterAwards);
-    document.getElementById('regionFilter').addEventListener('change', filterAwards);
-    document.getElementById('searchInput').addEventListener('input', filterAwards);
-    document.getElementById('orgSearchInput').addEventListener('keyup', filterOrganisations);
-
-    async function checkAuth() {
-      const { data: { session } } = await client.auth.getSession();
-      if (session) {
-        showDashboard();
-        await loadAwards();
-        await loadOrganisations();
+      tbody.innerHTML = organisations.map(org => {
+        const quality = calculateDataQuality(org);
+        const qualityColor = quality >= 80 ? 'success' : quality >= 60 ? 'warning' : 'danger';
+        const missingFields = [];
+        if (!org.company_name) missingFields.push('name');
+        if (!org.email) missingFields.push('email');
+        if (!org.website) missingFields.push('website');
         
-        const filterYear = sessionStorage.getItem('filterYear');
-        const filterType = sessionStorage.getItem('filterType');
-        const filterValue = sessionStorage.getItem('filterValue');
-        
-        if (filterYear) {
-          document.getElementById('yearSelect').value = filterYear;
-          sessionStorage.removeItem('filterYear');
-          filterAwards();
-        }
-        
-        if (filterType && filterValue) {
-          if (filterType === 'region') {
-            document.getElementById('regionFilter').value = filterValue;
-          } else if (filterType === 'sector') {
-            document.getElementById('sectorFilter').value = filterValue;
-          }
-          sessionStorage.removeItem('filterType');
-          sessionStorage.removeItem('filterValue');
-          filterAwards();
-        }
-      } else {
-        showLogin();
-      }
+        return `<tr ${missingFields.length > 0 ? 'class="missing-data"' : ''}>
+          <td><input type="checkbox" class="org-checkbox" value="${org.id}"></td>
+          <td>${org.region || ''}</td>
+          <td><a href="javascript:void(0);" onclick="viewAwardNominees('${(org.award_name || '').replace(/'/g, "\\'")}')" class="text-decoration-none">${org.award_name || ''}</a></td>
+          <td><a href="javascript:void(0);" class="company-link" onclick="previewCompany('${org.id}', '${(org.company_name || '').replace(/'/g, "\\'")}')">${org.company_name || ''}</a></td>
+          <td><a href="mailto:${org.email}">${org.email || ''}</a></td>
+          <td><a href="${org.website}" target="_blank">${org.website || ''}</a></td>
+          <td>${org.address || ''}</td>
+          <td><span class="badge bg-${qualityColor}">${quality}%</span></td>
+          <td><button class="btn btn-sm btn-info" onclick="previewCompany('${org.id}', '${(org.company_name || '').replace(/'/g, "\\'")}')" title="Preview"><i class="bi bi-eye"></i></button> <button class="btn btn-sm btn-danger" onclick="deleteOrganisation('${org.id}')" title="Delete"><i class="bi bi-trash"></i></button></td>
+        </tr>`;
+      }).join('');
+      
+      document.querySelectorAll('.org-checkbox').forEach(cb => {
+        cb.addEventListener('change', updateBulkDeleteButton);
+      });
     }
 
-    checkAuth();
-  </script>
+    function previewCompany(id, name) {
+      const org = allOrganisations.find(o => o.id === id);
+      if (!org) return;
 
-</body>
-</html>
+      const quality = calculateDataQuality(org);
+      const html = `
+        <h6>${org.company_name}</h6>
+        <hr>
+        <p><strong>Email:</strong> <a href="mailto:${org.email}">${org.email}</a></p>
+        <p><strong>Website:</strong> <a href="${org.website}" target="_blank">${org.website}</a></p>
+        <p><strong>Address:</strong> ${org.address}</p>
+        <p><strong>Region:</strong> ${org.region}</p>
+        <p><strong>Award:</strong> ${org.award_name}</p>
+        <p><strong>Notes:</strong> ${org.notes}</p>
+        <hr>
+        <p><strong>Data Quality:</strong> <span class="badge bg-${quality >= 80 ? 'success' : quality >= 60 ? 'warning' : 'danger'}">${quality}%</span></p>
+      `;
+      
+      document.

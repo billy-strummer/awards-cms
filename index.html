@@ -501,16 +501,24 @@
           <div class="card mb-4">
             <div class="card-body">
               <div class="row g-3">
-                <div class="col-md-3">
+                <div class="col-md-2">
                   <label class="form-label">Organisation</label>
                   <select class="form-select" id="mediaOrgFilterSelect" onchange="mediaGalleryModule.filterMedia()">
                     <option value="">All Organisations</option>
                   </select>
                 </div>
-                <div class="col-md-3">
+                <div class="col-md-2">
                   <label class="form-label">Award</label>
                   <select class="form-select" id="mediaAwardFilterSelect" onchange="mediaGalleryModule.filterMedia()">
                     <option value="">All Awards</option>
+                  </select>
+                </div>
+                <div class="col-md-2">
+                  <label class="form-label">Tag Status</label>
+                  <select class="form-select" id="mediaTagStatusFilterSelect" onchange="mediaGalleryModule.filterMedia()">
+                    <option value="">All</option>
+                    <option value="untagged">Untagged</option>
+                    <option value="tagged">Tagged</option>
                   </select>
                 </div>
                 <div class="col-md-2">
@@ -809,36 +817,29 @@
       <div class="modal-content">
         <div class="modal-header">
           <h5 class="modal-title" id="uploadMediaGalleryModalLabel">
-            <i class="bi bi-cloud-upload me-2"></i>Upload Media
+            <i class="bi bi-cloud-upload me-2"></i>Upload Event Media
           </h5>
           <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
         </div>
         <div class="modal-body">
+          <div class="alert alert-info">
+            <i class="bi bi-info-circle me-2"></i>
+            Upload photos/videos from the event. You can tag them to organisations and awards later.
+          </div>
           <form id="uploadMediaGalleryForm">
             <div class="mb-3">
-              <label for="uploadTitle" class="form-label">Title *</label>
-              <input type="text" class="form-control" id="uploadTitle" placeholder="Enter media title" required>
+              <label for="uploadFile" class="form-label">Select Files *</label>
+              <input type="file" class="form-control" id="uploadFile" accept="image/*,video/*" multiple required>
+              <small class="text-muted">Select multiple files. Supported: Images (JPEG, PNG, GIF, WebP) and Videos (MP4, MOV, AVI, WebM)</small>
             </div>
             <div class="mb-3">
-              <label for="uploadCaption" class="form-label">Caption</label>
-              <textarea class="form-control" id="uploadCaption" rows="2" placeholder="Enter caption (optional)"></textarea>
+              <label for="uploadTitle" class="form-label">Title (optional)</label>
+              <input type="text" class="form-control" id="uploadTitle" placeholder="Default: uses filename">
+              <small class="text-muted">Leave blank to use filename for each file</small>
             </div>
             <div class="mb-3">
-              <label for="uploadFile" class="form-label">Select File *</label>
-              <input type="file" class="form-control" id="uploadFile" accept="image/*,video/*" required>
-              <small class="text-muted">Supported: Images (JPEG, PNG, GIF, WebP) and Videos (MP4, MOV, AVI, WebM)</small>
-            </div>
-            <div class="mb-3">
-              <label for="uploadOrgSelect" class="form-label">Organisation</label>
-              <select class="form-select" id="uploadOrgSelect">
-                <option value="">Select Organisation (Optional)</option>
-              </select>
-            </div>
-            <div class="mb-3">
-              <label for="uploadAwardSelect" class="form-label">Award</label>
-              <select class="form-select" id="uploadAwardSelect">
-                <option value="">Select Award (Optional)</option>
-              </select>
+              <label for="uploadCaption" class="form-label">Caption (optional)</label>
+              <textarea class="form-control" id="uploadCaption" rows="2" placeholder="Optional description"></textarea>
             </div>
             <div id="uploadFileProgress" class="progress d-none mb-3">
               <div class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar" style="width: 100%"></div>
@@ -849,6 +850,44 @@
           <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
           <button type="button" class="btn btn-primary" id="uploadMediaGalleryBtn" onclick="mediaGalleryModule.handleUpload()">
             <i class="bi bi-upload me-2"></i>Upload
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Tag Media Modal -->
+  <div class="modal fade" id="tagMediaModal" tabindex="-1" aria-labelledby="tagMediaModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="tagMediaModalLabel">
+            <i class="bi bi-tag me-2"></i>Tag Media
+          </h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <form id="tagMediaForm">
+            <div class="mb-3">
+              <label for="tagOrgSelect" class="form-label">Organisation</label>
+              <select class="form-select" id="tagOrgSelect">
+                <option value="">None</option>
+              </select>
+              <small class="text-muted">Which company is featured in this media?</small>
+            </div>
+            <div class="mb-3">
+              <label for="tagAwardSelect" class="form-label">Award</label>
+              <select class="form-select" id="tagAwardSelect">
+                <option value="">None</option>
+              </select>
+              <small class="text-muted">Which award category is this related to?</small>
+            </div>
+          </form>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="button" class="btn btn-primary" onclick="mediaGalleryModule.saveTags()">
+            <i class="bi bi-save me-2"></i>Save Tags
           </button>
         </div>
       </div>

@@ -91,6 +91,7 @@ const mediaGalleryModule = {
     const orgId = document.getElementById('mediaOrgFilterSelect').value;
     const awardId = document.getElementById('mediaAwardFilterSelect').value;
     const fileType = document.getElementById('mediaTypeFilterSelect').value;
+    const tagStatus = document.getElementById('mediaTagStatusFilterSelect').value;
     const search = document.getElementById('mediaSearchBox').value.toLowerCase().trim();
 
     STATE.filteredMedia = STATE.allMedia.filter(media => {
@@ -99,6 +100,10 @@ const mediaGalleryModule = {
 
       // Award filter
       if (awardId && media.award_id !== awardId) return false;
+
+      // Tag status filter
+      if (tagStatus === 'untagged' && (media.organisation_id || media.award_id)) return false;
+      if (tagStatus === 'tagged' && !media.organisation_id && !media.award_id) return false;
 
       // File type filter
       if (fileType) {
@@ -142,18 +147,19 @@ const mediaGalleryModule = {
     tbody.innerHTML = STATE.filteredMedia.map(media => {
       const isImage = media.file_type?.startsWith('image/');
       const isVideo = media.file_type?.startsWith('video/');
-      const orgName = media.organisations?.company_name || 'N/A';
-      const awardName = media.awards?.award_name || media.awards?.award_category || 'N/A';
+      const orgName = media.organisations?.company_name || '-';
+      const awardName = media.awards?.award_name || media.awards?.award_category || '-';
+      const isTagged = media.organisation_id || media.award_id;
 
       return `
         <tr class="fade-in">
           <td>
             ${isImage ?
               `<img src="${media.file_url}" alt="${utils.escapeHtml(media.title || 'Media')}"
-                style="width: 60px; height: 60px; object-fit: cover; border-radius: 4px;"
+                style="width: 60px; height: 60px; object-fit: cover; border-radius: 4px; cursor: pointer;"
                 onclick="mediaGalleryModule.viewMediaFull('${media.id}')">` :
               isVideo ?
-              `<video src="${media.file_url}" style="width: 60px; height: 60px; object-fit: cover; border-radius: 4px;"
+              `<video src="${media.file_url}" style="width: 60px; height: 60px; object-fit: cover; border-radius: 4px; cursor: pointer;"
                 onclick="mediaGalleryModule.viewMediaFull('${media.id}')"></video>` :
               `<i class="bi bi-file-earmark fs-1"></i>`
             }
@@ -168,11 +174,21 @@ const mediaGalleryModule = {
               ${isImage ? 'Photo' : isVideo ? 'Video' : 'File'}
             </span>
           </td>
-          <td>${utils.escapeHtml(orgName)}</td>
-          <td>${utils.escapeHtml(awardName)}</td>
+          <td>
+            ${orgName === '-' ? '<span class="badge bg-warning">Untagged</span>' : utils.escapeHtml(orgName)}
+          </td>
+          <td>
+            ${awardName === '-' ? '<span class="badge bg-warning">Untagged</span>' : utils.escapeHtml(awardName)}
+          </td>
           <td>${media.uploaded_at ? new Date(media.uploaded_at).toLocaleDateString() : 'N/A'}</td>
           <td class="text-center">
             <div class="btn-group btn-group-sm" role="group">
+              <button
+                class="btn ${isTagged ? 'btn-outline-secondary' : 'btn-outline-warning'} btn-icon"
+                onclick="mediaGalleryModule.openTagModal('${media.id}')"
+                title="${isTagged ? 'Edit Tags' : 'Add Tags'}">
+                <i class="bi bi-tag"></i>
+              </button>
               <button
                 class="btn btn-outline-primary btn-icon"
                 onclick="mediaGalleryModule.viewMediaFull('${media.id}')"
@@ -200,12 +216,7 @@ const mediaGalleryModule = {
     document.getElementById('uploadTitle').value = '';
     document.getElementById('uploadCaption').value = '';
     document.getElementById('uploadFile').value = '';
-    document.getElementById('uploadOrgSelect').value = '';
-    document.getElementById('uploadAwardSelect').value = '';
     document.getElementById('uploadFileProgress').classList.add('d-none');
-
-    // Populate organisation and award dropdowns
-    this.populateUploadDropdowns();
 
     const modal = new bootstrap.Modal(document.getElementById('uploadMediaGalleryModal'));
     modal.show();
@@ -242,37 +253,36 @@ const mediaGalleryModule = {
   },
 
   /**
-   * Handle media upload
+   * Handle media upload (supports multiple files)
    */
   async handleUpload() {
     const fileInput = document.getElementById('uploadFile');
     const title = document.getElementById('uploadTitle').value.trim();
     const caption = document.getElementById('uploadCaption').value.trim();
-    const orgId = document.getElementById('uploadOrgSelect').value;
-    const awardId = document.getElementById('uploadAwardSelect').value;
     const uploadBtn = document.getElementById('uploadMediaGalleryBtn');
     const progressDiv = document.getElementById('uploadFileProgress');
 
-    if (!fileInput.files || !fileInput.files[0]) {
-      utils.showToast('Please select a file', 'warning');
+    if (!fileInput.files || fileInput.files.length === 0) {
+      utils.showToast('Please select at least one file', 'warning');
       return;
     }
 
-    if (!title) {
-      utils.showToast('Please enter a title', 'warning');
-      return;
-    }
+    const files = Array.from(fileInput.files);
 
-    const file = fileInput.files[0];
-
-    // Validate file type
+    // Validate file types
     const validTypes = [
       'image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp',
       'video/mp4', 'video/quicktime', 'video/x-msvideo', 'video/webm'
     ];
 
-    if (!validTypes.includes(file.type)) {
-      utils.showToast('Please select a valid image or video file', 'error');
+    const invalidFiles = files.filter(f => !validTypes.includes(f.type));
+    if (invalidFiles.length > 0) {
+      utils.showToast(`${invalidFiles.length} file(s) have invalid format and will be skipped`, 'warning');
+    }
+
+    const validFiles = files.filter(f => validTypes.includes(f.type));
+    if (validFiles.length === 0) {
+      utils.showToast('No valid files to upload', 'error');
       return;
     }
 
@@ -280,44 +290,62 @@ const mediaGalleryModule = {
       uploadBtn.disabled = true;
       progressDiv.classList.remove('d-none');
 
-      // Generate unique filename
-      const timestamp = Date.now();
-      const sanitizedTitle = title.replace(/[^a-z0-9]/gi, '_').toLowerCase();
-      const fileName = `${sanitizedTitle}/${timestamp}_${file.name}`;
+      let successCount = 0;
+      let errorCount = 0;
 
-      // Upload file to Supabase Storage
-      const { data: uploadData, error: uploadError } = await STATE.client.storage
-        .from('media-gallery')
-        .upload(fileName, file);
+      for (const file of validFiles) {
+        try {
+          // Generate unique filename
+          const timestamp = Date.now();
+          const randomSuffix = Math.random().toString(36).substring(7);
+          const fileName = `event-media/${timestamp}_${randomSuffix}_${file.name}`;
 
-      if (uploadError) throw uploadError;
+          // Upload file to Supabase Storage
+          const { data: uploadData, error: uploadError } = await STATE.client.storage
+            .from('media-gallery')
+            .upload(fileName, file);
 
-      // Get public URL
-      const { data: urlData } = STATE.client.storage
-        .from('media-gallery')
-        .getPublicUrl(fileName);
+          if (uploadError) throw uploadError;
 
-      // Insert record into database
-      const { error: dbError } = await STATE.client
-        .from('media_gallery')
-        .insert([{
-          file_url: urlData.publicUrl,
-          file_type: file.type,
-          file_size: file.size,
-          title: title,
-          caption: caption || null,
-          organisation_id: orgId || null,
-          award_id: awardId || null,
-          is_public: true,
-          show_in_gallery: true
-        }]);
+          // Get public URL
+          const { data: urlData } = STATE.client.storage
+            .from('media-gallery')
+            .getPublicUrl(fileName);
 
-      if (dbError) throw dbError;
+          // Insert record into database (NO organisation or award yet)
+          const { error: dbError } = await STATE.client
+            .from('media_gallery')
+            .insert([{
+              file_url: urlData.publicUrl,
+              file_type: file.type,
+              file_size: file.size,
+              title: title || file.name,
+              caption: caption || null,
+              organisation_id: null,
+              award_id: null,
+              is_public: true,
+              show_in_gallery: true
+            }]);
+
+          if (dbError) throw dbError;
+
+          successCount++;
+
+        } catch (error) {
+          console.error(`Error uploading ${file.name}:`, error);
+          errorCount++;
+        }
+      }
 
       // Close modal and reload
       bootstrap.Modal.getInstance(document.getElementById('uploadMediaGalleryModal')).hide();
       await this.loadMedia();
-      utils.showToast('Media uploaded successfully!', 'success');
+
+      if (errorCount === 0) {
+        utils.showToast(`${successCount} file(s) uploaded successfully! Tag them to organisations/awards.`, 'success');
+      } else {
+        utils.showToast(`${successCount} succeeded, ${errorCount} failed. Check console for details.`, 'warning');
+      }
 
     } catch (error) {
       console.error('Error uploading media:', error);
@@ -371,6 +399,65 @@ const mediaGalleryModule = {
 
     const modal = new bootstrap.Modal(document.getElementById('viewMediaFullModal'));
     modal.show();
+  },
+
+  /**
+   * Open tag modal to add/edit organisation and award tags
+   * @param {string} mediaId - Media ID
+   */
+  async openTagModal(mediaId) {
+    const media = STATE.allMedia.find(m => m.id === mediaId);
+    if (!media) return;
+
+    // Set current media ID
+    this.currentMediaId = mediaId;
+
+    // Set modal title
+    document.getElementById('tagMediaModalLabel').textContent = `Tag Media: ${media.title || 'Untitled'}`;
+
+    // Populate dropdowns
+    await this.populateUploadDropdowns();
+
+    // Set current values
+    document.getElementById('tagOrgSelect').value = media.organisation_id || '';
+    document.getElementById('tagAwardSelect').value = media.award_id || '';
+
+    const modal = new bootstrap.Modal(document.getElementById('tagMediaModal'));
+    modal.show();
+  },
+
+  /**
+   * Save tags for media
+   */
+  async saveTags() {
+    const orgId = document.getElementById('tagOrgSelect').value;
+    const awardId = document.getElementById('tagAwardSelect').value;
+
+    try {
+      utils.showLoading();
+
+      const { error } = await STATE.client
+        .from('media_gallery')
+        .update({
+          organisation_id: orgId || null,
+          award_id: awardId || null
+        })
+        .eq('id', this.currentMediaId);
+
+      if (error) throw error;
+
+      utils.showToast('Tags updated successfully!', 'success');
+
+      // Close modal and reload
+      bootstrap.Modal.getInstance(document.getElementById('tagMediaModal')).hide();
+      await this.loadMedia();
+
+    } catch (error) {
+      console.error('Error saving tags:', error);
+      utils.showToast('Error saving tags: ' + error.message, 'error');
+    } finally {
+      utils.hideLoading();
+    }
   },
 
   /**

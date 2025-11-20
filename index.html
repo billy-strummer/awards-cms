@@ -1146,6 +1146,15 @@
               <label for="sectionPhotosCaption" class="form-label">Caption (optional)</label>
               <textarea class="form-control" id="sectionPhotosCaption" rows="2" placeholder="Optional description"></textarea>
             </div>
+            <div class="mb-3">
+              <div class="form-check">
+                <input class="form-check-input" type="checkbox" id="sectionPhotosPublished" checked>
+                <label class="form-check-label" for="sectionPhotosPublished">
+                  <strong>Publish immediately</strong>
+                </label>
+                <small class="text-muted d-block">Uncheck to upload as unpublished (draft). You can publish later.</small>
+              </div>
+            </div>
             <div id="sectionPhotosProgress" class="progress d-none mb-3">
               <div class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar" style="width: 100%"></div>
             </div>
@@ -1186,6 +1195,15 @@
             <div class="mb-3">
               <label for="youtubeVideoTitle" class="form-label">Title *</label>
               <input type="text" class="form-control" id="youtubeVideoTitle" required placeholder="Video title">
+            </div>
+            <div class="mb-3">
+              <div class="form-check">
+                <input class="form-check-input" type="checkbox" id="youtubeVideoPublished" checked>
+                <label class="form-check-label" for="youtubeVideoPublished">
+                  <strong>Publish immediately</strong>
+                </label>
+                <small class="text-muted d-block">Uncheck to add as unpublished (draft). You can publish later.</small>
+              </div>
             </div>
           </form>
         </div>

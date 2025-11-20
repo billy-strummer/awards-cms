@@ -382,17 +382,18 @@ const mediaGalleryModule = {
     const isYouTube = photo.file_type === 'video/youtube';
     const orgName = photo.organisations?.company_name || null;
     const awardName = photo.awards?.award_name || photo.awards?.award_category || null;
-    const isTagged = orgName || awardName;
+    const isPublished = photo.published !== false; // Default to true if not set
 
     return `
       <div class="col-md-3">
-        <div class="card h-100">
+        <div class="card h-100 ${!isPublished ? 'border-secondary' : ''}">
+          ${!isPublished ? '<div class="position-absolute top-0 end-0 m-2 badge bg-secondary">Draft</div>' : ''}
           ${isImage ?
-            `<img src="${photo.file_url}" class="card-img-top" alt="${utils.escapeHtml(photo.title || 'Photo')}"
+            `<img src="${photo.file_url}" class="card-img-top ${!isPublished ? 'opacity-50' : ''}" alt="${utils.escapeHtml(photo.title || 'Photo')}"
               style="height: 200px; object-fit: cover; cursor: pointer;"
               onclick="mediaGalleryModule.viewPhotoFull('${photo.id}', '${photo.file_url}', '${utils.escapeHtml(photo.title || 'Photo')}', 'image')">` :
             isYouTube ?
-            `<div class="card-img-top" style="height: 200px; position: relative; cursor: pointer;"
+            `<div class="card-img-top ${!isPublished ? 'opacity-50' : ''}" style="height: 200px; position: relative; cursor: pointer;"
               onclick="mediaGalleryModule.viewPhotoFull('${photo.id}', '${photo.file_url}', '${utils.escapeHtml(photo.title || 'Video')}', 'youtube')">
               <img src="https://img.youtube.com/vi/${photo.file_url}/mqdefault.jpg"
                 alt="${utils.escapeHtml(photo.title || 'YouTube Video')}"
@@ -401,7 +402,7 @@ const mediaGalleryModule = {
                 <i class="bi bi-youtube text-danger" style="font-size: 3rem; filter: drop-shadow(0 0 10px rgba(0,0,0,0.5));"></i>
               </div>
             </div>` :
-            `<div class="card-img-top d-flex align-items-center justify-content-center bg-dark" style="height: 200px;">
+            `<div class="card-img-top d-flex align-items-center justify-content-center bg-dark ${!isPublished ? 'opacity-50' : ''}" style="height: 200px;">
               <i class="bi bi-play-circle text-white" style="font-size: 3rem;"></i>
             </div>`
           }
@@ -420,6 +421,11 @@ const mediaGalleryModule = {
               <button class="btn btn-outline-primary" onclick="mediaGalleryModule.tagPhoto('${photo.id}')" title="Tag">
                 <i class="bi bi-tag"></i>
               </button>
+              <button class="btn ${isPublished ? 'btn-outline-secondary' : 'btn-outline-success'}"
+                onclick="mediaGalleryModule.togglePublish('${photo.id}', ${!isPublished})"
+                title="${isPublished ? 'Unpublish' : 'Publish'}">
+                <i class="bi bi-${isPublished ? 'eye-slash' : 'eye'}"></i>
+              </button>
               <button class="btn btn-outline-danger" onclick="mediaGalleryModule.deletePhoto('${photo.id}')" title="Delete">
                 <i class="bi bi-trash"></i>
               </button>
@@ -436,6 +442,7 @@ const mediaGalleryModule = {
   async openUploadPhotosModal() {
     document.getElementById('sectionPhotosFile').value = '';
     document.getElementById('sectionPhotosTitle').value = '';
+    document.getElementById('sectionPhotosPublished').checked = true;
 
     const modal = new bootstrap.Modal(document.getElementById('uploadSectionPhotosModal'));
     modal.show();
@@ -447,6 +454,7 @@ const mediaGalleryModule = {
   async uploadSectionPhotos() {
     const fileInput = document.getElementById('sectionPhotosFile');
     const title = document.getElementById('sectionPhotosTitle').value.trim();
+    const published = document.getElementById('sectionPhotosPublished').checked;
 
     if (!fileInput.files || fileInput.files.length === 0) {
       utils.showToast('Please select at least one file', 'warning');
@@ -521,7 +529,8 @@ const mediaGalleryModule = {
             file_type: file.type,
             title: title || file.name,
             organisation_id: null,
-            award_id: null
+            award_id: null,
+            published: published
           }]);
 
         if (dbError) throw dbError;
@@ -557,6 +566,7 @@ const mediaGalleryModule = {
   openYouTubeVideoModal() {
     document.getElementById('youtubeVideoId').value = '';
     document.getElementById('youtubeVideoTitle').value = '';
+    document.getElementById('youtubeVideoPublished').checked = true;
 
     const modal = new bootstrap.Modal(document.getElementById('youtubeVideoModal'));
     modal.show();
@@ -568,6 +578,7 @@ const mediaGalleryModule = {
   async addYouTubeVideo() {
     const videoId = document.getElementById('youtubeVideoId').value.trim();
     const title = document.getElementById('youtubeVideoTitle').value.trim();
+    const published = document.getElementById('youtubeVideoPublished').checked;
 
     if (!videoId) {
       utils.showToast('Please enter a YouTube video ID', 'warning');
@@ -603,7 +614,8 @@ const mediaGalleryModule = {
           file_type: 'video/youtube',
           title: title || 'YouTube Video',
           organisation_id: null,
-          award_id: null
+          award_id: null,
+          published: published
         }]);
 
       if (error) throw error;
@@ -764,6 +776,38 @@ const mediaGalleryModule = {
     } catch (error) {
       console.error('Error deleting photo:', error);
       utils.showToast('Error deleting photo: ' + error.message, 'error');
+    } finally {
+      utils.hideLoading();
+    }
+  },
+
+  /**
+   * Toggle publish/unpublish status
+   */
+  async togglePublish(photoId, newPublishState) {
+    try {
+      utils.showLoading();
+
+      const { error } = await STATE.client
+        .from('media_gallery')
+        .update({ published: newPublishState })
+        .eq('id', photoId);
+
+      if (error) throw error;
+
+      utils.showToast(`Photo ${newPublishState ? 'published' : 'unpublished'} successfully!`, 'success');
+
+      const { data: section } = await STATE.client
+        .from('event_galleries')
+        .select('gallery_name')
+        .eq('id', this.currentSectionId)
+        .single();
+
+      await this.viewSectionPhotos(this.currentSectionId, section.gallery_name);
+
+    } catch (error) {
+      console.error('Error toggling publish status:', error);
+      utils.showToast('Error updating publish status: ' + error.message, 'error');
     } finally {
       utils.hideLoading();
     }

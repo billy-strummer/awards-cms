@@ -102,11 +102,22 @@ const orgsModule = {
       return `
         <tr class="fade-in">
           <td>
-            <a 
-              class="company-link" 
-              onclick="orgsModule.openCompanyProfile('${org.id}', '${utils.escapeHtml(org.company_name || '').replace(/'/g, "\\'")}')">
-              <i class="bi bi-building me-2"></i>${utils.escapeHtml(org.company_name || 'N/A')}
-            </a>
+            <div class="d-flex align-items-center">
+              ${org.logo_url ?
+                `<img src="${org.logo_url}" alt="${utils.escapeHtml(org.company_name)}"
+                  class="me-2"
+                  style="width: 50px; height: 34px; object-fit: contain; border: 1px solid #dee2e6; border-radius: 4px;">` :
+                `<div class="me-2 d-flex align-items-center justify-content-center"
+                  style="width: 50px; height: 34px; background: #f8f9fa; border: 1px solid #dee2e6; border-radius: 4px;">
+                  <i class="bi bi-building text-muted" style="font-size: 0.9rem;"></i>
+                </div>`
+              }
+              <a
+                class="company-link"
+                onclick="orgsModule.openCompanyProfile('${org.id}', '${utils.escapeHtml(org.company_name || '').replace(/'/g, "\\'")}')">
+                ${utils.escapeHtml(org.company_name || 'N/A')}
+              </a>
+            </div>
           </td>
           <td>
             <div>${utils.escapeHtml(org.contact_name || '-')}</div>
@@ -191,7 +202,16 @@ const orgsModule = {
           status: a.status // Use assignment status (nominated/shortlisted/winner)
         }))
         .sort((a, b) => (b.year || 0) - (a.year || 0));
-      
+
+      // Fetch media gallery items tagged to this organisation
+      const { data: taggedMedia, error: mediaError } = await STATE.client
+        .from('media_gallery')
+        .select('*')
+        .eq('organisation_id', orgId)
+        .order('created_at', { ascending: false });
+
+      if (mediaError) console.error('Error loading tagged media:', mediaError);
+
       // Render profile
       contentDiv.innerHTML = `
         <div class="row">
@@ -208,6 +228,10 @@ const orgsModule = {
                 }
                 <input type="file" id="logoUploadInput" class="form-control form-control-sm mb-2"
                   accept="image/*" onchange="orgsModule.validateAndUploadLogo('${org.id}', this)">
+                <button type="button" class="btn btn-sm btn-outline-primary w-100 mb-2"
+                  onclick="orgsModule.openLogoGalleryModal('${org.id}')">
+                  <i class="bi bi-images me-1"></i>Choose from Media Gallery
+                </button>
                 <small class="text-muted">Required: 250x170 px</small>
               </div>
             </div>
@@ -341,8 +365,33 @@ const orgsModule = {
             </div>
           </div>
         </div>
+
+        <!-- Tagged Media Gallery Section -->
+        <div class="mt-4">
+          <h6 class="text-muted mb-3"><i class="bi bi-images me-2"></i>Tagged Media Gallery (${(taggedMedia || []).length})</h6>
+          ${!taggedMedia || taggedMedia.length === 0 ?
+            '<div class="alert alert-info">No media tagged to this organisation yet. Upload photos/videos in the Media Gallery tab and tag them to this company.</div>' :
+            `<div class="row g-3">
+              ${taggedMedia.map(media => `
+                <div class="col-md-3">
+                  <div class="card h-100">
+                    ${media.file_url.match(/\.(jpg|jpeg|png|gif|webp)$/i) ?
+                      `<img src="${media.file_url}" class="card-img-top" alt="${utils.escapeHtml(media.title || 'Media')}" style="height: 150px; object-fit: cover;">` :
+                      `<div class="card-img-top d-flex align-items-center justify-content-center bg-dark" style="height: 150px;">
+                        <i class="bi bi-play-circle text-white" style="font-size: 3rem;"></i>
+                      </div>`
+                    }
+                    <div class="card-body p-2">
+                      <p class="card-text small mb-0">${utils.escapeHtml(media.title || 'Untitled')}</p>
+                    </div>
+                  </div>
+                </div>
+              `).join('')}
+            </div>`
+          }
+        </div>
       `;
-      
+
     } catch (error) {
       console.error('Error loading company profile:', error);
       contentDiv.innerHTML = `
@@ -527,6 +576,166 @@ const orgsModule = {
   async cancelWinnerProfile(orgId, companyName) {
     if (utils.confirm('Discard changes to winner profile?')) {
       await this.openCompanyProfile(orgId, companyName);
+    }
+  },
+
+  /**
+   * Open logo gallery modal to select from media gallery
+   * @param {string} orgId - Organisation ID
+   */
+  async openLogoGalleryModal(orgId) {
+    this.currentOrgIdForLogo = orgId;
+
+    const modal = new bootstrap.Modal(document.getElementById('selectLogoModal'));
+    modal.show();
+
+    const contentDiv = document.getElementById('logoGalleryContent');
+    contentDiv.innerHTML = `
+      <div class="text-center py-4">
+        <div class="spinner-border text-primary" role="status">
+          <span class="visually-hidden">Loading...</span>
+        </div>
+      </div>
+    `;
+
+    try {
+      // Fetch all media from media gallery
+      const { data: allMedia, error } = await STATE.client
+        .from('media_gallery')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+
+      // Filter images only (no videos) and check dimensions
+      const imageMedia = (allMedia || []).filter(m =>
+        m.file_url && m.file_url.match(/\.(jpg|jpeg|png|gif|webp)$/i)
+      );
+
+      if (imageMedia.length === 0) {
+        contentDiv.innerHTML = `
+          <div class="alert alert-warning">
+            <i class="bi bi-exclamation-triangle me-2"></i>
+            No images found in Media Gallery. Upload some images first.
+          </div>
+        `;
+        return;
+      }
+
+      // Check dimensions of each image
+      const validLogos = [];
+      let checkedCount = 0;
+
+      for (const media of imageMedia) {
+        // Load image to check dimensions
+        const img = new Image();
+        img.crossOrigin = 'anonymous';
+
+        await new Promise((resolve) => {
+          img.onload = () => {
+            if (img.width === 250 && img.height === 170) {
+              validLogos.push(media);
+            }
+            checkedCount++;
+            resolve();
+          };
+          img.onerror = () => {
+            checkedCount++;
+            resolve();
+          };
+          img.src = media.file_url;
+        });
+      }
+
+      // Display valid logos
+      if (validLogos.length === 0) {
+        contentDiv.innerHTML = `
+          <div class="alert alert-warning">
+            <i class="bi bi-exclamation-triangle me-2"></i>
+            No images with 250x170 px dimensions found. Please upload images with the correct size to Media Gallery.
+          </div>
+        `;
+        return;
+      }
+
+      contentDiv.innerHTML = `
+        <div class="row g-3">
+          ${validLogos.map(media => `
+            <div class="col-md-3">
+              <div class="card h-100 logo-option" style="cursor: pointer;"
+                   onclick="orgsModule.setLogoFromGallery('${orgId}', '${media.file_url}', '${media.id}')">
+                <img src="${media.file_url}" class="card-img-top"
+                     alt="${utils.escapeHtml(media.title || 'Logo')}"
+                     style="height: 170px; object-fit: contain; background: #f8f9fa;">
+                <div class="card-body p-2">
+                  <p class="card-text small mb-0 text-center">${utils.escapeHtml(media.title || 'Untitled')}</p>
+                  <p class="card-text small text-muted text-center mb-0">250 x 170 px</p>
+                </div>
+              </div>
+            </div>
+          `).join('')}
+        </div>
+      `;
+
+      // Add hover effect
+      const style = document.createElement('style');
+      style.textContent = `
+        .logo-option:hover {
+          transform: scale(1.05);
+          box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+          transition: all 0.2s;
+        }
+      `;
+      document.head.appendChild(style);
+
+    } catch (error) {
+      console.error('Error loading media gallery:', error);
+      contentDiv.innerHTML = `
+        <div class="alert alert-danger">
+          <i class="bi bi-exclamation-triangle me-2"></i>
+          Error loading media gallery: ${error.message}
+        </div>
+      `;
+    }
+  },
+
+  /**
+   * Set logo from media gallery
+   * @param {string} orgId - Organisation ID
+   * @param {string} fileUrl - URL of the selected image
+   * @param {string} mediaId - Media ID
+   */
+  async setLogoFromGallery(orgId, fileUrl, mediaId) {
+    try {
+      utils.showLoading();
+
+      // Update organisation record with logo URL
+      const { error } = await STATE.client
+        .from('organisations')
+        .update({ logo_url: fileUrl })
+        .eq('id', orgId);
+
+      if (error) throw error;
+
+      utils.showToast('Logo updated successfully!', 'success');
+
+      // Close the modal
+      const modal = bootstrap.Modal.getInstance(document.getElementById('selectLogoModal'));
+      if (modal) modal.hide();
+
+      // Reload the profile to show new logo
+      const org = STATE.allOrganisations.find(o => o.id === orgId);
+      if (org) {
+        org.logo_url = fileUrl; // Update in state
+        await this.openCompanyProfile(orgId, org.company_name);
+        await this.loadOrganisations(); // Refresh table
+      }
+
+    } catch (error) {
+      console.error('Error setting logo:', error);
+      utils.showToast('Error setting logo: ' + error.message, 'error');
+    } finally {
+      utils.hideLoading();
     }
   }
 };

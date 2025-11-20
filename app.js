@@ -137,11 +137,8 @@ document.addEventListener('DOMContentLoaded', function() {
 
   // Load media gallery data when Media Gallery tab is clicked (lazy loading)
   document.getElementById('media-gallery-tab').addEventListener('click', () => {
-    if (STATE.allMedia.length === 0) {
-      mediaGalleryModule.loadMedia();
-    } else {
-      // Refresh filters to pick up new events
-      mediaGalleryModule.populateFilters();
+    if (STATE.allEvents.length === 0) {
+      mediaGalleryModule.initialize();
     }
   });
 
@@ -232,8 +229,6 @@ document.addEventListener('DOMContentLoaded', function() {
           document.getElementById('orgSearchBox').focus();
         } else if (tabId === 'winners-tab') {
           document.getElementById('winnerSearchBox').focus();
-        } else if (tabId === 'media-gallery-tab') {
-          document.getElementById('mediaSearchBox').focus();
         }
       }
     }

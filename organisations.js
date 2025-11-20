@@ -176,8 +176,8 @@ const orgsModule = {
       const { data: assignments, error: awardsError } = await STATE.client
         .from('award_assignments')
         .select(`
-          *,
-          awards (
+          status,
+          award:award_id (
             award_name,
             award_category,
             sector,
@@ -191,9 +191,9 @@ const orgsModule = {
 
       // Extract and sort awards, using assignment status instead of award status
       const awards = (assignments || [])
-        .filter(a => a.awards)
+        .filter(a => a.award)
         .map(a => ({
-          ...a.awards,
+          ...a.award,
           status: a.status // Use assignment status (nominated/shortlisted/winner)
         }))
         .sort((a, b) => (b.year || 0) - (a.year || 0));

@@ -1133,6 +1133,73 @@
     </div>
   </div>
 
+  <!-- Clone Event Modal -->
+  <div class="modal fade" id="cloneEventModal" tabindex="-1" aria-labelledby="cloneEventModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header bg-success text-white">
+          <h5 class="modal-title" id="cloneEventModalLabel">
+            <i class="bi bi-files me-2"></i>Clone Event
+          </h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <div class="alert alert-info">
+            <i class="bi bi-info-circle me-2"></i>
+            Create a copy of <strong id="cloneEventSourceName"></strong> with a new name and year.
+            Optionally include gallery sections (without photos).
+          </div>
+
+          <form id="cloneEventForm">
+            <input type="hidden" id="cloneEventSourceId">
+
+            <div class="mb-3">
+              <label for="cloneEventName" class="form-label">New Event Name *</label>
+              <input type="text" class="form-control" id="cloneEventName" required placeholder="e.g., 2025 Awards Ceremony">
+            </div>
+
+            <div class="row">
+              <div class="col-md-6 mb-3">
+                <label for="cloneEventDate" class="form-label">Event Date</label>
+                <input type="date" class="form-control" id="cloneEventDate">
+              </div>
+              <div class="col-md-6 mb-3">
+                <label for="cloneEventYear" class="form-label">Year *</label>
+                <input type="number" class="form-control" id="cloneEventYear" min="2000" max="2100" placeholder="2025" required>
+              </div>
+            </div>
+
+            <div class="mb-3">
+              <label for="cloneEventVenue" class="form-label">Venue</label>
+              <input type="text" class="form-control" id="cloneEventVenue" placeholder="Same venue or enter new one">
+            </div>
+
+            <div class="mb-3">
+              <label for="cloneEventDescription" class="form-label">Description</label>
+              <textarea class="form-control" id="cloneEventDescription" rows="2" placeholder="Optional description"></textarea>
+            </div>
+
+            <div class="mb-3">
+              <div class="form-check">
+                <input class="form-check-input" type="checkbox" id="cloneGallerySections" checked>
+                <label class="form-check-label" for="cloneGallerySections">
+                  <strong>Clone Gallery Sections</strong>
+                </label>
+                <small class="text-muted d-block">Copy gallery section structure (names and descriptions). Photos won't be copied.</small>
+              </div>
+            </div>
+          </form>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="button" class="btn btn-success" onclick="eventsModule.cloneEvent()">
+            <i class="bi bi-files me-1"></i>Clone Event
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- Upload Company Images Modal -->
   <div class="modal fade" id="uploadCompanyImagesModal" tabindex="-1" aria-labelledby="uploadCompanyImagesModalLabel" aria-hidden="true">
     <div class="modal-dialog">

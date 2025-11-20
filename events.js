@@ -65,6 +65,11 @@ const eventsModule = {
                 title="Edit">
                 <i class="bi bi-pencil"></i>
               </button>
+              <button class="btn btn-outline-success btn-icon"
+                onclick="eventsModule.openCloneModal('${event.id}')"
+                title="Clone Event">
+                <i class="bi bi-files"></i>
+              </button>
               <button class="btn btn-outline-danger btn-icon"
                 onclick="eventsModule.deleteEvent('${event.id}', '${utils.escapeHtml(event.event_name).replace(/'/g, "\\'")}')"
                 title="Delete">
@@ -198,6 +203,140 @@ const eventsModule = {
       utils.showToast('Error deleting event: ' + error.message, 'error');
     } finally {
       utils.hideLoading();
+    }
+  },
+
+  /* ==================================================== */
+  /* EVENT CLONING */
+  /* ==================================================== */
+
+  /**
+   * Open clone event modal
+   */
+  async openCloneModal(eventId) {
+    const sourceEvent = STATE.allEvents.find(e => e.id === eventId);
+    if (!sourceEvent) return;
+
+    // Set source event details
+    document.getElementById('cloneEventSourceId').value = eventId;
+    document.getElementById('cloneEventSourceName').textContent = sourceEvent.event_name;
+
+    // Pre-fill form with source event data (incrementing year by 1)
+    const nextYear = sourceEvent.year ? parseInt(sourceEvent.year) + 1 : new Date().getFullYear();
+    document.getElementById('cloneEventName').value = sourceEvent.event_name.replace(/\d{4}/, nextYear);
+    document.getElementById('cloneEventYear').value = nextYear;
+    document.getElementById('cloneEventVenue').value = sourceEvent.venue || '';
+    document.getElementById('cloneEventDescription').value = sourceEvent.description || '';
+    document.getElementById('cloneEventDate').value = '';
+    document.getElementById('cloneGallerySections').checked = true;
+
+    // Show modal
+    const modal = new bootstrap.Modal(document.getElementById('cloneEventModal'));
+    modal.show();
+  },
+
+  /**
+   * Clone event (and optionally gallery sections)
+   */
+  async cloneEvent() {
+    const sourceEventId = document.getElementById('cloneEventSourceId').value;
+    const newEventName = document.getElementById('cloneEventName').value.trim();
+    const newEventDate = document.getElementById('cloneEventDate').value;
+    const newEventYear = document.getElementById('cloneEventYear').value;
+    const newEventVenue = document.getElementById('cloneEventVenue').value.trim();
+    const newEventDescription = document.getElementById('cloneEventDescription').value.trim();
+    const cloneGallerySections = document.getElementById('cloneGallerySections').checked;
+
+    if (!newEventName || !newEventYear) {
+      utils.showToast('Please enter event name and year', 'warning');
+      return;
+    }
+
+    try {
+      utils.showLoading();
+
+      // Step 1: Create new event
+      const newEventData = {
+        event_name: newEventName,
+        event_date: newEventDate || null,
+        year: parseInt(newEventYear),
+        venue: newEventVenue || null,
+        description: newEventDescription || null
+      };
+
+      const { data: newEvent, error: eventError } = await STATE.client
+        .from('events')
+        .insert([newEventData])
+        .select()
+        .single();
+
+      if (eventError) throw eventError;
+
+      utils.showToast(`Event "${newEventName}" created successfully!`, 'success');
+
+      // Step 2: Clone gallery sections if requested
+      if (cloneGallerySections) {
+        await this.cloneGallerySections(sourceEventId, newEvent.id);
+      }
+
+      // Close modal and reload
+      bootstrap.Modal.getInstance(document.getElementById('cloneEventModal')).hide();
+      await this.loadEvents();
+
+      // Show success summary
+      const message = cloneGallerySections
+        ? `Event cloned successfully with gallery sections!`
+        : `Event cloned successfully!`;
+
+      utils.showToast(message, 'success');
+
+    } catch (error) {
+      console.error('Error cloning event:', error);
+      utils.showToast('Error cloning event: ' + error.message, 'error');
+    } finally {
+      utils.hideLoading();
+    }
+  },
+
+  /**
+   * Clone gallery sections from source event to new event
+   */
+  async cloneGallerySections(sourceEventId, newEventId) {
+    try {
+      // Get all gallery sections from source event
+      const { data: sections, error: sectionsError } = await STATE.client
+        .from('event_galleries')
+        .select('*')
+        .eq('event_id', sourceEventId)
+        .order('display_order', { ascending: true });
+
+      if (sectionsError) throw sectionsError;
+
+      if (!sections || sections.length === 0) {
+        console.log('No gallery sections to clone');
+        return;
+      }
+
+      // Create new sections for the new event
+      const newSections = sections.map(section => ({
+        event_id: newEventId,
+        gallery_name: section.gallery_name,
+        gallery_description: section.gallery_description,
+        display_order: section.display_order
+      }));
+
+      const { error: insertError } = await STATE.client
+        .from('event_galleries')
+        .insert(newSections);
+
+      if (insertError) throw insertError;
+
+      console.log(`✅ Cloned ${sections.length} gallery section(s)`);
+
+    } catch (error) {
+      console.error('Error cloning gallery sections:', error);
+      // Don't throw - let the event creation succeed even if sections fail
+      utils.showToast('Event created but gallery sections failed to clone', 'warning');
     }
   }
 };

@@ -8,7 +8,7 @@ const mediaGalleryModule = {
   currentMediaId: null,
 
   /**
-   * Initialize Media Gallery - Load events
+   * Initialize Media Gallery - Load events and show summary
    */
   async initialize() {
     try {
@@ -17,8 +17,8 @@ const mediaGalleryModule = {
       // Load events for dropdown
       await this.loadEvents();
 
-      // Show initial state
-      this.renderInitialState();
+      // Show summary view by default
+      await this.showSummaryView();
 
     } catch (error) {
       console.error('Error initializing media gallery:', error);
@@ -216,11 +216,12 @@ const mediaGalleryModule = {
   },
 
   /**
-   * Event selected - load gallery sections
+   * Event selected - load gallery sections or show summary
    */
   async onEventSelected(eventId) {
     if (!eventId) {
-      this.renderInitialState();
+      // Show summary view when no event is selected
+      await this.showSummaryView();
       return;
     }
 

@@ -195,17 +195,35 @@ const orgsModule = {
       // Render profile
       contentDiv.innerHTML = `
         <div class="row">
-          <div class="col-md-6 mb-3">
+          <div class="col-md-4 mb-3">
+            <h6 class="text-muted mb-2"><i class="bi bi-image me-2"></i>Company Logo</h6>
+            <div class="card">
+              <div class="card-body text-center">
+                ${org.logo_url ?
+                  `<img src="${org.logo_url}" alt="${utils.escapeHtml(org.company_name)}"
+                    class="img-fluid mb-3" style="max-height: 170px; max-width: 250px;">` :
+                  `<div class="text-muted mb-3" style="height: 170px; display: flex; align-items: center; justify-content: center; background: #f8f9fa; border-radius: 4px;">
+                    <i class="bi bi-image" style="font-size: 3rem;"></i>
+                  </div>`
+                }
+                <input type="file" id="logoUploadInput" class="form-control form-control-sm mb-2"
+                  accept="image/*" onchange="orgsModule.validateAndUploadLogo('${org.id}', this)">
+                <small class="text-muted">Required: 250x170 px</small>
+              </div>
+            </div>
+          </div>
+
+          <div class="col-md-4 mb-3">
             <h6 class="text-muted mb-2"><i class="bi bi-person me-2"></i>Contact Information</h6>
             <div class="card">
               <div class="card-body">
                 <p class="mb-2"><strong>Contact Name:</strong> ${utils.escapeHtml(org.contact_name || 'N/A')}</p>
-                <p class="mb-2"><strong>Email:</strong> 
+                <p class="mb-2"><strong>Email:</strong>
                   ${org.email ? `<a href="mailto:${org.email}">${utils.escapeHtml(org.email)}</a>` : 'N/A'}
                 </p>
                 <p class="mb-2"><strong>Phone:</strong> ${utils.escapeHtml(org.contact_phone || 'N/A')}</p>
-                <p class="mb-0"><strong>Website:</strong> 
-                  ${org.website ? 
+                <p class="mb-0"><strong>Website:</strong>
+                  ${org.website ?
                     `<a href="${org.website}" target="_blank" rel="noopener noreferrer">
                       ${utils.escapeHtml(org.website)} <i class="bi bi-box-arrow-up-right small"></i>
                     </a>` : 'N/A'}
@@ -213,12 +231,12 @@ const orgsModule = {
               </div>
             </div>
           </div>
-          
-          <div class="col-md-6 mb-3">
+
+          <div class="col-md-4 mb-3">
             <h6 class="text-muted mb-2"><i class="bi bi-geo-alt me-2"></i>Location</h6>
             <div class="card">
               <div class="card-body">
-                <p class="mb-2"><strong>Region:</strong> 
+                <p class="mb-2"><strong>Region:</strong>
                   <span class="badge bg-success-subtle text-success">${utils.escapeHtml(org.region || 'N/A')}</span>
                 </p>
                 <p class="mb-0"><strong>Address:</strong> ${utils.escapeHtml(org.address || 'N/A')}</p>
@@ -226,10 +244,10 @@ const orgsModule = {
             </div>
           </div>
         </div>
-        
+
         <div class="mt-4">
           <h6 class="text-muted mb-3"><i class="bi bi-trophy me-2"></i>Award History (${awards.length})</h6>
-          ${awards.length === 0 ? 
+          ${awards.length === 0 ?
             '<div class="alert alert-info">No awards found for this organisation.</div>' :
             `<div class="table-responsive">
               <table class="table table-sm table-hover">
@@ -266,6 +284,100 @@ const orgsModule = {
         </div>
       `;
     }
+  },
+
+  /**
+   * Validate and upload company logo
+   * @param {string} orgId - Organisation ID
+   * @param {HTMLInputElement} inputElement - File input element
+   */
+  async validateAndUploadLogo(orgId, inputElement) {
+    const file = inputElement.files[0];
+    if (!file) return;
+
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      utils.showToast('Please select an image file', 'error');
+      inputElement.value = '';
+      return;
+    }
+
+    // Create an image to check dimensions
+    const img = new Image();
+    const reader = new FileReader();
+
+    reader.onload = (e) => {
+      img.onload = async () => {
+        // Validate dimensions (exactly 250x170 px)
+        if (img.width !== 250 || img.height !== 170) {
+          utils.showToast(`Image must be exactly 250x170 px. Your image is ${img.width}x${img.height} px`, 'error');
+          inputElement.value = '';
+          return;
+        }
+
+        // Dimensions are correct, proceed with upload
+        try {
+          utils.showLoading();
+
+          // Generate unique filename
+          const timestamp = Date.now();
+          const fileExt = file.name.split('.').pop();
+          const fileName = `logos/${orgId}/${timestamp}.${fileExt}`;
+
+          // Upload to Supabase Storage
+          const { data: uploadData, error: uploadError } = await STATE.client.storage
+            .from('organisation-logos')
+            .upload(fileName, file, {
+              cacheControl: '3600',
+              upsert: false
+            });
+
+          if (uploadError) throw uploadError;
+
+          // Get public URL
+          const { data: urlData } = STATE.client.storage
+            .from('organisation-logos')
+            .getPublicUrl(fileName);
+
+          // Update organisation record with logo URL
+          const { error: updateError } = await STATE.client
+            .from('organisations')
+            .update({ logo_url: urlData.publicUrl })
+            .eq('id', orgId);
+
+          if (updateError) throw updateError;
+
+          utils.showToast('Logo uploaded successfully!', 'success');
+
+          // Reload the profile to show new logo
+          const org = STATE.allOrganisations.find(o => o.id === orgId);
+          if (org) {
+            await this.openCompanyProfile(orgId, org.company_name);
+          }
+
+        } catch (error) {
+          console.error('Error uploading logo:', error);
+          utils.showToast('Error uploading logo: ' + error.message, 'error');
+          inputElement.value = '';
+        } finally {
+          utils.hideLoading();
+        }
+      };
+
+      img.onerror = () => {
+        utils.showToast('Failed to load image', 'error');
+        inputElement.value = '';
+      };
+
+      img.src = e.target.result;
+    };
+
+    reader.onerror = () => {
+      utils.showToast('Failed to read file', 'error');
+      inputElement.value = '';
+    };
+
+    reader.readAsDataURL(file);
   }
 };
 

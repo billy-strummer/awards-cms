@@ -1,0 +1,450 @@
+/* ============================================ */
+/* AWARD ASSIGNMENTS STYLES */
+/* Add this to your styles.css file */
+/* ============================================ */
+
+/* Assignment Cards */
+.assignment-card {
+  transition: all 0.2s ease;
+  border-left: 4px solid transparent;
+}
+
+.assignment-card:hover {
+  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+  transform: translateX(4px);
+}
+
+.assignment-card.status-nominated {
+  border-left-color: #6c757d;
+}
+
+.assignment-card.status-shortlisted {
+  border-left-color: #ffc107;
+}
+
+.assignment-card.status-winner {
+  border-left-color: #28a745;
+  background: linear-gradient(to right, #f8fff9 0%, #ffffff 100%);
+}
+
+.assignment-card.status-rejected {
+  border-left-color: #dc3545;
+  opacity: 0.7;
+}
+
+/* Available Company Cards */
+.available-company-card {
+  transition: all 0.2s ease;
+  cursor: pointer;
+}
+
+.available-company-card:hover {
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  transform: translateY(-2px);
+}
+
+/* Company Avatar (when no logo) */
+.company-initial-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 1.2rem;
+  text-transform: uppercase;
+}
+
+.company-initial-avatar-sm {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 1rem;
+  text-transform: uppercase;
+}
+
+/* Assigned Companies List */
+.assigned-companies-list {
+  max-height: 600px;
+  overflow-y: auto;
+  padding-right: 10px;
+}
+
+.assigned-companies-list::-webkit-scrollbar {
+  width: 8px;
+}
+
+.assigned-companies-list::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 10px;
+}
+
+.assigned-companies-list::-webkit-scrollbar-thumb {
+  background: #888;
+  border-radius: 10px;
+}
+
+.assigned-companies-list::-webkit-scrollbar-thumb:hover {
+  background: #555;
+}
+
+/* Assignment Count Badge on Awards Table */
+.assignment-count-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: 20px;
+  font-weight: 600;
+  font-size: 0.875rem;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  box-shadow: 0 2px 4px rgba(102, 126, 234, 0.3);
+}
+
+.assignment-count-badge:hover {
+  transform: scale(1.05);
+  box-shadow: 0 4px 8px rgba(102, 126, 234, 0.4);
+}
+
+.assignment-count-badge.zero {
+  background: #e9ecef;
+  color: #6c757d;
+  box-shadow: none;
+}
+
+.assignment-count-badge.low {
+  background: linear-gradient(135deg, #ffc107 0%, #ff9800 100%);
+}
+
+.assignment-count-badge.medium {
+  background: linear-gradient(135deg, #17a2b8 0%, #007bff 100%);
+}
+
+.assignment-count-badge.high {
+  background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+}
+
+/* Manage Nominees Button */
+.manage-nominees-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  border-radius: 8px;
+  font-weight: 500;
+  font-size: 0.875rem;
+  background: white;
+  border: 2px solid #667eea;
+  color: #667eea;
+  transition: all 0.2s ease;
+}
+
+.manage-nominees-btn:hover {
+  background: #667eea;
+  color: white;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(102, 126, 234, 0.3);
+}
+
+/* Status Change Buttons */
+.status-btn-group {
+  display: flex;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.status-btn {
+  padding: 4px 10px;
+  border-radius: 6px;
+  border: 1px solid;
+  background: white;
+  font-size: 0.8rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.status-btn.btn-shortlist {
+  border-color: #ffc107;
+  color: #ffc107;
+}
+
+.status-btn.btn-shortlist:hover {
+  background: #ffc107;
+  color: #000;
+}
+
+.status-btn.btn-winner {
+  border-color: #28a745;
+  color: #28a745;
+}
+
+.status-btn.btn-winner:hover {
+  background: #28a745;
+  color: white;
+}
+
+.status-btn.btn-reject {
+  border-color: #dc3545;
+  color: #dc3545;
+}
+
+.status-btn.btn-reject:hover {
+  background: #dc3545;
+  color: white;
+}
+
+/* Bulk Selection */
+.bulk-select-checkbox {
+  width: 20px;
+  height: 20px;
+  cursor: pointer;
+}
+
+.selected-for-bulk {
+  background: #e3f2fd;
+  border-color: #2196f3;
+}
+
+/* Empty State */
+.assignments-empty-state {
+  text-align: center;
+  padding: 60px 20px;
+}
+
+.assignments-empty-state i {
+  font-size: 4rem;
+  color: #dee2e6;
+  margin-bottom: 20px;
+}
+
+.assignments-empty-state h5 {
+  color: #6c757d;
+  margin-bottom: 10px;
+}
+
+.assignments-empty-state p {
+  color: #adb5bd;
+  margin-bottom: 20px;
+}
+
+/* Loading State */
+.assignments-loading {
+  text-align: center;
+  padding: 60px 20px;
+}
+
+.assignments-loading .spinner-border {
+  width: 3rem;
+  height: 3rem;
+}
+
+/* Quick Stats in Modal Header */
+.assignment-stats {
+  display: flex;
+  gap: 20px;
+  padding: 15px;
+  background: #f8f9fa;
+  border-radius: 8px;
+  margin-bottom: 20px;
+}
+
+.stat-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 10px 20px;
+  background: white;
+  border-radius: 6px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+.stat-item .stat-number {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #667eea;
+}
+
+.stat-item .stat-label {
+  font-size: 0.75rem;
+  color: #6c757d;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+/* Search Box Styles */
+#assignmentSearchBox,
+#bulkAddSearchBox {
+  border: 2px solid #e9ecef;
+  border-radius: 10px;
+  padding: 12px 20px;
+  font-size: 1rem;
+  transition: all 0.2s ease;
+}
+
+#assignmentSearchBox:focus,
+#bulkAddSearchBox:focus {
+  border-color: #667eea;
+  box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.1);
+}
+
+/* Responsive Adjustments */
+@media (max-width: 768px) {
+  .assignment-card,
+  .available-company-card {
+    margin-bottom: 15px;
+  }
+  
+  .assignment-stats {
+    flex-direction: column;
+    gap: 10px;
+  }
+  
+  .stat-item {
+    width: 100%;
+  }
+  
+  .status-btn-group {
+    flex-wrap: wrap;
+  }
+}
+
+/* Animation for adding/removing */
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateX(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.assignment-card {
+  animation: slideIn 0.3s ease;
+}
+
+/* Tooltips for status badges */
+.status-badge-tooltip {
+  position: relative;
+  cursor: help;
+}
+
+.status-badge-tooltip:hover::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 8px 12px;
+  background: #333;
+  color: white;
+  border-radius: 6px;
+  font-size: 0.75rem;
+  white-space: nowrap;
+  z-index: 1000;
+  margin-bottom: 5px;
+}
+
+/* Filter Chips */
+.filter-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: 20px;
+  background: #e9ecef;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: #495057;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.filter-chip:hover {
+  background: #dee2e6;
+}
+
+.filter-chip.active {
+  background: #667eea;
+  color: white;
+}
+
+.filter-chip i {
+  font-size: 1rem;
+}
+
+/* Progress Indicators */
+.assignment-progress {
+  height: 8px;
+  background: #e9ecef;
+  border-radius: 10px;
+  overflow: hidden;
+  margin-top: 10px;
+}
+
+.assignment-progress-bar {
+  height: 100%;
+  background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+  transition: width 0.3s ease;
+}
+
+/* Company Logo Styles */
+.company-logo-thumb {
+  width: 40px;
+  height: 40px;
+  object-fit: contain;
+  border-radius: 8px;
+  border: 1px solid #e9ecef;
+  background: white;
+  padding: 4px;
+}
+
+/* Action Icons */
+.action-icon {
+  width: 32px;
+  height: 32px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  border: 1px solid #dee2e6;
+  background: white;
+  color: #6c757d;
+  transition: all 0.2s ease;
+  cursor: pointer;
+}
+
+.action-icon:hover {
+  background: #667eea;
+  color: white;
+  border-color: #667eea;
+  transform: scale(1.1);
+}
+
+.action-icon.danger:hover {
+  background: #dc3545;
+  border-color: #dc3545;
+}
+
+.action-icon.success:hover {
+  background: #28a745;
+  border-color: #28a745;
+}
+
+.action-icon.warning:hover {
+  background: #ffc107;
+  border-color: #ffc107;
+  color: #000;
+}

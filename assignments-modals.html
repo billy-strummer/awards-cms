@@ -1,0 +1,100 @@
+<!-- ============================================ -->
+<!-- AWARD ASSIGNMENTS MODAL -->
+<!-- Add this to index.html BEFORE closing </body> tag -->
+<!-- ============================================ -->
+
+<!-- Assignments Modal -->
+<div class="modal fade" id="assignmentsModal" tabindex="-1" aria-labelledby="assignmentsModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-xl">
+    <div class="modal-content">
+      <div class="modal-header bg-primary text-white">
+        <h5 class="modal-title" id="assignmentsModalTitle">
+          <i class="bi bi-trophy me-2"></i>Manage Award Nominees
+        </h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body p-4" style="min-height: 500px;">
+        <div id="assignmentsContent">
+          <!-- Content loaded by JavaScript -->
+        </div>
+      </div>
+      <div class="modal-footer bg-light">
+        <div class="d-flex justify-content-between w-100 align-items-center">
+          <div>
+            <small class="text-muted">
+              <i class="bi bi-info-circle me-1"></i>
+              Tip: Click a company to see more details
+            </small>
+          </div>
+          <div>
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+              <i class="bi bi-x-lg me-2"></i>Close
+            </button>
+            <button type="button" class="btn btn-success" onclick="assignmentsModule.emailAllAssigned()">
+              <i class="bi bi-envelope me-2"></i>Email All Nominees
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Quick Actions Modal (for individual companies) -->
+<div class="modal fade" id="assignmentActionsModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">
+          <i class="bi bi-gear me-2"></i>Quick Actions
+        </h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <div id="assignmentActionsContent">
+          <!-- Loaded dynamically -->
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Add Company Modal (Enhanced search/select) -->
+<div class="modal fade" id="addCompanyModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">
+          <i class="bi bi-plus-circle me-2"></i>Add Companies to Award
+        </h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <div class="mb-3">
+          <label class="form-label">Search Companies</label>
+          <input 
+            type="text" 
+            class="form-control form-control-lg" 
+            id="bulkAddSearchBox" 
+            placeholder="Type to search..."
+            onkeyup="assignmentsModule.filterBulkAdd()">
+        </div>
+        
+        <div class="alert alert-info">
+          <i class="bi bi-lightbulb me-2"></i>
+          <strong>Tip:</strong> Select multiple companies and click "Add Selected" to add them all at once.
+        </div>
+        
+        <div id="bulkAddCompanyList" style="max-height: 400px; overflow-y: auto;">
+          <!-- Populated by JS -->
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button type="button" class="btn btn-primary" onclick="assignmentsModule.addSelectedCompanies()">
+          <i class="bi bi-plus-lg me-2"></i>Add Selected (<span id="selectedCount">0</span>)
+        </button>
+      </div>
+    </div>
+  </div>
+</div>

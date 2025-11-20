@@ -20,7 +20,11 @@ const winnersModule = {
         .select(`
           *,
           awards (
+            id,
+            award_name,
             award_category,
+            sector,
+            region,
             year
           ),
           winner_media (
@@ -62,7 +66,7 @@ const winnersModule = {
         .map(w => w.awards?.award_category)
         .filter(Boolean)
     )].sort();
-    
+
     awardSelect.innerHTML = '<option value="">All Awards</option>';
     uniqueAwards.forEach(award => {
       awardSelect.innerHTML += `<option value="${utils.escapeHtml(award)}">${utils.escapeHtml(award)}</option>`;
@@ -79,21 +83,21 @@ const winnersModule = {
     
     STATE.filteredWinners = STATE.allWinners.filter(winner => {
       // Year filter
-      if (year && winner.awards?.year !== year) return false;
-      
+      if (year && String(winner.awards?.year) !== year) return false;
+
       // Award filter
       if (award && winner.awards?.award_category !== award) return false;
-      
+
       // Search filter
       if (search) {
         const winnerName = winner.winner_name?.toLowerCase() || '';
         const awardCategory = winner.awards?.award_category?.toLowerCase() || '';
-        
+
         if (!winnerName.includes(search) && !awardCategory.includes(search)) {
           return false;
         }
       }
-      
+
       return true;
     });
     

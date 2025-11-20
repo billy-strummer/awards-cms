@@ -134,7 +134,14 @@ document.addEventListener('DOMContentLoaded', function() {
       winnersModule.loadWinners();
     }
   });
-  
+
+  // Load media gallery data when Media Gallery tab is clicked (lazy loading)
+  document.getElementById('media-gallery-tab').addEventListener('click', () => {
+    if (STATE.allMedia.length === 0) {
+      mediaGalleryModule.loadMedia();
+    }
+  });
+
   // Refresh stats when Dashboard tab is clicked
   document.getElementById('dashboard-tab').addEventListener('click', () => {
     dashboardModule.updateStats();
@@ -215,6 +222,8 @@ document.addEventListener('DOMContentLoaded', function() {
           document.getElementById('orgSearchBox').focus();
         } else if (tabId === 'winners-tab') {
           document.getElementById('winnerSearchBox').focus();
+        } else if (tabId === 'media-gallery-tab') {
+          document.getElementById('mediaSearchBox').focus();
         }
       }
     }

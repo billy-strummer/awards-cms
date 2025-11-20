@@ -142,6 +142,13 @@ document.addEventListener('DOMContentLoaded', function() {
     }
   });
 
+  // Load events data when Events tab is clicked (lazy loading)
+  document.getElementById('events-tab').addEventListener('click', () => {
+    if (STATE.allEvents.length === 0) {
+      eventsModule.loadEvents();
+    }
+  });
+
   // Refresh stats when Dashboard tab is clicked
   document.getElementById('dashboard-tab').addEventListener('click', () => {
     dashboardModule.updateStats();

@@ -16,7 +16,7 @@ const assignmentsModule = {
         .from('award_assignments')
         .select(`
           *,
-          organisations (
+          organisations!award_assignments_organisation_id_fkey (
             id,
             company_name,
             email,
@@ -25,7 +25,7 @@ const assignmentsModule = {
         `)
         .eq('award_id', awardId)
         .order('assigned_date', { ascending: false });
-      
+
       if (error) throw error;
       return data || [];
     } catch (error) {

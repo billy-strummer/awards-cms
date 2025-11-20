@@ -102,11 +102,22 @@ const orgsModule = {
       return `
         <tr class="fade-in">
           <td>
-            <a 
-              class="company-link" 
-              onclick="orgsModule.openCompanyProfile('${org.id}', '${utils.escapeHtml(org.company_name || '').replace(/'/g, "\\'")}')">
-              <i class="bi bi-building me-2"></i>${utils.escapeHtml(org.company_name || 'N/A')}
-            </a>
+            <div class="d-flex align-items-center">
+              ${org.logo_url ?
+                `<img src="${org.logo_url}" alt="${utils.escapeHtml(org.company_name)}"
+                  class="me-2"
+                  style="width: 50px; height: 34px; object-fit: contain; border: 1px solid #dee2e6; border-radius: 4px;">` :
+                `<div class="me-2 d-flex align-items-center justify-content-center"
+                  style="width: 50px; height: 34px; background: #f8f9fa; border: 1px solid #dee2e6; border-radius: 4px;">
+                  <i class="bi bi-building text-muted" style="font-size: 0.9rem;"></i>
+                </div>`
+              }
+              <a
+                class="company-link"
+                onclick="orgsModule.openCompanyProfile('${org.id}', '${utils.escapeHtml(org.company_name || '').replace(/'/g, "\\'")}')">
+                ${utils.escapeHtml(org.company_name || 'N/A')}
+              </a>
+            </div>
           </td>
           <td>
             <div>${utils.escapeHtml(org.contact_name || '-')}</div>

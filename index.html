@@ -1135,7 +1135,7 @@
             <div class="mb-3">
               <label for="sectionPhotosFile" class="form-label">Select Files *</label>
               <input type="file" class="form-control" id="sectionPhotosFile" accept="image/*,video/*" multiple required>
-              <small class="text-muted">Select multiple files. Supported: Images (JPEG, PNG, GIF, WebP) and Videos (MP4, MOV, AVI, WebM)</small>
+              <small class="text-muted">Select multiple files. Supported: Images (JPEG, PNG, GIF, WebP) and Videos (MP4, MOV, AVI, WebM). Max 4.5MB per file.</small>
             </div>
             <div class="mb-3">
               <label for="sectionPhotosTitle" class="form-label">Title (optional)</label>
@@ -1155,6 +1155,44 @@
           <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
           <button type="button" class="btn btn-primary" id="uploadSectionPhotosBtn" onclick="mediaGalleryModule.uploadSectionPhotos()">
             <i class="bi bi-upload me-2"></i>Upload
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- YouTube Video Modal -->
+  <div class="modal fade" id="youtubeVideoModal" tabindex="-1" aria-labelledby="youtubeVideoModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="youtubeVideoModalLabel">
+            <i class="bi bi-youtube me-2"></i>Add YouTube Video
+          </h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <div class="alert alert-info">
+            <i class="bi bi-info-circle me-2"></i>
+            Enter the YouTube video ID or paste the full YouTube URL. You can tag it to organisations and awards after adding.
+          </div>
+          <form id="youtubeVideoForm">
+            <div class="mb-3">
+              <label for="youtubeVideoId" class="form-label">YouTube Video ID or URL *</label>
+              <input type="text" class="form-control" id="youtubeVideoId" required
+                placeholder="e.g., dQw4w9WgXcQ or https://www.youtube.com/watch?v=dQw4w9WgXcQ">
+              <small class="text-muted">You can paste the full YouTube URL or just the 11-character video ID</small>
+            </div>
+            <div class="mb-3">
+              <label for="youtubeVideoTitle" class="form-label">Title *</label>
+              <input type="text" class="form-control" id="youtubeVideoTitle" required placeholder="Video title">
+            </div>
+          </form>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="button" class="btn btn-primary" id="addYouTubeVideoBtn" onclick="mediaGalleryModule.addYouTubeVideo()">
+            <i class="bi bi-plus-circle me-2"></i>Add Video
           </button>
         </div>
       </div>

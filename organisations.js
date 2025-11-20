@@ -206,7 +206,10 @@ const orgsModule = {
       // Fetch media gallery items tagged to this organisation
       const { data: taggedMedia, error: mediaError } = await STATE.client
         .from('media_gallery')
-        .select('*')
+        .select(`
+          *,
+          events!media_gallery_event_id_fkey (*)
+        `)
         .eq('organisation_id', orgId)
         .order('created_at', { ascending: false });
 
@@ -413,21 +416,40 @@ const orgsModule = {
           ${!taggedMedia || taggedMedia.length === 0 ?
             '<div class="alert alert-info">No media tagged to this organisation yet. Upload photos/videos in the Media Gallery tab and tag them to this company.</div>' :
             `<div class="row g-3">
-              ${taggedMedia.map(media => `
-                <div class="col-md-3">
-                  <div class="card h-100">
-                    ${media.file_url.match(/\.(jpg|jpeg|png|gif|webp)$/i) ?
-                      `<img src="${media.file_url}" class="card-img-top" alt="${utils.escapeHtml(media.title || 'Media')}" style="height: 150px; object-fit: cover;">` :
-                      `<div class="card-img-top d-flex align-items-center justify-content-center bg-dark" style="height: 150px;">
-                        <i class="bi bi-play-circle text-white" style="font-size: 3rem;"></i>
-                      </div>`
-                    }
-                    <div class="card-body p-2">
-                      <p class="card-text small mb-0">${utils.escapeHtml(media.title || 'Untitled')}</p>
+              ${taggedMedia.map(media => {
+                const isImage = media.file_type?.startsWith('image/');
+                const isYouTube = media.file_type === 'video/youtube';
+                const eventName = media.events?.event_name || 'Unknown Event';
+                const eventYear = media.events?.year || media.events?.event_date?.substring(0, 4) || '';
+
+                return `
+                  <div class="col-md-3">
+                    <div class="card h-100">
+                      ${isImage ?
+                        `<img src="${media.file_url}" class="card-img-top" alt="${utils.escapeHtml(media.title || 'Media')}" style="height: 150px; object-fit: cover;">` :
+                        isYouTube ?
+                        `<div class="card-img-top" style="height: 150px; position: relative;">
+                          <img src="https://img.youtube.com/vi/${media.file_url}/mqdefault.jpg"
+                            alt="${utils.escapeHtml(media.title || 'YouTube Video')}"
+                            style="width: 100%; height: 100%; object-fit: cover;">
+                          <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);">
+                            <i class="bi bi-youtube text-danger" style="font-size: 2.5rem; filter: drop-shadow(0 0 10px rgba(0,0,0,0.5));"></i>
+                          </div>
+                        </div>` :
+                        `<div class="card-img-top d-flex align-items-center justify-content-center bg-dark" style="height: 150px;">
+                          <i class="bi bi-play-circle text-white" style="font-size: 3rem;"></i>
+                        </div>`
+                      }
+                      <div class="card-body p-2">
+                        <p class="card-text small mb-1 fw-semibold">${utils.escapeHtml(media.title || 'Untitled')}</p>
+                        <p class="card-text small text-muted mb-0">
+                          <i class="bi bi-calendar-event me-1"></i>${utils.escapeHtml(eventName)}${eventYear ? ` (${eventYear})` : ''}
+                        </p>
+                      </div>
                     </div>
                   </div>
-                </div>
-              `).join('')}
+                `;
+              }).join('')}
             </div>`
           }
         </div>

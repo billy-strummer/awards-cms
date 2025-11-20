@@ -221,8 +221,8 @@ const orgsModule = {
               <div class="card-body text-center">
                 ${org.logo_url ?
                   `<img src="${org.logo_url}" alt="${utils.escapeHtml(org.company_name)}"
-                    class="img-fluid mb-3" style="max-height: 170px; max-width: 250px;">` :
-                  `<div class="text-muted mb-3" style="height: 170px; display: flex; align-items: center; justify-content: center; background: #f8f9fa; border-radius: 4px;">
+                    class="mb-3" style="width: 250px; height: 170px; object-fit: contain; border: 1px solid #dee2e6; border-radius: 4px; background: #f8f9fa;">` :
+                  `<div class="text-muted mb-3" style="width: 250px; height: 170px; display: flex; align-items: center; justify-content: center; background: #f8f9fa; border: 1px solid #dee2e6; border-radius: 4px;">
                     <i class="bi bi-image" style="font-size: 3rem;"></i>
                   </div>`
                 }

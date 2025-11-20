@@ -65,6 +65,157 @@ const mediaGalleryModule = {
   },
 
   /**
+   * Show summary view of all events and their galleries
+   */
+  async showSummaryView() {
+    try {
+      utils.showLoading();
+
+      // Reset event selector
+      document.getElementById('mediaEventSelect').value = '';
+
+      // Load all events
+      const { data: events, error: eventsError } = await STATE.client
+        .from('events')
+        .select('*')
+        .order('event_date', { ascending: false });
+
+      if (eventsError) throw eventsError;
+
+      // Load all gallery sections with photo counts
+      const summaryData = [];
+
+      for (const event of events || []) {
+        const { data: sections, error: sectionsError } = await STATE.client
+          .from('event_galleries')
+          .select('*')
+          .eq('event_id', event.id)
+          .order('display_order', { ascending: true });
+
+        if (sectionsError) {
+          console.error('Error loading sections for event:', event.id, sectionsError);
+          continue;
+        }
+
+        // Count photos for each section
+        const sectionsWithCounts = [];
+        for (const section of sections || []) {
+          const { count, error: countError } = await STATE.client
+            .from('media_gallery')
+            .select('*', { count: 'exact', head: true })
+            .eq('gallery_section_id', section.id);
+
+          if (countError) {
+            console.error('Error counting photos for section:', section.id, countError);
+          }
+
+          sectionsWithCounts.push({
+            ...section,
+            photoCount: count || 0
+          });
+        }
+
+        summaryData.push({
+          event,
+          sections: sectionsWithCounts,
+          totalPhotos: sectionsWithCounts.reduce((sum, s) => sum + s.photoCount, 0)
+        });
+      }
+
+      this.renderSummaryView(summaryData);
+
+    } catch (error) {
+      console.error('Error loading summary:', error);
+      utils.showToast('Failed to load summary: ' + error.message, 'error');
+    } finally {
+      utils.hideLoading();
+    }
+  },
+
+  /**
+   * Render summary view
+   */
+  renderSummaryView(summaryData) {
+    const contentDiv = document.getElementById('mediaGalleryContent');
+
+    contentDiv.innerHTML = `
+      <div class="d-flex justify-content-between align-items-center mb-4">
+        <h5><i class="bi bi-bar-chart-line me-2"></i>Gallery Summary</h5>
+        <span class="badge bg-primary fs-6">${summaryData.length} Events</span>
+      </div>
+
+      ${summaryData.length === 0 ? `
+        <div class="alert alert-info">
+          <i class="bi bi-info-circle me-2"></i>
+          No events found. Create an event in the Events tab to get started.
+        </div>
+      ` : `
+        <div class="table-responsive">
+          <table class="table table-hover">
+            <thead>
+              <tr>
+                <th>Event Name</th>
+                <th>Year</th>
+                <th>Gallery Sections</th>
+                <th class="text-end">Total Photos/Videos</th>
+                <th class="text-center">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${summaryData.map(item => {
+                const eventYear = item.event.year || (item.event.event_date ? item.event.event_date.substring(0, 4) : 'N/A');
+                return `
+                  <tr>
+                    <td>
+                      <strong>${utils.escapeHtml(item.event.event_name)}</strong>
+                      ${item.event.venue ? `<br><small class="text-muted"><i class="bi bi-geo-alt me-1"></i>${utils.escapeHtml(item.event.venue)}</small>` : ''}
+                    </td>
+                    <td>
+                      <span class="badge bg-primary-subtle text-primary">${eventYear}</span>
+                    </td>
+                    <td>
+                      ${item.sections.length === 0 ?
+                        '<span class="text-muted">No sections yet</span>' :
+                        `<ul class="list-unstyled mb-0">
+                          ${item.sections.map(section => `
+                            <li class="mb-1">
+                              <i class="bi bi-folder2 me-1 text-primary"></i>
+                              ${utils.escapeHtml(section.gallery_name)}
+                              <span class="badge bg-secondary ms-2">${section.photoCount} items</span>
+                            </li>
+                          `).join('')}
+                        </ul>`
+                      }
+                    </td>
+                    <td class="text-end">
+                      <span class="badge bg-success fs-6">${item.totalPhotos}</span>
+                    </td>
+                    <td class="text-center">
+                      <button class="btn btn-sm btn-outline-primary"
+                        onclick="mediaGalleryModule.onEventSelected('${item.event.id}'); document.getElementById('mediaEventSelect').value='${item.event.id}'">
+                        <i class="bi bi-eye me-1"></i>View
+                      </button>
+                    </td>
+                  </tr>
+                `;
+              }).join('')}
+            </tbody>
+            <tfoot>
+              <tr class="table-light fw-bold">
+                <td colspan="3" class="text-end">Total Across All Events:</td>
+                <td class="text-end">
+                  <span class="badge bg-success fs-6">${summaryData.reduce((sum, item) => sum + item.totalPhotos, 0)}</span>
+                </td>
+                <td></td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+      `}
+    `;
+  },
+
+  /**
    * Event selected - load gallery sections
    */
   async onEventSelected(eventId) {

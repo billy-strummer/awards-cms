@@ -349,10 +349,15 @@ const mediaGalleryModule = {
         </button>
 
         <div class="d-flex justify-content-between align-items-center">
-          <h5><i class="bi bi-images me-2"></i>${utils.escapeHtml(sectionName)} (${photos.length} photos)</h5>
-          <button class="btn btn-primary" onclick="mediaGalleryModule.openUploadPhotosModal()">
-            <i class="bi bi-cloud-upload me-2"></i>Upload Photos
-          </button>
+          <h5><i class="bi bi-images me-2"></i>${utils.escapeHtml(sectionName)} (${photos.length} items)</h5>
+          <div class="btn-group">
+            <button class="btn btn-primary" onclick="mediaGalleryModule.openUploadPhotosModal()">
+              <i class="bi bi-cloud-upload me-2"></i>Upload Photos
+            </button>
+            <button class="btn btn-outline-primary" onclick="mediaGalleryModule.openYouTubeVideoModal()">
+              <i class="bi bi-youtube me-2"></i>Add YouTube Video
+            </button>
+          </div>
         </div>
       </div>
 
@@ -374,6 +379,7 @@ const mediaGalleryModule = {
    */
   renderPhotoCard(photo) {
     const isImage = photo.file_type?.startsWith('image/');
+    const isYouTube = photo.file_type === 'video/youtube';
     const orgName = photo.organisations?.company_name || null;
     const awardName = photo.awards?.award_name || photo.awards?.award_category || null;
     const isTagged = orgName || awardName;
@@ -384,7 +390,17 @@ const mediaGalleryModule = {
           ${isImage ?
             `<img src="${photo.file_url}" class="card-img-top" alt="${utils.escapeHtml(photo.title || 'Photo')}"
               style="height: 200px; object-fit: cover; cursor: pointer;"
-              onclick="mediaGalleryModule.viewPhotoFull('${photo.id}', '${photo.file_url}', '${utils.escapeHtml(photo.title || 'Photo')}')">` :
+              onclick="mediaGalleryModule.viewPhotoFull('${photo.id}', '${photo.file_url}', '${utils.escapeHtml(photo.title || 'Photo')}', 'image')">` :
+            isYouTube ?
+            `<div class="card-img-top" style="height: 200px; position: relative; cursor: pointer;"
+              onclick="mediaGalleryModule.viewPhotoFull('${photo.id}', '${photo.file_url}', '${utils.escapeHtml(photo.title || 'Video')}', 'youtube')">
+              <img src="https://img.youtube.com/vi/${photo.file_url}/mqdefault.jpg"
+                alt="${utils.escapeHtml(photo.title || 'YouTube Video')}"
+                style="width: 100%; height: 100%; object-fit: cover;">
+              <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);">
+                <i class="bi bi-youtube text-danger" style="font-size: 3rem; filter: drop-shadow(0 0 10px rgba(0,0,0,0.5));"></i>
+              </div>
+            </div>` :
             `<div class="card-img-top d-flex align-items-center justify-content-center bg-dark" style="height: 200px;">
               <i class="bi bi-play-circle text-white" style="font-size: 3rem;"></i>
             </div>`
@@ -536,6 +552,85 @@ const mediaGalleryModule = {
   },
 
   /**
+   * Open YouTube video modal
+   */
+  openYouTubeVideoModal() {
+    document.getElementById('youtubeVideoId').value = '';
+    document.getElementById('youtubeVideoTitle').value = '';
+
+    const modal = new bootstrap.Modal(document.getElementById('youtubeVideoModal'));
+    modal.show();
+  },
+
+  /**
+   * Add YouTube video
+   */
+  async addYouTubeVideo() {
+    const videoId = document.getElementById('youtubeVideoId').value.trim();
+    const title = document.getElementById('youtubeVideoTitle').value.trim();
+
+    if (!videoId) {
+      utils.showToast('Please enter a YouTube video ID', 'warning');
+      return;
+    }
+
+    // Extract video ID from various YouTube URL formats
+    let cleanVideoId = videoId;
+
+    // Handle full YouTube URLs
+    const youtubeRegex = /(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^"&?\/\s]{11})/;
+    const match = videoId.match(youtubeRegex);
+    if (match && match[1]) {
+      cleanVideoId = match[1];
+    }
+
+    // Validate it's 11 characters (YouTube video ID length)
+    if (cleanVideoId.length !== 11) {
+      utils.showToast('Invalid YouTube video ID. Please enter the 11-character video ID or a valid YouTube URL.', 'error');
+      return;
+    }
+
+    try {
+      utils.showLoading();
+
+      // Insert into database
+      const { error } = await STATE.client
+        .from('media_gallery')
+        .insert([{
+          gallery_section_id: this.currentSectionId,
+          event_id: this.currentEventId,
+          file_url: cleanVideoId,
+          file_type: 'video/youtube',
+          title: title || 'YouTube Video',
+          organisation_id: null,
+          award_id: null
+        }]);
+
+      if (error) throw error;
+
+      utils.showToast('YouTube video added successfully!', 'success');
+
+      // Close modal and reload
+      bootstrap.Modal.getInstance(document.getElementById('youtubeVideoModal')).hide();
+
+      // Get section name to reload view
+      const { data: section } = await STATE.client
+        .from('event_galleries')
+        .select('gallery_name')
+        .eq('id', this.currentSectionId)
+        .single();
+
+      await this.viewSectionPhotos(this.currentSectionId, section.gallery_name);
+
+    } catch (error) {
+      console.error('Error adding YouTube video:', error);
+      utils.showToast('Error adding video: ' + error.message, 'error');
+    } finally {
+      utils.hideLoading();
+    }
+  },
+
+  /**
    * Tag photo to org/award
    */
   async tagPhoto(photoId) {
@@ -677,13 +772,31 @@ const mediaGalleryModule = {
   /**
    * View photo full screen
    */
-  viewPhotoFull(photoId, photoUrl, title) {
+  viewPhotoFull(photoId, photoUrl, title, mediaType = 'image') {
     this.currentMediaId = photoId;
     const modal = new bootstrap.Modal(document.getElementById('viewPhotoFullModal'));
     document.getElementById('viewPhotoFullTitle').textContent = title;
-    document.getElementById('viewPhotoFullContent').innerHTML = `
-      <img src="${photoUrl}" alt="${utils.escapeHtml(title)}" class="img-fluid" style="max-height: 70vh;">
-    `;
+
+    if (mediaType === 'youtube') {
+      // Display YouTube embed
+      document.getElementById('viewPhotoFullContent').innerHTML = `
+        <div style="position: relative; padding-bottom: 56.25%; height: 0; overflow: hidden; max-width: 100%;">
+          <iframe
+            src="https://www.youtube.com/embed/${photoUrl}"
+            frameborder="0"
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+            allowfullscreen
+            style="position: absolute; top: 0; left: 0; width: 100%; height: 100%;">
+          </iframe>
+        </div>
+      `;
+    } else {
+      // Display image
+      document.getElementById('viewPhotoFullContent').innerHTML = `
+        <img src="${photoUrl}" alt="${utils.escapeHtml(title)}" class="img-fluid" style="max-height: 70vh;">
+      `;
+    }
+
     modal.show();
   },
 

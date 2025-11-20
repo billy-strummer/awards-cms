@@ -172,14 +172,31 @@ const orgsModule = {
       
       if (orgError) throw orgError;
       
-      // Fetch related awards
-      const { data: awards, error: awardsError } = await STATE.client
-        .from('awards')
-        .select('*')
-        .eq('organisation_id', orgId)
-        .order('year', { ascending: false });
-      
+      // Fetch related awards through award_assignments
+      const { data: assignments, error: awardsError } = await STATE.client
+        .from('award_assignments')
+        .select(`
+          *,
+          awards (
+            award_name,
+            award_category,
+            sector,
+            region,
+            year
+          )
+        `)
+        .eq('organisation_id', orgId);
+
       if (awardsError) throw awardsError;
+
+      // Extract and sort awards, using assignment status instead of award status
+      const awards = (assignments || [])
+        .filter(a => a.awards)
+        .map(a => ({
+          ...a.awards,
+          status: a.status // Use assignment status (nominated/shortlisted/winner)
+        }))
+        .sort((a, b) => (b.year || 0) - (a.year || 0));
       
       // Render profile
       contentDiv.innerHTML = `

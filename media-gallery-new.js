@@ -418,8 +418,8 @@ const mediaGalleryModule = {
    * Open upload photos modal
    */
   async openUploadPhotosModal() {
-    document.getElementById('uploadSectionPhotosFile').value = '';
-    document.getElementById('uploadSectionPhotosTitle').value = '';
+    document.getElementById('sectionPhotosFile').value = '';
+    document.getElementById('sectionPhotosTitle').value = '';
 
     const modal = new bootstrap.Modal(document.getElementById('uploadSectionPhotosModal'));
     modal.show();
@@ -429,8 +429,8 @@ const mediaGalleryModule = {
    * Upload photos to section
    */
   async uploadSectionPhotos() {
-    const fileInput = document.getElementById('uploadSectionPhotosFile');
-    const title = document.getElementById('uploadSectionPhotosTitle').value.trim();
+    const fileInput = document.getElementById('sectionPhotosFile');
+    const title = document.getElementById('sectionPhotosTitle').value.trim();
 
     if (!fileInput.files || fileInput.files.length === 0) {
       utils.showToast('Please select at least one file', 'warning');
@@ -438,11 +438,38 @@ const mediaGalleryModule = {
     }
 
     const files = Array.from(fileInput.files);
-    const validTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp', 'video/mp4', 'video/quicktime'];
-    const validFiles = files.filter(f => validTypes.includes(f.type));
+    const validTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp', 'video/mp4', 'video/quicktime', 'video/x-msvideo', 'video/webm'];
+    const maxSizeMB = 4.5;
+    const maxSizeBytes = maxSizeMB * 1024 * 1024;
+
+    // Filter by file type
+    const validTypeFiles = files.filter(f => validTypes.includes(f.type));
+
+    if (validTypeFiles.length === 0) {
+      utils.showToast('No valid image/video files selected', 'error');
+      return;
+    }
+
+    // Filter by file size
+    const validFiles = [];
+    const oversizedFiles = [];
+
+    validTypeFiles.forEach(file => {
+      if (file.size <= maxSizeBytes) {
+        validFiles.push(file);
+      } else {
+        oversizedFiles.push(file);
+      }
+    });
+
+    // Show warning if any files are too large
+    if (oversizedFiles.length > 0) {
+      const fileNames = oversizedFiles.map(f => f.name).join(', ');
+      utils.showToast(`${oversizedFiles.length} file(s) exceed ${maxSizeMB}MB limit and will be skipped: ${fileNames}`, 'warning');
+    }
 
     if (validFiles.length === 0) {
-      utils.showToast('No valid image/video files selected', 'error');
+      utils.showToast(`All files exceed the ${maxSizeMB}MB size limit. Please compress your images/videos.`, 'error');
       return;
     }
 

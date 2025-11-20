@@ -184,7 +184,8 @@ const mediaGalleryModule = {
     document.getElementById('gallerySectionId').value = '';
     document.getElementById('gallerySectionName').value = '';
     document.getElementById('gallerySectionDescription').value = '';
-    document.getElementById('saveSectionBtn').textContent = 'Add Section';
+    document.getElementById('gallerySectionOrder').value = '0';
+    document.getElementById('saveGallerySectionBtn').textContent = 'Save Section';
 
     const modal = new bootstrap.Modal(document.getElementById('gallerySectionModal'));
     modal.show();
@@ -207,7 +208,8 @@ const mediaGalleryModule = {
       document.getElementById('gallerySectionId').value = section.id;
       document.getElementById('gallerySectionName').value = section.gallery_name;
       document.getElementById('gallerySectionDescription').value = section.description || '';
-      document.getElementById('saveSectionBtn').textContent = 'Update Section';
+      document.getElementById('gallerySectionOrder').value = section.display_order || 0;
+      document.getElementById('saveGallerySectionBtn').textContent = 'Update Section';
 
       const modal = new bootstrap.Modal(document.getElementById('gallerySectionModal'));
       modal.show();
@@ -221,10 +223,11 @@ const mediaGalleryModule = {
   /**
    * Save section (add or update)
    */
-  async saveSection() {
+  async saveGallerySection() {
     const sectionId = document.getElementById('gallerySectionId').value;
     const sectionName = document.getElementById('gallerySectionName').value.trim();
     const sectionDesc = document.getElementById('gallerySectionDescription').value.trim();
+    const displayOrder = parseInt(document.getElementById('gallerySectionOrder').value) || 0;
 
     if (!sectionName) {
       utils.showToast('Please enter a section name', 'warning');
@@ -237,7 +240,8 @@ const mediaGalleryModule = {
       const sectionData = {
         event_id: this.currentEventId,
         gallery_name: sectionName,
-        description: sectionDesc || null
+        description: sectionDesc || null,
+        display_order: displayOrder
       };
 
       let error;
@@ -380,7 +384,7 @@ const mediaGalleryModule = {
           ${isImage ?
             `<img src="${photo.file_url}" class="card-img-top" alt="${utils.escapeHtml(photo.title || 'Photo')}"
               style="height: 200px; object-fit: cover; cursor: pointer;"
-              onclick="mediaGalleryModule.viewPhotoFull('${photo.file_url}', '${utils.escapeHtml(photo.title || 'Photo')}')">` :
+              onclick="mediaGalleryModule.viewPhotoFull('${photo.id}', '${photo.file_url}', '${utils.escapeHtml(photo.title || 'Photo')}')">` :
             `<div class="card-img-top d-flex align-items-center justify-content-center bg-dark" style="height: 200px;">
               <i class="bi bi-play-circle text-white" style="font-size: 3rem;"></i>
             </div>`
@@ -646,13 +650,42 @@ const mediaGalleryModule = {
   /**
    * View photo full screen
    */
-  viewPhotoFull(photoUrl, title) {
+  viewPhotoFull(photoId, photoUrl, title) {
+    this.currentMediaId = photoId;
     const modal = new bootstrap.Modal(document.getElementById('viewPhotoFullModal'));
     document.getElementById('viewPhotoFullTitle').textContent = title;
     document.getElementById('viewPhotoFullContent').innerHTML = `
       <img src="${photoUrl}" alt="${utils.escapeHtml(title)}" class="img-fluid" style="max-height: 70vh;">
     `;
     modal.show();
+  },
+
+  /**
+   * Tag photo from full screen view
+   */
+  async tagPhotoFromView() {
+    if (!this.currentMediaId) {
+      utils.showToast('No photo selected', 'warning');
+      return;
+    }
+    // Close the full view modal
+    bootstrap.Modal.getInstance(document.getElementById('viewPhotoFullModal')).hide();
+    // Open tag modal
+    await this.tagPhoto(this.currentMediaId);
+  },
+
+  /**
+   * Delete photo from full screen view
+   */
+  async deletePhotoFromView() {
+    if (!this.currentMediaId) {
+      utils.showToast('No photo selected', 'warning');
+      return;
+    }
+    // Close the full view modal
+    bootstrap.Modal.getInstance(document.getElementById('viewPhotoFullModal')).hide();
+    // Delete photo
+    await this.deletePhoto(this.currentMediaId);
   }
 };
 

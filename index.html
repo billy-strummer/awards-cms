@@ -565,8 +565,13 @@
               <h5 class="mb-0">
                 <i class="bi bi-list-ul me-2"></i>Winners List
               </h5>
-              <div class="badge bg-info-subtle text-info fs-6">
-                <span id="winnersCount">0</span> winners
+              <div class="d-flex gap-2 align-items-center">
+                <button class="btn btn-success btn-sm" onclick="winnersModule.openPressReleaseExport()">
+                  <i class="bi bi-file-earmark-text me-1"></i>Export for Press Release
+                </button>
+                <div class="badge bg-info-subtle text-info fs-6">
+                  <span id="winnersCount">0</span> winners
+                </div>
               </div>
             </div>
             
@@ -1439,6 +1444,81 @@
             <i class="bi bi-trash me-2"></i>Delete Photo
           </button>
           <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Press Release Export Modal -->
+  <div class="modal fade" id="pressReleaseExportModal" tabindex="-1" aria-labelledby="pressReleaseExportModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-xl">
+      <div class="modal-content">
+        <div class="modal-header bg-success text-white">
+          <h5 class="modal-title" id="pressReleaseExportModalLabel">
+            <i class="bi bi-file-earmark-text me-2"></i>Export Winners for Press Release
+          </h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body p-4">
+          <div class="alert alert-info">
+            <i class="bi bi-info-circle me-2"></i>
+            Select winners and choose photos to include in your press release export. Photos will be downloaded automatically.
+          </div>
+
+          <!-- Year Filter for Export -->
+          <div class="row mb-4">
+            <div class="col-md-6">
+              <label class="form-label fw-bold">Filter by Year:</label>
+              <select class="form-select" id="pressReleaseYearFilter" onchange="winnersModule.filterPressReleaseWinners(this.value)">
+                <option value="">All Years</option>
+                <option value="2025">2025</option>
+                <option value="2024">2024</option>
+                <option value="2023">2023</option>
+                <option value="2022">2022</option>
+              </select>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label fw-bold">Export Format:</label>
+              <select class="form-select" id="pressReleaseFormatSelect">
+                <option value="csv">CSV (Spreadsheet with photo URLs)</option>
+                <option value="pdf">PDF Document (formatted press release)</option>
+                <option value="html">HTML (web-ready format)</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Winners Selection -->
+          <div class="mb-3">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+              <h6 class="mb-0">
+                <i class="bi bi-check2-square me-2"></i>Select Winners (<span id="selectedWinnersCount">0</span> selected)
+              </h6>
+              <div>
+                <button class="btn btn-sm btn-outline-primary" onclick="winnersModule.selectAllWinners()">
+                  <i class="bi bi-check-all me-1"></i>Select All
+                </button>
+                <button class="btn btn-sm btn-outline-secondary" onclick="winnersModule.deselectAllWinners()">
+                  <i class="bi bi-x-circle me-1"></i>Clear All
+                </button>
+              </div>
+            </div>
+
+            <div id="pressReleaseWinnersList" style="max-height: 400px; overflow-y: auto;">
+              <!-- Winners list will be populated by JavaScript -->
+              <div class="text-center py-5 text-muted">
+                <i class="bi bi-hourglass-split display-4 d-block mb-2 opacity-25"></i>
+                Loading winners...
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer bg-light">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+            <i class="bi bi-x-lg me-1"></i>Cancel
+          </button>
+          <button type="button" class="btn btn-success" onclick="winnersModule.exportPressRelease()">
+            <i class="bi bi-download me-1"></i>Export Press Release
+          </button>
         </div>
       </div>
     </div>

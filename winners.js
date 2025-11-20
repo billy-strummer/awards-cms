@@ -367,27 +367,365 @@ const winnersModule = {
     if (!utils.confirm('Are you sure you want to delete this winner? All associated media will also be deleted.')) {
       return;
     }
-    
+
     try {
       utils.showLoading();
-      
+
       // Supabase v2 syntax for delete
       const { error } = await STATE.client
         .from('winners')
         .delete()
         .eq('id', winnerId);
-      
+
       if (error) throw error;
-      
+
       await this.loadWinners();
       utils.showToast('Winner deleted successfully!', 'success');
-      
+
     } catch (error) {
       console.error('Error deleting winner:', error);
       utils.showToast('Error deleting winner: ' + error.message, 'error');
     } finally {
       utils.hideLoading();
     }
+  },
+
+  /* ==================================================== */
+  /* PRESS RELEASE EXPORT */
+  /* ==================================================== */
+
+  /**
+   * State for press release export
+   */
+  pressReleaseState: {
+    allWinners: [],
+    filteredWinners: [],
+    selectedWinners: new Set()
+  },
+
+  /**
+   * Open press release export modal
+   */
+  async openPressReleaseExport() {
+    try {
+      utils.showLoading();
+
+      // Load all winners with their media
+      const { data: winners, error } = await STATE.client
+        .from('winners')
+        .select(`
+          *,
+          awards!winners_award_id_fkey (*),
+          winner_media (*)
+        `)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+
+      this.pressReleaseState.allWinners = winners || [];
+      this.pressReleaseState.filteredWinners = this.pressReleaseState.allWinners;
+      this.pressReleaseState.selectedWinners.clear();
+
+      // Show modal
+      const modal = new bootstrap.Modal(document.getElementById('pressReleaseExportModal'));
+      modal.show();
+
+      // Render winners list
+      this.renderPressReleaseWinners();
+
+    } catch (error) {
+      console.error('Error loading winners for export:', error);
+      utils.showToast('Error loading winners: ' + error.message, 'error');
+    } finally {
+      utils.hideLoading();
+    }
+  },
+
+  /**
+   * Filter press release winners by year
+   */
+  filterPressReleaseWinners(year) {
+    if (!year) {
+      this.pressReleaseState.filteredWinners = this.pressReleaseState.allWinners;
+    } else {
+      this.pressReleaseState.filteredWinners = this.pressReleaseState.allWinners.filter(w =>
+        String(w.awards?.year) === year
+      );
+    }
+    this.renderPressReleaseWinners();
+  },
+
+  /**
+   * Render winners list for press release export
+   */
+  renderPressReleaseWinners() {
+    const container = document.getElementById('pressReleaseWinnersList');
+    const winners = this.pressReleaseState.filteredWinners;
+
+    if (winners.length === 0) {
+      container.innerHTML = `
+        <div class="text-center py-5 text-muted">
+          <i class="bi bi-inbox display-4 d-block mb-2 opacity-25"></i>
+          <p>No winners found for selected year</p>
+        </div>
+      `;
+      return;
+    }
+
+    container.innerHTML = winners.map(winner => {
+      const isSelected = this.pressReleaseState.selectedWinners.has(winner.id);
+      const photos = (winner.winner_media || []).filter(m => m.media_type === 'photo');
+      const awardName = winner.awards?.award_name || winner.awards?.award_category || 'No Award';
+      const year = winner.awards?.year || 'N/A';
+
+      return `
+        <div class="card mb-3 ${isSelected ? 'border-success border-2' : ''}">
+          <div class="card-body">
+            <div class="d-flex align-items-start">
+              <div class="form-check me-3">
+                <input class="form-check-input" type="checkbox"
+                  id="winner_${winner.id}"
+                  ${isSelected ? 'checked' : ''}
+                  onchange="winnersModule.toggleWinnerSelection('${winner.id}')">
+              </div>
+              <div class="flex-grow-1">
+                <div class="d-flex justify-content-between align-items-start mb-2">
+                  <div>
+                    <h6 class="mb-1">${utils.escapeHtml(winner.winner_name || 'Unnamed Winner')}</h6>
+                    <div class="text-muted small">
+                      <i class="bi bi-trophy me-1"></i>${utils.escapeHtml(awardName)}
+                      <span class="ms-2"><i class="bi bi-calendar me-1"></i>${year}</span>
+                      <span class="ms-2"><i class="bi bi-image me-1"></i>${photos.length} photo(s)</span>
+                    </div>
+                  </div>
+                  ${isSelected ? '<span class="badge bg-success">Selected</span>' : ''}
+                </div>
+
+                ${isSelected && photos.length > 0 ? `
+                  <div class="mt-3">
+                    <label class="form-label small fw-bold">Select Photos to Include:</label>
+                    <div class="row g-2">
+                      ${photos.map(photo => `
+                        <div class="col-6 col-md-3">
+                          <div class="form-check">
+                            <input class="form-check-input" type="checkbox"
+                              id="photo_${photo.id}"
+                              checked
+                              onchange="winnersModule.togglePhotoSelection('${winner.id}', '${photo.id}')">
+                            <label class="form-check-label small" for="photo_${photo.id}">
+                              <img src="${photo.media_url}" alt="${photo.caption || 'Photo'}"
+                                style="width: 60px; height: 60px; object-fit: cover;"
+                                class="rounded">
+                              <div class="text-truncate" style="max-width: 100px;">
+                                ${utils.escapeHtml(photo.caption || 'Photo')}
+                              </div>
+                            </label>
+                          </div>
+                        </div>
+                      `).join('')}
+                    </div>
+                  </div>
+                ` : ''}
+              </div>
+            </div>
+          </div>
+        </div>
+      `;
+    }).join('');
+
+    this.updateSelectedCount();
+  },
+
+  /**
+   * Toggle winner selection
+   */
+  toggleWinnerSelection(winnerId) {
+    if (this.pressReleaseState.selectedWinners.has(winnerId)) {
+      this.pressReleaseState.selectedWinners.delete(winnerId);
+    } else {
+      this.pressReleaseState.selectedWinners.add(winnerId);
+    }
+    this.renderPressReleaseWinners();
+  },
+
+  /**
+   * Toggle photo selection (placeholder for now)
+   */
+  togglePhotoSelection(winnerId, photoId) {
+    // This will be used to track which photos to include
+    console.log(`Toggled photo ${photoId} for winner ${winnerId}`);
+  },
+
+  /**
+   * Select all winners
+   */
+  selectAllWinners() {
+    this.pressReleaseState.filteredWinners.forEach(w => {
+      this.pressReleaseState.selectedWinners.add(w.id);
+    });
+    this.renderPressReleaseWinners();
+  },
+
+  /**
+   * Deselect all winners
+   */
+  deselectAllWinners() {
+    this.pressReleaseState.selectedWinners.clear();
+    this.renderPressReleaseWinners();
+  },
+
+  /**
+   * Update selected count
+   */
+  updateSelectedCount() {
+    document.getElementById('selectedWinnersCount').textContent =
+      this.pressReleaseState.selectedWinners.size;
+  },
+
+  /**
+   * Export press release
+   */
+  async exportPressRelease() {
+    if (this.pressReleaseState.selectedWinners.size === 0) {
+      utils.showToast('Please select at least one winner', 'warning');
+      return;
+    }
+
+    const format = document.getElementById('pressReleaseFormatSelect').value;
+
+    try {
+      utils.showLoading();
+
+      // Get selected winners with their media
+      const selectedWinnersData = this.pressReleaseState.allWinners.filter(w =>
+        this.pressReleaseState.selectedWinners.has(w.id)
+      );
+
+      // Export based on format
+      switch (format) {
+        case 'csv':
+          await this.exportAsCSV(selectedWinnersData);
+          break;
+        case 'pdf':
+          await this.exportAsPDF(selectedWinnersData);
+          break;
+        case 'html':
+          await this.exportAsHTML(selectedWinnersData);
+          break;
+      }
+
+      utils.showToast('Export complete!', 'success');
+      bootstrap.Modal.getInstance(document.getElementById('pressReleaseExportModal')).hide();
+
+    } catch (error) {
+      console.error('Error exporting press release:', error);
+      utils.showToast('Error exporting: ' + error.message, 'error');
+    } finally {
+      utils.hideLoading();
+    }
+  },
+
+  /**
+   * Export as CSV
+   */
+  exportAsCSV(winners) {
+    const exportData = [];
+
+    winners.forEach(winner => {
+      const photos = (winner.winner_media || []).filter(m => m.media_type === 'photo');
+      const awardName = winner.awards?.award_name || winner.awards?.award_category || 'N/A';
+      const year = winner.awards?.year || 'N/A';
+
+      exportData.push({
+        'Winner Name': winner.winner_name || '',
+        'Award': awardName,
+        'Year': year,
+        'Photo Count': photos.length,
+        'Photo URLs': photos.map(p => p.media_url).join('; '),
+        'Photo Captions': photos.map(p => p.caption || 'No caption').join('; ')
+      });
+    });
+
+    const filename = `press_release_${new Date().toISOString().split('T')[0]}.csv`;
+    utils.exportToCSV(exportData, filename);
+  },
+
+  /**
+   * Export as PDF (placeholder - needs PDF library)
+   */
+  async exportAsPDF(winners) {
+    utils.showToast('PDF export coming soon! Use HTML export for now.', 'info');
+    // TODO: Implement PDF export with a library like jsPDF
+  },
+
+  /**
+   * Export as HTML
+   */
+  exportAsHTML(winners) {
+    let html = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="UTF-8">
+        <title>Award Winners Press Release</title>
+        <style>
+          body { font-family: Arial, sans-serif; max-width: 1200px; margin: 0 auto; padding: 20px; }
+          h1 { color: #333; border-bottom: 3px solid #0d6efd; padding-bottom: 10px; }
+          .winner { margin-bottom: 40px; padding: 20px; border: 1px solid #ddd; border-radius: 8px; }
+          .winner h2 { color: #0d6efd; margin-top: 0; }
+          .award-info { color: #666; margin-bottom: 15px; }
+          .photos { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 15px; }
+          .photo-item { text-align: center; }
+          .photo-item img { width: 100%; height: 200px; object-fit: cover; border-radius: 4px; }
+          .caption { font-size: 14px; color: #666; margin-top: 5px; }
+        </style>
+      </head>
+      <body>
+        <h1>Award Winners Press Release</h1>
+        <p><strong>Generated:</strong> ${new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'long', year: 'numeric' })}</p>
+    `;
+
+    winners.forEach(winner => {
+      const photos = (winner.winner_media || []).filter(m => m.media_type === 'photo');
+      const awardName = winner.awards?.award_name || winner.awards?.award_category || 'N/A';
+      const year = winner.awards?.year || 'N/A';
+
+      html += `
+        <div class="winner">
+          <h2>${utils.escapeHtml(winner.winner_name || 'Unnamed Winner')}</h2>
+          <div class="award-info">
+            <strong>Award:</strong> ${utils.escapeHtml(awardName)}<br>
+            <strong>Year:</strong> ${year}
+          </div>
+          ${photos.length > 0 ? `
+            <div class="photos">
+              ${photos.map(photo => `
+                <div class="photo-item">
+                  <img src="${photo.media_url}" alt="${utils.escapeHtml(photo.caption || 'Photo')}">
+                  <div class="caption">${utils.escapeHtml(photo.caption || 'No caption')}</div>
+                </div>
+              `).join('')}
+            </div>
+          ` : '<p><em>No photos available</em></p>'}
+        </div>
+      `;
+    });
+
+    html += `
+      </body>
+      </html>
+    `;
+
+    // Download HTML file
+    const blob = new Blob([html], { type: 'text/html' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `press_release_${new Date().toISOString().split('T')[0]}.html`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
   }
 };
 

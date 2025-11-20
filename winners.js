@@ -19,10 +19,7 @@ const winnersModule = {
         .from('winners')
         .select(`
           *,
-          awards (
-            award_category,
-            year
-          ),
+          award:award_id (*),
           winner_media (
             id,
             media_type,
@@ -59,10 +56,10 @@ const winnersModule = {
     const awardSelect = document.getElementById('winnerAwardFilterSelect');
     const uniqueAwards = [...new Set(
       STATE.allWinners
-        .map(w => w.awards?.award_category)
+        .map(w => w.award?.award_category)
         .filter(Boolean)
     )].sort();
-    
+
     awardSelect.innerHTML = '<option value="">All Awards</option>';
     uniqueAwards.forEach(award => {
       awardSelect.innerHTML += `<option value="${utils.escapeHtml(award)}">${utils.escapeHtml(award)}</option>`;
@@ -79,21 +76,21 @@ const winnersModule = {
     
     STATE.filteredWinners = STATE.allWinners.filter(winner => {
       // Year filter
-      if (year && winner.awards?.year !== year) return false;
-      
+      if (year && String(winner.award?.year) !== year) return false;
+
       // Award filter
-      if (award && winner.awards?.award_category !== award) return false;
-      
+      if (award && winner.award?.award_category !== award) return false;
+
       // Search filter
       if (search) {
         const winnerName = winner.winner_name?.toLowerCase() || '';
-        const awardCategory = winner.awards?.award_category?.toLowerCase() || '';
-        
+        const awardCategory = winner.award?.award_category?.toLowerCase() || '';
+
         if (!winnerName.includes(search) && !awardCategory.includes(search)) {
           return false;
         }
       }
-      
+
       return true;
     });
     
@@ -117,8 +114,8 @@ const winnersModule = {
     tbody.innerHTML = STATE.filteredWinners.map(winner => {
       const photoCount = winner.winner_media?.filter(m => m.media_type === MEDIA_TYPES.PHOTO).length || 0;
       const videoCount = winner.winner_media?.filter(m => m.media_type === MEDIA_TYPES.VIDEO).length || 0;
-      const awardCategory = winner.awards?.award_category || 'N/A';
-      const year = winner.awards?.year || 'N/A';
+      const awardCategory = winner.award?.award_category || 'N/A';
+      const year = winner.award?.year || 'N/A';
       
       return `
         <tr class="fade-in">

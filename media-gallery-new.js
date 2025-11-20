@@ -65,6 +65,157 @@ const mediaGalleryModule = {
   },
 
   /**
+   * Show summary view of all events and their galleries
+   */
+  async showSummaryView() {
+    try {
+      utils.showLoading();
+
+      // Reset event selector
+      document.getElementById('mediaEventSelect').value = '';
+
+      // Load all events
+      const { data: events, error: eventsError } = await STATE.client
+        .from('events')
+        .select('*')
+        .order('event_date', { ascending: false });
+
+      if (eventsError) throw eventsError;
+
+      // Load all gallery sections with photo counts
+      const summaryData = [];
+
+      for (const event of events || []) {
+        const { data: sections, error: sectionsError } = await STATE.client
+          .from('event_galleries')
+          .select('*')
+          .eq('event_id', event.id)
+          .order('display_order', { ascending: true });
+
+        if (sectionsError) {
+          console.error('Error loading sections for event:', event.id, sectionsError);
+          continue;
+        }
+
+        // Count photos for each section
+        const sectionsWithCounts = [];
+        for (const section of sections || []) {
+          const { count, error: countError } = await STATE.client
+            .from('media_gallery')
+            .select('*', { count: 'exact', head: true })
+            .eq('gallery_section_id', section.id);
+
+          if (countError) {
+            console.error('Error counting photos for section:', section.id, countError);
+          }
+
+          sectionsWithCounts.push({
+            ...section,
+            photoCount: count || 0
+          });
+        }
+
+        summaryData.push({
+          event,
+          sections: sectionsWithCounts,
+          totalPhotos: sectionsWithCounts.reduce((sum, s) => sum + s.photoCount, 0)
+        });
+      }
+
+      this.renderSummaryView(summaryData);
+
+    } catch (error) {
+      console.error('Error loading summary:', error);
+      utils.showToast('Failed to load summary: ' + error.message, 'error');
+    } finally {
+      utils.hideLoading();
+    }
+  },
+
+  /**
+   * Render summary view
+   */
+  renderSummaryView(summaryData) {
+    const contentDiv = document.getElementById('mediaGalleryContent');
+
+    contentDiv.innerHTML = `
+      <div class="d-flex justify-content-between align-items-center mb-4">
+        <h5><i class="bi bi-bar-chart-line me-2"></i>Gallery Summary</h5>
+        <span class="badge bg-primary fs-6">${summaryData.length} Events</span>
+      </div>
+
+      ${summaryData.length === 0 ? `
+        <div class="alert alert-info">
+          <i class="bi bi-info-circle me-2"></i>
+          No events found. Create an event in the Events tab to get started.
+        </div>
+      ` : `
+        <div class="table-responsive">
+          <table class="table table-hover">
+            <thead>
+              <tr>
+                <th>Event Name</th>
+                <th>Year</th>
+                <th>Gallery Sections</th>
+                <th class="text-end">Total Photos/Videos</th>
+                <th class="text-center">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${summaryData.map(item => {
+                const eventYear = item.event.year || (item.event.event_date ? item.event.event_date.substring(0, 4) : 'N/A');
+                return `
+                  <tr>
+                    <td>
+                      <strong>${utils.escapeHtml(item.event.event_name)}</strong>
+                      ${item.event.venue ? `<br><small class="text-muted"><i class="bi bi-geo-alt me-1"></i>${utils.escapeHtml(item.event.venue)}</small>` : ''}
+                    </td>
+                    <td>
+                      <span class="badge bg-primary-subtle text-primary">${eventYear}</span>
+                    </td>
+                    <td>
+                      ${item.sections.length === 0 ?
+                        '<span class="text-muted">No sections yet</span>' :
+                        `<ul class="list-unstyled mb-0">
+                          ${item.sections.map(section => `
+                            <li class="mb-1">
+                              <i class="bi bi-folder2 me-1 text-primary"></i>
+                              ${utils.escapeHtml(section.gallery_name)}
+                              <span class="badge bg-secondary ms-2">${section.photoCount} items</span>
+                            </li>
+                          `).join('')}
+                        </ul>`
+                      }
+                    </td>
+                    <td class="text-end">
+                      <span class="badge bg-success fs-6">${item.totalPhotos}</span>
+                    </td>
+                    <td class="text-center">
+                      <button class="btn btn-sm btn-outline-primary"
+                        onclick="mediaGalleryModule.onEventSelected('${item.event.id}'); document.getElementById('mediaEventSelect').value='${item.event.id}'">
+                        <i class="bi bi-eye me-1"></i>View
+                      </button>
+                    </td>
+                  </tr>
+                `;
+              }).join('')}
+            </tbody>
+            <tfoot>
+              <tr class="table-light fw-bold">
+                <td colspan="3" class="text-end">Total Across All Events:</td>
+                <td class="text-end">
+                  <span class="badge bg-success fs-6">${summaryData.reduce((sum, item) => sum + item.totalPhotos, 0)}</span>
+                </td>
+                <td></td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+      `}
+    `;
+  },
+
+  /**
    * Event selected - load gallery sections
    */
   async onEventSelected(eventId) {
@@ -382,17 +533,18 @@ const mediaGalleryModule = {
     const isYouTube = photo.file_type === 'video/youtube';
     const orgName = photo.organisations?.company_name || null;
     const awardName = photo.awards?.award_name || photo.awards?.award_category || null;
-    const isTagged = orgName || awardName;
+    const isPublished = photo.published !== false; // Default to true if not set
 
     return `
       <div class="col-md-3">
-        <div class="card h-100">
+        <div class="card h-100 ${!isPublished ? 'border-secondary' : ''}">
+          ${!isPublished ? '<div class="position-absolute top-0 end-0 m-2 badge bg-secondary">Draft</div>' : ''}
           ${isImage ?
-            `<img src="${photo.file_url}" class="card-img-top" alt="${utils.escapeHtml(photo.title || 'Photo')}"
+            `<img src="${photo.file_url}" class="card-img-top ${!isPublished ? 'opacity-50' : ''}" alt="${utils.escapeHtml(photo.title || 'Photo')}"
               style="height: 200px; object-fit: cover; cursor: pointer;"
               onclick="mediaGalleryModule.viewPhotoFull('${photo.id}', '${photo.file_url}', '${utils.escapeHtml(photo.title || 'Photo')}', 'image')">` :
             isYouTube ?
-            `<div class="card-img-top" style="height: 200px; position: relative; cursor: pointer;"
+            `<div class="card-img-top ${!isPublished ? 'opacity-50' : ''}" style="height: 200px; position: relative; cursor: pointer;"
               onclick="mediaGalleryModule.viewPhotoFull('${photo.id}', '${photo.file_url}', '${utils.escapeHtml(photo.title || 'Video')}', 'youtube')">
               <img src="https://img.youtube.com/vi/${photo.file_url}/mqdefault.jpg"
                 alt="${utils.escapeHtml(photo.title || 'YouTube Video')}"
@@ -401,7 +553,7 @@ const mediaGalleryModule = {
                 <i class="bi bi-youtube text-danger" style="font-size: 3rem; filter: drop-shadow(0 0 10px rgba(0,0,0,0.5));"></i>
               </div>
             </div>` :
-            `<div class="card-img-top d-flex align-items-center justify-content-center bg-dark" style="height: 200px;">
+            `<div class="card-img-top d-flex align-items-center justify-content-center bg-dark ${!isPublished ? 'opacity-50' : ''}" style="height: 200px;">
               <i class="bi bi-play-circle text-white" style="font-size: 3rem;"></i>
             </div>`
           }
@@ -420,6 +572,11 @@ const mediaGalleryModule = {
               <button class="btn btn-outline-primary" onclick="mediaGalleryModule.tagPhoto('${photo.id}')" title="Tag">
                 <i class="bi bi-tag"></i>
               </button>
+              <button class="btn ${isPublished ? 'btn-outline-secondary' : 'btn-outline-success'}"
+                onclick="mediaGalleryModule.togglePublish('${photo.id}', ${!isPublished})"
+                title="${isPublished ? 'Unpublish' : 'Publish'}">
+                <i class="bi bi-${isPublished ? 'eye-slash' : 'eye'}"></i>
+              </button>
               <button class="btn btn-outline-danger" onclick="mediaGalleryModule.deletePhoto('${photo.id}')" title="Delete">
                 <i class="bi bi-trash"></i>
               </button>
@@ -436,6 +593,7 @@ const mediaGalleryModule = {
   async openUploadPhotosModal() {
     document.getElementById('sectionPhotosFile').value = '';
     document.getElementById('sectionPhotosTitle').value = '';
+    document.getElementById('sectionPhotosPublished').checked = true;
 
     const modal = new bootstrap.Modal(document.getElementById('uploadSectionPhotosModal'));
     modal.show();
@@ -447,6 +605,7 @@ const mediaGalleryModule = {
   async uploadSectionPhotos() {
     const fileInput = document.getElementById('sectionPhotosFile');
     const title = document.getElementById('sectionPhotosTitle').value.trim();
+    const published = document.getElementById('sectionPhotosPublished').checked;
 
     if (!fileInput.files || fileInput.files.length === 0) {
       utils.showToast('Please select at least one file', 'warning');
@@ -521,7 +680,8 @@ const mediaGalleryModule = {
             file_type: file.type,
             title: title || file.name,
             organisation_id: null,
-            award_id: null
+            award_id: null,
+            published: published
           }]);
 
         if (dbError) throw dbError;
@@ -557,6 +717,7 @@ const mediaGalleryModule = {
   openYouTubeVideoModal() {
     document.getElementById('youtubeVideoId').value = '';
     document.getElementById('youtubeVideoTitle').value = '';
+    document.getElementById('youtubeVideoPublished').checked = true;
 
     const modal = new bootstrap.Modal(document.getElementById('youtubeVideoModal'));
     modal.show();
@@ -568,6 +729,7 @@ const mediaGalleryModule = {
   async addYouTubeVideo() {
     const videoId = document.getElementById('youtubeVideoId').value.trim();
     const title = document.getElementById('youtubeVideoTitle').value.trim();
+    const published = document.getElementById('youtubeVideoPublished').checked;
 
     if (!videoId) {
       utils.showToast('Please enter a YouTube video ID', 'warning');
@@ -603,7 +765,8 @@ const mediaGalleryModule = {
           file_type: 'video/youtube',
           title: title || 'YouTube Video',
           organisation_id: null,
-          award_id: null
+          award_id: null,
+          published: published
         }]);
 
       if (error) throw error;
@@ -764,6 +927,38 @@ const mediaGalleryModule = {
     } catch (error) {
       console.error('Error deleting photo:', error);
       utils.showToast('Error deleting photo: ' + error.message, 'error');
+    } finally {
+      utils.hideLoading();
+    }
+  },
+
+  /**
+   * Toggle publish/unpublish status
+   */
+  async togglePublish(photoId, newPublishState) {
+    try {
+      utils.showLoading();
+
+      const { error } = await STATE.client
+        .from('media_gallery')
+        .update({ published: newPublishState })
+        .eq('id', photoId);
+
+      if (error) throw error;
+
+      utils.showToast(`Photo ${newPublishState ? 'published' : 'unpublished'} successfully!`, 'success');
+
+      const { data: section } = await STATE.client
+        .from('event_galleries')
+        .select('gallery_name')
+        .eq('id', this.currentSectionId)
+        .single();
+
+      await this.viewSectionPhotos(this.currentSectionId, section.gallery_name);
+
+    } catch (error) {
+      console.error('Error toggling publish status:', error);
+      utils.showToast('Error updating publish status: ' + error.message, 'error');
     } finally {
       utils.hideLoading();
     }

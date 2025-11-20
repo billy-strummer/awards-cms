@@ -11,13 +11,19 @@ const mediaGalleryModule = {
   async loadMedia() {
     try {
       utils.showLoading();
-      utils.showTableLoading('mediaTableBody', 7);
+      utils.showTableLoading('mediaTableBody', 8);
 
-      // Fetch media with related organisation, award, and winner data using FK constraints
+      // Fetch media with related organisation, award, winner, and event data using FK constraints
       const { data, error } = await STATE.client
         .from('media_gallery')
         .select(`
           *,
+          events!media_gallery_event_id_fkey (
+            id,
+            event_name,
+            event_date,
+            year
+          ),
           organisations!media_gallery_organisation_id_fkey (
             id,
             company_name
@@ -48,7 +54,7 @@ const mediaGalleryModule = {
     } catch (error) {
       console.error('Error loading media:', error);
       utils.showToast('Failed to load media: ' + error.message, 'error');
-      utils.showEmptyState('mediaTableBody', 7, 'Failed to load media', 'bi-exclamation-triangle');
+      utils.showEmptyState('mediaTableBody', 8, 'Failed to load media', 'bi-exclamation-triangle');
     } finally {
       utils.hideLoading();
     }
@@ -58,6 +64,19 @@ const mediaGalleryModule = {
    * Populate filter dropdowns
    */
   async populateFilters() {
+    // Populate event filter
+    const eventSelect = document.getElementById('mediaEventFilterSelect');
+    const { data: events } = await STATE.client
+      .from('events')
+      .select('id, event_name, year')
+      .order('event_date', { ascending: false });
+
+    eventSelect.innerHTML = '<option value="">All Events</option>';
+    (events || []).forEach(event => {
+      const label = event.year ? `${event.event_name} (${event.year})` : event.event_name;
+      eventSelect.innerHTML += `<option value="${event.id}">${utils.escapeHtml(label)}</option>`;
+    });
+
     // Populate organisation filter
     const orgSelect = document.getElementById('mediaOrgFilterSelect');
     const { data: orgs } = await STATE.client
@@ -88,6 +107,7 @@ const mediaGalleryModule = {
    * Filter media based on current filter values
    */
   filterMedia() {
+    const eventId = document.getElementById('mediaEventFilterSelect').value;
     const orgId = document.getElementById('mediaOrgFilterSelect').value;
     const awardId = document.getElementById('mediaAwardFilterSelect').value;
     const fileType = document.getElementById('mediaTypeFilterSelect').value;
@@ -95,6 +115,9 @@ const mediaGalleryModule = {
     const search = document.getElementById('mediaSearchBox').value.toLowerCase().trim();
 
     STATE.filteredMedia = STATE.allMedia.filter(media => {
+      // Event filter
+      if (eventId && media.event_id !== eventId) return false;
+
       // Organisation filter
       if (orgId && media.organisation_id !== orgId) return false;
 
@@ -117,9 +140,11 @@ const mediaGalleryModule = {
         const caption = media.caption?.toLowerCase() || '';
         const orgName = media.organisations?.company_name?.toLowerCase() || '';
         const awardName = media.awards?.award_name?.toLowerCase() || '';
+        const eventName = media.events?.event_name?.toLowerCase() || '';
 
         if (!title.includes(search) && !caption.includes(search) &&
-            !orgName.includes(search) && !awardName.includes(search)) {
+            !orgName.includes(search) && !awardName.includes(search) &&
+            !eventName.includes(search)) {
           return false;
         }
       }
@@ -140,13 +165,15 @@ const mediaGalleryModule = {
     count.textContent = STATE.filteredMedia.length;
 
     if (STATE.filteredMedia.length === 0) {
-      utils.showEmptyState('mediaTableBody', 7, 'No media found');
+      utils.showEmptyState('mediaTableBody', 8, 'No media found');
       return;
     }
 
     tbody.innerHTML = STATE.filteredMedia.map(media => {
       const isImage = media.file_type?.startsWith('image/');
       const isVideo = media.file_type?.startsWith('video/');
+      const eventName = media.events?.event_name || null;
+      const eventYear = media.events?.year || null;
       const orgName = media.organisations?.company_name || '-';
       const awardName = media.awards?.award_name || media.awards?.award_category || '-';
       const isTagged = media.organisation_id || media.award_id;
@@ -173,6 +200,13 @@ const mediaGalleryModule = {
               <i class="bi bi-${isImage ? 'image' : isVideo ? 'camera-video' : 'file'}"></i>
               ${isImage ? 'Photo' : isVideo ? 'Video' : 'File'}
             </span>
+          </td>
+          <td>
+            ${eventName ?
+              `<span class="badge bg-info">
+                <i class="bi bi-calendar-event me-1"></i>${utils.escapeHtml(eventName)}${eventYear ? ` (${eventYear})` : ''}
+              </span>` :
+              '<span class="text-muted">-</span>'}
           </td>
           <td>
             ${orgName === '-' ? '<span class="badge bg-warning">Untagged</span>' : utils.escapeHtml(orgName)}
@@ -211,12 +245,17 @@ const mediaGalleryModule = {
   /**
    * Open upload media modal
    */
-  openUploadModal() {
+  async openUploadModal() {
     // Reset form
     document.getElementById('uploadTitle').value = '';
     document.getElementById('uploadCaption').value = '';
     document.getElementById('uploadFile').value = '';
+    document.getElementById('uploadEventSelect').value = '';
     document.getElementById('uploadFileProgress').classList.add('d-none');
+    document.getElementById('quickAddEventForm').classList.add('d-none');
+
+    // Load events for dropdown
+    await this.populateUploadDropdowns();
 
     const modal = new bootstrap.Modal(document.getElementById('uploadMediaGalleryModal'));
     modal.show();
@@ -226,6 +265,19 @@ const mediaGalleryModule = {
    * Populate upload form dropdowns
    */
   async populateUploadDropdowns() {
+    // Populate events
+    const eventSelect = document.getElementById('uploadEventSelect');
+    const { data: events } = await STATE.client
+      .from('events')
+      .select('id, event_name, year, event_date')
+      .order('event_date', { ascending: false });
+
+    eventSelect.innerHTML = '<option value="">Select Event</option>';
+    (events || []).forEach(event => {
+      const label = event.year ? `${event.event_name} (${event.year})` : event.event_name;
+      eventSelect.innerHTML += `<option value="${event.id}">${utils.escapeHtml(label)}</option>`;
+    });
+
     // Populate organisations
     const orgSelect = document.getElementById('uploadOrgSelect');
     const { data: orgs } = await STATE.client
@@ -257,10 +309,17 @@ const mediaGalleryModule = {
    */
   async handleUpload() {
     const fileInput = document.getElementById('uploadFile');
+    const eventId = document.getElementById('uploadEventSelect').value;
     const title = document.getElementById('uploadTitle').value.trim();
     const caption = document.getElementById('uploadCaption').value.trim();
     const uploadBtn = document.getElementById('uploadMediaGalleryBtn');
     const progressDiv = document.getElementById('uploadFileProgress');
+
+    // Validate event selection
+    if (!eventId) {
+      utils.showToast('Please select an event', 'warning');
+      return;
+    }
 
     if (!fileInput.files || fileInput.files.length === 0) {
       utils.showToast('Please select at least one file', 'warning');
@@ -312,7 +371,7 @@ const mediaGalleryModule = {
             .from('media-gallery')
             .getPublicUrl(fileName);
 
-          // Insert record into database (NO organisation or award yet)
+          // Insert record into database with event_id (NO organisation or award yet)
           const { error: dbError } = await STATE.client
             .from('media_gallery')
             .insert([{
@@ -321,6 +380,7 @@ const mediaGalleryModule = {
               file_size: file.size,
               title: title || file.name,
               caption: caption || null,
+              event_id: eventId,
               organisation_id: null,
               award_id: null,
               is_public: true,
@@ -485,6 +545,73 @@ const mediaGalleryModule = {
     } catch (error) {
       console.error('Error deleting media:', error);
       utils.showToast('Error deleting media: ' + error.message, 'error');
+    } finally {
+      utils.hideLoading();
+    }
+  },
+
+  /**
+   * Show quick-add event form
+   */
+  showQuickAddEvent() {
+    document.getElementById('quickAddEventForm').classList.remove('d-none');
+    document.getElementById('quickEventName').focus();
+  },
+
+  /**
+   * Cancel quick-add event
+   */
+  cancelQuickAddEvent() {
+    document.getElementById('quickAddEventForm').classList.add('d-none');
+    document.getElementById('quickEventName').value = '';
+    document.getElementById('quickEventDate').value = '';
+    document.getElementById('quickEventYear').value = '';
+  },
+
+  /**
+   * Save quick-add event and select it
+   */
+  async saveQuickEvent() {
+    const eventName = document.getElementById('quickEventName').value.trim();
+    const eventDate = document.getElementById('quickEventDate').value;
+    const eventYear = document.getElementById('quickEventYear').value;
+
+    if (!eventName) {
+      utils.showToast('Please enter an event name', 'warning');
+      return;
+    }
+
+    try {
+      utils.showLoading();
+
+      // Insert new event
+      const { data, error } = await STATE.client
+        .from('events')
+        .insert([{
+          event_name: eventName,
+          event_date: eventDate || null,
+          year: eventYear ? parseInt(eventYear) : null
+        }])
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      utils.showToast('Event created successfully!', 'success');
+
+      // Refresh dropdown and select the new event
+      await this.populateUploadDropdowns();
+      document.getElementById('uploadEventSelect').value = data.id;
+
+      // Hide quick-add form
+      this.cancelQuickAddEvent();
+
+      // Refresh filter dropdowns too
+      await this.populateFilters();
+
+    } catch (error) {
+      console.error('Error creating event:', error);
+      utils.showToast('Error creating event: ' + error.message, 'error');
     } finally {
       utils.hideLoading();
     }

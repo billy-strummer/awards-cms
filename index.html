@@ -1256,6 +1256,47 @@
     </div>
   </div>
 
+  <!-- Drag & Drop Publish Prompt Modal -->
+  <div class="modal fade" id="dragDropPublishModal" tabindex="-1" aria-labelledby="dragDropPublishModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="dragDropPublishModalLabel">
+            <i class="bi bi-cloud-upload me-2"></i>Upload <span id="dragDropFileCount"></span> Files
+          </h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <p>You're about to upload <strong id="dragDropFileCountText"></strong>. Should these be published immediately?</p>
+          <div class="form-check mb-2">
+            <input class="form-check-input" type="radio" name="dragDropPublish" id="dragDropPublished" value="true" checked>
+            <label class="form-check-label" for="dragDropPublished">
+              <strong><i class="bi bi-eye me-1"></i>Published</strong> - Visible immediately
+            </label>
+          </div>
+          <div class="form-check">
+            <input class="form-check-input" type="radio" name="dragDropPublish" id="dragDropUnpublished" value="false">
+            <label class="form-check-label" for="dragDropUnpublished">
+              <strong><i class="bi bi-eye-slash me-1"></i>Unpublished (Draft)</strong> - You can publish later
+            </label>
+          </div>
+          <div class="mt-3">
+            <small class="text-muted">Files will be uploaded with titles based on their filenames.</small>
+          </div>
+          <div id="dragDropProgress" class="progress d-none mt-3">
+            <div class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar" style="width: 100%"></div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="button" class="btn btn-primary" id="dragDropUploadBtn" onclick="mediaGalleryModule.uploadDraggedFiles()">
+            <i class="bi bi-upload me-2"></i>Upload
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- View Photo Full Modal (for Gallery Sections) -->
   <div class="modal fade" id="viewPhotoFullModal" tabindex="-1" aria-labelledby="viewPhotoFullModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-xl">

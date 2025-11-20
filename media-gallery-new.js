@@ -6,6 +6,10 @@ const mediaGalleryModule = {
   currentEventId: null,
   currentSectionId: null,
   currentMediaId: null,
+  currentSectionPhotos: [], // Store all photos for filtering
+  currentFilter: 'all', // all, published, drafts
+  currentSearchTerm: '', // For search functionality
+  draggedFiles: null, // Store dragged files temporarily
 
   /**
    * Initialize Media Gallery - Load events and show summary
@@ -478,7 +482,12 @@ const mediaGalleryModule = {
 
       if (error) throw error;
 
-      this.renderSectionPhotos(sectionName, photos || []);
+      // Store photos for filtering
+      this.currentSectionPhotos = photos || [];
+      this.currentFilter = 'all';
+      this.currentSearchTerm = '';
+
+      this.renderSectionPhotos(sectionName);
 
     } catch (error) {
       console.error('Error loading photos:', error);
@@ -491,8 +500,33 @@ const mediaGalleryModule = {
   /**
    * Render section photos view
    */
-  renderSectionPhotos(sectionName, photos) {
+  renderSectionPhotos(sectionName) {
     const contentDiv = document.getElementById('mediaGalleryContent');
+
+    // Apply filters
+    let filteredPhotos = this.currentSectionPhotos;
+
+    // Filter by published status
+    if (this.currentFilter === 'published') {
+      filteredPhotos = filteredPhotos.filter(p => p.published !== false);
+    } else if (this.currentFilter === 'drafts') {
+      filteredPhotos = filteredPhotos.filter(p => p.published === false);
+    }
+
+    // Filter by search term
+    if (this.currentSearchTerm) {
+      const term = this.currentSearchTerm.toLowerCase();
+      filteredPhotos = filteredPhotos.filter(p => {
+        const title = (p.title || '').toLowerCase();
+        const orgName = (p.organisations?.company_name || '').toLowerCase();
+        const awardName = (p.awards?.award_name || p.awards?.award_category || '').toLowerCase();
+        return title.includes(term) || orgName.includes(term) || awardName.includes(term);
+      });
+    }
+
+    const totalCount = this.currentSectionPhotos.length;
+    const publishedCount = this.currentSectionPhotos.filter(p => p.published !== false).length;
+    const draftCount = this.currentSectionPhotos.filter(p => p.published === false).length;
 
     contentDiv.innerHTML = `
       <div class="mb-4">
@@ -500,8 +534,8 @@ const mediaGalleryModule = {
           <i class="bi bi-arrow-left me-2"></i>Back to Gallery Sections
         </button>
 
-        <div class="d-flex justify-content-between align-items-center">
-          <h5><i class="bi bi-images me-2"></i>${utils.escapeHtml(sectionName)} (${photos.length} items)</h5>
+        <div class="d-flex justify-content-between align-items-center mb-3">
+          <h5><i class="bi bi-images me-2"></i>${utils.escapeHtml(sectionName)}</h5>
           <div class="btn-group">
             <button class="btn btn-primary" onclick="mediaGalleryModule.openUploadPhotosModal()">
               <i class="bi bi-cloud-upload me-2"></i>Upload Photos
@@ -511,19 +545,256 @@ const mediaGalleryModule = {
             </button>
           </div>
         </div>
+
+        <!-- Filters & Search -->
+        <div class="card mb-3">
+          <div class="card-body">
+            <div class="row g-3 align-items-end">
+              <div class="col-md-6">
+                <label class="form-label small mb-1">Filter by Status:</label>
+                <div class="btn-group w-100" role="group">
+                  <button type="button" class="btn ${this.currentFilter === 'all' ? 'btn-primary' : 'btn-outline-primary'}"
+                    onclick="mediaGalleryModule.setFilter('all')">
+                    All <span class="badge ${this.currentFilter === 'all' ? 'bg-light text-primary' : 'bg-primary'}">${totalCount}</span>
+                  </button>
+                  <button type="button" class="btn ${this.currentFilter === 'published' ? 'btn-success' : 'btn-outline-success'}"
+                    onclick="mediaGalleryModule.setFilter('published')">
+                    Published <span class="badge ${this.currentFilter === 'published' ? 'bg-light text-success' : 'bg-success'}">${publishedCount}</span>
+                  </button>
+                  <button type="button" class="btn ${this.currentFilter === 'drafts' ? 'btn-secondary' : 'btn-outline-secondary'}"
+                    onclick="mediaGalleryModule.setFilter('drafts')">
+                    Drafts <span class="badge ${this.currentFilter === 'drafts' ? 'bg-light text-secondary' : 'bg-secondary'}">${draftCount}</span>
+                  </button>
+                </div>
+              </div>
+              <div class="col-md-6">
+                <label class="form-label small mb-1">Search:</label>
+                <div class="input-group">
+                  <span class="input-group-text"><i class="bi bi-search"></i></span>
+                  <input type="text" class="form-control" id="gallerySearchBox"
+                    placeholder="Search by title, organisation, or award..."
+                    value="${utils.escapeHtml(this.currentSearchTerm)}"
+                    onkeyup="mediaGalleryModule.setSearch(this.value)">
+                  ${this.currentSearchTerm ? `
+                    <button class="btn btn-outline-secondary" onclick="mediaGalleryModule.setSearch('')">
+                      <i class="bi bi-x"></i>
+                    </button>
+                  ` : ''}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
 
-      ${photos.length === 0 ? `
+      <!-- Drag & Drop Zone -->
+      <div id="dropZone" class="border border-2 border-dashed rounded p-5 text-center mb-4"
+        style="border-color: #dee2e6 !important; transition: all 0.3s;"
+        ondragover="mediaGalleryModule.handleDragOver(event)"
+        ondragleave="mediaGalleryModule.handleDragLeave(event)"
+        ondrop="mediaGalleryModule.handleDrop(event)">
+        <i class="bi bi-cloud-upload text-muted" style="font-size: 3rem;"></i>
+        <p class="text-muted mb-0 mt-2">Drag & drop photos/videos here to upload</p>
+        <small class="text-muted">Or use the "Upload Photos" button above</small>
+      </div>
+
+      ${filteredPhotos.length === 0 ? `
         <div class="alert alert-info">
           <i class="bi bi-info-circle me-2"></i>
-          No photos in this section yet. Click "Upload Photos" to add images.
+          ${totalCount === 0 ?
+            'No photos in this section yet. Drag & drop files above or click "Upload Photos".' :
+            'No items match your filters. Try different filter options or search terms.'}
         </div>
       ` : `
-        <div class="row g-3">
-          ${photos.map(photo => this.renderPhotoCard(photo)).join('')}
+        <div class="row g-3" id="photoGrid">
+          ${filteredPhotos.map(photo => this.renderPhotoCard(photo)).join('')}
         </div>
       `}
     `;
+  },
+
+  /**
+   * Set filter
+   */
+  setFilter(filter) {
+    this.currentFilter = filter;
+    const sectionName = this.currentSectionPhotos[0]?.gallery_section_id ?
+      document.querySelector('h5').textContent.replace(/\s*\(.*\)/, '').replace('📁 ', '') :
+      'Section';
+    this.renderSectionPhotos(sectionName);
+  },
+
+  /**
+   * Set search term
+   */
+  setSearch(term) {
+    this.currentSearchTerm = term;
+    if (term === '') {
+      document.getElementById('gallerySearchBox').value = '';
+    }
+    const sectionName = this.currentSectionPhotos[0]?.gallery_section_id ?
+      document.querySelector('h5').textContent.replace(/\s*\(.*\)/, '').replace('📁 ', '') :
+      'Section';
+    this.renderSectionPhotos(sectionName);
+  },
+
+  /**
+   * Handle drag over event
+   */
+  handleDragOver(e) {
+    e.preventDefault();
+    e.stopPropagation();
+    const dropZone = document.getElementById('dropZone');
+    if (dropZone) {
+      dropZone.style.borderColor = '#0d6efd !important';
+      dropZone.style.backgroundColor = '#e7f1ff';
+    }
+  },
+
+  /**
+   * Handle drag leave event
+   */
+  handleDragLeave(e) {
+    e.preventDefault();
+    e.stopPropagation();
+    const dropZone = document.getElementById('dropZone');
+    if (dropZone) {
+      dropZone.style.borderColor = '#dee2e6 !important';
+      dropZone.style.backgroundColor = 'transparent';
+    }
+  },
+
+  /**
+   * Handle drop event
+   */
+  handleDrop(e) {
+    e.preventDefault();
+    e.stopPropagation();
+
+    const dropZone = document.getElementById('dropZone');
+    if (dropZone) {
+      dropZone.style.borderColor = '#dee2e6 !important';
+      dropZone.style.backgroundColor = 'transparent';
+    }
+
+    const files = Array.from(e.dataTransfer.files);
+    const validTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp', 'video/mp4', 'video/quicktime', 'video/x-msvideo', 'video/webm'];
+    const validFiles = files.filter(f => validTypes.includes(f.type));
+
+    if (validFiles.length === 0) {
+      utils.showToast('No valid image/video files detected', 'error');
+      return;
+    }
+
+    // Store files and show publish prompt modal
+    this.draggedFiles = validFiles;
+    document.getElementById('dragDropFileCount').textContent = validFiles.length;
+    document.getElementById('dragDropFileCountText').textContent = `${validFiles.length} file${validFiles.length > 1 ? 's' : ''}`;
+    document.getElementById('dragDropPublished').checked = true;
+
+    const modal = new bootstrap.Modal(document.getElementById('dragDropPublishModal'));
+    modal.show();
+  },
+
+  /**
+   * Upload dragged files
+   */
+  async uploadDraggedFiles() {
+    if (!this.draggedFiles || this.draggedFiles.length === 0) {
+      return;
+    }
+
+    const published = document.getElementById('dragDropPublished').checked;
+    const maxSizeMB = 4.5;
+    const maxSizeBytes = maxSizeMB * 1024 * 1024;
+
+    // Filter by file size
+    const validFiles = [];
+    const oversizedFiles = [];
+
+    this.draggedFiles.forEach(file => {
+      if (file.size <= maxSizeBytes) {
+        validFiles.push(file);
+      } else {
+        oversizedFiles.push(file);
+      }
+    });
+
+    if (oversizedFiles.length > 0) {
+      const fileNames = oversizedFiles.map(f => f.name).join(', ');
+      utils.showToast(`${oversizedFiles.length} file(s) exceed ${maxSizeMB}MB limit and will be skipped: ${fileNames}`, 'warning');
+    }
+
+    if (validFiles.length === 0) {
+      utils.showToast(`All files exceed the ${maxSizeMB}MB size limit. Please compress your images/videos.`, 'error');
+      return;
+    }
+
+    try {
+      // Show progress
+      document.getElementById('dragDropProgress').classList.remove('d-none');
+      document.getElementById('dragDropUploadBtn').disabled = true;
+
+      let successCount = 0;
+
+      for (const file of validFiles) {
+        const timestamp = Date.now();
+        const randomSuffix = Math.random().toString(36).substring(7);
+        const fileName = `gallery-sections/${this.currentSectionId}/${timestamp}_${randomSuffix}_${file.name}`;
+
+        // Upload to storage
+        const { error: uploadError } = await STATE.client.storage
+          .from('media-gallery')
+          .upload(fileName, file);
+
+        if (uploadError) throw uploadError;
+
+        // Get public URL
+        const { data: urlData } = STATE.client.storage
+          .from('media-gallery')
+          .getPublicUrl(fileName);
+
+        // Insert into database
+        const { error: dbError } = await STATE.client
+          .from('media_gallery')
+          .insert([{
+            gallery_section_id: this.currentSectionId,
+            event_id: this.currentEventId,
+            file_url: urlData.publicUrl,
+            file_type: file.type,
+            title: file.name,
+            organisation_id: null,
+            award_id: null,
+            published: published
+          }]);
+
+        if (dbError) throw dbError;
+
+        successCount++;
+      }
+
+      utils.showToast(`${successCount} file(s) uploaded successfully!`, 'success');
+
+      // Close modal and reload
+      bootstrap.Modal.getInstance(document.getElementById('dragDropPublishModal')).hide();
+
+      // Get section name to reload view
+      const { data: section } = await STATE.client
+        .from('event_galleries')
+        .select('gallery_name')
+        .eq('id', this.currentSectionId)
+        .single();
+
+      await this.viewSectionPhotos(this.currentSectionId, section.gallery_name);
+
+    } catch (error) {
+      console.error('Error uploading files:', error);
+      utils.showToast('Error uploading files: ' + error.message, 'error');
+    } finally {
+      document.getElementById('dragDropProgress').classList.add('d-none');
+      document.getElementById('dragDropUploadBtn').disabled = false;
+      this.draggedFiles = null;
+    }
   },
 
   /**

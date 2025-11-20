@@ -19,20 +19,8 @@ const winnersModule = {
         .from('winners')
         .select(`
           *,
-          awards!winners_award_id_fkey (
-            id,
-            award_name,
-            award_category,
-            sector,
-            region,
-            year
-          ),
-          winner_media (
-            id,
-            media_type,
-            file_url,
-            caption
-          )
+          awards!winners_award_id_fkey (*),
+          winner_media (*)
         `)
         .order('created_at', { ascending: false });
 

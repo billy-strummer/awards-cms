@@ -13,13 +13,13 @@ const winnersModule = {
     try {
       utils.showLoading();
       utils.showTableLoading('winnersTableBody', 6);
-      
-      // Supabase v2 syntax for select with nested relations
+
+      // Use foreign key relationship to fetch winners with awards
       const { data, error } = await STATE.client
         .from('winners')
         .select(`
           *,
-          awards (
+          awards!winners_award_id_fkey (
             id,
             award_name,
             award_category,
@@ -35,9 +35,9 @@ const winnersModule = {
           )
         `)
         .order('created_at', { ascending: false });
-      
+
       if (error) throw error;
-      
+
       STATE.allWinners = data || [];
       STATE.filteredWinners = STATE.allWinners;
       

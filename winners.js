@@ -36,14 +36,11 @@ const winnersModule = {
       
       STATE.allWinners = data || [];
       STATE.filteredWinners = STATE.allWinners;
-      
+
       this.populateFilters();
       this.renderWinners();
-      
-      console.log(`✅ Loaded ${STATE.allWinners.length} winners`);
-      
+
     } catch (error) {
-      console.error('Error loading winners:', error);
       utils.showToast('Failed to load winners: ' + error.message, 'error');
       utils.showEmptyState('winnersTableBody', 6, 'Failed to load winners', 'bi-exclamation-triangle');
     } finally {
@@ -221,18 +218,38 @@ const winnersModule = {
     }
     
     const file = fileInput.files[0];
-    
+
     // Validate file type
     const validPhotoTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
     const validVideoTypes = ['video/mp4', 'video/quicktime', 'video/x-msvideo'];
-    
+
     if (this.currentMediaType === MEDIA_TYPES.PHOTO && !validPhotoTypes.includes(file.type)) {
       utils.showToast('Please select a valid image file (JPEG, PNG, GIF, WebP)', 'error');
       return;
     }
-    
+
     if (this.currentMediaType === MEDIA_TYPES.VIDEO && !validVideoTypes.includes(file.type)) {
       utils.showToast('Please select a valid video file (MP4, MOV, AVI)', 'error');
+      return;
+    }
+
+    // Validate file size (10MB for photos, 100MB for videos)
+    const maxPhotoSize = 10 * 1024 * 1024; // 10MB
+    const maxVideoSize = 100 * 1024 * 1024; // 100MB
+
+    if (this.currentMediaType === MEDIA_TYPES.PHOTO && file.size > maxPhotoSize) {
+      utils.showToast('Photo file size must be less than 10MB', 'error');
+      return;
+    }
+
+    if (this.currentMediaType === MEDIA_TYPES.VIDEO && file.size > maxVideoSize) {
+      utils.showToast('Video file size must be less than 100MB', 'error');
+      return;
+    }
+
+    // Validate caption length
+    if (caption.length > 500) {
+      utils.showToast('Caption must be less than 500 characters', 'error');
       return;
     }
     
@@ -272,9 +289,8 @@ const winnersModule = {
       bootstrap.Modal.getInstance(document.getElementById('uploadMediaModal')).hide();
       await this.loadWinners();
       utils.showToast('Media uploaded successfully!', 'success');
-      
+
     } catch (error) {
-      console.error('Error uploading media:', error);
       utils.showToast('Error uploading media: ' + error.message, 'error');
     } finally {
       progressDiv.classList.add('d-none');
@@ -358,9 +374,8 @@ const winnersModule = {
       await this.loadWinners();
       bootstrap.Modal.getInstance(document.getElementById('viewMediaModal')).hide();
       utils.showToast('Media deleted successfully!', 'success');
-      
+
     } catch (error) {
-      console.error('Error deleting media:', error);
       utils.showToast('Error deleting media: ' + error.message, 'error');
     } finally {
       utils.hideLoading();
@@ -389,9 +404,8 @@ const winnersModule = {
       
       await this.loadWinners();
       utils.showToast('Winner deleted successfully!', 'success');
-      
+
     } catch (error) {
-      console.error('Error deleting winner:', error);
       utils.showToast('Error deleting winner: ' + error.message, 'error');
     } finally {
       utils.hideLoading();

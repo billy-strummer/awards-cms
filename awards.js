@@ -42,21 +42,17 @@ const awardsModule = {
       }
       
       STATE.allAwards = allData;
-      
+
       // Load assignment counts for each award
       await this.loadAssignmentCounts();
-      
+
       STATE.filteredAwards = STATE.allAwards;
-      
+
       // Populate filter dropdowns
       this.populateFilters();
       this.renderAwards();
-      
-      console.log(`✅ Loaded ${STATE.allAwards.length} awards`);
-      
+
     } catch (error) {
-      console.error('Error loading awards:', error);
-      console.error('Error details:', error.details, error.hint, error.message);
       utils.showToast('Failed to load awards: ' + error.message, 'error');
       utils.showEmptyState('awardsTableBody', 8, 'Failed to load awards', 'bi-exclamation-triangle');
     } finally {
@@ -100,9 +96,8 @@ const awardsModule = {
           winner: 0
         };
       });
-      
+
     } catch (error) {
-      console.error('Error loading assignment counts:', error);
       // Don't fail if counts can't be loaded
     }
   },
@@ -257,9 +252,8 @@ const awardsModule = {
   viewDetails(awardId) {
     const award = STATE.allAwards.find(a => a.id === awardId);
     if (!award) return;
-    
+
     utils.showToast('View details feature coming soon!', 'info');
-    console.log('Award details:', award);
   },
 
   /**
@@ -284,9 +278,8 @@ const awardsModule = {
       
       await this.loadAwards();
       utils.showToast('Award approved successfully!', 'success');
-      
+
     } catch (error) {
-      console.error('Error approving award:', error);
       utils.showToast('Failed to approve award: ' + error.message, 'error');
     } finally {
       utils.hideLoading();
@@ -315,9 +308,8 @@ const awardsModule = {
       
       await this.loadAwards();
       utils.showToast('Award deleted successfully', 'success');
-      
+
     } catch (error) {
-      console.error('Error deleting award:', error);
       utils.showToast('Failed to delete award: ' + error.message, 'error');
     } finally {
       utils.hideLoading();

@@ -4,8 +4,6 @@
 
 // Wait for DOM to be fully loaded before initializing
 document.addEventListener('DOMContentLoaded', function() {
-  console.log('🚀 Initializing British Trade Awards Admin...');
-  
   // ==========================================
   // STEP 1: Initialize Supabase
   // ==========================================
@@ -60,23 +58,34 @@ document.addEventListener('DOMContentLoaded', function() {
     const icon = document.querySelector('#darkModeToggle i');
     icon.classList.toggle('bi-moon');
     icon.classList.toggle('bi-sun');
-    
+
     // Save preference
     const isDark = document.body.classList.contains('dark-mode');
-    localStorage.setItem('darkMode', isDark);
-    
+    try {
+      localStorage.setItem('darkMode', String(isDark));
+    } catch (e) {
+      // localStorage might not be available in some browsers/modes
+    }
+
     utils.showToast(
       isDark ? 'Dark mode enabled' : 'Light mode enabled',
       'info'
     );
   });
-  
+
   // Restore dark mode preference
-  if (localStorage.getItem('darkMode') === 'true') {
-    document.body.classList.add('dark-mode');
-    const icon = document.querySelector('#darkModeToggle i');
-    icon.classList.remove('bi-moon');
-    icon.classList.add('bi-sun');
+  try {
+    const darkModePreference = localStorage.getItem('darkMode');
+    if (darkModePreference === 'true') {
+      document.body.classList.add('dark-mode');
+      const icon = document.querySelector('#darkModeToggle i');
+      if (icon) {
+        icon.classList.remove('bi-moon');
+        icon.classList.add('bi-sun');
+      }
+    }
+  } catch (e) {
+    // localStorage might not be available
   }
   
   // --- Awards Filters ---
@@ -251,13 +260,11 @@ document.addEventListener('DOMContentLoaded', function() {
   // ==========================================
   // Global error handler
   window.addEventListener('error', (e) => {
-    console.error('Global error:', e.error);
     utils.showToast('An unexpected error occurred', 'error');
   });
-  
+
   // Unhandled promise rejection handler
   window.addEventListener('unhandledrejection', (e) => {
-    console.error('Unhandled promise rejection:', e.reason);
     utils.showToast('An unexpected error occurred', 'error');
   });
   
@@ -271,39 +278,19 @@ document.addEventListener('DOMContentLoaded', function() {
   // ==========================================
   // Pause/resume activity tracking when tab is hidden/visible
   document.addEventListener('visibilitychange', () => {
-    if (document.hidden) {
-      console.log('👁️ Page hidden - pausing activity tracking');
-    } else {
-      console.log('👁️ Page visible - resuming activity tracking');
-      if (STATE.currentUser) {
-        authModule.resetInactivityTimer();
-      }
+    if (!document.hidden && STATE.currentUser) {
+      authModule.resetInactivityTimer();
     }
   });
   
   // ==========================================
-  // STEP 10: Performance Monitoring
-  // ==========================================
-  // Log page load performance
-  window.addEventListener('load', () => {
-    const perfData = performance.timing;
-    const pageLoadTime = perfData.loadEventEnd - perfData.navigationStart;
-    console.log(`📊 Page loaded in ${pageLoadTime}ms`);
-  });
-  
-  // ==========================================
-  // STEP 11: Tooltips Initialization
+  // STEP 10: Tooltips Initialization
   // ==========================================
   // Initialize Bootstrap tooltips
   const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
   tooltipTriggerList.map(function (tooltipTriggerEl) {
     return new bootstrap.Tooltip(tooltipTriggerEl);
   });
-  
-  // ==========================================
-  // INITIALIZATION COMPLETE
-  // ==========================================
-  console.log('✅ Application initialized successfully');
 });
 
 // ==========================================
@@ -329,13 +316,11 @@ if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
     navigator.serviceWorker.register('/sw.js')
       .then(registration => {
-        console.log('✅ Service Worker registered:', registration);
+        // Service Worker registered successfully
       })
       .catch(error => {
-        console.log('❌ Service Worker registration failed:', error);
+        utils.showToast('Failed to register service worker', 'error');
       });
   });
 }
 */
-
-console.log('📱 British Trade Awards Admin - Version 2.0');

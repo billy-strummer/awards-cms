@@ -29,7 +29,6 @@ const assignmentsModule = {
       if (error) throw error;
       return data || [];
     } catch (error) {
-      console.error('Error loading assignments:', error);
       return [];
     }
   },
@@ -138,9 +137,8 @@ const assignmentsModule = {
       
       // Store available orgs for filtering
       this.availableOrgs = availableOrgs;
-      
+
     } catch (error) {
-      console.error('Error refreshing assignments:', error);
       contentEl.innerHTML = `
         <div class="alert alert-danger">
           <i class="bi bi-exclamation-triangle me-2"></i>
@@ -278,9 +276,8 @@ const assignmentsModule = {
       if (typeof awardsModule !== 'undefined' && awardsModule.loadAwards) {
         await awardsModule.loadAwards();
       }
-      
+
     } catch (error) {
-      console.error('Error assigning company:', error);
       utils.showToast('Failed to assign company: ' + error.message, 'error');
     } finally {
       utils.hideLoading();
@@ -291,7 +288,7 @@ const assignmentsModule = {
    * Remove assignment
    */
   async removeAssignment(assignmentId) {
-    if (!confirm('Remove this company from the award?')) {
+    if (!utils.confirm('Remove this company from the award?')) {
       return;
     }
     
@@ -312,9 +309,8 @@ const assignmentsModule = {
       if (typeof awardsModule !== 'undefined' && awardsModule.loadAwards) {
         await awardsModule.loadAwards();
       }
-      
+
     } catch (error) {
-      console.error('Error removing assignment:', error);
       utils.showToast('Failed to remove assignment: ' + error.message, 'error');
     } finally {
       utils.hideLoading();
@@ -354,9 +350,8 @@ const assignmentsModule = {
       
       utils.showToast(`Status changed to ${statusLabels[newStatus]}`, 'success');
       await this.refreshAssignments();
-      
+
     } catch (error) {
-      console.error('Error changing status:', error);
       utils.showToast('Failed to change status: ' + error.message, 'error');
     } finally {
       utils.hideLoading();
@@ -403,11 +398,10 @@ const assignmentsModule = {
         .insert(assignments);
       
       if (error) throw error;
-      
+
       utils.showToast(`${orgIds.length} companies assigned successfully!`, 'success');
-      
+
     } catch (error) {
-      console.error('Error bulk assigning:', error);
       utils.showToast('Failed to bulk assign: ' + error.message, 'error');
     } finally {
       utils.hideLoading();

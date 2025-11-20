@@ -18,11 +18,8 @@ const dashboardModule = {
       
       // Update dashboard stats
       this.updateStats();
-      
-      console.log('✅ Dashboard data loaded');
-      
+
     } catch (error) {
-      console.error('Error loading dashboard data:', error);
       utils.showToast('Failed to load dashboard data', 'error');
     } finally {
       utils.hideLoading();

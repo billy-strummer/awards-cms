@@ -9,32 +9,23 @@ const authModule = {
    */
   initSupabase() {
     try {
-      console.log('🔄 Initializing Supabase client...');
-      console.log('📍 Supabase URL:', SUPABASE_CONFIG.url);
-      
       // Check if supabase library is loaded
       if (typeof supabase === 'undefined') {
         throw new Error('Supabase library not loaded. Check your internet connection and script tags.');
       }
-      
+
       // Create Supabase client using v2 syntax
       STATE.client = supabase.createClient(
         SUPABASE_CONFIG.url,
         SUPABASE_CONFIG.anonKey
       );
-      
-      console.log('✅ Supabase client initialized successfully');
+
       this.updateConnectionStatus(true);
-      
+
       // Test connection immediately
       this.testConnection();
-      
+
     } catch (error) {
-      console.error('❌ Failed to initialize Supabase:', error);
-      console.error('Error details:', {
-        message: error.message,
-        stack: error.stack
-      });
       utils.showToast('Failed to connect to database: ' + error.message, 'error');
       this.updateConnectionStatus(false);
     }
@@ -45,21 +36,13 @@ const authModule = {
    */
   async testConnection() {
     try {
-      console.log('🧪 Testing Supabase connection...');
-      
       // Try a simple query to test connectivity
-      const { data, error } = await STATE.client
+      const { error } = await STATE.client
         .from('awards')
         .select('count', { count: 'exact', head: true });
-      
-      if (error) {
-        console.warn('⚠️ Connection test warning:', error.message);
-        // Don't show toast for this - it might just be empty table
-      } else {
-        console.log('✅ Supabase connection test successful');
-      }
+
+      // Don't show toast for errors - it might just be empty table or permissions
     } catch (error) {
-      console.error('❌ Connection test failed:', error);
       if (error.message.includes('Failed to fetch')) {
         utils.showToast(
           'Cannot reach Supabase servers. Check your network connection and firewall settings.',
@@ -96,9 +79,9 @@ const authModule = {
     try {
       // Supabase v2 syntax for getting session
       const { data: { session }, error } = await STATE.client.auth.getSession();
-      
+
       if (error) throw error;
-      
+
       if (session) {
         STATE.currentUser = session.user;
         this.showDashboard();
@@ -107,7 +90,6 @@ const authModule = {
         this.showLogin();
       }
     } catch (error) {
-      console.error('Session check error:', error);
       this.showLogin();
     }
   },
@@ -154,16 +136,9 @@ const authModule = {
       this.startInactivityTimer();
       
     } catch (error) {
-      console.error('Login error:', error);
-      console.error('Error details:', {
-        name: error.name,
-        message: error.message,
-        stack: error.stack
-      });
-      
       // Provide specific error messages based on error type
       let errorMessage = 'Login failed. Please check your credentials.';
-      
+
       if (error.message.includes('Failed to fetch')) {
         errorMessage = 'Cannot connect to server. Please check your internet connection and try again.';
       } else if (error.message.includes('Invalid login credentials')) {
@@ -173,7 +148,7 @@ const authModule = {
       } else if (error.message) {
         errorMessage = error.message;
       }
-      
+
       errorDiv.textContent = errorMessage;
       errorDiv.classList.remove('d-none');
       utils.showToast('Login failed', 'error');
@@ -209,7 +184,6 @@ const authModule = {
       document.getElementById('loginPassword').value = '';
       
     } catch (error) {
-      console.error('Logout error:', error);
       utils.showToast('Logout failed: ' + error.message, 'error');
     } finally {
       utils.hideLoading();

@@ -34,26 +34,20 @@ const orgsModule = {
         } else {
           allData = allData.concat(data);
           page++;
-          
-          console.log(`📦 Loaded page ${page}: ${data.length} organisations (total so far: ${allData.length})`);
-          
+
           // Stop if we got less than pageSize records (last page)
           if (data.length < pageSize) {
             hasMore = false;
           }
         }
       }
-      
+
       STATE.allOrganisations = allData;
       STATE.filteredOrganisations = STATE.allOrganisations;
-      
+
       this.renderOrganisations();
-      
-      console.log(`✅ Loaded ${STATE.allOrganisations.length} organisations (across ${page} pages)`);
-      
+
     } catch (error) {
-      console.error('Error loading organisations:', error);
-      console.error('Error details:', error.details, error.hint, error.message);
       utils.showToast('Failed to load organisations: ' + error.message, 'error');
       utils.showEmptyState('orgsTableBody', 6, 'Failed to load organisations', 'bi-exclamation-triangle');
     } finally {
@@ -245,9 +239,8 @@ const orgsModule = {
           }
         </div>
       `;
-      
+
     } catch (error) {
-      console.error('Error loading company profile:', error);
       contentDiv.innerHTML = `
         <div class="alert alert-danger">
           <i class="bi bi-exclamation-triangle me-2"></i>

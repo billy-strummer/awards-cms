@@ -10,6 +10,10 @@ const mediaGalleryModule = {
   currentFilter: 'all', // all, published, drafts
   currentSearchTerm: '', // For search functionality
   draggedFiles: null, // Store dragged files temporarily
+  draggedPhotoId: null, // Store dragged photo ID for reordering
+  draggedOverPhotoId: null, // Store the photo being dragged over
+  selectedFiles: [], // Store selected files for preview
+  selectedPhotoIds: new Set(), // Store selected photo IDs for bulk operations
 
   /**
    * Initialize Media Gallery - Load events and show summary
@@ -486,6 +490,7 @@ const mediaGalleryModule = {
       this.currentSectionPhotos = photos || [];
       this.currentFilter = 'all';
       this.currentSearchTerm = '';
+      this.selectedPhotoIds.clear(); // Clear selections when switching sections
 
       this.renderSectionPhotos(sectionName);
 
@@ -542,6 +547,9 @@ const mediaGalleryModule = {
             </button>
             <button class="btn btn-outline-primary" onclick="mediaGalleryModule.openYouTubeVideoModal()">
               <i class="bi bi-youtube me-2"></i>Add YouTube Video
+            </button>
+            <button class="btn btn-outline-info" onclick="mediaGalleryModule.downloadAllPhotos('${utils.escapeHtml(sectionName).replace(/'/g, "\\'")}')">
+              <i class="bi bi-download me-2"></i>Download All
             </button>
           </div>
         </div>
@@ -610,7 +618,41 @@ const mediaGalleryModule = {
           ${filteredPhotos.map(photo => this.renderPhotoCard(photo)).join('')}
         </div>
       `}
+
+      <!-- Floating Bulk Actions Bar -->
+      <div id="bulkActionsBar" class="position-fixed bottom-0 start-50 translate-middle-x mb-4 d-none"
+        style="z-index: 1050;">
+        <div class="card shadow-lg border-primary">
+          <div class="card-body p-3">
+            <div class="d-flex align-items-center gap-3">
+              <div class="text-primary fw-bold">
+                <i class="bi bi-check-circle-fill me-2"></i>
+                <span id="selectedCount">0</span> selected
+              </div>
+              <div class="btn-group btn-group-sm">
+                <button class="btn btn-success" onclick="mediaGalleryModule.bulkPublish()" title="Publish selected">
+                  <i class="bi bi-eye me-1"></i>Publish
+                </button>
+                <button class="btn btn-secondary" onclick="mediaGalleryModule.bulkUnpublish()" title="Unpublish selected">
+                  <i class="bi bi-eye-slash me-1"></i>Unpublish
+                </button>
+                <button class="btn btn-info" onclick="mediaGalleryModule.bulkDownload()" title="Download selected">
+                  <i class="bi bi-download me-1"></i>Download
+                </button>
+                <button class="btn btn-danger" onclick="mediaGalleryModule.bulkDelete()" title="Delete selected">
+                  <i class="bi bi-trash me-1"></i>Delete
+                </button>
+              </div>
+              <button class="btn btn-sm btn-outline-secondary" onclick="mediaGalleryModule.clearSelection()">
+                <i class="bi bi-x-circle me-1"></i>Clear
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
     `;
+
+    this.updateBulkActionsBar();
   },
 
   /**
@@ -806,11 +848,26 @@ const mediaGalleryModule = {
     const orgName = photo.organisations?.company_name || null;
     const awardName = photo.awards?.award_name || photo.awards?.award_category || null;
     const isPublished = photo.published !== false; // Default to true if not set
+    const isSelected = this.selectedPhotoIds.has(photo.id);
 
     return `
       <div class="col-md-3">
-        <div class="card h-100 ${!isPublished ? 'border-secondary' : ''}">
-          ${!isPublished ? '<div class="position-absolute top-0 end-0 m-2 badge bg-secondary">Draft</div>' : ''}
+        <div class="card h-100 ${!isPublished ? 'border-secondary' : ''} ${isSelected ? 'border-primary border-3' : ''}"
+          draggable="true"
+          data-photo-id="${photo.id}"
+          ondragstart="mediaGalleryModule.handlePhotoDragStart(event, '${photo.id}')"
+          ondragover="mediaGalleryModule.handlePhotoDragOver(event, '${photo.id}')"
+          ondrop="mediaGalleryModule.handlePhotoDrop(event, '${photo.id}')"
+          ondragenter="mediaGalleryModule.handlePhotoDragEnter(event, '${photo.id}')"
+          ondragleave="mediaGalleryModule.handlePhotoDragLeave(event, '${photo.id}')"
+          ondragend="mediaGalleryModule.handlePhotoDragEnd(event)"
+          onclick="mediaGalleryModule.toggleCardSelection(event, '${photo.id}')"
+          style="cursor: pointer; transition: all 0.2s; ${isSelected ? 'box-shadow: 0 0 15px rgba(13, 110, 253, 0.5);' : ''}">
+          <div class="position-absolute top-0 start-0 m-2" style="z-index: 10;">
+            <i class="bi bi-grip-vertical text-muted" style="font-size: 1.2rem; cursor: move;" title="Drag to reorder" onclick="event.stopPropagation();"></i>
+          </div>
+          ${isSelected ? '<div class="position-absolute top-0 end-0 m-2"><div class="badge bg-primary"><i class="bi bi-check-circle-fill"></i> Selected</div></div>' : ''}
+          ${!isPublished && !isSelected ? '<div class="position-absolute top-0 end-0 m-2 badge bg-secondary">Draft</div>' : ''}
           ${isImage ?
             `<img src="${photo.file_url}" class="card-img-top ${!isPublished ? 'opacity-50' : ''}" alt="${utils.escapeHtml(photo.title || 'Photo')}"
               style="height: 200px; object-fit: cover; cursor: pointer;"
@@ -830,20 +887,39 @@ const mediaGalleryModule = {
             </div>`
           }
           <div class="card-body p-2">
-            <p class="small mb-1 fw-semibold">${utils.escapeHtml(photo.title || 'Untitled')}</p>
+            <p class="small mb-1 fw-semibold"
+              contenteditable="true"
+              data-photo-id="${photo.id}"
+              data-original-title="${utils.escapeHtml(photo.title || 'Untitled')}"
+              onblur="mediaGalleryModule.saveInlineTitle(this, '${photo.id}')"
+              onkeydown="if(event.key==='Enter'){event.preventDefault();this.blur();}"
+              style="cursor: text; outline: none; padding: 2px;"
+              title="Click to edit">${utils.escapeHtml(photo.title || 'Untitled')}</p>
 
-            ${orgName ?
-              `<span class="badge bg-success mb-1"><i class="bi bi-building me-1"></i>${utils.escapeHtml(orgName)}</span>` :
-              '<span class="badge bg-warning mb-1">No Org</span>'}
-
-            ${awardName ?
-              `<span class="badge bg-info mb-1"><i class="bi bi-trophy me-1"></i>${utils.escapeHtml(awardName)}</span>` :
-              '<span class="badge bg-warning mb-1">No Award</span>'}
+            <div class="mb-1">
+              <span class="badge ${orgName ? 'bg-success' : 'bg-warning'} me-1"
+                style="cursor: pointer;"
+                onclick="mediaGalleryModule.quickEditTag('${photo.id}', 'org')"
+                title="Click to change organisation">
+                <i class="bi bi-building me-1"></i>${orgName ? utils.escapeHtml(orgName) : 'No Org'}
+              </span>
+              <span class="badge ${awardName ? 'bg-info' : 'bg-warning'}"
+                style="cursor: pointer;"
+                onclick="mediaGalleryModule.quickEditTag('${photo.id}', 'award')"
+                title="Click to change award">
+                <i class="bi bi-trophy me-1"></i>${awardName ? utils.escapeHtml(awardName) : 'No Award'}
+              </span>
+            </div>
 
             <div class="btn-group btn-group-sm w-100 mt-2">
               <button class="btn btn-outline-primary" onclick="mediaGalleryModule.tagPhoto('${photo.id}')" title="Tag">
                 <i class="bi bi-tag"></i>
               </button>
+              ${!isYouTube ? `
+                <button class="btn btn-outline-info" onclick="mediaGalleryModule.downloadPhoto('${photo.file_url}', '${utils.escapeHtml(photo.title || 'photo').replace(/'/g, "\\'")}'); event.stopPropagation();" title="Download">
+                  <i class="bi bi-download"></i>
+                </button>
+              ` : ''}
               <button class="btn ${isPublished ? 'btn-outline-secondary' : 'btn-outline-success'}"
                 onclick="mediaGalleryModule.togglePublish('${photo.id}', ${!isPublished})"
                 title="${isPublished ? 'Unpublish' : 'Publish'}">
@@ -866,9 +942,127 @@ const mediaGalleryModule = {
     document.getElementById('sectionPhotosFile').value = '';
     document.getElementById('sectionPhotosTitle').value = '';
     document.getElementById('sectionPhotosPublished').checked = true;
+    this.selectedFiles = [];
+
+    // Hide and clear preview
+    document.getElementById('filePreviewContainer').classList.add('d-none');
+    document.getElementById('filePreviewGrid').innerHTML = '';
 
     const modal = new bootstrap.Modal(document.getElementById('uploadSectionPhotosModal'));
     modal.show();
+  },
+
+  /**
+   * Handle file preview when files are selected
+   */
+  handleFilePreview(inputElement) {
+    const files = Array.from(inputElement.files);
+
+    if (files.length === 0) {
+      document.getElementById('filePreviewContainer').classList.add('d-none');
+      this.selectedFiles = [];
+      return;
+    }
+
+    this.selectedFiles = files;
+    this.renderFilePreview();
+  },
+
+  /**
+   * Render file preview grid
+   */
+  renderFilePreview() {
+    const container = document.getElementById('filePreviewGrid');
+    const countSpan = document.getElementById('filePreviewCount');
+
+    if (this.selectedFiles.length === 0) {
+      document.getElementById('filePreviewContainer').classList.add('d-none');
+      return;
+    }
+
+    document.getElementById('filePreviewContainer').classList.remove('d-none');
+    countSpan.textContent = this.selectedFiles.length;
+
+    container.innerHTML = '';
+
+    this.selectedFiles.forEach((file, index) => {
+      const isImage = file.type.startsWith('image/');
+      const isVideo = file.type.startsWith('video/');
+      const fileSize = utils.formatFileSize(file.size);
+      const maxSizeBytes = 4.5 * 1024 * 1024;
+      const isOversized = file.size > maxSizeBytes;
+
+      const previewItem = document.createElement('div');
+      previewItem.className = 'col-6 col-md-3';
+
+      if (isImage) {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          previewItem.innerHTML = `
+            <div class="card ${isOversized ? 'border-danger' : ''}">
+              <div class="position-relative">
+                <img src="${e.target.result}" class="card-img-top" alt="${file.name}"
+                  style="height: 100px; object-fit: cover;">
+                <button type="button" class="btn btn-sm btn-danger position-absolute top-0 end-0 m-1"
+                  onclick="mediaGalleryModule.removeFileFromPreview(${index})"
+                  title="Remove">
+                  <i class="bi bi-x"></i>
+                </button>
+              </div>
+              <div class="card-body p-2">
+                <p class="small mb-0 text-truncate" title="${file.name}">${file.name}</p>
+                <small class="text-muted ${isOversized ? 'text-danger' : ''}">${fileSize}</small>
+                ${isOversized ? '<small class="d-block text-danger">Too large!</small>' : ''}
+              </div>
+            </div>
+          `;
+        };
+        reader.readAsDataURL(file);
+      } else if (isVideo) {
+        previewItem.innerHTML = `
+          <div class="card ${isOversized ? 'border-danger' : ''}">
+            <div class="position-relative">
+              <div class="card-img-top d-flex align-items-center justify-content-center bg-dark"
+                style="height: 100px;">
+                <i class="bi bi-play-circle text-white" style="font-size: 2rem;"></i>
+              </div>
+              <button type="button" class="btn btn-sm btn-danger position-absolute top-0 end-0 m-1"
+                onclick="mediaGalleryModule.removeFileFromPreview(${index})"
+                title="Remove">
+                <i class="bi bi-x"></i>
+              </button>
+            </div>
+            <div class="card-body p-2">
+              <p class="small mb-0 text-truncate" title="${file.name}">${file.name}</p>
+              <small class="text-muted ${isOversized ? 'text-danger' : ''}">${fileSize}</small>
+              ${isOversized ? '<small class="d-block text-danger">Too large!</small>' : ''}
+            </div>
+          </div>
+        `;
+      }
+
+      container.appendChild(previewItem);
+    });
+  },
+
+  /**
+   * Remove a file from the preview
+   */
+  removeFileFromPreview(index) {
+    this.selectedFiles.splice(index, 1);
+
+    // Update the file input
+    const fileInput = document.getElementById('sectionPhotosFile');
+    const dataTransfer = new DataTransfer();
+
+    this.selectedFiles.forEach(file => {
+      dataTransfer.items.add(file);
+    });
+
+    fileInput.files = dataTransfer.files;
+
+    // Re-render preview
+    this.renderFilePreview();
   },
 
   /**
@@ -1060,6 +1254,433 @@ const mediaGalleryModule = {
     } catch (error) {
       console.error('Error adding YouTube video:', error);
       utils.showToast('Error adding video: ' + error.message, 'error');
+    } finally {
+      utils.hideLoading();
+    }
+  },
+
+  /**
+   * Download individual photo
+   */
+  downloadPhoto(url, filename) {
+    // Create a temporary anchor element
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = filename || 'photo';
+    link.target = '_blank';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    utils.showToast('Download started', 'success');
+  },
+
+  /**
+   * Download all photos in current section
+   */
+  async downloadAllPhotos(sectionName) {
+    const photos = this.currentSectionPhotos.filter(p => p.file_type !== 'video/youtube');
+
+    if (photos.length === 0) {
+      utils.showToast('No downloadable photos in this section', 'warning');
+      return;
+    }
+
+    if (!confirm(`Download ${photos.length} photo(s)? They will be downloaded one by one.`)) {
+      return;
+    }
+
+    utils.showToast(`Starting download of ${photos.length} file(s)...`, 'info');
+
+    let downloadCount = 0;
+    for (const photo of photos) {
+      try {
+        await new Promise(resolve => setTimeout(resolve, 500)); // Delay between downloads
+        const filename = `${sectionName}_${downloadCount + 1}_${photo.title || 'photo'}`;
+        this.downloadPhoto(photo.file_url, filename);
+        downloadCount++;
+      } catch (error) {
+        console.error('Error downloading photo:', error);
+      }
+    }
+
+    utils.showToast(`${downloadCount} file(s) downloaded`, 'success');
+  },
+
+  /**
+   * Save inline title edit
+   */
+  async saveInlineTitle(element, photoId) {
+    const newTitle = element.textContent.trim();
+    const originalTitle = element.getAttribute('data-original-title');
+
+    if (newTitle === originalTitle || !newTitle) {
+      element.textContent = originalTitle;
+      return;
+    }
+
+    try {
+      const { error } = await STATE.client
+        .from('media_gallery')
+        .update({ title: newTitle })
+        .eq('id', photoId);
+
+      if (error) throw error;
+
+      element.setAttribute('data-original-title', newTitle);
+      utils.showToast('Title updated', 'success');
+
+      // Update in currentSectionPhotos array
+      const photo = this.currentSectionPhotos.find(p => p.id === photoId);
+      if (photo) photo.title = newTitle;
+    } catch (error) {
+      element.textContent = originalTitle;
+      utils.showToast('Error updating title: ' + error.message, 'error');
+    }
+  },
+
+  /**
+   * Quick edit tag (open tag modal)
+   */
+  async quickEditTag(photoId, type) {
+    await this.tagPhoto(photoId);
+  },
+
+  /**
+   * Handle photo drag start (for reordering)
+   */
+  handlePhotoDragStart(e, photoId) {
+    this.draggedPhotoId = photoId;
+    e.target.style.opacity = '0.5';
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', photoId);
+  },
+
+  /**
+   * Handle photo drag over
+   */
+  handlePhotoDragOver(e, photoId) {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    return false;
+  },
+
+  /**
+   * Handle photo drag enter
+   */
+  handlePhotoDragEnter(e, photoId) {
+    if (this.draggedPhotoId && this.draggedPhotoId !== photoId) {
+      e.currentTarget.style.borderColor = '#0d6efd';
+      e.currentTarget.style.borderWidth = '3px';
+      e.currentTarget.style.borderStyle = 'dashed';
+      this.draggedOverPhotoId = photoId;
+    }
+  },
+
+  /**
+   * Handle photo drag leave
+   */
+  handlePhotoDragLeave(e, photoId) {
+    e.currentTarget.style.borderColor = '';
+    e.currentTarget.style.borderWidth = '';
+    e.currentTarget.style.borderStyle = '';
+  },
+
+  /**
+   * Handle photo drop (perform reordering)
+   */
+  async handlePhotoDrop(e, targetPhotoId) {
+    e.preventDefault();
+    e.stopPropagation();
+
+    // Reset border
+    e.currentTarget.style.borderColor = '';
+    e.currentTarget.style.borderWidth = '';
+    e.currentTarget.style.borderStyle = '';
+
+    const sourcePhotoId = this.draggedPhotoId;
+
+    if (!sourcePhotoId || sourcePhotoId === targetPhotoId) {
+      return;
+    }
+
+    try {
+      // Find the source and target photos in currentSectionPhotos
+      const sourceIndex = this.currentSectionPhotos.findIndex(p => p.id === sourcePhotoId);
+      const targetIndex = this.currentSectionPhotos.findIndex(p => p.id === targetPhotoId);
+
+      if (sourceIndex === -1 || targetIndex === -1) {
+        throw new Error('Photo not found in current section');
+      }
+
+      // Reorder the array
+      const [movedPhoto] = this.currentSectionPhotos.splice(sourceIndex, 1);
+      this.currentSectionPhotos.splice(targetIndex, 0, movedPhoto);
+
+      // Update display_order for all photos in the section
+      await this.updatePhotoDisplayOrder();
+
+      utils.showToast('Photo order updated', 'success');
+
+      // Re-render to show new order
+      const { data: section } = await STATE.client
+        .from('event_galleries')
+        .select('gallery_name')
+        .eq('id', this.currentSectionId)
+        .single();
+
+      this.renderSectionPhotos(section.gallery_name);
+
+    } catch (error) {
+      console.error('Error reordering photos:', error);
+      utils.showToast('Error reordering: ' + error.message, 'error');
+    }
+  },
+
+  /**
+   * Handle photo drag end
+   */
+  handlePhotoDragEnd(e) {
+    e.target.style.opacity = '1';
+    this.draggedPhotoId = null;
+    this.draggedOverPhotoId = null;
+  },
+
+  /**
+   * Update display order for all photos in current section
+   */
+  async updatePhotoDisplayOrder() {
+    const updates = this.currentSectionPhotos.map((photo, index) => ({
+      id: photo.id,
+      display_order: index
+    }));
+
+    // Update each photo's display_order
+    for (const update of updates) {
+      const { error } = await STATE.client
+        .from('media_gallery')
+        .update({ display_order: update.display_order })
+        .eq('id', update.id);
+
+      if (error) {
+        throw error;
+      }
+    }
+  },
+
+  /**
+   * Toggle card selection for bulk operations
+   */
+  toggleCardSelection(event, photoId) {
+    // Don't select if clicking on interactive elements
+    const target = event.target;
+    const isInteractive = target.closest('button') ||
+                         target.closest('[contenteditable]') ||
+                         target.closest('.badge[onclick]') ||
+                         target.closest('img') ||
+                         target.closest('.bi-grip-vertical');
+
+    if (isInteractive) {
+      return;
+    }
+
+    if (this.selectedPhotoIds.has(photoId)) {
+      this.selectedPhotoIds.delete(photoId);
+    } else {
+      this.selectedPhotoIds.add(photoId);
+    }
+
+    // Re-render to show selection state
+    const sectionName = this.currentSectionPhotos[0]?.gallery_section_id ?
+      document.querySelector('h5').textContent.replace(/\s*\(.*\)/, '').replace('📁 ', '') :
+      'Section';
+    this.renderSectionPhotos(sectionName);
+  },
+
+  /**
+   * Update bulk actions bar visibility and count
+   */
+  updateBulkActionsBar() {
+    const bar = document.getElementById('bulkActionsBar');
+    const countSpan = document.getElementById('selectedCount');
+
+    if (!bar || !countSpan) return;
+
+    if (this.selectedPhotoIds.size > 0) {
+      bar.classList.remove('d-none');
+      countSpan.textContent = this.selectedPhotoIds.size;
+    } else {
+      bar.classList.add('d-none');
+    }
+  },
+
+  /**
+   * Clear all selections
+   */
+  clearSelection() {
+    this.selectedPhotoIds.clear();
+    const sectionName = this.currentSectionPhotos[0]?.gallery_section_id ?
+      document.querySelector('h5').textContent.replace(/\s*\(.*\)/, '').replace('📁 ', '') :
+      'Section';
+    this.renderSectionPhotos(sectionName);
+  },
+
+  /**
+   * Bulk publish selected photos
+   */
+  async bulkPublish() {
+    if (this.selectedPhotoIds.size === 0) return;
+
+    if (!confirm(`Publish ${this.selectedPhotoIds.size} photo(s)?`)) {
+      return;
+    }
+
+    try {
+      utils.showLoading();
+
+      for (const photoId of this.selectedPhotoIds) {
+        const { error } = await STATE.client
+          .from('media_gallery')
+          .update({ published: true })
+          .eq('id', photoId);
+
+        if (error) throw error;
+      }
+
+      utils.showToast(`${this.selectedPhotoIds.size} photo(s) published`, 'success');
+      this.selectedPhotoIds.clear();
+
+      // Reload section
+      const { data: section } = await STATE.client
+        .from('event_galleries')
+        .select('gallery_name')
+        .eq('id', this.currentSectionId)
+        .single();
+
+      await this.viewSectionPhotos(this.currentSectionId, section.gallery_name);
+
+    } catch (error) {
+      console.error('Error publishing photos:', error);
+      utils.showToast('Error publishing: ' + error.message, 'error');
+    } finally {
+      utils.hideLoading();
+    }
+  },
+
+  /**
+   * Bulk unpublish selected photos
+   */
+  async bulkUnpublish() {
+    if (this.selectedPhotoIds.size === 0) return;
+
+    if (!confirm(`Unpublish ${this.selectedPhotoIds.size} photo(s)?`)) {
+      return;
+    }
+
+    try {
+      utils.showLoading();
+
+      for (const photoId of this.selectedPhotoIds) {
+        const { error } = await STATE.client
+          .from('media_gallery')
+          .update({ published: false })
+          .eq('id', photoId);
+
+        if (error) throw error;
+      }
+
+      utils.showToast(`${this.selectedPhotoIds.size} photo(s) unpublished`, 'success');
+      this.selectedPhotoIds.clear();
+
+      // Reload section
+      const { data: section } = await STATE.client
+        .from('event_galleries')
+        .select('gallery_name')
+        .eq('id', this.currentSectionId)
+        .single();
+
+      await this.viewSectionPhotos(this.currentSectionId, section.gallery_name);
+
+    } catch (error) {
+      console.error('Error unpublishing photos:', error);
+      utils.showToast('Error unpublishing: ' + error.message, 'error');
+    } finally {
+      utils.hideLoading();
+    }
+  },
+
+  /**
+   * Bulk download selected photos
+   */
+  async bulkDownload() {
+    if (this.selectedPhotoIds.size === 0) return;
+
+    const photos = this.currentSectionPhotos.filter(p =>
+      this.selectedPhotoIds.has(p.id) && p.file_type !== 'video/youtube'
+    );
+
+    if (photos.length === 0) {
+      utils.showToast('No downloadable photos selected', 'warning');
+      return;
+    }
+
+    if (!confirm(`Download ${photos.length} photo(s)? They will be downloaded one by one.`)) {
+      return;
+    }
+
+    utils.showToast(`Starting download of ${photos.length} file(s)...`, 'info');
+
+    let downloadCount = 0;
+    for (const photo of photos) {
+      try {
+        await new Promise(resolve => setTimeout(resolve, 500));
+        const filename = `${photo.title || 'photo'}`;
+        this.downloadPhoto(photo.file_url, filename);
+        downloadCount++;
+      } catch (error) {
+        console.error('Error downloading photo:', error);
+      }
+    }
+
+    utils.showToast(`${downloadCount} file(s) downloaded`, 'success');
+  },
+
+  /**
+   * Bulk delete selected photos
+   */
+  async bulkDelete() {
+    if (this.selectedPhotoIds.size === 0) return;
+
+    if (!confirm(`Delete ${this.selectedPhotoIds.size} photo(s)? This action cannot be undone.`)) {
+      return;
+    }
+
+    try {
+      utils.showLoading();
+
+      for (const photoId of this.selectedPhotoIds) {
+        const { error } = await STATE.client
+          .from('media_gallery')
+          .delete()
+          .eq('id', photoId);
+
+        if (error) throw error;
+      }
+
+      utils.showToast(`${this.selectedPhotoIds.size} photo(s) deleted`, 'success');
+      this.selectedPhotoIds.clear();
+
+      // Reload section
+      const { data: section } = await STATE.client
+        .from('event_galleries')
+        .select('gallery_name')
+        .eq('id', this.currentSectionId)
+        .single();
+
+      await this.viewSectionPhotos(this.currentSectionId, section.gallery_name);
+
+    } catch (error) {
+      console.error('Error deleting photos:', error);
+      utils.showToast('Error deleting: ' + error.message, 'error');
     } finally {
       utils.hideLoading();
     }

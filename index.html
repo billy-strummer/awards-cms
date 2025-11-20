@@ -1134,8 +1134,16 @@
           <form id="uploadSectionPhotosForm">
             <div class="mb-3">
               <label for="sectionPhotosFile" class="form-label">Select Files *</label>
-              <input type="file" class="form-control" id="sectionPhotosFile" accept="image/*,video/*" multiple required>
+              <input type="file" class="form-control" id="sectionPhotosFile" accept="image/*,video/*" multiple required onchange="mediaGalleryModule.handleFilePreview(this)">
               <small class="text-muted">Select multiple files. Supported: Images (JPEG, PNG, GIF, WebP) and Videos (MP4, MOV, AVI, WebM). Max 4.5MB per file.</small>
+            </div>
+
+            <!-- File Preview Grid -->
+            <div id="filePreviewContainer" class="mb-3 d-none">
+              <label class="form-label">Selected Files (<span id="filePreviewCount">0</span>)</label>
+              <div id="filePreviewGrid" class="row g-2">
+                <!-- Preview items will be inserted here -->
+              </div>
             </div>
             <div class="mb-3">
               <label for="sectionPhotosTitle" class="form-label">Title (optional)</label>

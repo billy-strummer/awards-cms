@@ -13,20 +13,12 @@ const winnersModule = {
     try {
       utils.showLoading();
       utils.showTableLoading('winnersTableBody', 6);
-      
-      // Supabase v2 syntax for select with nested relations
-      const { data, error } = await STATE.client
+
+      // Fetch winners with media
+      const { data: winnersData, error: winnersError } = await STATE.client
         .from('winners')
         .select(`
           *,
-          awards (
-            id,
-            award_name,
-            award_category,
-            sector,
-            region,
-            year
-          ),
           winner_media (
             id,
             media_type,
@@ -35,10 +27,28 @@ const winnersModule = {
           )
         `)
         .order('created_at', { ascending: false });
-      
-      if (error) throw error;
-      
-      STATE.allWinners = data || [];
+
+      if (winnersError) throw winnersError;
+
+      // Fetch all awards to merge with winners
+      const { data: awardsData, error: awardsError } = await STATE.client
+        .from('awards')
+        .select('id, award_name, award_category, sector, region, year');
+
+      if (awardsError) throw awardsError;
+
+      // Create a map of awards by ID for quick lookup
+      const awardsMap = {};
+      (awardsData || []).forEach(award => {
+        awardsMap[award.id] = award;
+      });
+
+      // Merge winners with their awards data
+      STATE.allWinners = (winnersData || []).map(winner => ({
+        ...winner,
+        awards: winner.award_id ? awardsMap[winner.award_id] : null
+      }));
+
       STATE.filteredWinners = STATE.allWinners;
       
       this.populateFilters();

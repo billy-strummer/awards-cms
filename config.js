@@ -67,7 +67,9 @@ const STATE = {
   allOrganisations: [],
   filteredOrganisations: [],
   allWinners: [],
-  filteredWinners: []
+  filteredWinners: [],
+  allMedia: [],
+  filteredMedia: []
 };
 
 // Export to window for global access

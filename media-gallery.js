@@ -18,26 +18,10 @@ const mediaGalleryModule = {
         .from('media_gallery')
         .select(`
           *,
-          events!media_gallery_event_id_fkey (
-            id,
-            event_name,
-            event_date,
-            year
-          ),
-          organisations!media_gallery_organisation_id_fkey (
-            id,
-            company_name
-          ),
-          awards!media_gallery_award_id_fkey (
-            id,
-            award_name,
-            award_category,
-            year
-          ),
-          winners!media_gallery_winner_id_fkey (
-            id,
-            winner_name
-          )
+          events!media_gallery_event_id_fkey (*),
+          organisations!media_gallery_organisation_id_fkey (*),
+          awards!media_gallery_award_id_fkey (*),
+          winners!media_gallery_winner_id_fkey (*)
         `)
         .order('uploaded_at', { ascending: false });
 

@@ -69,7 +69,8 @@ const STATE = {
   allWinners: [],
   filteredWinners: [],
   allMedia: [],
-  filteredMedia: []
+  filteredMedia: [],
+  allEvents: []
 };
 
 // Export to window for global access

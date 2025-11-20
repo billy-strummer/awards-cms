@@ -212,6 +212,15 @@ const orgsModule = {
 
       if (mediaError) console.error('Error loading tagged media:', mediaError);
 
+      // Fetch company images for marketing
+      const { data: companyImages, error: imagesError } = await STATE.client
+        .from('organisation_images')
+        .select('*')
+        .eq('organisation_id', orgId)
+        .order('display_order', { ascending: true });
+
+      if (imagesError) console.error('Error loading company images:', imagesError);
+
       // Render profile
       contentDiv.innerHTML = `
         <div class="row">
@@ -364,6 +373,38 @@ const orgsModule = {
               </form>
             </div>
           </div>
+        </div>
+
+        <!-- Company Images Section (for Marketing) -->
+        <div class="mt-4">
+          <div class="d-flex justify-content-between align-items-center mb-3">
+            <h6 class="text-muted mb-0"><i class="bi bi-images me-2"></i>Company Images for Marketing (${(companyImages || []).length})</h6>
+            <button type="button" class="btn btn-sm btn-primary" onclick="orgsModule.openUploadImagesModal('${org.id}')">
+              <i class="bi bi-cloud-upload me-1"></i>Upload Images
+            </button>
+          </div>
+          ${!companyImages || companyImages.length === 0 ?
+            '<div class="alert alert-info"><i class="bi bi-info-circle me-2"></i>No marketing images uploaded yet. Click "Upload Images" to add photos for email campaigns.</div>' :
+            `<div class="row g-3">
+              ${companyImages.map(img => `
+                <div class="col-md-3">
+                  <div class="card h-100">
+                    <img src="${img.file_url}" class="card-img-top" alt="${utils.escapeHtml(img.title || 'Company Image')}"
+                      style="height: 180px; object-fit: cover; cursor: pointer;"
+                      onclick="orgsModule.viewImageFull('${img.file_url}', '${utils.escapeHtml(img.title || 'Company Image')}')">
+                    <div class="card-body p-2">
+                      <p class="card-text small mb-1 fw-semibold">${utils.escapeHtml(img.title || 'Untitled')}</p>
+                      ${img.caption ? `<p class="card-text small text-muted mb-2">${utils.escapeHtml(img.caption)}</p>` : ''}
+                      <button class="btn btn-sm btn-outline-danger w-100"
+                        onclick="orgsModule.deleteCompanyImage('${img.id}', '${org.id}')">
+                        <i class="bi bi-trash me-1"></i>Delete
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              `).join('')}
+            </div>`
+          }
         </div>
 
         <!-- Tagged Media Gallery Section -->
@@ -737,6 +778,194 @@ const orgsModule = {
     } finally {
       utils.hideLoading();
     }
+  },
+
+  /**
+   * Open upload company images modal
+   * @param {string} orgId - Organisation ID
+   */
+  openUploadImagesModal(orgId) {
+    this.currentOrgIdForImages = orgId;
+
+    // Reset form
+    document.getElementById('companyImagesUploadFile').value = '';
+    document.getElementById('companyImagesTitle').value = '';
+    document.getElementById('companyImagesCaption').value = '';
+
+    const modal = new bootstrap.Modal(document.getElementById('uploadCompanyImagesModal'));
+    modal.show();
+  },
+
+  /**
+   * Upload company images for marketing
+   */
+  async uploadCompanyImages() {
+    const fileInput = document.getElementById('companyImagesUploadFile');
+    const title = document.getElementById('companyImagesTitle').value.trim();
+    const caption = document.getElementById('companyImagesCaption').value.trim();
+    const uploadBtn = document.getElementById('uploadCompanyImagesBtn');
+
+    if (!fileInput.files || fileInput.files.length === 0) {
+      utils.showToast('Please select at least one image', 'warning');
+      return;
+    }
+
+    const files = Array.from(fileInput.files);
+
+    // Validate file types (images only)
+    const validTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
+    const invalidFiles = files.filter(f => !validTypes.includes(f.type));
+
+    if (invalidFiles.length > 0) {
+      utils.showToast(`${invalidFiles.length} file(s) are not valid images and will be skipped`, 'warning');
+    }
+
+    const validFiles = files.filter(f => validTypes.includes(f.type));
+    if (validFiles.length === 0) {
+      utils.showToast('No valid images to upload', 'error');
+      return;
+    }
+
+    try {
+      uploadBtn.disabled = true;
+      utils.showLoading();
+
+      let successCount = 0;
+      let errorCount = 0;
+
+      for (const file of validFiles) {
+        try {
+          // Generate unique filename
+          const timestamp = Date.now();
+          const randomSuffix = Math.random().toString(36).substring(7);
+          const fileName = `company-images/${this.currentOrgIdForImages}/${timestamp}_${randomSuffix}_${file.name}`;
+
+          // Upload file to Supabase Storage
+          const { data: uploadData, error: uploadError } = await STATE.client.storage
+            .from('media-gallery')
+            .upload(fileName, file);
+
+          if (uploadError) throw uploadError;
+
+          // Get public URL
+          const { data: urlData } = STATE.client.storage
+            .from('media-gallery')
+            .getPublicUrl(fileName);
+
+          // Insert record into organisation_images table
+          const { error: dbError } = await STATE.client
+            .from('organisation_images')
+            .insert([{
+              organisation_id: this.currentOrgIdForImages,
+              file_url: urlData.publicUrl,
+              title: title || file.name,
+              caption: caption || null,
+              display_order: successCount
+            }]);
+
+          if (dbError) throw dbError;
+
+          successCount++;
+
+        } catch (error) {
+          console.error(`Error uploading ${file.name}:`, error);
+          errorCount++;
+        }
+      }
+
+      // Close modal
+      bootstrap.Modal.getInstance(document.getElementById('uploadCompanyImagesModal')).hide();
+
+      if (errorCount === 0) {
+        utils.showToast(`${successCount} image(s) uploaded successfully!`, 'success');
+      } else {
+        utils.showToast(`${successCount} succeeded, ${errorCount} failed. Check console for details.`, 'warning');
+      }
+
+      // Reload the profile to show new images
+      const org = STATE.allOrganisations.find(o => o.id === this.currentOrgIdForImages);
+      if (org) {
+        await this.openCompanyProfile(this.currentOrgIdForImages, org.company_name);
+      }
+
+    } catch (error) {
+      console.error('Error uploading company images:', error);
+      utils.showToast('Error uploading images: ' + error.message, 'error');
+    } finally {
+      uploadBtn.disabled = false;
+      utils.hideLoading();
+    }
+  },
+
+  /**
+   * Delete company image
+   * @param {string} imageId - Image ID
+   * @param {string} orgId - Organisation ID
+   */
+  async deleteCompanyImage(imageId, orgId) {
+    if (!confirm('Are you sure you want to delete this image? This action cannot be undone.')) {
+      return;
+    }
+
+    try {
+      utils.showLoading();
+
+      // Get image details to delete from storage
+      const { data: image, error: fetchError } = await STATE.client
+        .from('organisation_images')
+        .select('file_url')
+        .eq('id', imageId)
+        .single();
+
+      if (fetchError) throw fetchError;
+
+      // Delete from database
+      const { error: deleteError } = await STATE.client
+        .from('organisation_images')
+        .delete()
+        .eq('id', imageId);
+
+      if (deleteError) throw deleteError;
+
+      // Extract file path from URL and delete from storage
+      if (image && image.file_url) {
+        const urlParts = image.file_url.split('/storage/v1/object/public/media-gallery/');
+        if (urlParts.length > 1) {
+          const filePath = urlParts[1];
+          await STATE.client.storage
+            .from('media-gallery')
+            .remove([filePath]);
+        }
+      }
+
+      utils.showToast('Image deleted successfully!', 'success');
+
+      // Reload the profile
+      const org = STATE.allOrganisations.find(o => o.id === orgId);
+      if (org) {
+        await this.openCompanyProfile(orgId, org.company_name);
+      }
+
+    } catch (error) {
+      console.error('Error deleting image:', error);
+      utils.showToast('Error deleting image: ' + error.message, 'error');
+    } finally {
+      utils.hideLoading();
+    }
+  },
+
+  /**
+   * View image in full screen
+   * @param {string} imageUrl - Image URL
+   * @param {string} title - Image title
+   */
+  viewImageFull(imageUrl, title) {
+    const modal = new bootstrap.Modal(document.getElementById('viewImageFullModal'));
+    document.getElementById('viewImageFullTitle').textContent = title;
+    document.getElementById('viewImageFullContent').innerHTML = `
+      <img src="${imageUrl}" alt="${utils.escapeHtml(title)}" class="img-fluid" style="max-height: 70vh;">
+    `;
+    modal.show();
   }
 };
 

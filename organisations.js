@@ -177,13 +177,7 @@ const orgsModule = {
         .from('award_assignments')
         .select(`
           status,
-          award:award_id (
-            award_name,
-            award_category,
-            sector,
-            region,
-            year
-          )
+          award:award_id (*)
         `)
         .eq('organisation_id', orgId);
 

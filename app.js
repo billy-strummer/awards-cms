@@ -139,6 +139,9 @@ document.addEventListener('DOMContentLoaded', function() {
   document.getElementById('media-gallery-tab').addEventListener('click', () => {
     if (STATE.allMedia.length === 0) {
       mediaGalleryModule.loadMedia();
+    } else {
+      // Refresh filters to pick up new events
+      mediaGalleryModule.populateFilters();
     }
   });
 

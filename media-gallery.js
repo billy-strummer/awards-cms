@@ -13,20 +13,24 @@ const mediaGalleryModule = {
       utils.showLoading();
       utils.showTableLoading('mediaTableBody', 7);
 
-      // Fetch media with related organisation and award data
+      // Fetch media with related organisation, award, and winner data using FK constraints
       const { data, error } = await STATE.client
         .from('media_gallery')
         .select(`
           *,
-          organisation:organisation_id (
+          organisations!media_gallery_organisation_id_fkey (
             id,
             company_name
           ),
-          award:award_id (
+          awards!media_gallery_award_id_fkey (
             id,
             award_name,
             award_category,
             year
+          ),
+          winners!media_gallery_winner_id_fkey (
+            id,
+            winner_name
           )
         `)
         .order('uploaded_at', { ascending: false });
@@ -106,8 +110,8 @@ const mediaGalleryModule = {
       if (search) {
         const title = media.title?.toLowerCase() || '';
         const caption = media.caption?.toLowerCase() || '';
-        const orgName = media.organisation?.company_name?.toLowerCase() || '';
-        const awardName = media.award?.award_name?.toLowerCase() || '';
+        const orgName = media.organisations?.company_name?.toLowerCase() || '';
+        const awardName = media.awards?.award_name?.toLowerCase() || '';
 
         if (!title.includes(search) && !caption.includes(search) &&
             !orgName.includes(search) && !awardName.includes(search)) {
@@ -138,8 +142,8 @@ const mediaGalleryModule = {
     tbody.innerHTML = STATE.filteredMedia.map(media => {
       const isImage = media.file_type?.startsWith('image/');
       const isVideo = media.file_type?.startsWith('video/');
-      const orgName = media.organisation?.company_name || 'N/A';
-      const awardName = media.award?.award_name || media.award?.award_category || 'N/A';
+      const orgName = media.organisations?.company_name || 'N/A';
+      const awardName = media.awards?.award_name || media.awards?.award_category || 'N/A';
 
       return `
         <tr class="fade-in">
@@ -355,10 +359,10 @@ const mediaGalleryModule = {
         <strong>Caption:</strong> ${utils.escapeHtml(media.caption || 'No caption')}
       </div>
       <div class="mb-2">
-        <strong>Organisation:</strong> ${utils.escapeHtml(media.organisation?.company_name || 'N/A')}
+        <strong>Organisation:</strong> ${utils.escapeHtml(media.organisations?.company_name || 'N/A')}
       </div>
       <div class="mb-2">
-        <strong>Award:</strong> ${utils.escapeHtml(media.award?.award_name || media.award?.award_category || 'N/A')}
+        <strong>Award:</strong> ${utils.escapeHtml(media.awards?.award_name || media.awards?.award_category || 'N/A')}
       </div>
       <div class="mb-2">
         <strong>Uploaded:</strong> ${media.uploaded_at ? new Date(media.uploaded_at).toLocaleString() : 'N/A'}

@@ -172,12 +172,12 @@ const orgsModule = {
       
       if (orgError) throw orgError;
       
-      // Fetch related awards through award_assignments
+      // Fetch related awards through award_assignments using explicit FK
       const { data: assignments, error: awardsError } = await STATE.client
         .from('award_assignments')
         .select(`
           status,
-          award:award_id (*)
+          awards!award_assignments_award_id_fkey (*)
         `)
         .eq('organisation_id', orgId);
 
@@ -185,9 +185,9 @@ const orgsModule = {
 
       // Extract and sort awards, using assignment status instead of award status
       const awards = (assignments || [])
-        .filter(a => a.award)
+        .filter(a => a.awards)
         .map(a => ({
-          ...a.award,
+          ...a.awards,
           status: a.status // Use assignment status (nominated/shortlisted/winner)
         }))
         .sort((a, b) => (b.year || 0) - (a.year || 0));

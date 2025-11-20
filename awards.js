@@ -194,7 +194,11 @@ const awardsModule = {
             <span class="badge bg-primary-subtle text-primary">${award.year || '-'}</span>
           </td>
           <td>
-            <strong>${utils.escapeHtml(award.award_name || award.award_category || '-')}</strong>
+            <a href="javascript:void(0);"
+               class="text-decoration-none fw-semibold text-primary"
+               onclick="assignmentsModule.openAssignmentsModal('${award.id}', '${utils.escapeHtml(award.award_name || award.award_category || 'Award').replace(/'/g, "\\'")}')">
+              ${utils.escapeHtml(award.award_name || award.award_category || '-')}
+            </a>
           </td>
           <td>
             <span class="badge bg-info-subtle text-info">
@@ -208,8 +212,10 @@ const awardsModule = {
           </td>
           <td>${utils.getStatusBadge(award.status || 'Draft')}</td>
           <td class="text-center">
-            <div class="assignment-count-badge ${countBadgeClass}" 
-              title="${counts.nominated} nominated, ${counts.shortlisted} shortlisted, ${counts.winner} winner">
+            <div class="assignment-count-badge ${countBadgeClass}"
+              style="cursor: pointer;"
+              onclick="assignmentsModule.openAssignmentsModal('${award.id}', '${utils.escapeHtml(award.award_name || award.award_category || 'Award').replace(/'/g, "\\'")}')"
+              title="Click to view: ${counts.nominated} nominated, ${counts.shortlisted} shortlisted, ${counts.winner} winner">
               <i class="bi bi-people-fill"></i>
               <span>${counts.total}</span>
             </div>

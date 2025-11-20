@@ -1,5 +1,6 @@
 /* ==================================================== */
-/* AWARD ASSIGNMENTS MODULE */
+/* AWARD ASSIGNMENTS MODULE - FIXED VERSION */
+/* Works with basic organisations table structure */
 /* ==================================================== */
 
 const assignmentsModule = {
@@ -19,9 +20,7 @@ const assignmentsModule = {
             id,
             company_name,
             email,
-            logo_url,
-            sector,
-            region
+            logo_url
           )
         `)
         .eq('award_id', awardId)
@@ -76,10 +75,10 @@ const assignmentsModule = {
       // Load current assignments
       const assignments = await this.getAwardAssignments(this.currentAwardId);
       
-      // Load available organisations
+      // Load available organisations (only essential columns)
       const { data: allOrgs, error: orgsError } = await STATE.client
         .from('organisations')
-        .select('id, company_name, sector, region, logo_url')
+        .select('id, company_name, email, logo_url')
         .order('company_name', { ascending: true });
       
       if (orgsError) throw orgsError;
@@ -171,9 +170,7 @@ const assignmentsModule = {
                 }
                 <div>
                   <h6 class="mb-0">${utils.escapeHtml(org.company_name)}</h6>
-                  <small class="text-muted">
-                    ${utils.escapeHtml(org.sector || 'N/A')} • ${utils.escapeHtml(org.region || 'N/A')}
-                  </small>
+                  <small class="text-muted">${utils.escapeHtml(org.email || 'No email')}</small>
                 </div>
               </div>
               
@@ -189,12 +186,12 @@ const assignmentsModule = {
                 <button class="btn btn-outline-primary" 
                   onclick="assignmentsModule.changeStatus('${assignment.id}', 'shortlisted')"
                   title="Mark as Shortlisted">
-                  <i class="bi bi-star"></i>
+                  <i class="bi bi-star"></i> Shortlist
                 </button>
                 <button class="btn btn-outline-success" 
                   onclick="assignmentsModule.changeStatus('${assignment.id}', 'winner')"
                   title="Mark as Winner">
-                  <i class="bi bi-trophy"></i>
+                  <i class="bi bi-trophy"></i> Winner
                 </button>
                 <button class="btn btn-outline-danger" 
                   onclick="assignmentsModule.removeAssignment('${assignment.id}')"
@@ -225,7 +222,7 @@ const assignmentsModule = {
               }
               <div>
                 <div class="fw-semibold">${utils.escapeHtml(org.company_name)}</div>
-                <small class="text-muted">${utils.escapeHtml(org.sector || 'N/A')}</small>
+                <small class="text-muted">${utils.escapeHtml(org.email || 'No email')}</small>
               </div>
             </div>
             <button 
@@ -278,7 +275,7 @@ const assignmentsModule = {
       await this.refreshAssignments();
       
       // Refresh awards list to update counts
-      if (awardsModule.loadAwards) {
+      if (typeof awardsModule !== 'undefined' && awardsModule.loadAwards) {
         await awardsModule.loadAwards();
       }
       
@@ -294,7 +291,7 @@ const assignmentsModule = {
    * Remove assignment
    */
   async removeAssignment(assignmentId) {
-    if (!utils.confirm('Remove this company from the award?')) {
+    if (!confirm('Remove this company from the award?')) {
       return;
     }
     
@@ -312,7 +309,7 @@ const assignmentsModule = {
       await this.refreshAssignments();
       
       // Refresh awards list
-      if (awardsModule.loadAwards) {
+      if (typeof awardsModule !== 'undefined' && awardsModule.loadAwards) {
         await awardsModule.loadAwards();
       }
       
@@ -378,6 +375,13 @@ const assignmentsModule = {
     };
     
     return badges[status] || badges['nominated'];
+  },
+
+  /**
+   * Email all assigned companies (placeholder for Feature 3)
+   */
+  emailAllAssigned() {
+    utils.showToast('Email feature will be available in Feature 3: Email Campaign Manager', 'info');
   },
 
   /**

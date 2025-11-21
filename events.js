@@ -60,6 +60,11 @@ const eventsModule = {
           </td>
           <td class="text-center">
             <div class="btn-group btn-group-sm" role="group">
+              <button class="btn btn-outline-info btn-icon"
+                onclick="eventsModule.openAttendeesModal('${event.id}')"
+                title="Manage Attendees">
+                <i class="bi bi-people"></i>
+              </button>
               <button class="btn btn-outline-primary btn-icon"
                 onclick="eventsModule.openEditModal('${event.id}')"
                 title="Edit">
@@ -609,6 +614,220 @@ const eventsModule = {
     modal.show();
 
     utils.showToast(`Using "${template.name}" template. Gallery sections will be created automatically.`, 'info');
+  },
+
+  /* ==================================================== */
+  /* ATTENDEES & RSVP MANAGEMENT */
+  /* ==================================================== */
+
+  /**
+   * Get attendees for an event from localStorage
+   */
+  getAttendees(eventId) {
+    const key = `event_attendees_${eventId}`;
+    const data = localStorage.getItem(key);
+    return data ? JSON.parse(data) : [];
+  },
+
+  /**
+   * Save attendees for an event to localStorage
+   */
+  saveAttendees(eventId, attendees) {
+    const key = `event_attendees_${eventId}`;
+    localStorage.setItem(key, JSON.stringify(attendees));
+  },
+
+  /**
+   * Open attendees modal for an event
+   */
+  openAttendeesModal(eventId) {
+    const event = STATE.allEvents.find(e => e.id === eventId);
+    if (!event) return;
+
+    // Set event info
+    document.getElementById('attendeesEventId').value = eventId;
+    document.getElementById('attendeesEventName').textContent = event.event_name || 'Unnamed Event';
+    document.getElementById('attendeesEventDate').textContent = event.event_date ? new Date(event.event_date).toLocaleDateString() : 'No date set';
+    document.getElementById('attendeesEventVenue').textContent = event.venue || 'No venue set';
+
+    // Hide add form
+    document.getElementById('addAttendeeForm').style.display = 'none';
+
+    // Load and render attendees
+    this.renderAttendees(eventId);
+
+    const modal = new bootstrap.Modal(document.getElementById('attendeesModal'));
+    modal.show();
+  },
+
+  /**
+   * Render attendees table
+   */
+  renderAttendees(eventId) {
+    const attendees = this.getAttendees(eventId);
+    const tbody = document.getElementById('attendeesTableBody');
+
+    // Update stats
+    const attending = attendees.filter(a => a.status === 'attending').length;
+    const notAttending = attendees.filter(a => a.status === 'not_attending').length;
+    const maybe = attendees.filter(a => a.status === 'maybe').length;
+
+    document.getElementById('attendingCount').textContent = attending;
+    document.getElementById('notAttendingCount').textContent = notAttending;
+    document.getElementById('maybeCount').textContent = maybe;
+    document.getElementById('totalAttendeesCount').textContent = attendees.length;
+
+    if (attendees.length === 0) {
+      tbody.innerHTML = `
+        <tr>
+          <td colspan="5" class="text-center py-4 text-muted">
+            <i class="bi bi-people display-4 d-block mb-2 opacity-25"></i>
+            No attendees yet. Click "Add Attendee" to start tracking RSVPs.
+          </td>
+        </tr>
+      `;
+      return;
+    }
+
+    tbody.innerHTML = attendees.map(attendee => {
+      const statusBadges = {
+        'attending': '<span class="badge bg-success">Attending</span>',
+        'not_attending': '<span class="badge bg-danger">Not Attending</span>',
+        'maybe': '<span class="badge bg-warning text-dark">Maybe</span>'
+      };
+
+      return `
+        <tr>
+          <td class="fw-semibold">${utils.escapeHtml(attendee.name)}</td>
+          <td>${attendee.email ? utils.escapeHtml(attendee.email) : '-'}</td>
+          <td>${statusBadges[attendee.status] || attendee.status}</td>
+          <td><small class="text-muted">${utils.formatRelativeTime(attendee.addedAt)}</small></td>
+          <td class="text-center">
+            <div class="btn-group btn-group-sm">
+              <button class="btn btn-outline-primary btn-sm"
+                onclick="eventsModule.updateAttendeeStatus('${attendee.id}', '${attendee.status === 'attending' ? 'not_attending' : 'attending'}')"
+                title="Toggle Status">
+                <i class="bi bi-arrow-repeat"></i>
+              </button>
+              <button class="btn btn-outline-danger btn-sm"
+                onclick="eventsModule.deleteAttendee('${attendee.id}')"
+                title="Remove">
+                <i class="bi bi-trash"></i>
+              </button>
+            </div>
+          </td>
+        </tr>
+      `;
+    }).join('');
+  },
+
+  /**
+   * Open add attendee form
+   */
+  openAddAttendeeForm() {
+    const form = document.getElementById('addAttendeeForm');
+    form.style.display = form.style.display === 'none' ? 'block' : 'none';
+
+    // Clear form
+    document.getElementById('attendeeName').value = '';
+    document.getElementById('attendeeEmail').value = '';
+    document.getElementById('attendeeStatus').value = 'attending';
+  },
+
+  /**
+   * Add new attendee
+   */
+  addAttendee() {
+    const eventId = document.getElementById('attendeesEventId').value;
+    const name = document.getElementById('attendeeName').value.trim();
+    const email = document.getElementById('attendeeEmail').value.trim();
+    const status = document.getElementById('attendeeStatus').value;
+
+    if (!name) {
+      utils.showToast('Please enter attendee name', 'warning');
+      return;
+    }
+
+    const attendees = this.getAttendees(eventId);
+
+    const newAttendee = {
+      id: `attendee_${Date.now()}`,
+      name: name,
+      email: email,
+      status: status,
+      addedAt: new Date().toISOString()
+    };
+
+    attendees.push(newAttendee);
+    this.saveAttendees(eventId, attendees);
+
+    // Clear form and hide
+    document.getElementById('attendeeName').value = '';
+    document.getElementById('attendeeEmail').value = '';
+    document.getElementById('addAttendeeForm').style.display = 'none';
+
+    // Re-render
+    this.renderAttendees(eventId);
+
+    utils.showToast('Attendee added successfully', 'success');
+  },
+
+  /**
+   * Update attendee status
+   */
+  updateAttendeeStatus(attendeeId, newStatus) {
+    const eventId = document.getElementById('attendeesEventId').value;
+    const attendees = this.getAttendees(eventId);
+
+    const attendee = attendees.find(a => a.id === attendeeId);
+    if (attendee) {
+      attendee.status = newStatus;
+      this.saveAttendees(eventId, attendees);
+      this.renderAttendees(eventId);
+      utils.showToast('Status updated', 'success');
+    }
+  },
+
+  /**
+   * Delete attendee
+   */
+  deleteAttendee(attendeeId) {
+    if (!confirm('Remove this attendee from the list?')) return;
+
+    const eventId = document.getElementById('attendeesEventId').value;
+    let attendees = this.getAttendees(eventId);
+
+    attendees = attendees.filter(a => a.id !== attendeeId);
+    this.saveAttendees(eventId, attendees);
+    this.renderAttendees(eventId);
+
+    utils.showToast('Attendee removed', 'success');
+  },
+
+  /**
+   * Export attendees list to CSV
+   */
+  exportAttendees() {
+    const eventId = document.getElementById('attendeesEventId').value;
+    const attendees = this.getAttendees(eventId);
+
+    if (attendees.length === 0) {
+      utils.showToast('No attendees to export', 'warning');
+      return;
+    }
+
+    const event = STATE.allEvents.find(e => e.id === eventId);
+    const eventName = event ? event.event_name : 'Event';
+
+    const exportData = attendees.map(attendee => ({
+      'Name': attendee.name,
+      'Email': attendee.email || '',
+      'RSVP Status': attendee.status.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase()),
+      'Added On': utils.formatDate(attendee.addedAt)
+    }));
+
+    const filename = `${eventName.replace(/[^a-z0-9]/gi, '_')}_attendees_${new Date().toISOString().split('T')[0]}.csv`;
+    utils.exportToCSV(exportData, filename);
   }
 };
 

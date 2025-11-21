@@ -23,6 +23,9 @@ const dashboardModule = {
       await this.loadActivityFeed();
       await this.loadNotifications();
 
+      // Load charts
+      await this.loadCharts();
+
       console.log('✅ Dashboard data loaded');
 
     } catch (error) {
@@ -565,7 +568,7 @@ const dashboardModule = {
       utils.showToast('No winners data to export', 'warning');
       return;
     }
-    
+
     const exportData = STATE.allWinners.map(winner => ({
       'Winner Name': winner.winner_name || '',
       'Award Category': winner.awards?.award_category || '',
@@ -574,9 +577,281 @@ const dashboardModule = {
       'Videos': winner.winner_media?.filter(m => m.media_type === MEDIA_TYPES.VIDEO).length || 0,
       'Created At': utils.formatDate(winner.created_at)
     }));
-    
+
     const filename = `winners_export_${new Date().toISOString().split('T')[0]}.csv`;
     utils.exportToCSV(exportData, filename);
+  },
+
+  /* ==================================================== */
+  /* VISUAL CHARTS */
+  /* ==================================================== */
+
+  /**
+   * Load all dashboard charts
+   */
+  async loadCharts() {
+    try {
+      await Promise.all([
+        this.renderWinnersYearChart(),
+        this.renderCategoryChart(),
+        this.renderSectorChart(),
+        this.renderRegionChart()
+      ]);
+    } catch (error) {
+      console.error('Error loading charts:', error);
+    }
+  },
+
+  /**
+   * Refresh all charts
+   */
+  async refreshCharts() {
+    await this.loadCharts();
+    utils.showToast('Charts refreshed', 'success');
+  },
+
+  /**
+   * Render Winners by Year Chart (Line Chart)
+   */
+  async renderWinnersYearChart() {
+    const container = document.getElementById('winnersYearChart');
+
+    if (!STATE.allWinners || STATE.allWinners.length === 0) {
+      container.innerHTML = `
+        <div class="chart-empty">
+          <i class="bi bi-bar-chart"></i>
+          <div>No winner data available</div>
+        </div>
+      `;
+      return;
+    }
+
+    // Group winners by year
+    const yearCounts = {};
+    STATE.allWinners.forEach(winner => {
+      const year = winner.awards?.year || new Date(winner.created_at).getFullYear();
+      yearCounts[year] = (yearCounts[year] || 0) + 1;
+    });
+
+    // Sort years
+    const years = Object.keys(yearCounts).sort();
+    if (years.length === 0) {
+      container.innerHTML = `<div class="chart-empty"><i class="bi bi-bar-chart"></i><div>No data to display</div></div>`;
+      return;
+    }
+
+    const data = years.map(year => ({ label: year, value: yearCounts[year] }));
+    this.renderLineChart(container, data, 'Winners', '#0d6efd');
+  },
+
+  /**
+   * Render Category Distribution Chart (Bar Chart)
+   */
+  async renderCategoryChart() {
+    const container = document.getElementById('categoryChart');
+
+    if (!STATE.allAwards || STATE.allAwards.length === 0) {
+      container.innerHTML = `
+        <div class="chart-empty">
+          <i class="bi bi-pie-chart"></i>
+          <div>No award data available</div>
+        </div>
+      `;
+      return;
+    }
+
+    // Count by category
+    const categoryCounts = {};
+    STATE.allAwards.forEach(award => {
+      const category = award.award_category || 'Unknown';
+      categoryCounts[category] = (categoryCounts[category] || 0) + 1;
+    });
+
+    // Sort by count and take top 8
+    const sortedCategories = Object.entries(categoryCounts)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 8);
+
+    if (sortedCategories.length === 0) {
+      container.innerHTML = `<div class="chart-empty"><i class="bi bi-pie-chart"></i><div>No data to display</div></div>`;
+      return;
+    }
+
+    const data = sortedCategories.map(([label, value]) => ({
+      label: label.length > 20 ? label.substring(0, 20) + '...' : label,
+      value
+    }));
+    this.renderBarChart(container, data, 'Awards', '#28a745');
+  },
+
+  /**
+   * Render Sector Distribution Chart (Bar Chart)
+   */
+  async renderSectorChart() {
+    const container = document.getElementById('sectorChart');
+
+    if (!STATE.allAwards || STATE.allAwards.length === 0) {
+      container.innerHTML = `
+        <div class="chart-empty">
+          <i class="bi bi-building"></i>
+          <div>No sector data available</div>
+        </div>
+      `;
+      return;
+    }
+
+    // Count by sector
+    const sectorCounts = {};
+    STATE.allAwards.forEach(award => {
+      const sector = award.sector || 'Unknown';
+      sectorCounts[sector] = (sectorCounts[sector] || 0) + 1;
+    });
+
+    // Sort by count and take top 8
+    const sortedSectors = Object.entries(sectorCounts)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 8);
+
+    if (sortedSectors.length === 0) {
+      container.innerHTML = `<div class="chart-empty"><i class="bi bi-building"></i><div>No data to display</div></div>`;
+      return;
+    }
+
+    const data = sortedSectors.map(([label, value]) => ({
+      label: label.length > 20 ? label.substring(0, 20) + '...' : label,
+      value
+    }));
+    this.renderBarChart(container, data, 'Awards', '#17a2b8');
+  },
+
+  /**
+   * Render Region Distribution Chart (Bar Chart)
+   */
+  async renderRegionChart() {
+    const container = document.getElementById('regionChart');
+
+    if (!STATE.allAwards || STATE.allAwards.length === 0) {
+      container.innerHTML = `
+        <div class="chart-empty">
+          <i class="bi bi-geo-alt"></i>
+          <div>No region data available</div>
+        </div>
+      `;
+      return;
+    }
+
+    // Count by region
+    const regionCounts = {};
+    STATE.allAwards.forEach(award => {
+      const region = award.region || 'Unknown';
+      regionCounts[region] = (regionCounts[region] || 0) + 1;
+    });
+
+    // Sort by count
+    const sortedRegions = Object.entries(regionCounts)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 8);
+
+    if (sortedRegions.length === 0) {
+      container.innerHTML = `<div class="chart-empty"><i class="bi bi-geo-alt"></i><div>No data to display</div></div>`;
+      return;
+    }
+
+    const data = sortedRegions.map(([label, value]) => ({ label, value }));
+    this.renderBarChart(container, data, 'Awards', '#ffc107');
+  },
+
+  /**
+   * Render a line chart using SVG
+   */
+  renderLineChart(container, data, label, color) {
+    const width = container.offsetWidth;
+    const height = 260;
+    const padding = { top: 20, right: 20, bottom: 40, left: 50 };
+    const chartWidth = width - padding.left - padding.right;
+    const chartHeight = height - padding.top - padding.bottom;
+
+    const maxValue = Math.max(...data.map(d => d.value));
+    const minValue = 0;
+    const valueRange = maxValue - minValue || 1;
+
+    // Create SVG
+    let svg = `<svg class="chart-svg" width="${width}" height="${height}" xmlns="http://www.w3.org/2000/svg">`;
+
+    // Grid lines
+    for (let i = 0; i <= 5; i++) {
+      const y = padding.top + (chartHeight / 5) * i;
+      svg += `<line x1="${padding.left}" y1="${y}" x2="${width - padding.right}" y2="${y}" class="chart-grid-line"/>`;
+      const value = Math.round(maxValue - (maxValue / 5) * i);
+      svg += `<text x="${padding.left - 10}" y="${y + 4}" text-anchor="end" class="chart-axis-label">${value}</text>`;
+    }
+
+    // X-axis
+    svg += `<line x1="${padding.left}" y1="${height - padding.bottom}" x2="${width - padding.right}" y2="${height - padding.bottom}" class="chart-axis-line"/>`;
+
+    // Y-axis
+    svg += `<line x1="${padding.left}" y1="${padding.top}" x2="${padding.left}" y2="${height - padding.bottom}" class="chart-axis-line"/>`;
+
+    // Plot line
+    const points = data.map((d, i) => {
+      const x = padding.left + (chartWidth / (data.length - 1 || 1)) * i;
+      const y = height - padding.bottom - ((d.value - minValue) / valueRange) * chartHeight;
+      return `${x},${y}`;
+    }).join(' ');
+
+    svg += `<polyline points="${points}" class="chart-line" stroke="${color}" fill="none"/>`;
+
+    // Plot dots
+    data.forEach((d, i) => {
+      const x = padding.left + (chartWidth / (data.length - 1 || 1)) * i;
+      const y = height - padding.bottom - ((d.value - minValue) / valueRange) * chartHeight;
+      svg += `<circle cx="${x}" cy="${y}" r="4" fill="${color}" class="chart-dot">
+        <title>${d.label}: ${d.value} ${label}</title>
+      </circle>`;
+
+      // X-axis labels
+      svg += `<text x="${x}" y="${height - padding.bottom + 20}" text-anchor="middle" class="chart-axis-label">${d.label}</text>`;
+    });
+
+    svg += `</svg>`;
+    container.innerHTML = svg;
+  },
+
+  /**
+   * Render a horizontal bar chart using SVG
+   */
+  renderBarChart(container, data, label, color) {
+    const width = container.offsetWidth;
+    const height = 260;
+    const padding = { top: 10, right: 40, bottom: 10, left: 120 };
+    const chartWidth = width - padding.left - padding.right;
+    const chartHeight = height - padding.top - padding.bottom;
+    const barHeight = chartHeight / data.length - 10;
+
+    const maxValue = Math.max(...data.map(d => d.value));
+
+    // Create SVG
+    let svg = `<svg class="chart-svg" width="${width}" height="${height}" xmlns="http://www.w3.org/2000/svg">`;
+
+    // Render bars
+    data.forEach((d, i) => {
+      const barWidth = (d.value / maxValue) * chartWidth;
+      const y = padding.top + i * (chartHeight / data.length);
+
+      // Bar
+      svg += `<rect x="${padding.left}" y="${y}" width="${barWidth}" height="${barHeight}" fill="${color}" class="chart-bar" opacity="0.8">
+        <title>${d.label}: ${d.value} ${label}</title>
+      </rect>`;
+
+      // Label
+      svg += `<text x="${padding.left - 10}" y="${y + barHeight / 2 + 4}" text-anchor="end" class="chart-axis-label" font-size="11px">${d.label}</text>`;
+
+      // Value
+      svg += `<text x="${padding.left + barWidth + 5}" y="${y + barHeight / 2 + 4}" class="chart-axis-label" font-weight="600">${d.value}</text>`;
+    });
+
+    svg += `</svg>`;
+    container.innerHTML = svg;
   }
 };
 

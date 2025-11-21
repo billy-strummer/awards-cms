@@ -332,14 +332,28 @@ document.addEventListener('DOMContentLoaded', function() {
   });
   
   // ==========================================
-  // STEP 11: Tooltips Initialization
+  // STEP 11: Marketing Tab Event Listener
+  // ==========================================
+  // Load marketing data when marketing tab is clicked
+  const marketingTab = document.getElementById('marketing-tab');
+  if (marketingTab) {
+    marketingTab.addEventListener('shown.bs.tab', () => {
+      console.log('📢 Marketing tab opened');
+      if (typeof marketingModule !== 'undefined') {
+        marketingModule.loadAllData();
+      }
+    });
+  }
+
+  // ==========================================
+  // STEP 12: Tooltips Initialization
   // ==========================================
   // Initialize Bootstrap tooltips
   const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
   tooltipTriggerList.map(function (tooltipTriggerEl) {
     return new bootstrap.Tooltip(tooltipTriggerEl);
   });
-  
+
   // ==========================================
   // INITIALIZATION COMPLETE
   // ==========================================

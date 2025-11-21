@@ -140,6 +140,11 @@
         </button>
       </li>
       <li class="nav-item" role="presentation">
+        <button class="nav-link" id="marketing-tab" data-bs-toggle="tab" data-bs-target="#marketing" type="button" role="tab">
+          <i class="bi bi-megaphone me-2"></i>Marketing
+        </button>
+      </li>
+      <li class="nav-item" role="presentation">
         <button class="nav-link" id="settings-tab" data-bs-toggle="tab" data-bs-target="#settings" type="button" role="tab">
           <i class="bi bi-gear me-2"></i>Settings & Backup
         </button>
@@ -907,6 +912,120 @@
                 <i class="bi bi-file-earmark-spreadsheet me-2"></i>Export Winners (CSV)
               </button>
             </div>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- ==================================================== -->
+      <!-- MARKETING TAB -->
+      <!-- ==================================================== -->
+      <div class="tab-pane fade" id="marketing" role="tabpanel">
+        <div class="container-fluid">
+
+          <!-- Page Header -->
+          <div class="section-header">
+            <h1 class="section-title">
+              <i class="bi bi-megaphone me-2"></i>Marketing & Advertising
+            </h1>
+            <p class="section-subtitle">Manage banners, sponsors, campaigns and promotional content</p>
+          </div>
+
+          <!-- Marketing Sub-Navigation -->
+          <ul class="nav nav-pills mb-4" id="marketingSubTabs" role="tablist">
+            <li class="nav-item" role="presentation">
+              <button class="nav-link active" id="banners-subtab" data-bs-toggle="pill" data-bs-target="#banners-content" type="button" role="tab">
+                <i class="bi bi-file-image me-2"></i>Banners
+              </button>
+            </li>
+            <li class="nav-item" role="presentation">
+              <button class="nav-link" id="sponsors-subtab" data-bs-toggle="pill" data-bs-target="#sponsors-content" type="button" role="tab">
+                <i class="bi bi-award me-2"></i>Sponsors
+              </button>
+            </li>
+            <li class="nav-item" role="presentation">
+              <button class="nav-link" id="social-subtab" data-bs-toggle="pill" data-bs-target="#social-content" type="button" role="tab">
+                <i class="bi bi-share me-2"></i>Social Media
+              </button>
+            </li>
+            <li class="nav-item" role="presentation">
+              <button class="nav-link" id="email-templates-subtab" data-bs-toggle="pill" data-bs-target="#email-templates-content" type="button" role="tab">
+                <i class="bi bi-envelope me-2"></i>Email Templates
+              </button>
+            </li>
+          </ul>
+
+          <!-- Marketing Sub-Tab Content -->
+          <div class="tab-content" id="marketingSubTabContent">
+
+            <!-- Banners Sub-Tab -->
+            <div class="tab-pane fade show active" id="banners-content" role="tabpanel">
+              <div class="d-flex justify-content-between align-items-center mb-4">
+                <h4><i class="bi bi-file-image me-2"></i>Website Banners</h4>
+                <button class="btn btn-primary" onclick="marketingModule.openAddBannerModal()">
+                  <i class="bi bi-plus-lg me-2"></i>Add Banner
+                </button>
+              </div>
+
+              <div id="bannersGrid">
+                <div class="text-center py-5 text-muted">
+                  <i class="bi bi-hourglass-split display-4 d-block mb-2 opacity-25"></i>
+                  Loading banners...
+                </div>
+              </div>
+            </div>
+
+            <!-- Sponsors Sub-Tab -->
+            <div class="tab-pane fade" id="sponsors-content" role="tabpanel">
+              <div class="d-flex justify-content-between align-items-center mb-4">
+                <h4><i class="bi bi-award me-2"></i>Sponsors & Partners</h4>
+                <button class="btn btn-primary" onclick="marketingModule.openAddSponsorModal()">
+                  <i class="bi bi-plus-lg me-2"></i>Add Sponsor
+                </button>
+              </div>
+
+              <div id="sponsorsGrid">
+                <div class="text-center py-5 text-muted">
+                  <i class="bi bi-hourglass-split display-4 d-block mb-2 opacity-25"></i>
+                  Loading sponsors...
+                </div>
+              </div>
+            </div>
+
+            <!-- Social Media Sub-Tab -->
+            <div class="tab-pane fade" id="social-content" role="tabpanel">
+              <div class="d-flex justify-content-between align-items-center mb-4">
+                <h4><i class="bi bi-share me-2"></i>Social Media Campaigns</h4>
+                <button class="btn btn-primary" onclick="marketingModule.openAddCampaignModal()">
+                  <i class="bi bi-plus-lg me-2"></i>New Campaign
+                </button>
+              </div>
+
+              <div id="campaignsGrid">
+                <div class="text-center py-5 text-muted">
+                  <i class="bi bi-hourglass-split display-4 d-block mb-2 opacity-25"></i>
+                  Loading campaigns...
+                </div>
+              </div>
+            </div>
+
+            <!-- Email Templates Sub-Tab -->
+            <div class="tab-pane fade" id="email-templates-content" role="tabpanel">
+              <div class="d-flex justify-content-between align-items-center mb-4">
+                <h4><i class="bi bi-envelope me-2"></i>Email Templates</h4>
+                <button class="btn btn-primary" onclick="marketingModule.openAddEmailTemplateModal()">
+                  <i class="bi bi-plus-lg me-2"></i>New Template
+                </button>
+              </div>
+
+              <div id="emailTemplatesGrid">
+                <div class="text-center py-5 text-muted">
+                  <i class="bi bi-hourglass-split display-4 d-block mb-2 opacity-25"></i>
+                  Loading email templates...
+                </div>
+              </div>
+            </div>
+
           </div>
 
         </div>
@@ -2700,6 +2819,7 @@ in recognition of excellence
   <script src="events.js"></script>
   <script src="assignments.js"></script>
   <script src="dashboard.js"></script>
+  <script src="marketing.js"></script>
   <script src="settings.js"></script>
   <script src="app.js"></script>
 

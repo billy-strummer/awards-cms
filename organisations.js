@@ -199,8 +199,6 @@ const orgsModule = {
         .from('award_assignments')
         .select(`
           status,
-          package_type,
-          enhanced_profile,
           awards!award_assignments_award_id_fkey (*)
         `)
         .eq('organisation_id', orgId);
@@ -213,8 +211,8 @@ const orgsModule = {
         .map(a => ({
           ...a.awards,
           status: a.status, // Use assignment status (nominated/shortlisted/winner)
-          package_type: a.package_type || 'bronze',
-          enhanced_profile: a.enhanced_profile || false
+          package_type: 'bronze', // Default package type
+          enhanced_profile: false // Default enhanced profile
         }))
         .sort((a, b) => (b.year || 0) - (a.year || 0));
 

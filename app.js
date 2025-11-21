@@ -356,6 +356,17 @@ document.addEventListener('DOMContentLoaded', function() {
     });
   }
 
+  // Load payments data when payments tab is clicked
+  const paymentsTab = document.getElementById('payments-tab');
+  if (paymentsTab) {
+    paymentsTab.addEventListener('shown.bs.tab', () => {
+      console.log('💳 Payments tab opened');
+      if (typeof paymentsModule !== 'undefined') {
+        paymentsModule.loadAllData();
+      }
+    });
+  }
+
   // ==========================================
   // STEP 12: Tooltips Initialization
   // ==========================================

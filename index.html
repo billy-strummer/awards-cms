@@ -145,6 +145,11 @@
         </button>
       </li>
       <li class="nav-item" role="presentation">
+        <button class="nav-link" id="payments-tab" data-bs-toggle="tab" data-bs-target="#payments" type="button" role="tab">
+          <i class="bi bi-credit-card me-2"></i>Payments
+        </button>
+      </li>
+      <li class="nav-item" role="presentation">
         <button class="nav-link" id="settings-tab" data-bs-toggle="tab" data-bs-target="#settings" type="button" role="tab">
           <i class="bi bi-gear me-2"></i>Settings & Backup
         </button>
@@ -1196,6 +1201,290 @@
                 </div>
 
               </div>
+            </div>
+
+          </div>
+
+        </div>
+      </div>
+
+      <!-- ==================================================== -->
+      <!-- PAYMENTS TAB -->
+      <!-- ==================================================== -->
+      <div class="tab-pane fade" id="payments" role="tabpanel">
+        <div class="container-fluid">
+
+          <!-- Page Header -->
+          <div class="section-header">
+            <h1 class="section-title">
+              <i class="bi bi-credit-card me-2"></i>Payments & Invoicing
+            </h1>
+            <p class="section-subtitle">Manage invoices, payments, and financial tracking</p>
+          </div>
+
+          <!-- Sub-navigation -->
+          <ul class="nav nav-pills mb-4" id="paymentsSubTabs" role="tablist">
+            <li class="nav-item" role="presentation">
+              <button class="nav-link active" id="invoices-subtab" data-bs-toggle="pill" data-bs-target="#invoices-content" type="button" role="tab">
+                <i class="bi bi-file-earmark-text me-2"></i>Invoices
+              </button>
+            </li>
+            <li class="nav-item" role="presentation">
+              <button class="nav-link" id="payments-list-subtab" data-bs-toggle="pill" data-bs-target="#payments-list-content" type="button" role="tab">
+                <i class="bi bi-cash-coin me-2"></i>Payments
+              </button>
+            </li>
+            <li class="nav-item" role="presentation">
+              <button class="nav-link" id="financial-reports-subtab" data-bs-toggle="pill" data-bs-target="#financial-reports-content" type="button" role="tab">
+                <i class="bi bi-graph-up me-2"></i>Financial Reports
+              </button>
+            </li>
+          </ul>
+
+          <!-- Sub-tab Content -->
+          <div class="tab-content" id="paymentsSubTabContent">
+
+            <!-- Invoices Sub-Tab -->
+            <div class="tab-pane fade show active" id="invoices-content" role="tabpanel">
+
+              <!-- Quick Stats -->
+              <div class="row g-3 mb-4">
+                <div class="col-md-3">
+                  <div class="content-card text-center">
+                    <i class="bi bi-file-earmark-text text-primary fs-1 mb-2"></i>
+                    <div class="fs-2 fw-bold" id="totalInvoicesCount">0</div>
+                    <div class="text-muted small">Total Invoices</div>
+                  </div>
+                </div>
+                <div class="col-md-3">
+                  <div class="content-card text-center">
+                    <i class="bi bi-check-circle text-success fs-1 mb-2"></i>
+                    <div class="fs-2 fw-bold" id="paidInvoicesCount">0</div>
+                    <div class="text-muted small">Paid Invoices</div>
+                  </div>
+                </div>
+                <div class="col-md-3">
+                  <div class="content-card text-center">
+                    <i class="bi bi-exclamation-triangle text-warning fs-1 mb-2"></i>
+                    <div class="fs-2 fw-bold" id="overdueInvoicesCount">0</div>
+                    <div class="text-muted small">Overdue Invoices</div>
+                  </div>
+                </div>
+                <div class="col-md-3">
+                  <div class="content-card text-center">
+                    <i class="bi bi-currency-pound text-info fs-1 mb-2"></i>
+                    <div class="fs-2 fw-bold" id="totalOutstandingAmount">£0</div>
+                    <div class="text-muted small">Outstanding</div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Filters & Actions -->
+              <div class="content-card mb-4">
+                <div class="row g-3 align-items-end">
+                  <div class="col-md-3">
+                    <label class="form-label small fw-bold">Status</label>
+                    <select class="form-select form-select-sm" id="invoiceStatusFilter">
+                      <option value="">All Statuses</option>
+                      <option value="draft">Draft</option>
+                      <option value="sent">Sent</option>
+                      <option value="viewed">Viewed</option>
+                      <option value="paid">Paid</option>
+                      <option value="partially_paid">Partially Paid</option>
+                      <option value="overdue">Overdue</option>
+                      <option value="cancelled">Cancelled</option>
+                    </select>
+                  </div>
+                  <div class="col-md-3">
+                    <label class="form-label small fw-bold">Organisation</label>
+                    <select class="form-select form-select-sm" id="invoiceOrgFilter">
+                      <option value="">All Organisations</option>
+                    </select>
+                  </div>
+                  <div class="col-md-3">
+                    <label class="form-label small fw-bold">Date Range</label>
+                    <input type="month" class="form-control form-control-sm" id="invoiceMonthFilter">
+                  </div>
+                  <div class="col-md-3">
+                    <button class="btn btn-primary btn-sm w-100" onclick="paymentsModule.createNewInvoice()">
+                      <i class="bi bi-plus-circle me-1"></i>Create Invoice
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Invoices Table -->
+              <div class="table-container">
+                <div class="table-responsive">
+                  <table class="table table-hover table-striped align-middle">
+                    <thead class="table-light">
+                      <tr>
+                        <th>Invoice #</th>
+                        <th>Organisation</th>
+                        <th>Date</th>
+                        <th>Due Date</th>
+                        <th>Type</th>
+                        <th>Amount</th>
+                        <th>Paid</th>
+                        <th>Balance</th>
+                        <th>Status</th>
+                        <th>Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody id="invoicesTableBody">
+                      <tr>
+                        <td colspan="10" class="text-center py-5 text-muted">
+                          <i class="bi bi-hourglass-split display-4 d-block mb-2 opacity-25"></i>
+                          Loading invoices...
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+            </div>
+
+            <!-- Payments List Sub-Tab -->
+            <div class="tab-pane fade" id="payments-list-content" role="tabpanel">
+
+              <!-- Quick Stats -->
+              <div class="row g-3 mb-4">
+                <div class="col-md-4">
+                  <div class="content-card text-center">
+                    <i class="bi bi-cash-coin text-success fs-1 mb-2"></i>
+                    <div class="fs-2 fw-bold" id="totalPaymentsCount">0</div>
+                    <div class="text-muted small">Total Payments</div>
+                  </div>
+                </div>
+                <div class="col-md-4">
+                  <div class="content-card text-center">
+                    <i class="bi bi-currency-pound text-primary fs-1 mb-2"></i>
+                    <div class="fs-2 fw-bold" id="totalPaymentsAmount">£0</div>
+                    <div class="text-muted small">Total Received</div>
+                  </div>
+                </div>
+                <div class="col-md-4">
+                  <div class="content-card text-center">
+                    <i class="bi bi-calendar-month text-info fs-1 mb-2"></i>
+                    <div class="fs-2 fw-bold" id="monthlyPaymentsAmount">£0</div>
+                    <div class="text-muted small">This Month</div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Filters -->
+              <div class="content-card mb-4">
+                <div class="row g-3 align-items-end">
+                  <div class="col-md-3">
+                    <label class="form-label small fw-bold">Payment Method</label>
+                    <select class="form-select form-select-sm" id="paymentMethodFilter">
+                      <option value="">All Methods</option>
+                      <option value="bank_transfer">Bank Transfer</option>
+                      <option value="card">Card</option>
+                      <option value="paypal">PayPal</option>
+                      <option value="stripe">Stripe</option>
+                      <option value="cash">Cash</option>
+                      <option value="cheque">Cheque</option>
+                      <option value="other">Other</option>
+                    </select>
+                  </div>
+                  <div class="col-md-3">
+                    <label class="form-label small fw-bold">Status</label>
+                    <select class="form-select form-select-sm" id="paymentStatusFilter">
+                      <option value="">All Statuses</option>
+                      <option value="pending">Pending</option>
+                      <option value="completed">Completed</option>
+                      <option value="failed">Failed</option>
+                      <option value="refunded">Refunded</option>
+                    </select>
+                  </div>
+                  <div class="col-md-3">
+                    <label class="form-label small fw-bold">Date Range</label>
+                    <input type="month" class="form-control form-control-sm" id="paymentMonthFilter">
+                  </div>
+                  <div class="col-md-3">
+                    <button class="btn btn-success btn-sm w-100" onclick="paymentsModule.recordNewPayment()">
+                      <i class="bi bi-plus-circle me-1"></i>Record Payment
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Payments Table -->
+              <div class="table-container">
+                <div class="table-responsive">
+                  <table class="table table-hover table-striped align-middle">
+                    <thead class="table-light">
+                      <tr>
+                        <th>Reference</th>
+                        <th>Date</th>
+                        <th>Organisation</th>
+                        <th>Invoice</th>
+                        <th>Method</th>
+                        <th>Amount</th>
+                        <th>Status</th>
+                        <th>Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody id="paymentsTableBody">
+                      <tr>
+                        <td colspan="8" class="text-center py-5 text-muted">
+                          <i class="bi bi-hourglass-split display-4 d-block mb-2 opacity-25"></i>
+                          Loading payments...
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+            </div>
+
+            <!-- Financial Reports Sub-Tab -->
+            <div class="tab-pane fade" id="financial-reports-content" role="tabpanel">
+
+              <!-- Report Options -->
+              <div class="content-card mb-4">
+                <h5 class="mb-3"><i class="bi bi-graph-up me-2"></i>Generate Financial Reports</h5>
+                <div class="row g-3">
+                  <div class="col-md-3">
+                    <label class="form-label small fw-bold">Report Type</label>
+                    <select class="form-select" id="reportType">
+                      <option value="revenue">Revenue Summary</option>
+                      <option value="outstanding">Outstanding Invoices</option>
+                      <option value="payments">Payment History</option>
+                      <option value="by_org">By Organisation</option>
+                      <option value="by_package">By Package Type</option>
+                      <option value="by_event">By Event</option>
+                    </select>
+                  </div>
+                  <div class="col-md-3">
+                    <label class="form-label small fw-bold">Start Date</label>
+                    <input type="date" class="form-control" id="reportStartDate">
+                  </div>
+                  <div class="col-md-3">
+                    <label class="form-label small fw-bold">End Date</label>
+                    <input type="date" class="form-control" id="reportEndDate">
+                  </div>
+                  <div class="col-md-3 d-flex align-items-end">
+                    <button class="btn btn-primary w-100" onclick="paymentsModule.generateReport()">
+                      <i class="bi bi-file-earmark-bar-graph me-1"></i>Generate Report
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Report Display Area -->
+              <div class="content-card">
+                <div id="reportDisplayArea">
+                  <div class="text-center py-5 text-muted">
+                    <i class="bi bi-bar-chart display-4 d-block mb-3 opacity-25"></i>
+                    <p>Select report options above and click "Generate Report"</p>
+                  </div>
+                </div>
+              </div>
+
             </div>
 
           </div>
@@ -3334,6 +3623,7 @@ in recognition of excellence
   <script src="dashboard.js"></script>
   <script src="marketing.js"></script>
   <script src="email-builder.js"></script>
+  <script src="payments.js"></script>
   <script src="settings.js"></script>
   <script src="app.js"></script>
 

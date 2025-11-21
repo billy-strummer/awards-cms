@@ -1257,6 +1257,25 @@
                   </div>
                 </div>
 
+                <!-- Award Tags Input -->
+                <div class="mb-3">
+                  <label class="form-label">
+                    Award Tags
+                    <small class="text-muted">(Select awards to tag in this video)</small>
+                  </label>
+                  <div class="input-group mb-2">
+                    <select class="form-select" id="videoAwardTagInput">
+                      <option value="">Select an award...</option>
+                    </select>
+                    <button class="btn btn-outline-secondary" type="button" onclick="mediaGalleryModule.addVideoAwardTag()">
+                      <i class="bi bi-plus-circle me-1"></i>Add Award
+                    </button>
+                  </div>
+                  <div id="videoAwardTagsContainer" class="d-flex flex-wrap gap-2">
+                    <!-- Award tags will be added here dynamically -->
+                  </div>
+                </div>
+
                 <!-- Event Association (read-only) -->
                 <div class="mb-3">
                   <label class="form-label">Event</label>

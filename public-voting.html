@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Vote Now - British Trade Awards</title>
+
+  <!-- Bootstrap 5 -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
+
+  <!-- Supabase -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+  <style>
+    body {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      padding: 40px 0;
+    }
+
+    .voting-container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 0 20px;
+    }
+
+    .voting-header {
+      background: white;
+      border-radius: 16px;
+      padding: 40px;
+      margin-bottom: 30px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+      text-align: center;
+    }
+
+    .voting-header h1 {
+      font-size: 3rem;
+      font-weight: 700;
+      margin-bottom: 10px;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .entry-card {
+      background: white;
+      border-radius: 16px;
+      padding: 30px;
+      margin-bottom: 20px;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+
+    .entry-card:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+    }
+
+    .entry-card.voted {
+      border: 2px solid #28a745;
+      background: rgba(40, 167, 69, 0.05);
+    }
+
+    .company-logo {
+      width: 80px;
+      height: 80px;
+      object-fit: contain;
+      border-radius: 8px;
+    }
+
+    .vote-button {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      border: none;
+      color: white;
+      padding: 12px 30px;
+      font-size: 1.1rem;
+      font-weight: 600;
+      border-radius: 8px;
+      transition: transform 0.2s;
+    }
+
+    .vote-button:hover {
+      transform: scale(1.05);
+      box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+    }
+
+    .vote-button:disabled {
+      background: #6c757d;
+      cursor: not-allowed;
+    }
+
+    .vote-count {
+      background: #f8f9fa;
+      padding: 8px 16px;
+      border-radius: 20px;
+      font-weight: 600;
+    }
+
+    .award-filter {
+      background: white;
+      border-radius: 12px;
+      padding: 20px;
+      margin-bottom: 30px;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+    }
+
+    .verification-modal {
+      background: white;
+      border-radius: 16px;
+      padding: 40px;
+      max-width: 500px;
+      margin: 100px auto;
+      box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+    }
+
+    .success-checkmark {
+      width: 80px;
+      height: 80px;
+      margin: 0 auto 20px;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="voting-container">
+
+    <!-- Header -->
+    <div class="voting-header">
+      <h1>🏆 Vote Now</h1>
+      <p class="lead mb-0">British Trade Awards 2025 - People's Choice</p>
+      <p class="text-muted">Cast your vote for your favorite nominees</p>
+    </div>
+
+    <!-- Award Filter -->
+    <div class="award-filter">
+      <div class="row align-items-center">
+        <div class="col-md-8">
+          <label class="form-label fw-bold">Select Award Category</label>
+          <select class="form-select form-select-lg" id="awardFilter" onchange="votingSystem.filterByAward()">
+            <option value="">All Categories</option>
+          </select>
+        </div>
+        <div class="col-md-4 text-end">
+          <div class="vote-count">
+            <i class="bi bi-hand-thumbs-up me-2"></i>
+            <span id="totalVotes">0</span> votes cast
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Entries Grid -->
+    <div id="entriesGrid">
+      <div class="text-center py-5">
+        <div class="spinner-border text-white" role="status">
+          <span class="visually-hidden">Loading...</span>
+        </div>
+        <p class="text-white mt-3">Loading nominees...</p>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Verification Modal -->
+  <div id="verificationModal" style="display: none;">
+    <div class="verification-modal">
+      <h3 class="text-center mb-4">Verify Your Email</h3>
+      <p class="text-center text-muted">Enter your email to verify your vote</p>
+
+      <form id="verificationForm">
+        <div class="mb-3">
+          <label class="form-label">Email Address</label>
+          <input type="email" class="form-control" id="voterEmail" required placeholder="your@email.com">
+        </div>
+
+        <div class="mb-3">
+          <label class="form-label">Your Name (Optional)</label>
+          <input type="text" class="form-control" id="voterName" placeholder="John Doe">
+        </div>
+
+        <div class="d-grid gap-2">
+          <button type="submit" class="btn btn-primary btn-lg">
+            <i class="bi bi-envelope-check me-2"></i>Verify & Vote
+          </button>
+          <button type="button" class="btn btn-outline-secondary" onclick="votingSystem.closeVerificationModal()">
+            Cancel
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Success Modal -->
+  <div id="successModal" style="display: none;">
+    <div class="verification-modal text-center">
+      <div class="success-checkmark">
+        <i class="bi bi-check-circle-fill text-success" style="font-size: 80px;"></i>
+      </div>
+      <h3>Vote Recorded!</h3>
+      <p class="text-muted">Thank you for your vote. You should receive a confirmation email shortly.</p>
+      <button class="btn btn-primary" onclick="votingSystem.closeSuccessModal()">
+        Continue Voting
+      </button>
+    </div>
+  </div>
+
+  <!-- Bootstrap JS -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+  <!-- Voting System Logic -->
+  <script src="public-voting.js"></script>
+
+</body>
+</html>

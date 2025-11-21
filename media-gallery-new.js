@@ -360,7 +360,7 @@ const mediaGalleryModule = {
   /**
    * Open Add Video Modal
    */
-  openAddVideoModal() {
+  async openAddVideoModal() {
     // Reset form and tags
     document.getElementById('addVideoForm').reset();
     this.videoTags = [];
@@ -376,18 +376,36 @@ const mediaGalleryModule = {
     document.getElementById('sourceTypeYouTube').checked = true;
     this.toggleVideoSourceFields('youtube');
 
-    // Setup Enter key handler for tag input
-    const tagInput = document.getElementById('videoTagInput');
-    tagInput.onkeydown = (e) => {
-      if (e.key === 'Enter' || e.key === ',') {
-        e.preventDefault();
-        this.addVideoTag();
-      }
-    };
+    // Load companies for tagging dropdown
+    await this.loadCompaniesForVideoTags();
 
     // Show modal
     const modal = new bootstrap.Modal(document.getElementById('addVideoModal'));
     modal.show();
+  },
+
+  /**
+   * Load companies into video tag dropdown
+   */
+  async loadCompaniesForVideoTags() {
+    try {
+      const { data: companies, error } = await STATE.client
+        .from('organisations')
+        .select('id, company_name')
+        .eq('status', 'active')
+        .order('company_name');
+
+      if (error) throw error;
+
+      const select = document.getElementById('videoTagInput');
+      select.innerHTML = '<option value="">Select a company...</option>';
+      (companies || []).forEach(company => {
+        select.innerHTML += `<option value="${company.company_name}">${utils.escapeHtml(company.company_name)}</option>`;
+      });
+    } catch (error) {
+      console.error('Error loading companies for video tags:', error);
+      utils.showToast('Failed to load companies', 'error');
+    }
   },
 
   /**
@@ -411,28 +429,31 @@ const mediaGalleryModule = {
   },
 
   /**
-   * Add a tag to the video
+   * Add a company tag to the video
    */
   addVideoTag() {
-    const input = document.getElementById('videoTagInput');
-    const tag = input.value.trim().replace(',', '');
+    const select = document.getElementById('videoTagInput');
+    const companyName = select.value.trim();
 
-    if (!tag) return;
-
-    // Check if tag already exists
-    if (this.videoTags.includes(tag)) {
-      utils.showToast('Tag already added', 'warning');
+    if (!companyName) {
+      utils.showToast('Please select a company', 'warning');
       return;
     }
 
-    // Add tag to array
-    this.videoTags.push(tag);
+    // Check if company already tagged
+    if (this.videoTags.includes(companyName)) {
+      utils.showToast('Company already tagged', 'warning');
+      return;
+    }
+
+    // Add company name to tags array
+    this.videoTags.push(companyName);
 
     // Render tags
     this.renderVideoTags();
 
-    // Clear input
-    input.value = '';
+    // Reset select to default
+    select.value = '';
   },
 
   /**

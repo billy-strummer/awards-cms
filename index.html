@@ -1039,6 +1039,22 @@
                 <div class="col-md-3 border-end" style="overflow-y: auto;">
                   <div class="p-3">
 
+                    <!-- Template Selector -->
+                    <div class="mb-4">
+                      <h6 class="mb-3"><i class="bi bi-layout-text-window-reverse me-2"></i>Email Template</h6>
+                      <select class="form-select" id="builderTemplateType" onchange="emailBuilder.loadTemplate(this.value)">
+                        <option value="">Blank Canvas</option>
+                        <option value="winner">🏆 Winner Announcement</option>
+                        <option value="nominee">⭐ Nominee Notification</option>
+                        <option value="event-countdown">⏰ Event Countdown</option>
+                        <option value="event-tickets">🎟️ Book Event Tickets</option>
+                        <option value="general">📢 General Announcement</option>
+                      </select>
+                      <small class="text-muted d-block mt-2">Choose a template to auto-populate blocks</small>
+                    </div>
+
+                    <hr>
+
                     <!-- Campaign Settings -->
                     <div class="mb-4">
                       <h6 class="mb-3"><i class="bi bi-gear me-2"></i>Campaign Settings</h6>

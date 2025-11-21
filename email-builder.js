@@ -627,6 +627,184 @@ const emailBuilder = {
   },
 
   /**
+   * Load predefined template
+   */
+  loadTemplate(templateType) {
+    if (!templateType) return;
+
+    // Clear existing blocks
+    this.blocks = [];
+    this.canvas.innerHTML = '';
+
+    // Define template structures
+    const templates = {
+      winner: {
+        name: 'Winner Announcement 2024',
+        subject: '🏆 Congratulations! You\'ve Won {{award_name}}',
+        blocks: ['header', 'hero', 'text', 'company-profile', 'award-list', 'button', 'social-links', 'footer']
+      },
+      nominee: {
+        name: 'Nominee Notification 2024',
+        subject: '⭐ You\'ve Been Nominated for {{award_name}}',
+        blocks: ['header', 'hero', 'text', 'company-profile', 'button', 'divider', 'text', 'social-links', 'footer']
+      },
+      'event-countdown': {
+        name: 'Event Countdown',
+        subject: '⏰ Only {{days_left}} Days Until {{event_name}}!',
+        blocks: ['header', 'hero', 'text', 'text', 'button', 'divider', 'text', 'social-links', 'footer']
+      },
+      'event-tickets': {
+        name: 'Book Event Tickets',
+        subject: '🎟️ Secure Your Spot at {{event_name}}',
+        blocks: ['header', 'hero', 'text', 'button', 'divider', 'text', 'image', 'button', 'social-links', 'footer']
+      },
+      general: {
+        name: 'General Announcement',
+        subject: '📢 Important Update from {{organisation_name}}',
+        blocks: ['header', 'hero', 'text', 'text', 'divider', 'social-links', 'footer']
+      }
+    };
+
+    const template = templates[templateType];
+    if (!template) return;
+
+    // Update campaign settings
+    document.getElementById('builderCampaignName').value = template.name;
+    document.getElementById('builderSubject').value = template.subject;
+
+    // Add blocks based on template
+    template.blocks.forEach(blockType => {
+      this.addBlock(blockType);
+    });
+
+    // Customize content based on template type
+    this.customizeTemplateContent(templateType);
+
+    // Show success message
+    utils.showToast(`${template.name} template loaded!`, 'success');
+  },
+
+  /**
+   * Customize template content based on type
+   */
+  customizeTemplateContent(templateType) {
+    const textBlocks = this.canvas.querySelectorAll('[contenteditable="true"]');
+
+    switch (templateType) {
+      case 'winner':
+        if (textBlocks[0]) textBlocks[0].innerHTML = `
+          <h2 style="color: #1a1a1a; margin: 0 0 10px 0; font-size: 28px; font-weight: bold;">🏆 Congratulations on Your Win!</h2>
+          <p style="color: #666; margin: 0; line-height: 1.6; font-size: 16px;">
+            We are thrilled to announce that <strong>{{company_name}}</strong> has been selected as the winner of <strong>{{award_name}}</strong>!
+            This prestigious recognition celebrates your outstanding achievements and commitment to excellence.
+          </p>
+        `;
+        if (textBlocks[1]) textBlocks[1].innerHTML = `
+          <p style="color: #666; margin: 0; line-height: 1.6; font-size: 16px;">
+            Your success story inspires others and sets a benchmark for excellence in the industry. We look forward to celebrating
+            this momentous achievement with you at our awards ceremony.
+          </p>
+        `;
+        break;
+
+      case 'nominee':
+        if (textBlocks[0]) textBlocks[0].innerHTML = `
+          <h2 style="color: #1a1a1a; margin: 0 0 10px 0; font-size: 28px; font-weight: bold;">⭐ You've Been Nominated!</h2>
+          <p style="color: #666; margin: 0; line-height: 1.6; font-size: 16px;">
+            We're delighted to inform you that <strong>{{company_name}}</strong> has been shortlisted for <strong>{{award_name}}</strong>!
+            Being selected from hundreds of entries is a remarkable achievement in itself.
+          </p>
+        `;
+        if (textBlocks[1]) textBlocks[1].innerHTML = `
+          <p style="color: #666; margin: 0; line-height: 1.6; font-size: 14px;">
+            <strong>What happens next?</strong><br>
+            Our judging panel will now review all nominees. Winners will be announced at the awards ceremony on {{event_date}}.
+            We encourage you to attend this prestigious event to celebrate with fellow nominees and industry leaders.
+          </p>
+        `;
+        break;
+
+      case 'event-countdown':
+        if (textBlocks[0]) textBlocks[0].innerHTML = `
+          <h2 style="color: #1a1a1a; margin: 0 0 10px 0; font-size: 28px; font-weight: bold;">⏰ The Countdown is On!</h2>
+          <p style="color: #666; margin: 0; line-height: 1.6; font-size: 16px;">
+            Only <span style="color: #0d6efd; font-weight: bold; font-size: 20px;">{{days_left}} days</span> until
+            <strong>{{event_name}}</strong>! The excitement is building as we prepare for an unforgettable celebration of excellence.
+          </p>
+        `;
+        if (textBlocks[1]) textBlocks[1].innerHTML = `
+          <p style="color: #666; margin: 0; line-height: 1.6; font-size: 16px;">
+            <strong>Event Details:</strong><br>
+            📅 Date: {{event_date}}<br>
+            📍 Venue: {{event_venue}}<br>
+            🕐 Time: {{event_time}}<br><br>
+            Don't miss this opportunity to network with industry leaders and celebrate outstanding achievements!
+          </p>
+        `;
+        break;
+
+      case 'event-tickets':
+        if (textBlocks[0]) textBlocks[0].innerHTML = `
+          <h2 style="color: #1a1a1a; margin: 0 0 10px 0; font-size: 28px; font-weight: bold;">🎟️ Book Your Tickets Now!</h2>
+          <p style="color: #666; margin: 0; line-height: 1.6; font-size: 16px;">
+            Secure your place at <strong>{{event_name}}</strong> - the most prestigious awards ceremony of the year.
+            Join us for an evening of celebration, networking, and recognition of excellence.
+          </p>
+        `;
+        if (textBlocks[1]) textBlocks[1].innerHTML = `
+          <p style="color: #666; margin: 0; line-height: 1.6; font-size: 14px;">
+            <strong>Ticket Options:</strong><br>
+            🥇 VIP Table (10 guests): £{{vip_price}}<br>
+            🥈 Standard Table (8 guests): £{{standard_price}}<br>
+            🎫 Individual Ticket: £{{individual_price}}<br><br>
+            All tickets include welcome drinks, three-course dinner, entertainment, and awards ceremony.
+          </p>
+        `;
+        break;
+
+      case 'general':
+        if (textBlocks[0]) textBlocks[0].innerHTML = `
+          <h2 style="color: #1a1a1a; margin: 0 0 10px 0; font-size: 28px; font-weight: bold;">📢 Important Announcement</h2>
+          <p style="color: #666; margin: 0; line-height: 1.6; font-size: 16px;">
+            We have an important update to share with you regarding {{topic}}. Please take a moment to review the information below.
+          </p>
+        `;
+        if (textBlocks[1]) textBlocks[1].innerHTML = `
+          <p style="color: #666; margin: 0; line-height: 1.6; font-size: 16px;">
+            [Add your announcement details here. You can edit this text by clicking on it.]<br><br>
+            If you have any questions, please don't hesitate to contact our team at {{contact_email}} or call {{contact_phone}}.
+          </p>
+        `;
+        break;
+    }
+
+    // Customize button text based on template
+    const buttons = this.canvas.querySelectorAll('a[style*="background"]');
+    if (buttons.length > 0) {
+      switch (templateType) {
+        case 'winner':
+          buttons[0].textContent = 'View Winner Certificate';
+          break;
+        case 'nominee':
+          buttons[0].textContent = 'Confirm Your Attendance';
+          break;
+        case 'event-countdown':
+          buttons[0].textContent = 'View Event Details';
+          break;
+        case 'event-tickets':
+          buttons[0].textContent = 'Book Tickets Now';
+          if (buttons[1]) buttons[1].textContent = 'View Seating Plan';
+          break;
+        case 'general':
+          // General template doesn't have buttons by default
+          break;
+      }
+    }
+
+    this.updatePreview();
+  },
+
+  /**
    * Set view mode (desktop/mobile)
    */
   setViewMode(mode) {

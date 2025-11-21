@@ -1345,6 +1345,484 @@ const winnersModule = {
 
       img.src = url;
     });
+  },
+
+  /* ==================================================== */
+  /* YEAR COMPARISON */
+  /* ==================================================== */
+
+  /**
+   * State for year comparison
+   */
+  yearComparisonState: {
+    availableYears: [],
+    selectedYears: new Set(),
+    comparisonData: null
+  },
+
+  /**
+   * Open year comparison modal
+   */
+  async openYearComparison() {
+    try {
+      utils.showLoading();
+
+      // Load all winners with awards to get available years
+      const { data: winners, error } = await STATE.client
+        .from('winners')
+        .select(`
+          *,
+          awards!winners_award_id_fkey (*)
+        `)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+
+      // Extract unique years
+      const yearsSet = new Set();
+      winners.forEach(winner => {
+        if (winner.awards?.year) {
+          yearsSet.add(winner.awards.year);
+        }
+      });
+
+      this.yearComparisonState.availableYears = Array.from(yearsSet).sort((a, b) => b - a);
+      this.yearComparisonState.selectedYears.clear();
+
+      // Render year selection checkboxes
+      const container = document.getElementById('yearSelectionCheckboxes');
+      container.innerHTML = this.yearComparisonState.availableYears.map(year => `
+        <div class="col-md-2">
+          <div class="form-check">
+            <input class="form-check-input" type="checkbox" id="year_${year}" value="${year}"
+              onchange="winnersModule.toggleYearSelection('${year}')">
+            <label class="form-check-label" for="year_${year}">
+              ${year}
+            </label>
+          </div>
+        </div>
+      `).join('');
+
+      // Hide results section
+      document.getElementById('yearComparisonResults').classList.add('d-none');
+
+      // Show modal
+      const modal = new bootstrap.Modal(document.getElementById('yearComparisonModal'));
+      modal.show();
+
+    } catch (error) {
+      console.error('Error opening year comparison:', error);
+      utils.showToast('Error loading year comparison: ' + error.message, 'error');
+    } finally {
+      utils.hideLoading();
+    }
+  },
+
+  /**
+   * Toggle year selection
+   */
+  toggleYearSelection(year) {
+    const yearNum = parseInt(year);
+    if (this.yearComparisonState.selectedYears.has(yearNum)) {
+      this.yearComparisonState.selectedYears.delete(yearNum);
+    } else {
+      this.yearComparisonState.selectedYears.add(yearNum);
+    }
+  },
+
+  /**
+   * Run year comparison analysis
+   */
+  async runYearComparison() {
+    if (this.yearComparisonState.selectedYears.size < 2) {
+      utils.showToast('Please select at least 2 years to compare', 'warning');
+      return;
+    }
+
+    try {
+      utils.showLoading();
+
+      const selectedYearsArray = Array.from(this.yearComparisonState.selectedYears).sort();
+
+      // Load winners and awards for selected years
+      const { data: winners, error: winnersError } = await STATE.client
+        .from('winners')
+        .select(`
+          *,
+          awards!winners_award_id_fkey (*)
+        `);
+
+      if (winnersError) throw winnersError;
+
+      // Filter winners for selected years
+      const filteredWinners = winners.filter(w =>
+        this.yearComparisonState.selectedYears.has(w.awards?.year)
+      );
+
+      // Load organisations to get sector information
+      const { data: orgs, error: orgsError } = await STATE.client
+        .from('organisations')
+        .select('*');
+
+      if (orgsError) throw orgsError;
+
+      // Create organisation lookup map
+      const orgMap = new Map(orgs.map(org => [org.id, org]));
+
+      // Perform analysis
+      const analysis = this.analyzeYearData(filteredWinners, selectedYearsArray, orgMap);
+      this.yearComparisonState.comparisonData = analysis;
+
+      // Display results
+      this.displayComparisonResults(analysis);
+
+      // Show results section
+      document.getElementById('yearComparisonResults').classList.remove('d-none');
+
+      utils.showToast('Comparison complete!', 'success');
+
+    } catch (error) {
+      console.error('Error running year comparison:', error);
+      utils.showToast('Error running comparison: ' + error.message, 'error');
+    } finally {
+      utils.hideLoading();
+    }
+  },
+
+  /**
+   * Analyze year data
+   */
+  analyzeYearData(winners, years, orgMap) {
+    const analysis = {
+      years: years,
+      totalWinners: winners.length,
+      winnersByYear: {},
+      returningWinners: [],
+      sectorPerformance: {},
+      categoryDistribution: {}
+    };
+
+    // Count winners by year
+    years.forEach(year => {
+      analysis.winnersByYear[year] = winners.filter(w => w.awards?.year === year).length;
+    });
+
+    // Find returning winners (same winner_name in multiple years)
+    const winnerNameMap = new Map();
+    winners.forEach(winner => {
+      const name = winner.winner_name;
+      if (!winnerNameMap.has(name)) {
+        winnerNameMap.set(name, []);
+      }
+      winnerNameMap.get(name).push({
+        year: winner.awards?.year,
+        award: winner.awards?.award_name || winner.awards?.award_category
+      });
+    });
+
+    // Filter to only returning winners (appeared in 2+ years)
+    winnerNameMap.forEach((records, name) => {
+      const uniqueYears = new Set(records.map(r => r.year));
+      if (uniqueYears.size >= 2) {
+        analysis.returningWinners.push({
+          name: name,
+          years: Array.from(uniqueYears).sort(),
+          count: records.length,
+          awards: records
+        });
+      }
+    });
+
+    // Analyze sector performance
+    const sectorsByYear = {};
+    years.forEach(year => {
+      sectorsByYear[year] = {};
+    });
+
+    winners.forEach(winner => {
+      const year = winner.awards?.year;
+      // Try to find organisation via award relationship
+      const award = winner.awards;
+      if (award?.organisation_id) {
+        const org = orgMap.get(award.organisation_id);
+        const sector = org?.sector || 'Unknown';
+
+        if (!sectorsByYear[year][sector]) {
+          sectorsByYear[year][sector] = 0;
+        }
+        sectorsByYear[year][sector]++;
+
+        if (!analysis.sectorPerformance[sector]) {
+          analysis.sectorPerformance[sector] = {};
+        }
+        if (!analysis.sectorPerformance[sector][year]) {
+          analysis.sectorPerformance[sector][year] = 0;
+        }
+        analysis.sectorPerformance[sector][year]++;
+      }
+    });
+
+    // Analyze category distribution
+    winners.forEach(winner => {
+      const category = winner.awards?.award_category || 'Unknown';
+      const year = winner.awards?.year;
+
+      if (!analysis.categoryDistribution[category]) {
+        analysis.categoryDistribution[category] = {};
+      }
+      if (!analysis.categoryDistribution[category][year]) {
+        analysis.categoryDistribution[category][year] = 0;
+      }
+      analysis.categoryDistribution[category][year]++;
+    });
+
+    return analysis;
+  },
+
+  /**
+   * Display comparison results
+   */
+  displayComparisonResults(analysis) {
+    // Update overview stats
+    document.getElementById('comparisonTotalWinners').textContent = analysis.totalWinners;
+    document.getElementById('comparisonReturningWinners').textContent = analysis.returningWinners.length;
+    document.getElementById('comparisonYearsCount').textContent = analysis.years.length;
+
+    // Render trends by year
+    this.renderTrendsByYear(analysis);
+
+    // Render returning winners
+    this.renderReturningWinners(analysis);
+
+    // Render sector performance
+    this.renderSectorPerformance(analysis);
+
+    // Render category distribution
+    this.renderCategoryDistribution(analysis);
+  },
+
+  /**
+   * Render trends by year with visual bars
+   */
+  renderTrendsByYear(analysis) {
+    const container = document.getElementById('trendsByYear');
+
+    // Find max value for scaling
+    const maxWinners = Math.max(...Object.values(analysis.winnersByYear));
+
+    let html = '<div class="mb-3">';
+
+    analysis.years.forEach(year => {
+      const count = analysis.winnersByYear[year] || 0;
+      const percentage = maxWinners > 0 ? (count / maxWinners) * 100 : 0;
+
+      html += `
+        <div class="mb-3">
+          <div class="d-flex justify-content-between align-items-center mb-1">
+            <strong>${year}</strong>
+            <span class="badge bg-primary">${count} winners</span>
+          </div>
+          <div class="progress" style="height: 25px;">
+            <div class="progress-bar bg-info" role="progressbar" style="width: ${percentage}%"
+              aria-valuenow="${count}" aria-valuemin="0" aria-valuemax="${maxWinners}">
+              ${percentage > 10 ? count : ''}
+            </div>
+          </div>
+        </div>
+      `;
+    });
+
+    html += '</div>';
+    container.innerHTML = html;
+  },
+
+  /**
+   * Render returning winners list
+   */
+  renderReturningWinners(analysis) {
+    const container = document.getElementById('returningWinnersList');
+
+    if (analysis.returningWinners.length === 0) {
+      container.innerHTML = `
+        <div class="alert alert-info">
+          <i class="bi bi-info-circle me-2"></i>
+          No returning winners found across selected years.
+        </div>
+      `;
+      return;
+    }
+
+    // Sort by number of wins (descending)
+    const sorted = analysis.returningWinners.sort((a, b) => b.count - a.count);
+
+    let html = '<div class="table-responsive"><table class="table table-hover"><thead><tr>';
+    html += '<th>Winner Name</th>';
+    html += '<th>Years Won</th>';
+    html += '<th>Total Wins</th>';
+    html += '<th>Awards</th>';
+    html += '</tr></thead><tbody>';
+
+    sorted.forEach(winner => {
+      html += `
+        <tr>
+          <td><strong>${utils.escapeHtml(winner.name)}</strong></td>
+          <td>${winner.years.join(', ')}</td>
+          <td><span class="badge bg-success">${winner.count}</span></td>
+          <td>
+            <ul class="mb-0 small">
+              ${winner.awards.map(a => `<li>${a.year}: ${utils.escapeHtml(a.award || 'N/A')}</li>`).join('')}
+            </ul>
+          </td>
+        </tr>
+      `;
+    });
+
+    html += '</tbody></table></div>';
+    container.innerHTML = html;
+  },
+
+  /**
+   * Render sector performance
+   */
+  renderSectorPerformance(analysis) {
+    const container = document.getElementById('sectorPerformance');
+
+    if (Object.keys(analysis.sectorPerformance).length === 0) {
+      container.innerHTML = `
+        <div class="alert alert-info">
+          <i class="bi bi-info-circle me-2"></i>
+          No sector data available. Ensure organisations are linked to awards.
+        </div>
+      `;
+      return;
+    }
+
+    let html = '<div class="table-responsive"><table class="table table-hover"><thead><tr>';
+    html += '<th>Sector</th>';
+    analysis.years.forEach(year => {
+      html += `<th class="text-center">${year}</th>`;
+    });
+    html += '<th class="text-center">Total</th>';
+    html += '</tr></thead><tbody>';
+
+    Object.keys(analysis.sectorPerformance).sort().forEach(sector => {
+      const sectorData = analysis.sectorPerformance[sector];
+      const total = Object.values(sectorData).reduce((sum, val) => sum + val, 0);
+
+      html += `<tr><td><strong>${utils.escapeHtml(sector)}</strong></td>`;
+      analysis.years.forEach(year => {
+        const count = sectorData[year] || 0;
+        html += `<td class="text-center">${count > 0 ? `<span class="badge bg-info">${count}</span>` : '-'}</td>`;
+      });
+      html += `<td class="text-center"><strong>${total}</strong></td>`;
+      html += '</tr>';
+    });
+
+    html += '</tbody></table></div>';
+    container.innerHTML = html;
+  },
+
+  /**
+   * Render category distribution
+   */
+  renderCategoryDistribution(analysis) {
+    const container = document.getElementById('categoryDistribution');
+
+    if (Object.keys(analysis.categoryDistribution).length === 0) {
+      container.innerHTML = `
+        <div class="alert alert-info">
+          <i class="bi bi-info-circle me-2"></i>
+          No category data available.
+        </div>
+      `;
+      return;
+    }
+
+    let html = '<div class="table-responsive"><table class="table table-hover"><thead><tr>';
+    html += '<th>Award Category</th>';
+    analysis.years.forEach(year => {
+      html += `<th class="text-center">${year}</th>`;
+    });
+    html += '<th class="text-center">Total</th>';
+    html += '</tr></thead><tbody>';
+
+    Object.keys(analysis.categoryDistribution).sort().forEach(category => {
+      const categoryData = analysis.categoryDistribution[category];
+      const total = Object.values(categoryData).reduce((sum, val) => sum + val, 0);
+
+      html += `<tr><td><strong>${utils.escapeHtml(category)}</strong></td>`;
+      analysis.years.forEach(year => {
+        const count = categoryData[year] || 0;
+        html += `<td class="text-center">${count > 0 ? `<span class="badge bg-primary">${count}</span>` : '-'}</td>`;
+      });
+      html += `<td class="text-center"><strong>${total}</strong></td>`;
+      html += '</tr>';
+    });
+
+    html += '</tbody></table></div>';
+    container.innerHTML = html;
+  },
+
+  /**
+   * Export year comparison as CSV
+   */
+  exportYearComparison() {
+    if (!this.yearComparisonState.comparisonData) {
+      utils.showToast('Please run a comparison first', 'warning');
+      return;
+    }
+
+    const analysis = this.yearComparisonState.comparisonData;
+    const exportData = [];
+
+    // Summary
+    exportData.push({
+      'Section': 'Summary',
+      'Metric': 'Total Winners',
+      'Value': analysis.totalWinners
+    });
+    exportData.push({
+      'Section': 'Summary',
+      'Metric': 'Returning Winners',
+      'Value': analysis.returningWinners.length
+    });
+    exportData.push({
+      'Section': 'Summary',
+      'Metric': 'Years Compared',
+      'Value': analysis.years.join(', ')
+    });
+
+    // Blank row
+    exportData.push({});
+
+    // Winners by Year
+    exportData.push({ 'Section': 'Winners by Year', 'Metric': '', 'Value': '' });
+    analysis.years.forEach(year => {
+      exportData.push({
+        'Section': 'Winners by Year',
+        'Metric': `Year ${year}`,
+        'Value': analysis.winnersByYear[year] || 0
+      });
+    });
+
+    // Blank row
+    exportData.push({});
+
+    // Returning Winners
+    if (analysis.returningWinners.length > 0) {
+      exportData.push({ 'Section': 'Returning Winners', 'Metric': '', 'Value': '' });
+      analysis.returningWinners.forEach(winner => {
+        exportData.push({
+          'Section': 'Returning Winners',
+          'Metric': winner.name,
+          'Value': `Won in ${winner.years.join(', ')} (${winner.count} total)`
+        });
+      });
+    }
+
+    const filename = `year_comparison_${analysis.years.join('_')}_${new Date().toISOString().split('T')[0]}.csv`;
+    utils.exportToCSV(exportData, filename);
+    utils.showToast('Report exported successfully!', 'success');
   }
 };
 

@@ -566,6 +566,9 @@
                 <i class="bi bi-list-ul me-2"></i>Winners List
               </h5>
               <div class="d-flex gap-2 align-items-center">
+                <button class="btn btn-info btn-sm" onclick="winnersModule.openYearComparison()">
+                  <i class="bi bi-bar-chart-line me-1"></i>Year Comparison
+                </button>
                 <button class="btn btn-primary btn-sm" onclick="winnersModule.openCertificateGenerator()">
                   <i class="bi bi-award-fill me-1"></i>Generate Certificates & Assets
                 </button>
@@ -1739,6 +1742,131 @@ in recognition of excellence
           </button>
           <button type="button" class="btn btn-primary" onclick="winnersModule.generateAssets()">
             <i class="bi bi-download me-1"></i>Generate & Download
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Year Comparison Modal -->
+  <div class="modal fade" id="yearComparisonModal" tabindex="-1" aria-labelledby="yearComparisonModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-xl">
+      <div class="modal-content">
+        <div class="modal-header bg-info text-white">
+          <h5 class="modal-title" id="yearComparisonModalLabel">
+            <i class="bi bi-bar-chart-line me-2"></i>Year Comparison & Trends
+          </h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body p-4">
+          <div class="alert alert-info">
+            <i class="bi bi-info-circle me-2"></i>
+            Compare winners across different years, identify trends, returning winners, and sector performance.
+          </div>
+
+          <!-- Year Selection -->
+          <div class="card mb-4">
+            <div class="card-header bg-light">
+              <h6 class="mb-0"><i class="bi bi-calendar-range me-2"></i>Select Years to Compare</h6>
+            </div>
+            <div class="card-body">
+              <div class="row" id="yearSelectionCheckboxes">
+                <!-- Populated by JavaScript -->
+              </div>
+              <button class="btn btn-primary btn-sm mt-3" onclick="winnersModule.runYearComparison()">
+                <i class="bi bi-search me-1"></i>Run Comparison
+              </button>
+            </div>
+          </div>
+
+          <!-- Results Section -->
+          <div id="yearComparisonResults" class="d-none">
+            <!-- Overview Stats -->
+            <div class="row g-3 mb-4">
+              <div class="col-md-4">
+                <div class="card">
+                  <div class="card-body text-center">
+                    <i class="bi bi-trophy text-primary" style="font-size: 2rem;"></i>
+                    <h3 class="mt-2 mb-1" id="comparisonTotalWinners">0</h3>
+                    <small class="text-muted">Total Winners</small>
+                  </div>
+                </div>
+              </div>
+              <div class="col-md-4">
+                <div class="card">
+                  <div class="card-body text-center">
+                    <i class="bi bi-arrow-repeat text-success" style="font-size: 2rem;"></i>
+                    <h3 class="mt-2 mb-1" id="comparisonReturningWinners">0</h3>
+                    <small class="text-muted">Returning Winners</small>
+                  </div>
+                </div>
+              </div>
+              <div class="col-md-4">
+                <div class="card">
+                  <div class="card-body text-center">
+                    <i class="bi bi-calendar-check text-warning" style="font-size: 2rem;"></i>
+                    <h3 class="mt-2 mb-1" id="comparisonYearsCount">0</h3>
+                    <small class="text-muted">Years Compared</small>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Trends by Year -->
+            <div class="card mb-4">
+              <div class="card-header bg-light">
+                <h6 class="mb-0"><i class="bi bi-graph-up me-2"></i>Winners by Year</h6>
+              </div>
+              <div class="card-body">
+                <div id="trendsByYear">
+                  <!-- Populated by JavaScript -->
+                </div>
+              </div>
+            </div>
+
+            <!-- Returning Winners -->
+            <div class="card mb-4">
+              <div class="card-header bg-light">
+                <h6 class="mb-0"><i class="bi bi-arrow-repeat me-2"></i>Returning Winners (Won in Multiple Years)</h6>
+              </div>
+              <div class="card-body">
+                <div id="returningWinnersList">
+                  <!-- Populated by JavaScript -->
+                </div>
+              </div>
+            </div>
+
+            <!-- Sector Performance -->
+            <div class="card mb-4">
+              <div class="card-header bg-light">
+                <h6 class="mb-0"><i class="bi bi-pie-chart me-2"></i>Performance by Sector</h6>
+              </div>
+              <div class="card-body">
+                <div id="sectorPerformance">
+                  <!-- Populated by JavaScript -->
+                </div>
+              </div>
+            </div>
+
+            <!-- Award Category Distribution -->
+            <div class="card">
+              <div class="card-header bg-light">
+                <h6 class="mb-0"><i class="bi bi-diagram-3 me-2"></i>Awards by Category</h6>
+              </div>
+              <div class="card-body">
+                <div id="categoryDistribution">
+                  <!-- Populated by JavaScript -->
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer bg-light">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+            <i class="bi bi-x-lg me-1"></i>Close
+          </button>
+          <button type="button" class="btn btn-info" onclick="winnersModule.exportYearComparison()">
+            <i class="bi bi-download me-1"></i>Export Report (CSV)
           </button>
         </div>
       </div>

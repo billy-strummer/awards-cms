@@ -173,7 +173,13 @@ const orgsModule = {
     saveBtn.style.display = 'none';
     cancelBtn.style.display = 'none';
 
-    titleEl.innerHTML = `<i class="bi bi-building me-2"></i>${utils.escapeHtml(companyName)}`;
+    titleEl.innerHTML = `
+      <i class="bi bi-building me-2"></i>${utils.escapeHtml(companyName)}
+      <a href="https://worldawards.co/company/${orgId}" target="_blank" rel="noopener noreferrer"
+         class="btn btn-sm btn-outline-primary ms-3" title="View on Frontend">
+        <i class="bi bi-eye"></i> View Page
+      </a>
+    `;
     contentDiv.innerHTML = `
       <div class="text-center py-4">
         <div class="spinner-border text-primary" role="status">
@@ -199,6 +205,8 @@ const orgsModule = {
         .from('award_assignments')
         .select(`
           status,
+          package_type,
+          enhanced_profile,
           awards!award_assignments_award_id_fkey (*)
         `)
         .eq('organisation_id', orgId);
@@ -210,7 +218,9 @@ const orgsModule = {
         .filter(a => a.awards)
         .map(a => ({
           ...a.awards,
-          status: a.status // Use assignment status (nominated/shortlisted/winner)
+          status: a.status, // Use assignment status (nominated/shortlisted/winner)
+          package_type: a.package_type || 'bronze',
+          enhanced_profile: a.enhanced_profile || false
         }))
         .sort((a, b) => (b.year || 0) - (a.year || 0));
 
@@ -336,6 +346,8 @@ const orgsModule = {
                     <th>Category</th>
                     <th>Sector</th>
                     <th>Status</th>
+                    <th>Package</th>
+                    <th class="text-center">Enhanced</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -345,6 +357,13 @@ const orgsModule = {
                       <td>${utils.escapeHtml(award.award_category)}</td>
                       <td><span class="badge bg-info-subtle text-info">${utils.escapeHtml(award.sector)}</span></td>
                       <td>${utils.getStatusBadge(award.status)}</td>
+                      <td>${orgsModule.getPackageBadge(award.package_type)}</td>
+                      <td class="text-center">
+                        ${award.enhanced_profile ?
+                          '<i class="bi bi-star-fill text-warning" title="Enhanced Profile" style="font-size: 1.2rem;"></i>' :
+                          '<i class="bi bi-star text-muted" title="Standard Profile" style="font-size: 1.2rem; opacity: 0.3;"></i>'
+                        }
+                      </td>
                     </tr>
                   `).join('')}
                 </tbody>
@@ -1132,6 +1151,21 @@ const orgsModule = {
   async cancelEditMode(orgId, companyName) {
     // Reopen the profile in view mode (this will restore original data)
     await this.openCompanyProfile(orgId, companyName);
+  },
+
+  /**
+   * Get package badge HTML
+   * @param {string} packageType - Package type (bronze/silver/gold/non-attendee)
+   * @returns {string} HTML badge
+   */
+  getPackageBadge(packageType) {
+    const packages = {
+      'gold': '<span class="badge" style="background: linear-gradient(135deg, #FFD700 0%, #FFA500 100%); color: #000;"><i class="bi bi-award-fill me-1"></i>Gold</span>',
+      'silver': '<span class="badge" style="background: linear-gradient(135deg, #C0C0C0 0%, #808080 100%); color: #000;"><i class="bi bi-award-fill me-1"></i>Silver</span>',
+      'bronze': '<span class="badge" style="background: linear-gradient(135deg, #CD7F32 0%, #8B4513 100%); color: #fff;"><i class="bi bi-award-fill me-1"></i>Bronze</span>',
+      'non-attendee': '<span class="badge bg-secondary"><i class="bi bi-x-circle me-1"></i>Non-Attendee</span>'
+    };
+    return packages[packageType] || packages['bronze'];
   }
 };
 

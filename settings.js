@@ -10,6 +10,7 @@ const settingsModule = {
     await this.updateSystemInfo();
     this.loadBackupSettings();
     this.checkBackupReminders();
+    this.renderAuditLog();
   },
 
   /**
@@ -479,6 +480,130 @@ British Trade Awards Team
     });
 
     return result;
+  },
+
+  /* ==================================================== */
+  /* AUDIT LOG */
+  /* ==================================================== */
+
+  /**
+   * Log an action to the audit log
+   */
+  logAction(action, entity, description, entityId = null) {
+    const logs = this.getAuditLogs();
+
+    const logEntry = {
+      id: `log_${Date.now()}`,
+      timestamp: new Date().toISOString(),
+      action: action, // create, update, delete
+      entity: entity, // award, organisation, winner, event, media
+      description: description,
+      entityId: entityId,
+      user: STATE.currentUser?.email || 'System'
+    };
+
+    logs.unshift(logEntry); // Add to beginning
+
+    // Keep only last 500 logs
+    const trimmedLogs = logs.slice(0, 500);
+
+    localStorage.setItem('audit_logs', JSON.stringify(trimmedLogs));
+  },
+
+  /**
+   * Get all audit logs from localStorage
+   */
+  getAuditLogs() {
+    const logs = localStorage.getItem('audit_logs');
+    return logs ? JSON.parse(logs) : [];
+  },
+
+  /**
+   * Refresh and render audit log
+   */
+  refreshAuditLog() {
+    this.renderAuditLog();
+    utils.showToast('Audit log refreshed', 'success');
+  },
+
+  /**
+   * Filter audit log
+   */
+  filterAuditLog() {
+    this.renderAuditLog();
+  },
+
+  /**
+   * Render audit log table
+   */
+  renderAuditLog() {
+    const logs = this.getAuditLogs();
+    const tbody = document.getElementById('auditLogTableBody');
+
+    // Apply filters
+    const actionFilter = document.getElementById('auditLogFilter').value;
+    const entityFilter = document.getElementById('auditEntityFilter').value;
+
+    let filteredLogs = logs;
+
+    if (actionFilter) {
+      filteredLogs = filteredLogs.filter(log => log.action === actionFilter);
+    }
+
+    if (entityFilter) {
+      filteredLogs = filteredLogs.filter(log => log.entity === entityFilter);
+    }
+
+    if (filteredLogs.length === 0) {
+      tbody.innerHTML = `
+        <tr>
+          <td colspan="5" class="text-center py-4 text-muted">
+            <i class="bi bi-clock-history display-4 d-block mb-2 opacity-25"></i>
+            ${logs.length === 0 ? 'No activity logged yet' : 'No activities match your filters'}
+          </td>
+        </tr>
+      `;
+      return;
+    }
+
+    const actionBadges = {
+      'create': '<span class="badge bg-success">Created</span>',
+      'update': '<span class="badge bg-primary">Updated</span>',
+      'delete': '<span class="badge bg-danger">Deleted</span>'
+    };
+
+    const entityIcons = {
+      'award': 'trophy',
+      'organisation': 'building',
+      'winner': 'award',
+      'event': 'calendar-event',
+      'media': 'images'
+    };
+
+    tbody.innerHTML = filteredLogs.slice(0, 100).map(log => `
+      <tr>
+        <td><small>${utils.formatRelativeTime(log.timestamp)}</small></td>
+        <td>${actionBadges[log.action] || log.action}</td>
+        <td>
+          <i class="bi bi-${entityIcons[log.entity] || 'file'} me-1"></i>${log.entity}
+        </td>
+        <td><small>${utils.escapeHtml(log.description)}</small></td>
+        <td><small>${utils.escapeHtml(log.user)}</small></td>
+      </tr>
+    `).join('');
+  },
+
+  /**
+   * Clear audit log
+   */
+  clearAuditLog() {
+    if (!confirm('Are you sure you want to clear the entire audit log? This cannot be undone.')) {
+      return;
+    }
+
+    localStorage.removeItem('audit_logs');
+    this.renderAuditLog();
+    utils.showToast('Audit log cleared', 'success');
   }
 };
 

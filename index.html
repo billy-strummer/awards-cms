@@ -840,22 +840,123 @@
         <div class="container-fluid">
 
           <!-- Page Header -->
-          <div class="d-flex justify-content-between align-items-center mb-4">
-            <h2><i class="bi bi-images me-3"></i>Media Gallery</h2>
-            <div class="d-flex gap-2 align-items-center">
-              <label class="form-label mb-0 me-2">Event:</label>
-              <select class="form-select" style="width: 300px;" id="mediaEventSelect" onchange="mediaGalleryModule.onEventSelected(this.value)">
-                <option value="">View Summary</option>
-              </select>
-            </div>
+          <div class="section-header">
+            <h1 class="section-title">
+              <i class="bi bi-images me-2"></i>Media Gallery
+            </h1>
+            <p class="section-subtitle">Manage event photos and videos</p>
           </div>
 
-          <!-- Media Gallery Content (populated by JS) -->
+          <!-- Media Gallery Content -->
           <div id="mediaGalleryContent">
-            <div class="text-center py-5">
-              <i class="bi bi-calendar-event display-1 text-muted opacity-25"></i>
-              <p class="text-muted mt-3">Select an event above to view and manage gallery sections</p>
+
+            <!-- Events List View (default) -->
+            <div id="eventsListView" style="display: block;">
+              <div class="row g-4" id="eventsListContainer">
+                <div class="col-12 text-center py-5">
+                  <i class="bi bi-hourglass-split display-4 d-block mb-2 opacity-25"></i>
+                  Loading events...
+                </div>
+              </div>
             </div>
+
+            <!-- Event Contents View (hidden by default) -->
+            <div id="eventContentsView" style="display: none;">
+              <div class="mb-4">
+                <button class="btn btn-outline-secondary btn-sm" onclick="mediaGalleryModule.showEventsListView()">
+                  <i class="bi bi-arrow-left me-2"></i>Back to Events
+                </button>
+                <h3 class="mt-3" id="eventContentsTitle">Event Contents</h3>
+              </div>
+
+              <div class="row g-4">
+                <!-- Photos Section Card -->
+                <div class="col-md-6">
+                  <div class="card h-100 border-primary" style="cursor: pointer;" onclick="mediaGalleryModule.openPhotosProduction()">
+                    <div class="card-body text-center">
+                      <i class="bi bi-camera-fill text-primary" style="font-size: 4rem;"></i>
+                      <h4 class="mt-3">Photos</h4>
+                      <p class="text-muted">Manage event photo galleries</p>
+                      <div class="mt-3">
+                        <span class="badge bg-primary fs-5" id="eventPhotosCount">0</span>
+                        <small class="text-muted d-block mt-1">photos</small>
+                      </div>
+                      <button class="btn btn-primary mt-3">
+                        <i class="bi bi-images me-2"></i>Open Photos
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Videos Section Card -->
+                <div class="col-md-6">
+                  <div class="card h-100 border-danger" style="cursor: pointer;" onclick="mediaGalleryModule.openVideosProduction()">
+                    <div class="card-body text-center">
+                      <i class="bi bi-play-btn-fill text-danger" style="font-size: 4rem;"></i>
+                      <h4 class="mt-3">Videos</h4>
+                      <p class="text-muted">Manage event videos and YouTube links</p>
+                      <div class="mt-3">
+                        <span class="badge bg-danger fs-5" id="eventVideosCount">0</span>
+                        <small class="text-muted d-block mt-1">videos</small>
+                      </div>
+                      <button class="btn btn-danger mt-3">
+                        <i class="bi bi-play-circle me-2"></i>Open Videos
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Photos Production View (hidden by default) -->
+            <div id="photosProductionView" style="display: none;">
+              <div class="mb-4">
+                <button class="btn btn-outline-secondary btn-sm" onclick="mediaGalleryModule.showEventContentsView()">
+                  <i class="bi bi-arrow-left me-2"></i>Back to Event Contents
+                </button>
+                <h3 class="mt-3">
+                  <i class="bi bi-camera-fill me-2"></i>Photos Production
+                  <small class="text-muted" id="photosEventName"></small>
+                </h3>
+              </div>
+
+              <!-- Photos will be loaded here by JS -->
+              <div id="photosProductionContent">
+                <div class="text-center py-5">
+                  <i class="bi bi-hourglass-split display-4 d-block mb-2 opacity-25"></i>
+                  Loading photos...
+                </div>
+              </div>
+            </div>
+
+            <!-- Videos Production View (hidden by default) -->
+            <div id="videosProductionView" style="display: none;">
+              <div class="mb-4">
+                <button class="btn btn-outline-secondary btn-sm" onclick="mediaGalleryModule.showEventContentsView()">
+                  <i class="bi bi-arrow-left me-2"></i>Back to Event Contents
+                </button>
+                <h3 class="mt-3">
+                  <i class="bi bi-play-btn-fill me-2"></i>Videos Production
+                  <small class="text-muted" id="videosEventName"></small>
+                </h3>
+              </div>
+
+              <!-- Add Video Button -->
+              <div class="mb-4">
+                <button class="btn btn-primary" onclick="mediaGalleryModule.openAddVideoModal()">
+                  <i class="bi bi-plus-circle me-2"></i>Add Video / YouTube Link
+                </button>
+              </div>
+
+              <!-- Videos will be loaded here by JS -->
+              <div id="videosProductionContent">
+                <div class="text-center py-5">
+                  <i class="bi bi-hourglass-split display-4 d-block mb-2 opacity-25"></i>
+                  Loading videos...
+                </div>
+              </div>
+            </div>
+
           </div>
 
         </div>

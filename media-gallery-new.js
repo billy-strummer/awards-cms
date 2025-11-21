@@ -4,6 +4,7 @@
 
 const mediaGalleryModule = {
   currentEventId: null,
+  currentEvent: null,
   currentSectionId: null,
   currentMediaId: null,
   currentSectionPhotos: [], // Store all photos for filtering
@@ -14,19 +15,17 @@ const mediaGalleryModule = {
   draggedOverPhotoId: null, // Store the photo being dragged over
   selectedFiles: [], // Store selected files for preview
   selectedPhotoIds: new Set(), // Store selected photo IDs for bulk operations
+  currentView: 'events-list', // 'events-list', 'event-contents', 'photos-production', 'videos-production'
 
   /**
-   * Initialize Media Gallery - Load events and show summary
+   * Initialize Media Gallery - Show events list
    */
   async initialize() {
     try {
       utils.showLoading();
 
-      // Load events for dropdown
-      await this.loadEvents();
-
-      // Show summary view by default
-      await this.showSummaryView();
+      // Load and display events list
+      await this.showEventsListView();
 
     } catch (error) {
       console.error('Error initializing media gallery:', error);
@@ -34,6 +33,382 @@ const mediaGalleryModule = {
     } finally {
       utils.hideLoading();
     }
+  },
+
+  /**
+   * Show Events List View
+   */
+  async showEventsListView() {
+    this.currentView = 'events-list';
+    this.hideAllViews();
+    document.getElementById('eventsListView').style.display = 'block';
+
+    try {
+      const { data: events, error } = await supabase
+        .from('events')
+        .select('*')
+        .order('event_date', { ascending: false });
+
+      if (error) throw error;
+
+      await this.renderEventsList(events || []);
+
+    } catch (error) {
+      console.error('Error loading events:', error);
+      document.getElementById('eventsListContainer').innerHTML = `
+        <div class="col-12 text-center py-4 text-danger">
+          <i class="bi bi-exclamation-triangle me-2"></i>Error loading events
+        </div>
+      `;
+    }
+  },
+
+  /**
+   * Render Events List as Clickable Cards
+   */
+  async renderEventsList(events) {
+    const container = document.getElementById('eventsListContainer');
+
+    if (!events || events.length === 0) {
+      container.innerHTML = `
+        <div class="col-12 text-center py-5">
+          <i class="bi bi-calendar-x display-4 d-block mb-2 opacity-25"></i>
+          <p class="text-muted">No events found. Create an event in the Events tab first.</p>
+        </div>
+      `;
+      return;
+    }
+
+    // Get media counts for each event
+    const eventsWithCounts = await Promise.all(events.map(async (event) => {
+      const { count: photoCount } = await supabase
+        .from('media_items')
+        .select('*', { count: 'exact', head: true })
+        .eq('event_id', event.id)
+        .eq('media_type', 'image');
+
+      const { count: videoCount } = await supabase
+        .from('media_items')
+        .select('*', { count: 'exact', head: true })
+        .eq('event_id', event.id)
+        .eq('media_type', 'video');
+
+      return {
+        ...event,
+        photoCount: photoCount || 0,
+        videoCount: videoCount || 0
+      };
+    }));
+
+    container.innerHTML = eventsWithCounts.map(event => {
+      const eventDate = event.event_date ? new Date(event.event_date).toLocaleDateString() : 'Date TBD';
+      const totalMedia = event.photoCount + event.videoCount;
+
+      return `
+        <div class="col-md-6 col-lg-4">
+          <div class="card h-100" style="cursor: pointer;" onclick="mediaGalleryModule.showEventContentsView('${event.id}')">
+            <div class="card-body">
+              <div class="d-flex justify-content-between align-items-start mb-3">
+                <h5 class="card-title mb-0">
+                  <i class="bi bi-calendar-event me-2"></i>${utils.escapeHtml(event.event_name)}
+                </h5>
+                ${totalMedia > 0 ? `<span class="badge bg-success">${totalMedia}</span>` : '<span class="badge bg-secondary">0</span>'}
+              </div>
+
+              <p class="text-muted small mb-3">
+                <i class="bi bi-calendar3 me-1"></i>${eventDate}
+                ${event.venue ? `<br><i class="bi bi-geo-alt me-1"></i>${utils.escapeHtml(event.venue)}` : ''}
+              </p>
+
+              <div class="row g-2 mb-3">
+                <div class="col-6">
+                  <div class="p-2 bg-primary bg-opacity-10 rounded text-center">
+                    <div class="fw-bold text-primary">${event.photoCount}</div>
+                    <small class="text-muted">Photos</small>
+                  </div>
+                </div>
+                <div class="col-6">
+                  <div class="p-2 bg-danger bg-opacity-10 rounded text-center">
+                    <div class="fw-bold text-danger">${event.videoCount}</div>
+                    <small class="text-muted">Videos</small>
+                  </div>
+                </div>
+              </div>
+
+              <button class="btn btn-outline-primary btn-sm w-100">
+                <i class="bi bi-arrow-right-circle me-2"></i>View Media
+              </button>
+            </div>
+          </div>
+        </div>
+      `;
+    }).join('');
+  },
+
+  /**
+   * Show Event Contents View (Photos and Videos sections)
+   */
+  async showEventContentsView(eventId) {
+    if (!eventId && !this.currentEventId) return;
+
+    this.currentEventId = eventId || this.currentEventId;
+    this.currentView = 'event-contents';
+    this.hideAllViews();
+    document.getElementById('eventContentsView').style.display = 'block';
+
+    try {
+      // Load event details
+      const { data: event, error } = await supabase
+        .from('events')
+        .select('*')
+        .eq('id', this.currentEventId)
+        .single();
+
+      if (error) throw error;
+
+      this.currentEvent = event;
+      document.getElementById('eventContentsTitle').textContent = event.event_name;
+
+      // Load and display counts
+      const { count: photoCount } = await supabase
+        .from('media_items')
+        .select('*', { count: 'exact', head: true })
+        .eq('event_id', this.currentEventId)
+        .eq('media_type', 'image');
+
+      const { count: videoCount } = await supabase
+        .from('media_items')
+        .select('*', { count: 'exact', head: true })
+        .eq('event_id', this.currentEventId)
+        .eq('media_type', 'video');
+
+      document.getElementById('eventPhotosCount').textContent = photoCount || 0;
+      document.getElementById('eventVideosCount').textContent = videoCount || 0;
+
+    } catch (error) {
+      console.error('Error loading event contents:', error);
+      utils.showToast('Error loading event contents', 'error');
+    }
+  },
+
+  /**
+   * Open Photos Production Page
+   */
+  async openPhotosProduction() {
+    if (!this.currentEventId) return;
+
+    this.currentView = 'photos-production';
+    this.hideAllViews();
+    document.getElementById('photosProductionView').style.display = 'block';
+
+    document.getElementById('photosEventName').textContent = `- ${this.currentEvent?.event_name || 'Event'}`;
+
+    // Load photos for this event
+    await this.loadPhotosProduction();
+  },
+
+  /**
+   * Load Photos Production Content
+   */
+  async loadPhotosProduction() {
+    const container = document.getElementById('photosProductionContent');
+
+    try {
+      // This will use existing photo gallery functionality
+      // For now, show a message that this will be implemented
+      container.innerHTML = `
+        <div class="alert alert-info">
+          <i class="bi bi-info-circle me-2"></i>
+          <strong>Photos Production:</strong> This will load all photos from the event using the existing gallery system.
+          The full photo management interface from the original gallery will be integrated here.
+        </div>
+        <div class="text-center py-4">
+          <i class="bi bi-camera-fill display-1 text-muted opacity-25"></i>
+          <p class="mt-3">Photos production interface coming soon</p>
+        </div>
+      `;
+
+    } catch (error) {
+      console.error('Error loading photos:', error);
+      container.innerHTML = `
+        <div class="alert alert-danger">
+          <i class="bi bi-exclamation-triangle me-2"></i>Error loading photos
+        </div>
+      `;
+    }
+  },
+
+  /**
+   * Open Videos Production Page
+   */
+  async openVideosProduction() {
+    if (!this.currentEventId) return;
+
+    this.currentView = 'videos-production';
+    this.hideAllViews();
+    document.getElementById('videosProductionView').style.display = 'block';
+
+    document.getElementById('videosEventName').textContent = `- ${this.currentEvent?.event_name || 'Event'}`;
+
+    // Load videos for this event
+    await this.loadVideosProduction();
+  },
+
+  /**
+   * Load Videos Production Content
+   */
+  async loadVideosProduction() {
+    const container = document.getElementById('videosProductionContent');
+
+    try {
+      const { data: videos, error } = await supabase
+        .from('media_items')
+        .select('*')
+        .eq('event_id', this.currentEventId)
+        .eq('media_type', 'video')
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+
+      if (!videos || videos.length === 0) {
+        container.innerHTML = `
+          <div class="text-center py-5">
+            <i class="bi bi-play-btn display-4 d-block mb-3 opacity-25"></i>
+            <p class="text-muted">No videos yet. Click "Add Video / YouTube Link" to get started.</p>
+          </div>
+        `;
+        return;
+      }
+
+      this.renderVideosGrid(videos);
+
+    } catch (error) {
+      console.error('Error loading videos:', error);
+      container.innerHTML = `
+        <div class="alert alert-danger">
+          <i class="bi bi-exclamation-triangle me-2"></i>Error loading videos
+        </div>
+      `;
+    }
+  },
+
+  /**
+   * Render Videos Grid
+   */
+  renderVideosGrid(videos) {
+    const container = document.getElementById('videosProductionContent');
+
+    container.innerHTML = `
+      <div class="row g-4">
+        ${videos.map(video => {
+          const isYouTube = video.youtube_id || (video.file_url && video.file_url.includes('youtube'));
+          const thumbnailUrl = isYouTube
+            ? `https://img.youtube.com/vi/${video.youtube_id || 'default'}/hqdefault.jpg`
+            : video.thumbnail_url || video.file_url;
+
+          const tags = video.tags ? JSON.parse(video.tags) : [];
+
+          return `
+            <div class="col-md-6 col-lg-4">
+              <div class="card h-100">
+                <div class="position-relative">
+                  <img src="${thumbnailUrl}" class="card-img-top" alt="${utils.escapeHtml(video.title || 'Video')}" style="height: 200px; object-fit: cover;">
+                  <div class="position-absolute top-50 start-50 translate-middle">
+                    <i class="bi bi-play-circle-fill text-white" style="font-size: 3rem; opacity: 0.8;"></i>
+                  </div>
+                  ${isYouTube ? '<span class="position-absolute top-0 end-0 m-2"><span class="badge bg-danger">YouTube</span></span>' : ''}
+                </div>
+                <div class="card-body">
+                  <h6 class="card-title">${utils.escapeHtml(video.title || 'Untitled Video')}</h6>
+                  ${video.description ? `<p class="card-text small text-muted">${utils.escapeHtml(video.description).substring(0, 100)}...</p>` : ''}
+
+                  ${tags.length > 0 ? `
+                    <div class="mb-2">
+                      ${tags.slice(0, 3).map(tag => `<span class="badge bg-secondary me-1">${utils.escapeHtml(tag)}</span>`).join('')}
+                      ${tags.length > 3 ? `<span class="badge bg-light text-dark">+${tags.length - 3}</span>` : ''}
+                    </div>
+                  ` : ''}
+
+                  ${isYouTube ? `
+                    <p class="small text-muted mb-2">
+                      <i class="bi bi-youtube me-1"></i>ID: ${video.youtube_id}
+                    </p>
+                  ` : ''}
+                </div>
+                <div class="card-footer bg-transparent">
+                  <div class="btn-group btn-group-sm w-100">
+                    <button class="btn btn-outline-primary" onclick="mediaGalleryModule.viewVideo('${video.id}')" title="View">
+                      <i class="bi bi-eye"></i>
+                    </button>
+                    <button class="btn btn-outline-secondary" onclick="mediaGalleryModule.editVideo('${video.id}')" title="Edit">
+                      <i class="bi bi-pencil"></i>
+                    </button>
+                    <button class="btn btn-outline-danger" onclick="mediaGalleryModule.deleteVideo('${video.id}')" title="Delete">
+                      <i class="bi bi-trash"></i>
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          `;
+        }).join('')}
+      </div>
+    `;
+  },
+
+  /**
+   * Open Add Video Modal
+   */
+  openAddVideoModal() {
+    // TODO: Implement modal for adding YouTube links and videos
+    utils.showToast('Add Video Modal - Coming in next commit', 'info');
+  },
+
+  /**
+   * View Video
+   */
+  viewVideo(videoId) {
+    utils.showToast('View video modal - Coming soon', 'info');
+  },
+
+  /**
+   * Edit Video
+   */
+  editVideo(videoId) {
+    utils.showToast('Edit video modal - Coming soon', 'info');
+  },
+
+  /**
+   * Delete Video
+   */
+  async deleteVideo(videoId) {
+    if (!confirm('Are you sure you want to delete this video?')) return;
+
+    try {
+      const { error } = await supabase
+        .from('media_items')
+        .delete()
+        .eq('id', videoId);
+
+      if (error) throw error;
+
+      utils.showToast('Video deleted successfully', 'success');
+      await this.loadVideosProduction();
+
+    } catch (error) {
+      console.error('Error deleting video:', error);
+      utils.showToast('Error deleting video', 'error');
+    }
+  },
+
+  /**
+   * Hide All Views
+   */
+  hideAllViews() {
+    document.getElementById('eventsListView').style.display = 'none';
+    document.getElementById('eventContentsView').style.display = 'none';
+    document.getElementById('photosProductionView').style.display = 'none';
+    document.getElementById('videosProductionView').style.display = 'none';
   },
 
   /**

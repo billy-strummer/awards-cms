@@ -153,7 +153,12 @@ document.addEventListener('DOMContentLoaded', function() {
   document.getElementById('dashboard-tab').addEventListener('click', () => {
     dashboardModule.updateStats();
   });
-  
+
+  // Initialize settings when Settings tab is clicked
+  document.getElementById('settings-tab').addEventListener('click', () => {
+    settingsModule.init();
+  });
+
   // --- Media Upload ---
   document.getElementById('uploadMediaBtn').addEventListener('click', () => {
     winnersModule.handleUploadMedia();

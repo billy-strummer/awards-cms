@@ -16,6 +16,7 @@ const mediaGalleryModule = {
   selectedFiles: [], // Store selected files for preview
   selectedPhotoIds: new Set(), // Store selected photo IDs for bulk operations
   currentView: 'events-list', // 'events-list', 'event-contents', 'photos-production', 'videos-production'
+  videoTags: [], // Store video tags for add/edit modal
 
   /**
    * Initialize Media Gallery - Show events list
@@ -360,8 +361,215 @@ const mediaGalleryModule = {
    * Open Add Video Modal
    */
   openAddVideoModal() {
-    // TODO: Implement modal for adding YouTube links and videos
-    utils.showToast('Add Video Modal - Coming in next commit', 'info');
+    // Reset form and tags
+    document.getElementById('addVideoForm').reset();
+    this.videoTags = [];
+    document.getElementById('videoTagsContainer').innerHTML = '';
+
+    // Set event information
+    if (this.currentEvent) {
+      document.getElementById('videoEventName').value = this.currentEvent.event_name;
+      document.getElementById('videoEventId').value = this.currentEvent.id;
+    }
+
+    // Reset to YouTube source by default
+    document.getElementById('sourceTypeYouTube').checked = true;
+    this.toggleVideoSourceFields('youtube');
+
+    // Setup Enter key handler for tag input
+    const tagInput = document.getElementById('videoTagInput');
+    tagInput.onkeydown = (e) => {
+      if (e.key === 'Enter' || e.key === ',') {
+        e.preventDefault();
+        this.addVideoTag();
+      }
+    };
+
+    // Show modal
+    const modal = new bootstrap.Modal(document.getElementById('addVideoModal'));
+    modal.show();
+  },
+
+  /**
+   * Toggle between YouTube and Upload fields
+   */
+  toggleVideoSourceFields(type) {
+    const youtubeGroup = document.getElementById('youtubeFieldGroup');
+    const uploadGroup = document.getElementById('uploadFieldGroup');
+
+    if (type === 'youtube') {
+      youtubeGroup.style.display = 'block';
+      uploadGroup.style.display = 'none';
+      document.getElementById('videoYouTubeId').required = true;
+      document.getElementById('videoFileUpload').required = false;
+    } else {
+      youtubeGroup.style.display = 'none';
+      uploadGroup.style.display = 'block';
+      document.getElementById('videoYouTubeId').required = false;
+      document.getElementById('videoFileUpload').required = true;
+    }
+  },
+
+  /**
+   * Add a tag to the video
+   */
+  addVideoTag() {
+    const input = document.getElementById('videoTagInput');
+    const tag = input.value.trim().replace(',', '');
+
+    if (!tag) return;
+
+    // Check if tag already exists
+    if (this.videoTags.includes(tag)) {
+      utils.showToast('Tag already added', 'warning');
+      return;
+    }
+
+    // Add tag to array
+    this.videoTags.push(tag);
+
+    // Render tags
+    this.renderVideoTags();
+
+    // Clear input
+    input.value = '';
+  },
+
+  /**
+   * Remove a tag from the video
+   */
+  removeVideoTag(tag) {
+    this.videoTags = this.videoTags.filter(t => t !== tag);
+    this.renderVideoTags();
+  },
+
+  /**
+   * Render video tags in the container
+   */
+  renderVideoTags() {
+    const container = document.getElementById('videoTagsContainer');
+    container.innerHTML = this.videoTags.map(tag => `
+      <span class="badge bg-primary" style="font-size: 14px;">
+        ${tag}
+        <i class="bi bi-x-circle ms-1" style="cursor: pointer;" onclick="mediaGalleryModule.removeVideoTag('${tag}')"></i>
+      </span>
+    `).join('');
+  },
+
+  /**
+   * Extract YouTube ID from URL or return as-is if already an ID
+   */
+  extractYouTubeId(input) {
+    if (!input) return null;
+
+    // If it's already just an ID (11 characters, alphanumeric with _ and -)
+    if (/^[a-zA-Z0-9_-]{11}$/.test(input)) {
+      return input;
+    }
+
+    // Try to extract from various YouTube URL formats
+    const patterns = [
+      /(?:youtube\.com\/watch\?v=|youtu\.be\/)([a-zA-Z0-9_-]{11})/,
+      /youtube\.com\/embed\/([a-zA-Z0-9_-]{11})/,
+      /youtube\.com\/v\/([a-zA-Z0-9_-]{11})/
+    ];
+
+    for (const pattern of patterns) {
+      const match = input.match(pattern);
+      if (match) return match[1];
+    }
+
+    return null;
+  },
+
+  /**
+   * Save Video to Database
+   */
+  async saveVideo() {
+    try {
+      // Get form values
+      const sourceType = document.querySelector('input[name="videoSourceType"]:checked').value;
+      const title = document.getElementById('videoTitle').value.trim();
+      const description = document.getElementById('videoDescription').value.trim();
+      const eventId = document.getElementById('videoEventId').value;
+
+      // Validation
+      if (!title) {
+        utils.showToast('Please enter a video title', 'warning');
+        return;
+      }
+
+      if (!eventId) {
+        utils.showToast('No event selected', 'error');
+        return;
+      }
+
+      let youtubeId = null;
+      let fileUrl = null;
+      let thumbnailUrl = null;
+
+      if (sourceType === 'youtube') {
+        // Extract YouTube ID
+        const youtubeInput = document.getElementById('videoYouTubeId').value.trim();
+        youtubeId = this.extractYouTubeId(youtubeInput);
+
+        if (!youtubeId) {
+          utils.showToast('Invalid YouTube URL or ID', 'warning');
+          return;
+        }
+
+        // Set YouTube thumbnail
+        thumbnailUrl = `https://img.youtube.com/vi/${youtubeId}/hqdefault.jpg`;
+        fileUrl = `https://www.youtube.com/watch?v=${youtubeId}`;
+
+      } else {
+        // Handle file upload
+        const fileInput = document.getElementById('videoFileUpload');
+        if (!fileInput.files || !fileInput.files[0]) {
+          utils.showToast('Please select a video file', 'warning');
+          return;
+        }
+
+        // TODO: Implement file upload to Supabase storage
+        utils.showToast('File upload feature coming soon. Please use YouTube links for now.', 'info');
+        return;
+      }
+
+      // Prepare data for database
+      const videoData = {
+        event_id: eventId,
+        media_type: 'video',
+        title: title,
+        description: description || null,
+        file_url: fileUrl,
+        thumbnail_url: thumbnailUrl,
+        youtube_id: youtubeId,
+        tags: this.videoTags.length > 0 ? JSON.stringify(this.videoTags) : null,
+        status: 'published',
+        created_at: new Date().toISOString()
+      };
+
+      // Insert into database
+      const { data, error } = await supabase
+        .from('media_items')
+        .insert([videoData])
+        .select();
+
+      if (error) throw error;
+
+      utils.showToast('Video added successfully!', 'success');
+
+      // Close modal
+      const modal = bootstrap.Modal.getInstance(document.getElementById('addVideoModal'));
+      modal.hide();
+
+      // Reload videos
+      await this.loadVideosProduction();
+
+    } catch (error) {
+      console.error('Error saving video:', error);
+      utils.showToast('Failed to save video: ' + error.message, 'error');
+    }
   },
 
   /**

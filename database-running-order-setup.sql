@@ -19,6 +19,7 @@ CREATE TABLE IF NOT EXISTS running_order (
   display_name VARCHAR(255) NOT NULL,
   award_name VARCHAR(255),
   award_number VARCHAR(20) NOT NULL, -- Format: 1-01, 1-02, 2-01, etc.
+  recipient_collecting VARCHAR(255), -- Name of person collecting the award
 
   -- Order Management
   display_order INTEGER NOT NULL,
@@ -139,6 +140,7 @@ BEGIN
     SELECT DISTINCT
       eg.id as guest_id,
       eg.organisation_id,
+      eg.guest_name,
       o.company_name,
       aa.award_id,
       a.award_name
@@ -168,7 +170,8 @@ BEGIN
       award_name,
       award_number,
       display_order,
-      section
+      section,
+      recipient_collecting
     ) VALUES (
       p_event_id,
       v_guest.organisation_id,
@@ -178,7 +181,8 @@ BEGIN
       v_guest.award_name,
       v_award_number,
       v_next_order,
-      1
+      1,
+      v_guest.guest_name
     );
 
     v_count := v_count + 1;

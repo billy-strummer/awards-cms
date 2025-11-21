@@ -960,7 +960,7 @@ const eventsModule = {
           background: white;
           border: 2px solid #dee2e6;
           border-radius: 8px;
-          padding: 15px;
+          padding: 15px 20px;
           margin-bottom: 10px;
           cursor: move;
           transition: all 0.2s;
@@ -980,11 +980,51 @@ const eventsModule = {
           cursor: not-allowed;
           background: #f8f9fa;
         }
+
+        /* Column Layouts */
+        .award-number-col {
+          min-width: 70px;
+          text-align: center;
+        }
         .award-number {
           font-size: 1.5rem;
           font-weight: bold;
           color: #ffc107;
-          min-width: 80px;
+        }
+
+        .award-winner-col {
+          min-width: 300px;
+          padding: 0 15px;
+        }
+        .award-winner-text {
+          font-size: 1rem;
+          line-height: 1.4;
+        }
+        .award-name-part {
+          font-weight: 600;
+          color: #333;
+        }
+        .separator {
+          margin: 0 8px;
+          color: #666;
+        }
+        .winner-name-part {
+          color: #0d6efd;
+          font-weight: 500;
+        }
+
+        .recipient-col {
+          min-width: 180px;
+          padding: 0 15px;
+          border-left: 2px solid #e9ecef;
+        }
+        .recipient-text {
+          text-align: left;
+        }
+
+        .actions-col {
+          min-width: 100px;
+          text-align: right;
         }
       </style>
     `;
@@ -1054,7 +1094,10 @@ const eventsModule = {
       return;
     }
 
-    container.innerHTML = this.runningOrderItems.map((item, index) => `
+    container.innerHTML = this.runningOrderItems.map((item, index) => {
+      const recipientName = item.recipient_collecting || item.event_guests?.guest_name || item.display_name || 'TBC';
+
+      return `
       <div class="running-order-item ${this.isPublished ? 'published' : ''}"
            draggable="${!this.isPublished}"
            data-id="${item.id}"
@@ -1062,32 +1105,40 @@ const eventsModule = {
            ondragover="eventsModule.handleDragOver(event)"
            ondrop="eventsModule.handleDrop(event)"
            ondragend="eventsModule.handleDragEnd(event)">
-        <div class="row align-items-center">
-          <div class="col-auto">
+        <div class="d-flex align-items-center gap-3">
+          <!-- Award Number -->
+          <div class="award-number-col">
             <div class="award-number">${item.award_number}</div>
           </div>
-          <div class="col">
-            <div class="d-flex align-items-center">
-              ${item.organisations?.logo_url ? `
-                <img src="${item.organisations.logo_url}" alt="Logo"
-                     style="width: 50px; height: 50px; object-fit: contain; margin-right: 15px; border-radius: 4px;">
-              ` : ''}
-              <div>
-                <h6 class="mb-1">${utils.escapeHtml(item.display_name)}</h6>
-                <small class="text-muted">
-                  ${item.award_name ? `<i class="bi bi-award me-1"></i>${utils.escapeHtml(item.award_name)}` : 'No award assigned'}
-                </small>
-              </div>
+
+          <!-- Award Name: Winner Name -->
+          <div class="award-winner-col flex-grow-1">
+            <div class="award-winner-text">
+              <span class="award-name-part">${utils.escapeHtml(item.award_name || 'Award TBC')}</span>
+              <span class="separator">:</span>
+              <span class="winner-name-part">${utils.escapeHtml(item.display_name)}</span>
             </div>
           </div>
-          <div class="col-auto">
+
+          <!-- Recipient Collecting -->
+          <div class="recipient-col">
+            <div class="recipient-text">
+              <small class="text-muted d-block" style="font-size: 0.75rem;">Collecting:</small>
+              <strong>${utils.escapeHtml(recipientName)}</strong>
+            </div>
+          </div>
+
+          <!-- Actions -->
+          <div class="actions-col">
             ${!this.isPublished ? `
-              <button class="btn btn-sm btn-outline-primary me-2"
-                      onclick="eventsModule.editRunningOrderItem('${item.id}')">
+              <button class="btn btn-sm btn-outline-primary me-1"
+                      onclick="eventsModule.editRunningOrderItem('${item.id}')"
+                      title="Edit">
                 <i class="bi bi-pencil"></i>
               </button>
               <button class="btn btn-sm btn-outline-danger"
-                      onclick="eventsModule.deleteRunningOrderItem('${item.id}')">
+                      onclick="eventsModule.deleteRunningOrderItem('${item.id}')"
+                      title="Delete">
                 <i class="bi bi-trash"></i>
               </button>
             ` : `
@@ -1097,13 +1148,9 @@ const eventsModule = {
             `}
           </div>
         </div>
-        ${item.notes ? `
-          <div class="mt-2">
-            <small class="text-muted"><i class="bi bi-sticky me-1"></i>${utils.escapeHtml(item.notes)}</small>
-          </div>
-        ` : ''}
       </div>
-    `).join('');
+    `;
+    }).join('');
   },
 
   /**
@@ -1303,12 +1350,16 @@ const eventsModule = {
       return;
     }
 
-    const exportData = this.runningOrderItems.map(item => ({
-      'Award Number': item.award_number,
-      'Company/Winner': item.display_name,
-      'Award': item.award_name || '',
-      'Notes': item.notes || ''
-    }));
+    const exportData = this.runningOrderItems.map(item => {
+      const recipientName = item.recipient_collecting || item.event_guests?.guest_name || item.display_name || 'TBC';
+      const awardWinner = `${item.award_name || 'Award TBC'}: ${item.display_name}`;
+
+      return {
+        'Award Number': item.award_number,
+        'Award: Winner': awardWinner,
+        'Recipient Collecting': recipientName
+      };
+    });
 
     const filename = `${this.currentEventName.replace(/[^a-z0-9]/gi, '_')}_running_order_${new Date().toISOString().split('T')[0]}.csv`;
     utils.exportToCSV(exportData, filename);

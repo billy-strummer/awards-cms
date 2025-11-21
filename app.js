@@ -356,6 +356,61 @@ document.addEventListener('DOMContentLoaded', function() {
     });
   }
 
+  // Load Email Lists when sub-tab is opened
+  const emailListsSubTab = document.getElementById('email-lists-subtab');
+  if (emailListsSubTab) {
+    emailListsSubTab.addEventListener('shown.bs.tab', () => {
+      console.log('📧 Email Lists opened');
+      if (typeof emailListsModule !== 'undefined') {
+        emailListsModule.loadAllData();
+      }
+    });
+  }
+
+  // Load payments data when payments tab is clicked
+  const paymentsTab = document.getElementById('payments-tab');
+  if (paymentsTab) {
+    paymentsTab.addEventListener('shown.bs.tab', () => {
+      console.log('💳 Payments tab opened');
+      if (typeof paymentsModule !== 'undefined') {
+        paymentsModule.loadAllData();
+      }
+    });
+  }
+
+  // Load CRM data when CRM tab is clicked
+  const crmTab = document.getElementById('crm-tab');
+  if (crmTab) {
+    crmTab.addEventListener('shown.bs.tab', () => {
+      console.log('🎯 CRM tab opened');
+      if (typeof crmModule !== 'undefined') {
+        crmModule.loadAllData();
+      }
+    });
+  }
+
+  // CRM Sub-tab navigation
+  const crmSubTabs = {
+    'companies-crm-subtab': 'companies-crm',
+    'communications-subtab': 'communications',
+    'deals-subtab': 'deals',
+    'meetings-subtab': 'meetings',
+    'segments-subtab': 'segments'
+  };
+
+  Object.keys(crmSubTabs).forEach(tabId => {
+    const tab = document.getElementById(tabId);
+    if (tab) {
+      tab.addEventListener('click', (e) => {
+        e.preventDefault();
+        if (typeof crmModule !== 'undefined') {
+          crmModule.currentSubTab = crmSubTabs[tabId];
+          crmModule.loadAllData();
+        }
+      });
+    }
+  });
+
   // ==========================================
   // STEP 12: Tooltips Initialization
   // ==========================================

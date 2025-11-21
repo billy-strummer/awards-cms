@@ -125,8 +125,18 @@
         </button>
       </li>
       <li class="nav-item" role="presentation">
+        <button class="nav-link" id="entries-tab" data-bs-toggle="tab" data-bs-target="#entries" type="button" role="tab">
+          <i class="bi bi-file-earmark-text me-2"></i>Entries
+        </button>
+      </li>
+      <li class="nav-item" role="presentation">
         <button class="nav-link" id="media-gallery-tab" data-bs-toggle="tab" data-bs-target="#media-gallery" type="button" role="tab">
           <i class="bi bi-images me-2"></i>Media Gallery
+        </button>
+      </li>
+      <li class="nav-item" role="presentation">
+        <button class="nav-link" id="social-media-tab" data-bs-toggle="tab" data-bs-target="#social-media" type="button" role="tab">
+          <i class="bi bi-share me-2"></i>Social Media
         </button>
       </li>
       <li class="nav-item" role="presentation">
@@ -142,6 +152,16 @@
       <li class="nav-item" role="presentation">
         <button class="nav-link" id="marketing-tab" data-bs-toggle="tab" data-bs-target="#marketing" type="button" role="tab">
           <i class="bi bi-megaphone me-2"></i>Marketing
+        </button>
+      </li>
+      <li class="nav-item" role="presentation">
+        <button class="nav-link" id="payments-tab" data-bs-toggle="tab" data-bs-target="#payments" type="button" role="tab">
+          <i class="bi bi-credit-card me-2"></i>Payments
+        </button>
+      </li>
+      <li class="nav-item" role="presentation">
+        <button class="nav-link" id="crm-tab" data-bs-toggle="tab" data-bs-target="#crm" type="button" role="tab">
+          <i class="bi bi-people me-2"></i>CRM
         </button>
       </li>
       <li class="nav-item" role="presentation">
@@ -319,6 +339,45 @@
                   </div>
                 </div>
               </div>
+            </div>
+          </div>
+
+          <!-- Recent Orders Section -->
+          <div class="content-card">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+              <div>
+                <h3 class="h5 mb-1">
+                  <i class="bi bi-cart-check-fill text-success me-2"></i>Recent Orders
+                </h3>
+                <p class="text-muted small mb-0">Latest purchases and invoices</p>
+              </div>
+              <button class="btn btn-outline-primary btn-sm" onclick="dashboardModule.navigateToSection('payments')">
+                <i class="bi bi-arrow-right me-1"></i>View All Orders
+              </button>
+            </div>
+
+            <div class="table-responsive">
+              <table class="table table-hover">
+                <thead>
+                  <tr>
+                    <th>Order #</th>
+                    <th>Company</th>
+                    <th>Items Purchased</th>
+                    <th>Date</th>
+                    <th>Amount</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="recentOrdersTableBody">
+                  <tr>
+                    <td colspan="7" class="text-center py-4 text-muted">
+                      <i class="bi bi-hourglass-split display-4 d-block mb-2 opacity-25"></i>
+                      Loading orders...
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
             </div>
           </div>
 
@@ -785,28 +844,810 @@
       </div>
 
       <!-- ==================================================== -->
+      <!-- ENTRIES TAB -->
+      <!-- ==================================================== -->
+      <div class="tab-pane fade" id="entries" role="tabpanel">
+        <div class="container-fluid">
+
+          <!-- Page Header -->
+          <div class="section-header mb-4">
+            <h1 class="section-title">
+              <i class="bi bi-file-earmark-text me-2"></i>Entry Submissions
+            </h1>
+            <p class="section-subtitle">Manage award entries and submissions</p>
+          </div>
+
+          <!-- Stats Cards -->
+          <div class="row g-3 mb-4">
+            <div class="col-md-3">
+              <div class="card stats-card">
+                <div class="card-body">
+                  <div class="d-flex align-items-center">
+                    <div class="stats-icon bg-primary">
+                      <i class="bi bi-file-earmark-text"></i>
+                    </div>
+                    <div class="ms-3">
+                      <h6 class="mb-0 text-muted">Total Entries</h6>
+                      <h3 class="mb-0" id="totalEntriesCount">0</h3>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="col-md-3">
+              <div class="card stats-card">
+                <div class="card-body">
+                  <div class="d-flex align-items-center">
+                    <div class="stats-icon bg-warning">
+                      <i class="bi bi-clock-history"></i>
+                    </div>
+                    <div class="ms-3">
+                      <h6 class="mb-0 text-muted">Pending Review</h6>
+                      <h3 class="mb-0" id="pendingEntriesCount">0</h3>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="col-md-3">
+              <div class="card stats-card">
+                <div class="card-body">
+                  <div class="d-flex align-items-center">
+                    <div class="stats-icon bg-info">
+                      <i class="bi bi-star"></i>
+                    </div>
+                    <div class="ms-3">
+                      <h6 class="mb-0 text-muted">Shortlisted</h6>
+                      <h3 class="mb-0" id="shortlistedEntriesCount">0</h3>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="col-md-3">
+              <div class="card stats-card">
+                <div class="card-body">
+                  <div class="d-flex align-items-center">
+                    <div class="stats-icon bg-success">
+                      <i class="bi bi-trophy"></i>
+                    </div>
+                    <div class="ms-3">
+                      <h6 class="mb-0 text-muted">Winners</h6>
+                      <h3 class="mb-0" id="winnerEntriesCount">0</h3>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Filters and Actions -->
+          <div class="card mb-4">
+            <div class="card-body">
+              <div class="row g-3">
+                <div class="col-md-3">
+                  <label class="form-label">Status Filter</label>
+                  <select class="form-select" id="entriesStatusFilter" onchange="entriesModule.filterEntries()">
+                    <option value="">All Statuses</option>
+                    <option value="draft">Draft</option>
+                    <option value="submitted">Submitted</option>
+                    <option value="under_review">Under Review</option>
+                    <option value="shortlisted">Shortlisted</option>
+                    <option value="winner">Winner</option>
+                    <option value="rejected">Rejected</option>
+                  </select>
+                </div>
+                <div class="col-md-3">
+                  <label class="form-label">Award Category</label>
+                  <select class="form-select" id="entriesAwardFilter" onchange="entriesModule.filterEntries()">
+                    <option value="">All Awards</option>
+                  </select>
+                </div>
+                <div class="col-md-3">
+                  <label class="form-label">Year</label>
+                  <select class="form-select" id="entriesYearFilter" onchange="entriesModule.filterEntries()">
+                    <option value="">All Years</option>
+                  </select>
+                </div>
+                <div class="col-md-3">
+                  <label class="form-label">Search</label>
+                  <input type="text" class="form-control" id="entriesSearchInput" placeholder="Search entries..." onkeyup="entriesModule.searchEntries()">
+                </div>
+              </div>
+              <div class="mt-3 d-flex gap-2">
+                <button class="btn btn-primary" onclick="entriesModule.openPublicFormLink()">
+                  <i class="bi bi-link-45deg me-2"></i>Get Public Entry Form Link
+                </button>
+                <button class="btn btn-outline-secondary" onclick="entriesModule.exportEntries()">
+                  <i class="bi bi-download me-2"></i>Export to CSV
+                </button>
+                <button class="btn btn-outline-danger" onclick="entriesModule.bulkActions()">
+                  <i class="bi bi-list-check me-2"></i>Bulk Actions
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Entries Table -->
+          <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+              <h5 class="mb-0">
+                All Entries (<span id="entriesTableCount">0</span>)
+              </h5>
+            </div>
+            <div class="table-responsive">
+              <table class="table table-hover">
+                <thead>
+                  <tr>
+                    <th style="width: 40px;">
+                      <input type="checkbox" id="selectAllEntries" onchange="entriesModule.toggleSelectAll()">
+                    </th>
+                    <th>Entry #</th>
+                    <th>Company</th>
+                    <th>Award</th>
+                    <th>Entry Title</th>
+                    <th>Status</th>
+                    <th>Score</th>
+                    <th>Payment</th>
+                    <th>Submitted</th>
+                    <th style="width: 150px;">Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="entriesTableBody">
+                  <tr>
+                    <td colspan="10" class="text-center py-5">
+                      <i class="bi bi-hourglass-split display-4 d-block mb-2 opacity-25"></i>
+                      Loading entries...
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- ==================================================== -->
       <!-- MEDIA GALLERY TAB -->
       <!-- ==================================================== -->
       <div class="tab-pane fade" id="media-gallery" role="tabpanel">
         <div class="container-fluid">
 
           <!-- Page Header -->
-          <div class="d-flex justify-content-between align-items-center mb-4">
-            <h2><i class="bi bi-images me-3"></i>Media Gallery</h2>
-            <div class="d-flex gap-2 align-items-center">
-              <label class="form-label mb-0 me-2">Event:</label>
-              <select class="form-select" style="width: 300px;" id="mediaEventSelect" onchange="mediaGalleryModule.onEventSelected(this.value)">
-                <option value="">View Summary</option>
-              </select>
-            </div>
+          <div class="section-header">
+            <h1 class="section-title">
+              <i class="bi bi-images me-2"></i>Media Gallery
+            </h1>
+            <p class="section-subtitle">Manage event photos and videos</p>
           </div>
 
-          <!-- Media Gallery Content (populated by JS) -->
+          <!-- Media Gallery Content -->
           <div id="mediaGalleryContent">
-            <div class="text-center py-5">
-              <i class="bi bi-calendar-event display-1 text-muted opacity-25"></i>
-              <p class="text-muted mt-3">Select an event above to view and manage gallery sections</p>
+
+            <!-- Events List View (default) -->
+            <div id="eventsListView" style="display: block;">
+              <div class="row g-4" id="eventsListContainer">
+                <div class="col-12 text-center py-5">
+                  <i class="bi bi-hourglass-split display-4 d-block mb-2 opacity-25"></i>
+                  Loading events...
+                </div>
+              </div>
             </div>
+
+            <!-- Event Contents View (hidden by default) -->
+            <div id="eventContentsView" style="display: none;">
+              <div class="mb-4">
+                <button class="btn btn-outline-secondary btn-sm" onclick="mediaGalleryModule.showEventsListView()">
+                  <i class="bi bi-arrow-left me-2"></i>Back to Events
+                </button>
+                <h3 class="mt-3" id="eventContentsTitle">Event Contents</h3>
+              </div>
+
+              <div class="row g-4">
+                <!-- Photos Section Card -->
+                <div class="col-md-6">
+                  <div class="card h-100 border-primary" style="cursor: pointer;" onclick="mediaGalleryModule.openPhotosProduction()">
+                    <div class="card-body text-center">
+                      <i class="bi bi-camera-fill text-primary" style="font-size: 4rem;"></i>
+                      <h4 class="mt-3">Photos</h4>
+                      <p class="text-muted">Manage event photo galleries</p>
+                      <div class="mt-3">
+                        <span class="badge bg-primary fs-5" id="eventPhotosCount">0</span>
+                        <small class="text-muted d-block mt-1">photos</small>
+                      </div>
+                      <button class="btn btn-primary mt-3">
+                        <i class="bi bi-images me-2"></i>Open Photos
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Videos Section Card -->
+                <div class="col-md-6">
+                  <div class="card h-100 border-danger" style="cursor: pointer;" onclick="mediaGalleryModule.openVideosProduction()">
+                    <div class="card-body text-center">
+                      <i class="bi bi-play-btn-fill text-danger" style="font-size: 4rem;"></i>
+                      <h4 class="mt-3">Videos</h4>
+                      <p class="text-muted">Manage event videos and YouTube links</p>
+                      <div class="mt-3">
+                        <span class="badge bg-danger fs-5" id="eventVideosCount">0</span>
+                        <small class="text-muted d-block mt-1">videos</small>
+                      </div>
+                      <button class="btn btn-danger mt-3">
+                        <i class="bi bi-play-circle me-2"></i>Open Videos
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Photos Production View (hidden by default) -->
+            <div id="photosProductionView" style="display: none;">
+              <div class="mb-4">
+                <button class="btn btn-outline-secondary btn-sm" onclick="mediaGalleryModule.showEventContentsView()">
+                  <i class="bi bi-arrow-left me-2"></i>Back to Event Contents
+                </button>
+                <h3 class="mt-3">
+                  <i class="bi bi-camera-fill me-2"></i>Photos Production
+                  <small class="text-muted" id="photosEventName"></small>
+                </h3>
+              </div>
+
+              <!-- Photos will be loaded here by JS -->
+              <div id="photosProductionContent">
+                <div class="text-center py-5">
+                  <i class="bi bi-hourglass-split display-4 d-block mb-2 opacity-25"></i>
+                  Loading photos...
+                </div>
+              </div>
+            </div>
+
+            <!-- Videos Production View (hidden by default) -->
+            <div id="videosProductionView" style="display: none;">
+              <div class="mb-4">
+                <button class="btn btn-outline-secondary btn-sm" onclick="mediaGalleryModule.showEventContentsView()">
+                  <i class="bi bi-arrow-left me-2"></i>Back to Event Contents
+                </button>
+                <h3 class="mt-3">
+                  <i class="bi bi-play-btn-fill me-2"></i>Videos Production
+                  <small class="text-muted" id="videosEventName"></small>
+                </h3>
+              </div>
+
+              <!-- Add Video Button -->
+              <div class="mb-4">
+                <button class="btn btn-primary" onclick="mediaGalleryModule.openAddVideoModal()">
+                  <i class="bi bi-plus-circle me-2"></i>Add Video / YouTube Link
+                </button>
+              </div>
+
+              <!-- Videos will be loaded here by JS -->
+              <div id="videosProductionContent">
+                <div class="text-center py-5">
+                  <i class="bi bi-hourglass-split display-4 d-block mb-2 opacity-25"></i>
+                  Loading videos...
+                </div>
+              </div>
+            </div>
+
+          </div>
+
+        </div>
+      </div>
+
+      <!-- ==================================================== -->
+      <!-- MEDIA GALLERY MODALS -->
+      <!-- ==================================================== -->
+
+      <!-- Add Video/YouTube Link Modal -->
+      <div class="modal fade" id="addVideoModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+          <div class="modal-content">
+            <div class="modal-header">
+              <h5 class="modal-title">
+                <i class="bi bi-plus-circle me-2"></i>Add Video / YouTube Link
+              </h5>
+              <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+              <form id="addVideoForm">
+
+                <!-- Video Source Type -->
+                <div class="mb-4">
+                  <label class="form-label fw-bold">Video Source</label>
+                  <div class="row g-3">
+                    <div class="col-md-6">
+                      <div class="form-check card p-3" style="cursor: pointer;">
+                        <input class="form-check-input" type="radio" name="videoSourceType" id="sourceTypeYouTube" value="youtube" checked onchange="mediaGalleryModule.toggleVideoSourceFields('youtube')">
+                        <label class="form-check-label w-100" for="sourceTypeYouTube" style="cursor: pointer;">
+                          <i class="bi bi-youtube text-danger fs-4 d-block mb-2"></i>
+                          <strong>YouTube Link</strong>
+                          <small class="d-block text-muted">Embed a YouTube video</small>
+                        </label>
+                      </div>
+                    </div>
+                    <div class="col-md-6">
+                      <div class="form-check card p-3" style="cursor: pointer;">
+                        <input class="form-check-input" type="radio" name="videoSourceType" id="sourceTypeUpload" value="upload" onchange="mediaGalleryModule.toggleVideoSourceFields('upload')">
+                        <label class="form-check-label w-100" for="sourceTypeUpload" style="cursor: pointer;">
+                          <i class="bi bi-cloud-upload text-primary fs-4 d-block mb-2"></i>
+                          <strong>Upload Video File</strong>
+                          <small class="d-block text-muted">Upload from your device</small>
+                        </label>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- YouTube ID Field -->
+                <div id="youtubeFieldGroup" class="mb-3">
+                  <label for="videoYouTubeId" class="form-label">
+                    YouTube URL or Video ID <span class="text-danger">*</span>
+                    <small class="text-muted d-block">Paste full URL or just the video ID</small>
+                  </label>
+                  <input type="text" class="form-control" id="videoYouTubeId" placeholder="https://www.youtube.com/watch?v=dQw4w9WgXcQ or dQw4w9WgXcQ">
+                  <div class="form-text">
+                    <i class="bi bi-info-circle me-1"></i>We'll automatically extract the video ID
+                  </div>
+                </div>
+
+                <!-- File Upload Field (hidden by default) -->
+                <div id="uploadFieldGroup" class="mb-3" style="display: none;">
+                  <label for="videoFileUpload" class="form-label">
+                    Video File <span class="text-danger">*</span>
+                  </label>
+                  <input type="file" class="form-control" id="videoFileUpload" accept="video/*">
+                  <div class="form-text">
+                    <i class="bi bi-info-circle me-1"></i>Accepted formats: MP4, MOV, AVI, WMV (Max 500MB)
+                  </div>
+                </div>
+
+                <!-- Video Title -->
+                <div class="mb-3">
+                  <label for="videoTitle" class="form-label">
+                    Video Title <span class="text-danger">*</span>
+                  </label>
+                  <input type="text" class="form-control" id="videoTitle" required placeholder="Enter video title">
+                </div>
+
+                <!-- Video Description -->
+                <div class="mb-3">
+                  <label for="videoDescription" class="form-label">Description</label>
+                  <textarea class="form-control" id="videoDescription" rows="3" placeholder="Enter video description (optional)"></textarea>
+                </div>
+
+                <!-- Tags Input -->
+                <div class="mb-3">
+                  <label class="form-label">
+                    Tags
+                    <small class="text-muted">(Press Enter or comma to add)</small>
+                  </label>
+                  <div class="input-group mb-2">
+                    <input type="text" class="form-control" id="videoTagInput" placeholder="Type a tag and press Enter">
+                    <button class="btn btn-outline-secondary" type="button" onclick="mediaGalleryModule.addVideoTag()">
+                      <i class="bi bi-plus-circle me-1"></i>Add Tag
+                    </button>
+                  </div>
+                  <div id="videoTagsContainer" class="d-flex flex-wrap gap-2">
+                    <!-- Tags will be added here dynamically -->
+                  </div>
+                </div>
+
+                <!-- Event Association (read-only) -->
+                <div class="mb-3">
+                  <label class="form-label">Event</label>
+                  <input type="text" class="form-control" id="videoEventName" readonly>
+                  <input type="hidden" id="videoEventId">
+                </div>
+
+              </form>
+            </div>
+            <div class="modal-footer">
+              <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+              <button type="button" class="btn btn-primary" onclick="mediaGalleryModule.saveVideo()">
+                <i class="bi bi-save me-2"></i>Save Video
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ==================================================== -->
+      <!-- SOCIAL MEDIA MANAGER TAB -->
+      <!-- ==================================================== -->
+      <div class="tab-pane fade" id="social-media" role="tabpanel">
+        <div class="container-fluid">
+
+          <!-- Page Header -->
+          <div class="section-header">
+            <h1 class="section-title">
+              <i class="bi bi-share me-2"></i>Social Media Manager
+            </h1>
+            <p class="section-subtitle">Automate and schedule posts across all platforms</p>
+          </div>
+
+          <!-- Main Content -->
+          <div class="row g-4">
+
+            <!-- Left Column: Post Composer -->
+            <div class="col-lg-8">
+
+              <!-- Create Post Card -->
+              <div class="card mb-4">
+                <div class="card-header">
+                  <h5 class="mb-0">
+                    <i class="bi bi-pencil-square me-2"></i>Create New Post
+                  </h5>
+                </div>
+                <div class="card-body">
+
+                  <!-- Template Selection -->
+                  <div class="mb-4">
+                    <label class="form-label fw-bold">Post Template</label>
+                    <div class="row g-3">
+                      <div class="col-md-4">
+                        <div class="card template-card" onclick="socialMediaModule.selectTemplate('nominee')">
+                          <div class="card-body text-center">
+                            <i class="bi bi-star text-warning fs-1 mb-2"></i>
+                            <h6>Nominee Announcement</h6>
+                            <small class="text-muted">Announce nominees</small>
+                          </div>
+                        </div>
+                      </div>
+                      <div class="col-md-4">
+                        <div class="card template-card" onclick="socialMediaModule.selectTemplate('winner')">
+                          <div class="card-body text-center">
+                            <i class="bi bi-trophy text-success fs-1 mb-2"></i>
+                            <h6>Winner Announcement</h6>
+                            <small class="text-muted">Celebrate winners</small>
+                          </div>
+                        </div>
+                      </div>
+                      <div class="col-md-4">
+                        <div class="card template-card" onclick="socialMediaModule.selectTemplate('voting')">
+                          <div class="card-body text-center">
+                            <i class="bi bi-hand-thumbs-up text-primary fs-1 mb-2"></i>
+                            <h6>Voting Reminder</h6>
+                            <small class="text-muted">Encourage voting</small>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Company/Nominee Selection -->
+                  <div class="row g-3 mb-3">
+                    <div class="col-md-6">
+                      <label for="smCompanySelect" class="form-label">
+                        Company/Nominee <span class="text-danger">*</span>
+                      </label>
+                      <select class="form-select" id="smCompanySelect" onchange="socialMediaModule.updatePostPreview()">
+                        <option value="">Select company...</option>
+                      </select>
+                    </div>
+                    <div class="col-md-6">
+                      <label for="smAwardSelect" class="form-label">
+                        Award Category <span class="text-danger">*</span>
+                      </label>
+                      <select class="form-select" id="smAwardSelect" onchange="socialMediaModule.updatePostPreview()">
+                        <option value="">Select award...</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <!-- Post Content -->
+                  <div class="mb-3">
+                    <label for="smPostContent" class="form-label">
+                      Post Content
+                      <small class="text-muted">(Use {{company_name}} and {{award_name}} as placeholders)</small>
+                    </label>
+                    <textarea class="form-control" id="smPostContent" rows="5" onkeyup="socialMediaModule.updatePostPreview()" placeholder="Write your post here... Use {{company_name}} and {{award_name}} to insert dynamic content"></textarea>
+                    <div class="form-text">
+                      <strong>Available variables:</strong> {{company_name}}, {{award_name}}, {{year}}, {{website}}
+                    </div>
+                  </div>
+
+                  <!-- Image Options -->
+                  <div class="mb-3">
+                    <label class="form-label fw-bold">
+                      <i class="bi bi-image me-1"></i>Post Image
+                    </label>
+                    <div class="row g-3">
+                      <div class="col-md-6">
+                        <div class="form-check">
+                          <input class="form-check-input" type="radio" name="imageSource" id="imageCompanyLogo" value="company_logo" checked onchange="socialMediaModule.updateImagePreview()">
+                          <label class="form-check-label" for="imageCompanyLogo">
+                            Company Logo
+                          </label>
+                        </div>
+                      </div>
+                      <div class="col-md-6">
+                        <div class="form-check">
+                          <input class="form-check-input" type="radio" name="imageSource" id="imageCustom" value="custom" onchange="socialMediaModule.updateImagePreview()">
+                          <label class="form-check-label" for="imageCustom">
+                            Upload Custom Image
+                          </label>
+                        </div>
+                      </div>
+                    </div>
+
+                    <!-- Custom Image Upload -->
+                    <div id="customImageUpload" class="mt-3" style="display: none;">
+                      <input type="file" class="form-control" id="smCustomImage" accept="image/*" onchange="socialMediaModule.handleImageUpload()">
+                    </div>
+
+                    <!-- Add British Trade Awards Logo Overlay -->
+                    <div class="mt-3">
+                      <div class="form-check">
+                        <input class="form-check-input" type="checkbox" id="smAddLogoOverlay" checked onchange="socialMediaModule.updateImagePreview()">
+                        <label class="form-check-label" for="smAddLogoOverlay">
+                          <i class="bi bi-badge-tm me-1"></i>Add British Trade Awards Logo Overlay
+                        </label>
+                      </div>
+                      <small class="text-muted d-block mt-1">Logo will be placed in the corner with transparency</small>
+                    </div>
+                  </div>
+
+                  <!-- Platform Selection -->
+                  <div class="mb-3">
+                    <label class="form-label fw-bold">
+                      <i class="bi bi-share-fill me-1"></i>Post To
+                    </label>
+                    <div class="row g-2">
+                      <div class="col-md-3">
+                        <div class="form-check">
+                          <input class="form-check-input" type="checkbox" id="platformTwitter" checked>
+                          <label class="form-check-label" for="platformTwitter">
+                            <i class="bi bi-twitter text-info me-1"></i>Twitter/X
+                          </label>
+                        </div>
+                      </div>
+                      <div class="col-md-3">
+                        <div class="form-check">
+                          <input class="form-check-input" type="checkbox" id="platformFacebook" checked>
+                          <label class="form-check-label" for="platformFacebook">
+                            <i class="bi bi-facebook text-primary me-1"></i>Facebook
+                          </label>
+                        </div>
+                      </div>
+                      <div class="col-md-3">
+                        <div class="form-check">
+                          <input class="form-check-input" type="checkbox" id="platformInstagram" checked>
+                          <label class="form-check-label" for="platformInstagram">
+                            <i class="bi bi-instagram text-danger me-1"></i>Instagram
+                          </label>
+                        </div>
+                      </div>
+                      <div class="col-md-3">
+                        <div class="form-check">
+                          <input class="form-check-input" type="checkbox" id="platformLinkedIn" checked>
+                          <label class="form-check-label" for="platformLinkedIn">
+                            <i class="bi bi-linkedin text-info me-1"></i>LinkedIn
+                          </label>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Scheduling -->
+                  <div class="row g-3 mb-3">
+                    <div class="col-md-6">
+                      <label for="smScheduleDate" class="form-label">
+                        <i class="bi bi-calendar3 me-1"></i>Schedule Date
+                      </label>
+                      <input type="date" class="form-control" id="smScheduleDate">
+                      <small class="text-muted">Leave empty to post immediately</small>
+                    </div>
+                    <div class="col-md-6">
+                      <label for="smScheduleTime" class="form-label">
+                        <i class="bi bi-clock me-1"></i>Schedule Time
+                      </label>
+                      <input type="time" class="form-control" id="smScheduleTime">
+                    </div>
+                  </div>
+
+                  <!-- Action Buttons -->
+                  <div class="d-flex gap-2">
+                    <button class="btn btn-primary" onclick="socialMediaModule.savePost('scheduled')">
+                      <i class="bi bi-clock-history me-2"></i>Schedule Post
+                    </button>
+                    <button class="btn btn-success" onclick="socialMediaModule.savePost('immediate')">
+                      <i class="bi bi-send me-2"></i>Post Now
+                    </button>
+                    <button class="btn btn-outline-secondary" onclick="socialMediaModule.saveDraft()">
+                      <i class="bi bi-save me-2"></i>Save Draft
+                    </button>
+                    <button class="btn btn-outline-danger" onclick="socialMediaModule.clearForm()">
+                      <i class="bi bi-x-circle me-2"></i>Clear
+                    </button>
+                  </div>
+
+                </div>
+              </div>
+
+              <!-- Scheduled Posts -->
+              <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                  <h5 class="mb-0">
+                    <i class="bi bi-calendar-check me-2"></i>Scheduled Posts
+                  </h5>
+                  <span class="badge bg-primary" id="scheduledPostsCount">0</span>
+                </div>
+                <div class="card-body">
+                  <div id="scheduledPostsList">
+                    <div class="text-center text-muted py-4">
+                      <i class="bi bi-calendar-x display-4 d-block mb-2 opacity-25"></i>
+                      No scheduled posts
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+            </div>
+
+            <!-- Right Column: Preview & Platforms -->
+            <div class="col-lg-4">
+
+              <!-- Live Preview -->
+              <div class="card mb-4 sticky-top" style="top: 20px;">
+                <div class="card-header">
+                  <h5 class="mb-0">
+                    <i class="bi bi-eye me-2"></i>Live Preview
+                  </h5>
+                </div>
+                <div class="card-body">
+
+                  <!-- Platform Tabs -->
+                  <ul class="nav nav-pills mb-3" role="tablist">
+                    <li class="nav-item" role="presentation">
+                      <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#previewTwitter">
+                        <i class="bi bi-twitter"></i>
+                      </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                      <button class="nav-link" data-bs-toggle="tab" data-bs-target="#previewFacebook">
+                        <i class="bi bi-facebook"></i>
+                      </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                      <button class="nav-link" data-bs-toggle="tab" data-bs-target="#previewInstagram">
+                        <i class="bi bi-instagram"></i>
+                      </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                      <button class="nav-link" data-bs-toggle="tab" data-bs-target="#previewLinkedIn">
+                        <i class="bi bi-linkedin"></i>
+                      </button>
+                    </li>
+                  </ul>
+
+                  <!-- Preview Content -->
+                  <div class="tab-content">
+                    <!-- Twitter Preview -->
+                    <div class="tab-pane fade show active" id="previewTwitter">
+                      <div class="social-preview twitter-preview">
+                        <div class="preview-header">
+                          <strong>British Trade Awards</strong>
+                          <small class="text-muted">@BritishTradeAwards</small>
+                        </div>
+                        <div class="preview-content" id="twitterPreviewText">
+                          Your post will appear here...
+                        </div>
+                        <div class="preview-image" id="twitterPreviewImage">
+                          <div class="text-center text-muted py-4">
+                            <i class="bi bi-image opacity-25 fs-1"></i>
+                          </div>
+                        </div>
+                        <div class="preview-meta">
+                          <small class="text-muted">Character count: <span id="twitterCharCount">0</span>/280</small>
+                        </div>
+                      </div>
+                    </div>
+
+                    <!-- Facebook Preview -->
+                    <div class="tab-pane fade" id="previewFacebook">
+                      <div class="social-preview facebook-preview">
+                        <div class="preview-header">
+                          <strong>British Trade Awards</strong>
+                        </div>
+                        <div class="preview-content" id="facebookPreviewText">
+                          Your post will appear here...
+                        </div>
+                        <div class="preview-image" id="facebookPreviewImage">
+                          <div class="text-center text-muted py-4">
+                            <i class="bi bi-image opacity-25 fs-1"></i>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <!-- Instagram Preview -->
+                    <div class="tab-pane fade" id="previewInstagram">
+                      <div class="social-preview instagram-preview">
+                        <div class="preview-header">
+                          <strong>britishtrade_awards</strong>
+                        </div>
+                        <div class="preview-image" id="instagramPreviewImage">
+                          <div class="text-center text-muted py-4">
+                            <i class="bi bi-image opacity-25 fs-1"></i>
+                          </div>
+                        </div>
+                        <div class="preview-content" id="instagramPreviewText">
+                          Your caption will appear here...
+                        </div>
+                      </div>
+                    </div>
+
+                    <!-- LinkedIn Preview -->
+                    <div class="tab-pane fade" id="previewLinkedIn">
+                      <div class="social-preview linkedin-preview">
+                        <div class="preview-header">
+                          <strong>British Trade Awards</strong>
+                        </div>
+                        <div class="preview-content" id="linkedinPreviewText">
+                          Your post will appear here...
+                        </div>
+                        <div class="preview-image" id="linkedinPreviewImage">
+                          <div class="text-center text-muted py-4">
+                            <i class="bi bi-image opacity-25 fs-1"></i>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                </div>
+              </div>
+
+              <!-- Connected Platforms -->
+              <div class="card">
+                <div class="card-header">
+                  <h5 class="mb-0">
+                    <i class="bi bi-plug me-2"></i>Connected Platforms
+                  </h5>
+                </div>
+                <div class="card-body">
+                  <div id="connectedPlatformsList">
+                    <!-- Platform connections will be loaded here -->
+                    <div class="d-flex justify-content-between align-items-center mb-2 p-2 border rounded">
+                      <div>
+                        <i class="bi bi-twitter text-info me-2"></i>
+                        <strong>Twitter/X</strong>
+                      </div>
+                      <span class="badge bg-secondary">Not Connected</span>
+                    </div>
+                    <div class="d-flex justify-content-between align-items-center mb-2 p-2 border rounded">
+                      <div>
+                        <i class="bi bi-facebook text-primary me-2"></i>
+                        <strong>Facebook</strong>
+                      </div>
+                      <span class="badge bg-secondary">Not Connected</span>
+                    </div>
+                    <div class="d-flex justify-content-between align-items-center mb-2 p-2 border rounded">
+                      <div>
+                        <i class="bi bi-instagram text-danger me-2"></i>
+                        <strong>Instagram</strong>
+                      </div>
+                      <span class="badge bg-secondary">Not Connected</span>
+                    </div>
+                    <div class="d-flex justify-content-between align-items-center mb-2 p-2 border rounded">
+                      <div>
+                        <i class="bi bi-linkedin text-info me-2"></i>
+                        <strong>LinkedIn</strong>
+                      </div>
+                      <span class="badge bg-secondary">Not Connected</span>
+                    </div>
+                  </div>
+                  <button class="btn btn-outline-primary btn-sm w-100 mt-3" onclick="socialMediaModule.openPlatformSettings()">
+                    <i class="bi bi-gear me-2"></i>Configure Platforms
+                  </button>
+                </div>
+              </div>
+
+            </div>
+
           </div>
 
         </div>
@@ -964,6 +1805,11 @@
                 <i class="bi bi-grid-3x3-gap me-2"></i>Email Builder
               </button>
             </li>
+            <li class="nav-item" role="presentation">
+              <button class="nav-link" id="email-lists-subtab" data-bs-toggle="pill" data-bs-target="#email-lists-content" type="button" role="tab">
+                <i class="bi bi-list-ul me-2"></i>Email Lists
+              </button>
+            </li>
           </ul>
 
           <!-- Marketing Sub-Tab Content -->
@@ -1055,6 +1901,7 @@
                         <option value="event-countdown">⏰ Event Countdown</option>
                         <option value="event-tickets">🎟️ Book Event Tickets</option>
                         <option value="general">📢 General Announcement</option>
+                        <option value="client-promotion">✨ Client Promotion</option>
                       </select>
                       <small class="text-muted d-block mt-2">Choose a template to auto-populate blocks</small>
                     </div>
@@ -1196,6 +2043,822 @@
                 </div>
 
               </div>
+            </div>
+
+            <!-- Email Lists Sub-Tab -->
+            <div class="tab-pane fade" id="email-lists-content" role="tabpanel">
+
+              <!-- Quick Stats -->
+              <div class="row g-3 mb-4">
+                <div class="col-md-3">
+                  <div class="content-card text-center">
+                    <i class="bi bi-list-ul text-primary fs-1 mb-2"></i>
+                    <div class="fs-2 fw-bold" id="emailListsTotalCount">0</div>
+                    <div class="text-muted small">Total Lists</div>
+                  </div>
+                </div>
+                <div class="col-md-3">
+                  <div class="content-card text-center">
+                    <i class="bi bi-people text-success fs-1 mb-2"></i>
+                    <div class="fs-2 fw-bold" id="emailListsTotalSubscribers">0</div>
+                    <div class="text-muted small">Total Subscribers</div>
+                  </div>
+                </div>
+                <div class="col-md-3">
+                  <div class="content-card text-center">
+                    <i class="bi bi-check-circle text-info fs-1 mb-2"></i>
+                    <div class="fs-2 fw-bold" id="emailListsActiveSubscribers">0</div>
+                    <div class="text-muted small">Active Subscribers</div>
+                  </div>
+                </div>
+                <div class="col-md-3">
+                  <div class="content-card text-center">
+                    <i class="bi bi-percent text-warning fs-1 mb-2"></i>
+                    <div class="fs-2 fw-bold" id="emailListsAvgOpenRate">0%</div>
+                    <div class="text-muted small">Avg Open Rate</div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Actions Bar -->
+              <div class="d-flex justify-content-between align-items-center mb-4">
+                <h4><i class="bi bi-list-ul me-2"></i>Email Lists</h4>
+                <div class="btn-group">
+                  <button class="btn btn-primary" onclick="emailListsModule.openCreateListModal()">
+                    <i class="bi bi-plus-lg me-2"></i>Create List
+                  </button>
+                  <button class="btn btn-success" onclick="emailListsModule.openImportModal()">
+                    <i class="bi bi-upload me-2"></i>Import Subscribers
+                  </button>
+                </div>
+              </div>
+
+              <!-- Email Lists Grid -->
+              <div class="row g-4" id="emailListsGrid">
+                <div class="col-12">
+                  <div class="text-center py-5 text-muted">
+                    <i class="bi bi-hourglass-split display-4 d-block mb-2 opacity-25"></i>
+                    Loading email lists...
+                  </div>
+                </div>
+              </div>
+
+            </div>
+
+          </div>
+
+        </div>
+      </div>
+
+      <!-- ==================================================== -->
+      <!-- PAYMENTS TAB -->
+      <!-- ==================================================== -->
+      <div class="tab-pane fade" id="payments" role="tabpanel">
+        <div class="container-fluid">
+
+          <!-- Page Header -->
+          <div class="section-header">
+            <h1 class="section-title">
+              <i class="bi bi-credit-card me-2"></i>Payments & Invoicing
+            </h1>
+            <p class="section-subtitle">Manage invoices, payments, and financial tracking</p>
+          </div>
+
+          <!-- Sub-navigation -->
+          <ul class="nav nav-pills mb-4" id="paymentsSubTabs" role="tablist">
+            <li class="nav-item" role="presentation">
+              <button class="nav-link active" id="invoices-subtab" data-bs-toggle="pill" data-bs-target="#invoices-content" type="button" role="tab">
+                <i class="bi bi-file-earmark-text me-2"></i>Invoices
+              </button>
+            </li>
+            <li class="nav-item" role="presentation">
+              <button class="nav-link" id="payments-list-subtab" data-bs-toggle="pill" data-bs-target="#payments-list-content" type="button" role="tab">
+                <i class="bi bi-cash-coin me-2"></i>Payments
+              </button>
+            </li>
+            <li class="nav-item" role="presentation">
+              <button class="nav-link" id="financial-reports-subtab" data-bs-toggle="pill" data-bs-target="#financial-reports-content" type="button" role="tab">
+                <i class="bi bi-graph-up me-2"></i>Financial Reports
+              </button>
+            </li>
+          </ul>
+
+          <!-- Sub-tab Content -->
+          <div class="tab-content" id="paymentsSubTabContent">
+
+            <!-- Invoices Sub-Tab -->
+            <div class="tab-pane fade show active" id="invoices-content" role="tabpanel">
+
+              <!-- Quick Stats -->
+              <div class="row g-3 mb-4">
+                <div class="col-md-3">
+                  <div class="content-card text-center">
+                    <i class="bi bi-file-earmark-text text-primary fs-1 mb-2"></i>
+                    <div class="fs-2 fw-bold" id="totalInvoicesCount">0</div>
+                    <div class="text-muted small">Total Invoices</div>
+                  </div>
+                </div>
+                <div class="col-md-3">
+                  <div class="content-card text-center">
+                    <i class="bi bi-check-circle text-success fs-1 mb-2"></i>
+                    <div class="fs-2 fw-bold" id="paidInvoicesCount">0</div>
+                    <div class="text-muted small">Paid Invoices</div>
+                  </div>
+                </div>
+                <div class="col-md-3">
+                  <div class="content-card text-center">
+                    <i class="bi bi-exclamation-triangle text-warning fs-1 mb-2"></i>
+                    <div class="fs-2 fw-bold" id="overdueInvoicesCount">0</div>
+                    <div class="text-muted small">Overdue Invoices</div>
+                  </div>
+                </div>
+                <div class="col-md-3">
+                  <div class="content-card text-center">
+                    <i class="bi bi-currency-pound text-info fs-1 mb-2"></i>
+                    <div class="fs-2 fw-bold" id="totalOutstandingAmount">£0</div>
+                    <div class="text-muted small">Outstanding</div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Filters & Actions -->
+              <div class="content-card mb-4">
+                <div class="row g-3 align-items-end">
+                  <div class="col-md-3">
+                    <label class="form-label small fw-bold">Status</label>
+                    <select class="form-select form-select-sm" id="invoiceStatusFilter">
+                      <option value="">All Statuses</option>
+                      <option value="draft">Draft</option>
+                      <option value="sent">Sent</option>
+                      <option value="viewed">Viewed</option>
+                      <option value="paid">Paid</option>
+                      <option value="partially_paid">Partially Paid</option>
+                      <option value="overdue">Overdue</option>
+                      <option value="cancelled">Cancelled</option>
+                    </select>
+                  </div>
+                  <div class="col-md-3">
+                    <label class="form-label small fw-bold">Organisation</label>
+                    <select class="form-select form-select-sm" id="invoiceOrgFilter">
+                      <option value="">All Organisations</option>
+                    </select>
+                  </div>
+                  <div class="col-md-3">
+                    <label class="form-label small fw-bold">Date Range</label>
+                    <input type="month" class="form-control form-control-sm" id="invoiceMonthFilter">
+                  </div>
+                  <div class="col-md-3">
+                    <button class="btn btn-primary btn-sm w-100" onclick="paymentsModule.createNewInvoice()">
+                      <i class="bi bi-plus-circle me-1"></i>Create Invoice
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Invoices Table -->
+              <div class="table-container">
+                <div class="table-responsive">
+                  <table class="table table-hover table-striped align-middle">
+                    <thead class="table-light">
+                      <tr>
+                        <th>Invoice #</th>
+                        <th>Organisation</th>
+                        <th>Date</th>
+                        <th>Due Date</th>
+                        <th>Type</th>
+                        <th>Amount</th>
+                        <th>Paid</th>
+                        <th>Balance</th>
+                        <th>Status</th>
+                        <th>Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody id="invoicesTableBody">
+                      <tr>
+                        <td colspan="10" class="text-center py-5 text-muted">
+                          <i class="bi bi-hourglass-split display-4 d-block mb-2 opacity-25"></i>
+                          Loading invoices...
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+            </div>
+
+            <!-- Payments List Sub-Tab -->
+            <div class="tab-pane fade" id="payments-list-content" role="tabpanel">
+
+              <!-- Quick Stats -->
+              <div class="row g-3 mb-4">
+                <div class="col-md-4">
+                  <div class="content-card text-center">
+                    <i class="bi bi-cash-coin text-success fs-1 mb-2"></i>
+                    <div class="fs-2 fw-bold" id="totalPaymentsCount">0</div>
+                    <div class="text-muted small">Total Payments</div>
+                  </div>
+                </div>
+                <div class="col-md-4">
+                  <div class="content-card text-center">
+                    <i class="bi bi-currency-pound text-primary fs-1 mb-2"></i>
+                    <div class="fs-2 fw-bold" id="totalPaymentsAmount">£0</div>
+                    <div class="text-muted small">Total Received</div>
+                  </div>
+                </div>
+                <div class="col-md-4">
+                  <div class="content-card text-center">
+                    <i class="bi bi-calendar-month text-info fs-1 mb-2"></i>
+                    <div class="fs-2 fw-bold" id="monthlyPaymentsAmount">£0</div>
+                    <div class="text-muted small">This Month</div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Filters -->
+              <div class="content-card mb-4">
+                <div class="row g-3 align-items-end">
+                  <div class="col-md-3">
+                    <label class="form-label small fw-bold">Payment Method</label>
+                    <select class="form-select form-select-sm" id="paymentMethodFilter">
+                      <option value="">All Methods</option>
+                      <option value="bank_transfer">Bank Transfer</option>
+                      <option value="card">Card</option>
+                      <option value="paypal">PayPal</option>
+                      <option value="stripe">Stripe</option>
+                      <option value="cash">Cash</option>
+                      <option value="cheque">Cheque</option>
+                      <option value="other">Other</option>
+                    </select>
+                  </div>
+                  <div class="col-md-3">
+                    <label class="form-label small fw-bold">Status</label>
+                    <select class="form-select form-select-sm" id="paymentStatusFilter">
+                      <option value="">All Statuses</option>
+                      <option value="pending">Pending</option>
+                      <option value="completed">Completed</option>
+                      <option value="failed">Failed</option>
+                      <option value="refunded">Refunded</option>
+                    </select>
+                  </div>
+                  <div class="col-md-3">
+                    <label class="form-label small fw-bold">Date Range</label>
+                    <input type="month" class="form-control form-control-sm" id="paymentMonthFilter">
+                  </div>
+                  <div class="col-md-3">
+                    <button class="btn btn-success btn-sm w-100" onclick="paymentsModule.recordNewPayment()">
+                      <i class="bi bi-plus-circle me-1"></i>Record Payment
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Payments Table -->
+              <div class="table-container">
+                <div class="table-responsive">
+                  <table class="table table-hover table-striped align-middle">
+                    <thead class="table-light">
+                      <tr>
+                        <th>Reference</th>
+                        <th>Date</th>
+                        <th>Organisation</th>
+                        <th>Invoice</th>
+                        <th>Method</th>
+                        <th>Amount</th>
+                        <th>Status</th>
+                        <th>Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody id="paymentsTableBody">
+                      <tr>
+                        <td colspan="8" class="text-center py-5 text-muted">
+                          <i class="bi bi-hourglass-split display-4 d-block mb-2 opacity-25"></i>
+                          Loading payments...
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+            </div>
+
+            <!-- Financial Reports Sub-Tab -->
+            <div class="tab-pane fade" id="financial-reports-content" role="tabpanel">
+
+              <!-- Report Options -->
+              <div class="content-card mb-4">
+                <h5 class="mb-3"><i class="bi bi-graph-up me-2"></i>Generate Financial Reports</h5>
+                <div class="row g-3">
+                  <div class="col-md-3">
+                    <label class="form-label small fw-bold">Report Type</label>
+                    <select class="form-select" id="reportType">
+                      <option value="revenue">Revenue Summary</option>
+                      <option value="outstanding">Outstanding Invoices</option>
+                      <option value="payments">Payment History</option>
+                      <option value="by_org">By Organisation</option>
+                      <option value="by_package">By Package Type</option>
+                      <option value="by_event">By Event</option>
+                    </select>
+                  </div>
+                  <div class="col-md-3">
+                    <label class="form-label small fw-bold">Start Date</label>
+                    <input type="date" class="form-control" id="reportStartDate">
+                  </div>
+                  <div class="col-md-3">
+                    <label class="form-label small fw-bold">End Date</label>
+                    <input type="date" class="form-control" id="reportEndDate">
+                  </div>
+                  <div class="col-md-3 d-flex align-items-end">
+                    <button class="btn btn-primary w-100" onclick="paymentsModule.generateReport()">
+                      <i class="bi bi-file-earmark-bar-graph me-1"></i>Generate Report
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Report Display Area -->
+              <div class="content-card">
+                <div id="reportDisplayArea">
+                  <div class="text-center py-5 text-muted">
+                    <i class="bi bi-bar-chart display-4 d-block mb-3 opacity-25"></i>
+                    <p>Select report options above and click "Generate Report"</p>
+                  </div>
+                </div>
+              </div>
+
+            </div>
+
+          </div>
+
+        </div>
+      </div>
+
+      <!-- ==================================================== -->
+      <!-- CRM TAB -->
+      <!-- ==================================================== -->
+      <div class="tab-pane fade" id="crm" role="tabpanel">
+        <div class="container-fluid">
+
+          <!-- Page Header -->
+          <div class="section-header">
+            <h1 class="section-title">
+              <i class="bi bi-people me-2"></i>Customer Relationship Management
+            </h1>
+            <p class="section-subtitle">Track company relationships, communications, deals, and segments</p>
+          </div>
+
+          <!-- Sub-navigation -->
+          <ul class="nav nav-pills mb-4" id="crmSubTabs" role="tablist">
+            <li class="nav-item" role="presentation">
+              <button class="nav-link active" id="companies-crm-subtab" data-bs-toggle="pill" data-bs-target="#companies-crm-content" type="button" role="tab">
+                <i class="bi bi-building me-2"></i>Companies
+              </button>
+            </li>
+            <li class="nav-item" role="presentation">
+              <button class="nav-link" id="communications-subtab" data-bs-toggle="pill" data-bs-target="#communications-content" type="button" role="tab">
+                <i class="bi bi-chat-dots me-2"></i>Communications
+              </button>
+            </li>
+            <li class="nav-item" role="presentation">
+              <button class="nav-link" id="deals-subtab" data-bs-toggle="pill" data-bs-target="#deals-content" type="button" role="tab">
+                <i class="bi bi-graph-up-arrow me-2"></i>Deal Pipeline
+              </button>
+            </li>
+            <li class="nav-item" role="presentation">
+              <button class="nav-link" id="meetings-subtab" data-bs-toggle="pill" data-bs-target="#meetings-content" type="button" role="tab">
+                <i class="bi bi-calendar3 me-2"></i>Meetings
+              </button>
+            </li>
+            <li class="nav-item" role="presentation">
+              <button class="nav-link" id="segments-subtab" data-bs-toggle="pill" data-bs-target="#segments-content" type="button" role="tab">
+                <i class="bi bi-tags me-2"></i>Segments
+              </button>
+            </li>
+          </ul>
+
+          <!-- Sub-tab Content -->
+          <div class="tab-content" id="crmSubTabContent">
+
+            <!-- Companies CRM View Sub-Tab -->
+            <div class="tab-pane fade show active" id="companies-crm-content" role="tabpanel">
+
+              <!-- Quick Stats -->
+              <div class="row g-3 mb-4">
+                <div class="col-md-3">
+                  <div class="content-card text-center">
+                    <i class="bi bi-building text-primary fs-1 mb-2"></i>
+                    <div class="fs-2 fw-bold" id="totalCompaniesCount">0</div>
+                    <div class="text-muted small">Total Companies</div>
+                  </div>
+                </div>
+                <div class="col-md-3">
+                  <div class="content-card text-center">
+                    <i class="bi bi-graph-up text-success fs-1 mb-2"></i>
+                    <div class="fs-2 fw-bold" id="activeDealsCount">0</div>
+                    <div class="text-muted small">Active Deals</div>
+                  </div>
+                </div>
+                <div class="col-md-3">
+                  <div class="content-card text-center">
+                    <i class="bi bi-chat-dots text-info fs-1 mb-2"></i>
+                    <div class="fs-2 fw-bold" id="recentCommunicationsCount">0</div>
+                    <div class="text-muted small">Recent Communications</div>
+                  </div>
+                </div>
+                <div class="col-md-3">
+                  <div class="content-card text-center">
+                    <i class="bi bi-bell text-warning fs-1 mb-2"></i>
+                    <div class="fs-2 fw-bold" id="pendingFollowUpsCount">0</div>
+                    <div class="text-muted small">Pending Follow-ups</div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Segment Filter -->
+              <div class="content-card mb-4">
+                <div class="row g-3">
+                  <div class="col-md-4">
+                    <label class="form-label small fw-bold">Filter by Segment</label>
+                    <select class="form-select form-select-sm" id="crmSegmentFilter">
+                      <option value="">All Companies</option>
+                    </select>
+                  </div>
+                  <div class="col-md-4">
+                    <label class="form-label small fw-bold">Search</label>
+                    <input type="text" class="form-control form-control-sm" id="crmCompanySearch" placeholder="Search companies...">
+                  </div>
+                  <div class="col-md-4 d-flex align-items-end">
+                    <button class="btn btn-primary btn-sm w-100" onclick="crmModule.openCompanyDetails()">
+                      <i class="bi bi-plus-circle me-1"></i>Add Company Activity
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Companies Table with CRM Data -->
+              <div class="table-container">
+                <div class="table-responsive">
+                  <table class="table table-hover table-striped align-middle">
+                    <thead class="table-light">
+                      <tr>
+                        <th>Company</th>
+                        <th>Segments</th>
+                        <th>Communications</th>
+                        <th>Active Deals</th>
+                        <th>Pipeline Value</th>
+                        <th>Last Contact</th>
+                        <th>Follow-ups</th>
+                        <th>Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody id="companiesCrmTableBody">
+                      <tr>
+                        <td colspan="8" class="text-center py-5 text-muted">
+                          <i class="bi bi-hourglass-split display-4 d-block mb-2 opacity-25"></i>
+                          Loading companies...
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+            </div>
+
+            <!-- Communications Sub-Tab -->
+            <div class="tab-pane fade" id="communications-content" role="tabpanel">
+
+              <!-- Filter & Actions -->
+              <div class="content-card mb-4">
+                <div class="row g-3 align-items-end">
+                  <div class="col-md-3">
+                    <label class="form-label small fw-bold">Type</label>
+                    <select class="form-select form-select-sm" id="communicationTypeFilter">
+                      <option value="">All Types</option>
+                      <option value="email">Email</option>
+                      <option value="phone">Phone</option>
+                      <option value="meeting">Meeting</option>
+                      <option value="note">Note</option>
+                      <option value="text">Text</option>
+                      <option value="linkedin">LinkedIn</option>
+                    </select>
+                  </div>
+                  <div class="col-md-3">
+                    <label class="form-label small fw-bold">Regarding</label>
+                    <select class="form-select form-select-sm" id="communicationRegardingFilter">
+                      <option value="">All Topics</option>
+                      <option value="sponsorship">Sponsorship</option>
+                      <option value="award_application">Award Application</option>
+                      <option value="event_ticket">Event Ticket</option>
+                      <option value="follow_up">Follow-up</option>
+                      <option value="renewal">Renewal</option>
+                      <option value="general">General</option>
+                    </select>
+                  </div>
+                  <div class="col-md-3">
+                    <label class="form-label small fw-bold">Follow-up Required</label>
+                    <select class="form-select form-select-sm" id="communicationFollowUpFilter">
+                      <option value="">All</option>
+                      <option value="true">Yes</option>
+                      <option value="false">No</option>
+                    </select>
+                  </div>
+                  <div class="col-md-3">
+                    <button class="btn btn-success btn-sm w-100" onclick="crmModule.logCommunication()">
+                      <i class="bi bi-plus-circle me-1"></i>Log Communication
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Communications Log -->
+              <div class="table-container">
+                <div class="table-responsive">
+                  <table class="table table-hover table-striped align-middle">
+                    <thead class="table-light">
+                      <tr>
+                        <th>Date</th>
+                        <th>Type</th>
+                        <th>Company</th>
+                        <th>Contact</th>
+                        <th>Subject</th>
+                        <th>Regarding</th>
+                        <th>Follow-up</th>
+                        <th>Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody id="communicationsTableBody">
+                      <tr>
+                        <td colspan="8" class="text-center py-5 text-muted">
+                          <i class="bi bi-hourglass-split display-4 d-block mb-2 opacity-25"></i>
+                          Loading communications...
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+            </div>
+
+            <!-- Deal Pipeline Sub-Tab -->
+            <div class="tab-pane fade" id="deals-content" role="tabpanel">
+
+              <!-- Pipeline Stats -->
+              <div class="row g-3 mb-4">
+                <div class="col-md-3">
+                  <div class="content-card text-center">
+                    <i class="bi bi-lightning text-warning fs-1 mb-2"></i>
+                    <div class="fs-2 fw-bold" id="totalActiveDeals">0</div>
+                    <div class="text-muted small">Active Deals</div>
+                  </div>
+                </div>
+                <div class="col-md-3">
+                  <div class="content-card text-center">
+                    <i class="bi bi-currency-pound text-success fs-1 mb-2"></i>
+                    <div class="fs-2 fw-bold" id="totalPipelineValue">£0</div>
+                    <div class="text-muted small">Pipeline Value</div>
+                  </div>
+                </div>
+                <div class="col-md-3">
+                  <div class="content-card text-center">
+                    <i class="bi bi-check-circle text-primary fs-1 mb-2"></i>
+                    <div class="fs-2 fw-bold" id="dealsWonThisMonth">0</div>
+                    <div class="text-muted small">Won This Month</div>
+                  </div>
+                </div>
+                <div class="col-md-3">
+                  <div class="content-card text-center">
+                    <i class="bi bi-percent text-info fs-1 mb-2"></i>
+                    <div class="fs-2 fw-bold" id="averageWinRate">0%</div>
+                    <div class="text-muted small">Win Rate</div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Filters & Actions -->
+              <div class="content-card mb-4">
+                <div class="row g-3 align-items-end">
+                  <div class="col-md-3">
+                    <label class="form-label small fw-bold">Stage</label>
+                    <select class="form-select form-select-sm" id="dealStageFilter">
+                      <option value="">All Stages</option>
+                      <option value="lead">Lead</option>
+                      <option value="contacted">Contacted</option>
+                      <option value="qualified">Qualified</option>
+                      <option value="proposal">Proposal</option>
+                      <option value="negotiation">Negotiation</option>
+                      <option value="closed_won">Closed Won</option>
+                      <option value="closed_lost">Closed Lost</option>
+                    </select>
+                  </div>
+                  <div class="col-md-3">
+                    <label class="form-label small fw-bold">Type</label>
+                    <select class="form-select form-select-sm" id="dealTypeFilter">
+                      <option value="">All Types</option>
+                      <option value="sponsorship">Sponsorship</option>
+                      <option value="award_fee">Award Fee</option>
+                      <option value="event_tickets">Event Tickets</option>
+                      <option value="partnership">Partnership</option>
+                      <option value="package_upgrade">Package Upgrade</option>
+                      <option value="other">Other</option>
+                    </select>
+                  </div>
+                  <div class="col-md-3">
+                    <label class="form-label small fw-bold">Status</label>
+                    <select class="form-select form-select-sm" id="dealStatusFilter">
+                      <option value="active">Active</option>
+                      <option value="won">Won</option>
+                      <option value="lost">Lost</option>
+                      <option value="on_hold">On Hold</option>
+                    </select>
+                  </div>
+                  <div class="col-md-3">
+                    <button class="btn btn-primary btn-sm w-100" onclick="crmModule.createDeal()">
+                      <i class="bi bi-plus-circle me-1"></i>Create Deal
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Deals Pipeline -->
+              <div class="table-container">
+                <div class="table-responsive">
+                  <table class="table table-hover table-striped align-middle">
+                    <thead class="table-light">
+                      <tr>
+                        <th>Deal Name</th>
+                        <th>Company</th>
+                        <th>Type</th>
+                        <th>Stage</th>
+                        <th>Value</th>
+                        <th>Probability</th>
+                        <th>Expected Close</th>
+                        <th>Status</th>
+                        <th>Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody id="dealsTableBody">
+                      <tr>
+                        <td colspan="9" class="text-center py-5 text-muted">
+                          <i class="bi bi-hourglass-split display-4 d-block mb-2 opacity-25"></i>
+                          Loading deals...
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+            </div>
+
+            <!-- Meetings Sub-Tab -->
+            <div class="tab-pane fade" id="meetings-content" role="tabpanel">
+
+              <!-- Actions -->
+              <div class="content-card mb-4">
+                <div class="row g-3 align-items-end">
+                  <div class="col-md-4">
+                    <label class="form-label small fw-bold">Meeting Type</label>
+                    <select class="form-select form-select-sm" id="meetingTypeFilter">
+                      <option value="">All Types</option>
+                      <option value="in_person">In Person</option>
+                      <option value="video_call">Video Call</option>
+                      <option value="phone">Phone</option>
+                      <option value="conference">Conference</option>
+                    </select>
+                  </div>
+                  <div class="col-md-4">
+                    <label class="form-label small fw-bold">Date Range</label>
+                    <input type="month" class="form-control form-control-sm" id="meetingMonthFilter">
+                  </div>
+                  <div class="col-md-4">
+                    <button class="btn btn-primary btn-sm w-100" onclick="crmModule.createMeetingNote()">
+                      <i class="bi bi-plus-circle me-1"></i>Add Meeting Note
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Meetings Table -->
+              <div class="table-container">
+                <div class="table-responsive">
+                  <table class="table table-hover table-striped align-middle">
+                    <thead class="table-light">
+                      <tr>
+                        <th>Date</th>
+                        <th>Meeting Title</th>
+                        <th>Company</th>
+                        <th>Type</th>
+                        <th>Duration</th>
+                        <th>Attendees</th>
+                        <th>Follow-up</th>
+                        <th>Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody id="meetingsTableBody">
+                      <tr>
+                        <td colspan="8" class="text-center py-5 text-muted">
+                          <i class="bi bi-hourglass-split display-4 d-block mb-2 opacity-25"></i>
+                          Loading meetings...
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+            </div>
+
+            <!-- Segments Sub-Tab -->
+            <div class="tab-pane fade" id="segments-content" role="tabpanel">
+
+              <div class="row">
+                <div class="col-md-4 mb-4">
+                  <div class="card border-success">
+                    <div class="card-header bg-success text-white">
+                      <i class="bi bi-trophy-fill me-2"></i>Past Winners
+                    </div>
+                    <div class="card-body">
+                      <div class="fs-2 fw-bold text-success" id="segmentPastWinnersCount">0</div>
+                      <p class="text-muted small mb-0">Companies that have won awards</p>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="col-md-4 mb-4">
+                  <div class="card border-warning">
+                    <div class="card-header bg-warning text-dark">
+                      <i class="bi bi-star me-2"></i>Current Nominees
+                    </div>
+                    <div class="card-body">
+                      <div class="fs-2 fw-bold text-warning" id="segmentCurrentNomineesCount">0</div>
+                      <p class="text-muted small mb-0">Nominated for current awards</p>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="col-md-4 mb-4">
+                  <div class="card border-primary">
+                    <div class="card-header bg-primary text-white">
+                      <i class="bi bi-award me-2"></i>Sponsors
+                    </div>
+                    <div class="card-body">
+                      <div class="fs-2 fw-bold text-primary" id="segmentSponsorsCount">0</div>
+                      <p class="text-muted small mb-0">Providing sponsorship</p>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="col-md-4 mb-4">
+                  <div class="card border-danger">
+                    <div class="card-header bg-danger text-white">
+                      <i class="bi bi-star-fill me-2"></i>VIP Contacts
+                    </div>
+                    <div class="card-body">
+                      <div class="fs-2 fw-bold text-danger" id="segmentVIPCount">0</div>
+                      <p class="text-muted small mb-0">High-value contacts</p>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="col-md-4 mb-4">
+                  <div class="card border-info">
+                    <div class="card-header bg-info text-white">
+                      <i class="bi bi-building me-2"></i>Industry Leaders
+                    </div>
+                    <div class="card-body">
+                      <div class="fs-2 fw-bold text-info" id="segmentIndustryLeadersCount">0</div>
+                      <p class="text-muted small mb-0">Leading companies in sectors</p>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="col-md-4 mb-4">
+                  <div class="card border-secondary">
+                    <div class="card-header bg-secondary text-white">
+                      <i class="bi bi-arrow-repeat me-2"></i>Renewal Prospects
+                    </div>
+                    <div class="card-body">
+                      <div class="fs-2 fw-bold text-secondary" id="segmentRenewalProspectsCount">0</div>
+                      <p class="text-muted small mb-0">Eligible for renewal</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Manage Segments -->
+              <div class="content-card mt-4">
+                <h5 class="mb-3"><i class="bi bi-gear me-2"></i>Manage Segments</h5>
+                <button class="btn btn-primary btn-sm" onclick="crmModule.assignSegments()">
+                  <i class="bi bi-tags me-1"></i>Assign Company to Segments
+                </button>
+                <button class="btn btn-secondary btn-sm ms-2" onclick="crmModule.createCustomSegment()">
+                  <i class="bi bi-plus-circle me-1"></i>Create Custom Segment
+                </button>
+              </div>
+
             </div>
 
           </div>
@@ -3328,12 +4991,17 @@ in recognition of excellence
   <script src="awards.js"></script>
   <script src="organisations.js"></script>
   <script src="winners.js"></script>
+  <script src="entries.js"></script>
   <script src="media-gallery-new.js"></script>
+  <script src="social-media.js"></script>
   <script src="events.js"></script>
   <script src="assignments.js"></script>
   <script src="dashboard.js"></script>
   <script src="marketing.js"></script>
   <script src="email-builder.js"></script>
+  <script src="email-lists.js"></script>
+  <script src="payments.js"></script>
+  <script src="crm.js"></script>
   <script src="settings.js"></script>
   <script src="app.js"></script>
 

@@ -30,6 +30,9 @@ const dashboardModule = {
       await this.loadCompletionRateWidget();
       await this.loadUpcomingDeadlinesWidget();
 
+      // Load recent orders
+      await this.loadRecentOrders();
+
       console.log('✅ Dashboard data loaded');
 
     } catch (error) {
@@ -1131,6 +1134,160 @@ const dashboardModule = {
         </div>
       `;
     }
+  },
+
+  /**
+   * Load Recent Orders Widget
+   */
+  async loadRecentOrders() {
+    const tbody = document.getElementById('recentOrdersTableBody');
+    if (!tbody) return;
+
+    try {
+      // Load recent invoices with line items
+      const { data: invoices, error } = await STATE.client
+        .from('invoices')
+        .select(`
+          *,
+          organisations(company_name),
+          invoice_line_items(item_name, quantity, unit_price, line_total)
+        `)
+        .order('created_at', { ascending: false })
+        .limit(10);
+
+      if (error) throw error;
+
+      if (!invoices || invoices.length === 0) {
+        tbody.innerHTML = `
+          <tr>
+            <td colspan="7" class="text-center py-4 text-muted">
+              <i class="bi bi-inbox display-4 d-block mb-2 opacity-25"></i>
+              No orders found
+            </td>
+          </tr>
+        `;
+        return;
+      }
+
+      // Render orders
+      tbody.innerHTML = invoices.map(invoice => {
+        const companyName = invoice.organisations?.company_name || 'Unknown';
+        const invoiceDate = new Date(invoice.invoice_date).toLocaleDateString();
+
+        // Build items list
+        const items = invoice.invoice_line_items || [];
+        const itemsList = items.length > 0
+          ? items.map(item => `${item.quantity}x ${item.item_name}`).join(', ')
+          : this.getInvoiceTypeDescription(invoice.invoice_type, invoice.package_type);
+
+        const itemsDisplay = itemsList.length > 50
+          ? itemsList.substring(0, 50) + '...'
+          : itemsList;
+
+        // Format amount
+        const amount = `£${parseFloat(invoice.total_amount || 0).toLocaleString('en-GB', { minimumFractionDigits: 2 })}`;
+
+        // Status badge
+        const statusBadge = this.getOrderStatusBadge(invoice.status, invoice.payment_status);
+
+        return `
+          <tr>
+            <td>
+              <strong>${invoice.invoice_number}</strong>
+              ${invoice.invoice_type !== 'other' ? `<br><small class="text-muted">${this.getInvoiceTypeBadge(invoice.invoice_type)}</small>` : ''}
+            </td>
+            <td>${companyName}</td>
+            <td>
+              <small>${itemsDisplay}</small>
+            </td>
+            <td>${invoiceDate}</td>
+            <td><strong>${amount}</strong></td>
+            <td>${statusBadge}</td>
+            <td>
+              <button class="btn btn-sm btn-outline-primary" onclick="dashboardModule.viewOrderDetails('${invoice.id}')" title="View Order">
+                <i class="bi bi-eye"></i>
+              </button>
+            </td>
+          </tr>
+        `;
+      }).join('');
+
+    } catch (error) {
+      console.error('Error loading recent orders:', error);
+      tbody.innerHTML = `
+        <tr>
+          <td colspan="7" class="text-center py-4 text-danger">
+            <i class="bi bi-exclamation-triangle me-2"></i>Error loading orders
+          </td>
+        </tr>
+      `;
+    }
+  },
+
+  /**
+   * Get Invoice Type Description
+   */
+  getInvoiceTypeDescription(type, packageType) {
+    const descriptions = {
+      'entry_fee': 'Award Entry Fee',
+      'package': `${packageType ? packageType.charAt(0).toUpperCase() + packageType.slice(1) : ''} Package`,
+      'sponsorship': 'Sponsorship Package',
+      'tickets': 'Event Tickets',
+      'other': 'Other Items'
+    };
+    return descriptions[type] || 'Order Items';
+  },
+
+  /**
+   * Get Invoice Type Badge
+   */
+  getInvoiceTypeBadge(type) {
+    const badges = {
+      'entry_fee': '<span class="badge bg-primary">Entry Fee</span>',
+      'package': '<span class="badge bg-success">Package</span>',
+      'sponsorship': '<span class="badge bg-warning text-dark">Sponsorship</span>',
+      'tickets': '<span class="badge bg-info">Tickets</span>',
+      'other': '<span class="badge bg-secondary">Other</span>'
+    };
+    return badges[type] || '';
+  },
+
+  /**
+   * Get Order Status Badge
+   */
+  getOrderStatusBadge(status, paymentStatus) {
+    // Payment status takes priority
+    if (paymentStatus === 'paid') {
+      return '<span class="badge bg-success"><i class="bi bi-check-circle me-1"></i>Paid</span>';
+    } else if (paymentStatus === 'partial') {
+      return '<span class="badge bg-warning text-dark"><i class="bi bi-hourglass-split me-1"></i>Partially Paid</span>';
+    } else if (paymentStatus === 'refunded') {
+      return '<span class="badge bg-secondary"><i class="bi bi-arrow-counterclockwise me-1"></i>Refunded</span>';
+    } else if (paymentStatus === 'cancelled') {
+      return '<span class="badge bg-danger"><i class="bi bi-x-circle me-1"></i>Cancelled</span>';
+    }
+
+    // Fall back to invoice status
+    const badges = {
+      'draft': '<span class="badge bg-secondary">Draft</span>',
+      'sent': '<span class="badge bg-primary"><i class="bi bi-send me-1"></i>Sent</span>',
+      'viewed': '<span class="badge bg-info"><i class="bi bi-eye me-1"></i>Viewed</span>',
+      'paid': '<span class="badge bg-success"><i class="bi bi-check-circle me-1"></i>Paid</span>',
+      'partially_paid': '<span class="badge bg-warning text-dark"><i class="bi bi-hourglass-split me-1"></i>Partially Paid</span>',
+      'overdue': '<span class="badge bg-danger"><i class="bi bi-exclamation-triangle me-1"></i>Overdue</span>',
+      'cancelled': '<span class="badge bg-danger"><i class="bi bi-x-circle me-1"></i>Cancelled</span>',
+      'refunded': '<span class="badge bg-secondary"><i class="bi bi-arrow-counterclockwise me-1"></i>Refunded</span>'
+    };
+    return badges[status] || '<span class="badge bg-secondary">Unknown</span>';
+  },
+
+  /**
+   * View Order Details
+   */
+  viewOrderDetails(invoiceId) {
+    console.log('View order:', invoiceId);
+    this.navigateToSection('payments');
+    utils.showToast('Opening Payments tab...', 'info');
   },
 
   /**

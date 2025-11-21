@@ -332,6 +332,45 @@
             </div>
           </div>
 
+          <!-- Recent Orders Section -->
+          <div class="content-card">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+              <div>
+                <h3 class="h5 mb-1">
+                  <i class="bi bi-cart-check-fill text-success me-2"></i>Recent Orders
+                </h3>
+                <p class="text-muted small mb-0">Latest purchases and invoices</p>
+              </div>
+              <button class="btn btn-outline-primary btn-sm" onclick="dashboardModule.navigateToSection('payments')">
+                <i class="bi bi-arrow-right me-1"></i>View All Orders
+              </button>
+            </div>
+
+            <div class="table-responsive">
+              <table class="table table-hover">
+                <thead>
+                  <tr>
+                    <th>Order #</th>
+                    <th>Company</th>
+                    <th>Items Purchased</th>
+                    <th>Date</th>
+                    <th>Amount</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="recentOrdersTableBody">
+                  <tr>
+                    <td colspan="7" class="text-center py-4 text-muted">
+                      <i class="bi bi-hourglass-split display-4 d-block mb-2 opacity-25"></i>
+                      Loading orders...
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
           <!-- Top Companies Section -->
           <div class="content-card">
             <div class="d-flex justify-content-between align-items-center mb-4">

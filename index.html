@@ -566,6 +566,9 @@
                 <i class="bi bi-list-ul me-2"></i>Winners List
               </h5>
               <div class="d-flex gap-2 align-items-center">
+                <button class="btn btn-primary btn-sm" onclick="winnersModule.openCertificateGenerator()">
+                  <i class="bi bi-award-fill me-1"></i>Generate Certificates & Assets
+                </button>
                 <button class="btn btn-success btn-sm" onclick="winnersModule.openPressReleaseExport()">
                   <i class="bi bi-file-earmark-text me-1"></i>Export for Press Release
                 </button>
@@ -1585,6 +1588,157 @@
           </button>
           <button type="button" class="btn btn-success" onclick="winnersModule.exportPressRelease()">
             <i class="bi bi-download me-1"></i>Export Press Release
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Certificate & Assets Generator Modal -->
+  <div class="modal fade" id="certificateGeneratorModal" tabindex="-1" aria-labelledby="certificateGeneratorModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-xl">
+      <div class="modal-content">
+        <div class="modal-header bg-primary text-white">
+          <h5 class="modal-title" id="certificateGeneratorModalLabel">
+            <i class="bi bi-award-fill me-2"></i>Generate Certificates & Winner Assets
+          </h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body p-4">
+          <div class="alert alert-success">
+            <i class="bi bi-info-circle me-2"></i>
+            Generate professional certificates, winner shields/logos, email signature banners, and website banners for your award winners.
+          </div>
+
+          <!-- Year Filter -->
+          <div class="row mb-4">
+            <div class="col-md-6">
+              <label class="form-label fw-bold">Filter by Year:</label>
+              <select class="form-select" id="certificateYearFilter" onchange="winnersModule.filterCertificateWinners(this.value)">
+                <option value="">All Years</option>
+                <option value="2025">2025</option>
+                <option value="2024">2024</option>
+                <option value="2023">2023</option>
+                <option value="2022">2022</option>
+              </select>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label fw-bold">Asset Types to Generate:</label>
+              <div class="form-check">
+                <input class="form-check-input" type="checkbox" id="assetTypeCertificate" checked>
+                <label class="form-check-label" for="assetTypeCertificate">
+                  <i class="bi bi-file-earmark-pdf me-1"></i>PDF Certificate
+                </label>
+              </div>
+              <div class="form-check">
+                <input class="form-check-input" type="checkbox" id="assetTypeShield" checked>
+                <label class="form-check-label" for="assetTypeShield">
+                  <i class="bi bi-shield-fill-check me-1"></i>Winner Shield/Logo
+                </label>
+              </div>
+              <div class="form-check">
+                <input class="form-check-input" type="checkbox" id="assetTypeEmailBanner" checked>
+                <label class="form-check-label" for="assetTypeEmailBanner">
+                  <i class="bi bi-envelope me-1"></i>Email Signature Banner
+                </label>
+              </div>
+              <div class="form-check">
+                <input class="form-check-input" type="checkbox" id="assetTypeWebBanner" checked>
+                <label class="form-check-label" for="assetTypeWebBanner">
+                  <i class="bi bi-globe me-1"></i>Website Banner
+                </label>
+              </div>
+            </div>
+          </div>
+
+          <!-- Customization Options -->
+          <div class="card mb-4">
+            <div class="card-header bg-light">
+              <h6 class="mb-0"><i class="bi bi-palette me-2"></i>Customization Options</h6>
+            </div>
+            <div class="card-body">
+              <div class="row">
+                <div class="col-md-6 mb-3">
+                  <label for="brandColor" class="form-label">Brand Color:</label>
+                  <input type="color" class="form-control form-control-color" id="brandColor" value="#0d6efd" title="Choose your brand color">
+                </div>
+                <div class="col-md-6 mb-3">
+                  <label for="accentColor" class="form-label">Accent Color:</label>
+                  <input type="color" class="form-control form-control-color" id="accentColor" value="#ffc107" title="Choose your accent color">
+                </div>
+                <div class="col-md-12 mb-3">
+                  <label for="certificateText" class="form-label">Certificate Text Template:</label>
+                  <textarea class="form-control" id="certificateText" rows="3">This is to certify that
+
+{WINNER_NAME}
+
+has been awarded
+
+{AWARD_NAME}
+
+in recognition of excellence
+
+{YEAR}</textarea>
+                  <small class="text-muted">Use {WINNER_NAME}, {AWARD_NAME}, {YEAR} as placeholders</small>
+                </div>
+                <div class="col-md-6 mb-3">
+                  <label for="organizerName" class="form-label">Organizer Name:</label>
+                  <input type="text" class="form-control" id="organizerName" value="British Trade Awards" placeholder="Organization name">
+                </div>
+                <div class="col-md-6 mb-3">
+                  <label for="signatureName" class="form-label">Signature Name:</label>
+                  <input type="text" class="form-control" id="signatureName" value="" placeholder="e.g., John Smith, Director">
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Winners Selection -->
+          <div class="mb-3">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+              <h6 class="mb-0">
+                <i class="bi bi-check2-square me-2"></i>Select Winners (<span id="selectedCertificateWinnersCount">0</span> selected)
+              </h6>
+              <div>
+                <button class="btn btn-sm btn-outline-primary" onclick="winnersModule.selectAllCertificateWinners()">
+                  <i class="bi bi-check-all me-1"></i>Select All
+                </button>
+                <button class="btn btn-sm btn-outline-secondary" onclick="winnersModule.deselectAllCertificateWinners()">
+                  <i class="bi bi-x-circle me-1"></i>Clear All
+                </button>
+              </div>
+            </div>
+
+            <div id="certificateWinnersList" style="max-height: 400px; overflow-y: auto;">
+              <!-- Winners list will be populated by JavaScript -->
+              <div class="text-center py-5 text-muted">
+                <i class="bi bi-hourglass-split display-4 d-block mb-2 opacity-25"></i>
+                Loading winners...
+              </div>
+            </div>
+          </div>
+
+          <!-- Preview Section -->
+          <div id="assetPreviewSection" class="card d-none">
+            <div class="card-header bg-light">
+              <h6 class="mb-0"><i class="bi bi-eye me-2"></i>Preview</h6>
+            </div>
+            <div class="card-body">
+              <div id="assetPreviewContent" class="text-center">
+                <!-- Preview will be rendered here -->
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer bg-light">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+            <i class="bi bi-x-lg me-1"></i>Cancel
+          </button>
+          <button type="button" class="btn btn-outline-primary" onclick="winnersModule.previewAssets()">
+            <i class="bi bi-eye me-1"></i>Preview
+          </button>
+          <button type="button" class="btn btn-primary" onclick="winnersModule.generateAssets()">
+            <i class="bi bi-download me-1"></i>Generate & Download
           </button>
         </div>
       </div>

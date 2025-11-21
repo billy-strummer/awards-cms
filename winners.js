@@ -726,6 +726,625 @@ const winnersModule = {
     link.click();
     document.body.removeChild(link);
     URL.revokeObjectURL(url);
+  },
+
+  /* ==================================================== */
+  /* CERTIFICATE & ASSETS GENERATOR */
+  /* ==================================================== */
+
+  /**
+   * State for certificate generator
+   */
+  certificateState: {
+    allWinners: [],
+    filteredWinners: [],
+    selectedWinners: new Set()
+  },
+
+  /**
+   * Open certificate generator modal
+   */
+  async openCertificateGenerator() {
+    try {
+      utils.showLoading();
+
+      // Load all winners with their awards
+      const { data: winners, error } = await STATE.client
+        .from('winners')
+        .select(`
+          *,
+          awards!winners_award_id_fkey (*)
+        `)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+
+      this.certificateState.allWinners = winners || [];
+      this.certificateState.filteredWinners = this.certificateState.allWinners;
+      this.certificateState.selectedWinners.clear();
+
+      // Show modal
+      const modal = new bootstrap.Modal(document.getElementById('certificateGeneratorModal'));
+      modal.show();
+
+      // Render winners list
+      this.renderCertificateWinners();
+
+    } catch (error) {
+      console.error('Error loading winners for certificates:', error);
+      utils.showToast('Error loading winners: ' + error.message, 'error');
+    } finally {
+      utils.hideLoading();
+    }
+  },
+
+  /**
+   * Filter certificate winners by year
+   */
+  filterCertificateWinners(year) {
+    if (!year) {
+      this.certificateState.filteredWinners = this.certificateState.allWinners;
+    } else {
+      this.certificateState.filteredWinners = this.certificateState.allWinners.filter(w =>
+        String(w.awards?.year) === year
+      );
+    }
+    this.renderCertificateWinners();
+  },
+
+  /**
+   * Render winners list for certificate generation
+   */
+  renderCertificateWinners() {
+    const container = document.getElementById('certificateWinnersList');
+    const winners = this.certificateState.filteredWinners;
+
+    if (winners.length === 0) {
+      container.innerHTML = `
+        <div class="text-center py-5 text-muted">
+          <i class="bi bi-inbox display-4 d-block mb-2 opacity-25"></i>
+          <p>No winners found for selected year</p>
+        </div>
+      `;
+      return;
+    }
+
+    container.innerHTML = winners.map(winner => {
+      const isSelected = this.certificateState.selectedWinners.has(winner.id);
+      const awardName = winner.awards?.award_name || winner.awards?.award_category || 'No Award';
+      const year = winner.awards?.year || 'N/A';
+
+      return `
+        <div class="card mb-2 ${isSelected ? 'border-primary border-2' : ''}">
+          <div class="card-body p-3">
+            <div class="d-flex align-items-center">
+              <div class="form-check me-3">
+                <input class="form-check-input" type="checkbox"
+                  id="cert_winner_${winner.id}"
+                  ${isSelected ? 'checked' : ''}
+                  onchange="winnersModule.toggleCertificateWinnerSelection('${winner.id}')">
+              </div>
+              <div class="flex-grow-1">
+                <h6 class="mb-1">${utils.escapeHtml(winner.winner_name || 'Unnamed Winner')}</h6>
+                <div class="text-muted small">
+                  <i class="bi bi-trophy me-1"></i>${utils.escapeHtml(awardName)}
+                  <span class="ms-2"><i class="bi bi-calendar me-1"></i>${year}</span>
+                </div>
+              </div>
+              ${isSelected ? '<span class="badge bg-primary">Selected</span>' : ''}
+            </div>
+          </div>
+        </div>
+      `;
+    }).join('');
+
+    this.updateCertificateSelectedCount();
+  },
+
+  /**
+   * Toggle certificate winner selection
+   */
+  toggleCertificateWinnerSelection(winnerId) {
+    if (this.certificateState.selectedWinners.has(winnerId)) {
+      this.certificateState.selectedWinners.delete(winnerId);
+    } else {
+      this.certificateState.selectedWinners.add(winnerId);
+    }
+    this.renderCertificateWinners();
+  },
+
+  /**
+   * Select all certificate winners
+   */
+  selectAllCertificateWinners() {
+    this.certificateState.filteredWinners.forEach(w => {
+      this.certificateState.selectedWinners.add(w.id);
+    });
+    this.renderCertificateWinners();
+  },
+
+  /**
+   * Deselect all certificate winners
+   */
+  deselectAllCertificateWinners() {
+    this.certificateState.selectedWinners.clear();
+    this.renderCertificateWinners();
+  },
+
+  /**
+   * Update selected count
+   */
+  updateCertificateSelectedCount() {
+    document.getElementById('selectedCertificateWinnersCount').textContent =
+      this.certificateState.selectedWinners.size;
+  },
+
+  /**
+   * Preview assets
+   */
+  async previewAssets() {
+    if (this.certificateState.selectedWinners.size === 0) {
+      utils.showToast('Please select at least one winner', 'warning');
+      return;
+    }
+
+    try {
+      // Get first selected winner for preview
+      const firstWinnerId = Array.from(this.certificateState.selectedWinners)[0];
+      const winner = this.certificateState.allWinners.find(w => w.id === firstWinnerId);
+
+      const brandColor = document.getElementById('brandColor').value;
+      const accentColor = document.getElementById('accentColor').value;
+
+      const previewSection = document.getElementById('assetPreviewSection');
+      const previewContent = document.getElementById('assetPreviewContent');
+
+      previewSection.classList.remove('d-none');
+
+      // Generate preview HTML
+      let previewHTML = `<h6 class="mb-3">Preview for ${utils.escapeHtml(winner.winner_name)}</h6>`;
+      previewHTML += `<div class="row g-3">`;
+
+      // Shield preview
+      if (document.getElementById('assetTypeShield').checked) {
+        const shieldSVG = this.generateShieldSVG(winner, brandColor, accentColor);
+        previewHTML += `
+          <div class="col-md-6">
+            <div class="card">
+              <div class="card-header bg-light">
+                <small class="fw-bold">Winner Shield/Logo</small>
+              </div>
+              <div class="card-body text-center bg-white p-4">
+                ${shieldSVG}
+              </div>
+            </div>
+          </div>
+        `;
+      }
+
+      // Email banner preview
+      if (document.getElementById('assetTypeEmailBanner').checked) {
+        const emailBannerSVG = this.generateEmailBannerSVG(winner, brandColor, accentColor);
+        previewHTML += `
+          <div class="col-md-6">
+            <div class="card">
+              <div class="card-header bg-light">
+                <small class="fw-bold">Email Signature Banner (600x150px)</small>
+              </div>
+              <div class="card-body bg-white p-0">
+                ${emailBannerSVG}
+              </div>
+            </div>
+          </div>
+        `;
+      }
+
+      // Website banner preview
+      if (document.getElementById('assetTypeWebBanner').checked) {
+        const webBannerSVG = this.generateWebBannerSVG(winner, brandColor, accentColor);
+        previewHTML += `
+          <div class="col-md-12">
+            <div class="card">
+              <div class="card-header bg-light">
+                <small class="fw-bold">Website Banner (1200x300px)</small>
+              </div>
+              <div class="card-body bg-white p-0">
+                ${webBannerSVG}
+              </div>
+            </div>
+          </div>
+        `;
+      }
+
+      previewHTML += `</div>`;
+      previewContent.innerHTML = previewHTML;
+
+      utils.showToast('Preview generated!', 'success');
+
+    } catch (error) {
+      console.error('Error generating preview:', error);
+      utils.showToast('Error generating preview: ' + error.message, 'error');
+    }
+  },
+
+  /**
+   * Generate and download all assets
+   */
+  async generateAssets() {
+    if (this.certificateState.selectedWinners.size === 0) {
+      utils.showToast('Please select at least one winner', 'warning');
+      return;
+    }
+
+    const generateCert = document.getElementById('assetTypeCertificate').checked;
+    const generateShield = document.getElementById('assetTypeShield').checked;
+    const generateEmail = document.getElementById('assetTypeEmailBanner').checked;
+    const generateWeb = document.getElementById('assetTypeWebBanner').checked;
+
+    if (!generateCert && !generateShield && !generateEmail && !generateWeb) {
+      utils.showToast('Please select at least one asset type', 'warning');
+      return;
+    }
+
+    try {
+      utils.showLoading();
+
+      const brandColor = document.getElementById('brandColor').value;
+      const accentColor = document.getElementById('accentColor').value;
+
+      // Get selected winners
+      const selectedWinnersData = this.certificateState.allWinners.filter(w =>
+        this.certificateState.selectedWinners.has(w.id)
+      );
+
+      let generatedCount = 0;
+
+      for (const winner of selectedWinnersData) {
+        const safeWinnerName = winner.winner_name.replace(/[^a-z0-9]/gi, '_').toLowerCase();
+
+        // Generate PDF Certificate
+        if (generateCert) {
+          await this.generateCertificatePDF(winner, brandColor, accentColor);
+          generatedCount++;
+        }
+
+        // Generate Shield
+        if (generateShield) {
+          await this.downloadSVGAsImage(
+            this.generateShieldSVG(winner, brandColor, accentColor),
+            `${safeWinnerName}_shield.png`,
+            400,
+            400
+          );
+          generatedCount++;
+        }
+
+        // Generate Email Banner
+        if (generateEmail) {
+          await this.downloadSVGAsImage(
+            this.generateEmailBannerSVG(winner, brandColor, accentColor),
+            `${safeWinnerName}_email_banner.png`,
+            600,
+            150
+          );
+          generatedCount++;
+        }
+
+        // Generate Web Banner
+        if (generateWeb) {
+          await this.downloadSVGAsImage(
+            this.generateWebBannerSVG(winner, brandColor, accentColor),
+            `${safeWinnerName}_web_banner.png`,
+            1200,
+            300
+          );
+          generatedCount++;
+        }
+
+        // Small delay between winners to avoid browser throttling
+        await new Promise(resolve => setTimeout(resolve, 500));
+      }
+
+      utils.showToast(`Successfully generated ${generatedCount} assets for ${selectedWinnersData.length} winner(s)!`, 'success');
+      bootstrap.Modal.getInstance(document.getElementById('certificateGeneratorModal')).hide();
+
+    } catch (error) {
+      console.error('Error generating assets:', error);
+      utils.showToast('Error generating assets: ' + error.message, 'error');
+    } finally {
+      utils.hideLoading();
+    }
+  },
+
+  /**
+   * Generate Shield SVG
+   */
+  generateShieldSVG(winner, brandColor, accentColor) {
+    const awardName = winner.awards?.award_name || winner.awards?.award_category || 'Winner';
+    const year = winner.awards?.year || new Date().getFullYear();
+    const winnerName = winner.winner_name || 'Winner';
+
+    // Shorten long names
+    const displayName = winnerName.length > 30 ? winnerName.substring(0, 27) + '...' : winnerName;
+    const displayAward = awardName.length > 35 ? awardName.substring(0, 32) + '...' : awardName;
+
+    return `
+      <svg width="400" height="400" xmlns="http://www.w3.org/2000/svg">
+        <!-- Background shield shape -->
+        <path d="M200,50 L350,100 L350,250 Q350,350 200,380 Q50,350 50,250 L50,100 Z"
+          fill="${brandColor}" stroke="${accentColor}" stroke-width="4"/>
+
+        <!-- Inner shield decoration -->
+        <path d="M200,80 L320,120 L320,250 Q320,330 200,355 Q80,330 80,250 L80,120 Z"
+          fill="rgba(255,255,255,0.1)" stroke="${accentColor}" stroke-width="2"/>
+
+        <!-- Award icon/star -->
+        <g transform="translate(200,150)">
+          <path d="M0,-40 L12,-12 L42,-12 L18,8 L28,38 L0,18 L-28,38 L-18,8 L-42,-12 L-12,-12 Z"
+            fill="${accentColor}" stroke="white" stroke-width="2"/>
+        </g>
+
+        <!-- Year ribbon -->
+        <rect x="140" y="210" width="120" height="35" fill="${accentColor}" rx="5"/>
+        <text x="200" y="233" text-anchor="middle" fill="white" font-size="24" font-weight="bold" font-family="Arial, sans-serif">
+          ${year}
+        </text>
+
+        <!-- Winner text -->
+        <text x="200" y="275" text-anchor="middle" fill="white" font-size="14" font-weight="bold" font-family="Arial, sans-serif">
+          WINNER
+        </text>
+
+        <!-- Award name -->
+        <text x="200" y="300" text-anchor="middle" fill="white" font-size="11" font-family="Arial, sans-serif">
+          ${utils.escapeHtml(displayAward)}
+        </text>
+
+        <!-- Winner name -->
+        <text x="200" y="340" text-anchor="middle" fill="white" font-size="13" font-weight="600" font-family="Arial, sans-serif">
+          ${utils.escapeHtml(displayName)}
+        </text>
+      </svg>
+    `;
+  },
+
+  /**
+   * Generate Email Banner SVG
+   */
+  generateEmailBannerSVG(winner, brandColor, accentColor) {
+    const awardName = winner.awards?.award_name || winner.awards?.award_category || 'Award Winner';
+    const year = winner.awards?.year || new Date().getFullYear();
+    const organizerName = document.getElementById('organizerName').value || 'Awards';
+
+    return `
+      <svg width="600" height="150" xmlns="http://www.w3.org/2000/svg">
+        <!-- Background -->
+        <rect width="600" height="150" fill="${brandColor}"/>
+        <rect x="0" y="0" width="150" height="150" fill="${accentColor}" opacity="0.2"/>
+
+        <!-- Decorative elements -->
+        <circle cx="75" cy="75" r="45" fill="none" stroke="${accentColor}" stroke-width="3"/>
+        <circle cx="75" cy="75" r="35" fill="${accentColor}" opacity="0.3"/>
+
+        <!-- Trophy icon -->
+        <g transform="translate(75,75)">
+          <path d="M-15,-20 L-15,-10 Q-20,-5 -20,5 L-10,15 L10,15 L20,5 Q20,-5 15,-10 L15,-20 Z M-10,15 L-10,20 L10,20 L10,15"
+            fill="white" stroke="white" stroke-width="1"/>
+        </g>
+
+        <!-- Text content -->
+        <text x="170" y="50" fill="white" font-size="18" font-weight="bold" font-family="Arial, sans-serif">
+          ${year} ${utils.escapeHtml(organizerName)}
+        </text>
+        <text x="170" y="75" fill="white" font-size="14" font-family="Arial, sans-serif" opacity="0.9">
+          AWARD WINNER
+        </text>
+        <text x="170" y="100" fill="${accentColor}" font-size="16" font-weight="600" font-family="Arial, sans-serif">
+          ${utils.escapeHtml(awardName)}
+        </text>
+        <text x="170" y="125" fill="white" font-size="12" font-family="Arial, sans-serif" opacity="0.8">
+          ${utils.escapeHtml(winner.winner_name || 'Winner')}
+        </text>
+      </svg>
+    `;
+  },
+
+  /**
+   * Generate Website Banner SVG
+   */
+  generateWebBannerSVG(winner, brandColor, accentColor) {
+    const awardName = winner.awards?.award_name || winner.awards?.award_category || 'Award Winner';
+    const year = winner.awards?.year || new Date().getFullYear();
+    const organizerName = document.getElementById('organizerName').value || 'British Trade Awards';
+
+    return `
+      <svg width="1200" height="300" xmlns="http://www.w3.org/2000/svg">
+        <!-- Background gradient -->
+        <defs>
+          <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+            <stop offset="0%" style="stop-color:${brandColor};stop-opacity:1" />
+            <stop offset="100%" style="stop-color:${brandColor};stop-opacity:0.7" />
+          </linearGradient>
+        </defs>
+        <rect width="1200" height="300" fill="url(#bgGrad)"/>
+
+        <!-- Decorative shapes -->
+        <circle cx="1050" cy="150" r="180" fill="${accentColor}" opacity="0.15"/>
+        <circle cx="1100" cy="100" r="120" fill="${accentColor}" opacity="0.1"/>
+
+        <!-- Award icon large -->
+        <g transform="translate(150,150)">
+          <circle r="80" fill="${accentColor}" opacity="0.2"/>
+          <circle r="60" fill="${accentColor}" opacity="0.3"/>
+          <path d="M0,-50 L15,-15 L52,-15 L22,10 L35,47 L0,22 L-35,47 L-22,10 L-52,-15 L-15,-15 Z"
+            fill="${accentColor}" stroke="white" stroke-width="3"/>
+        </g>
+
+        <!-- Main text -->
+        <text x="280" y="100" fill="white" font-size="48" font-weight="bold" font-family="Arial, sans-serif">
+          ${year} AWARD WINNER
+        </text>
+        <text x="280" y="150" fill="${accentColor}" font-size="32" font-weight="600" font-family="Arial, sans-serif">
+          ${utils.escapeHtml(awardName)}
+        </text>
+        <text x="280" y="190" fill="white" font-size="28" font-family="Arial, sans-serif">
+          ${utils.escapeHtml(winner.winner_name || 'Winner')}
+        </text>
+        <text x="280" y="230" fill="white" font-size="18" font-family="Arial, sans-serif" opacity="0.8">
+          ${utils.escapeHtml(organizerName)}
+        </text>
+      </svg>
+    `;
+  },
+
+  /**
+   * Generate PDF Certificate
+   */
+  async generateCertificatePDF(winner, brandColor, accentColor) {
+    // Create certificate using HTML canvas
+    const canvas = document.createElement('canvas');
+    canvas.width = 2480; // A4 at 300 DPI (landscape)
+    canvas.height = 1754;
+    const ctx = canvas.getContext('2d');
+
+    // Background
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    // Border
+    ctx.strokeStyle = brandColor;
+    ctx.lineWidth = 20;
+    ctx.strokeRect(100, 100, canvas.width - 200, canvas.height - 200);
+
+    // Inner decorative border
+    ctx.strokeStyle = accentColor;
+    ctx.lineWidth = 5;
+    ctx.strokeRect(150, 150, canvas.width - 300, canvas.height - 300);
+
+    // Title
+    ctx.fillStyle = brandColor;
+    ctx.font = 'bold 120px Arial';
+    ctx.textAlign = 'center';
+    ctx.fillText('CERTIFICATE OF ACHIEVEMENT', canvas.width / 2, 400);
+
+    // Certificate text template
+    const template = document.getElementById('certificateText').value;
+    const awardName = winner.awards?.award_name || winner.awards?.award_category || 'Excellence';
+    const year = winner.awards?.year || new Date().getFullYear();
+
+    const text = template
+      .replace('{WINNER_NAME}', winner.winner_name || 'Winner')
+      .replace('{AWARD_NAME}', awardName)
+      .replace('{YEAR}', year);
+
+    // Split text by lines and render
+    const lines = text.split('\n').filter(line => line.trim());
+    ctx.fillStyle = '#333333';
+    let yPos = 600;
+
+    lines.forEach(line => {
+      if (line === winner.winner_name) {
+        // Winner name in larger, bold font
+        ctx.font = 'bold 100px Arial';
+        ctx.fillStyle = brandColor;
+      } else if (line === awardName) {
+        // Award name in medium, bold font
+        ctx.font = 'bold 80px Arial';
+        ctx.fillStyle = accentColor;
+      } else {
+        // Regular text
+        ctx.font = '60px Arial';
+        ctx.fillStyle = '#555555';
+      }
+      ctx.fillText(line, canvas.width / 2, yPos);
+      yPos += 100;
+    });
+
+    // Organizer name
+    const organizerName = document.getElementById('organizerName').value || 'British Trade Awards';
+    ctx.font = 'bold 50px Arial';
+    ctx.fillStyle = '#333333';
+    ctx.fillText(organizerName, canvas.width / 2, canvas.height - 300);
+
+    // Signature name (if provided)
+    const signatureName = document.getElementById('signatureName').value;
+    if (signatureName) {
+      ctx.font = 'italic 40px Arial';
+      ctx.fillStyle = '#666666';
+      ctx.fillText(signatureName, canvas.width / 2, canvas.height - 230);
+
+      // Signature line
+      ctx.strokeStyle = '#999999';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(canvas.width / 2 - 300, canvas.height - 250);
+      ctx.lineTo(canvas.width / 2 + 300, canvas.height - 250);
+      ctx.stroke();
+    }
+
+    // Date
+    const dateStr = new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
+    ctx.font = '40px Arial';
+    ctx.fillStyle = '#888888';
+    ctx.fillText(dateStr, canvas.width / 2, canvas.height - 150);
+
+    // Convert canvas to blob and download
+    return new Promise((resolve) => {
+      canvas.toBlob((blob) => {
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        const safeWinnerName = winner.winner_name.replace(/[^a-z0-9]/gi, '_').toLowerCase();
+        link.href = url;
+        link.download = `${safeWinnerName}_certificate.png`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+        resolve();
+      }, 'image/png');
+    });
+  },
+
+  /**
+   * Download SVG as Image
+   */
+  async downloadSVGAsImage(svgString, filename, width, height) {
+    return new Promise((resolve, reject) => {
+      const canvas = document.createElement('canvas');
+      canvas.width = width;
+      canvas.height = height;
+      const ctx = canvas.getContext('2d');
+
+      const img = new Image();
+      const svgBlob = new Blob([svgString], { type: 'image/svg+xml;charset=utf-8' });
+      const url = URL.createObjectURL(svgBlob);
+
+      img.onload = () => {
+        ctx.fillStyle = 'white';
+        ctx.fillRect(0, 0, width, height);
+        ctx.drawImage(img, 0, 0, width, height);
+
+        canvas.toBlob((blob) => {
+          const downloadUrl = URL.createObjectURL(blob);
+          const link = document.createElement('a');
+          link.href = downloadUrl;
+          link.download = filename;
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+          URL.revokeObjectURL(downloadUrl);
+          URL.revokeObjectURL(url);
+          resolve();
+        }, 'image/png');
+      };
+
+      img.onerror = (error) => {
+        URL.revokeObjectURL(url);
+        reject(error);
+      };
+
+      img.src = url;
+    });
   }
 };
 

@@ -953,6 +953,11 @@
                 <i class="bi bi-envelope me-2"></i>Email Templates
               </button>
             </li>
+            <li class="nav-item" role="presentation">
+              <button class="nav-link" id="email-builder-subtab" data-bs-toggle="pill" data-bs-target="#email-builder-content" type="button" role="tab">
+                <i class="bi bi-grid-3x3-gap me-2"></i>Email Builder
+              </button>
+            </li>
           </ul>
 
           <!-- Marketing Sub-Tab Content -->
@@ -1023,6 +1028,151 @@
                   <i class="bi bi-hourglass-split display-4 d-block mb-2 opacity-25"></i>
                   Loading email templates...
                 </div>
+              </div>
+            </div>
+
+            <!-- Email Builder Sub-Tab -->
+            <div class="tab-pane fade" id="email-builder-content" role="tabpanel">
+              <div class="row g-0" style="height: calc(100vh - 280px); min-height: 600px;">
+
+                <!-- Left Sidebar - Blocks & Settings -->
+                <div class="col-md-3 border-end" style="overflow-y: auto;">
+                  <div class="p-3">
+
+                    <!-- Campaign Settings -->
+                    <div class="mb-4">
+                      <h6 class="mb-3"><i class="bi bi-gear me-2"></i>Campaign Settings</h6>
+
+                      <div class="mb-3">
+                        <label class="form-label small">Campaign Name</label>
+                        <input type="text" class="form-control form-control-sm" id="builderCampaignName" placeholder="Winner Announcement 2024">
+                      </div>
+
+                      <div class="mb-3">
+                        <label class="form-label small">Subject Line</label>
+                        <input type="text" class="form-control form-control-sm" id="builderSubject" placeholder="Congratulations {{company_name}}!">
+                      </div>
+
+                      <div class="mb-3">
+                        <label class="form-label small">Select Organisation</label>
+                        <select class="form-select form-select-sm" id="builderOrgSelect">
+                          <option value="">Choose organisation...</option>
+                        </select>
+                      </div>
+                    </div>
+
+                    <hr>
+
+                    <!-- Draggable Blocks -->
+                    <div class="mb-4">
+                      <h6 class="mb-3"><i class="bi bi-grid-3x3-gap me-2"></i>Drag Blocks</h6>
+
+                      <div class="email-block-palette">
+                        <div class="email-block-item" draggable="true" data-block-type="header">
+                          <i class="bi bi-image"></i> Header Image
+                        </div>
+                        <div class="email-block-item" draggable="true" data-block-type="hero">
+                          <i class="bi bi-card-image"></i> Hero Section
+                        </div>
+                        <div class="email-block-item" draggable="true" data-block-type="text">
+                          <i class="bi bi-text-paragraph"></i> Text Block
+                        </div>
+                        <div class="email-block-item" draggable="true" data-block-type="company-profile">
+                          <i class="bi bi-building"></i> Company Profile
+                        </div>
+                        <div class="email-block-item" draggable="true" data-block-type="award-list">
+                          <i class="bi bi-trophy"></i> Award List
+                        </div>
+                        <div class="email-block-item" draggable="true" data-block-type="button">
+                          <i class="bi bi-cursor"></i> CTA Button
+                        </div>
+                        <div class="email-block-item" draggable="true" data-block-type="image">
+                          <i class="bi bi-image-fill"></i> Image
+                        </div>
+                        <div class="email-block-item" draggable="true" data-block-type="divider">
+                          <i class="bi bi-dash-lg"></i> Divider
+                        </div>
+                        <div class="email-block-item" draggable="true" data-block-type="social-links">
+                          <i class="bi bi-share"></i> Social Links
+                        </div>
+                        <div class="email-block-item" draggable="true" data-block-type="footer">
+                          <i class="bi bi-layout-text-window"></i> Footer
+                        </div>
+                      </div>
+                    </div>
+
+                    <hr>
+
+                    <!-- Quick Actions -->
+                    <div class="d-grid gap-2">
+                      <button class="btn btn-success btn-sm" onclick="emailBuilder.exportHTML()">
+                        <i class="bi bi-download me-1"></i>Export HTML
+                      </button>
+                      <button class="btn btn-primary btn-sm" onclick="emailBuilder.saveTemplate()">
+                        <i class="bi bi-save me-1"></i>Save Template
+                      </button>
+                      <button class="btn btn-outline-secondary btn-sm" onclick="emailBuilder.clearCanvas()">
+                        <i class="bi bi-trash me-1"></i>Clear All
+                      </button>
+                    </div>
+
+                  </div>
+                </div>
+
+                <!-- Center - Canvas/Builder -->
+                <div class="col-md-6 border-end bg-light" style="overflow-y: auto;">
+                  <div class="p-3">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                      <h6 class="mb-0"><i class="bi bi-palette me-2"></i>Email Canvas</h6>
+                      <div class="btn-group btn-group-sm" role="group">
+                        <button class="btn btn-outline-secondary active" onclick="emailBuilder.setViewMode('desktop')">
+                          <i class="bi bi-display"></i>
+                        </button>
+                        <button class="btn btn-outline-secondary" onclick="emailBuilder.setViewMode('mobile')">
+                          <i class="bi bi-phone"></i>
+                        </button>
+                      </div>
+                    </div>
+
+                    <!-- Email Canvas -->
+                    <div id="emailCanvas" class="email-canvas" style="max-width: 600px; margin: 0 auto; background: white; min-height: 400px; border: 1px solid #dee2e6; border-radius: 4px;">
+                      <div class="text-center py-5 text-muted">
+                        <i class="bi bi-grid-3x3-gap display-4 d-block mb-3 opacity-25"></i>
+                        <p class="mb-0">Drag blocks from the left panel to start building your email</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Right Sidebar - Live Preview -->
+                <div class="col-md-3" style="overflow-y: auto;">
+                  <div class="p-3">
+                    <h6 class="mb-3"><i class="bi bi-eye me-2"></i>Live Preview</h6>
+
+                    <div class="email-preview-container">
+                      <iframe id="emailPreviewFrame" style="width: 100%; height: 500px; border: 1px solid #dee2e6; border-radius: 4px; background: white;"></iframe>
+                    </div>
+
+                    <hr>
+
+                    <div class="mt-3">
+                      <h6 class="small mb-2">Available Variables</h6>
+                      <div class="variable-tags">
+                        <code class="variable-tag">{{company_name}}</code>
+                        <code class="variable-tag">{{company_logo}}</code>
+                        <code class="variable-tag">{{contact_name}}</code>
+                        <code class="variable-tag">{{award_category}}</code>
+                        <code class="variable-tag">{{award_year}}</code>
+                        <code class="variable-tag">{{website}}</code>
+                        <code class="variable-tag">{{event_name}}</code>
+                        <code class="variable-tag">{{event_date}}</code>
+                      </div>
+                      <small class="text-muted d-block mt-2">Click to copy to clipboard</small>
+                    </div>
+
+                  </div>
+                </div>
+
               </div>
             </div>
 
@@ -2820,6 +2970,7 @@ in recognition of excellence
   <script src="assignments.js"></script>
   <script src="dashboard.js"></script>
   <script src="marketing.js"></script>
+  <script src="email-builder.js"></script>
   <script src="settings.js"></script>
   <script src="app.js"></script>
 

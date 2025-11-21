@@ -345,6 +345,17 @@ document.addEventListener('DOMContentLoaded', function() {
     });
   }
 
+  // Initialize Email Builder when sub-tab is opened
+  const emailBuilderSubTab = document.getElementById('email-builder-subtab');
+  if (emailBuilderSubTab) {
+    emailBuilderSubTab.addEventListener('shown.bs.tab', () => {
+      console.log('✉️ Email Builder opened');
+      if (typeof emailBuilder !== 'undefined' && !emailBuilder.initialized) {
+        emailBuilder.init();
+      }
+    });
+  }
+
   // ==========================================
   // STEP 12: Tooltips Initialization
   // ==========================================

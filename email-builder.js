@@ -8,6 +8,9 @@ const emailBuilder = {
   currentOrg: null,
   viewMode: 'desktop',
   initialized: false,
+  promotionMode: 'nominee', // 'nominee' or 'winner'
+  selectedCompany: null,
+  contentLibraryVisible: false,
 
   /**
    * Initialize email builder
@@ -662,11 +665,22 @@ const emailBuilder = {
         name: 'General Announcement',
         subject: '📢 Important Update from {{organisation_name}}',
         blocks: ['header', 'hero', 'text', 'text', 'divider', 'social-links', 'footer']
+      },
+      'client-promotion': {
+        name: 'Client Promotion',
+        subject: 'Vote for {{company_name}} at the British Trade Awards',
+        isCustomHTML: true
       }
     };
 
     const template = templates[templateType];
     if (!template) return;
+
+    // Handle client promotion template differently
+    if (templateType === 'client-promotion') {
+      this.loadClientPromotionTemplate();
+      return;
+    }
 
     // Update campaign settings
     document.getElementById('builderCampaignName').value = template.name;
@@ -813,6 +827,502 @@ const emailBuilder = {
         utils.showToast('Variable copied: ' + tag.textContent, 'success');
       });
     });
+  },
+
+  /**
+   * Load Client Promotion Template
+   */
+  async loadClientPromotionTemplate() {
+    console.log('Loading Client Promotion template...');
+
+    // Update campaign settings
+    document.getElementById('builderCampaignName').value = 'Client Promotion';
+    document.getElementById('builderSubject').value = 'Vote for {{company_name}} at the British Trade Awards';
+
+    // Show content library panel
+    this.showContentLibrary();
+
+    // Load the HTML template
+    const htmlTemplate = this.getClientPromotionHTML();
+
+    // Clear canvas and set HTML directly
+    this.canvas.innerHTML = htmlTemplate;
+    this.blocks = [{ id: 'client-promotion-template', type: 'custom-html' }];
+
+    utils.showToast('Client Promotion template loaded! Select a company to populate content.', 'success');
+  },
+
+  /**
+   * Get Client Promotion HTML Template
+   */
+  getClientPromotionHTML() {
+    const badgeImg = this.promotionMode === 'winner'
+      ? 'img/winner-logo.png'
+      : 'img/nominee-winner-logo.png';
+
+    return `
+      <table width="100%" border="0" cellspacing="0" cellpadding="0" bgcolor="#e7e7e2">
+        <tbody>
+          <tr>
+            <td>
+              <table width="680" border="0" align="center" cellpadding="0" cellspacing="0">
+                <tbody>
+                  <tr>
+                    <td height="40" align="center" valign="middle" style="text-align: center; font-family: Arial, sans-serif;">
+                      <a href="[webversion]" style="font-size: 12px; color: #cc9900!important; text-decoration: underline;">View web version</a>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+
+              <table width="680" border="0" align="center" cellpadding="0" cellspacing="0" bgcolor="#ffffff">
+                <tbody>
+                  <tr>
+                    <td colspan="3" align="center" valign="middle" bgcolor="#ffffff" style="padding: 20px">
+                      <div id="drop-logo" class="drop-zone" data-content-type="logo" style="min-height: 80px; border: 2px dashed #ccc; padding: 20px; cursor: pointer;">
+                        <p style="margin: 0; color: #999; font-family: Arial, sans-serif;">📎 Drag company logo here</p>
+                      </div>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td colspan="3" align="center" valign="middle" bgcolor="#ffffff">
+                      <div id="drop-hero-1" class="drop-zone" data-content-type="image" style="min-height: 200px; border: 2px dashed #ccc; margin-bottom: 10px; cursor: pointer;">
+                        <p style="margin: 0; color: #999; font-family: Arial, sans-serif; padding: 80px 20px;">📸 Drag hero image 1 here</p>
+                      </div>
+                      <div id="drop-hero-2" class="drop-zone" data-content-type="image" style="min-height: 200px; border: 2px dashed #ccc; cursor: pointer;">
+                        <p style="margin: 0; color: #999; font-family: Arial, sans-serif; padding: 80px 20px;">📸 Drag hero image 2 here</p>
+                      </div>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td width="30" rowspan="3" align="center" valign="middle" bgcolor="#ffffff"></td>
+                    <td width="580" height="20" align="center" valign="middle" bgcolor="#ffffff"></td>
+                    <td width="30" rowspan="3" align="center" valign="middle" bgcolor="#ffffff"></td>
+                  </tr>
+                  <tr>
+                    <td align="center" valign="middle" bgcolor="#ffffff" style="text-align: center">
+                      <div id="drop-bio" class="drop-zone" data-content-type="bio" contenteditable="true" style="min-height: 100px; padding: 20px; border: 2px dashed #ccc; cursor: text;">
+                        <p style="font-family: Gotham, 'Helvetica Neue', Helvetica, Arial, sans-serif; color: #111829; font-size: 16px; line-height: 28px; text-align: center">
+                          <span style="font-size: 22px; color: #5c0f76">Vote for {{company_name}}</span><br><br>
+                          📝 Drag company bio here or click to edit
+                        </p>
+                      </div>
+
+                      <table width="100%" border="0" cellspacing="0" cellpadding="0" style="margin-top: 20px;">
+                        <tbody>
+                          <tr>
+                            <td align="center" valign="top">
+                              <div id="drop-button" class="drop-zone" data-content-type="button" style="display: inline-block; margin-bottom: 20px;">
+                                <a href="https://www.britishtradeawards.com/vote" style="display: inline-block; padding: 15px 40px; background-color: #5c0f76; color: #ffffff; text-decoration: none; border-radius: 5px; font-family: Arial, sans-serif; font-weight: bold;">
+                                  VOTE NOW
+                                </a>
+                              </div>
+                              <br>
+                              <div id="drop-badge" class="drop-zone" data-content-type="badge" style="min-height: 160px; border: 2px dashed #ccc; padding: 20px; display: inline-block; cursor: pointer;">
+                                <p style="margin: 0; color: #999; font-family: Arial, sans-serif;">🏆 ${this.promotionMode === 'winner' ? 'Winner' : 'Nominee'} badge will appear here</p>
+                              </div>
+                            </td>
+                          </tr>
+                        </tbody>
+                      </table>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td height="20" align="center" valign="middle" bgcolor="#ffffff"></td>
+                  </tr>
+                </tbody>
+              </table>
+
+              <table bgcolor="#7e599c" width="680" border="0" align="center" cellpadding="0" cellspacing="0">
+                <tbody>
+                  <tr>
+                    <td bgcolor="#7e599c">
+                      <div id="drop-website" class="drop-zone" data-content-type="website" contenteditable="true" style="min-height: 40px; cursor: text;">
+                        <p style="color: #ffffff; font-size: 14px; font-family: Gotham, 'Helvetica Neue', Helvetica, Arial, sans-serif; padding: 20px; text-align: center;">
+                          <a href="{{company_website}}" style="color: #ffffff; text-decoration: none; font-family: Gotham, 'Helvetica Neue', Helvetica, Arial, sans-serif;" target="blank">{{company_website}}</a>
+                        </p>
+                      </div>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+
+              <table width="680" border="0" align="center" cellpadding="0" cellspacing="0">
+                <tbody>
+                  <tr>
+                    <td>
+                      <p style="color: #333333; font-size: 12px; font-family: 'Helvetica Neue', Helvetica, Arial, 'sans-serif'; padding:20px 20px 30px 20px;">
+                        You are receiving this email because <a href="mailto:[Email]" style="color: #cc9900; text-decoration:underline;">[Email]</a> is subscribed to the British Trade Awards Voter mailing list.
+                        If you wish to be removed from this mailing list, please <a style="color: #cc9900; text-decoration:underline;" href="[unsubscribe]" target="_blank">unsubscribe</a>.<br><br>
+                        This email was sent by <a href="https://www.britishtradeawards.com" style="color: #cc9900; text-decoration:underline;" target="blank">British Trade Awards</a><br>
+                        Buckingham Palace, London, United Kingdom<br>
+                        E: <a href="mailto:awards@britishtradeawards.com" style="color: #cc9900; text-decoration:underline;" target="blank">awards@britishtradeawards.com</a>
+                        T: <a href="tel:+44207123456789" style="color: #cc9900; text-decoration:underline;">+44 (0)207123456789</a>
+                      </p>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    `;
+  },
+
+  /**
+   * Show Content Library Panel
+   */
+  async showContentLibrary() {
+    this.contentLibraryVisible = true;
+
+    // Create or update the content library panel
+    let panel = document.getElementById('contentLibraryPanel');
+    if (!panel) {
+      // Create panel if it doesn't exist
+      const builderContainer = document.querySelector('.email-builder-content');
+      if (!builderContainer) return;
+
+      panel = document.createElement('div');
+      panel.id = 'contentLibraryPanel';
+      panel.className = 'content-library-panel';
+      panel.style.cssText = 'position: absolute; right: 0; top: 0; width: 300px; height: 100%; background: #f8f9fa; border-left: 1px solid #dee2e6; overflow-y: auto; z-index: 100;';
+
+      builderContainer.style.position = 'relative';
+      builderContainer.appendChild(panel);
+    }
+
+    // Load content
+    await this.loadContentLibraryContent(panel);
+
+    // Setup drag and drop for content items
+    this.setupContentDragDrop();
+  },
+
+  /**
+   * Load Content Library with Company Selector
+   */
+  async loadContentLibraryContent(panel) {
+    // Load organisations with enhanced profile info
+    const { data: orgs, error } = await supabase
+      .from('award_assignments')
+      .select(`
+        organisation_id,
+        enhanced_profile,
+        organisations(id, company_name, logo_url, website, description, region, industry)
+      `)
+      .not('organisations', 'is', null)
+      .order('enhanced_profile', { ascending: false });
+
+    if (error) {
+      console.error('Error loading organisations:', error);
+      return;
+    }
+
+    // Group by organisation and prioritize enhanced profiles
+    const orgMap = new Map();
+    orgs.forEach(item => {
+      const org = item.organisations;
+      if (!orgMap.has(org.id)) {
+        orgMap.set(org.id, {
+          ...org,
+          hasEnhancedProfile: item.enhanced_profile || false
+        });
+      } else if (item.enhanced_profile) {
+        orgMap.get(org.id).hasEnhancedProfile = true;
+      }
+    });
+
+    const organisations = Array.from(orgMap.values()).sort((a, b) => {
+      if (a.hasEnhancedProfile && !b.hasEnhancedProfile) return -1;
+      if (!a.hasEnhancedProfile && b.hasEnhancedProfile) return 1;
+      return a.company_name.localeCompare(b.company_name);
+    });
+
+    panel.innerHTML = `
+      <div style="padding: 20px;">
+        <h5 style="margin-bottom: 20px;">
+          <i class="bi bi-images me-2"></i>Content Library
+        </h5>
+
+        <!-- Nominee/Winner Toggle -->
+        <div class="mb-4">
+          <label class="form-label fw-bold">Promotion Type</label>
+          <div class="btn-group w-100" role="group">
+            <button type="button" class="btn btn-sm ${this.promotionMode === 'nominee' ? 'btn-primary' : 'btn-outline-primary'}" onclick="emailBuilder.setPromotionMode('nominee')">
+              ⭐ Nominee
+            </button>
+            <button type="button" class="btn btn-sm ${this.promotionMode === 'winner' ? 'btn-success' : 'btn-outline-success'}" onclick="emailBuilder.setPromotionMode('winner')">
+              🏆 Winner
+            </button>
+          </div>
+        </div>
+
+        <!-- Company Selector -->
+        <div class="mb-4">
+          <label class="form-label fw-bold">Select Company</label>
+          <select class="form-select form-select-sm" id="promotionCompanySelect" onchange="emailBuilder.loadCompanyContent(this.value)">
+            <option value="">Choose company...</option>
+            ${organisations.map(org => `
+              <option value="${org.id}">
+                ${org.hasEnhancedProfile ? '✨ ' : ''}${org.company_name}
+              </option>
+            `).join('')}
+          </select>
+          <small class="text-muted">✨ = Enhanced Profile</small>
+        </div>
+
+        <!-- Content Items Container -->
+        <div id="companyContentItems">
+          <p class="text-muted text-center py-4">
+            <i class="bi bi-arrow-up me-2"></i>
+            Select a company to load content
+          </p>
+        </div>
+      </div>
+    `;
+  },
+
+  /**
+   * Set Promotion Mode (Nominee or Winner)
+   */
+  setPromotionMode(mode) {
+    this.promotionMode = mode;
+    console.log('Promotion mode set to:', mode);
+
+    // Reload template if already loaded
+    if (this.blocks.length > 0 && this.blocks[0].type === 'custom-html') {
+      const htmlTemplate = this.getClientPromotionHTML();
+      this.canvas.innerHTML = htmlTemplate;
+      this.setupContentDragDrop();
+    }
+
+    // Update toggle buttons
+    const panel = document.getElementById('contentLibraryPanel');
+    if (panel) {
+      this.loadContentLibraryContent(panel);
+    }
+
+    // Update badge placeholder
+    const badgeZone = document.getElementById('drop-badge');
+    if (badgeZone) {
+      badgeZone.innerHTML = `<p style="margin: 0; color: #999; font-family: Arial, sans-serif;">🏆 ${mode === 'winner' ? 'Winner' : 'Nominee'} badge will appear here</p>`;
+    }
+
+    utils.showToast(`Switched to ${mode} mode`, 'success');
+  },
+
+  /**
+   * Load Company Content
+   */
+  async loadCompanyContent(orgId) {
+    if (!orgId) return;
+
+    console.log('Loading content for company:', orgId);
+
+    try {
+      // Load company details
+      const { data: org, error: orgError } = await supabase
+        .from('organisations')
+        .select('*')
+        .eq('id', orgId)
+        .single();
+
+      if (orgError) throw orgError;
+
+      this.selectedCompany = org;
+
+      // Load company images from media gallery
+      const { data: images, error: imgError } = await supabase
+        .from('media_items')
+        .select('*')
+        .eq('organisation_id', orgId)
+        .eq('media_type', 'image')
+        .order('created_at', { ascending: false });
+
+      const companyImages = images || [];
+
+      // Display draggable content items
+      const container = document.getElementById('companyContentItems');
+      if (!container) return;
+
+      container.innerHTML = `
+        <h6 class="mb-3">Drag content to template:</h6>
+
+        <!-- Company Logo -->
+        <div class="content-item mb-3" draggable="true" data-content-type="logo" data-content-value="${org.logo_url || ''}" style="cursor: move; padding: 10px; border: 1px solid #dee2e6; border-radius: 5px; background: white;">
+          <strong>📦 Company Logo</strong><br>
+          ${org.logo_url ? `<img src="${org.logo_url}" style="max-width: 100px; max-height: 50px; margin-top: 5px;">` : '<small class="text-muted">No logo available</small>'}
+        </div>
+
+        <!-- Company Bio -->
+        <div class="content-item mb-3" draggable="true" data-content-type="bio" data-content-value="${utils.escapeHtml(org.description || '')}" style="cursor: move; padding: 10px; border: 1px solid #dee2e6; border-radius: 5px; background: white;">
+          <strong>📝 Company Bio</strong><br>
+          <small class="text-muted">${org.description ? org.description.substring(0, 100) + '...' : 'No bio available'}</small>
+        </div>
+
+        <!-- Company Website -->
+        <div class="content-item mb-3" draggable="true" data-content-type="website" data-content-value="${org.website || ''}" style="cursor: move; padding: 10px; border: 1px solid #dee2e6; border-radius: 5px; background: white;">
+          <strong>🔗 Website</strong><br>
+          <small>${org.website || 'No website'}</small>
+        </div>
+
+        <!-- Company Images -->
+        ${companyImages.length > 0 ? `
+          <h6 class="mb-2 mt-3">📸 Images (${companyImages.length})</h6>
+          ${companyImages.slice(0, 10).map(img => `
+            <div class="content-item mb-2" draggable="true" data-content-type="image" data-content-value="${img.file_url}" style="cursor: move; padding: 8px; border: 1px solid #dee2e6; border-radius: 5px; background: white;">
+              <img src="${img.file_url}" style="width: 100%; height: 80px; object-fit: cover; border-radius: 3px;">
+              <small class="d-block mt-1 text-muted">${img.title || 'Untitled'}</small>
+            </div>
+          `).join('')}
+        ` : '<p class="text-muted"><small>No images in gallery</small></p>'}
+
+        <!-- Nominee/Winner Badge -->
+        <div class="content-item mb-3" draggable="true" data-content-type="badge" data-content-value="${this.promotionMode}" style="cursor: move; padding: 10px; border: 1px solid #dee2e6; border-radius: 5px; background: white;">
+          <strong>🏆 ${this.promotionMode === 'winner' ? 'Winner' : 'Nominee'} Badge</strong><br>
+          <small class="text-muted">Auto-generated badge</small>
+        </div>
+      `;
+
+      // Setup drag events for content items
+      this.setupContentDragDrop();
+
+      utils.showToast(`Loaded content for ${org.company_name}`, 'success');
+
+    } catch (error) {
+      console.error('Error loading company content:', error);
+      utils.showToast('Error loading company content', 'error');
+    }
+  },
+
+  /**
+   * Setup Drag & Drop for Content Items
+   */
+  setupContentDragDrop() {
+    // Make content items draggable
+    document.querySelectorAll('.content-item').forEach(item => {
+      item.addEventListener('dragstart', (e) => {
+        const contentType = item.getAttribute('data-content-type');
+        const contentValue = item.getAttribute('data-content-value');
+        e.dataTransfer.setData('contentType', contentType);
+        e.dataTransfer.setData('contentValue', contentValue);
+        item.style.opacity = '0.5';
+      });
+
+      item.addEventListener('dragend', (e) => {
+        item.style.opacity = '1';
+      });
+    });
+
+    // Setup drop zones
+    document.querySelectorAll('.drop-zone').forEach(zone => {
+      zone.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        zone.style.borderColor = '#0d6efd';
+        zone.style.backgroundColor = '#e7f1ff';
+      });
+
+      zone.addEventListener('dragleave', (e) => {
+        zone.style.borderColor = '#ccc';
+        zone.style.backgroundColor = 'transparent';
+      });
+
+      zone.addEventListener('drop', (e) => {
+        e.preventDefault();
+        zone.style.borderColor = '#ccc';
+        zone.style.backgroundColor = 'transparent';
+
+        const contentType = e.dataTransfer.getData('contentType');
+        const contentValue = e.dataTransfer.getData('contentValue');
+        const zoneType = zone.getAttribute('data-content-type');
+
+        // Only allow matching content types
+        if (contentType !== zoneType && zoneType !== 'image') {
+          utils.showToast('Content type mismatch', 'warning');
+          return;
+        }
+
+        this.populateDropZone(zone, contentType, contentValue);
+      });
+    });
+  },
+
+  /**
+   * Populate Drop Zone with Content
+   */
+  populateDropZone(zone, contentType, contentValue) {
+    console.log('Populating zone:', contentType, contentValue);
+
+    switch (contentType) {
+      case 'logo':
+        if (contentValue) {
+          zone.innerHTML = `<img src="${contentValue}" alt="Company Logo" style="max-width: 200px; height: auto; border: none;">`;
+        }
+        break;
+
+      case 'image':
+        if (contentValue) {
+          zone.innerHTML = `<img src="${contentValue}" style="width: 680px; height: auto; display: block; border: none;">`;
+        }
+        break;
+
+      case 'bio':
+        if (contentValue) {
+          zone.innerHTML = `
+            <p style="font-family: Gotham, 'Helvetica Neue', Helvetica, Arial, sans-serif; color: #111829; font-size: 16px; line-height: 28px; text-align: center">
+              <span style="font-size: 22px; color: #5c0f76">Vote for ${this.selectedCompany?.company_name || '{{company_name}}'}</span><br><br>
+              ${contentValue}
+            </p>
+          `;
+        }
+        break;
+
+      case 'website':
+        if (contentValue) {
+          zone.innerHTML = `
+            <p style="color: #ffffff; font-size: 14px; font-family: Gotham, 'Helvetica Neue', Helvetica, Arial, sans-serif; padding: 20px; text-align: center;">
+              <a href="${contentValue}" style="color: #ffffff; text-decoration: none; font-family: Gotham, 'Helvetica Neue', Helvetica, Arial, sans-serif;" target="blank">${contentValue.replace('https://', '').replace('http://', '')}</a>
+            </p>
+          `;
+        }
+        break;
+
+      case 'badge':
+        // Generate nominee/winner badge
+        const badgeHTML = this.generateBadge(this.promotionMode);
+        zone.innerHTML = badgeHTML;
+        break;
+    }
+
+    utils.showToast('Content added successfully', 'success');
+    this.updatePreview();
+  },
+
+  /**
+   * Generate Winner/Nominee Badge
+   */
+  generateBadge(mode) {
+    const isWinner = mode === 'winner';
+    const color = isWinner ? '#FFD700' : '#C0C0C0';
+    const icon = isWinner ? '🏆' : '⭐';
+    const text = isWinner ? 'WINNER' : 'NOMINEE';
+    const year = new Date().getFullYear();
+
+    return `
+      <div style="display: inline-block; text-align: center; padding: 20px; background: linear-gradient(135deg, ${color} 0%, ${isWinner ? '#FFA500' : '#808080'} 100%); border-radius: 10px; box-shadow: 0 4px 10px rgba(0,0,0,0.2);">
+        <div style="font-size: 48px; margin-bottom: 10px;">${icon}</div>
+        <div style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; font-size: 24px; font-weight: bold; color: #000; margin-bottom: 5px;">
+          ${text}
+        </div>
+        <div style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; font-size: 14px; color: #333;">
+          British Trade Awards
+        </div>
+        <div style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; font-size: 16px; font-weight: bold; color: #000; margin-top: 5px;">
+          ${year}
+        </div>
+      </div>
+    `;
   }
 };
 

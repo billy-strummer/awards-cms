@@ -139,6 +139,11 @@
           <i class="bi bi-graph-up me-2"></i>Reports
         </button>
       </li>
+      <li class="nav-item" role="presentation">
+        <button class="nav-link" id="settings-tab" data-bs-toggle="tab" data-bs-target="#settings" type="button" role="tab">
+          <i class="bi bi-gear me-2"></i>Settings & Backup
+        </button>
+      </li>
     </ul>
 
     <!-- Tab Content -->
@@ -161,38 +166,101 @@
           <!-- Stats Cards -->
           <div class="row g-4 mb-5">
             <div class="col-md-3">
-              <div class="stat-card">
+              <div class="stat-card stat-card-clickable" onclick="dashboardModule.navigateToSection('awards')" title="Click to view all awards">
                 <i class="bi bi-trophy stat-card-icon text-primary"></i>
                 <h6>Total Awards</h6>
                 <div class="stat-value" id="totalAwards">0</div>
                 <small class="text-muted">All award categories</small>
+                <div class="stat-card-hover-indicator">
+                  <i class="bi bi-arrow-right-circle"></i>
+                </div>
               </div>
             </div>
-            
+
             <div class="col-md-3">
-              <div class="stat-card">
+              <div class="stat-card stat-card-clickable" onclick="dashboardModule.filterPendingAwards()" title="Click to view pending awards">
                 <i class="bi bi-hourglass-split stat-card-icon text-warning"></i>
                 <h6>Pending Reviews</h6>
                 <div class="stat-value text-warning" id="pendingAwards">0</div>
                 <small class="text-muted">Awaiting approval</small>
+                <div class="stat-card-hover-indicator">
+                  <i class="bi bi-arrow-right-circle"></i>
+                </div>
               </div>
             </div>
-            
+
             <div class="col-md-3">
-              <div class="stat-card">
+              <div class="stat-card stat-card-clickable" onclick="dashboardModule.navigateToSection('organisations')" title="Click to view all organisations">
                 <i class="bi bi-building stat-card-icon text-success"></i>
                 <h6>Organisations</h6>
                 <div class="stat-value text-success" id="totalOrgs">0</div>
                 <small class="text-muted">Registered companies</small>
+                <div class="stat-card-hover-indicator">
+                  <i class="bi bi-arrow-right-circle"></i>
+                </div>
               </div>
             </div>
-            
+
             <div class="col-md-3">
-              <div class="stat-card">
+              <div class="stat-card stat-card-clickable" onclick="dashboardModule.navigateToSection('winners')" title="Click to view all winners">
                 <i class="bi bi-award stat-card-icon text-info"></i>
                 <h6>Winners</h6>
                 <div class="stat-value text-info" id="totalWinners">0</div>
                 <small class="text-muted">Award recipients</small>
+                <div class="stat-card-hover-indicator">
+                  <i class="bi bi-arrow-right-circle"></i>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Second Row of Stats -->
+          <div class="row g-4 mb-5">
+            <div class="col-md-3">
+              <div class="stat-card stat-card-clickable" onclick="dashboardModule.navigateToSection('events')" title="Click to view all events">
+                <i class="bi bi-calendar-event stat-card-icon text-purple"></i>
+                <h6>Events</h6>
+                <div class="stat-value" id="totalEvents">0</div>
+                <small class="text-muted">Award ceremonies & functions</small>
+                <div class="stat-card-hover-indicator">
+                  <i class="bi bi-arrow-right-circle"></i>
+                </div>
+              </div>
+            </div>
+
+            <div class="col-md-3">
+              <div class="stat-card stat-card-clickable" onclick="dashboardModule.navigateToSection('media-gallery')" title="Click to view media gallery">
+                <i class="bi bi-images stat-card-icon text-primary"></i>
+                <h6>Media Gallery</h6>
+                <div class="stat-value" id="totalMedia">0</div>
+                <small class="text-muted">Photos & videos</small>
+                <div class="stat-card-hover-indicator">
+                  <i class="bi bi-arrow-right-circle"></i>
+                </div>
+              </div>
+            </div>
+
+            <div class="col-md-3">
+              <div class="stat-card stat-card-warning" onclick="dashboardModule.showUntaggedPhotos()" title="Click to view untagged photos">
+                <i class="bi bi-exclamation-triangle stat-card-icon text-danger"></i>
+                <h6>Untagged Photos</h6>
+                <div class="stat-value text-danger" id="untaggedPhotos">0</div>
+                <small class="text-muted">Need organisation/award tags</small>
+                <div class="stat-card-hover-indicator">
+                  <i class="bi bi-arrow-right-circle"></i>
+                </div>
+              </div>
+            </div>
+
+            <div class="col-md-3">
+              <div class="stat-card stat-card-clickable" onclick="dashboardModule.showUpcomingEvents()" title="Click to view upcoming events">
+                <i class="bi bi-calendar-check stat-card-icon text-success"></i>
+                <h6>Upcoming Events</h6>
+                <div class="stat-value text-success" id="upcomingEvents">0</div>
+                <small class="text-muted">Next 30 days</small>
+                <div class="stat-card-hover-indicator">
+                  <i class="bi bi-arrow-right-circle"></i>
+                </div>
               </div>
             </div>
           </div>
@@ -231,6 +299,131 @@
                   </tr>
                 </tbody>
               </table>
+            </div>
+          </div>
+
+          <!-- Visual Charts Section -->
+          <div class="content-card mt-4">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+              <div>
+                <h3 class="h5 mb-1">
+                  <i class="bi bi-graph-up text-primary me-2"></i>Visual Analytics
+                </h3>
+                <p class="text-muted small mb-0">Trends and insights across all data</p>
+              </div>
+              <button class="btn btn-outline-primary btn-sm" onclick="dashboardModule.refreshCharts()">
+                <i class="bi bi-arrow-clockwise me-1"></i>Refresh
+              </button>
+            </div>
+
+            <div class="row g-4">
+              <!-- Winners by Year Chart -->
+              <div class="col-lg-6">
+                <div class="chart-container">
+                  <h6 class="chart-title">
+                    <i class="bi bi-trophy me-2"></i>Winners by Year
+                  </h6>
+                  <div id="winnersYearChart" class="chart-canvas" style="height: 300px;">
+                    <div class="text-center py-5 text-muted">
+                      <i class="bi bi-bar-chart display-4 d-block mb-2 opacity-25"></i>
+                      Loading chart...
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Category Distribution Chart -->
+              <div class="col-lg-6">
+                <div class="chart-container">
+                  <h6 class="chart-title">
+                    <i class="bi bi-pie-chart me-2"></i>Top Award Categories
+                  </h6>
+                  <div id="categoryChart" class="chart-canvas" style="height: 300px;">
+                    <div class="text-center py-5 text-muted">
+                      <i class="bi bi-bar-chart display-4 d-block mb-2 opacity-25"></i>
+                      Loading chart...
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Sector Trends Chart -->
+              <div class="col-lg-6">
+                <div class="chart-container">
+                  <h6 class="chart-title">
+                    <i class="bi bi-building me-2"></i>Sector Distribution
+                  </h6>
+                  <div id="sectorChart" class="chart-canvas" style="height: 300px;">
+                    <div class="text-center py-5 text-muted">
+                      <i class="bi bi-bar-chart display-4 d-block mb-2 opacity-25"></i>
+                      Loading chart...
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Region Distribution Chart -->
+              <div class="col-lg-6">
+                <div class="chart-container">
+                  <h6 class="chart-title">
+                    <i class="bi bi-geo-alt me-2"></i>Regional Breakdown
+                  </h6>
+                  <div id="regionChart" class="chart-canvas" style="height: 300px;">
+                    <div class="text-center py-5 text-muted">
+                      <i class="bi bi-bar-chart display-4 d-block mb-2 opacity-25"></i>
+                      Loading chart...
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Recent Activity Feed & Notifications -->
+          <div class="row g-4 mt-2">
+            <!-- Recent Activity Feed -->
+            <div class="col-lg-8">
+              <div class="content-card">
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                  <div>
+                    <h3 class="h5 mb-1">
+                      <i class="bi bi-clock-history text-primary me-2"></i>Recent Activity
+                    </h3>
+                    <p class="text-muted small mb-0">Last 10 changes across all tabs</p>
+                  </div>
+                  <button class="btn btn-outline-primary btn-sm" onclick="dashboardModule.refreshActivityFeed()">
+                    <i class="bi bi-arrow-clockwise me-1"></i>Refresh
+                  </button>
+                </div>
+
+                <div id="activityFeed">
+                  <div class="text-center py-5 text-muted">
+                    <i class="bi bi-hourglass-split display-4 d-block mb-2 opacity-25"></i>
+                    Loading recent activity...
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Notifications Panel -->
+            <div class="col-lg-4">
+              <div class="content-card">
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                  <div>
+                    <h3 class="h5 mb-1">
+                      <i class="bi bi-bell text-warning me-2"></i>Notifications
+                    </h3>
+                    <p class="text-muted small mb-0">Alerts & reminders</p>
+                  </div>
+                </div>
+
+                <div id="notificationsPanel">
+                  <div class="text-center py-5 text-muted">
+                    <i class="bi bi-inbox display-4 d-block mb-2 opacity-25"></i>
+                    Loading notifications...
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
 
@@ -454,8 +647,19 @@
               <h5 class="mb-0">
                 <i class="bi bi-list-ul me-2"></i>Winners List
               </h5>
-              <div class="badge bg-info-subtle text-info fs-6">
-                <span id="winnersCount">0</span> winners
+              <div class="d-flex gap-2 align-items-center">
+                <button class="btn btn-info btn-sm" onclick="winnersModule.openYearComparison()">
+                  <i class="bi bi-bar-chart-line me-1"></i>Year Comparison
+                </button>
+                <button class="btn btn-primary btn-sm" onclick="winnersModule.openCertificateGenerator()">
+                  <i class="bi bi-award-fill me-1"></i>Generate Certificates & Assets
+                </button>
+                <button class="btn btn-success btn-sm" onclick="winnersModule.openPressReleaseExport()">
+                  <i class="bi bi-file-earmark-text me-1"></i>Export for Press Release
+                </button>
+                <div class="badge bg-info-subtle text-info fs-6">
+                  <span id="winnersCount">0</span> winners
+                </div>
               </div>
             </div>
             
@@ -498,12 +702,9 @@
           <div class="d-flex justify-content-between align-items-center mb-4">
             <h2><i class="bi bi-images me-3"></i>Media Gallery</h2>
             <div class="d-flex gap-2 align-items-center">
-              <button class="btn btn-outline-primary" id="viewSummaryBtn" onclick="mediaGalleryModule.showSummaryView()">
-                <i class="bi bi-list-ul me-2"></i>View Summary
-              </button>
               <label class="form-label mb-0 me-2">Event:</label>
               <select class="form-select" style="width: 300px;" id="mediaEventSelect" onchange="mediaGalleryModule.onEventSelected(this.value)">
-                <option value="">Select an Event</option>
+                <option value="">View Summary</option>
               </select>
             </div>
           </div>
@@ -527,9 +728,14 @@
 
           <div class="d-flex justify-content-between align-items-center mb-4">
             <h2><i class="bi bi-calendar-event me-3"></i>Events Management</h2>
-            <button class="btn btn-primary" onclick="eventsModule.openAddModal()">
-              <i class="bi bi-plus-circle me-2"></i>Add Event
-            </button>
+            <div class="d-flex gap-2">
+              <button class="btn btn-outline-secondary" onclick="eventsModule.openTemplatesManager()">
+                <i class="bi bi-layout-text-sidebar me-2"></i>Templates
+              </button>
+              <button class="btn btn-primary" onclick="eventsModule.openAddModal()">
+                <i class="bi bi-plus-circle me-2"></i>Add Event
+              </button>
+            </div>
           </div>
 
           <!-- Events Table -->
@@ -619,6 +825,367 @@
               <button class="btn btn-outline-info">
                 <i class="bi bi-file-earmark-spreadsheet me-2"></i>Export Winners (CSV)
               </button>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- ==================================================== -->
+      <!-- SETTINGS & BACKUP TAB -->
+      <!-- ==================================================== -->
+      <div class="tab-pane fade" id="settings" role="tabpanel">
+        <div class="container-fluid">
+
+          <!-- Page Header -->
+          <div class="section-header">
+            <h1 class="section-title">
+              <i class="bi bi-gear me-2"></i>Settings & Backup
+            </h1>
+            <p class="section-subtitle">Manage system settings and data backups</p>
+          </div>
+
+          <div class="row g-4">
+            <!-- Backup & Export Section -->
+            <div class="col-lg-6">
+              <div class="content-card">
+                <h5 class="mb-3">
+                  <i class="bi bi-cloud-download me-2"></i>Database Backup & Export
+                </h5>
+                <p class="text-muted mb-4">Download complete database backups or export individual tables</p>
+
+                <!-- Full Database Backup -->
+                <div class="mb-4 pb-4 border-bottom">
+                  <h6 class="mb-3">Full Database Backup</h6>
+                  <p class="small text-muted mb-3">Export all data in JSON format for complete backup</p>
+                  <button class="btn btn-primary" onclick="settingsModule.exportFullBackup()">
+                    <i class="bi bi-database-down me-2"></i>Download Full Backup
+                  </button>
+                </div>
+
+                <!-- Individual Table Exports -->
+                <div>
+                  <h6 class="mb-3">Export Individual Tables</h6>
+                  <p class="small text-muted mb-3">Export specific tables as CSV files</p>
+                  <div class="d-flex gap-2 flex-wrap">
+                    <button class="btn btn-outline-primary btn-sm" onclick="dashboardModule.exportAwardsCSV()">
+                      <i class="bi bi-file-earmark-spreadsheet me-1"></i>Awards
+                    </button>
+                    <button class="btn btn-outline-success btn-sm" onclick="dashboardModule.exportOrganisationsCSV()">
+                      <i class="bi bi-file-earmark-spreadsheet me-1"></i>Organisations
+                    </button>
+                    <button class="btn btn-outline-info btn-sm" onclick="dashboardModule.exportWinnersCSV()">
+                      <i class="bi bi-file-earmark-spreadsheet me-1"></i>Winners
+                    </button>
+                    <button class="btn btn-outline-warning btn-sm" onclick="settingsModule.exportEventsCSV()">
+                      <i class="bi bi-file-earmark-spreadsheet me-1"></i>Events
+                    </button>
+                    <button class="btn btn-outline-secondary btn-sm" onclick="settingsModule.exportMediaCSV()">
+                      <i class="bi bi-file-earmark-spreadsheet me-1"></i>Media Gallery
+                    </button>
+                  </div>
+                </div>
+
+                <!-- Last Backup Info -->
+                <div class="mt-4 pt-4 border-top">
+                  <div class="d-flex align-items-center justify-content-between">
+                    <div>
+                      <small class="text-muted d-block">Last Backup</small>
+                      <span class="text-success" id="lastBackupTime">Never</span>
+                    </div>
+                    <div>
+                      <small class="text-muted d-block">Total Records</small>
+                      <span class="fw-bold" id="totalRecords">0</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- System Information -->
+            <div class="col-lg-6">
+              <div class="content-card">
+                <h5 class="mb-3">
+                  <i class="bi bi-info-circle me-2"></i>System Information
+                </h5>
+
+                <div class="mb-3">
+                  <div class="d-flex justify-content-between align-items-center py-2 border-bottom">
+                    <span class="text-muted">System Version</span>
+                    <span class="fw-semibold">1.0.0</span>
+                  </div>
+                  <div class="d-flex justify-content-between align-items-center py-2 border-bottom">
+                    <span class="text-muted">Database Status</span>
+                    <span class="badge bg-success">Connected</span>
+                  </div>
+                  <div class="d-flex justify-content-between align-items-center py-2 border-bottom">
+                    <span class="text-muted">Total Awards</span>
+                    <span id="systemAwardsCount">0</span>
+                  </div>
+                  <div class="d-flex justify-content-between align-items-center py-2 border-bottom">
+                    <span class="text-muted">Total Organisations</span>
+                    <span id="systemOrgsCount">0</span>
+                  </div>
+                  <div class="d-flex justify-content-between align-items-center py-2 border-bottom">
+                    <span class="text-muted">Total Winners</span>
+                    <span id="systemWinnersCount">0</span>
+                  </div>
+                  <div class="d-flex justify-content-between align-items-center py-2 border-bottom">
+                    <span class="text-muted">Total Events</span>
+                    <span id="systemEventsCount">0</span>
+                  </div>
+                  <div class="d-flex justify-content-between align-items-center py-2">
+                    <span class="text-muted">Media Items</span>
+                    <span id="systemMediaCount">0</span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Backup Reminders -->
+              <div class="content-card mt-4">
+                <h5 class="mb-3">
+                  <i class="bi bi-bell me-2"></i>Backup Reminders
+                </h5>
+                <p class="text-muted mb-3">Set automatic backup reminders</p>
+
+                <div class="form-check mb-2">
+                  <input class="form-check-input" type="checkbox" id="weeklyBackup" onchange="settingsModule.updateBackupSettings()">
+                  <label class="form-check-label" for="weeklyBackup">
+                    Weekly backup reminder
+                  </label>
+                </div>
+                <div class="form-check mb-2">
+                  <input class="form-check-input" type="checkbox" id="monthlyBackup" onchange="settingsModule.updateBackupSettings()" checked>
+                  <label class="form-check-label" for="monthlyBackup">
+                    Monthly backup reminder
+                  </label>
+                </div>
+
+                <button class="btn btn-outline-primary btn-sm mt-3" onclick="settingsModule.testBackupReminder()">
+                  <i class="bi bi-bell me-1"></i>Test Reminder
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Email Templates Section -->
+          <div class="row g-4 mt-4">
+            <div class="col-12">
+              <div class="content-card">
+                <h5 class="mb-3">
+                  <i class="bi bi-envelope-paper me-2"></i>Email Templates
+                </h5>
+                <p class="text-muted mb-4">Manage email templates for various communications</p>
+
+                <!-- Template Selection -->
+                <div class="row mb-4">
+                  <div class="col-md-6">
+                    <label class="form-label">Select Template</label>
+                    <select class="form-select" id="emailTemplateSelect" onchange="settingsModule.loadEmailTemplate()">
+                      <option value="">Choose a template...</option>
+                      <option value="winner_notification">Winner Notification</option>
+                      <option value="event_invitation">Event Invitation</option>
+                      <option value="certificate_email">Certificate Delivery</option>
+                      <option value="press_release">Press Release</option>
+                      <option value="custom">Custom Template</option>
+                    </select>
+                  </div>
+                  <div class="col-md-6">
+                    <label class="form-label">&nbsp;</label>
+                    <div class="d-flex gap-2">
+                      <button class="btn btn-outline-primary" onclick="settingsModule.previewEmailTemplate()">
+                        <i class="bi bi-eye me-1"></i>Preview
+                      </button>
+                      <button class="btn btn-outline-success" onclick="settingsModule.saveEmailTemplate()">
+                        <i class="bi bi-save me-1"></i>Save Template
+                      </button>
+                      <button class="btn btn-outline-secondary" onclick="settingsModule.resetEmailTemplate()">
+                        <i class="bi bi-arrow-counterclockwise me-1"></i>Reset
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Template Editor -->
+                <div class="row">
+                  <div class="col-md-12 mb-3">
+                    <label class="form-label">Subject Line</label>
+                    <input type="text" class="form-control" id="emailSubject" placeholder="Enter email subject...">
+                  </div>
+                  <div class="col-md-12 mb-3">
+                    <label class="form-label">Email Body</label>
+                    <textarea class="form-control" id="emailBody" rows="12" placeholder="Enter email template content...
+
+Available placeholders:
+- {winner_name} - Winner's name
+- {award_category} - Award category
+- {company_name} - Company name
+- {event_name} - Event name
+- {event_date} - Event date
+- {year} - Award year
+- {venue} - Event venue"></textarea>
+                  </div>
+                  <div class="col-md-12">
+                    <div class="alert alert-info">
+                      <i class="bi bi-info-circle me-2"></i>
+                      <strong>Placeholders:</strong> Use {winner_name}, {award_category}, {company_name}, {event_name}, {event_date}, {year}, {venue} in your template. They will be replaced with actual data when sending.
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Audit Log Section -->
+          <div class="row g-4 mt-4">
+            <div class="col-12">
+              <div class="content-card">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                  <div>
+                    <h5 class="mb-1">
+                      <i class="bi bi-clock-history me-2"></i>Audit Log
+                    </h5>
+                    <p class="text-muted mb-0">Track all system changes and activities</p>
+                  </div>
+                  <div class="d-flex gap-2">
+                    <button class="btn btn-outline-secondary btn-sm" onclick="settingsModule.refreshAuditLog()">
+                      <i class="bi bi-arrow-clockwise me-1"></i>Refresh
+                    </button>
+                    <button class="btn btn-outline-danger btn-sm" onclick="settingsModule.clearAuditLog()">
+                      <i class="bi bi-trash me-1"></i>Clear Log
+                    </button>
+                  </div>
+                </div>
+
+                <!-- Filter -->
+                <div class="row mb-3">
+                  <div class="col-md-3">
+                    <select class="form-select form-select-sm" id="auditLogFilter" onchange="settingsModule.filterAuditLog()">
+                      <option value="">All Actions</option>
+                      <option value="create">Created</option>
+                      <option value="update">Updated</option>
+                      <option value="delete">Deleted</option>
+                    </select>
+                  </div>
+                  <div class="col-md-3">
+                    <select class="form-select form-select-sm" id="auditEntityFilter" onchange="settingsModule.filterAuditLog()">
+                      <option value="">All Entities</option>
+                      <option value="award">Awards</option>
+                      <option value="organisation">Organisations</option>
+                      <option value="winner">Winners</option>
+                      <option value="event">Events</option>
+                      <option value="media">Media</option>
+                    </select>
+                  </div>
+                </div>
+
+                <!-- Audit Log Table -->
+                <div class="table-responsive" style="max-height: 400px; overflow-y: auto;">
+                  <table class="table table-sm table-hover">
+                    <thead class="sticky-top bg-white">
+                      <tr>
+                        <th width="150">Timestamp</th>
+                        <th width="80">Action</th>
+                        <th width="100">Entity</th>
+                        <th>Description</th>
+                        <th width="120">User</th>
+                      </tr>
+                    </thead>
+                    <tbody id="auditLogTableBody">
+                      <!-- Populated by JS -->
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- User Roles & Permissions Section -->
+          <div class="row g-4 mt-4">
+            <div class="col-12">
+              <div class="content-card">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                  <div>
+                    <h5 class="mb-1">
+                      <i class="bi bi-shield-lock me-2"></i>User Roles & Permissions
+                    </h5>
+                    <p class="text-muted mb-0">Manage user access and permissions</p>
+                  </div>
+                </div>
+
+                <div class="alert alert-info">
+                  <i class="bi bi-info-circle me-2"></i>
+                  <strong>System-wide Permissions:</strong> Configure role-based access control for your awards management system.
+                </div>
+
+                <!-- Roles Overview -->
+                <div class="row g-3">
+                  <div class="col-md-4">
+                    <div class="card border-primary">
+                      <div class="card-header bg-primary text-white">
+                        <h6 class="mb-0"><i class="bi bi-star-fill me-2"></i>Administrator</h6>
+                      </div>
+                      <div class="card-body">
+                        <p class="small mb-2">Full system access</p>
+                        <ul class="small mb-0">
+                          <li>Manage all awards & winners</li>
+                          <li>Manage organisations</li>
+                          <li>Manage events & media</li>
+                          <li>System settings & backups</li>
+                          <li>User management</li>
+                        </ul>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div class="col-md-4">
+                    <div class="card border-success">
+                      <div class="card-header bg-success text-white">
+                        <h6 class="mb-0"><i class="bi bi-pen me-2"></i>Editor</h6>
+                      </div>
+                      <div class="card-body">
+                        <p class="small mb-2">Content management access</p>
+                        <ul class="small mb-0">
+                          <li>Create & edit awards</li>
+                          <li>Manage winners</li>
+                          <li>Upload media</li>
+                          <li>View reports</li>
+                          <li class="text-muted">No system settings access</li>
+                        </ul>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div class="col-md-4">
+                    <div class="card border-secondary">
+                      <div class="card-header bg-secondary text-white">
+                        <h6 class="mb-0"><i class="bi bi-eye me-2"></i>Viewer</h6>
+                      </div>
+                      <div class="card-body">
+                        <p class="small mb-2">Read-only access</p>
+                        <ul class="small mb-0">
+                          <li>View awards & winners</li>
+                          <li>View organisations</li>
+                          <li>View events & media</li>
+                          <li>Export reports</li>
+                          <li class="text-muted">No edit permissions</li>
+                        </ul>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Current User Role -->
+                <div class="mt-4">
+                  <div class="alert alert-success">
+                    <i class="bi bi-person-check me-2"></i>
+                    <strong>Your Current Role:</strong> Administrator (Full Access)
+                  </div>
+                  <p class="small text-muted">
+                    Note: User role management requires database authentication. Contact your system administrator to change user roles and permissions.
+                  </p>
+                </div>
+              </div>
             </div>
           </div>
 
@@ -1020,6 +1587,193 @@
     </div>
   </div>
 
+  <!-- Clone Event Modal -->
+  <div class="modal fade" id="cloneEventModal" tabindex="-1" aria-labelledby="cloneEventModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header bg-success text-white">
+          <h5 class="modal-title" id="cloneEventModalLabel">
+            <i class="bi bi-files me-2"></i>Clone Event
+          </h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <div class="alert alert-info">
+            <i class="bi bi-info-circle me-2"></i>
+            Create a copy of <strong id="cloneEventSourceName"></strong> with a new name and year.
+            Optionally include gallery sections (without photos).
+          </div>
+
+          <form id="cloneEventForm">
+            <input type="hidden" id="cloneEventSourceId">
+
+            <div class="mb-3">
+              <label for="cloneEventName" class="form-label">New Event Name *</label>
+              <input type="text" class="form-control" id="cloneEventName" required placeholder="e.g., 2025 Awards Ceremony">
+            </div>
+
+            <div class="row">
+              <div class="col-md-6 mb-3">
+                <label for="cloneEventDate" class="form-label">Event Date</label>
+                <input type="date" class="form-control" id="cloneEventDate">
+              </div>
+              <div class="col-md-6 mb-3">
+                <label for="cloneEventYear" class="form-label">Year *</label>
+                <input type="number" class="form-control" id="cloneEventYear" min="2000" max="2100" placeholder="2025" required>
+              </div>
+            </div>
+
+            <div class="mb-3">
+              <label for="cloneEventVenue" class="form-label">Venue</label>
+              <input type="text" class="form-control" id="cloneEventVenue" placeholder="Same venue or enter new one">
+            </div>
+
+            <div class="mb-3">
+              <label for="cloneEventDescription" class="form-label">Description</label>
+              <textarea class="form-control" id="cloneEventDescription" rows="2" placeholder="Optional description"></textarea>
+            </div>
+
+            <div class="mb-3">
+              <div class="form-check">
+                <input class="form-check-input" type="checkbox" id="cloneGallerySections" checked>
+                <label class="form-check-label" for="cloneGallerySections">
+                  <strong>Clone Gallery Sections</strong>
+                </label>
+                <small class="text-muted d-block">Copy gallery section structure (names and descriptions). Photos won't be copied.</small>
+              </div>
+            </div>
+          </form>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="button" class="btn btn-success" onclick="eventsModule.cloneEvent()">
+            <i class="bi bi-files me-1"></i>Clone Event
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Attendees/RSVP Modal -->
+  <div class="modal fade" id="attendeesModal" tabindex="-1" aria-labelledby="attendeesModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-xl">
+      <div class="modal-content">
+        <div class="modal-header bg-info text-white">
+          <h5 class="modal-title" id="attendeesModalLabel">
+            <i class="bi bi-people me-2"></i>Event Attendees & RSVP
+          </h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <input type="hidden" id="attendeesEventId">
+
+          <!-- Header with Event Info and Actions -->
+          <div class="d-flex justify-content-between align-items-center mb-4">
+            <div>
+              <h6 class="mb-1" id="attendeesEventName">Event Name</h6>
+              <p class="text-muted mb-0">
+                <i class="bi bi-calendar me-1"></i><span id="attendeesEventDate"></span>
+                <span class="ms-3"><i class="bi bi-geo-alt me-1"></i><span id="attendeesEventVenue"></span></span>
+              </p>
+            </div>
+            <div class="d-flex gap-2">
+              <button class="btn btn-outline-primary btn-sm" onclick="eventsModule.exportAttendees()">
+                <i class="bi bi-download me-1"></i>Export List
+              </button>
+              <button class="btn btn-primary btn-sm" onclick="eventsModule.openAddAttendeeForm()">
+                <i class="bi bi-person-plus me-1"></i>Add Attendee
+              </button>
+            </div>
+          </div>
+
+          <!-- Stats Cards -->
+          <div class="row g-3 mb-4">
+            <div class="col-md-3">
+              <div class="card text-center">
+                <div class="card-body py-2">
+                  <h3 class="mb-0 text-success" id="attendingCount">0</h3>
+                  <small class="text-muted">Attending</small>
+                </div>
+              </div>
+            </div>
+            <div class="col-md-3">
+              <div class="card text-center">
+                <div class="card-body py-2">
+                  <h3 class="mb-0 text-danger" id="notAttendingCount">0</h3>
+                  <small class="text-muted">Not Attending</small>
+                </div>
+              </div>
+            </div>
+            <div class="col-md-3">
+              <div class="card text-center">
+                <div class="card-body py-2">
+                  <h3 class="mb-0 text-warning" id="maybeCount">0</h3>
+                  <small class="text-muted">Maybe</small>
+                </div>
+              </div>
+            </div>
+            <div class="col-md-3">
+              <div class="card text-center">
+                <div class="card-body py-2">
+                  <h3 class="mb-0 text-info" id="totalAttendeesCount">0</h3>
+                  <small class="text-muted">Total</small>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Add Attendee Form (Initially Hidden) -->
+          <div id="addAttendeeForm" class="card mb-3" style="display: none;">
+            <div class="card-body">
+              <h6 class="card-title">Add New Attendee</h6>
+              <div class="row g-3">
+                <div class="col-md-4">
+                  <input type="text" class="form-control form-control-sm" id="attendeeName" placeholder="Name *" required>
+                </div>
+                <div class="col-md-3">
+                  <input type="email" class="form-control form-control-sm" id="attendeeEmail" placeholder="Email">
+                </div>
+                <div class="col-md-3">
+                  <select class="form-select form-select-sm" id="attendeeStatus">
+                    <option value="attending">Attending</option>
+                    <option value="not_attending">Not Attending</option>
+                    <option value="maybe">Maybe</option>
+                  </select>
+                </div>
+                <div class="col-md-2">
+                  <button class="btn btn-sm btn-success w-100" onclick="eventsModule.addAttendee()">
+                    <i class="bi bi-plus-circle me-1"></i>Add
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Attendees Table -->
+          <div class="table-responsive">
+            <table class="table table-sm table-hover">
+              <thead>
+                <tr>
+                  <th>Name</th>
+                  <th>Email</th>
+                  <th>RSVP Status</th>
+                  <th>Added</th>
+                  <th width="100" class="text-center">Actions</th>
+                </tr>
+              </thead>
+              <tbody id="attendeesTableBody">
+                <!-- Populated by JS -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- Upload Company Images Modal -->
   <div class="modal fade" id="uploadCompanyImagesModal" tabindex="-1" aria-labelledby="uploadCompanyImagesModalLabel" aria-hidden="true">
     <div class="modal-dialog">
@@ -1137,8 +1891,34 @@
           <form id="uploadSectionPhotosForm">
             <div class="mb-3">
               <label for="sectionPhotosFile" class="form-label">Select Files *</label>
-              <input type="file" class="form-control" id="sectionPhotosFile" accept="image/*,video/*" multiple required>
+              <input type="file" class="form-control" id="sectionPhotosFile" accept="image/*,video/*" multiple required onchange="mediaGalleryModule.handleFilePreview(this)">
               <small class="text-muted">Select multiple files. Supported: Images (JPEG, PNG, GIF, WebP) and Videos (MP4, MOV, AVI, WebM). Max 4.5MB per file.</small>
+            </div>
+
+            <div class="mb-3" id="videoTypeContainer" style="display: none;">
+              <label for="sectionVideoType" class="form-label">Video Type (for videos only)</label>
+              <select class="form-select" id="sectionVideoType">
+                <option value="">Select video type...</option>
+                <option value="highlights">Highlights</option>
+                <option value="full_ceremony">Full Awards Ceremony</option>
+                <option value="interview">Interview</option>
+                <option value="live_stream">Live Stream</option>
+                <option value="virtual_winner_presentation">Virtual Winner Presentation</option>
+                <option value="winner_promotional">Winner Promotional</option>
+                <option value="sponsor_videos">Sponsor Videos</option>
+                <option value="social_media_clips">Social Media Clips</option>
+                <option value="teasers_trailers">Teasers/Trailers</option>
+                <option value="press_clips">Press Clips</option>
+              </select>
+              <small class="text-muted">This will be applied to all uploaded videos</small>
+            </div>
+
+            <!-- File Preview Grid -->
+            <div id="filePreviewContainer" class="mb-3 d-none">
+              <label class="form-label">Selected Files (<span id="filePreviewCount">0</span>)</label>
+              <div id="filePreviewGrid" class="row g-2">
+                <!-- Preview items will be inserted here -->
+              </div>
             </div>
             <div class="mb-3">
               <label for="sectionPhotosTitle" class="form-label">Title (optional)</label>
@@ -1259,6 +2039,47 @@
     </div>
   </div>
 
+  <!-- Drag & Drop Publish Prompt Modal -->
+  <div class="modal fade" id="dragDropPublishModal" tabindex="-1" aria-labelledby="dragDropPublishModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="dragDropPublishModalLabel">
+            <i class="bi bi-cloud-upload me-2"></i>Upload <span id="dragDropFileCount"></span> Files
+          </h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <p>You're about to upload <strong id="dragDropFileCountText"></strong>. Should these be published immediately?</p>
+          <div class="form-check mb-2">
+            <input class="form-check-input" type="radio" name="dragDropPublish" id="dragDropPublished" value="true" checked>
+            <label class="form-check-label" for="dragDropPublished">
+              <strong><i class="bi bi-eye me-1"></i>Published</strong> - Visible immediately
+            </label>
+          </div>
+          <div class="form-check">
+            <input class="form-check-input" type="radio" name="dragDropPublish" id="dragDropUnpublished" value="false">
+            <label class="form-check-label" for="dragDropUnpublished">
+              <strong><i class="bi bi-eye-slash me-1"></i>Unpublished (Draft)</strong> - You can publish later
+            </label>
+          </div>
+          <div class="mt-3">
+            <small class="text-muted">Files will be uploaded with titles based on their filenames.</small>
+          </div>
+          <div id="dragDropProgress" class="progress d-none mt-3">
+            <div class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar" style="width: 100%"></div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="button" class="btn btn-primary" id="dragDropUploadBtn" onclick="mediaGalleryModule.uploadDraggedFiles()">
+            <i class="bi bi-upload me-2"></i>Upload
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- View Photo Full Modal (for Gallery Sections) -->
   <div class="modal fade" id="viewPhotoFullModal" tabindex="-1" aria-labelledby="viewPhotoFullModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-xl">
@@ -1281,6 +2102,477 @@
           <button type="button" class="btn btn-danger" id="deletePhotoFromViewBtn" onclick="mediaGalleryModule.deletePhotoFromView()">
             <i class="bi bi-trash me-2"></i>Delete Photo
           </button>
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Press Release Export Modal -->
+  <div class="modal fade" id="pressReleaseExportModal" tabindex="-1" aria-labelledby="pressReleaseExportModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-xl">
+      <div class="modal-content">
+        <div class="modal-header bg-success text-white">
+          <h5 class="modal-title" id="pressReleaseExportModalLabel">
+            <i class="bi bi-file-earmark-text me-2"></i>Export Winners for Press Release
+          </h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body p-4">
+          <div class="alert alert-info">
+            <i class="bi bi-info-circle me-2"></i>
+            Select winners and choose photos to include in your press release export. Photos will be downloaded automatically.
+          </div>
+
+          <!-- Year Filter for Export -->
+          <div class="row mb-4">
+            <div class="col-md-6">
+              <label class="form-label fw-bold">Filter by Year:</label>
+              <select class="form-select" id="pressReleaseYearFilter" onchange="winnersModule.filterPressReleaseWinners(this.value)">
+                <option value="">All Years</option>
+                <option value="2025">2025</option>
+                <option value="2024">2024</option>
+                <option value="2023">2023</option>
+                <option value="2022">2022</option>
+              </select>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label fw-bold">Export Format:</label>
+              <select class="form-select" id="pressReleaseFormatSelect">
+                <option value="csv">CSV (Spreadsheet with photo URLs)</option>
+                <option value="pdf">PDF Document (formatted press release)</option>
+                <option value="html">HTML (web-ready format)</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Winners Selection -->
+          <div class="mb-3">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+              <h6 class="mb-0">
+                <i class="bi bi-check2-square me-2"></i>Select Winners (<span id="selectedWinnersCount">0</span> selected)
+              </h6>
+              <div>
+                <button class="btn btn-sm btn-outline-primary" onclick="winnersModule.selectAllWinners()">
+                  <i class="bi bi-check-all me-1"></i>Select All
+                </button>
+                <button class="btn btn-sm btn-outline-secondary" onclick="winnersModule.deselectAllWinners()">
+                  <i class="bi bi-x-circle me-1"></i>Clear All
+                </button>
+              </div>
+            </div>
+
+            <div id="pressReleaseWinnersList" style="max-height: 400px; overflow-y: auto;">
+              <!-- Winners list will be populated by JavaScript -->
+              <div class="text-center py-5 text-muted">
+                <i class="bi bi-hourglass-split display-4 d-block mb-2 opacity-25"></i>
+                Loading winners...
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer bg-light">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+            <i class="bi bi-x-lg me-1"></i>Cancel
+          </button>
+          <button type="button" class="btn btn-success" onclick="winnersModule.exportPressRelease()">
+            <i class="bi bi-download me-1"></i>Export Press Release
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Certificate & Assets Generator Modal -->
+  <div class="modal fade" id="certificateGeneratorModal" tabindex="-1" aria-labelledby="certificateGeneratorModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-xl">
+      <div class="modal-content">
+        <div class="modal-header bg-primary text-white">
+          <h5 class="modal-title" id="certificateGeneratorModalLabel">
+            <i class="bi bi-award-fill me-2"></i>Generate Certificates & Winner Assets
+          </h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body p-4">
+          <div class="alert alert-success">
+            <i class="bi bi-info-circle me-2"></i>
+            Generate professional certificates, winner shields/logos, email signature banners, and website banners for your award winners.
+          </div>
+
+          <!-- Year Filter -->
+          <div class="row mb-4">
+            <div class="col-md-6">
+              <label class="form-label fw-bold">Filter by Year:</label>
+              <select class="form-select" id="certificateYearFilter" onchange="winnersModule.filterCertificateWinners(this.value)">
+                <option value="">All Years</option>
+                <option value="2025">2025</option>
+                <option value="2024">2024</option>
+                <option value="2023">2023</option>
+                <option value="2022">2022</option>
+              </select>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label fw-bold">Asset Types to Generate:</label>
+              <div class="form-check">
+                <input class="form-check-input" type="checkbox" id="assetTypeCertificate" checked>
+                <label class="form-check-label" for="assetTypeCertificate">
+                  <i class="bi bi-file-earmark-pdf me-1"></i>PDF Certificate
+                </label>
+              </div>
+              <div class="form-check">
+                <input class="form-check-input" type="checkbox" id="assetTypeShield" checked>
+                <label class="form-check-label" for="assetTypeShield">
+                  <i class="bi bi-shield-fill-check me-1"></i>Winner Shield/Logo
+                </label>
+              </div>
+              <div class="form-check">
+                <input class="form-check-input" type="checkbox" id="assetTypeEmailBanner" checked>
+                <label class="form-check-label" for="assetTypeEmailBanner">
+                  <i class="bi bi-envelope me-1"></i>Email Signature Banner
+                </label>
+              </div>
+              <div class="form-check">
+                <input class="form-check-input" type="checkbox" id="assetTypeWebBanner" checked>
+                <label class="form-check-label" for="assetTypeWebBanner">
+                  <i class="bi bi-globe me-1"></i>Website Banner
+                </label>
+              </div>
+            </div>
+          </div>
+
+          <!-- Customization Options -->
+          <div class="card mb-4">
+            <div class="card-header bg-light">
+              <h6 class="mb-0"><i class="bi bi-palette me-2"></i>Customization Options</h6>
+            </div>
+            <div class="card-body">
+              <div class="row">
+                <div class="col-md-6 mb-3">
+                  <label for="brandColor" class="form-label">Brand Color:</label>
+                  <input type="color" class="form-control form-control-color" id="brandColor" value="#0d6efd" title="Choose your brand color">
+                </div>
+                <div class="col-md-6 mb-3">
+                  <label for="accentColor" class="form-label">Accent Color:</label>
+                  <input type="color" class="form-control form-control-color" id="accentColor" value="#ffc107" title="Choose your accent color">
+                </div>
+                <div class="col-md-12 mb-3">
+                  <label for="certificateText" class="form-label">Certificate Text Template:</label>
+                  <textarea class="form-control" id="certificateText" rows="3">This is to certify that
+
+{WINNER_NAME}
+
+has been awarded
+
+{AWARD_NAME}
+
+in recognition of excellence
+
+{YEAR}</textarea>
+                  <small class="text-muted">Use {WINNER_NAME}, {AWARD_NAME}, {YEAR} as placeholders</small>
+                </div>
+                <div class="col-md-6 mb-3">
+                  <label for="organizerName" class="form-label">Organizer Name:</label>
+                  <input type="text" class="form-control" id="organizerName" value="British Trade Awards" placeholder="Organization name">
+                </div>
+                <div class="col-md-6 mb-3">
+                  <label for="signatureName" class="form-label">Signature Name:</label>
+                  <input type="text" class="form-control" id="signatureName" value="" placeholder="e.g., John Smith, Director">
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Winners Selection -->
+          <div class="mb-3">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+              <h6 class="mb-0">
+                <i class="bi bi-check2-square me-2"></i>Select Winners (<span id="selectedCertificateWinnersCount">0</span> selected)
+              </h6>
+              <div>
+                <button class="btn btn-sm btn-outline-primary" onclick="winnersModule.selectAllCertificateWinners()">
+                  <i class="bi bi-check-all me-1"></i>Select All
+                </button>
+                <button class="btn btn-sm btn-outline-secondary" onclick="winnersModule.deselectAllCertificateWinners()">
+                  <i class="bi bi-x-circle me-1"></i>Clear All
+                </button>
+              </div>
+            </div>
+
+            <div id="certificateWinnersList" style="max-height: 400px; overflow-y: auto;">
+              <!-- Winners list will be populated by JavaScript -->
+              <div class="text-center py-5 text-muted">
+                <i class="bi bi-hourglass-split display-4 d-block mb-2 opacity-25"></i>
+                Loading winners...
+              </div>
+            </div>
+          </div>
+
+          <!-- Preview Section -->
+          <div id="assetPreviewSection" class="card d-none">
+            <div class="card-header bg-light">
+              <h6 class="mb-0"><i class="bi bi-eye me-2"></i>Preview</h6>
+            </div>
+            <div class="card-body">
+              <div id="assetPreviewContent" class="text-center">
+                <!-- Preview will be rendered here -->
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer bg-light">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+            <i class="bi bi-x-lg me-1"></i>Cancel
+          </button>
+          <button type="button" class="btn btn-outline-primary" onclick="winnersModule.previewAssets()">
+            <i class="bi bi-eye me-1"></i>Preview
+          </button>
+          <button type="button" class="btn btn-primary" onclick="winnersModule.generateAssets()">
+            <i class="bi bi-download me-1"></i>Generate & Download
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Year Comparison Modal -->
+  <div class="modal fade" id="yearComparisonModal" tabindex="-1" aria-labelledby="yearComparisonModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-xl">
+      <div class="modal-content">
+        <div class="modal-header bg-info text-white">
+          <h5 class="modal-title" id="yearComparisonModalLabel">
+            <i class="bi bi-bar-chart-line me-2"></i>Year Comparison & Trends
+          </h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body p-4">
+          <div class="alert alert-info">
+            <i class="bi bi-info-circle me-2"></i>
+            Compare winners across different years, identify trends, returning winners, and sector performance.
+          </div>
+
+          <!-- Year Selection -->
+          <div class="card mb-4">
+            <div class="card-header bg-light">
+              <h6 class="mb-0"><i class="bi bi-calendar-range me-2"></i>Select Years to Compare</h6>
+            </div>
+            <div class="card-body">
+              <div class="row" id="yearSelectionCheckboxes">
+                <!-- Populated by JavaScript -->
+              </div>
+              <button class="btn btn-primary btn-sm mt-3" onclick="winnersModule.runYearComparison()">
+                <i class="bi bi-search me-1"></i>Run Comparison
+              </button>
+            </div>
+          </div>
+
+          <!-- Results Section -->
+          <div id="yearComparisonResults" class="d-none">
+            <!-- Overview Stats -->
+            <div class="row g-3 mb-4">
+              <div class="col-md-4">
+                <div class="card">
+                  <div class="card-body text-center">
+                    <i class="bi bi-trophy text-primary" style="font-size: 2rem;"></i>
+                    <h3 class="mt-2 mb-1" id="comparisonTotalWinners">0</h3>
+                    <small class="text-muted">Total Winners</small>
+                  </div>
+                </div>
+              </div>
+              <div class="col-md-4">
+                <div class="card">
+                  <div class="card-body text-center">
+                    <i class="bi bi-arrow-repeat text-success" style="font-size: 2rem;"></i>
+                    <h3 class="mt-2 mb-1" id="comparisonReturningWinners">0</h3>
+                    <small class="text-muted">Returning Winners</small>
+                  </div>
+                </div>
+              </div>
+              <div class="col-md-4">
+                <div class="card">
+                  <div class="card-body text-center">
+                    <i class="bi bi-calendar-check text-warning" style="font-size: 2rem;"></i>
+                    <h3 class="mt-2 mb-1" id="comparisonYearsCount">0</h3>
+                    <small class="text-muted">Years Compared</small>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Trends by Year -->
+            <div class="card mb-4">
+              <div class="card-header bg-light">
+                <h6 class="mb-0"><i class="bi bi-graph-up me-2"></i>Winners by Year</h6>
+              </div>
+              <div class="card-body">
+                <div id="trendsByYear">
+                  <!-- Populated by JavaScript -->
+                </div>
+              </div>
+            </div>
+
+            <!-- Returning Winners -->
+            <div class="card mb-4">
+              <div class="card-header bg-light">
+                <h6 class="mb-0"><i class="bi bi-arrow-repeat me-2"></i>Returning Winners (Won in Multiple Years)</h6>
+              </div>
+              <div class="card-body">
+                <div id="returningWinnersList">
+                  <!-- Populated by JavaScript -->
+                </div>
+              </div>
+            </div>
+
+            <!-- Sector Performance -->
+            <div class="card mb-4">
+              <div class="card-header bg-light">
+                <h6 class="mb-0"><i class="bi bi-pie-chart me-2"></i>Performance by Sector</h6>
+              </div>
+              <div class="card-body">
+                <div id="sectorPerformance">
+                  <!-- Populated by JavaScript -->
+                </div>
+              </div>
+            </div>
+
+            <!-- Award Category Distribution -->
+            <div class="card">
+              <div class="card-header bg-light">
+                <h6 class="mb-0"><i class="bi bi-diagram-3 me-2"></i>Awards by Category</h6>
+              </div>
+              <div class="card-body">
+                <div id="categoryDistribution">
+                  <!-- Populated by JavaScript -->
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer bg-light">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+            <i class="bi bi-x-lg me-1"></i>Close
+          </button>
+          <button type="button" class="btn btn-info" onclick="winnersModule.exportYearComparison()">
+            <i class="bi bi-download me-1"></i>Export Report (CSV)
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Event Templates Manager Modal -->
+  <div class="modal fade" id="eventTemplatesModal" tabindex="-1" aria-labelledby="eventTemplatesModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-xl">
+      <div class="modal-content">
+        <div class="modal-header bg-secondary text-white">
+          <h5 class="modal-title" id="eventTemplatesModalLabel">
+            <i class="bi bi-layout-text-sidebar me-2"></i>Event Templates Manager
+          </h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body p-4">
+          <div class="alert alert-secondary">
+            <i class="bi bi-info-circle me-2"></i>
+            Create reusable event templates to quickly create new events with pre-configured settings and gallery sections.
+          </div>
+
+          <!-- Templates List -->
+          <div class="card mb-4">
+            <div class="card-header bg-light d-flex justify-content-between align-items-center">
+              <h6 class="mb-0"><i class="bi bi-list-ul me-2"></i>Saved Templates (<span id="templatesCount">0</span>)</h6>
+              <button class="btn btn-primary btn-sm" onclick="eventsModule.openCreateTemplate()">
+                <i class="bi bi-plus-circle me-1"></i>Create Template
+              </button>
+            </div>
+            <div class="card-body">
+              <div id="templatesList">
+                <!-- Populated by JavaScript -->
+                <div class="text-center py-5 text-muted">
+                  <i class="bi bi-hourglass-split display-4 d-block mb-2 opacity-25"></i>
+                  Loading templates...
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Create/Edit Template Form -->
+          <div id="templateFormSection" class="card d-none">
+            <div class="card-header bg-primary text-white">
+              <h6 class="mb-0" id="templateFormTitle"><i class="bi bi-plus-circle me-2"></i>Create New Template</h6>
+            </div>
+            <div class="card-body">
+              <form id="templateForm">
+                <input type="hidden" id="templateId">
+                <div class="row">
+                  <div class="col-md-6 mb-3">
+                    <label for="templateName" class="form-label">Template Name *</label>
+                    <input type="text" class="form-control" id="templateName" required
+                      placeholder="e.g., Annual Awards Ceremony">
+                  </div>
+                  <div class="col-md-6 mb-3">
+                    <label for="templateVenue" class="form-label">Default Venue</label>
+                    <input type="text" class="form-control" id="templateVenue"
+                      placeholder="e.g., Grand Hotel Ballroom">
+                  </div>
+                  <div class="col-md-12 mb-3">
+                    <label for="templateDescription" class="form-label">Description Template</label>
+                    <textarea class="form-control" id="templateDescription" rows="3"
+                      placeholder="e.g., Annual awards ceremony celebrating excellence in British trade"></textarea>
+                  </div>
+                  <div class="col-md-12 mb-3">
+                    <label class="form-label">Gallery Sections (one per line)</label>
+                    <textarea class="form-control" id="templateGallerySections" rows="5"
+                      placeholder="Drinks Reception&#10;Award Presentations&#10;Winner Photos&#10;Networking&#10;Closing Ceremony"></textarea>
+                    <small class="text-muted">Enter gallery section names, one per line. These will be created when using the template.</small>
+                  </div>
+                </div>
+                <div class="d-flex gap-2">
+                  <button type="button" class="btn btn-primary" onclick="eventsModule.saveTemplate()">
+                    <i class="bi bi-save me-1"></i>Save Template
+                  </button>
+                  <button type="button" class="btn btn-secondary" onclick="eventsModule.cancelTemplateEdit()">
+                    Cancel
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer bg-light">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+            <i class="bi bi-x-lg me-1"></i>Close
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Email Template Preview Modal -->
+  <div class="modal fade" id="emailPreviewModal" tabindex="-1" aria-labelledby="emailPreviewModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="emailPreviewModalLabel">
+            <i class="bi bi-envelope-paper me-2"></i>Email Template Preview
+          </h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <div class="mb-3">
+            <label class="form-label fw-bold">Subject:</label>
+            <div class="p-2 bg-light rounded" id="previewSubject"></div>
+          </div>
+          <div>
+            <label class="form-label fw-bold">Body:</label>
+            <div class="p-3 bg-light rounded" style="white-space: pre-wrap;" id="previewBody"></div>
+          </div>
+          <div class="mt-3">
+            <div class="alert alert-info">
+              <i class="bi bi-info-circle me-2"></i>
+              This is a preview with sample data. Actual emails will use real data from your records.
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
           <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
         </div>
       </div>
@@ -1316,6 +2608,7 @@
   <script src="events.js"></script>
   <script src="assignments.js"></script>
   <script src="dashboard.js"></script>
+  <script src="settings.js"></script>
   <script src="app.js"></script>
 
 </body>

@@ -150,6 +150,11 @@
         </button>
       </li>
       <li class="nav-item" role="presentation">
+        <button class="nav-link" id="crm-tab" data-bs-toggle="tab" data-bs-target="#crm" type="button" role="tab">
+          <i class="bi bi-people me-2"></i>CRM
+        </button>
+      </li>
+      <li class="nav-item" role="presentation">
         <button class="nav-link" id="settings-tab" data-bs-toggle="tab" data-bs-target="#settings" type="button" role="tab">
           <i class="bi bi-gear me-2"></i>Settings & Backup
         </button>
@@ -1483,6 +1488,478 @@
                     <p>Select report options above and click "Generate Report"</p>
                   </div>
                 </div>
+              </div>
+
+            </div>
+
+          </div>
+
+        </div>
+      </div>
+
+      <!-- ==================================================== -->
+      <!-- CRM TAB -->
+      <!-- ==================================================== -->
+      <div class="tab-pane fade" id="crm" role="tabpanel">
+        <div class="container-fluid">
+
+          <!-- Page Header -->
+          <div class="section-header">
+            <h1 class="section-title">
+              <i class="bi bi-people me-2"></i>Customer Relationship Management
+            </h1>
+            <p class="section-subtitle">Track company relationships, communications, deals, and segments</p>
+          </div>
+
+          <!-- Sub-navigation -->
+          <ul class="nav nav-pills mb-4" id="crmSubTabs" role="tablist">
+            <li class="nav-item" role="presentation">
+              <button class="nav-link active" id="companies-crm-subtab" data-bs-toggle="pill" data-bs-target="#companies-crm-content" type="button" role="tab">
+                <i class="bi bi-building me-2"></i>Companies
+              </button>
+            </li>
+            <li class="nav-item" role="presentation">
+              <button class="nav-link" id="communications-subtab" data-bs-toggle="pill" data-bs-target="#communications-content" type="button" role="tab">
+                <i class="bi bi-chat-dots me-2"></i>Communications
+              </button>
+            </li>
+            <li class="nav-item" role="presentation">
+              <button class="nav-link" id="deals-subtab" data-bs-toggle="pill" data-bs-target="#deals-content" type="button" role="tab">
+                <i class="bi bi-graph-up-arrow me-2"></i>Deal Pipeline
+              </button>
+            </li>
+            <li class="nav-item" role="presentation">
+              <button class="nav-link" id="meetings-subtab" data-bs-toggle="pill" data-bs-target="#meetings-content" type="button" role="tab">
+                <i class="bi bi-calendar3 me-2"></i>Meetings
+              </button>
+            </li>
+            <li class="nav-item" role="presentation">
+              <button class="nav-link" id="segments-subtab" data-bs-toggle="pill" data-bs-target="#segments-content" type="button" role="tab">
+                <i class="bi bi-tags me-2"></i>Segments
+              </button>
+            </li>
+          </ul>
+
+          <!-- Sub-tab Content -->
+          <div class="tab-content" id="crmSubTabContent">
+
+            <!-- Companies CRM View Sub-Tab -->
+            <div class="tab-pane fade show active" id="companies-crm-content" role="tabpanel">
+
+              <!-- Quick Stats -->
+              <div class="row g-3 mb-4">
+                <div class="col-md-3">
+                  <div class="content-card text-center">
+                    <i class="bi bi-building text-primary fs-1 mb-2"></i>
+                    <div class="fs-2 fw-bold" id="totalCompaniesCount">0</div>
+                    <div class="text-muted small">Total Companies</div>
+                  </div>
+                </div>
+                <div class="col-md-3">
+                  <div class="content-card text-center">
+                    <i class="bi bi-graph-up text-success fs-1 mb-2"></i>
+                    <div class="fs-2 fw-bold" id="activeDealsCount">0</div>
+                    <div class="text-muted small">Active Deals</div>
+                  </div>
+                </div>
+                <div class="col-md-3">
+                  <div class="content-card text-center">
+                    <i class="bi bi-chat-dots text-info fs-1 mb-2"></i>
+                    <div class="fs-2 fw-bold" id="recentCommunicationsCount">0</div>
+                    <div class="text-muted small">Recent Communications</div>
+                  </div>
+                </div>
+                <div class="col-md-3">
+                  <div class="content-card text-center">
+                    <i class="bi bi-bell text-warning fs-1 mb-2"></i>
+                    <div class="fs-2 fw-bold" id="pendingFollowUpsCount">0</div>
+                    <div class="text-muted small">Pending Follow-ups</div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Segment Filter -->
+              <div class="content-card mb-4">
+                <div class="row g-3">
+                  <div class="col-md-4">
+                    <label class="form-label small fw-bold">Filter by Segment</label>
+                    <select class="form-select form-select-sm" id="crmSegmentFilter">
+                      <option value="">All Companies</option>
+                    </select>
+                  </div>
+                  <div class="col-md-4">
+                    <label class="form-label small fw-bold">Search</label>
+                    <input type="text" class="form-control form-control-sm" id="crmCompanySearch" placeholder="Search companies...">
+                  </div>
+                  <div class="col-md-4 d-flex align-items-end">
+                    <button class="btn btn-primary btn-sm w-100" onclick="crmModule.openCompanyDetails()">
+                      <i class="bi bi-plus-circle me-1"></i>Add Company Activity
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Companies Table with CRM Data -->
+              <div class="table-container">
+                <div class="table-responsive">
+                  <table class="table table-hover table-striped align-middle">
+                    <thead class="table-light">
+                      <tr>
+                        <th>Company</th>
+                        <th>Segments</th>
+                        <th>Communications</th>
+                        <th>Active Deals</th>
+                        <th>Pipeline Value</th>
+                        <th>Last Contact</th>
+                        <th>Follow-ups</th>
+                        <th>Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody id="companiesCrmTableBody">
+                      <tr>
+                        <td colspan="8" class="text-center py-5 text-muted">
+                          <i class="bi bi-hourglass-split display-4 d-block mb-2 opacity-25"></i>
+                          Loading companies...
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+            </div>
+
+            <!-- Communications Sub-Tab -->
+            <div class="tab-pane fade" id="communications-content" role="tabpanel">
+
+              <!-- Filter & Actions -->
+              <div class="content-card mb-4">
+                <div class="row g-3 align-items-end">
+                  <div class="col-md-3">
+                    <label class="form-label small fw-bold">Type</label>
+                    <select class="form-select form-select-sm" id="communicationTypeFilter">
+                      <option value="">All Types</option>
+                      <option value="email">Email</option>
+                      <option value="phone">Phone</option>
+                      <option value="meeting">Meeting</option>
+                      <option value="note">Note</option>
+                      <option value="text">Text</option>
+                      <option value="linkedin">LinkedIn</option>
+                    </select>
+                  </div>
+                  <div class="col-md-3">
+                    <label class="form-label small fw-bold">Regarding</label>
+                    <select class="form-select form-select-sm" id="communicationRegardingFilter">
+                      <option value="">All Topics</option>
+                      <option value="sponsorship">Sponsorship</option>
+                      <option value="award_application">Award Application</option>
+                      <option value="event_ticket">Event Ticket</option>
+                      <option value="follow_up">Follow-up</option>
+                      <option value="renewal">Renewal</option>
+                      <option value="general">General</option>
+                    </select>
+                  </div>
+                  <div class="col-md-3">
+                    <label class="form-label small fw-bold">Follow-up Required</label>
+                    <select class="form-select form-select-sm" id="communicationFollowUpFilter">
+                      <option value="">All</option>
+                      <option value="true">Yes</option>
+                      <option value="false">No</option>
+                    </select>
+                  </div>
+                  <div class="col-md-3">
+                    <button class="btn btn-success btn-sm w-100" onclick="crmModule.logCommunication()">
+                      <i class="bi bi-plus-circle me-1"></i>Log Communication
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Communications Log -->
+              <div class="table-container">
+                <div class="table-responsive">
+                  <table class="table table-hover table-striped align-middle">
+                    <thead class="table-light">
+                      <tr>
+                        <th>Date</th>
+                        <th>Type</th>
+                        <th>Company</th>
+                        <th>Contact</th>
+                        <th>Subject</th>
+                        <th>Regarding</th>
+                        <th>Follow-up</th>
+                        <th>Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody id="communicationsTableBody">
+                      <tr>
+                        <td colspan="8" class="text-center py-5 text-muted">
+                          <i class="bi bi-hourglass-split display-4 d-block mb-2 opacity-25"></i>
+                          Loading communications...
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+            </div>
+
+            <!-- Deal Pipeline Sub-Tab -->
+            <div class="tab-pane fade" id="deals-content" role="tabpanel">
+
+              <!-- Pipeline Stats -->
+              <div class="row g-3 mb-4">
+                <div class="col-md-3">
+                  <div class="content-card text-center">
+                    <i class="bi bi-lightning text-warning fs-1 mb-2"></i>
+                    <div class="fs-2 fw-bold" id="totalActiveDeals">0</div>
+                    <div class="text-muted small">Active Deals</div>
+                  </div>
+                </div>
+                <div class="col-md-3">
+                  <div class="content-card text-center">
+                    <i class="bi bi-currency-pound text-success fs-1 mb-2"></i>
+                    <div class="fs-2 fw-bold" id="totalPipelineValue">£0</div>
+                    <div class="text-muted small">Pipeline Value</div>
+                  </div>
+                </div>
+                <div class="col-md-3">
+                  <div class="content-card text-center">
+                    <i class="bi bi-check-circle text-primary fs-1 mb-2"></i>
+                    <div class="fs-2 fw-bold" id="dealsWonThisMonth">0</div>
+                    <div class="text-muted small">Won This Month</div>
+                  </div>
+                </div>
+                <div class="col-md-3">
+                  <div class="content-card text-center">
+                    <i class="bi bi-percent text-info fs-1 mb-2"></i>
+                    <div class="fs-2 fw-bold" id="averageWinRate">0%</div>
+                    <div class="text-muted small">Win Rate</div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Filters & Actions -->
+              <div class="content-card mb-4">
+                <div class="row g-3 align-items-end">
+                  <div class="col-md-3">
+                    <label class="form-label small fw-bold">Stage</label>
+                    <select class="form-select form-select-sm" id="dealStageFilter">
+                      <option value="">All Stages</option>
+                      <option value="lead">Lead</option>
+                      <option value="contacted">Contacted</option>
+                      <option value="qualified">Qualified</option>
+                      <option value="proposal">Proposal</option>
+                      <option value="negotiation">Negotiation</option>
+                      <option value="closed_won">Closed Won</option>
+                      <option value="closed_lost">Closed Lost</option>
+                    </select>
+                  </div>
+                  <div class="col-md-3">
+                    <label class="form-label small fw-bold">Type</label>
+                    <select class="form-select form-select-sm" id="dealTypeFilter">
+                      <option value="">All Types</option>
+                      <option value="sponsorship">Sponsorship</option>
+                      <option value="award_fee">Award Fee</option>
+                      <option value="event_tickets">Event Tickets</option>
+                      <option value="partnership">Partnership</option>
+                      <option value="package_upgrade">Package Upgrade</option>
+                      <option value="other">Other</option>
+                    </select>
+                  </div>
+                  <div class="col-md-3">
+                    <label class="form-label small fw-bold">Status</label>
+                    <select class="form-select form-select-sm" id="dealStatusFilter">
+                      <option value="active">Active</option>
+                      <option value="won">Won</option>
+                      <option value="lost">Lost</option>
+                      <option value="on_hold">On Hold</option>
+                    </select>
+                  </div>
+                  <div class="col-md-3">
+                    <button class="btn btn-primary btn-sm w-100" onclick="crmModule.createDeal()">
+                      <i class="bi bi-plus-circle me-1"></i>Create Deal
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Deals Pipeline -->
+              <div class="table-container">
+                <div class="table-responsive">
+                  <table class="table table-hover table-striped align-middle">
+                    <thead class="table-light">
+                      <tr>
+                        <th>Deal Name</th>
+                        <th>Company</th>
+                        <th>Type</th>
+                        <th>Stage</th>
+                        <th>Value</th>
+                        <th>Probability</th>
+                        <th>Expected Close</th>
+                        <th>Status</th>
+                        <th>Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody id="dealsTableBody">
+                      <tr>
+                        <td colspan="9" class="text-center py-5 text-muted">
+                          <i class="bi bi-hourglass-split display-4 d-block mb-2 opacity-25"></i>
+                          Loading deals...
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+            </div>
+
+            <!-- Meetings Sub-Tab -->
+            <div class="tab-pane fade" id="meetings-content" role="tabpanel">
+
+              <!-- Actions -->
+              <div class="content-card mb-4">
+                <div class="row g-3 align-items-end">
+                  <div class="col-md-4">
+                    <label class="form-label small fw-bold">Meeting Type</label>
+                    <select class="form-select form-select-sm" id="meetingTypeFilter">
+                      <option value="">All Types</option>
+                      <option value="in_person">In Person</option>
+                      <option value="video_call">Video Call</option>
+                      <option value="phone">Phone</option>
+                      <option value="conference">Conference</option>
+                    </select>
+                  </div>
+                  <div class="col-md-4">
+                    <label class="form-label small fw-bold">Date Range</label>
+                    <input type="month" class="form-control form-control-sm" id="meetingMonthFilter">
+                  </div>
+                  <div class="col-md-4">
+                    <button class="btn btn-primary btn-sm w-100" onclick="crmModule.createMeetingNote()">
+                      <i class="bi bi-plus-circle me-1"></i>Add Meeting Note
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Meetings Table -->
+              <div class="table-container">
+                <div class="table-responsive">
+                  <table class="table table-hover table-striped align-middle">
+                    <thead class="table-light">
+                      <tr>
+                        <th>Date</th>
+                        <th>Meeting Title</th>
+                        <th>Company</th>
+                        <th>Type</th>
+                        <th>Duration</th>
+                        <th>Attendees</th>
+                        <th>Follow-up</th>
+                        <th>Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody id="meetingsTableBody">
+                      <tr>
+                        <td colspan="8" class="text-center py-5 text-muted">
+                          <i class="bi bi-hourglass-split display-4 d-block mb-2 opacity-25"></i>
+                          Loading meetings...
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+            </div>
+
+            <!-- Segments Sub-Tab -->
+            <div class="tab-pane fade" id="segments-content" role="tabpanel">
+
+              <div class="row">
+                <div class="col-md-4 mb-4">
+                  <div class="card border-success">
+                    <div class="card-header bg-success text-white">
+                      <i class="bi bi-trophy-fill me-2"></i>Past Winners
+                    </div>
+                    <div class="card-body">
+                      <div class="fs-2 fw-bold text-success" id="segmentPastWinnersCount">0</div>
+                      <p class="text-muted small mb-0">Companies that have won awards</p>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="col-md-4 mb-4">
+                  <div class="card border-warning">
+                    <div class="card-header bg-warning text-dark">
+                      <i class="bi bi-star me-2"></i>Current Nominees
+                    </div>
+                    <div class="card-body">
+                      <div class="fs-2 fw-bold text-warning" id="segmentCurrentNomineesCount">0</div>
+                      <p class="text-muted small mb-0">Nominated for current awards</p>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="col-md-4 mb-4">
+                  <div class="card border-primary">
+                    <div class="card-header bg-primary text-white">
+                      <i class="bi bi-award me-2"></i>Sponsors
+                    </div>
+                    <div class="card-body">
+                      <div class="fs-2 fw-bold text-primary" id="segmentSponsorsCount">0</div>
+                      <p class="text-muted small mb-0">Providing sponsorship</p>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="col-md-4 mb-4">
+                  <div class="card border-danger">
+                    <div class="card-header bg-danger text-white">
+                      <i class="bi bi-star-fill me-2"></i>VIP Contacts
+                    </div>
+                    <div class="card-body">
+                      <div class="fs-2 fw-bold text-danger" id="segmentVIPCount">0</div>
+                      <p class="text-muted small mb-0">High-value contacts</p>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="col-md-4 mb-4">
+                  <div class="card border-info">
+                    <div class="card-header bg-info text-white">
+                      <i class="bi bi-building me-2"></i>Industry Leaders
+                    </div>
+                    <div class="card-body">
+                      <div class="fs-2 fw-bold text-info" id="segmentIndustryLeadersCount">0</div>
+                      <p class="text-muted small mb-0">Leading companies in sectors</p>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="col-md-4 mb-4">
+                  <div class="card border-secondary">
+                    <div class="card-header bg-secondary text-white">
+                      <i class="bi bi-arrow-repeat me-2"></i>Renewal Prospects
+                    </div>
+                    <div class="card-body">
+                      <div class="fs-2 fw-bold text-secondary" id="segmentRenewalProspectsCount">0</div>
+                      <p class="text-muted small mb-0">Eligible for renewal</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Manage Segments -->
+              <div class="content-card mt-4">
+                <h5 class="mb-3"><i class="bi bi-gear me-2"></i>Manage Segments</h5>
+                <button class="btn btn-primary btn-sm" onclick="crmModule.assignSegments()">
+                  <i class="bi bi-tags me-1"></i>Assign Company to Segments
+                </button>
+                <button class="btn btn-secondary btn-sm ms-2" onclick="crmModule.createCustomSegment()">
+                  <i class="bi bi-plus-circle me-1"></i>Create Custom Segment
+                </button>
               </div>
 
             </div>
@@ -3624,6 +4101,7 @@ in recognition of excellence
   <script src="marketing.js"></script>
   <script src="email-builder.js"></script>
   <script src="payments.js"></script>
+  <script src="crm.js"></script>
   <script src="settings.js"></script>
   <script src="app.js"></script>
 

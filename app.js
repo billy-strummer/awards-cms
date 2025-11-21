@@ -367,6 +367,39 @@ document.addEventListener('DOMContentLoaded', function() {
     });
   }
 
+  // Load CRM data when CRM tab is clicked
+  const crmTab = document.getElementById('crm-tab');
+  if (crmTab) {
+    crmTab.addEventListener('shown.bs.tab', () => {
+      console.log('🎯 CRM tab opened');
+      if (typeof crmModule !== 'undefined') {
+        crmModule.loadAllData();
+      }
+    });
+  }
+
+  // CRM Sub-tab navigation
+  const crmSubTabs = {
+    'companies-crm-subtab': 'companies-crm',
+    'communications-subtab': 'communications',
+    'deals-subtab': 'deals',
+    'meetings-subtab': 'meetings',
+    'segments-subtab': 'segments'
+  };
+
+  Object.keys(crmSubTabs).forEach(tabId => {
+    const tab = document.getElementById(tabId);
+    if (tab) {
+      tab.addEventListener('click', (e) => {
+        e.preventDefault();
+        if (typeof crmModule !== 'undefined') {
+          crmModule.currentSubTab = crmSubTabs[tabId];
+          crmModule.loadAllData();
+        }
+      });
+    }
+  });
+
   // ==========================================
   // STEP 12: Tooltips Initialization
   // ==========================================

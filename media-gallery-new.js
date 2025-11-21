@@ -45,7 +45,7 @@ const mediaGalleryModule = {
     document.getElementById('eventsListView').style.display = 'block';
 
     try {
-      const { data: events, error } = await supabase
+      const { data: events, error } = await STATE.client
         .from('events')
         .select('*')
         .order('event_date', { ascending: false });
@@ -82,13 +82,13 @@ const mediaGalleryModule = {
 
     // Get media counts for each event
     const eventsWithCounts = await Promise.all(events.map(async (event) => {
-      const { count: photoCount } = await supabase
+      const { count: photoCount } = await STATE.client
         .from('media_items')
         .select('*', { count: 'exact', head: true })
         .eq('event_id', event.id)
         .eq('media_type', 'image');
 
-      const { count: videoCount } = await supabase
+      const { count: videoCount } = await STATE.client
         .from('media_items')
         .select('*', { count: 'exact', head: true })
         .eq('event_id', event.id)
@@ -159,7 +159,7 @@ const mediaGalleryModule = {
 
     try {
       // Load event details
-      const { data: event, error } = await supabase
+      const { data: event, error } = await STATE.client
         .from('events')
         .select('*')
         .eq('id', this.currentEventId)
@@ -171,13 +171,13 @@ const mediaGalleryModule = {
       document.getElementById('eventContentsTitle').textContent = event.event_name;
 
       // Load and display counts
-      const { count: photoCount } = await supabase
+      const { count: photoCount } = await STATE.client
         .from('media_items')
         .select('*', { count: 'exact', head: true })
         .eq('event_id', this.currentEventId)
         .eq('media_type', 'image');
 
-      const { count: videoCount } = await supabase
+      const { count: videoCount } = await STATE.client
         .from('media_items')
         .select('*', { count: 'exact', head: true })
         .eq('event_id', this.currentEventId)
@@ -262,7 +262,7 @@ const mediaGalleryModule = {
     const container = document.getElementById('videosProductionContent');
 
     try {
-      const { data: videos, error } = await supabase
+      const { data: videos, error } = await STATE.client
         .from('media_items')
         .select('*')
         .eq('event_id', this.currentEventId)
@@ -550,7 +550,7 @@ const mediaGalleryModule = {
       };
 
       // Insert into database
-      const { data, error } = await supabase
+      const { data, error } = await STATE.client
         .from('media_items')
         .insert([videoData])
         .select();
@@ -593,7 +593,7 @@ const mediaGalleryModule = {
     if (!confirm('Are you sure you want to delete this video?')) return;
 
     try {
-      const { error } = await supabase
+      const { error } = await STATE.client
         .from('media_items')
         .delete()
         .eq('id', videoId);

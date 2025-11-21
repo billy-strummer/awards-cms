@@ -714,10 +714,9 @@ const dashboardModule = {
       sectorCounts[sector] = (sectorCounts[sector] || 0) + 1;
     });
 
-    // Sort by count and take top 8
+    // Sort by count - show all sectors
     const sortedSectors = Object.entries(sectorCounts)
-      .sort((a, b) => b[1] - a[1])
-      .slice(0, 8);
+      .sort((a, b) => b[1] - a[1]);
 
     if (sortedSectors.length === 0) {
       container.innerHTML = `<div class="chart-empty"><i class="bi bi-building"></i><div>No data to display</div></div>`;
@@ -754,10 +753,9 @@ const dashboardModule = {
       regionCounts[region] = (regionCounts[region] || 0) + 1;
     });
 
-    // Sort by count
+    // Sort by count - show all regions
     const sortedRegions = Object.entries(regionCounts)
-      .sort((a, b) => b[1] - a[1])
-      .slice(0, 8);
+      .sort((a, b) => b[1] - a[1]);
 
     if (sortedRegions.length === 0) {
       container.innerHTML = `<div class="chart-empty"><i class="bi bi-geo-alt"></i><div>No data to display</div></div>`;
@@ -829,11 +827,11 @@ const dashboardModule = {
    */
   renderBarChart(container, data, label, color) {
     const width = container.offsetWidth;
-    const height = 260;
+    const barHeight = 25; // Fixed height per bar
+    const barSpacing = 5; // Space between bars
     const padding = { top: 10, right: 40, bottom: 10, left: 120 };
+    const height = Math.max(260, padding.top + padding.bottom + (data.length * (barHeight + barSpacing)));
     const chartWidth = width - padding.left - padding.right;
-    const chartHeight = height - padding.top - padding.bottom;
-    const barHeight = chartHeight / data.length - 10;
 
     const maxValue = Math.max(...data.map(d => d.value));
 
@@ -843,7 +841,7 @@ const dashboardModule = {
     // Render bars
     data.forEach((d, i) => {
       const barWidth = (d.value / maxValue) * chartWidth;
-      const y = padding.top + i * (chartHeight / data.length);
+      const y = padding.top + i * (barHeight + barSpacing);
 
       // Bar
       svg += `<rect x="${padding.left}" y="${y}" width="${barWidth}" height="${barHeight}" fill="${color}" class="chart-bar" opacity="0.8">

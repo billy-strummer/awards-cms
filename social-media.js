@@ -71,7 +71,7 @@ Vote now: {{website}}
    * Load companies for dropdown
    */
   async loadCompanies() {
-    const { data: companies, error } = await supabase
+    const { data: companies, error } = await STATE.client
       .from('organisations')
       .select('id, company_name, logo_url, website')
       .eq('status', 'active')
@@ -94,7 +94,7 @@ Vote now: {{website}}
    * Load awards for dropdown
    */
   async loadAwards() {
-    const { data: awards, error } = await supabase
+    const { data: awards, error } = await STATE.client
       .from('awards')
       .select('id, award_name, category')
       .eq('is_active', true)
@@ -366,7 +366,7 @@ Vote now: {{website}}
       };
 
       // Save to database
-      const { data, error } = await supabase
+      const { data, error } = await STATE.client
         .from('social_media_posts')
         .insert([postData])
         .select();
@@ -422,7 +422,7 @@ Vote now: {{website}}
         created_at: new Date().toISOString()
       };
 
-      const { data, error } = await supabase
+      const { data, error } = await STATE.client
         .from('social_media_posts')
         .insert([draftData])
         .select();
@@ -443,7 +443,7 @@ Vote now: {{website}}
    */
   async loadScheduledPosts() {
     try {
-      const { data: posts, error } = await supabase
+      const { data: posts, error } = await STATE.client
         .from('social_media_posts')
         .select(`
           *,
@@ -539,7 +539,7 @@ Vote now: {{website}}
     if (!confirm('Are you sure you want to delete this scheduled post?')) return;
 
     try {
-      const { error } = await supabase
+      const { error } = await STATE.client
         .from('social_media_posts')
         .delete()
         .eq('id', postId);

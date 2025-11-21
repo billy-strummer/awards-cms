@@ -1332,6 +1332,24 @@
               <small class="text-muted">Select multiple files. Supported: Images (JPEG, PNG, GIF, WebP) and Videos (MP4, MOV, AVI, WebM). Max 4.5MB per file.</small>
             </div>
 
+            <div class="mb-3" id="videoTypeContainer" style="display: none;">
+              <label for="sectionVideoType" class="form-label">Video Type (for videos only)</label>
+              <select class="form-select" id="sectionVideoType">
+                <option value="">Select video type...</option>
+                <option value="highlights">Highlights</option>
+                <option value="full_ceremony">Full Awards Ceremony</option>
+                <option value="interview">Interview</option>
+                <option value="live_stream">Live Stream</option>
+                <option value="virtual_winner_presentation">Virtual Winner Presentation</option>
+                <option value="winner_promotional">Winner Promotional</option>
+                <option value="sponsor_videos">Sponsor Videos</option>
+                <option value="social_media_clips">Social Media Clips</option>
+                <option value="teasers_trailers">Teasers/Trailers</option>
+                <option value="press_clips">Press Clips</option>
+              </select>
+              <small class="text-muted">This will be applied to all uploaded videos</small>
+            </div>
+
             <!-- File Preview Grid -->
             <div id="filePreviewContainer" class="mb-3 d-none">
               <label class="form-label">Selected Files (<span id="filePreviewCount">0</span>)</label>

@@ -844,11 +844,27 @@ const mediaGalleryModule = {
    */
   renderPhotoCard(photo) {
     const isImage = photo.file_type?.startsWith('image/');
+    const isVideo = photo.file_type?.startsWith('video/') && photo.file_type !== 'video/youtube';
     const isYouTube = photo.file_type === 'video/youtube';
     const orgName = photo.organisations?.company_name || null;
     const awardName = photo.awards?.award_name || photo.awards?.award_category || null;
     const isPublished = photo.published !== false; // Default to true if not set
     const isSelected = this.selectedPhotoIds.has(photo.id);
+
+    // Format video type for display
+    const videoTypeLabels = {
+      'highlights': 'Highlights',
+      'full_ceremony': 'Full Ceremony',
+      'interview': 'Interview',
+      'live_stream': 'Live Stream',
+      'virtual_winner_presentation': 'Virtual Winner',
+      'winner_promotional': 'Promotional',
+      'sponsor_videos': 'Sponsor',
+      'social_media_clips': 'Social Media',
+      'teasers_trailers': 'Teaser/Trailer',
+      'press_clips': 'Press Clip'
+    };
+    const videoTypeLabel = photo.video_type ? videoTypeLabels[photo.video_type] || photo.video_type : null;
 
     return `
       <div class="col-md-3">
@@ -868,6 +884,7 @@ const mediaGalleryModule = {
           </div>
           ${isSelected ? '<div class="position-absolute top-0 end-0 m-2"><div class="badge bg-primary"><i class="bi bi-check-circle-fill"></i> Selected</div></div>' : ''}
           ${!isPublished && !isSelected ? '<div class="position-absolute top-0 end-0 m-2 badge bg-secondary">Draft</div>' : ''}
+          ${videoTypeLabel && !isSelected && isPublished ? `<div class="position-absolute top-0 end-0 m-2 badge bg-danger"><i class="bi bi-camera-video me-1"></i>${videoTypeLabel}</div>` : ''}
           ${isImage ?
             `<img src="${photo.file_url}" class="card-img-top ${!isPublished ? 'opacity-50' : ''}" alt="${utils.escapeHtml(photo.title || 'Photo')}"
               style="height: 200px; object-fit: cover; cursor: pointer;"
@@ -897,6 +914,7 @@ const mediaGalleryModule = {
               title="Click to edit">${utils.escapeHtml(photo.title || 'Untitled')}</p>
 
             <div class="mb-1">
+              ${videoTypeLabel ? `<span class="badge bg-danger me-1"><i class="bi bi-camera-video me-1"></i>${videoTypeLabel}</span>` : ''}
               <span class="badge ${orgName ? 'bg-success' : 'bg-warning'} me-1"
                 style="cursor: pointer;"
                 onclick="mediaGalleryModule.quickEditTag('${photo.id}', 'org')"
@@ -960,11 +978,17 @@ const mediaGalleryModule = {
 
     if (files.length === 0) {
       document.getElementById('filePreviewContainer').classList.add('d-none');
+      document.getElementById('videoTypeContainer').style.display = 'none';
       this.selectedFiles = [];
       return;
     }
 
     this.selectedFiles = files;
+
+    // Check if any videos are selected
+    const hasVideos = files.some(file => file.type.startsWith('video/'));
+    document.getElementById('videoTypeContainer').style.display = hasVideos ? 'block' : 'none';
+
     this.renderFilePreview();
   },
 
@@ -1072,6 +1096,7 @@ const mediaGalleryModule = {
     const fileInput = document.getElementById('sectionPhotosFile');
     const title = document.getElementById('sectionPhotosTitle').value.trim();
     const published = document.getElementById('sectionPhotosPublished').checked;
+    const videoType = document.getElementById('sectionVideoType').value;
 
     if (!fileInput.files || fileInput.files.length === 0) {
       utils.showToast('Please select at least one file', 'warning');
@@ -1136,19 +1161,28 @@ const mediaGalleryModule = {
           .from('media-gallery')
           .getPublicUrl(fileName);
 
+        // Prepare media record
+        const isVideo = file.type.startsWith('video/');
+        const mediaRecord = {
+          gallery_section_id: this.currentSectionId,
+          event_id: this.currentEventId,
+          file_url: urlData.publicUrl,
+          file_type: file.type,
+          title: title || file.name,
+          organisation_id: null,
+          award_id: null,
+          published: published
+        };
+
+        // Add video_type only for videos
+        if (isVideo && videoType) {
+          mediaRecord.video_type = videoType;
+        }
+
         // Insert into database
         const { error: dbError } = await STATE.client
           .from('media_gallery')
-          .insert([{
-            gallery_section_id: this.currentSectionId,
-            event_id: this.currentEventId,
-            file_url: urlData.publicUrl,
-            file_type: file.type,
-            title: title || file.name,
-            organisation_id: null,
-            award_id: null,
-            published: published
-          }]);
+          .insert([mediaRecord]);
 
         if (dbError) throw dbError;
 

@@ -1,0 +1,378 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Vote for Nominee - British Trade Awards</title>
+
+  <!-- Bootstrap 5 -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
+
+  <!-- Supabase -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+  <!-- Open Graph / Social Media Meta Tags -->
+  <meta property="og:title" content="Vote for this nominee - British Trade Awards">
+  <meta property="og:description" content="Cast your vote for this nominee in the British Trade Awards 2025">
+  <meta property="og:type" content="website">
+  <meta property="og:image" content="">
+  <meta name="twitter:card" content="summary_large_image">
+
+  <style>
+    body {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      padding: 40px 0;
+    }
+
+    .vote-container {
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 0 20px;
+    }
+
+    .nominee-card {
+      background: white;
+      border-radius: 24px;
+      padding: 50px;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+      margin-bottom: 30px;
+    }
+
+    .company-logo {
+      width: 120px;
+      height: 120px;
+      object-fit: contain;
+      border-radius: 12px;
+      border: 3px solid #f8f9fa;
+      margin: 0 auto 30px;
+      display: block;
+    }
+
+    .award-badge {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      padding: 8px 20px;
+      border-radius: 20px;
+      font-weight: 600;
+      display: inline-block;
+      margin-bottom: 20px;
+    }
+
+    .vote-button {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      border: none;
+      color: white;
+      padding: 18px 50px;
+      font-size: 1.3rem;
+      font-weight: 700;
+      border-radius: 12px;
+      transition: all 0.3s;
+      width: 100%;
+      margin-top: 30px;
+    }
+
+    .vote-button:hover:not(:disabled) {
+      transform: scale(1.05);
+      box-shadow: 0 10px 30px rgba(102, 126, 234, 0.5);
+    }
+
+    .vote-button:disabled {
+      background: #6c757d;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    .vote-count-display {
+      text-align: center;
+      font-size: 2.5rem;
+      font-weight: 700;
+      color: #667eea;
+      margin: 20px 0;
+    }
+
+    .vote-count-label {
+      color: #6c757d;
+      font-size: 1rem;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+
+    .share-buttons {
+      display: flex;
+      gap: 10px;
+      justify-content: center;
+      margin-top: 30px;
+    }
+
+    .share-btn {
+      padding: 12px 24px;
+      border-radius: 8px;
+      border: none;
+      color: white;
+      font-weight: 600;
+      cursor: pointer;
+      transition: transform 0.2s;
+    }
+
+    .share-btn:hover {
+      transform: translateY(-2px);
+    }
+
+    .share-btn.twitter {
+      background: #1DA1F2;
+    }
+
+    .share-btn.facebook {
+      background: #4267B2;
+    }
+
+    .share-btn.linkedin {
+      background: #0077B5;
+    }
+
+    .share-btn.copy {
+      background: #28a745;
+    }
+
+    .verification-modal {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0,0,0,0.7);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 9999;
+    }
+
+    .modal-content {
+      background: white;
+      border-radius: 16px;
+      padding: 40px;
+      max-width: 500px;
+      width: 90%;
+      box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+    }
+
+    .success-icon {
+      font-size: 80px;
+      color: #28a745;
+      text-align: center;
+      margin-bottom: 20px;
+    }
+
+    .entry-description {
+      background: #f8f9fa;
+      padding: 20px;
+      border-radius: 12px;
+      margin: 20px 0;
+    }
+
+    .loading-spinner {
+      text-align: center;
+      padding: 100px 0;
+    }
+
+    .error-message {
+      background: white;
+      border-radius: 16px;
+      padding: 50px;
+      text-align: center;
+    }
+
+    .website-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      color: #667eea;
+      text-decoration: none;
+      font-weight: 600;
+      margin-top: 15px;
+    }
+
+    .website-link:hover {
+      text-decoration: underline;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="vote-container">
+
+    <!-- Loading State -->
+    <div id="loadingState" class="loading-spinner">
+      <div class="spinner-border text-white" style="width: 3rem; height: 3rem;" role="status">
+        <span class="visually-hidden">Loading...</span>
+      </div>
+      <p class="text-white mt-3 fs-5">Loading nominee...</p>
+    </div>
+
+    <!-- Error State -->
+    <div id="errorState" style="display: none;">
+      <div class="error-message">
+        <i class="bi bi-exclamation-triangle-fill text-warning" style="font-size: 60px;"></i>
+        <h2 class="mt-3">Nominee Not Found</h2>
+        <p class="text-muted">This voting link may be invalid or the nominee is not accepting votes at this time.</p>
+        <a href="public-voting.html" class="btn btn-primary mt-3">View All Nominees</a>
+      </div>
+    </div>
+
+    <!-- Nominee Card -->
+    <div id="nomineeCard" style="display: none;">
+      <div class="nominee-card">
+
+        <!-- Logo -->
+        <img id="companyLogo" class="company-logo" src="" alt="Company Logo">
+
+        <!-- Award Badge -->
+        <div class="text-center">
+          <span id="awardBadge" class="award-badge"></span>
+        </div>
+
+        <!-- Company Name -->
+        <h1 id="companyName" class="text-center mb-3"></h1>
+
+        <!-- Entry Title -->
+        <h3 id="entryTitle" class="text-center text-muted mb-4"></h3>
+
+        <!-- Entry Number -->
+        <p class="text-center text-muted small mb-3">
+          Entry #<span id="entryNumber"></span>
+        </p>
+
+        <!-- Vote Count -->
+        <div class="vote-count-display" id="voteCount">0</div>
+        <div class="text-center vote-count-label">Votes Cast</div>
+
+        <!-- Entry Description -->
+        <div id="entryDescriptionSection" class="entry-description">
+          <h5 class="mb-3"><i class="bi bi-file-text me-2"></i>About This Entry</h5>
+          <p id="entryDescription"></p>
+          <div id="whyShouldWin" style="display: none;">
+            <h6 class="mt-3 mb-2">Why They Should Win:</h6>
+            <p id="whyShouldWinText"></p>
+          </div>
+        </div>
+
+        <!-- Website Link -->
+        <div class="text-center" id="websiteLinkSection" style="display: none;">
+          <a id="websiteLink" href="" target="_blank" class="website-link">
+            <i class="bi bi-globe"></i>
+            <span>Visit Website</span>
+            <i class="bi bi-arrow-up-right"></i>
+          </a>
+        </div>
+
+        <!-- Vote Button -->
+        <button id="voteButton" class="vote-button" onclick="nomineeVoting.vote()">
+          <i class="bi bi-hand-thumbs-up me-2"></i>Vote Now
+        </button>
+
+        <p class="text-center text-muted small mt-3">
+          <i class="bi bi-shield-check me-1"></i>
+          Email verification required • One vote per person
+        </p>
+
+        <!-- Share Buttons -->
+        <div class="share-buttons">
+          <button class="share-btn twitter" onclick="nomineeVoting.shareTwitter()">
+            <i class="bi bi-twitter me-2"></i>Share
+          </button>
+          <button class="share-btn facebook" onclick="nomineeVoting.shareFacebook()">
+            <i class="bi bi-facebook me-2"></i>Share
+          </button>
+          <button class="share-btn linkedin" onclick="nomineeVoting.shareLinkedIn()">
+            <i class="bi bi-linkedin me-2"></i>Share
+          </button>
+          <button class="share-btn copy" onclick="nomineeVoting.copyLink()">
+            <i class="bi bi-link-45deg me-2"></i>Copy Link
+          </button>
+        </div>
+
+      </div>
+
+      <!-- Powered By -->
+      <div class="text-center text-white mt-4">
+        <p class="mb-0">British Trade Awards 2025</p>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Verification Modal -->
+  <div id="verificationModal" class="verification-modal" style="display: none;">
+    <div class="modal-content">
+      <h3 class="text-center mb-4">Verify Your Email</h3>
+      <p class="text-center text-muted">Enter your email to verify your vote</p>
+
+      <form id="verificationForm">
+        <div class="mb-3">
+          <label class="form-label">Email Address *</label>
+          <input type="email" class="form-control form-control-lg" id="voterEmail" required placeholder="your@email.com">
+        </div>
+
+        <div class="mb-3">
+          <label class="form-label">Your Name (Optional)</label>
+          <input type="text" class="form-control form-control-lg" id="voterName" placeholder="John Doe">
+        </div>
+
+        <div class="form-check mb-4">
+          <input class="form-check-input" type="checkbox" id="agreeTerms" required>
+          <label class="form-check-label small" for="agreeTerms">
+            I confirm my vote is genuine and I agree to receive a verification email
+          </label>
+        </div>
+
+        <div class="d-grid gap-2">
+          <button type="submit" class="btn btn-primary btn-lg">
+            <i class="bi bi-envelope-check me-2"></i>Verify & Vote
+          </button>
+          <button type="button" class="btn btn-outline-secondary" onclick="nomineeVoting.closeVerificationModal()">
+            Cancel
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Success Modal -->
+  <div id="successModal" class="verification-modal" style="display: none;">
+    <div class="modal-content text-center">
+      <div class="success-icon">
+        <i class="bi bi-check-circle-fill"></i>
+      </div>
+      <h3>Vote Recorded!</h3>
+      <p class="text-muted">Thank you for your vote. A verification email has been sent to confirm your vote.</p>
+      <button class="btn btn-primary btn-lg px-5" onclick="nomineeVoting.closeSuccessModal()">
+        Close
+      </button>
+
+      <div class="mt-4 pt-4 border-top">
+        <p class="small text-muted mb-3">Help spread the word!</p>
+        <div class="share-buttons">
+          <button class="share-btn twitter" onclick="nomineeVoting.shareTwitter()">
+            <i class="bi bi-twitter"></i>
+          </button>
+          <button class="share-btn facebook" onclick="nomineeVoting.shareFacebook()">
+            <i class="bi bi-facebook"></i>
+          </button>
+          <button class="share-btn linkedin" onclick="nomineeVoting.shareLinkedIn()">
+            <i class="bi bi-linkedin"></i>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Bootstrap JS -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+  <!-- Voting System Logic -->
+  <script src="nominee-voting.js"></script>
+
+</body>
+</html>

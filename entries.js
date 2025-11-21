@@ -194,6 +194,9 @@ const entriesModule = {
               <button class="btn btn-outline-secondary" onclick="entriesModule.editEntry('${entry.id}')" title="Edit">
                 <i class="bi bi-pencil"></i>
               </button>
+              <button class="btn btn-outline-info" onclick="entriesModule.showVotingLink('${entry.id}')" title="Get Voting Link">
+                <i class="bi bi-link-45deg"></i>
+              </button>
               <button class="btn btn-outline-danger" onclick="entriesModule.deleteEntry('${entry.id}')" title="Delete">
                 <i class="bi bi-trash"></i>
               </button>
@@ -516,6 +519,209 @@ const entriesModule = {
     // - Assign to judges
     // - Mark as shortlisted
     // - etc.
+  },
+
+  /**
+   * Show voting link modal
+   */
+  async showVotingLink(entryId) {
+    try {
+      // Get entry details
+      const entry = this.allEntries.find(e => e.id === entryId);
+      if (!entry) {
+        utils.showToast('Entry not found', 'error');
+        return;
+      }
+
+      const votingUrl = `${window.location.origin}/vote.html?entry=${entry.entry_number}`;
+      const companyName = entry.organisations?.company_name || 'Nominee';
+
+      // Create modal HTML
+      const modalHtml = `
+        <div class="modal fade" id="votingLinkModal" tabindex="-1">
+          <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+              <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title">
+                  <i class="bi bi-link-45deg me-2"></i>Public Voting Link
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+              </div>
+              <div class="modal-body">
+                <div class="mb-3">
+                  <h6>${companyName}</h6>
+                  <p class="text-muted small mb-3">${entry.entry_title}</p>
+
+                  <div class="alert ${entry.allow_public_voting ? 'alert-success' : 'alert-warning'}">
+                    <i class="bi ${entry.allow_public_voting ? 'bi-check-circle' : 'bi-exclamation-triangle'} me-2"></i>
+                    Public voting is <strong>${entry.allow_public_voting ? 'ENABLED' : 'DISABLED'}</strong>
+                  </div>
+                </div>
+
+                <div class="mb-3">
+                  <label class="form-label fw-bold">Voting Link:</label>
+                  <div class="input-group">
+                    <input type="text" class="form-control" value="${votingUrl}" id="votingLinkInput" readonly>
+                    <button class="btn btn-primary" onclick="entriesModule.copyVotingLink('${votingUrl}')">
+                      <i class="bi bi-clipboard"></i> Copy
+                    </button>
+                  </div>
+                </div>
+
+                <div class="mb-3">
+                  <label class="form-label fw-bold">Current Vote Count:</label>
+                  <div class="display-6 text-primary">${entry.public_votes || 0}</div>
+                </div>
+
+                <div class="mb-3">
+                  <label class="form-label fw-bold">Settings:</label>
+                  <div class="form-check form-switch">
+                    <input class="form-check-input" type="checkbox" id="allowPublicVotingToggle"
+                           ${entry.allow_public_voting ? 'checked' : ''}
+                           onchange="entriesModule.togglePublicVoting('${entryId}', this.checked)">
+                    <label class="form-check-label" for="allowPublicVotingToggle">
+                      Allow public voting for this entry
+                    </label>
+                  </div>
+                  <div class="form-check form-switch">
+                    <input class="form-check-input" type="checkbox" id="isPublicToggle"
+                           ${entry.is_public ? 'checked' : ''}
+                           onchange="entriesModule.togglePublicVisibility('${entryId}', this.checked)">
+                    <label class="form-check-label" for="isPublicToggle">
+                      Show entry publicly
+                    </label>
+                  </div>
+                </div>
+
+                <div class="alert alert-info">
+                  <strong><i class="bi bi-info-circle me-2"></i>Share Instructions:</strong>
+                  <ul class="mb-0 mt-2 small">
+                    <li>Share this link via email, social media, or website</li>
+                    <li>Each person needs email verification to vote</li>
+                    <li>One vote per email address</li>
+                    <li>Voters can share the link with others</li>
+                  </ul>
+                </div>
+              </div>
+              <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-primary" onclick="entriesModule.openVotingLinkInNewTab('${votingUrl}')">
+                  <i class="bi bi-box-arrow-up-right me-2"></i>Open Voting Page
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      `;
+
+      // Remove existing modal if any
+      const existingModal = document.getElementById('votingLinkModal');
+      if (existingModal) {
+        existingModal.remove();
+      }
+
+      // Add modal to page
+      document.body.insertAdjacentHTML('beforeend', modalHtml);
+
+      // Show modal
+      const modal = new bootstrap.Modal(document.getElementById('votingLinkModal'));
+      modal.show();
+
+      // Clean up modal when closed
+      document.getElementById('votingLinkModal').addEventListener('hidden.bs.modal', function() {
+        this.remove();
+      });
+
+    } catch (error) {
+      console.error('Error showing voting link:', error);
+      utils.showToast('Failed to generate voting link', 'error');
+    }
+  },
+
+  /**
+   * Copy voting link to clipboard
+   */
+  async copyVotingLink(url) {
+    try {
+      await navigator.clipboard.writeText(url);
+      utils.showToast('Voting link copied to clipboard!', 'success');
+    } catch (err) {
+      console.error('Failed to copy:', err);
+      // Fallback: select the input text
+      const input = document.getElementById('votingLinkInput');
+      input.select();
+      document.execCommand('copy');
+      utils.showToast('Voting link copied!', 'success');
+    }
+  },
+
+  /**
+   * Open voting link in new tab
+   */
+  openVotingLinkInNewTab(url) {
+    window.open(url, '_blank');
+  },
+
+  /**
+   * Toggle public voting for entry
+   */
+  async togglePublicVoting(entryId, enabled) {
+    try {
+      const { error } = await supabase
+        .from('entries')
+        .update({ allow_public_voting: enabled })
+        .eq('id', entryId);
+
+      if (error) throw error;
+
+      // Update local data
+      const entry = this.allEntries.find(e => e.id === entryId);
+      if (entry) {
+        entry.allow_public_voting = enabled;
+      }
+
+      utils.showToast(
+        enabled ? 'Public voting enabled' : 'Public voting disabled',
+        'success'
+      );
+
+    } catch (error) {
+      console.error('Error toggling public voting:', error);
+      utils.showToast('Failed to update voting settings', 'error');
+      // Revert checkbox
+      document.getElementById('allowPublicVotingToggle').checked = !enabled;
+    }
+  },
+
+  /**
+   * Toggle public visibility for entry
+   */
+  async togglePublicVisibility(entryId, isPublic) {
+    try {
+      const { error } = await supabase
+        .from('entries')
+        .update({ is_public: isPublic })
+        .eq('id', entryId);
+
+      if (error) throw error;
+
+      // Update local data
+      const entry = this.allEntries.find(e => e.id === entryId);
+      if (entry) {
+        entry.is_public = isPublic;
+      }
+
+      utils.showToast(
+        isPublic ? 'Entry is now public' : 'Entry is now private',
+        'success'
+      );
+
+    } catch (error) {
+      console.error('Error toggling public visibility:', error);
+      utils.showToast('Failed to update visibility', 'error');
+      // Revert checkbox
+      document.getElementById('isPublicToggle').checked = !isPublic;
+    }
   }
 };
 

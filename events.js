@@ -60,6 +60,11 @@ const eventsModule = {
           </td>
           <td class="text-center">
             <div class="btn-group btn-group-sm" role="group">
+              <button class="btn btn-outline-warning btn-icon"
+                onclick="eventsModule.openRunningOrderModal('${event.id}', '${utils.escapeHtml(event.event_name).replace(/'/g, "\\'")}')"
+                title="Running Order">
+                <i class="bi bi-list-ol"></i>
+              </button>
               <button class="btn btn-outline-info btn-icon"
                 onclick="eventsModule.openAttendeesModal('${event.id}')"
                 title="Manage Attendees">
@@ -828,6 +833,499 @@ const eventsModule = {
 
     const filename = `${eventName.replace(/[^a-z0-9]/gi, '_')}_attendees_${new Date().toISOString().split('T')[0]}.csv`;
     utils.exportToCSV(exportData, filename);
+  },
+
+  // ========================================
+  // RUNNING ORDER MANAGEMENT
+  // ========================================
+
+  currentEventIdRunningOrder: null,
+  currentEventName: null,
+  runningOrderItems: [],
+  isPublished: false,
+  draggedItemId: null,
+
+  /**
+   * Open Running Order Modal
+   */
+  async openRunningOrderModal(eventId, eventName) {
+    this.currentEventIdRunningOrder = eventId;
+    this.currentEventName = eventName;
+
+    try {
+      utils.showLoading();
+
+      // Load running order data
+      await this.loadRunningOrder();
+
+      // Create and show modal
+      this.createRunningOrderModal();
+
+    } catch (error) {
+      console.error('Error opening running order:', error);
+      utils.showToast('Failed to load running order: ' + error.message, 'error');
+    } finally {
+      utils.hideLoading();
+    }
+  },
+
+  /**
+   * Create Running Order Modal
+   */
+  createRunningOrderModal() {
+    const existingModal = document.getElementById('runningOrderModal');
+    if (existingModal) existingModal.remove();
+
+    const modalHtml = `
+      <div class="modal fade" id="runningOrderModal" tabindex="-1" data-bs-backdrop="static">
+        <div class="modal-dialog modal-xl modal-dialog-scrollable">
+          <div class="modal-content">
+            <div class="modal-header bg-warning">
+              <div>
+                <h5 class="modal-title">
+                  <i class="bi bi-list-ol me-2"></i>Running Order - ${utils.escapeHtml(this.currentEventName)}
+                </h5>
+                <small class="text-muted d-block">Awards Ceremony Running Order</small>
+              </div>
+              <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+
+              <!-- Status Bar -->
+              <div class="alert ${this.isPublished ? 'alert-success' : 'alert-info'} d-flex justify-content-between align-items-center">
+                <div>
+                  <i class="bi ${this.isPublished ? 'bi-lock-fill' : 'bi-unlock-fill'} me-2"></i>
+                  <strong>${this.isPublished ? 'PUBLISHED MODE' : 'EDIT MODE'}</strong>
+                  <span class="ms-2">
+                    ${this.isPublished ? 'Running order is locked. Unpublish to make changes.' : 'Drag and drop to reorder. Numbers will auto-update.'}
+                  </span>
+                </div>
+                <button class="btn btn-sm ${this.isPublished ? 'btn-outline-primary' : 'btn-success'}"
+                        onclick="eventsModule.togglePublishMode()">
+                  <i class="bi ${this.isPublished ? 'bi-unlock' : 'bi-lock'} me-1"></i>
+                  ${this.isPublished ? 'Unpublish' : 'Publish'}
+                </button>
+              </div>
+
+              <!-- Actions Bar -->
+              <div class="mb-3 d-flex gap-2">
+                <button class="btn btn-primary" onclick="eventsModule.syncFromRSVPs()">
+                  <i class="bi bi-arrow-repeat me-2"></i>Sync from RSVPs
+                </button>
+                <button class="btn btn-outline-secondary" onclick="eventsModule.addManualEntry()">
+                  <i class="bi bi-plus-circle me-2"></i>Add Manual Entry
+                </button>
+                <button class="btn btn-outline-info" onclick="eventsModule.exportRunningOrder()">
+                  <i class="bi bi-download me-2"></i>Export
+                </button>
+                <div class="ms-auto">
+                  <span class="badge bg-secondary fs-6">
+                    Total: ${this.runningOrderItems.length} awards
+                  </span>
+                </div>
+              </div>
+
+              <!-- Running Order List -->
+              <div id="runningOrderList" class="running-order-list">
+                <!-- Items will be rendered here -->
+              </div>
+
+              ${this.runningOrderItems.length === 0 ? `
+                <div class="text-center py-5">
+                  <i class="bi bi-inbox display-4 d-block mb-3 opacity-25"></i>
+                  <p class="text-muted">No items in running order yet.</p>
+                  <button class="btn btn-primary" onclick="eventsModule.syncFromRSVPs()">
+                    <i class="bi bi-arrow-repeat me-2"></i>Sync from RSVPs
+                  </button>
+                </div>
+              ` : ''}
+
+            </div>
+            <div class="modal-footer">
+              <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+              <button type="button" class="btn btn-primary" onclick="eventsModule.saveRunningOrder()">
+                <i class="bi bi-save me-2"></i>Save Changes
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <style>
+        .running-order-list {
+          max-height: 600px;
+          overflow-y: auto;
+        }
+        .running-order-item {
+          background: white;
+          border: 2px solid #dee2e6;
+          border-radius: 8px;
+          padding: 15px;
+          margin-bottom: 10px;
+          cursor: move;
+          transition: all 0.2s;
+        }
+        .running-order-item:hover {
+          border-color: #ffc107;
+          box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        .running-order-item.dragging {
+          opacity: 0.5;
+        }
+        .running-order-item.drag-over {
+          border-top: 3px solid #ffc107;
+          margin-top: 20px;
+        }
+        .running-order-item.published {
+          cursor: not-allowed;
+          background: #f8f9fa;
+        }
+        .award-number {
+          font-size: 1.5rem;
+          font-weight: bold;
+          color: #ffc107;
+          min-width: 80px;
+        }
+      </style>
+    `;
+
+    document.body.insertAdjacentHTML('beforeend', modalHtml);
+
+    const modal = new bootstrap.Modal(document.getElementById('runningOrderModal'));
+    modal.show();
+
+    // Render items after modal is shown
+    this.renderRunningOrderItems();
+
+    // Clean up on close
+    document.getElementById('runningOrderModal').addEventListener('hidden.bs.modal', () => {
+      document.getElementById('runningOrderModal').remove();
+    });
+  },
+
+  /**
+   * Load Running Order from Database
+   */
+  async loadRunningOrder() {
+    try {
+      // Load running order items
+      const { data: items, error: itemsError } = await STATE.client
+        .from('running_order')
+        .select(`
+          *,
+          organisations(company_name, logo_url),
+          awards(award_name),
+          event_guests(guest_name, guest_email)
+        `)
+        .eq('event_id', this.currentEventIdRunningOrder)
+        .order('display_order', { ascending: true });
+
+      if (itemsError) throw itemsError;
+
+      this.runningOrderItems = items || [];
+
+      // Load settings
+      const { data: settings, error: settingsError } = await STATE.client
+        .from('running_order_settings')
+        .select('*')
+        .eq('event_id', this.currentEventIdRunningOrder)
+        .single();
+
+      if (settingsError && settingsError.code !== 'PGRST116') {
+        console.error('Error loading settings:', settingsError);
+      }
+
+      this.isPublished = settings?.is_published || false;
+
+    } catch (error) {
+      console.error('Error loading running order:', error);
+      throw error;
+    }
+  },
+
+  /**
+   * Render Running Order Items
+   */
+  renderRunningOrderItems() {
+    const container = document.getElementById('runningOrderList');
+    if (!container) return;
+
+    if (this.runningOrderItems.length === 0) {
+      return;
+    }
+
+    container.innerHTML = this.runningOrderItems.map((item, index) => `
+      <div class="running-order-item ${this.isPublished ? 'published' : ''}"
+           draggable="${!this.isPublished}"
+           data-id="${item.id}"
+           ondragstart="eventsModule.handleDragStart(event)"
+           ondragover="eventsModule.handleDragOver(event)"
+           ondrop="eventsModule.handleDrop(event)"
+           ondragend="eventsModule.handleDragEnd(event)">
+        <div class="row align-items-center">
+          <div class="col-auto">
+            <div class="award-number">${item.award_number}</div>
+          </div>
+          <div class="col">
+            <div class="d-flex align-items-center">
+              ${item.organisations?.logo_url ? `
+                <img src="${item.organisations.logo_url}" alt="Logo"
+                     style="width: 50px; height: 50px; object-fit: contain; margin-right: 15px; border-radius: 4px;">
+              ` : ''}
+              <div>
+                <h6 class="mb-1">${utils.escapeHtml(item.display_name)}</h6>
+                <small class="text-muted">
+                  ${item.award_name ? `<i class="bi bi-award me-1"></i>${utils.escapeHtml(item.award_name)}` : 'No award assigned'}
+                </small>
+              </div>
+            </div>
+          </div>
+          <div class="col-auto">
+            ${!this.isPublished ? `
+              <button class="btn btn-sm btn-outline-primary me-2"
+                      onclick="eventsModule.editRunningOrderItem('${item.id}')">
+                <i class="bi bi-pencil"></i>
+              </button>
+              <button class="btn btn-sm btn-outline-danger"
+                      onclick="eventsModule.deleteRunningOrderItem('${item.id}')">
+                <i class="bi bi-trash"></i>
+              </button>
+            ` : `
+              <span class="badge bg-success">
+                <i class="bi bi-check-circle me-1"></i>Published
+              </span>
+            `}
+          </div>
+        </div>
+        ${item.notes ? `
+          <div class="mt-2">
+            <small class="text-muted"><i class="bi bi-sticky me-1"></i>${utils.escapeHtml(item.notes)}</small>
+          </div>
+        ` : ''}
+      </div>
+    `).join('');
+  },
+
+  /**
+   * Drag and Drop Handlers
+   */
+  handleDragStart(event) {
+    if (this.isPublished) return;
+    this.draggedItemId = event.currentTarget.dataset.id;
+    event.currentTarget.classList.add('dragging');
+  },
+
+  handleDragOver(event) {
+    if (this.isPublished) return;
+    event.preventDefault();
+    const draggable = document.querySelector('.dragging');
+    const afterElement = this.getDragAfterElement(event.currentTarget.parentElement, event.clientY);
+
+    if (afterElement == null) {
+      event.currentTarget.parentElement.appendChild(draggable);
+    } else {
+      event.currentTarget.parentElement.insertBefore(draggable, afterElement);
+    }
+  },
+
+  handleDrop(event) {
+    if (this.isPublished) return;
+    event.preventDefault();
+  },
+
+  handleDragEnd(event) {
+    if (this.isPublished) return;
+    event.currentTarget.classList.remove('dragging');
+    this.updateOrderFromDOM();
+  },
+
+  getDragAfterElement(container, y) {
+    const draggableElements = [...container.querySelectorAll('.running-order-item:not(.dragging)')];
+
+    return draggableElements.reduce((closest, child) => {
+      const box = child.getBoundingClientRect();
+      const offset = y - box.top - box.height / 2;
+
+      if (offset < 0 && offset > closest.offset) {
+        return { offset: offset, element: child };
+      } else {
+        return closest;
+      }
+    }, { offset: Number.NEGATIVE_INFINITY }).element;
+  },
+
+  /**
+   * Update order from DOM after drag
+   */
+  updateOrderFromDOM() {
+    const items = document.querySelectorAll('.running-order-item');
+    const newOrder = [];
+
+    items.forEach((item, index) => {
+      const id = item.dataset.id;
+      const orderItem = this.runningOrderItems.find(i => i.id === id);
+      if (orderItem) {
+        orderItem.display_order = index + 1;
+        // Update award number
+        orderItem.award_number = `${orderItem.section || 1}-${String(index + 1).padStart(2, '0')}`;
+        newOrder.push(orderItem);
+      }
+    });
+
+    this.runningOrderItems = newOrder;
+    this.renderRunningOrderItems();
+  },
+
+  /**
+   * Sync from RSVPs
+   */
+  async syncFromRSVPs() {
+    try {
+      utils.showLoading();
+
+      const { data, error } = await STATE.client
+        .rpc('populate_running_order_from_rsvps', {
+          p_event_id: this.currentEventIdRunningOrder
+        });
+
+      if (error) throw error;
+
+      utils.showToast(`Added ${data || 0} new items from RSVPs`, 'success');
+      await this.loadRunningOrder();
+      this.renderRunningOrderItems();
+
+    } catch (error) {
+      console.error('Error syncing from RSVPs:', error);
+      utils.showToast('Failed to sync from RSVPs: ' + error.message, 'error');
+    } finally {
+      utils.hideLoading();
+    }
+  },
+
+  /**
+   * Toggle Publish Mode
+   */
+  async togglePublishMode() {
+    try {
+      const newPublishedState = !this.isPublished;
+
+      // Update or insert settings
+      const { error } = await STATE.client
+        .from('running_order_settings')
+        .upsert({
+          event_id: this.currentEventIdRunningOrder,
+          is_published: newPublishedState,
+          published_at: newPublishedState ? new Date().toISOString() : null
+        }, {
+          onConflict: 'event_id'
+        });
+
+      if (error) throw error;
+
+      this.isPublished = newPublishedState;
+      utils.showToast(
+        newPublishedState ? 'Running order published' : 'Running order unpublished',
+        'success'
+      );
+
+      // Recreate modal to update UI
+      document.getElementById('runningOrderModal').remove();
+      this.createRunningOrderModal();
+
+    } catch (error) {
+      console.error('Error toggling publish mode:', error);
+      utils.showToast('Failed to update publish status', 'error');
+    }
+  },
+
+  /**
+   * Save Running Order
+   */
+  async saveRunningOrder() {
+    try {
+      utils.showLoading();
+
+      // Update all items with new order
+      for (const item of this.runningOrderItems) {
+        const { error } = await STATE.client
+          .from('running_order')
+          .update({
+            display_order: item.display_order,
+            award_number: item.award_number
+          })
+          .eq('id', item.id);
+
+        if (error) throw error;
+      }
+
+      utils.showToast('Running order saved successfully', 'success');
+
+    } catch (error) {
+      console.error('Error saving running order:', error);
+      utils.showToast('Failed to save running order', 'error');
+    } finally {
+      utils.hideLoading();
+    }
+  },
+
+  /**
+   * Delete Running Order Item
+   */
+  async deleteRunningOrderItem(itemId) {
+    if (!confirm('Are you sure you want to remove this item from the running order?')) {
+      return;
+    }
+
+    try {
+      const { error } = await STATE.client
+        .from('running_order')
+        .delete()
+        .eq('id', itemId);
+
+      if (error) throw error;
+
+      utils.showToast('Item removed from running order', 'success');
+      await this.loadRunningOrder();
+      this.renderRunningOrderItems();
+
+    } catch (error) {
+      console.error('Error deleting item:', error);
+      utils.showToast('Failed to delete item', 'error');
+    }
+  },
+
+  /**
+   * Export Running Order
+   */
+  exportRunningOrder() {
+    if (this.runningOrderItems.length === 0) {
+      utils.showToast('No items to export', 'warning');
+      return;
+    }
+
+    const exportData = this.runningOrderItems.map(item => ({
+      'Award Number': item.award_number,
+      'Company/Winner': item.display_name,
+      'Award': item.award_name || '',
+      'Notes': item.notes || ''
+    }));
+
+    const filename = `${this.currentEventName.replace(/[^a-z0-9]/gi, '_')}_running_order_${new Date().toISOString().split('T')[0]}.csv`;
+    utils.exportToCSV(exportData, filename);
+  },
+
+  /**
+   * Add Manual Entry (placeholder for future implementation)
+   */
+  addManualEntry() {
+    utils.showToast('Manual entry feature - Coming soon', 'info');
+  },
+
+  /**
+   * Edit Running Order Item (placeholder for future implementation)
+   */
+  editRunningOrderItem(itemId) {
+    utils.showToast('Edit feature - Coming soon', 'info');
   }
 };
 

@@ -12,6 +12,8 @@ const assignmentsModule = {
    */
   async getAwardAssignments(awardId) {
     try {
+      console.log(`🔍 Fetching assignments for award ID: ${awardId}`);
+
       const { data, error } = await STATE.client
         .from('award_assignments')
         .select(`
@@ -21,10 +23,17 @@ const assignmentsModule = {
         .eq('award_id', awardId)
         .order('assigned_date', { ascending: false });
 
-      if (error) throw error;
+      if (error) {
+        console.error('❌ Database error loading assignments:', error);
+        throw error;
+      }
+
+      console.log(`✅ Found ${data?.length || 0} assignments`);
+
       return data || [];
     } catch (error) {
-      console.error('Error loading assignments:', error);
+      console.error('💥 Error loading assignments:', error);
+      utils.showToast('Failed to load assignments: ' + error.message, 'error');
       return [];
     }
   },
@@ -65,59 +74,76 @@ const assignmentsModule = {
    */
   async refreshAssignments() {
     const contentEl = document.getElementById('assignmentsContent');
-    
+
     try {
       // Load current assignments
       const assignments = await this.getAwardAssignments(this.currentAwardId);
-      
+
+      console.log(`📋 Loaded ${assignments.length} assignments for award ${this.currentAwardId}`);
+
+      // Filter out assignments with missing organisations (deleted companies)
+      const validAssignments = assignments.filter(a => {
+        if (!a.organisations || !a.organisations.id) {
+          console.warn('⚠️ Found assignment with missing organisation:', a);
+          return false;
+        }
+        return true;
+      });
+
+      if (validAssignments.length < assignments.length) {
+        console.warn(`⚠️ Filtered out ${assignments.length - validAssignments.length} assignments with missing organisations`);
+      }
+
       // Load available organisations (only essential columns)
       const { data: allOrgs, error: orgsError } = await STATE.client
         .from('organisations')
         .select('id, company_name, email, logo_url')
         .order('company_name', { ascending: true });
-      
+
       if (orgsError) throw orgsError;
-      
+
       // Filter out already assigned organisations
-      const assignedOrgIds = assignments.map(a => a.organisations.id);
+      const assignedOrgIds = validAssignments.map(a => a.organisations.id);
       const availableOrgs = (allOrgs || []).filter(org => !assignedOrgIds.includes(org.id));
-      
+
+      console.log(`📊 ${validAssignments.length} assigned, ${availableOrgs.length} available`);
+
       // Render UI
       contentEl.innerHTML = `
         <div class="row">
           <div class="col-md-6">
             <h5 class="mb-3">
               <i class="bi bi-people-fill me-2 text-success"></i>
-              Assigned Companies (${assignments.length})
+              Assigned Companies (${validAssignments.length})
             </h5>
-            
-            ${assignments.length === 0 ? `
+
+            ${validAssignments.length === 0 ? `
               <div class="alert alert-info">
                 <i class="bi bi-info-circle me-2"></i>
                 No companies assigned yet. Select companies from the right panel to add them.
               </div>
             ` : `
               <div class="assigned-companies-list">
-                ${assignments.map(a => this.renderAssignedCompany(a)).join('')}
+                ${validAssignments.map(a => this.renderAssignedCompany(a)).join('')}
               </div>
             `}
           </div>
-          
+
           <div class="col-md-6">
             <h5 class="mb-3">
               <i class="bi bi-plus-circle me-2 text-primary"></i>
               Add Companies
             </h5>
-            
+
             <div class="mb-3">
-              <input 
-                type="text" 
-                class="form-control" 
-                id="assignmentSearchBox" 
-                placeholder="Search companies..." 
+              <input
+                type="text"
+                class="form-control"
+                id="assignmentSearchBox"
+                placeholder="Search companies..."
                 onkeyup="assignmentsModule.filterAvailableCompanies()">
             </div>
-            
+
             <div id="availableCompaniesList" style="max-height: 500px; overflow-y: auto;">
               ${availableOrgs.length === 0 ? `
                 <div class="alert alert-warning">
@@ -130,10 +156,10 @@ const assignmentsModule = {
           </div>
         </div>
       `;
-      
+
       // Store available orgs for filtering
       this.availableOrgs = availableOrgs;
-      
+
     } catch (error) {
       console.error('Error refreshing assignments:', error);
       contentEl.innerHTML = `

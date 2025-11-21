@@ -157,11 +157,22 @@ const orgsModule = {
    * @param {string} orgId - Organisation ID
    * @param {string} companyName - Company name for display
    */
+  currentEditingOrg: null, // Store current org being viewed/edited
+  originalOrgData: null, // Store original data for cancel functionality
+
   async openCompanyProfile(orgId, companyName) {
     const modal = new bootstrap.Modal(document.getElementById('companyProfileModal'));
     const contentDiv = document.getElementById('companyProfileContent');
     const titleEl = document.getElementById('companyProfileModalLabel');
-    
+    const editBtn = document.getElementById('editOrgBtn');
+    const saveBtn = document.getElementById('saveOrgBtn');
+    const cancelBtn = document.getElementById('cancelEditOrgBtn');
+
+    // Reset edit mode
+    editBtn.style.display = 'none';
+    saveBtn.style.display = 'none';
+    cancelBtn.style.display = 'none';
+
     titleEl.innerHTML = `<i class="bi bi-building me-2"></i>${utils.escapeHtml(companyName)}`;
     contentDiv.innerHTML = `
       <div class="text-center py-4">
@@ -170,7 +181,7 @@ const orgsModule = {
         </div>
       </div>
     `;
-    
+
     modal.show();
     
     try {
@@ -188,6 +199,8 @@ const orgsModule = {
         .from('award_assignments')
         .select(`
           status,
+          package_type,
+          enhanced_profile,
           awards!award_assignments_award_id_fkey (*)
         `)
         .eq('organisation_id', orgId);
@@ -199,7 +212,9 @@ const orgsModule = {
         .filter(a => a.awards)
         .map(a => ({
           ...a.awards,
-          status: a.status // Use assignment status (nominated/shortlisted/winner)
+          status: a.status, // Use assignment status (nominated/shortlisted/winner)
+          package_type: a.package_type || 'bronze',
+          enhanced_profile: a.enhanced_profile || false
         }))
         .sort((a, b) => (b.year || 0) - (a.year || 0));
 
@@ -253,17 +268,37 @@ const orgsModule = {
             <h6 class="text-muted mb-2"><i class="bi bi-person me-2"></i>Contact Information</h6>
             <div class="card">
               <div class="card-body">
-                <p class="mb-2"><strong>Contact Name:</strong> ${utils.escapeHtml(org.contact_name || 'N/A')}</p>
-                <p class="mb-2"><strong>Email:</strong>
-                  ${org.email ? `<a href="mailto:${org.email}">${utils.escapeHtml(org.email)}</a>` : 'N/A'}
-                </p>
-                <p class="mb-2"><strong>Phone:</strong> ${utils.escapeHtml(org.contact_phone || 'N/A')}</p>
-                <p class="mb-0"><strong>Website:</strong>
-                  ${org.website ?
-                    `<a href="${org.website}" target="_blank" rel="noopener noreferrer">
-                      ${utils.escapeHtml(org.website)} <i class="bi bi-box-arrow-up-right small"></i>
-                    </a>` : 'N/A'}
-                </p>
+                <div class="mb-2">
+                  <strong>Contact Name:</strong>
+                  <span class="view-mode" id="viewContactName">${utils.escapeHtml(org.contact_name || 'N/A')}</span>
+                  <input type="text" class="form-control form-control-sm edit-mode" id="editContactName"
+                    value="${utils.escapeHtml(org.contact_name || '')}" style="display: none;">
+                </div>
+                <div class="mb-2">
+                  <strong>Email:</strong>
+                  <span class="view-mode" id="viewEmail">
+                    ${org.email ? `<a href="mailto:${org.email}">${utils.escapeHtml(org.email)}</a>` : 'N/A'}
+                  </span>
+                  <input type="email" class="form-control form-control-sm edit-mode" id="editEmail"
+                    value="${utils.escapeHtml(org.email || '')}" style="display: none;">
+                </div>
+                <div class="mb-2">
+                  <strong>Phone:</strong>
+                  <span class="view-mode" id="viewPhone">${utils.escapeHtml(org.contact_phone || 'N/A')}</span>
+                  <input type="text" class="form-control form-control-sm edit-mode" id="editPhone"
+                    value="${utils.escapeHtml(org.contact_phone || '')}" style="display: none;">
+                </div>
+                <div class="mb-0">
+                  <strong>Website:</strong>
+                  <span class="view-mode" id="viewWebsite">
+                    ${org.website ?
+                      `<a href="${org.website}" target="_blank" rel="noopener noreferrer">
+                        ${utils.escapeHtml(org.website)} <i class="bi bi-box-arrow-up-right small"></i>
+                      </a>` : 'N/A'}
+                  </span>
+                  <input type="url" class="form-control form-control-sm edit-mode" id="editWebsite"
+                    value="${utils.escapeHtml(org.website || '')}" style="display: none;">
+                </div>
               </div>
             </div>
           </div>
@@ -272,10 +307,22 @@ const orgsModule = {
             <h6 class="text-muted mb-2"><i class="bi bi-geo-alt me-2"></i>Location</h6>
             <div class="card">
               <div class="card-body">
-                <p class="mb-2"><strong>Region:</strong>
-                  <span class="badge bg-success-subtle text-success">${utils.escapeHtml(org.region || 'N/A')}</span>
-                </p>
-                <p class="mb-0"><strong>Address:</strong> ${utils.escapeHtml(org.address || 'N/A')}</p>
+                <div class="mb-2">
+                  <strong>Region:</strong>
+                  <span class="view-mode" id="viewRegion">
+                    <span class="badge bg-success-subtle text-success">${utils.escapeHtml(org.region || 'N/A')}</span>
+                  </span>
+                  <select class="form-select form-select-sm edit-mode" id="editRegion" style="display: none;">
+                    <option value="">Select Region</option>
+                    ${REGIONS.map(r => `<option value="${r}" ${org.region === r ? 'selected' : ''}>${r}</option>`).join('')}
+                  </select>
+                </div>
+                <div class="mb-0">
+                  <strong>Address:</strong>
+                  <span class="view-mode" id="viewAddress">${utils.escapeHtml(org.address || 'N/A')}</span>
+                  <textarea class="form-control form-control-sm edit-mode" id="editAddress"
+                    rows="3" style="display: none;">${utils.escapeHtml(org.address || '')}</textarea>
+                </div>
               </div>
             </div>
           </div>
@@ -293,6 +340,8 @@ const orgsModule = {
                     <th>Category</th>
                     <th>Sector</th>
                     <th>Status</th>
+                    <th>Package</th>
+                    <th class="text-center">Enhanced</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -302,6 +351,13 @@ const orgsModule = {
                       <td>${utils.escapeHtml(award.award_category)}</td>
                       <td><span class="badge bg-info-subtle text-info">${utils.escapeHtml(award.sector)}</span></td>
                       <td>${utils.getStatusBadge(award.status)}</td>
+                      <td>${orgsModule.getPackageBadge(award.package_type)}</td>
+                      <td class="text-center">
+                        ${award.enhanced_profile ?
+                          '<i class="bi bi-star-fill text-warning" title="Enhanced Profile" style="font-size: 1.2rem;"></i>' :
+                          '<i class="bi bi-star text-muted" title="Standard Profile" style="font-size: 1.2rem; opacity: 0.3;"></i>'
+                        }
+                      </td>
                     </tr>
                   `).join('')}
                 </tbody>
@@ -454,6 +510,18 @@ const orgsModule = {
           }
         </div>
       `;
+
+      // Store current org data for editing
+      this.currentEditingOrg = org;
+      this.originalOrgData = { ...org };
+
+      // Show edit button
+      editBtn.style.display = 'inline-block';
+
+      // Setup edit button event listener
+      editBtn.onclick = () => this.enableEditMode(orgId);
+      saveBtn.onclick = () => this.saveOrgChanges(orgId);
+      cancelBtn.onclick = () => this.cancelEditMode(orgId, companyName);
 
     } catch (error) {
       console.error('Error loading company profile:', error);
@@ -988,6 +1056,110 @@ const orgsModule = {
       <img src="${imageUrl}" alt="${utils.escapeHtml(title)}" class="img-fluid" style="max-height: 70vh;">
     `;
     modal.show();
+  },
+
+  /**
+   * Enable edit mode for organisation profile
+   * @param {string} orgId - Organisation ID
+   */
+  enableEditMode(orgId) {
+    // Hide view elements and show edit elements
+    document.querySelectorAll('.view-mode').forEach(el => el.style.display = 'none');
+    document.querySelectorAll('.edit-mode').forEach(el => el.style.display = 'block');
+
+    // Toggle buttons
+    document.getElementById('editOrgBtn').style.display = 'none';
+    document.getElementById('saveOrgBtn').style.display = 'inline-block';
+    document.getElementById('cancelEditOrgBtn').style.display = 'inline-block';
+  },
+
+  /**
+   * Save organisation changes
+   * @param {string} orgId - Organisation ID
+   */
+  async saveOrgChanges(orgId) {
+    try {
+      utils.showLoading();
+
+      // Collect updated data from form fields
+      const updatedData = {
+        contact_name: document.getElementById('editContactName').value.trim(),
+        email: document.getElementById('editEmail').value.trim(),
+        contact_phone: document.getElementById('editPhone').value.trim(),
+        website: document.getElementById('editWebsite').value.trim(),
+        region: document.getElementById('editRegion').value,
+        address: document.getElementById('editAddress').value.trim()
+      };
+
+      // Update in database
+      const { error } = await STATE.client
+        .from('organisations')
+        .update(updatedData)
+        .eq('id', orgId);
+
+      if (error) throw error;
+
+      // Update local state
+      const orgIndex = STATE.allOrganisations.findIndex(o => o.id === orgId);
+      if (orgIndex !== -1) {
+        STATE.allOrganisations[orgIndex] = {
+          ...STATE.allOrganisations[orgIndex],
+          ...updatedData
+        };
+      }
+
+      // Update filtered organisations
+      const filteredIndex = STATE.filteredOrganisations.findIndex(o => o.id === orgId);
+      if (filteredIndex !== -1) {
+        STATE.filteredOrganisations[filteredIndex] = {
+          ...STATE.filteredOrganisations[filteredIndex],
+          ...updatedData
+        };
+      }
+
+      // Update current editing org
+      this.currentEditingOrg = { ...this.currentEditingOrg, ...updatedData };
+      this.originalOrgData = { ...this.currentEditingOrg };
+
+      utils.showToast('Organisation updated successfully', 'success');
+
+      // Refresh the profile view
+      await this.openCompanyProfile(orgId, this.currentEditingOrg.company_name);
+
+      // Refresh the organisations table
+      this.renderOrganisations();
+
+    } catch (error) {
+      console.error('Error saving organisation changes:', error);
+      utils.showToast('Failed to save changes: ' + error.message, 'error');
+    } finally {
+      utils.hideLoading();
+    }
+  },
+
+  /**
+   * Cancel edit mode and revert to view mode
+   * @param {string} orgId - Organisation ID
+   * @param {string} companyName - Company name
+   */
+  async cancelEditMode(orgId, companyName) {
+    // Reopen the profile in view mode (this will restore original data)
+    await this.openCompanyProfile(orgId, companyName);
+  },
+
+  /**
+   * Get package badge HTML
+   * @param {string} packageType - Package type (bronze/silver/gold/non-attendee)
+   * @returns {string} HTML badge
+   */
+  getPackageBadge(packageType) {
+    const packages = {
+      'gold': '<span class="badge" style="background: linear-gradient(135deg, #FFD700 0%, #FFA500 100%); color: #000;"><i class="bi bi-award-fill me-1"></i>Gold</span>',
+      'silver': '<span class="badge" style="background: linear-gradient(135deg, #C0C0C0 0%, #808080 100%); color: #000;"><i class="bi bi-award-fill me-1"></i>Silver</span>',
+      'bronze': '<span class="badge" style="background: linear-gradient(135deg, #CD7F32 0%, #8B4513 100%); color: #fff;"><i class="bi bi-award-fill me-1"></i>Bronze</span>',
+      'non-attendee': '<span class="badge bg-secondary"><i class="bi bi-x-circle me-1"></i>Non-Attendee</span>'
+    };
+    return packages[packageType] || packages['bronze'];
   }
 };
 

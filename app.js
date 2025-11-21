@@ -78,7 +78,28 @@ document.addEventListener('DOMContentLoaded', function() {
     icon.classList.remove('bi-moon');
     icon.classList.add('bi-sun');
   }
-  
+
+  // --- Quick Actions Button ---
+  const quickActionsBtn = document.getElementById('quickActionsBtn');
+  const quickActionsMenu = document.getElementById('quickActionsMenu');
+
+  if (quickActionsBtn && quickActionsMenu) {
+    quickActionsBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const isVisible = quickActionsMenu.style.display === 'block';
+      quickActionsMenu.style.display = isVisible ? 'none' : 'block';
+      quickActionsBtn.classList.toggle('active');
+    });
+
+    // Close menu when clicking outside
+    document.addEventListener('click', (e) => {
+      if (!quickActionsBtn.contains(e.target) && !quickActionsMenu.contains(e.target)) {
+        quickActionsMenu.style.display = 'none';
+        quickActionsBtn.classList.remove('active');
+      }
+    });
+  }
+
   // --- Awards Filters ---
   // Create debounced version of filter function
   const debouncedAwardsFilter = utils.debounce(() => {
@@ -311,14 +332,39 @@ document.addEventListener('DOMContentLoaded', function() {
   });
   
   // ==========================================
-  // STEP 11: Tooltips Initialization
+  // STEP 11: Marketing Tab Event Listener
+  // ==========================================
+  // Load marketing data when marketing tab is clicked
+  const marketingTab = document.getElementById('marketing-tab');
+  if (marketingTab) {
+    marketingTab.addEventListener('shown.bs.tab', () => {
+      console.log('📢 Marketing tab opened');
+      if (typeof marketingModule !== 'undefined') {
+        marketingModule.loadAllData();
+      }
+    });
+  }
+
+  // Initialize Email Builder when sub-tab is opened
+  const emailBuilderSubTab = document.getElementById('email-builder-subtab');
+  if (emailBuilderSubTab) {
+    emailBuilderSubTab.addEventListener('shown.bs.tab', () => {
+      console.log('✉️ Email Builder opened');
+      if (typeof emailBuilder !== 'undefined' && !emailBuilder.initialized) {
+        emailBuilder.init();
+      }
+    });
+  }
+
+  // ==========================================
+  // STEP 12: Tooltips Initialization
   // ==========================================
   // Initialize Bootstrap tooltips
   const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
   tooltipTriggerList.map(function (tooltipTriggerEl) {
     return new bootstrap.Tooltip(tooltipTriggerEl);
   });
-  
+
   // ==========================================
   // INITIALIZATION COMPLETE
   // ==========================================

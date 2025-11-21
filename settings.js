@@ -257,6 +257,228 @@ const settingsModule = {
    */
   testBackupReminder() {
     utils.showToast('Backup reminder test: Your data should be backed up regularly!', 'info', 5000);
+  },
+
+  /* ==================================================== */
+  /* EMAIL TEMPLATES */
+  /* ==================================================== */
+
+  /**
+   * Default email templates
+   */
+  emailTemplates: {
+    winner_notification: {
+      subject: 'Congratulations! You\'ve Won the {award_category} Award',
+      body: `Dear {winner_name},
+
+Congratulations! We are delighted to inform you that {company_name} has been selected as the winner of the {award_category} award for {year}.
+
+This prestigious award recognizes your outstanding achievements and contributions to your industry. Your dedication and excellence have truly set you apart.
+
+Event Details:
+- Event: {event_name}
+- Date: {event_date}
+- Venue: {venue}
+
+We look forward to celebrating your success at the awards ceremony.
+
+Please confirm your attendance at your earliest convenience.
+
+Warm regards,
+British Trade Awards Team`
+    },
+    event_invitation: {
+      subject: 'You\'re Invited: {event_name}',
+      body: `Dear {winner_name},
+
+You are cordially invited to attend the {event_name}, taking place on {event_date} at {venue}.
+
+This prestigious event will bring together industry leaders, innovators, and award winners to celebrate excellence and achievement.
+
+Event Details:
+- Event: {event_name}
+- Date: {event_date}
+- Venue: {venue}
+- Year: {year}
+
+We would be honored by your presence at this special occasion.
+
+Please RSVP by confirming your attendance.
+
+Best regards,
+British Trade Awards Team`
+    },
+    certificate_email: {
+      subject: 'Your {year} {award_category} Award Certificate',
+      body: `Dear {winner_name},
+
+Attached is your official award certificate for winning the {award_category} award in {year}.
+
+This certificate commemorates your outstanding achievement and can be displayed proudly at your organization.
+
+Congratulations once again on this well-deserved recognition.
+
+If you have any questions or need additional copies, please don't hesitate to contact us.
+
+Best regards,
+British Trade Awards Team`
+    },
+    press_release: {
+      subject: 'Press Release: {company_name} Wins {award_category} Award',
+      body: `FOR IMMEDIATE RELEASE
+
+{company_name} Wins Prestigious {award_category} Award at {event_name}
+
+{venue}, {event_date} - {company_name} has been honored with the {award_category} award at the {event_name}, recognizing their exceptional performance and contributions to the industry.
+
+The {year} British Trade Awards celebrate excellence, innovation, and outstanding achievements across various sectors. {company_name}'s win in the {award_category} category highlights their commitment to excellence and industry leadership.
+
+"We are thrilled to recognize {company_name} with this prestigious award," said the Awards Committee. "Their achievements exemplify the very best of British trade and commerce."
+
+About the British Trade Awards:
+The British Trade Awards recognize and celebrate outstanding businesses and individuals who demonstrate excellence, innovation, and significant contributions to their industries.
+
+Contact:
+British Trade Awards Team
+[Contact Information]
+
+###`
+    },
+    custom: {
+      subject: '',
+      body: ''
+    }
+  },
+
+  /**
+   * Load selected email template
+   */
+  loadEmailTemplate() {
+    const templateSelect = document.getElementById('emailTemplateSelect');
+    const selectedTemplate = templateSelect.value;
+
+    if (!selectedTemplate) {
+      document.getElementById('emailSubject').value = '';
+      document.getElementById('emailBody').value = '';
+      return;
+    }
+
+    // Check if template is saved in localStorage first
+    const savedTemplate = localStorage.getItem(`emailTemplate_${selectedTemplate}`);
+
+    let template;
+    if (savedTemplate) {
+      template = JSON.parse(savedTemplate);
+    } else {
+      template = this.emailTemplates[selectedTemplate];
+    }
+
+    if (template) {
+      document.getElementById('emailSubject').value = template.subject || '';
+      document.getElementById('emailBody').value = template.body || '';
+    }
+  },
+
+  /**
+   * Save email template to localStorage
+   */
+  saveEmailTemplate() {
+    const templateSelect = document.getElementById('emailTemplateSelect');
+    const selectedTemplate = templateSelect.value;
+
+    if (!selectedTemplate) {
+      utils.showToast('Please select a template first', 'warning');
+      return;
+    }
+
+    const subject = document.getElementById('emailSubject').value;
+    const body = document.getElementById('emailBody').value;
+
+    const template = { subject, body };
+    localStorage.setItem(`emailTemplate_${selectedTemplate}`, JSON.stringify(template));
+
+    utils.showToast('Template saved successfully', 'success');
+  },
+
+  /**
+   * Reset email template to default
+   */
+  resetEmailTemplate() {
+    const templateSelect = document.getElementById('emailTemplateSelect');
+    const selectedTemplate = templateSelect.value;
+
+    if (!selectedTemplate) {
+      utils.showToast('Please select a template first', 'warning');
+      return;
+    }
+
+    // Remove from localStorage
+    localStorage.removeItem(`emailTemplate_${selectedTemplate}`);
+
+    // Load default template
+    const template = this.emailTemplates[selectedTemplate];
+    if (template) {
+      document.getElementById('emailSubject').value = template.subject || '';
+      document.getElementById('emailBody').value = template.body || '';
+      utils.showToast('Template reset to default', 'success');
+    }
+  },
+
+  /**
+   * Preview email template with sample data
+   */
+  previewEmailTemplate() {
+    const subject = document.getElementById('emailSubject').value;
+    const body = document.getElementById('emailBody').value;
+
+    if (!subject && !body) {
+      utils.showToast('Template is empty', 'warning');
+      return;
+    }
+
+    // Sample data for preview
+    const sampleData = {
+      winner_name: 'John Smith',
+      award_category: 'Best Innovation Award',
+      company_name: 'Tech Innovations Ltd',
+      event_name: 'British Trade Awards 2024',
+      event_date: 'March 15, 2024',
+      year: '2024',
+      venue: 'London Hilton Hotel'
+    };
+
+    // Replace placeholders
+    let previewSubject = subject;
+    let previewBody = body;
+
+    Object.keys(sampleData).forEach(key => {
+      const placeholder = `{${key}}`;
+      const regex = new RegExp(placeholder.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g');
+      previewSubject = previewSubject.replace(regex, sampleData[key]);
+      previewBody = previewBody.replace(regex, sampleData[key]);
+    });
+
+    // Show in modal
+    document.getElementById('previewSubject').textContent = previewSubject;
+    document.getElementById('previewBody').textContent = previewBody;
+
+    const modal = new bootstrap.Modal(document.getElementById('emailPreviewModal'));
+    modal.show();
+  },
+
+  /**
+   * Replace placeholders in template with actual data
+   */
+  replaceTemplatePlaceholders(template, data) {
+    let result = template;
+
+    Object.keys(data).forEach(key => {
+      const placeholder = `{${key}}`;
+      const regex = new RegExp(placeholder.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g');
+      result = result.replace(regex, data[key] || '');
+    });
+
+    return result;
   }
 };
 

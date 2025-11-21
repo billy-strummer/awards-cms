@@ -173,13 +173,7 @@ const orgsModule = {
     saveBtn.style.display = 'none';
     cancelBtn.style.display = 'none';
 
-    titleEl.innerHTML = `
-      <i class="bi bi-building me-2"></i>${utils.escapeHtml(companyName)}
-      <a href="https://worldawards.co/company/${orgId}" target="_blank" rel="noopener noreferrer"
-         class="btn btn-sm btn-outline-primary ms-3" title="View on Frontend">
-        <i class="bi bi-eye"></i> View Page
-      </a>
-    `;
+    titleEl.innerHTML = `<i class="bi bi-building me-2"></i>${utils.escapeHtml(companyName)}`;
     contentDiv.innerHTML = `
       <div class="text-center py-4">
         <div class="spinner-border text-primary" role="status">

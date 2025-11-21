@@ -65,6 +65,11 @@ const eventsModule = {
                 title="Running Order">
                 <i class="bi bi-list-ol"></i>
               </button>
+              <button class="btn btn-outline-secondary btn-icon"
+                onclick="eventsModule.openTablePlanModal('${event.id}', '${utils.escapeHtml(event.event_name).replace(/'/g, "\\'")}')"
+                title="Table Plan">
+                <i class="bi bi-table"></i>
+              </button>
               <button class="btn btn-outline-info btn-icon"
                 onclick="eventsModule.openAttendeesModal('${event.id}')"
                 title="Manage Attendees">
@@ -1377,6 +1382,586 @@ const eventsModule = {
    */
   editRunningOrderItem(itemId) {
     utils.showToast('Edit feature - Coming soon', 'info');
+  },
+
+  // ========================================
+  // TABLE PLAN MANAGEMENT
+  // ========================================
+
+  currentEventIdTablePlan: null,
+  currentEventNameTablePlan: null,
+  tables: [],
+  unassignedGuests: [],
+  draggedGuestId: null,
+  draggedGuestData: null,
+
+  /**
+   * Open Table Plan Modal
+   */
+  async openTablePlanModal(eventId, eventName) {
+    this.currentEventIdTablePlan = eventId;
+    this.currentEventNameTablePlan = eventName;
+
+    try {
+      utils.showLoading();
+
+      // Load table plan data
+      await this.loadTablePlan();
+
+      // Create and show modal
+      this.createTablePlanModal();
+
+    } catch (error) {
+      console.error('Error opening table plan:', error);
+      utils.showToast('Failed to load table plan: ' + error.message, 'error');
+    } finally {
+      utils.hideLoading();
+    }
+  },
+
+  /**
+   * Create Table Plan Modal
+   */
+  createTablePlanModal() {
+    const existingModal = document.getElementById('tablePlanModal');
+    if (existingModal) existingModal.remove();
+
+    const modalHtml = `
+      <div class="modal fade" id="tablePlanModal" tabindex="-1" data-bs-backdrop="static">
+        <div class="modal-dialog modal-fullscreen">
+          <div class="modal-content">
+            <div class="modal-header bg-secondary text-white">
+              <div>
+                <h5 class="modal-title">
+                  <i class="bi bi-table me-2"></i>Table Plan - ${utils.escapeHtml(this.currentEventNameTablePlan)}
+                </h5>
+                <small class="d-block">Drag and drop guests to assign tables</small>
+              </div>
+              <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-0">
+              <div class="row g-0" style="height: calc(100vh - 120px);">
+
+                <!-- Left Sidebar: Unassigned Guests -->
+                <div class="col-md-3 border-end bg-light">
+                  <div class="p-3">
+                    <h6 class="mb-3">
+                      <i class="bi bi-people me-2"></i>Unassigned Guests
+                      <span class="badge bg-primary ms-2">${this.unassignedGuests.length}</span>
+                    </h6>
+
+                    <div id="unassignedGuestsList" class="guest-list">
+                      <!-- Guests will be rendered here -->
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Main Area: Table Layout -->
+                <div class="col-md-9">
+                  <div class="p-3">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                      <h6 class="mb-0">
+                        <i class="bi bi-grid-3x3 me-2"></i>Table Layout
+                        <span class="badge bg-secondary ms-2">${this.tables.length} tables</span>
+                      </h6>
+                      <div class="btn-group">
+                        <button class="btn btn-sm btn-primary" onclick="eventsModule.addNewTable()">
+                          <i class="bi bi-plus-circle me-1"></i>Add Table
+                        </button>
+                        <button class="btn btn-sm btn-outline-secondary" onclick="eventsModule.autoAssignGuests()">
+                          <i class="bi bi-magic me-1"></i>Auto Assign
+                        </button>
+                        <button class="btn btn-sm btn-outline-info" onclick="eventsModule.exportTablePlan()">
+                          <i class="bi bi-download me-1"></i>Export
+                        </button>
+                      </div>
+                    </div>
+
+                    <div id="tablesGrid" class="tables-grid">
+                      <!-- Tables will be rendered here -->
+                    </div>
+                  </div>
+                </div>
+
+              </div>
+            </div>
+            <div class="modal-footer">
+              <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+              <button type="button" class="btn btn-primary" onclick="eventsModule.saveTablePlan()">
+                <i class="bi bi-save me-2"></i>Save Changes
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <style>
+        .guest-list {
+          max-height: calc(100vh - 250px);
+          overflow-y: auto;
+        }
+        .guest-item {
+          background: white;
+          border: 2px solid #dee2e6;
+          border-radius: 8px;
+          padding: 12px;
+          margin-bottom: 8px;
+          cursor: grab;
+          transition: all 0.2s;
+        }
+        .guest-item:hover {
+          border-color: #0d6efd;
+          box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        .guest-item.dragging {
+          opacity: 0.5;
+          cursor: grabbing;
+        }
+        .guest-item strong {
+          display: block;
+          margin-bottom: 4px;
+        }
+        .guest-item small {
+          color: #6c757d;
+        }
+
+        .tables-grid {
+          display: grid;
+          grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+          gap: 20px;
+          max-height: calc(100vh - 250px);
+          overflow-y: auto;
+          padding: 10px;
+        }
+        .table-card {
+          background: white;
+          border: 3px solid #0d6efd;
+          border-radius: 12px;
+          padding: 15px;
+          min-height: 200px;
+          position: relative;
+          transition: all 0.2s;
+        }
+        .table-card:hover {
+          box-shadow: 0 4px 12px rgba(13, 110, 253, 0.3);
+        }
+        .table-card.drag-over {
+          background: #e7f3ff;
+          border-color: #0056b3;
+        }
+        .table-header {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          margin-bottom: 15px;
+          padding-bottom: 10px;
+          border-bottom: 2px solid #e9ecef;
+        }
+        .table-number {
+          font-size: 1.5rem;
+          font-weight: bold;
+          color: #0d6efd;
+        }
+        .table-seats {
+          font-size: 0.875rem;
+          color: #6c757d;
+        }
+        .table-guests {
+          min-height: 100px;
+        }
+        .assigned-guest {
+          background: #e7f3ff;
+          border: 1px solid #0d6efd;
+          border-radius: 6px;
+          padding: 8px;
+          margin-bottom: 6px;
+          font-size: 0.875rem;
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+        }
+        .assigned-guest .remove-btn {
+          cursor: pointer;
+          color: #dc3545;
+        }
+        .assigned-guest .remove-btn:hover {
+          color: #bd2130;
+        }
+      </style>
+    `;
+
+    document.body.insertAdjacentHTML('beforeend', modalHtml);
+
+    const modal = new bootstrap.Modal(document.getElementById('tablePlanModal'));
+    modal.show();
+
+    // Render content after modal is shown
+    this.renderUnassignedGuests();
+    this.renderTables();
+
+    // Clean up on close
+    document.getElementById('tablePlanModal').addEventListener('hidden.bs.modal', () => {
+      document.getElementById('tablePlanModal').remove();
+    });
+  },
+
+  /**
+   * Load Table Plan Data
+   */
+  async loadTablePlan() {
+    try {
+      // Load tables
+      const { data: tables, error: tablesError } = await STATE.client
+        .from('event_tables')
+        .select('*')
+        .eq('event_id', this.currentEventIdTablePlan)
+        .eq('is_active', true)
+        .order('table_number', { ascending: true });
+
+      if (tablesError) throw tablesError;
+
+      this.tables = tables || [];
+
+      // Load table assignments for each table
+      for (const table of this.tables) {
+        const { data: assignments, error: assignError } = await STATE.client
+          .from('table_assignments')
+          .select('*')
+          .eq('table_id', table.id);
+
+        if (assignError) throw assignError;
+
+        table.assignments = assignments || [];
+      }
+
+      // Load unassigned guests using the function
+      const { data: unassigned, error: unassignedError } = await STATE.client
+        .rpc('get_unassigned_guests', {
+          p_event_id: this.currentEventIdTablePlan
+        });
+
+      if (unassignedError) throw unassignedError;
+
+      this.unassignedGuests = unassigned || [];
+
+    } catch (error) {
+      console.error('Error loading table plan:', error);
+      throw error;
+    }
+  },
+
+  /**
+   * Render Unassigned Guests
+   */
+  renderUnassignedGuests() {
+    const container = document.getElementById('unassignedGuestsList');
+    if (!container) return;
+
+    if (this.unassignedGuests.length === 0) {
+      container.innerHTML = `
+        <div class="text-center py-4 text-muted">
+          <i class="bi bi-check-circle display-4 d-block mb-2"></i>
+          <p class="small">All guests assigned!</p>
+        </div>
+      `;
+      return;
+    }
+
+    container.innerHTML = this.unassignedGuests.map(guest => `
+      <div class="guest-item"
+           draggable="true"
+           data-guest-id="${guest.guest_id}"
+           data-guest-name="${utils.escapeHtml(guest.guest_name)}"
+           data-company-name="${utils.escapeHtml(guest.company_name || '')}"
+           data-organisation-id="${guest.organisation_id || ''}"
+           ondragstart="eventsModule.handleGuestDragStart(event)"
+           ondragend="eventsModule.handleGuestDragEnd(event)">
+        <strong>${utils.escapeHtml(guest.guest_name)}</strong>
+        ${guest.company_name ? `<small><i class="bi bi-building me-1"></i>${utils.escapeHtml(guest.company_name)}</small>` : ''}
+        ${guest.plus_ones > 0 ? `<small class="d-block"><i class="bi bi-plus-circle me-1"></i>+${guest.plus_ones} guests</small>` : ''}
+      </div>
+    `).join('');
+  },
+
+  /**
+   * Render Tables
+   */
+  renderTables() {
+    const container = document.getElementById('tablesGrid');
+    if (!container) return;
+
+    if (this.tables.length === 0) {
+      container.innerHTML = `
+        <div class="text-center py-5">
+          <i class="bi bi-table display-4 d-block mb-3 opacity-25"></i>
+          <p class="text-muted">No tables yet. Click "Add Table" to create one.</p>
+        </div>
+      `;
+      return;
+    }
+
+    container.innerHTML = this.tables.map(table => {
+      const assignedCount = table.assignments?.length || 0;
+      const availableSeats = table.total_seats - assignedCount;
+
+      return `
+        <div class="table-card"
+             data-table-id="${table.id}"
+             ondragover="eventsModule.handleTableDragOver(event)"
+             ondrop="eventsModule.handleTableDrop(event, '${table.id}')"
+             ondragleave="eventsModule.handleTableDragLeave(event)">
+          <div class="table-header">
+            <div>
+              <div class="table-number">Table ${table.table_number}</div>
+              ${table.table_name ? `<small class="text-muted">${utils.escapeHtml(table.table_name)}</small>` : ''}
+            </div>
+            <div class="text-end">
+              <div class="table-seats">
+                <i class="bi bi-people-fill me-1"></i>${assignedCount}/${table.total_seats}
+              </div>
+              <button class="btn btn-sm btn-outline-danger mt-1"
+                      onclick="eventsModule.deleteTable('${table.id}')"
+                      title="Delete Table">
+                <i class="bi bi-trash"></i>
+              </button>
+            </div>
+          </div>
+          <div class="table-guests">
+            ${table.assignments && table.assignments.length > 0 ? table.assignments.map(assignment => `
+              <div class="assigned-guest">
+                <div>
+                  <strong>${utils.escapeHtml(assignment.guest_name)}</strong>
+                  ${assignment.company_name ? `<br><small class="text-muted">${utils.escapeHtml(assignment.company_name)}</small>` : ''}
+                </div>
+                <span class="remove-btn" onclick="eventsModule.removeGuestFromTable('${assignment.id}')" title="Remove">
+                  <i class="bi bi-x-circle"></i>
+                </span>
+              </div>
+            `).join('') : '<p class="text-muted small text-center mt-3">Drag guests here</p>'}
+          </div>
+          ${availableSeats === 0 ? '<div class="text-center mt-2"><span class="badge bg-warning">Full</span></div>' : ''}
+        </div>
+      `;
+    }).join('');
+  },
+
+  /**
+   * Guest Drag Handlers
+   */
+  handleGuestDragStart(event) {
+    const guestItem = event.currentTarget;
+    this.draggedGuestId = guestItem.dataset.guestId;
+    this.draggedGuestData = {
+      guest_id: guestItem.dataset.guestId,
+      guest_name: guestItem.dataset.guestName,
+      company_name: guestItem.dataset.companyName,
+      organisation_id: guestItem.dataset.organisationId
+    };
+    guestItem.classList.add('dragging');
+  },
+
+  handleGuestDragEnd(event) {
+    event.currentTarget.classList.remove('dragging');
+  },
+
+  /**
+   * Table Drag Handlers
+   */
+  handleTableDragOver(event) {
+    event.preventDefault();
+    event.currentTarget.classList.add('drag-over');
+  },
+
+  handleTableDragLeave(event) {
+    event.currentTarget.classList.remove('drag-over');
+  },
+
+  async handleTableDrop(event, tableId) {
+    event.preventDefault();
+    event.currentTarget.classList.remove('drag-over');
+
+    if (!this.draggedGuestData) return;
+
+    try {
+      // Find the table
+      const table = this.tables.find(t => t.id === tableId);
+      if (!table) return;
+
+      // Check if table has available seats
+      const assignedCount = table.assignments?.length || 0;
+      if (assignedCount >= table.total_seats) {
+        utils.showToast('Table is full!', 'warning');
+        return;
+      }
+
+      // Create assignment
+      const { error } = await STATE.client
+        .from('table_assignments')
+        .insert([{
+          event_id: this.currentEventIdTablePlan,
+          table_id: tableId,
+          guest_id: this.draggedGuestData.guest_id,
+          guest_name: this.draggedGuestData.guest_name,
+          organisation_id: this.draggedGuestData.organisation_id || null,
+          company_name: this.draggedGuestData.company_name || null
+        }]);
+
+      if (error) throw error;
+
+      utils.showToast('Guest assigned to table', 'success');
+
+      // Reload data
+      await this.loadTablePlan();
+      this.renderUnassignedGuests();
+      this.renderTables();
+
+    } catch (error) {
+      console.error('Error assigning guest:', error);
+      utils.showToast('Failed to assign guest', 'error');
+    } finally {
+      this.draggedGuestData = null;
+      this.draggedGuestId = null;
+    }
+  },
+
+  /**
+   * Add New Table
+   */
+  async addNewTable() {
+    const seats = prompt('How many seats for this table?', '8');
+    if (!seats || isNaN(seats) || seats < 1) return;
+
+    try {
+      // Get next table number
+      const { data: nextNumber, error: numberError } = await STATE.client
+        .rpc('get_next_table_number', {
+          p_event_id: this.currentEventIdTablePlan
+        });
+
+      if (numberError) throw numberError;
+
+      // Create table
+      const { error } = await STATE.client
+        .from('event_tables')
+        .insert([{
+          event_id: this.currentEventIdTablePlan,
+          table_number: nextNumber,
+          total_seats: parseInt(seats),
+          shape: 'round'
+        }]);
+
+      if (error) throw error;
+
+      utils.showToast('Table added successfully', 'success');
+
+      // Reload
+      await this.loadTablePlan();
+      this.renderTables();
+
+    } catch (error) {
+      console.error('Error adding table:', error);
+      utils.showToast('Failed to add table', 'error');
+    }
+  },
+
+  /**
+   * Delete Table
+   */
+  async deleteTable(tableId) {
+    if (!confirm('Delete this table? Guests will be unassigned.')) return;
+
+    try {
+      const { error } = await STATE.client
+        .from('event_tables')
+        .delete()
+        .eq('id', tableId);
+
+      if (error) throw error;
+
+      utils.showToast('Table deleted', 'success');
+
+      // Reload
+      await this.loadTablePlan();
+      this.renderUnassignedGuests();
+      this.renderTables();
+
+    } catch (error) {
+      console.error('Error deleting table:', error);
+      utils.showToast('Failed to delete table', 'error');
+    }
+  },
+
+  /**
+   * Remove Guest from Table
+   */
+  async removeGuestFromTable(assignmentId) {
+    try {
+      const { error } = await STATE.client
+        .from('table_assignments')
+        .delete()
+        .eq('id', assignmentId);
+
+      if (error) throw error;
+
+      utils.showToast('Guest removed from table', 'success');
+
+      // Reload
+      await this.loadTablePlan();
+      this.renderUnassignedGuests();
+      this.renderTables();
+
+    } catch (error) {
+      console.error('Error removing guest:', error);
+      utils.showToast('Failed to remove guest', 'error');
+    }
+  },
+
+  /**
+   * Save Table Plan (currently auto-saves on each action)
+   */
+  saveTablePlan() {
+    utils.showToast('Table plan saved successfully', 'success');
+  },
+
+  /**
+   * Auto Assign Guests (placeholder)
+   */
+  autoAssignGuests() {
+    utils.showToast('Auto assign feature - Coming soon', 'info');
+  },
+
+  /**
+   * Export Table Plan
+   */
+  exportTablePlan() {
+    if (this.tables.length === 0) {
+      utils.showToast('No tables to export', 'warning');
+      return;
+    }
+
+    const exportData = [];
+    this.tables.forEach(table => {
+      if (table.assignments && table.assignments.length > 0) {
+        table.assignments.forEach(assignment => {
+          exportData.push({
+            'Table Number': table.table_number,
+            'Table Name': table.table_name || '',
+            'Guest Name': assignment.guest_name,
+            'Company': assignment.company_name || ''
+          });
+        });
+      } else {
+        exportData.push({
+          'Table Number': table.table_number,
+          'Table Name': table.table_name || '',
+          'Guest Name': '(Empty)',
+          'Company': ''
+        });
+      }
+    });
+
+    const filename = `${this.currentEventNameTablePlan.replace(/[^a-z0-9]/gi, '_')}_table_plan_${new Date().toISOString().split('T')[0]}.csv`;
+    utils.exportToCSV(exportData, filename);
   }
 };
 

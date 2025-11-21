@@ -78,7 +78,28 @@ document.addEventListener('DOMContentLoaded', function() {
     icon.classList.remove('bi-moon');
     icon.classList.add('bi-sun');
   }
-  
+
+  // --- Quick Actions Button ---
+  const quickActionsBtn = document.getElementById('quickActionsBtn');
+  const quickActionsMenu = document.getElementById('quickActionsMenu');
+
+  if (quickActionsBtn && quickActionsMenu) {
+    quickActionsBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const isVisible = quickActionsMenu.style.display === 'block';
+      quickActionsMenu.style.display = isVisible ? 'none' : 'block';
+      quickActionsBtn.classList.toggle('active');
+    });
+
+    // Close menu when clicking outside
+    document.addEventListener('click', (e) => {
+      if (!quickActionsBtn.contains(e.target) && !quickActionsMenu.contains(e.target)) {
+        quickActionsMenu.style.display = 'none';
+        quickActionsBtn.classList.remove('active');
+      }
+    });
+  }
+
   // --- Awards Filters ---
   // Create debounced version of filter function
   const debouncedAwardsFilter = utils.debounce(() => {

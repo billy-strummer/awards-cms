@@ -170,6 +170,7 @@
                 <i class="bi bi-trophy stat-card-icon text-primary"></i>
                 <h6>Total Awards</h6>
                 <div class="stat-value" id="totalAwards">0</div>
+                <div id="totalAwardsGrowth" class="stat-growth"></div>
                 <small class="text-muted">All award categories</small>
                 <div class="stat-card-hover-indicator">
                   <i class="bi bi-arrow-right-circle"></i>
@@ -182,6 +183,7 @@
                 <i class="bi bi-hourglass-split stat-card-icon text-warning"></i>
                 <h6>Pending Reviews</h6>
                 <div class="stat-value text-warning" id="pendingAwards">0</div>
+                <div id="pendingAwardsGrowth" class="stat-growth"></div>
                 <small class="text-muted">Awaiting approval</small>
                 <div class="stat-card-hover-indicator">
                   <i class="bi bi-arrow-right-circle"></i>
@@ -194,6 +196,7 @@
                 <i class="bi bi-building stat-card-icon text-success"></i>
                 <h6>Organisations</h6>
                 <div class="stat-value text-success" id="totalOrgs">0</div>
+                <div id="totalOrgsGrowth" class="stat-growth"></div>
                 <small class="text-muted">Registered companies</small>
                 <div class="stat-card-hover-indicator">
                   <i class="bi bi-arrow-right-circle"></i>
@@ -206,6 +209,7 @@
                 <i class="bi bi-award stat-card-icon text-info"></i>
                 <h6>Winners</h6>
                 <div class="stat-value text-info" id="totalWinners">0</div>
+                <div id="totalWinnersGrowth" class="stat-growth"></div>
                 <small class="text-muted">Award recipients</small>
                 <div class="stat-card-hover-indicator">
                   <i class="bi bi-arrow-right-circle"></i>
@@ -221,6 +225,7 @@
                 <i class="bi bi-calendar-event stat-card-icon text-purple"></i>
                 <h6>Events</h6>
                 <div class="stat-value" id="totalEvents">0</div>
+                <div id="totalEventsGrowth" class="stat-growth"></div>
                 <small class="text-muted">Award ceremonies & functions</small>
                 <div class="stat-card-hover-indicator">
                   <i class="bi bi-arrow-right-circle"></i>
@@ -233,6 +238,7 @@
                 <i class="bi bi-images stat-card-icon text-primary"></i>
                 <h6>Media Gallery</h6>
                 <div class="stat-value" id="totalMedia">0</div>
+                <div id="totalMediaGrowth" class="stat-growth"></div>
                 <small class="text-muted">Photos & videos</small>
                 <div class="stat-card-hover-indicator">
                   <i class="bi bi-arrow-right-circle"></i>
@@ -245,6 +251,7 @@
                 <i class="bi bi-exclamation-triangle stat-card-icon text-danger"></i>
                 <h6>Untagged Photos</h6>
                 <div class="stat-value text-danger" id="untaggedPhotos">0</div>
+                <div id="untaggedPhotosGrowth" class="stat-growth"></div>
                 <small class="text-muted">Need organisation/award tags</small>
                 <div class="stat-card-hover-indicator">
                   <i class="bi bi-arrow-right-circle"></i>
@@ -257,9 +264,54 @@
                 <i class="bi bi-calendar-check stat-card-icon text-success"></i>
                 <h6>Upcoming Events</h6>
                 <div class="stat-value text-success" id="upcomingEvents">0</div>
+                <div id="upcomingEventsGrowth" class="stat-growth"></div>
                 <small class="text-muted">Next 30 days</small>
                 <div class="stat-card-hover-indicator">
                   <i class="bi bi-arrow-right-circle"></i>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Completion Rate & Upcoming Deadlines Widgets -->
+          <div class="row g-4 mb-5">
+            <!-- Completion Rate Widget -->
+            <div class="col-lg-6">
+              <div class="content-card h-100">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                  <h5 class="mb-0">
+                    <i class="bi bi-check2-circle text-success me-2"></i>Data Completion Rate
+                  </h5>
+                </div>
+                <p class="text-muted small mb-3">Track data quality across your system</p>
+
+                <div id="completionRateWidget">
+                  <div class="text-center py-4 text-muted">
+                    <i class="bi bi-hourglass-split display-4 d-block mb-2 opacity-25"></i>
+                    Loading completion data...
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Upcoming Deadlines Widget -->
+            <div class="col-lg-6">
+              <div class="content-card h-100">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                  <h5 class="mb-0">
+                    <i class="bi bi-calendar-week text-warning me-2"></i>Upcoming Deadlines
+                  </h5>
+                  <button class="btn btn-sm btn-outline-primary" onclick="dashboardModule.navigateToSection('events')">
+                    <i class="bi bi-calendar-plus me-1"></i>View All
+                  </button>
+                </div>
+                <p class="text-muted small mb-3">Important dates and events coming up</p>
+
+                <div id="upcomingDeadlinesWidget">
+                  <div class="text-center py-4 text-muted">
+                    <i class="bi bi-hourglass-split display-4 d-block mb-2 opacity-25"></i>
+                    Loading upcoming deadlines...
+                  </div>
                 </div>
               </div>
             </div>
@@ -423,6 +475,35 @@
                     Loading notifications...
                   </div>
                 </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Quick Actions Floating Button -->
+          <div class="quick-actions-fab" id="quickActionsFab">
+            <button class="btn btn-primary btn-lg rounded-circle shadow-lg" id="quickActionsBtn" title="Quick Actions">
+              <i class="bi bi-plus-lg"></i>
+            </button>
+            <div class="quick-actions-menu" id="quickActionsMenu" style="display: none;">
+              <div class="quick-action-item" onclick="dashboardModule.quickAddAward()">
+                <i class="bi bi-trophy-fill text-primary"></i>
+                <span>Add Award</span>
+              </div>
+              <div class="quick-action-item" onclick="dashboardModule.quickAddOrganisation()">
+                <i class="bi bi-building text-success"></i>
+                <span>Add Organisation</span>
+              </div>
+              <div class="quick-action-item" onclick="dashboardModule.quickAddWinner()">
+                <i class="bi bi-award text-info"></i>
+                <span>Add Winner</span>
+              </div>
+              <div class="quick-action-item" onclick="dashboardModule.quickAddEvent()">
+                <i class="bi bi-calendar-event text-purple"></i>
+                <span>Add Event</span>
+              </div>
+              <div class="quick-action-item" onclick="dashboardModule.quickAddMedia()">
+                <i class="bi bi-images text-warning"></i>
+                <span>Upload Media</span>
               </div>
             </div>
           </div>

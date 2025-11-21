@@ -26,6 +26,10 @@ const dashboardModule = {
       // Load charts
       await this.loadCharts();
 
+      // Load completion rate and upcoming deadlines widgets
+      await this.loadCompletionRateWidget();
+      await this.loadUpcomingDeadlinesWidget();
+
       console.log('✅ Dashboard data loaded');
 
     } catch (error) {
@@ -61,6 +65,9 @@ const dashboardModule = {
 
     // Load and update additional stats
     await this.updateExtendedStats();
+
+    // Update Year-over-Year Growth indicators
+    await this.updateGrowthIndicators();
 
     // Update top companies table
     this.updateTopCompanies();
@@ -852,6 +859,308 @@ const dashboardModule = {
 
     svg += `</svg>`;
     container.innerHTML = svg;
+  },
+
+  /* ==================================================== */
+  /* NEW DASHBOARD FEATURES */
+  /* ==================================================== */
+
+  /**
+   * Update Year-over-Year Growth indicators
+   */
+  async updateGrowthIndicators() {
+    try {
+      const currentYear = new Date().getFullYear();
+      const lastYear = currentYear - 1;
+
+      // Calculate growth for Total Awards
+      const currentYearAwards = STATE.allAwards.filter(a => {
+        const year = parseInt(a.year) || new Date(a.created_at).getFullYear();
+        return year === currentYear;
+      }).length;
+
+      const lastYearAwards = STATE.allAwards.filter(a => {
+        const year = parseInt(a.year) || new Date(a.created_at).getFullYear();
+        return year === lastYear;
+      }).length;
+
+      this.renderGrowthBadge('totalAwardsGrowth', currentYearAwards, lastYearAwards);
+
+      // Calculate growth for Organisations
+      const currentYearOrgs = STATE.allOrganisations.filter(o =>
+        new Date(o.created_at).getFullYear() === currentYear
+      ).length;
+
+      const lastYearOrgs = STATE.allOrganisations.filter(o =>
+        new Date(o.created_at).getFullYear() === lastYear
+      ).length;
+
+      this.renderGrowthBadge('totalOrgsGrowth', currentYearOrgs, lastYearOrgs);
+
+      // Calculate growth for Winners
+      const currentYearWinners = STATE.allWinners.filter(w =>
+        new Date(w.created_at).getFullYear() === currentYear
+      ).length;
+
+      const lastYearWinners = STATE.allWinners.filter(w =>
+        new Date(w.created_at).getFullYear() === lastYear
+      ).length;
+
+      this.renderGrowthBadge('totalWinnersGrowth', currentYearWinners, lastYearWinners);
+
+      // Events growth
+      const { data: currentYearEvents } = await STATE.client
+        .from('events')
+        .select('id', { count: 'exact' })
+        .gte('created_at', `${currentYear}-01-01`)
+        .lte('created_at', `${currentYear}-12-31`);
+
+      const { data: lastYearEvents } = await STATE.client
+        .from('events')
+        .select('id', { count: 'exact' })
+        .gte('created_at', `${lastYear}-01-01`)
+        .lte('created_at', `${lastYear}-12-31`);
+
+      this.renderGrowthBadge('totalEventsGrowth', currentYearEvents?.length || 0, lastYearEvents?.length || 0);
+
+      // Media growth
+      const { count: currentYearMedia } = await STATE.client
+        .from('media_gallery')
+        .select('*', { count: 'exact', head: true })
+        .gte('uploaded_at', `${currentYear}-01-01`)
+        .lte('uploaded_at', `${currentYear}-12-31`);
+
+      const { count: lastYearMedia } = await STATE.client
+        .from('media_gallery')
+        .select('*', { count: 'exact', head: true })
+        .gte('uploaded_at', `${lastYear}-01-01`)
+        .lte('uploaded_at', `${lastYear}-12-31`);
+
+      this.renderGrowthBadge('totalMediaGrowth', currentYearMedia || 0, lastYearMedia || 0);
+
+    } catch (error) {
+      console.error('Error updating growth indicators:', error);
+    }
+  },
+
+  /**
+   * Render a growth badge
+   */
+  renderGrowthBadge(elementId, currentValue, previousValue) {
+    const element = document.getElementById(elementId);
+    if (!element) return;
+
+    if (previousValue === 0) {
+      if (currentValue > 0) {
+        element.innerHTML = `<i class="bi bi-arrow-up"></i>New this year`;
+        element.className = 'stat-growth positive';
+      } else {
+        element.innerHTML = '';
+      }
+      return;
+    }
+
+    const percentChange = ((currentValue - previousValue) / previousValue * 100).toFixed(1);
+    const absChange = Math.abs(percentChange);
+
+    if (percentChange > 0) {
+      element.innerHTML = `<i class="bi bi-arrow-up"></i>${absChange}% vs last year`;
+      element.className = 'stat-growth positive';
+    } else if (percentChange < 0) {
+      element.innerHTML = `<i class="bi bi-arrow-down"></i>${absChange}% vs last year`;
+      element.className = 'stat-growth negative';
+    } else {
+      element.innerHTML = `<i class="bi bi-dash"></i>No change`;
+      element.className = 'stat-growth neutral';
+    }
+  },
+
+  /**
+   * Load Completion Rate Widget
+   */
+  async loadCompletionRateWidget() {
+    const container = document.getElementById('completionRateWidget');
+
+    try {
+      // Calculate completion metrics
+      const metrics = [];
+
+      // Awards with winners assigned
+      const totalAwards = STATE.allAwards.length;
+      const awardsWithWinners = STATE.allAwards.filter(a => {
+        return STATE.allWinners.some(w => w.award_id === a.id);
+      }).length;
+      const awardCompletionRate = totalAwards > 0 ? (awardsWithWinners / totalAwards * 100).toFixed(0) : 0;
+
+      metrics.push({
+        title: 'Awards with Winners',
+        value: `${awardsWithWinners}/${totalAwards}`,
+        percentage: awardCompletionRate,
+        level: awardCompletionRate >= 80 ? 'high' : awardCompletionRate >= 50 ? 'medium' : 'low'
+      });
+
+      // Organisations with complete data
+      const totalOrgs = STATE.allOrganisations.length;
+      const completeOrgs = STATE.allOrganisations.filter(org =>
+        org.email && org.contact_phone && org.website && org.contact_name
+      ).length;
+      const orgCompletionRate = totalOrgs > 0 ? (completeOrgs / totalOrgs * 100).toFixed(0) : 0;
+
+      metrics.push({
+        title: 'Complete Organisation Profiles',
+        value: `${completeOrgs}/${totalOrgs}`,
+        percentage: orgCompletionRate,
+        level: orgCompletionRate >= 80 ? 'high' : orgCompletionRate >= 50 ? 'medium' : 'low'
+      });
+
+      // Tagged media
+      const { data: allMedia } = await STATE.client
+        .from('media_gallery')
+        .select('*');
+
+      const totalMedia = allMedia?.length || 0;
+      const taggedMedia = allMedia?.filter(m => m.organisation_id || m.award_id).length || 0;
+      const mediaTaggingRate = totalMedia > 0 ? (taggedMedia / totalMedia * 100).toFixed(0) : 0;
+
+      metrics.push({
+        title: 'Tagged Media Files',
+        value: `${taggedMedia}/${totalMedia}`,
+        percentage: mediaTaggingRate,
+        level: mediaTaggingRate >= 80 ? 'high' : mediaTaggingRate >= 50 ? 'medium' : 'low'
+      });
+
+      // Render metrics
+      container.innerHTML = metrics.map(metric => `
+        <div class="completion-metric ${metric.level}">
+          <div class="completion-metric-header">
+            <span class="completion-metric-title">
+              <i class="bi bi-${metric.level === 'high' ? 'check-circle-fill text-success' : metric.level === 'medium' ? 'exclamation-circle-fill text-warning' : 'x-circle-fill text-danger'}"></i>
+              ${metric.title}
+            </span>
+            <span class="completion-metric-value">${metric.percentage}%</span>
+          </div>
+          <div class="completion-progress">
+            <div class="completion-progress-bar ${metric.level}" style="width: ${metric.percentage}%"></div>
+          </div>
+          <small class="text-muted mt-2 d-block">${metric.value} completed</small>
+        </div>
+      `).join('');
+
+    } catch (error) {
+      console.error('Error loading completion rate widget:', error);
+      container.innerHTML = `
+        <div class="text-center py-4 text-danger">
+          <i class="bi bi-exclamation-triangle me-2"></i>Error loading completion data
+        </div>
+      `;
+    }
+  },
+
+  /**
+   * Load Upcoming Deadlines Widget
+   */
+  async loadUpcomingDeadlinesWidget() {
+    const container = document.getElementById('upcomingDeadlinesWidget');
+
+    try {
+      const today = new Date();
+      const futureDate = new Date(Date.now() + 60 * 24 * 60 * 60 * 1000); // Next 60 days
+
+      const { data: upcomingEvents, error } = await STATE.client
+        .from('events')
+        .select('*')
+        .gte('event_date', today.toISOString().split('T')[0])
+        .lte('event_date', futureDate.toISOString().split('T')[0])
+        .order('event_date', { ascending: true })
+        .limit(5);
+
+      if (error) throw error;
+
+      if (!upcomingEvents || upcomingEvents.length === 0) {
+        container.innerHTML = `
+          <div class="deadline-empty">
+            <i class="bi bi-calendar-check display-4 d-block"></i>
+            <p class="mb-0">No upcoming events in the next 60 days</p>
+          </div>
+        `;
+        return;
+      }
+
+      // Render deadlines
+      container.innerHTML = upcomingEvents.map(event => {
+        const eventDate = new Date(event.event_date);
+        const daysUntil = Math.ceil((eventDate - today) / (1000 * 60 * 60 * 24));
+
+        let urgency, badge;
+        if (daysUntil <= 7) {
+          urgency = 'urgent';
+          badge = `${daysUntil} day${daysUntil !== 1 ? 's' : ''} away`;
+        } else if (daysUntil <= 14) {
+          urgency = 'soon';
+          badge = `${daysUntil} days away`;
+        } else {
+          urgency = 'upcoming';
+          badge = `${daysUntil} days away`;
+        }
+
+        const day = eventDate.getDate();
+        const month = eventDate.toLocaleDateString('en-US', { month: 'short' });
+
+        return `
+          <div class="deadline-item ${urgency}" onclick="dashboardModule.navigateToSection('events')">
+            <div class="deadline-date-block">
+              <div class="deadline-date-day">${day}</div>
+              <div class="deadline-date-month">${month}</div>
+            </div>
+            <div class="deadline-content">
+              <div class="deadline-title">${utils.escapeHtml(event.event_name || 'Unnamed Event')}</div>
+              <div class="deadline-time">
+                <i class="bi bi-clock"></i>
+                ${event.event_time || 'Time TBD'}
+                ${event.venue ? `<span class="ms-2"><i class="bi bi-geo-alt"></i>${utils.escapeHtml(event.venue)}</span>` : ''}
+              </div>
+            </div>
+            <div class="deadline-badge ${urgency}">${badge}</div>
+          </div>
+        `;
+      }).join('');
+
+    } catch (error) {
+      console.error('Error loading upcoming deadlines widget:', error);
+      container.innerHTML = `
+        <div class="text-center py-4 text-danger">
+          <i class="bi bi-exclamation-triangle me-2"></i>Error loading deadlines
+        </div>
+      `;
+    }
+  },
+
+  /**
+   * Quick Actions Handlers
+   */
+  quickAddAward() {
+    this.navigateToSection('awards');
+    utils.showToast('Navigate to Awards tab to add new award', 'info');
+  },
+
+  quickAddOrganisation() {
+    this.navigateToSection('organisations');
+    utils.showToast('Navigate to Organisations tab to add new organisation', 'info');
+  },
+
+  quickAddWinner() {
+    this.navigateToSection('winners');
+    utils.showToast('Navigate to Winners tab to add new winner', 'info');
+  },
+
+  quickAddEvent() {
+    this.navigateToSection('events');
+    utils.showToast('Navigate to Events tab to create new event', 'info');
+  },
+
+  quickAddMedia() {
+    this.navigateToSection('media-gallery');
+    utils.showToast('Navigate to Media Gallery to upload files', 'info');
   }
 };
 

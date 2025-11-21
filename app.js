@@ -356,6 +356,17 @@ document.addEventListener('DOMContentLoaded', function() {
     });
   }
 
+  // Load Email Lists when sub-tab is opened
+  const emailListsSubTab = document.getElementById('email-lists-subtab');
+  if (emailListsSubTab) {
+    emailListsSubTab.addEventListener('shown.bs.tab', () => {
+      console.log('📧 Email Lists opened');
+      if (typeof emailListsModule !== 'undefined') {
+        emailListsModule.loadAllData();
+      }
+    });
+  }
+
   // Load payments data when payments tab is clicked
   const paymentsTab = document.getElementById('payments-tab');
   if (paymentsTab) {

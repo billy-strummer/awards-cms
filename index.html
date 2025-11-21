@@ -974,6 +974,11 @@
                 <i class="bi bi-grid-3x3-gap me-2"></i>Email Builder
               </button>
             </li>
+            <li class="nav-item" role="presentation">
+              <button class="nav-link" id="email-lists-subtab" data-bs-toggle="pill" data-bs-target="#email-lists-content" type="button" role="tab">
+                <i class="bi bi-list-ul me-2"></i>Email Lists
+              </button>
+            </li>
           </ul>
 
           <!-- Marketing Sub-Tab Content -->
@@ -1206,6 +1211,66 @@
                 </div>
 
               </div>
+            </div>
+
+            <!-- Email Lists Sub-Tab -->
+            <div class="tab-pane fade" id="email-lists-content" role="tabpanel">
+
+              <!-- Quick Stats -->
+              <div class="row g-3 mb-4">
+                <div class="col-md-3">
+                  <div class="content-card text-center">
+                    <i class="bi bi-list-ul text-primary fs-1 mb-2"></i>
+                    <div class="fs-2 fw-bold" id="emailListsTotalCount">0</div>
+                    <div class="text-muted small">Total Lists</div>
+                  </div>
+                </div>
+                <div class="col-md-3">
+                  <div class="content-card text-center">
+                    <i class="bi bi-people text-success fs-1 mb-2"></i>
+                    <div class="fs-2 fw-bold" id="emailListsTotalSubscribers">0</div>
+                    <div class="text-muted small">Total Subscribers</div>
+                  </div>
+                </div>
+                <div class="col-md-3">
+                  <div class="content-card text-center">
+                    <i class="bi bi-check-circle text-info fs-1 mb-2"></i>
+                    <div class="fs-2 fw-bold" id="emailListsActiveSubscribers">0</div>
+                    <div class="text-muted small">Active Subscribers</div>
+                  </div>
+                </div>
+                <div class="col-md-3">
+                  <div class="content-card text-center">
+                    <i class="bi bi-percent text-warning fs-1 mb-2"></i>
+                    <div class="fs-2 fw-bold" id="emailListsAvgOpenRate">0%</div>
+                    <div class="text-muted small">Avg Open Rate</div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Actions Bar -->
+              <div class="d-flex justify-content-between align-items-center mb-4">
+                <h4><i class="bi bi-list-ul me-2"></i>Email Lists</h4>
+                <div class="btn-group">
+                  <button class="btn btn-primary" onclick="emailListsModule.openCreateListModal()">
+                    <i class="bi bi-plus-lg me-2"></i>Create List
+                  </button>
+                  <button class="btn btn-success" onclick="emailListsModule.openImportModal()">
+                    <i class="bi bi-upload me-2"></i>Import Subscribers
+                  </button>
+                </div>
+              </div>
+
+              <!-- Email Lists Grid -->
+              <div class="row g-4" id="emailListsGrid">
+                <div class="col-12">
+                  <div class="text-center py-5 text-muted">
+                    <i class="bi bi-hourglass-split display-4 d-block mb-2 opacity-25"></i>
+                    Loading email lists...
+                  </div>
+                </div>
+              </div>
+
             </div>
 
           </div>
@@ -4100,6 +4165,7 @@ in recognition of excellence
   <script src="dashboard.js"></script>
   <script src="marketing.js"></script>
   <script src="email-builder.js"></script>
+  <script src="email-lists.js"></script>
   <script src="payments.js"></script>
   <script src="crm.js"></script>
   <script src="settings.js"></script>

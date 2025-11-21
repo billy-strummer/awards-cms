@@ -236,7 +236,7 @@ SELECT
   o.company_name,
   o.logo_url,
   a.award_name as full_award_name,
-  a.category as award_category,
+  a.award_category,
   eg.guest_name,
   eg.guest_email,
   eg.rsvp_status,

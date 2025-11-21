@@ -130,6 +130,11 @@
         </button>
       </li>
       <li class="nav-item" role="presentation">
+        <button class="nav-link" id="social-media-tab" data-bs-toggle="tab" data-bs-target="#social-media" type="button" role="tab">
+          <i class="bi bi-share me-2"></i>Social Media
+        </button>
+      </li>
+      <li class="nav-item" role="presentation">
         <button class="nav-link" id="events-tab" data-bs-toggle="tab" data-bs-target="#events" type="button" role="tab">
           <i class="bi bi-calendar-event me-2"></i>Events
         </button>
@@ -1076,6 +1081,405 @@
               </button>
             </div>
           </div>
+        </div>
+      </div>
+
+      <!-- ==================================================== -->
+      <!-- SOCIAL MEDIA MANAGER TAB -->
+      <!-- ==================================================== -->
+      <div class="tab-pane fade" id="social-media" role="tabpanel">
+        <div class="container-fluid">
+
+          <!-- Page Header -->
+          <div class="section-header">
+            <h1 class="section-title">
+              <i class="bi bi-share me-2"></i>Social Media Manager
+            </h1>
+            <p class="section-subtitle">Automate and schedule posts across all platforms</p>
+          </div>
+
+          <!-- Main Content -->
+          <div class="row g-4">
+
+            <!-- Left Column: Post Composer -->
+            <div class="col-lg-8">
+
+              <!-- Create Post Card -->
+              <div class="card mb-4">
+                <div class="card-header">
+                  <h5 class="mb-0">
+                    <i class="bi bi-pencil-square me-2"></i>Create New Post
+                  </h5>
+                </div>
+                <div class="card-body">
+
+                  <!-- Template Selection -->
+                  <div class="mb-4">
+                    <label class="form-label fw-bold">Post Template</label>
+                    <div class="row g-3">
+                      <div class="col-md-4">
+                        <div class="card template-card" onclick="socialMediaModule.selectTemplate('nominee')">
+                          <div class="card-body text-center">
+                            <i class="bi bi-star text-warning fs-1 mb-2"></i>
+                            <h6>Nominee Announcement</h6>
+                            <small class="text-muted">Announce nominees</small>
+                          </div>
+                        </div>
+                      </div>
+                      <div class="col-md-4">
+                        <div class="card template-card" onclick="socialMediaModule.selectTemplate('winner')">
+                          <div class="card-body text-center">
+                            <i class="bi bi-trophy text-success fs-1 mb-2"></i>
+                            <h6>Winner Announcement</h6>
+                            <small class="text-muted">Celebrate winners</small>
+                          </div>
+                        </div>
+                      </div>
+                      <div class="col-md-4">
+                        <div class="card template-card" onclick="socialMediaModule.selectTemplate('voting')">
+                          <div class="card-body text-center">
+                            <i class="bi bi-hand-thumbs-up text-primary fs-1 mb-2"></i>
+                            <h6>Voting Reminder</h6>
+                            <small class="text-muted">Encourage voting</small>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Company/Nominee Selection -->
+                  <div class="row g-3 mb-3">
+                    <div class="col-md-6">
+                      <label for="smCompanySelect" class="form-label">
+                        Company/Nominee <span class="text-danger">*</span>
+                      </label>
+                      <select class="form-select" id="smCompanySelect" onchange="socialMediaModule.updatePostPreview()">
+                        <option value="">Select company...</option>
+                      </select>
+                    </div>
+                    <div class="col-md-6">
+                      <label for="smAwardSelect" class="form-label">
+                        Award Category <span class="text-danger">*</span>
+                      </label>
+                      <select class="form-select" id="smAwardSelect" onchange="socialMediaModule.updatePostPreview()">
+                        <option value="">Select award...</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <!-- Post Content -->
+                  <div class="mb-3">
+                    <label for="smPostContent" class="form-label">
+                      Post Content
+                      <small class="text-muted">(Use {{company_name}} and {{award_name}} as placeholders)</small>
+                    </label>
+                    <textarea class="form-control" id="smPostContent" rows="5" onkeyup="socialMediaModule.updatePostPreview()" placeholder="Write your post here... Use {{company_name}} and {{award_name}} to insert dynamic content"></textarea>
+                    <div class="form-text">
+                      <strong>Available variables:</strong> {{company_name}}, {{award_name}}, {{year}}, {{website}}
+                    </div>
+                  </div>
+
+                  <!-- Image Options -->
+                  <div class="mb-3">
+                    <label class="form-label fw-bold">
+                      <i class="bi bi-image me-1"></i>Post Image
+                    </label>
+                    <div class="row g-3">
+                      <div class="col-md-6">
+                        <div class="form-check">
+                          <input class="form-check-input" type="radio" name="imageSource" id="imageCompanyLogo" value="company_logo" checked onchange="socialMediaModule.updateImagePreview()">
+                          <label class="form-check-label" for="imageCompanyLogo">
+                            Company Logo
+                          </label>
+                        </div>
+                      </div>
+                      <div class="col-md-6">
+                        <div class="form-check">
+                          <input class="form-check-input" type="radio" name="imageSource" id="imageCustom" value="custom" onchange="socialMediaModule.updateImagePreview()">
+                          <label class="form-check-label" for="imageCustom">
+                            Upload Custom Image
+                          </label>
+                        </div>
+                      </div>
+                    </div>
+
+                    <!-- Custom Image Upload -->
+                    <div id="customImageUpload" class="mt-3" style="display: none;">
+                      <input type="file" class="form-control" id="smCustomImage" accept="image/*" onchange="socialMediaModule.handleImageUpload()">
+                    </div>
+
+                    <!-- Add British Trade Awards Logo Overlay -->
+                    <div class="mt-3">
+                      <div class="form-check">
+                        <input class="form-check-input" type="checkbox" id="smAddLogoOverlay" checked onchange="socialMediaModule.updateImagePreview()">
+                        <label class="form-check-label" for="smAddLogoOverlay">
+                          <i class="bi bi-badge-tm me-1"></i>Add British Trade Awards Logo Overlay
+                        </label>
+                      </div>
+                      <small class="text-muted d-block mt-1">Logo will be placed in the corner with transparency</small>
+                    </div>
+                  </div>
+
+                  <!-- Platform Selection -->
+                  <div class="mb-3">
+                    <label class="form-label fw-bold">
+                      <i class="bi bi-share-fill me-1"></i>Post To
+                    </label>
+                    <div class="row g-2">
+                      <div class="col-md-3">
+                        <div class="form-check">
+                          <input class="form-check-input" type="checkbox" id="platformTwitter" checked>
+                          <label class="form-check-label" for="platformTwitter">
+                            <i class="bi bi-twitter text-info me-1"></i>Twitter/X
+                          </label>
+                        </div>
+                      </div>
+                      <div class="col-md-3">
+                        <div class="form-check">
+                          <input class="form-check-input" type="checkbox" id="platformFacebook" checked>
+                          <label class="form-check-label" for="platformFacebook">
+                            <i class="bi bi-facebook text-primary me-1"></i>Facebook
+                          </label>
+                        </div>
+                      </div>
+                      <div class="col-md-3">
+                        <div class="form-check">
+                          <input class="form-check-input" type="checkbox" id="platformInstagram" checked>
+                          <label class="form-check-label" for="platformInstagram">
+                            <i class="bi bi-instagram text-danger me-1"></i>Instagram
+                          </label>
+                        </div>
+                      </div>
+                      <div class="col-md-3">
+                        <div class="form-check">
+                          <input class="form-check-input" type="checkbox" id="platformLinkedIn" checked>
+                          <label class="form-check-label" for="platformLinkedIn">
+                            <i class="bi bi-linkedin text-info me-1"></i>LinkedIn
+                          </label>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Scheduling -->
+                  <div class="row g-3 mb-3">
+                    <div class="col-md-6">
+                      <label for="smScheduleDate" class="form-label">
+                        <i class="bi bi-calendar3 me-1"></i>Schedule Date
+                      </label>
+                      <input type="date" class="form-control" id="smScheduleDate">
+                      <small class="text-muted">Leave empty to post immediately</small>
+                    </div>
+                    <div class="col-md-6">
+                      <label for="smScheduleTime" class="form-label">
+                        <i class="bi bi-clock me-1"></i>Schedule Time
+                      </label>
+                      <input type="time" class="form-control" id="smScheduleTime">
+                    </div>
+                  </div>
+
+                  <!-- Action Buttons -->
+                  <div class="d-flex gap-2">
+                    <button class="btn btn-primary" onclick="socialMediaModule.savePost('scheduled')">
+                      <i class="bi bi-clock-history me-2"></i>Schedule Post
+                    </button>
+                    <button class="btn btn-success" onclick="socialMediaModule.savePost('immediate')">
+                      <i class="bi bi-send me-2"></i>Post Now
+                    </button>
+                    <button class="btn btn-outline-secondary" onclick="socialMediaModule.saveDraft()">
+                      <i class="bi bi-save me-2"></i>Save Draft
+                    </button>
+                    <button class="btn btn-outline-danger" onclick="socialMediaModule.clearForm()">
+                      <i class="bi bi-x-circle me-2"></i>Clear
+                    </button>
+                  </div>
+
+                </div>
+              </div>
+
+              <!-- Scheduled Posts -->
+              <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                  <h5 class="mb-0">
+                    <i class="bi bi-calendar-check me-2"></i>Scheduled Posts
+                  </h5>
+                  <span class="badge bg-primary" id="scheduledPostsCount">0</span>
+                </div>
+                <div class="card-body">
+                  <div id="scheduledPostsList">
+                    <div class="text-center text-muted py-4">
+                      <i class="bi bi-calendar-x display-4 d-block mb-2 opacity-25"></i>
+                      No scheduled posts
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+            </div>
+
+            <!-- Right Column: Preview & Platforms -->
+            <div class="col-lg-4">
+
+              <!-- Live Preview -->
+              <div class="card mb-4 sticky-top" style="top: 20px;">
+                <div class="card-header">
+                  <h5 class="mb-0">
+                    <i class="bi bi-eye me-2"></i>Live Preview
+                  </h5>
+                </div>
+                <div class="card-body">
+
+                  <!-- Platform Tabs -->
+                  <ul class="nav nav-pills mb-3" role="tablist">
+                    <li class="nav-item" role="presentation">
+                      <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#previewTwitter">
+                        <i class="bi bi-twitter"></i>
+                      </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                      <button class="nav-link" data-bs-toggle="tab" data-bs-target="#previewFacebook">
+                        <i class="bi bi-facebook"></i>
+                      </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                      <button class="nav-link" data-bs-toggle="tab" data-bs-target="#previewInstagram">
+                        <i class="bi bi-instagram"></i>
+                      </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                      <button class="nav-link" data-bs-toggle="tab" data-bs-target="#previewLinkedIn">
+                        <i class="bi bi-linkedin"></i>
+                      </button>
+                    </li>
+                  </ul>
+
+                  <!-- Preview Content -->
+                  <div class="tab-content">
+                    <!-- Twitter Preview -->
+                    <div class="tab-pane fade show active" id="previewTwitter">
+                      <div class="social-preview twitter-preview">
+                        <div class="preview-header">
+                          <strong>British Trade Awards</strong>
+                          <small class="text-muted">@BritishTradeAwards</small>
+                        </div>
+                        <div class="preview-content" id="twitterPreviewText">
+                          Your post will appear here...
+                        </div>
+                        <div class="preview-image" id="twitterPreviewImage">
+                          <div class="text-center text-muted py-4">
+                            <i class="bi bi-image opacity-25 fs-1"></i>
+                          </div>
+                        </div>
+                        <div class="preview-meta">
+                          <small class="text-muted">Character count: <span id="twitterCharCount">0</span>/280</small>
+                        </div>
+                      </div>
+                    </div>
+
+                    <!-- Facebook Preview -->
+                    <div class="tab-pane fade" id="previewFacebook">
+                      <div class="social-preview facebook-preview">
+                        <div class="preview-header">
+                          <strong>British Trade Awards</strong>
+                        </div>
+                        <div class="preview-content" id="facebookPreviewText">
+                          Your post will appear here...
+                        </div>
+                        <div class="preview-image" id="facebookPreviewImage">
+                          <div class="text-center text-muted py-4">
+                            <i class="bi bi-image opacity-25 fs-1"></i>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <!-- Instagram Preview -->
+                    <div class="tab-pane fade" id="previewInstagram">
+                      <div class="social-preview instagram-preview">
+                        <div class="preview-header">
+                          <strong>britishtrade_awards</strong>
+                        </div>
+                        <div class="preview-image" id="instagramPreviewImage">
+                          <div class="text-center text-muted py-4">
+                            <i class="bi bi-image opacity-25 fs-1"></i>
+                          </div>
+                        </div>
+                        <div class="preview-content" id="instagramPreviewText">
+                          Your caption will appear here...
+                        </div>
+                      </div>
+                    </div>
+
+                    <!-- LinkedIn Preview -->
+                    <div class="tab-pane fade" id="previewLinkedIn">
+                      <div class="social-preview linkedin-preview">
+                        <div class="preview-header">
+                          <strong>British Trade Awards</strong>
+                        </div>
+                        <div class="preview-content" id="linkedinPreviewText">
+                          Your post will appear here...
+                        </div>
+                        <div class="preview-image" id="linkedinPreviewImage">
+                          <div class="text-center text-muted py-4">
+                            <i class="bi bi-image opacity-25 fs-1"></i>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                </div>
+              </div>
+
+              <!-- Connected Platforms -->
+              <div class="card">
+                <div class="card-header">
+                  <h5 class="mb-0">
+                    <i class="bi bi-plug me-2"></i>Connected Platforms
+                  </h5>
+                </div>
+                <div class="card-body">
+                  <div id="connectedPlatformsList">
+                    <!-- Platform connections will be loaded here -->
+                    <div class="d-flex justify-content-between align-items-center mb-2 p-2 border rounded">
+                      <div>
+                        <i class="bi bi-twitter text-info me-2"></i>
+                        <strong>Twitter/X</strong>
+                      </div>
+                      <span class="badge bg-secondary">Not Connected</span>
+                    </div>
+                    <div class="d-flex justify-content-between align-items-center mb-2 p-2 border rounded">
+                      <div>
+                        <i class="bi bi-facebook text-primary me-2"></i>
+                        <strong>Facebook</strong>
+                      </div>
+                      <span class="badge bg-secondary">Not Connected</span>
+                    </div>
+                    <div class="d-flex justify-content-between align-items-center mb-2 p-2 border rounded">
+                      <div>
+                        <i class="bi bi-instagram text-danger me-2"></i>
+                        <strong>Instagram</strong>
+                      </div>
+                      <span class="badge bg-secondary">Not Connected</span>
+                    </div>
+                    <div class="d-flex justify-content-between align-items-center mb-2 p-2 border rounded">
+                      <div>
+                        <i class="bi bi-linkedin text-info me-2"></i>
+                        <strong>LinkedIn</strong>
+                      </div>
+                      <span class="badge bg-secondary">Not Connected</span>
+                    </div>
+                  </div>
+                  <button class="btn btn-outline-primary btn-sm w-100 mt-3" onclick="socialMediaModule.openPlatformSettings()">
+                    <i class="bi bi-gear me-2"></i>Configure Platforms
+                  </button>
+                </div>
+              </div>
+
+            </div>
+
+          </div>
+
         </div>
       </div>
 
@@ -4418,6 +4822,7 @@ in recognition of excellence
   <script src="organisations.js"></script>
   <script src="winners.js"></script>
   <script src="media-gallery-new.js"></script>
+  <script src="social-media.js"></script>
   <script src="events.js"></script>
   <script src="assignments.js"></script>
   <script src="dashboard.js"></script>

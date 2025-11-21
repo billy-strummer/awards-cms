@@ -2126,3 +2126,183 @@ body.dark-mode [contenteditable="true"]:focus {
     max-height: 400px;
   }
 }
+
+/* ==================================================== */
+/* SOCIAL MEDIA MANAGER STYLES */
+/* ==================================================== */
+
+/* Template Cards */
+.template-card {
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border: 2px solid transparent;
+}
+
+.template-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+  border-color: var(--primary-color);
+}
+
+.template-card.selected {
+  border-color: var(--primary-color);
+  background-color: rgba(13, 110, 253, 0.05);
+}
+
+/* Social Media Preview Styles */
+.social-preview {
+  border: 1px solid #dee2e6;
+  border-radius: 8px;
+  padding: 15px;
+  background-color: #fff;
+  min-height: 300px;
+}
+
+.social-preview .preview-header {
+  padding-bottom: 10px;
+  border-bottom: 1px solid #e9ecef;
+  margin-bottom: 12px;
+}
+
+.social-preview .preview-header strong {
+  display: block;
+  font-size: 15px;
+  color: #1a1a1a;
+}
+
+.social-preview .preview-header small {
+  display: block;
+  font-size: 13px;
+  color: #6c757d;
+  margin-top: 2px;
+}
+
+.social-preview .preview-content {
+  font-size: 14px;
+  line-height: 1.5;
+  color: #1a1a1a;
+  margin-bottom: 12px;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+}
+
+.social-preview .preview-image {
+  border-radius: 8px;
+  overflow: hidden;
+  background-color: #f8f9fa;
+  min-height: 200px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.social-preview .preview-image img {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+
+.social-preview .preview-meta {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid #e9ecef;
+}
+
+/* Twitter Preview Specific */
+.twitter-preview {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+}
+
+.twitter-preview .preview-content {
+  font-size: 15px;
+}
+
+/* Facebook Preview Specific */
+.facebook-preview {
+  font-family: Helvetica, Arial, sans-serif;
+}
+
+.facebook-preview .preview-header strong {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+/* Instagram Preview Specific */
+.instagram-preview {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+}
+
+.instagram-preview .preview-header strong {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.instagram-preview .preview-image {
+  aspect-ratio: 1 / 1;
+  min-height: 0;
+}
+
+/* LinkedIn Preview Specific */
+.linkedin-preview {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+}
+
+.linkedin-preview .preview-header strong {
+  font-size: 14px;
+  font-weight: 600;
+  color: rgba(0,0,0,0.9);
+}
+
+/* Scheduled Posts List */
+.scheduled-post-item {
+  border: 1px solid #dee2e6;
+  border-radius: 8px;
+  padding: 15px;
+  margin-bottom: 12px;
+  transition: all 0.2s ease;
+}
+
+.scheduled-post-item:hover {
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+.scheduled-post-item .post-preview {
+  font-size: 14px;
+  color: #495057;
+  margin: 10px 0;
+  max-height: 60px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.scheduled-post-item .post-meta {
+  display: flex;
+  gap: 15px;
+  font-size: 13px;
+  color: #6c757d;
+  margin-top: 10px;
+}
+
+.scheduled-post-item .platform-badges {
+  display: flex;
+  gap: 5px;
+  flex-wrap: wrap;
+}
+
+/* Image Preview with Logo Overlay */
+.image-preview-container {
+  position: relative;
+  display: inline-block;
+}
+
+.logo-overlay {
+  position: absolute;
+  bottom: 10px;
+  right: 10px;
+  width: 80px;
+  height: auto;
+  opacity: 0.9;
+  background: rgba(255, 255, 255, 0.9);
+  padding: 5px;
+  border-radius: 4px;
+}

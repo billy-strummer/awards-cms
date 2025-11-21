@@ -677,8 +677,10 @@ const emailBuilder = {
       this.addBlock(blockType);
     });
 
-    // Customize content based on template type
-    this.customizeTemplateContent(templateType);
+    // Customize content based on template type (with slight delay to ensure DOM is ready)
+    setTimeout(() => {
+      this.customizeTemplateContent(templateType);
+    }, 100);
 
     // Show success message
     utils.showToast(`${template.name} template loaded!`, 'success');
@@ -690,93 +692,72 @@ const emailBuilder = {
   customizeTemplateContent(templateType) {
     const textBlocks = this.canvas.querySelectorAll('[contenteditable="true"]');
 
+    console.log('Customizing template:', templateType, 'Found text blocks:', textBlocks.length);
+
     switch (templateType) {
       case 'winner':
-        if (textBlocks[0]) textBlocks[0].innerHTML = `
-          <h2 style="color: #1a1a1a; margin: 0 0 10px 0; font-size: 28px; font-weight: bold;">🏆 Congratulations on Your Win!</h2>
-          <p style="color: #666; margin: 0; line-height: 1.6; font-size: 16px;">
-            We are thrilled to announce that <strong>{{company_name}}</strong> has been selected as the winner of <strong>{{award_name}}</strong>!
-            This prestigious recognition celebrates your outstanding achievements and commitment to excellence.
-          </p>
-        `;
-        if (textBlocks[1]) textBlocks[1].innerHTML = `
-          <p style="color: #666; margin: 0; line-height: 1.6; font-size: 16px;">
-            Your success story inspires others and sets a benchmark for excellence in the industry. We look forward to celebrating
-            this momentous achievement with you at our awards ceremony.
-          </p>
-        `;
+        if (textBlocks[0]) {
+          textBlocks[0].innerHTML = `<strong style="font-size: 24px; color: #1a1a1a;">🏆 Congratulations on Your Win!</strong>`;
+          textBlocks[0].style.fontSize = '16px';
+        }
+        if (textBlocks[1]) {
+          textBlocks[1].innerHTML = `We are thrilled to announce that <strong>{{company_name}}</strong> has been selected as the winner of <strong>{{award_name}}</strong>! This prestigious recognition celebrates your outstanding achievements and commitment to excellence.`;
+        }
+        if (textBlocks[2]) {
+          textBlocks[2].innerHTML = `Your success story inspires others and sets a benchmark for excellence in the industry. We look forward to celebrating this momentous achievement with you at our awards ceremony.`;
+        }
         break;
 
       case 'nominee':
-        if (textBlocks[0]) textBlocks[0].innerHTML = `
-          <h2 style="color: #1a1a1a; margin: 0 0 10px 0; font-size: 28px; font-weight: bold;">⭐ You've Been Nominated!</h2>
-          <p style="color: #666; margin: 0; line-height: 1.6; font-size: 16px;">
-            We're delighted to inform you that <strong>{{company_name}}</strong> has been shortlisted for <strong>{{award_name}}</strong>!
-            Being selected from hundreds of entries is a remarkable achievement in itself.
-          </p>
-        `;
-        if (textBlocks[1]) textBlocks[1].innerHTML = `
-          <p style="color: #666; margin: 0; line-height: 1.6; font-size: 14px;">
-            <strong>What happens next?</strong><br>
-            Our judging panel will now review all nominees. Winners will be announced at the awards ceremony on {{event_date}}.
-            We encourage you to attend this prestigious event to celebrate with fellow nominees and industry leaders.
-          </p>
-        `;
+        if (textBlocks[0]) {
+          textBlocks[0].innerHTML = `<strong style="font-size: 24px; color: #1a1a1a;">⭐ You've Been Nominated!</strong>`;
+        }
+        if (textBlocks[1]) {
+          textBlocks[1].innerHTML = `We're delighted to inform you that <strong>{{company_name}}</strong> has been shortlisted for <strong>{{award_name}}</strong>! Being selected from hundreds of entries is a remarkable achievement in itself.`;
+        }
+        if (textBlocks[2]) {
+          textBlocks[2].innerHTML = `<strong>What happens next?</strong><br>Our judging panel will now review all nominees. Winners will be announced at the awards ceremony on {{event_date}}. We encourage you to attend this prestigious event to celebrate with fellow nominees and industry leaders.`;
+        }
         break;
 
       case 'event-countdown':
-        if (textBlocks[0]) textBlocks[0].innerHTML = `
-          <h2 style="color: #1a1a1a; margin: 0 0 10px 0; font-size: 28px; font-weight: bold;">⏰ The Countdown is On!</h2>
-          <p style="color: #666; margin: 0; line-height: 1.6; font-size: 16px;">
-            Only <span style="color: #0d6efd; font-weight: bold; font-size: 20px;">{{days_left}} days</span> until
-            <strong>{{event_name}}</strong>! The excitement is building as we prepare for an unforgettable celebration of excellence.
-          </p>
-        `;
-        if (textBlocks[1]) textBlocks[1].innerHTML = `
-          <p style="color: #666; margin: 0; line-height: 1.6; font-size: 16px;">
-            <strong>Event Details:</strong><br>
-            📅 Date: {{event_date}}<br>
-            📍 Venue: {{event_venue}}<br>
-            🕐 Time: {{event_time}}<br><br>
-            Don't miss this opportunity to network with industry leaders and celebrate outstanding achievements!
-          </p>
-        `;
+        if (textBlocks[0]) {
+          textBlocks[0].innerHTML = `<strong style="font-size: 24px; color: #1a1a1a;">⏰ The Countdown is On!</strong>`;
+        }
+        if (textBlocks[1]) {
+          textBlocks[1].innerHTML = `Only <span style="color: #0d6efd; font-weight: bold; font-size: 20px;">{{days_left}} days</span> until <strong>{{event_name}}</strong>! The excitement is building as we prepare for an unforgettable celebration of excellence.`;
+        }
+        if (textBlocks[2]) {
+          textBlocks[2].innerHTML = `<strong>Event Details:</strong><br>📅 Date: {{event_date}}<br>📍 Venue: {{event_venue}}<br>🕐 Time: {{event_time}}<br><br>Don't miss this opportunity to network with industry leaders and celebrate outstanding achievements!`;
+        }
         break;
 
       case 'event-tickets':
-        if (textBlocks[0]) textBlocks[0].innerHTML = `
-          <h2 style="color: #1a1a1a; margin: 0 0 10px 0; font-size: 28px; font-weight: bold;">🎟️ Book Your Tickets Now!</h2>
-          <p style="color: #666; margin: 0; line-height: 1.6; font-size: 16px;">
-            Secure your place at <strong>{{event_name}}</strong> - the most prestigious awards ceremony of the year.
-            Join us for an evening of celebration, networking, and recognition of excellence.
-          </p>
-        `;
-        if (textBlocks[1]) textBlocks[1].innerHTML = `
-          <p style="color: #666; margin: 0; line-height: 1.6; font-size: 14px;">
-            <strong>Ticket Options:</strong><br>
-            🥇 VIP Table (10 guests): £{{vip_price}}<br>
-            🥈 Standard Table (8 guests): £{{standard_price}}<br>
-            🎫 Individual Ticket: £{{individual_price}}<br><br>
-            All tickets include welcome drinks, three-course dinner, entertainment, and awards ceremony.
-          </p>
-        `;
+        if (textBlocks[0]) {
+          textBlocks[0].innerHTML = `<strong style="font-size: 24px; color: #1a1a1a;">🎟️ Book Your Tickets Now!</strong>`;
+        }
+        if (textBlocks[1]) {
+          textBlocks[1].innerHTML = `Secure your place at <strong>{{event_name}}</strong> - the most prestigious awards ceremony of the year. Join us for an evening of celebration, networking, and recognition of excellence.`;
+        }
+        if (textBlocks[2]) {
+          textBlocks[2].innerHTML = `<strong>Ticket Options:</strong><br>🥇 VIP Table (10 guests): £{{vip_price}}<br>🥈 Standard Table (8 guests): £{{standard_price}}<br>🎫 Individual Ticket: £{{individual_price}}<br><br>All tickets include welcome drinks, three-course dinner, entertainment, and awards ceremony.`;
+        }
         break;
 
       case 'general':
-        if (textBlocks[0]) textBlocks[0].innerHTML = `
-          <h2 style="color: #1a1a1a; margin: 0 0 10px 0; font-size: 28px; font-weight: bold;">📢 Important Announcement</h2>
-          <p style="color: #666; margin: 0; line-height: 1.6; font-size: 16px;">
-            We have an important update to share with you regarding {{topic}}. Please take a moment to review the information below.
-          </p>
-        `;
-        if (textBlocks[1]) textBlocks[1].innerHTML = `
-          <p style="color: #666; margin: 0; line-height: 1.6; font-size: 16px;">
-            [Add your announcement details here. You can edit this text by clicking on it.]<br><br>
-            If you have any questions, please don't hesitate to contact our team at {{contact_email}} or call {{contact_phone}}.
-          </p>
-        `;
+        if (textBlocks[0]) {
+          textBlocks[0].innerHTML = `<strong style="font-size: 24px; color: #1a1a1a;">📢 Important Announcement</strong>`;
+        }
+        if (textBlocks[1]) {
+          textBlocks[1].innerHTML = `We have an important update to share with you regarding {{topic}}. Please take a moment to review the information below.`;
+        }
+        if (textBlocks[2]) {
+          textBlocks[2].innerHTML = `[Add your announcement details here. You can edit this text by clicking on it.]<br><br>If you have any questions, please don't hesitate to contact our team at {{contact_email}} or call {{contact_phone}}.`;
+        }
         break;
     }
+
+    console.log('Template customization complete');
 
     // Customize button text based on template
     const buttons = this.canvas.querySelectorAll('a[style*="background"]');

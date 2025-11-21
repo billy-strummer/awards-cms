@@ -646,9 +646,14 @@
 
           <div class="d-flex justify-content-between align-items-center mb-4">
             <h2><i class="bi bi-calendar-event me-3"></i>Events Management</h2>
-            <button class="btn btn-primary" onclick="eventsModule.openAddModal()">
-              <i class="bi bi-plus-circle me-2"></i>Add Event
-            </button>
+            <div class="d-flex gap-2">
+              <button class="btn btn-outline-secondary" onclick="eventsModule.openTemplatesManager()">
+                <i class="bi bi-layout-text-sidebar me-2"></i>Templates
+              </button>
+              <button class="btn btn-primary" onclick="eventsModule.openAddModal()">
+                <i class="bi bi-plus-circle me-2"></i>Add Event
+              </button>
+            </div>
           </div>
 
           <!-- Events Table -->
@@ -1867,6 +1872,93 @@ in recognition of excellence
           </button>
           <button type="button" class="btn btn-info" onclick="winnersModule.exportYearComparison()">
             <i class="bi bi-download me-1"></i>Export Report (CSV)
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Event Templates Manager Modal -->
+  <div class="modal fade" id="eventTemplatesModal" tabindex="-1" aria-labelledby="eventTemplatesModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-xl">
+      <div class="modal-content">
+        <div class="modal-header bg-secondary text-white">
+          <h5 class="modal-title" id="eventTemplatesModalLabel">
+            <i class="bi bi-layout-text-sidebar me-2"></i>Event Templates Manager
+          </h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body p-4">
+          <div class="alert alert-secondary">
+            <i class="bi bi-info-circle me-2"></i>
+            Create reusable event templates to quickly create new events with pre-configured settings and gallery sections.
+          </div>
+
+          <!-- Templates List -->
+          <div class="card mb-4">
+            <div class="card-header bg-light d-flex justify-content-between align-items-center">
+              <h6 class="mb-0"><i class="bi bi-list-ul me-2"></i>Saved Templates (<span id="templatesCount">0</span>)</h6>
+              <button class="btn btn-primary btn-sm" onclick="eventsModule.openCreateTemplate()">
+                <i class="bi bi-plus-circle me-1"></i>Create Template
+              </button>
+            </div>
+            <div class="card-body">
+              <div id="templatesList">
+                <!-- Populated by JavaScript -->
+                <div class="text-center py-5 text-muted">
+                  <i class="bi bi-hourglass-split display-4 d-block mb-2 opacity-25"></i>
+                  Loading templates...
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Create/Edit Template Form -->
+          <div id="templateFormSection" class="card d-none">
+            <div class="card-header bg-primary text-white">
+              <h6 class="mb-0" id="templateFormTitle"><i class="bi bi-plus-circle me-2"></i>Create New Template</h6>
+            </div>
+            <div class="card-body">
+              <form id="templateForm">
+                <input type="hidden" id="templateId">
+                <div class="row">
+                  <div class="col-md-6 mb-3">
+                    <label for="templateName" class="form-label">Template Name *</label>
+                    <input type="text" class="form-control" id="templateName" required
+                      placeholder="e.g., Annual Awards Ceremony">
+                  </div>
+                  <div class="col-md-6 mb-3">
+                    <label for="templateVenue" class="form-label">Default Venue</label>
+                    <input type="text" class="form-control" id="templateVenue"
+                      placeholder="e.g., Grand Hotel Ballroom">
+                  </div>
+                  <div class="col-md-12 mb-3">
+                    <label for="templateDescription" class="form-label">Description Template</label>
+                    <textarea class="form-control" id="templateDescription" rows="3"
+                      placeholder="e.g., Annual awards ceremony celebrating excellence in British trade"></textarea>
+                  </div>
+                  <div class="col-md-12 mb-3">
+                    <label class="form-label">Gallery Sections (one per line)</label>
+                    <textarea class="form-control" id="templateGallerySections" rows="5"
+                      placeholder="Drinks Reception&#10;Award Presentations&#10;Winner Photos&#10;Networking&#10;Closing Ceremony"></textarea>
+                    <small class="text-muted">Enter gallery section names, one per line. These will be created when using the template.</small>
+                  </div>
+                </div>
+                <div class="d-flex gap-2">
+                  <button type="button" class="btn btn-primary" onclick="eventsModule.saveTemplate()">
+                    <i class="bi bi-save me-1"></i>Save Template
+                  </button>
+                  <button type="button" class="btn btn-secondary" onclick="eventsModule.cancelTemplateEdit()">
+                    Cancel
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer bg-light">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+            <i class="bi bi-x-lg me-1"></i>Close
           </button>
         </div>
       </div>

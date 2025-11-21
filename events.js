@@ -154,14 +154,40 @@ const eventsModule = {
           .from('events')
           .update(eventData)
           .eq('id', eventId));
+
+        if (error) throw error;
+
       } else {
         // Insert new event
-        ({ error } = await STATE.client
+        const { data: newEvent, error: insertError } = await STATE.client
           .from('events')
-          .insert([eventData]));
-      }
+          .insert([eventData])
+          .select()
+          .single();
 
-      if (error) throw error;
+        if (insertError) throw insertError;
+
+        // Create gallery sections from template if available
+        if (window._templateGallerySections && window._templateGallerySections.length > 0) {
+          const sections = window._templateGallerySections.map((sectionName, index) => ({
+            event_id: newEvent.id,
+            gallery_name: sectionName,
+            gallery_description: '',
+            display_order: index + 1
+          }));
+
+          const { error: sectionsError } = await STATE.client
+            .from('event_galleries')
+            .insert(sections);
+
+          if (!sectionsError) {
+            console.log(`✅ Created ${sections.length} gallery sections from template`);
+          }
+
+          // Clear template sections
+          window._templateGallerySections = [];
+        }
+      }
 
       utils.showToast(`Event ${eventId ? 'updated' : 'added'} successfully!`, 'success');
 
@@ -338,6 +364,251 @@ const eventsModule = {
       // Don't throw - let the event creation succeed even if sections fail
       utils.showToast('Event created but gallery sections failed to clone', 'warning');
     }
+  },
+
+  /* ==================================================== */
+  /* EVENT TEMPLATES */
+  /* ==================================================== */
+
+  /**
+   * Load templates from localStorage
+   */
+  loadTemplates() {
+    try {
+      const stored = localStorage.getItem('eventTemplates');
+      return stored ? JSON.parse(stored) : [];
+    } catch (error) {
+      console.error('Error loading templates:', error);
+      return [];
+    }
+  },
+
+  /**
+   * Save templates to localStorage
+   */
+  saveTemplatesStorage(templates) {
+    try {
+      localStorage.setItem('eventTemplates', JSON.stringify(templates));
+    } catch (error) {
+      console.error('Error saving templates:', error);
+      utils.showToast('Error saving templates', 'error');
+    }
+  },
+
+  /**
+   * Open templates manager modal
+   */
+  openTemplatesManager() {
+    // Load and display templates
+    this.renderTemplatesList();
+
+    // Hide form section
+    document.getElementById('templateFormSection').classList.add('d-none');
+
+    // Show modal
+    const modal = new bootstrap.Modal(document.getElementById('eventTemplatesModal'));
+    modal.show();
+  },
+
+  /**
+   * Render templates list
+   */
+  renderTemplatesList() {
+    const templates = this.loadTemplates();
+    const container = document.getElementById('templatesList');
+    const countEl = document.getElementById('templatesCount');
+
+    countEl.textContent = templates.length;
+
+    if (templates.length === 0) {
+      container.innerHTML = `
+        <div class="alert alert-info text-center">
+          <i class="bi bi-inbox display-4 d-block mb-2 opacity-25"></i>
+          <p class="mb-0">No templates created yet. Click "Create Template" to get started.</p>
+        </div>
+      `;
+      return;
+    }
+
+    container.innerHTML = templates.map((template, index) => `
+      <div class="card mb-3">
+        <div class="card-body">
+          <div class="d-flex justify-content-between align-items-start">
+            <div class="flex-grow-1">
+              <h6 class="card-title mb-2">
+                <i class="bi bi-layout-text-sidebar me-2 text-secondary"></i>
+                ${utils.escapeHtml(template.name)}
+              </h6>
+              <p class="card-text small text-muted mb-2">
+                ${template.venue ? `<i class="bi bi-geo-alt me-1"></i>${utils.escapeHtml(template.venue)}<br>` : ''}
+                ${template.description ? `<i class="bi bi-text-paragraph me-1"></i>${utils.escapeHtml(template.description)}` : ''}
+              </p>
+              ${template.gallerySections && template.gallerySections.length > 0 ? `
+                <div class="small">
+                  <strong>Gallery Sections:</strong> ${template.gallerySections.join(', ')}
+                </div>
+              ` : ''}
+            </div>
+            <div class="btn-group btn-group-sm ms-3" role="group">
+              <button class="btn btn-outline-success btn-icon"
+                onclick="eventsModule.useTemplate(${index})"
+                title="Use Template">
+                <i class="bi bi-play-fill"></i>
+              </button>
+              <button class="btn btn-outline-primary btn-icon"
+                onclick="eventsModule.editTemplate(${index})"
+                title="Edit">
+                <i class="bi bi-pencil"></i>
+              </button>
+              <button class="btn btn-outline-danger btn-icon"
+                onclick="eventsModule.deleteTemplate(${index})"
+                title="Delete">
+                <i class="bi bi-trash"></i>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    `).join('');
+  },
+
+  /**
+   * Open create template form
+   */
+  openCreateTemplate() {
+    document.getElementById('templateFormTitle').innerHTML =
+      '<i class="bi bi-plus-circle me-2"></i>Create New Template';
+    document.getElementById('templateId').value = '';
+    document.getElementById('templateName').value = '';
+    document.getElementById('templateVenue').value = '';
+    document.getElementById('templateDescription').value = '';
+    document.getElementById('templateGallerySections').value = '';
+
+    document.getElementById('templateFormSection').classList.remove('d-none');
+  },
+
+  /**
+   * Edit template
+   */
+  editTemplate(index) {
+    const templates = this.loadTemplates();
+    const template = templates[index];
+
+    if (!template) return;
+
+    document.getElementById('templateFormTitle').innerHTML =
+      '<i class="bi bi-pencil me-2"></i>Edit Template';
+    document.getElementById('templateId').value = index;
+    document.getElementById('templateName').value = template.name || '';
+    document.getElementById('templateVenue').value = template.venue || '';
+    document.getElementById('templateDescription').value = template.description || '';
+    document.getElementById('templateGallerySections').value =
+      template.gallerySections ? template.gallerySections.join('\n') : '';
+
+    document.getElementById('templateFormSection').classList.remove('d-none');
+    document.getElementById('templateFormSection').scrollIntoView({ behavior: 'smooth' });
+  },
+
+  /**
+   * Save template
+   */
+  saveTemplate() {
+    const name = document.getElementById('templateName').value.trim();
+    const venue = document.getElementById('templateVenue').value.trim();
+    const description = document.getElementById('templateDescription').value.trim();
+    const gallerySectionsText = document.getElementById('templateGallerySections').value.trim();
+    const templateId = document.getElementById('templateId').value;
+
+    if (!name) {
+      utils.showToast('Please enter a template name', 'warning');
+      return;
+    }
+
+    // Parse gallery sections
+    const gallerySections = gallerySectionsText
+      ? gallerySectionsText.split('\n').map(s => s.trim()).filter(s => s.length > 0)
+      : [];
+
+    const template = {
+      name,
+      venue,
+      description,
+      gallerySections
+    };
+
+    const templates = this.loadTemplates();
+
+    if (templateId !== '') {
+      // Update existing template
+      const index = parseInt(templateId);
+      templates[index] = template;
+      utils.showToast('Template updated successfully!', 'success');
+    } else {
+      // Create new template
+      templates.push(template);
+      utils.showToast('Template created successfully!', 'success');
+    }
+
+    this.saveTemplatesStorage(templates);
+    this.renderTemplatesList();
+    this.cancelTemplateEdit();
+  },
+
+  /**
+   * Delete template
+   */
+  deleteTemplate(index) {
+    if (!utils.confirm('Are you sure you want to delete this template?')) {
+      return;
+    }
+
+    const templates = this.loadTemplates();
+    templates.splice(index, 1);
+    this.saveTemplatesStorage(templates);
+    this.renderTemplatesList();
+    utils.showToast('Template deleted successfully!', 'success');
+  },
+
+  /**
+   * Cancel template edit
+   */
+  cancelTemplateEdit() {
+    document.getElementById('templateFormSection').classList.add('d-none');
+    document.getElementById('templateForm').reset();
+  },
+
+  /**
+   * Use template to create new event
+   */
+  async useTemplate(index) {
+    const templates = this.loadTemplates();
+    const template = templates[index];
+
+    if (!template) return;
+
+    // Close templates modal
+    bootstrap.Modal.getInstance(document.getElementById('eventTemplatesModal')).hide();
+
+    // Wait a bit for modal to close
+    await new Promise(resolve => setTimeout(resolve, 300));
+
+    // Open add event modal with template data
+    document.getElementById('eventModalTitle').textContent = `Add Event (from "${template.name}" template)`;
+    document.getElementById('eventId').value = '';
+    document.getElementById('eventName').value = '';
+    document.getElementById('eventDate').value = '';
+    document.getElementById('eventYear').value = new Date().getFullYear();
+    document.getElementById('eventVenue').value = template.venue || '';
+    document.getElementById('eventDescription').value = template.description || '';
+    document.getElementById('saveEventBtn').textContent = 'Add Event';
+
+    // Store template gallery sections for later use
+    window._templateGallerySections = template.gallerySections || [];
+
+    const modal = new bootstrap.Modal(document.getElementById('eventModal'));
+    modal.show();
+
+    utils.showToast(`Using "${template.name}" template. Gallery sections will be created automatically.`, 'info');
   }
 };
 

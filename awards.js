@@ -196,7 +196,6 @@ const awardsModule = {
                onclick="assignmentsModule.openAssignmentsModal('${award.id}', '${utils.escapeHtml(award.award_name || award.award_category || 'Award').replace(/'/g, "\\'")}')">
               ${utils.escapeHtml(award.award_name || award.award_category || '-')}
             </a>
-            ${award.year ? `<div><small class="text-muted"><i class="bi bi-calendar3 me-1"></i>${award.year}</small></div>` : ''}
           </td>
           <td>
             <span class="badge bg-info-subtle text-info">

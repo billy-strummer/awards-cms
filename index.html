@@ -417,20 +417,31 @@
           <!-- Top Companies Section -->
           <div class="content-card">
             <div class="d-flex justify-content-between align-items-center mb-4">
-              <div>
-                <h3 class="h5 mb-1">
+              <div class="flex-grow-1">
+                <h3 class="h5 mb-2">
                   <i class="bi bi-star-fill text-warning me-2"></i>Top Companies
                 </h3>
-                <p class="text-muted small mb-0">Most active organizations</p>
+                <div class="d-flex align-items-center gap-2">
+                  <label class="text-muted small mb-0">View by:</label>
+                  <select class="form-select form-select-sm" id="topCompaniesMetric"
+                          onchange="dashboardModule.updateTopCompanies(this.value)" style="width: auto;">
+                    <option value="most-active">Most Active</option>
+                    <option value="top-spenders">Top Spenders</option>
+                    <option value="most-awards">Most Awards Won</option>
+                    <option value="recent-activity">Recent Activity</option>
+                    <option value="highest-revenue">Highest Revenue</option>
+                    <option value="newest-members">Newest Members</option>
+                  </select>
+                </div>
               </div>
-              <button class="btn btn-outline-primary btn-sm">
+              <button class="btn btn-outline-primary btn-sm" onclick="dashboardModule.navigateToSection('organisations')">
                 <i class="bi bi-arrow-right me-1"></i>View All
               </button>
             </div>
             
             <div class="table-responsive">
               <table class="table table-hover">
-                <thead>
+                <thead id="topCompaniesTableHead">
                   <tr>
                     <th width="60">#</th>
                     <th>Company Name</th>

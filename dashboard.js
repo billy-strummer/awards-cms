@@ -517,11 +517,12 @@ const dashboardModule = {
   },
 
   /**
-   * Update top companies table
+   * Update top companies table based on selected metric
    */
-  updateTopCompanies() {
+  async updateTopCompanies(metric = 'most-active') {
     const tbody = document.getElementById('topCompaniesTableBody');
-    
+    const thead = document.getElementById('topCompaniesTableHead');
+
     if (STATE.allOrganisations.length === 0) {
       tbody.innerHTML = `
         <tr>
@@ -533,10 +534,277 @@ const dashboardModule = {
       `;
       return;
     }
-    
+
+    try {
+      utils.showLoading();
+
+      let topCompanies = [];
+      let headers = ['#', 'Company Name', 'Email', 'Website', 'Region'];
+
+      switch (metric) {
+        case 'most-active':
+          // Most active = most awards won
+          topCompanies = await this.getCompaniesByAwardCount();
+          headers = ['#', 'Company Name', 'Awards Won', 'Region', 'Latest Win'];
+          break;
+
+        case 'top-spenders':
+          // Companies with highest total payments
+          topCompanies = await this.getCompaniesBySpending();
+          headers = ['#', 'Company Name', 'Total Spent', 'Orders', 'Last Payment'];
+          break;
+
+        case 'most-awards':
+          // Same as most-active but with different presentation
+          topCompanies = await this.getCompaniesByAwardCount();
+          headers = ['#', 'Company Name', 'Awards', 'First Win', 'Latest Win'];
+          break;
+
+        case 'recent-activity':
+          // Most recently updated or created
+          topCompanies = await this.getCompaniesByRecentActivity();
+          headers = ['#', 'Company Name', 'Last Activity', 'Region', 'Status'];
+          break;
+
+        case 'highest-revenue':
+          // Companies sorted by annual revenue
+          topCompanies = await this.getCompaniesByRevenue();
+          headers = ['#', 'Company Name', 'Annual Revenue', 'Employees', 'Region'];
+          break;
+
+        case 'newest-members':
+          // Most recently created organisations
+          topCompanies = await this.getNewestCompanies();
+          headers = ['#', 'Company Name', 'Joined Date', 'Region', 'Status'];
+          break;
+
+        default:
+          topCompanies = STATE.allOrganisations.slice(0, 5);
+      }
+
+      // Update table headers
+      thead.innerHTML = `
+        <tr>
+          ${headers.map(h => `<th ${h === '#' ? 'width="60"' : ''}>${h}</th>`).join('')}
+        </tr>
+      `;
+
+      // Update table body
+      tbody.innerHTML = topCompanies.map((org, idx) => this.renderCompanyRow(org, idx, metric)).join('');
+
+    } catch (error) {
+      console.error('Error updating top companies:', error);
+      tbody.innerHTML = `
+        <tr>
+          <td colspan="5" class="text-center py-4 text-danger">
+            <i class="bi bi-exclamation-triangle me-2"></i>Error loading companies
+          </td>
+        </tr>
+      `;
+    } finally {
+      utils.hideLoading();
+    }
+  },
+
+  /**
+   * Render company row based on metric
+   */
+  renderCompanyRow(org, idx, metric) {
+    const rank = idx + 1;
+    const companyName = utils.escapeHtml(org.company_name || 'N/A');
+
+    switch (metric) {
+      case 'most-active':
+      case 'most-awards':
+        return `
+          <tr class="fade-in">
+            <td><span class="badge bg-warning text-dark">${rank}</span></td>
+            <td><strong>${companyName}</strong></td>
+            <td><span class="badge bg-primary">${org.award_count || 0}</span></td>
+            <td>${org.first_win ? new Date(org.first_win).toLocaleDateString() : 'N/A'}</td>
+            <td>${org.latest_win ? new Date(org.latest_win).toLocaleDateString() : 'N/A'}</td>
+          </tr>
+        `;
+
+      case 'top-spenders':
+        return `
+          <tr class="fade-in">
+            <td><span class="badge bg-success">${rank}</span></td>
+            <td><strong>${companyName}</strong></td>
+            <td class="fw-bold text-success">£${(org.total_spent || 0).toFixed(2)}</td>
+            <td><span class="badge bg-secondary">${org.order_count || 0}</span></td>
+            <td>${org.last_payment ? new Date(org.last_payment).toLocaleDateString() : 'N/A'}</td>
+          </tr>
+        `;
+
+      case 'recent-activity':
+        return `
+          <tr class="fade-in">
+            <td><span class="badge bg-info">${rank}</span></td>
+            <td><strong>${companyName}</strong></td>
+            <td>${org.updated_at ? new Date(org.updated_at).toLocaleDateString() : 'N/A'}</td>
+            <td>${utils.escapeHtml(org.region || 'N/A')}</td>
+            <td><span class="badge bg-success">${org.status || 'active'}</span></td>
+          </tr>
+        `;
+
+      case 'highest-revenue':
+        return `
+          <tr class="fade-in">
+            <td><span class="badge bg-primary">${rank}</span></td>
+            <td><strong>${companyName}</strong></td>
+            <td class="fw-bold">£${(org.annual_revenue || 0).toLocaleString()}</td>
+            <td>${org.employee_count || 'N/A'}</td>
+            <td>${utils.escapeHtml(org.region || 'N/A')}</td>
+          </tr>
+        `;
+
+      case 'newest-members':
+        return `
+          <tr class="fade-in">
+            <td><span class="badge bg-secondary">${rank}</span></td>
+            <td><strong>${companyName}</strong></td>
+            <td>${org.created_at ? new Date(org.created_at).toLocaleDateString() : 'N/A'}</td>
+            <td>${utils.escapeHtml(org.region || 'N/A')}</td>
+            <td><span class="badge bg-success">${org.status || 'active'}</span></td>
+          </tr>
+        `;
+
+      default:
+        return `
+          <tr class="fade-in">
+            <td><span class="badge bg-secondary">${rank}</span></td>
+            <td><strong>${companyName}</strong></td>
+            <td>${utils.escapeHtml(org.email || 'N/A')}</td>
+            <td>${org.website ? `<a href="${org.website}" target="_blank">${utils.escapeHtml(org.website)}</a>` : 'N/A'}</td>
+            <td>${utils.escapeHtml(org.region || 'N/A')}</td>
+          </tr>
+        `;
+    }
+  },
+
+  /**
+   * Get companies by award count
+   */
+  async getCompaniesByAwardCount() {
+    const { data: winners, error } = await STATE.client
+      .from('award_assignments')
+      .select('organisation_id, organisations(company_name), created_at')
+      .eq('status', 'winner');
+
+    if (error) throw error;
+
+    // Group by organisation and count awards
+    const orgMap = {};
+    winners?.forEach(w => {
+      if (w.organisation_id && w.organisations) {
+        if (!orgMap[w.organisation_id]) {
+          orgMap[w.organisation_id] = {
+            company_name: w.organisations.company_name,
+            award_count: 0,
+            first_win: w.created_at,
+            latest_win: w.created_at
+          };
+        }
+        orgMap[w.organisation_id].award_count++;
+        if (new Date(w.created_at) < new Date(orgMap[w.organisation_id].first_win)) {
+          orgMap[w.organisation_id].first_win = w.created_at;
+        }
+        if (new Date(w.created_at) > new Date(orgMap[w.organisation_id].latest_win)) {
+          orgMap[w.organisation_id].latest_win = w.created_at;
+        }
+      }
+    });
+
+    return Object.values(orgMap)
+      .sort((a, b) => b.award_count - a.award_count)
+      .slice(0, 5);
+  },
+
+  /**
+   * Get companies by spending
+   */
+  async getCompaniesBySpending() {
+    const { data: payments, error } = await STATE.client
+      .from('payments')
+      .select('organisation_id, amount, payment_date, organisations(company_name)');
+
+    if (error) throw error;
+
+    // Group by organisation and sum spending
+    const orgMap = {};
+    payments?.forEach(p => {
+      if (p.organisation_id && p.organisations) {
+        if (!orgMap[p.organisation_id]) {
+          orgMap[p.organisation_id] = {
+            company_name: p.organisations.company_name,
+            total_spent: 0,
+            order_count: 0,
+            last_payment: p.payment_date
+          };
+        }
+        orgMap[p.organisation_id].total_spent += parseFloat(p.amount || 0);
+        orgMap[p.organisation_id].order_count++;
+        if (new Date(p.payment_date) > new Date(orgMap[p.organisation_id].last_payment)) {
+          orgMap[p.organisation_id].last_payment = p.payment_date;
+        }
+      }
+    });
+
+    return Object.values(orgMap)
+      .sort((a, b) => b.total_spent - a.total_spent)
+      .slice(0, 5);
+  },
+
+  /**
+   * Get companies by recent activity
+   */
+  async getCompaniesByRecentActivity() {
+    return STATE.allOrganisations
+      .sort((a, b) => new Date(b.updated_at || b.created_at) - new Date(a.updated_at || a.created_at))
+      .slice(0, 5);
+  },
+
+  /**
+   * Get companies by revenue
+   */
+  async getCompaniesByRevenue() {
+    return STATE.allOrganisations
+      .filter(org => org.annual_revenue && org.annual_revenue > 0)
+      .sort((a, b) => (b.annual_revenue || 0) - (a.annual_revenue || 0))
+      .slice(0, 5);
+  },
+
+  /**
+   * Get newest companies
+   */
+  async getNewestCompanies() {
+    return STATE.allOrganisations
+      .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
+      .slice(0, 5);
+  },
+
+  /**
+   * DEPRECATED: Old updateTopCompanies function (kept for reference)
+   */
+  updateTopCompaniesOld() {
+    const tbody = document.getElementById('topCompaniesTableBody');
+
+    if (STATE.allOrganisations.length === 0) {
+      tbody.innerHTML = `
+        <tr>
+          <td colspan="5" class="text-center py-4 text-muted">
+            <i class="bi bi-inbox display-4 d-block mb-2 opacity-25"></i>
+            No organisations found
+          </td>
+        </tr>
+      `;
+      return;
+    }
+
     // Get top 5 companies (or all if less than 5)
     const topCompanies = STATE.allOrganisations.slice(0, 5);
-    
+
     tbody.innerHTML = topCompanies.map((org, idx) => `
       <tr class="fade-in">
         <td>

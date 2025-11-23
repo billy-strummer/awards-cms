@@ -700,8 +700,22 @@
                   <option value="2023">2023</option>
                 </select>
               </div>
-              
-              <div class="col-md-3">
+
+              <div class="col-md-2">
+                <label for="awardsStatusFilterSelect" class="form-label">
+                  <i class="bi bi-flag me-1"></i>Status
+                </label>
+                <select class="form-select" id="awardsStatusFilterSelect">
+                  <option value="">All Statuses</option>
+                  <option value="draft">Draft</option>
+                  <option value="pending">Pending</option>
+                  <option value="published">Published</option>
+                  <option value="active">Active</option>
+                  <option value="archived">Archived</option>
+                </select>
+              </div>
+
+              <div class="col-md-2">
                 <label for="awardsSectorFilterSelect" class="form-label">
                   <i class="bi bi-briefcase me-1"></i>Sector
                 </label>
@@ -709,8 +723,8 @@
                   <option value="">All Sectors</option>
                 </select>
               </div>
-              
-              <div class="col-md-3">
+
+              <div class="col-md-2">
                 <label for="awardsRegionFilterSelect" class="form-label">
                   <i class="bi bi-geo-alt me-1"></i>Region
                 </label>
@@ -718,7 +732,7 @@
                   <option value="">All Regions</option>
                 </select>
               </div>
-              
+
               <div class="col-md-3">
                 <label for="awardsSearchBox" class="form-label">
                   <i class="bi bi-search me-1"></i>Search
@@ -738,24 +752,22 @@
                 <span id="awardsCount">0</span> awards
               </div>
             </div>
-            
+
             <div class="table-responsive">
               <table class="table table-hover table-striped align-middle">
                 <thead>
                   <tr>
-                    <th>Company</th>
-                    <th>Year</th>
                     <th>Award Category</th>
                     <th>Sector</th>
                     <th>Region</th>
                     <th>Status</th>
                     <th class="text-center">Nominees</th>
-                    <th width="150" class="text-center">Actions</th>
+                    <th width="100" class="text-center">Actions</th>
                   </tr>
                 </thead>
                 <tbody id="awardsTableBody">
                   <tr>
-                    <td colspan="7" class="text-center py-5">
+                    <td colspan="6" class="text-center py-5">
                       <div class="text-muted">
                         <i class="bi bi-inbox display-3 d-block mb-3 opacity-25"></i>
                         <p class="mb-0">Loading awards...</p>

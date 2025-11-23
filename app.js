@@ -109,7 +109,11 @@ document.addEventListener('DOMContentLoaded', function() {
   document.getElementById('awardsYearFilterSelect').addEventListener('change', () => {
     awardsModule.filterAwards();
   });
-  
+
+  document.getElementById('awardsStatusFilterSelect').addEventListener('change', () => {
+    awardsModule.filterAwards();
+  });
+
   document.getElementById('awardsSectorFilterSelect').addEventListener('change', () => {
     awardsModule.filterAwards();
   });

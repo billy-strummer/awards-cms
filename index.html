@@ -1055,6 +1055,69 @@
             <p class="section-subtitle">Manage event photos and videos</p>
           </div>
 
+          <!-- Media Gallery Statistics -->
+          <div class="row g-3 mb-4">
+            <div class="col-md-3">
+              <div class="card border-0 bg-primary text-white h-100">
+                <div class="card-body">
+                  <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                      <h6 class="card-subtitle mb-2 opacity-75">Total Photos</h6>
+                      <h3 class="card-title mb-0" id="totalPhotosCount">0</h3>
+                    </div>
+                    <i class="bi bi-camera-fill fs-1 opacity-50"></i>
+                  </div>
+                  <p class="small mb-0 mt-2 opacity-75">Across all events</p>
+                </div>
+              </div>
+            </div>
+
+            <div class="col-md-3">
+              <div class="card border-0 bg-danger text-white h-100">
+                <div class="card-body">
+                  <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                      <h6 class="card-subtitle mb-2 opacity-75">Total Videos</h6>
+                      <h3 class="card-title mb-0" id="totalVideosCount">0</h3>
+                    </div>
+                    <i class="bi bi-play-btn-fill fs-1 opacity-50"></i>
+                  </div>
+                  <p class="small mb-0 mt-2 opacity-75">Across all events</p>
+                </div>
+              </div>
+            </div>
+
+            <div class="col-md-3">
+              <div class="card border-0 bg-warning text-dark h-100" style="cursor: pointer;" onclick="mediaGalleryModule.showUntaggedPhotos()" title="Click to view untagged photos">
+                <div class="card-body">
+                  <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                      <h6 class="card-subtitle mb-2">Untagged Photos</h6>
+                      <h3 class="card-title mb-0" id="untaggedPhotosCountGallery">0</h3>
+                    </div>
+                    <i class="bi bi-exclamation-triangle fs-1 opacity-50"></i>
+                  </div>
+                  <p class="small mb-0 mt-2">Need company/award tags</p>
+                </div>
+              </div>
+            </div>
+
+            <div class="col-md-3">
+              <div class="card border-0 bg-info text-white h-100">
+                <div class="card-body">
+                  <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                      <h6 class="card-subtitle mb-2 opacity-75">Total Events</h6>
+                      <h3 class="card-title mb-0" id="totalEventsWithMediaCount">0</h3>
+                    </div>
+                    <i class="bi bi-calendar-event fs-1 opacity-50"></i>
+                  </div>
+                  <p class="small mb-0 mt-2 opacity-75">With media</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
           <!-- Media Gallery Content -->
           <div id="mediaGalleryContent">
 

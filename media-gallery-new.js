@@ -26,6 +26,9 @@ const mediaGalleryModule = {
     try {
       utils.showLoading();
 
+      // Load statistics
+      await this.loadMediaStatistics();
+
       // Load and display events list
       await this.showEventsListView();
 
@@ -35,6 +38,158 @@ const mediaGalleryModule = {
     } finally {
       utils.hideLoading();
     }
+  },
+
+  /**
+   * Load Media Gallery Statistics
+   */
+  async loadMediaStatistics() {
+    try {
+      // Get total photos count
+      const { count: totalPhotos } = await STATE.client
+        .from('media_items')
+        .select('*', { count: 'exact', head: true })
+        .eq('media_type', 'image');
+
+      // Get total videos count
+      const { count: totalVideos } = await STATE.client
+        .from('media_items')
+        .select('*', { count: 'exact', head: true })
+        .eq('media_type', 'video');
+
+      // Get untagged photos count (photos without organisation_id or award_id)
+      const { count: untaggedPhotos } = await STATE.client
+        .from('media_items')
+        .select('*', { count: 'exact', head: true })
+        .eq('media_type', 'image')
+        .or('organisation_id.is.null,award_id.is.null');
+
+      // Get events with media
+      const { data: eventsWithMedia } = await STATE.client
+        .from('media_items')
+        .select('event_id')
+        .not('event_id', 'is', null);
+
+      const uniqueEvents = new Set(eventsWithMedia?.map(m => m.event_id));
+
+      // Update UI
+      document.getElementById('totalPhotosCount').textContent = totalPhotos || 0;
+      document.getElementById('totalVideosCount').textContent = totalVideos || 0;
+      document.getElementById('untaggedPhotosCountGallery').textContent = untaggedPhotos || 0;
+      document.getElementById('totalEventsWithMediaCount').textContent = uniqueEvents.size || 0;
+
+      // Also update dashboard stat if it exists
+      const dashboardUntagged = document.getElementById('untaggedPhotos');
+      if (dashboardUntagged) {
+        dashboardUntagged.textContent = untaggedPhotos || 0;
+      }
+
+    } catch (error) {
+      console.error('Error loading media statistics:', error);
+    }
+  },
+
+  /**
+   * Show Untagged Photos
+   */
+  async showUntaggedPhotos() {
+    try {
+      utils.showLoading();
+
+      // Load untagged photos
+      const { data: untagged, error } = await STATE.client
+        .from('media_items')
+        .select(`
+          *,
+          organisations(company_name),
+          awards(award_name),
+          events(event_name)
+        `)
+        .eq('media_type', 'image')
+        .or('organisation_id.is.null,award_id.is.null')
+        .order('uploaded_at', { ascending: false });
+
+      if (error) throw error;
+
+      if (!untagged || untagged.length === 0) {
+        utils.showToast('No untagged photos found! All photos are tagged.', 'success');
+        return;
+      }
+
+      // Create untagged photos view
+      this.currentView = 'untagged-photos';
+      this.hideAllViews();
+
+      // Create the view dynamically
+      const content = document.getElementById('mediaGalleryContent');
+      let untaggedView = document.getElementById('untaggedPhotosView');
+
+      if (!untaggedView) {
+        untaggedView = document.createElement('div');
+        untaggedView.id = 'untaggedPhotosView';
+        content.appendChild(untaggedView);
+      }
+
+      untaggedView.style.display = 'block';
+      untaggedView.innerHTML = `
+        <div class="mb-4">
+          <button class="btn btn-outline-secondary btn-sm" onclick="mediaGalleryModule.showEventsListView()">
+            <i class="bi bi-arrow-left me-2"></i>Back to Events
+          </button>
+          <h3 class="mt-3">
+            <i class="bi bi-exclamation-triangle text-warning me-2"></i>Untagged Photos
+            <span class="badge bg-warning text-dark">${untagged.length}</span>
+          </h3>
+          <p class="text-muted">These photos need to be tagged with companies or awards</p>
+        </div>
+
+        <div class="row g-3">
+          ${untagged.map(photo => `
+            <div class="col-md-3">
+              <div class="card h-100">
+                <img src="${photo.media_url}" class="card-img-top" alt="${photo.caption || 'Photo'}"
+                     style="height: 200px; object-fit: cover;">
+                <div class="card-body">
+                  <p class="small mb-1">
+                    <i class="bi bi-calendar me-1"></i>
+                    ${photo.events?.event_name || 'No event'}
+                  </p>
+                  <p class="small mb-1">
+                    <strong>Company:</strong>
+                    ${photo.organisations?.company_name || '<span class="text-danger">Not tagged</span>'}
+                  </p>
+                  <p class="small mb-1">
+                    <strong>Award:</strong>
+                    ${photo.awards?.award_name || '<span class="text-danger">Not tagged</span>'}
+                  </p>
+                  ${photo.caption ? `<p class="small text-muted mb-2">${utils.escapeHtml(photo.caption)}</p>` : ''}
+                  <button class="btn btn-sm btn-primary w-100"
+                          onclick="mediaGalleryModule.editPhotoTags('${photo.id}')">
+                    <i class="bi bi-tags me-1"></i>Add Tags
+                  </button>
+                </div>
+              </div>
+            </div>
+          `).join('')}
+        </div>
+      `;
+
+      utils.showToast(`Found ${untagged.length} untagged photo(s)`, 'info');
+
+    } catch (error) {
+      console.error('Error loading untagged photos:', error);
+      utils.showToast('Failed to load untagged photos: ' + error.message, 'error');
+    } finally {
+      utils.hideLoading();
+    }
+  },
+
+  /**
+   * Edit Photo Tags
+   */
+  async editPhotoTags(photoId) {
+    utils.showToast('Tag editing feature - to be implemented', 'info');
+    // This can be implemented later to open a modal for tagging
   },
 
   /**

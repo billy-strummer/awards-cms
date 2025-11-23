@@ -6,7 +6,7 @@
 SELECT
   o.company_name,
   COUNT(*) as total_assignments,
-  COUNT(DISTINCT a.award_id) as unique_awards
+  COUNT(DISTINCT aa.award_id) as unique_awards
 FROM award_assignments aa
 JOIN organisations o ON aa.organisation_id = o.id
 JOIN awards a ON aa.award_id = a.id

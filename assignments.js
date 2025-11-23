@@ -20,8 +20,7 @@ const assignmentsModule = {
           *,
           organisations!award_assignments_organisation_id_fkey (*)
         `)
-        .eq('award_id', awardId)
-        .order('assigned_date', { ascending: false });
+        .eq('award_id', awardId);
 
       if (error) {
         console.error('❌ Database error loading assignments:', error);
@@ -30,7 +29,14 @@ const assignmentsModule = {
 
       console.log(`✅ Found ${data?.length || 0} assignments`);
 
-      return data || [];
+      // Sort alphabetically by company name
+      const sortedData = (data || []).sort((a, b) => {
+        const nameA = a.organisations?.company_name?.toLowerCase() || '';
+        const nameB = b.organisations?.company_name?.toLowerCase() || '';
+        return nameA.localeCompare(nameB);
+      });
+
+      return sortedData;
     } catch (error) {
       console.error('💥 Error loading assignments:', error);
       utils.showToast('Failed to load assignments: ' + error.message, 'error');

@@ -1365,6 +1365,451 @@ const dashboardModule = {
   quickAddMedia() {
     this.navigateToSection('media-gallery');
     utils.showToast('Navigate to Media Gallery to upload files', 'info');
+  },
+
+  /**
+   * Open Sales Dashboard Modal
+   */
+  async openSalesDashboard() {
+    try {
+      // Show modal
+      const modal = new bootstrap.Modal(document.getElementById('salesDashboardModal'));
+      modal.show();
+
+      // Load all sales data
+      await this.loadSalesData();
+
+    } catch (error) {
+      console.error('Error opening sales dashboard:', error);
+      utils.showToast('Failed to load sales data: ' + error.message, 'error');
+    }
+  },
+
+  /**
+   * Load All Sales Data
+   */
+  async loadSalesData() {
+    try {
+      // Load data in parallel
+      await Promise.all([
+        this.loadSalesSummary(),
+        this.loadRecentPayments(),
+        this.loadPendingInvoices(),
+        this.loadPaymentMethodBreakdown(),
+        this.loadOrderTypeBreakdown()
+      ]);
+
+    } catch (error) {
+      console.error('Error loading sales data:', error);
+      throw error;
+    }
+  },
+
+  /**
+   * Load Sales Summary Statistics
+   */
+  async loadSalesSummary() {
+    try {
+      // Get all invoices
+      const { data: invoices, error: invoicesError } = await STATE.client
+        .from('invoices')
+        .select('total_amount, paid_amount, balance_due, payment_status');
+
+      if (invoicesError) throw invoicesError;
+
+      // Get all payments
+      const { data: payments, error: paymentsError } = await STATE.client
+        .from('payments')
+        .select('amount');
+
+      if (paymentsError) throw paymentsError;
+
+      // Calculate statistics
+      const totalRevenue = payments?.reduce((sum, p) => sum + parseFloat(p.amount || 0), 0) || 0;
+      const totalOrders = invoices?.length || 0;
+      const paidInvoices = invoices?.filter(i => i.payment_status === 'paid') || [];
+      const pendingInvoices = invoices?.filter(i =>
+        i.payment_status === 'unpaid' || i.payment_status === 'partial'
+      ) || [];
+      const pendingAmount = pendingInvoices.reduce((sum, i) => sum + parseFloat(i.balance_due || 0), 0);
+      const avgOrderValue = totalOrders > 0 ? totalRevenue / totalOrders : 0;
+
+      // Update UI
+      document.getElementById('salesTotalRevenue').textContent = `£${totalRevenue.toFixed(2)}`;
+      document.getElementById('salesPendingAmount').textContent = `£${pendingAmount.toFixed(2)}`;
+      document.getElementById('salesPendingCount').textContent = pendingInvoices.length;
+      document.getElementById('salesTotalOrders').textContent = totalOrders;
+      document.getElementById('salesPaidCount').textContent = paidInvoices.length;
+      document.getElementById('salesAvgOrder').textContent = `£${avgOrderValue.toFixed(2)}`;
+
+    } catch (error) {
+      console.error('Error loading sales summary:', error);
+      throw error;
+    }
+  },
+
+  /**
+   * Load Recent Payments
+   */
+  async loadRecentPayments() {
+    const tbody = document.getElementById('salesRecentPaymentsTable');
+    if (!tbody) return;
+
+    try {
+      const { data: payments, error } = await STATE.client
+        .from('payments')
+        .select(`
+          *,
+          organisations(company_name)
+        `)
+        .order('payment_date', { ascending: false })
+        .limit(20);
+
+      if (error) throw error;
+
+      if (!payments || payments.length === 0) {
+        tbody.innerHTML = `
+          <tr>
+            <td colspan="4" class="text-center text-muted py-4">
+              <i class="bi bi-inbox"></i> No payments yet
+            </td>
+          </tr>
+        `;
+        return;
+      }
+
+      tbody.innerHTML = payments.map(payment => {
+        const date = new Date(payment.payment_date).toLocaleDateString();
+        const company = payment.organisations?.company_name || 'N/A';
+        const method = this.formatPaymentMethod(payment.payment_method);
+        const amount = parseFloat(payment.amount || 0).toFixed(2);
+
+        return `
+          <tr>
+            <td>${utils.escapeHtml(date)}</td>
+            <td>${utils.escapeHtml(company)}</td>
+            <td>
+              <span class="badge bg-secondary">${utils.escapeHtml(method)}</span>
+            </td>
+            <td class="text-end text-success fw-bold">£${amount}</td>
+          </tr>
+        `;
+      }).join('');
+
+    } catch (error) {
+      console.error('Error loading recent payments:', error);
+      tbody.innerHTML = `
+        <tr>
+          <td colspan="4" class="text-center text-danger py-4">
+            <i class="bi bi-exclamation-triangle me-2"></i>Error loading payments
+          </td>
+        </tr>
+      `;
+    }
+  },
+
+  /**
+   * Load Pending Invoices
+   */
+  async loadPendingInvoices() {
+    const tbody = document.getElementById('salesPendingInvoicesTable');
+    if (!tbody) return;
+
+    try {
+      const { data: invoices, error } = await STATE.client
+        .from('invoices')
+        .select(`
+          *,
+          organisations(company_name)
+        `)
+        .in('payment_status', ['unpaid', 'partial'])
+        .order('due_date', { ascending: true })
+        .limit(20);
+
+      if (error) throw error;
+
+      if (!invoices || invoices.length === 0) {
+        tbody.innerHTML = `
+          <tr>
+            <td colspan="4" class="text-center text-muted py-4">
+              <i class="bi bi-check-circle"></i> No pending invoices
+            </td>
+          </tr>
+        `;
+        return;
+      }
+
+      tbody.innerHTML = invoices.map(invoice => {
+        const dueDate = new Date(invoice.due_date);
+        const isOverdue = dueDate < new Date();
+        const dueDateStr = dueDate.toLocaleDateString();
+        const company = invoice.organisations?.company_name || 'N/A';
+        const amount = parseFloat(invoice.balance_due || 0).toFixed(2);
+
+        return `
+          <tr class="${isOverdue ? 'table-danger' : ''}">
+            <td>
+              ${utils.escapeHtml(invoice.invoice_number)}
+              ${isOverdue ? '<span class="badge bg-danger ms-1">OVERDUE</span>' : ''}
+            </td>
+            <td>${utils.escapeHtml(company)}</td>
+            <td>${utils.escapeHtml(dueDateStr)}</td>
+            <td class="text-end fw-bold">£${amount}</td>
+          </tr>
+        `;
+      }).join('');
+
+    } catch (error) {
+      console.error('Error loading pending invoices:', error);
+      tbody.innerHTML = `
+        <tr>
+          <td colspan="4" class="text-center text-danger py-4">
+            <i class="bi bi-exclamation-triangle me-2"></i>Error loading invoices
+          </td>
+        </tr>
+      `;
+    }
+  },
+
+  /**
+   * Load Payment Method Breakdown
+   */
+  async loadPaymentMethodBreakdown() {
+    const container = document.getElementById('salesPaymentMethodsBreakdown');
+    if (!container) return;
+
+    try {
+      const { data: payments, error } = await STATE.client
+        .from('payments')
+        .select('payment_method, amount');
+
+      if (error) throw error;
+
+      if (!payments || payments.length === 0) {
+        container.innerHTML = '<div class="text-center text-muted">No payment data available</div>';
+        return;
+      }
+
+      // Group by payment method
+      const methodTotals = {};
+      let grandTotal = 0;
+
+      payments.forEach(payment => {
+        const method = payment.payment_method || 'other';
+        const amount = parseFloat(payment.amount || 0);
+        methodTotals[method] = (methodTotals[method] || 0) + amount;
+        grandTotal += amount;
+      });
+
+      // Create progress bars
+      const html = Object.entries(methodTotals)
+        .sort((a, b) => b[1] - a[1])
+        .map(([method, total]) => {
+          const percentage = grandTotal > 0 ? (total / grandTotal * 100).toFixed(1) : 0;
+          const methodLabel = this.formatPaymentMethod(method);
+
+          return `
+            <div class="mb-3">
+              <div class="d-flex justify-content-between mb-1">
+                <span class="fw-semibold">${utils.escapeHtml(methodLabel)}</span>
+                <span class="text-muted">£${total.toFixed(2)} (${percentage}%)</span>
+              </div>
+              <div class="progress" style="height: 25px;">
+                <div class="progress-bar bg-primary" role="progressbar"
+                     style="width: ${percentage}%"
+                     aria-valuenow="${percentage}" aria-valuemin="0" aria-valuemax="100">
+                  ${percentage}%
+                </div>
+              </div>
+            </div>
+          `;
+        }).join('');
+
+      container.innerHTML = html || '<div class="text-center text-muted">No data</div>';
+
+    } catch (error) {
+      console.error('Error loading payment method breakdown:', error);
+      container.innerHTML = '<div class="text-center text-danger">Error loading data</div>';
+    }
+  },
+
+  /**
+   * Load Order Type Breakdown
+   */
+  async loadOrderTypeBreakdown() {
+    const container = document.getElementById('salesOrderTypeBreakdown');
+    if (!container) return;
+
+    try {
+      const { data: invoices, error } = await STATE.client
+        .from('invoices')
+        .select('invoice_type, total_amount');
+
+      if (error) throw error;
+
+      if (!invoices || invoices.length === 0) {
+        container.innerHTML = '<div class="text-center text-muted">No invoice data available</div>';
+        return;
+      }
+
+      // Group by invoice type
+      const typeTotals = {};
+      let grandTotal = 0;
+
+      invoices.forEach(invoice => {
+        const type = invoice.invoice_type || 'other';
+        const amount = parseFloat(invoice.total_amount || 0);
+        typeTotals[type] = (typeTotals[type] || 0) + amount;
+        grandTotal += amount;
+      });
+
+      // Create progress bars
+      const html = Object.entries(typeTotals)
+        .sort((a, b) => b[1] - a[1])
+        .map(([type, total]) => {
+          const percentage = grandTotal > 0 ? (total / grandTotal * 100).toFixed(1) : 0;
+          const typeLabel = this.formatInvoiceType(type);
+
+          return `
+            <div class="mb-3">
+              <div class="d-flex justify-content-between mb-1">
+                <span class="fw-semibold">${utils.escapeHtml(typeLabel)}</span>
+                <span class="text-muted">£${total.toFixed(2)} (${percentage}%)</span>
+              </div>
+              <div class="progress" style="height: 25px;">
+                <div class="progress-bar bg-info" role="progressbar"
+                     style="width: ${percentage}%"
+                     aria-valuenow="${percentage}" aria-valuemin="0" aria-valuemax="100">
+                  ${percentage}%
+                </div>
+              </div>
+            </div>
+          `;
+        }).join('');
+
+      container.innerHTML = html || '<div class="text-center text-muted">No data</div>';
+
+    } catch (error) {
+      console.error('Error loading order type breakdown:', error);
+      container.innerHTML = '<div class="text-center text-danger">Error loading data</div>';
+    }
+  },
+
+  /**
+   * Format Payment Method for Display
+   */
+  formatPaymentMethod(method) {
+    const methods = {
+      'bank_transfer': 'Bank Transfer',
+      'card': 'Credit/Debit Card',
+      'paypal': 'PayPal',
+      'stripe': 'Stripe',
+      'cash': 'Cash',
+      'cheque': 'Cheque',
+      'other': 'Other'
+    };
+    return methods[method] || method;
+  },
+
+  /**
+   * Format Invoice Type for Display
+   */
+  formatInvoiceType(type) {
+    const types = {
+      'entry_fee': 'Entry Fees',
+      'package': 'Packages',
+      'sponsorship': 'Sponsorships',
+      'tickets': 'Event Tickets',
+      'other': 'Other'
+    };
+    return types[type] || type;
+  },
+
+  /**
+   * Export Sales Data to CSV
+   */
+  async exportSalesData() {
+    try {
+      utils.showLoading();
+
+      // Fetch comprehensive sales data
+      const { data: invoices, error: invoicesError } = await STATE.client
+        .from('invoices')
+        .select(`
+          *,
+          organisations(company_name)
+        `)
+        .order('created_at', { ascending: false });
+
+      if (invoicesError) throw invoicesError;
+
+      const { data: payments, error: paymentsError } = await STATE.client
+        .from('payments')
+        .select(`
+          *,
+          organisations(company_name)
+        `)
+        .order('payment_date', { ascending: false });
+
+      if (paymentsError) throw paymentsError;
+
+      // Create CSV content
+      let csv = 'SALES REPORT\n';
+      csv += `Generated: ${new Date().toLocaleString()}\n\n`;
+
+      // Invoices section
+      csv += 'INVOICES\n';
+      csv += 'Invoice Number,Company,Date,Due Date,Type,Status,Total,Paid,Balance\n';
+
+      invoices?.forEach(inv => {
+        csv += [
+          inv.invoice_number,
+          inv.organisations?.company_name || 'N/A',
+          inv.invoice_date,
+          inv.due_date,
+          inv.invoice_type,
+          inv.payment_status,
+          inv.total_amount,
+          inv.paid_amount,
+          inv.balance_due
+        ].map(f => `"${String(f).replace(/"/g, '""')}"`).join(',') + '\n';
+      });
+
+      csv += '\n\nPAYMENTS\n';
+      csv += 'Reference,Company,Date,Method,Amount,Status\n';
+
+      payments?.forEach(pay => {
+        csv += [
+          pay.payment_reference,
+          pay.organisations?.company_name || 'N/A',
+          pay.payment_date,
+          pay.payment_method,
+          pay.amount,
+          pay.status
+        ].map(f => `"${String(f).replace(/"/g, '""')}"`).join(',') + '\n';
+      });
+
+      // Download file
+      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+      const link = document.createElement('a');
+      const url = URL.createObjectURL(blob);
+      const timestamp = new Date().toISOString().split('T')[0];
+
+      link.setAttribute('href', url);
+      link.setAttribute('download', `sales_report_${timestamp}.csv`);
+      link.style.visibility = 'hidden';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+
+      utils.showToast('Sales report exported successfully', 'success');
+
+    } catch (error) {
+      console.error('Error exporting sales data:', error);
+      utils.showToast('Failed to export sales data', 'error');
+    } finally {
+      utils.hideLoading();
+    }
   }
 };
 

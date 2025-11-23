@@ -33,6 +33,11 @@ const dashboardModule = {
       // Load recent orders
       await this.loadRecentOrders();
 
+      // Load media gallery statistics
+      if (typeof mediaGalleryModule !== 'undefined' && mediaGalleryModule.loadMediaStatistics) {
+        await mediaGalleryModule.loadMediaStatistics();
+      }
+
       console.log('✅ Dashboard data loaded');
 
     } catch (error) {
@@ -88,25 +93,6 @@ const dashboardModule = {
 
       if (!eventsError) {
         document.getElementById('totalEvents').textContent = events || 0;
-      }
-
-      // Get media gallery count
-      const { count: mediaCount, error: mediaError } = await STATE.client
-        .from('media_gallery')
-        .select('*', { count: 'exact', head: true });
-
-      if (!mediaError) {
-        document.getElementById('totalMedia').textContent = mediaCount || 0;
-      }
-
-      // Get untagged photos count
-      const { count: untaggedCount, error: untaggedError } = await STATE.client
-        .from('media_gallery')
-        .select('*', { count: 'exact', head: true })
-        .or('organisation_id.is.null,award_id.is.null');
-
-      if (!untaggedError) {
-        document.getElementById('untaggedPhotos').textContent = untaggedCount || 0;
       }
 
       // Get upcoming events count (next 30 days)
@@ -1240,21 +1226,6 @@ const dashboardModule = {
         .lte('created_at', `${lastYear}-12-31`);
 
       this.renderGrowthBadge('totalEventsGrowth', currentYearEvents?.length || 0, lastYearEvents?.length || 0);
-
-      // Media growth
-      const { count: currentYearMedia } = await STATE.client
-        .from('media_gallery')
-        .select('*', { count: 'exact', head: true })
-        .gte('uploaded_at', `${currentYear}-01-01`)
-        .lte('uploaded_at', `${currentYear}-12-31`);
-
-      const { count: lastYearMedia } = await STATE.client
-        .from('media_gallery')
-        .select('*', { count: 'exact', head: true })
-        .gte('uploaded_at', `${lastYear}-01-01`)
-        .lte('uploaded_at', `${lastYear}-12-31`);
-
-      this.renderGrowthBadge('totalMediaGrowth', currentYearMedia || 0, lastYearMedia || 0);
 
     } catch (error) {
       console.error('Error updating growth indicators:', error);

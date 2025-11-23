@@ -220,6 +220,12 @@
           <div class="row g-4 mb-5">
             <div class="col-md-3">
               <div class="stat-card stat-card-clickable" onclick="dashboardModule.navigateToSection('awards')" title="Click to view all awards">
+                <button class="btn btn-sm btn-outline-primary position-absolute top-0 end-0 m-2"
+                        onclick="event.stopPropagation(); dashboardModule.openAwardsSummary();"
+                        title="View Awards Summary"
+                        style="z-index: 10; padding: 0.25rem 0.5rem;">
+                  <i class="bi bi-info-circle"></i>
+                </button>
                 <i class="bi bi-trophy stat-card-icon text-primary"></i>
                 <h6>Total Awards</h6>
                 <div class="stat-value" id="totalAwards">0</div>
@@ -246,6 +252,12 @@
 
             <div class="col-md-3">
               <div class="stat-card stat-card-clickable" onclick="dashboardModule.navigateToSection('organisations')" title="Click to view all organisations">
+                <button class="btn btn-sm btn-outline-success position-absolute top-0 end-0 m-2"
+                        onclick="event.stopPropagation(); dashboardModule.openOrganisationsSummary();"
+                        title="View Organisations Summary"
+                        style="z-index: 10; padding: 0.25rem 0.5rem;">
+                  <i class="bi bi-info-circle"></i>
+                </button>
                 <i class="bi bi-building stat-card-icon text-success"></i>
                 <h6>Organisations</h6>
                 <div class="stat-value text-success" id="totalOrgs">0</div>
@@ -259,6 +271,12 @@
 
             <div class="col-md-3">
               <div class="stat-card stat-card-clickable" onclick="dashboardModule.navigateToSection('winners')" title="Click to view all winners">
+                <button class="btn btn-sm btn-outline-info position-absolute top-0 end-0 m-2"
+                        onclick="event.stopPropagation(); dashboardModule.openWinnersSummary();"
+                        title="View Winners Summary"
+                        style="z-index: 10; padding: 0.25rem 0.5rem;">
+                  <i class="bi bi-info-circle"></i>
+                </button>
                 <i class="bi bi-award stat-card-icon text-info"></i>
                 <h6>Winners</h6>
                 <div class="stat-value text-info" id="totalWinners">0</div>
@@ -275,37 +293,17 @@
           <div class="row g-4 mb-5">
             <div class="col-md-3">
               <div class="stat-card stat-card-clickable" onclick="dashboardModule.navigateToSection('events')" title="Click to view all events">
+                <button class="btn btn-sm btn-outline-secondary position-absolute top-0 end-0 m-2"
+                        onclick="event.stopPropagation(); dashboardModule.openEventsSummary();"
+                        title="View Events Summary"
+                        style="z-index: 10; padding: 0.25rem 0.5rem;">
+                  <i class="bi bi-info-circle"></i>
+                </button>
                 <i class="bi bi-calendar-event stat-card-icon text-purple"></i>
                 <h6>Events</h6>
                 <div class="stat-value" id="totalEvents">0</div>
                 <div id="totalEventsGrowth" class="stat-growth"></div>
                 <small class="text-muted">Award ceremonies & functions</small>
-                <div class="stat-card-hover-indicator">
-                  <i class="bi bi-arrow-right-circle"></i>
-                </div>
-              </div>
-            </div>
-
-            <div class="col-md-3">
-              <div class="stat-card stat-card-clickable" onclick="dashboardModule.navigateToSection('media-gallery')" title="Click to view media gallery">
-                <i class="bi bi-images stat-card-icon text-primary"></i>
-                <h6>Media Gallery</h6>
-                <div class="stat-value" id="totalMedia">0</div>
-                <div id="totalMediaGrowth" class="stat-growth"></div>
-                <small class="text-muted">Photos & videos</small>
-                <div class="stat-card-hover-indicator">
-                  <i class="bi bi-arrow-right-circle"></i>
-                </div>
-              </div>
-            </div>
-
-            <div class="col-md-3">
-              <div class="stat-card stat-card-warning" onclick="dashboardModule.showUntaggedPhotos()" title="Click to view untagged photos">
-                <i class="bi bi-exclamation-triangle stat-card-icon text-danger"></i>
-                <h6>Untagged Photos</h6>
-                <div class="stat-value text-danger" id="untaggedPhotos">0</div>
-                <div id="untaggedPhotosGrowth" class="stat-growth"></div>
-                <small class="text-muted">Need organisation/award tags</small>
                 <div class="stat-card-hover-indicator">
                   <i class="bi bi-arrow-right-circle"></i>
                 </div>
@@ -319,6 +317,61 @@
                 <div class="stat-value text-success" id="upcomingEvents">0</div>
                 <div id="upcomingEventsGrowth" class="stat-growth"></div>
                 <small class="text-muted">Next 30 days</small>
+                <div class="stat-card-hover-indicator">
+                  <i class="bi bi-arrow-right-circle"></i>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Media Gallery Statistics Row -->
+          <div class="row g-4 mb-5">
+            <div class="col-md-3">
+              <div class="stat-card stat-card-clickable" onclick="dashboardModule.navigateToSection('media-gallery')" title="Click to view media gallery">
+                <i class="bi bi-camera-fill stat-card-icon text-primary"></i>
+                <h6>Total Photos</h6>
+                <div class="stat-value text-primary" id="totalPhotosCount">0</div>
+                <div id="totalPhotosGrowth" class="stat-growth"></div>
+                <small class="text-muted">Across all events</small>
+                <div class="stat-card-hover-indicator">
+                  <i class="bi bi-arrow-right-circle"></i>
+                </div>
+              </div>
+            </div>
+
+            <div class="col-md-3">
+              <div class="stat-card stat-card-clickable" onclick="dashboardModule.navigateToSection('media-gallery')" title="Click to view media gallery">
+                <i class="bi bi-play-btn-fill stat-card-icon text-danger"></i>
+                <h6>Total Videos</h6>
+                <div class="stat-value text-danger" id="totalVideosCount">0</div>
+                <div id="totalVideosGrowth" class="stat-growth"></div>
+                <small class="text-muted">Across all events</small>
+                <div class="stat-card-hover-indicator">
+                  <i class="bi bi-arrow-right-circle"></i>
+                </div>
+              </div>
+            </div>
+
+            <div class="col-md-3">
+              <div class="stat-card stat-card-warning" onclick="mediaGalleryModule.showUntaggedPhotos()" title="Click to view untagged photos">
+                <i class="bi bi-exclamation-triangle stat-card-icon text-warning"></i>
+                <h6>Untagged Photos</h6>
+                <div class="stat-value text-warning" id="untaggedPhotosCountGallery">0</div>
+                <div id="untaggedPhotosGrowth" class="stat-growth"></div>
+                <small class="text-muted">Need company/award tags</small>
+                <div class="stat-card-hover-indicator">
+                  <i class="bi bi-arrow-right-circle"></i>
+                </div>
+              </div>
+            </div>
+
+            <div class="col-md-3">
+              <div class="stat-card stat-card-clickable" onclick="dashboardModule.navigateToSection('events')" title="Click to view events">
+                <i class="bi bi-calendar-event stat-card-icon text-info"></i>
+                <h6>Events with Media</h6>
+                <div class="stat-value text-info" id="totalEventsWithMediaCount">0</div>
+                <div id="totalEventsWithMediaGrowth" class="stat-growth"></div>
+                <small class="text-muted">Have photos/videos</small>
                 <div class="stat-card-hover-indicator">
                   <i class="bi bi-arrow-right-circle"></i>
                 </div>
@@ -379,9 +432,14 @@
                 </h3>
                 <p class="text-muted small mb-0">Latest purchases and invoices</p>
               </div>
-              <button class="btn btn-outline-primary btn-sm" onclick="dashboardModule.navigateToSection('payments')">
-                <i class="bi bi-arrow-right me-1"></i>View All Orders
-              </button>
+              <div class="btn-group btn-group-sm">
+                <button class="btn btn-primary" onclick="dashboardModule.openSalesDashboard()">
+                  <i class="bi bi-graph-up me-1"></i>Sales Dashboard
+                </button>
+                <button class="btn btn-outline-primary" onclick="dashboardModule.navigateToSection('payments')">
+                  <i class="bi bi-arrow-right me-1"></i>View All Orders
+                </button>
+              </div>
             </div>
 
             <div class="table-responsive">
@@ -412,20 +470,31 @@
           <!-- Top Companies Section -->
           <div class="content-card">
             <div class="d-flex justify-content-between align-items-center mb-4">
-              <div>
-                <h3 class="h5 mb-1">
+              <div class="flex-grow-1">
+                <h3 class="h5 mb-2">
                   <i class="bi bi-star-fill text-warning me-2"></i>Top Companies
                 </h3>
-                <p class="text-muted small mb-0">Most active organizations</p>
+                <div class="d-flex align-items-center gap-2">
+                  <label class="text-muted small mb-0">View by:</label>
+                  <select class="form-select form-select-sm" id="topCompaniesMetric"
+                          onchange="dashboardModule.updateTopCompanies(this.value)" style="width: auto;">
+                    <option value="most-active">Most Active</option>
+                    <option value="top-spenders">Top Spenders</option>
+                    <option value="most-awards">Most Awards Won</option>
+                    <option value="recent-activity">Recent Activity</option>
+                    <option value="highest-revenue">Highest Revenue</option>
+                    <option value="newest-members">Newest Members</option>
+                  </select>
+                </div>
               </div>
-              <button class="btn btn-outline-primary btn-sm">
+              <button class="btn btn-outline-primary btn-sm" onclick="dashboardModule.navigateToSection('organisations')">
                 <i class="bi bi-arrow-right me-1"></i>View All
               </button>
             </div>
             
             <div class="table-responsive">
               <table class="table table-hover">
-                <thead>
+                <thead id="topCompaniesTableHead">
                   <tr>
                     <th width="60">#</th>
                     <th>Company Name</th>
@@ -5024,6 +5093,634 @@ in recognition of excellence
         <button type="button" class="btn-close" data-bs-dismiss="toast" aria-label="Close"></button>
       </div>
       <div class="toast-body" id="toastMessage"></div>
+    </div>
+  </div>
+
+  <!-- ==================================================== -->
+  <!-- SALES DASHBOARD MODAL -->
+  <!-- ==================================================== -->
+  <div class="modal fade" id="salesDashboardModal" tabindex="-1" aria-labelledby="salesDashboardModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-xl">
+      <div class="modal-content">
+        <div class="modal-header bg-success text-white">
+          <div>
+            <h5 class="modal-title" id="salesDashboardModalLabel">
+              <i class="bi bi-graph-up-arrow me-2"></i>Sales Dashboard
+            </h5>
+            <small class="d-block mt-1">Overview of payments, orders, and revenue</small>
+          </div>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+
+          <!-- Summary Cards Row -->
+          <div class="row g-3 mb-4">
+            <!-- Total Revenue Card -->
+            <div class="col-md-3">
+              <div class="card border-0 bg-gradient-primary text-white h-100">
+                <div class="card-body">
+                  <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                      <h6 class="card-subtitle mb-2 opacity-75">Total Revenue</h6>
+                      <h3 class="card-title mb-0" id="salesTotalRevenue">£0.00</h3>
+                    </div>
+                    <i class="bi bi-currency-pound fs-1 opacity-50"></i>
+                  </div>
+                  <p class="small mb-0 mt-2 opacity-75">All time</p>
+                </div>
+              </div>
+            </div>
+
+            <!-- Pending Payments Card -->
+            <div class="col-md-3">
+              <div class="card border-0 bg-warning text-dark h-100">
+                <div class="card-body">
+                  <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                      <h6 class="card-subtitle mb-2">Pending Payments</h6>
+                      <h3 class="card-title mb-0" id="salesPendingAmount">£0.00</h3>
+                    </div>
+                    <i class="bi bi-hourglass-split fs-1 opacity-50"></i>
+                  </div>
+                  <p class="small mb-0 mt-2">
+                    <span id="salesPendingCount">0</span> invoices
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <!-- Total Orders Card -->
+            <div class="col-md-3">
+              <div class="card border-0 bg-info text-white h-100">
+                <div class="card-body">
+                  <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                      <h6 class="card-subtitle mb-2 opacity-75">Total Orders</h6>
+                      <h3 class="card-title mb-0" id="salesTotalOrders">0</h3>
+                    </div>
+                    <i class="bi bi-cart-check fs-1 opacity-50"></i>
+                  </div>
+                  <p class="small mb-0 mt-2 opacity-75">
+                    <span id="salesPaidCount">0</span> paid
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <!-- Average Order Value Card -->
+            <div class="col-md-3">
+              <div class="card border-0 bg-secondary text-white h-100">
+                <div class="card-body">
+                  <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                      <h6 class="card-subtitle mb-2 opacity-75">Avg Order Value</h6>
+                      <h3 class="card-title mb-0" id="salesAvgOrder">£0.00</h3>
+                    </div>
+                    <i class="bi bi-calculator fs-1 opacity-50"></i>
+                  </div>
+                  <p class="small mb-0 mt-2 opacity-75">Per invoice</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Two Column Layout -->
+          <div class="row g-3">
+            <!-- Left Column: Recent Payments -->
+            <div class="col-lg-6">
+              <div class="card border-0 shadow-sm h-100">
+                <div class="card-header bg-transparent">
+                  <h6 class="mb-0">
+                    <i class="bi bi-cash-stack text-success me-2"></i>Recent Payments
+                  </h6>
+                </div>
+                <div class="card-body p-0">
+                  <div class="table-responsive" style="max-height: 400px; overflow-y: auto;">
+                    <table class="table table-sm table-hover mb-0">
+                      <thead class="sticky-top bg-light">
+                        <tr>
+                          <th>Date</th>
+                          <th>Company</th>
+                          <th>Method</th>
+                          <th class="text-end">Amount</th>
+                        </tr>
+                      </thead>
+                      <tbody id="salesRecentPaymentsTable">
+                        <tr>
+                          <td colspan="4" class="text-center text-muted py-4">
+                            <i class="bi bi-arrow-clockwise spin me-2"></i>Loading...
+                          </td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Right Column: Pending Invoices -->
+            <div class="col-lg-6">
+              <div class="card border-0 shadow-sm h-100">
+                <div class="card-header bg-transparent">
+                  <h6 class="mb-0">
+                    <i class="bi bi-exclamation-triangle text-warning me-2"></i>Pending Invoices
+                  </h6>
+                </div>
+                <div class="card-body p-0">
+                  <div class="table-responsive" style="max-height: 400px; overflow-y: auto;">
+                    <table class="table table-sm table-hover mb-0">
+                      <thead class="sticky-top bg-light">
+                        <tr>
+                          <th>Invoice #</th>
+                          <th>Company</th>
+                          <th>Due Date</th>
+                          <th class="text-end">Amount</th>
+                        </tr>
+                      </thead>
+                      <tbody id="salesPendingInvoicesTable">
+                        <tr>
+                          <td colspan="4" class="text-center text-muted py-4">
+                            <i class="bi bi-arrow-clockwise spin me-2"></i>Loading...
+                          </td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Payment Method Breakdown -->
+          <div class="row g-3 mt-3">
+            <div class="col-12">
+              <div class="card border-0 shadow-sm">
+                <div class="card-header bg-transparent">
+                  <h6 class="mb-0">
+                    <i class="bi bi-pie-chart text-primary me-2"></i>Payment Method Breakdown
+                  </h6>
+                </div>
+                <div class="card-body">
+                  <div id="salesPaymentMethodsBreakdown">
+                    <div class="text-center text-muted py-4">
+                      <i class="bi bi-arrow-clockwise spin me-2"></i>Loading...
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Order Type Breakdown -->
+          <div class="row g-3 mt-3">
+            <div class="col-12">
+              <div class="card border-0 shadow-sm">
+                <div class="card-header bg-transparent">
+                  <h6 class="mb-0">
+                    <i class="bi bi-tags text-info me-2"></i>Revenue by Product Type
+                  </h6>
+                </div>
+                <div class="card-body">
+                  <div id="salesOrderTypeBreakdown">
+                    <div class="text-center text-muted py-4">
+                      <i class="bi bi-arrow-clockwise spin me-2"></i>Loading...
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline-secondary" onclick="dashboardModule.exportSalesData()">
+            <i class="bi bi-download me-2"></i>Export Report
+          </button>
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Awards Summary Modal -->
+  <div class="modal fade" id="awardsSummaryModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-xl">
+      <div class="modal-content">
+        <div class="modal-header bg-primary text-white">
+          <h5 class="modal-title">
+            <i class="bi bi-trophy me-2"></i>Awards Summary
+          </h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <!-- Summary Cards -->
+          <div class="row g-3 mb-4">
+            <div class="col-md-3">
+              <div class="card bg-primary text-white h-100">
+                <div class="card-body">
+                  <h6 class="card-subtitle mb-2 opacity-75">Total Awards</h6>
+                  <h3 class="card-title mb-0" id="summaryTotalAwards">0</h3>
+                  <p class="small mb-0 mt-2 opacity-75">All categories</p>
+                </div>
+              </div>
+            </div>
+            <div class="col-md-3">
+              <div class="card bg-success text-white h-100">
+                <div class="card-body">
+                  <h6 class="card-subtitle mb-2 opacity-75">Active Awards</h6>
+                  <h3 class="card-title mb-0" id="summaryActiveAwards">0</h3>
+                  <p class="small mb-0 mt-2 opacity-75">Published & active</p>
+                </div>
+              </div>
+            </div>
+            <div class="col-md-3">
+              <div class="card bg-warning text-dark h-100">
+                <div class="card-body">
+                  <h6 class="card-subtitle mb-2">Pending Awards</h6>
+                  <h3 class="card-title mb-0" id="summaryPendingAwards">0</h3>
+                  <p class="small mb-0 mt-2">Awaiting review</p>
+                </div>
+              </div>
+            </div>
+            <div class="col-md-3">
+              <div class="card bg-info text-white h-100">
+                <div class="card-body">
+                  <h6 class="card-subtitle mb-2 opacity-75">Categories</h6>
+                  <h3 class="card-title mb-0" id="summaryAwardCategories">0</h3>
+                  <p class="small mb-0 mt-2 opacity-75">Unique categories</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Recent Awards Table -->
+          <div class="card mb-4">
+            <div class="card-header bg-light">
+              <h6 class="mb-0">
+                <i class="bi bi-clock-history me-2"></i>Recent Awards
+              </h6>
+            </div>
+            <div class="card-body p-0">
+              <div class="table-responsive">
+                <table class="table table-hover mb-0">
+                  <thead class="table-light">
+                    <tr>
+                      <th>Award Name</th>
+                      <th>Category</th>
+                      <th>Status</th>
+                      <th>Created</th>
+                    </tr>
+                  </thead>
+                  <tbody id="summaryRecentAwardsTable">
+                    <tr>
+                      <td colspan="4" class="text-center text-muted py-4">
+                        <i class="bi bi-hourglass-split me-2"></i>Loading...
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+
+          <!-- Status Breakdown -->
+          <div class="card">
+            <div class="card-header bg-light">
+              <h6 class="mb-0">
+                <i class="bi bi-pie-chart me-2"></i>Awards by Status
+              </h6>
+            </div>
+            <div class="card-body" id="summaryAwardsStatusBreakdown">
+              <div class="text-center text-muted py-4">
+                <i class="bi bi-hourglass-split me-2"></i>Loading...
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+          <button type="button" class="btn btn-primary" onclick="dashboardModule.navigateToSection('awards'); bootstrap.Modal.getInstance(document.getElementById('awardsSummaryModal')).hide();">
+            <i class="bi bi-trophy me-1"></i>View All Awards
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Organisations Summary Modal -->
+  <div class="modal fade" id="organisationsSummaryModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-xl">
+      <div class="modal-content">
+        <div class="modal-header bg-success text-white">
+          <h5 class="modal-title">
+            <i class="bi bi-building me-2"></i>Organisations Summary
+          </h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <!-- Summary Cards -->
+          <div class="row g-3 mb-4">
+            <div class="col-md-3">
+              <div class="card bg-success text-white h-100">
+                <div class="card-body">
+                  <h6 class="card-subtitle mb-2 opacity-75">Total Organisations</h6>
+                  <h3 class="card-title mb-0" id="summaryTotalOrgs">0</h3>
+                  <p class="small mb-0 mt-2 opacity-75">Registered companies</p>
+                </div>
+              </div>
+            </div>
+            <div class="col-md-3">
+              <div class="card bg-primary text-white h-100">
+                <div class="card-body">
+                  <h6 class="card-subtitle mb-2 opacity-75">Award Winners</h6>
+                  <h3 class="card-title mb-0" id="summaryOrgWinners">0</h3>
+                  <p class="small mb-0 mt-2 opacity-75">Won at least 1 award</p>
+                </div>
+              </div>
+            </div>
+            <div class="col-md-3">
+              <div class="card bg-info text-white h-100">
+                <div class="card-body">
+                  <h6 class="card-subtitle mb-2 opacity-75">Sectors</h6>
+                  <h3 class="card-title mb-0" id="summaryOrgSectors">0</h3>
+                  <p class="small mb-0 mt-2 opacity-75">Industry sectors</p>
+                </div>
+              </div>
+            </div>
+            <div class="col-md-3">
+              <div class="card bg-warning text-dark h-100">
+                <div class="card-body">
+                  <h6 class="card-subtitle mb-2">New This Month</h6>
+                  <h3 class="card-title mb-0" id="summaryOrgNewMonth">0</h3>
+                  <p class="small mb-0 mt-2">Recently added</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Recent Organisations Table -->
+          <div class="card mb-4">
+            <div class="card-header bg-light">
+              <h6 class="mb-0">
+                <i class="bi bi-clock-history me-2"></i>Recent Organisations
+              </h6>
+            </div>
+            <div class="card-body p-0">
+              <div class="table-responsive">
+                <table class="table table-hover mb-0">
+                  <thead class="table-light">
+                    <tr>
+                      <th>Company Name</th>
+                      <th>Sector</th>
+                      <th>Region</th>
+                      <th>Awards Won</th>
+                      <th>Joined</th>
+                    </tr>
+                  </thead>
+                  <tbody id="summaryRecentOrgsTable">
+                    <tr>
+                      <td colspan="5" class="text-center text-muted py-4">
+                        <i class="bi bi-hourglass-split me-2"></i>Loading...
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+
+          <!-- Sector Breakdown -->
+          <div class="card">
+            <div class="card-header bg-light">
+              <h6 class="mb-0">
+                <i class="bi bi-pie-chart me-2"></i>Organisations by Sector
+              </h6>
+            </div>
+            <div class="card-body" id="summaryOrgSectorBreakdown">
+              <div class="text-center text-muted py-4">
+                <i class="bi bi-hourglass-split me-2"></i>Loading...
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+          <button type="button" class="btn btn-success" onclick="dashboardModule.navigateToSection('organisations'); bootstrap.Modal.getInstance(document.getElementById('organisationsSummaryModal')).hide();">
+            <i class="bi bi-building me-1"></i>View All Organisations
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Winners Summary Modal -->
+  <div class="modal fade" id="winnersSummaryModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-xl">
+      <div class="modal-content">
+        <div class="modal-header bg-info text-white">
+          <h5 class="modal-title">
+            <i class="bi bi-award me-2"></i>Winners Summary
+          </h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <!-- Summary Cards -->
+          <div class="row g-3 mb-4">
+            <div class="col-md-3">
+              <div class="card bg-info text-white h-100">
+                <div class="card-body">
+                  <h6 class="card-subtitle mb-2 opacity-75">Total Winners</h6>
+                  <h3 class="card-title mb-0" id="summaryTotalWinners">0</h3>
+                  <p class="small mb-0 mt-2 opacity-75">Award recipients</p>
+                </div>
+              </div>
+            </div>
+            <div class="col-md-3">
+              <div class="card bg-success text-white h-100">
+                <div class="card-body">
+                  <h6 class="card-subtitle mb-2 opacity-75">This Year</h6>
+                  <h3 class="card-title mb-0" id="summaryWinnersThisYear">0</h3>
+                  <p class="small mb-0 mt-2 opacity-75">Awards this year</p>
+                </div>
+              </div>
+            </div>
+            <div class="col-md-3">
+              <div class="card bg-warning text-dark h-100">
+                <div class="card-body">
+                  <h6 class="card-subtitle mb-2">Multi-Award Winners</h6>
+                  <h3 class="card-title mb-0" id="summaryMultiWinners">0</h3>
+                  <p class="small mb-0 mt-2">Won 2+ awards</p>
+                </div>
+              </div>
+            </div>
+            <div class="col-md-3">
+              <div class="card bg-primary text-white h-100">
+                <div class="card-body">
+                  <h6 class="card-subtitle mb-2 opacity-75">Avg per Year</h6>
+                  <h3 class="card-title mb-0" id="summaryAvgWinnersYear">0</h3>
+                  <p class="small mb-0 mt-2 opacity-75">Winners annually</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Recent Winners Table -->
+          <div class="card mb-4">
+            <div class="card-header bg-light">
+              <h6 class="mb-0">
+                <i class="bi bi-clock-history me-2"></i>Recent Winners
+              </h6>
+            </div>
+            <div class="card-body p-0">
+              <div class="table-responsive">
+                <table class="table table-hover mb-0">
+                  <thead class="table-light">
+                    <tr>
+                      <th>Organisation</th>
+                      <th>Award</th>
+                      <th>Year</th>
+                      <th>Status</th>
+                    </tr>
+                  </thead>
+                  <tbody id="summaryRecentWinnersTable">
+                    <tr>
+                      <td colspan="4" class="text-center text-muted py-4">
+                        <i class="bi bi-hourglass-split me-2"></i>Loading...
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+
+          <!-- Winners by Year -->
+          <div class="card">
+            <div class="card-header bg-light">
+              <h6 class="mb-0">
+                <i class="bi bi-bar-chart me-2"></i>Winners by Year
+              </h6>
+            </div>
+            <div class="card-body" id="summaryWinnersByYear">
+              <div class="text-center text-muted py-4">
+                <i class="bi bi-hourglass-split me-2"></i>Loading...
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+          <button type="button" class="btn btn-info" onclick="dashboardModule.navigateToSection('winners'); bootstrap.Modal.getInstance(document.getElementById('winnersSummaryModal')).hide();">
+            <i class="bi bi-award me-1"></i>View All Winners
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Events Summary Modal -->
+  <div class="modal fade" id="eventsSummaryModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-xl">
+      <div class="modal-content">
+        <div class="modal-header" style="background-color: #6f42c1; color: white;">
+          <h5 class="modal-title">
+            <i class="bi bi-calendar-event me-2"></i>Events Summary
+          </h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <!-- Summary Cards -->
+          <div class="row g-3 mb-4">
+            <div class="col-md-3">
+              <div class="card text-white h-100" style="background-color: #6f42c1;">
+                <div class="card-body">
+                  <h6 class="card-subtitle mb-2 opacity-75">Total Events</h6>
+                  <h3 class="card-title mb-0" id="summaryTotalEvents">0</h3>
+                  <p class="small mb-0 mt-2 opacity-75">All events</p>
+                </div>
+              </div>
+            </div>
+            <div class="col-md-3">
+              <div class="card bg-success text-white h-100">
+                <div class="card-body">
+                  <h6 class="card-subtitle mb-2 opacity-75">Upcoming</h6>
+                  <h3 class="card-title mb-0" id="summaryUpcomingEvents">0</h3>
+                  <p class="small mb-0 mt-2 opacity-75">Next 30 days</p>
+                </div>
+              </div>
+            </div>
+            <div class="col-md-3">
+              <div class="card bg-primary text-white h-100">
+                <div class="card-body">
+                  <h6 class="card-subtitle mb-2 opacity-75">Past Events</h6>
+                  <h3 class="card-title mb-0" id="summaryPastEvents">0</h3>
+                  <p class="small mb-0 mt-2 opacity-75">Completed</p>
+                </div>
+              </div>
+            </div>
+            <div class="col-md-3">
+              <div class="card bg-info text-white h-100">
+                <div class="card-body">
+                  <h6 class="card-subtitle mb-2 opacity-75">Avg Attendance</h6>
+                  <h3 class="card-title mb-0" id="summaryAvgAttendance">0</h3>
+                  <p class="small mb-0 mt-2 opacity-75">Per event</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Upcoming Events Table -->
+          <div class="card mb-4">
+            <div class="card-header bg-light">
+              <h6 class="mb-0">
+                <i class="bi bi-calendar-check me-2"></i>Upcoming Events
+              </h6>
+            </div>
+            <div class="card-body p-0">
+              <div class="table-responsive">
+                <table class="table table-hover mb-0">
+                  <thead class="table-light">
+                    <tr>
+                      <th>Event Name</th>
+                      <th>Date</th>
+                      <th>Location</th>
+                      <th>Capacity</th>
+                      <th>Status</th>
+                    </tr>
+                  </thead>
+                  <tbody id="summaryUpcomingEventsTable">
+                    <tr>
+                      <td colspan="5" class="text-center text-muted py-4">
+                        <i class="bi bi-hourglass-split me-2"></i>Loading...
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+
+          <!-- Events Timeline -->
+          <div class="card">
+            <div class="card-header bg-light">
+              <h6 class="mb-0">
+                <i class="bi bi-clock-history me-2"></i>Recent Events
+              </h6>
+            </div>
+            <div class="card-body" id="summaryRecentEventsTimeline">
+              <div class="text-center text-muted py-4">
+                <i class="bi bi-hourglass-split me-2"></i>Loading...
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+          <button type="button" class="btn" style="background-color: #6f42c1; color: white;" onclick="dashboardModule.navigateToSection('events'); bootstrap.Modal.getInstance(document.getElementById('eventsSummaryModal')).hide();">
+            <i class="bi bi-calendar-event me-1"></i>View All Events
+          </button>
+        </div>
+      </div>
     </div>
   </div>
 

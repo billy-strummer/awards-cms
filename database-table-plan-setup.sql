@@ -111,23 +111,23 @@ $$ LANGUAGE plpgsql;
 CREATE OR REPLACE FUNCTION get_unassigned_guests(p_event_id UUID)
 RETURNS TABLE (
   guest_id UUID,
-  guest_name VARCHAR,
-  guest_email VARCHAR,
+  guest_name TEXT,
+  guest_email TEXT,
   organisation_id UUID,
-  company_name VARCHAR,
-  rsvp_status VARCHAR,
+  company_name TEXT,
+  rsvp_status TEXT,
   plus_ones INTEGER
 ) AS $$
 BEGIN
   RETURN QUERY
   SELECT
-    eg.id,
-    eg.guest_name,
-    eg.guest_email,
-    eg.organisation_id,
-    o.company_name,
-    eg.rsvp_status,
-    eg.plus_ones
+    eg.id::UUID,
+    eg.guest_name::TEXT,
+    eg.guest_email::TEXT,
+    eg.organisation_id::UUID,
+    o.company_name::TEXT,
+    eg.rsvp_status::TEXT,
+    eg.plus_ones::INTEGER
   FROM event_guests eg
   LEFT JOIN organisations o ON eg.organisation_id = o.id
   WHERE eg.event_id = p_event_id

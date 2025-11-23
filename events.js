@@ -923,6 +923,9 @@ const eventsModule = {
                 <button class="btn btn-outline-info" onclick="eventsModule.exportRunningOrder()">
                   <i class="bi bi-download me-2"></i>Export
                 </button>
+                <button class="btn btn-outline-primary" onclick="eventsModule.printRunningOrder()">
+                  <i class="bi bi-printer me-2"></i>Print
+                </button>
                 <div class="ms-auto">
                   <span class="badge bg-secondary fs-6">
                     Total: ${this.runningOrderItems.length} awards
@@ -1317,6 +1320,275 @@ const eventsModule = {
       utils.showToast('Failed to save running order', 'error');
     } finally {
       utils.hideLoading();
+    }
+  },
+
+  /**
+   * Export Running Order to CSV
+   */
+  exportRunningOrder() {
+    if (this.runningOrderItems.length === 0) {
+      utils.showToast('No items to export', 'warning');
+      return;
+    }
+
+    try {
+      // Prepare CSV data
+      const headers = ['Award Number', 'Award Name', 'Winner', 'Collecting', 'Notes'];
+      const rows = this.runningOrderItems.map(item => {
+        const awardName = item.award_name || (item.awards ? item.awards.award_name : 'N/A');
+        const companyName = item.display_name ||
+                           (item.organisations ? item.organisations.company_name : 'N/A');
+        const recipient = item.recipient_collecting ||
+                        (item.event_guests ? item.event_guests.guest_name : '');
+        const notes = item.notes || item.special_requirements || '';
+
+        return [
+          item.award_number,
+          awardName,
+          companyName,
+          recipient,
+          notes
+        ].map(field => `"${String(field).replace(/"/g, '""')}"`);
+      });
+
+      // Create CSV content
+      const csvContent = [
+        headers.map(h => `"${h}"`).join(','),
+        ...rows.map(row => row.join(','))
+      ].join('\n');
+
+      // Create and download file
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const link = document.createElement('a');
+      const url = URL.createObjectURL(blob);
+
+      const eventNameSlug = this.currentEventName.replace(/[^a-z0-9]/gi, '_').toLowerCase();
+      const timestamp = new Date().toISOString().split('T')[0];
+      const filename = `running_order_${eventNameSlug}_${timestamp}.csv`;
+
+      link.setAttribute('href', url);
+      link.setAttribute('download', filename);
+      link.style.visibility = 'hidden';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+
+      utils.showToast('Running order exported successfully', 'success');
+
+    } catch (error) {
+      console.error('Error exporting running order:', error);
+      utils.showToast('Failed to export running order', 'error');
+    }
+  },
+
+  /**
+   * Print Running Order
+   */
+  printRunningOrder() {
+    if (this.runningOrderItems.length === 0) {
+      utils.showToast('No items to print', 'warning');
+      return;
+    }
+
+    // Generate print content
+    const printContent = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="utf-8">
+        <title>Running Order - ${utils.escapeHtml(this.currentEventName)}</title>
+        <style>
+          @page {
+            size: A4;
+            margin: 15mm;
+          }
+
+          body {
+            font-family: Arial, Helvetica, sans-serif;
+            font-size: 11pt;
+            line-height: 1.4;
+            color: #000;
+            margin: 0;
+            padding: 0;
+          }
+
+          .header {
+            text-align: center;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 3px solid #333;
+          }
+
+          .header h1 {
+            margin: 0 0 5px 0;
+            font-size: 22pt;
+            font-weight: bold;
+          }
+
+          .header h2 {
+            margin: 0;
+            font-size: 16pt;
+            font-weight: normal;
+            color: #666;
+          }
+
+          .print-date {
+            text-align: right;
+            font-size: 9pt;
+            color: #666;
+            margin-bottom: 15px;
+          }
+
+          table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 10px;
+          }
+
+          thead {
+            background: #f0f0f0;
+            font-weight: bold;
+          }
+
+          th, td {
+            padding: 8px 10px;
+            border: 1px solid #333;
+            text-align: left;
+          }
+
+          th {
+            font-size: 10pt;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+          }
+
+          .award-number {
+            text-align: center;
+            font-weight: bold;
+            font-size: 13pt;
+            width: 70px;
+          }
+
+          .award-name {
+            font-weight: bold;
+            width: 35%;
+          }
+
+          .winner-name {
+            width: 35%;
+          }
+
+          .recipient {
+            width: 25%;
+            font-style: italic;
+          }
+
+          .notes {
+            width: 100%;
+            font-size: 9pt;
+            color: #666;
+          }
+
+          .footer {
+            margin-top: 30px;
+            padding-top: 10px;
+            border-top: 2px solid #333;
+            text-align: center;
+            font-size: 9pt;
+            color: #666;
+          }
+
+          /* Page break control */
+          tr {
+            page-break-inside: avoid;
+          }
+
+          thead {
+            display: table-header-group;
+          }
+
+          @media print {
+            body {
+              -webkit-print-color-adjust: exact;
+              print-color-adjust: exact;
+            }
+
+            .no-print {
+              display: none;
+            }
+          }
+        </style>
+      </head>
+      <body>
+        <div class="header">
+          <h1>Awards Ceremony Running Order</h1>
+          <h2>${utils.escapeHtml(this.currentEventName)}</h2>
+        </div>
+
+        <div class="print-date">
+          Printed: ${new Date().toLocaleString()}
+        </div>
+
+        <table>
+          <thead>
+            <tr>
+              <th class="award-number">#</th>
+              <th class="award-name">Award</th>
+              <th class="winner-name">Winner</th>
+              <th class="recipient">Collecting</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${this.runningOrderItems.map(item => {
+              const awardName = item.award_name || (item.awards ? item.awards.award_name : 'N/A');
+              const companyName = item.display_name ||
+                                 (item.organisations ? item.organisations.company_name : 'N/A');
+              const recipient = item.recipient_collecting ||
+                              (item.event_guests ? item.event_guests.guest_name : '');
+              const notes = item.notes || item.special_requirements || '';
+
+              return `
+                <tr>
+                  <td class="award-number">${utils.escapeHtml(item.award_number)}</td>
+                  <td class="award-name">${utils.escapeHtml(awardName)}</td>
+                  <td class="winner-name">${utils.escapeHtml(companyName)}</td>
+                  <td class="recipient">${utils.escapeHtml(recipient)}</td>
+                </tr>
+                ${notes ? `
+                  <tr>
+                    <td colspan="4" class="notes">
+                      <strong>Notes:</strong> ${utils.escapeHtml(notes)}
+                    </td>
+                  </tr>
+                ` : ''}
+              `;
+            }).join('')}
+          </tbody>
+        </table>
+
+        <div class="footer">
+          <p>Total Awards: ${this.runningOrderItems.length}</p>
+          <p>Awards CMS - Running Order Management System</p>
+        </div>
+
+        <script>
+          // Auto-print when page loads
+          window.onload = function() {
+            window.print();
+          };
+        </script>
+      </body>
+      </html>
+    `;
+
+    // Open print window
+    const printWindow = window.open('', '_blank', 'width=800,height=600');
+    if (printWindow) {
+      printWindow.document.write(printContent);
+      printWindow.document.close();
+    } else {
+      utils.showToast('Please allow popups to print the running order', 'warning');
     }
   },
 

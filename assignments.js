@@ -286,7 +286,25 @@ const assignmentsModule = {
   async assignCompany(orgId, companyName) {
     try {
       utils.showLoading();
-      
+
+      // Check if this assignment already exists (prevent duplicates)
+      const { data: existingAssignment, error: checkError } = await STATE.client
+        .from('award_assignments')
+        .select('id')
+        .eq('award_id', this.currentAwardId)
+        .eq('organisation_id', orgId)
+        .maybeSingle();
+
+      if (checkError) {
+        console.error('Error checking for existing assignment:', checkError);
+        throw checkError;
+      }
+
+      if (existingAssignment) {
+        utils.showToast(`${companyName} is already assigned to this award!`, 'warning');
+        return;
+      }
+
       const { error } = await STATE.client
         .from('award_assignments')
         .insert([{
@@ -295,17 +313,17 @@ const assignmentsModule = {
           status: 'nominated',
           assigned_by: STATE.currentUser?.email
         }]);
-      
+
       if (error) throw error;
-      
+
       utils.showToast(`${companyName} assigned successfully!`, 'success');
       await this.refreshAssignments();
-      
+
       // Refresh awards list to update counts
       if (typeof awardsModule !== 'undefined' && awardsModule.loadAwards) {
         await awardsModule.loadAwards();
       }
-      
+
     } catch (error) {
       console.error('Error assigning company:', error);
       utils.showToast('Failed to assign company: ' + error.message, 'error');

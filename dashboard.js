@@ -38,6 +38,11 @@ const dashboardModule = {
         await mediaGalleryModule.loadMediaStatistics();
       }
 
+      // Load AI vetting status
+      if (typeof aiVettingModule !== 'undefined' && aiVettingModule.updateDashboardCard) {
+        await aiVettingModule.updateDashboardCard();
+      }
+
       console.log('✅ Dashboard data loaded');
 
     } catch (error) {

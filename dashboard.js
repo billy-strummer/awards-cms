@@ -2049,6 +2049,362 @@ const dashboardModule = {
     } finally {
       utils.hideLoading();
     }
+  },
+
+  /**
+   * Open Awards Summary Modal
+   */
+  async openAwardsSummary() {
+    const modal = new bootstrap.Modal(document.getElementById('awardsSummaryModal'));
+    modal.show();
+
+    try {
+      const awards = STATE.allAwards || [];
+
+      // Summary statistics
+      const totalAwards = awards.length;
+      const activeAwards = awards.filter(a => a.status === 'published' || a.status === 'active').length;
+      const pendingAwards = awards.filter(a => a.status === STATUS.DRAFT || a.status === STATUS.PENDING).length;
+      const categories = [...new Set(awards.map(a => a.category).filter(c => c))];
+
+      document.getElementById('summaryTotalAwards').textContent = totalAwards;
+      document.getElementById('summaryActiveAwards').textContent = activeAwards;
+      document.getElementById('summaryPendingAwards').textContent = pendingAwards;
+      document.getElementById('summaryAwardCategories').textContent = categories.length;
+
+      // Recent awards table
+      const recentAwards = [...awards]
+        .sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0))
+        .slice(0, 10);
+
+      const tbody = document.getElementById('summaryRecentAwardsTable');
+      if (recentAwards.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="4" class="text-center text-muted py-4">No awards found</td></tr>';
+      } else {
+        tbody.innerHTML = recentAwards.map(award => `
+          <tr>
+            <td>${utils.escapeHtml(award.award_name || 'Untitled')}</td>
+            <td>${utils.escapeHtml(award.category || 'N/A')}</td>
+            <td><span class="badge bg-${this.getStatusColor(award.status)}">${award.status || 'N/A'}</span></td>
+            <td>${award.created_at ? new Date(award.created_at).toLocaleDateString() : 'N/A'}</td>
+          </tr>
+        `).join('');
+      }
+
+      // Status breakdown
+      const statusCounts = {};
+      awards.forEach(a => {
+        const status = a.status || 'unknown';
+        statusCounts[status] = (statusCounts[status] || 0) + 1;
+      });
+
+      const breakdown = document.getElementById('summaryAwardsStatusBreakdown');
+      breakdown.innerHTML = Object.entries(statusCounts)
+        .sort((a, b) => b[1] - a[1])
+        .map(([status, count]) => {
+          const percentage = totalAwards > 0 ? (count / totalAwards * 100).toFixed(0) : 0;
+          return `
+            <div class="mb-3">
+              <div class="d-flex justify-content-between align-items-center mb-1">
+                <span class="text-capitalize">${status}</span>
+                <span class="fw-bold">${count} (${percentage}%)</span>
+              </div>
+              <div class="progress">
+                <div class="progress-bar bg-${this.getStatusColor(status)}" style="width: ${percentage}%"></div>
+              </div>
+            </div>
+          `;
+        }).join('');
+
+    } catch (error) {
+      console.error('Error loading awards summary:', error);
+      utils.showToast('Failed to load awards summary', 'error');
+    }
+  },
+
+  /**
+   * Open Organisations Summary Modal
+   */
+  async openOrganisationsSummary() {
+    const modal = new bootstrap.Modal(document.getElementById('organisationsSummaryModal'));
+    modal.show();
+
+    try {
+      const orgs = STATE.allOrganisations || [];
+
+      // Get winners count
+      const { data: winners } = await STATE.client
+        .from('award_assignments')
+        .select('organisation_id')
+        .eq('status', 'winner')
+        .not('organisation_id', 'is', null);
+
+      const uniqueWinners = new Set(winners?.map(w => w.organisation_id) || []);
+
+      // Summary statistics
+      const totalOrgs = orgs.length;
+      const sectors = [...new Set(orgs.map(o => o.sector).filter(s => s))];
+
+      // New this month
+      const thisMonth = new Date();
+      thisMonth.setDate(1);
+      const newThisMonth = orgs.filter(o => o.created_at && new Date(o.created_at) >= thisMonth).length;
+
+      document.getElementById('summaryTotalOrgs').textContent = totalOrgs;
+      document.getElementById('summaryOrgWinners').textContent = uniqueWinners.size;
+      document.getElementById('summaryOrgSectors').textContent = sectors.length;
+      document.getElementById('summaryOrgNewMonth').textContent = newThisMonth;
+
+      // Get award counts for organisations
+      const orgAwardCounts = {};
+      winners?.forEach(w => {
+        if (w.organisation_id) {
+          orgAwardCounts[w.organisation_id] = (orgAwardCounts[w.organisation_id] || 0) + 1;
+        }
+      });
+
+      // Recent organisations table
+      const recentOrgs = [...orgs]
+        .sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0))
+        .slice(0, 10);
+
+      const tbody = document.getElementById('summaryRecentOrgsTable');
+      if (recentOrgs.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted py-4">No organisations found</td></tr>';
+      } else {
+        tbody.innerHTML = recentOrgs.map(org => `
+          <tr>
+            <td>${utils.escapeHtml(org.company_name || 'Untitled')}</td>
+            <td>${utils.escapeHtml(org.sector || 'N/A')}</td>
+            <td>${utils.escapeHtml(org.region || 'N/A')}</td>
+            <td><span class="badge bg-primary">${orgAwardCounts[org.id] || 0}</span></td>
+            <td>${org.created_at ? new Date(org.created_at).toLocaleDateString() : 'N/A'}</td>
+          </tr>
+        `).join('');
+      }
+
+      // Sector breakdown
+      const sectorCounts = {};
+      orgs.forEach(o => {
+        const sector = o.sector || 'Unspecified';
+        sectorCounts[sector] = (sectorCounts[sector] || 0) + 1;
+      });
+
+      const breakdown = document.getElementById('summaryOrgSectorBreakdown');
+      breakdown.innerHTML = Object.entries(sectorCounts)
+        .sort((a, b) => b[1] - a[1])
+        .map(([sector, count]) => {
+          const percentage = totalOrgs > 0 ? (count / totalOrgs * 100).toFixed(0) : 0;
+          return `
+            <div class="mb-3">
+              <div class="d-flex justify-content-between align-items-center mb-1">
+                <span>${utils.escapeHtml(sector)}</span>
+                <span class="fw-bold">${count} (${percentage}%)</span>
+              </div>
+              <div class="progress">
+                <div class="progress-bar bg-success" style="width: ${percentage}%"></div>
+              </div>
+            </div>
+          `;
+        }).join('');
+
+    } catch (error) {
+      console.error('Error loading organisations summary:', error);
+      utils.showToast('Failed to load organisations summary', 'error');
+    }
+  },
+
+  /**
+   * Open Winners Summary Modal
+   */
+  async openWinnersSummary() {
+    const modal = new bootstrap.Modal(document.getElementById('winnersSummaryModal'));
+    modal.show();
+
+    try {
+      // Get winners data
+      const { data: winners } = await STATE.client
+        .from('award_assignments')
+        .select(`
+          *,
+          organisations (company_name),
+          awards (award_name)
+        `)
+        .eq('status', 'winner')
+        .order('award_year', { ascending: false });
+
+      const totalWinners = winners?.length || 0;
+
+      // This year's winners
+      const currentYear = new Date().getFullYear();
+      const winnersThisYear = winners?.filter(w => w.award_year === currentYear).length || 0;
+
+      // Multi-award winners
+      const orgWinCounts = {};
+      winners?.forEach(w => {
+        if (w.organisation_id) {
+          orgWinCounts[w.organisation_id] = (orgWinCounts[w.organisation_id] || 0) + 1;
+        }
+      });
+      const multiWinners = Object.values(orgWinCounts).filter(count => count >= 2).length;
+
+      // Average per year
+      const years = [...new Set(winners?.map(w => w.award_year).filter(y => y) || [])];
+      const avgPerYear = years.length > 0 ? Math.round(totalWinners / years.length) : 0;
+
+      document.getElementById('summaryTotalWinners').textContent = totalWinners;
+      document.getElementById('summaryWinnersThisYear').textContent = winnersThisYear;
+      document.getElementById('summaryMultiWinners').textContent = multiWinners;
+      document.getElementById('summaryAvgWinnersYear').textContent = avgPerYear;
+
+      // Recent winners table
+      const recentWinners = (winners || []).slice(0, 10);
+
+      const tbody = document.getElementById('summaryRecentWinnersTable');
+      if (recentWinners.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="4" class="text-center text-muted py-4">No winners found</td></tr>';
+      } else {
+        tbody.innerHTML = recentWinners.map(winner => `
+          <tr>
+            <td>${utils.escapeHtml(winner.organisations?.company_name || 'N/A')}</td>
+            <td>${utils.escapeHtml(winner.awards?.award_name || 'N/A')}</td>
+            <td>${winner.award_year || 'N/A'}</td>
+            <td><span class="badge bg-success">Winner</span></td>
+          </tr>
+        `).join('');
+      }
+
+      // Winners by year
+      const yearCounts = {};
+      winners?.forEach(w => {
+        const year = w.award_year || 'Unknown';
+        yearCounts[year] = (yearCounts[year] || 0) + 1;
+      });
+
+      const byYear = document.getElementById('summaryWinnersByYear');
+      byYear.innerHTML = Object.entries(yearCounts)
+        .sort((a, b) => b[0] - a[0])
+        .map(([year, count]) => {
+          const maxCount = Math.max(...Object.values(yearCounts));
+          const percentage = maxCount > 0 ? (count / maxCount * 100).toFixed(0) : 0;
+          return `
+            <div class="mb-3">
+              <div class="d-flex justify-content-between align-items-center mb-1">
+                <span><strong>${year}</strong></span>
+                <span class="fw-bold">${count} winners</span>
+              </div>
+              <div class="progress">
+                <div class="progress-bar bg-info" style="width: ${percentage}%"></div>
+              </div>
+            </div>
+          `;
+        }).join('');
+
+    } catch (error) {
+      console.error('Error loading winners summary:', error);
+      utils.showToast('Failed to load winners summary', 'error');
+    }
+  },
+
+  /**
+   * Open Events Summary Modal
+   */
+  async openEventsSummary() {
+    const modal = new bootstrap.Modal(document.getElementById('eventsSummaryModal'));
+    modal.show();
+
+    try {
+      // Get events data
+      const { data: events } = await STATE.client
+        .from('events')
+        .select('*')
+        .order('event_date', { ascending: false });
+
+      const totalEvents = events?.length || 0;
+      const today = new Date().toISOString().split('T')[0];
+      const futureDate = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+
+      const upcomingEvents = events?.filter(e => e.event_date && e.event_date >= today && e.event_date <= futureDate).length || 0;
+      const pastEvents = events?.filter(e => e.event_date && e.event_date < today).length || 0;
+
+      // Calculate average attendance
+      const eventsWithCapacity = events?.filter(e => e.capacity && e.capacity > 0) || [];
+      const avgAttendance = eventsWithCapacity.length > 0
+        ? Math.round(eventsWithCapacity.reduce((sum, e) => sum + (e.capacity || 0), 0) / eventsWithCapacity.length)
+        : 0;
+
+      document.getElementById('summaryTotalEvents').textContent = totalEvents;
+      document.getElementById('summaryUpcomingEvents').textContent = upcomingEvents;
+      document.getElementById('summaryPastEvents').textContent = pastEvents;
+      document.getElementById('summaryAvgAttendance').textContent = avgAttendance;
+
+      // Upcoming events table
+      const upcoming = events?.filter(e => e.event_date && e.event_date >= today).slice(0, 10) || [];
+
+      const tbody = document.getElementById('summaryUpcomingEventsTable');
+      if (upcoming.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted py-4">No upcoming events</td></tr>';
+      } else {
+        tbody.innerHTML = upcoming.map(event => `
+          <tr>
+            <td>${utils.escapeHtml(event.event_name || 'Untitled')}</td>
+            <td>${event.event_date ? new Date(event.event_date).toLocaleDateString() : 'N/A'}</td>
+            <td>${utils.escapeHtml(event.location || 'TBD')}</td>
+            <td>${event.capacity || 'N/A'}</td>
+            <td><span class="badge bg-success">Upcoming</span></td>
+          </tr>
+        `).join('');
+      }
+
+      // Recent events timeline
+      const recentEvents = events?.slice(0, 5) || [];
+
+      const timeline = document.getElementById('summaryRecentEventsTimeline');
+      if (recentEvents.length === 0) {
+        timeline.innerHTML = '<div class="text-center text-muted py-4">No events found</div>';
+      } else {
+        timeline.innerHTML = recentEvents.map(event => {
+          const isPast = event.event_date && event.event_date < today;
+          const badgeClass = isPast ? 'bg-secondary' : 'bg-success';
+          const badgeText = isPast ? 'Past' : 'Upcoming';
+
+          return `
+            <div class="d-flex gap-3 mb-3 pb-3 border-bottom">
+              <div>
+                <span class="badge ${badgeClass}">${badgeText}</span>
+              </div>
+              <div class="flex-grow-1">
+                <h6 class="mb-1">${utils.escapeHtml(event.event_name || 'Untitled')}</h6>
+                <p class="text-muted small mb-1">
+                  <i class="bi bi-calendar me-1"></i>${event.event_date ? new Date(event.event_date).toLocaleDateString() : 'N/A'}
+                  ${event.location ? `<i class="bi bi-geo-alt ms-2 me-1"></i>${utils.escapeHtml(event.location)}` : ''}
+                </p>
+                ${event.description ? `<p class="small mb-0">${utils.escapeHtml(event.description.substring(0, 100))}${event.description.length > 100 ? '...' : ''}</p>` : ''}
+              </div>
+            </div>
+          `;
+        }).join('');
+      }
+
+    } catch (error) {
+      console.error('Error loading events summary:', error);
+      utils.showToast('Failed to load events summary', 'error');
+    }
+  },
+
+  /**
+   * Get status color for badges
+   */
+  getStatusColor(status) {
+    const statusColors = {
+      'published': 'success',
+      'active': 'success',
+      'draft': 'secondary',
+      'pending': 'warning',
+      'review': 'info',
+      'archived': 'dark'
+    };
+    return statusColors[status?.toLowerCase()] || 'secondary';
   }
 };
 

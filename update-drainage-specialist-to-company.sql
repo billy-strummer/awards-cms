@@ -14,12 +14,10 @@ SELECT
   'organisations' as table_name,
   id,
   company_name,
-  company_type,
   business_type
 FROM organisations
 WHERE
   company_name ILIKE '%Drainage Specialist%'
-  OR company_type ILIKE '%Drainage Specialist%'
   OR business_type ILIKE '%Drainage Specialist%'
   OR description ILIKE '%Drainage Specialist%'
   OR services_offered ILIKE '%Drainage Specialist%';
@@ -83,7 +81,6 @@ SELECT
   (
     SELECT COUNT(*) FROM organisations
     WHERE company_name ILIKE '%Drainage Specialist%'
-       OR company_type ILIKE '%Drainage Specialist%'
        OR business_type ILIKE '%Drainage Specialist%'
        OR description ILIKE '%Drainage Specialist%'
        OR services_offered ILIKE '%Drainage Specialist%'
@@ -124,13 +121,11 @@ SELECT
 UPDATE organisations
 SET
   company_name = REPLACE(company_name, 'Drainage Specialist', 'Drainage Company'),
-  company_type = REPLACE(company_type, 'Drainage Specialist', 'Drainage Company'),
   business_type = REPLACE(business_type, 'Drainage Specialist', 'Drainage Company'),
   description = REPLACE(description, 'Drainage Specialist', 'Drainage Company'),
   services_offered = REPLACE(services_offered, 'Drainage Specialist', 'Drainage Company')
 WHERE
   company_name ILIKE '%Drainage Specialist%'
-  OR company_type ILIKE '%Drainage Specialist%'
   OR business_type ILIKE '%Drainage Specialist%'
   OR description ILIKE '%Drainage Specialist%'
   OR services_offered ILIKE '%Drainage Specialist%';
@@ -189,7 +184,6 @@ SELECT
     WHEN (
       SELECT COUNT(*) FROM organisations
       WHERE company_name ILIKE '%Drainage Specialist%'
-         OR company_type ILIKE '%Drainage Specialist%'
          OR business_type ILIKE '%Drainage Specialist%'
          OR description ILIKE '%Drainage Specialist%'
          OR services_offered ILIKE '%Drainage Specialist%'
@@ -227,12 +221,10 @@ SELECT
   'organisations' as table_name,
   id,
   company_name,
-  company_type,
   business_type
 FROM organisations
 WHERE
   company_name ILIKE '%Drainage Company%'
-  OR company_type ILIKE '%Drainage Company%'
   OR business_type ILIKE '%Drainage Company%';
 
 -- ============================================

@@ -324,15 +324,21 @@
             </div>
           </div>
 
-          <!-- Media Gallery Statistics Row -->
+          <!-- Media Gallery & AI Vetting Cards -->
           <div class="row g-4 mb-5">
             <div class="col-md-3">
-              <div class="stat-card stat-card-clickable" onclick="dashboardModule.navigateToSection('media-gallery')" title="Click to view media gallery">
-                <i class="bi bi-camera-fill stat-card-icon text-primary"></i>
-                <h6>Total Photos</h6>
-                <div class="stat-value text-primary" id="totalPhotosCount">0</div>
-                <div id="totalPhotosGrowth" class="stat-growth"></div>
-                <small class="text-muted">Across all events</small>
+              <div class="stat-card stat-card-clickable" onclick="dashboardModule.openMediaGallerySummary()" title="Click to view media gallery statistics">
+                <button class="btn btn-sm btn-outline-primary position-absolute top-0 end-0 m-2"
+                        onclick="event.stopPropagation(); dashboardModule.openMediaGallerySummary();"
+                        title="View Media Gallery Summary"
+                        style="z-index: 10; padding: 0.25rem 0.5rem;">
+                  <i class="bi bi-info-circle"></i>
+                </button>
+                <i class="bi bi-images stat-card-icon text-primary"></i>
+                <h6>Media Gallery</h6>
+                <div class="stat-value text-primary" id="totalMediaItems">0</div>
+                <div id="totalMediaGrowth" class="stat-growth"></div>
+                <small class="text-muted">Photos & videos</small>
                 <div class="stat-card-hover-indicator">
                   <i class="bi bi-arrow-right-circle"></i>
                 </div>
@@ -340,38 +346,18 @@
             </div>
 
             <div class="col-md-3">
-              <div class="stat-card stat-card-clickable" onclick="dashboardModule.navigateToSection('media-gallery')" title="Click to view media gallery">
-                <i class="bi bi-play-btn-fill stat-card-icon text-danger"></i>
-                <h6>Total Videos</h6>
-                <div class="stat-value text-danger" id="totalVideosCount">0</div>
-                <div id="totalVideosGrowth" class="stat-growth"></div>
-                <small class="text-muted">Across all events</small>
-                <div class="stat-card-hover-indicator">
-                  <i class="bi bi-arrow-right-circle"></i>
-                </div>
-              </div>
-            </div>
-
-            <div class="col-md-3">
-              <div class="stat-card stat-card-warning" onclick="mediaGalleryModule.showUntaggedPhotos()" title="Click to view untagged photos">
-                <i class="bi bi-exclamation-triangle stat-card-icon text-warning"></i>
-                <h6>Untagged Photos</h6>
-                <div class="stat-value text-warning" id="untaggedPhotosCountGallery">0</div>
-                <div id="untaggedPhotosGrowth" class="stat-growth"></div>
-                <small class="text-muted">Need company/award tags</small>
-                <div class="stat-card-hover-indicator">
-                  <i class="bi bi-arrow-right-circle"></i>
-                </div>
-              </div>
-            </div>
-
-            <div class="col-md-3">
-              <div class="stat-card stat-card-clickable" onclick="dashboardModule.navigateToSection('events')" title="Click to view events">
-                <i class="bi bi-calendar-event stat-card-icon text-info"></i>
-                <h6>Events with Media</h6>
-                <div class="stat-value text-info" id="totalEventsWithMediaCount">0</div>
-                <div id="totalEventsWithMediaGrowth" class="stat-growth"></div>
-                <small class="text-muted">Have photos/videos</small>
+              <div class="stat-card stat-card-clickable" onclick="aiVettingModule.openVettingModal()" title="Click to view AI vetting status">
+                <button class="btn btn-sm btn-outline-warning position-absolute top-0 end-0 m-2"
+                        onclick="event.stopPropagation(); aiVettingModule.openVettingModal();"
+                        title="View AI Vetting Details"
+                        style="z-index: 10; padding: 0.25rem 0.5rem;">
+                  <i class="bi bi-info-circle"></i>
+                </button>
+                <i class="bi bi-robot stat-card-icon text-warning"></i>
+                <h6>AI Vetting</h6>
+                <div class="stat-value text-warning" id="vettingFlaggedCount">0</div>
+                <div id="vettingGrowth" class="stat-growth"></div>
+                <small class="text-muted" id="vettingLastRun">Never run</small>
                 <div class="stat-card-hover-indicator">
                   <i class="bi bi-arrow-right-circle"></i>
                 </div>
@@ -700,8 +686,22 @@
                   <option value="2023">2023</option>
                 </select>
               </div>
-              
-              <div class="col-md-3">
+
+              <div class="col-md-2">
+                <label for="awardsStatusFilterSelect" class="form-label">
+                  <i class="bi bi-flag me-1"></i>Status
+                </label>
+                <select class="form-select" id="awardsStatusFilterSelect">
+                  <option value="">All Statuses</option>
+                  <option value="draft">Draft</option>
+                  <option value="pending">Pending</option>
+                  <option value="published">Published</option>
+                  <option value="active">Active</option>
+                  <option value="archived">Archived</option>
+                </select>
+              </div>
+
+              <div class="col-md-2">
                 <label for="awardsSectorFilterSelect" class="form-label">
                   <i class="bi bi-briefcase me-1"></i>Sector
                 </label>
@@ -709,8 +709,8 @@
                   <option value="">All Sectors</option>
                 </select>
               </div>
-              
-              <div class="col-md-3">
+
+              <div class="col-md-2">
                 <label for="awardsRegionFilterSelect" class="form-label">
                   <i class="bi bi-geo-alt me-1"></i>Region
                 </label>
@@ -718,7 +718,7 @@
                   <option value="">All Regions</option>
                 </select>
               </div>
-              
+
               <div class="col-md-3">
                 <label for="awardsSearchBox" class="form-label">
                   <i class="bi bi-search me-1"></i>Search
@@ -738,24 +738,22 @@
                 <span id="awardsCount">0</span> awards
               </div>
             </div>
-            
+
             <div class="table-responsive">
               <table class="table table-hover table-striped align-middle">
                 <thead>
                   <tr>
-                    <th>Company</th>
-                    <th>Year</th>
                     <th>Award Category</th>
                     <th>Sector</th>
                     <th>Region</th>
                     <th>Status</th>
                     <th class="text-center">Nominees</th>
-                    <th width="150" class="text-center">Actions</th>
+                    <th width="100" class="text-center">Actions</th>
                   </tr>
                 </thead>
                 <tbody id="awardsTableBody">
                   <tr>
-                    <td colspan="7" class="text-center py-5">
+                    <td colspan="6" class="text-center py-5">
                       <div class="text-muted">
                         <i class="bi bi-inbox display-3 d-block mb-3 opacity-25"></i>
                         <p class="mb-0">Loading awards...</p>
@@ -5724,6 +5722,248 @@ in recognition of excellence
     </div>
   </div>
 
+  <!-- Media Gallery Summary Modal -->
+  <div class="modal fade" id="mediaGallerySummaryModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+      <div class="modal-content">
+        <div class="modal-header bg-primary text-white">
+          <h5 class="modal-title">
+            <i class="bi bi-images me-2"></i>Media Gallery Statistics
+          </h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <!-- Summary Cards -->
+          <div class="row g-3 mb-4">
+            <div class="col-md-6">
+              <div class="card bg-primary text-white h-100">
+                <div class="card-body">
+                  <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                      <h6 class="card-subtitle mb-2 opacity-75">Total Photos</h6>
+                      <h3 class="card-title mb-0" id="modalTotalPhotosCount">0</h3>
+                      <p class="small mb-0 mt-2 opacity-75">Across all events</p>
+                    </div>
+                    <i class="bi bi-camera-fill fs-1 opacity-50"></i>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="col-md-6">
+              <div class="card bg-danger text-white h-100">
+                <div class="card-body">
+                  <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                      <h6 class="card-subtitle mb-2 opacity-75">Total Videos</h6>
+                      <h3 class="card-title mb-0" id="modalTotalVideosCount">0</h3>
+                      <p class="small mb-0 mt-2 opacity-75">Across all events</p>
+                    </div>
+                    <i class="bi bi-play-btn-fill fs-1 opacity-50"></i>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="col-md-6">
+              <div class="card bg-warning text-dark h-100" style="cursor: pointer;" onclick="mediaGalleryModule.showUntaggedPhotos(); bootstrap.Modal.getInstance(document.getElementById('mediaGallerySummaryModal')).hide();" title="Click to view untagged photos">
+                <div class="card-body">
+                  <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                      <h6 class="card-subtitle mb-2">Untagged Photos</h6>
+                      <h3 class="card-title mb-0" id="modalUntaggedPhotosCount">0</h3>
+                      <p class="small mb-0 mt-2">Need company/award tags</p>
+                    </div>
+                    <i class="bi bi-exclamation-triangle fs-1 opacity-50"></i>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="col-md-6">
+              <div class="card bg-info text-white h-100">
+                <div class="card-body">
+                  <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                      <h6 class="card-subtitle mb-2 opacity-75">Events with Media</h6>
+                      <h3 class="card-title mb-0" id="modalEventsWithMediaCount">0</h3>
+                      <p class="small mb-0 mt-2 opacity-75">Have photos/videos</p>
+                    </div>
+                    <i class="bi bi-calendar-event fs-1 opacity-50"></i>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Quick Actions -->
+          <div class="card">
+            <div class="card-header bg-light">
+              <h6 class="mb-0">
+                <i class="bi bi-lightning-fill me-2"></i>Quick Actions
+              </h6>
+            </div>
+            <div class="card-body">
+              <div class="d-flex gap-2 flex-wrap">
+                <button class="btn btn-primary btn-sm" onclick="dashboardModule.navigateToSection('media-gallery'); bootstrap.Modal.getInstance(document.getElementById('mediaGallerySummaryModal')).hide();">
+                  <i class="bi bi-images me-1"></i>View Media Gallery
+                </button>
+                <button class="btn btn-warning btn-sm" onclick="mediaGalleryModule.showUntaggedPhotos(); bootstrap.Modal.getInstance(document.getElementById('mediaGallerySummaryModal')).hide();">
+                  <i class="bi bi-tags me-1"></i>Tag Untagged Photos
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- AI Vetting Modal -->
+  <div class="modal fade" id="aiVettingModal" tabindex="-1" aria-hidden="true" data-bs-backdrop="static">
+    <div class="modal-dialog modal-xl">
+      <div class="modal-content">
+        <div class="modal-header bg-warning">
+          <h5 class="modal-title">
+            <i class="bi bi-robot me-2"></i>AI Company Vetting
+          </h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+
+          <!-- Configuration Alert (shown if API key missing) -->
+          <div id="vettingConfigAlert" class="alert alert-info" style="display: none;">
+            <i class="bi bi-info-circle me-2"></i>
+            <strong>Configuration Required:</strong> Please configure your Claude API key in the Settings tab to enable AI vetting.
+          </div>
+
+          <!-- Progress Section (shown when vetting is running) -->
+          <div id="vettingProgressSection" style="display: none;">
+            <div class="card bg-light mb-4">
+              <div class="card-body">
+                <h6 class="card-title">
+                  <i class="bi bi-hourglass-split me-2"></i>Vetting in Progress
+                </h6>
+                <div class="mb-3">
+                  <div class="d-flex justify-content-between mb-2">
+                    <span id="vettingProgressText">Preparing to vet companies...</span>
+                    <span id="vettingProgressCount">0 / 0</span>
+                  </div>
+                  <div class="progress" style="height: 25px;">
+                    <div id="vettingProgressBar" class="progress-bar progress-bar-striped progress-bar-animated bg-warning"
+                         role="progressbar" style="width: 0%">0%</div>
+                  </div>
+                </div>
+                <div class="small text-muted">
+                  <i class="bi bi-lightbulb me-1"></i>
+                  <span id="vettingCurrentCompany">This may take several minutes...</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Summary Cards -->
+          <div class="row g-3 mb-4">
+            <div class="col-md-4">
+              <div class="card bg-success text-white h-100">
+                <div class="card-body">
+                  <h6 class="card-subtitle mb-2 opacity-75">Verified Companies</h6>
+                  <h3 class="card-title mb-0" id="vettingVerifiedCount">0</h3>
+                  <p class="small mb-0 mt-2 opacity-75">No issues found</p>
+                </div>
+              </div>
+            </div>
+
+            <div class="col-md-4">
+              <div class="card bg-danger text-white h-100">
+                <div class="card-body">
+                  <h6 class="card-subtitle mb-2 opacity-75">Flagged Companies</h6>
+                  <h3 class="card-title mb-0" id="vettingModalFlaggedCount">0</h3>
+                  <p class="small mb-0 mt-2 opacity-75">Require attention</p>
+                </div>
+              </div>
+            </div>
+
+            <div class="col-md-4">
+              <div class="card bg-primary text-white h-100">
+                <div class="card-body">
+                  <h6 class="card-subtitle mb-2 opacity-75">Total Companies</h6>
+                  <h3 class="card-title mb-0" id="vettingTotalCount">0</h3>
+                  <p class="small mb-0 mt-2 opacity-75">
+                    <i class="bi bi-clock-history me-1"></i>
+                    <span id="vettingModalLastRun">Never</span>
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Action Buttons -->
+          <div class="d-flex justify-content-between align-items-center mb-3">
+            <div class="btn-group" role="group">
+              <button type="button" class="btn btn-outline-secondary btn-sm active" onclick="aiVettingModule.filterResults('all')">
+                All <span class="badge bg-secondary ms-1" id="filterAllCount">0</span>
+              </button>
+              <button type="button" class="btn btn-outline-danger btn-sm" onclick="aiVettingModule.filterResults('flagged')">
+                Flagged <span class="badge bg-danger ms-1" id="filterFlaggedCount">0</span>
+              </button>
+              <button type="button" class="btn btn-outline-success btn-sm" onclick="aiVettingModule.filterResults('verified')">
+                Verified <span class="badge bg-success ms-1" id="filterVerifiedCount">0</span>
+              </button>
+            </div>
+            <div>
+              <button class="btn btn-warning btn-sm" onclick="aiVettingModule.runVetting()" id="runVettingBtn">
+                <i class="bi bi-robot me-1"></i>Run AI Vetting
+              </button>
+              <button class="btn btn-outline-primary btn-sm" onclick="aiVettingModule.exportResults()">
+                <i class="bi bi-download me-1"></i>Export
+              </button>
+            </div>
+          </div>
+
+          <!-- Results Table -->
+          <div class="card">
+            <div class="card-body p-0">
+              <div class="table-responsive">
+                <table class="table table-hover mb-0">
+                  <thead class="table-light">
+                    <tr>
+                      <th>Company</th>
+                      <th>Sector</th>
+                      <th class="text-center">Status</th>
+                      <th class="text-center">Operational</th>
+                      <th class="text-center">Category Match</th>
+                      <th class="text-center">Reputation</th>
+                      <th>AI Findings</th>
+                      <th class="text-center">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody id="vettingResultsTableBody">
+                    <tr>
+                      <td colspan="8" class="text-center py-5">
+                        <div class="text-muted">
+                          <i class="bi bi-robot display-4 d-block mb-3 opacity-25"></i>
+                          <p class="mb-0">No vetting results yet. Click "Run AI Vetting" to start.</p>
+                        </div>
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- Bootstrap JS Bundle -->
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
   
@@ -5743,6 +5983,7 @@ in recognition of excellence
   <script src="events.js"></script>
   <script src="assignments.js"></script>
   <script src="dashboard.js"></script>
+  <script src="ai-vetting.js"></script>
   <script src="marketing.js"></script>
   <script src="email-builder.js"></script>
   <script src="email-lists.js"></script>

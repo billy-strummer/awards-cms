@@ -38,6 +38,11 @@ const dashboardModule = {
         await mediaGalleryModule.loadMediaStatistics();
       }
 
+      // Load AI vetting status
+      if (typeof aiVettingModule !== 'undefined' && aiVettingModule.updateDashboardCard) {
+        await aiVettingModule.updateDashboardCard();
+      }
+
       console.log('✅ Dashboard data loaded');
 
     } catch (error) {
@@ -2389,6 +2394,53 @@ const dashboardModule = {
     } catch (error) {
       console.error('Error loading events summary:', error);
       utils.showToast('Failed to load events summary', 'error');
+    }
+  },
+
+  /**
+   * Open Media Gallery Summary Modal
+   */
+  async openMediaGallerySummary() {
+    const modal = new bootstrap.Modal(document.getElementById('mediaGallerySummaryModal'));
+    modal.show();
+
+    // Load media statistics using the media gallery module's function
+    if (typeof mediaGalleryModule !== 'undefined' && mediaGalleryModule.loadMediaStatistics) {
+      try {
+        // Get stats from Supabase
+        const { count: totalPhotos } = await STATE.client
+          .from('media_items')
+          .select('*', { count: 'exact', head: true })
+          .eq('media_type', 'image');
+
+        const { count: totalVideos } = await STATE.client
+          .from('media_items')
+          .select('*', { count: 'exact', head: true })
+          .eq('media_type', 'video');
+
+        const { count: untaggedPhotos } = await STATE.client
+          .from('media_items')
+          .select('*', { count: 'exact', head: true })
+          .eq('media_type', 'image')
+          .or('organisation_id.is.null,award_id.is.null');
+
+        const { data: eventsWithMedia } = await STATE.client
+          .from('media_items')
+          .select('event_id')
+          .not('event_id', 'is', null);
+
+        const uniqueEvents = new Set(eventsWithMedia?.map(m => m.event_id));
+
+        // Update modal elements
+        document.getElementById('modalTotalPhotosCount').textContent = totalPhotos || 0;
+        document.getElementById('modalTotalVideosCount').textContent = totalVideos || 0;
+        document.getElementById('modalUntaggedPhotosCount').textContent = untaggedPhotos || 0;
+        document.getElementById('modalEventsWithMediaCount').textContent = uniqueEvents.size || 0;
+
+      } catch (error) {
+        console.error('Error loading media gallery statistics:', error);
+        utils.showToast('Failed to load media gallery statistics', 'error');
+      }
     }
   },
 

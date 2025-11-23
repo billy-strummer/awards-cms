@@ -133,34 +133,38 @@ const awardsModule = {
    */
   filterAwards() {
     const year = document.getElementById('awardsYearFilterSelect').value;
+    const status = document.getElementById('awardsStatusFilterSelect').value;
     const sector = document.getElementById('awardsSectorFilterSelect').value;
     const region = document.getElementById('awardsRegionFilterSelect').value;
     const search = document.getElementById('awardsSearchBox').value.toLowerCase().trim();
-    
+
     STATE.filteredAwards = STATE.allAwards.filter(award => {
       // Year filter
       if (year && award.year !== year) return false;
-      
+
+      // Status filter
+      if (status && award.status?.toLowerCase() !== status.toLowerCase()) return false;
+
       // Sector filter
       if (sector && award.sector !== sector) return false;
-      
+
       // Region filter
       if (region && award.region !== region) return false;
-      
+
       // Search filter (searches in winner name and award name/category)
       if (search) {
         const winnerName = award.winner?.toLowerCase() || '';
         const awardName = award.award_name?.toLowerCase() || '';
         const awardCategory = award.award_category?.toLowerCase() || '';
-        
+
         if (!winnerName.includes(search) && !awardName.includes(search) && !awardCategory.includes(search)) {
           return false;
         }
       }
-      
+
       return true;
     });
-    
+
     this.renderAwards();
   },
 
@@ -170,35 +174,29 @@ const awardsModule = {
   renderAwards() {
     const tbody = document.getElementById('awardsTableBody');
     const count = document.getElementById('awardsCount');
-    
+
     count.textContent = STATE.filteredAwards.length;
-    
+
     if (STATE.filteredAwards.length === 0) {
-      utils.showEmptyState('awardsTableBody', 8, 'No awards found matching your filters');
+      utils.showEmptyState('awardsTableBody', 6, 'No awards found matching your filters');
       return;
     }
-    
+
     tbody.innerHTML = STATE.filteredAwards.map(award => {
       const counts = award._assignmentCounts || { total: 0, nominated: 0, shortlisted: 0, winner: 0 };
-      const countBadgeClass = counts.total === 0 ? 'zero' : 
-                             counts.total < 5 ? 'low' : 
+      const countBadgeClass = counts.total === 0 ? 'zero' :
+                             counts.total < 5 ? 'low' :
                              counts.total < 15 ? 'medium' : 'high';
-      
+
       return `
         <tr class="fade-in">
-          <td>
-            <div class="fw-semibold">${utils.escapeHtml(award.winner || 'N/A')}</div>
-            ${award.email ? `<small class="text-muted">${utils.escapeHtml(award.email)}</small>` : ''}
-          </td>
-          <td>
-            <span class="badge bg-primary-subtle text-primary">${award.year || '-'}</span>
-          </td>
           <td>
             <a href="javascript:void(0);"
                class="text-decoration-none fw-semibold text-primary"
                onclick="assignmentsModule.openAssignmentsModal('${award.id}', '${utils.escapeHtml(award.award_name || award.award_category || 'Award').replace(/'/g, "\\'")}')">
               ${utils.escapeHtml(award.award_name || award.award_category || '-')}
             </a>
+            ${award.year ? `<div><small class="text-muted"><i class="bi bi-calendar3 me-1"></i>${award.year}</small></div>` : ''}
           </td>
           <td>
             <span class="badge bg-info-subtle text-info">
@@ -222,33 +220,33 @@ const awardsModule = {
             ${counts.winner > 0 ? '<div class="mt-1"><span class="badge bg-success"><i class="bi bi-trophy-fill me-1"></i>Has Winner</span></div>' : ''}
           </td>
           <td class="text-center">
-            <button 
-              class="btn btn-sm btn-primary manage-nominees-btn mb-1" 
-              onclick="assignmentsModule.openAssignmentsModal('${award.id}', '${utils.escapeHtml(award.award_name || award.award_category || 'Award').replace(/'/g, "\\'")}')">
-              <i class="bi bi-people"></i> Manage
-            </button>
-            <div class="btn-group btn-group-sm" role="group">
-              <button 
-                class="btn btn-outline-primary btn-icon" 
-                onclick="awardsModule.viewDetails('${award.id}')"
-                title="View Details"
-                aria-label="View award details">
-                <i class="bi bi-eye"></i>
+            <div class="btn-group btn-group-sm">
+              <button class="btn btn-primary dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                <i class="bi bi-gear"></i>
               </button>
-              <button 
-                class="btn btn-outline-success btn-icon" 
-                onclick="awardsModule.approve('${award.id}')"
-                title="Approve"
-                aria-label="Approve award">
-                <i class="bi bi-check-lg"></i>
-              </button>
-              <button 
-                class="btn btn-outline-danger btn-icon" 
-                onclick="awardsModule.deleteAward('${award.id}')"
-                title="Delete"
-                aria-label="Delete award">
-                <i class="bi bi-trash"></i>
-              </button>
+              <ul class="dropdown-menu dropdown-menu-end">
+                <li>
+                  <a class="dropdown-item" href="javascript:void(0);" onclick="assignmentsModule.openAssignmentsModal('${award.id}', '${utils.escapeHtml(award.award_name || award.award_category || 'Award').replace(/'/g, "\\'")}')">
+                    <i class="bi bi-people text-primary me-2"></i>Manage Nominees
+                  </a>
+                </li>
+                <li>
+                  <a class="dropdown-item" href="javascript:void(0);" onclick="awardsModule.viewDetails('${award.id}')">
+                    <i class="bi bi-eye text-info me-2"></i>View Details
+                  </a>
+                </li>
+                <li><hr class="dropdown-divider"></li>
+                <li>
+                  <a class="dropdown-item" href="javascript:void(0);" onclick="awardsModule.approve('${award.id}')">
+                    <i class="bi bi-check-circle text-success me-2"></i>Approve
+                  </a>
+                </li>
+                <li>
+                  <a class="dropdown-item text-danger" href="javascript:void(0);" onclick="if(confirm('Are you sure you want to delete this award?')) awardsModule.deleteAward('${award.id}')">
+                    <i class="bi bi-trash me-2"></i>Delete
+                  </a>
+                </li>
+              </ul>
             </div>
           </td>
         </tr>

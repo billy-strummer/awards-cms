@@ -15,51 +15,20 @@ WHERE year = '2025' OR year = 2025;
 
 -- Step 3: Copy all 2025 award categories to 2026 (without nominees)
 -- This creates new records for 2026 based on 2025 awards
+-- Using only the essential columns that exist
 INSERT INTO awards (
   award_name,
-  award_category,
-  category,
-  description,
-  criteria,
-  prize_details,
   sector,
   region,
   year,
-  status,
-  thumbnail_url,
-  sponsor_logo_url,
-  sponsor_name,
-  parent_category_id,
-  display_order,
-  is_active,
-  show_on_website,
-  entry_open_date,
-  entry_close_date,
-  judging_deadline,
-  announcement_date
+  status
 )
 SELECT
   award_name,
-  award_category,
-  category,
-  description,
-  criteria,
-  prize_details,
   sector,
   region,
   '2026' as year,  -- Set year to 2026
-  'Draft' as status,  -- Set status to Draft (unpublished)
-  thumbnail_url,
-  sponsor_logo_url,
-  sponsor_name,
-  parent_category_id,
-  display_order,
-  is_active,
-  show_on_website,
-  NULL as entry_open_date,  -- Clear dates for new year
-  NULL as entry_close_date,
-  NULL as judging_deadline,
-  NULL as announcement_date
+  'Draft' as status  -- Set status to Draft (unpublished)
 FROM awards
 WHERE (year = '2025' OR year = 2025)
 AND NOT EXISTS (

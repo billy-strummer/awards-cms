@@ -92,9 +92,9 @@ const dashboardModule = {
   async updateExtendedStats() {
     try {
       // Get events count
-      const { data: events, error: eventsError } = await STATE.client
+      const { count: events, error: eventsError } = await STATE.client
         .from('events')
-        .select('id', { count: 'exact', head: true });
+        .select('*', { count: 'exact', head: true });
 
       if (!eventsError) {
         document.getElementById('totalEvents').textContent = events || 0;

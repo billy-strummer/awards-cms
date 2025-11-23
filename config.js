@@ -14,6 +14,7 @@ const STATUS = {
   DRAFT: 'Draft',
   PENDING: 'Pending',
   APPROVED: 'Approved',
+  PUBLISHED: 'Published',
   REJECTED: 'Rejected'
 };
 

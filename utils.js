@@ -146,6 +146,7 @@ const utils = {
       'Draft': 'secondary',
       'Pending': 'warning',
       'Approved': 'success',
+      'Published': 'primary',
       'Rejected': 'danger'
     };
     const badgeClass = statusMap[status] || 'secondary';

@@ -72,13 +72,27 @@ const mediaGalleryModule = {
 
       const uniqueEvents = new Set(eventsWithMedia?.map(m => m.event_id));
 
-      // Update UI
-      document.getElementById('totalPhotosCount').textContent = totalPhotos || 0;
-      document.getElementById('totalVideosCount').textContent = totalVideos || 0;
-      document.getElementById('untaggedPhotosCountGallery').textContent = untaggedPhotos || 0;
-      document.getElementById('totalEventsWithMediaCount').textContent = uniqueEvents.size || 0;
+      // Update UI elements (if they exist on current page)
+      const totalPhotosEl = document.getElementById('totalPhotosCount');
+      if (totalPhotosEl) totalPhotosEl.textContent = totalPhotos || 0;
 
-      // Also update dashboard stat if it exists
+      const totalVideosEl = document.getElementById('totalVideosCount');
+      if (totalVideosEl) totalVideosEl.textContent = totalVideos || 0;
+
+      const untaggedPhotosEl = document.getElementById('untaggedPhotosCountGallery');
+      if (untaggedPhotosEl) untaggedPhotosEl.textContent = untaggedPhotos || 0;
+
+      const eventsWithMediaEl = document.getElementById('totalEventsWithMediaCount');
+      if (eventsWithMediaEl) eventsWithMediaEl.textContent = uniqueEvents.size || 0;
+
+      // Update dashboard main media card (total photos + videos)
+      const totalMediaEl = document.getElementById('totalMediaItems');
+      if (totalMediaEl) {
+        const totalMedia = (totalPhotos || 0) + (totalVideos || 0);
+        totalMediaEl.textContent = totalMedia;
+      }
+
+      // Also update old dashboard stat if it exists
       const dashboardUntagged = document.getElementById('untaggedPhotos');
       if (dashboardUntagged) {
         dashboardUntagged.textContent = untaggedPhotos || 0;

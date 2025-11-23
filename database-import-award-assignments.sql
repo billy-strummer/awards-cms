@@ -9,16 +9,19 @@
 -- DELETE FROM award_assignments;
 
 -- STEP 2: Create a staging table for CSV import
-CREATE TABLE IF NOT EXISTS award_assignments_staging (
+-- Column names match your CSV headers EXACTLY (including spaces and case)
+DROP TABLE IF EXISTS award_assignments_staging;
+
+CREATE TABLE award_assignments_staging (
   id SERIAL PRIMARY KEY,
   sector TEXT,
-  region TEXT,
+  "Somerset" TEXT,  -- Matches your CSV header exactly
   award_name TEXT,
   organisation TEXT,
   email TEXT,
   website TEXT,
   address TEXT,
-  catchment_area TEXT,
+  "catchment area" TEXT,  -- Matches your CSV header exactly (with space)
   notes TEXT,
   imported_at TIMESTAMP DEFAULT NOW()
 );
@@ -26,7 +29,7 @@ CREATE TABLE IF NOT EXISTS award_assignments_staging (
 -- STEP 3: Import your CSV file
 -- Go to Supabase Dashboard → Table Editor → award_assignments_staging → Click "Insert" dropdown → "Import data from CSV"
 -- Upload your CSV file
--- Make sure column mapping matches: sector, region, award_name, organisation, email, website, address, catchment_area, notes
+-- The column names now match your CSV exactly, so it should import automatically!
 
 -- STEP 4: Review the staged data
 SELECT

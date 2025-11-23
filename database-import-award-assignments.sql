@@ -9,19 +9,21 @@
 -- DELETE FROM award_assignments;
 
 -- STEP 2: Create a staging table for CSV import
--- Column names match your CSV headers EXACTLY (including spaces and case)
+-- Column names match your standardized CSV headers
 DROP TABLE IF EXISTS award_assignments_staging;
 
 CREATE TABLE award_assignments_staging (
   id SERIAL PRIMARY KEY,
   sector TEXT,
-  "Somerset" TEXT,  -- Matches your CSV header exactly
-  award_name TEXT,
+  region TEXT,
+  award_category TEXT,
   organisation TEXT,
+  contact_name TEXT,
   email TEXT,
   website TEXT,
+  phone TEXT,
   address TEXT,
-  "catchment area" TEXT,  -- Matches your CSV header exactly (with space)
+  catchment_area TEXT,
   notes TEXT,
   imported_at TIMESTAMP DEFAULT NOW()
 );
@@ -33,22 +35,22 @@ CREATE TABLE award_assignments_staging (
 
 -- STEP 4: Review the staged data
 SELECT
-  award_name,
+  award_category,
   organisation,
   COUNT(*) as count
 FROM award_assignments_staging
-GROUP BY award_name, organisation
-ORDER BY award_name, organisation;
+GROUP BY award_category, organisation
+ORDER BY award_category, organisation;
 
 -- STEP 5: Check for mismatches (awards that won't match)
 SELECT DISTINCT
-  s.award_name,
+  s.award_category,
   'Award not found in database' as issue
 FROM award_assignments_staging s
-LEFT JOIN awards a ON LOWER(TRIM(a.award_name)) = LOWER(TRIM(s.award_name))
+LEFT JOIN awards a ON LOWER(TRIM(a.award_name)) = LOWER(TRIM(s.award_category))
   AND (a.year = '2025' OR a.year = 2025)
 WHERE a.id IS NULL
-ORDER BY s.award_name;
+ORDER BY s.award_category;
 
 -- STEP 6: Check for mismatches (organisations that won't match)
 SELECT DISTINCT
@@ -69,7 +71,7 @@ ORDER BY s.organisation;
 --   'nominated' as status,
 --   NOW() as assigned_date
 -- FROM award_assignments_staging s
--- JOIN awards a ON LOWER(TRIM(a.award_name)) = LOWER(TRIM(s.award_name))
+-- JOIN awards a ON LOWER(TRIM(a.award_name)) = LOWER(TRIM(s.award_category))
 --   AND (a.year = '2025' OR a.year = 2025)
 -- JOIN organisations o ON LOWER(TRIM(o.company_name)) = LOWER(TRIM(s.organisation))
 -- WHERE NOT EXISTS (

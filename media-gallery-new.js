@@ -16,7 +16,8 @@ const mediaGalleryModule = {
   selectedFiles: [], // Store selected files for preview
   selectedPhotoIds: new Set(), // Store selected photo IDs for bulk operations
   currentView: 'events-list', // 'events-list', 'event-contents', 'photos-production', 'videos-production'
-  videoTags: [], // Store video tags for add/edit modal
+  videoTags: [], // Store video company tags for add/edit modal
+  videoAwardTags: [], // Store video award tags for add/edit modal
 
   /**
    * Initialize Media Gallery - Show events list
@@ -307,7 +308,22 @@ const mediaGalleryModule = {
             ? `https://img.youtube.com/vi/${video.youtube_id || 'default'}/hqdefault.jpg`
             : video.thumbnail_url || video.file_url;
 
-          const tags = video.tags ? JSON.parse(video.tags) : [];
+          // Parse tags - handle both old format (array) and new format (object with companies/awards)
+          let companyTags = [];
+          let awardTags = [];
+          if (video.tags) {
+            const parsed = JSON.parse(video.tags);
+            if (Array.isArray(parsed)) {
+              // Old format - just an array of tags
+              companyTags = parsed;
+            } else {
+              // New format - object with companies and awards
+              companyTags = parsed.companies || [];
+              awardTags = parsed.awards || [];
+            }
+          }
+
+          const hasAnyTags = companyTags.length > 0 || awardTags.length > 0;
 
           return `
             <div class="col-md-6 col-lg-4">
@@ -323,10 +339,11 @@ const mediaGalleryModule = {
                   <h6 class="card-title">${utils.escapeHtml(video.title || 'Untitled Video')}</h6>
                   ${video.description ? `<p class="card-text small text-muted">${utils.escapeHtml(video.description).substring(0, 100)}...</p>` : ''}
 
-                  ${tags.length > 0 ? `
+                  ${hasAnyTags ? `
                     <div class="mb-2">
-                      ${tags.slice(0, 3).map(tag => `<span class="badge bg-secondary me-1">${utils.escapeHtml(tag)}</span>`).join('')}
-                      ${tags.length > 3 ? `<span class="badge bg-light text-dark">+${tags.length - 3}</span>` : ''}
+                      ${companyTags.slice(0, 2).map(tag => `<span class="badge bg-primary me-1">${utils.escapeHtml(tag)}</span>`).join('')}
+                      ${awardTags.slice(0, 2).map(tag => `<span class="badge bg-success me-1">${utils.escapeHtml(tag)}</span>`).join('')}
+                      ${(companyTags.length + awardTags.length) > 4 ? `<span class="badge bg-light text-dark">+${(companyTags.length + awardTags.length) - 4}</span>` : ''}
                     </div>
                   ` : ''}
 
@@ -360,11 +377,13 @@ const mediaGalleryModule = {
   /**
    * Open Add Video Modal
    */
-  openAddVideoModal() {
+  async openAddVideoModal() {
     // Reset form and tags
     document.getElementById('addVideoForm').reset();
     this.videoTags = [];
+    this.videoAwardTags = [];
     document.getElementById('videoTagsContainer').innerHTML = '';
+    document.getElementById('videoAwardTagsContainer').innerHTML = '';
 
     // Set event information
     if (this.currentEvent) {
@@ -376,18 +395,61 @@ const mediaGalleryModule = {
     document.getElementById('sourceTypeYouTube').checked = true;
     this.toggleVideoSourceFields('youtube');
 
-    // Setup Enter key handler for tag input
-    const tagInput = document.getElementById('videoTagInput');
-    tagInput.onkeydown = (e) => {
-      if (e.key === 'Enter' || e.key === ',') {
-        e.preventDefault();
-        this.addVideoTag();
-      }
-    };
+    // Load companies and awards for tagging dropdowns
+    await this.loadCompaniesForVideoTags();
+    await this.loadAwardsForVideoTags();
 
     // Show modal
     const modal = new bootstrap.Modal(document.getElementById('addVideoModal'));
     modal.show();
+  },
+
+  /**
+   * Load companies into video tag dropdown
+   */
+  async loadCompaniesForVideoTags() {
+    try {
+      const { data: companies, error } = await STATE.client
+        .from('organisations')
+        .select('id, company_name')
+        .eq('status', 'active')
+        .order('company_name');
+
+      if (error) throw error;
+
+      const select = document.getElementById('videoTagInput');
+      select.innerHTML = '<option value="">Select a company...</option>';
+      (companies || []).forEach(company => {
+        select.innerHTML += `<option value="${company.company_name}">${utils.escapeHtml(company.company_name)}</option>`;
+      });
+    } catch (error) {
+      console.error('Error loading companies for video tags:', error);
+      utils.showToast('Failed to load companies', 'error');
+    }
+  },
+
+  /**
+   * Load awards into video award tag dropdown
+   */
+  async loadAwardsForVideoTags() {
+    try {
+      const { data: awards, error } = await STATE.client
+        .from('awards')
+        .select('id, award_name')
+        .eq('is_active', true)
+        .order('award_name');
+
+      if (error) throw error;
+
+      const select = document.getElementById('videoAwardTagInput');
+      select.innerHTML = '<option value="">Select an award...</option>';
+      (awards || []).forEach(award => {
+        select.innerHTML += `<option value="${award.award_name}">${utils.escapeHtml(award.award_name)}</option>`;
+      });
+    } catch (error) {
+      console.error('Error loading awards for video tags:', error);
+      utils.showToast('Failed to load awards', 'error');
+    }
   },
 
   /**
@@ -411,28 +473,31 @@ const mediaGalleryModule = {
   },
 
   /**
-   * Add a tag to the video
+   * Add a company tag to the video
    */
   addVideoTag() {
-    const input = document.getElementById('videoTagInput');
-    const tag = input.value.trim().replace(',', '');
+    const select = document.getElementById('videoTagInput');
+    const companyName = select.value.trim();
 
-    if (!tag) return;
-
-    // Check if tag already exists
-    if (this.videoTags.includes(tag)) {
-      utils.showToast('Tag already added', 'warning');
+    if (!companyName) {
+      utils.showToast('Please select a company', 'warning');
       return;
     }
 
-    // Add tag to array
-    this.videoTags.push(tag);
+    // Check if company already tagged
+    if (this.videoTags.includes(companyName)) {
+      utils.showToast('Company already tagged', 'warning');
+      return;
+    }
+
+    // Add company name to tags array
+    this.videoTags.push(companyName);
 
     // Render tags
     this.renderVideoTags();
 
-    // Clear input
-    input.value = '';
+    // Reset select to default
+    select.value = '';
   },
 
   /**
@@ -452,6 +517,55 @@ const mediaGalleryModule = {
       <span class="badge bg-primary" style="font-size: 14px;">
         ${tag}
         <i class="bi bi-x-circle ms-1" style="cursor: pointer;" onclick="mediaGalleryModule.removeVideoTag('${tag}')"></i>
+      </span>
+    `).join('');
+  },
+
+  /**
+   * Add an award tag to the video
+   */
+  addVideoAwardTag() {
+    const select = document.getElementById('videoAwardTagInput');
+    const awardName = select.value.trim();
+
+    if (!awardName) {
+      utils.showToast('Please select an award', 'warning');
+      return;
+    }
+
+    // Check if award already tagged
+    if (this.videoAwardTags.includes(awardName)) {
+      utils.showToast('Award already tagged', 'warning');
+      return;
+    }
+
+    // Add award name to tags array
+    this.videoAwardTags.push(awardName);
+
+    // Render award tags
+    this.renderVideoAwardTags();
+
+    // Reset select to default
+    select.value = '';
+  },
+
+  /**
+   * Remove an award tag from the video
+   */
+  removeVideoAwardTag(tag) {
+    this.videoAwardTags = this.videoAwardTags.filter(t => t !== tag);
+    this.renderVideoAwardTags();
+  },
+
+  /**
+   * Render video award tags in the container
+   */
+  renderVideoAwardTags() {
+    const container = document.getElementById('videoAwardTagsContainer');
+    container.innerHTML = this.videoAwardTags.map(tag => `
+      <span class="badge bg-success" style="font-size: 14px;">
+        ${tag}
+        <i class="bi bi-x-circle ms-1" style="cursor: pointer;" onclick="mediaGalleryModule.removeVideoAwardTag('${tag}')"></i>
       </span>
     `).join('');
   },
@@ -535,6 +649,12 @@ const mediaGalleryModule = {
         return;
       }
 
+      // Prepare tags object with both company and award tags
+      const tagsObject = {
+        companies: this.videoTags,
+        awards: this.videoAwardTags
+      };
+
       // Prepare data for database
       const videoData = {
         event_id: eventId,
@@ -544,7 +664,7 @@ const mediaGalleryModule = {
         file_url: fileUrl,
         thumbnail_url: thumbnailUrl,
         youtube_id: youtubeId,
-        tags: this.videoTags.length > 0 ? JSON.stringify(this.videoTags) : null,
+        tags: (this.videoTags.length > 0 || this.videoAwardTags.length > 0) ? JSON.stringify(tagsObject) : null,
         status: 'published',
         created_at: new Date().toISOString()
       };

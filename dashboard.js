@@ -217,6 +217,36 @@ const dashboardModule = {
   },
 
   /**
+   * Show pending product orders/sales
+   */
+  showPendingOrders() {
+    this.navigateToSection('payments');
+
+    setTimeout(async () => {
+      try {
+        const { data: pending, error } = await STATE.client
+          .from('invoices')
+          .select('id, invoice_number, total_amount, organisations(company_name)')
+          .in('payment_status', ['pending', 'unpaid'])
+          .eq('status', 'sent')
+          .order('created_at', { ascending: false });
+
+        if (error) throw error;
+
+        if (pending && pending.length > 0) {
+          const totalValue = pending.reduce((sum, inv) => sum + parseFloat(inv.total_amount || 0), 0);
+          utils.showToast(`${pending.length} unpaid invoice(s) totaling £${totalValue.toLocaleString('en-GB', { minimumFractionDigits: 2 })}`, 'warning');
+        } else {
+          utils.showToast('All invoices are up to date!', 'success');
+        }
+      } catch (error) {
+        console.error('Error loading pending orders:', error);
+        utils.showToast('Error loading pending orders', 'error');
+      }
+    }, 100);
+  },
+
+  /**
    * Load recent activity feed
    */
   async loadActivityFeed() {
@@ -428,6 +458,25 @@ const dashboardModule = {
           title: `${incompleteOrgs.length} Incomplete Profiles`,
           description: 'Organisations missing contact information',
           action: () => this.navigateToSection('organisations')
+        });
+      }
+
+      // Check for pending/unpaid product sales (invoices)
+      const { data: pendingInvoices, error: invoiceError } = await STATE.client
+        .from('invoices')
+        .select('id, invoice_number, total_amount, organisations(company_name)', { count: 'exact' })
+        .in('payment_status', ['pending', 'unpaid'])
+        .eq('status', 'sent')
+        .order('created_at', { ascending: false });
+
+      if (!invoiceError && pendingInvoices && pendingInvoices.length > 0) {
+        const totalValue = pendingInvoices.reduce((sum, inv) => sum + parseFloat(inv.total_amount || 0), 0);
+        notifications.push({
+          type: 'warning',
+          icon: 'cart-check',
+          title: `${pendingInvoices.length} Pending Order${pendingInvoices.length > 1 ? 's' : ''}`,
+          description: `£${totalValue.toLocaleString('en-GB', { minimumFractionDigits: 2 })} in unpaid invoices need action`,
+          action: 'showPendingOrders'
         });
       }
 

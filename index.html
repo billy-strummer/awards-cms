@@ -97,6 +97,14 @@
                 <i class="bi bi-trash me-2"></i>Remove Test Data
               </a></li>
               <li><hr class="dropdown-divider"></li>
+              <li><h6 class="dropdown-header">Mock Orders</h6></li>
+              <li><a class="dropdown-item" href="#" onclick="testDataManager.generateMockOrder()">
+                <i class="bi bi-cart-plus me-2"></i>Create Mock Order
+              </a></li>
+              <li><a class="dropdown-item text-danger" href="#" onclick="testDataManager.removeMockOrders()">
+                <i class="bi bi-cart-x me-2"></i>Remove Mock Orders
+              </a></li>
+              <li><hr class="dropdown-divider"></li>
               <li><a class="dropdown-item" href="#" onclick="testDataManager.showTestDataInfo()">
                 <i class="bi bi-info-circle me-2"></i>Test Data Info
               </a></li>
@@ -1241,17 +1249,38 @@
                 <!-- Tags Input -->
                 <div class="mb-3">
                   <label class="form-label">
-                    Tags
-                    <small class="text-muted">(Press Enter or comma to add)</small>
+                    Company Tags
+                    <small class="text-muted">(Select companies to tag in this video)</small>
                   </label>
                   <div class="input-group mb-2">
-                    <input type="text" class="form-control" id="videoTagInput" placeholder="Type a tag and press Enter">
+                    <select class="form-select" id="videoTagInput">
+                      <option value="">Select a company...</option>
+                    </select>
                     <button class="btn btn-outline-secondary" type="button" onclick="mediaGalleryModule.addVideoTag()">
-                      <i class="bi bi-plus-circle me-1"></i>Add Tag
+                      <i class="bi bi-plus-circle me-1"></i>Add Company
                     </button>
                   </div>
                   <div id="videoTagsContainer" class="d-flex flex-wrap gap-2">
-                    <!-- Tags will be added here dynamically -->
+                    <!-- Company tags will be added here dynamically -->
+                  </div>
+                </div>
+
+                <!-- Award Tags Input -->
+                <div class="mb-3">
+                  <label class="form-label">
+                    Award Tags
+                    <small class="text-muted">(Select awards to tag in this video)</small>
+                  </label>
+                  <div class="input-group mb-2">
+                    <select class="form-select" id="videoAwardTagInput">
+                      <option value="">Select an award...</option>
+                    </select>
+                    <button class="btn btn-outline-secondary" type="button" onclick="mediaGalleryModule.addVideoAwardTag()">
+                      <i class="bi bi-plus-circle me-1"></i>Add Award
+                    </button>
+                  </div>
+                  <div id="videoAwardTagsContainer" class="d-flex flex-wrap gap-2">
+                    <!-- Award tags will be added here dynamically -->
                   </div>
                 </div>
 

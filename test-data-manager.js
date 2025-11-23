@@ -406,6 +406,128 @@ const testDataManager = {
     document.getElementById('infoModal').addEventListener('hidden.bs.modal', function() {
       this.remove();
     });
+  },
+
+  /**
+   * Generate Mock Pending Order
+   */
+  async generateMockOrder() {
+    try {
+      utils.showLoading();
+
+      // First, get or create a test organisation
+      let testOrg;
+      const { data: existingOrg } = await STATE.client
+        .from('organisations')
+        .select('id, company_name')
+        .eq('company_name', 'TEST_MODE_Mock Company Ltd')
+        .single();
+
+      if (existingOrg) {
+        testOrg = existingOrg;
+      } else {
+        // Create a test organisation
+        const { data: newOrg, error: orgError } = await STATE.client
+          .from('organisations')
+          .insert({
+            company_name: 'TEST_MODE_Mock Company Ltd',
+            contact_name: 'Test Contact',
+            email: 'test@mockcompany.com',
+            status: 'active',
+            region: 'London'
+          })
+          .select()
+          .single();
+
+        if (orgError) throw orgError;
+        testOrg = newOrg;
+      }
+
+      // Generate invoice number
+      const invoiceNumber = `TEST-INV-${Date.now()}`;
+
+      // Create mock invoice
+      const { data: invoice, error: invoiceError } = await STATE.client
+        .from('invoices')
+        .insert({
+          invoice_number: invoiceNumber,
+          organisation_id: testOrg.id,
+          invoice_date: new Date().toISOString().split('T')[0],
+          due_date: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+          status: 'sent',
+          payment_status: 'unpaid',
+          invoice_type: 'package',
+          package_type: 'gold',
+          total_amount: 1250.00,
+          currency: 'GBP',
+          notes: '[TEST MODE] Mock order for testing dashboard notifications'
+        })
+        .select()
+        .single();
+
+      if (invoiceError) throw invoiceError;
+
+      // Add line items
+      await STATE.client
+        .from('invoice_line_items')
+        .insert([
+          {
+            invoice_id: invoice.id,
+            item_name: 'Gold Package',
+            quantity: 1,
+            unit_price: 1000.00,
+            line_total: 1000.00
+          },
+          {
+            invoice_id: invoice.id,
+            item_name: 'Extra Tickets',
+            quantity: 5,
+            unit_price: 50.00,
+            line_total: 250.00
+          }
+        ]);
+
+      utils.hideLoading();
+      utils.showToast(`Mock order created: ${invoiceNumber} for £1,250.00`, 'success');
+
+      // Prompt to check dashboard
+      setTimeout(() => {
+        if (confirm('Mock order created! Go to Dashboard to see the notification?')) {
+          document.getElementById('dashboard-tab').click();
+        }
+      }, 1500);
+
+    } catch (error) {
+      console.error('Error generating mock order:', error);
+      utils.showToast('Failed to generate mock order: ' + error.message, 'error');
+    } finally {
+      utils.hideLoading();
+    }
+  },
+
+  /**
+   * Remove Mock Orders
+   */
+  async removeMockOrders() {
+    try {
+      utils.showLoading();
+
+      // Delete test invoices (cascade will delete line items)
+      const { error } = await STATE.client
+        .from('invoices')
+        .delete()
+        .like('invoice_number', 'TEST-INV-%');
+
+      if (error) throw error;
+
+      utils.showToast('Mock orders removed successfully!', 'success');
+
+    } catch (error) {
+      console.error('Error removing mock orders:', error);
+      utils.showToast('Failed to remove mock orders: ' + error.message, 'error');
+    } finally {
+      utils.hideLoading();
+    }
   }
 };
 

@@ -65,6 +65,7 @@ ALTER TABLE organisations ADD COLUMN IF NOT EXISTS contact_phone VARCHAR(50);
 ALTER TABLE organisations ADD COLUMN IF NOT EXISTS website TEXT;
 ALTER TABLE organisations ADD COLUMN IF NOT EXISTS region VARCHAR(100);
 ALTER TABLE organisations ADD COLUMN IF NOT EXISTS address TEXT;
+ALTER TABLE organisations ADD COLUMN IF NOT EXISTS catchment_area TEXT;
 
 -- Enhanced awards table
 ALTER TABLE awards ADD COLUMN IF NOT EXISTS description TEXT;

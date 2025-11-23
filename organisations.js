@@ -315,11 +315,17 @@ const orgsModule = {
                     ${REGIONS.map(r => `<option value="${r}" ${org.region === r ? 'selected' : ''}>${r}</option>`).join('')}
                   </select>
                 </div>
-                <div class="mb-0">
+                <div class="mb-2">
                   <strong>Address:</strong>
                   <span class="view-mode" id="viewAddress">${utils.escapeHtml(org.address || 'N/A')}</span>
                   <textarea class="form-control form-control-sm edit-mode" id="editAddress"
                     rows="3" style="display: none;">${utils.escapeHtml(org.address || '')}</textarea>
+                </div>
+                <div class="mb-0">
+                  <strong>Catchment Area:</strong>
+                  <span class="view-mode" id="viewCatchmentArea">${utils.escapeHtml(org.catchment_area || 'N/A')}</span>
+                  <textarea class="form-control form-control-sm edit-mode" id="editCatchmentArea"
+                    rows="3" style="display: none;" placeholder="e.g., London, Southeast England, National">${utils.escapeHtml(org.catchment_area || '')}</textarea>
                 </div>
               </div>
             </div>
@@ -1086,7 +1092,8 @@ const orgsModule = {
         contact_phone: document.getElementById('editPhone').value.trim(),
         website: document.getElementById('editWebsite').value.trim(),
         region: document.getElementById('editRegion').value,
-        address: document.getElementById('editAddress').value.trim()
+        address: document.getElementById('editAddress').value.trim(),
+        catchment_area: document.getElementById('editCatchmentArea').value.trim()
       };
 
       // Update in database

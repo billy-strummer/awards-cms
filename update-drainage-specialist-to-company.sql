@@ -14,12 +14,14 @@ SELECT
   'organisations' as table_name,
   id,
   company_name,
-  industry
+  award_name,
+  description
 FROM organisations
 WHERE
   company_name ILIKE '%Drainage Specialist%'
-  OR industry ILIKE '%Drainage Specialist%'
-  OR description ILIKE '%Drainage Specialist%';
+  OR award_name ILIKE '%Drainage Specialist%'
+  OR description ILIKE '%Drainage Specialist%'
+  OR notes ILIKE '%Drainage Specialist%';
 
 -- Check awards table
 SELECT
@@ -80,8 +82,9 @@ SELECT
   (
     SELECT COUNT(*) FROM organisations
     WHERE company_name ILIKE '%Drainage Specialist%'
-       OR industry ILIKE '%Drainage Specialist%'
+       OR award_name ILIKE '%Drainage Specialist%'
        OR description ILIKE '%Drainage Specialist%'
+       OR notes ILIKE '%Drainage Specialist%'
   ) +
   (
     SELECT COUNT(*) FROM awards
@@ -119,12 +122,14 @@ SELECT
 UPDATE organisations
 SET
   company_name = REPLACE(company_name, 'Drainage Specialist', 'Drainage Company'),
-  industry = REPLACE(industry, 'Drainage Specialist', 'Drainage Company'),
-  description = REPLACE(description, 'Drainage Specialist', 'Drainage Company')
+  award_name = REPLACE(award_name, 'Drainage Specialist', 'Drainage Company'),
+  description = REPLACE(description, 'Drainage Specialist', 'Drainage Company'),
+  notes = REPLACE(notes, 'Drainage Specialist', 'Drainage Company')
 WHERE
   company_name ILIKE '%Drainage Specialist%'
-  OR industry ILIKE '%Drainage Specialist%'
-  OR description ILIKE '%Drainage Specialist%';
+  OR award_name ILIKE '%Drainage Specialist%'
+  OR description ILIKE '%Drainage Specialist%'
+  OR notes ILIKE '%Drainage Specialist%';
 
 -- Update awards table
 UPDATE awards
@@ -180,8 +185,9 @@ SELECT
     WHEN (
       SELECT COUNT(*) FROM organisations
       WHERE company_name ILIKE '%Drainage Specialist%'
-         OR industry ILIKE '%Drainage Specialist%'
+         OR award_name ILIKE '%Drainage Specialist%'
          OR description ILIKE '%Drainage Specialist%'
+         OR notes ILIKE '%Drainage Specialist%'
     ) +
     (
       SELECT COUNT(*) FROM awards
@@ -216,11 +222,12 @@ SELECT
   'organisations' as table_name,
   id,
   company_name,
-  industry
+  award_name,
+  description
 FROM organisations
 WHERE
   company_name ILIKE '%Drainage Company%'
-  OR industry ILIKE '%Drainage Company%';
+  OR award_name ILIKE '%Drainage Company%';
 
 -- ============================================
 -- INSTRUCTIONS

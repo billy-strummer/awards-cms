@@ -14,13 +14,12 @@ SELECT
   'organisations' as table_name,
   id,
   company_name,
-  business_type
+  industry
 FROM organisations
 WHERE
   company_name ILIKE '%Electrical Contractor%'
-  OR business_type ILIKE '%Electrical Contractor%'
-  OR description ILIKE '%Electrical Contractor%'
-  OR services_offered ILIKE '%Electrical Contractor%';
+  OR industry ILIKE '%Electrical Contractor%'
+  OR description ILIKE '%Electrical Contractor%';
 
 -- Check awards table
 SELECT
@@ -81,9 +80,8 @@ SELECT
   (
     SELECT COUNT(*) FROM organisations
     WHERE company_name ILIKE '%Electrical Contractor%'
-       OR business_type ILIKE '%Electrical Contractor%'
+       OR industry ILIKE '%Electrical Contractor%'
        OR description ILIKE '%Electrical Contractor%'
-       OR services_offered ILIKE '%Electrical Contractor%'
   ) +
   (
     SELECT COUNT(*) FROM awards
@@ -121,14 +119,12 @@ SELECT
 UPDATE organisations
 SET
   company_name = REPLACE(company_name, 'Electrical Contractor', 'Electrical Company'),
-  business_type = REPLACE(business_type, 'Electrical Contractor', 'Electrical Company'),
-  description = REPLACE(description, 'Electrical Contractor', 'Electrical Company'),
-  services_offered = REPLACE(services_offered, 'Electrical Contractor', 'Electrical Company')
+  industry = REPLACE(industry, 'Electrical Contractor', 'Electrical Company'),
+  description = REPLACE(description, 'Electrical Contractor', 'Electrical Company')
 WHERE
   company_name ILIKE '%Electrical Contractor%'
-  OR business_type ILIKE '%Electrical Contractor%'
-  OR description ILIKE '%Electrical Contractor%'
-  OR services_offered ILIKE '%Electrical Contractor%';
+  OR industry ILIKE '%Electrical Contractor%'
+  OR description ILIKE '%Electrical Contractor%';
 
 -- Update awards table
 UPDATE awards
@@ -184,9 +180,8 @@ SELECT
     WHEN (
       SELECT COUNT(*) FROM organisations
       WHERE company_name ILIKE '%Electrical Contractor%'
-         OR business_type ILIKE '%Electrical Contractor%'
+         OR industry ILIKE '%Electrical Contractor%'
          OR description ILIKE '%Electrical Contractor%'
-         OR services_offered ILIKE '%Electrical Contractor%'
     ) +
     (
       SELECT COUNT(*) FROM awards
@@ -221,11 +216,11 @@ SELECT
   'organisations' as table_name,
   id,
   company_name,
-  business_type
+  industry
 FROM organisations
 WHERE
   company_name ILIKE '%Electrical Company%'
-  OR business_type ILIKE '%Electrical Company%';
+  OR industry ILIKE '%Electrical Company%';
 
 -- ============================================
 -- INSTRUCTIONS

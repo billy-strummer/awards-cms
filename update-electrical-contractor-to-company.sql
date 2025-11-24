@@ -49,12 +49,10 @@ SELECT
   'event_guests' as table_name,
   id,
   guest_name,
-  company_name,
   notes
 FROM event_guests
 WHERE
   guest_name ILIKE '%Electrical Contractor%'
-  OR company_name ILIKE '%Electrical Contractor%'
   OR notes ILIKE '%Electrical Contractor%';
 
 -- Check running_order table
@@ -99,7 +97,6 @@ SELECT
   (
     SELECT COUNT(*) FROM event_guests
     WHERE guest_name ILIKE '%Electrical Contractor%'
-       OR company_name ILIKE '%Electrical Contractor%'
        OR notes ILIKE '%Electrical Contractor%'
   ) +
   (
@@ -151,11 +148,9 @@ WHERE notes ILIKE '%Electrical Contractor%';
 UPDATE event_guests
 SET
   guest_name = REPLACE(guest_name, 'Electrical Contractor', 'Electrical Company'),
-  company_name = REPLACE(company_name, 'Electrical Contractor', 'Electrical Company'),
   notes = REPLACE(notes, 'Electrical Contractor', 'Electrical Company')
 WHERE
   guest_name ILIKE '%Electrical Contractor%'
-  OR company_name ILIKE '%Electrical Contractor%'
   OR notes ILIKE '%Electrical Contractor%';
 
 -- Update running_order table
@@ -202,7 +197,6 @@ SELECT
     (
       SELECT COUNT(*) FROM event_guests
       WHERE guest_name ILIKE '%Electrical Contractor%'
-         OR company_name ILIKE '%Electrical Contractor%'
          OR notes ILIKE '%Electrical Contractor%'
     ) +
     (

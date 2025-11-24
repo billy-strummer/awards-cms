@@ -28,12 +28,12 @@ SELECT
   'awards' as table_name,
   id,
   award_name,
-  category,
+  sector,
   description
 FROM awards
 WHERE
   award_name ILIKE '%Drainage Specialist%'
-  OR category ILIKE '%Drainage Specialist%'
+  OR sector ILIKE '%Drainage Specialist%'
   OR description ILIKE '%Drainage Specialist%';
 
 -- Check award_assignments table (if it has text fields)
@@ -89,7 +89,7 @@ SELECT
   (
     SELECT COUNT(*) FROM awards
     WHERE award_name ILIKE '%Drainage Specialist%'
-       OR category ILIKE '%Drainage Specialist%'
+       OR sector ILIKE '%Drainage Specialist%'
        OR description ILIKE '%Drainage Specialist%'
   ) +
   (
@@ -135,11 +135,11 @@ WHERE
 UPDATE awards
 SET
   award_name = REPLACE(award_name, 'Drainage Specialist', 'Drainage Company'),
-  category = REPLACE(category, 'Drainage Specialist', 'Drainage Company'),
+  sector = REPLACE(sector, 'Drainage Specialist', 'Drainage Company'),
   description = REPLACE(description, 'Drainage Specialist', 'Drainage Company')
 WHERE
   award_name ILIKE '%Drainage Specialist%'
-  OR category ILIKE '%Drainage Specialist%'
+  OR sector ILIKE '%Drainage Specialist%'
   OR description ILIKE '%Drainage Specialist%';
 
 -- Update award_assignments table
@@ -192,7 +192,7 @@ SELECT
     (
       SELECT COUNT(*) FROM awards
       WHERE award_name ILIKE '%Drainage Specialist%'
-         OR category ILIKE '%Drainage Specialist%'
+         OR sector ILIKE '%Drainage Specialist%'
          OR description ILIKE '%Drainage Specialist%'
     ) +
     (

@@ -28,12 +28,12 @@ SELECT
   'awards' as table_name,
   id,
   award_name,
-  category,
+  sector,
   description
 FROM awards
 WHERE
   award_name ILIKE '%Electrical Contractor%'
-  OR category ILIKE '%Electrical Contractor%'
+  OR sector ILIKE '%Electrical Contractor%'
   OR description ILIKE '%Electrical Contractor%';
 
 -- Check award_assignments table (if it has text fields)
@@ -89,7 +89,7 @@ SELECT
   (
     SELECT COUNT(*) FROM awards
     WHERE award_name ILIKE '%Electrical Contractor%'
-       OR category ILIKE '%Electrical Contractor%'
+       OR sector ILIKE '%Electrical Contractor%'
        OR description ILIKE '%Electrical Contractor%'
   ) +
   (
@@ -135,11 +135,11 @@ WHERE
 UPDATE awards
 SET
   award_name = REPLACE(award_name, 'Electrical Contractor', 'Electrical Company'),
-  category = REPLACE(category, 'Electrical Contractor', 'Electrical Company'),
+  sector = REPLACE(sector, 'Electrical Contractor', 'Electrical Company'),
   description = REPLACE(description, 'Electrical Contractor', 'Electrical Company')
 WHERE
   award_name ILIKE '%Electrical Contractor%'
-  OR category ILIKE '%Electrical Contractor%'
+  OR sector ILIKE '%Electrical Contractor%'
   OR description ILIKE '%Electrical Contractor%';
 
 -- Update award_assignments table
@@ -192,7 +192,7 @@ SELECT
     (
       SELECT COUNT(*) FROM awards
       WHERE award_name ILIKE '%Electrical Contractor%'
-         OR category ILIKE '%Electrical Contractor%'
+         OR sector ILIKE '%Electrical Contractor%'
          OR description ILIKE '%Electrical Contractor%'
     ) +
     (

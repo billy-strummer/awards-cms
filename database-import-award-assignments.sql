@@ -25,13 +25,31 @@ CREATE TABLE award_assignments_staging (
   address TEXT,
   catchment_area TEXT,
   nomination_date DATE,
+  nomination_source TEXT,
+  is_previous_winner TEXT,
+  winner_position TEXT,
   notes TEXT,
   imported_at TIMESTAMP DEFAULT NOW()
 );
 
--- Ensure award_assignments table has nomination_date column
+-- Ensure award_assignments table has all required columns
 ALTER TABLE award_assignments
 ADD COLUMN IF NOT EXISTS nomination_date DATE;
+
+ALTER TABLE award_assignments
+ADD COLUMN IF NOT EXISTS nomination_source VARCHAR(50) DEFAULT 'csv_import';
+
+ALTER TABLE award_assignments
+ADD COLUMN IF NOT EXISTS is_previous_winner BOOLEAN DEFAULT FALSE;
+
+ALTER TABLE award_assignments
+ADD COLUMN IF NOT EXISTS winner_position INTEGER;
+
+ALTER TABLE award_assignments
+ADD COLUMN IF NOT EXISTS voting_slug TEXT;
+
+ALTER TABLE award_assignments
+ADD COLUMN IF NOT EXISTS public_vote_count INTEGER DEFAULT 0;
 
 -- STEP 3: Import your CSV file
 -- Go to Supabase Dashboard → Table Editor → award_assignments_staging → Click "Insert" dropdown → "Import data from CSV"
@@ -69,13 +87,35 @@ ORDER BY s.organisation;
 -- STEP 7: Insert assignments from staging table into award_assignments
 -- This matches award names and organisation names to get their IDs
 -- UNCOMMENT TO RUN:
--- INSERT INTO award_assignments (award_id, organisation_id, status, assigned_date, nomination_date)
+-- INSERT INTO award_assignments (
+--   award_id,
+--   organisation_id,
+--   status,
+--   assigned_date,
+--   nomination_date,
+--   nomination_source,
+--   is_previous_winner,
+--   winner_position,
+--   voting_slug,
+--   public_vote_count
+-- )
 -- SELECT DISTINCT
 --   a.id as award_id,
 --   o.id as organisation_id,
 --   'nominated' as status,
 --   NOW() as assigned_date,
---   s.nomination_date
+--   s.nomination_date,
+--   COALESCE(s.nomination_source, 'csv_import') as nomination_source,
+--   CASE
+--     WHEN LOWER(TRIM(s.is_previous_winner)) IN ('true', 'yes', '1', 't', 'y') THEN TRUE
+--     ELSE FALSE
+--   END as is_previous_winner,
+--   CASE
+--     WHEN s.winner_position ~ '^\d+$' THEN s.winner_position::INTEGER
+--     ELSE NULL
+--   END as winner_position,
+--   generate_voting_slug(o.company_name, a.award_name, a.year::TEXT) as voting_slug,
+--   0 as public_vote_count
 -- FROM award_assignments_staging s
 -- JOIN awards a ON LOWER(TRIM(a.award_name)) = LOWER(TRIM(s.award_category))
 --   AND (a.year = '2025' OR a.year = 2025)

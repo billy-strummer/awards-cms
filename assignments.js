@@ -29,6 +29,28 @@ const assignmentsModule = {
 
       console.log(`✅ Found ${data?.length || 0} assignments`);
 
+      // Get other nominations for each company
+      const orgIds = data.map(a => a.organisation_id).filter(Boolean);
+      if (orgIds.length > 0) {
+        const { data: otherAssignments } = await STATE.client
+          .from('award_assignments')
+          .select(`
+            organisation_id,
+            award_id,
+            awards!award_assignments_award_id_fkey (award_name, year)
+          `)
+          .in('organisation_id', orgIds)
+          .neq('award_id', awardId);
+
+        // Add other nominations info to each assignment
+        data.forEach(assignment => {
+          const otherNominations = (otherAssignments || [])
+            .filter(other => other.organisation_id === assignment.organisation_id)
+            .map(other => other.awards);
+          assignment.other_nominations = otherNominations;
+        });
+      }
+
       // Sort alphabetically by company name
       const sortedData = (data || []).sort((a, b) => {
         const nameA = a.organisations?.company_name?.toLowerCase() || '';
@@ -186,6 +208,12 @@ const assignmentsModule = {
       // Store available orgs for filtering
       this.availableOrgs = availableOrgs;
 
+      // Initialize Bootstrap tooltips for multi-category badges
+      setTimeout(() => {
+        const tooltipTriggerList = document.querySelectorAll('[data-bs-toggle="tooltip"]');
+        [...tooltipTriggerList].map(tooltipTriggerEl => new bootstrap.Tooltip(tooltipTriggerEl));
+      }, 100);
+
     } catch (error) {
       console.error('Error refreshing assignments:', error);
       contentEl.innerHTML = `
@@ -234,7 +262,9 @@ const assignmentsModule = {
                 `<small class="text-muted d-block mb-2">
                   <i class="bi bi-calendar-event me-1"></i>Nominated: ${new Date(assignment.nomination_date).toLocaleDateString()}
                 </small>` : ''}
-              
+
+              ${this.getMultiCategoryBadge(assignment)}
+
               <div class="btn-group btn-group-sm" role="group">
                 <button class="btn btn-outline-primary" 
                   onclick="assignmentsModule.changeStatus('${assignment.id}', 'shortlisted')"
@@ -513,6 +543,34 @@ const assignmentsModule = {
     }
 
     return badges;
+  },
+
+  /**
+   * Get multi-category nomination badge
+   */
+  getMultiCategoryBadge(assignment) {
+    const otherNominations = assignment.other_nominations || [];
+
+    if (otherNominations.length === 0) {
+      return '';
+    }
+
+    const count = otherNominations.length;
+    const otherAwardsList = otherNominations
+      .map(award => utils.escapeHtml(award.award_name))
+      .join('&#10;'); // Line break for tooltip
+
+    return `
+      <div class="mb-2">
+        <span class="badge bg-purple-subtle text-purple"
+          title="${otherAwardsList}"
+          data-bs-toggle="tooltip"
+          data-bs-html="true"
+          style="background-color: #e7d5ff; color: #7c3aed; cursor: help;">
+          <i class="bi bi-clipboard2-check me-1"></i>Also in ${count} other ${count === 1 ? 'category' : 'categories'}
+        </span>
+      </div>
+    `;
   },
 
   /**

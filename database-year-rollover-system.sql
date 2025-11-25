@@ -34,8 +34,8 @@ BEGIN
   SELECT
     COUNT(*)::BIGINT as total_nominations,
     COUNT(*) FILTER (WHERE aa.actual_winner = TRUE)::BIGINT as total_wins,
-    ARRAY_AGG(DISTINCT a.year ORDER BY a.year DESC) as years_nominated,
-    ARRAY_AGG(DISTINCT a.year ORDER BY a.year DESC) FILTER (WHERE aa.actual_winner = TRUE) as years_won,
+    ARRAY_AGG(DISTINCT a.year::TEXT ORDER BY a.year::TEXT DESC) as years_nominated,
+    ARRAY_AGG(DISTINCT a.year::TEXT ORDER BY a.year::TEXT DESC) FILTER (WHERE aa.actual_winner = TRUE) as years_won,
     ARRAY_AGG(a.award_name ORDER BY a.year DESC) FILTER (WHERE aa.actual_winner = TRUE) as awards_won
   FROM award_assignments aa
   JOIN awards a ON aa.award_id = a.id
@@ -59,7 +59,7 @@ BEGIN
     JOIN awards a ON aa.award_id = a.id
     WHERE aa.organisation_id = org_id
       AND aa.actual_winner = TRUE
-      AND a.year < current_year
+      AND a.year::TEXT < current_year
   ) INTO has_won;
 
   RETURN has_won;
@@ -82,8 +82,8 @@ BEGIN
     RETURN NEW;
   END IF;
 
-  -- Get current award year
-  SELECT year INTO current_award_year
+  -- Get current award year (cast to TEXT for consistency)
+  SELECT year::TEXT INTO current_award_year
   FROM awards
   WHERE id = NEW.award_id;
 

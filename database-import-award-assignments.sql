@@ -42,6 +42,15 @@ ADD COLUMN IF NOT EXISTS nomination_source VARCHAR(50) DEFAULT 'csv_import';
 ALTER TABLE award_assignments
 ADD COLUMN IF NOT EXISTS is_previous_winner BOOLEAN DEFAULT FALSE;
 
+ALTER TABLE award_assignments
+ADD COLUMN IF NOT EXISTS winner_position INTEGER;
+
+ALTER TABLE award_assignments
+ADD COLUMN IF NOT EXISTS voting_slug TEXT;
+
+ALTER TABLE award_assignments
+ADD COLUMN IF NOT EXISTS public_vote_count INTEGER DEFAULT 0;
+
 -- STEP 3: Import your CSV file
 -- Go to Supabase Dashboard → Table Editor → award_assignments_staging → Click "Insert" dropdown → "Import data from CSV"
 -- Upload your CSV file

@@ -14,11 +14,11 @@ SELECT
   'organisations' as table_name,
   id,
   company_name,
-  industry
+  sector
 FROM organisations
 WHERE
   company_name ILIKE '%Extension Specialist%'
-  OR industry ILIKE '%Extension Specialist%'
+  OR sector ILIKE '%Extension Specialist%'
   OR description ILIKE '%Extension Specialist%';
 
 -- Check awards table
@@ -26,12 +26,12 @@ SELECT
   'awards' as table_name,
   id,
   award_name,
-  category,
+  sector,
   description
 FROM awards
 WHERE
   award_name ILIKE '%Extension Specialist%'
-  OR category ILIKE '%Extension Specialist%'
+  OR sector ILIKE '%Extension Specialist%'
   OR description ILIKE '%Extension Specialist%';
 
 -- Check award_assignments table (if it has text fields)
@@ -80,13 +80,13 @@ SELECT
   (
     SELECT COUNT(*) FROM organisations
     WHERE company_name ILIKE '%Extension Specialist%'
-       OR industry ILIKE '%Extension Specialist%'
+       OR sector ILIKE '%Extension Specialist%'
        OR description ILIKE '%Extension Specialist%'
   ) +
   (
     SELECT COUNT(*) FROM awards
     WHERE award_name ILIKE '%Extension Specialist%'
-       OR category ILIKE '%Extension Specialist%'
+       OR sector ILIKE '%Extension Specialist%'
        OR description ILIKE '%Extension Specialist%'
   ) +
   (
@@ -119,22 +119,22 @@ SELECT
 UPDATE organisations
 SET
   company_name = REPLACE(company_name, 'Extension Specialist', 'Extension Company'),
-  industry = REPLACE(industry, 'Extension Specialist', 'Extension Company'),
+  sector = REPLACE(sector, 'Extension Specialist', 'Extension Company'),
   description = REPLACE(description, 'Extension Specialist', 'Extension Company')
 WHERE
   company_name ILIKE '%Extension Specialist%'
-  OR industry ILIKE '%Extension Specialist%'
+  OR sector ILIKE '%Extension Specialist%'
   OR description ILIKE '%Extension Specialist%';
 
 -- Update awards table
 UPDATE awards
 SET
   award_name = REPLACE(award_name, 'Extension Specialist', 'Extension Company'),
-  category = REPLACE(category, 'Extension Specialist', 'Extension Company'),
+  sector = REPLACE(sector, 'Extension Specialist', 'Extension Company'),
   description = REPLACE(description, 'Extension Specialist', 'Extension Company')
 WHERE
   award_name ILIKE '%Extension Specialist%'
-  OR category ILIKE '%Extension Specialist%'
+  OR sector ILIKE '%Extension Specialist%'
   OR description ILIKE '%Extension Specialist%';
 
 -- Update award_assignments table
@@ -180,13 +180,13 @@ SELECT
     WHEN (
       SELECT COUNT(*) FROM organisations
       WHERE company_name ILIKE '%Extension Specialist%'
-         OR industry ILIKE '%Extension Specialist%'
+         OR sector ILIKE '%Extension Specialist%'
          OR description ILIKE '%Extension Specialist%'
     ) +
     (
       SELECT COUNT(*) FROM awards
       WHERE award_name ILIKE '%Extension Specialist%'
-         OR category ILIKE '%Extension Specialist%'
+         OR sector ILIKE '%Extension Specialist%'
          OR description ILIKE '%Extension Specialist%'
     ) +
     (
@@ -216,11 +216,11 @@ SELECT
   'organisations' as table_name,
   id,
   company_name,
-  industry
+  sector
 FROM organisations
 WHERE
   company_name ILIKE '%Extension Company%'
-  OR industry ILIKE '%Extension Company%';
+  OR sector ILIKE '%Extension Company%';
 
 -- ============================================
 -- INSTRUCTIONS

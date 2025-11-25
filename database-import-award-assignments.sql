@@ -24,9 +24,14 @@ CREATE TABLE award_assignments_staging (
   phone TEXT,
   address TEXT,
   catchment_area TEXT,
+  nomination_date DATE,
   notes TEXT,
   imported_at TIMESTAMP DEFAULT NOW()
 );
+
+-- Ensure award_assignments table has nomination_date column
+ALTER TABLE award_assignments
+ADD COLUMN IF NOT EXISTS nomination_date DATE;
 
 -- STEP 3: Import your CSV file
 -- Go to Supabase Dashboard → Table Editor → award_assignments_staging → Click "Insert" dropdown → "Import data from CSV"
@@ -64,12 +69,13 @@ ORDER BY s.organisation;
 -- STEP 7: Insert assignments from staging table into award_assignments
 -- This matches award names and organisation names to get their IDs
 -- UNCOMMENT TO RUN:
--- INSERT INTO award_assignments (award_id, organisation_id, status, assigned_date)
+-- INSERT INTO award_assignments (award_id, organisation_id, status, assigned_date, nomination_date)
 -- SELECT DISTINCT
 --   a.id as award_id,
 --   o.id as organisation_id,
 --   'nominated' as status,
---   NOW() as assigned_date
+--   NOW() as assigned_date,
+--   s.nomination_date
 -- FROM award_assignments_staging s
 -- JOIN awards a ON LOWER(TRIM(a.award_name)) = LOWER(TRIM(s.award_category))
 --   AND (a.year = '2025' OR a.year = 2025)

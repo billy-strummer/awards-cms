@@ -114,14 +114,20 @@ const assignmentsModule = {
 
       console.log(`📊 ${validAssignments.length} assigned, ${availableOrgs.length} available`);
 
+      // Store all assignments for filtering
+      this.allAssignments = validAssignments;
+      this.currentFilter = 'all';
+
       // Render UI
       contentEl.innerHTML = `
         <div class="row">
           <div class="col-md-6">
-            <h5 class="mb-3">
-              <i class="bi bi-people-fill me-2 text-success"></i>
-              Assigned Companies (${validAssignments.length})
-            </h5>
+            <div class="d-flex justify-content-between align-items-center mb-3">
+              <h5 class="mb-0">
+                <i class="bi bi-people-fill me-2 text-success"></i>
+                Assigned Companies (<span id="assignedCount">${validAssignments.length}</span>)
+              </h5>
+            </div>
 
             ${validAssignments.length === 0 ? `
               <div class="alert alert-info">
@@ -129,7 +135,21 @@ const assignmentsModule = {
                 No companies assigned yet. Select companies from the right panel to add them.
               </div>
             ` : `
-              <div class="assigned-companies-list">
+              <div class="btn-group btn-group-sm mb-3 d-flex" role="group">
+                <button type="button" class="btn btn-outline-secondary active" id="filter-all" onclick="assignmentsModule.filterAssignments('all')">
+                  All
+                </button>
+                <button type="button" class="btn btn-outline-info" id="filter-self" onclick="assignmentsModule.filterAssignments('self_nomination')">
+                  <i class="bi bi-hand-index me-1"></i>Self Nominated
+                </button>
+                <button type="button" class="btn btn-outline-warning" id="filter-previous" onclick="assignmentsModule.filterAssignments('previous_winner')">
+                  <i class="bi bi-trophy me-1"></i>Previous Winners
+                </button>
+                <button type="button" class="btn btn-outline-primary" id="filter-new" onclick="assignmentsModule.filterAssignments('new')">
+                  <i class="bi bi-star me-1"></i>New Nominees
+                </button>
+              </div>
+              <div class="assigned-companies-list" id="assignedCompaniesList">
                 ${validAssignments.map(a => this.renderAssignedCompany(a)).join('')}
               </div>
             `}
@@ -201,13 +221,19 @@ const assignmentsModule = {
                 </div>
               </div>
               
-              <div class="d-flex gap-2 align-items-center mb-2">
+              <div class="d-flex gap-2 align-items-center mb-2 flex-wrap">
                 ${statusBadge}
-                ${assignment.judge_score ? 
+                ${assignment.judge_score ?
                   `<span class="badge bg-info-subtle text-info">
                     <i class="bi bi-star-fill me-1"></i>${assignment.judge_score}/10
                   </span>` : ''}
+                ${this.getNominationBadges(assignment)}
               </div>
+
+              ${assignment.nomination_date ?
+                `<small class="text-muted d-block mb-2">
+                  <i class="bi bi-calendar-event me-1"></i>Nominated: ${new Date(assignment.nomination_date).toLocaleDateString()}
+                </small>` : ''}
               
               <div class="btn-group btn-group-sm" role="group">
                 <button class="btn btn-outline-primary" 
@@ -269,7 +295,7 @@ const assignmentsModule = {
   filterAvailableCompanies() {
     const search = document.getElementById('assignmentSearchBox').value.toLowerCase();
     const cards = document.querySelectorAll('.available-company-card');
-    
+
     cards.forEach(card => {
       const companyName = card.getAttribute('data-company-name');
       if (companyName.includes(search)) {
@@ -278,6 +304,47 @@ const assignmentsModule = {
         card.style.display = 'none';
       }
     });
+  },
+
+  /**
+   * Filter assigned companies by nomination type
+   */
+  filterAssignments(filterType) {
+    this.currentFilter = filterType;
+
+    // Update button states
+    document.querySelectorAll('[id^="filter-"]').forEach(btn => {
+      btn.classList.remove('active');
+    });
+    document.getElementById(`filter-${filterType}`).classList.add('active');
+
+    // Filter assignments
+    let filtered = this.allAssignments;
+
+    switch(filterType) {
+      case 'self_nomination':
+        filtered = this.allAssignments.filter(a => a.nomination_source === 'self_nomination');
+        break;
+      case 'previous_winner':
+        filtered = this.allAssignments.filter(a => a.is_previous_winner === true);
+        break;
+      case 'new':
+        filtered = this.allAssignments.filter(a => !a.is_previous_winner);
+        break;
+      case 'all':
+      default:
+        filtered = this.allAssignments;
+        break;
+    }
+
+    // Update display
+    const listContainer = document.getElementById('assignedCompaniesList');
+    const countEl = document.getElementById('assignedCount');
+
+    if (listContainer && countEl) {
+      listContainer.innerHTML = filtered.map(a => this.renderAssignedCompany(a)).join('');
+      countEl.textContent = filtered.length;
+    }
   },
 
   /**
@@ -418,8 +485,34 @@ const assignmentsModule = {
       'winner': '<span class="badge bg-success"><i class="bi bi-trophy-fill me-1"></i>Winner</span>',
       'rejected': '<span class="badge bg-danger"><i class="bi bi-x-circle me-1"></i>Rejected</span>'
     };
-    
+
     return badges[status] || badges['nominated'];
+  },
+
+  /**
+   * Get nomination source badges
+   */
+  getNominationBadges(assignment) {
+    let badges = '';
+
+    // Previous winner badge
+    if (assignment.is_previous_winner) {
+      badges += '<span class="badge bg-warning text-dark"><i class="bi bi-trophy me-1"></i>Previous Winner</span>';
+    }
+
+    // Nomination source badges
+    const sourceBadges = {
+      'self_nomination': '<span class="badge bg-info"><i class="bi bi-hand-index me-1"></i>Self Nominated</span>',
+      'previous_winner': '<span class="badge bg-warning text-dark"><i class="bi bi-trophy me-1"></i>Previous Winner</span>',
+      'admin_manual': '<span class="badge bg-primary"><i class="bi bi-person-gear me-1"></i>Admin</span>',
+      'csv_import': '<span class="badge bg-secondary"><i class="bi bi-file-earmark-arrow-up me-1"></i>CSV Import</span>'
+    };
+
+    if (assignment.nomination_source && assignment.nomination_source !== 'csv_import') {
+      badges += (badges ? ' ' : '') + (sourceBadges[assignment.nomination_source] || '');
+    }
+
+    return badges;
   },
 
   /**

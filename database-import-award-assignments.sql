@@ -75,7 +75,7 @@ SELECT DISTINCT
   'Award not found in database' as issue
 FROM award_assignments_staging s
 LEFT JOIN awards a ON LOWER(TRIM(a.award_name)) = LOWER(TRIM(s.award_category))
-  AND (a.year = '2025' OR a.year = 2025)
+  AND (a.year = '2026' OR a.year = 2026)
 WHERE a.id IS NULL
 ORDER BY s.award_category;
 
@@ -129,7 +129,7 @@ ORDER BY s.organisation;
 --   END as actual_winner
 -- FROM award_assignments_staging s
 -- JOIN awards a ON LOWER(TRIM(a.award_name)) = LOWER(TRIM(s.award_category))
---   AND (a.year = '2025' OR a.year = 2025)
+--   AND (a.year = '2026' OR a.year = 2026)
 -- JOIN organisations o ON LOWER(TRIM(o.company_name)) = LOWER(TRIM(s.organisation))
 -- WHERE NOT EXISTS (
 --   -- Prevent duplicates
@@ -145,7 +145,7 @@ SELECT
 FROM awards a
 LEFT JOIN award_assignments aa ON a.id = aa.award_id
 LEFT JOIN organisations o ON aa.organisation_id = o.id
-WHERE a.year = '2025' OR a.year = 2025
+WHERE a.year = '2026' OR a.year = 2026
 GROUP BY a.id, a.award_name
 HAVING COUNT(aa.id) > 0
 ORDER BY a.award_name;

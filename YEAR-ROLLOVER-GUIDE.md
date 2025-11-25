@@ -13,19 +13,19 @@ Your awards CMS now includes automatic year-over-year tracking that:
 
 ## Your Workflow
 
-### **Year 1: 2025 (Initial Setup - NOW)**
+### **Year 1: 2026 (Initial Setup - NOW)**
 
-1. **Import CSV** with 2025 nominees → Data stays in database forever
+1. **Import CSV** with 2026 nominees → Data stays in database forever
 2. **Manage nominees** via CMS throughout the year
 3. **Mark winners** by clicking "Winner" button → Sets `actual_winner = TRUE`
 4. **Winners announced** at ceremony
 
-### **Year 2: 2026 and Beyond**
+### **Year 2: 2027 and Beyond**
 
-1. **Create 2026 awards** (same award names, new year)
-2. **Option A:** Copy all 2025 nominees to 2026 (bulk rollover)
+1. **Create 2027 awards** (same award names, new year)
+2. **Option A:** Copy all 2026 nominees to 2027 (bulk rollover)
 3. **Option B:** Add new nominees individually via CMS
-4. **System automatically** flags previous winners from 2025, 2024, 2023, etc.
+4. **System automatically** flags previous winners from 2026, 2025, 2024, etc.
 5. **Repeat annually**
 
 ---
@@ -64,15 +64,15 @@ When you add a nominee (via CMS or CSV), the system:
 3. Shows 🏅 **Previous Winner** badge automatically
 
 **Example:**
-- 2025: ABC Construction Ltd wins "Best Builder"
-- 2026: You add ABC Construction Ltd to "Best Renovator"
+- 2026: ABC Construction Ltd wins "Best Builder"
+- 2027: You add ABC Construction Ltd to "Best Renovator"
 - System automatically flags them as Previous Winner ✅
 
 ---
 
 ## Complete Workflow Examples
 
-### **Example 1: 2025 Initial Setup (You're Here)**
+### **Example 1: 2026 Initial Setup (You're Here)**
 
 #### Step 1: Import Your CSV
 
@@ -93,7 +93,7 @@ Upload to `award_assignments_staging` table via Supabase UI, then run import scr
 - Update winner_position recommendations
 - Track votes, manage data
 
-#### Step 3: After Awards Ceremony (December 2025)
+#### Step 3: After Awards Ceremony (December 2026)
 
 Mark the actual winners in CMS:
 
@@ -107,33 +107,33 @@ Mark the actual winners in CMS:
 -- Mark ABC Construction Ltd as winner
 UPDATE award_assignments
 SET status = 'winner', actual_winner = TRUE
-WHERE award_id = (SELECT id FROM awards WHERE award_name = 'Best Builder' AND year = '2025')
+WHERE award_id = (SELECT id FROM awards WHERE award_name = 'Best Builder' AND year = '2026')
   AND organisation_id = (SELECT id FROM organisations WHERE company_name = 'ABC Construction Ltd');
 ```
 
 ---
 
-### **Example 2: 2026 Rollover**
+### **Example 2: 2027 Rollover**
 
-#### Step 1: Create 2026 Awards
+#### Step 1: Create 2027 Awards
 
-Create new awards with same names but year = 2026 (via admin panel or SQL).
+Create new awards with same names but year = 2027 (via admin panel or SQL).
 
 #### Step 2: Roll Over Nominees
 
-**Option A - Copy ALL 2025 nominees:**
+**Option A - Copy ALL 2026 nominees:**
 ```sql
-SELECT * FROM copy_nominees_to_new_year('2025', '2026', TRUE, TRUE);
+SELECT * FROM copy_nominees_to_new_year('2026', '2027', TRUE, TRUE);
 -- Parameters: from_year, to_year, copy_winners, copy_all_nominees
 ```
 
-**Option B - Copy ONLY 2025 winners:**
+**Option B - Copy ONLY 2026 winners:**
 ```sql
-SELECT * FROM copy_nominees_to_new_year('2025', '2026', TRUE, FALSE);
+SELECT * FROM copy_nominees_to_new_year('2026', '2027', TRUE, FALSE);
 ```
 
 **Option C - Add individually via CMS:**
-- Go to 2026 award category
+- Go to 2027 award category
 - Click "Add Companies" on right panel
 - Select companies to add
 - System auto-detects previous winners ✅
@@ -141,12 +141,12 @@ SELECT * FROM copy_nominees_to_new_year('2025', '2026', TRUE, FALSE);
 #### Step 3: What Happens Automatically
 
 After running rollover or adding via CMS:
-- ✅ ABC Construction Ltd → Flagged as "Previous Winner" (won in 2025)
+- ✅ ABC Construction Ltd → Flagged as "Previous Winner" (won in 2026)
 - ✅ XYZ Builders Ltd → Regular nominee (didn't win)
 - ✅ Top Build Co → Regular nominee
-- ✅ Voting slugs regenerated for 2026
+- ✅ Voting slugs regenerated for 2027
 - ✅ Vote counts reset to 0
-- ✅ Winner positions cleared (fresh rankings for 2026)
+- ✅ Winner positions cleared (fresh rankings for 2027)
 
 ---
 
@@ -333,14 +333,14 @@ SELECT * FROM copy_nominees_to_new_year(
 **Examples:**
 
 ```sql
--- Copy everyone from 2025 to 2026
-SELECT * FROM copy_nominees_to_new_year('2025', '2026', TRUE, TRUE);
+-- Copy everyone from 2026 to 2027
+SELECT * FROM copy_nominees_to_new_year('2026', '2027', TRUE, TRUE);
 
--- Copy only 2025 winners to 2026
-SELECT * FROM copy_nominees_to_new_year('2025', '2026', TRUE, FALSE);
+-- Copy only 2026 winners to 2027
+SELECT * FROM copy_nominees_to_new_year('2026', '2027', TRUE, FALSE);
 
 -- Copy only non-winners (fresh start)
-SELECT * FROM copy_nominees_to_new_year('2025', '2026', FALSE, TRUE);
+SELECT * FROM copy_nominees_to_new_year('2026', '2027', FALSE, TRUE);
 ```
 
 ---
@@ -368,11 +368,11 @@ WHERE organisation_id = (SELECT id FROM organisations WHERE company_name = 'ABC 
 
 1. Verify award names match exactly:
 ```sql
--- Check 2025 awards
-SELECT id, award_name FROM awards WHERE year = '2025';
-
 -- Check 2026 awards
 SELECT id, award_name FROM awards WHERE year = '2026';
+
+-- Check 2027 awards
+SELECT id, award_name FROM awards WHERE year = '2027';
 ```
 
 2. Ensure organisations exist:
@@ -392,8 +392,8 @@ HAVING COUNT(*) > 1;
 
 ## Summary
 
-✅ **Initial Setup:** Import CSV → Mark winners via CMS (sets `actual_winner = TRUE`)
-✅ **Year Rollover:** Copy nominees with one SQL command OR add individually via CMS
+✅ **Initial Setup (2026):** Import CSV → Mark winners via CMS (sets `actual_winner = TRUE`)
+✅ **Year Rollover (2027+):** Copy nominees with one SQL command OR add individually via CMS
 ✅ **Auto-Detection:** System checks ALL previous years and flags winners automatically
 ✅ **No Re-Importing:** Data lives in database forever, no CSV re-uploads needed
 ✅ **Complete History:** Track nominations, wins, and trends across decades
@@ -407,8 +407,8 @@ The system handles everything automatically once setup. Just mark winners in the
 | Task | How To Do It |
 |------|--------------|
 | **Mark winner in CMS** | Click "Winner" button → Sets actual_winner=TRUE automatically |
-| **Add 2026 nominee** | Use CMS "Add Companies" panel → Previous winners auto-detected |
-| **Copy all 2025 to 2026** | `SELECT * FROM copy_nominees_to_new_year('2025', '2026', TRUE, TRUE);` |
+| **Add 2027 nominee** | Use CMS "Add Companies" panel → Previous winners auto-detected |
+| **Copy all 2026 to 2027** | `SELECT * FROM copy_nominees_to_new_year('2026', '2027', TRUE, TRUE);` |
 | **View company history** | `SELECT * FROM get_nominee_history((SELECT id FROM organisations WHERE company_name = 'X'));` |
 | **See all winners** | `SELECT * FROM award_assignments WHERE actual_winner = TRUE;` |
 | **Refresh flags** | Run refresh query from Utility Queries section |

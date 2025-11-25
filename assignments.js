@@ -471,34 +471,41 @@ const assignmentsModule = {
   async changeStatus(assignmentId, newStatus) {
     try {
       utils.showLoading();
-      
+
       const updates = {
         status: newStatus,
         updated_at: new Date().toISOString()
       };
-      
-      // If marking as winner, add announcement date
+
+      // If marking as winner, add announcement date AND set actual_winner flag
+      // This actual_winner flag is used for year-over-year carry-over of previous winners
       if (newStatus === 'winner') {
         updates.announcement_date = new Date().toISOString().split('T')[0];
+        updates.actual_winner = true;
       }
-      
+
+      // If unmarking as winner, remove actual_winner flag
+      if (newStatus !== 'winner') {
+        updates.actual_winner = false;
+      }
+
       const { error } = await STATE.client
         .from('award_assignments')
         .update(updates)
         .eq('id', assignmentId);
-      
+
       if (error) throw error;
-      
+
       const statusLabels = {
         'nominated': 'Nominated',
         'shortlisted': 'Shortlisted',
         'winner': 'Winner',
         'rejected': 'Rejected'
       };
-      
+
       utils.showToast(`Status changed to ${statusLabels[newStatus]}`, 'success');
       await this.refreshAssignments();
-      
+
     } catch (error) {
       console.error('Error changing status:', error);
       utils.showToast('Failed to change status: ' + error.message, 'error');

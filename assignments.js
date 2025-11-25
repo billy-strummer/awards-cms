@@ -251,6 +251,7 @@ const assignmentsModule = {
               
               <div class="d-flex gap-2 align-items-center mb-2 flex-wrap">
                 ${statusBadge}
+                ${this.getWinnerPositionBadge(assignment)}
                 ${assignment.judge_score ?
                   `<span class="badge bg-info-subtle text-info">
                     <i class="bi bi-star-fill me-1"></i>${assignment.judge_score}/10
@@ -263,6 +264,7 @@ const assignmentsModule = {
                   <i class="bi bi-calendar-event me-1"></i>Nominated: ${new Date(assignment.nomination_date).toLocaleDateString()}
                 </small>` : ''}
 
+              ${this.getVoteCount(assignment)}
               ${this.getMultiCategoryBadge(assignment)}
 
               <div class="btn-group btn-group-sm" role="group">
@@ -569,6 +571,56 @@ const assignmentsModule = {
           style="background-color: #e7d5ff; color: #7c3aed; cursor: help;">
           <i class="bi bi-clipboard2-check me-1"></i>Also in ${count} other ${count === 1 ? 'category' : 'categories'}
         </span>
+      </div>
+    `;
+  },
+
+  /**
+   * Get winner position badge (Top 3)
+   */
+  getWinnerPositionBadge(assignment) {
+    if (!assignment.winner_position) {
+      return '';
+    }
+
+    const positions = {
+      1: '<span class="badge" style="background-color: #ffd700; color: #000;"><i class="bi bi-star-fill me-1"></i>#1 Recommended</span>',
+      2: '<span class="badge" style="background-color: #c0c0c0; color: #000;"><i class="bi bi-star-fill me-1"></i>#2 Recommended</span>',
+      3: '<span class="badge" style="background-color: #cd7f32; color: #fff;"><i class="bi bi-star-fill me-1"></i>#3 Recommended</span>'
+    };
+
+    return positions[assignment.winner_position] || '';
+  },
+
+  /**
+   * Get vote count display with voting link
+   */
+  getVoteCount(assignment) {
+    const voteCount = assignment.public_vote_count || 0;
+    const votingSlug = assignment.voting_slug || '';
+
+    if (!votingSlug) {
+      return `
+        <div class="d-flex align-items-center mb-2">
+          <span class="badge bg-light text-dark">
+            <i class="bi bi-hand-thumbs-up me-1"></i>${voteCount.toLocaleString()} ${voteCount === 1 ? 'vote' : 'votes'}
+          </span>
+        </div>
+      `;
+    }
+
+    const voteUrl = `${window.location.origin}/vote/${votingSlug}`;
+
+    return `
+      <div class="d-flex align-items-center gap-2 mb-2">
+        <span class="badge bg-light text-dark">
+          <i class="bi bi-hand-thumbs-up me-1"></i>${voteCount.toLocaleString()} ${voteCount === 1 ? 'vote' : 'votes'}
+        </span>
+        <button class="btn btn-sm btn-outline-primary"
+          onclick="navigator.clipboard.writeText('${voteUrl}'); utils.showToast('Vote link copied!', 'success')"
+          title="Copy voting link">
+          <i class="bi bi-link-45deg"></i> Copy Vote Link
+        </button>
       </div>
     `;
   },

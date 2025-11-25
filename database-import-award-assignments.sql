@@ -27,6 +27,7 @@ CREATE TABLE award_assignments_staging (
   nomination_date DATE,
   nomination_source TEXT,
   is_previous_winner TEXT,
+  winner_position TEXT,
   notes TEXT,
   imported_at TIMESTAMP DEFAULT NOW()
 );
@@ -84,7 +85,10 @@ ORDER BY s.organisation;
 --   assigned_date,
 --   nomination_date,
 --   nomination_source,
---   is_previous_winner
+--   is_previous_winner,
+--   winner_position,
+--   voting_slug,
+--   public_vote_count
 -- )
 -- SELECT DISTINCT
 --   a.id as award_id,
@@ -96,7 +100,13 @@ ORDER BY s.organisation;
 --   CASE
 --     WHEN LOWER(TRIM(s.is_previous_winner)) IN ('true', 'yes', '1', 't', 'y') THEN TRUE
 --     ELSE FALSE
---   END as is_previous_winner
+--   END as is_previous_winner,
+--   CASE
+--     WHEN s.winner_position ~ '^\d+$' THEN s.winner_position::INTEGER
+--     ELSE NULL
+--   END as winner_position,
+--   generate_voting_slug(o.company_name, a.award_name, a.year::TEXT) as voting_slug,
+--   0 as public_vote_count
 -- FROM award_assignments_staging s
 -- JOIN awards a ON LOWER(TRIM(a.award_name)) = LOWER(TRIM(s.award_category))
 --   AND (a.year = '2025' OR a.year = 2025)

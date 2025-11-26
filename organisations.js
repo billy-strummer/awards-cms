@@ -223,7 +223,22 @@ const orgsModule = {
     `;
 
     modal.show();
-    
+
+    // Increase z-index when opened from another modal (e.g., assignments modal)
+    // This ensures the company profile modal appears on top
+    const modalElement = document.getElementById('companyProfileModal');
+    const backdrop = document.querySelector('.modal-backdrop');
+
+    // Set higher z-index for modal and backdrop to appear above other modals
+    setTimeout(() => {
+      modalElement.style.zIndex = '1060';
+      // Find the most recent backdrop (the one for this modal)
+      const backdrops = document.querySelectorAll('.modal-backdrop');
+      if (backdrops.length > 0) {
+        backdrops[backdrops.length - 1].style.zIndex = '1059';
+      }
+    }, 10);
+
     try {
       // Fetch organisation details with related awards
       const { data: org, error: orgError } = await STATE.client

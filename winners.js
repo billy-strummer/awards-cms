@@ -1936,6 +1936,27 @@ const winnersModule = {
     const filename = `year_comparison_${analysis.years.join('_')}_${new Date().toISOString().split('T')[0]}.csv`;
     utils.exportToCSV(exportData, filename);
     utils.showToast('Report exported successfully!', 'success');
+  },
+
+  /**
+   * Export currently filtered winners as PDF
+   */
+  async exportFilteredWinners() {
+    try {
+      // Get currently filtered winners from STATE
+      const filteredWinners = this.getFilteredWinners();
+
+      if (!filteredWinners || filteredWinners.length === 0) {
+        utils.showToast('No winners to export. Please add some winners first.', 'warning');
+        return;
+      }
+
+      // Call the existing exportAsPDF function
+      await this.exportAsPDF(filteredWinners);
+    } catch (error) {
+      console.error('Error exporting filtered winners:', error);
+      utils.showToast('Error exporting winners: ' + error.message, 'error');
+    }
   }
 };
 

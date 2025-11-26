@@ -407,24 +407,17 @@ const entriesModule = {
    */
   openPublicFormLink() {
     const publicFormUrl = `${window.location.origin}/submit-entry.html`;
-    const message = `
-      <div class="mb-3">
-        <p>Share this link for companies to submit entries:</p>
-        <div class="input-group">
-          <input type="text" class="form-control" value="${publicFormUrl}" id="publicFormLinkInput" readonly>
-          <button class="btn btn-primary" onclick="entriesModule.copyPublicFormLink()">
-            <i class="bi bi-clipboard"></i> Copy
-          </button>
-        </div>
-      </div>
-      <div class="alert alert-info mt-3">
-        <i class="bi bi-info-circle me-2"></i>
-        The public entry form allows companies to submit entries with file uploads and automatic payment processing.
-      </div>
-    `;
 
-    // Show in a toast or modal
-    utils.showToast(message, 'info', 0); // 0 = don't auto-dismiss
+    // Create or get modal
+    let modal = bootstrap.Modal.getInstance(document.getElementById('publicFormLinkModal'));
+    if (!modal) {
+      modal = new bootstrap.Modal(document.getElementById('publicFormLinkModal'));
+    }
+
+    // Set the URL in the input
+    document.getElementById('publicFormLinkInput').value = publicFormUrl;
+
+    modal.show();
   },
 
   /**
@@ -433,8 +426,7 @@ const entriesModule = {
   copyPublicFormLink() {
     const input = document.getElementById('publicFormLinkInput');
     if (input) {
-      input.select();
-      document.execCommand('copy');
+      navigator.clipboard.writeText(input.value);
       utils.showToast('Link copied to clipboard!', 'success');
     }
   },

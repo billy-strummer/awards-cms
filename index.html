@@ -931,6 +931,9 @@
                 <button class="btn btn-success btn-sm" onclick="winnersModule.openPressReleaseExport()">
                   <i class="bi bi-file-earmark-text me-1"></i>Press Release
                 </button>
+                <button class="btn btn-danger btn-sm" onclick="winnersModule.exportFilteredWinners()">
+                  <i class="bi bi-file-pdf me-1"></i>Export PDF
+                </button>
                 <div class="badge bg-info-subtle text-info fs-6">
                   <span id="winnersCount">0</span> winners
                 </div>
@@ -3632,6 +3635,35 @@ Available placeholders:
           <button type="button" class="btn btn-success" onclick="paymentsModule.savePaymentRecord()">
             <i class="bi bi-check-lg me-1"></i>Record Payment
           </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Public Form Link Modal -->
+  <div class="modal fade" id="publicFormLinkModal" tabindex="-1" aria-labelledby="publicFormLinkModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header bg-info text-white">
+          <h5 class="modal-title" id="publicFormLinkModalLabel">
+            <i class="bi bi-link-45deg me-2"></i>Public Entry Form Link
+          </h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <p class="mb-3">Share this link for companies to submit entries:</p>
+          <div class="input-group mb-3">
+            <input type="text" class="form-control" id="publicFormLinkInput" readonly>
+            <button class="btn btn-primary" onclick="entriesModule.copyPublicFormLink()">
+              <i class="bi bi-clipboard me-1"></i>Copy
+            </button>
+          </div>
+          <div class="alert alert-info mb-0">
+            <i class="bi bi-info-circle me-2"></i>The public entry form allows companies to submit entries with file uploads and automatic payment processing.
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
         </div>
       </div>
     </div>

@@ -94,7 +94,18 @@ const assignmentsModule = {
     `;
     
     modal.show();
-    
+
+    // Ensure proper z-index for stacked modals
+    setTimeout(() => {
+      const modalElement = document.getElementById('assignmentsModal');
+      const backdrops = document.querySelectorAll('.modal-backdrop');
+      if (backdrops.length > 1) {
+        // Multiple modals open - ensure this one is on top
+        modalElement.style.zIndex = '1061';
+        backdrops[backdrops.length - 1].style.zIndex = '1060';
+      }
+    }, 100);
+
     // Load data
     await this.refreshAssignments();
   },

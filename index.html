@@ -3525,17 +3525,37 @@ Available placeholders:
               </div>
             </div>
             <div class="row mb-3">
-              <div class="col-md-4">
+              <div class="col-md-3">
                 <label for="invoiceDate" class="form-label">Invoice Date *</label>
                 <input type="date" class="form-control" id="invoiceDate" required>
               </div>
-              <div class="col-md-4">
+              <div class="col-md-3">
                 <label for="invoiceDueDate" class="form-label">Due Date *</label>
                 <input type="date" class="form-control" id="invoiceDueDate" required>
               </div>
-              <div class="col-md-4">
+              <div class="col-md-3">
                 <label for="invoiceTaxRate" class="form-label">Tax Rate (%)</label>
                 <input type="number" class="form-control" id="invoiceTaxRate" value="20" min="0" max="100" step="0.01">
+              </div>
+              <div class="col-md-3">
+                <label for="invoiceDiscount" class="form-label">Discount (%)</label>
+                <select class="form-select" id="invoiceDiscount" onchange="paymentsModule.handleDiscountChange()">
+                  <option value="0">No Discount</option>
+                  <option value="5">5%</option>
+                  <option value="10">10%</option>
+                  <option value="15">15%</option>
+                  <option value="20">20%</option>
+                  <option value="25">25%</option>
+                  <option value="30">30%</option>
+                  <option value="50">50%</option>
+                  <option value="custom">Custom...</option>
+                </select>
+              </div>
+            </div>
+            <div class="row mb-3" id="customDiscountRow" style="display: none;">
+              <div class="col-md-12">
+                <label for="invoiceDiscountCustom" class="form-label">Custom Discount (%)</label>
+                <input type="number" class="form-control" id="invoiceDiscountCustom" min="0" max="100" step="0.01" placeholder="Enter custom discount percentage">
               </div>
             </div>
             <div class="row mb-3">

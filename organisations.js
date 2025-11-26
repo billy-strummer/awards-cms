@@ -352,7 +352,7 @@ const orgsModule = {
                   ${awards.map(award => `
                     <tr>
                       <td><span class="badge bg-primary-subtle text-primary">${award.year}</span></td>
-                      <td>${utils.escapeHtml(award.award_category)}</td>
+                      <td>${utils.escapeHtml(award.award_name)}</td>
                       <td><span class="badge bg-info-subtle text-info">${utils.escapeHtml(award.sector)}</span></td>
                       <td>${utils.getStatusBadge(award.status)}</td>
                       <td>${orgsModule.getPackageBadge(award.package_type)}</td>

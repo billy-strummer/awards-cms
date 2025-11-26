@@ -60,7 +60,7 @@ const entryFormApp = {
     const counties = window.REGIONS.filter(region => !cities.includes(region));
     const cityList = window.REGIONS.filter(region => cities.includes(region));
 
-    let html = '<option value="">Choose your region...</option>';
+    let html = '<option value="">Type to search or select...</option>';
 
     // Counties optgroup
     if (counties.length > 0) {
@@ -81,57 +81,17 @@ const entryFormApp = {
     }
 
     regionSelect.innerHTML = html;
-  },
 
-  /**
-   * Filter regions based on search input
-   */
-  filterRegions(searchText) {
-    const regionSelect = document.getElementById('region');
-    const options = regionSelect.querySelectorAll('option');
-    const optgroups = regionSelect.querySelectorAll('optgroup');
-
-    searchText = searchText.toLowerCase().trim();
-
-    // If search is empty, show all options and optgroups
-    if (!searchText) {
-      options.forEach(option => {
-        option.style.display = '';
+    // Initialize Choices.js for searchable dropdown
+    if (typeof Choices !== 'undefined') {
+      new Choices('#region', {
+        searchEnabled: true,
+        searchPlaceholderValue: 'Type county or city here...',
+        itemSelectText: '',
+        shouldSort: false,
+        searchResultLimit: 100
       });
-      optgroups.forEach(optgroup => {
-        optgroup.style.display = '';
-      });
-      return;
     }
-
-    // Filter options
-    options.forEach(option => {
-      if (option.value === '') {
-        // Keep the placeholder option
-        option.style.display = '';
-        return;
-      }
-
-      const optionText = option.textContent.toLowerCase();
-      if (optionText.includes(searchText)) {
-        option.style.display = '';
-      } else {
-        option.style.display = 'none';
-      }
-    });
-
-    // Hide optgroups that have no visible options
-    optgroups.forEach(optgroup => {
-      const visibleOptions = Array.from(optgroup.querySelectorAll('option')).filter(
-        opt => opt.style.display !== 'none'
-      );
-
-      if (visibleOptions.length === 0) {
-        optgroup.style.display = 'none';
-      } else {
-        optgroup.style.display = '';
-      }
-    });
   },
 
   /**

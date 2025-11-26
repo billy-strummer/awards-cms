@@ -14,34 +14,47 @@
 
   <style>
     :root {
-      --primary-color: #667eea;
-      --secondary-color: #764ba2;
+      --primary-color: #000000;
+      --secondary-color: #1a1a1a;
+      --gold-color: #D4AF37;
+      --gold-light: #F4E5B8;
+      --gold-dark: #B8941F;
     }
 
     body {
-      background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);
+      background: #000000;
       min-height: 100vh;
       display: flex;
       align-items: center;
       justify-content: center;
       padding: 20px;
       position: relative;
+      overflow-x: hidden;
     }
 
-    body::before {
+    body::before,
+    body::after {
       content: '';
       position: fixed;
       top: 0;
-      left: 0;
-      width: 100%;
+      width: 50%;
       height: 100%;
       background-image: url('BTA-LOGO-no-date.jpg');
-      background-size: 40%;
-      background-position: center;
+      background-size: contain;
       background-repeat: no-repeat;
-      opacity: 0.1;
+      opacity: 0.08;
       z-index: 0;
       pointer-events: none;
+    }
+
+    body::before {
+      left: -10%;
+      background-position: right center;
+    }
+
+    body::after {
+      right: -10%;
+      background-position: left center;
     }
 
     .entry-container {
@@ -54,9 +67,10 @@
     .entry-card {
       background: white;
       border-radius: 20px;
-      box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+      box-shadow: 0 20px 60px rgba(212, 175, 55, 0.3);
       overflow: hidden;
       animation: slideIn 0.4s ease-out;
+      border: 2px solid var(--gold-color);
     }
 
     @keyframes slideIn {
@@ -71,38 +85,42 @@
     }
 
     .card-header-custom {
-      background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);
-      color: white;
-      padding: 30px;
+      background: linear-gradient(135deg, #000000 0%, #1a1a1a 100%);
+      color: var(--gold-color);
+      padding: 40px;
       text-align: center;
       display: flex;
       align-items: center;
       justify-content: center;
-      gap: 20px;
+      gap: 30px;
+      border-bottom: 3px solid var(--gold-color);
     }
 
     .card-header-custom img {
-      height: 60px;
+      height: 120px;
       width: auto;
+      filter: drop-shadow(0 0 10px rgba(212, 175, 55, 0.5));
     }
 
     .card-header-custom h1 {
-      font-size: 1.6rem;
+      font-size: 1.8rem;
       font-weight: 700;
       margin: 0;
       line-height: 1.3;
+      text-shadow: 0 2px 4px rgba(0,0,0,0.3);
     }
 
     @media (max-width: 576px) {
       .card-header-custom {
         flex-direction: column;
-        gap: 15px;
+        gap: 20px;
+        padding: 30px 20px;
       }
       .card-header-custom h1 {
-        font-size: 1.3rem;
+        font-size: 1.4rem;
       }
       .card-header-custom img {
-        height: 50px;
+        height: 80px;
       }
     }
 
@@ -129,29 +147,34 @@
     }
 
     .btn-next, .btn-submit {
-      background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);
+      background: linear-gradient(135deg, var(--gold-dark) 0%, var(--gold-color) 100%);
       border: none;
-      color: white;
+      color: #000000;
       padding: 15px 50px;
       font-size: 1.2rem;
-      font-weight: 600;
+      font-weight: 700;
       border-radius: 10px;
       transition: all 0.3s;
       width: 100%;
       margin-top: 30px;
+      box-shadow: 0 4px 15px rgba(212, 175, 55, 0.4);
+      text-transform: uppercase;
+      letter-spacing: 1px;
     }
 
     .btn-next:hover, .btn-submit:hover {
       transform: translateY(-2px);
-      box-shadow: 0 10px 20px rgba(0,0,0,0.2);
+      box-shadow: 0 6px 20px rgba(212, 175, 55, 0.6);
+      background: linear-gradient(135deg, var(--gold-color) 0%, var(--gold-light) 100%);
     }
 
     .btn-back {
       background: transparent;
-      border: 2px solid #6c757d;
-      color: #6c757d;
+      border: 2px solid var(--gold-color);
+      color: var(--gold-dark);
       padding: 12px 40px;
       font-size: 1rem;
+      font-weight: 600;
       border-radius: 10px;
       transition: all 0.3s;
       width: 100%;
@@ -159,8 +182,9 @@
     }
 
     .btn-back:hover {
-      background: #6c757d;
-      color: white;
+      background: var(--gold-color);
+      color: #000000;
+      border-color: var(--gold-dark);
     }
 
     .progress-indicator {
@@ -177,15 +201,19 @@
       border-radius: 50%;
       background: #dee2e6;
       transition: all 0.3s;
+      border: 1px solid #ccc;
     }
 
     .progress-dot.active {
-      background: var(--primary-color);
+      background: var(--gold-color);
       transform: scale(1.3);
+      box-shadow: 0 0 10px rgba(212, 175, 55, 0.6);
+      border-color: var(--gold-dark);
     }
 
     .progress-dot.completed {
-      background: #28a745;
+      background: var(--gold-dark);
+      border-color: var(--gold-color);
     }
 
     .form-step {
@@ -203,16 +231,19 @@
       margin-bottom: 10px;
       cursor: pointer;
       transition: all 0.3s;
+      background: white;
     }
 
     .award-option:hover {
-      border-color: var(--primary-color);
-      background: #f8f9fa;
+      border-color: var(--gold-color);
+      background: var(--gold-light);
+      transform: translateX(5px);
     }
 
     .award-option.selected {
-      border-color: var(--primary-color);
-      background: rgba(102, 126, 234, 0.1);
+      border-color: var(--gold-dark);
+      background: linear-gradient(135deg, var(--gold-light) 0%, #fff9e6 100%);
+      box-shadow: 0 4px 12px rgba(212, 175, 55, 0.3);
     }
 
     .success-message {
@@ -222,8 +253,9 @@
 
     .success-icon {
       font-size: 5rem;
-      color: #28a745;
+      color: var(--gold-color);
       margin-bottom: 20px;
+      text-shadow: 0 0 20px rgba(212, 175, 55, 0.5);
     }
   </style>
 </head>

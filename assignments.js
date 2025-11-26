@@ -176,26 +176,24 @@ const assignmentsModule = {
                 </button>
               </div>
 
-              <div class="table-responsive">
-                <table class="table table-sm table-hover align-middle" style="font-size: 0.875rem;">
-                  <thead class="table-light">
-                    <tr>
-                      <th style="cursor: pointer;" onclick="assignmentsModule.sortAssignments('company')">
-                        Company <i class="bi bi-arrow-down-up ms-1"></i>
-                      </th>
-                      <th>Badges</th>
-                      <th style="cursor: pointer;" onclick="assignmentsModule.sortAssignments('votes')">
-                        Votes <i class="bi bi-arrow-down-up ms-1"></i>
-                      </th>
-                      <th>Contact</th>
-                      <th class="text-center">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody id="assignedCompaniesList">
-                    ${validAssignments.map(a => this.renderAssignedCompany(a)).join('')}
-                  </tbody>
-                </table>
-              </div>
+              <table class="table table-sm table-hover align-middle" style="font-size: 0.875rem;">
+                <thead class="table-light">
+                  <tr>
+                    <th style="cursor: pointer;" onclick="assignmentsModule.sortAssignments('company')">
+                      Company <i class="bi bi-arrow-down-up ms-1"></i>
+                    </th>
+                    <th>Badges</th>
+                    <th style="cursor: pointer;" onclick="assignmentsModule.sortAssignments('votes')">
+                      Votes <i class="bi bi-arrow-down-up ms-1"></i>
+                    </th>
+                    <th>Contact</th>
+                    <th class="text-center">Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="assignedCompaniesList">
+                  ${validAssignments.map(a => this.renderAssignedCompany(a)).join('')}
+                </tbody>
+              </table>
             `}
           </div>
 
@@ -297,7 +295,12 @@ const assignmentsModule = {
                 color: white; border-radius: 4px; display: flex; align-items: center; justify-content: center;
                 font-weight: 600; font-size: 0.75rem; margin-right: 8px;">${org.company_name.charAt(0)}</div>`
             }
-            <span class="fw-semibold">${utils.escapeHtml(org.company_name)}</span>
+            <a href="javascript:void(0);"
+               class="text-decoration-none fw-semibold text-primary"
+               onclick="orgsModule.openCompanyProfile('${org.id}', '${utils.escapeHtml(org.company_name).replace(/'/g, "\\'")}')"
+               title="View company profile">
+              ${utils.escapeHtml(org.company_name)}
+            </a>
           </div>
         </td>
         <td>

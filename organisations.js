@@ -308,6 +308,19 @@ const orgsModule = {
         balanceDue: (invoices || []).reduce((sum, inv) => sum + parseFloat(inv.balance_due || 0), 0)
       };
 
+      // Fetch entries with public voting enabled for this organisation
+      const { data: votingEntries, error: entriesError } = await STATE.client
+        .from('entries')
+        .select(`
+          *,
+          awards (award_name, year)
+        `)
+        .eq('organisation_id', orgId)
+        .eq('allow_public_voting', true)
+        .order('created_at', { ascending: false });
+
+      if (entriesError) console.error('Error loading voting entries:', entriesError);
+
       // Render profile
       contentDiv.innerHTML = `
         <div class="row">
@@ -498,6 +511,68 @@ const orgsModule = {
             </div>`
           }
         </div>
+
+        ${votingEntries && votingEntries.length > 0 ?
+          `<div class="mt-4">
+            <h6 class="text-muted mb-3"><i class="bi bi-link-45deg me-2"></i>Public Voting Links (${votingEntries.length})</h6>
+            <div class="card">
+              <div class="card-body">
+                <div class="alert alert-info mb-3">
+                  <i class="bi bi-info-circle me-2"></i>
+                  Share these voting links with the company so they can gather public votes
+                </div>
+                <div class="table-responsive">
+                  <table class="table table-sm table-hover">
+                    <thead>
+                      <tr>
+                        <th>Entry #</th>
+                        <th>Award</th>
+                        <th>Entry Title</th>
+                        <th>Votes</th>
+                        <th>Voting Link</th>
+                        <th>Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      ${votingEntries.map(entry => {
+                        const votingUrl = `${window.location.origin}/vote.html?entry=${entry.entry_number}`;
+                        return `
+                          <tr>
+                            <td><span class="badge bg-primary">${utils.escapeHtml(entry.entry_number)}</span></td>
+                            <td>
+                              <strong>${utils.escapeHtml(entry.awards?.award_name || 'N/A')}</strong>
+                              ${entry.awards?.year ? `<br><small class="text-muted">${entry.awards.year}</small>` : ''}
+                            </td>
+                            <td>${utils.escapeHtml(entry.entry_title || 'N/A')}</td>
+                            <td>
+                              <span class="badge bg-success-subtle text-success">
+                                <i class="bi bi-hand-thumbs-up me-1"></i>${entry.vote_count || 0} votes
+                              </span>
+                            </td>
+                            <td>
+                              <div class="input-group input-group-sm" style="max-width: 400px;">
+                                <input type="text" class="form-control" value="${votingUrl}" readonly id="votingUrl_${entry.id}">
+                                <button class="btn btn-outline-primary" type="button"
+                                  onclick="navigator.clipboard.writeText('${votingUrl}'); utils.showToast('Voting link copied!', 'success');">
+                                  <i class="bi bi-clipboard"></i>
+                                </button>
+                              </div>
+                            </td>
+                            <td>
+                              <a href="${votingUrl}" target="_blank" class="btn btn-sm btn-outline-success" title="Open voting page">
+                                <i class="bi bi-box-arrow-up-right"></i>
+                              </a>
+                            </td>
+                          </tr>
+                        `;
+                      }).join('')}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </div>` : ''
+        }
 
         <!-- Enhanced Winner Profile Section -->
         <div class="mt-4">

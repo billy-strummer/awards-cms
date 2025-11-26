@@ -292,6 +292,35 @@ const orgsModule = {
 
       if (imagesError) console.error('Error loading company images:', imagesError);
 
+      // Fetch invoices for this organisation
+      const { data: invoices, error: invoicesError } = await STATE.client
+        .from('invoices')
+        .select('*')
+        .eq('organisation_id', orgId)
+        .order('created_at', { ascending: false });
+
+      if (invoicesError) console.error('Error loading invoices:', invoicesError);
+
+      const invoicesSummary = {
+        count: (invoices || []).length,
+        totalAmount: (invoices || []).reduce((sum, inv) => sum + parseFloat(inv.total_amount || 0), 0),
+        paidAmount: (invoices || []).reduce((sum, inv) => sum + parseFloat(inv.paid_amount || 0), 0),
+        balanceDue: (invoices || []).reduce((sum, inv) => sum + parseFloat(inv.balance_due || 0), 0)
+      };
+
+      // Fetch entries with public voting enabled for this organisation
+      const { data: votingEntries, error: entriesError } = await STATE.client
+        .from('entries')
+        .select(`
+          *,
+          awards (award_name, year)
+        `)
+        .eq('organisation_id', orgId)
+        .eq('allow_public_voting', true)
+        .order('created_at', { ascending: false });
+
+      if (entriesError) console.error('Error loading voting entries:', entriesError);
+
       // Render profile
       contentDiv.innerHTML = `
         <div class="row">
@@ -312,6 +341,12 @@ const orgsModule = {
                   onclick="orgsModule.openLogoGalleryModal('${org.id}')">
                   <i class="bi bi-images me-1"></i>Choose from Media Gallery
                 </button>
+                ${org.website ?
+                  `<button type="button" class="btn btn-sm btn-outline-success w-100 mb-2"
+                    onclick="orgsModule.fetchLogoFromWebsite('${org.id}', '${utils.escapeHtml(org.website).replace(/'/g, "\\'")}', '${utils.escapeHtml(org.company_name).replace(/'/g, "\\'")}')">
+                    <i class="bi bi-globe me-1"></i>Fetch from Website
+                  </button>` : ''
+                }
                 <small class="text-muted">Required: 250x170 px</small>
               </div>
             </div>
@@ -387,6 +422,44 @@ const orgsModule = {
           </div>
         </div>
 
+        ${invoicesSummary.count > 0 ?
+          `<div class="mt-4">
+            <h6 class="text-muted mb-3"><i class="bi bi-receipt me-2"></i>Billing & Invoices</h6>
+            <div class="card">
+              <div class="card-body">
+                <div class="row align-items-center">
+                  <div class="col-md-8">
+                    <div class="row text-center">
+                      <div class="col-3">
+                        <div class="text-muted small">Total Invoices</div>
+                        <div class="fw-bold fs-5">${invoicesSummary.count}</div>
+                      </div>
+                      <div class="col-3">
+                        <div class="text-muted small">Total Amount</div>
+                        <div class="fw-bold fs-5">£${invoicesSummary.totalAmount.toFixed(2)}</div>
+                      </div>
+                      <div class="col-3">
+                        <div class="text-muted small">Paid</div>
+                        <div class="fw-bold fs-5 text-success">£${invoicesSummary.paidAmount.toFixed(2)}</div>
+                      </div>
+                      <div class="col-3">
+                        <div class="text-muted small">Balance Due</div>
+                        <div class="fw-bold fs-5 ${invoicesSummary.balanceDue > 0 ? 'text-danger' : 'text-muted'}">£${invoicesSummary.balanceDue.toFixed(2)}</div>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="col-md-4 text-end">
+                    <button type="button" class="btn btn-primary"
+                      onclick="orgsModule.viewOrganisationInvoices('${org.id}', '${utils.escapeHtml(org.company_name).replace(/'/g, "\\'")}')">
+                      <i class="bi bi-file-earmark-text me-2"></i>View All Invoices
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>` : ''
+        }
+
         <div class="mt-4">
           <h6 class="text-muted mb-3"><i class="bi bi-trophy me-2"></i>Award History (${awards.length})</h6>
           ${awards.length === 0 ?
@@ -410,13 +483,21 @@ const orgsModule = {
                       <td>
                         <a href="javascript:void(0);"
                            class="text-decoration-none fw-semibold text-primary"
-                           onclick="assignmentsModule.openAssignmentsModal('${award.id}', '${utils.escapeHtml(award.award_name || 'Award').replace(/'/g, "\\'")}')">
+                           onclick="orgsModule.navigateToAward('${award.id}', '${utils.escapeHtml(award.award_name || 'Award').replace(/'/g, "\\'")}')">
                           ${utils.escapeHtml(award.award_name)}
                         </a>
                       </td>
                       <td><span class="badge bg-info-subtle text-info">${utils.escapeHtml(award.sector)}</span></td>
                       <td>${utils.getStatusBadge(award.status)}</td>
-                      <td>${orgsModule.getPackageBadge(award.package_type)}</td>
+                      <td>
+                        ${['bronze', 'silver', 'gold'].includes(award.package_type) ?
+                          `<a href="javascript:void(0);"
+                              onclick="orgsModule.openCompanyProfile('${org.id}', '${utils.escapeHtml(org.company_name).replace(/'/g, "\\'")}')">
+                              ${orgsModule.getPackageBadge(award.package_type)}
+                           </a>` :
+                          '<span class="text-muted">-</span>'
+                        }
+                      </td>
                       <td class="text-center">
                         ${award.enhanced_profile ?
                           '<i class="bi bi-star-fill text-warning" title="Enhanced Profile" style="font-size: 1.2rem;"></i>' :
@@ -430,6 +511,68 @@ const orgsModule = {
             </div>`
           }
         </div>
+
+        ${votingEntries && votingEntries.length > 0 ?
+          `<div class="mt-4">
+            <h6 class="text-muted mb-3"><i class="bi bi-link-45deg me-2"></i>Public Voting Links (${votingEntries.length})</h6>
+            <div class="card">
+              <div class="card-body">
+                <div class="alert alert-info mb-3">
+                  <i class="bi bi-info-circle me-2"></i>
+                  Share these voting links with the company so they can gather public votes
+                </div>
+                <div class="table-responsive">
+                  <table class="table table-sm table-hover">
+                    <thead>
+                      <tr>
+                        <th>Entry #</th>
+                        <th>Award</th>
+                        <th>Entry Title</th>
+                        <th>Votes</th>
+                        <th>Voting Link</th>
+                        <th>Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      ${votingEntries.map(entry => {
+                        const votingUrl = `${window.location.origin}/vote.html?entry=${entry.entry_number}`;
+                        return `
+                          <tr>
+                            <td><span class="badge bg-primary">${utils.escapeHtml(entry.entry_number)}</span></td>
+                            <td>
+                              <strong>${utils.escapeHtml(entry.awards?.award_name || 'N/A')}</strong>
+                              ${entry.awards?.year ? `<br><small class="text-muted">${entry.awards.year}</small>` : ''}
+                            </td>
+                            <td>${utils.escapeHtml(entry.entry_title || 'N/A')}</td>
+                            <td>
+                              <span class="badge bg-success-subtle text-success">
+                                <i class="bi bi-hand-thumbs-up me-1"></i>${entry.vote_count || 0} votes
+                              </span>
+                            </td>
+                            <td>
+                              <div class="input-group input-group-sm" style="max-width: 400px;">
+                                <input type="text" class="form-control" value="${votingUrl}" readonly id="votingUrl_${entry.id}">
+                                <button class="btn btn-outline-primary" type="button"
+                                  onclick="navigator.clipboard.writeText('${votingUrl}'); utils.showToast('Voting link copied!', 'success');">
+                                  <i class="bi bi-clipboard"></i>
+                                </button>
+                              </div>
+                            </td>
+                            <td>
+                              <a href="${votingUrl}" target="_blank" class="btn btn-sm btn-outline-success" title="Open voting page">
+                                <i class="bi bi-box-arrow-up-right"></i>
+                              </a>
+                            </td>
+                          </tr>
+                        `;
+                      }).join('')}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </div>` : ''
+        }
 
         <!-- Enhanced Winner Profile Section -->
         <div class="mt-4">
@@ -936,6 +1079,76 @@ const orgsModule = {
   },
 
   /**
+   * Fetch company logo from their website URL
+   * @param {string} orgId - Organisation ID
+   * @param {string} websiteUrl - Company website URL
+   * @param {string} companyName - Company name
+   */
+  async fetchLogoFromWebsite(orgId, websiteUrl, companyName) {
+    try {
+      utils.showLoading();
+
+      // Clean up the website URL to get the domain
+      let domain = websiteUrl.replace(/^https?:\/\//, '').replace(/^www\./, '').split('/')[0];
+
+      // Try multiple logo services in order
+      const logoServices = [
+        // Clearbit Logo API (best quality, but may not have all companies)
+        `https://logo.clearbit.com/${domain}`,
+        // Google's favicon service (good fallback)
+        `https://www.google.com/s2/favicons?sz=128&domain=${domain}`,
+        // DuckDuckGo icon service
+        `https://icons.duckduckgo.com/ip3/${domain}.ico`
+      ];
+
+      let logoUrl = null;
+
+      // Try each service until we find one that works
+      for (const serviceUrl of logoServices) {
+        try {
+          const response = await fetch(serviceUrl, { method: 'HEAD' });
+          if (response.ok) {
+            logoUrl = serviceUrl;
+            break;
+          }
+        } catch (e) {
+          // Try next service
+          continue;
+        }
+      }
+
+      if (!logoUrl) {
+        // If all services fail, try the first one anyway (Clearbit)
+        logoUrl = logoServices[0];
+      }
+
+      // Update the organisation's logo_url
+      const { error } = await STATE.client
+        .from('organisations')
+        .update({ logo_url: logoUrl })
+        .eq('id', orgId);
+
+      if (error) throw error;
+
+      utils.showToast('Logo fetched successfully from website!', 'success');
+
+      // Reload the profile to show new logo
+      const org = STATE.allOrganisations.find(o => o.id === orgId);
+      if (org) {
+        org.logo_url = logoUrl; // Update in state
+        await this.openCompanyProfile(orgId, org.company_name);
+        await this.loadOrganisations(); // Refresh table
+      }
+
+    } catch (error) {
+      console.error('Error fetching logo from website:', error);
+      utils.showToast('Could not fetch logo from website. Try uploading manually.', 'warning');
+    } finally {
+      utils.hideLoading();
+    }
+  },
+
+  /**
    * Open upload company images modal
    * @param {string} orgId - Organisation ID
    */
@@ -1211,6 +1424,169 @@ const orgsModule = {
   async cancelEditMode(orgId, companyName) {
     // Reopen the profile in view mode (this will restore original data)
     await this.openCompanyProfile(orgId, companyName);
+  },
+
+  /**
+   * Navigate to award from company profile
+   * Closes the company profile modal and switches to the Awards tab
+   * @param {string} awardId - Award ID
+   * @param {string} awardName - Award name
+   */
+  navigateToAward(awardId, awardName) {
+    // Close the company profile modal
+    const modalElement = document.getElementById('companyProfileModal');
+    const modal = bootstrap.Modal.getInstance(modalElement);
+    if (modal) {
+      modal.hide();
+    }
+
+    // Wait for modal to close, then switch to Awards tab and open assignments
+    setTimeout(() => {
+      // Switch to Awards tab
+      const awardsTab = document.getElementById('awards-tab');
+      if (awardsTab) {
+        awardsTab.click();
+      }
+
+      // Wait a bit for tab to switch, then open assignments modal
+      setTimeout(() => {
+        if (typeof assignmentsModule !== 'undefined') {
+          assignmentsModule.openAssignmentsModal(awardId, awardName);
+        }
+      }, 300);
+    }, 300);
+  },
+
+  /**
+   * View all invoices for an organisation
+   * @param {string} orgId - Organisation ID
+   * @param {string} companyName - Company name
+   */
+  async viewOrganisationInvoices(orgId, companyName) {
+    try {
+      utils.showLoading();
+
+      // Load invoices with line items
+      const { data: invoices, error } = await STATE.client
+        .from('invoices')
+        .select(`
+          *,
+          invoice_line_items (*)
+        `)
+        .eq('organisation_id', orgId)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+
+      // Create and show modal
+      let modal = bootstrap.Modal.getInstance(document.getElementById('organisationInvoicesModal'));
+      if (!modal) {
+        modal = new bootstrap.Modal(document.getElementById('organisationInvoicesModal'));
+      }
+
+      const modalTitle = document.getElementById('organisationInvoicesModalTitle');
+      const modalBody = document.getElementById('organisationInvoicesModalBody');
+
+      modalTitle.innerHTML = `<i class="bi bi-receipt me-2"></i>Invoices for ${utils.escapeHtml(companyName)}`;
+
+      if (!invoices || invoices.length === 0) {
+        modalBody.innerHTML = `
+          <div class="alert alert-info">
+            <i class="bi bi-info-circle me-2"></i>No invoices found for this organisation.
+          </div>
+        `;
+      } else {
+        modalBody.innerHTML = `
+          <div class="table-responsive">
+            <table class="table table-hover">
+              <thead>
+                <tr>
+                  <th>Invoice #</th>
+                  <th>Date</th>
+                  <th>Type</th>
+                  <th>Items</th>
+                  <th class="text-end">Total</th>
+                  <th class="text-end">Paid</th>
+                  <th class="text-end">Balance</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${invoices.map(invoice => `
+                  <tr>
+                    <td><strong>${utils.escapeHtml(invoice.invoice_number)}</strong></td>
+                    <td>${invoice.invoice_date ? new Date(invoice.invoice_date).toLocaleDateString('en-GB') : 'N/A'}</td>
+                    <td>
+                      <span class="badge bg-info-subtle text-info">
+                        ${this.formatInvoiceType(invoice.invoice_type)}
+                      </span>
+                      ${invoice.package_type && ['bronze', 'silver', 'gold'].includes(invoice.package_type) ?
+                        `<br>${this.getPackageBadge(invoice.package_type)}` : ''
+                      }
+                    </td>
+                    <td>
+                      <small class="text-muted">
+                        ${invoice.invoice_line_items && invoice.invoice_line_items.length > 0 ?
+                          invoice.invoice_line_items.map(item =>
+                            `${item.quantity}x ${utils.escapeHtml(item.item_name)}`
+                          ).join('<br>') :
+                          invoice.description || 'N/A'
+                        }
+                      </small>
+                    </td>
+                    <td class="text-end"><strong>£${parseFloat(invoice.total_amount || 0).toFixed(2)}</strong></td>
+                    <td class="text-end text-success">£${parseFloat(invoice.paid_amount || 0).toFixed(2)}</td>
+                    <td class="text-end ${parseFloat(invoice.balance_due || 0) > 0 ? 'text-danger' : 'text-muted'}">
+                      £${parseFloat(invoice.balance_due || 0).toFixed(2)}
+                    </td>
+                    <td>${this.getInvoiceStatusBadge(invoice.status, invoice.payment_status)}</td>
+                  </tr>
+                `).join('')}
+              </tbody>
+            </table>
+          </div>
+        `;
+      }
+
+      modal.show();
+
+    } catch (error) {
+      console.error('Error loading invoices:', error);
+      utils.showToast('Error loading invoices: ' + error.message, 'error');
+    } finally {
+      utils.hideLoading();
+    }
+  },
+
+  /**
+   * Format invoice type for display
+   */
+  formatInvoiceType(type) {
+    const types = {
+      entry_fee: 'Entry Fee',
+      package: 'Package',
+      sponsorship: 'Sponsorship',
+      tickets: 'Tickets',
+      other: 'Other'
+    };
+    return types[type] || type;
+  },
+
+  /**
+   * Get invoice status badge
+   */
+  getInvoiceStatusBadge(status, paymentStatus) {
+    const badges = {
+      draft: '<span class="badge bg-secondary">Draft</span>',
+      sent: '<span class="badge bg-info">Sent</span>',
+      viewed: '<span class="badge bg-primary">Viewed</span>',
+      paid: '<span class="badge bg-success">Paid</span>',
+      partially_paid: '<span class="badge bg-warning">Partially Paid</span>',
+      overdue: '<span class="badge bg-danger">Overdue</span>',
+      cancelled: '<span class="badge bg-dark">Cancelled</span>',
+      refunded: '<span class="badge bg-secondary">Refunded</span>'
+    };
+    return badges[status] || badges[paymentStatus] || '<span class="badge bg-secondary">Unknown</span>';
   },
 
   /**

@@ -3440,6 +3440,203 @@ Available placeholders:
     </div>
   </div>
 
+  <!-- Organisation Invoices Modal -->
+  <div class="modal fade" id="organisationInvoicesModal" tabindex="-1" aria-labelledby="organisationInvoicesModalTitle" aria-hidden="true">
+    <div class="modal-dialog modal-xl">
+      <div class="modal-content">
+        <div class="modal-header bg-primary text-white">
+          <h5 class="modal-title" id="organisationInvoicesModalTitle">
+            <i class="bi bi-receipt me-2"></i>Organisation Invoices
+          </h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body" id="organisationInvoicesModalBody">
+          <div class="text-center py-4">
+            <div class="spinner-border text-primary" role="status">
+              <span class="visually-hidden">Loading...</span>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer bg-light">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Award Details Modal -->
+  <div class="modal fade" id="awardDetailsModal" tabindex="-1" aria-labelledby="awardDetailsModalTitle" aria-hidden="true">
+    <div class="modal-dialog modal-xl">
+      <div class="modal-content">
+        <div class="modal-header bg-primary text-white">
+          <h5 class="modal-title" id="awardDetailsModalTitle">
+            <i class="bi bi-trophy me-2"></i>Award Details
+          </h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body" id="awardDetailsModalBody">
+          <div class="text-center py-4">
+            <div class="spinner-border text-primary" role="status">
+              <span class="visually-hidden">Loading...</span>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer bg-light">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Create Invoice Modal -->
+  <div class="modal fade" id="createInvoiceModal" tabindex="-1" aria-labelledby="createInvoiceModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+      <div class="modal-content">
+        <div class="modal-header bg-success text-white">
+          <h5 class="modal-title" id="createInvoiceModalLabel">
+            <i class="bi bi-file-earmark-plus me-2"></i>Create New Invoice
+          </h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <form id="createInvoiceForm">
+            <div class="row mb-3">
+              <div class="col-md-6">
+                <label for="invoiceOrganisation" class="form-label">Company *</label>
+                <select class="form-select" id="invoiceOrganisation" required>
+                  <option value="">Select Company...</option>
+                </select>
+              </div>
+              <div class="col-md-6">
+                <label for="invoiceType" class="form-label">Invoice Type *</label>
+                <select class="form-select" id="invoiceType" required>
+                  <option value="package">Package</option>
+                  <option value="entry_fee">Entry Fee</option>
+                  <option value="sponsorship">Sponsorship</option>
+                  <option value="tickets">Tickets</option>
+                  <option value="other">Other</option>
+                </select>
+              </div>
+            </div>
+            <div class="row mb-3">
+              <div class="col-md-4">
+                <label for="invoiceDate" class="form-label">Invoice Date *</label>
+                <input type="date" class="form-control" id="invoiceDate" required>
+              </div>
+              <div class="col-md-4">
+                <label for="invoiceDueDate" class="form-label">Due Date *</label>
+                <input type="date" class="form-control" id="invoiceDueDate" required>
+              </div>
+              <div class="col-md-4">
+                <label for="invoiceTaxRate" class="form-label">Tax Rate (%)</label>
+                <input type="number" class="form-control" id="invoiceTaxRate" value="20" min="0" max="100" step="0.01">
+              </div>
+            </div>
+            <div class="row mb-3">
+              <div class="col-md-12">
+                <label for="invoicePackageType" class="form-label">Package Type (if applicable)</label>
+                <select class="form-select" id="invoicePackageType">
+                  <option value="">None</option>
+                  <option value="bronze">Bronze</option>
+                  <option value="silver">Silver</option>
+                  <option value="gold">Gold</option>
+                </select>
+              </div>
+            </div>
+            <div class="mb-3">
+              <label class="form-label">Line Items *</label>
+              <div class="mb-2">
+                <div class="row g-2 text-muted small fw-bold">
+                  <div class="col-md-4">Item Name</div>
+                  <div class="col-md-3">Description</div>
+                  <div class="col-md-2">Quantity</div>
+                  <div class="col-md-2">Unit Price (£)</div>
+                  <div class="col-md-1"></div>
+                </div>
+              </div>
+              <div id="invoiceLineItems"></div>
+              <button type="button" class="btn btn-sm btn-outline-primary mt-2" onclick="paymentsModule.addInvoiceLineItem()">
+                <i class="bi bi-plus-circle me-1"></i>Add Line Item
+              </button>
+            </div>
+            <div class="mb-3">
+              <label for="invoiceDescription" class="form-label">Description/Notes</label>
+              <textarea class="form-control" id="invoiceDescription" rows="3" placeholder="Optional notes for this invoice..."></textarea>
+            </div>
+          </form>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="button" class="btn btn-success" onclick="paymentsModule.saveNewInvoice()">
+            <i class="bi bi-check-lg me-1"></i>Create Invoice
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Record Payment Modal -->
+  <div class="modal fade" id="recordPaymentModal" tabindex="-1" aria-labelledby="recordPaymentModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header bg-success text-white">
+          <h5 class="modal-title" id="recordPaymentModalLabel">
+            <i class="bi bi-cash-stack me-2"></i>Record Payment
+          </h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <form id="recordPaymentForm">
+            <div class="mb-3">
+              <label for="paymentOrganisation" class="form-label">Company *</label>
+              <select class="form-select" id="paymentOrganisation" required>
+                <option value="">Select Company...</option>
+              </select>
+            </div>
+            <div class="mb-3">
+              <label for="paymentInvoice" class="form-label">Link to Invoice (optional)</label>
+              <select class="form-select" id="paymentInvoice">
+                <option value="">None (General Payment)</option>
+              </select>
+            </div>
+            <div class="row mb-3">
+              <div class="col-md-6">
+                <label for="paymentAmount" class="form-label">Amount (£) *</label>
+                <input type="number" class="form-control" id="paymentAmount" step="0.01" min="0.01" required>
+              </div>
+              <div class="col-md-6">
+                <label for="paymentDate" class="form-label">Payment Date *</label>
+                <input type="date" class="form-control" id="paymentDate" required>
+              </div>
+            </div>
+            <div class="mb-3">
+              <label for="paymentMethod" class="form-label">Payment Method *</label>
+              <select class="form-select" id="paymentMethod" required>
+                <option value="bank_transfer">Bank Transfer</option>
+                <option value="card">Card</option>
+                <option value="stripe">Stripe</option>
+                <option value="paypal">PayPal</option>
+                <option value="cash">Cash</option>
+                <option value="cheque">Cheque</option>
+                <option value="other">Other</option>
+              </select>
+            </div>
+            <div class="mb-3">
+              <label for="paymentNotes" class="form-label">Notes (optional)</label>
+              <textarea class="form-control" id="paymentNotes" rows="2" placeholder="Optional notes..."></textarea>
+            </div>
+          </form>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="button" class="btn btn-success" onclick="paymentsModule.savePaymentRecord()">
+            <i class="bi bi-check-lg me-1"></i>Record Payment
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- Upload Media Modal -->
   <div class="modal fade" id="uploadMediaModal" tabindex="-1" aria-labelledby="uploadMediaModalLabel" aria-hidden="true">
     <div class="modal-dialog">
@@ -3494,7 +3691,7 @@ Available placeholders:
 
   <!-- Assignments Modal -->
 <div class="modal fade" id="assignmentsModal" tabindex="-1" aria-labelledby="assignmentsModalLabel" aria-hidden="true">
-  <div class="modal-dialog modal-xl">
+  <div class="modal-dialog modal-xl" style="max-width: 90vw;">
     <div class="modal-content">
       <div class="modal-header bg-primary text-white">
         <h5 class="modal-title" id="assignmentsModalTitle">
@@ -6025,7 +6222,11 @@ in recognition of excellence
   
   <!-- Supabase Client -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  
+
+  <!-- jsPDF for PDF generation -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+
   <!-- Application Scripts (loaded in order) -->
   <script src="config.js"></script>
   <script src="utils.js"></script>

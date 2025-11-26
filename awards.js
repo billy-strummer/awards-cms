@@ -257,12 +257,217 @@ const awardsModule = {
    * View award details
    * @param {string} awardId - Award ID
    */
-  viewDetails(awardId) {
+  async viewDetails(awardId) {
     const award = STATE.allAwards.find(a => a.id === awardId);
     if (!award) return;
-    
-    utils.showToast('View details feature coming soon!', 'info');
-    console.log('Award details:', award);
+
+    try {
+      utils.showLoading();
+
+      // Load nominees/assignments for this award
+      const { data: assignments, error: assignError } = await STATE.client
+        .from('award_assignments')
+        .select(`
+          *,
+          organisations (id, company_name)
+        `)
+        .eq('award_id', awardId)
+        .order('created_at', { ascending: false });
+
+      if (assignError) throw assignError;
+
+      // Load entries with voting enabled for this award
+      const { data: votingEntries, error: entriesError } = await STATE.client
+        .from('entries')
+        .select(`
+          *,
+          organisations (id, company_name)
+        `)
+        .eq('award_id', awardId)
+        .eq('allow_public_voting', true)
+        .order('vote_count', { ascending: false });
+
+      if (entriesError) throw entriesError;
+
+      // Create and show modal
+      let modal = bootstrap.Modal.getInstance(document.getElementById('awardDetailsModal'));
+      if (!modal) {
+        modal = new bootstrap.Modal(document.getElementById('awardDetailsModal'));
+      }
+
+      const modalTitle = document.getElementById('awardDetailsModalTitle');
+      const modalBody = document.getElementById('awardDetailsModalBody');
+
+      modalTitle.innerHTML = `<i class="bi bi-trophy me-2"></i>${utils.escapeHtml(award.award_name)}`;
+
+      modalBody.innerHTML = `
+        <!-- Award Information -->
+        <div class="row mb-4">
+          <div class="col-md-6">
+            <h6 class="text-muted mb-3"><i class="bi bi-info-circle me-2"></i>Award Details</h6>
+            <table class="table table-sm">
+              <tr>
+                <th width="40%">Category:</th>
+                <td>${utils.escapeHtml(award.award_name)}</td>
+              </tr>
+              <tr>
+                <th>Year:</th>
+                <td>${award.year || 'N/A'}</td>
+              </tr>
+              <tr>
+                <th>Sector:</th>
+                <td><span class="badge bg-info-subtle text-info">${utils.escapeHtml(award.sector || 'N/A')}</span></td>
+              </tr>
+              <tr>
+                <th>Status:</th>
+                <td>${utils.getStatusBadge(award.status)}</td>
+              </tr>
+              <tr>
+                <th>Nominees:</th>
+                <td><strong>${assignments?.length || 0}</strong></td>
+              </tr>
+            </table>
+          </div>
+          <div class="col-md-6">
+            <h6 class="text-muted mb-3"><i class="bi bi-calendar me-2"></i>Important Dates</h6>
+            <table class="table table-sm">
+              <tr>
+                <th width="40%">Entry Open:</th>
+                <td>${award.entry_open_date ? new Date(award.entry_open_date).toLocaleDateString('en-GB') : 'N/A'}</td>
+              </tr>
+              <tr>
+                <th>Entry Close:</th>
+                <td>${award.entry_close_date ? new Date(award.entry_close_date).toLocaleDateString('en-GB') : 'N/A'}</td>
+              </tr>
+              <tr>
+                <th>Judging Date:</th>
+                <td>${award.judging_date ? new Date(award.judging_date).toLocaleDateString('en-GB') : 'N/A'}</td>
+              </tr>
+              <tr>
+                <th>Announcement:</th>
+                <td>${award.announcement_date ? new Date(award.announcement_date).toLocaleDateString('en-GB') : 'N/A'}</td>
+              </tr>
+            </table>
+          </div>
+        </div>
+
+        ${award.description ? `
+          <div class="mb-4">
+            <h6 class="text-muted mb-2"><i class="bi bi-file-text me-2"></i>Description</h6>
+            <p class="text-muted">${utils.escapeHtml(award.description)}</p>
+          </div>
+        ` : ''}
+
+        <!-- Nominees Tab -->
+        <div class="mb-4">
+          <h6 class="text-muted mb-3"><i class="bi bi-people me-2"></i>Nominees (${assignments?.length || 0})</h6>
+          ${assignments && assignments.length > 0 ? `
+            <div class="table-responsive">
+              <table class="table table-sm table-hover">
+                <thead>
+                  <tr>
+                    <th>Company</th>
+                    <th>Status</th>
+                    <th>Score</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${assignments.map(assign => `
+                    <tr>
+                      <td>
+                        <a href="javascript:void(0);"
+                           class="text-decoration-none fw-semibold text-primary"
+                           onclick="orgsModule.openCompanyProfile('${assign.organisations?.id}', '${utils.escapeHtml(assign.organisations?.company_name || '').replace(/'/g, "\\'")}')"
+                           title="View company profile">
+                          ${utils.escapeHtml(assign.organisations?.company_name || 'N/A')}
+                        </a>
+                      </td>
+                      <td>${assignmentsModule.getStatusBadge(assign.status)}</td>
+                      <td>${assign.score ? `<strong>${assign.score}</strong>` : '-'}</td>
+                      <td>
+                        <button class="btn btn-sm btn-outline-primary"
+                          onclick="assignmentsModule.openAssignmentsModal('${award.id}', '${utils.escapeHtml(award.award_name).replace(/'/g, "\\'")}')">
+                          <i class="bi bi-pencil"></i> Manage
+                        </button>
+                      </td>
+                    </tr>
+                  `).join('')}
+                </tbody>
+              </table>
+            </div>
+          ` : '<div class="alert alert-info">No nominees assigned yet</div>'}
+        </div>
+
+        <!-- Public Voting Links -->
+        ${votingEntries && votingEntries.length > 0 ? `
+          <div class="mb-4">
+            <h6 class="text-muted mb-3"><i class="bi bi-link-45deg me-2"></i>Public Voting Links (${votingEntries.length})</h6>
+            <div class="alert alert-success">
+              <i class="bi bi-check-circle me-2"></i>
+              <strong>${votingEntries.length}</strong> ${votingEntries.length === 1 ? 'nominee has' : 'nominees have'} public voting enabled
+            </div>
+            <div class="table-responsive">
+              <table class="table table-sm table-hover">
+                <thead>
+                  <tr>
+                    <th>Entry #</th>
+                    <th>Company</th>
+                    <th>Entry Title</th>
+                    <th>Votes</th>
+                    <th>Voting Link</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${votingEntries.map(entry => {
+                    const votingUrl = `${window.location.origin}/vote.html?entry=${entry.entry_number}`;
+                    return `
+                      <tr>
+                        <td><span class="badge bg-primary">${utils.escapeHtml(entry.entry_number)}</span></td>
+                        <td>
+                          <a href="javascript:void(0);"
+                             class="text-decoration-none text-primary"
+                             onclick="orgsModule.openCompanyProfile('${entry.organisations?.id}', '${utils.escapeHtml(entry.organisations?.company_name || '').replace(/'/g, "\\'")}')"
+                             title="View company profile">
+                            ${utils.escapeHtml(entry.organisations?.company_name || 'N/A')}
+                          </a>
+                        </td>
+                        <td>${utils.escapeHtml(entry.entry_title || 'N/A')}</td>
+                        <td>
+                          <span class="badge bg-success-subtle text-success">
+                            <i class="bi bi-hand-thumbs-up me-1"></i>${entry.vote_count || 0}
+                          </span>
+                        </td>
+                        <td>
+                          <div class="input-group input-group-sm">
+                            <input type="text" class="form-control" value="${votingUrl}" readonly>
+                            <button class="btn btn-outline-primary" type="button"
+                              onclick="navigator.clipboard.writeText('${votingUrl}'); utils.showToast('Link copied!', 'success');">
+                              <i class="bi bi-clipboard"></i>
+                            </button>
+                            <a href="${votingUrl}" target="_blank" class="btn btn-outline-success">
+                              <i class="bi bi-box-arrow-up-right"></i>
+                            </a>
+                          </div>
+                        </td>
+                      </tr>
+                    `;
+                  }).join('')}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        ` : ''}
+      `;
+
+      modal.show();
+
+    } catch (error) {
+      console.error('Error loading award details:', error);
+      utils.showToast('Error loading award details: ' + error.message, 'error');
+    } finally {
+      utils.hideLoading();
+    }
   },
 
   /**

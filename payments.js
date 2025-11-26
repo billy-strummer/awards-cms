@@ -45,7 +45,7 @@ const paymentsModule = {
         .from('invoices')
         .select(`
           *,
-          organisations (company_name, email, contact_phone)
+          organisations (id, company_name, email, contact_phone)
         `)
         .order('created_at', { ascending: false });
 
@@ -83,7 +83,17 @@ const paymentsModule = {
         <td>
           <strong>${utils.escapeHtml(invoice.invoice_number)}</strong>
         </td>
-        <td>${utils.escapeHtml(invoice.organisations?.company_name || 'N/A')}</td>
+        <td>
+          ${invoice.organisations?.id && invoice.organisations?.company_name ?
+            `<a href="javascript:void(0);"
+                class="text-decoration-none text-primary fw-semibold"
+                onclick="orgsModule.openCompanyProfile('${invoice.organisations.id}', '${utils.escapeHtml(invoice.organisations.company_name).replace(/'/g, "\\'")}')"
+                title="View company profile">
+                ${utils.escapeHtml(invoice.organisations.company_name)}
+             </a>` :
+            utils.escapeHtml(invoice.organisations?.company_name || 'N/A')
+          }
+        </td>
         <td>${invoice.invoice_date ? new Date(invoice.invoice_date).toLocaleDateString() : 'N/A'}</td>
         <td>${invoice.due_date ? new Date(invoice.due_date).toLocaleDateString() : 'N/A'}</td>
         <td><span class="badge bg-info-subtle text-info">${this.formatInvoiceType(invoice.invoice_type)}</span></td>
@@ -146,8 +156,191 @@ const paymentsModule = {
    * Create new invoice
    */
   async createNewInvoice() {
-    utils.showToast('Invoice creation modal coming soon...', 'info');
-    // TODO: Implement invoice creation modal
+    try {
+      // Show modal
+      const modal = new bootstrap.Modal(document.getElementById('createInvoiceModal'));
+
+      // Reset form
+      document.getElementById('createInvoiceForm').reset();
+      document.getElementById('invoiceLineItems').innerHTML = '';
+
+      // Add one default line item
+      this.addInvoiceLineItem();
+
+      // Set default dates
+      const today = new Date().toISOString().split('T')[0];
+      const dueDate = new Date();
+      dueDate.setDate(dueDate.getDate() + 30);
+      document.getElementById('invoiceDate').value = today;
+      document.getElementById('invoiceDueDate').value = dueDate.toISOString().split('T')[0];
+
+      // Load organisations for dropdown
+      const { data: orgs, error } = await STATE.client
+        .from('organisations')
+        .select('id, company_name')
+        .order('company_name');
+
+      if (error) throw error;
+
+      const orgSelect = document.getElementById('invoiceOrganisation');
+      orgSelect.innerHTML = '<option value="">Select Company...</option>' +
+        orgs.map(org => `<option value="${org.id}">${utils.escapeHtml(org.company_name)}</option>`).join('');
+
+      modal.show();
+
+    } catch (error) {
+      console.error('Error opening invoice creation modal:', error);
+      utils.showToast('Error opening invoice modal: ' + error.message, 'error');
+    }
+  },
+
+  /**
+   * Add a line item to invoice
+   */
+  addInvoiceLineItem() {
+    const container = document.getElementById('invoiceLineItems');
+    const itemId = Date.now();
+
+    const itemHTML = `
+      <div class="invoice-line-item row g-2 mb-2" data-item-id="${itemId}">
+        <div class="col-md-4">
+          <input type="text" class="form-control form-control-sm" placeholder="Item name" required>
+        </div>
+        <div class="col-md-3">
+          <input type="text" class="form-control form-control-sm" placeholder="Description">
+        </div>
+        <div class="col-md-2">
+          <input type="number" class="form-control form-control-sm" placeholder="Qty" value="1" min="1" required>
+        </div>
+        <div class="col-md-2">
+          <input type="number" class="form-control form-control-sm" placeholder="Price" step="0.01" min="0" required>
+        </div>
+        <div class="col-md-1">
+          <button type="button" class="btn btn-sm btn-danger w-100" onclick="paymentsModule.removeInvoiceLineItem(${itemId})">
+            <i class="bi bi-trash"></i>
+          </button>
+        </div>
+      </div>
+    `;
+
+    container.insertAdjacentHTML('beforeend', itemHTML);
+  },
+
+  /**
+   * Remove a line item from invoice
+   */
+  removeInvoiceLineItem(itemId) {
+    const item = document.querySelector(`[data-item-id="${itemId}"]`);
+    if (item) {
+      item.remove();
+    }
+  },
+
+  /**
+   * Save new invoice
+   */
+  async saveNewInvoice() {
+    try {
+      utils.showLoading();
+
+      const form = document.getElementById('createInvoiceForm');
+      if (!form.checkValidity()) {
+        form.reportValidity();
+        return;
+      }
+
+      const organisationId = document.getElementById('invoiceOrganisation').value;
+      const invoiceDate = document.getElementById('invoiceDate').value;
+      const dueDate = document.getElementById('invoiceDueDate').value;
+      const invoiceType = document.getElementById('invoiceType').value;
+      const packageType = document.getElementById('invoicePackageType').value;
+      const taxRate = parseFloat(document.getElementById('invoiceTaxRate').value) || 20;
+      const description = document.getElementById('invoiceDescription').value;
+
+      // Collect line items
+      const lineItemElements = document.querySelectorAll('.invoice-line-item');
+      const lineItems = Array.from(lineItemElements).map(el => {
+        const inputs = el.querySelectorAll('input');
+        const quantity = parseInt(inputs[2].value) || 1;
+        const unitPrice = parseFloat(inputs[3].value) || 0;
+
+        return {
+          item_name: inputs[0].value,
+          description: inputs[1].value,
+          quantity: quantity,
+          unit_price: unitPrice,
+          line_total: quantity * unitPrice
+        };
+      });
+
+      if (lineItems.length === 0) {
+        utils.showToast('Please add at least one line item', 'warning');
+        return;
+      }
+
+      // Calculate totals
+      const subtotal = lineItems.reduce((sum, item) => sum + item.line_total, 0);
+      const taxAmount = subtotal * (taxRate / 100);
+      const totalAmount = subtotal + taxAmount;
+
+      // Generate invoice number
+      const { data: invoiceNumberData, error: genError } = await STATE.client
+        .rpc('generate_invoice_number');
+
+      if (genError) throw genError;
+
+      const invoiceNumber = invoiceNumberData;
+
+      // Create invoice
+      const { data: invoice, error: invoiceError } = await STATE.client
+        .from('invoices')
+        .insert({
+          invoice_number: invoiceNumber,
+          organisation_id: organisationId,
+          invoice_date: invoiceDate,
+          due_date: dueDate,
+          invoice_type: invoiceType,
+          package_type: packageType || null,
+          subtotal: subtotal,
+          tax_rate: taxRate,
+          tax_amount: taxAmount,
+          total_amount: totalAmount,
+          balance_due: totalAmount,
+          status: 'draft',
+          payment_status: 'unpaid',
+          description: description
+        })
+        .select()
+        .single();
+
+      if (invoiceError) throw invoiceError;
+
+      // Create line items
+      const lineItemsWithInvoiceId = lineItems.map(item => ({
+        ...item,
+        invoice_id: invoice.id
+      }));
+
+      const { error: lineItemsError } = await STATE.client
+        .from('invoice_line_items')
+        .insert(lineItemsWithInvoiceId);
+
+      if (lineItemsError) throw lineItemsError;
+
+      // Close modal and reload
+      bootstrap.Modal.getInstance(document.getElementById('createInvoiceModal')).hide();
+
+      utils.showToast(`Invoice ${invoiceNumber} created successfully!`, 'success');
+
+      await this.loadInvoices();
+      this.updateStatistics();
+
+    } catch (error) {
+      console.error('Error creating invoice:', error);
+      utils.showToast('Error creating invoice: ' + error.message, 'error');
+    } finally {
+      utils.hideLoading();
+    }
   },
 
   /**
@@ -208,7 +401,7 @@ const paymentsModule = {
         .from('payments')
         .select(`
           *,
-          organisations (company_name),
+          organisations (id, company_name),
           invoices (invoice_number)
         `)
         .order('payment_date', { ascending: false });
@@ -246,7 +439,17 @@ const paymentsModule = {
       <tr>
         <td><strong>${utils.escapeHtml(payment.payment_reference)}</strong></td>
         <td>${payment.payment_date ? new Date(payment.payment_date).toLocaleDateString() : 'N/A'}</td>
-        <td>${utils.escapeHtml(payment.organisations?.company_name || 'N/A')}</td>
+        <td>
+          ${payment.organisations?.id && payment.organisations?.company_name ?
+            `<a href="javascript:void(0);"
+                class="text-decoration-none text-primary fw-semibold"
+                onclick="orgsModule.openCompanyProfile('${payment.organisations.id}', '${utils.escapeHtml(payment.organisations.company_name).replace(/'/g, "\\'")}')"
+                title="View company profile">
+                ${utils.escapeHtml(payment.organisations.company_name)}
+             </a>` :
+            utils.escapeHtml(payment.organisations?.company_name || 'N/A')
+          }
+        </td>
         <td>${payment.invoices?.invoice_number ? `<a href="#" onclick="paymentsModule.viewInvoice('${payment.invoice_id}'); return false;">${payment.invoices.invoice_number}</a>` : 'N/A'}</td>
         <td><span class="badge bg-secondary">${this.formatPaymentMethod(payment.payment_method)}</span></td>
         <td><strong>£${parseFloat(payment.amount || 0).toFixed(2)}</strong></td>
@@ -299,16 +502,148 @@ const paymentsModule = {
    * Record new payment
    */
   async recordNewPayment() {
-    utils.showToast('Payment recording modal coming soon...', 'info');
-    // TODO: Implement payment recording modal
+    await this.openPaymentRecordModal(null);
   },
 
   /**
    * Record payment for specific invoice
    */
   async recordPaymentForInvoice(invoiceId) {
-    utils.showToast('Payment recording modal coming soon...', 'info');
-    // TODO: Implement payment recording for specific invoice
+    await this.openPaymentRecordModal(invoiceId);
+  },
+
+  /**
+   * Open payment recording modal
+   */
+  async openPaymentRecordModal(invoiceId) {
+    try {
+      const modal = new bootstrap.Modal(document.getElementById('recordPaymentModal'));
+
+      // Reset form
+      document.getElementById('recordPaymentForm').reset();
+      document.getElementById('paymentDate').value = new Date().toISOString().split('T')[0];
+
+      // Load organisations and invoices
+      const [orgsResult, invoicesResult] = await Promise.all([
+        STATE.client.from('organisations').select('id, company_name').order('company_name'),
+        STATE.client.from('invoices').select('id, invoice_number, organisation_id, total_amount, paid_amount, organisations(company_name)').eq('payment_status', 'unpaid').or('payment_status.eq.partial').order('invoice_number')
+      ]);
+
+      if (orgsResult.error) throw orgsResult.error;
+      if (invoicesResult.error) throw invoicesResult.error;
+
+      // Populate organisation dropdown
+      const orgSelect = document.getElementById('paymentOrganisation');
+      orgSelect.innerHTML = '<option value="">Select Company...</option>' +
+        orgsResult.data.map(org => `<option value="${org.id}">${utils.escapeHtml(org.company_name)}</option>`).join('');
+
+      // Populate invoice dropdown
+      const invoiceSelect = document.getElementById('paymentInvoice');
+      invoiceSelect.innerHTML = '<option value="">None (General Payment)</option>' +
+        invoicesResult.data.map(inv => `<option value="${inv.id}">${inv.invoice_number} - ${inv.organisations?.company_name} (£${parseFloat(inv.total_amount - inv.paid_amount).toFixed(2)} due)</option>`).join('');
+
+      // If specific invoice, pre-select it and set amount
+      if (invoiceId) {
+        const invoice = invoicesResult.data.find(i => i.id === invoiceId);
+        if (invoice) {
+          invoiceSelect.value = invoiceId;
+          orgSelect.value = invoice.organisation_id;
+          document.getElementById('paymentAmount').value = (invoice.total_amount - invoice.paid_amount).toFixed(2);
+        }
+      }
+
+      modal.show();
+
+    } catch (error) {
+      console.error('Error opening payment modal:', error);
+      utils.showToast('Error opening payment modal: ' + error.message, 'error');
+    }
+  },
+
+  /**
+   * Save new payment record
+   */
+  async savePaymentRecord() {
+    try {
+      utils.showLoading();
+
+      const form = document.getElementById('recordPaymentForm');
+      if (!form.checkValidity()) {
+        form.reportValidity();
+        return;
+      }
+
+      const organisationId = document.getElementById('paymentOrganisation').value;
+      const invoiceId = document.getElementById('paymentInvoice').value || null;
+      const amount = parseFloat(document.getElementById('paymentAmount').value);
+      const paymentDate = document.getElementById('paymentDate').value;
+      const paymentMethod = document.getElementById('paymentMethod').value;
+      const notes = document.getElementById('paymentNotes').value;
+
+      if (!organisationId) {
+        utils.showToast('Please select a company', 'warning');
+        return;
+      }
+
+      // Generate payment reference
+      const { data: refData, error: refError } = await STATE.client.rpc('generate_payment_reference');
+      if (refError) throw refError;
+
+      const paymentReference = refData;
+
+      // Create payment
+      const { data: payment, error: paymentError } = await STATE.client
+        .from('payments')
+        .insert({
+          payment_reference: paymentReference,
+          invoice_id: invoiceId,
+          organisation_id: organisationId,
+          payment_date: paymentDate,
+          amount: amount,
+          payment_method: paymentMethod,
+          status: 'completed',
+          notes: notes
+        })
+        .select()
+        .single();
+
+      if (paymentError) throw paymentError;
+
+      // If linked to invoice, update invoice paid amount
+      if (invoiceId) {
+        const { data: invoice, error: invoiceError } = await STATE.client
+          .from('invoices')
+          .select('paid_amount')
+          .eq('id', invoiceId)
+          .single();
+
+        if (invoiceError) throw invoiceError;
+
+        const newPaidAmount = parseFloat(invoice.paid_amount || 0) + amount;
+
+        const { error: updateError } = await STATE.client
+          .from('invoices')
+          .update({ paid_amount: newPaidAmount })
+          .eq('id', invoiceId);
+
+        if (updateError) throw updateError;
+      }
+
+      // Close modal and reload
+      bootstrap.Modal.getInstance(document.getElementById('recordPaymentModal')).hide();
+
+      utils.showToast(`Payment ${paymentReference} recorded successfully!`, 'success');
+
+      await this.loadPayments();
+      await this.loadInvoices();
+      this.updateStatistics();
+
+    } catch (error) {
+      console.error('Error recording payment:', error);
+      utils.showToast('Error recording payment: ' + error.message, 'error');
+    } finally {
+      utils.hideLoading();
+    }
   },
 
   /**

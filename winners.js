@@ -651,11 +651,124 @@ const winnersModule = {
   },
 
   /**
-   * Export as PDF (placeholder - needs PDF library)
+   * Export as PDF
    */
   async exportAsPDF(winners) {
-    utils.showToast('PDF export coming soon! Use HTML export for now.', 'info');
-    // TODO: Implement PDF export with a library like jsPDF
+    try {
+      const { jsPDF } = window.jspdf;
+      const doc = new jsPDF();
+
+      // Title
+      doc.setFontSize(20);
+      doc.setTextColor(13, 110, 253); // Bootstrap primary color
+      doc.text('Award Winners', 14, 20);
+
+      // Subtitle
+      doc.setFontSize(12);
+      doc.setTextColor(100, 100, 100);
+      doc.text(`Generated on ${new Date().toLocaleDateString('en-GB')}`, 14, 28);
+
+      let yPosition = 40;
+
+      // Add each winner
+      winners.forEach((winner, index) => {
+        // Check if we need a new page
+        if (yPosition > 250) {
+          doc.addPage();
+          yPosition = 20;
+        }
+
+        // Winner heading
+        doc.setFontSize(14);
+        doc.setTextColor(0, 0, 0);
+        doc.text(`${index + 1}. ${winner.company_name}`, 14, yPosition);
+        yPosition += 7;
+
+        // Award details
+        doc.setFontSize(10);
+        doc.setTextColor(100, 100, 100);
+        doc.text(`Award: ${winner.award_name}`, 20, yPosition);
+        yPosition += 5;
+
+        if (winner.year) {
+          doc.text(`Year: ${winner.year}`, 20, yPosition);
+          yPosition += 5;
+        }
+
+        if (winner.sector) {
+          doc.text(`Sector: ${winner.sector}`, 20, yPosition);
+          yPosition += 5;
+        }
+
+        if (winner.score) {
+          doc.text(`Score: ${winner.score}`, 20, yPosition);
+          yPosition += 5;
+        }
+
+        // Winner quote
+        if (winner.winner_quote) {
+          doc.setTextColor(0, 0, 0);
+          doc.text(`Quote:`, 20, yPosition);
+          yPosition += 5;
+
+          const quoteLines = doc.splitTextToSize(winner.winner_quote, 170);
+          doc.setTextColor(80, 80, 80);
+          quoteLines.forEach(line => {
+            if (yPosition > 270) {
+              doc.addPage();
+              yPosition = 20;
+            }
+            doc.text(line, 25, yPosition);
+            yPosition += 5;
+          });
+        }
+
+        // Impact statement
+        if (winner.impact_statement) {
+          if (yPosition > 250) {
+            doc.addPage();
+            yPosition = 20;
+          }
+
+          doc.setTextColor(0, 0, 0);
+          doc.text(`Impact:`, 20, yPosition);
+          yPosition += 5;
+
+          const impactLines = doc.splitTextToSize(winner.impact_statement, 170);
+          doc.setTextColor(80, 80, 80);
+          impactLines.forEach(line => {
+            if (yPosition > 270) {
+              doc.addPage();
+              yPosition = 20;
+            }
+            doc.text(line, 25, yPosition);
+            yPosition += 5;
+          });
+        }
+
+        yPosition += 10; // Space between winners
+      });
+
+      // Footer on last page
+      const pageCount = doc.internal.getNumberOfPages();
+      for (let i = 1; i <= pageCount; i++) {
+        doc.setPage(i);
+        doc.setFontSize(8);
+        doc.setTextColor(150, 150, 150);
+        doc.text(`Page ${i} of ${pageCount}`, 14, 290);
+        doc.text('British Trade Awards', 105, 290, { align: 'center' });
+      }
+
+      // Save the PDF
+      const filename = `winners-${new Date().toISOString().split('T')[0]}.pdf`;
+      doc.save(filename);
+
+      utils.showToast('PDF exported successfully!', 'success');
+
+    } catch (error) {
+      console.error('Error exporting PDF:', error);
+      utils.showToast('Error exporting PDF: ' + error.message, 'error');
+    }
   },
 
   /**

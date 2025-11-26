@@ -405,6 +405,7 @@ const orgsModule = {
                     <th>Category</th>
                     <th>Sector</th>
                     <th>Status</th>
+                    <th>Package</th>
                     <th class="text-center">Enhanced</th>
                   </tr>
                 </thead>
@@ -421,6 +422,15 @@ const orgsModule = {
                       </td>
                       <td><span class="badge bg-info-subtle text-info">${utils.escapeHtml(award.sector)}</span></td>
                       <td>${utils.getStatusBadge(award.status)}</td>
+                      <td>
+                        ${['bronze', 'silver', 'gold'].includes(award.package_type) ?
+                          `<a href="javascript:void(0);"
+                              onclick="orgsModule.openCompanyProfile('${org.id}', '${utils.escapeHtml(org.company_name).replace(/'/g, "\\'")}')">
+                              ${orgsModule.getPackageBadge(award.package_type)}
+                           </a>` :
+                          '<span class="text-muted">-</span>'
+                        }
+                      </td>
                       <td class="text-center">
                         ${award.enhanced_profile ?
                           '<i class="bi bi-star-fill text-warning" title="Enhanced Profile" style="font-size: 1.2rem;"></i>' :

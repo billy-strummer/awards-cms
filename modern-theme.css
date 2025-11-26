@@ -1,0 +1,586 @@
+/* ============================================ */
+/* MODERN THEME FOR AWARDS CMS                */
+/* Bootstrap 5 Enhanced with 2024 Design      */
+/* Fully reversible - just remove this file!  */
+/* ============================================ */
+
+/* Import Modern Font (Inter) */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
+/* ============================================ */
+/* ROOT VARIABLES - Modern Color Palette      */
+/* ============================================ */
+:root {
+  /* Modern Colors */
+  --bs-primary: #6366f1;
+  --bs-primary-rgb: 99, 102, 241;
+  --bs-success: #10b981;
+  --bs-info: #06b6d4;
+  --bs-warning: #f59e0b;
+  --bs-danger: #ef4444;
+
+  /* Neutral Colors */
+  --bs-gray-50: #f9fafb;
+  --bs-gray-100: #f3f4f6;
+  --bs-gray-200: #e5e7eb;
+  --bs-gray-300: #d1d5db;
+  --bs-gray-700: #374151;
+  --bs-gray-900: #111827;
+
+  /* Typography */
+  --bs-font-sans-serif: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --bs-body-font-weight: 400;
+  --bs-headings-font-weight: 600;
+
+  /* Border Radius - Rounder, Softer */
+  --bs-border-radius: 0.75rem;
+  --bs-border-radius-sm: 0.5rem;
+  --bs-border-radius-lg: 1rem;
+  --bs-border-radius-xl: 1.5rem;
+
+  /* Shadows - Softer, More Elevated */
+  --bs-box-shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  --bs-box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.08), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  --bs-box-shadow-lg: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+
+  /* Transitions */
+  --transition-base: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-slow: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* ============================================ */
+/* GLOBAL STYLES                              */
+/* ============================================ */
+* {
+  transition: var(--transition-base);
+}
+
+body {
+  font-family: var(--bs-font-sans-serif);
+  font-weight: 400;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  background-color: var(--bs-gray-50);
+}
+
+/* ============================================ */
+/* NAVBAR - Glass Effect & Modern Styling     */
+/* ============================================ */
+.navbar {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+  backdrop-filter: blur(10px);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+}
+
+.navbar-brand {
+  font-weight: 700;
+  letter-spacing: -0.5px;
+}
+
+/* ============================================ */
+/* TABS - Modern, Elevated                    */
+/* ============================================ */
+.nav-tabs {
+  border-bottom: 2px solid var(--bs-gray-200);
+  gap: 0.5rem;
+  padding-bottom: 0 !important;
+}
+
+.nav-tabs .nav-link {
+  border: none;
+  color: var(--bs-gray-700);
+  font-weight: 500;
+  padding: 0.75rem 1.5rem;
+  border-radius: var(--bs-border-radius) var(--bs-border-radius) 0 0;
+  transition: var(--transition-base);
+}
+
+.nav-tabs .nav-link:hover {
+  color: var(--bs-primary);
+  background-color: var(--bs-gray-50);
+  transform: translateY(-2px);
+}
+
+.nav-tabs .nav-link.active {
+  background: white;
+  color: var(--bs-primary);
+  font-weight: 600;
+  border-bottom: 3px solid var(--bs-primary);
+  box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.05);
+}
+
+/* ============================================ */
+/* CARDS - Elevated, Modern                   */
+/* ============================================ */
+.card {
+  border: 1px solid var(--bs-gray-200);
+  border-radius: var(--bs-border-radius-lg);
+  box-shadow: var(--bs-box-shadow-sm);
+  transition: var(--transition-base);
+  background: white;
+}
+
+.card:hover {
+  box-shadow: var(--bs-box-shadow-lg);
+  transform: translateY(-2px);
+}
+
+.card-body {
+  padding: 1.5rem;
+}
+
+/* Stat Cards */
+.stat-card {
+  border-radius: var(--bs-border-radius-lg);
+  border: none;
+  background: linear-gradient(135deg, #ffffff 0%, #f9fafb 100%);
+  box-shadow: var(--bs-box-shadow);
+  transition: var(--transition-slow);
+}
+
+.stat-card:hover {
+  transform: translateY(-4px) scale(1.02);
+  box-shadow: var(--bs-box-shadow-lg);
+}
+
+/* ============================================ */
+/* BUTTONS - Modern, Gradient                 */
+/* ============================================ */
+.btn {
+  font-weight: 500;
+  padding: 0.625rem 1.25rem;
+  border-radius: var(--bs-border-radius);
+  border: none;
+  transition: var(--transition-base);
+  letter-spacing: 0.025em;
+}
+
+.btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.btn:active {
+  transform: translateY(0);
+}
+
+.btn-primary {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  box-shadow: 0 4px 6px rgba(102, 126, 234, 0.25);
+}
+
+.btn-primary:hover {
+  background: linear-gradient(135deg, #764ba2 0%, #667eea 100%);
+  box-shadow: 0 8px 16px rgba(102, 126, 234, 0.35);
+}
+
+.btn-success {
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  box-shadow: 0 4px 6px rgba(16, 185, 129, 0.25);
+}
+
+.btn-success:hover {
+  box-shadow: 0 8px 16px rgba(16, 185, 129, 0.35);
+}
+
+.btn-outline-primary,
+.btn-outline-secondary,
+.btn-outline-success,
+.btn-outline-danger,
+.btn-outline-warning,
+.btn-outline-info {
+  border-width: 1.5px;
+  font-weight: 500;
+}
+
+.btn-outline-primary:hover {
+  background: var(--bs-primary);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+}
+
+/* Small buttons */
+.btn-sm {
+  padding: 0.375rem 0.875rem;
+  font-size: 0.875rem;
+  border-radius: var(--bs-border-radius-sm);
+}
+
+/* ============================================ */
+/* TABLES - Clean, Modern                     */
+/* ============================================ */
+.table {
+  border-collapse: separate;
+  border-spacing: 0;
+}
+
+.table thead th {
+  background: linear-gradient(to right, var(--bs-gray-100), var(--bs-gray-50));
+  border-bottom: 2px solid var(--bs-gray-200);
+  font-weight: 600;
+  text-transform: uppercase;
+  font-size: 0.75rem;
+  letter-spacing: 0.05em;
+  color: var(--bs-gray-700);
+  padding: 1rem;
+}
+
+.table tbody tr {
+  transition: var(--transition-base);
+}
+
+.table-hover tbody tr:hover {
+  background-color: var(--bs-gray-50);
+  transform: scale(1.005);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+
+.table-striped tbody tr:nth-of-type(odd) {
+  background-color: rgba(249, 250, 251, 0.5);
+}
+
+/* ============================================ */
+/* BADGES - Softer, More Modern               */
+/* ============================================ */
+.badge {
+  padding: 0.5em 1em;
+  font-weight: 500;
+  letter-spacing: 0.025em;
+  border-radius: var(--bs-border-radius);
+  font-size: 0.75rem;
+}
+
+.badge.bg-primary {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+}
+
+.badge.bg-success {
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%) !important;
+}
+
+.badge.bg-warning {
+  background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%) !important;
+}
+
+.badge.bg-danger {
+  background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%) !important;
+}
+
+.badge.bg-info {
+  background: linear-gradient(135deg, #06b6d4 0%, #0891b2 100%) !important;
+}
+
+/* ============================================ */
+/* FORMS - Softer, Cleaner                    */
+/* ============================================ */
+.form-control,
+.form-select {
+  border-radius: var(--bs-border-radius);
+  border: 1.5px solid var(--bs-gray-300);
+  padding: 0.625rem 0.875rem;
+  transition: var(--transition-base);
+  font-size: 0.9375rem;
+}
+
+.form-control:focus,
+.form-select:focus {
+  border-color: var(--bs-primary);
+  box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.1);
+  transform: translateY(-1px);
+}
+
+.form-label {
+  font-weight: 500;
+  color: var(--bs-gray-700);
+  margin-bottom: 0.5rem;
+  font-size: 0.875rem;
+}
+
+/* ============================================ */
+/* MODALS - Elevated, Modern                  */
+/* ============================================ */
+.modal-content {
+  border-radius: var(--bs-border-radius-xl);
+  border: none;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+}
+
+.modal-header {
+  border-bottom: 1px solid var(--bs-gray-200);
+  padding: 1.5rem;
+  border-radius: var(--bs-border-radius-xl) var(--bs-border-radius-xl) 0 0;
+}
+
+.modal-header.bg-primary {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+}
+
+.modal-body {
+  padding: 1.5rem;
+}
+
+.modal-footer {
+  border-top: 1px solid var(--bs-gray-200);
+  padding: 1.25rem 1.5rem;
+}
+
+/* ============================================ */
+/* ALERTS - Softer, Better                    */
+/* ============================================ */
+.alert {
+  border-radius: var(--bs-border-radius-lg);
+  border: none;
+  padding: 1rem 1.25rem;
+  font-weight: 500;
+}
+
+.alert-info {
+  background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%);
+  color: #1e40af;
+}
+
+.alert-success {
+  background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%);
+  color: #065f46;
+}
+
+.alert-warning {
+  background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+  color: #92400e;
+}
+
+.alert-danger {
+  background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%);
+  color: #991b1b;
+}
+
+/* ============================================ */
+/* FILTER SECTIONS - Better Spacing           */
+/* ============================================ */
+.filters-section {
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+}
+
+/* ============================================ */
+/* SECTION HEADERS - Modern Typography        */
+/* ============================================ */
+.section-title {
+  font-weight: 700;
+  letter-spacing: -0.5px;
+  color: var(--bs-gray-900);
+}
+
+.section-subtitle {
+  color: var(--bs-gray-700);
+  font-weight: 400;
+}
+
+/* ============================================ */
+/* TOOLTIPS - Softer                          */
+/* ============================================ */
+.tooltip-inner {
+  background-color: var(--bs-gray-900);
+  border-radius: var(--bs-border-radius);
+  padding: 0.5rem 0.75rem;
+  font-weight: 500;
+}
+
+/* ============================================ */
+/* DROPDOWNS - Modern                         */
+/* ============================================ */
+.dropdown-menu {
+  border-radius: var(--bs-border-radius-lg);
+  border: 1px solid var(--bs-gray-200);
+  box-shadow: var(--bs-box-shadow-lg);
+  padding: 0.5rem;
+}
+
+.dropdown-item {
+  border-radius: var(--bs-border-radius);
+  padding: 0.625rem 1rem;
+  font-weight: 500;
+  transition: var(--transition-base);
+}
+
+.dropdown-item:hover {
+  background-color: var(--bs-gray-100);
+  transform: translateX(4px);
+}
+
+/* ============================================ */
+/* PAGINATION - Softer                        */
+/* ============================================ */
+.pagination .page-link {
+  border-radius: var(--bs-border-radius);
+  margin: 0 0.25rem;
+  border: 1px solid var(--bs-gray-300);
+  color: var(--bs-gray-700);
+  font-weight: 500;
+}
+
+.pagination .page-link:hover {
+  background-color: var(--bs-primary);
+  color: white;
+  border-color: var(--bs-primary);
+  transform: translateY(-2px);
+}
+
+/* ============================================ */
+/* LOADING STATES - Smoother                  */
+/* ============================================ */
+.spinner-border {
+  border-width: 0.2em;
+}
+
+/* ============================================ */
+/* CUSTOM ENHANCEMENTS                        */
+/* ============================================ */
+
+/* Company logos */
+img[style*="object-fit: contain"] {
+  border-radius: var(--bs-border-radius-sm);
+}
+
+/* Links */
+a {
+  text-decoration: none;
+  color: var(--bs-primary);
+  transition: var(--transition-base);
+}
+
+a:hover {
+  color: #4f46e5;
+}
+
+/* Table Container */
+.table-container {
+  background: white;
+  border-radius: var(--bs-border-radius-lg);
+  padding: 1.5rem;
+  box-shadow: var(--bs-box-shadow-sm);
+}
+
+/* Scrollbars - Modern, Thin */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--bs-gray-100);
+  border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--bs-gray-300);
+  border-radius: 10px;
+  transition: var(--transition-base);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--bs-gray-400);
+}
+
+/* Button Groups */
+.btn-group .btn {
+  margin: 0;
+}
+
+.btn-group .btn:hover {
+  z-index: 2;
+}
+
+/* ============================================ */
+/* ANIMATIONS                                 */
+/* ============================================ */
+
+/* Fade in animation */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.fade-in {
+  animation: fadeIn 0.3s ease-out;
+}
+
+/* Pulse animation for stat cards */
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.8;
+  }
+}
+
+.stat-value {
+  animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+/* ============================================ */
+/* RESPONSIVE IMPROVEMENTS                    */
+/* ============================================ */
+@media (max-width: 768px) {
+  .card-body {
+    padding: 1rem;
+  }
+
+  .btn {
+    padding: 0.5rem 1rem;
+    font-size: 0.875rem;
+  }
+
+  .table {
+    font-size: 0.875rem;
+  }
+}
+
+/* ============================================ */
+/* PRINT STYLES                               */
+/* ============================================ */
+@media print {
+  .navbar,
+  .btn,
+  .modal,
+  .filters-section {
+    display: none !important;
+  }
+
+  .card {
+    box-shadow: none;
+    border: 1px solid var(--bs-gray-300);
+  }
+}
+
+/* ============================================ */
+/* DARK MODE PREPARATION (Optional)           */
+/* ============================================ */
+/* Uncomment this section to enable dark mode */
+/*
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bs-gray-50: #1f2937;
+    --bs-gray-100: #374151;
+    --bs-gray-900: #f9fafb;
+  }
+
+  body {
+    background-color: #111827;
+    color: #f9fafb;
+  }
+
+  .card,
+  .table-container {
+    background-color: #1f2937;
+    color: #f9fafb;
+  }
+}
+*/

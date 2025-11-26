@@ -45,7 +45,7 @@ const entryFormApp = {
   },
 
   /**
-   * Populate regions dropdown from config
+   * Populate regions dropdown from config with grouped counties and cities
    */
   populateRegions() {
     const regionSelect = document.getElementById('region');
@@ -54,11 +54,44 @@ const entryFormApp = {
       return;
     }
 
-    const options = window.REGIONS.map(region =>
-      `<option value="${this.escapeHtml(region)}">${this.escapeHtml(region)}</option>`
-    ).join('');
+    // Split regions into counties and cities for this form only
+    const cities = ['Belfast', 'Birmingham', 'Bournemouth', 'Bradford', 'Brighton & Hove', 'Bristol', 'Cardiff', 'Coventry', 'Edinburgh', 'Glasgow', 'Hull', 'Leeds', 'Leicester', 'Liverpool', 'Manchester', 'Newcastle upon Tyne', 'Nottingham', 'Sheffield', 'Southampton'];
 
-    regionSelect.innerHTML = '<option value="">Choose your region...</option>' + options;
+    const counties = window.REGIONS.filter(region => !cities.includes(region));
+    const cityList = window.REGIONS.filter(region => cities.includes(region));
+
+    let html = '<option value="">Type to search or select...</option>';
+
+    // Counties optgroup
+    if (counties.length > 0) {
+      html += '<optgroup label="Counties A-Z">';
+      counties.forEach(county => {
+        html += `<option value="${this.escapeHtml(county)}">${this.escapeHtml(county)}</option>`;
+      });
+      html += '</optgroup>';
+    }
+
+    // Cities optgroup
+    if (cityList.length > 0) {
+      html += '<optgroup label="Cities A-Z">';
+      cityList.forEach(city => {
+        html += `<option value="${this.escapeHtml(city)}">${this.escapeHtml(city)}</option>`;
+      });
+      html += '</optgroup>';
+    }
+
+    regionSelect.innerHTML = html;
+
+    // Initialize Choices.js for searchable dropdown
+    if (typeof Choices !== 'undefined') {
+      new Choices('#region', {
+        searchEnabled: true,
+        searchPlaceholderValue: 'Type county or city here...',
+        itemSelectText: '',
+        shouldSort: false,
+        searchResultLimit: 100
+      });
+    }
   },
 
   /**

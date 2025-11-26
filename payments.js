@@ -502,16 +502,148 @@ const paymentsModule = {
    * Record new payment
    */
   async recordNewPayment() {
-    utils.showToast('Payment recording modal coming soon...', 'info');
-    // TODO: Implement payment recording modal
+    await this.openPaymentRecordModal(null);
   },
 
   /**
    * Record payment for specific invoice
    */
   async recordPaymentForInvoice(invoiceId) {
-    utils.showToast('Payment recording modal coming soon...', 'info');
-    // TODO: Implement payment recording for specific invoice
+    await this.openPaymentRecordModal(invoiceId);
+  },
+
+  /**
+   * Open payment recording modal
+   */
+  async openPaymentRecordModal(invoiceId) {
+    try {
+      const modal = new bootstrap.Modal(document.getElementById('recordPaymentModal'));
+
+      // Reset form
+      document.getElementById('recordPaymentForm').reset();
+      document.getElementById('paymentDate').value = new Date().toISOString().split('T')[0];
+
+      // Load organisations and invoices
+      const [orgsResult, invoicesResult] = await Promise.all([
+        STATE.client.from('organisations').select('id, company_name').order('company_name'),
+        STATE.client.from('invoices').select('id, invoice_number, organisation_id, total_amount, paid_amount, organisations(company_name)').eq('payment_status', 'unpaid').or('payment_status.eq.partial').order('invoice_number')
+      ]);
+
+      if (orgsResult.error) throw orgsResult.error;
+      if (invoicesResult.error) throw invoicesResult.error;
+
+      // Populate organisation dropdown
+      const orgSelect = document.getElementById('paymentOrganisation');
+      orgSelect.innerHTML = '<option value="">Select Company...</option>' +
+        orgsResult.data.map(org => `<option value="${org.id}">${utils.escapeHtml(org.company_name)}</option>`).join('');
+
+      // Populate invoice dropdown
+      const invoiceSelect = document.getElementById('paymentInvoice');
+      invoiceSelect.innerHTML = '<option value="">None (General Payment)</option>' +
+        invoicesResult.data.map(inv => `<option value="${inv.id}">${inv.invoice_number} - ${inv.organisations?.company_name} (£${parseFloat(inv.total_amount - inv.paid_amount).toFixed(2)} due)</option>`).join('');
+
+      // If specific invoice, pre-select it and set amount
+      if (invoiceId) {
+        const invoice = invoicesResult.data.find(i => i.id === invoiceId);
+        if (invoice) {
+          invoiceSelect.value = invoiceId;
+          orgSelect.value = invoice.organisation_id;
+          document.getElementById('paymentAmount').value = (invoice.total_amount - invoice.paid_amount).toFixed(2);
+        }
+      }
+
+      modal.show();
+
+    } catch (error) {
+      console.error('Error opening payment modal:', error);
+      utils.showToast('Error opening payment modal: ' + error.message, 'error');
+    }
+  },
+
+  /**
+   * Save new payment record
+   */
+  async savePaymentRecord() {
+    try {
+      utils.showLoading();
+
+      const form = document.getElementById('recordPaymentForm');
+      if (!form.checkValidity()) {
+        form.reportValidity();
+        return;
+      }
+
+      const organisationId = document.getElementById('paymentOrganisation').value;
+      const invoiceId = document.getElementById('paymentInvoice').value || null;
+      const amount = parseFloat(document.getElementById('paymentAmount').value);
+      const paymentDate = document.getElementById('paymentDate').value;
+      const paymentMethod = document.getElementById('paymentMethod').value;
+      const notes = document.getElementById('paymentNotes').value;
+
+      if (!organisationId) {
+        utils.showToast('Please select a company', 'warning');
+        return;
+      }
+
+      // Generate payment reference
+      const { data: refData, error: refError } = await STATE.client.rpc('generate_payment_reference');
+      if (refError) throw refError;
+
+      const paymentReference = refData;
+
+      // Create payment
+      const { data: payment, error: paymentError } = await STATE.client
+        .from('payments')
+        .insert({
+          payment_reference: paymentReference,
+          invoice_id: invoiceId,
+          organisation_id: organisationId,
+          payment_date: paymentDate,
+          amount: amount,
+          payment_method: paymentMethod,
+          status: 'completed',
+          notes: notes
+        })
+        .select()
+        .single();
+
+      if (paymentError) throw paymentError;
+
+      // If linked to invoice, update invoice paid amount
+      if (invoiceId) {
+        const { data: invoice, error: invoiceError } = await STATE.client
+          .from('invoices')
+          .select('paid_amount')
+          .eq('id', invoiceId)
+          .single();
+
+        if (invoiceError) throw invoiceError;
+
+        const newPaidAmount = parseFloat(invoice.paid_amount || 0) + amount;
+
+        const { error: updateError } = await STATE.client
+          .from('invoices')
+          .update({ paid_amount: newPaidAmount })
+          .eq('id', invoiceId);
+
+        if (updateError) throw updateError;
+      }
+
+      // Close modal and reload
+      bootstrap.Modal.getInstance(document.getElementById('recordPaymentModal')).hide();
+
+      utils.showToast(`Payment ${paymentReference} recorded successfully!`, 'success');
+
+      await this.loadPayments();
+      await this.loadInvoices();
+      this.updateStatistics();
+
+    } catch (error) {
+      console.error('Error recording payment:', error);
+      utils.showToast('Error recording payment: ' + error.message, 'error');
+    } finally {
+      utils.hideLoading();
+    }
   },
 
   /**

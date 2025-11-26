@@ -483,7 +483,7 @@ const orgsModule = {
                       <td>
                         <a href="javascript:void(0);"
                            class="text-decoration-none fw-semibold text-primary"
-                           onclick="orgsModule.navigateToAward('${award.id}', '${utils.escapeHtml(award.award_name || 'Award').replace(/'/g, "\\'")}')">
+                           onclick="assignmentsModule.openAssignmentsModal('${award.id}', '${utils.escapeHtml(award.award_name || 'Award').replace(/'/g, "\\'")}')">
                           ${utils.escapeHtml(award.award_name)}
                         </a>
                       </td>

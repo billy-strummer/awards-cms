@@ -285,8 +285,8 @@ const entryFormApp = {
       // Fetch active awards from database
       const { data: awards, error } = await supabase
         .from('awards')
-        .select('id, award_name, category, description, entry_fee, sector, year')
-        .eq('is_active', true)
+        .select('id, award_name, description, entry_fee, sector, year, region, status')
+        .eq('status', 'Active')
         .order('award_name');
 
       if (error) throw error;
@@ -327,7 +327,7 @@ const entryFormApp = {
       // Render awards as selectable options
       awardsList.innerHTML = filteredAwards.map(award => `
         <div class="award-option" onclick="entryFormApp.selectAward('${award.id}', this)">
-          <h5 class="mb-1">${this.escapeHtml(award.award_name || award.category || 'Award')}</h5>
+          <h5 class="mb-1">${this.escapeHtml(award.award_name || 'Award')}</h5>
           ${award.description ? `<p class="text-muted small mb-1">${this.escapeHtml(award.description)}</p>` : ''}
           <div class="d-flex justify-content-between align-items-center">
             ${award.entry_fee ? `<span><strong>Entry Fee:</strong> £${award.entry_fee}</span>` : '<span></span>'}

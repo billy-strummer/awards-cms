@@ -312,6 +312,12 @@ const orgsModule = {
                   onclick="orgsModule.openLogoGalleryModal('${org.id}')">
                   <i class="bi bi-images me-1"></i>Choose from Media Gallery
                 </button>
+                ${org.website ?
+                  `<button type="button" class="btn btn-sm btn-outline-success w-100 mb-2"
+                    onclick="orgsModule.fetchLogoFromWebsite('${org.id}', '${utils.escapeHtml(org.website).replace(/'/g, "\\'")}', '${utils.escapeHtml(org.company_name).replace(/'/g, "\\'")}')">
+                    <i class="bi bi-globe me-1"></i>Fetch from Website
+                  </button>` : ''
+                }
                 <small class="text-muted">Required: 250x170 px</small>
               </div>
             </div>
@@ -399,7 +405,6 @@ const orgsModule = {
                     <th>Category</th>
                     <th>Sector</th>
                     <th>Status</th>
-                    <th>Package</th>
                     <th class="text-center">Enhanced</th>
                   </tr>
                 </thead>
@@ -410,13 +415,12 @@ const orgsModule = {
                       <td>
                         <a href="javascript:void(0);"
                            class="text-decoration-none fw-semibold text-primary"
-                           onclick="assignmentsModule.openAssignmentsModal('${award.id}', '${utils.escapeHtml(award.award_name || 'Award').replace(/'/g, "\\'")}')">
+                           onclick="orgsModule.navigateToAward('${award.id}', '${utils.escapeHtml(award.award_name || 'Award').replace(/'/g, "\\'")}')">
                           ${utils.escapeHtml(award.award_name)}
                         </a>
                       </td>
                       <td><span class="badge bg-info-subtle text-info">${utils.escapeHtml(award.sector)}</span></td>
                       <td>${utils.getStatusBadge(award.status)}</td>
-                      <td>${orgsModule.getPackageBadge(award.package_type)}</td>
                       <td class="text-center">
                         ${award.enhanced_profile ?
                           '<i class="bi bi-star-fill text-warning" title="Enhanced Profile" style="font-size: 1.2rem;"></i>' :
@@ -936,6 +940,76 @@ const orgsModule = {
   },
 
   /**
+   * Fetch company logo from their website URL
+   * @param {string} orgId - Organisation ID
+   * @param {string} websiteUrl - Company website URL
+   * @param {string} companyName - Company name
+   */
+  async fetchLogoFromWebsite(orgId, websiteUrl, companyName) {
+    try {
+      utils.showLoading();
+
+      // Clean up the website URL to get the domain
+      let domain = websiteUrl.replace(/^https?:\/\//, '').replace(/^www\./, '').split('/')[0];
+
+      // Try multiple logo services in order
+      const logoServices = [
+        // Clearbit Logo API (best quality, but may not have all companies)
+        `https://logo.clearbit.com/${domain}`,
+        // Google's favicon service (good fallback)
+        `https://www.google.com/s2/favicons?sz=128&domain=${domain}`,
+        // DuckDuckGo icon service
+        `https://icons.duckduckgo.com/ip3/${domain}.ico`
+      ];
+
+      let logoUrl = null;
+
+      // Try each service until we find one that works
+      for (const serviceUrl of logoServices) {
+        try {
+          const response = await fetch(serviceUrl, { method: 'HEAD' });
+          if (response.ok) {
+            logoUrl = serviceUrl;
+            break;
+          }
+        } catch (e) {
+          // Try next service
+          continue;
+        }
+      }
+
+      if (!logoUrl) {
+        // If all services fail, try the first one anyway (Clearbit)
+        logoUrl = logoServices[0];
+      }
+
+      // Update the organisation's logo_url
+      const { error } = await STATE.client
+        .from('organisations')
+        .update({ logo_url: logoUrl })
+        .eq('id', orgId);
+
+      if (error) throw error;
+
+      utils.showToast('Logo fetched successfully from website!', 'success');
+
+      // Reload the profile to show new logo
+      const org = STATE.allOrganisations.find(o => o.id === orgId);
+      if (org) {
+        org.logo_url = logoUrl; // Update in state
+        await this.openCompanyProfile(orgId, org.company_name);
+        await this.loadOrganisations(); // Refresh table
+      }
+
+    } catch (error) {
+      console.error('Error fetching logo from website:', error);
+      utils.showToast('Could not fetch logo from website. Try uploading manually.', 'warning');
+    } finally {
+      utils.hideLoading();
+    }
+  },
+
+  /**
    * Open upload company images modal
    * @param {string} orgId - Organisation ID
    */
@@ -1211,6 +1285,37 @@ const orgsModule = {
   async cancelEditMode(orgId, companyName) {
     // Reopen the profile in view mode (this will restore original data)
     await this.openCompanyProfile(orgId, companyName);
+  },
+
+  /**
+   * Navigate to award from company profile
+   * Closes the company profile modal and switches to the Awards tab
+   * @param {string} awardId - Award ID
+   * @param {string} awardName - Award name
+   */
+  navigateToAward(awardId, awardName) {
+    // Close the company profile modal
+    const modalElement = document.getElementById('companyProfileModal');
+    const modal = bootstrap.Modal.getInstance(modalElement);
+    if (modal) {
+      modal.hide();
+    }
+
+    // Wait for modal to close, then switch to Awards tab and open assignments
+    setTimeout(() => {
+      // Switch to Awards tab
+      const awardsTab = document.getElementById('awards-tab');
+      if (awardsTab) {
+        awardsTab.click();
+      }
+
+      // Wait a bit for tab to switch, then open assignments modal
+      setTimeout(() => {
+        if (typeof assignmentsModule !== 'undefined') {
+          assignmentsModule.openAssignmentsModal(awardId, awardName);
+        }
+      }, 300);
+    }, 300);
   },
 
   /**

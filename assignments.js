@@ -147,7 +147,7 @@ const assignmentsModule = {
       // Render UI
       contentEl.innerHTML = `
         <div class="row">
-          <div class="col-md-6">
+          <div class="col-12">
             <div class="d-flex justify-content-between align-items-center mb-3">
               <h5 class="mb-0">
                 <i class="bi bi-people-fill me-2 text-success"></i>
@@ -158,7 +158,7 @@ const assignmentsModule = {
             ${validAssignments.length === 0 ? `
               <div class="alert alert-info">
                 <i class="bi bi-info-circle me-2"></i>
-                No companies assigned yet. Select companies from the right panel to add them.
+                No companies assigned yet. Add companies from the section below.
               </div>
             ` : `
               <div class="btn-group btn-group-sm mb-3 d-flex" role="group">
@@ -199,7 +199,8 @@ const assignmentsModule = {
             `}
           </div>
 
-          <div class="col-md-6">
+          <div class="col-12 mt-4">
+            <hr class="mb-4">
             <h5 class="mb-3">
               <i class="bi bi-plus-circle me-2 text-primary"></i>
               Add Companies
@@ -214,7 +215,7 @@ const assignmentsModule = {
                 onkeyup="assignmentsModule.filterAvailableCompanies()">
             </div>
 
-            <div id="availableCompaniesList" style="max-height: 500px; overflow-y: auto;">
+            <div id="availableCompaniesList" style="max-height: 300px; overflow-y: auto;">
               ${availableOrgs.length === 0 ? `
                 <div class="alert alert-warning">
                   All companies have been assigned to this award.

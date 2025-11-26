@@ -4,14 +4,15 @@
 /* PUBLIC ENTRY SUBMISSION FORM */
 /* ==================================================== */
 
-// Initialize Supabase
-const SUPABASE_URL = 'YOUR_SUPABASE_URL'; // TODO: Replace with actual URL
-const SUPABASE_ANON_KEY = 'YOUR_SUPABASE_ANON_KEY'; // TODO: Replace with actual key
-const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+// Initialize Supabase using shared config
+const supabase = window.supabase.createClient(
+  window.SUPABASE_CONFIG.url,
+  window.SUPABASE_CONFIG.anonKey
+);
 
-// Initialize Stripe
-const STRIPE_PUBLIC_KEY = 'YOUR_STRIPE_PUBLIC_KEY'; // TODO: Replace with actual key
-const stripe = Stripe(STRIPE_PUBLIC_KEY);
+// Initialize Stripe (optional - will show message if not configured)
+const STRIPE_PUBLIC_KEY = ''; // TODO: Add your Stripe public key here
+const stripe = STRIPE_PUBLIC_KEY ? Stripe(STRIPE_PUBLIC_KEY) : null;
 
 const submissionForm = {
   currentStep: 1,
@@ -393,6 +394,75 @@ const submissionForm = {
   },
 
   /**
+   * Upload files to Supabase Storage
+   */
+  async uploadFiles(files, folder, companyId) {
+    const uploadedUrls = [];
+
+    for (const file of files) {
+      try {
+        const fileExt = file.name.split('.').pop();
+        const fileName = `${companyId}/${folder}/${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExt}`;
+
+        const { data, error } = await supabase.storage
+          .from('entry-submissions')
+          .upload(fileName, file);
+
+        if (error) {
+          console.error('Error uploading file:', error);
+          continue;
+        }
+
+        // Get public URL
+        const { data: urlData } = supabase.storage
+          .from('entry-submissions')
+          .getPublicUrl(fileName);
+
+        uploadedUrls.push({
+          name: file.name,
+          url: urlData.publicUrl,
+          size: file.size,
+          type: file.type
+        });
+      } catch (error) {
+        console.error('Error processing file:', file.name, error);
+      }
+    }
+
+    return uploadedUrls;
+  },
+
+  /**
+   * Generate entry number
+   */
+  async generateEntryNumber() {
+    try {
+      // Get the latest entry number for the current year
+      const currentYear = new Date().getFullYear();
+      const { data, error } = await supabase
+        .from('entries')
+        .select('entry_number')
+        .like('entry_number', `${currentYear}-%`)
+        .order('created_at', { ascending: false })
+        .limit(1);
+
+      if (error) throw error;
+
+      let nextNumber = 1;
+      if (data && data.length > 0) {
+        const lastNumber = parseInt(data[0].entry_number.split('-')[1]);
+        nextNumber = lastNumber + 1;
+      }
+
+      return `${currentYear}-${String(nextNumber).padStart(4, '0')}`;
+    } catch (error) {
+      console.error('Error generating entry number:', error);
+      // Fallback to timestamp-based number
+      return `${new Date().getFullYear()}-${Date.now().toString().slice(-4)}`;
+    }
+  },
+
+  /**
    * Submit entry
    */
   async submitEntry() {
@@ -423,12 +493,14 @@ const submissionForm = {
       }
 
       // Step 2: Upload files to Supabase Storage
-      // TODO: Implement actual file upload
-      const uploadedDocUrls = []; // Placeholder
-      const uploadedImageUrls = []; // Placeholder
+      const uploadedDocUrls = await this.uploadFiles(this.uploadedFiles.documents, 'documents', companyId);
+      const uploadedImageUrls = await this.uploadFiles(this.uploadedFiles.images, 'images', companyId);
 
-      // Step 3: Create entry
+      // Step 3: Generate entry number and create entry
+      const entryNumber = await this.generateEntryNumber();
+
       const entryData = {
+        entry_number: entryNumber,
         organisation_id: companyId,
         award_id: document.getElementById('awardSelect').value,
         entry_title: document.getElementById('entryTitle').value,
@@ -439,12 +511,14 @@ const submissionForm = {
         contact_email: document.getElementById('contactEmail').value,
         contact_phone: document.getElementById('contactPhone').value,
         contact_position: document.getElementById('contactPosition').value,
-        status: 'draft', // Will be 'submitted' after payment
+        status: 'submitted',
         supporting_documents: JSON.stringify(uploadedDocUrls),
         images: JSON.stringify(uploadedImageUrls),
         videos: JSON.stringify(this.getVideoLinks()),
         entry_fee: parseFloat(document.getElementById('feeAmount').textContent.replace('£', '')),
-        payment_status: 'pending'
+        payment_status: stripe ? 'pending' : 'manual_review',
+        allow_public_voting: false,
+        submission_date: new Date().toISOString()
       };
 
       const { data: entry, error: entryError } = await supabase
@@ -455,14 +529,34 @@ const submissionForm = {
 
       if (entryError) throw entryError;
 
-      // Step 4: Create Stripe checkout session
-      await this.processPayment(entry);
+      // Step 4: Process payment (if Stripe is configured) or show success
+      if (stripe) {
+        await this.processPayment(entry);
+      } else {
+        // No Stripe configured - show success and redirect
+        this.showSuccessMessage(entry);
+      }
 
     } catch (error) {
       console.error('Error submitting entry:', error);
       alert('Error submitting entry: ' + error.message);
       this.showStep(3); // Go back to review
     }
+  },
+
+  /**
+   * Show success message and redirect
+   */
+  showSuccessMessage(entry) {
+    // Create success modal or redirect
+    alert(`✅ Entry ${entry.entry_number} submitted successfully!\n\n` +
+          `Your entry has been received and is under review.\n` +
+          `You will receive a confirmation email at ${entry.contact_email}.\n\n` +
+          `Payment Status: Manual Review Required\n` +
+          `You will be contacted regarding payment.`);
+
+    // Redirect to success page or back to homepage
+    window.location.href = window.location.origin + '/index.html';
   },
 
   /**
@@ -474,10 +568,6 @@ const submissionForm = {
 
       // TODO: Create Stripe checkout session via your backend API
       // This requires a server-side endpoint to create the session
-
-      // For now, show success message
-      alert(`Entry ${entry.entry_number} created successfully! Payment integration coming soon.`);
-      window.location.href = '/submit-entry-success.html?entry=' + entry.entry_number;
 
       /* Example Stripe integration:
       const response = await fetch('/api/create-checkout-session', {
@@ -501,6 +591,9 @@ const submissionForm = {
         throw new Error(result.error.message);
       }
       */
+
+      // For now, show success message (Stripe integration requires backend API)
+      this.showSuccessMessage(entry);
 
     } catch (error) {
       console.error('Payment error:', error);

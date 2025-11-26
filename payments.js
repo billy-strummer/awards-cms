@@ -45,7 +45,7 @@ const paymentsModule = {
         .from('invoices')
         .select(`
           *,
-          organisations (company_name, email, contact_phone)
+          organisations (id, company_name, email, contact_phone)
         `)
         .order('created_at', { ascending: false });
 
@@ -83,7 +83,17 @@ const paymentsModule = {
         <td>
           <strong>${utils.escapeHtml(invoice.invoice_number)}</strong>
         </td>
-        <td>${utils.escapeHtml(invoice.organisations?.company_name || 'N/A')}</td>
+        <td>
+          ${invoice.organisations?.id && invoice.organisations?.company_name ?
+            `<a href="javascript:void(0);"
+                class="text-decoration-none text-primary fw-semibold"
+                onclick="orgsModule.openCompanyProfile('${invoice.organisations.id}', '${utils.escapeHtml(invoice.organisations.company_name).replace(/'/g, "\\'")}')"
+                title="View company profile">
+                ${utils.escapeHtml(invoice.organisations.company_name)}
+             </a>` :
+            utils.escapeHtml(invoice.organisations?.company_name || 'N/A')
+          }
+        </td>
         <td>${invoice.invoice_date ? new Date(invoice.invoice_date).toLocaleDateString() : 'N/A'}</td>
         <td>${invoice.due_date ? new Date(invoice.due_date).toLocaleDateString() : 'N/A'}</td>
         <td><span class="badge bg-info-subtle text-info">${this.formatInvoiceType(invoice.invoice_type)}</span></td>
@@ -208,7 +218,7 @@ const paymentsModule = {
         .from('payments')
         .select(`
           *,
-          organisations (company_name),
+          organisations (id, company_name),
           invoices (invoice_number)
         `)
         .order('payment_date', { ascending: false });
@@ -246,7 +256,17 @@ const paymentsModule = {
       <tr>
         <td><strong>${utils.escapeHtml(payment.payment_reference)}</strong></td>
         <td>${payment.payment_date ? new Date(payment.payment_date).toLocaleDateString() : 'N/A'}</td>
-        <td>${utils.escapeHtml(payment.organisations?.company_name || 'N/A')}</td>
+        <td>
+          ${payment.organisations?.id && payment.organisations?.company_name ?
+            `<a href="javascript:void(0);"
+                class="text-decoration-none text-primary fw-semibold"
+                onclick="orgsModule.openCompanyProfile('${payment.organisations.id}', '${utils.escapeHtml(payment.organisations.company_name).replace(/'/g, "\\'")}')"
+                title="View company profile">
+                ${utils.escapeHtml(payment.organisations.company_name)}
+             </a>` :
+            utils.escapeHtml(payment.organisations?.company_name || 'N/A')
+          }
+        </td>
         <td>${payment.invoices?.invoice_number ? `<a href="#" onclick="paymentsModule.viewInvoice('${payment.invoice_id}'); return false;">${payment.invoices.invoice_number}</a>` : 'N/A'}</td>
         <td><span class="badge bg-secondary">${this.formatPaymentMethod(payment.payment_method)}</span></td>
         <td><strong>£${parseFloat(payment.amount || 0).toFixed(2)}</strong></td>

@@ -1,7 +1,5 @@
-/* ====================================================
-
- */
-/* PUBLIC ENTRY SUBMISSION FORM */
+/* ==================================================== */
+/* STREAMLINED ENTRY SUBMISSION FORM */
 /* ==================================================== */
 
 // Initialize Supabase using shared config
@@ -10,426 +8,394 @@ const supabase = window.supabase.createClient(
   window.SUPABASE_CONFIG.anonKey
 );
 
-// Initialize Stripe (optional - will show message if not configured)
-const STRIPE_PUBLIC_KEY = ''; // TODO: Add your Stripe public key here
-const stripe = STRIPE_PUBLIC_KEY ? Stripe(STRIPE_PUBLIC_KEY) : null;
-
-const submissionForm = {
+const entryFormApp = {
   currentStep: 1,
-  uploadedFiles: {
-    documents: [],
-    images: [],
-    videos: []
-  },
-  entryData: {},
+  totalSteps: 7,
+  formData: {},
+  selectedAwardId: null,
 
   /**
    * Initialize form
    */
   async initialize() {
-    await this.loadCompanies();
-    await this.loadAwards();
-    this.setupEventListeners();
-    this.setupFileUploads();
+    console.log('Initializing entry form...');
   },
 
   /**
-   * Load companies for dropdown
+   * Go to next step
    */
-  async loadCompanies() {
-    try {
-      const { data: companies, error } = await supabase
-        .from('organisations')
-        .select('id, company_name')
-        .eq('status', 'active')
-        .order('company_name');
-
-      if (error) throw error;
-
-      const select = document.getElementById('companySelect');
-      const existingOptions = select.innerHTML;
-
-      select.innerHTML = '<option value="">Select your company...</option>' +
-        companies.map(c => `<option value="${c.id}">${c.company_name}</option>`).join('') +
-        '<option value="new">+ Add New Company</option>';
-
-    } catch (error) {
-      console.error('Error loading companies:', error);
-    }
-  },
-
-  /**
-   * Load awards for dropdown
-   */
-  async loadAwards() {
-    try {
-      const { data: awards, error } = await supabase
-        .from('awards')
-        .select('id, award_name, category, entry_fee')
-        .eq('is_active', true)
-        .order('award_name');
-
-      if (error) throw error;
-
-      const select = document.getElementById('awardSelect');
-      select.innerHTML = '<option value="">Select award category...</option>' +
-        awards.map(a => `
-          <option value="${a.id}" data-fee="${a.entry_fee || 195}">
-            ${a.award_name} ${a.entry_fee ? '(£' + a.entry_fee + ')' : ''}
-          </option>
-        `).join('');
-
-    } catch (error) {
-      console.error('Error loading awards:', error);
-    }
-  },
-
-  /**
-   * Setup event listeners
-   */
-  setupEventListeners() {
-    // Company select change
-    document.getElementById('companySelect').addEventListener('change', (e) => {
-      const newCompanyFields = document.getElementById('newCompanyFields');
-      newCompanyFields.style.display = e.target.value === 'new' ? 'block' : 'none';
-    });
-
-    // Award select change - update fee
-    document.getElementById('awardSelect').addEventListener('change', (e) => {
-      const selectedOption = e.target.options[e.target.selectedIndex];
-      const fee = selectedOption.dataset.fee || 195;
-      this.updateFees(parseFloat(fee));
-    });
-
-    // File inputs
-    document.getElementById('documentsInput').addEventListener('change', (e) => {
-      this.handleFileSelect(e.target.files, 'documents');
-    });
-
-    document.getElementById('imagesInput').addEventListener('change', (e) => {
-      this.handleFileSelect(e.target.files, 'images');
-    });
-  },
-
-  /**
-   * Setup drag and drop for file uploads
-   */
-  setupFileUploads() {
-    ['documentsUploadZone', 'imagesUploadZone'].forEach(zoneId => {
-      const zone = document.getElementById(zoneId);
-
-      zone.addEventListener('dragover', (e) => {
-        e.preventDefault();
-        zone.classList.add('dragover');
-      });
-
-      zone.addEventListener('dragleave', () => {
-        zone.classList.remove('dragover');
-      });
-
-      zone.addEventListener('drop', (e) => {
-        e.preventDefault();
-        zone.classList.remove('dragover');
-
-        const fileType = zoneId.includes('documents') ? 'documents' : 'images';
-        this.handleFileSelect(e.dataTransfer.files, fileType);
-      });
-    });
-  },
-
-  /**
-   * Handle file selection
-   */
-  handleFileSelect(files, type) {
-    Array.from(files).forEach(file => {
-      // Validate file
-      if (!this.validateFile(file, type)) return;
-
-      this.uploadedFiles[type].push(file);
-      this.displayFile(file, type);
-    });
-  },
-
-  /**
-   * Validate file
-   */
-  validateFile(file, type) {
-    const maxSizes = {
-      documents: 10 * 1024 * 1024, // 10MB
-      images: 5 * 1024 * 1024 // 5MB
-    };
-
-    if (file.size > maxSizes[type]) {
-      alert(`File ${file.name} is too large. Maximum size: ${maxSizes[type] / 1024 / 1024}MB`);
-      return false;
-    }
-
-    return true;
-  },
-
-  /**
-   * Display uploaded file
-   */
-  displayFile(file, type) {
-    const listId = type === 'documents' ? 'documentsList' : 'imagesList';
-    const list = document.getElementById(listId);
-
-    const fileDiv = document.createElement('div');
-    fileDiv.className = 'uploaded-file';
-    fileDiv.innerHTML = `
-      <div>
-        <i class="bi bi-${type === 'documents' ? 'file-earmark-pdf' : 'image'} me-2"></i>
-        <strong>${file.name}</strong>
-        <small class="text-muted ms-2">(${(file.size / 1024).toFixed(1)} KB)</small>
-      </div>
-      <button type="button" class="btn btn-sm btn-outline-danger" onclick="submissionForm.removeFile('${file.name}', '${type}')">
-        <i class="bi bi-x"></i>
-      </button>
-    `;
-
-    list.appendChild(fileDiv);
-  },
-
-  /**
-   * Remove file
-   */
-  removeFile(fileName, type) {
-    this.uploadedFiles[type] = this.uploadedFiles[type].filter(f => f.name !== fileName);
-
-    // Remove from display
-    const listId = type === 'documents' ? 'documentsList' : 'imagesList';
-    const list = document.getElementById(listId);
-    Array.from(list.children).forEach(child => {
-      if (child.textContent.includes(fileName)) {
-        child.remove();
-      }
-    });
-  },
-
-  /**
-   * Add video link
-   */
-  addVideoLink() {
-    const container = document.getElementById('videoLinksContainer');
-    const linkCount = container.querySelectorAll('input').length + 1;
-
-    const div = document.createElement('div');
-    div.className = 'input-group mb-2';
-    div.innerHTML = `
-      <input type="url" class="form-control" placeholder="https://youtube.com/watch?v=..."
-             id="videoLink${linkCount}">
-      <button class="btn btn-outline-danger" type="button" onclick="this.parentElement.remove()">
-        <i class="bi bi-x"></i>
-      </button>
-    `;
-
-    container.appendChild(div);
-  },
-
-  /**
-   * Update fees
-   */
-  updateFees(entryFee) {
-    const processingFee = entryFee * 0.029 + 0.30; // Stripe fee: 2.9% + 30p
-    const total = entryFee + processingFee;
-
-    document.getElementById('feeAmount').textContent = `£${entryFee.toFixed(2)}`;
-    document.getElementById('processingFee').textContent = `£${processingFee.toFixed(2)}`;
-    document.getElementById('totalFee').textContent = `£${total.toFixed(2)}`;
-  },
-
-  /**
-   * Navigate to next step
-   */
-  nextStep() {
-    if (!this.validateCurrentStep()) {
+  async nextStep(currentStepNum) {
+    // Validate current step
+    if (!this.validateStep(currentStepNum)) {
       return;
     }
 
-    this.currentStep++;
-    this.showStep(this.currentStep);
+    // Save current step data
+    this.saveStepData(currentStepNum);
 
-    if (this.currentStep === 3) {
-      this.generateReview();
+    // Load next step content if needed
+    if (currentStepNum === 2) {
+      await this.loadAwards();
     }
+
+    if (currentStepNum === 6) {
+      this.showReview();
+    }
+
+    // Move to next step
+    const nextStep = currentStepNum + 1;
+    this.goToStep(nextStep);
   },
 
   /**
-   * Navigate to previous step
+   * Go to previous step
    */
-  prevStep() {
-    this.currentStep--;
-    this.showStep(this.currentStep);
+  prevStep(currentStepNum) {
+    const prevStep = currentStepNum - 1;
+    this.goToStep(prevStep);
   },
 
   /**
-   * Show specific step
+   * Navigate to specific step
    */
-  showStep(step) {
+  goToStep(stepNum) {
     // Hide all steps
-    document.querySelectorAll('.form-step').forEach(s => s.style.display = 'none');
-
-    // Show current step
-    document.getElementById(`step${step}`).style.display = 'block';
-
-    // Update progress
-    document.querySelectorAll('.progress-step').forEach((ps, index) => {
-      ps.classList.remove('active', 'completed');
-      if (index < step - 1) {
-        ps.classList.add('completed');
-      } else if (index === step - 1) {
-        ps.classList.add('active');
-      }
+    document.querySelectorAll('.form-step').forEach(step => {
+      step.classList.remove('active');
     });
+
+    // Show target step
+    document.getElementById(`step${stepNum}`).classList.add('active');
+
+    // Update progress indicator
+    this.updateProgressIndicator(stepNum);
+
+    // Update current step
+    this.currentStep = stepNum;
 
     // Scroll to top
     window.scrollTo({ top: 0, behavior: 'smooth' });
   },
 
   /**
-   * Validate current step
+   * Update progress indicator
    */
-  validateCurrentStep() {
-    if (this.currentStep === 1) {
-      // Validate required fields
-      const requiredFields = [
-        'companySelect',
-        'awardSelect',
-        'entryTitle',
-        'whyShouldWin',
-        'contactName',
-        'contactEmail'
-      ];
-
-      for (const fieldId of requiredFields) {
-        const field = document.getElementById(fieldId);
-        if (!field.value || field.value === '') {
-          alert('Please fill in all required fields');
-          field.focus();
-          return false;
-        }
+  updateProgressIndicator(stepNum) {
+    const dots = document.querySelectorAll('.progress-dot');
+    dots.forEach((dot, index) => {
+      dot.classList.remove('active', 'completed');
+      if (index < stepNum - 1) {
+        dot.classList.add('completed');
+      } else if (index === stepNum - 1) {
+        dot.classList.add('active');
       }
-
-      // If new company, validate new company fields
-      if (document.getElementById('companySelect').value === 'new') {
-        if (!document.getElementById('newCompanyName').value) {
-          alert('Please enter company name');
-          document.getElementById('newCompanyName').focus();
-          return false;
-        }
-      }
-    }
-
-    return true;
+    });
   },
 
   /**
-   * Generate review content
+   * Validate current step
    */
-  generateReview() {
-    const companySelect = document.getElementById('companySelect');
-    const companyName = companySelect.value === 'new'
-      ? document.getElementById('newCompanyName').value
-      : companySelect.options[companySelect.selectedIndex].text;
+  validateStep(stepNum) {
+    switch (stepNum) {
+      case 1: // Sector
+        const sector = document.getElementById('sector').value;
+        if (!sector) {
+          alert('Please select a sector');
+          return false;
+        }
+        return true;
 
-    const awardSelect = document.getElementById('awardSelect');
-    const awardName = awardSelect.options[awardSelect.selectedIndex].text;
+      case 2: // Region
+        const region = document.getElementById('region').value;
+        if (!region) {
+          alert('Please select a region');
+          return false;
+        }
+        return true;
 
-    const reviewContent = document.getElementById('reviewContent');
-    reviewContent.innerHTML = `
-      <div class="card mb-3">
-        <div class="card-header bg-light">
-          <h5 class="mb-0">Entry Information</h5>
+      case 3: // Award Category
+        if (!this.selectedAwardId) {
+          alert('Please select an award category');
+          return false;
+        }
+        return true;
+
+      case 4: // Company Name
+        const companyName = document.getElementById('companyName').value.trim();
+        if (!companyName) {
+          alert('Please enter your company name');
+          return false;
+        }
+        return true;
+
+      case 5: // Years in Field
+        const yearsInField = document.getElementById('yearsInField').value;
+        if (!yearsInField) {
+          alert('Please select years in field');
+          return false;
+        }
+        return true;
+
+      case 6: // Contact Info
+        const contactName = document.getElementById('contactName').value.trim();
+        const contactEmail = document.getElementById('contactEmail').value.trim();
+        if (!contactName) {
+          alert('Please enter your name');
+          return false;
+        }
+        if (!contactEmail) {
+          alert('Please enter your email address');
+          return false;
+        }
+        if (!this.validateEmail(contactEmail)) {
+          alert('Please enter a valid email address');
+          return false;
+        }
+        return true;
+
+      default:
+        return true;
+    }
+  },
+
+  /**
+   * Validate email format
+   */
+  validateEmail(email) {
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+  },
+
+  /**
+   * Save step data to formData object
+   */
+  saveStepData(stepNum) {
+    switch (stepNum) {
+      case 1:
+        this.formData.sector = document.getElementById('sector').value;
+        break;
+      case 2:
+        this.formData.region = document.getElementById('region').value;
+        break;
+      case 3:
+        this.formData.awardId = this.selectedAwardId;
+        break;
+      case 4:
+        this.formData.companyName = document.getElementById('companyName').value.trim();
+        break;
+      case 5:
+        this.formData.yearsInField = document.getElementById('yearsInField').value;
+        break;
+      case 6:
+        this.formData.contactName = document.getElementById('contactName').value.trim();
+        this.formData.contactPosition = document.getElementById('contactPosition').value.trim();
+        this.formData.contactEmail = document.getElementById('contactEmail').value.trim();
+        this.formData.contactPhone = document.getElementById('contactPhone').value.trim();
+        break;
+    }
+  },
+
+  /**
+   * Load awards based on selected sector and region
+   */
+  async loadAwards() {
+    const awardsList = document.getElementById('awardsList');
+    awardsList.innerHTML = `
+      <div class="text-center py-4">
+        <div class="spinner-border text-primary" role="status">
+          <span class="visually-hidden">Loading...</span>
         </div>
-        <div class="card-body">
-          <div class="row mb-2">
-            <div class="col-4 text-muted">Company:</div>
-            <div class="col-8"><strong>${companyName}</strong></div>
-          </div>
-          <div class="row mb-2">
-            <div class="col-4 text-muted">Award:</div>
-            <div class="col-8"><strong>${awardName}</strong></div>
-          </div>
-          <div class="row mb-2">
-            <div class="col-4 text-muted">Entry Title:</div>
-            <div class="col-8">${document.getElementById('entryTitle').value}</div>
-          </div>
-          <div class="row mb-2">
-            <div class="col-4 text-muted">Contact:</div>
-            <div class="col-8">
-              ${document.getElementById('contactName').value}<br>
-              <small>${document.getElementById('contactEmail').value}</small>
-            </div>
-          </div>
-        </div>
+        <p class="mt-2 text-muted">Loading award categories...</p>
       </div>
+    `;
 
-      <div class="card">
-        <div class="card-header bg-light">
-          <h5 class="mb-0">Uploaded Files</h5>
-        </div>
-        <div class="card-body">
-          <div class="row">
-            <div class="col-md-6">
-              <strong>Documents:</strong> ${this.uploadedFiles.documents.length} files<br>
-              <strong>Images:</strong> ${this.uploadedFiles.images.length} files
-            </div>
-            <div class="col-md-6">
-              <strong>Video Links:</strong> ${this.getVideoLinks().length} links
-            </div>
+    try {
+      // Fetch active awards from database
+      const { data: awards, error } = await supabase
+        .from('awards')
+        .select('id, award_name, category, description, entry_fee')
+        .eq('is_active', true)
+        .order('award_name');
+
+      if (error) throw error;
+
+      if (!awards || awards.length === 0) {
+        awardsList.innerHTML = `
+          <div class="alert alert-warning">
+            <i class="bi bi-exclamation-triangle me-2"></i>
+            No awards available at this time. Please check back later.
           </div>
+        `;
+        return;
+      }
+
+      // Render awards as selectable options
+      awardsList.innerHTML = awards.map(award => `
+        <div class="award-option" onclick="entryFormApp.selectAward('${award.id}', this)">
+          <h5 class="mb-1">${this.escapeHtml(award.award_name)}</h5>
+          ${award.description ? `<p class="text-muted small mb-1">${this.escapeHtml(award.description)}</p>` : ''}
+          ${award.entry_fee ? `<p class="mb-0"><strong>Entry Fee:</strong> £${award.entry_fee}</p>` : ''}
         </div>
+      `).join('');
+
+    } catch (error) {
+      console.error('Error loading awards:', error);
+      awardsList.innerHTML = `
+        <div class="alert alert-danger">
+          <i class="bi bi-exclamation-circle me-2"></i>
+          Error loading awards: ${error.message}
+        </div>
+      `;
+    }
+  },
+
+  /**
+   * Select an award
+   */
+  selectAward(awardId, element) {
+    // Remove selection from all awards
+    document.querySelectorAll('.award-option').forEach(opt => {
+      opt.classList.remove('selected');
+    });
+
+    // Select this award
+    element.classList.add('selected');
+    this.selectedAwardId = awardId;
+
+    // Show next button
+    document.getElementById('step3NextBtn').style.display = 'block';
+  },
+
+  /**
+   * Show review before submission
+   */
+  showReview() {
+    const reviewContent = document.getElementById('reviewContent');
+
+    // Find selected award name
+    let awardName = 'N/A';
+    const selectedAward = document.querySelector('.award-option.selected h5');
+    if (selectedAward) {
+      awardName = selectedAward.textContent;
+    }
+
+    reviewContent.innerHTML = `
+      <div class="mb-3">
+        <strong>Sector:</strong> ${this.escapeHtml(this.formData.sector || 'N/A')}
+      </div>
+      <div class="mb-3">
+        <strong>Region:</strong> ${this.escapeHtml(this.formData.region || 'N/A')}
+      </div>
+      <div class="mb-3">
+        <strong>Award Category:</strong> ${this.escapeHtml(awardName)}
+      </div>
+      <div class="mb-3">
+        <strong>Company Name:</strong> ${this.escapeHtml(this.formData.companyName || 'N/A')}
+      </div>
+      <div class="mb-3">
+        <strong>Years in Field:</strong> ${this.escapeHtml(this.formData.yearsInField || 'N/A')}
+      </div>
+      <hr>
+      <div class="mb-3">
+        <strong>Contact Name:</strong> ${this.escapeHtml(this.formData.contactName || 'N/A')}
+      </div>
+      <div class="mb-3">
+        <strong>Position:</strong> ${this.escapeHtml(this.formData.contactPosition || 'N/A')}
+      </div>
+      <div class="mb-3">
+        <strong>Email:</strong> ${this.escapeHtml(this.formData.contactEmail || 'N/A')}
+      </div>
+      <div class="mb-3">
+        <strong>Phone:</strong> ${this.escapeHtml(this.formData.contactPhone || 'N/A')}
       </div>
     `;
   },
 
   /**
-   * Get video links
+   * Submit the entry
    */
-  getVideoLinks() {
-    const inputs = document.querySelectorAll('#videoLinksContainer input');
-    return Array.from(inputs)
-      .map(input => input.value)
-      .filter(val => val && val.trim() !== '');
-  },
+  async submitEntry() {
+    try {
+      // Show loading
+      const submitBtn = document.querySelector('.btn-submit');
+      const originalText = submitBtn.innerHTML;
+      submitBtn.disabled = true;
+      submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Submitting...';
 
-  /**
-   * Upload files to Supabase Storage
-   */
-  async uploadFiles(files, folder, companyId) {
-    const uploadedUrls = [];
+      // Check if company exists or create new one
+      let organisationId = null;
 
-    for (const file of files) {
-      try {
-        const fileExt = file.name.split('.').pop();
-        const fileName = `${companyId}/${folder}/${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExt}`;
+      const { data: existingOrgs, error: searchError } = await supabase
+        .from('organisations')
+        .select('id')
+        .ilike('company_name', this.formData.companyName)
+        .limit(1);
 
-        const { data, error } = await supabase.storage
-          .from('entry-submissions')
-          .upload(fileName, file);
+      if (searchError) throw searchError;
 
-        if (error) {
-          console.error('Error uploading file:', error);
-          continue;
-        }
+      if (existingOrgs && existingOrgs.length > 0) {
+        organisationId = existingOrgs[0].id;
+      } else {
+        // Create new organisation
+        const { data: newOrg, error: orgError } = await supabase
+          .from('organisations')
+          .insert({
+            company_name: this.formData.companyName,
+            region: this.formData.region,
+            sector: this.formData.sector,
+            email: this.formData.contactEmail,
+            contact_name: this.formData.contactName,
+            contact_phone: this.formData.contactPhone || null,
+            status: 'active',
+            years_in_field: this.formData.yearsInField
+          })
+          .select()
+          .single();
 
-        // Get public URL
-        const { data: urlData } = supabase.storage
-          .from('entry-submissions')
-          .getPublicUrl(fileName);
-
-        uploadedUrls.push({
-          name: file.name,
-          url: urlData.publicUrl,
-          size: file.size,
-          type: file.type
-        });
-      } catch (error) {
-        console.error('Error processing file:', file.name, error);
+        if (orgError) throw orgError;
+        organisationId = newOrg.id;
       }
-    }
 
-    return uploadedUrls;
+      // Generate entry number
+      const entryNumber = await this.generateEntryNumber();
+
+      // Create entry
+      const { data: entry, error: entryError } = await supabase
+        .from('entries')
+        .insert({
+          entry_number: entryNumber,
+          organisation_id: organisationId,
+          award_id: this.formData.awardId,
+          entry_title: `${this.formData.companyName} - ${this.formData.sector}`,
+          contact_name: this.formData.contactName,
+          contact_email: this.formData.contactEmail,
+          contact_phone: this.formData.contactPhone || null,
+          contact_position: this.formData.contactPosition || null,
+          status: 'submitted',
+          payment_status: 'pending',
+          submission_date: new Date().toISOString(),
+          allow_public_voting: false
+        })
+        .select()
+        .single();
+
+      if (entryError) throw entryError;
+
+      // Show success
+      document.getElementById('entryReference').textContent = entryNumber;
+      this.goToStep(8); // Success step (stepSuccess)
+
+      // Hide success step and show it
+      document.getElementById('stepSuccess').classList.add('active');
+
+    } catch (error) {
+      console.error('Error submitting entry:', error);
+      alert('Error submitting entry: ' + error.message);
+
+      // Re-enable button
+      const submitBtn = document.querySelector('.btn-submit');
+      submitBtn.disabled = false;
+      submitBtn.innerHTML = '<i class="bi bi-check-circle me-2"></i>Submit Entry';
+    }
   },
 
   /**
@@ -437,7 +403,6 @@ const submissionForm = {
    */
   async generateEntryNumber() {
     try {
-      // Get the latest entry number for the current year
       const currentYear = new Date().getFullYear();
       const { data, error } = await supabase
         .from('entries')
@@ -457,152 +422,22 @@ const submissionForm = {
       return `${currentYear}-${String(nextNumber).padStart(4, '0')}`;
     } catch (error) {
       console.error('Error generating entry number:', error);
-      // Fallback to timestamp-based number
       return `${new Date().getFullYear()}-${Date.now().toString().slice(-4)}`;
     }
   },
 
   /**
-   * Submit entry
+   * Escape HTML to prevent XSS
    */
-  async submitEntry() {
-    try {
-      this.showStep(4); // Show processing
-
-      // Step 1: Create or get company ID
-      let companyId;
-      const companySelect = document.getElementById('companySelect');
-
-      if (companySelect.value === 'new') {
-        // Create new company
-        const { data: newCompany, error: companyError } = await supabase
-          .from('organisations')
-          .insert([{
-            company_name: document.getElementById('newCompanyName').value,
-            website: document.getElementById('newCompanyWebsite').value,
-            description: document.getElementById('newCompanyDescription').value,
-            status: 'active'
-          }])
-          .select()
-          .single();
-
-        if (companyError) throw companyError;
-        companyId = newCompany.id;
-      } else {
-        companyId = companySelect.value;
-      }
-
-      // Step 2: Upload files to Supabase Storage
-      const uploadedDocUrls = await this.uploadFiles(this.uploadedFiles.documents, 'documents', companyId);
-      const uploadedImageUrls = await this.uploadFiles(this.uploadedFiles.images, 'images', companyId);
-
-      // Step 3: Generate entry number and create entry
-      const entryNumber = await this.generateEntryNumber();
-
-      const entryData = {
-        entry_number: entryNumber,
-        organisation_id: companyId,
-        award_id: document.getElementById('awardSelect').value,
-        entry_title: document.getElementById('entryTitle').value,
-        entry_description: document.getElementById('entryDescription').value,
-        why_should_win: document.getElementById('whyShouldWin').value,
-        supporting_information: document.getElementById('supportingInfo').value,
-        contact_name: document.getElementById('contactName').value,
-        contact_email: document.getElementById('contactEmail').value,
-        contact_phone: document.getElementById('contactPhone').value,
-        contact_position: document.getElementById('contactPosition').value,
-        status: 'submitted',
-        supporting_documents: JSON.stringify(uploadedDocUrls),
-        images: JSON.stringify(uploadedImageUrls),
-        videos: JSON.stringify(this.getVideoLinks()),
-        entry_fee: parseFloat(document.getElementById('feeAmount').textContent.replace('£', '')),
-        payment_status: stripe ? 'pending' : 'manual_review',
-        allow_public_voting: false,
-        submission_date: new Date().toISOString()
-      };
-
-      const { data: entry, error: entryError } = await supabase
-        .from('entries')
-        .insert([entryData])
-        .select()
-        .single();
-
-      if (entryError) throw entryError;
-
-      // Step 4: Process payment (if Stripe is configured) or show success
-      if (stripe) {
-        await this.processPayment(entry);
-      } else {
-        // No Stripe configured - show success and redirect
-        this.showSuccessMessage(entry);
-      }
-
-    } catch (error) {
-      console.error('Error submitting entry:', error);
-      alert('Error submitting entry: ' + error.message);
-      this.showStep(3); // Go back to review
-    }
-  },
-
-  /**
-   * Show success message and redirect
-   */
-  showSuccessMessage(entry) {
-    // Create success modal or redirect
-    alert(`✅ Entry ${entry.entry_number} submitted successfully!\n\n` +
-          `Your entry has been received and is under review.\n` +
-          `You will receive a confirmation email at ${entry.contact_email}.\n\n` +
-          `Payment Status: Manual Review Required\n` +
-          `You will be contacted regarding payment.`);
-
-    // Redirect to success page or back to homepage
-    window.location.href = window.location.origin + '/index.html';
-  },
-
-  /**
-   * Process payment with Stripe
-   */
-  async processPayment(entry) {
-    try {
-      const totalAmount = parseFloat(document.getElementById('totalFee').textContent.replace('£', ''));
-
-      // TODO: Create Stripe checkout session via your backend API
-      // This requires a server-side endpoint to create the session
-
-      /* Example Stripe integration:
-      const response = await fetch('/api/create-checkout-session', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          entryId: entry.id,
-          amount: totalAmount * 100, // Stripe uses cents
-          description: `Entry ${entry.entry_number} - ${entry.entry_title}`
-        })
-      });
-
-      const session = await response.json();
-
-      // Redirect to Stripe Checkout
-      const result = await stripe.redirectToCheckout({
-        sessionId: session.id
-      });
-
-      if (result.error) {
-        throw new Error(result.error.message);
-      }
-      */
-
-      // For now, show success message (Stripe integration requires backend API)
-      this.showSuccessMessage(entry);
-
-    } catch (error) {
-      console.error('Payment error:', error);
-      throw error;
-    }
+  escapeHtml(text) {
+    if (!text) return '';
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
   }
 };
 
 // Initialize on page load
 document.addEventListener('DOMContentLoaded', () => {
-  submissionForm.initialize();
+  entryFormApp.initialize();
 });

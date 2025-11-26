@@ -12,480 +12,361 @@
   <!-- Supabase -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
-  <!-- Stripe -->
-  <script src="https://js.stripe.com/v3/"></script>
-
   <style>
     :root {
-      --primary-color: #0d6efd;
-      --secondary-color: #6c757d;
+      --primary-color: #667eea;
+      --secondary-color: #764ba2;
     }
 
     body {
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);
       min-height: 100vh;
-      padding: 40px 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
     }
 
-    .submission-container {
-      max-width: 900px;
-      margin: 0 auto;
+    .entry-container {
+      max-width: 700px;
+      width: 100%;
     }
 
-    .submission-card {
+    .entry-card {
       background: white;
-      border-radius: 16px;
+      border-radius: 20px;
       box-shadow: 0 20px 60px rgba(0,0,0,0.3);
       overflow: hidden;
+      animation: slideIn 0.4s ease-out;
+    }
+
+    @keyframes slideIn {
+      from {
+        opacity: 0;
+        transform: translateY(20px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
     }
 
     .card-header-custom {
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);
       color: white;
-      padding: 40px;
+      padding: 30px;
       text-align: center;
     }
 
     .card-header-custom h1 {
-      font-size: 2.5rem;
+      font-size: 2rem;
       font-weight: 700;
-      margin-bottom: 10px;
-    }
-
-    .card-header-custom p {
-      font-size: 1.1rem;
-      opacity: 0.9;
+      margin: 0;
     }
 
     .form-section {
-      padding: 40px;
+      padding: 50px 40px;
+      min-height: 400px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
     }
 
-    .section-title {
-      font-size: 1.5rem;
+    .step-question {
+      font-size: 1.8rem;
       font-weight: 600;
       color: #1a1a1a;
-      margin-bottom: 20px;
-      padding-bottom: 10px;
-      border-bottom: 2px solid #e9ecef;
-    }
-
-    .section-title i {
-      color: var(--primary-color);
-    }
-
-    .required-asterisk {
-      color: #dc3545;
-    }
-
-    .file-upload-zone {
-      border: 2px dashed #dee2e6;
-      border-radius: 8px;
-      padding: 40px;
+      margin-bottom: 30px;
       text-align: center;
-      transition: all 0.3s;
-      cursor: pointer;
     }
 
-    .file-upload-zone:hover {
-      border-color: var(--primary-color);
-      background-color: #f8f9fa;
-    }
-
-    .file-upload-zone.dragover {
-      border-color: var(--primary-color);
-      background-color: rgba(13, 110, 253, 0.1);
-    }
-
-    .uploaded-file {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding: 12px;
-      background: #f8f9fa;
-      border-radius: 8px;
-      margin-bottom: 8px;
-    }
-
-    .fee-summary {
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-      color: white;
-      padding: 30px;
-      border-radius: 12px;
-      margin-top: 30px;
-    }
-
-    .fee-summary h4 {
-      font-size: 1.3rem;
-      margin-bottom: 20px;
-    }
-
-    .fee-line {
-      display: flex;
-      justify-content: space-between;
-      margin-bottom: 10px;
+    .form-control-lg, .form-select-lg {
       font-size: 1.1rem;
+      padding: 15px;
+      border-radius: 10px;
     }
 
-    .fee-total {
-      border-top: 2px solid rgba(255,255,255,0.3);
-      padding-top: 15px;
-      margin-top: 15px;
-      font-size: 1.5rem;
-      font-weight: 700;
-    }
-
-    .progress-steps {
-      display: flex;
-      justify-content: space-between;
-      padding: 30px 40px;
-      background: #f8f9fa;
-      border-bottom: 1px solid #dee2e6;
-    }
-
-    .progress-step {
-      flex: 1;
-      text-align: center;
-      position: relative;
-    }
-
-    .progress-step:not(:last-child)::after {
-      content: '';
-      position: absolute;
-      top: 20px;
-      right: -50%;
-      width: 100%;
-      height: 2px;
-      background: #dee2e6;
-      z-index: 0;
-    }
-
-    .progress-step.active:not(:last-child)::after {
-      background: var(--primary-color);
-    }
-
-    .progress-step-circle {
-      width: 40px;
-      height: 40px;
-      border-radius: 50%;
-      background: white;
-      border: 2px solid #dee2e6;
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      font-weight: 600;
-      position: relative;
-      z-index: 1;
-    }
-
-    .progress-step.active .progress-step-circle {
-      background: var(--primary-color);
-      border-color: var(--primary-color);
-      color: white;
-    }
-
-    .progress-step.completed .progress-step-circle {
-      background: #28a745;
-      border-color: #28a745;
-      color: white;
-    }
-
-    .btn-submit-entry {
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    .btn-next, .btn-submit {
+      background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);
       border: none;
       color: white;
       padding: 15px 50px;
       font-size: 1.2rem;
       font-weight: 600;
-      border-radius: 8px;
-      transition: transform 0.2s;
+      border-radius: 10px;
+      transition: all 0.3s;
+      width: 100%;
+      margin-top: 30px;
     }
 
-    .btn-submit-entry:hover {
+    .btn-next:hover, .btn-submit:hover {
       transform: translateY(-2px);
       box-shadow: 0 10px 20px rgba(0,0,0,0.2);
+    }
+
+    .btn-back {
+      background: transparent;
+      border: 2px solid #6c757d;
+      color: #6c757d;
+      padding: 12px 40px;
+      font-size: 1rem;
+      border-radius: 10px;
+      transition: all 0.3s;
+      width: 100%;
+      margin-top: 10px;
+    }
+
+    .btn-back:hover {
+      background: #6c757d;
+      color: white;
+    }
+
+    .progress-indicator {
+      display: flex;
+      justify-content: center;
+      gap: 8px;
+      margin-bottom: 20px;
+      padding: 20px;
+    }
+
+    .progress-dot {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      background: #dee2e6;
+      transition: all 0.3s;
+    }
+
+    .progress-dot.active {
+      background: var(--primary-color);
+      transform: scale(1.3);
+    }
+
+    .progress-dot.completed {
+      background: #28a745;
+    }
+
+    .form-step {
+      display: none;
+    }
+
+    .form-step.active {
+      display: block;
+    }
+
+    .award-option {
+      border: 2px solid #dee2e6;
+      padding: 15px;
+      border-radius: 10px;
+      margin-bottom: 10px;
+      cursor: pointer;
+      transition: all 0.3s;
+    }
+
+    .award-option:hover {
+      border-color: var(--primary-color);
+      background: #f8f9fa;
+    }
+
+    .award-option.selected {
+      border-color: var(--primary-color);
+      background: rgba(102, 126, 234, 0.1);
+    }
+
+    .success-message {
+      text-align: center;
+      padding: 50px 20px;
+    }
+
+    .success-icon {
+      font-size: 5rem;
+      color: #28a745;
+      margin-bottom: 20px;
     }
   </style>
 </head>
 <body>
 
-  <div class="submission-container">
-    <div class="submission-card">
+  <div class="entry-container">
+    <div class="entry-card">
 
       <!-- Header -->
       <div class="card-header-custom">
-        <h1>🏆 Submit Your Entry</h1>
-        <p>British Trade Awards 2025</p>
+        <h1>🏆 SUBMIT YOUR ENTRY</h1>
       </div>
 
-      <!-- Progress Steps -->
-      <div class="progress-steps" id="progressSteps">
-        <div class="progress-step active" data-step="1">
-          <div class="progress-step-circle">1</div>
-          <small class="d-block mt-2">Details</small>
-        </div>
-        <div class="progress-step" data-step="2">
-          <div class="progress-step-circle">2</div>
-          <small class="d-block mt-2">Upload</small>
-        </div>
-        <div class="progress-step" data-step="3">
-          <div class="progress-step-circle">3</div>
-          <small class="d-block mt-2">Review</small>
-        </div>
-        <div class="progress-step" data-step="4">
-          <div class="progress-step-circle">4</div>
-          <small class="d-block mt-2">Payment</small>
-        </div>
+      <!-- Progress Indicator -->
+      <div class="progress-indicator" id="progressIndicator">
+        <div class="progress-dot active"></div>
+        <div class="progress-dot"></div>
+        <div class="progress-dot"></div>
+        <div class="progress-dot"></div>
+        <div class="progress-dot"></div>
+        <div class="progress-dot"></div>
+        <div class="progress-dot"></div>
       </div>
 
-      <!-- Form -->
-      <form id="entrySubmissionForm" class="form-section">
+      <!-- Form Steps -->
+      <form id="entryForm">
 
-        <!-- Step 1: Entry Details -->
-        <div class="form-step" id="step1">
-          <h2 class="section-title">
-            <i class="bi bi-info-circle me-2"></i>Entry Details
-          </h2>
-
-          <!-- Company Information -->
-          <div class="mb-4">
-            <label class="form-label fw-bold">
-              Company/Organisation <span class="required-asterisk">*</span>
-            </label>
-            <select class="form-select form-select-lg" id="companySelect" required>
-              <option value="">Select or create your company...</option>
-              <option value="new">+ Add New Company</option>
+        <!-- Step 1: Sector -->
+        <div class="form-step active" id="step1">
+          <div class="form-section">
+            <h2 class="step-question">What sector are you in?</h2>
+            <select class="form-select form-select-lg" id="sector" required>
+              <option value="">Choose your sector...</option>
+              <option value="Technology">Technology</option>
+              <option value="Finance">Finance</option>
+              <option value="Healthcare">Healthcare</option>
+              <option value="Manufacturing">Manufacturing</option>
+              <option value="Retail">Retail</option>
+              <option value="Education">Education</option>
+              <option value="Energy">Energy</option>
+              <option value="Transportation">Transportation</option>
+              <option value="Construction">Construction</option>
+              <option value="Hospitality">Hospitality</option>
+              <option value="Other">Other</option>
             </select>
-          </div>
-
-          <!-- New Company Fields (hidden by default) -->
-          <div id="newCompanyFields" style="display: none;" class="mb-4">
-            <div class="card">
-              <div class="card-body">
-                <h6 class="card-title">New Company Details</h6>
-                <div class="row g-3">
-                  <div class="col-md-6">
-                    <label class="form-label">Company Name <span class="required-asterisk">*</span></label>
-                    <input type="text" class="form-control" id="newCompanyName">
-                  </div>
-                  <div class="col-md-6">
-                    <label class="form-label">Website</label>
-                    <input type="url" class="form-control" id="newCompanyWebsite" placeholder="https://">
-                  </div>
-                  <div class="col-12">
-                    <label class="form-label">Company Description</label>
-                    <textarea class="form-control" id="newCompanyDescription" rows="2"></textarea>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <!-- Award Category -->
-          <div class="mb-4">
-            <label class="form-label fw-bold">
-              Award Category <span class="required-asterisk">*</span>
-            </label>
-            <select class="form-select form-select-lg" id="awardSelect" required>
-              <option value="">Select award category...</option>
-            </select>
-          </div>
-
-          <!-- Entry Title -->
-          <div class="mb-4">
-            <label class="form-label fw-bold">
-              Entry Title <span class="required-asterisk">*</span>
-            </label>
-            <input type="text" class="form-control form-control-lg" id="entryTitle" required
-                   placeholder="Give your entry a compelling title...">
-            <div class="form-text">
-              Maximum 500 characters. This will appear in public listings.
-            </div>
-          </div>
-
-          <!-- Entry Description -->
-          <div class="mb-4">
-            <label class="form-label fw-bold">
-              Entry Description
-            </label>
-            <textarea class="form-control" id="entryDescription" rows="4"
-                      placeholder="Brief overview of your entry..."></textarea>
-          </div>
-
-          <!-- Why Should Win -->
-          <div class="mb-4">
-            <label class="form-label fw-bold">
-              Why Should You Win? <span class="required-asterisk">*</span>
-            </label>
-            <textarea class="form-control" id="whyShouldWin" rows="8" required
-                      placeholder="Explain why your company deserves this award..."></textarea>
-            <div class="form-text">
-              This is your main submission. Be detailed and compelling.
-            </div>
-          </div>
-
-          <!-- Supporting Information -->
-          <div class="mb-4">
-            <label class="form-label fw-bold">
-              Supporting Information
-            </label>
-            <textarea class="form-control" id="supportingInfo" rows="6"
-                      placeholder="Additional information, metrics, testimonials..."></textarea>
-          </div>
-
-          <!-- Contact Information -->
-          <h2 class="section-title mt-5">
-            <i class="bi bi-person me-2"></i>Contact Information
-          </h2>
-
-          <div class="row g-3 mb-4">
-            <div class="col-md-6">
-              <label class="form-label fw-bold">
-                Your Name <span class="required-asterisk">*</span>
-              </label>
-              <input type="text" class="form-control" id="contactName" required>
-            </div>
-            <div class="col-md-6">
-              <label class="form-label fw-bold">
-                Position/Title
-              </label>
-              <input type="text" class="form-control" id="contactPosition">
-            </div>
-            <div class="col-md-6">
-              <label class="form-label fw-bold">
-                Email Address <span class="required-asterisk">*</span>
-              </label>
-              <input type="email" class="form-control" id="contactEmail" required>
-            </div>
-            <div class="col-md-6">
-              <label class="form-label fw-bold">
-                Phone Number
-              </label>
-              <input type="tel" class="form-control" id="contactPhone">
-            </div>
-          </div>
-
-          <div class="d-flex justify-content-end">
-            <button type="button" class="btn btn-primary btn-lg" onclick="submissionForm.nextStep()">
-              Next: Upload Files <i class="bi bi-arrow-right ms-2"></i>
+            <button type="button" class="btn btn-next" onclick="entryFormApp.nextStep(1)">
+              Next <i class="bi bi-arrow-right ms-2"></i>
             </button>
           </div>
         </div>
 
-        <!-- Step 2: File Uploads -->
-        <div class="form-step" id="step2" style="display: none;">
-          <h2 class="section-title">
-            <i class="bi bi-cloud-upload me-2"></i>Upload Supporting Materials
-          </h2>
-
-          <p class="text-muted mb-4">
-            Upload documents, images, or videos that support your entry. All files are optional but recommended.
-          </p>
-
-          <!-- Supporting Documents -->
-          <div class="mb-5">
-            <label class="form-label fw-bold">
-              <i class="bi bi-file-earmark-pdf me-2"></i>Supporting Documents
-            </label>
-            <div class="file-upload-zone" id="documentsUploadZone"
-                 onclick="document.getElementById('documentsInput').click()">
-              <i class="bi bi-cloud-upload fs-1 text-primary mb-3"></i>
-              <p class="mb-2"><strong>Click to upload or drag and drop</strong></p>
-              <p class="text-muted small">PDF, DOC, DOCX up to 10MB each</p>
-            </div>
-            <input type="file" id="documentsInput" multiple accept=".pdf,.doc,.docx" style="display: none;">
-            <div id="documentsList" class="mt-3"></div>
-          </div>
-
-          <!-- Images -->
-          <div class="mb-5">
-            <label class="form-label fw-bold">
-              <i class="bi bi-image me-2"></i>Images
-            </label>
-            <div class="file-upload-zone" id="imagesUploadZone"
-                 onclick="document.getElementById('imagesInput').click()">
-              <i class="bi bi-image fs-1 text-primary mb-3"></i>
-              <p class="mb-2"><strong>Click to upload or drag and drop</strong></p>
-              <p class="text-muted small">JPG, PNG up to 5MB each</p>
-            </div>
-            <input type="file" id="imagesInput" multiple accept="image/*" style="display: none;">
-            <div id="imagesList" class="mt-3"></div>
-          </div>
-
-          <!-- Video Links -->
-          <div class="mb-4">
-            <label class="form-label fw-bold">
-              <i class="bi bi-play-btn me-2"></i>Video Links (YouTube, Vimeo, etc.)
-            </label>
-            <div id="videoLinksContainer">
-              <div class="input-group mb-2">
-                <input type="url" class="form-control" placeholder="https://youtube.com/watch?v=..."
-                       id="videoLink1">
-                <button class="btn btn-outline-secondary" type="button" onclick="submissionForm.addVideoLink()">
-                  <i class="bi bi-plus-circle"></i>
-                </button>
-              </div>
-            </div>
-          </div>
-
-          <div class="d-flex justify-content-between">
-            <button type="button" class="btn btn-outline-secondary btn-lg" onclick="submissionForm.prevStep()">
+        <!-- Step 2: Region -->
+        <div class="form-step" id="step2">
+          <div class="form-section">
+            <h2 class="step-question">Which region are you based in?</h2>
+            <select class="form-select form-select-lg" id="region" required>
+              <option value="">Choose your region...</option>
+              <option value="London">London</option>
+              <option value="South East">South East</option>
+              <option value="South West">South West</option>
+              <option value="East of England">East of England</option>
+              <option value="West Midlands">West Midlands</option>
+              <option value="East Midlands">East Midlands</option>
+              <option value="Yorkshire and the Humber">Yorkshire and the Humber</option>
+              <option value="North West">North West</option>
+              <option value="North East">North East</option>
+              <option value="Scotland">Scotland</option>
+              <option value="Wales">Wales</option>
+              <option value="Northern Ireland">Northern Ireland</option>
+            </select>
+            <button type="button" class="btn btn-next" onclick="entryFormApp.nextStep(2)">
+              Next <i class="bi bi-arrow-right ms-2"></i>
+            </button>
+            <button type="button" class="btn btn-back" onclick="entryFormApp.prevStep(2)">
               <i class="bi bi-arrow-left me-2"></i>Back
             </button>
-            <button type="button" class="btn btn-primary btn-lg" onclick="submissionForm.nextStep()">
-              Next: Review <i class="bi bi-arrow-right ms-2"></i>
-            </button>
           </div>
         </div>
 
-        <!-- Step 3: Review -->
-        <div class="form-step" id="step3" style="display: none;">
-          <h2 class="section-title">
-            <i class="bi bi-check-circle me-2"></i>Review Your Entry
-          </h2>
-
-          <div id="reviewContent" class="mb-4">
-            <!-- Review content will be dynamically generated -->
-          </div>
-
-          <!-- Fee Summary -->
-          <div class="fee-summary">
-            <h4>💳 Entry Fee Summary</h4>
-            <div class="fee-line">
-              <span>Entry Fee:</span>
-              <span id="feeAmount">£195.00</span>
+        <!-- Step 3: Award Category -->
+        <div class="form-step" id="step3">
+          <div class="form-section">
+            <h2 class="step-question">Which award category?</h2>
+            <div id="awardsList" style="max-height: 400px; overflow-y: auto;">
+              <!-- Will be populated dynamically -->
             </div>
-            <div class="fee-line">
-              <span>Processing Fee:</span>
-              <span id="processingFee">£0.00</span>
-            </div>
-            <div class="fee-line fee-total">
-              <span>Total:</span>
-              <span id="totalFee">£195.00</span>
-            </div>
-          </div>
-
-          <div class="alert alert-info mt-4">
-            <i class="bi bi-info-circle me-2"></i>
-            <strong>Next Step:</strong> You'll be redirected to secure payment processing via Stripe.
-          </div>
-
-          <div class="d-flex justify-content-between mt-4">
-            <button type="button" class="btn btn-outline-secondary btn-lg" onclick="submissionForm.prevStep()">
+            <button type="button" class="btn btn-next" onclick="entryFormApp.nextStep(3)" id="step3NextBtn" style="display: none;">
+              Next <i class="bi bi-arrow-right ms-2"></i>
+            </button>
+            <button type="button" class="btn btn-back" onclick="entryFormApp.prevStep(3)">
               <i class="bi bi-arrow-left me-2"></i>Back
             </button>
-            <button type="button" class="btn-submit-entry" onclick="submissionForm.submitEntry()">
-              <i class="bi bi-lock me-2"></i>Proceed to Payment
+          </div>
+        </div>
+
+        <!-- Step 4: Company Name -->
+        <div class="form-step" id="step4">
+          <div class="form-section">
+            <h2 class="step-question">What is your company name?</h2>
+            <input type="text" class="form-control form-control-lg" id="companyName"
+              placeholder="Enter your company name" required>
+            <button type="button" class="btn btn-next" onclick="entryFormApp.nextStep(4)">
+              Next <i class="bi bi-arrow-right ms-2"></i>
+            </button>
+            <button type="button" class="btn btn-back" onclick="entryFormApp.prevStep(4)">
+              <i class="bi bi-arrow-left me-2"></i>Back
             </button>
           </div>
         </div>
 
-        <!-- Step 4: Payment (Handled by Stripe) -->
-        <div class="form-step" id="step4" style="display: none;">
-          <div class="text-center py-5">
-            <div class="spinner-border text-primary mb-3" style="width: 3rem; height: 3rem;"></div>
-            <h3>Processing Payment...</h3>
-            <p class="text-muted">Please wait while we process your submission.</p>
+        <!-- Step 5: Years in Field -->
+        <div class="form-step" id="step5">
+          <div class="form-section">
+            <h2 class="step-question">Years of work in your field?</h2>
+            <select class="form-select form-select-lg" id="yearsInField" required>
+              <option value="">Select...</option>
+              <option value="1-3">1-3 years</option>
+              <option value="4-9">4-9 years</option>
+              <option value="10+">10+ years</option>
+            </select>
+            <button type="button" class="btn btn-next" onclick="entryFormApp.nextStep(5)">
+              Next <i class="bi bi-arrow-right ms-2"></i>
+            </button>
+            <button type="button" class="btn btn-back" onclick="entryFormApp.prevStep(5)">
+              <i class="bi bi-arrow-left me-2"></i>Back
+            </button>
+          </div>
+        </div>
+
+        <!-- Step 6: Contact Information -->
+        <div class="form-step" id="step6">
+          <div class="form-section">
+            <h2 class="step-question">Your contact information</h2>
+            <div class="mb-3">
+              <input type="text" class="form-control form-control-lg" id="contactName"
+                placeholder="Your Name *" required>
+            </div>
+            <div class="mb-3">
+              <input type="text" class="form-control form-control-lg" id="contactPosition"
+                placeholder="Position/Title">
+            </div>
+            <div class="mb-3">
+              <input type="email" class="form-control form-control-lg" id="contactEmail"
+                placeholder="Email Address *" required>
+            </div>
+            <div class="mb-3">
+              <input type="tel" class="form-control form-control-lg" id="contactPhone"
+                placeholder="Phone Number">
+            </div>
+            <button type="button" class="btn btn-next" onclick="entryFormApp.nextStep(6)">
+              Review & Submit <i class="bi bi-arrow-right ms-2"></i>
+            </button>
+            <button type="button" class="btn btn-back" onclick="entryFormApp.prevStep(6)">
+              <i class="bi bi-arrow-left me-2"></i>Back
+            </button>
+          </div>
+        </div>
+
+        <!-- Step 7: Review & Submit -->
+        <div class="form-step" id="step7">
+          <div class="form-section">
+            <h2 class="step-question">Review Your Entry</h2>
+            <div id="reviewContent" class="text-start" style="background: #f8f9fa; padding: 20px; border-radius: 10px;">
+              <!-- Will be populated dynamically -->
+            </div>
+            <button type="button" class="btn btn-submit" onclick="entryFormApp.submitEntry()">
+              <i class="bi bi-check-circle me-2"></i>Submit Entry
+            </button>
+            <button type="button" class="btn btn-back" onclick="entryFormApp.prevStep(7)">
+              <i class="bi bi-arrow-left me-2"></i>Back to Edit
+            </button>
+          </div>
+        </div>
+
+        <!-- Success Message (hidden initially) -->
+        <div class="form-step" id="stepSuccess">
+          <div class="form-section success-message">
+            <div class="success-icon">
+              <i class="bi bi-check-circle-fill"></i>
+            </div>
+            <h2 class="mb-3">Entry Submitted Successfully!</h2>
+            <p class="text-muted">Thank you for your submission. We'll be in touch soon.</p>
+            <div class="mt-4">
+              <p><strong>Entry Reference:</strong> <span id="entryReference"></span></p>
+            </div>
           </div>
         </div>
 
@@ -500,8 +381,8 @@
   <!-- Configuration -->
   <script src="config.js"></script>
 
-  <!-- Submission Form Logic -->
-  <script src="submit-entry.js"></script>
+  <!-- New Entry Form Logic -->
+  <script src="submit-entry-new.js"></script>
 
 </body>
 </html>

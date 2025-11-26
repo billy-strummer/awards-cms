@@ -197,6 +197,11 @@
           <i class="bi bi-gear me-2"></i>Settings & Backup
         </button>
       </li>
+      <li class="nav-item" role="presentation">
+        <button class="nav-link" id="bitcoin-tab" data-bs-toggle="tab" data-bs-target="#bitcoin" type="button" role="tab">
+          <i class="bi bi-currency-bitcoin me-2"></i>Bitcoin
+        </button>
+      </li>
     </ul>
 
     <!-- Tab Content -->
@@ -3369,6 +3374,34 @@ Available placeholders:
   </div>
 
   <!-- ==================================================== -->
+  <!-- BITCOIN TAB -->
+  <!-- ==================================================== -->
+  <div class="tab-pane fade" id="bitcoin" role="tabpanel">
+    <div class="container-fluid">
+
+      <!-- Page Header -->
+      <div class="section-header">
+        <h1 class="section-title">
+          <i class="bi bi-currency-bitcoin me-2"></i>Bitcoin Price Chart
+        </h1>
+        <p class="section-subtitle">Live BTC/USD trading view from TradingView</p>
+      </div>
+
+      <!-- TradingView Widget Container -->
+      <div class="card border-0 shadow-sm">
+        <div class="card-body p-0">
+          <!-- TradingView Widget BEGIN -->
+          <div class="tradingview-widget-container" style="height: 800px; width: 100%;">
+            <div id="tradingview_chart" style="height: 100%; width: 100%;"></div>
+          </div>
+          <!-- TradingView Widget END -->
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ==================================================== -->
   <!-- MODALS -->
   <!-- ==================================================== -->
   
@@ -6014,6 +6047,38 @@ in recognition of excellence
   <script src="settings.js"></script>
   <script src="test-data-manager.js"></script>
   <script src="app.js"></script>
+
+  <!-- TradingView Widget Script -->
+  <script type="text/javascript" src="https://s3.tradingview.com/tv.js"></script>
+  <script type="text/javascript">
+    // Initialize TradingView chart when Bitcoin tab is shown
+    document.getElementById('bitcoin-tab').addEventListener('shown.bs.tab', function () {
+      // Only initialize once
+      if (!window.tradingViewInitialized) {
+        new TradingView.widget({
+          "autosize": true,
+          "symbol": "COINBASE:BTCUSD",
+          "interval": "D",
+          "timezone": "Etc/UTC",
+          "theme": "light",
+          "style": "1",
+          "locale": "en",
+          "toolbar_bg": "#f1f3f6",
+          "enable_publishing": false,
+          "allow_symbol_change": true,
+          "container_id": "tradingview_chart",
+          "studies": [
+            "STD;SMA"
+          ],
+          "hide_side_toolbar": false,
+          "withdateranges": true,
+          "hide_top_toolbar": false,
+          "save_image": false
+        });
+        window.tradingViewInitialized = true;
+      }
+    });
+  </script>
 
 </body>
 </html>

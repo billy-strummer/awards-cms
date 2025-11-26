@@ -45,20 +45,36 @@ const entryFormApp = {
   },
 
   /**
-   * Populate regions dropdown from config
+   * Populate regions dropdown from config with grouped counties and cities
    */
   populateRegions() {
     const regionSelect = document.getElementById('region');
-    if (!window.REGIONS || window.REGIONS.length === 0) {
+    if ((!window.COUNTIES || window.COUNTIES.length === 0) && (!window.CITIES || window.CITIES.length === 0)) {
       console.warn('No regions found in config');
       return;
     }
 
-    const options = window.REGIONS.map(region =>
-      `<option value="${this.escapeHtml(region)}">${this.escapeHtml(region)}</option>`
-    ).join('');
+    let html = '<option value="">Choose your region...</option>';
 
-    regionSelect.innerHTML = '<option value="">Choose your region...</option>' + options;
+    // Counties optgroup
+    if (window.COUNTIES && window.COUNTIES.length > 0) {
+      html += '<optgroup label="Counties A-Z">';
+      window.COUNTIES.forEach(county => {
+        html += `<option value="${this.escapeHtml(county)}">${this.escapeHtml(county)}</option>`;
+      });
+      html += '</optgroup>';
+    }
+
+    // Cities optgroup
+    if (window.CITIES && window.CITIES.length > 0) {
+      html += '<optgroup label="Cities A-Z">';
+      window.CITIES.forEach(city => {
+        html += `<option value="${this.escapeHtml(city)}">${this.escapeHtml(city)}</option>`;
+      });
+      html += '</optgroup>';
+    }
+
+    regionSelect.innerHTML = html;
   },
 
   /**

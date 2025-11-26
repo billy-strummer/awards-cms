@@ -9,7 +9,7 @@ const orgsModule = {
   async loadOrganisations() {
     try {
       utils.showLoading();
-      utils.showTableLoading('orgsTableBody', 6);
+      utils.showTableLoading('orgsTableBody', 7);
       
       // Load all organisations using proper Supabase v2 pagination
       let allData = [];
@@ -46,41 +46,76 @@ const orgsModule = {
       
       STATE.allOrganisations = allData;
       STATE.filteredOrganisations = STATE.allOrganisations;
-      
+
+      // Populate filter dropdowns
+      this.populateFilters();
+
       this.renderOrganisations();
-      
+
       console.log(`✅ Loaded ${STATE.allOrganisations.length} organisations (across ${page} pages)`);
       
     } catch (error) {
       console.error('Error loading organisations:', error);
       console.error('Error details:', error.details, error.hint, error.message);
       utils.showToast('Failed to load organisations: ' + error.message, 'error');
-      utils.showEmptyState('orgsTableBody', 6, 'Failed to load organisations', 'bi-exclamation-triangle');
+      utils.showEmptyState('orgsTableBody', 7, 'Failed to load organisations', 'bi-exclamation-triangle');
     } finally {
       utils.hideLoading();
     }
   },
 
   /**
-   * Filter organisations based on search
+   * Populate filter dropdowns with unique values
+   */
+  populateFilters() {
+    // Populate sector filter
+    utils.populateFilter(
+      STATE.allOrganisations,
+      'sector',
+      'orgSectorFilterSelect',
+      'All Sectors'
+    );
+
+    // Populate region filter
+    utils.populateFilter(
+      STATE.allOrganisations,
+      'region',
+      'orgRegionFilterSelect',
+      'All Regions'
+    );
+  },
+
+  /**
+   * Filter organisations based on sector, region, and search
    */
   filterOrganisations() {
+    const sector = document.getElementById('orgSectorFilterSelect').value;
+    const region = document.getElementById('orgRegionFilterSelect').value;
     const search = document.getElementById('orgSearchBox').value.toLowerCase().trim();
-    
-    if (!search) {
-      STATE.filteredOrganisations = STATE.allOrganisations;
-    } else {
-      STATE.filteredOrganisations = STATE.allOrganisations.filter(org => {
+
+    STATE.filteredOrganisations = STATE.allOrganisations.filter(org => {
+      // Sector filter
+      if (sector && org.sector !== sector) return false;
+
+      // Region filter
+      if (region && org.region !== region) return false;
+
+      // Search filter
+      if (search) {
         const companyName = org.company_name?.toLowerCase() || '';
         const contact = org.contact_name?.toLowerCase() || '';
         const email = org.email?.toLowerCase() || '';
-        
-        return companyName.includes(search) || 
-               contact.includes(search) || 
-               email.includes(search);
-      });
-    }
-    
+
+        if (!companyName.includes(search) &&
+            !contact.includes(search) &&
+            !email.includes(search)) {
+          return false;
+        }
+      }
+
+      return true;
+    });
+
     this.renderOrganisations();
   },
 
@@ -92,9 +127,9 @@ const orgsModule = {
     const count = document.getElementById('orgsCount');
     
     count.textContent = STATE.filteredOrganisations.length;
-    
+
     if (STATE.filteredOrganisations.length === 0) {
-      utils.showEmptyState('orgsTableBody', 6, 'No organisations found');
+      utils.showEmptyState('orgsTableBody', 7, 'No organisations found');
       return;
     }
     
@@ -118,6 +153,11 @@ const orgsModule = {
                 ${utils.escapeHtml(org.company_name || 'N/A')}
               </a>
             </div>
+          </td>
+          <td>
+            <span class="badge bg-info-subtle text-info">
+              <i class="bi bi-briefcase me-1"></i>${utils.escapeHtml(org.sector || '-')}
+            </span>
           </td>
           <td>
             <div>${utils.escapeHtml(org.contact_name || '-')}</div>
@@ -352,7 +392,7 @@ const orgsModule = {
                   ${awards.map(award => `
                     <tr>
                       <td><span class="badge bg-primary-subtle text-primary">${award.year}</span></td>
-                      <td>${utils.escapeHtml(award.award_category)}</td>
+                      <td>${utils.escapeHtml(award.award_name)}</td>
                       <td><span class="badge bg-info-subtle text-info">${utils.escapeHtml(award.sector)}</span></td>
                       <td>${utils.getStatusBadge(award.status)}</td>
                       <td>${orgsModule.getPackageBadge(award.package_type)}</td>

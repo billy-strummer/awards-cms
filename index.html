@@ -782,14 +782,35 @@
             <p class="section-subtitle">View and manage registered companies</p>
           </div>
 
-          <!-- Search Section -->
+          <!-- Filters Section -->
           <div class="filters-section">
             <div class="row g-3">
-              <div class="col-md-6">
+              <!-- Main Dropdown: Sector -->
+              <div class="col-md-4">
+                <label for="orgSectorFilterSelect" class="form-label">
+                  <i class="bi bi-briefcase me-1"></i>Sector
+                </label>
+                <select class="form-select" id="orgSectorFilterSelect" onchange="orgsModule.filterOrganisations()">
+                  <option value="">All Sectors</option>
+                </select>
+              </div>
+
+              <!-- Smaller Dropdown: Region -->
+              <div class="col-md-3">
+                <label for="orgRegionFilterSelect" class="form-label">
+                  <i class="bi bi-geo-alt me-1"></i>Region
+                </label>
+                <select class="form-select form-select-sm" id="orgRegionFilterSelect" onchange="orgsModule.filterOrganisations()">
+                  <option value="">All Regions</option>
+                </select>
+              </div>
+
+              <!-- Search Bar -->
+              <div class="col-md-5">
                 <label for="orgSearchBox" class="form-label">
                   <i class="bi bi-search me-1"></i>Search Organisations
                 </label>
-                <input type="text" class="form-control" id="orgSearchBox" placeholder="Search by company name...">
+                <input type="text" class="form-control" id="orgSearchBox" placeholder="Search by company name, contact, email..." onkeyup="orgsModule.filterOrganisations()">
               </div>
             </div>
           </div>
@@ -810,6 +831,7 @@
                 <thead>
                   <tr>
                     <th>Company Name</th>
+                    <th>Sector</th>
                     <th>Contact</th>
                     <th>Email</th>
                     <th>Website</th>
@@ -819,7 +841,7 @@
                 </thead>
                 <tbody id="orgsTableBody">
                   <tr>
-                    <td colspan="6" class="text-center py-5">
+                    <td colspan="7" class="text-center py-5">
                       <div class="text-muted">
                         <i class="bi bi-inbox display-3 d-block mb-3 opacity-25"></i>
                         <p class="mb-0">Loading organisations...</p>

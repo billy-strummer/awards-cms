@@ -6,6 +6,8 @@
 const assignmentsModule = {
   currentAwardId: null,
   currentAwardName: null,
+  currentSortColumn: 'company',
+  currentSortDirection: 'asc',
 
   /**
    * Get all assignments for a specific award
@@ -139,6 +141,8 @@ const assignmentsModule = {
       // Store all assignments for filtering
       this.allAssignments = validAssignments;
       this.currentFilter = 'all';
+      this.currentSortColumn = 'company';
+      this.currentSortDirection = 'asc';
 
       // Render UI
       contentEl.innerHTML = `
@@ -171,8 +175,26 @@ const assignmentsModule = {
                   <i class="bi bi-star me-1"></i>New Nominees
                 </button>
               </div>
-              <div class="assigned-companies-list" id="assignedCompaniesList">
-                ${validAssignments.map(a => this.renderAssignedCompany(a)).join('')}
+
+              <div class="table-responsive">
+                <table class="table table-sm table-hover align-middle" style="font-size: 0.875rem;">
+                  <thead class="table-light">
+                    <tr>
+                      <th style="cursor: pointer;" onclick="assignmentsModule.sortAssignments('company')">
+                        Company <i class="bi bi-arrow-down-up ms-1"></i>
+                      </th>
+                      <th>Badges</th>
+                      <th style="cursor: pointer;" onclick="assignmentsModule.sortAssignments('votes')">
+                        Votes <i class="bi bi-arrow-down-up ms-1"></i>
+                      </th>
+                      <th>Contact</th>
+                      <th class="text-center">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody id="assignedCompaniesList">
+                    ${validAssignments.map(a => this.renderAssignedCompany(a)).join('')}
+                  </tbody>
+                </table>
               </div>
             `}
           </div>
@@ -226,68 +248,95 @@ const assignmentsModule = {
   },
 
   /**
-   * Render assigned company card
+   * Render assigned company as table row
    */
   renderAssignedCompany(assignment) {
     const org = assignment.organisations;
-    const statusBadge = this.getStatusBadge(assignment.status);
-    
+    const voteCount = assignment.public_vote_count || 0;
+
+    // Collect all badges
+    const badges = [];
+
+    // Winner position badge (gold/silver/bronze)
+    const positionBadge = this.getWinnerPositionBadge(assignment);
+    if (positionBadge) badges.push(positionBadge);
+
+    // Status badge
+    badges.push(this.getStatusBadge(assignment.status));
+
+    // Nomination type badges
+    if (assignment.is_previous_winner) {
+      badges.push('<span class="badge bg-warning text-dark" title="Previous Winner"><i class="bi bi-trophy"></i></span>');
+    }
+    if (assignment.nomination_source === 'self_nomination') {
+      badges.push('<span class="badge bg-info" title="Self Nominated"><i class="bi bi-hand-index"></i></span>');
+    }
+
+    // Multi-category badge
+    const otherNominations = assignment.other_nominations || [];
+    if (otherNominations.length > 0) {
+      const otherAwardsList = otherNominations.map(award => utils.escapeHtml(award.award_name)).join(', ');
+      badges.push(`<span class="badge" style="background-color: #e7d5ff; color: #7c3aed;" title="Also in: ${otherAwardsList}" data-bs-toggle="tooltip"><i class="bi bi-clipboard2-check"></i> +${otherNominations.length}</span>`);
+    }
+
+    // Contact info
+    const contactParts = [];
+    if (org.email) contactParts.push(`<a href="mailto:${utils.escapeHtml(org.email)}" class="text-decoration-none">${utils.escapeHtml(org.email)}</a>`);
+    if (org.contact_phone) contactParts.push(`<a href="tel:${utils.escapeHtml(org.contact_phone)}" class="text-decoration-none"><i class="bi bi-telephone"></i></a>`);
+    const contactInfo = contactParts.length > 0 ? contactParts.join(' ') : '<span class="text-muted">No contact</span>';
+
     return `
-      <div class="card mb-2 assignment-card">
-        <div class="card-body p-3">
-          <div class="d-flex justify-content-between align-items-start">
-            <div class="flex-grow-1">
-              <div class="d-flex align-items-center mb-2">
-                ${org.logo_url ? 
-                  `<img src="${org.logo_url}" alt="${utils.escapeHtml(org.company_name)}" 
-                    style="width: 40px; height: 40px; object-fit: contain; margin-right: 12px;">` : 
-                  `<div class="company-initial-avatar me-2">${org.company_name.charAt(0)}</div>`
-                }
-                <div>
-                  <h6 class="mb-0">${utils.escapeHtml(org.company_name)}</h6>
-                  <small class="text-muted">${utils.escapeHtml(org.email || 'No email')}</small>
-                </div>
-              </div>
-              
-              <div class="d-flex gap-2 align-items-center mb-2 flex-wrap">
-                ${statusBadge}
-                ${this.getWinnerPositionBadge(assignment)}
-                ${assignment.judge_score ?
-                  `<span class="badge bg-info-subtle text-info">
-                    <i class="bi bi-star-fill me-1"></i>${assignment.judge_score}/10
-                  </span>` : ''}
-                ${this.getNominationBadges(assignment)}
-              </div>
-
-              ${assignment.nomination_date ?
-                `<small class="text-muted d-block mb-2">
-                  <i class="bi bi-calendar-event me-1"></i>Nominated: ${new Date(assignment.nomination_date).toLocaleDateString()}
-                </small>` : ''}
-
-              ${this.getVoteCount(assignment)}
-              ${this.getMultiCategoryBadge(assignment)}
-
-              <div class="btn-group btn-group-sm" role="group">
-                <button class="btn btn-outline-primary" 
-                  onclick="assignmentsModule.changeStatus('${assignment.id}', 'shortlisted')"
-                  title="Mark as Shortlisted">
-                  <i class="bi bi-star"></i> Shortlist
-                </button>
-                <button class="btn btn-outline-success" 
-                  onclick="assignmentsModule.changeStatus('${assignment.id}', 'winner')"
-                  title="Mark as Winner">
-                  <i class="bi bi-trophy"></i> Winner
-                </button>
-                <button class="btn btn-outline-danger" 
-                  onclick="assignmentsModule.removeAssignment('${assignment.id}')"
-                  title="Remove">
-                  <i class="bi bi-trash"></i>
-                </button>
-              </div>
-            </div>
+      <tr>
+        <td>
+          <div class="d-flex align-items-center">
+            ${org.logo_url ?
+              `<img src="${org.logo_url}" alt="${utils.escapeHtml(org.company_name)}"
+                style="width: 24px; height: 24px; object-fit: contain; margin-right: 8px;">` :
+              `<div style="width: 24px; height: 24px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                color: white; border-radius: 4px; display: flex; align-items: center; justify-content: center;
+                font-weight: 600; font-size: 0.75rem; margin-right: 8px;">${org.company_name.charAt(0)}</div>`
+            }
+            <span class="fw-semibold">${utils.escapeHtml(org.company_name)}</span>
           </div>
-        </div>
-      </div>
+        </td>
+        <td>
+          <div class="d-flex gap-1 flex-wrap">
+            ${badges.join('')}
+          </div>
+        </td>
+        <td>
+          <span class="badge bg-light text-dark">
+            <i class="bi bi-hand-thumbs-up me-1"></i>${voteCount.toLocaleString()}
+          </span>
+        </td>
+        <td style="font-size: 0.8rem;">
+          ${contactInfo}
+        </td>
+        <td>
+          <div class="btn-group btn-group-sm" role="group">
+            <button class="btn btn-outline-primary btn-sm"
+              onclick="assignmentsModule.changeStatus('${assignment.id}', 'shortlisted')"
+              title="Mark as Shortlisted">
+              <i class="bi bi-star"></i>
+            </button>
+            <button class="btn btn-outline-success btn-sm"
+              onclick="assignmentsModule.changeStatus('${assignment.id}', 'winner')"
+              title="Mark as Winner">
+              <i class="bi bi-trophy"></i>
+            </button>
+            <button class="btn btn-outline-secondary btn-sm"
+              onclick="orgsModule.viewProfile('${org.id}')"
+              title="View Profile">
+              <i class="bi bi-eye"></i>
+            </button>
+            <button class="btn btn-outline-danger btn-sm"
+              onclick="assignmentsModule.removeAssignment('${assignment.id}')"
+              title="Remove">
+              <i class="bi bi-trash"></i>
+            </button>
+          </div>
+        </td>
+      </tr>
     `;
   },
 
@@ -377,6 +426,71 @@ const assignmentsModule = {
       listContainer.innerHTML = filtered.map(a => this.renderAssignedCompany(a)).join('');
       countEl.textContent = filtered.length;
     }
+  },
+
+  /**
+   * Sort assignments by column
+   */
+  sortAssignments(column) {
+    // Toggle direction if clicking same column
+    if (this.currentSortColumn === column) {
+      this.currentSortDirection = this.currentSortDirection === 'asc' ? 'desc' : 'asc';
+    } else {
+      this.currentSortColumn = column;
+      this.currentSortDirection = 'asc';
+    }
+
+    // Get currently displayed assignments (respects filters)
+    const listContainer = document.getElementById('assignedCompaniesList');
+    if (!listContainer) return;
+
+    // Re-filter to get current filtered set
+    let filtered = this.allAssignments;
+
+    switch(this.currentFilter) {
+      case 'self_nomination':
+        filtered = this.allAssignments.filter(a => a.nomination_source === 'self_nomination');
+        break;
+      case 'previous_winner':
+        filtered = this.allAssignments.filter(a => a.is_previous_winner === true);
+        break;
+      case 'new':
+        filtered = this.allAssignments.filter(a => !a.is_previous_winner);
+        break;
+      case 'all':
+      default:
+        filtered = this.allAssignments;
+        break;
+    }
+
+    // Sort the filtered assignments
+    filtered.sort((a, b) => {
+      let aVal, bVal;
+
+      switch(column) {
+        case 'company':
+          aVal = (a.organisations?.company_name || '').toLowerCase();
+          bVal = (b.organisations?.company_name || '').toLowerCase();
+          break;
+        case 'votes':
+          aVal = a.public_vote_count || 0;
+          bVal = b.public_vote_count || 0;
+          break;
+        case 'position':
+          aVal = a.winner_position || 999;
+          bVal = b.winner_position || 999;
+          break;
+        default:
+          return 0;
+      }
+
+      if (aVal < bVal) return this.currentSortDirection === 'asc' ? -1 : 1;
+      if (aVal > bVal) return this.currentSortDirection === 'asc' ? 1 : -1;
+      return 0;
+    });
+
+    // Re-render
+    listContainer.innerHTML = filtered.map(a => this.renderAssignedCompany(a)).join('');
   },
 
   /**

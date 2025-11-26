@@ -19,6 +19,46 @@ const entryFormApp = {
    */
   async initialize() {
     console.log('Initializing entry form...');
+
+    // Populate sectors from config
+    this.populateSectors();
+
+    // Populate regions from config
+    this.populateRegions();
+  },
+
+  /**
+   * Populate sectors dropdown from config
+   */
+  populateSectors() {
+    const sectorSelect = document.getElementById('sector');
+    if (!window.SECTORS || window.SECTORS.length === 0) {
+      console.warn('No sectors found in config');
+      return;
+    }
+
+    const options = window.SECTORS.map(sector =>
+      `<option value="${this.escapeHtml(sector)}">${this.escapeHtml(sector)}</option>`
+    ).join('');
+
+    sectorSelect.innerHTML = '<option value="">Choose your sector...</option>' + options;
+  },
+
+  /**
+   * Populate regions dropdown from config
+   */
+  populateRegions() {
+    const regionSelect = document.getElementById('region');
+    if (!window.REGIONS || window.REGIONS.length === 0) {
+      console.warn('No regions found in config');
+      return;
+    }
+
+    const options = window.REGIONS.map(region =>
+      `<option value="${this.escapeHtml(region)}">${this.escapeHtml(region)}</option>`
+    ).join('');
+
+    regionSelect.innerHTML = '<option value="">Choose your region...</option>' + options;
   },
 
   /**
@@ -212,7 +252,7 @@ const entryFormApp = {
       // Fetch active awards from database
       const { data: awards, error } = await supabase
         .from('awards')
-        .select('id, award_name, category, description, entry_fee')
+        .select('id, award_name, category, description, entry_fee, sector, year')
         .eq('is_active', true)
         .order('award_name');
 
@@ -228,12 +268,38 @@ const entryFormApp = {
         return;
       }
 
+      // Filter awards by selected sector if awards have sector field
+      let filteredAwards = awards;
+      if (this.formData.sector) {
+        // Check if any awards have the sector field populated
+        const awardsWithSector = awards.filter(a => a.sector);
+        if (awardsWithSector.length > 0) {
+          // Filter by sector if the field exists
+          filteredAwards = awards.filter(a =>
+            !a.sector || a.sector === this.formData.sector
+          );
+        }
+      }
+
+      if (filteredAwards.length === 0) {
+        awardsList.innerHTML = `
+          <div class="alert alert-info">
+            <i class="bi bi-info-circle me-2"></i>
+            No awards found for the selected sector. Showing all available awards.
+          </div>
+        `;
+        filteredAwards = awards;
+      }
+
       // Render awards as selectable options
-      awardsList.innerHTML = awards.map(award => `
+      awardsList.innerHTML = filteredAwards.map(award => `
         <div class="award-option" onclick="entryFormApp.selectAward('${award.id}', this)">
-          <h5 class="mb-1">${this.escapeHtml(award.award_name)}</h5>
+          <h5 class="mb-1">${this.escapeHtml(award.award_name || award.category || 'Award')}</h5>
           ${award.description ? `<p class="text-muted small mb-1">${this.escapeHtml(award.description)}</p>` : ''}
-          ${award.entry_fee ? `<p class="mb-0"><strong>Entry Fee:</strong> £${award.entry_fee}</p>` : ''}
+          <div class="d-flex justify-content-between align-items-center">
+            ${award.entry_fee ? `<span><strong>Entry Fee:</strong> £${award.entry_fee}</span>` : '<span></span>'}
+            ${award.year ? `<small class="text-muted">${award.year}</small>` : ''}
+          </div>
         </div>
       `).join('');
 

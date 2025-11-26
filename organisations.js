@@ -167,8 +167,8 @@ const orgsModule = {
             ${org.email ? `<a href="mailto:${org.email}" class="text-decoration-none"><i class="bi bi-envelope me-1"></i>${utils.escapeHtml(org.email)}</a>` : '-'}
           </td>
           <td>
-            ${org.website ? 
-              `<a href="${org.website}" target="_blank" rel="noopener noreferrer" class="text-decoration-none">
+            ${org.website ?
+              `<a href="${org.website.startsWith('http://') || org.website.startsWith('https://') ? org.website : 'https://' + org.website}" target="_blank" rel="noopener noreferrer" class="text-decoration-none">
                 <i class="bi bi-globe me-1"></i>${utils.truncate(org.website, 30)}
                 <i class="bi bi-box-arrow-up-right ms-1 small"></i>
               </a>` : '-'}
@@ -330,12 +330,12 @@ const orgsModule = {
                   <strong>Website:</strong>
                   <span class="view-mode" id="viewWebsite">
                     ${org.website ?
-                      `<a href="${org.website}" target="_blank" rel="noopener noreferrer">
+                      `<a href="${org.website.startsWith('http://') || org.website.startsWith('https://') ? org.website : 'https://' + org.website}" target="_blank" rel="noopener noreferrer">
                         ${utils.escapeHtml(org.website)} <i class="bi bi-box-arrow-up-right small"></i>
                       </a>` : 'N/A'}
                   </span>
                   <input type="url" class="form-control form-control-sm edit-mode" id="editWebsite"
-                    value="${utils.escapeHtml(org.website || '')}" style="display: none;">
+                    value="${utils.escapeHtml(org.website || '')}" style="display: none;" placeholder="e.g., https://example.com">
                 </div>
               </div>
             </div>

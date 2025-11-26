@@ -174,6 +174,11 @@ const paymentsModule = {
       document.getElementById('invoiceDate').value = today;
       document.getElementById('invoiceDueDate').value = dueDate.toISOString().split('T')[0];
 
+      // Reset discount fields
+      document.getElementById('invoiceDiscount').value = '0';
+      document.getElementById('customDiscountRow').style.display = 'none';
+      document.getElementById('invoiceDiscountCustom').value = '';
+
       // Load organisations for dropdown
       const { data: orgs, error } = await STATE.client
         .from('organisations')
@@ -192,6 +197,33 @@ const paymentsModule = {
       console.error('Error opening invoice creation modal:', error);
       utils.showToast('Error opening invoice modal: ' + error.message, 'error');
     }
+  },
+
+  /**
+   * Handle discount dropdown change
+   */
+  handleDiscountChange() {
+    const discountSelect = document.getElementById('invoiceDiscount');
+    const customDiscountRow = document.getElementById('customDiscountRow');
+
+    if (discountSelect.value === 'custom') {
+      customDiscountRow.style.display = 'block';
+      document.getElementById('invoiceDiscountCustom').focus();
+    } else {
+      customDiscountRow.style.display = 'none';
+      document.getElementById('invoiceDiscountCustom').value = '';
+    }
+  },
+
+  /**
+   * Get current discount percentage
+   */
+  getDiscountPercentage() {
+    const discountSelect = document.getElementById('invoiceDiscount');
+    if (discountSelect.value === 'custom') {
+      return parseFloat(document.getElementById('invoiceDiscountCustom').value) || 0;
+    }
+    return parseFloat(discountSelect.value) || 0;
   },
 
   /**
@@ -278,10 +310,13 @@ const paymentsModule = {
         return;
       }
 
-      // Calculate totals
+      // Calculate totals with discount
       const subtotal = lineItems.reduce((sum, item) => sum + item.line_total, 0);
-      const taxAmount = subtotal * (taxRate / 100);
-      const totalAmount = subtotal + taxAmount;
+      const discountPercentage = this.getDiscountPercentage();
+      const discountAmount = subtotal * (discountPercentage / 100);
+      const subtotalAfterDiscount = subtotal - discountAmount;
+      const taxAmount = subtotalAfterDiscount * (taxRate / 100);
+      const totalAmount = subtotalAfterDiscount + taxAmount;
 
       // Generate invoice number
       const { data: invoiceNumberData, error: genError } = await STATE.client
@@ -302,6 +337,8 @@ const paymentsModule = {
           invoice_type: invoiceType,
           package_type: packageType || null,
           subtotal: subtotal,
+          discount_percentage: discountPercentage,
+          discount_amount: discountAmount,
           tax_rate: taxRate,
           tax_amount: taxAmount,
           total_amount: totalAmount,

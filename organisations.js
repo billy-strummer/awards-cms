@@ -343,7 +343,7 @@ const orgsModule = {
                 </button>
                 ${org.website ?
                   `<button type="button" class="btn btn-sm btn-outline-success w-100 mb-2"
-                    onclick="orgsModule.fetchLogoFromWebsite('${org.id}', '${utils.escapeHtml(org.website).replace(/'/g, "\\'")}', '${utils.escapeHtml(org.company_name).replace(/'/g, "\\'")}')">
+                    onclick="orgsModule.fetchLogoFromWebsite('${org.id}')">
                     <i class="bi bi-globe me-1"></i>Fetch from Website
                   </button>` : ''
                 }
@@ -483,7 +483,7 @@ const orgsModule = {
                       <td>
                         <a href="javascript:void(0);"
                            class="text-decoration-none fw-semibold text-primary"
-                           onclick="orgsModule.navigateToAward('${award.id}', '${utils.escapeHtml(award.award_name || 'Award').replace(/'/g, "\\'")}')">
+                           onclick="assignmentsModule.openAssignmentsModal('${award.id}', '${utils.escapeHtml(award.award_name || 'Award').replace(/'/g, "\\'")}')">
                           ${utils.escapeHtml(award.award_name)}
                         </a>
                       </td>
@@ -1411,6 +1411,63 @@ const orgsModule = {
     } catch (error) {
       console.error('Error saving organisation changes:', error);
       utils.showToast('Failed to save changes: ' + error.message, 'error');
+    } finally {
+      utils.hideLoading();
+    }
+  },
+
+  /**
+   * Extract and set company logo from website
+   */
+  async fetchLogoFromWebsite(orgId) {
+    try {
+      const org = STATE.allOrganisations.find(o => o.id === orgId);
+      if (!org || !org.website) {
+        utils.showToast('Please add a website URL first', 'warning');
+        return;
+      }
+
+      utils.showLoading('Fetching logo...');
+
+      // Clean up website URL
+      let websiteUrl = org.website.trim();
+      if (!websiteUrl.startsWith('http')) {
+        websiteUrl = 'https://' + websiteUrl;
+      }
+
+      // Extract domain
+      const domain = new URL(websiteUrl).hostname;
+
+      // Try Clearbit first (best quality), then fallback to Google favicon
+      const logoUrl = `https://logo.clearbit.com/${domain}`;
+
+      // Update database
+      const { error } = await STATE.client
+        .from('organisations')
+        .update({ logo_url: logoUrl })
+        .eq('id', orgId);
+
+      if (error) throw error;
+
+      // Update local state
+      const orgIndex = STATE.allOrganisations.findIndex(o => o.id === orgId);
+      if (orgIndex !== -1) {
+        STATE.allOrganisations[orgIndex].logo_url = logoUrl;
+      }
+
+      const filteredIndex = STATE.filteredOrganisations.findIndex(o => o.id === orgId);
+      if (filteredIndex !== -1) {
+        STATE.filteredOrganisations[filteredIndex].logo_url = logoUrl;
+      }
+
+      utils.showToast('Logo fetched successfully!', 'success');
+
+      // Refresh the profile view
+      await this.openCompanyProfile(orgId, org.company_name);
+
+    } catch (error) {
+      console.error('Error fetching logo:', error);
+      utils.showToast('Error fetching logo: ' + error.message, 'error');
     } finally {
       utils.hideLoading();
     }

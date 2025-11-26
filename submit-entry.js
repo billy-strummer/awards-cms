@@ -49,26 +49,32 @@ const entryFormApp = {
    */
   populateRegions() {
     const regionSelect = document.getElementById('region');
-    if ((!window.COUNTIES || window.COUNTIES.length === 0) && (!window.CITIES || window.CITIES.length === 0)) {
+    if (!window.REGIONS || window.REGIONS.length === 0) {
       console.warn('No regions found in config');
       return;
     }
 
+    // Split regions into counties and cities for this form only
+    const cities = ['Belfast', 'Birmingham', 'Bournemouth', 'Bradford', 'Brighton & Hove', 'Bristol', 'Cardiff', 'Coventry', 'Edinburgh', 'Glasgow', 'Hull', 'Leeds', 'Leicester', 'Liverpool', 'Manchester', 'Newcastle upon Tyne', 'Nottingham', 'Sheffield', 'Southampton'];
+
+    const counties = window.REGIONS.filter(region => !cities.includes(region));
+    const cityList = window.REGIONS.filter(region => cities.includes(region));
+
     let html = '<option value="">Choose your region...</option>';
 
     // Counties optgroup
-    if (window.COUNTIES && window.COUNTIES.length > 0) {
+    if (counties.length > 0) {
       html += '<optgroup label="Counties A-Z">';
-      window.COUNTIES.forEach(county => {
+      counties.forEach(county => {
         html += `<option value="${this.escapeHtml(county)}">${this.escapeHtml(county)}</option>`;
       });
       html += '</optgroup>';
     }
 
     // Cities optgroup
-    if (window.CITIES && window.CITIES.length > 0) {
+    if (cityList.length > 0) {
       html += '<optgroup label="Cities A-Z">';
-      window.CITIES.forEach(city => {
+      cityList.forEach(city => {
         html += `<option value="${this.escapeHtml(city)}">${this.escapeHtml(city)}</option>`;
       });
       html += '</optgroup>';

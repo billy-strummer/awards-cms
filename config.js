@@ -40,37 +40,56 @@ const SECTORS = [
   'SPECIALIST TRADES'
 ];
 
-const COUNTIES = [
+const REGIONS = [
   'Bedfordshire',
+  'Belfast',
   'Berkshire',
+  'Birmingham',
+  'Bournemouth',
+  'Bradford',
+  'Brighton & Hove',
+  'Bristol',
   'Buckinghamshire',
   'Cambridgeshire',
+  'Cardiff',
   'Cheshire',
   'Cornwall',
   'County Durham',
+  'Coventry',
   'Cumbria',
   'Derbyshire',
   'Devon',
   'Dorset',
+  'Edinburgh',
   'Essex',
+  'Glasgow',
   'Gloucestershire',
   'Hampshire',
   'Herefordshire',
   'Hertfordshire',
+  'Hull',
   'Isle of Wight',
   'Kent',
   'Lancashire',
+  'Leeds',
+  'Leicester',
   'Leicestershire',
   'Lincolnshire',
+  'Liverpool',
+  'Manchester',
+  'Newcastle upon Tyne',
   'Norfolk',
   'Northamptonshire',
   'Northumberland',
+  'Nottingham',
   'Nottinghamshire',
   'Oxfordshire',
   'Rutland',
+  'Sheffield',
   'Shropshire',
   'Somerset',
   'South Yorkshire',
+  'Southampton',
   'Staffordshire',
   'Suffolk',
   'Surrey',
@@ -80,31 +99,6 @@ const COUNTIES = [
   'Worcestershire',
   'Yorkshire (combined)'
 ];
-
-const CITIES = [
-  'Belfast',
-  'Birmingham',
-  'Bournemouth',
-  'Bradford',
-  'Brighton & Hove',
-  'Bristol',
-  'Cardiff',
-  'Coventry',
-  'Edinburgh',
-  'Glasgow',
-  'Hull',
-  'Leeds',
-  'Leicester',
-  'Liverpool',
-  'Manchester',
-  'Newcastle upon Tyne',
-  'Nottingham',
-  'Sheffield',
-  'Southampton'
-];
-
-// Combined regions for backward compatibility
-const REGIONS = [...COUNTIES, ...CITIES];
 
 // Application State
 const STATE = {
@@ -129,7 +123,5 @@ window.MEDIA_TYPES = MEDIA_TYPES;
 window.INACTIVITY_TIMEOUT = INACTIVITY_TIMEOUT;
 window.YEARS = YEARS;
 window.SECTORS = SECTORS;
-window.COUNTIES = COUNTIES;
-window.CITIES = CITIES;
 window.REGIONS = REGIONS;
 window.STATE = STATE;

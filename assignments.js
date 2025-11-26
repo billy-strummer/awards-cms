@@ -325,7 +325,7 @@ const assignmentsModule = {
               <i class="bi bi-trophy"></i>
             </button>
             <button class="btn btn-outline-secondary btn-sm"
-              onclick="orgsModule.viewProfile('${org.id}')"
+              onclick="orgsModule.openCompanyProfile('${org.id}', '${utils.escapeHtml(org.company_name).replace(/'/g, "\\'")}')"
               title="View Profile">
               <i class="bi bi-eye"></i>
             </button>

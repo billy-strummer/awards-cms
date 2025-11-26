@@ -84,6 +84,57 @@ const entryFormApp = {
   },
 
   /**
+   * Filter regions based on search input
+   */
+  filterRegions(searchText) {
+    const regionSelect = document.getElementById('region');
+    const options = regionSelect.querySelectorAll('option');
+    const optgroups = regionSelect.querySelectorAll('optgroup');
+
+    searchText = searchText.toLowerCase().trim();
+
+    // If search is empty, show all options and optgroups
+    if (!searchText) {
+      options.forEach(option => {
+        option.style.display = '';
+      });
+      optgroups.forEach(optgroup => {
+        optgroup.style.display = '';
+      });
+      return;
+    }
+
+    // Filter options
+    options.forEach(option => {
+      if (option.value === '') {
+        // Keep the placeholder option
+        option.style.display = '';
+        return;
+      }
+
+      const optionText = option.textContent.toLowerCase();
+      if (optionText.includes(searchText)) {
+        option.style.display = '';
+      } else {
+        option.style.display = 'none';
+      }
+    });
+
+    // Hide optgroups that have no visible options
+    optgroups.forEach(optgroup => {
+      const visibleOptions = Array.from(optgroup.querySelectorAll('option')).filter(
+        opt => opt.style.display !== 'none'
+      );
+
+      if (visibleOptions.length === 0) {
+        optgroup.style.display = 'none';
+      } else {
+        optgroup.style.display = '';
+      }
+    });
+  },
+
+  /**
    * Go to next step
    */
   async nextStep(currentStepNum) {

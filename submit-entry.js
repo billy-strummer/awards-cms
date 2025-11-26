@@ -282,12 +282,23 @@ const entryFormApp = {
     `;
 
     try {
-      // Fetch active awards from database
-      const { data: awards, error } = await supabase
+      // Fetch active awards filtered by sector and region
+      let query = supabase
         .from('awards')
-        .select('id, award_name, category, description, entry_fee, sector, year')
-        .eq('is_active', true)
-        .order('award_name');
+        .select('id, award_name, description, entry_fee, sector, year, region, status')
+        .eq('status', 'Active');
+
+      // Filter by selected sector
+      if (this.formData.sector) {
+        query = query.eq('sector', this.formData.sector);
+      }
+
+      // Filter by selected region
+      if (this.formData.region) {
+        query = query.eq('region', this.formData.region);
+      }
+
+      const { data: awards, error } = await query.order('award_name');
 
       if (error) throw error;
 
@@ -295,39 +306,18 @@ const entryFormApp = {
         awardsList.innerHTML = `
           <div class="alert alert-warning">
             <i class="bi bi-exclamation-triangle me-2"></i>
-            No awards available at this time. Please check back later.
+            No awards found for ${this.formData.sector || 'selected sector'} in ${this.formData.region || 'selected region'}. Please check your selections.
           </div>
         `;
         return;
       }
 
-      // Filter awards by selected sector if awards have sector field
       let filteredAwards = awards;
-      if (this.formData.sector) {
-        // Check if any awards have the sector field populated
-        const awardsWithSector = awards.filter(a => a.sector);
-        if (awardsWithSector.length > 0) {
-          // Filter by sector if the field exists
-          filteredAwards = awards.filter(a =>
-            !a.sector || a.sector === this.formData.sector
-          );
-        }
-      }
-
-      if (filteredAwards.length === 0) {
-        awardsList.innerHTML = `
-          <div class="alert alert-info">
-            <i class="bi bi-info-circle me-2"></i>
-            No awards found for the selected sector. Showing all available awards.
-          </div>
-        `;
-        filteredAwards = awards;
-      }
 
       // Render awards as selectable options
       awardsList.innerHTML = filteredAwards.map(award => `
         <div class="award-option" onclick="entryFormApp.selectAward('${award.id}', this)">
-          <h5 class="mb-1">${this.escapeHtml(award.award_name || award.category || 'Award')}</h5>
+          <h5 class="mb-1">${this.escapeHtml(award.award_name || 'Award')}</h5>
           ${award.description ? `<p class="text-muted small mb-1">${this.escapeHtml(award.description)}</p>` : ''}
           <div class="d-flex justify-content-between align-items-center">
             ${award.entry_fee ? `<span><strong>Entry Fee:</strong> £${award.entry_fee}</span>` : '<span></span>'}

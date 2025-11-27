@@ -246,6 +246,7 @@ const entriesModule = {
     this.currentFilters.status = document.getElementById('entriesStatusFilter').value;
     this.currentFilters.award = document.getElementById('entriesAwardFilter').value;
     this.currentFilters.year = document.getElementById('entriesYearFilter').value;
+    this.currentFilters.selfNom = document.getElementById('entriesSelfNomFilter').value;
 
     this.applyFilters();
   },
@@ -276,6 +277,16 @@ const entriesModule = {
       // Year filter
       if (this.currentFilters.year && entry.year !== parseInt(this.currentFilters.year)) {
         return false;
+      }
+
+      // Self-nomination filter
+      if (this.currentFilters.selfNom) {
+        if (this.currentFilters.selfNom === 'self_nom' && !entry.is_self_nomination) {
+          return false;
+        }
+        if (this.currentFilters.selfNom === 'standard' && entry.is_self_nomination) {
+          return false;
+        }
       }
 
       // Search filter

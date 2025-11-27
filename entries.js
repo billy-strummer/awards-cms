@@ -45,7 +45,7 @@ const entriesModule = {
     const { data: awards } = await supabase
       .from('awards')
       .select('id, award_name')
-      .eq('is_active', true)
+      .eq('status', 'Active')
       .order('award_name');
 
     const awardFilter = document.getElementById('entriesAwardFilter');
@@ -78,7 +78,7 @@ const entriesModule = {
         .select(`
           *,
           organisations(company_name, logo_url),
-          awards(award_name, category),
+          awards(award_name, sector, region),
           invoices(status, total_amount)
         `)
         .order('submission_date', { ascending: false });

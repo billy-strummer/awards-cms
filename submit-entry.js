@@ -465,7 +465,8 @@ const entryFormApp = {
           status: 'submitted',
           payment_status: 'pending',
           submission_date: new Date().toISOString(),
-          allow_public_voting: false
+          allow_public_voting: false,
+          year: new Date().getFullYear()
         })
         .select()
         .single();

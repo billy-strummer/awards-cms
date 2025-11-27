@@ -475,10 +475,17 @@ const entryFormApp = {
 
       // Show success
       document.getElementById('entryReference').textContent = entryNumber;
-      this.goToStep(8); // Success step (stepSuccess)
 
-      // Hide success step and show it
+      // Hide all steps
+      document.querySelectorAll('.form-step').forEach(step => {
+        step.classList.remove('active');
+      });
+
+      // Show success step
       document.getElementById('stepSuccess').classList.add('active');
+
+      // Scroll to top
+      window.scrollTo({ top: 0, behavior: 'smooth' });
 
     } catch (error) {
       console.error('Error submitting entry:', error);

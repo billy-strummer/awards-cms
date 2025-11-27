@@ -257,7 +257,8 @@ SELECT
   o.website,
   o.logo_url,
   a.award_name,
-  a.category,
+  a.sector,
+  a.region,
   COUNT(DISTINCT ef.id) as file_count,
   COUNT(DISTINCT js.id) as judge_count,
   AVG(js.total_score) as avg_judge_score
@@ -266,7 +267,7 @@ LEFT JOIN organisations o ON e.organisation_id = o.id
 LEFT JOIN awards a ON e.award_id = a.id
 LEFT JOIN entry_files ef ON e.id = ef.entry_id
 LEFT JOIN judge_scores js ON e.id = js.entry_id AND js.is_complete = true
-GROUP BY e.id, o.company_name, o.website, o.logo_url, a.award_name, a.category;
+GROUP BY e.id, o.company_name, o.website, o.logo_url, a.award_name, a.sector, a.region;
 
 -- Comments
 COMMENT ON TABLE entries IS 'Main entry submissions for awards';

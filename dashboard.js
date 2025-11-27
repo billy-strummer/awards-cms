@@ -246,6 +246,27 @@ const dashboardModule = {
     try {
       const activities = [];
 
+      // Get recent entries (last 5) - SELF-NOMINATIONS INCLUDED
+      const { data: recentEntries } = await STATE.client
+        .from('entries')
+        .select('*, organisations(company_name), awards(award_name)')
+        .order('created_at', { ascending: false })
+        .limit(5);
+
+      if (recentEntries) {
+        recentEntries.forEach(entry => {
+          const isSelfNom = entry.is_self_nomination;
+          activities.push({
+            type: 'entry',
+            icon: isSelfNom ? 'person-raised-hand' : 'file-earmark-text',
+            color: isSelfNom ? 'info' : 'warning',
+            title: isSelfNom ? 'New Self-Nomination' : 'New Entry',
+            description: `${entry.organisations?.company_name || 'Unknown'} - ${entry.awards?.award_name || 'Unknown Award'}`,
+            time: entry.created_at
+          });
+        });
+      }
+
       // Get recent awards (last 10)
       const { data: recentAwards } = await STATE.client
         .from('awards')
@@ -384,6 +405,23 @@ const dashboardModule = {
 
     try {
       const notifications = [];
+
+      // Check for pending self-nominations needing approval
+      const { count: pendingEntries } = await STATE.client
+        .from('entries')
+        .select('*', { count: 'exact', head: true })
+        .eq('status', 'submitted')
+        .eq('is_self_nomination', true);
+
+      if (pendingEntries > 0) {
+        notifications.push({
+          type: 'warning',
+          icon: 'person-raised-hand',
+          title: `${pendingEntries} Self-Nomination${pendingEntries > 1 ? 's' : ''} Pending`,
+          description: 'New self-nominations awaiting review',
+          action: () => this.navigateToSection('entries')
+        });
+      }
 
       // Check for untagged photos
       const { count: untaggedCount } = await STATE.client

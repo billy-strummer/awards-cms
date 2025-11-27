@@ -160,6 +160,9 @@ const entriesModule = {
       const awardName = entry.awards?.award_name || 'Unknown';
       const statusBadge = this.getStatusBadge(entry.status);
       const paymentBadge = this.getPaymentBadge(entry.payment_status);
+      const selfNomBadge = entry.is_self_nomination
+        ? '<span class="badge bg-info ms-2" title="Self-Nominated Entry"><i class="bi bi-person-raised-hand me-1"></i>Self-Nom</span>'
+        : '';
       const scoreDisplay = entry.average_score
         ? `${entry.average_score.toFixed(1)} <small>(${entry.total_scores || 0})</small>`
         : '<span class="text-muted">-</span>';
@@ -180,6 +183,7 @@ const entriesModule = {
           <td>
             <div class="text-truncate" style="max-width: 250px;" title="${entry.entry_title}">
               ${entry.entry_title}
+              ${selfNomBadge}
             </div>
           </td>
           <td>${statusBadge}</td>
@@ -242,6 +246,7 @@ const entriesModule = {
     this.currentFilters.status = document.getElementById('entriesStatusFilter').value;
     this.currentFilters.award = document.getElementById('entriesAwardFilter').value;
     this.currentFilters.year = document.getElementById('entriesYearFilter').value;
+    this.currentFilters.selfNom = document.getElementById('entriesSelfNomFilter').value;
 
     this.applyFilters();
   },
@@ -272,6 +277,16 @@ const entriesModule = {
       // Year filter
       if (this.currentFilters.year && entry.year !== parseInt(this.currentFilters.year)) {
         return false;
+      }
+
+      // Self-nomination filter
+      if (this.currentFilters.selfNom) {
+        if (this.currentFilters.selfNom === 'self_nom' && !entry.is_self_nomination) {
+          return false;
+        }
+        if (this.currentFilters.selfNom === 'standard' && entry.is_self_nomination) {
+          return false;
+        }
       }
 
       // Search filter

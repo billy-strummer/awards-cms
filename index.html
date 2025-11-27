@@ -1072,13 +1072,21 @@
                     <option value="">All Awards</option>
                   </select>
                 </div>
-                <div class="col-md-3">
+                <div class="col-md-2">
                   <label class="form-label">Year</label>
                   <select class="form-select" id="entriesYearFilter" onchange="entriesModule.filterEntries()">
                     <option value="">All Years</option>
                   </select>
                 </div>
-                <div class="col-md-3">
+                <div class="col-md-2">
+                  <label class="form-label">Type</label>
+                  <select class="form-select" id="entriesSelfNomFilter" onchange="entriesModule.filterEntries()">
+                    <option value="">All Entries</option>
+                    <option value="self_nom">Self-Nominations</option>
+                    <option value="standard">Standard Entries</option>
+                  </select>
+                </div>
+                <div class="col-md-2">
                   <label class="form-label">Search</label>
                   <input type="text" class="form-control" id="entriesSearchInput" placeholder="Search entries..." onkeyup="entriesModule.searchEntries()">
                 </div>

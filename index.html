@@ -179,6 +179,11 @@
         </button>
       </li>
       <li class="nav-item" role="presentation">
+        <button class="nav-link" id="email-templates-tab" data-bs-toggle="tab" data-bs-target="#email-templates" type="button" role="tab">
+          <i class="bi bi-envelope-paper me-2"></i>Email Templates
+        </button>
+      </li>
+      <li class="nav-item" role="presentation">
         <button class="nav-link" id="marketing-tab" data-bs-toggle="tab" data-bs-target="#marketing" type="button" role="tab">
           <i class="bi bi-megaphone me-2"></i>Marketing
         </button>
@@ -1916,6 +1921,57 @@
               <button class="btn btn-outline-info">
                 <i class="bi bi-file-earmark-spreadsheet me-2"></i>Export Winners (CSV)
               </button>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- ==================================================== -->
+      <!-- EMAIL TEMPLATES TAB -->
+      <!-- ==================================================== -->
+      <div class="tab-pane fade" id="email-templates" role="tabpanel">
+        <div class="container-fluid">
+
+          <!-- Page Header -->
+          <div class="section-header mb-4">
+            <h1 class="section-title">
+              <i class="bi bi-envelope-paper me-2"></i>Email Templates
+            </h1>
+            <p class="section-subtitle">Manage automated email templates with dynamic placeholders</p>
+          </div>
+
+          <!-- Template List -->
+          <div class="row">
+            <div class="col-md-4">
+              <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                  <h5 class="mb-0">Templates</h5>
+                  <button class="btn btn-sm btn-primary" onclick="emailTemplatesModule.newTemplate()">
+                    <i class="bi bi-plus-circle me-1"></i>New
+                  </button>
+                </div>
+                <div class="list-group list-group-flush" id="templatesList">
+                  <div class="text-center py-5">
+                    <i class="bi bi-hourglass-split display-4 d-block mb-2 opacity-25"></i>
+                    Loading templates...
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="col-md-8">
+              <div class="card">
+                <div class="card-header">
+                  <h5 class="mb-0" id="editorTitle">Select a template</h5>
+                </div>
+                <div class="card-body" id="templateEditor">
+                  <div class="text-center py-5 text-muted">
+                    <i class="bi bi-envelope display-1 opacity-25 d-block mb-3"></i>
+                    <p>Select a template from the list to edit</p>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
 
@@ -6298,6 +6354,7 @@ in recognition of excellence
   <script src="organisations.js"></script>
   <script src="winners.js"></script>
   <script src="entries.js"></script>
+  <script src="email-templates.js"></script>
   <script src="media-gallery-new.js"></script>
   <script src="social-media.js"></script>
   <script src="events.js"></script>

@@ -42,7 +42,7 @@ const entriesModule = {
    */
   async loadFilterOptions() {
     // Load awards for filter
-    const { data: awards } = await supabase
+    const { data: awards } = await STATE.client
       .from('awards')
       .select('id, award_name')
       .eq('status', 'Active')
@@ -55,7 +55,7 @@ const entriesModule = {
     }
 
     // Load years for filter
-    const { data: years } = await supabase
+    const { data: years } = await STATE.client
       .from('entries')
       .select('year')
       .order('year', { ascending: false });
@@ -73,7 +73,7 @@ const entriesModule = {
    */
   async loadEntries() {
     try {
-      const { data: entries, error } = await supabase
+      const { data: entries, error } = await STATE.client
         .from('entries')
         .select(`
           *,
@@ -101,24 +101,24 @@ const entriesModule = {
   async loadStats() {
     try {
       // Total entries
-      const { count: totalCount } = await supabase
+      const { count: totalCount } = await STATE.client
         .from('entries')
         .select('*', { count: 'exact', head: true });
 
       // Pending review (submitted or under_review)
-      const { count: pendingCount } = await supabase
+      const { count: pendingCount } = await STATE.client
         .from('entries')
         .select('*', { count: 'exact', head: true })
         .in('status', ['submitted', 'under_review']);
 
       // Shortlisted
-      const { count: shortlistedCount } = await supabase
+      const { count: shortlistedCount } = await STATE.client
         .from('entries')
         .select('*', { count: 'exact', head: true })
         .eq('status', 'shortlisted');
 
       // Winners
-      const { count: winnerCount } = await supabase
+      const { count: winnerCount } = await STATE.client
         .from('entries')
         .select('*', { count: 'exact', head: true })
         .eq('status', 'winner');
@@ -350,7 +350,7 @@ const entriesModule = {
    */
   async viewEntry(entryId) {
     try {
-      const { data: entry, error } = await supabase
+      const { data: entry, error } = await STATE.client
         .from('entries')
         .select(`
           *,
@@ -400,7 +400,7 @@ const entriesModule = {
     }
 
     try {
-      const { error } = await supabase
+      const { error } = await STATE.client
         .from('entries')
         .delete()
         .eq('id', entryId);
@@ -674,7 +674,7 @@ const entriesModule = {
    */
   async togglePublicVoting(entryId, enabled) {
     try {
-      const { error } = await supabase
+      const { error } = await STATE.client
         .from('entries')
         .update({ allow_public_voting: enabled })
         .eq('id', entryId);
@@ -705,7 +705,7 @@ const entriesModule = {
    */
   async togglePublicVisibility(entryId, isPublic) {
     try {
-      const { error } = await supabase
+      const { error } = await STATE.client
         .from('entries')
         .update({ is_public: isPublic })
         .eq('id', entryId);

@@ -378,9 +378,192 @@ const entriesModule = {
    * Show entry details modal
    */
   showEntryDetailsModal(entry) {
-    // TODO: Create a comprehensive modal to show all entry details
-    utils.showToast('Entry details modal - Coming soon', 'info');
-    console.log('Entry details:', entry);
+    const selfNomBadge = entry.is_self_nomination
+      ? '<span class="badge bg-info ms-2"><i class="bi bi-person-raised-hand me-1"></i>Self-Nomination</span>'
+      : '';
+
+    const modalContent = `
+      <div class="modal fade" id="entryDetailsModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+          <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+              <h5 class="modal-title">
+                <i class="bi bi-file-earmark-text me-2"></i>Entry Details
+                ${selfNomBadge}
+              </h5>
+              <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+              <!-- Entry Number & Status -->
+              <div class="row mb-4">
+                <div class="col-md-6">
+                  <h6 class="text-muted mb-1">Entry Number</h6>
+                  <p class="fs-5 fw-bold">${utils.escapeHtml(entry.entry_number || 'N/A')}</p>
+                </div>
+                <div class="col-md-6">
+                  <h6 class="text-muted mb-1">Status</h6>
+                  <p>${this.getStatusBadge(entry.status)}</p>
+                </div>
+              </div>
+
+              <hr>
+
+              <!-- Company Information -->
+              <h6 class="text-primary mb-3"><i class="bi bi-building me-2"></i>Company Information</h6>
+              <div class="row mb-3">
+                <div class="col-md-6">
+                  <strong>Company Name:</strong><br>
+                  ${utils.escapeHtml(entry.organisations?.company_name || 'N/A')}
+                </div>
+                <div class="col-md-6">
+                  <strong>Sector:</strong><br>
+                  ${utils.escapeHtml(entry.organisations?.sector || 'N/A')}
+                </div>
+              </div>
+              <div class="row mb-3">
+                <div class="col-md-6">
+                  <strong>Region:</strong><br>
+                  ${utils.escapeHtml(entry.organisations?.region || 'N/A')}
+                </div>
+                <div class="col-md-6">
+                  <strong>Status:</strong><br>
+                  ${utils.escapeHtml(entry.organisations?.status || 'N/A')}
+                </div>
+              </div>
+
+              <hr>
+
+              <!-- Award Information -->
+              <h6 class="text-primary mb-3"><i class="bi bi-trophy me-2"></i>Award Information</h6>
+              <div class="row mb-3">
+                <div class="col-md-12">
+                  <strong>Award Category:</strong><br>
+                  ${utils.escapeHtml(entry.awards?.award_name || 'N/A')}
+                </div>
+              </div>
+              <div class="row mb-3">
+                <div class="col-md-12">
+                  <strong>Entry Title:</strong><br>
+                  ${utils.escapeHtml(entry.entry_title || 'N/A')}
+                </div>
+              </div>
+
+              <hr>
+
+              <!-- Contact Information -->
+              <h6 class="text-primary mb-3"><i class="bi bi-person me-2"></i>Contact Information</h6>
+              <div class="row mb-3">
+                <div class="col-md-6">
+                  <strong>Name:</strong><br>
+                  ${utils.escapeHtml(entry.contact_name || 'N/A')}
+                </div>
+                <div class="col-md-6">
+                  <strong>Position:</strong><br>
+                  ${utils.escapeHtml(entry.contact_position || 'N/A')}
+                </div>
+              </div>
+              <div class="row mb-3">
+                <div class="col-md-6">
+                  <strong>Email:</strong><br>
+                  <a href="mailto:${entry.contact_email}">${utils.escapeHtml(entry.contact_email || 'N/A')}</a>
+                </div>
+                <div class="col-md-6">
+                  <strong>Phone:</strong><br>
+                  ${utils.escapeHtml(entry.contact_phone || 'N/A')}
+                </div>
+              </div>
+
+              <hr>
+
+              <!-- Submission Details -->
+              <h6 class="text-primary mb-3"><i class="bi bi-calendar-check me-2"></i>Submission Details</h6>
+              <div class="row mb-3">
+                <div class="col-md-6">
+                  <strong>Submission Date:</strong><br>
+                  ${entry.submission_date ? new Date(entry.submission_date).toLocaleString() : 'N/A'}
+                </div>
+                <div class="col-md-6">
+                  <strong>Year:</strong><br>
+                  ${entry.year || 'N/A'}
+                </div>
+              </div>
+              <div class="row mb-3">
+                <div class="col-md-6">
+                  <strong>Payment Status:</strong><br>
+                  ${this.getPaymentBadge(entry.payment_status)}
+                </div>
+                <div class="col-md-6">
+                  <strong>Type:</strong><br>
+                  ${entry.is_self_nomination ? '<span class="badge bg-info">Self-Nomination</span>' : '<span class="badge bg-secondary">Standard Entry</span>'}
+                </div>
+              </div>
+            </div>
+            <div class="modal-footer">
+              <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+              ${entry.status === 'submitted' ? `
+                <button type="button" class="btn btn-danger" onclick="entriesModule.changeEntryStatus('${entry.id}', 'rejected')">
+                  <i class="bi bi-x-circle me-2"></i>Reject
+                </button>
+                <button type="button" class="btn btn-success" onclick="entriesModule.changeEntryStatus('${entry.id}', 'under_review')">
+                  <i class="bi bi-check-circle me-2"></i>Approve for Review
+                </button>
+              ` : ''}
+              ${entry.status === 'under_review' ? `
+                <button type="button" class="btn btn-primary" onclick="entriesModule.changeEntryStatus('${entry.id}', 'shortlisted')">
+                  <i class="bi bi-star me-2"></i>Shortlist
+                </button>
+              ` : ''}
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+
+    // Remove existing modal if any
+    const existingModal = document.getElementById('entryDetailsModal');
+    if (existingModal) {
+      existingModal.remove();
+    }
+
+    // Add modal to document
+    document.body.insertAdjacentHTML('beforeend', modalContent);
+
+    // Show modal
+    const modal = new bootstrap.Modal(document.getElementById('entryDetailsModal'));
+    modal.show();
+
+    // Clean up when closed
+    document.getElementById('entryDetailsModal').addEventListener('hidden.bs.modal', function () {
+      this.remove();
+    });
+  },
+
+  /**
+   * Change entry status (approve/reject)
+   */
+  async changeEntryStatus(entryId, newStatus) {
+    try {
+      const { error } = await STATE.client
+        .from('entries')
+        .update({ status: newStatus })
+        .eq('id', entryId);
+
+      if (error) throw error;
+
+      utils.showToast(`Entry ${newStatus === 'rejected' ? 'rejected' : 'approved'}!`, 'success');
+
+      // Close modal
+      const modal = bootstrap.Modal.getInstance(document.getElementById('entryDetailsModal'));
+      if (modal) modal.hide();
+
+      // Reload entries
+      await this.loadEntries();
+      await this.loadStats();
+
+    } catch (error) {
+      console.error('Error updating entry status:', error);
+      utils.showToast('Failed to update entry status', 'error');
+    }
   },
 
   /**

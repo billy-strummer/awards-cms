@@ -474,6 +474,26 @@ const entryFormApp = {
 
       if (entryError) throw entryError;
 
+      // Send confirmation email
+      try {
+        const { data: emailData, error: emailError } = await supabase.functions.invoke(
+          'send-entry-confirmation',
+          {
+            body: { entryId: entry.id }
+          }
+        );
+
+        if (emailError) {
+          console.error('Email send failed:', emailError);
+          // Don't block the submission if email fails - entry is already created
+        } else {
+          console.log('Confirmation email sent:', emailData);
+        }
+      } catch (emailError) {
+        console.error('Email error:', emailError);
+        // Email failure doesn't affect the entry submission
+      }
+
       // Show success
       document.getElementById('entryReference').textContent = entryNumber;
 

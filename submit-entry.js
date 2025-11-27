@@ -285,7 +285,7 @@ const entryFormApp = {
       // Fetch active awards filtered by sector and region
       let query = supabase
         .from('awards')
-        .select('id, award_name, description, entry_fee, sector, year, region, status')
+        .select('id, award_name, sector, year, region, status')
         .eq('status', 'Active');
 
       // Filter by selected sector
@@ -318,11 +318,7 @@ const entryFormApp = {
       awardsList.innerHTML = filteredAwards.map(award => `
         <div class="award-option" onclick="entryFormApp.selectAward('${award.id}', this)">
           <h5 class="mb-1">${this.escapeHtml(award.award_name || 'Award')}</h5>
-          ${award.description ? `<p class="text-muted small mb-1">${this.escapeHtml(award.description)}</p>` : ''}
-          <div class="d-flex justify-content-between align-items-center">
-            ${award.entry_fee ? `<span><strong>Entry Fee:</strong> £${award.entry_fee}</span>` : '<span></span>'}
-            ${award.year ? `<small class="text-muted">${award.year}</small>` : ''}
-          </div>
+          ${award.year ? `<p class="text-muted small mb-2"><i class="bi bi-calendar3"></i> ${award.year}</p>` : ''}
         </div>
       `).join('');
 

@@ -31,13 +31,13 @@ const INACTIVITY_TIMEOUT = 30 * 60 * 1000; // 30 minutes
 const YEARS = ['2025', '2024', '2023', '2022', '2021'];
 
 const SECTORS = [
-  'BUILDING & CONSTRUCTION',
-  'CARPENTRY & JOINERY',
-  'ENERGY, TECH & SUSTAINABILITY',
-  'INTERIOR FIT-OUT & FINISHING',
-  'MECHANICAL, ELECTRICAL & PLUMBING',
-  'OUTDOOR & LANDSCAPING',
-  'SPECIALIST TRADES'
+  'Building & Construction',
+  'Carpentry & Joinery',
+  'Energy, Tech & Sustainability',
+  'Interior Fit-Out & Finishing',
+  'Mechanical, Electrical & Plumbing',
+  'Outdoor & Landscaping',
+  'Specialist Trades'
 ];
 
 const REGIONS = [

@@ -590,6 +590,9 @@ const entriesModule = {
 
             </div>
             <div class="modal-footer">
+              <button type="button" class="btn btn-outline-info" onclick="entriesModule.openUploadLink('${entry.entry_number}')">
+                <i class="bi bi-paperclip me-2"></i>View Upload Link
+              </button>
               <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
               <button type="button" class="btn btn-danger" onclick="entriesModule.quickStatusChange('${entry.id}', 'rejected')">
                 <i class="bi bi-x-circle me-2"></i>Reject
@@ -733,6 +736,93 @@ const entriesModule = {
     } catch (error) {
       console.error('Error updating entry status:', error);
       utils.showToast('Failed to update entry status: ' + error.message, 'error');
+    }
+  },
+
+  /**
+   * Open upload link for entry
+   */
+  openUploadLink(entryNumber) {
+    const uploadUrl = `${window.location.origin}/upload-documents.html?entry=${entryNumber}`;
+
+    // Create modal HTML
+    const modalHtml = `
+      <div class="modal fade" id="uploadLinkModal" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+          <div class="modal-content">
+            <div class="modal-header bg-info text-white">
+              <h5 class="modal-title">
+                <i class="bi bi-link-45deg me-2"></i>Document Upload Link
+              </h5>
+              <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+              <p class="mb-3">Share this link with the entrant so they can upload supporting documents:</p>
+
+              <div class="mb-3">
+                <label class="form-label fw-bold">Upload Link:</label>
+                <div class="input-group">
+                  <input type="text" class="form-control" value="${uploadUrl}" id="uploadLinkInput" readonly>
+                  <button class="btn btn-primary" onclick="entriesModule.copyUploadLink('${uploadUrl}')">
+                    <i class="bi bi-clipboard"></i> Copy
+                  </button>
+                </div>
+              </div>
+
+              <div class="alert alert-info mb-0">
+                <strong><i class="bi bi-info-circle me-2"></i>How to use:</strong>
+                <ul class="mb-0 mt-2 small">
+                  <li>Copy this link and include it in your confirmation email</li>
+                  <li>The entrant can upload PDFs, documents, and images</li>
+                  <li>Maximum file size: 10MB per file</li>
+                  <li>Files will appear in the "Supporting Documents" section</li>
+                </ul>
+              </div>
+            </div>
+            <div class="modal-footer">
+              <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+              <button type="button" class="btn btn-primary" onclick="window.open('${uploadUrl}', '_blank')">
+                <i class="bi bi-box-arrow-up-right me-2"></i>Open Upload Page
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+
+    // Remove existing modal if any
+    const existingModal = document.getElementById('uploadLinkModal');
+    if (existingModal) {
+      existingModal.remove();
+    }
+
+    // Add modal to page
+    document.body.insertAdjacentHTML('beforeend', modalHtml);
+
+    // Show modal
+    const modal = new bootstrap.Modal(document.getElementById('uploadLinkModal'));
+    modal.show();
+
+    // Clean up modal when closed
+    document.getElementById('uploadLinkModal').addEventListener('hidden.bs.modal', function() {
+      this.remove();
+    });
+  },
+
+  /**
+   * Copy upload link to clipboard
+   */
+  async copyUploadLink(url) {
+    try {
+      await navigator.clipboard.writeText(url);
+      utils.showToast('Upload link copied to clipboard!', 'success');
+    } catch (err) {
+      console.error('Failed to copy:', err);
+      // Fallback: select the input text
+      const input = document.getElementById('uploadLinkInput');
+      input.select();
+      document.execCommand('copy');
+      utils.showToast('Upload link copied!', 'success');
     }
   },
 

@@ -28,6 +28,13 @@ const entryFormApp = {
   },
 
   /**
+   * Convert sector to title case for display only
+   */
+  toTitleCase(str) {
+    return str.toLowerCase().replace(/\b\w/g, char => char.toUpperCase());
+  },
+
+  /**
    * Populate sectors dropdown from config
    */
   populateSectors() {
@@ -37,8 +44,9 @@ const entryFormApp = {
       return;
     }
 
+    // Display in Title Case but keep value as ALL CAPS for database compatibility
     const options = window.SECTORS.map(sector =>
-      `<option value="${this.escapeHtml(sector)}">${this.escapeHtml(sector)}</option>`
+      `<option value="${this.escapeHtml(sector)}">${this.escapeHtml(this.toTitleCase(sector))}</option>`
     ).join('');
 
     sectorSelect.innerHTML = '<option value="">Choose your sector...</option>' + options;

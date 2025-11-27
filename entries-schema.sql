@@ -53,6 +53,7 @@ CREATE TABLE IF NOT EXISTS entries (
   is_public BOOLEAN DEFAULT false, -- Show in public voting
   allow_public_voting BOOLEAN DEFAULT false,
   public_votes INTEGER DEFAULT 0,
+  is_self_nomination BOOLEAN DEFAULT false, -- Entry submitted via public self-nomination form
 
   -- Admin Notes
   admin_notes TEXT,

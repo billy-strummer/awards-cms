@@ -438,8 +438,7 @@ const entryFormApp = {
             email: this.formData.contactEmail,
             contact_name: this.formData.contactName,
             contact_phone: this.formData.contactPhone || null,
-            status: 'active',
-            years_in_field: this.formData.yearsInField
+            status: 'active'
           })
           .select()
           .single();

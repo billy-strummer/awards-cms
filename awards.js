@@ -36,23 +36,23 @@ async loadAwards() {
           let actualRegion = null;
           
           // Look up the region for this county
-          if (award.region) {
-            const { data: countyData } = await STATE.client
-              .from('counties')
-              .select('Name, region_id, regions(name)')
-              .ilike('Name', award.region)
-              .single();
-            
-            if (countyData?.regions?.name) {
-              actualRegion = countyData.regions.name;
-            }
-          }
-          
-          return {
-            ...award,
-            _actualRegion: actualRegion,
-            _countyName: award.region
-          };
+if (award.county) {
+  const { data: countyData } = await STATE.client
+    .from('counties')
+    .select('Name, region_id, regions(name)')
+    .ilike('Name', award.county)
+    .single();
+  
+  if (countyData?.regions?.name) {
+    actualRegion = countyData.regions.name;
+  }
+}
+
+return {
+  ...award,
+  _actualRegion: actualRegion,
+  _countyName: award.county
+};
         }));
         
         allData = allData.concat(dataWithRegions);
@@ -175,24 +175,58 @@ async loadAwards() {
     // Populate county filter (award.region stores county names)
     utils.populateFilter(
       STATE.allAwards,
-      'region',
+      'county',
       'awardsCountyFilterSelect',
       'All Counties'
     );
     
     // Populate actual region filter
-    const uniqueRegions = [...new Set(STATE.allAwards
-      .map(a => a._actualRegion)
-      .filter(r => r))];
+const uniqueRegions = [...new Set(STATE.allAwards
+  .map(a => a._actualRegion)
+  .filter(r => r))];
+
+const regionSelect = document.getElementById('awardsRegionFilterSelect');
+if (regionSelect) {
+  regionSelect.innerHTML = '<option value="">All Regions</option>' +
+    uniqueRegions.sort().map(region => 
+      `<option value="${region}">${region}</option>`
+    ).join('');
+}
+},  // ← populateFilters ends here
+
+/**
+ * Update county dropdown based on selected region
+ */
+updateCountyFilterByRegion() {
+  const selectedRegion = document.getElementById('awardsRegionFilterSelect')?.value || '';
+  const countySelect = document.getElementById('awardsCountyFilterSelect');
+  
+  if (!countySelect) return;
+  
+  if (!selectedRegion) {
+    // No region selected - show all counties
+    const allCounties = [...new Set(STATE.allAwards
+      .map(a => a.county)
+      .filter(c => c)
+    )].sort();
     
-    const regionSelect = document.getElementById('awardsRegionFilterSelect');
-    if (regionSelect) {
-      regionSelect.innerHTML = '<option value="">All Regions</option>' +
-        uniqueRegions.sort().map(region => 
-          `<option value="${region}">${region}</option>`
-        ).join('');
-    }
-  },
+    countySelect.innerHTML = '<option value="">All Counties</option>' +
+      allCounties.map(c => `<option value="${c}">${utils.escapeHtml(c)}</option>`).join('');
+  } else {
+    // Region selected - show only counties in that region
+    const countiesInRegion = [...new Set(STATE.allAwards
+      .filter(a => a._actualRegion === selectedRegion)
+      .map(a => a.county)
+      .filter(c => c)
+    )].sort();
+    
+    countySelect.innerHTML = '<option value="">All Counties</option>' +
+      countiesInRegion.map(c => `<option value="${c}">${utils.escapeHtml(c)}</option>`).join('');
+  }
+  
+  // Reset county selection
+  countySelect.value = '';
+},
 
   /**
    * Filter awards based on current filter values
@@ -284,16 +318,16 @@ async loadAwards() {
               <i class="bi bi-briefcase me-1"></i>${utils.escapeHtml(award.sector || '-')}
             </span>
           </td>
-          <td>
-            <span class="badge bg-warning-subtle text-warning">
-              <i class="bi bi-pin-map me-1"></i>${utils.escapeHtml(award.region || '-')}
-            </span>
-          </td>
-          <td>
-            <span class="badge bg-success-subtle text-success">
-              <i class="bi bi-geo-alt me-1"></i>${utils.escapeHtml(award._actualRegion || '-')}
-            </span>
-          </td>
+          <<td>
+  <span class="badge bg-success-subtle text-success">
+    <i class="bi bi-geo-alt me-1"></i>${utils.escapeHtml(award._actualRegion || '-')}
+  </span>
+</td>
+<td>
+  <span class="badge bg-warning-subtle text-warning">
+    <i class="bi bi-pin-map me-1"></i>${utils.escapeHtml(award.county || '-')}
+  </span>
+</td>
           <td>${utils.getStatusBadge(award.status || 'Draft')}</td>
           <td class="text-center">
             <div class="assignment-count-badge ${countBadgeClass}"

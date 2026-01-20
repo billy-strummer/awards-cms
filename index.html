@@ -721,27 +721,28 @@
       </select>
     </div>
 
-    <!-- County Filter (Cornwall, Devon, etc.) -->
-    <div class="col-md-2">
-      <label for="awardsCountyFilterSelect" class="form-label">
-        <i class="bi bi-pin-map me-1"></i>County
-      </label>
-      <select class="form-select" id="awardsCountyFilterSelect" onchange="awardsModule.filterAwards()">
-        <option value="">All Counties</option>
-        <!-- Populated by JS -->
-      </select>
-    </div>
+        <!-- Region Filter (South West, East of England, etc.) -->
+<div class="col-md-2">
+  <label for="awardsRegionFilterSelect" class="form-label">
+    <i class="bi bi-geo-alt me-1"></i>Region
+  </label>
+  <select class="form-select" id="awardsRegionFilterSelect"
+          onchange="awardsModule.updateCountyFilterByRegion(); awardsModule.filterAwards();">
+    <option value="">All Regions</option>
+    <!-- Populated by JS -->
+  </select>
+</div>
 
-    <!-- Region Filter (South West, East of England, etc.) -->
-    <div class="col-md-2">
-      <label for="awardsRegionFilterSelect" class="form-label">
-        <i class="bi bi-geo-alt me-1"></i>Region
-      </label>
-      <select class="form-select" id="awardsRegionFilterSelect" onchange="awardsModule.filterAwards()">
-        <option value="">All Regions</option>
-        <!-- Populated by JS -->
-      </select>
-    </div>
+    <!-- County/City Filter (Cornwall, London North, Birmingham, etc.) -->
+<div class="col-md-2">
+  <label for="awardsCountyFilterSelect" class="form-label">
+    <i class="bi bi-pin-map me-1"></i>County/City
+  </label>
+  <select class="form-select" id="awardsCountyFilterSelect" onchange="awardsModule.filterAwards()">
+    <option value="">All Counties/Cities</option>
+    <!-- Populated by JS -->
+  </select>
+</div>
 
     <!-- Search Box - NOW WITH oninput! -->
     <div class="col-md-2">
@@ -767,12 +768,13 @@
               <table class="table table-hover table-striped align-middle">
                 <thead>
                   <tr>
-                    <th>Award Category</th>
-                    <th>Sector</th>
-                    <th>Region</th>
-                    <th>Status</th>
-                    <th class="text-center">Nominees</th>
-                    <th width="100" class="text-center">Actions</th>
+                    <th style="width: 25%;">Award Category</th>
+<th style="width: 12%;">Sector</th>
+<th style="width: 12%;">Region</th>  <!-- Region first -->
+<th style="width: 12%;">County</th>  <!-- County second -->
+<th style="width: 10%;">Status</th>
+<th style="width: 10%;" class="text-center">Nominees</th>
+<th style="width: 10%;" class="text-center">Actions</th>
                   </tr>
                 </thead>
                 <tbody id="awardsTableBody">
@@ -792,19 +794,358 @@
         </div>
       </div>
 
-      <!-- ==================================================== -->
-      <!-- ORGANISATIONS TAB -->
-      <!-- ==================================================== -->
-      <div class="tab-pane fade" id="organisations" role="tabpanel">
-        <div class="container-fluid">
-          
-          <!-- Page Header -->
-          <div class="section-header">
-            <h1 class="section-title">
-              <i class="bi bi-building me-2"></i>Organisation Management
-            </h1>
-            <p class="section-subtitle">View and manage registered companies</p>
+<!-- ORGANISATIONS TAB - OPTIMIZED VERSION -->
+<div class="tab-pane fade" id="organisations" role="tabpanel">
+  <div class="container-fluid">
+    
+    <!-- Page Header -->
+    <div class="section-header">
+      <h1 class="section-title">
+        <i class="bi bi-building me-2"></i>Organisation Management
+      </h1>
+      <p class="section-subtitle">View and manage registered companies</p>
+    </div>
+
+    <!-- Single Compact Stats Card -->
+    <div class="row mb-4">
+      <div class="col-12">
+        <div class="card border-0 shadow-sm">
+          <div class="card-body py-3">
+            <div class="row text-center">
+              <div class="col-md-3">
+                <h6 class="text-muted mb-1 small">Total Companies</h6>
+                <h3 class="mb-0 fw-bold text-primary" id="orgsTotalCount">0</h3>
+              </div>
+              <div class="col-md-3">
+                <h6 class="text-muted mb-1 small">With Awards</h6>
+                <h3 class="mb-0 fw-bold text-success" id="orgsWithAwards">0</h3>
+              </div>
+              <div class="col-md-3">
+                <h6 class="text-muted mb-1 small">Top Sector</h6>
+                <h5 class="mb-0 fw-semibold text-info" id="orgsTopSector">-</h5>
+              </div>
+              <div class="col-md-3">
+                <h6 class="text-muted mb-1 small">Last Updated</h6>
+                <p class="mb-0 small" id="orgsLastUpdated">-</p>
+              </div>
+            </div>
           </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Compact Filters Row -->
+    <div class="card border-0 shadow-sm mb-4">
+      <div class="card-body py-3">
+        <div class="row g-2 align-items-end">
+          
+          <!-- Search Box (Wider) -->
+          <div class="col-md-3">
+            <label for="orgsSearchBox" class="form-label small fw-semibold mb-1">
+              <i class="bi bi-search me-1"></i>Search
+            </label>
+            <input type="text" class="form-control form-control-sm" id="orgsSearchBox" 
+                   placeholder="Company, email, contact..." 
+                   oninput="orgsModule.filterOrganisations()">
+          </div>
+          
+          <!-- Year Filter (NEW - IMPORTANT) -->
+          <div class="col-md-1">
+            <label for="orgsYearFilter" class="form-label small fw-semibold mb-1">
+              <i class="bi bi-calendar3 me-1"></i>Year
+            </label>
+            <select class="form-select form-select-sm" id="orgsYearFilter" 
+                    onchange="orgsModule.filterOrganisations()">
+              <option value="">All</option>
+              <option value="2026" selected>2026</option>
+              <option value="2025">2025</option>
+              <option value="2024">2024</option>
+              <option value="2023">2023</option>
+            </select>
+          </div>
+          
+          <!-- Sector Filter -->
+          <div class="col-md-2">
+            <label for="orgsSectorFilter" class="form-label small fw-semibold mb-1">
+              <i class="bi bi-briefcase me-1"></i>Sector
+            </label>
+            <select class="form-select form-select-sm" id="orgsSectorFilter" 
+                    onchange="orgsModule.filterOrganisations()">
+              <option value="">All</option>
+            </select>
+          </div>
+          
+          <!-- Region Filter -->
+<div class="col-md-2">
+  <label for="orgsRegionFilter" class="form-label small fw-semibold mb-1">
+    <i class="bi bi-geo-alt me-1"></i>Region
+  </label>
+  <select class="form-select form-select-sm" id="orgsRegionFilter" 
+          onchange="orgsModule.updateCountyFilterByRegion(); orgsModule.filterOrganisations();">
+    <option value="">All Regions</option>
+  </select>
+</div>
+
+<!-- County/City Filter -->
+<div class="col-md-2">
+  <label for="orgsCountyFilter" class="form-label small fw-semibold mb-1">
+    <i class="bi bi-pin-map me-1"></i>County/City
+  </label>
+  <select class="form-select form-select-sm" id="orgsCountyFilter"
+          onchange="orgsModule.filterOrganisations()">
+    <option value="">All Counties/Cities</option>
+  </select>
+</div>
+
+          
+          <!-- Export Button (Right Aligned) -->
+          <div class="col-md-2 text-end">
+            <label class="form-label small mb-1">&nbsp;</label>
+            <button class="btn btn-sm btn-outline-primary w-100" onclick="orgsModule.exportToCSV()">
+              <i class="bi bi-download me-1"></i>Export CSV
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Clean Table with Narrow Contact Column -->
+    <div class="card border-0 shadow-sm">
+      <div class="card-header bg-white border-0 py-2">
+        <div class="d-flex justify-content-between align-items-center">
+          <h6 class="mb-0 fw-semibold">
+            <i class="bi bi-list-ul me-2"></i>Organisations List
+          </h6>
+          <span class="badge bg-success text-white px-3 py-2">
+            <span id="orgsCount">0</span> organisations
+          </span>
+        </div>
+      </div>
+      
+      <div class="card-body p-0">
+        <div class="table-responsive">
+          <table class="table table-hover table-sm mb-0 align-middle">
+            <thead class="table-light">
+              <tr>
+                <th width="30" class="text-center">
+                  <input type="checkbox" class="form-check-input" id="selectAllOrgs" 
+                         onchange="orgsModule.toggleSelectAll()">
+                </th>
+                <th class="fw-semibold" style="cursor: pointer;" onclick="orgsModule.sortBy('company')">
+                  Company Name 
+                  <i class="bi bi-arrow-down-up text-muted ms-1 small"></i>
+                </th>
+                <th width="140">Sector</th>
+                <th width="120">County</th>
+                <th width="100">Contact</th>
+                <th width="180">Email</th>
+                <th width="160">Website</th>
+                <th width="100">Region</th>
+                <th width="60" class="text-center">Awards</th>
+                <th width="80" class="text-center">Actions</th>
+              </tr>
+            </thead>
+            <tbody id="orgsTableBody">
+              <tr>
+                <td colspan="10" class="text-center py-5">
+                  <div class="text-muted">
+                    <div class="spinner-border spinner-border-sm mb-2" role="status"></div>
+                    <p class="mb-0 small">Loading organisations...</p>
+                  </div>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+          <!-- Add Company Modal -->
+<div class="modal fade" id="addCompanyModal" tabindex="-1" aria-labelledby="addCompanyModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header bg-primary text-white">
+        <h5 class="modal-title" id="addCompanyModalLabel">
+          <i class="bi bi-building me-2"></i>Add New Company
+        </h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <form id="addCompanyForm">
+          <div class="row g-3">
+            
+            <!-- Company Name (Required) -->
+            <div class="col-md-6">
+              <label for="newCompanyName" class="form-label fw-semibold">
+                Company Name <span class="text-danger">*</span>
+              </label>
+              <input type="text" class="form-control" id="newCompanyName" required 
+                     placeholder="e.g., ABC Construction Ltd">
+            </div>
+            
+            <!-- Sector (Required) -->
+            <div class="col-md-6">
+              <label for="newCompanySector" class="form-label fw-semibold">
+                Sector <span class="text-danger">*</span>
+              </label>
+              <select class="form-select" id="newCompanySector" required>
+                <option value="">Select Sector...</option>
+                <option value="Building & Construction">Building & Construction</option>
+                <option value="Mechanical, Electrical & Plumbing">Mechanical, Electrical & Plumbing</option>
+                <option value="Interior Fit-Out & Finishing">Interior Fit-Out & Finishing</option>
+                <option value="Energy, Tech & Sustainability">Energy, Tech & Sustainability</option>
+                <!-- Add your other sectors here -->
+              </select>
+            </div>
+            
+            <!-- Contact Name -->
+            <div class="col-md-6">
+              <label for="newContactName" class="form-label fw-semibold">
+                Contact Name
+              </label>
+              <input type="text" class="form-control" id="newContactName" 
+                     placeholder="e.g., John Smith">
+            </div>
+            
+            <!-- Contact Phone -->
+            <div class="col-md-6">
+              <label for="newContactPhone" class="form-label fw-semibold">
+                Contact Phone
+              </label>
+              <input type="tel" class="form-control" id="newContactPhone" 
+                     placeholder="e.g., 01234 567890">
+            </div>
+            
+            <!-- Email (Required) -->
+            <div class="col-md-6">
+              <label for="newCompanyEmail" class="form-label fw-semibold">
+                Email <span class="text-danger">*</span>
+              </label>
+              <input type="email" class="form-control" id="newCompanyEmail" required 
+                     placeholder="e.g., info@company.co.uk">
+            </div>
+            
+            <!-- Website -->
+            <div class="col-md-6">
+              <label for="newCompanyWebsite" class="form-label fw-semibold">
+                Website
+              </label>
+              <input type="url" class="form-control" id="newCompanyWebsite" 
+                     placeholder="e.g., https://www.company.co.uk">
+            </div>
+            
+            <!-- County -->
+            <div class="col-md-6">
+              <label for="newCompanyCounty" class="form-label fw-semibold">
+                County
+              </label>
+              <select class="form-select" id="newCompanyCounty">
+                <option value="">Select County...</option>
+                <option value="Cornwall">Cornwall</option>
+                <option value="Devon">Devon</option>
+                <option value="Somerset">Somerset</option>
+                <option value="Dorset">Dorset</option>
+                <option value="Bedfordshire">Bedfordshire</option>
+                <option value="Buckinghamshire">Buckinghamshire</option>
+                <!-- Add all your UK counties -->
+              </select>
+            </div>
+            
+            <!-- Region (Required) -->
+            <div class="col-md-6">
+              <label for="newCompanyRegion" class="form-label fw-semibold">
+                Region <span class="text-danger">*</span>
+              </label>
+              <select class="form-select" id="newCompanyRegion" required>
+                <option value="">Select Region...</option>
+                <option value="South West">South West</option>
+                <option value="South East">South East</option>
+                <option value="East of England">East of England</option>
+                <option value="London">London</option>
+                <option value="Midlands">Midlands</option>
+                <option value="North West">North West</option>
+                <option value="North East">North East</option>
+                <option value="Yorkshire">Yorkshire</option>
+                <option value="Scotland">Scotland</option>
+                <option value="Wales">Wales</option>
+                <option value="Northern Ireland">Northern Ireland</option>
+              </select>
+            </div>
+            
+            <!-- Address -->
+            <div class="col-12">
+              <label for="newCompanyAddress" class="form-label fw-semibold">
+                Address
+              </label>
+              <textarea class="form-control" id="newCompanyAddress" rows="2" 
+                        placeholder="Full address including postcode"></textarea>
+            </div>
+            
+            <!-- Catchment Area -->
+            <div class="col-12">
+              <label for="newCompanyCatchment" class="form-label fw-semibold">
+                Catchment Area
+              </label>
+              <textarea class="form-control" id="newCompanyCatchment" rows="2" 
+                        placeholder="e.g., South West England, National, London & Southeast"></textarea>
+            </div>
+            
+          </div>
+          
+          <div class="alert alert-info mt-3 mb-0">
+            <i class="bi bi-info-circle me-2"></i>
+            <small>Fields marked with <span class="text-danger">*</span> are required</small>
+          </div>
+        </form>
+      </div>
+      <div class="modal-footer bg-light">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+          <i class="bi bi-x-circle me-1"></i>Cancel
+        </button>
+        <button type="button" class="btn btn-primary" onclick="orgsModule.saveNewCompany()">
+          <i class="bi bi-check-circle me-1"></i>Save Company
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+        </div>
+      </div>
+      
+      <!-- Pagination Footer (Optional) -->
+      <div class="card-footer bg-white border-0 py-2">
+        <div class="d-flex justify-content-between align-items-center">
+          <small class="text-muted">
+            Showing <span id="orgsShowing">0</span> of <span id="orgsTotal">0</span>
+          </small>
+          <small class="text-muted">
+            <i class="bi bi-clock me-1"></i>Last refreshed: <span id="orgsLastRefresh">-</span>
+          </small>
+        </div>
+      </div>
+    </div>
+
+    <!-- Floating Bulk Actions Bar (appears when items selected) -->
+    <div id="bulkActionsBar" 
+         style="display: none; position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%); z-index: 1050;">
+      <div class="card border-0 shadow-lg">
+        <div class="card-body d-flex align-items-center gap-3 py-2 px-4">
+          <span class="fw-semibold">
+            <i class="bi bi-check-square me-2"></i>
+            <span id="selectedCount">0</span> selected
+          </span>
+          <div class="vr"></div>
+          <button class="btn btn-sm btn-primary" onclick="orgsModule.bulkEmail()">
+            <i class="bi bi-envelope me-1"></i>Email
+          </button>
+          <button class="btn btn-sm btn-success" onclick="orgsModule.bulkExport()">
+            <i class="bi bi-download me-1"></i>Export Selected
+          </button>
+          <button class="btn btn-sm btn-outline-secondary" onclick="orgsModule.clearSelection()">
+            <i class="bi bi-x-lg me-1"></i>Clear
+          </button>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
 
           <!-- Filters Section -->
 <div class="filters-section" style="position: sticky; top: 104px; z-index: 999; background-color: white; padding: 1rem 0; margin-bottom: 1rem; border-bottom: 1px solid #dee2e6;">

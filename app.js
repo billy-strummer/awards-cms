@@ -127,8 +127,7 @@ document.addEventListener('DOMContentLoaded', function() {
   });
   
   // --- Organisation Filters ---
-  c// Line 134 - REPLACE WITH THIS:
-const orgSearchBox = document.getElementById('orgsSearchBox');
+  const orgSearchBox = document.getElementById('orgsSearchBox');
 if (orgSearchBox) {
   orgSearchBox.addEventListener('input', () => {
     debouncedOrgFilter();

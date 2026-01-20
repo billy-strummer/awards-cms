@@ -3,77 +3,90 @@
 /* ==================================================== */
 
 const awardsModule = {
-  /**
-   * Load all awards from database
-   */
-  async loadAwards() {
-    try {
-      utils.showLoading();
-      utils.showTableLoading('awardsTableBody', 9); // 9 columns now (added county + region)
+ /**
+ * Load all awards from database
+ */
+async loadAwards() {
+  try {
+    utils.showLoading();
+    utils.showTableLoading('awardsTableBody', 9); // 9 columns now (added county + region)
+    
+    // Load all awards WITHOUT region join (awards.region stores county name as TEXT)
+    let allData = [];
+    let page = 0;
+    const pageSize = 1000;
+    let hasMore = true;
+    
+    while (hasMore) {
+      const from = page * pageSize;
+      const to = from + pageSize - 1;
       
-      // Load all awards WITH region join
-      let allData = [];
-      let page = 0;
-      const pageSize = 1000;
-      let hasMore = true;
+      const { data, error } = await STATE.client
+        .from('awards')
+        .select('*')
+        .range(from, to);
       
-      while (hasMore) {
-        const from = page * pageSize;
-        const to = from + pageSize - 1;
-        
-        const { data, error } = await STATE.client
-          .from('awards')
-          .select(`
-            *,
-            counties!inner("Name", region_id, regions(name))
-          `)
-          .range(from, to);
-        
-        if (error) throw error;
-        
-        if (!data || data.length === 0) {
-          hasMore = false;
-        } else {
-          // Map the actual region to each award
-          const mappedData = data.map(award => ({
-            ...award,
-            _actualRegion: award.counties?.regions?.name || null,
-            _countyName: award.counties?.Name || award.region
-          }));
+      if (error) throw error;
+      
+      if (!data || data.length === 0) {
+        hasMore = false;
+      } else {
+        // Map the actual region by looking up county in counties table
+        const dataWithRegions = await Promise.all(data.map(async (award) => {
+          let actualRegion = null;
           
-          allData = allData.concat(mappedData);
-          page++;
-          
-          // Stop if we got less than pageSize records (last page)
-          if (data.length < pageSize) {
-            hasMore = false;
+          // Look up the region for this county
+          if (award.region) {
+            const { data: countyData } = await STATE.client
+              .from('counties')
+              .select('Name, region_id, regions(name)')
+              .ilike('Name', award.region)
+              .single();
+            
+            if (countyData?.regions?.name) {
+              actualRegion = countyData.regions.name;
+            }
           }
+          
+          return {
+            ...award,
+            _actualRegion: actualRegion,
+            _countyName: award.region
+          };
+        }));
+        
+        allData = allData.concat(dataWithRegions);
+        page++;
+        
+        // Stop if we got less than pageSize records (last page)
+        if (data.length < pageSize) {
+          hasMore = false;
         }
       }
-      
-      STATE.allAwards = allData;
-      
-      // Load assignment counts for each award
-      await this.loadAssignmentCounts();
-      
-      STATE.filteredAwards = STATE.allAwards;
-      
-      // Populate filter dropdowns
-      this.populateFilters();
-      this.renderAwards();
-      
-      console.log(`✅ Loaded ${STATE.allAwards.length} awards`);
-      
-    } catch (error) {
-      console.error('Error loading awards:', error);
-      console.error('Error details:', error.details, error.hint, error.message);
-      utils.showToast('Failed to load awards: ' + error.message, 'error');
-      utils.showEmptyState('awardsTableBody', 9, 'Failed to load awards', 'bi-exclamation-triangle');
-    } finally {
-      utils.hideLoading();
     }
-  },
-
+    
+    STATE.allAwards = allData;
+    
+    // Load assignment counts for each award
+    await this.loadAssignmentCounts();
+    
+    STATE.filteredAwards = STATE.allAwards;
+    
+    // Populate filter dropdowns
+    this.populateFilters();
+    this.renderAwards();
+    
+    console.log(`✅ Loaded ${STATE.allAwards.length} awards`);
+    
+  } catch (error) {
+    console.error('Error loading awards:', error);
+    console.error('Error details:', error.details, error.hint, error.message);
+    utils.showToast('Failed to load awards: ' + error.message, 'error');
+    utils.showEmptyState('awardsTableBody', 9, 'Failed to load awards', 'bi-exclamation-triangle');
+  } finally {
+    utils.hideLoading();
+  }
+},
   /**
    * Load assignment counts for all awards
    */

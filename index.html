@@ -807,37 +807,39 @@
           </div>
 
           <!-- Filters Section -->
-          <div class="filters-section" style="position: sticky; top: 104px; z-index: 999; background-color: white; padding: 1rem 0; margin-bottom: 1rem; border-bottom: 1px solid #dee2e6;">
-            <div class="row g-3">
-              <!-- Main Dropdown: Sector -->
-              <div class="col-md-4">
-                <label for="orgSectorFilterSelect" class="form-label">
-                  <i class="bi bi-briefcase me-1"></i>Sector
-                </label>
-                <select class="form-select" id="orgSectorFilterSelect" onchange="orgsModule.filterOrganisations()">
-                  <option value="">All Sectors</option>
-                </select>
-              </div>
+<div class="filters-section" style="position: sticky; top: 104px; z-index: 999; background-color: white; padding: 1rem 0; margin-bottom: 1rem; border-bottom: 1px solid #dee2e6;">
+  <div class="row g-3">
+    <!-- Sector Filter -->
+    <div class="col-md-3">
+      <label for="orgsSectorFilter" class="form-label">
+        <i class="bi bi-briefcase me-1"></i>Sector
+      </label>
+      <select class="form-select" id="orgsSectorFilter" onchange="orgsModule.filterOrganisations()">
+        <option value="">All Sectors</option>
+        <!-- Populated by JS -->
+      </select>
+    </div>
 
-              <!-- Smaller Dropdown: Region -->
-              <div class="col-md-3">
-                <label for="orgRegionFilterSelect" class="form-label">
-                  <i class="bi bi-geo-alt me-1"></i>Region
-                </label>
-                <select class="form-select form-select-sm" id="orgRegionFilterSelect" onchange="orgsModule.filterOrganisations()">
-                  <option value="">All Regions</option>
-                </select>
-              </div>
+    <!-- Region Filter -->
+    <div class="col-md-3">
+      <label for="orgsRegionFilter" class="form-label">
+        <i class="bi bi-geo-alt me-1"></i>Region
+      </label>
+      <select class="form-select" id="orgsRegionFilter" onchange="orgsModule.filterOrganisations()">
+        <option value="">All Regions</option>
+        <!-- Populated by JS -->
+      </select>
+    </div>
 
-              <!-- Search Bar -->
-              <div class="col-md-5">
-                <label for="orgSearchBox" class="form-label">
-                  <i class="bi bi-search me-1"></i>Search Organisations
-                </label>
-                <input type="text" class="form-control" id="orgSearchBox" placeholder="Search by company name, contact, email..." onkeyup="orgsModule.filterOrganisations()">
-              </div>
-            </div>
-          </div>
+    <!-- Search Box -->
+    <div class="col-md-6">
+      <label for="orgsSearchBox" class="form-label">
+        <i class="bi bi-search me-1"></i>Search Organisations
+      </label>
+      <input type="text" class="form-control" id="orgsSearchBox" placeholder="Search organisations..." oninput="orgsModule.filterOrganisations()">
+    </div>
+  </div>
+</div>
 
           <!-- Organisations Table -->
           <div class="table-container">

@@ -127,13 +127,13 @@ document.addEventListener('DOMContentLoaded', function() {
   });
   
   // --- Organisation Filters ---
-  const debouncedOrgFilter = utils.debounce(() => {
-    orgsModule.filterOrganisations();
-  }, 300);
-  
-  document.getElementById('orgSearchBox').addEventListener('input', () => {
+  c// Line 134 - REPLACE WITH THIS:
+const orgSearchBox = document.getElementById('orgsSearchBox');
+if (orgSearchBox) {
+  orgSearchBox.addEventListener('input', () => {
     debouncedOrgFilter();
   });
+}
   
   // --- Winners Filters ---
   const debouncedWinnerFilter = utils.debounce(() => {

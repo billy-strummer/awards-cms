@@ -9,9 +9,9 @@ const awardsModule = {
   async loadAwards() {
     try {
       utils.showLoading();
-      utils.showTableLoading('awardsTableBody', 8); // 8 columns now (added assignments column)
+      utils.showTableLoading('awardsTableBody', 9); // 9 columns now (added county + region)
       
-      // Load all awards using proper Supabase v2 pagination
+      // Load all awards WITH region join
       let allData = [];
       let page = 0;
       const pageSize = 1000;
@@ -23,7 +23,10 @@ const awardsModule = {
         
         const { data, error } = await STATE.client
           .from('awards')
-          .select('*', { count: 'exact' })
+          .select(`
+            *,
+            counties!inner("Name", region_id, regions(name))
+          `)
           .range(from, to);
         
         if (error) throw error;
@@ -31,7 +34,14 @@ const awardsModule = {
         if (!data || data.length === 0) {
           hasMore = false;
         } else {
-          allData = allData.concat(data);
+          // Map the actual region to each award
+          const mappedData = data.map(award => ({
+            ...award,
+            _actualRegion: award.counties?.regions?.name || null,
+            _countyName: award.counties?.Name || award.region
+          }));
+          
+          allData = allData.concat(mappedData);
           page++;
           
           // Stop if we got less than pageSize records (last page)
@@ -58,7 +68,7 @@ const awardsModule = {
       console.error('Error loading awards:', error);
       console.error('Error details:', error.details, error.hint, error.message);
       utils.showToast('Failed to load awards: ' + error.message, 'error');
-      utils.showEmptyState('awardsTableBody', 8, 'Failed to load awards', 'bi-exclamation-triangle');
+      utils.showEmptyState('awardsTableBody', 9, 'Failed to load awards', 'bi-exclamation-triangle');
     } finally {
       utils.hideLoading();
     }
@@ -108,9 +118,39 @@ const awardsModule = {
   },
 
   /**
+   * Populate year filter with only 2026+
+   */
+  populateYearFilter() {
+    const currentYear = 2026;
+    const yearSelect = document.getElementById('awardsYearFilterSelect');
+    
+    if (yearSelect) {
+      // Get unique years from awards that are >= 2026
+      const uniqueYears = [...new Set(STATE.allAwards
+        .map(a => {
+          // Handle both string dates like "2026-01-01" and year numbers
+          if (typeof a.year === 'string' && a.year.includes('-')) {
+            return parseInt(a.year.split('-')[0]);
+          }
+          return parseInt(a.year);
+        })
+        .filter(y => y && y >= currentYear)
+      )].sort((a, b) => b - a); // Sort descending (newest first)
+      
+      yearSelect.innerHTML = '<option value="">All Years</option>' +
+        uniqueYears.map(year => 
+          `<option value="${year}">${year}</option>`
+        ).join('');
+    }
+  },
+
+  /**
    * Populate filter dropdowns with unique values
    */
   populateFilters() {
+    // Populate year filter (2026+)
+    this.populateYearFilter();
+    
     // Populate sector filter
     utils.populateFilter(
       STATE.allAwards,
@@ -119,13 +159,26 @@ const awardsModule = {
       'All Sectors'
     );
     
-    // Populate region filter
+    // Populate county filter (award.region stores county names)
     utils.populateFilter(
       STATE.allAwards,
       'region',
-      'awardsRegionFilterSelect',
-      'All Regions'
+      'awardsCountyFilterSelect',
+      'All Counties'
     );
+    
+    // Populate actual region filter
+    const uniqueRegions = [...new Set(STATE.allAwards
+      .map(a => a._actualRegion)
+      .filter(r => r))];
+    
+    const regionSelect = document.getElementById('awardsRegionFilterSelect');
+    if (regionSelect) {
+      regionSelect.innerHTML = '<option value="">All Regions</option>' +
+        uniqueRegions.sort().map(region => 
+          `<option value="${region}">${region}</option>`
+        ).join('');
+    }
   },
 
   /**
@@ -135,12 +188,21 @@ const awardsModule = {
     const year = document.getElementById('awardsYearFilterSelect').value;
     const status = document.getElementById('awardsStatusFilterSelect').value;
     const sector = document.getElementById('awardsSectorFilterSelect').value;
+    const county = document.getElementById('awardsCountyFilterSelect').value;
     const region = document.getElementById('awardsRegionFilterSelect').value;
     const search = document.getElementById('awardsSearchBox').value.toLowerCase().trim();
 
     STATE.filteredAwards = STATE.allAwards.filter(award => {
-      // Year filter
-      if (year && award.year !== year) return false;
+      // Year filter - handle both date strings and year numbers
+      if (year) {
+        let awardYear;
+        if (typeof award.year === 'string' && award.year.includes('-')) {
+          awardYear = award.year.split('-')[0];
+        } else {
+          awardYear = award.year;
+        }
+        if (awardYear != year) return false;
+      }
 
       // Status filter
       if (status && award.status?.toLowerCase() !== status.toLowerCase()) return false;
@@ -148,16 +210,23 @@ const awardsModule = {
       // Sector filter
       if (sector && award.sector !== sector) return false;
 
-      // Region filter
-      if (region && award.region !== region) return false;
+      // County filter (award.region actually stores county name)
+      if (county && award.region !== county) return false;
+      
+      // Region filter (actual region like "South West")
+      if (region && award._actualRegion !== region) return false;
 
-      // Search filter (searches in winner name and award name/category)
+      // Search filter (searches in award name, category, and winner)
       if (search) {
         const winnerName = award.winner?.toLowerCase() || '';
         const awardName = award.award_name?.toLowerCase() || '';
         const awardCategory = award.award_category?.toLowerCase() || '';
+        const countyName = award.region?.toLowerCase() || '';
 
-        if (!winnerName.includes(search) && !awardName.includes(search) && !awardCategory.includes(search)) {
+        if (!winnerName.includes(search) && 
+            !awardName.includes(search) && 
+            !awardCategory.includes(search) &&
+            !countyName.includes(search)) {
           return false;
         }
       }
@@ -178,7 +247,7 @@ const awardsModule = {
     count.textContent = STATE.filteredAwards.length;
 
     if (STATE.filteredAwards.length === 0) {
-      utils.showEmptyState('awardsTableBody', 6, 'No awards found matching your filters');
+      utils.showEmptyState('awardsTableBody', 9, 'No awards found matching your filters');
       return;
     }
 
@@ -203,8 +272,13 @@ const awardsModule = {
             </span>
           </td>
           <td>
+            <span class="badge bg-warning-subtle text-warning">
+              <i class="bi bi-pin-map me-1"></i>${utils.escapeHtml(award.region || '-')}
+            </span>
+          </td>
+          <td>
             <span class="badge bg-success-subtle text-success">
-              <i class="bi bi-geo-alt me-1"></i>${utils.escapeHtml(award.region || '-')}
+              <i class="bi bi-geo-alt me-1"></i>${utils.escapeHtml(award._actualRegion || '-')}
             </span>
           </td>
           <td>${utils.getStatusBadge(award.status || 'Draft')}</td>
@@ -309,6 +383,14 @@ const awardsModule = {
               <tr>
                 <th width="40%">Category:</th>
                 <td>${utils.escapeHtml(award.award_name)}</td>
+              </tr>
+              <tr>
+                <th>County:</th>
+                <td><span class="badge bg-warning-subtle text-warning">${utils.escapeHtml(award.region || 'N/A')}</span></td>
+              </tr>
+              <tr>
+                <th>Region:</th>
+                <td><span class="badge bg-success-subtle text-success">${utils.escapeHtml(award._actualRegion || 'N/A')}</span></td>
               </tr>
               <tr>
                 <th>Year:</th>
@@ -482,7 +564,6 @@ const awardsModule = {
     try {
       utils.showLoading();
       
-      // Supabase v2 syntax for update
       const { error } = await STATE.client
         .from('awards')
         .update({ status: STATUS.APPROVED })
@@ -513,7 +594,6 @@ const awardsModule = {
     try {
       utils.showLoading();
       
-      // Supabase v2 syntax for delete
       const { error } = await STATE.client
         .from('awards')
         .delete()

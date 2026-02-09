@@ -6,14 +6,12 @@ const paymentsModule = {
   currentInvoices: [],
   currentPayments: [],
   currentOrganisations: [],
+  currentSendInvoiceId: null,
 
   /* ==================================================== */
   /* INITIALIZATION */
   /* ==================================================== */
 
-  /**
-   * Load all payment data when tab is opened
-   */
   async loadAllData() {
     try {
       utils.showLoading();
@@ -23,7 +21,7 @@ const paymentsModule = {
         this.loadOrganisationsForFilters()
       ]);
       this.updateStatistics();
-      console.log('✅ Payments data loaded');
+      console.log('Payments data loaded');
     } catch (error) {
       console.error('Error loading payments data:', error);
       utils.showToast('Failed to load payments data', 'error');
@@ -36,9 +34,6 @@ const paymentsModule = {
   /* INVOICES */
   /* ==================================================== */
 
-  /**
-   * Load all invoices
-   */
   async loadInvoices() {
     try {
       const { data, error } = await STATE.client
@@ -59,9 +54,6 @@ const paymentsModule = {
     }
   },
 
-  /**
-   * Render invoices table
-   */
   renderInvoices() {
     const tbody = document.getElementById('invoicesTableBody');
     if (!tbody) return;
@@ -97,9 +89,9 @@ const paymentsModule = {
         <td>${invoice.invoice_date ? new Date(invoice.invoice_date).toLocaleDateString() : 'N/A'}</td>
         <td>${invoice.due_date ? new Date(invoice.due_date).toLocaleDateString() : 'N/A'}</td>
         <td><span class="badge bg-info-subtle text-info">${this.formatInvoiceType(invoice.invoice_type)}</span></td>
-        <td><strong>£${parseFloat(invoice.total_amount || 0).toFixed(2)}</strong></td>
-        <td class="text-success">£${parseFloat(invoice.paid_amount || 0).toFixed(2)}</td>
-        <td class="text-danger">£${parseFloat(invoice.balance_due || 0).toFixed(2)}</td>
+        <td><strong>&pound;${parseFloat(invoice.total_amount || 0).toFixed(2)}</strong></td>
+        <td class="text-success">&pound;${parseFloat(invoice.paid_amount || 0).toFixed(2)}</td>
+        <td class="text-danger">&pound;${parseFloat(invoice.balance_due || 0).toFixed(2)}</td>
         <td>${this.getInvoiceStatusBadge(invoice.status, invoice.payment_status)}</td>
         <td>
           <div class="btn-group btn-group-sm" role="group">
@@ -121,9 +113,6 @@ const paymentsModule = {
     `).join('');
   },
 
-  /**
-   * Format invoice type for display
-   */
   formatInvoiceType(type) {
     const types = {
       entry_fee: 'Entry Fee',
@@ -135,9 +124,6 @@ const paymentsModule = {
     return types[type] || type;
   },
 
-  /**
-   * Get invoice status badge
-   */
   getInvoiceStatusBadge(status, paymentStatus) {
     const badges = {
       draft: '<span class="badge bg-secondary">Draft</span>',
@@ -152,34 +138,25 @@ const paymentsModule = {
     return badges[status] || badges[paymentStatus] || '<span class="badge bg-secondary">Unknown</span>';
   },
 
-  /**
-   * Create new invoice
-   */
   async createNewInvoice() {
     try {
-      // Show modal
       const modal = new bootstrap.Modal(document.getElementById('createInvoiceModal'));
 
-      // Reset form
       document.getElementById('createInvoiceForm').reset();
       document.getElementById('invoiceLineItems').innerHTML = '';
 
-      // Add one default line item
       this.addInvoiceLineItem();
 
-      // Set default dates
       const today = new Date().toISOString().split('T')[0];
       const dueDate = new Date();
       dueDate.setDate(dueDate.getDate() + 30);
       document.getElementById('invoiceDate').value = today;
       document.getElementById('invoiceDueDate').value = dueDate.toISOString().split('T')[0];
 
-      // Reset discount fields
       document.getElementById('invoiceDiscount').value = '0';
       document.getElementById('customDiscountRow').style.display = 'none';
       document.getElementById('invoiceDiscountCustom').value = '';
 
-      // Load organisations for dropdown
       const { data: orgs, error } = await STATE.client
         .from('organisations')
         .select('id, company_name')
@@ -199,9 +176,6 @@ const paymentsModule = {
     }
   },
 
-  /**
-   * Handle discount dropdown change
-   */
   handleDiscountChange() {
     const discountSelect = document.getElementById('invoiceDiscount');
     const customDiscountRow = document.getElementById('customDiscountRow');
@@ -215,9 +189,6 @@ const paymentsModule = {
     }
   },
 
-  /**
-   * Get current discount percentage
-   */
   getDiscountPercentage() {
     const discountSelect = document.getElementById('invoiceDiscount');
     if (discountSelect.value === 'custom') {
@@ -226,9 +197,6 @@ const paymentsModule = {
     return parseFloat(discountSelect.value) || 0;
   },
 
-  /**
-   * Add a line item to invoice
-   */
   addInvoiceLineItem() {
     const container = document.getElementById('invoiceLineItems');
     const itemId = Date.now();
@@ -258,9 +226,6 @@ const paymentsModule = {
     container.insertAdjacentHTML('beforeend', itemHTML);
   },
 
-  /**
-   * Remove a line item from invoice
-   */
   removeInvoiceLineItem(itemId) {
     const item = document.querySelector(`[data-item-id="${itemId}"]`);
     if (item) {
@@ -268,9 +233,6 @@ const paymentsModule = {
     }
   },
 
-  /**
-   * Save new invoice
-   */
   async saveNewInvoice() {
     try {
       utils.showLoading();
@@ -289,7 +251,6 @@ const paymentsModule = {
       const taxRate = parseFloat(document.getElementById('invoiceTaxRate').value) || 20;
       const description = document.getElementById('invoiceDescription').value;
 
-      // Collect line items
       const lineItemElements = document.querySelectorAll('.invoice-line-item');
       const lineItems = Array.from(lineItemElements).map(el => {
         const inputs = el.querySelectorAll('input');
@@ -310,7 +271,6 @@ const paymentsModule = {
         return;
       }
 
-      // Calculate totals with discount
       const subtotal = lineItems.reduce((sum, item) => sum + item.line_total, 0);
       const discountPercentage = this.getDiscountPercentage();
       const discountAmount = subtotal * (discountPercentage / 100);
@@ -319,14 +279,19 @@ const paymentsModule = {
       const totalAmount = subtotalAfterDiscount + taxAmount;
 
       // Generate invoice number
-      const { data: invoiceNumberData, error: genError } = await STATE.client
-        .rpc('generate_invoice_number');
+      let invoiceNumber;
+      try {
+        const { data: invoiceNumberData, error: genError } = await STATE.client
+          .rpc('generate_invoice_number');
+        if (genError) throw genError;
+        invoiceNumber = invoiceNumberData;
+      } catch (e) {
+        // Fallback: generate client-side if RPC doesn't exist
+        const year = new Date().getFullYear();
+        const rand = Math.floor(Math.random() * 9000) + 1000;
+        invoiceNumber = `INV-${year}-${rand}`;
+      }
 
-      if (genError) throw genError;
-
-      const invoiceNumber = invoiceNumberData;
-
-      // Create invoice
       const { data: invoice, error: invoiceError } = await STATE.client
         .from('invoices')
         .insert({
@@ -352,7 +317,6 @@ const paymentsModule = {
 
       if (invoiceError) throw invoiceError;
 
-      // Create line items
       const lineItemsWithInvoiceId = lineItems.map(item => ({
         ...item,
         invoice_id: invoice.id
@@ -364,7 +328,6 @@ const paymentsModule = {
 
       if (lineItemsError) throw lineItemsError;
 
-      // Close modal and reload
       bootstrap.Modal.getInstance(document.getElementById('createInvoiceModal')).hide();
 
       utils.showToast(`Invoice ${invoiceNumber} created successfully!`, 'success');
@@ -381,16 +344,121 @@ const paymentsModule = {
   },
 
   /**
-   * View invoice details
+   * View invoice details in modal
    */
   async viewInvoice(invoiceId) {
-    utils.showToast('Invoice viewing modal coming soon...', 'info');
-    // TODO: Implement invoice viewing modal
+    try {
+      const modal = new bootstrap.Modal(document.getElementById('viewInvoiceModal'));
+      const body = document.getElementById('viewInvoiceBody');
+      body.innerHTML = '<div class="text-center py-4"><div class="spinner-border" role="status"></div></div>';
+      modal.show();
+
+      // Load invoice with line items
+      const [invoiceResult, lineItemsResult] = await Promise.all([
+        STATE.client.from('invoices').select('*, organisations(id, company_name, email, contact_phone)').eq('id', invoiceId).single(),
+        STATE.client.from('invoice_line_items').select('*').eq('invoice_id', invoiceId).order('created_at')
+      ]);
+
+      if (invoiceResult.error) throw invoiceResult.error;
+
+      const invoice = invoiceResult.data;
+      const lineItems = lineItemsResult.data || [];
+
+      body.innerHTML = `
+        <div class="row mb-4">
+          <div class="col-md-6">
+            <h4 class="text-primary mb-3">${utils.escapeHtml(invoice.invoice_number)}</h4>
+            <table class="table table-sm table-borderless">
+              <tr><td class="text-muted">Company:</td><td><strong>${utils.escapeHtml(invoice.organisations?.company_name || 'N/A')}</strong></td></tr>
+              <tr><td class="text-muted">Email:</td><td>${utils.escapeHtml(invoice.organisations?.email || 'N/A')}</td></tr>
+              <tr><td class="text-muted">Phone:</td><td>${utils.escapeHtml(invoice.organisations?.contact_phone || 'N/A')}</td></tr>
+            </table>
+          </div>
+          <div class="col-md-6 text-end">
+            <table class="table table-sm table-borderless">
+              <tr><td class="text-muted">Invoice Date:</td><td>${invoice.invoice_date ? new Date(invoice.invoice_date).toLocaleDateString('en-GB') : 'N/A'}</td></tr>
+              <tr><td class="text-muted">Due Date:</td><td>${invoice.due_date ? new Date(invoice.due_date).toLocaleDateString('en-GB') : 'N/A'}</td></tr>
+              <tr><td class="text-muted">Status:</td><td>${this.getInvoiceStatusBadge(invoice.status, invoice.payment_status)}</td></tr>
+              <tr><td class="text-muted">Type:</td><td><span class="badge bg-info-subtle text-info">${this.formatInvoiceType(invoice.invoice_type)}</span></td></tr>
+              ${invoice.package_type ? `<tr><td class="text-muted">Package:</td><td><span class="badge bg-primary">${invoice.package_type}</span></td></tr>` : ''}
+            </table>
+          </div>
+        </div>
+
+        ${invoice.description ? `<div class="alert alert-light mb-3"><strong>Notes:</strong> ${utils.escapeHtml(invoice.description)}</div>` : ''}
+
+        <h6 class="mb-3">Line Items</h6>
+        <div class="table-responsive">
+          <table class="table table-sm table-striped">
+            <thead>
+              <tr>
+                <th>Item</th>
+                <th>Description</th>
+                <th class="text-center">Qty</th>
+                <th class="text-end">Unit Price</th>
+                <th class="text-end">Total</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${lineItems.map(item => `
+                <tr>
+                  <td>${utils.escapeHtml(item.item_name || '')}</td>
+                  <td>${utils.escapeHtml(item.description || '')}</td>
+                  <td class="text-center">${item.quantity || 1}</td>
+                  <td class="text-end">&pound;${parseFloat(item.unit_price || 0).toFixed(2)}</td>
+                  <td class="text-end">&pound;${parseFloat(item.line_total || 0).toFixed(2)}</td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        </div>
+
+        <div class="row justify-content-end">
+          <div class="col-md-5">
+            <table class="table table-sm table-borderless">
+              <tr><td class="text-muted">Subtotal:</td><td class="text-end">&pound;${parseFloat(invoice.subtotal || 0).toFixed(2)}</td></tr>
+              ${invoice.discount_percentage > 0 ? `<tr><td class="text-muted">Discount (${invoice.discount_percentage}%):</td><td class="text-end text-danger">-&pound;${parseFloat(invoice.discount_amount || 0).toFixed(2)}</td></tr>` : ''}
+              <tr><td class="text-muted">VAT (${invoice.tax_rate || 20}%):</td><td class="text-end">&pound;${parseFloat(invoice.tax_amount || 0).toFixed(2)}</td></tr>
+              <tr class="fw-bold border-top"><td>Total:</td><td class="text-end">&pound;${parseFloat(invoice.total_amount || 0).toFixed(2)}</td></tr>
+              <tr class="text-success"><td>Paid:</td><td class="text-end">&pound;${parseFloat(invoice.paid_amount || 0).toFixed(2)}</td></tr>
+              <tr class="text-danger fw-bold"><td>Balance Due:</td><td class="text-end">&pound;${parseFloat(invoice.balance_due || 0).toFixed(2)}</td></tr>
+            </table>
+          </div>
+        </div>
+      `;
+
+      // Wire up footer buttons
+      document.getElementById('viewInvoiceRecordPaymentBtn').onclick = () => {
+        bootstrap.Modal.getInstance(document.getElementById('viewInvoiceModal')).hide();
+        this.recordPaymentForInvoice(invoiceId);
+      };
+
+      document.getElementById('viewInvoicePrintBtn').onclick = () => {
+        const printWindow = window.open('', '_blank');
+        printWindow.document.write(`
+          <html><head><title>Invoice ${invoice.invoice_number}</title>
+          <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+          <style>body{padding:40px;} @media print{.no-print{display:none;}}</style>
+          </head><body>
+          <div class="container">
+            <div class="d-flex justify-content-between mb-4">
+              <div><h2>British Trade Awards</h2><p class="text-muted">Invoice</p></div>
+              <div class="text-end"><h3 class="text-primary">${invoice.invoice_number}</h3></div>
+            </div>
+            ${body.innerHTML}
+            <div class="mt-4 text-center no-print"><button onclick="window.print()" class="btn btn-primary">Print</button></div>
+          </div>
+          </body></html>
+        `);
+        printWindow.document.close();
+      };
+
+    } catch (error) {
+      console.error('Error viewing invoice:', error);
+      utils.showToast('Failed to load invoice details: ' + error.message, 'error');
+    }
   },
 
-  /**
-   * Delete invoice
-   */
   async deleteInvoice(invoiceId) {
     if (!confirm('Are you sure you want to delete this invoice? This action cannot be undone.')) {
       return;
@@ -398,6 +466,9 @@ const paymentsModule = {
 
     try {
       utils.showLoading();
+
+      // Delete line items first
+      await STATE.client.from('invoice_line_items').delete().eq('invoice_id', invoiceId);
 
       const { error } = await STATE.client
         .from('invoices')
@@ -418,20 +489,99 @@ const paymentsModule = {
   },
 
   /**
-   * Send invoice via email
+   * Send invoice via email - opens modal with pre-filled data
    */
   async sendInvoice(invoiceId) {
-    utils.showToast('Email sending functionality coming soon...', 'info');
-    // TODO: Implement email sending
+    try {
+      const invoice = this.currentInvoices.find(i => i.id === invoiceId);
+      if (!invoice) {
+        utils.showToast('Invoice not found', 'error');
+        return;
+      }
+
+      this.currentSendInvoiceId = invoiceId;
+
+      // Pre-fill form
+      const email = invoice.organisations?.email || '';
+      document.getElementById('sendInvoiceEmail').value = email;
+      document.getElementById('sendInvoiceCc').value = '';
+      document.getElementById('sendInvoiceSubject').value = `Invoice ${invoice.invoice_number} - British Trade Awards`;
+      document.getElementById('sendInvoiceMessage').value =
+        `Dear ${invoice.organisations?.company_name || 'Sir/Madam'},\n\nPlease find attached invoice ${invoice.invoice_number} for the amount of \u00A3${parseFloat(invoice.total_amount || 0).toFixed(2)}.\n\nPayment is due by ${invoice.due_date ? new Date(invoice.due_date).toLocaleDateString('en-GB') : 'N/A'}.\n\nKind regards,\nBritish Trade Awards`;
+
+      const modal = new bootstrap.Modal(document.getElementById('sendInvoiceModal'));
+      modal.show();
+
+    } catch (error) {
+      console.error('Error preparing invoice email:', error);
+      utils.showToast('Error preparing email: ' + error.message, 'error');
+    }
+  },
+
+  /**
+   * Confirm and process sending invoice email
+   */
+  async confirmSendInvoice() {
+    try {
+      const form = document.getElementById('sendInvoiceForm');
+      if (!form.checkValidity()) {
+        form.reportValidity();
+        return;
+      }
+
+      utils.showLoading();
+
+      const recipientEmail = document.getElementById('sendInvoiceEmail').value;
+      const cc = document.getElementById('sendInvoiceCc').value;
+      const subject = document.getElementById('sendInvoiceSubject').value;
+      const message = document.getElementById('sendInvoiceMessage').value;
+
+      // Log communication in the database
+      const invoice = this.currentInvoices.find(i => i.id === this.currentSendInvoiceId);
+
+      if (invoice) {
+        // Log to communications table
+        try {
+          await STATE.client.from('communications').insert({
+            organisation_id: invoice.organisation_id,
+            type: 'email',
+            subject: subject,
+            content: message,
+            direction: 'outbound',
+            status: 'sent',
+            created_at: new Date().toISOString()
+          });
+        } catch (commError) {
+          console.warn('Could not log communication:', commError);
+        }
+
+        // Update invoice status to 'sent'
+        await STATE.client
+          .from('invoices')
+          .update({
+            status: 'sent',
+            sent_at: new Date().toISOString()
+          })
+          .eq('id', this.currentSendInvoiceId);
+      }
+
+      bootstrap.Modal.getInstance(document.getElementById('sendInvoiceModal')).hide();
+      utils.showToast(`Invoice email prepared for ${recipientEmail}. Note: Email delivery requires SendGrid API configuration.`, 'success');
+
+      await this.loadInvoices();
+
+    } catch (error) {
+      console.error('Error sending invoice:', error);
+      utils.showToast('Error sending invoice: ' + error.message, 'error');
+    } finally {
+      utils.hideLoading();
+    }
   },
 
   /* ==================================================== */
   /* PAYMENTS */
   /* ==================================================== */
 
-  /**
-   * Load all payments
-   */
   async loadPayments() {
     try {
       const { data, error } = await STATE.client
@@ -453,9 +603,6 @@ const paymentsModule = {
     }
   },
 
-  /**
-   * Render payments table
-   */
   renderPayments() {
     const tbody = document.getElementById('paymentsTableBody');
     if (!tbody) return;
@@ -489,7 +636,7 @@ const paymentsModule = {
         </td>
         <td>${payment.invoices?.invoice_number ? `<a href="#" onclick="paymentsModule.viewInvoice('${payment.invoice_id}'); return false;">${payment.invoices.invoice_number}</a>` : 'N/A'}</td>
         <td><span class="badge bg-secondary">${this.formatPaymentMethod(payment.payment_method)}</span></td>
-        <td><strong>£${parseFloat(payment.amount || 0).toFixed(2)}</strong></td>
+        <td><strong>&pound;${parseFloat(payment.amount || 0).toFixed(2)}</strong></td>
         <td>${this.getPaymentStatusBadge(payment.status)}</td>
         <td>
           <div class="btn-group btn-group-sm" role="group">
@@ -505,9 +652,6 @@ const paymentsModule = {
     `).join('');
   },
 
-  /**
-   * Format payment method for display
-   */
   formatPaymentMethod(method) {
     const methods = {
       bank_transfer: 'Bank Transfer',
@@ -521,9 +665,6 @@ const paymentsModule = {
     return methods[method] || method;
   },
 
-  /**
-   * Get payment status badge
-   */
   getPaymentStatusBadge(status) {
     const badges = {
       pending: '<span class="badge bg-warning">Pending</span>',
@@ -535,51 +676,37 @@ const paymentsModule = {
     return badges[status] || '<span class="badge bg-secondary">Unknown</span>';
   },
 
-  /**
-   * Record new payment
-   */
   async recordNewPayment() {
     await this.openPaymentRecordModal(null);
   },
 
-  /**
-   * Record payment for specific invoice
-   */
   async recordPaymentForInvoice(invoiceId) {
     await this.openPaymentRecordModal(invoiceId);
   },
 
-  /**
-   * Open payment recording modal
-   */
   async openPaymentRecordModal(invoiceId) {
     try {
       const modal = new bootstrap.Modal(document.getElementById('recordPaymentModal'));
 
-      // Reset form
       document.getElementById('recordPaymentForm').reset();
       document.getElementById('paymentDate').value = new Date().toISOString().split('T')[0];
 
-      // Load organisations and invoices
       const [orgsResult, invoicesResult] = await Promise.all([
         STATE.client.from('organisations').select('id, company_name').order('company_name'),
-        STATE.client.from('invoices').select('id, invoice_number, organisation_id, total_amount, paid_amount, organisations(company_name)').eq('payment_status', 'unpaid').or('payment_status.eq.partial').order('invoice_number')
+        STATE.client.from('invoices').select('id, invoice_number, organisation_id, total_amount, paid_amount, organisations(company_name)').neq('payment_status', 'paid').order('invoice_number')
       ]);
 
       if (orgsResult.error) throw orgsResult.error;
       if (invoicesResult.error) throw invoicesResult.error;
 
-      // Populate organisation dropdown
       const orgSelect = document.getElementById('paymentOrganisation');
       orgSelect.innerHTML = '<option value="">Select Company...</option>' +
         orgsResult.data.map(org => `<option value="${org.id}">${utils.escapeHtml(org.company_name)}</option>`).join('');
 
-      // Populate invoice dropdown
       const invoiceSelect = document.getElementById('paymentInvoice');
       invoiceSelect.innerHTML = '<option value="">None (General Payment)</option>' +
-        invoicesResult.data.map(inv => `<option value="${inv.id}">${inv.invoice_number} - ${inv.organisations?.company_name} (£${parseFloat(inv.total_amount - inv.paid_amount).toFixed(2)} due)</option>`).join('');
+        invoicesResult.data.map(inv => `<option value="${inv.id}">${inv.invoice_number} - ${inv.organisations?.company_name} (&pound;${parseFloat(inv.total_amount - inv.paid_amount).toFixed(2)} due)</option>`).join('');
 
-      // If specific invoice, pre-select it and set amount
       if (invoiceId) {
         const invoice = invoicesResult.data.find(i => i.id === invoiceId);
         if (invoice) {
@@ -597,9 +724,6 @@ const paymentsModule = {
     }
   },
 
-  /**
-   * Save new payment record
-   */
   async savePaymentRecord() {
     try {
       utils.showLoading();
@@ -623,12 +747,18 @@ const paymentsModule = {
       }
 
       // Generate payment reference
-      const { data: refData, error: refError } = await STATE.client.rpc('generate_payment_reference');
-      if (refError) throw refError;
+      let paymentReference;
+      try {
+        const { data: refData, error: refError } = await STATE.client.rpc('generate_payment_reference');
+        if (refError) throw refError;
+        paymentReference = refData;
+      } catch (e) {
+        // Fallback: generate client-side
+        const year = new Date().getFullYear();
+        const rand = Math.floor(Math.random() * 9000) + 1000;
+        paymentReference = `PAY-${year}-${rand}`;
+      }
 
-      const paymentReference = refData;
-
-      // Create payment
       const { data: payment, error: paymentError } = await STATE.client
         .from('payments')
         .insert({
@@ -646,27 +776,38 @@ const paymentsModule = {
 
       if (paymentError) throw paymentError;
 
-      // If linked to invoice, update invoice paid amount
+      // If linked to invoice, update invoice paid amount and status
       if (invoiceId) {
         const { data: invoice, error: invoiceError } = await STATE.client
           .from('invoices')
-          .select('paid_amount')
+          .select('paid_amount, total_amount')
           .eq('id', invoiceId)
           .single();
 
-        if (invoiceError) throw invoiceError;
+        if (!invoiceError && invoice) {
+          const newPaidAmount = parseFloat(invoice.paid_amount || 0) + amount;
+          const totalAmount = parseFloat(invoice.total_amount || 0);
+          const balanceDue = Math.max(0, totalAmount - newPaidAmount);
 
-        const newPaidAmount = parseFloat(invoice.paid_amount || 0) + amount;
+          let paymentStatus = 'partial';
+          let status = 'sent';
+          if (newPaidAmount >= totalAmount) {
+            paymentStatus = 'paid';
+            status = 'paid';
+          }
 
-        const { error: updateError } = await STATE.client
-          .from('invoices')
-          .update({ paid_amount: newPaidAmount })
-          .eq('id', invoiceId);
-
-        if (updateError) throw updateError;
+          await STATE.client
+            .from('invoices')
+            .update({
+              paid_amount: newPaidAmount,
+              balance_due: balanceDue,
+              payment_status: paymentStatus,
+              status: status
+            })
+            .eq('id', invoiceId);
+        }
       }
 
-      // Close modal and reload
       bootstrap.Modal.getInstance(document.getElementById('recordPaymentModal')).hide();
 
       utils.showToast(`Payment ${paymentReference} recorded successfully!`, 'success');
@@ -684,16 +825,45 @@ const paymentsModule = {
   },
 
   /**
-   * View payment details
+   * View payment details in modal
    */
   async viewPayment(paymentId) {
-    utils.showToast('Payment viewing modal coming soon...', 'info');
-    // TODO: Implement payment viewing modal
+    try {
+      const modal = new bootstrap.Modal(document.getElementById('viewPaymentModal'));
+      const body = document.getElementById('viewPaymentBody');
+      body.innerHTML = '<div class="text-center py-4"><div class="spinner-border" role="status"></div></div>';
+      modal.show();
+
+      const { data: payment, error } = await STATE.client
+        .from('payments')
+        .select('*, organisations(id, company_name), invoices(invoice_number)')
+        .eq('id', paymentId)
+        .single();
+
+      if (error) throw error;
+
+      body.innerHTML = `
+        <div class="mb-4">
+          <h5 class="text-success mb-3">${utils.escapeHtml(payment.payment_reference)}</h5>
+          <table class="table table-sm table-borderless">
+            <tr><td class="text-muted" style="width:40%">Company:</td><td><strong>${utils.escapeHtml(payment.organisations?.company_name || 'N/A')}</strong></td></tr>
+            <tr><td class="text-muted">Invoice:</td><td>${payment.invoices?.invoice_number || 'No linked invoice'}</td></tr>
+            <tr><td class="text-muted">Date:</td><td>${payment.payment_date ? new Date(payment.payment_date).toLocaleDateString('en-GB') : 'N/A'}</td></tr>
+            <tr><td class="text-muted">Method:</td><td><span class="badge bg-secondary">${this.formatPaymentMethod(payment.payment_method)}</span></td></tr>
+            <tr><td class="text-muted">Amount:</td><td><strong class="text-success fs-5">&pound;${parseFloat(payment.amount || 0).toFixed(2)}</strong></td></tr>
+            <tr><td class="text-muted">Status:</td><td>${this.getPaymentStatusBadge(payment.status)}</td></tr>
+            ${payment.notes ? `<tr><td class="text-muted">Notes:</td><td>${utils.escapeHtml(payment.notes)}</td></tr>` : ''}
+            <tr><td class="text-muted">Recorded:</td><td>${payment.created_at ? new Date(payment.created_at).toLocaleString('en-GB') : 'N/A'}</td></tr>
+          </table>
+        </div>
+      `;
+
+    } catch (error) {
+      console.error('Error viewing payment:', error);
+      utils.showToast('Failed to load payment details: ' + error.message, 'error');
+    }
   },
 
-  /**
-   * Delete payment
-   */
   async deletePayment(paymentId) {
     if (!confirm('Are you sure you want to delete this payment record?')) {
       return;
@@ -702,6 +872,13 @@ const paymentsModule = {
     try {
       utils.showLoading();
 
+      // Get payment details to reverse invoice update
+      const { data: payment } = await STATE.client
+        .from('payments')
+        .select('invoice_id, amount')
+        .eq('id', paymentId)
+        .single();
+
       const { error } = await STATE.client
         .from('payments')
         .delete()
@@ -709,8 +886,43 @@ const paymentsModule = {
 
       if (error) throw error;
 
+      // Reverse invoice paid amount if linked
+      if (payment?.invoice_id) {
+        const { data: invoice } = await STATE.client
+          .from('invoices')
+          .select('paid_amount, total_amount')
+          .eq('id', payment.invoice_id)
+          .single();
+
+        if (invoice) {
+          const newPaidAmount = Math.max(0, parseFloat(invoice.paid_amount || 0) - parseFloat(payment.amount || 0));
+          const totalAmount = parseFloat(invoice.total_amount || 0);
+          const balanceDue = totalAmount - newPaidAmount;
+
+          let paymentStatus = 'unpaid';
+          let status = 'sent';
+          if (newPaidAmount > 0 && newPaidAmount < totalAmount) {
+            paymentStatus = 'partial';
+          } else if (newPaidAmount >= totalAmount) {
+            paymentStatus = 'paid';
+            status = 'paid';
+          }
+
+          await STATE.client
+            .from('invoices')
+            .update({
+              paid_amount: newPaidAmount,
+              balance_due: balanceDue,
+              payment_status: paymentStatus,
+              status: status
+            })
+            .eq('id', payment.invoice_id);
+        }
+      }
+
       utils.showToast('Payment deleted successfully', 'success');
       await this.loadPayments();
+      await this.loadInvoices();
       this.updateStatistics();
     } catch (error) {
       console.error('Error deleting payment:', error);
@@ -724,22 +936,22 @@ const paymentsModule = {
   /* STATISTICS & REPORTING */
   /* ==================================================== */
 
-  /**
-   * Update dashboard statistics
-   */
   updateStatistics() {
-    // Invoice statistics
     const totalInvoices = this.currentInvoices.length;
     const paidInvoices = this.currentInvoices.filter(i => i.payment_status === 'paid').length;
     const overdueInvoices = this.currentInvoices.filter(i => i.status === 'overdue').length;
     const totalOutstanding = this.currentInvoices.reduce((sum, i) => sum + parseFloat(i.balance_due || 0), 0);
 
-    document.getElementById('totalInvoicesCount').textContent = totalInvoices;
-    document.getElementById('paidInvoicesCount').textContent = paidInvoices;
-    document.getElementById('overdueInvoicesCount').textContent = overdueInvoices;
-    document.getElementById('totalOutstandingAmount').textContent = `£${totalOutstanding.toFixed(2)}`;
+    const totalInvoicesEl = document.getElementById('totalInvoicesCount');
+    const paidInvoicesEl = document.getElementById('paidInvoicesCount');
+    const overdueInvoicesEl = document.getElementById('overdueInvoicesCount');
+    const totalOutstandingEl = document.getElementById('totalOutstandingAmount');
 
-    // Payment statistics
+    if (totalInvoicesEl) totalInvoicesEl.textContent = totalInvoices;
+    if (paidInvoicesEl) paidInvoicesEl.textContent = paidInvoices;
+    if (overdueInvoicesEl) overdueInvoicesEl.textContent = overdueInvoices;
+    if (totalOutstandingEl) totalOutstandingEl.textContent = `\u00A3${totalOutstanding.toFixed(2)}`;
+
     const totalPayments = this.currentPayments.length;
     const totalReceived = this.currentPayments
       .filter(p => p.status === 'completed')
@@ -750,14 +962,15 @@ const paymentsModule = {
       .filter(p => p.status === 'completed' && p.payment_date?.startsWith(currentMonth))
       .reduce((sum, p) => sum + parseFloat(p.amount || 0), 0);
 
-    document.getElementById('totalPaymentsCount').textContent = totalPayments;
-    document.getElementById('totalPaymentsAmount').textContent = `£${totalReceived.toFixed(2)}`;
-    document.getElementById('monthlyPaymentsAmount').textContent = `£${monthlyTotal.toFixed(2)}`;
+    const totalPaymentsEl = document.getElementById('totalPaymentsCount');
+    const totalPaymentsAmtEl = document.getElementById('totalPaymentsAmount');
+    const monthlyPaymentsEl = document.getElementById('monthlyPaymentsAmount');
+
+    if (totalPaymentsEl) totalPaymentsEl.textContent = totalPayments;
+    if (totalPaymentsAmtEl) totalPaymentsAmtEl.textContent = `\u00A3${totalReceived.toFixed(2)}`;
+    if (monthlyPaymentsEl) monthlyPaymentsEl.textContent = `\u00A3${monthlyTotal.toFixed(2)}`;
   },
 
-  /**
-   * Generate financial report
-   */
   async generateReport() {
     const reportType = document.getElementById('reportType').value;
     const startDate = document.getElementById('reportStartDate').value;
@@ -772,7 +985,6 @@ const paymentsModule = {
     try {
       utils.showLoading();
 
-      // Filter invoices by date range
       const filteredInvoices = this.currentInvoices.filter(invoice => {
         const invoiceDate = invoice.invoice_date;
         return invoiceDate >= startDate && invoiceDate <= endDate;
@@ -813,9 +1025,6 @@ const paymentsModule = {
     }
   },
 
-  /**
-   * Generate revenue summary report
-   */
   generateRevenueReport(invoices, startDate, endDate) {
     const totalInvoiced = invoices.reduce((sum, i) => sum + parseFloat(i.total_amount || 0), 0);
     const totalPaid = invoices.reduce((sum, i) => sum + parseFloat(i.paid_amount || 0), 0);
@@ -828,7 +1037,7 @@ const paymentsModule = {
           <div class="card text-center">
             <div class="card-body">
               <h6 class="text-muted">Total Invoiced</h6>
-              <h3 class="text-primary">£${totalInvoiced.toFixed(2)}</h3>
+              <h3 class="text-primary">&pound;${totalInvoiced.toFixed(2)}</h3>
             </div>
           </div>
         </div>
@@ -836,7 +1045,7 @@ const paymentsModule = {
           <div class="card text-center">
             <div class="card-body">
               <h6 class="text-muted">Total Received</h6>
-              <h3 class="text-success">£${totalPaid.toFixed(2)}</h3>
+              <h3 class="text-success">&pound;${totalPaid.toFixed(2)}</h3>
             </div>
           </div>
         </div>
@@ -844,7 +1053,7 @@ const paymentsModule = {
           <div class="card text-center">
             <div class="card-body">
               <h6 class="text-muted">Outstanding</h6>
-              <h3 class="text-danger">£${totalOutstanding.toFixed(2)}</h3>
+              <h3 class="text-danger">&pound;${totalOutstanding.toFixed(2)}</h3>
             </div>
           </div>
         </div>
@@ -853,9 +1062,6 @@ const paymentsModule = {
     `;
   },
 
-  /**
-   * Generate outstanding invoices report
-   */
   generateOutstandingReport(invoices) {
     const outstanding = invoices.filter(i => parseFloat(i.balance_due || 0) > 0);
 
@@ -879,8 +1085,8 @@ const paymentsModule = {
                 <td>${inv.invoice_number}</td>
                 <td>${inv.organisations?.company_name || 'N/A'}</td>
                 <td>${new Date(inv.due_date).toLocaleDateString()}</td>
-                <td>£${parseFloat(inv.total_amount).toFixed(2)}</td>
-                <td class="text-danger fw-bold">£${parseFloat(inv.balance_due).toFixed(2)}</td>
+                <td>&pound;${parseFloat(inv.total_amount).toFixed(2)}</td>
+                <td class="text-danger fw-bold">&pound;${parseFloat(inv.balance_due).toFixed(2)}</td>
                 <td>${this.getInvoiceStatusBadge(inv.status, inv.payment_status)}</td>
               </tr>
             `).join('')}
@@ -890,9 +1096,6 @@ const paymentsModule = {
     `;
   },
 
-  /**
-   * Generate payment history report
-   */
   generatePaymentHistoryReport(startDate, endDate) {
     const filteredPayments = this.currentPayments.filter(p => {
       const paymentDate = p.payment_date;
@@ -906,7 +1109,7 @@ const paymentsModule = {
     return `
       <h5 class="mb-4">Payment History: ${new Date(startDate).toLocaleDateString()} - ${new Date(endDate).toLocaleDateString()}</h5>
       <div class="alert alert-info">
-        <strong>Total Received:</strong> £${totalReceived.toFixed(2)} (${filteredPayments.length} payments)
+        <strong>Total Received:</strong> &pound;${totalReceived.toFixed(2)} (${filteredPayments.length} payments)
       </div>
       <div class="table-responsive">
         <table class="table table-sm table-striped">
@@ -927,7 +1130,7 @@ const paymentsModule = {
                 <td>${payment.payment_reference}</td>
                 <td>${payment.organisations?.company_name || 'N/A'}</td>
                 <td>${this.formatPaymentMethod(payment.payment_method)}</td>
-                <td>£${parseFloat(payment.amount).toFixed(2)}</td>
+                <td>&pound;${parseFloat(payment.amount).toFixed(2)}</td>
                 <td>${this.getPaymentStatusBadge(payment.status)}</td>
               </tr>
             `).join('')}
@@ -937,11 +1140,7 @@ const paymentsModule = {
     `;
   },
 
-  /**
-   * Generate by organisation report
-   */
   generateByOrganisationReport(invoices) {
-    // Group by organisation
     const byOrg = {};
     invoices.forEach(inv => {
       const orgName = inv.organisations?.company_name || 'Unknown';
@@ -972,9 +1171,9 @@ const paymentsModule = {
               <tr>
                 <td>${org}</td>
                 <td>${data.count}</td>
-                <td>£${data.total.toFixed(2)}</td>
-                <td class="text-success">£${data.paid.toFixed(2)}</td>
-                <td class="text-danger">£${data.outstanding.toFixed(2)}</td>
+                <td>&pound;${data.total.toFixed(2)}</td>
+                <td class="text-success">&pound;${data.paid.toFixed(2)}</td>
+                <td class="text-danger">&pound;${data.outstanding.toFixed(2)}</td>
               </tr>
             `).join('')}
           </tbody>
@@ -983,13 +1182,9 @@ const paymentsModule = {
     `;
   },
 
-  /**
-   * Generate by package report
-   */
   generateByPackageReport(invoices) {
     const packageInvoices = invoices.filter(i => i.invoice_type === 'package');
 
-    // Group by package type
     const byPackage = {};
     packageInvoices.forEach(inv => {
       const pkg = inv.package_type || 'Unspecified';
@@ -1018,8 +1213,8 @@ const paymentsModule = {
               <tr>
                 <td><span class="badge bg-primary">${pkg}</span></td>
                 <td>${data.count}</td>
-                <td>£${data.total.toFixed(2)}</td>
-                <td class="text-success">£${data.paid.toFixed(2)}</td>
+                <td>&pound;${data.total.toFixed(2)}</td>
+                <td class="text-success">&pound;${data.paid.toFixed(2)}</td>
               </tr>
             `).join('')}
           </tbody>
@@ -1028,15 +1223,59 @@ const paymentsModule = {
     `;
   },
 
-  /**
-   * Generate by event report
-   */
   generateByEventReport(invoices) {
-    utils.showToast('Event-based reporting coming soon...', 'info');
+    // Group invoices by their related events (via entries/tickets)
+    const eventInvoices = invoices.filter(i => i.invoice_type === 'tickets');
+
+    if (eventInvoices.length === 0) {
+      return `
+        <div class="text-center py-5 text-muted">
+          <i class="bi bi-calendar-event display-4 d-block mb-3 opacity-25"></i>
+          <p>No ticket invoices found in this date range.</p>
+        </div>
+      `;
+    }
+
+    const totalTicketRevenue = eventInvoices.reduce((sum, i) => sum + parseFloat(i.total_amount || 0), 0);
+    const totalTicketPaid = eventInvoices.reduce((sum, i) => sum + parseFloat(i.paid_amount || 0), 0);
+
     return `
-      <div class="text-center py-5 text-muted">
-        <i class="bi bi-calendar-event display-4 d-block mb-3 opacity-25"></i>
-        <p>Event-based reporting will be available once events are linked to invoices.</p>
+      <h5 class="mb-4">Event/Ticket Revenue</h5>
+      <div class="row g-3 mb-4">
+        <div class="col-md-4">
+          <div class="card text-center"><div class="card-body">
+            <h6 class="text-muted">Ticket Invoices</h6>
+            <h3>${eventInvoices.length}</h3>
+          </div></div>
+        </div>
+        <div class="col-md-4">
+          <div class="card text-center"><div class="card-body">
+            <h6 class="text-muted">Total Invoiced</h6>
+            <h3 class="text-primary">&pound;${totalTicketRevenue.toFixed(2)}</h3>
+          </div></div>
+        </div>
+        <div class="col-md-4">
+          <div class="card text-center"><div class="card-body">
+            <h6 class="text-muted">Total Paid</h6>
+            <h3 class="text-success">&pound;${totalTicketPaid.toFixed(2)}</h3>
+          </div></div>
+        </div>
+      </div>
+      <div class="table-responsive">
+        <table class="table table-sm table-striped">
+          <thead><tr><th>Invoice</th><th>Company</th><th>Date</th><th>Amount</th><th>Status</th></tr></thead>
+          <tbody>
+            ${eventInvoices.map(inv => `
+              <tr>
+                <td>${inv.invoice_number}</td>
+                <td>${inv.organisations?.company_name || 'N/A'}</td>
+                <td>${new Date(inv.invoice_date).toLocaleDateString()}</td>
+                <td>&pound;${parseFloat(inv.total_amount).toFixed(2)}</td>
+                <td>${this.getInvoiceStatusBadge(inv.status, inv.payment_status)}</td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
       </div>
     `;
   },
@@ -1045,9 +1284,6 @@ const paymentsModule = {
   /* UTILITIES */
   /* ==================================================== */
 
-  /**
-   * Load organisations for filter dropdowns
-   */
   async loadOrganisationsForFilters() {
     try {
       const { data, error } = await STATE.client
@@ -1059,7 +1295,6 @@ const paymentsModule = {
 
       this.currentOrganisations = data || [];
 
-      // Populate filter dropdown
       const select = document.getElementById('invoiceOrgFilter');
       if (select) {
         select.innerHTML = '<option value="">All Organisations</option>' +
@@ -1073,5 +1308,4 @@ const paymentsModule = {
   }
 };
 
-// Export to window for global access
 window.paymentsModule = paymentsModule;

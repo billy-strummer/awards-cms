@@ -4083,6 +4083,96 @@ Available placeholders:
     </div>
   </div>
 
+  <!-- View Invoice Modal -->
+  <div class="modal fade" id="viewInvoiceModal" tabindex="-1" aria-labelledby="viewInvoiceModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+      <div class="modal-content">
+        <div class="modal-header bg-primary text-white">
+          <h5 class="modal-title" id="viewInvoiceModalLabel">
+            <i class="bi bi-file-earmark-text me-2"></i>Invoice Details
+          </h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body" id="viewInvoiceBody">
+          <div class="text-center py-4">
+            <div class="spinner-border" role="status"><span class="visually-hidden">Loading...</span></div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline-success" id="viewInvoiceRecordPaymentBtn">
+            <i class="bi bi-cash me-1"></i>Record Payment
+          </button>
+          <button type="button" class="btn btn-outline-primary" id="viewInvoicePrintBtn">
+            <i class="bi bi-printer me-1"></i>Print
+          </button>
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- View Payment Modal -->
+  <div class="modal fade" id="viewPaymentModal" tabindex="-1" aria-labelledby="viewPaymentModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header bg-success text-white">
+          <h5 class="modal-title" id="viewPaymentModalLabel">
+            <i class="bi bi-cash-stack me-2"></i>Payment Details
+          </h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body" id="viewPaymentBody">
+          <div class="text-center py-4">
+            <div class="spinner-border" role="status"><span class="visually-hidden">Loading...</span></div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Send Invoice Email Modal -->
+  <div class="modal fade" id="sendInvoiceModal" tabindex="-1" aria-labelledby="sendInvoiceModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header bg-info text-white">
+          <h5 class="modal-title" id="sendInvoiceModalLabel">
+            <i class="bi bi-envelope me-2"></i>Send Invoice
+          </h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <form id="sendInvoiceForm">
+            <div class="mb-3">
+              <label for="sendInvoiceEmail" class="form-label">Recipient Email *</label>
+              <input type="email" class="form-control" id="sendInvoiceEmail" required placeholder="recipient@company.com">
+            </div>
+            <div class="mb-3">
+              <label for="sendInvoiceCc" class="form-label">CC (optional)</label>
+              <input type="email" class="form-control" id="sendInvoiceCc" placeholder="cc@company.com">
+            </div>
+            <div class="mb-3">
+              <label for="sendInvoiceSubject" class="form-label">Subject</label>
+              <input type="text" class="form-control" id="sendInvoiceSubject" value="">
+            </div>
+            <div class="mb-3">
+              <label for="sendInvoiceMessage" class="form-label">Message</label>
+              <textarea class="form-control" id="sendInvoiceMessage" rows="4" placeholder="Optional message to include with the invoice..."></textarea>
+            </div>
+          </form>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="button" class="btn btn-info text-white" onclick="paymentsModule.confirmSendInvoice()">
+            <i class="bi bi-send me-1"></i>Send Invoice
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- Public Form Link Modal -->
   <div class="modal fade" id="publicFormLinkModal" tabindex="-1" aria-labelledby="publicFormLinkModalLabel" aria-hidden="true">
     <div class="modal-dialog">

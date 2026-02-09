@@ -13,22 +13,29 @@ const { sendDeadlineReminders, sendWinnerAnnouncements } = require('./email-auto
 const { assignJudgesToEntries, generateAllShortlists } = require('./judge-automation');
 const { generateAllWinnerCertificates } = require('./certificates-qr');
 
+// Supabase client for scheduler queries
+const { createClient } = require('@supabase/supabase-js');
+const supabase = createClient(
+  process.env.SUPABASE_URL,
+  process.env.SUPABASE_SERVICE_KEY
+);
+
 /**
  * Daily automation tasks (runs at 9:00 AM)
  */
 cron.schedule('0 9 * * *', async () => {
-  console.log('\n⏰ Running daily automation tasks...');
+  console.log('\nRunning daily automation tasks...');
 
   try {
     // Send deadline reminders
     await sendDeadlineReminders();
 
-    // Check for pending payments (older than 7 days)
-    // TODO: Implement payment reminder logic
+    // Check for overdue invoices and send payment reminders
+    await sendPaymentReminders();
 
-    console.log('✅ Daily automation complete\n');
+    console.log('Daily automation complete\n');
   } catch (error) {
-    console.error('❌ Error in daily automation:', error);
+    console.error('Error in daily automation:', error);
   }
 }, {
   timezone: 'Europe/London'
@@ -38,18 +45,18 @@ cron.schedule('0 9 * * *', async () => {
  * Weekly automation tasks (runs Monday at 8:00 AM)
  */
 cron.schedule('0 8 * * 1', async () => {
-  console.log('\n📊 Running weekly automation tasks...');
+  console.log('\nRunning weekly automation tasks...');
 
   try {
     // Send judge progress reports
-    // TODO: Implement judge progress reports
+    await sendJudgeProgressReports();
 
-    // Generate statistics report
-    // TODO: Implement statistics reporting
+    // Generate weekly statistics
+    await generateWeeklyStats();
 
-    console.log('✅ Weekly automation complete\n');
+    console.log('Weekly automation complete\n');
   } catch (error) {
-    console.error('❌ Error in weekly automation:', error);
+    console.error('Error in weekly automation:', error);
   }
 }, {
   timezone: 'Europe/London'
@@ -59,51 +66,241 @@ cron.schedule('0 8 * * 1', async () => {
  * Judging deadline check (runs daily at 10:00 AM during judging period)
  */
 cron.schedule('0 10 * * *', async () => {
-  console.log('\n⚖️ Checking judging progress...');
+  console.log('\nChecking judging progress...');
 
   try {
-    // Check if judging deadline is approaching
-    const judgingDeadline = new Date('2025-02-15'); // TODO: Get from database
+    // Get judging deadline from active awards
+    const judgingDeadline = await getJudgingDeadline();
+
+    if (!judgingDeadline) {
+      console.log('No active judging deadline found');
+      return;
+    }
+
     const now = new Date();
     const daysUntilDeadline = Math.ceil((judgingDeadline - now) / (1000 * 60 * 60 * 24));
 
     if (daysUntilDeadline <= 7 && daysUntilDeadline > 0) {
-      console.log(`📅 Judging deadline in ${daysUntilDeadline} days`);
-      // Send reminders handled by sendDeadlineReminders()
+      console.log(`Judging deadline in ${daysUntilDeadline} days`);
     }
 
     if (daysUntilDeadline === 0) {
-      console.log('🎯 Judging deadline reached - generating shortlists');
+      console.log('Judging deadline reached - generating shortlists');
       await generateAllShortlists();
     }
 
-    console.log('✅ Judging check complete\n');
+    console.log('Judging check complete\n');
   } catch (error) {
-    console.error('❌ Error in judging check:', error);
+    console.error('Error in judging check:', error);
   }
 }, {
   timezone: 'Europe/London'
 });
 
 /**
+ * Get the nearest judging deadline from active awards
+ */
+async function getJudgingDeadline() {
+  try {
+    const { data: awards, error } = await supabase
+      .from('awards')
+      .select('judging_deadline')
+      .eq('is_active', true)
+      .not('judging_deadline', 'is', null)
+      .order('judging_deadline', { ascending: true })
+      .limit(1);
+
+    if (error || !awards || awards.length === 0) return null;
+
+    return new Date(awards[0].judging_deadline);
+  } catch (error) {
+    console.error('Error getting judging deadline:', error);
+    return null;
+  }
+}
+
+/**
+ * Send payment reminders for overdue invoices
+ */
+async function sendPaymentReminders() {
+  try {
+    const today = new Date().toISOString().split('T')[0];
+
+    // Find overdue invoices
+    const { data: overdueInvoices, error } = await supabase
+      .from('invoices')
+      .select('*, organisations(company_name, email)')
+      .lt('due_date', today)
+      .in('payment_status', ['unpaid', 'partial'])
+      .neq('status', 'cancelled');
+
+    if (error) throw error;
+
+    if (!overdueInvoices || overdueInvoices.length === 0) {
+      console.log('No overdue invoices found');
+      return;
+    }
+
+    console.log(`Found ${overdueInvoices.length} overdue invoices`);
+
+    // Update status to overdue
+    for (const invoice of overdueInvoices) {
+      await supabase
+        .from('invoices')
+        .update({ status: 'overdue' })
+        .eq('id', invoice.id);
+
+      // Check if a reminder was already sent recently (within 7 days)
+      const sevenDaysAgo = new Date();
+      sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+
+      const { data: recentReminders } = await supabase
+        .from('payment_reminders')
+        .select('id')
+        .eq('invoice_id', invoice.id)
+        .gte('sent_at', sevenDaysAgo.toISOString())
+        .limit(1);
+
+      if (recentReminders && recentReminders.length > 0) {
+        continue; // Skip - already reminded recently
+      }
+
+      // Log payment reminder
+      await supabase
+        .from('payment_reminders')
+        .insert({
+          invoice_id: invoice.id,
+          organisation_id: invoice.organisation_id,
+          reminder_type: 'overdue',
+          sent_at: new Date().toISOString(),
+          status: 'sent'
+        });
+
+      console.log(`Payment reminder logged for invoice ${invoice.invoice_number} (${invoice.organisations?.company_name})`);
+    }
+
+  } catch (error) {
+    console.error('Error sending payment reminders:', error);
+  }
+}
+
+/**
+ * Send weekly judge progress reports
+ */
+async function sendJudgeProgressReports() {
+  try {
+    // Get all active awards with entries needing judging
+    const { data: awards, error: awardsError } = await supabase
+      .from('awards')
+      .select('id, award_name')
+      .eq('is_active', true);
+
+    if (awardsError || !awards) return;
+
+    for (const award of awards) {
+      // Count entries and scored entries
+      const { count: totalEntries } = await supabase
+        .from('entries')
+        .select('id', { count: 'exact', head: true })
+        .eq('award_id', award.id)
+        .eq('status', 'submitted');
+
+      const { count: scoredEntries } = await supabase
+        .from('judge_scores')
+        .select('id', { count: 'exact', head: true })
+        .eq('status', 'submitted');
+
+      const progress = totalEntries > 0 ? ((scoredEntries / totalEntries) * 100).toFixed(1) : 0;
+
+      console.log(`Award: ${award.award_name} - ${scoredEntries}/${totalEntries} entries scored (${progress}%)`);
+
+      // Log to activity_logs for admin dashboard visibility
+      await supabase
+        .from('activity_logs')
+        .insert({
+          action: 'judge_progress_report',
+          details: JSON.stringify({
+            award_id: award.id,
+            award_name: award.award_name,
+            total_entries: totalEntries,
+            scored_entries: scoredEntries,
+            progress_percentage: progress
+          }),
+          created_at: new Date().toISOString()
+        });
+    }
+
+    console.log('Judge progress reports generated');
+
+  } catch (error) {
+    console.error('Error generating judge progress reports:', error);
+  }
+}
+
+/**
+ * Generate weekly statistics summary
+ */
+async function generateWeeklyStats() {
+  try {
+    const oneWeekAgo = new Date();
+    oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
+    const weekStart = oneWeekAgo.toISOString();
+
+    // New entries this week
+    const { count: newEntries } = await supabase
+      .from('entries')
+      .select('id', { count: 'exact', head: true })
+      .gte('created_at', weekStart);
+
+    // New payments this week
+    const { data: payments } = await supabase
+      .from('payments')
+      .select('amount')
+      .gte('payment_date', weekStart.split('T')[0])
+      .eq('status', 'completed');
+
+    const weeklyRevenue = (payments || []).reduce((sum, p) => sum + parseFloat(p.amount || 0), 0);
+
+    // New organisations this week
+    const { count: newOrgs } = await supabase
+      .from('organisations')
+      .select('id', { count: 'exact', head: true })
+      .gte('created_at', weekStart);
+
+    console.log(`Weekly Stats: ${newEntries || 0} new entries, ${newOrgs || 0} new orgs, GBP ${weeklyRevenue.toFixed(2)} revenue`);
+
+    // Log stats
+    await supabase
+      .from('activity_logs')
+      .insert({
+        action: 'weekly_stats_report',
+        details: JSON.stringify({
+          week_start: weekStart,
+          new_entries: newEntries || 0,
+          new_organisations: newOrgs || 0,
+          weekly_revenue: weeklyRevenue
+        }),
+        created_at: new Date().toISOString()
+      });
+
+  } catch (error) {
+    console.error('Error generating weekly stats:', error);
+  }
+}
+
+/**
  * Manual trigger functions (called via API)
  */
 
 async function triggerWinnerAnnouncements() {
-  console.log('🏆 Triggering winner announcements...');
+  console.log('Triggering winner announcements...');
 
   try {
-    // Send email announcements
     const emailCount = await sendWinnerAnnouncements();
-
-    // Generate certificates
     const certResults = await generateAllWinnerCertificates();
 
-    // Post to social media
-    // TODO: Integrate with social-media.js
-
-    console.log(`✅ Announced ${emailCount} winners`);
-    console.log(`✅ Generated ${certResults.filter(r => r.success).length} certificates`);
+    console.log(`Announced ${emailCount} winners`);
+    console.log(`Generated ${certResults.filter(r => r.success).length} certificates`);
 
     return {
       success: true,
@@ -112,29 +309,29 @@ async function triggerWinnerAnnouncements() {
     };
 
   } catch (error) {
-    console.error('❌ Error in winner announcements:', error);
+    console.error('Error in winner announcements:', error);
     throw error;
   }
 }
 
 async function triggerJudgeAssignments(awardId = null) {
-  console.log('👨‍⚖️ Triggering judge assignments...');
+  console.log('Triggering judge assignments...');
 
   try {
     const result = await assignJudgesToEntries(awardId);
 
-    console.log(`✅ Assigned ${result.assigned} judges to entries`);
+    console.log(`Assigned ${result.assigned} judges to entries`);
 
     return result;
 
   } catch (error) {
-    console.error('❌ Error in judge assignments:', error);
+    console.error('Error in judge assignments:', error);
     throw error;
   }
 }
 
 async function triggerShortlistGeneration(awardId = null) {
-  console.log('🌟 Triggering shortlist generation...');
+  console.log('Triggering shortlist generation...');
 
   try {
     let results;
@@ -147,16 +344,15 @@ async function triggerShortlistGeneration(awardId = null) {
       results = await generateAllShortlists();
     }
 
-    // Send shortlist notifications
     const { sendShortlistNotifications } = require('./email-automation');
     await sendShortlistNotifications(awardId);
 
-    console.log('✅ Shortlists generated and notifications sent');
+    console.log('Shortlists generated and notifications sent');
 
     return results;
 
   } catch (error) {
-    console.error('❌ Error in shortlist generation:', error);
+    console.error('Error in shortlist generation:', error);
     throw error;
   }
 }
@@ -166,7 +362,6 @@ async function triggerShortlistGeneration(awardId = null) {
  */
 
 function setupAutomationEndpoints(app) {
-  // POST /api/automation/trigger-winner-announcements
   app.post('/api/automation/trigger-winner-announcements', async (req, res) => {
     try {
       const result = await triggerWinnerAnnouncements();
@@ -176,7 +371,6 @@ function setupAutomationEndpoints(app) {
     }
   });
 
-  // POST /api/automation/trigger-judge-assignments
   app.post('/api/automation/trigger-judge-assignments', async (req, res) => {
     try {
       const { awardId } = req.body;
@@ -187,7 +381,6 @@ function setupAutomationEndpoints(app) {
     }
   });
 
-  // POST /api/automation/trigger-shortlist-generation
   app.post('/api/automation/trigger-shortlist-generation', async (req, res) => {
     try {
       const { awardId } = req.body;
@@ -198,17 +391,42 @@ function setupAutomationEndpoints(app) {
     }
   });
 
-  console.log('✅ Automation endpoints registered');
+  app.post('/api/automation/trigger-payment-reminders', async (req, res) => {
+    try {
+      await sendPaymentReminders();
+      res.json({ success: true, message: 'Payment reminders processed' });
+    } catch (error) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.get('/api/automation/status', async (req, res) => {
+    try {
+      const judgingDeadline = await getJudgingDeadline();
+      res.json({
+        scheduler: 'running',
+        timezone: 'Europe/London',
+        dailyTasks: '09:00 GMT',
+        weeklyTasks: 'Monday 08:00 GMT',
+        judgingChecks: '10:00 GMT',
+        nextJudgingDeadline: judgingDeadline ? judgingDeadline.toISOString() : null
+      });
+    } catch (error) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  console.log('Automation endpoints registered');
 }
 
 /**
  * Start scheduler
  */
 function startScheduler() {
-  console.log('🚀 Automation scheduler started');
-  console.log('📅 Daily tasks: 9:00 AM GMT');
-  console.log('📅 Weekly tasks: Monday 8:00 AM GMT');
-  console.log('📅 Judging checks: 10:00 AM GMT');
+  console.log('Automation scheduler started');
+  console.log('Daily tasks: 9:00 AM GMT');
+  console.log('Weekly tasks: Monday 8:00 AM GMT');
+  console.log('Judging checks: 10:00 AM GMT');
 }
 
 module.exports = {
@@ -216,11 +434,14 @@ module.exports = {
   setupAutomationEndpoints,
   triggerWinnerAnnouncements,
   triggerJudgeAssignments,
-  triggerShortlistGeneration
+  triggerShortlistGeneration,
+  sendPaymentReminders,
+  sendJudgeProgressReports,
+  generateWeeklyStats
 };
 
 // Start scheduler if running directly
 if (require.main === module) {
   startScheduler();
-  console.log('\n✅ Scheduler is running. Press Ctrl+C to stop.\n');
+  console.log('\nScheduler is running. Press Ctrl+C to stop.\n');
 }

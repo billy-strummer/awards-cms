@@ -813,9 +813,30 @@ const mediaGalleryModule = {
           return;
         }
 
-        // TODO: Implement file upload to Supabase storage
-        utils.showToast('File upload feature coming soon. Please use YouTube links for now.', 'info');
-        return;
+        const file = fileInput.files[0];
+        const fileName = `videos/${Date.now()}-${file.name.replace(/[^a-zA-Z0-9._-]/g, '_')}`;
+
+        try {
+          const { data: uploadData, error: uploadError } = await STATE.client.storage
+            .from('media')
+            .upload(fileName, file, {
+              cacheControl: '3600',
+              upsert: false
+            });
+
+          if (uploadError) throw uploadError;
+
+          const { data: urlData } = STATE.client.storage
+            .from('media')
+            .getPublicUrl(fileName);
+
+          fileUrl = urlData.publicUrl;
+          thumbnailUrl = fileUrl; // Use video URL as placeholder thumbnail
+        } catch (uploadErr) {
+          console.error('File upload failed:', uploadErr);
+          utils.showToast('File upload failed. Please ensure the media storage bucket exists in Supabase.', 'error');
+          return;
+        }
       }
 
       // Prepare tags object with both company and award tags
@@ -864,15 +885,152 @@ const mediaGalleryModule = {
   /**
    * View Video
    */
-  viewVideo(videoId) {
-    utils.showToast('View video modal - Coming soon', 'info');
+  async viewVideo(videoId) {
+    try {
+      const { data: video, error } = await STATE.client
+        .from('media_items')
+        .select('*')
+        .eq('id', videoId)
+        .single();
+
+      if (error) throw error;
+
+      let playerHTML = '';
+      if (video.youtube_id) {
+        playerHTML = `<div class="ratio ratio-16x9"><iframe src="https://www.youtube.com/embed/${video.youtube_id}" allowfullscreen></iframe></div>`;
+      } else if (video.file_url) {
+        playerHTML = `<div class="ratio ratio-16x9"><video controls src="${video.file_url}" class="w-100"></video></div>`;
+      }
+
+      const modalHTML = `
+        <div class="modal fade" id="viewVideoModal" tabindex="-1">
+          <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+              <div class="modal-header"><h5 class="modal-title">${utils.escapeHtml(video.title || 'Video')}</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+              <div class="modal-body">
+                ${playerHTML}
+                ${video.description ? `<p class="mt-3">${utils.escapeHtml(video.description)}</p>` : ''}
+                ${video.tags ? `<div class="mt-2"><small class="text-muted">Tags: ${video.tags}</small></div>` : ''}
+              </div>
+              <div class="modal-footer"><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button></div>
+            </div>
+          </div>
+        </div>`;
+
+      // Remove old modal if exists
+      const oldModal = document.getElementById('viewVideoModal');
+      if (oldModal) oldModal.remove();
+
+      document.body.insertAdjacentHTML('beforeend', modalHTML);
+      const modal = new bootstrap.Modal(document.getElementById('viewVideoModal'));
+      modal.show();
+
+      document.getElementById('viewVideoModal').addEventListener('hidden.bs.modal', () => {
+        document.getElementById('viewVideoModal').remove();
+      });
+
+    } catch (error) {
+      console.error('Error viewing video:', error);
+      utils.showToast('Failed to load video: ' + error.message, 'error');
+    }
   },
 
-  /**
-   * Edit Video
-   */
-  editVideo(videoId) {
-    utils.showToast('Edit video modal - Coming soon', 'info');
+  async editVideo(videoId) {
+    try {
+      const { data: video, error } = await STATE.client
+        .from('media_items')
+        .select('*')
+        .eq('id', videoId)
+        .single();
+
+      if (error) throw error;
+
+      const modalHTML = `
+        <div class="modal fade" id="editVideoModal" tabindex="-1">
+          <div class="modal-dialog">
+            <div class="modal-content">
+              <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title"><i class="bi bi-pencil me-2"></i>Edit Video</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+              </div>
+              <div class="modal-body">
+                <form id="editVideoForm">
+                  <div class="mb-3">
+                    <label class="form-label">Title *</label>
+                    <input type="text" class="form-control" id="editVideoTitle" value="${utils.escapeHtml(video.title || '')}" required>
+                  </div>
+                  <div class="mb-3">
+                    <label class="form-label">Description</label>
+                    <textarea class="form-control" id="editVideoDescription" rows="3">${utils.escapeHtml(video.description || '')}</textarea>
+                  </div>
+                  <div class="mb-3">
+                    <label class="form-label">Status</label>
+                    <select class="form-select" id="editVideoStatus">
+                      <option value="published" ${video.status === 'published' ? 'selected' : ''}>Published</option>
+                      <option value="draft" ${video.status === 'draft' ? 'selected' : ''}>Draft</option>
+                      <option value="archived" ${video.status === 'archived' ? 'selected' : ''}>Archived</option>
+                    </select>
+                  </div>
+                </form>
+              </div>
+              <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" onclick="mediaGalleryModule.saveVideoEdit('${videoId}')">
+                  <i class="bi bi-check-lg me-1"></i>Save Changes
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>`;
+
+      const oldModal = document.getElementById('editVideoModal');
+      if (oldModal) oldModal.remove();
+
+      document.body.insertAdjacentHTML('beforeend', modalHTML);
+      const modal = new bootstrap.Modal(document.getElementById('editVideoModal'));
+      modal.show();
+
+      document.getElementById('editVideoModal').addEventListener('hidden.bs.modal', () => {
+        document.getElementById('editVideoModal').remove();
+      });
+
+    } catch (error) {
+      console.error('Error loading video for edit:', error);
+      utils.showToast('Failed to load video: ' + error.message, 'error');
+    }
+  },
+
+  async saveVideoEdit(videoId) {
+    try {
+      utils.showLoading();
+
+      const title = document.getElementById('editVideoTitle').value.trim();
+      const description = document.getElementById('editVideoDescription').value.trim();
+      const status = document.getElementById('editVideoStatus').value;
+
+      if (!title) {
+        utils.showToast('Title is required', 'warning');
+        return;
+      }
+
+      const { error } = await STATE.client
+        .from('media_items')
+        .update({ title, description, status })
+        .eq('id', videoId);
+
+      if (error) throw error;
+
+      bootstrap.Modal.getInstance(document.getElementById('editVideoModal')).hide();
+      utils.showToast('Video updated successfully', 'success');
+      await this.loadVideosProduction();
+
+    } catch (error) {
+      console.error('Error saving video edit:', error);
+      utils.showToast('Failed to update video: ' + error.message, 'error');
+    } finally {
+      utils.hideLoading();
+    }
   },
 
   /**

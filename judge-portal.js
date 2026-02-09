@@ -2,10 +2,11 @@
 /* JUDGE PORTAL - Judging Interface and Scoring */
 /* ==================================================== */
 
-// Initialize Supabase
-const SUPABASE_URL = 'YOUR_SUPABASE_URL'; // TODO: Replace
-const SUPABASE_ANON_KEY = 'YOUR_SUPABASE_ANON_KEY'; // TODO: Replace
-const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+// Initialize Supabase using shared config
+const supabase = window.supabase.createClient(
+  window.SUPABASE_CONFIG.url,
+  window.SUPABASE_CONFIG.anonKey
+);
 
 const judgePortal = {
   currentJudge: null,
@@ -30,7 +31,28 @@ const judgePortal = {
       return;
     }
 
-    this.currentJudge = { email: judgeEmail, name: 'Judge' }; // TODO: Get from database
+    // Try to get judge details from database
+    try {
+      const { data: judgeData } = await supabase
+        .from('user_roles')
+        .select('email, role')
+        .eq('email', judgeEmail)
+        .single();
+
+      const { data: contactData } = await supabase
+        .from('organisation_contacts')
+        .select('first_name, last_name')
+        .eq('email', judgeEmail)
+        .single();
+
+      const judgeName = contactData
+        ? `${contactData.first_name} ${contactData.last_name}`
+        : judgeEmail.split('@')[0];
+
+      this.currentJudge = { email: judgeEmail, name: judgeName };
+    } catch (e) {
+      this.currentJudge = { email: judgeEmail, name: judgeEmail.split('@')[0] };
+    }
 
     // Update UI with judge info
     document.getElementById('judgeName').textContent = this.currentJudge.name;
@@ -189,10 +211,51 @@ const judgePortal = {
    * Check for conflict of interest
    */
   async checkConflictOfInterest(entry) {
-    // TODO: Implement conflict checking logic
-    // Check if judge's email domain matches company domain
-    // Check if judge has declared conflicts
-    return false; // Placeholder
+    try {
+      const judgeEmail = this.currentJudge.email;
+      const judgeDomain = judgeEmail.split('@')[1]?.toLowerCase();
+      const companyName = (entry.organisations?.company_name || '').toLowerCase();
+
+      // Check 1: Judge's email domain matches company website/email domain
+      if (judgeDomain && judgeDomain !== 'gmail.com' && judgeDomain !== 'hotmail.com' &&
+          judgeDomain !== 'yahoo.com' && judgeDomain !== 'outlook.com') {
+        // Check if company name appears in domain
+        const domainParts = judgeDomain.replace('.co.uk', '').replace('.com', '').replace('.org', '');
+        if (companyName.includes(domainParts) || domainParts.includes(companyName.replace(/\s+/g, ''))) {
+          return true;
+        }
+      }
+
+      // Check 2: Check for declared conflicts in the database
+      const { data: conflicts } = await supabase
+        .from('judge_scores')
+        .select('conflict_declared')
+        .eq('entry_id', entry.id)
+        .eq('judge_email', judgeEmail)
+        .eq('conflict_declared', true);
+
+      if (conflicts && conflicts.length > 0) {
+        return true;
+      }
+
+      // Check 3: Check if judge is listed as a contact for the organisation
+      if (entry.organisation_id) {
+        const { data: contacts } = await supabase
+          .from('organisation_contacts')
+          .select('email')
+          .eq('organisation_id', entry.organisation_id)
+          .eq('email', judgeEmail);
+
+        if (contacts && contacts.length > 0) {
+          return true;
+        }
+      }
+
+      return false;
+    } catch (error) {
+      console.warn('Error checking conflict of interest:', error);
+      return false;
+    }
   },
 
   /**

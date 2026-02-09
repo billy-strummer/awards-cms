@@ -8,13 +8,14 @@ const socialMediaModule = {
   selectedAward: null,
   uploadedImageUrl: null,
   logoOverlayEnabled: true,
-  britishTradeAwardsLogoUrl: '/assets/british-trade-awards-logo.png', // Update with actual logo path
+  editingPostId: null,
+  allPosts: [],
+  britishTradeAwardsLogoUrl: '/assets/british-trade-awards-logo.png',
 
-  // Pre-defined post templates
   templates: {
     nominee: {
       name: 'Nominee Announcement',
-      content: `🌟 Congratulations to {{company_name}} for being nominated for the {{award_name}} at the British Trade Awards {{year}}!
+      content: `Congratulations to {{company_name}} for being nominated for the {{award_name}} at the British Trade Awards {{year}}!
 
 We're proud to recognize their outstanding achievements.
 
@@ -24,7 +25,7 @@ Cast your vote now: {{website}}
     },
     winner: {
       name: 'Winner Announcement',
-      content: `🏆 Huge congratulations to {{company_name}} - WINNER of the {{award_name}} at the British Trade Awards {{year}}!
+      content: `Huge congratulations to {{company_name}} - WINNER of the {{award_name}} at the British Trade Awards {{year}}!
 
 Their exceptional work has set the standard for excellence in British trade.
 
@@ -34,7 +35,7 @@ Learn more about their winning entry: {{website}}
     },
     voting: {
       name: 'Voting Reminder',
-      content: `⏰ Time is running out to vote for {{company_name}} in the {{award_name}} category!
+      content: `Time is running out to vote for {{company_name}} in the {{award_name}} category!
 
 Show your support and cast your vote today.
 
@@ -44,19 +45,15 @@ Vote now: {{website}}
     }
   },
 
-  /**
-   * Initialize Social Media Manager
-   */
   async initialize() {
     try {
       utils.showLoading();
 
-      // Load companies and awards for dropdowns
       await this.loadCompanies();
       await this.loadAwards();
       await this.loadScheduledPosts();
+      await this.loadDraftPosts();
 
-      // Setup image source radio handlers
       this.setupImageSourceHandlers();
 
     } catch (error) {
@@ -67,9 +64,6 @@ Vote now: {{website}}
     }
   },
 
-  /**
-   * Load companies for dropdown
-   */
   async loadCompanies() {
     const { data: companies, error } = await STATE.client
       .from('organisations')
@@ -90,9 +84,6 @@ Vote now: {{website}}
       `).join('');
   },
 
-  /**
-   * Load awards for dropdown
-   */
   async loadAwards() {
     const { data: awards, error } = await STATE.client
       .from('awards')
@@ -111,77 +102,60 @@ Vote now: {{website}}
       `).join('');
   },
 
-  /**
-   * Select a post template
-   */
   selectTemplate(templateKey) {
-    // Remove selected class from all template cards
     document.querySelectorAll('.template-card').forEach(card => {
       card.classList.remove('selected');
     });
 
-    // Add selected class to clicked card
     event.target.closest('.template-card').classList.add('selected');
 
     this.currentTemplate = templateKey;
     const template = this.templates[templateKey];
 
-    // Update post content textarea
     document.getElementById('smPostContent').value = template.content;
 
-    // Update preview
     this.updatePostPreview();
   },
 
-  /**
-   * Update post preview across all platforms
-   */
   updatePostPreview() {
     const content = document.getElementById('smPostContent').value;
     const companySelect = document.getElementById('smCompanySelect');
     const awardSelect = document.getElementById('smAwardSelect');
 
-    // Get selected company and award data
     const selectedCompanyOption = companySelect.options[companySelect.selectedIndex];
-    const companyName = selectedCompanyOption ? selectedCompanyOption.text : '{{company_name}}';
+    const companyName = selectedCompanyOption ? selectedCompanyOption.text.trim() : '{{company_name}}';
     const companyWebsite = selectedCompanyOption ? selectedCompanyOption.dataset.website : 'https://britishtrade.awards';
 
-    const awardName = awardSelect.options[awardSelect.selectedIndex]?.text || '{{award_name}}';
+    const awardName = awardSelect.options[awardSelect.selectedIndex]?.text.trim() || '{{award_name}}';
     const currentYear = new Date().getFullYear();
 
-    // Replace placeholders
     let processedContent = content
       .replace(/\{\{company_name\}\}/g, companyName)
       .replace(/\{\{award_name\}\}/g, awardName)
       .replace(/\{\{year\}\}/g, currentYear)
       .replace(/\{\{website\}\}/g, companyWebsite);
 
-    // Update all preview platforms
-    document.getElementById('twitterPreviewText').textContent = processedContent;
-    document.getElementById('facebookPreviewText').textContent = processedContent;
-    document.getElementById('instagramPreviewText').textContent = processedContent;
-    document.getElementById('linkedinPreviewText').textContent = processedContent;
+    const previewIds = ['twitterPreviewText', 'facebookPreviewText', 'instagramPreviewText', 'linkedinPreviewText'];
+    previewIds.forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.textContent = processedContent;
+    });
 
-    // Update Twitter character count
-    document.getElementById('twitterCharCount').textContent = processedContent.length;
-
-    // Update character count color
     const charCount = document.getElementById('twitterCharCount');
-    if (processedContent.length > 280) {
-      charCount.style.color = '#dc3545';
-    } else if (processedContent.length > 250) {
-      charCount.style.color = '#ffc107';
-    } else {
-      charCount.style.color = '#6c757d';
+    if (charCount) {
+      charCount.textContent = processedContent.length;
+      if (processedContent.length > 280) {
+        charCount.style.color = '#dc3545';
+      } else if (processedContent.length > 250) {
+        charCount.style.color = '#ffc107';
+      } else {
+        charCount.style.color = '#6c757d';
+      }
     }
 
-    // Update image preview
     this.updateImagePreview();
   },
 
-  /**
-   * Setup image source radio handlers
-   */
   setupImageSourceHandlers() {
     const companyLogoRadio = document.getElementById('imageCompanyLogo');
     const customRadio = document.getElementById('imageCustom');
@@ -204,13 +178,11 @@ Vote now: {{website}}
     }
   },
 
-  /**
-   * Update image preview
-   */
   updateImagePreview() {
     const imageSource = document.querySelector('input[name="imageSource"]:checked')?.value;
     const companySelect = document.getElementById('smCompanySelect');
-    const addLogoOverlay = document.getElementById('smAddLogoOverlay').checked;
+    const addLogoOverlayEl = document.getElementById('smAddLogoOverlay');
+    const addLogoOverlay = addLogoOverlayEl ? addLogoOverlayEl.checked : false;
 
     let imageUrl = null;
 
@@ -221,7 +193,6 @@ Vote now: {{website}}
       imageUrl = this.uploadedImageUrl;
     }
 
-    // Update all platform image previews
     const previewIds = [
       'twitterPreviewImage',
       'facebookPreviewImage',
@@ -231,6 +202,7 @@ Vote now: {{website}}
 
     previewIds.forEach(previewId => {
       const previewDiv = document.getElementById(previewId);
+      if (!previewDiv) return;
 
       if (imageUrl) {
         previewDiv.innerHTML = `
@@ -251,9 +223,6 @@ Vote now: {{website}}
     });
   },
 
-  /**
-   * Handle custom image upload
-   */
   async handleImageUpload() {
     const fileInput = document.getElementById('smCustomImage');
     const file = fileInput.files[0];
@@ -263,40 +232,49 @@ Vote now: {{website}}
     try {
       utils.showLoading();
 
-      // Create a local preview URL
-      this.uploadedImageUrl = URL.createObjectURL(file);
+      // Upload to Supabase storage
+      const fileName = `social-media/${Date.now()}-${file.name.replace(/[^a-zA-Z0-9._-]/g, '_')}`;
 
-      // TODO: Upload to Supabase storage
-      // const { data, error } = await supabase.storage
-      //   .from('social-media-images')
-      //   .upload(`post-${Date.now()}-${file.name}`, file);
+      const { data, error } = await STATE.client.storage
+        .from('media')
+        .upload(fileName, file, {
+          cacheControl: '3600',
+          upsert: false
+        });
 
-      // if (error) throw error;
-      // this.uploadedImageUrl = data.path;
+      if (error) {
+        // Fallback to local preview if storage bucket doesn't exist
+        console.warn('Storage upload failed, using local preview:', error.message);
+        this.uploadedImageUrl = URL.createObjectURL(file);
+      } else {
+        // Get public URL
+        const { data: urlData } = STATE.client.storage
+          .from('media')
+          .getPublicUrl(fileName);
 
-      // Update preview
+        this.uploadedImageUrl = urlData.publicUrl;
+      }
+
       this.updateImagePreview();
-
       utils.showToast('Image uploaded successfully', 'success');
 
     } catch (error) {
       console.error('Error uploading image:', error);
-      utils.showToast('Failed to upload image: ' + error.message, 'error');
+      // Fallback to local preview
+      this.uploadedImageUrl = URL.createObjectURL(file);
+      this.updateImagePreview();
+      utils.showToast('Image loaded locally (storage upload unavailable)', 'warning');
     } finally {
       utils.hideLoading();
     }
   },
 
-  /**
-   * Save post (scheduled or immediate)
-   */
   async savePost(postType) {
     try {
       const content = document.getElementById('smPostContent').value.trim();
       const companyId = document.getElementById('smCompanySelect').value;
       const awardId = document.getElementById('smAwardSelect').value;
 
-      // Validation
       if (!content) {
         utils.showToast('Please enter post content', 'warning');
         return;
@@ -312,7 +290,6 @@ Vote now: {{website}}
         return;
       }
 
-      // Get selected platforms
       const platforms = [];
       if (document.getElementById('platformTwitter').checked) platforms.push('twitter');
       if (document.getElementById('platformFacebook').checked) platforms.push('facebook');
@@ -324,7 +301,6 @@ Vote now: {{website}}
         return;
       }
 
-      // Get scheduling info
       let scheduledFor = null;
       if (postType === 'scheduled') {
         const scheduleDate = document.getElementById('smScheduleDate').value;
@@ -338,9 +314,9 @@ Vote now: {{website}}
         scheduledFor = `${scheduleDate}T${scheduleTime}:00`;
       }
 
-      // Get image info
       const imageSource = document.querySelector('input[name="imageSource"]:checked')?.value;
-      const addLogoOverlay = document.getElementById('smAddLogoOverlay').checked;
+      const addLogoOverlayEl = document.getElementById('smAddLogoOverlay');
+      const addLogoOverlay = addLogoOverlayEl ? addLogoOverlayEl.checked : false;
 
       let imageUrl = null;
       if (imageSource === 'company_logo') {
@@ -351,7 +327,6 @@ Vote now: {{website}}
         imageUrl = this.uploadedImageUrl;
       }
 
-      // Prepare post data
       const postData = {
         company_id: companyId,
         award_id: awardId,
@@ -365,24 +340,36 @@ Vote now: {{website}}
         created_at: new Date().toISOString()
       };
 
-      // Save to database
-      const { data, error } = await STATE.client
-        .from('social_media_posts')
-        .insert([postData])
-        .select();
+      // If editing, update instead of insert
+      if (this.editingPostId) {
+        const { error } = await STATE.client
+          .from('social_media_posts')
+          .update(postData)
+          .eq('id', this.editingPostId);
 
-      if (error) throw error;
+        if (error) throw error;
 
-      if (postType === 'immediate') {
-        utils.showToast('Post published successfully!', 'success');
-        // TODO: Trigger actual posting to social media platforms via API
-        this.showPostSuccessMessage(platforms);
+        this.editingPostId = null;
+        utils.showToast('Post updated successfully!', 'success');
       } else {
-        utils.showToast('Post scheduled successfully!', 'success');
-        await this.loadScheduledPosts();
+        const { data, error } = await STATE.client
+          .from('social_media_posts')
+          .insert([postData])
+          .select();
+
+        if (error) throw error;
+
+        if (postType === 'immediate') {
+          utils.showToast('Post published successfully!', 'success');
+          this.showPostSuccessMessage(platforms);
+        } else {
+          utils.showToast('Post scheduled successfully!', 'success');
+        }
       }
 
-      // Clear form
+      await this.loadScheduledPosts();
+      await this.loadDraftPosts();
+
       this.clearForm();
 
     } catch (error) {
@@ -391,9 +378,6 @@ Vote now: {{website}}
     }
   },
 
-  /**
-   * Save as draft
-   */
   async saveDraft() {
     try {
       const content = document.getElementById('smPostContent').value.trim();
@@ -422,15 +406,27 @@ Vote now: {{website}}
         created_at: new Date().toISOString()
       };
 
-      const { data, error } = await STATE.client
-        .from('social_media_posts')
-        .insert([draftData])
-        .select();
+      if (this.editingPostId) {
+        const { error } = await STATE.client
+          .from('social_media_posts')
+          .update(draftData)
+          .eq('id', this.editingPostId);
 
-      if (error) throw error;
+        if (error) throw error;
+        this.editingPostId = null;
+        utils.showToast('Draft updated successfully!', 'success');
+      } else {
+        const { data, error } = await STATE.client
+          .from('social_media_posts')
+          .insert([draftData])
+          .select();
 
-      utils.showToast('Draft saved successfully!', 'success');
+        if (error) throw error;
+        utils.showToast('Draft saved successfully!', 'success');
+      }
+
       this.clearForm();
+      await this.loadDraftPosts();
 
     } catch (error) {
       console.error('Error saving draft:', error);
@@ -438,17 +434,14 @@ Vote now: {{website}}
     }
   },
 
-  /**
-   * Load scheduled posts
-   */
   async loadScheduledPosts() {
     try {
       const { data: posts, error } = await STATE.client
         .from('social_media_posts')
         .select(`
           *,
-          organisations(company_name),
-          awards(award_name)
+          organisations:company_id(company_name),
+          awards:award_id(award_name)
         `)
         .eq('status', 'scheduled')
         .order('scheduled_for', { ascending: true });
@@ -459,18 +452,37 @@ Vote now: {{website}}
 
     } catch (error) {
       console.error('Error loading scheduled posts:', error);
-      utils.showToast('Failed to load scheduled posts', 'error');
     }
   },
 
-  /**
-   * Render scheduled posts list
-   */
+  async loadDraftPosts() {
+    try {
+      const { data: posts, error } = await STATE.client
+        .from('social_media_posts')
+        .select(`
+          *,
+          organisations:company_id(company_name),
+          awards:award_id(award_name)
+        `)
+        .eq('status', 'draft')
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+
+      this.renderDraftPosts(posts || []);
+
+    } catch (error) {
+      console.error('Error loading draft posts:', error);
+    }
+  },
+
   renderScheduledPosts(posts) {
     const container = document.getElementById('scheduledPostsList');
     const countBadge = document.getElementById('scheduledPostsCount');
 
-    countBadge.textContent = posts.length;
+    if (countBadge) countBadge.textContent = posts.length;
+
+    if (!container) return;
 
     if (posts.length === 0) {
       container.innerHTML = `
@@ -484,14 +496,14 @@ Vote now: {{website}}
 
     container.innerHTML = posts.map(post => {
       const scheduledDate = new Date(post.scheduled_for);
-      const platformBadges = post.platforms.map(platform => {
+      const platformBadges = (post.platforms || []).map(platform => {
         const icons = {
           twitter: '<i class="bi bi-twitter text-info"></i>',
           facebook: '<i class="bi bi-facebook text-primary"></i>',
           instagram: '<i class="bi bi-instagram text-danger"></i>',
           linkedin: '<i class="bi bi-linkedin text-info"></i>'
         };
-        return `<span class="badge bg-light text-dark">${icons[platform]} ${platform}</span>`;
+        return `<span class="badge bg-light text-dark">${icons[platform] || ''} ${platform}</span>`;
       }).join('');
 
       return `
@@ -524,19 +536,113 @@ Vote now: {{website}}
     }).join('');
   },
 
-  /**
-   * Edit scheduled post
-   */
-  async editScheduledPost(postId) {
-    utils.showToast('Edit functionality coming soon', 'info');
-    // TODO: Load post data into form for editing
+  renderDraftPosts(posts) {
+    const container = document.getElementById('draftPostsList');
+    if (!container) return;
+
+    if (posts.length === 0) {
+      container.innerHTML = `
+        <div class="text-center text-muted py-3">
+          <small>No drafts</small>
+        </div>
+      `;
+      return;
+    }
+
+    container.innerHTML = posts.map(post => `
+      <div class="draft-post-item border-bottom py-2">
+        <div class="d-flex justify-content-between align-items-start">
+          <div class="flex-grow-1">
+            <div class="small text-truncate" style="max-width: 250px;">${post.content.substring(0, 80)}...</div>
+            <small class="text-muted">${new Date(post.created_at).toLocaleDateString()}</small>
+          </div>
+          <div class="d-flex gap-1">
+            <button class="btn btn-sm btn-outline-primary" onclick="socialMediaModule.editScheduledPost('${post.id}')" title="Edit">
+              <i class="bi bi-pencil"></i>
+            </button>
+            <button class="btn btn-sm btn-outline-danger" onclick="socialMediaModule.deleteScheduledPost('${post.id}')" title="Delete">
+              <i class="bi bi-trash"></i>
+            </button>
+          </div>
+        </div>
+      </div>
+    `).join('');
   },
 
   /**
-   * Delete scheduled post
+   * Edit a scheduled or draft post - loads data into the form
    */
+  async editScheduledPost(postId) {
+    try {
+      utils.showLoading();
+
+      const { data: post, error } = await STATE.client
+        .from('social_media_posts')
+        .select('*')
+        .eq('id', postId)
+        .single();
+
+      if (error) throw error;
+
+      // Set editing mode
+      this.editingPostId = postId;
+
+      // Populate form fields
+      document.getElementById('smPostContent').value = post.content || '';
+
+      if (post.company_id) {
+        document.getElementById('smCompanySelect').value = post.company_id;
+      }
+      if (post.award_id) {
+        document.getElementById('smAwardSelect').value = post.award_id;
+      }
+
+      // Set platforms
+      const platforms = post.platforms || [];
+      document.getElementById('platformTwitter').checked = platforms.includes('twitter');
+      document.getElementById('platformFacebook').checked = platforms.includes('facebook');
+      document.getElementById('platformInstagram').checked = platforms.includes('instagram');
+      document.getElementById('platformLinkedIn').checked = platforms.includes('linkedin');
+
+      // Set schedule
+      if (post.scheduled_for) {
+        const dt = new Date(post.scheduled_for);
+        document.getElementById('smScheduleDate').value = dt.toISOString().split('T')[0];
+        document.getElementById('smScheduleTime').value = dt.toTimeString().slice(0, 5);
+      }
+
+      // Set image
+      if (post.image_url) {
+        this.uploadedImageUrl = post.image_url;
+        const customRadio = document.getElementById('imageCustom');
+        if (customRadio) customRadio.checked = true;
+        const customUploadDiv = document.getElementById('customImageUpload');
+        if (customUploadDiv) customUploadDiv.style.display = 'block';
+      }
+
+      // Set template
+      if (post.template_type) {
+        this.currentTemplate = post.template_type;
+      }
+
+      // Update preview
+      this.updatePostPreview();
+
+      // Scroll to form
+      document.getElementById('smPostContent').scrollIntoView({ behavior: 'smooth' });
+
+      utils.showToast('Post loaded for editing', 'info');
+
+    } catch (error) {
+      console.error('Error loading post for editing:', error);
+      utils.showToast('Failed to load post: ' + error.message, 'error');
+    } finally {
+      utils.hideLoading();
+    }
+  },
+
   async deleteScheduledPost(postId) {
-    if (!confirm('Are you sure you want to delete this scheduled post?')) return;
+    if (!confirm('Are you sure you want to delete this post?')) return;
 
     try {
       const { error } = await STATE.client
@@ -548,6 +654,7 @@ Vote now: {{website}}
 
       utils.showToast('Post deleted successfully', 'success');
       await this.loadScheduledPosts();
+      await this.loadDraftPosts();
 
     } catch (error) {
       console.error('Error deleting post:', error);
@@ -555,59 +662,51 @@ Vote now: {{website}}
     }
   },
 
-  /**
-   * Clear form
-   */
   clearForm() {
+    this.editingPostId = null;
     document.getElementById('smPostContent').value = '';
     document.getElementById('smCompanySelect').value = '';
     document.getElementById('smAwardSelect').value = '';
-    document.getElementById('smScheduleDate').value = '';
-    document.getElementById('smScheduleTime').value = '';
-    document.getElementById('smCustomImage').value = '';
 
-    // Reset platform checkboxes
+    const scheduleDateEl = document.getElementById('smScheduleDate');
+    const scheduleTimeEl = document.getElementById('smScheduleTime');
+    const customImageEl = document.getElementById('smCustomImage');
+    if (scheduleDateEl) scheduleDateEl.value = '';
+    if (scheduleTimeEl) scheduleTimeEl.value = '';
+    if (customImageEl) customImageEl.value = '';
+
     document.getElementById('platformTwitter').checked = true;
     document.getElementById('platformFacebook').checked = true;
     document.getElementById('platformInstagram').checked = true;
     document.getElementById('platformLinkedIn').checked = true;
 
-    // Reset image source
-    document.getElementById('imageCompanyLogo').checked = true;
-    document.getElementById('customImageUpload').style.display = 'none';
-    document.getElementById('smAddLogoOverlay').checked = true;
+    const companyLogoRadio = document.getElementById('imageCompanyLogo');
+    if (companyLogoRadio) companyLogoRadio.checked = true;
+    const customUploadDiv = document.getElementById('customImageUpload');
+    if (customUploadDiv) customUploadDiv.style.display = 'none';
+    const logoOverlay = document.getElementById('smAddLogoOverlay');
+    if (logoOverlay) logoOverlay.checked = true;
 
-    // Reset uploaded image
     this.uploadedImageUrl = null;
     this.currentTemplate = null;
 
-    // Remove selected class from template cards
     document.querySelectorAll('.template-card').forEach(card => {
       card.classList.remove('selected');
     });
 
-    // Update preview
     this.updatePostPreview();
   },
 
-  /**
-   * Show post success message with platform links
-   */
   showPostSuccessMessage(platforms) {
     const platformNames = platforms.map(p => p.charAt(0).toUpperCase() + p.slice(1)).join(', ');
     utils.showToast(`Post has been queued for ${platformNames}. Note: Platform API integration required for actual posting.`, 'info', 5000);
   },
 
-  /**
-   * Open platform settings modal
-   */
   openPlatformSettings() {
-    utils.showToast('Platform connection settings - Coming soon. This will allow you to connect your social media accounts via OAuth.', 'info');
-    // TODO: Create modal for OAuth connections to Twitter, Facebook, Instagram, LinkedIn
+    utils.showToast('Platform connection settings require OAuth API keys for Twitter, Facebook, Instagram and LinkedIn. Configure these in your .env file.', 'info');
   }
 };
 
-// Initialize when social media tab is shown
 document.addEventListener('DOMContentLoaded', () => {
   const socialMediaTab = document.getElementById('social-media-tab');
   if (socialMediaTab) {

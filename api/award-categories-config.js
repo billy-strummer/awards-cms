@@ -161,9 +161,10 @@ const SMALL_CATEGORIES = {
 // ============================================
 
 const SMALL_COUNTIES = [
-  'Rutland',
+  'Ceredigion',
+  'Herefordshire',
   'Isle of Wight',
-  'Northumberland',
+  'Rutland',
 ];
 
 const STANDARD_COUNTIES = [

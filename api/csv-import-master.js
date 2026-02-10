@@ -203,22 +203,32 @@ const VALID_SECTORS = [
 ];
 
 // ============================================
-// CSV PARSER (no external dependency needed)
+// CSV/TSV PARSER (auto-detects delimiter)
 // ============================================
+
+function detectDelimiter(headerLine) {
+  const tabCount = (headerLine.match(/\t/g) || []).length;
+  const commaCount = (headerLine.match(/,/g) || []).length;
+  // If more tabs than commas, it's TSV
+  return tabCount > commaCount ? '\t' : ',';
+}
 
 function parseCSV(content) {
   const lines = content.split(/\r?\n/);
   if (lines.length < 2) return [];
 
+  // Auto-detect delimiter from header line
+  const delimiter = detectDelimiter(lines[0]);
+
   // Parse header line, handling quoted fields
-  const headers = parseCSVLine(lines[0]).map(h => h.trim().toLowerCase().replace(/[^a-z0-9_]/g, '_'));
+  const headers = parseCSVLine(lines[0], delimiter).map(h => h.trim().toLowerCase().replace(/[^a-z0-9_]/g, '_'));
 
   const rows = [];
   for (let i = 1; i < lines.length; i++) {
     const line = lines[i].trim();
     if (!line) continue;
 
-    const values = parseCSVLine(line);
+    const values = parseCSVLine(line, delimiter);
     const row = {};
     headers.forEach((header, idx) => {
       row[header] = (values[idx] || '').trim();
@@ -231,7 +241,19 @@ function parseCSV(content) {
   return rows;
 }
 
-function parseCSVLine(line) {
+function parseCSVLine(line, delimiter) {
+  if (delimiter === '\t') {
+    // TSV: split on tabs, still handle quoted fields
+    return line.split('\t').map(field => {
+      field = field.trim();
+      if (field.startsWith('"') && field.endsWith('"')) {
+        field = field.slice(1, -1).replace(/""/g, '"');
+      }
+      return field;
+    });
+  }
+
+  // CSV: full quote-aware parsing
   const fields = [];
   let current = '';
   let inQuotes = false;
@@ -297,6 +319,7 @@ const COLUMN_ALIASES = {
   'email': 'email',
   'email_address': 'email',
   'e_mail': 'email',
+  'direct_email': 'email',
 
   // phone
   'phone': 'phone',
@@ -310,11 +333,13 @@ const COLUMN_ALIASES = {
   'web': 'website',
   'url': 'website',
   'site': 'website',
+  'website_url': 'website',
 
   // address
   'address': 'address',
   'location': 'address',
   'full_address': 'address',
+  'business_contact_address': 'address',
 
   // region
   'region': 'region',
@@ -596,7 +621,7 @@ async function processFiles(options) {
       process.exit(1);
     }
     csvFiles = fs.readdirSync(folderPath)
-      .filter(f => f.toLowerCase().endsWith('.csv'))
+      .filter(f => f.toLowerCase().endsWith('.csv') || f.toLowerCase().endsWith('.tsv'))
       .sort()
       .map(f => path.join(folderPath, f));
   }

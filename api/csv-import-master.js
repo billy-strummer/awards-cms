@@ -344,6 +344,7 @@ const COLUMN_ALIASES = {
   // region
   'region': 'region',
   'county': 'region',
+  'county_city': 'region',
   'area': 'region',
 
   // sector

@@ -334,6 +334,24 @@ const utils = {
     uniqueValues.forEach(value => {
       select.innerHTML += `<option value="${this.escapeHtml(value)}">${this.escapeHtml(value)}</option>`;
     });
+  },
+
+  /**
+   * Format full award display name
+   * e.g. "Berkshire's Best Loft Conversion Company 2026"
+   * @param {object} award - Award object with award_name, county, year
+   * @returns {string} Formatted award name
+   */
+  formatAwardName(award) {
+    if (!award) return '-';
+    const category = award.award_name || award.award_category || 'Award';
+    const county = award.county || '';
+    const year = award.year || '';
+
+    if (county) {
+      return `${county}'s Best ${category} ${year}`.trim();
+    }
+    return `${category} ${year}`.trim();
   }
 };
 

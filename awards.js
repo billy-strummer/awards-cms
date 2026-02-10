@@ -9,9 +9,9 @@ const awardsModule = {
 async loadAwards() {
   try {
     utils.showLoading();
-    utils.showTableLoading('awardsTableBody', 9); // 9 columns now (added county + region)
-    
-    // Load all awards WITHOUT region join (awards.region stores county name as TEXT)
+    utils.showTableLoading('awardsTableBody', 5); // 5 columns
+
+    // Load all awards - county column stores the county/city name
     let allData = [];
     let page = 0;
     const pageSize = 1000;
@@ -82,7 +82,7 @@ return {
     console.error('Error loading awards:', error);
     console.error('Error details:', error.details, error.hint, error.message);
     utils.showToast('Failed to load awards: ' + error.message, 'error');
-    utils.showEmptyState('awardsTableBody', 9, 'Failed to load awards', 'bi-exclamation-triangle');
+    utils.showEmptyState('awardsTableBody', 5, 'Failed to load awards', 'bi-exclamation-triangle');
   } finally {
     utils.hideLoading();
   }
@@ -172,7 +172,7 @@ return {
       'All Sectors'
     );
     
-    // Populate county filter (award.region stores county names)
+    // Populate county filter
     utils.populateFilter(
       STATE.allAwards,
       'county',
@@ -257,23 +257,18 @@ updateCountyFilterByRegion() {
       // Sector filter
       if (sector && award.sector !== sector) return false;
 
-      // County filter (award.region actually stores county name)
-      if (county && award.region !== county) return false;
-      
+      // County filter
+      if (county && award.county !== county) return false;
+
       // Region filter (actual region like "South West")
       if (region && award._actualRegion !== region) return false;
 
-      // Search filter (searches in award name, category, and winner)
+      // Search filter (searches full award name, category, county, and winner)
       if (search) {
+        const fullName = utils.formatAwardName(award).toLowerCase();
         const winnerName = award.winner?.toLowerCase() || '';
-        const awardName = award.award_name?.toLowerCase() || '';
-        const awardCategory = award.award_category?.toLowerCase() || '';
-        const countyName = award.region?.toLowerCase() || '';
 
-        if (!winnerName.includes(search) && 
-            !awardName.includes(search) && 
-            !awardCategory.includes(search) &&
-            !countyName.includes(search)) {
+        if (!fullName.includes(search) && !winnerName.includes(search)) {
           return false;
         }
       }
@@ -294,7 +289,7 @@ updateCountyFilterByRegion() {
     count.textContent = STATE.filteredAwards.length;
 
     if (STATE.filteredAwards.length === 0) {
-      utils.showEmptyState('awardsTableBody', 9, 'No awards found matching your filters');
+      utils.showEmptyState('awardsTableBody', 5, 'No awards found matching your filters');
       return;
     }
 
@@ -304,13 +299,15 @@ updateCountyFilterByRegion() {
                              counts.total < 5 ? 'low' :
                              counts.total < 15 ? 'medium' : 'high';
 
+      const fullName = utils.formatAwardName(award);
+
       return `
         <tr class="fade-in">
           <td>
             <a href="javascript:void(0);"
                class="text-decoration-none fw-semibold text-primary"
-               onclick="assignmentsModule.openAssignmentsModal('${award.id}', '${utils.escapeHtml(award.award_name || award.award_category || 'Award').replace(/'/g, "\\'")}')">
-              ${utils.escapeHtml(award.award_name || award.award_category || '-')}
+               onclick="assignmentsModule.openAssignmentsModal('${award.id}', '${utils.escapeHtml(fullName).replace(/'/g, "\\'")}')">
+              ${utils.escapeHtml(fullName)}
             </a>
           </td>
           <td>
@@ -318,21 +315,11 @@ updateCountyFilterByRegion() {
               <i class="bi bi-briefcase me-1"></i>${utils.escapeHtml(award.sector || '-')}
             </span>
           </td>
-          <<td>
-  <span class="badge bg-success-subtle text-success">
-    <i class="bi bi-geo-alt me-1"></i>${utils.escapeHtml(award._actualRegion || '-')}
-  </span>
-</td>
-<td>
-  <span class="badge bg-warning-subtle text-warning">
-    <i class="bi bi-pin-map me-1"></i>${utils.escapeHtml(award.county || '-')}
-  </span>
-</td>
           <td>${utils.getStatusBadge(award.status || 'Draft')}</td>
           <td class="text-center">
             <div class="assignment-count-badge ${countBadgeClass}"
               style="cursor: pointer;"
-              onclick="assignmentsModule.openAssignmentsModal('${award.id}', '${utils.escapeHtml(award.award_name || award.award_category || 'Award').replace(/'/g, "\\'")}')"
+              onclick="assignmentsModule.openAssignmentsModal('${award.id}', '${utils.escapeHtml(fullName).replace(/'/g, "\\'")}')"
               title="Click to view: ${counts.nominated} nominated, ${counts.shortlisted} shortlisted, ${counts.winner} winner">
               <i class="bi bi-people-fill"></i>
               <span>${counts.total}</span>
@@ -428,16 +415,16 @@ updateCountyFilterByRegion() {
             <h6 class="text-muted mb-3"><i class="bi bi-info-circle me-2"></i>Award Details</h6>
             <table class="table table-sm">
               <tr>
-                <th width="40%">Category:</th>
+                <th width="40%">Award Name:</th>
+                <td>${utils.escapeHtml(utils.formatAwardName(award))}</td>
+              </tr>
+              <tr>
+                <th>Category:</th>
                 <td>${utils.escapeHtml(award.award_name)}</td>
               </tr>
               <tr>
-                <th>County:</th>
-                <td><span class="badge bg-warning-subtle text-warning">${utils.escapeHtml(award.region || 'N/A')}</span></td>
-              </tr>
-              <tr>
-                <th>Region:</th>
-                <td><span class="badge bg-success-subtle text-success">${utils.escapeHtml(award._actualRegion || 'N/A')}</span></td>
+                <th>County/City:</th>
+                <td>${utils.escapeHtml(award.county || 'N/A')}</td>
               </tr>
               <tr>
                 <th>Year:</th>

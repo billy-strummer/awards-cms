@@ -696,8 +696,8 @@ updateCountyFilterByRegion() {
                       <td>
                         <a href="javascript:void(0);"
                            class="text-decoration-none fw-semibold text-primary"
-                           onclick="assignmentsModule.openAssignmentsModal('${award.id}', '${utils.escapeHtml(award.award_name || 'Award').replace(/'/g, "\\'")}')">
-                          ${utils.escapeHtml(award.award_name)}
+                           onclick="assignmentsModule.openAssignmentsModal('${award.id}', '${utils.escapeHtml(utils.formatAwardName(award)).replace(/'/g, "\\'")}')">
+                          ${utils.escapeHtml(utils.formatAwardName(award))}
                         </a>
                       </td>
                       <td><span class="badge bg-info-subtle text-info">${utils.escapeHtml(award.sector)}</span></td>
@@ -753,8 +753,7 @@ updateCountyFilterByRegion() {
                           <tr>
                             <td><span class="badge bg-primary">${utils.escapeHtml(entry.entry_number)}</span></td>
                             <td>
-                              <strong>${utils.escapeHtml(entry.awards?.award_name || 'N/A')}</strong>
-                              ${entry.awards?.year ? `<br><small class="text-muted">${entry.awards.year}</small>` : ''}
+                              <strong>${utils.escapeHtml(entry.awards ? utils.formatAwardName(entry.awards) : 'N/A')}</strong>
                             </td>
                             <td>${utils.escapeHtml(entry.entry_title || 'N/A')}</td>
                             <td>

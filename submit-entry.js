@@ -290,10 +290,10 @@ const entryFormApp = {
     `;
 
     try {
-      // Fetch active awards filtered by sector and region
+      // Fetch active awards filtered by sector and county
       let query = supabase
         .from('awards')
-        .select('id, award_name, sector, year, region, status')
+        .select('id, award_name, sector, year, county, status')
         .eq('status', 'Active');
 
       // Filter by selected sector
@@ -301,9 +301,9 @@ const entryFormApp = {
         query = query.eq('sector', this.formData.sector);
       }
 
-      // Filter by selected region
+      // Filter by selected county/city
       if (this.formData.region) {
-        query = query.eq('region', this.formData.region);
+        query = query.eq('county', this.formData.region);
       }
 
       const { data: awards, error } = await query.order('award_name');

@@ -281,7 +281,7 @@ const dashboardModule = {
             icon: 'trophy',
             color: 'primary',
             title: 'New Award Added',
-            description: `${award.award_name || award.award_category || 'Award'} - ${award.organisations?.company_name || 'Unknown'}`,
+            description: `${utils.formatAwardName(award)} - ${award.organisations?.company_name || 'Unknown'}`,
             time: award.created_at
           });
         });
@@ -883,7 +883,7 @@ const dashboardModule = {
       'Year': award.year || '',
       'Award Category': award.award_category || '',
       'Sector': award.sector || '',
-      'Region': award.region || '',
+      'County/City': award.county || '',
       'Status': award.status || '',
       'Created At': utils.formatDate(award.created_at)
     }));
@@ -1095,10 +1095,10 @@ const dashboardModule = {
       return;
     }
 
-    // Count by region
+    // Count by county/city
     const regionCounts = {};
     STATE.allAwards.forEach(award => {
-      const region = award.region || 'Unknown';
+      const region = award.county || 'Unknown';
       regionCounts[region] = (regionCounts[region] || 0) + 1;
     });
 
@@ -2126,7 +2126,7 @@ const dashboardModule = {
       } else {
         tbody.innerHTML = recentAwards.map(award => `
           <tr>
-            <td>${utils.escapeHtml(award.award_name || 'Untitled')}</td>
+            <td>${utils.escapeHtml(utils.formatAwardName(award))}</td>
             <td>${utils.escapeHtml(award.category || 'N/A')}</td>
             <td><span class="badge bg-${this.getStatusColor(award.status)}">${award.status || 'N/A'}</span></td>
             <td>${award.created_at ? new Date(award.created_at).toLocaleDateString() : 'N/A'}</td>

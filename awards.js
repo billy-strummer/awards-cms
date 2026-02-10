@@ -9,7 +9,7 @@ const awardsModule = {
 async loadAwards() {
   try {
     utils.showLoading();
-    utils.showTableLoading('awardsTableBody', 9); // 9 columns (includes county + region)
+    utils.showTableLoading('awardsTableBody', 6); // 6 columns
 
     // Load all awards - county column stores the county/city name
     let allData = [];
@@ -82,7 +82,7 @@ return {
     console.error('Error loading awards:', error);
     console.error('Error details:', error.details, error.hint, error.message);
     utils.showToast('Failed to load awards: ' + error.message, 'error');
-    utils.showEmptyState('awardsTableBody', 9, 'Failed to load awards', 'bi-exclamation-triangle');
+    utils.showEmptyState('awardsTableBody', 6, 'Failed to load awards', 'bi-exclamation-triangle');
   } finally {
     utils.hideLoading();
   }
@@ -294,7 +294,7 @@ updateCountyFilterByRegion() {
     count.textContent = STATE.filteredAwards.length;
 
     if (STATE.filteredAwards.length === 0) {
-      utils.showEmptyState('awardsTableBody', 9, 'No awards found matching your filters');
+      utils.showEmptyState('awardsTableBody', 6, 'No awards found matching your filters');
       return;
     }
 
@@ -318,12 +318,7 @@ updateCountyFilterByRegion() {
               <i class="bi bi-briefcase me-1"></i>${utils.escapeHtml(award.sector || '-')}
             </span>
           </td>
-          <<td>
-  <span class="badge bg-success-subtle text-success">
-    <i class="bi bi-geo-alt me-1"></i>${utils.escapeHtml(award._actualRegion || '-')}
-  </span>
-</td>
-<td>
+          <td>
   <span class="badge bg-warning-subtle text-warning">
     <i class="bi bi-pin-map me-1"></i>${utils.escapeHtml(award.county || '-')}
   </span>
@@ -432,12 +427,8 @@ updateCountyFilterByRegion() {
                 <td>${utils.escapeHtml(award.award_name)}</td>
               </tr>
               <tr>
-                <th>County:</th>
+                <th>County/City:</th>
                 <td><span class="badge bg-warning-subtle text-warning">${utils.escapeHtml(award.county || 'N/A')}</span></td>
-              </tr>
-              <tr>
-                <th>Region:</th>
-                <td><span class="badge bg-success-subtle text-success">${utils.escapeHtml(award._actualRegion || 'N/A')}</span></td>
               </tr>
               <tr>
                 <th>Year:</th>

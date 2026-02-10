@@ -559,7 +559,7 @@ function detectDuplicates(allRows) {
 async function loadExistingAwards() {
   const { data, error } = await supabase
     .from('awards')
-    .select('id, award_name, sector, region, year')
+    .select('id, award_name, sector, region, county, year')
     .or(`year.eq.${AWARD_YEAR},year.eq.${parseInt(AWARD_YEAR)}`);
 
   if (error) throw new Error(`Failed to load awards: ${error.message}`);
@@ -584,10 +584,22 @@ async function loadExistingAssignments() {
   return data || [];
 }
 
-function matchAward(awardName, awards) {
-  const normalised = awardName.trim().toLowerCase();
+function matchAward(awardName, county, awards) {
+  const normalisedName = awardName.trim().toLowerCase();
+  const normalisedCounty = (county || '').trim().toLowerCase();
+
+  // Match on award_name + county (awards are per-county in this CMS)
+  if (normalisedCounty) {
+    const exactMatch = awards.find(a =>
+      a.award_name.trim().toLowerCase() === normalisedName &&
+      (a.county || '').trim().toLowerCase() === normalisedCounty
+    );
+    if (exactMatch) return exactMatch;
+  }
+
+  // Fallback: match on award_name only (if no county specified or no county match)
   return awards.find(a =>
-    a.award_name.trim().toLowerCase() === normalised
+    a.award_name.trim().toLowerCase() === normalisedName
   );
 }
 
@@ -752,11 +764,12 @@ async function processFiles(options) {
   for (const entry of unique) {
     const { row } = entry;
 
-    const awardMatch = matchAward(row.award_category, awards);
+    // row.region holds the county/city from the CSV (after normalization)
+    const awardMatch = matchAward(row.award_category, row.region, awards);
     const orgMatch = matchOrganisation(row.organisation, organisations);
 
     if (!awardMatch) {
-      unmatchedAwards.add(row.award_category);
+      unmatchedAwards.add(`${row.award_category} [${row.region || 'no county'}]`);
     }
 
     if (!orgMatch) {
@@ -792,10 +805,10 @@ async function processFiles(options) {
   if (unmatchedAwards.size > 0) {
     console.log(`  UNMATCHED AWARDS (${unmatchedAwards.size}):`);
     [...unmatchedAwards].sort().forEach(a => {
-      console.log(`    - "${a}"`);
-      // Suggest closest match
-      const suggestion = findClosestMatch(a, awards.map(aw => aw.award_name));
-      if (suggestion) console.log(`      Did you mean: "${suggestion}"?`);
+      console.log(`    - ${a}`);
+      // Suggest closest match from existing awards (name + county)
+      const suggestion = findClosestMatch(a, awards.map(aw => `${aw.award_name} [${aw.county || 'no county'}]`));
+      if (suggestion) console.log(`      Did you mean: ${suggestion}?`);
     });
     console.log();
   }
@@ -900,10 +913,12 @@ async function processFiles(options) {
         company_name: row.organisation,
         email: row.email || null,
         phone: row.phone || null,
+        contact_phone: row.phone || null,
+        contact_name: row.contact_name || null,
         website: row.website || null,
         address: row.address || null,
         region: row.region || null,
-        sector: row.sector || null
+        catchment_area: row.catchment_area || null
       };
 
       const { data: newOrg, error: orgError } = await supabase
@@ -925,10 +940,10 @@ async function processFiles(options) {
     // Re-process unmatched entries now that orgs exist
     for (const entry of unique) {
       const { row } = entry;
-      if (!matchAward(row.award_category, awards)) continue;
+      if (!matchAward(row.award_category, row.region, awards)) continue;
       const orgMatch = matchOrganisation(row.organisation, organisations);
       if (!orgMatch) continue;
-      const awardMatch = matchAward(row.award_category, awards);
+      const awardMatch = matchAward(row.award_category, row.region, awards);
 
       const alreadyQueued = readyToImport.find(
         r => r.awardId === awardMatch.id && r.orgId === orgMatch.id

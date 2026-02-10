@@ -134,7 +134,7 @@ return {
    * Populate year filter with only 2026+
    */
   populateYearFilter() {
-    const currentYear = 2026;
+    const currentYear = new Date().getFullYear();
     const yearSelect = document.getElementById('awardsYearFilterSelect');
     
     if (yearSelect) {
@@ -227,6 +227,17 @@ updateCountyFilterByRegion() {
   // Reset county selection
   countySelect.value = '';
 },
+
+  /**
+   * Set status filter and trigger filtering
+   */
+  filterByStatus(status) {
+    const statusSelect = document.getElementById('awardsStatusFilterSelect');
+    if (statusSelect) {
+      statusSelect.value = status;
+    }
+    this.filterAwards();
+  },
 
   /**
    * Filter awards based on current filter values

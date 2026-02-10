@@ -349,7 +349,12 @@ const utils = {
     const year = award.year || '';
 
     if (county) {
-      return `${county}'s Best ${category} ${year}`.trim();
+      const prefix = `${county}'s Best`;
+      // Avoid double prefix if award_name already contains it
+      if (category.toLowerCase().startsWith(prefix.toLowerCase())) {
+        return `${category} ${year}`.trim();
+      }
+      return `${prefix} ${category} ${year}`.trim();
     }
     return `${category} ${year}`.trim();
   }

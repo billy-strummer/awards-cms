@@ -2,7 +2,7 @@
  * AWARD CATEGORIES CONFIGURATION
  * ================================
  * Defines the two tiers of award categories:
- *   - STANDARD: 52 categories for main counties/cities
+ *   - STANDARD: 56 categories for main counties/cities
  *   - SMALL: 38 categories for smaller counties/towns (merged categories)
  *
  * Also defines which counties/cities use which tier,
@@ -10,81 +10,85 @@
  */
 
 // ============================================
-// STANDARD CATEGORIES (52) - Main counties/cities
+// STANDARD CATEGORIES (56) - Main counties/cities
 // ============================================
 
 const STANDARD_CATEGORIES = {
   'BUILDING & CONSTRUCTION': [
-    'Roofing Company',
-    'Brickwork & Masonry Services',
-    'General Building Company',
-    'Loft Conversion Specialist',
-    'Extension Specialist',
-    'Groundworks & Foundations Specialist',
-    'Structural Steelwork Specialist',
-    'Structural Engineering Specialist',
+    'Brickwork & Masonry Company',
     'Drainage Company',
-    'Maintenance Services'
+    'Extension Company',
+    'General Building Company',
+    'Groundworks & Foundations Company',
+    'Guttering Company',
+    'Loft Conversion Company',
+    'Maintenance Services',
+    'New Build Company',
+    'Roofing Company',
+    'Structural Engineers',
+    'Structural Steelworks'
   ],
 
   'MECHANICAL, ELECTRICAL & PLUMBING': [
-    'Heating Company',
-    'Plumbing Company',
     'Air-Conditioning & Ventilation Company',
     'Electrical Company',
-    'Smart Home & Automation Company',
-    'EV Charger Installation Company',
-    'Underfloor Heating Specialist'
+    'Heating Company',
+    'Plumbing Company',
+    'Underfloor Heating Company'
   ],
 
   'CARPENTRY & JOINERY': [
+    'Cabinet Maker',
     'Carpentry Company',
+    'Joinery Company',
     'Staircase Specialist',
-    'Bespoke Joinery Company',
-    'Bespoke Cabinet Maker',
-    'Timber Windows Specialist'
+    'Timber Windows Installer'
   ],
 
   'INTERIOR FIT-OUT & FINISHING': [
-    'Interior Refurbishment Company',
-    'Plastering Services',
-    'Kitchen Installer',
     'Bathroom Installer',
+    'Carpet Fitters',
+    'Curtains & Blinds Installer',
+    'Drylining Company',
     'Flooring Installer',
-    'Tiling Services',
-    'Painting & Decorating',
-    'Carpet Fitting Services',
-    'Curtins & Blinds Installer',
     'Home Office Installer',
-    'Drylining & Ceiling Specialist',
-    'Screeding Specialist',
-    'Rendering Services'
+    'Interior Refurbishment Company',
+    'Kitchen Installer',
+    'Painting & Decorating Company',
+    'Plastering Company',
+    'Screeding Company',
+    'Tiling Installer'
   ],
 
   'OUTDOOR & LANDSCAPING': [
-    'Landscaping & Garden Design Company',
-    'Driveway & Paving Specialist',
+    'Decking Company',
+    'Driveway & Paving Company',
+    'Fencing Installer',
     'Gardening Services',
-    'Fencing Company',
-    'Decking Specialist',
-    'Garden Outbuilding Specialist',
-    'Tree Surgery Services',
-    'Outdoor Lighting & Electrical Solutions'
+    'Garden Outbuilding Company',
+    'Landscaping & Garden Design Company',
+    'Outdoor Lighting & Electrical Company',
+    'Tree Surgery Services'
   ],
 
   'ENERGY, TECH & SUSTAINABILITY': [
-    'Renewable Energy Provider',
+    'EV Charger Installer',
+    'Insulation & Energy Efficiency Company',
     'PV Installer',
-    'Insulation & Energy Efficiency Provider',
-    'Security Systems Provider',
-    'Window & Door Installer',
-    'Locksmith'
+    'Renewable Energy Specialist',
+    'Security System Installer',
+    'Smart Home & Automation Company'
   ],
 
   'SPECIALIST TRADES': [
+    'Asbestos Removal Specialist',
+    'Locksmith',
+    'Pest Control Company',
+    'Rendering Company',
     'Scaffolding Company',
-    'Signage & Shopfitting Specialist',
-    'Asbestos Removal Specialist'
+    'Shop Fitting Company',
+    'Swimming Pool & Hot Tub Company',
+    'Window & Door Installer'
   ]
 };
 
@@ -161,10 +165,10 @@ const SMALL_CATEGORIES = {
 // ============================================
 
 const SMALL_COUNTIES = [
-  // Add your smaller counties/towns here, e.g.:
-  // 'Rutland',
-  // 'Isle of Wight',
-  // 'Northumberland',
+  'Ceredigion',
+  'Herefordshire',
+  'Isle of Wight',
+  'Rutland',
 ];
 
 const STANDARD_COUNTIES = [

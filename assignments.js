@@ -285,7 +285,7 @@ const assignmentsModule = {
     // Multi-category badge
     const otherNominations = assignment.other_nominations || [];
     if (otherNominations.length > 0) {
-      const otherAwardsList = otherNominations.map(award => utils.escapeHtml(award.award_name)).join(', ');
+      const otherAwardsList = otherNominations.map(award => utils.escapeHtml(utils.formatAwardName(award))).join(', ');
       badges.push(`<span class="badge" style="background-color: #e7d5ff; color: #7c3aed;" title="Also in: ${otherAwardsList}" data-bs-toggle="tooltip"><i class="bi bi-clipboard2-check"></i> +${otherNominations.length}</span>`);
     }
 
@@ -695,7 +695,7 @@ const assignmentsModule = {
 
     const count = otherNominations.length;
     const otherAwardsList = otherNominations
-      .map(award => utils.escapeHtml(award.award_name))
+      .map(award => utils.escapeHtml(utils.formatAwardName(award)))
       .join('&#10;'); // Line break for tooltip
 
     return `

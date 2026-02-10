@@ -584,20 +584,27 @@ async function loadExistingAssignments() {
   return data || [];
 }
 
-function matchAward(awardName, county, awards) {
+function matchAward(awardName, countyOrCity, awards) {
   const normalisedName = awardName.trim().toLowerCase();
-  const normalisedCounty = (county || '').trim().toLowerCase();
+  const normalisedCounty = (countyOrCity || '').trim().toLowerCase();
 
-  // Match on award_name + county (awards are per-county in this CMS)
   if (normalisedCounty) {
-    const exactMatch = awards.find(a =>
+    // Match on award_name + county column
+    const countyMatch = awards.find(a =>
       a.award_name.trim().toLowerCase() === normalisedName &&
       (a.county || '').trim().toLowerCase() === normalisedCounty
     );
-    if (exactMatch) return exactMatch;
+    if (countyMatch) return countyMatch;
+
+    // Match on award_name + region column (older awards store county/city in region)
+    const regionMatch = awards.find(a =>
+      a.award_name.trim().toLowerCase() === normalisedName &&
+      (a.region || '').trim().toLowerCase() === normalisedCounty
+    );
+    if (regionMatch) return regionMatch;
   }
 
-  // Fallback: match on award_name only (if no county specified or no county match)
+  // Fallback: match on award_name only (if no county specified or no match found)
   return awards.find(a =>
     a.award_name.trim().toLowerCase() === normalisedName
   );

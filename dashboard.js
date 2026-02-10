@@ -883,7 +883,7 @@ const dashboardModule = {
       'Year': award.year || '',
       'Award Category': award.award_category || '',
       'Sector': award.sector || '',
-      'Region': award.region || '',
+      'County/City': award.county || '',
       'Status': award.status || '',
       'Created At': utils.formatDate(award.created_at)
     }));
@@ -1095,10 +1095,10 @@ const dashboardModule = {
       return;
     }
 
-    // Count by region
+    // Count by county/city
     const regionCounts = {};
     STATE.allAwards.forEach(award => {
-      const region = award.region || 'Unknown';
+      const region = award.county || 'Unknown';
       regionCounts[region] = (regionCounts[region] || 0) + 1;
     });
 

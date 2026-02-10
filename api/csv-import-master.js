@@ -559,7 +559,7 @@ function detectDuplicates(allRows) {
 async function loadExistingAwards() {
   const { data, error } = await supabase
     .from('awards')
-    .select('id, award_name, sector, region, county, year')
+    .select('id, award_name, sector, county, year')
     .or(`year.eq.${AWARD_YEAR},year.eq.${parseInt(AWARD_YEAR)}`);
 
   if (error) throw new Error(`Failed to load awards: ${error.message}`);
@@ -589,19 +589,12 @@ function matchAward(awardName, countyOrCity, awards) {
   const normalisedCounty = (countyOrCity || '').trim().toLowerCase();
 
   if (normalisedCounty) {
-    // Match on award_name + county column
-    const countyMatch = awards.find(a =>
+    // Match on award_name + county (awards are per-county/city in this CMS)
+    const exactMatch = awards.find(a =>
       a.award_name.trim().toLowerCase() === normalisedName &&
       (a.county || '').trim().toLowerCase() === normalisedCounty
     );
-    if (countyMatch) return countyMatch;
-
-    // Match on award_name + region column (older awards store county/city in region)
-    const regionMatch = awards.find(a =>
-      a.award_name.trim().toLowerCase() === normalisedName &&
-      (a.region || '').trim().toLowerCase() === normalisedCounty
-    );
-    if (regionMatch) return regionMatch;
+    if (exactMatch) return exactMatch;
   }
 
   // Fallback: match on award_name only (if no county specified or no match found)

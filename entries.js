@@ -78,7 +78,7 @@ const entriesModule = {
         .select(`
           *,
           organisations(company_name, logo_url),
-          awards(award_name, sector, region),
+          awards(award_name, sector, county),
           invoices(status, total_amount)
         `)
         .order('submission_date', { ascending: false });
@@ -448,8 +448,8 @@ const entriesModule = {
                           <td>${entry.awards?.sector || 'N/A'}</td>
                         </tr>
                         <tr>
-                          <td class="text-muted">Region:</td>
-                          <td>${entry.awards?.region || 'N/A'}</td>
+                          <td class="text-muted">County/City:</td>
+                          <td>${entry.awards?.county || 'N/A'}</td>
                         </tr>
                         <tr>
                           <td class="text-muted">Entry Type:</td>

@@ -161,10 +161,9 @@ const SMALL_CATEGORIES = {
 // ============================================
 
 const SMALL_COUNTIES = [
-  // Add your smaller counties/towns here, e.g.:
-  // 'Rutland',
-  // 'Isle of Wight',
-  // 'Northumberland',
+  'Rutland',
+  'Isle of Wight',
+  'Northumberland',
 ];
 
 const STANDARD_COUNTIES = [

@@ -4,8 +4,8 @@
 const { createClient } = require('@supabase/supabase-js');
 
 const supabase = createClient(
-  'https://bipndtstiqdydtdegjdx.supabase.co',
-  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJpcG5kdHN0aXFkeWR0ZGVnamR4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjI0NDE4OTksImV4cCI6MjA3ODAxNzg5OX0.c6ImTKoKuJHRE6H9kPTVp56kjQ5i3Y2AAPgx2N_Bw6A'
+  'https://qdzyknercdqwhwijbcxf.supabase.co',
+  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFkenlrbmVyY2Rxd2h3aWpiY3hmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzA4NDAwODEsImV4cCI6MjA4NjQxNjA4MX0.ecs9dgUaOW607imlYFJeLhLHlC8YWybnEUPEHJeRrkY'
 );
 
 async function checkSchema() {

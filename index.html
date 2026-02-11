@@ -808,21 +808,49 @@
               </div>
             </div>
 
+            <!-- Bulk Actions Toolbar (hidden until selections made) -->
+            <div id="awardsBulkActions" class="alert alert-primary d-flex align-items-center justify-content-between mb-3" style="display: none !important;">
+              <div>
+                <i class="bi bi-check2-square me-2"></i>
+                <strong><span id="awardsBulkCount">0</span></strong> awards selected
+              </div>
+              <div class="d-flex gap-2">
+                <div class="btn-group btn-group-sm">
+                  <button class="btn btn-success" onclick="awardsModule.bulkSetStatus('Active')">
+                    <i class="bi bi-check-circle me-1"></i>Set Active
+                  </button>
+                  <button class="btn btn-warning" onclick="awardsModule.bulkSetStatus('Archived')">
+                    <i class="bi bi-archive me-1"></i>Archive
+                  </button>
+                  <button class="btn btn-secondary" onclick="awardsModule.bulkSetStatus('Draft')">
+                    <i class="bi bi-file-earmark me-1"></i>Set Draft
+                  </button>
+                </div>
+                <button class="btn btn-danger btn-sm" onclick="awardsModule.bulkDelete()">
+                  <i class="bi bi-trash me-1"></i>Delete Selected
+                </button>
+                <button class="btn btn-outline-secondary btn-sm" onclick="awardsModule.clearSelection()">
+                  <i class="bi bi-x-lg me-1"></i>Clear
+                </button>
+              </div>
+            </div>
+
             <div class="table-responsive">
               <table class="table table-hover table-striped align-middle">
                 <thead>
                   <tr>
-                    <th style="width: 30%;">Award Name</th>
+                    <th style="width: 3%;"><input type="checkbox" class="form-check-input" id="awardsSelectAll" onchange="awardsModule.toggleSelectAll(this.checked)"></th>
+                    <th style="width: 28%;">Award Name</th>
 <th style="width: 12%;">Sector</th>
 <th style="width: 8%;">Status</th>
 <th style="width: 8%;" class="text-center">Nominees</th>
-<th style="width: 15%;">Winner</th>
+<th style="width: 14%;">Winner</th>
 <th style="width: 8%;" class="text-center">Actions</th>
                   </tr>
                 </thead>
                 <tbody id="awardsTableBody">
                   <tr>
-                    <td colspan="6" class="text-center py-5">
+                    <td colspan="7" class="text-center py-5">
                       <div class="text-muted">
                         <i class="bi bi-inbox display-3 d-block mb-3 opacity-25"></i>
                         <p class="mb-0">Loading awards...</p>

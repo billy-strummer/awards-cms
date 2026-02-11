@@ -3,13 +3,14 @@
 /* ==================================================== */
 
 const awardsModule = {
+  selectedAwards: new Set(),
  /**
  * Load all awards from database
  */
 async loadAwards() {
   try {
     utils.showLoading();
-    utils.showTableLoading('awardsTableBody', 6); // 6 columns
+    utils.showTableLoading('awardsTableBody', 7); // 7 columns
 
     // Load all awards - county column stores the county/city name
     let allData = [];
@@ -83,7 +84,7 @@ return {
     console.error('Error loading awards:', error);
     console.error('Error details:', error.details, error.hint, error.message);
     utils.showToast('Failed to load awards: ' + error.message, 'error');
-    utils.showEmptyState('awardsTableBody', 6, 'Failed to load awards', 'bi-exclamation-triangle');
+    utils.showEmptyState('awardsTableBody', 7, 'Failed to load awards', 'bi-exclamation-triangle');
   } finally {
     utils.hideLoading();
   }
@@ -313,7 +314,7 @@ updateCountyFilterByRegion() {
     count.textContent = STATE.filteredAwards.length;
 
     if (STATE.filteredAwards.length === 0) {
-      utils.showEmptyState('awardsTableBody', 6, 'No awards found matching your filters');
+      utils.showEmptyState('awardsTableBody', 7, 'No awards found matching your filters');
       return;
     }
 
@@ -342,6 +343,7 @@ updateCountyFilterByRegion() {
 
       return `
         <tr class="fade-in">
+          <td><input type="checkbox" class="form-check-input award-select-cb" value="${award.id}" onchange="awardsModule.toggleSelection('${award.id}', this.checked)" ${this.selectedAwards.has(award.id) ? 'checked' : ''}></td>
           <td>
             <a href="javascript:void(0);"
                class="text-decoration-none fw-semibold text-primary"
@@ -793,6 +795,135 @@ updateCountyFilterByRegion() {
   /**
    * Export filtered awards to CSV
    */
+  /**
+   * Toggle single award selection
+   */
+  toggleSelection(awardId, checked) {
+    if (checked) {
+      this.selectedAwards.add(awardId);
+    } else {
+      this.selectedAwards.delete(awardId);
+    }
+    this.updateBulkToolbar();
+  },
+
+  /**
+   * Toggle select all visible awards
+   */
+  toggleSelectAll(checked) {
+    if (checked) {
+      STATE.filteredAwards.forEach(a => this.selectedAwards.add(a.id));
+    } else {
+      this.selectedAwards.clear();
+    }
+    // Update all checkboxes
+    document.querySelectorAll('.award-select-cb').forEach(cb => {
+      cb.checked = checked;
+    });
+    this.updateBulkToolbar();
+  },
+
+  /**
+   * Clear all selections
+   */
+  clearSelection() {
+    this.selectedAwards.clear();
+    document.querySelectorAll('.award-select-cb').forEach(cb => { cb.checked = false; });
+    const selectAll = document.getElementById('awardsSelectAll');
+    if (selectAll) selectAll.checked = false;
+    this.updateBulkToolbar();
+  },
+
+  /**
+   * Show/hide bulk actions toolbar
+   */
+  updateBulkToolbar() {
+    const toolbar = document.getElementById('awardsBulkActions');
+    const countEl = document.getElementById('awardsBulkCount');
+    const count = this.selectedAwards.size;
+
+    if (toolbar) {
+      toolbar.style.display = count > 0 ? 'flex' : 'none';
+      toolbar.style.setProperty('display', count > 0 ? 'flex' : 'none', 'important');
+    }
+    if (countEl) countEl.textContent = count;
+  },
+
+  /**
+   * Bulk set status for selected awards
+   */
+  async bulkSetStatus(newStatus) {
+    const count = this.selectedAwards.size;
+    if (count === 0) return;
+
+    if (!confirm(`Set ${count} awards to "${newStatus}"?`)) return;
+
+    try {
+      utils.showLoading();
+
+      const ids = [...this.selectedAwards];
+      const { error } = await STATE.client
+        .from('awards')
+        .update({ status: newStatus })
+        .in('id', ids);
+
+      if (error) throw error;
+
+      utils.showToast(`${count} awards set to ${newStatus}`, 'success');
+      this.selectedAwards.clear();
+      await this.loadAwards();
+
+    } catch (error) {
+      console.error('Error bulk updating status:', error);
+      utils.showToast('Failed to update awards: ' + error.message, 'error');
+    } finally {
+      utils.hideLoading();
+    }
+  },
+
+  /**
+   * Bulk delete selected awards
+   */
+  async bulkDelete() {
+    const count = this.selectedAwards.size;
+    if (count === 0) return;
+
+    if (!confirm(`Delete ${count} awards? This cannot be undone.`)) return;
+    if (!confirm(`Are you absolutely sure? This will permanently delete ${count} awards and their assignments.`)) return;
+
+    try {
+      utils.showLoading();
+
+      const ids = [...this.selectedAwards];
+
+      // Delete assignments first
+      const { error: assignError } = await STATE.client
+        .from('award_assignments')
+        .delete()
+        .in('award_id', ids);
+
+      if (assignError) throw assignError;
+
+      // Then delete awards
+      const { error } = await STATE.client
+        .from('awards')
+        .delete()
+        .in('id', ids);
+
+      if (error) throw error;
+
+      utils.showToast(`${count} awards deleted`, 'success');
+      this.selectedAwards.clear();
+      await this.loadAwards();
+
+    } catch (error) {
+      console.error('Error bulk deleting:', error);
+      utils.showToast('Failed to delete awards: ' + error.message, 'error');
+    } finally {
+      utils.hideLoading();
+    }
+  },
+
   exportAwards() {
     const awards = STATE.filteredAwards;
     if (awards.length === 0) {

@@ -341,6 +341,11 @@ updateCountyFilterByRegion() {
         winnerHtml = `<span class="badge bg-warning text-dark small"><i class="bi bi-star me-1"></i>${counts.shortlisted} shortlisted</span>`;
       }
 
+      // Previous year defending champion
+      if (award.prev_year_winner) {
+        winnerHtml += `<div class="small text-muted mt-1" title="Previous year: 1st ${utils.escapeHtml(award.prev_year_winner)}${award.prev_year_2nd ? ', 2nd ' + utils.escapeHtml(award.prev_year_2nd) : ''}${award.prev_year_3rd ? ', 3rd ' + utils.escapeHtml(award.prev_year_3rd) : ''}"><i class="bi bi-clock-history me-1"></i>Prev: ${utils.escapeHtml(award.prev_year_winner)}</div>`;
+      }
+
       return `
         <tr class="fade-in">
           <td><input type="checkbox" class="form-check-input award-select-cb" value="${award.id}" onchange="awardsModule.toggleSelection('${award.id}', this.checked)" ${this.selectedAwards.has(award.id) ? 'checked' : ''}></td>
@@ -528,6 +533,23 @@ updateCountyFilterByRegion() {
           <div class="mb-4">
             <h6 class="text-muted mb-2"><i class="bi bi-file-text me-2"></i>Description</h6>
             <p class="text-muted">${utils.escapeHtml(award.description)}</p>
+          </div>
+        ` : ''}
+
+        ${award.prev_year_winner ? `
+          <div class="mb-4">
+            <h6 class="text-muted mb-3"><i class="bi bi-clock-history me-2"></i>Previous Year's Results</h6>
+            <div class="d-flex flex-wrap gap-2">
+              <span class="badge bg-warning text-dark px-3 py-2">
+                <i class="bi bi-trophy-fill me-1"></i>1st: ${utils.escapeHtml(award.prev_year_winner)}
+              </span>
+              ${award.prev_year_2nd ? `<span class="badge bg-secondary px-3 py-2">
+                <i class="bi bi-award me-1"></i>2nd: ${utils.escapeHtml(award.prev_year_2nd)}
+              </span>` : ''}
+              ${award.prev_year_3rd ? `<span class="badge bg-dark px-3 py-2">
+                <i class="bi bi-award me-1"></i>3rd: ${utils.escapeHtml(award.prev_year_3rd)}
+              </span>` : ''}
+            </div>
           </div>
         ` : ''}
 
@@ -1110,23 +1132,45 @@ updateCountyFilterByRegion() {
         return;
       }
 
-      // Build new award records — copy structure, clear dates, set Inactive
-      const newAwards = awardsToRoll.map(a => ({
-        award_name: a.award_name,
-        county: a.county,
-        sector: a.sector,
-        year: targetYear,
-        status: 'Inactive',
-        description: a.description,
-        entry_open_date: null,
-        entry_close_date: null,
-        nominees_announcement_date: null,
-        judging_open_date: null,
-        judging_close_date: null,
-        voting_open_date: null,
-        voting_close_date: null,
-        winners_announcement_date: null
-      }));
+      // Fetch previous year's winners from award_assignments
+      const sourceAwardIds = awardsToRoll.map(a => a.id);
+      const { data: winnerData } = await STATE.client
+        .from('award_assignments')
+        .select('award_id, winner_position, organisations(company_name)')
+        .in('award_id', sourceAwardIds)
+        .eq('status', 'winner');
+
+      // Build a lookup: award_id -> { 1: 'Company A', 2: 'Company B', 3: 'Company C' }
+      const winnersMap = {};
+      (winnerData || []).forEach(w => {
+        if (!winnersMap[w.award_id]) winnersMap[w.award_id] = {};
+        const pos = w.winner_position || 1;
+        winnersMap[w.award_id][pos] = w.organisations?.company_name || 'Unknown';
+      });
+
+      // Build new award records — copy structure, clear dates, set Inactive, tag prev year results
+      const newAwards = awardsToRoll.map(a => {
+        const prevWinners = winnersMap[a.id] || {};
+        return {
+          award_name: a.award_name,
+          county: a.county,
+          sector: a.sector,
+          year: targetYear,
+          status: 'Inactive',
+          description: a.description,
+          prev_year_winner: prevWinners[1] || null,
+          prev_year_2nd: prevWinners[2] || null,
+          prev_year_3rd: prevWinners[3] || null,
+          entry_open_date: null,
+          entry_close_date: null,
+          nominees_announcement_date: null,
+          judging_open_date: null,
+          judging_close_date: null,
+          voting_open_date: null,
+          voting_close_date: null,
+          winners_announcement_date: null
+        };
+      });
 
       const { error } = await STATE.client
         .from('awards')
@@ -1134,7 +1178,10 @@ updateCountyFilterByRegion() {
 
       if (error) throw error;
 
-      utils.showToast(`${newAwards.length} awards rolled over to ${targetYear} as Inactive!`, 'success');
+      const withWinners = newAwards.filter(a => a.prev_year_winner).length;
+      let msg = `${newAwards.length} awards rolled over to ${targetYear} as Inactive!`;
+      if (withWinners > 0) msg += ` (${withWinners} with previous year results)`;
+      utils.showToast(msg, 'success');
       await this.loadAwards();
 
     } catch (error) {

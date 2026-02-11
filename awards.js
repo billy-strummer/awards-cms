@@ -4,6 +4,7 @@
 
 const awardsModule = {
   selectedAwards: new Set(),
+  currentSort: { column: 'award_name', direction: 'asc' },
  /**
  * Load all awards from database
  */
@@ -254,6 +255,64 @@ updateCountyFilterByRegion() {
   },
 
   /**
+   * Sort awards by column
+   */
+  sortBy(column) {
+    // Toggle direction if same column clicked again
+    if (this.currentSort.column === column) {
+      this.currentSort.direction = this.currentSort.direction === 'asc' ? 'desc' : 'asc';
+    } else {
+      this.currentSort.column = column;
+      this.currentSort.direction = 'asc';
+    }
+
+    this.applySorting();
+    this.renderAwards();
+  },
+
+  /**
+   * Apply current sort to filteredAwards
+   */
+  applySorting() {
+    const { column, direction } = this.currentSort;
+    const dir = direction === 'asc' ? 1 : -1;
+
+    STATE.filteredAwards.sort((a, b) => {
+      let valA, valB;
+
+      switch (column) {
+        case 'award_name':
+          valA = utils.formatAwardName(a).toLowerCase();
+          valB = utils.formatAwardName(b).toLowerCase();
+          break;
+        case 'sector':
+          valA = (a.sector || '').toLowerCase();
+          valB = (b.sector || '').toLowerCase();
+          break;
+        case 'status':
+          valA = (a.status || '').toLowerCase();
+          valB = (b.status || '').toLowerCase();
+          break;
+        case 'nominees':
+          valA = a._assignmentCounts?.total || 0;
+          valB = b._assignmentCounts?.total || 0;
+          return (valA - valB) * dir;
+        case 'winner':
+          valA = (a._winnerName || '').toLowerCase();
+          valB = (b._winnerName || '').toLowerCase();
+          break;
+        default:
+          valA = (a[column] || '').toString().toLowerCase();
+          valB = (b[column] || '').toString().toLowerCase();
+      }
+
+      if (valA < valB) return -1 * dir;
+      if (valA > valB) return 1 * dir;
+      return 0;
+    });
+  },
+
+  /**
    * Filter awards based on current filter values
    */
   filterAwards() {
@@ -301,6 +360,7 @@ updateCountyFilterByRegion() {
       return true;
     });
 
+    this.applySorting();
     this.renderAwards();
   },
 
@@ -827,6 +887,35 @@ updateCountyFilterByRegion() {
   },
 
   /**
+   * Validate that dates are in chronological order
+   * Returns error message string or null if valid
+   */
+  validateDates(dates) {
+    const ordered = [
+      { key: 'entry_open_date', label: 'Entry Opens' },
+      { key: 'entry_close_date', label: 'Entry Closes' },
+      { key: 'nominees_announcement_date', label: 'Nominees Announced' },
+      { key: 'judging_open_date', label: 'Judging Opens' },
+      { key: 'judging_close_date', label: 'Judging Closes' },
+      { key: 'voting_open_date', label: 'Voting Opens' },
+      { key: 'voting_close_date', label: 'Voting Closes' },
+      { key: 'winners_announcement_date', label: 'Winners Announced' }
+    ];
+
+    // Only validate dates that are actually set
+    const setDates = ordered.filter(d => dates[d.key]);
+
+    for (let i = 0; i < setDates.length - 1; i++) {
+      const current = setDates[i];
+      const next = setDates[i + 1];
+      if (dates[current.key] > dates[next.key]) {
+        return `"${current.label}" (${dates[current.key]}) must be before "${next.label}" (${dates[next.key]})`;
+      }
+    }
+    return null;
+  },
+
+  /**
    * Save award (create or update)
    */
   async saveAward() {
@@ -854,8 +943,32 @@ updateCountyFilterByRegion() {
       description: document.getElementById('awardFormDescription').value.trim() || null
     };
 
+    // Validate date order
+    const dateError = this.validateDates(awardData);
+    if (dateError) {
+      utils.showToast('Date order error: ' + dateError, 'error');
+      return;
+    }
+
     try {
       utils.showLoading();
+
+      // Duplicate prevention: check for same award_name + county + year (on create only)
+      if (!id) {
+        const { data: existing } = await STATE.client
+          .from('awards')
+          .select('id')
+          .eq('award_name', awardData.award_name)
+          .eq('county', awardData.county)
+          .eq('year', awardData.year)
+          .limit(1);
+
+        if (existing && existing.length > 0) {
+          utils.hideLoading();
+          utils.showToast(`An award "${awardData.award_name}" already exists for ${awardData.county} in ${awardData.year}`, 'error');
+          return;
+        }
+      }
 
       let error;
       if (id) {

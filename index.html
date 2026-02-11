@@ -843,12 +843,12 @@
                 <thead>
                   <tr>
                     <th style="width: 3%;"><input type="checkbox" class="form-check-input" id="awardsSelectAll" onchange="awardsModule.toggleSelectAll(this.checked)"></th>
-                    <th style="width: 28%;">Award Name</th>
-<th style="width: 12%;">Sector</th>
-<th style="width: 8%;">Status</th>
-<th style="width: 8%;" class="text-center">Nominees</th>
-<th style="width: 14%;">Winner</th>
-<th style="width: 8%;" class="text-center">Actions</th>
+                    <th style="width: 28%; cursor: pointer;" onclick="awardsModule.sortBy('award_name')">Award Name <i class="bi bi-arrow-down-up text-muted ms-1 small"></i></th>
+                    <th style="width: 12%; cursor: pointer;" onclick="awardsModule.sortBy('sector')">Sector <i class="bi bi-arrow-down-up text-muted ms-1 small"></i></th>
+                    <th style="width: 8%; cursor: pointer;" onclick="awardsModule.sortBy('status')">Status <i class="bi bi-arrow-down-up text-muted ms-1 small"></i></th>
+                    <th style="width: 8%; cursor: pointer;" class="text-center" onclick="awardsModule.sortBy('nominees')">Nominees <i class="bi bi-arrow-down-up text-muted ms-1 small"></i></th>
+                    <th style="width: 14%; cursor: pointer;" onclick="awardsModule.sortBy('winner')">Winner <i class="bi bi-arrow-down-up text-muted ms-1 small"></i></th>
+                    <th style="width: 8%;" class="text-center">Actions</th>
                   </tr>
                 </thead>
                 <tbody id="awardsTableBody">

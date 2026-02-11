@@ -1058,6 +1058,91 @@ updateCountyFilterByRegion() {
     } finally {
       utils.hideLoading();
     }
+  },
+
+  /**
+   * Roll over awards from one year to the next as Inactive
+   */
+  async rolloverToNextYear() {
+    // Determine source year from current filter or most common year
+    const years = [...new Set((STATE.allAwards || []).map(a => a.year))].sort((a, b) => b - a);
+
+    if (years.length === 0) {
+      utils.showToast('No awards to roll over', 'warning');
+      return;
+    }
+
+    const sourceYear = parseInt(years[0]);
+    const targetYear = sourceYear + 1;
+
+    // Get awards for the source year
+    const sourceAwards = STATE.allAwards.filter(a => String(a.year) === String(sourceYear));
+
+    if (sourceAwards.length === 0) {
+      utils.showToast(`No awards found for ${sourceYear}`, 'warning');
+      return;
+    }
+
+    // Check if target year already has awards
+    const existingTarget = STATE.allAwards.filter(a => String(a.year) === String(targetYear));
+
+    let message = `Roll over ${sourceAwards.length} awards from ${sourceYear} to ${targetYear}?\n\n`;
+    message += `All copied awards will be set to "Inactive" status, ready for vetting.\n`;
+    message += `Dates will be cleared so you can set new season dates.`;
+
+    if (existingTarget.length > 0) {
+      message += `\n\n⚠️ ${targetYear} already has ${existingTarget.length} awards. Only NEW award names (not already in ${targetYear}) will be copied.`;
+    }
+
+    if (!confirm(message)) return;
+
+    try {
+      utils.showLoading();
+
+      // Get existing award names for target year to avoid duplicates
+      const existingNames = new Set(existingTarget.map(a => a.award_name));
+
+      // Filter out awards that already exist in the target year
+      const awardsToRoll = sourceAwards.filter(a => !existingNames.has(a.award_name));
+
+      if (awardsToRoll.length === 0) {
+        utils.showToast(`All ${sourceYear} awards already exist in ${targetYear}`, 'info');
+        return;
+      }
+
+      // Build new award records — copy structure, clear dates, set Inactive
+      const newAwards = awardsToRoll.map(a => ({
+        award_name: a.award_name,
+        county: a.county,
+        sector: a.sector,
+        year: targetYear,
+        status: 'Inactive',
+        description: a.description,
+        entry_open_date: null,
+        entry_close_date: null,
+        nominees_announcement_date: null,
+        judging_open_date: null,
+        judging_close_date: null,
+        voting_open_date: null,
+        voting_close_date: null,
+        winners_announcement_date: null
+      }));
+
+      const { error } = await STATE.client
+        .from('awards')
+        .insert(newAwards);
+
+      if (error) throw error;
+
+      utils.showToast(`${newAwards.length} awards rolled over to ${targetYear} as Inactive!`, 'success');
+      await this.loadAwards();
+
+    } catch (error) {
+      console.error('Error rolling over awards:', error);
+      utils.showToast('Failed to roll over awards: ' + error.message, 'error');
+    } finally {
+      utils.hideLoading();
+    }
   }
 };
 

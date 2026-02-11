@@ -757,6 +757,15 @@ British Trade Awards Team
       updated_at: new Date().toISOString()
     };
 
+    // Validate date order (reuse awardsModule helper if available)
+    if (typeof awardsModule !== 'undefined' && awardsModule.validateDates) {
+      const dateError = awardsModule.validateDates(seasonData);
+      if (dateError) {
+        utils.showToast('Date order error: ' + dateError, 'error');
+        return;
+      }
+    }
+
     try {
       utils.showLoading();
 

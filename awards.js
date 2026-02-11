@@ -677,6 +677,39 @@ updateCountyFilterByRegion() {
   },
 
   /**
+   * Populate season dropdown in award form
+   */
+  populateSeasonDropdown() {
+    const select = document.getElementById('awardFormSeason');
+    if (!select) return;
+
+    const seasons = settingsModule?.allSeasons || [];
+    select.innerHTML = '<option value="">Custom dates...</option>' +
+      seasons.map(s => {
+        const label = `${s.name} (${s.year})`;
+        return `<option value="${s.id}" ${s.is_default ? 'data-default="true"' : ''}>${utils.escapeHtml(label)}</option>`;
+      }).join('');
+  },
+
+  /**
+   * Apply season dates when season dropdown changes
+   */
+  applySeasonDates() {
+    const seasonId = document.getElementById('awardFormSeason').value;
+    if (!seasonId) return;
+
+    const seasons = settingsModule?.allSeasons || [];
+    const season = seasons.find(s => s.id === seasonId);
+    if (!season) return;
+
+    document.getElementById('awardFormEntryOpen').value = season.entry_open_date || '';
+    document.getElementById('awardFormEntryClose').value = season.entry_close_date || '';
+    document.getElementById('awardFormJudging').value = season.judging_date || '';
+    document.getElementById('awardFormAnnouncement').value = season.announcement_date || '';
+    document.getElementById('awardFormYear').value = season.year;
+  },
+
+  /**
    * Open create award modal
    */
   openCreateModal() {
@@ -687,6 +720,7 @@ updateCountyFilterByRegion() {
     document.getElementById('awardFormEntryOpen').value = '';
     document.getElementById('awardFormEntryClose').value = '';
     document.getElementById('awardFormJudging').value = '';
+    document.getElementById('awardFormAnnouncement').value = '';
     document.getElementById('awardFormDescription').value = '';
     document.getElementById('awardFormModalTitle').innerHTML = '<i class="bi bi-plus-lg me-2"></i>Add Award';
 
@@ -699,6 +733,9 @@ updateCountyFilterByRegion() {
     const sectorSelect = document.getElementById('awardFormSector');
     sectorSelect.innerHTML = '<option value="">Select Sector...</option>' +
       SECTORS.map(s => `<option value="${s}">${s}</option>`).join('');
+
+    // Populate season dropdown
+    this.populateSeasonDropdown();
 
     const modal = new bootstrap.Modal(document.getElementById('awardFormModal'));
     modal.show();
@@ -718,6 +755,7 @@ updateCountyFilterByRegion() {
     document.getElementById('awardFormEntryOpen').value = award.entry_open_date || '';
     document.getElementById('awardFormEntryClose').value = award.entry_close_date || '';
     document.getElementById('awardFormJudging').value = award.judging_date || '';
+    document.getElementById('awardFormAnnouncement').value = award.announcement_date || '';
     document.getElementById('awardFormDescription').value = award.description || '';
     document.getElementById('awardFormModalTitle').innerHTML = '<i class="bi bi-pencil me-2"></i>Edit Award';
 
@@ -730,6 +768,9 @@ updateCountyFilterByRegion() {
     const sectorSelect = document.getElementById('awardFormSector');
     sectorSelect.innerHTML = '<option value="">Select Sector...</option>' +
       SECTORS.map(s => `<option value="${s}" ${s === award.sector ? 'selected' : ''}>${s}</option>`).join('');
+
+    // Populate season dropdown
+    this.populateSeasonDropdown();
 
     const modal = new bootstrap.Modal(document.getElementById('awardFormModal'));
     modal.show();
@@ -755,6 +796,7 @@ updateCountyFilterByRegion() {
       entry_open_date: document.getElementById('awardFormEntryOpen').value || null,
       entry_close_date: document.getElementById('awardFormEntryClose').value || null,
       judging_date: document.getElementById('awardFormJudging').value || null,
+      announcement_date: document.getElementById('awardFormAnnouncement').value || null,
       description: document.getElementById('awardFormDescription').value.trim() || null
     };
 

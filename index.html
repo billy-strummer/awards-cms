@@ -3467,8 +3467,10 @@
                       <tr>
                         <th>Season Name</th>
                         <th>Year</th>
+                        <th>Status</th>
                         <th>Entries</th>
                         <th>Nominees</th>
+                        <th>Judging</th>
                         <th>Voting</th>
                         <th>Winners</th>
                         <th>Default</th>
@@ -3476,7 +3478,7 @@
                       </tr>
                     </thead>
                     <tbody id="seasonsTableBody">
-                      <tr><td colspan="8" class="text-center text-muted py-3">Loading seasons...</td></tr>
+                      <tr><td colspan="10" class="text-center text-muted py-3">Loading seasons...</td></tr>
                     </tbody>
                   </table>
                 </div>
@@ -3940,9 +3942,17 @@ Available placeholders:
                 <label for="seasonFormName" class="form-label fw-semibold">Season Name</label>
                 <input type="text" class="form-control" id="seasonFormName" placeholder="e.g. 2026 Main Season" required>
               </div>
-              <div class="col-md-4">
+              <div class="col-md-2">
                 <label for="seasonFormYear" class="form-label fw-semibold">Year</label>
                 <input type="number" class="form-control" id="seasonFormYear" value="2026" min="2024" max="2030" required>
+              </div>
+              <div class="col-md-2">
+                <label for="seasonFormStatus" class="form-label fw-semibold">Status</label>
+                <select class="form-select" id="seasonFormStatus">
+                  <option value="upcoming">Upcoming</option>
+                  <option value="open">Open</option>
+                  <option value="closed">Closed</option>
+                </select>
               </div>
               <div class="col-12"><hr class="my-1"><small class="text-muted fw-semibold">Entries (CTA)</small></div>
               <div class="col-md-6">
@@ -3957,6 +3967,15 @@ Available placeholders:
               <div class="col-md-6">
                 <label for="seasonFormNomineesAnnouncement" class="form-label">Nominees Announcement Date</label>
                 <input type="date" class="form-control" id="seasonFormNomineesAnnouncement">
+              </div>
+              <div class="col-12"><hr class="my-1"><small class="text-muted fw-semibold">Judging Period</small></div>
+              <div class="col-md-6">
+                <label for="seasonFormJudgingOpen" class="form-label">Judging Opens</label>
+                <input type="date" class="form-control" id="seasonFormJudgingOpen">
+              </div>
+              <div class="col-md-6">
+                <label for="seasonFormJudgingClose" class="form-label">Judging Closes</label>
+                <input type="date" class="form-control" id="seasonFormJudgingClose">
               </div>
               <div class="col-12"><hr class="my-1"><small class="text-muted fw-semibold">Voting Period</small></div>
               <div class="col-md-6">
@@ -4055,6 +4074,14 @@ Available placeholders:
               <div class="col-md-3">
                 <label for="awardFormNomineesAnnouncement" class="form-label small">Nominees Announced</label>
                 <input type="date" class="form-control form-control-sm" id="awardFormNomineesAnnouncement">
+              </div>
+              <div class="col-md-3">
+                <label for="awardFormJudgingOpen" class="form-label small">Judging Opens</label>
+                <input type="date" class="form-control form-control-sm" id="awardFormJudgingOpen">
+              </div>
+              <div class="col-md-3">
+                <label for="awardFormJudgingClose" class="form-label small">Judging Closes</label>
+                <input type="date" class="form-control form-control-sm" id="awardFormJudgingClose">
               </div>
               <div class="col-md-3">
                 <label for="awardFormVotingOpen" class="form-label small">Voting Opens</label>

@@ -1,6 +1,5 @@
 /* ==================================================== */
-/* AWARD ASSIGNMENTS MODULE - FIXED VERSION */
-/* Works with basic organisations table structure */
+/* AWARD ASSIGNMENTS MODULE */
 /* ==================================================== */
 
 const assignmentsModule = {
@@ -14,7 +13,7 @@ const assignmentsModule = {
    */
   async getAwardAssignments(awardId) {
     try {
-      console.log(`🔍 Fetching assignments for award ID: ${awardId}`);
+      console.log('Fetching assignments for award ID:', awardId);
 
       const { data, error } = await STATE.client
         .from('award_assignments')
@@ -25,11 +24,11 @@ const assignmentsModule = {
         .eq('award_id', awardId);
 
       if (error) {
-        console.error('❌ Database error loading assignments:', error);
+        console.error('Database error loading assignments:', error);
         throw error;
       }
 
-      console.log(`✅ Found ${data?.length || 0} assignments`);
+      console.log('Found', data?.length || 0, 'assignments');
 
       // Get other nominations for each company
       const orgIds = data.map(a => a.organisation_id).filter(Boolean);
@@ -62,7 +61,7 @@ const assignmentsModule = {
 
       return sortedData;
     } catch (error) {
-      console.error('💥 Error loading assignments:', error);
+      console.error('Error loading assignments:', error);
       utils.showToast('Failed to load assignments: ' + error.message, 'error');
       return [];
     }
@@ -120,19 +119,19 @@ const assignmentsModule = {
       // Load current assignments
       const assignments = await this.getAwardAssignments(this.currentAwardId);
 
-      console.log(`📋 Loaded ${assignments.length} assignments for award ${this.currentAwardId}`);
+      console.log('Loaded', assignments.length, 'assignments for award', this.currentAwardId);
 
       // Filter out assignments with missing organisations (deleted companies)
       const validAssignments = assignments.filter(a => {
         if (!a.organisations || !a.organisations.id) {
-          console.warn('⚠️ Found assignment with missing organisation:', a);
+          console.warn('Found assignment with missing organisation:', a);
           return false;
         }
         return true;
       });
 
       if (validAssignments.length < assignments.length) {
-        console.warn(`⚠️ Filtered out ${assignments.length - validAssignments.length} assignments with missing organisations`);
+        console.warn('Filtered out', assignments.length - validAssignments.length, 'assignments with missing organisations');
       }
 
       // Load available organisations (only essential columns)
@@ -147,7 +146,7 @@ const assignmentsModule = {
       const assignedOrgIds = validAssignments.map(a => a.organisations.id);
       const availableOrgs = (allOrgs || []).filter(org => !assignedOrgIds.includes(org.id));
 
-      console.log(`📊 ${validAssignments.length} assigned, ${availableOrgs.length} available`);
+      console.log(validAssignments.length, 'assigned,', availableOrgs.length, 'available');
 
       // Store all assignments for filtering
       this.allAssignments = validAssignments;
@@ -666,60 +665,6 @@ const assignmentsModule = {
   },
 
   /**
-   * Get nomination source badges
-   */
-  getNominationBadges(assignment) {
-    let badges = '';
-
-    // Previous winner badge
-    if (assignment.is_previous_winner) {
-      badges += '<span class="badge bg-warning text-dark"><i class="bi bi-trophy me-1"></i>Previous Winner</span>';
-    }
-
-    // Nomination source badges
-    const sourceBadges = {
-      'self_nomination': '<span class="badge bg-info"><i class="bi bi-hand-index me-1"></i>Self Nominated</span>',
-      'previous_winner': '<span class="badge bg-warning text-dark"><i class="bi bi-trophy me-1"></i>Previous Winner</span>',
-      'admin_manual': '<span class="badge bg-primary"><i class="bi bi-person-gear me-1"></i>Admin</span>',
-      'csv_import': '<span class="badge bg-secondary"><i class="bi bi-file-earmark-arrow-up me-1"></i>CSV Import</span>'
-    };
-
-    if (assignment.nomination_source && assignment.nomination_source !== 'csv_import') {
-      badges += (badges ? ' ' : '') + (sourceBadges[assignment.nomination_source] || '');
-    }
-
-    return badges;
-  },
-
-  /**
-   * Get multi-category nomination badge
-   */
-  getMultiCategoryBadge(assignment) {
-    const otherNominations = assignment.other_nominations || [];
-
-    if (otherNominations.length === 0) {
-      return '';
-    }
-
-    const count = otherNominations.length;
-    const otherAwardsList = otherNominations
-      .map(award => utils.escapeHtml(utils.formatAwardName(award)))
-      .join('&#10;'); // Line break for tooltip
-
-    return `
-      <div class="mb-2">
-        <span class="badge bg-purple-subtle text-purple"
-          title="${otherAwardsList}"
-          data-bs-toggle="tooltip"
-          data-bs-html="true"
-          style="background-color: #e7d5ff; color: #7c3aed; cursor: help;">
-          <i class="bi bi-clipboard2-check me-1"></i>Also in ${count} other ${count === 1 ? 'category' : 'categories'}
-        </span>
-      </div>
-    `;
-  },
-
-  /**
    * Get winner position badge (Top 3)
    */
   getWinnerPositionBadge(assignment) {
@@ -734,39 +679,6 @@ const assignmentsModule = {
     };
 
     return positions[assignment.winner_position] || '';
-  },
-
-  /**
-   * Get vote count display with voting link
-   */
-  getVoteCount(assignment) {
-    const voteCount = assignment.public_vote_count || 0;
-    const votingSlug = assignment.voting_slug || '';
-
-    if (!votingSlug) {
-      return `
-        <div class="d-flex align-items-center mb-2">
-          <span class="badge bg-light text-dark">
-            <i class="bi bi-hand-thumbs-up me-1"></i>${voteCount.toLocaleString()} ${voteCount === 1 ? 'vote' : 'votes'}
-          </span>
-        </div>
-      `;
-    }
-
-    const voteUrl = `${window.location.origin}/vote/${votingSlug}`;
-
-    return `
-      <div class="d-flex align-items-center gap-2 mb-2">
-        <span class="badge bg-light text-dark">
-          <i class="bi bi-hand-thumbs-up me-1"></i>${voteCount.toLocaleString()} ${voteCount === 1 ? 'vote' : 'votes'}
-        </span>
-        <button class="btn btn-sm btn-outline-primary"
-          onclick="navigator.clipboard.writeText('${voteUrl}'); utils.showToast('Vote link copied!', 'success')"
-          title="Copy voting link">
-          <i class="bi bi-link-45deg"></i> Copy Vote Link
-        </button>
-      </div>
-    `;
   },
 
   /**

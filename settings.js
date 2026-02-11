@@ -8,6 +8,7 @@ const settingsModule = {
    */
   async init() {
     await this.updateSystemInfo();
+    await this.loadSeasons();
     this.loadBackupSettings();
     this.checkBackupReminders();
     this.renderAuditLog();
@@ -604,6 +605,230 @@ British Trade Awards Team
     localStorage.removeItem('audit_logs');
     this.renderAuditLog();
     utils.showToast('Audit log cleared', 'success');
+  },
+
+  // ========== AWARD SEASONS ==========
+
+  allSeasons: [],
+
+  /**
+   * Load all award seasons
+   */
+  async loadSeasons() {
+    try {
+      const { data, error } = await STATE.client
+        .from('award_seasons')
+        .select('*')
+        .order('year', { ascending: false });
+
+      if (error) throw error;
+
+      this.allSeasons = data || [];
+      this.renderSeasons();
+    } catch (error) {
+      console.error('Error loading seasons:', error);
+      const tbody = document.getElementById('seasonsTableBody');
+      if (tbody) tbody.innerHTML = '<tr><td colspan="8" class="text-center text-muted py-3">Could not load seasons. Run the migration SQL first.</td></tr>';
+    }
+  },
+
+  /**
+   * Render seasons table
+   */
+  renderSeasons() {
+    const tbody = document.getElementById('seasonsTableBody');
+    if (!tbody) return;
+
+    if (this.allSeasons.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="8" class="text-center text-muted py-3">No seasons defined yet. Click "Add Season" to create one.</td></tr>';
+      return;
+    }
+
+    const formatDate = (d) => d ? new Date(d).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : '<span class="text-muted">-</span>';
+
+    tbody.innerHTML = this.allSeasons.map(s => `
+      <tr>
+        <td class="fw-semibold">${utils.escapeHtml(s.name)}</td>
+        <td><span class="badge bg-primary-subtle text-primary">${s.year}</span></td>
+        <td>${formatDate(s.entry_open_date)}</td>
+        <td>${formatDate(s.entry_close_date)}</td>
+        <td>${formatDate(s.judging_date)}</td>
+        <td>${formatDate(s.announcement_date)}</td>
+        <td>${s.is_default ? '<span class="badge bg-success">Default</span>' : ''}</td>
+        <td class="text-center">
+          <div class="btn-group btn-group-sm">
+            <button class="btn btn-outline-warning btn-sm" onclick="settingsModule.editSeason('${s.id}')" title="Edit">
+              <i class="bi bi-pencil"></i>
+            </button>
+            <button class="btn btn-outline-success btn-sm" onclick="settingsModule.applySeasonToAll('${s.id}')" title="Apply to all awards for this year">
+              <i class="bi bi-calendar-check"></i>
+            </button>
+            <button class="btn btn-outline-danger btn-sm" onclick="settingsModule.deleteSeason('${s.id}')" title="Delete">
+              <i class="bi bi-trash"></i>
+            </button>
+          </div>
+        </td>
+      </tr>
+    `).join('');
+  },
+
+  /**
+   * Open season create modal
+   */
+  openSeasonModal() {
+    document.getElementById('seasonFormId').value = '';
+    document.getElementById('seasonFormName').value = '';
+    document.getElementById('seasonFormYear').value = new Date().getFullYear();
+    document.getElementById('seasonFormEntryOpen').value = '';
+    document.getElementById('seasonFormEntryClose').value = '';
+    document.getElementById('seasonFormJudging').value = '';
+    document.getElementById('seasonFormAnnouncement').value = '';
+    document.getElementById('seasonFormDefault').checked = false;
+    document.getElementById('seasonFormModalTitle').innerHTML = '<i class="bi bi-calendar-event me-2"></i>Add Season';
+
+    const modal = new bootstrap.Modal(document.getElementById('seasonFormModal'));
+    modal.show();
+  },
+
+  /**
+   * Edit existing season
+   */
+  editSeason(seasonId) {
+    const season = this.allSeasons.find(s => s.id === seasonId);
+    if (!season) return;
+
+    document.getElementById('seasonFormId').value = season.id;
+    document.getElementById('seasonFormName').value = season.name;
+    document.getElementById('seasonFormYear').value = season.year;
+    document.getElementById('seasonFormEntryOpen').value = season.entry_open_date || '';
+    document.getElementById('seasonFormEntryClose').value = season.entry_close_date || '';
+    document.getElementById('seasonFormJudging').value = season.judging_date || '';
+    document.getElementById('seasonFormAnnouncement').value = season.announcement_date || '';
+    document.getElementById('seasonFormDefault').checked = season.is_default || false;
+    document.getElementById('seasonFormModalTitle').innerHTML = '<i class="bi bi-pencil me-2"></i>Edit Season';
+
+    const modal = new bootstrap.Modal(document.getElementById('seasonFormModal'));
+    modal.show();
+  },
+
+  /**
+   * Save season (create or update)
+   */
+  async saveSeason() {
+    const form = document.getElementById('seasonForm');
+    if (!form.checkValidity()) {
+      form.reportValidity();
+      return;
+    }
+
+    const id = document.getElementById('seasonFormId').value;
+    const isDefault = document.getElementById('seasonFormDefault').checked;
+
+    const seasonData = {
+      name: document.getElementById('seasonFormName').value.trim(),
+      year: parseInt(document.getElementById('seasonFormYear').value),
+      entry_open_date: document.getElementById('seasonFormEntryOpen').value || null,
+      entry_close_date: document.getElementById('seasonFormEntryClose').value || null,
+      judging_date: document.getElementById('seasonFormJudging').value || null,
+      announcement_date: document.getElementById('seasonFormAnnouncement').value || null,
+      is_default: isDefault,
+      updated_at: new Date().toISOString()
+    };
+
+    try {
+      utils.showLoading();
+
+      // If setting as default, unset other defaults first
+      if (isDefault) {
+        await STATE.client
+          .from('award_seasons')
+          .update({ is_default: false })
+          .eq('is_default', true);
+      }
+
+      let error;
+      if (id) {
+        ({ error } = await STATE.client.from('award_seasons').update(seasonData).eq('id', id));
+      } else {
+        ({ error } = await STATE.client.from('award_seasons').insert(seasonData));
+      }
+
+      if (error) throw error;
+
+      const modal = bootstrap.Modal.getInstance(document.getElementById('seasonFormModal'));
+      if (modal) modal.hide();
+
+      utils.showToast(id ? 'Season updated!' : 'Season created!', 'success');
+      await this.loadSeasons();
+
+    } catch (error) {
+      console.error('Error saving season:', error);
+      utils.showToast('Failed to save season: ' + error.message, 'error');
+    } finally {
+      utils.hideLoading();
+    }
+  },
+
+  /**
+   * Delete a season
+   */
+  async deleteSeason(seasonId) {
+    if (!confirm('Delete this season?')) return;
+
+    try {
+      utils.showLoading();
+      const { error } = await STATE.client.from('award_seasons').delete().eq('id', seasonId);
+      if (error) throw error;
+
+      utils.showToast('Season deleted', 'success');
+      await this.loadSeasons();
+    } catch (error) {
+      console.error('Error deleting season:', error);
+      utils.showToast('Failed to delete season: ' + error.message, 'error');
+    } finally {
+      utils.hideLoading();
+    }
+  },
+
+  /**
+   * Apply season dates to all awards for that year
+   */
+  async applySeasonToAll(seasonId) {
+    const season = this.allSeasons.find(s => s.id === seasonId);
+    if (!season) return;
+
+    if (!confirm(`Apply "${season.name}" dates to ALL awards for ${season.year}?\n\nThis will update entry open/close, judging, and announcement dates.`)) return;
+
+    try {
+      utils.showLoading();
+
+      const updates = {
+        entry_open_date: season.entry_open_date,
+        entry_close_date: season.entry_close_date,
+        judging_date: season.judging_date,
+        announcement_date: season.announcement_date
+      };
+
+      const { error } = await STATE.client
+        .from('awards')
+        .update(updates)
+        .eq('year', season.year);
+
+      if (error) throw error;
+
+      utils.showToast(`Dates applied to all ${season.year} awards!`, 'success');
+
+      // Refresh awards if loaded
+      if (typeof awardsModule !== 'undefined' && awardsModule.loadAwards) {
+        await awardsModule.loadAwards();
+      }
+
+    } catch (error) {
+      console.error('Error applying season:', error);
+      utils.showToast('Failed to apply season dates: ' + error.message, 'error');
+    } finally {
+      utils.hideLoading();
+    }
   }
 };
 

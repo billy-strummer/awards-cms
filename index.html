@@ -3446,6 +3446,43 @@
           </div>
 
           <div class="row g-4">
+
+            <!-- Award Seasons -->
+            <div class="col-12">
+              <div class="content-card">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                  <div>
+                    <h5 class="mb-1">
+                      <i class="bi bi-calendar-event me-2"></i>Award Seasons
+                    </h5>
+                    <p class="text-muted mb-0 small">Define key dates for each awards season. These can be applied to awards via the Add/Edit Award form.</p>
+                  </div>
+                  <button class="btn btn-primary btn-sm" onclick="settingsModule.openSeasonModal()">
+                    <i class="bi bi-plus-lg me-1"></i>Add Season
+                  </button>
+                </div>
+                <div class="table-responsive">
+                  <table class="table table-sm table-hover align-middle">
+                    <thead class="table-light">
+                      <tr>
+                        <th>Season Name</th>
+                        <th>Year</th>
+                        <th>Entry Opens</th>
+                        <th>Entry Closes</th>
+                        <th>Judging</th>
+                        <th>Announcement</th>
+                        <th>Default</th>
+                        <th class="text-center">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody id="seasonsTableBody">
+                      <tr><td colspan="8" class="text-center text-muted py-3">Loading seasons...</td></tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+
             <!-- Backup & Export Section -->
             <div class="col-lg-6">
               <div class="content-card">
@@ -3885,6 +3922,63 @@ Available placeholders:
     </div>
   </div>
 
+  <!-- Season Create/Edit Modal -->
+  <div class="modal fade" id="seasonFormModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header bg-info text-white">
+          <h5 class="modal-title" id="seasonFormModalTitle">
+            <i class="bi bi-calendar-event me-2"></i>Add Season
+          </h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <form id="seasonForm">
+            <input type="hidden" id="seasonFormId">
+            <div class="row g-3">
+              <div class="col-md-8">
+                <label for="seasonFormName" class="form-label fw-semibold">Season Name</label>
+                <input type="text" class="form-control" id="seasonFormName" placeholder="e.g. 2026 Main Season" required>
+              </div>
+              <div class="col-md-4">
+                <label for="seasonFormYear" class="form-label fw-semibold">Year</label>
+                <input type="number" class="form-control" id="seasonFormYear" value="2026" min="2024" max="2030" required>
+              </div>
+              <div class="col-md-6">
+                <label for="seasonFormEntryOpen" class="form-label fw-semibold">Entry Opens</label>
+                <input type="date" class="form-control" id="seasonFormEntryOpen">
+              </div>
+              <div class="col-md-6">
+                <label for="seasonFormEntryClose" class="form-label fw-semibold">Entry Closes</label>
+                <input type="date" class="form-control" id="seasonFormEntryClose">
+              </div>
+              <div class="col-md-6">
+                <label for="seasonFormJudging" class="form-label fw-semibold">Judging Date</label>
+                <input type="date" class="form-control" id="seasonFormJudging">
+              </div>
+              <div class="col-md-6">
+                <label for="seasonFormAnnouncement" class="form-label fw-semibold">Announcement Date</label>
+                <input type="date" class="form-control" id="seasonFormAnnouncement">
+              </div>
+              <div class="col-12">
+                <div class="form-check">
+                  <input class="form-check-input" type="checkbox" id="seasonFormDefault">
+                  <label class="form-check-label" for="seasonFormDefault">Set as default season</label>
+                </div>
+              </div>
+            </div>
+          </form>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="button" class="btn btn-info text-white" onclick="settingsModule.saveSeason()">
+            <i class="bi bi-check-lg me-1"></i>Save Season
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- Create/Edit Award Modal -->
   <div class="modal fade" id="awardFormModal" tabindex="-1" aria-labelledby="awardFormModalTitle" aria-hidden="true">
     <div class="modal-dialog modal-lg">
@@ -3931,16 +4025,28 @@ Available placeholders:
                 </select>
               </div>
               <div class="col-md-6">
-                <label for="awardFormEntryOpen" class="form-label fw-semibold">Entry Open Date</label>
+                <label for="awardFormSeason" class="form-label fw-semibold">Season</label>
+                <select class="form-select" id="awardFormSeason" onchange="awardsModule.applySeasonDates()">
+                  <option value="">Custom dates...</option>
+                </select>
+                <div class="form-text">Select a season to auto-fill dates, or set manually below</div>
+              </div>
+              <div class="col-12"><hr class="my-1"><small class="text-muted fw-semibold">Key Dates</small></div>
+              <div class="col-md-3">
+                <label for="awardFormEntryOpen" class="form-label fw-semibold">Entry Opens</label>
                 <input type="date" class="form-control" id="awardFormEntryOpen">
               </div>
-              <div class="col-md-6">
-                <label for="awardFormEntryClose" class="form-label fw-semibold">Entry Close Date</label>
+              <div class="col-md-3">
+                <label for="awardFormEntryClose" class="form-label fw-semibold">Entry Closes</label>
                 <input type="date" class="form-control" id="awardFormEntryClose">
               </div>
-              <div class="col-md-6">
-                <label for="awardFormJudging" class="form-label fw-semibold">Judging Date</label>
+              <div class="col-md-3">
+                <label for="awardFormJudging" class="form-label fw-semibold">Judging</label>
                 <input type="date" class="form-control" id="awardFormJudging">
+              </div>
+              <div class="col-md-3">
+                <label for="awardFormAnnouncement" class="form-label fw-semibold">Announcement</label>
+                <input type="date" class="form-control" id="awardFormAnnouncement">
               </div>
               <div class="col-12">
                 <label for="awardFormDescription" class="form-label fw-semibold">Description</label>

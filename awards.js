@@ -9,7 +9,7 @@ const awardsModule = {
 async loadAwards() {
   try {
     utils.showLoading();
-    utils.showTableLoading('awardsTableBody', 5); // 5 columns
+    utils.showTableLoading('awardsTableBody', 6); // 6 columns
 
     // Load all awards - county column stores the county/city name
     let allData = [];
@@ -74,6 +74,7 @@ return {
     
     // Populate filter dropdowns
     this.populateFilters();
+    this.updateStats();
     this.renderAwards();
     
     console.log(`✅ Loaded ${STATE.allAwards.length} awards`);
@@ -82,7 +83,7 @@ return {
     console.error('Error loading awards:', error);
     console.error('Error details:', error.details, error.hint, error.message);
     utils.showToast('Failed to load awards: ' + error.message, 'error');
-    utils.showEmptyState('awardsTableBody', 5, 'Failed to load awards', 'bi-exclamation-triangle');
+    utils.showEmptyState('awardsTableBody', 6, 'Failed to load awards', 'bi-exclamation-triangle');
   } finally {
     utils.hideLoading();
   }
@@ -94,12 +95,13 @@ return {
     try {
       const { data, error } = await STATE.client
         .from('award_assignments')
-        .select('award_id, status');
-      
+        .select('award_id, status, winner_position, organisations(company_name)');
+
       if (error) throw error;
-      
-      // Count assignments per award
+
+      // Count assignments per award and track winners
       const counts = {};
+      const winners = {};
       (data || []).forEach(assignment => {
         if (!counts[assignment.award_id]) {
           counts[assignment.award_id] = {
@@ -110,11 +112,18 @@ return {
           };
         }
         counts[assignment.award_id].total++;
-        counts[assignment.award_id][assignment.status] = 
+        counts[assignment.award_id][assignment.status] =
           (counts[assignment.award_id][assignment.status] || 0) + 1;
+
+        // Track winner and runner-up names
+        if (assignment.status === 'winner') {
+          if (!winners[assignment.award_id]) winners[assignment.award_id] = {};
+          const pos = assignment.winner_position || 1;
+          winners[assignment.award_id][pos] = assignment.organisations?.company_name || 'Winner';
+        }
       });
-      
-      // Add counts to awards
+
+      // Add counts and winner info to awards
       STATE.allAwards.forEach(award => {
         award._assignmentCounts = counts[award.id] || {
           total: 0,
@@ -122,11 +131,15 @@ return {
           shortlisted: 0,
           winner: 0
         };
+        const awardWinners = winners[award.id];
+        if (awardWinners) {
+          award._winnerName = awardWinners[1] || Object.values(awardWinners)[0] || null;
+          award._runnerUpName = awardWinners[2] || null;
+        }
       });
-      
+
     } catch (error) {
       console.error('Error loading assignment counts:', error);
-      // Don't fail if counts can't be loaded
     }
   },
 
@@ -300,7 +313,7 @@ updateCountyFilterByRegion() {
     count.textContent = STATE.filteredAwards.length;
 
     if (STATE.filteredAwards.length === 0) {
-      utils.showEmptyState('awardsTableBody', 5, 'No awards found matching your filters');
+      utils.showEmptyState('awardsTableBody', 6, 'No awards found matching your filters');
       return;
     }
 
@@ -311,6 +324,21 @@ updateCountyFilterByRegion() {
                              counts.total < 15 ? 'medium' : 'high';
 
       const fullName = utils.formatAwardName(award);
+
+      // Winner display
+      let winnerHtml = '<span class="text-muted small">-</span>';
+      if (award._winnerName) {
+        winnerHtml = `
+          <div class="d-flex align-items-center gap-1">
+            <span class="badge bg-success"><i class="bi bi-trophy-fill me-1"></i>Winner</span>
+            <span class="small fw-semibold">${utils.escapeHtml(award._winnerName)}</span>
+          </div>`;
+        if (award._runnerUpName) {
+          winnerHtml += `<div class="small text-muted mt-1"><i class="bi bi-award me-1"></i>${utils.escapeHtml(award._runnerUpName)}</div>`;
+        }
+      } else if (counts.shortlisted > 0) {
+        winnerHtml = `<span class="badge bg-warning text-dark small"><i class="bi bi-star me-1"></i>${counts.shortlisted} shortlisted</span>`;
+      }
 
       return `
         <tr class="fade-in">
@@ -335,8 +363,8 @@ updateCountyFilterByRegion() {
               <i class="bi bi-people-fill"></i>
               <span>${counts.total}</span>
             </div>
-            ${counts.winner > 0 ? '<div class="mt-1"><span class="badge bg-success"><i class="bi bi-trophy-fill me-1"></i>Has Winner</span></div>' : ''}
           </td>
+          <td>${winnerHtml}</td>
           <td class="text-center">
             <div class="btn-group btn-group-sm">
               <button class="btn btn-primary dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
@@ -344,8 +372,13 @@ updateCountyFilterByRegion() {
               </button>
               <ul class="dropdown-menu dropdown-menu-end">
                 <li>
-                  <a class="dropdown-item" href="javascript:void(0);" onclick="assignmentsModule.openAssignmentsModal('${award.id}', '${utils.escapeHtml(award.award_name || award.award_category || 'Award').replace(/'/g, "\\'")}')">
+                  <a class="dropdown-item" href="javascript:void(0);" onclick="assignmentsModule.openAssignmentsModal('${award.id}', '${utils.escapeHtml(fullName).replace(/'/g, "\\'")}')">
                     <i class="bi bi-people text-primary me-2"></i>Manage Nominees
+                  </a>
+                </li>
+                <li>
+                  <a class="dropdown-item" href="javascript:void(0);" onclick="awardsModule.openEditModal('${award.id}')">
+                    <i class="bi bi-pencil text-warning me-2"></i>Edit Award
                   </a>
                 </li>
                 <li>
@@ -354,11 +387,6 @@ updateCountyFilterByRegion() {
                   </a>
                 </li>
                 <li><hr class="dropdown-divider"></li>
-                <li>
-                  <a class="dropdown-item" href="javascript:void(0);" onclick="awardsModule.approve('${award.id}')">
-                    <i class="bi bi-check-circle text-success me-2"></i>Approve
-                  </a>
-                </li>
                 <li>
                   <a class="dropdown-item text-danger" href="javascript:void(0);" onclick="if(confirm('Are you sure you want to delete this award?')) awardsModule.deleteAward('${award.id}')">
                     <i class="bi bi-trash me-2"></i>Delete
@@ -631,6 +659,176 @@ updateCountyFilterByRegion() {
    * Delete an award
    * @param {string} awardId - Award ID
    */
+  /**
+   * Update stats summary bar
+   */
+  updateStats() {
+    const awards = STATE.allAwards;
+    const el = (id, val) => { const e = document.getElementById(id); if (e) e.textContent = val; };
+
+    el('statsTotalAwards', awards.length);
+    el('statsActiveAwards', awards.filter(a => a.status?.toLowerCase() === 'active').length);
+    el('statsWithNominees', awards.filter(a => (a._assignmentCounts?.total || 0) > 0).length);
+    el('statsWithWinners', awards.filter(a => (a._assignmentCounts?.winner || 0) > 0).length);
+    el('statsCounties', [...new Set(awards.map(a => a.county).filter(Boolean))].length);
+    el('statsSectors', [...new Set(awards.map(a => a.sector).filter(Boolean))].length);
+  },
+
+  /**
+   * Open create award modal
+   */
+  openCreateModal() {
+    document.getElementById('awardFormId').value = '';
+    document.getElementById('awardFormName').value = '';
+    document.getElementById('awardFormYear').value = new Date().getFullYear();
+    document.getElementById('awardFormStatus').value = 'Active';
+    document.getElementById('awardFormEntryOpen').value = '';
+    document.getElementById('awardFormEntryClose').value = '';
+    document.getElementById('awardFormJudging').value = '';
+    document.getElementById('awardFormDescription').value = '';
+    document.getElementById('awardFormModalTitle').innerHTML = '<i class="bi bi-plus-lg me-2"></i>Add Award';
+
+    // Populate county dropdown from REGIONS
+    const countySelect = document.getElementById('awardFormCounty');
+    countySelect.innerHTML = '<option value="">Select County/City...</option>' +
+      REGIONS.sort().map(r => `<option value="${r}">${r}</option>`).join('');
+
+    // Populate sector dropdown
+    const sectorSelect = document.getElementById('awardFormSector');
+    sectorSelect.innerHTML = '<option value="">Select Sector...</option>' +
+      SECTORS.map(s => `<option value="${s}">${s}</option>`).join('');
+
+    const modal = new bootstrap.Modal(document.getElementById('awardFormModal'));
+    modal.show();
+  },
+
+  /**
+   * Open edit award modal
+   */
+  openEditModal(awardId) {
+    const award = STATE.allAwards.find(a => a.id === awardId);
+    if (!award) return;
+
+    document.getElementById('awardFormId').value = award.id;
+    document.getElementById('awardFormName').value = award.award_name || '';
+    document.getElementById('awardFormYear').value = award.year || new Date().getFullYear();
+    document.getElementById('awardFormStatus').value = award.status || 'Active';
+    document.getElementById('awardFormEntryOpen').value = award.entry_open_date || '';
+    document.getElementById('awardFormEntryClose').value = award.entry_close_date || '';
+    document.getElementById('awardFormJudging').value = award.judging_date || '';
+    document.getElementById('awardFormDescription').value = award.description || '';
+    document.getElementById('awardFormModalTitle').innerHTML = '<i class="bi bi-pencil me-2"></i>Edit Award';
+
+    // Populate county dropdown
+    const countySelect = document.getElementById('awardFormCounty');
+    countySelect.innerHTML = '<option value="">Select County/City...</option>' +
+      REGIONS.sort().map(r => `<option value="${r}" ${r === award.county ? 'selected' : ''}>${r}</option>`).join('');
+
+    // Populate sector dropdown
+    const sectorSelect = document.getElementById('awardFormSector');
+    sectorSelect.innerHTML = '<option value="">Select Sector...</option>' +
+      SECTORS.map(s => `<option value="${s}" ${s === award.sector ? 'selected' : ''}>${s}</option>`).join('');
+
+    const modal = new bootstrap.Modal(document.getElementById('awardFormModal'));
+    modal.show();
+  },
+
+  /**
+   * Save award (create or update)
+   */
+  async saveAward() {
+    const form = document.getElementById('awardForm');
+    if (!form.checkValidity()) {
+      form.reportValidity();
+      return;
+    }
+
+    const id = document.getElementById('awardFormId').value;
+    const awardData = {
+      award_name: document.getElementById('awardFormName').value.trim(),
+      county: document.getElementById('awardFormCounty').value,
+      sector: document.getElementById('awardFormSector').value,
+      year: document.getElementById('awardFormYear').value,
+      status: document.getElementById('awardFormStatus').value,
+      entry_open_date: document.getElementById('awardFormEntryOpen').value || null,
+      entry_close_date: document.getElementById('awardFormEntryClose').value || null,
+      judging_date: document.getElementById('awardFormJudging').value || null,
+      description: document.getElementById('awardFormDescription').value.trim() || null
+    };
+
+    try {
+      utils.showLoading();
+
+      let error;
+      if (id) {
+        // Update existing
+        ({ error } = await STATE.client
+          .from('awards')
+          .update(awardData)
+          .eq('id', id));
+      } else {
+        // Create new
+        ({ error } = await STATE.client
+          .from('awards')
+          .insert(awardData));
+      }
+
+      if (error) throw error;
+
+      // Close modal
+      const modal = bootstrap.Modal.getInstance(document.getElementById('awardFormModal'));
+      if (modal) modal.hide();
+
+      utils.showToast(id ? 'Award updated successfully!' : 'Award created successfully!', 'success');
+      await this.loadAwards();
+
+    } catch (error) {
+      console.error('Error saving award:', error);
+      utils.showToast('Failed to save award: ' + error.message, 'error');
+    } finally {
+      utils.hideLoading();
+    }
+  },
+
+  /**
+   * Export filtered awards to CSV
+   */
+  exportAwards() {
+    const awards = STATE.filteredAwards;
+    if (awards.length === 0) {
+      utils.showToast('No awards to export', 'warning');
+      return;
+    }
+
+    const headers = ['Award Name', 'Category', 'County/City', 'Sector', 'Year', 'Status', 'Nominees', 'Winner'];
+    const rows = awards.map(a => {
+      const counts = a._assignmentCounts || { total: 0 };
+      return [
+        utils.formatAwardName(a),
+        a.award_name || '',
+        a.county || '',
+        a.sector || '',
+        a.year || '',
+        a.status || '',
+        counts.total,
+        a._winnerName || ''
+      ];
+    });
+
+    const csvContent = [headers, ...rows]
+      .map(row => row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(','))
+      .join('\n');
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = `awards-export-${new Date().toISOString().split('T')[0]}.csv`;
+    link.click();
+    URL.revokeObjectURL(link.href);
+
+    utils.showToast(`Exported ${awards.length} awards`, 'success');
+  },
+
   async deleteAward(awardId) {
     if (!utils.confirm('Are you sure you want to delete this award? This action cannot be undone.')) {
       return;

@@ -5,91 +5,83 @@
 const awardsModule = {
   selectedAwards: new Set(),
   currentSort: { column: 'award_name', direction: 'asc' },
- /**
- * Load all awards from database
- */
-async loadAwards() {
-  try {
-    utils.showLoading();
-    utils.showTableLoading('awardsTableBody', 7); // 7 columns
 
-    // Load all awards - county column stores the county/city name
-    let allData = [];
-    let page = 0;
-    const pageSize = 1000;
-    let hasMore = true;
-    
-    while (hasMore) {
-      const from = page * pageSize;
-      const to = from + pageSize - 1;
-      
-      const { data, error } = await STATE.client
-        .from('awards')
-        .select('*')
-        .range(from, to);
-      
-      if (error) throw error;
-      
-      if (!data || data.length === 0) {
-        hasMore = false;
-      } else {
-        // Map the actual region by looking up county in counties table
-        const dataWithRegions = await Promise.all(data.map(async (award) => {
-          let actualRegion = null;
-          
-          // Look up the region for this county
-if (award.county) {
-  const { data: countyData } = await STATE.client
-    .from('counties')
-    .select('Name, region_id, regions(name)')
-    .ilike('Name', award.county)
-    .single();
-  
-  if (countyData?.regions?.name) {
-    actualRegion = countyData.regions.name;
-  }
-}
+  /**
+   * Load all awards from database
+   */
+  async loadAwards() {
+    try {
+      utils.showLoading();
+      utils.showTableLoading('awardsTableBody', 7);
 
-return {
-  ...award,
-  _actualRegion: actualRegion,
-  _countyName: award.county
-};
-        }));
-        
-        allData = allData.concat(dataWithRegions);
-        page++;
-        
-        // Stop if we got less than pageSize records (last page)
-        if (data.length < pageSize) {
+      let allData = [];
+      let page = 0;
+      const pageSize = 1000;
+      let hasMore = true;
+
+      while (hasMore) {
+        const from = page * pageSize;
+        const to = from + pageSize - 1;
+
+        const { data, error } = await STATE.client
+          .from('awards')
+          .select('*')
+          .range(from, to);
+
+        if (error) throw error;
+
+        if (!data || data.length === 0) {
           hasMore = false;
+        } else {
+          const dataWithRegions = await Promise.all(data.map(async (award) => {
+            let actualRegion = null;
+
+            if (award.county) {
+              const { data: countyData } = await STATE.client
+                .from('counties')
+                .select('Name, region_id, regions(name)')
+                .ilike('Name', award.county)
+                .single();
+
+              if (countyData?.regions?.name) {
+                actualRegion = countyData.regions.name;
+              }
+            }
+
+            return {
+              ...award,
+              _actualRegion: actualRegion,
+              _countyName: award.county
+            };
+          }));
+
+          allData = allData.concat(dataWithRegions);
+          page++;
+
+          if (data.length < pageSize) {
+            hasMore = false;
+          }
         }
       }
+
+      STATE.allAwards = allData;
+
+      await this.loadAssignmentCounts();
+
+      STATE.filteredAwards = STATE.allAwards;
+
+      this.populateFilters();
+      this.updateStats();
+      this.renderAwards();
+
+    } catch (error) {
+      console.error('Error loading awards:', error);
+      utils.showToast('Failed to load awards: ' + error.message, 'error');
+      utils.showEmptyState('awardsTableBody', 7, 'Failed to load awards', 'bi-exclamation-triangle');
+    } finally {
+      utils.hideLoading();
     }
-    
-    STATE.allAwards = allData;
-    
-    // Load assignment counts for each award
-    await this.loadAssignmentCounts();
-    
-    STATE.filteredAwards = STATE.allAwards;
-    
-    // Populate filter dropdowns
-    this.populateFilters();
-    this.updateStats();
-    this.renderAwards();
-    
-    console.log(`✅ Loaded ${STATE.allAwards.length} awards`);
-    
-  } catch (error) {
-    console.error('Error loading awards:', error);
-    console.error('Error details:', error.details, error.hint, error.message);
-    utils.showToast('Failed to load awards: ' + error.message, 'error');
-    utils.showEmptyState('awardsTableBody', 7, 'Failed to load awards', 'bi-exclamation-triangle');
-  } finally {
-    utils.hideLoading();
-  }
-},
+  },
   /**
    * Load assignment counts for all awards
    */
@@ -196,52 +188,49 @@ return {
     );
     
     // Populate actual region filter
-const uniqueRegions = [...new Set(STATE.allAwards
-  .map(a => a._actualRegion)
-  .filter(r => r))];
+    const uniqueRegions = [...new Set(STATE.allAwards
+      .map(a => a._actualRegion)
+      .filter(r => r))];
 
-const regionSelect = document.getElementById('awardsRegionFilterSelect');
-if (regionSelect) {
-  regionSelect.innerHTML = '<option value="">All Regions</option>' +
-    uniqueRegions.sort().map(region => 
-      `<option value="${region}">${region}</option>`
-    ).join('');
-}
-},  // ← populateFilters ends here
+    const regionSelect = document.getElementById('awardsRegionFilterSelect');
+    if (regionSelect) {
+      regionSelect.innerHTML = '<option value="">All Regions</option>' +
+        uniqueRegions.sort().map(region =>
+          `<option value="${region}">${region}</option>`
+        ).join('');
+    }
+  },
 
-/**
- * Update county dropdown based on selected region
- */
-updateCountyFilterByRegion() {
-  const selectedRegion = document.getElementById('awardsRegionFilterSelect')?.value || '';
-  const countySelect = document.getElementById('awardsCountyFilterSelect');
-  
-  if (!countySelect) return;
-  
-  if (!selectedRegion) {
-    // No region selected - show all counties
-    const allCounties = [...new Set(STATE.allAwards
-      .map(a => a.county)
-      .filter(c => c)
-    )].sort();
-    
-    countySelect.innerHTML = '<option value="">All Counties</option>' +
-      allCounties.map(c => `<option value="${c}">${utils.escapeHtml(c)}</option>`).join('');
-  } else {
-    // Region selected - show only counties in that region
-    const countiesInRegion = [...new Set(STATE.allAwards
-      .filter(a => a._actualRegion === selectedRegion)
-      .map(a => a.county)
-      .filter(c => c)
-    )].sort();
-    
-    countySelect.innerHTML = '<option value="">All Counties</option>' +
-      countiesInRegion.map(c => `<option value="${c}">${utils.escapeHtml(c)}</option>`).join('');
-  }
-  
-  // Reset county selection
-  countySelect.value = '';
-},
+  /**
+   * Update county dropdown based on selected region
+   */
+  updateCountyFilterByRegion() {
+    const selectedRegion = document.getElementById('awardsRegionFilterSelect')?.value || '';
+    const countySelect = document.getElementById('awardsCountyFilterSelect');
+
+    if (!countySelect) return;
+
+    if (!selectedRegion) {
+      const allCounties = [...new Set(STATE.allAwards
+        .map(a => a.county)
+        .filter(c => c)
+      )].sort();
+
+      countySelect.innerHTML = '<option value="">All Counties</option>' +
+        allCounties.map(c => `<option value="${c}">${utils.escapeHtml(c)}</option>`).join('');
+    } else {
+      const countiesInRegion = [...new Set(STATE.allAwards
+        .filter(a => a._actualRegion === selectedRegion)
+        .map(a => a.county)
+        .filter(c => c)
+      )].sort();
+
+      countySelect.innerHTML = '<option value="">All Counties</option>' +
+        countiesInRegion.map(c => `<option value="${c}">${utils.escapeHtml(c)}</option>`).join('');
+    }
+
+    countySelect.value = '';
+  },
 
   /**
    * Set status filter and trigger filtering
@@ -350,7 +339,7 @@ updateCountyFilterByRegion() {
       // Search filter (searches full award name, category, county, and winner)
       if (search) {
         const fullName = utils.formatAwardName(award).toLowerCase();
-        const winnerName = award.winner?.toLowerCase() || '';
+        const winnerName = (award._winnerName || '').toLowerCase();
 
         if (!fullName.includes(search) && !winnerName.includes(search)) {
           return false;
@@ -726,40 +715,6 @@ updateCountyFilterByRegion() {
   },
 
   /**
-   * Approve an award
-   * @param {string} awardId - Award ID
-   */
-  async approve(awardId) {
-    if (!utils.confirm('Are you sure you want to approve this award?')) {
-      return;
-    }
-    
-    try {
-      utils.showLoading();
-      
-      const { error } = await STATE.client
-        .from('awards')
-        .update({ status: STATUS.APPROVED })
-        .eq('id', awardId);
-      
-      if (error) throw error;
-      
-      await this.loadAwards();
-      utils.showToast('Award approved successfully!', 'success');
-      
-    } catch (error) {
-      console.error('Error approving award:', error);
-      utils.showToast('Failed to approve award: ' + error.message, 'error');
-    } finally {
-      utils.hideLoading();
-    }
-  },
-
-  /**
-   * Delete an award
-   * @param {string} awardId - Award ID
-   */
-  /**
    * Update stats summary bar
    */
   updateStats() {
@@ -1002,9 +957,6 @@ updateCountyFilterByRegion() {
   },
 
   /**
-   * Export filtered awards to CSV
-   */
-  /**
    * Toggle single award selection
    */
   toggleSelection(awardId, checked) {
@@ -1133,6 +1085,9 @@ updateCountyFilterByRegion() {
     }
   },
 
+  /**
+   * Export filtered awards to CSV
+   */
   exportAwards() {
     const awards = STATE.filteredAwards;
     if (awards.length === 0) {
@@ -1169,6 +1124,9 @@ updateCountyFilterByRegion() {
     utils.showToast(`Exported ${awards.length} awards`, 'success');
   },
 
+  /**
+   * Delete a single award
+   */
   async deleteAward(awardId) {
     if (!utils.confirm('Are you sure you want to delete this award? This action cannot be undone.')) {
       return;

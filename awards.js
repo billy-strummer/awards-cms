@@ -486,23 +486,31 @@ updateCountyFilterByRegion() {
             </table>
           </div>
           <div class="col-md-6">
-            <h6 class="text-muted mb-3"><i class="bi bi-calendar me-2"></i>Important Dates</h6>
+            <h6 class="text-muted mb-3"><i class="bi bi-calendar me-2"></i>Key Dates</h6>
             <table class="table table-sm">
               <tr>
-                <th width="40%">Entry Open:</th>
+                <th width="40%">Entry Opens:</th>
                 <td>${award.entry_open_date ? new Date(award.entry_open_date).toLocaleDateString('en-GB') : 'N/A'}</td>
               </tr>
               <tr>
-                <th>Entry Close:</th>
+                <th>Entry Closes:</th>
                 <td>${award.entry_close_date ? new Date(award.entry_close_date).toLocaleDateString('en-GB') : 'N/A'}</td>
               </tr>
               <tr>
-                <th>Judging Date:</th>
-                <td>${award.judging_date ? new Date(award.judging_date).toLocaleDateString('en-GB') : 'N/A'}</td>
+                <th>Nominees Announced:</th>
+                <td>${award.nominees_announcement_date ? new Date(award.nominees_announcement_date).toLocaleDateString('en-GB') : 'N/A'}</td>
               </tr>
               <tr>
-                <th>Announcement:</th>
-                <td>${award.announcement_date ? new Date(award.announcement_date).toLocaleDateString('en-GB') : 'N/A'}</td>
+                <th>Voting Opens:</th>
+                <td>${award.voting_open_date ? new Date(award.voting_open_date).toLocaleDateString('en-GB') : 'N/A'}</td>
+              </tr>
+              <tr>
+                <th>Voting Closes:</th>
+                <td>${award.voting_close_date ? new Date(award.voting_close_date).toLocaleDateString('en-GB') : 'N/A'}</td>
+              </tr>
+              <tr>
+                <th>Winners Announced:</th>
+                <td>${award.winners_announcement_date ? new Date(award.winners_announcement_date).toLocaleDateString('en-GB') : 'N/A'}</td>
               </tr>
             </table>
           </div>
@@ -704,8 +712,10 @@ updateCountyFilterByRegion() {
 
     document.getElementById('awardFormEntryOpen').value = season.entry_open_date || '';
     document.getElementById('awardFormEntryClose').value = season.entry_close_date || '';
-    document.getElementById('awardFormJudging').value = season.judging_date || '';
-    document.getElementById('awardFormAnnouncement').value = season.announcement_date || '';
+    document.getElementById('awardFormNomineesAnnouncement').value = season.nominees_announcement_date || '';
+    document.getElementById('awardFormVotingOpen').value = season.voting_open_date || '';
+    document.getElementById('awardFormVotingClose').value = season.voting_close_date || '';
+    document.getElementById('awardFormWinnersAnnouncement').value = season.winners_announcement_date || '';
     document.getElementById('awardFormYear').value = season.year;
   },
 
@@ -719,8 +729,10 @@ updateCountyFilterByRegion() {
     document.getElementById('awardFormStatus').value = 'Active';
     document.getElementById('awardFormEntryOpen').value = '';
     document.getElementById('awardFormEntryClose').value = '';
-    document.getElementById('awardFormJudging').value = '';
-    document.getElementById('awardFormAnnouncement').value = '';
+    document.getElementById('awardFormNomineesAnnouncement').value = '';
+    document.getElementById('awardFormVotingOpen').value = '';
+    document.getElementById('awardFormVotingClose').value = '';
+    document.getElementById('awardFormWinnersAnnouncement').value = '';
     document.getElementById('awardFormDescription').value = '';
     document.getElementById('awardFormModalTitle').innerHTML = '<i class="bi bi-plus-lg me-2"></i>Add Award';
 
@@ -754,8 +766,10 @@ updateCountyFilterByRegion() {
     document.getElementById('awardFormStatus').value = award.status || 'Active';
     document.getElementById('awardFormEntryOpen').value = award.entry_open_date || '';
     document.getElementById('awardFormEntryClose').value = award.entry_close_date || '';
-    document.getElementById('awardFormJudging').value = award.judging_date || '';
-    document.getElementById('awardFormAnnouncement').value = award.announcement_date || '';
+    document.getElementById('awardFormNomineesAnnouncement').value = award.nominees_announcement_date || '';
+    document.getElementById('awardFormVotingOpen').value = award.voting_open_date || '';
+    document.getElementById('awardFormVotingClose').value = award.voting_close_date || '';
+    document.getElementById('awardFormWinnersAnnouncement').value = award.winners_announcement_date || '';
     document.getElementById('awardFormDescription').value = award.description || '';
     document.getElementById('awardFormModalTitle').innerHTML = '<i class="bi bi-pencil me-2"></i>Edit Award';
 
@@ -795,8 +809,10 @@ updateCountyFilterByRegion() {
       status: document.getElementById('awardFormStatus').value,
       entry_open_date: document.getElementById('awardFormEntryOpen').value || null,
       entry_close_date: document.getElementById('awardFormEntryClose').value || null,
-      judging_date: document.getElementById('awardFormJudging').value || null,
-      announcement_date: document.getElementById('awardFormAnnouncement').value || null,
+      nominees_announcement_date: document.getElementById('awardFormNomineesAnnouncement').value || null,
+      voting_open_date: document.getElementById('awardFormVotingOpen').value || null,
+      voting_close_date: document.getElementById('awardFormVotingClose').value || null,
+      winners_announcement_date: document.getElementById('awardFormWinnersAnnouncement').value || null,
       description: document.getElementById('awardFormDescription').value.trim() || null
     };
 

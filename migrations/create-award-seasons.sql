@@ -7,8 +7,10 @@ CREATE TABLE IF NOT EXISTS award_seasons (
   year INTEGER NOT NULL,
   entry_open_date DATE,
   entry_close_date DATE,
-  judging_date DATE,
-  announcement_date DATE,
+  nominees_announcement_date DATE,
+  voting_open_date DATE,
+  voting_close_date DATE,
+  winners_announcement_date DATE,
   is_default BOOLEAN DEFAULT FALSE,
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()

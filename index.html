@@ -3467,10 +3467,10 @@
                       <tr>
                         <th>Season Name</th>
                         <th>Year</th>
-                        <th>Entry Opens</th>
-                        <th>Entry Closes</th>
-                        <th>Judging</th>
-                        <th>Announcement</th>
+                        <th>Entries</th>
+                        <th>Nominees</th>
+                        <th>Voting</th>
+                        <th>Winners</th>
                         <th>Default</th>
                         <th class="text-center">Actions</th>
                       </tr>
@@ -3944,21 +3944,33 @@ Available placeholders:
                 <label for="seasonFormYear" class="form-label fw-semibold">Year</label>
                 <input type="number" class="form-control" id="seasonFormYear" value="2026" min="2024" max="2030" required>
               </div>
+              <div class="col-12"><hr class="my-1"><small class="text-muted fw-semibold">Entries (CTA)</small></div>
               <div class="col-md-6">
-                <label for="seasonFormEntryOpen" class="form-label fw-semibold">Entry Opens</label>
+                <label for="seasonFormEntryOpen" class="form-label">Entry Opens</label>
                 <input type="date" class="form-control" id="seasonFormEntryOpen">
               </div>
               <div class="col-md-6">
-                <label for="seasonFormEntryClose" class="form-label fw-semibold">Entry Closes</label>
+                <label for="seasonFormEntryClose" class="form-label">Entry Closes</label>
                 <input type="date" class="form-control" id="seasonFormEntryClose">
               </div>
+              <div class="col-12"><hr class="my-1"><small class="text-muted fw-semibold">Nominees Announced</small></div>
               <div class="col-md-6">
-                <label for="seasonFormJudging" class="form-label fw-semibold">Judging Date</label>
-                <input type="date" class="form-control" id="seasonFormJudging">
+                <label for="seasonFormNomineesAnnouncement" class="form-label">Nominees Announcement Date</label>
+                <input type="date" class="form-control" id="seasonFormNomineesAnnouncement">
+              </div>
+              <div class="col-12"><hr class="my-1"><small class="text-muted fw-semibold">Voting Period</small></div>
+              <div class="col-md-6">
+                <label for="seasonFormVotingOpen" class="form-label">Voting Opens</label>
+                <input type="date" class="form-control" id="seasonFormVotingOpen">
               </div>
               <div class="col-md-6">
-                <label for="seasonFormAnnouncement" class="form-label fw-semibold">Announcement Date</label>
-                <input type="date" class="form-control" id="seasonFormAnnouncement">
+                <label for="seasonFormVotingClose" class="form-label">Voting Closes</label>
+                <input type="date" class="form-control" id="seasonFormVotingClose">
+              </div>
+              <div class="col-12"><hr class="my-1"><small class="text-muted fw-semibold">Winners Announced</small></div>
+              <div class="col-md-6">
+                <label for="seasonFormWinnersAnnouncement" class="form-label">Winners Announcement Date</label>
+                <input type="date" class="form-control" id="seasonFormWinnersAnnouncement">
               </div>
               <div class="col-12">
                 <div class="form-check">
@@ -4033,20 +4045,28 @@ Available placeholders:
               </div>
               <div class="col-12"><hr class="my-1"><small class="text-muted fw-semibold">Key Dates</small></div>
               <div class="col-md-3">
-                <label for="awardFormEntryOpen" class="form-label fw-semibold">Entry Opens</label>
-                <input type="date" class="form-control" id="awardFormEntryOpen">
+                <label for="awardFormEntryOpen" class="form-label small">Entry Opens</label>
+                <input type="date" class="form-control form-control-sm" id="awardFormEntryOpen">
               </div>
               <div class="col-md-3">
-                <label for="awardFormEntryClose" class="form-label fw-semibold">Entry Closes</label>
-                <input type="date" class="form-control" id="awardFormEntryClose">
+                <label for="awardFormEntryClose" class="form-label small">Entry Closes</label>
+                <input type="date" class="form-control form-control-sm" id="awardFormEntryClose">
               </div>
               <div class="col-md-3">
-                <label for="awardFormJudging" class="form-label fw-semibold">Judging</label>
-                <input type="date" class="form-control" id="awardFormJudging">
+                <label for="awardFormNomineesAnnouncement" class="form-label small">Nominees Announced</label>
+                <input type="date" class="form-control form-control-sm" id="awardFormNomineesAnnouncement">
               </div>
               <div class="col-md-3">
-                <label for="awardFormAnnouncement" class="form-label fw-semibold">Announcement</label>
-                <input type="date" class="form-control" id="awardFormAnnouncement">
+                <label for="awardFormVotingOpen" class="form-label small">Voting Opens</label>
+                <input type="date" class="form-control form-control-sm" id="awardFormVotingOpen">
+              </div>
+              <div class="col-md-3">
+                <label for="awardFormVotingClose" class="form-label small">Voting Closes</label>
+                <input type="date" class="form-control form-control-sm" id="awardFormVotingClose">
+              </div>
+              <div class="col-md-3">
+                <label for="awardFormWinnersAnnouncement" class="form-label small">Winners Announced</label>
+                <input type="date" class="form-control form-control-sm" id="awardFormWinnersAnnouncement">
               </div>
               <div class="col-12">
                 <label for="awardFormDescription" class="form-label fw-semibold">Description</label>

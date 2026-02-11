@@ -5,14 +5,24 @@ CREATE TABLE IF NOT EXISTS award_seasons (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   name TEXT NOT NULL,
   year INTEGER NOT NULL,
+  status TEXT DEFAULT 'upcoming' CHECK (status IN ('upcoming', 'open', 'closed')),
   entry_open_date DATE,
   entry_close_date DATE,
-  judging_date DATE,
-  announcement_date DATE,
+  nominees_announcement_date DATE,
+  judging_open_date DATE,
+  judging_close_date DATE,
+  voting_open_date DATE,
+  voting_close_date DATE,
+  winners_announcement_date DATE,
   is_default BOOLEAN DEFAULT FALSE,
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
+
+-- If table already exists, add new columns
+ALTER TABLE award_seasons ADD COLUMN IF NOT EXISTS status TEXT DEFAULT 'upcoming' CHECK (status IN ('upcoming', 'open', 'closed'));
+ALTER TABLE award_seasons ADD COLUMN IF NOT EXISTS judging_open_date DATE;
+ALTER TABLE award_seasons ADD COLUMN IF NOT EXISTS judging_close_date DATE;
 
 -- Allow public access (matches existing RLS pattern)
 ALTER TABLE award_seasons ENABLE ROW LEVEL SECURITY;

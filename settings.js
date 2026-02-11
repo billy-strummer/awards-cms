@@ -640,20 +640,27 @@ British Trade Awards Team
     if (!tbody) return;
 
     if (this.allSeasons.length === 0) {
-      tbody.innerHTML = '<tr><td colspan="8" class="text-center text-muted py-3">No seasons defined yet. Click "Add Season" to create one.</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="10" class="text-center text-muted py-3">No seasons defined yet. Click "Add Season" to create one.</td></tr>';
       return;
     }
 
     const formatDate = (d) => d ? new Date(d).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : '<span class="text-muted">-</span>';
 
+    const statusBadge = (status) => {
+      const badges = { upcoming: 'bg-warning text-dark', open: 'bg-success', closed: 'bg-secondary' };
+      return `<span class="badge ${badges[status] || 'bg-secondary'}">${(status || 'upcoming').charAt(0).toUpperCase() + (status || 'upcoming').slice(1)}</span>`;
+    };
+
     tbody.innerHTML = this.allSeasons.map(s => `
       <tr>
         <td class="fw-semibold">${utils.escapeHtml(s.name)}</td>
         <td><span class="badge bg-primary-subtle text-primary">${s.year}</span></td>
-        <td>${formatDate(s.entry_open_date)}</td>
-        <td>${formatDate(s.entry_close_date)}</td>
-        <td>${formatDate(s.judging_date)}</td>
-        <td>${formatDate(s.announcement_date)}</td>
+        <td>${statusBadge(s.status)}</td>
+        <td><small>${formatDate(s.entry_open_date)} - ${formatDate(s.entry_close_date)}</small></td>
+        <td><small>${formatDate(s.nominees_announcement_date)}</small></td>
+        <td><small>${formatDate(s.judging_open_date)} - ${formatDate(s.judging_close_date)}</small></td>
+        <td><small>${formatDate(s.voting_open_date)} - ${formatDate(s.voting_close_date)}</small></td>
+        <td><small>${formatDate(s.winners_announcement_date)}</small></td>
         <td>${s.is_default ? '<span class="badge bg-success">Default</span>' : ''}</td>
         <td class="text-center">
           <div class="btn-group btn-group-sm">
@@ -679,10 +686,15 @@ British Trade Awards Team
     document.getElementById('seasonFormId').value = '';
     document.getElementById('seasonFormName').value = '';
     document.getElementById('seasonFormYear').value = new Date().getFullYear();
+    document.getElementById('seasonFormStatus').value = 'upcoming';
     document.getElementById('seasonFormEntryOpen').value = '';
     document.getElementById('seasonFormEntryClose').value = '';
-    document.getElementById('seasonFormJudging').value = '';
-    document.getElementById('seasonFormAnnouncement').value = '';
+    document.getElementById('seasonFormNomineesAnnouncement').value = '';
+    document.getElementById('seasonFormJudgingOpen').value = '';
+    document.getElementById('seasonFormJudgingClose').value = '';
+    document.getElementById('seasonFormVotingOpen').value = '';
+    document.getElementById('seasonFormVotingClose').value = '';
+    document.getElementById('seasonFormWinnersAnnouncement').value = '';
     document.getElementById('seasonFormDefault').checked = false;
     document.getElementById('seasonFormModalTitle').innerHTML = '<i class="bi bi-calendar-event me-2"></i>Add Season';
 
@@ -700,10 +712,15 @@ British Trade Awards Team
     document.getElementById('seasonFormId').value = season.id;
     document.getElementById('seasonFormName').value = season.name;
     document.getElementById('seasonFormYear').value = season.year;
+    document.getElementById('seasonFormStatus').value = season.status || 'upcoming';
     document.getElementById('seasonFormEntryOpen').value = season.entry_open_date || '';
     document.getElementById('seasonFormEntryClose').value = season.entry_close_date || '';
-    document.getElementById('seasonFormJudging').value = season.judging_date || '';
-    document.getElementById('seasonFormAnnouncement').value = season.announcement_date || '';
+    document.getElementById('seasonFormNomineesAnnouncement').value = season.nominees_announcement_date || '';
+    document.getElementById('seasonFormJudgingOpen').value = season.judging_open_date || '';
+    document.getElementById('seasonFormJudgingClose').value = season.judging_close_date || '';
+    document.getElementById('seasonFormVotingOpen').value = season.voting_open_date || '';
+    document.getElementById('seasonFormVotingClose').value = season.voting_close_date || '';
+    document.getElementById('seasonFormWinnersAnnouncement').value = season.winners_announcement_date || '';
     document.getElementById('seasonFormDefault').checked = season.is_default || false;
     document.getElementById('seasonFormModalTitle').innerHTML = '<i class="bi bi-pencil me-2"></i>Edit Season';
 
@@ -727,10 +744,15 @@ British Trade Awards Team
     const seasonData = {
       name: document.getElementById('seasonFormName').value.trim(),
       year: parseInt(document.getElementById('seasonFormYear').value),
+      status: document.getElementById('seasonFormStatus').value,
       entry_open_date: document.getElementById('seasonFormEntryOpen').value || null,
       entry_close_date: document.getElementById('seasonFormEntryClose').value || null,
-      judging_date: document.getElementById('seasonFormJudging').value || null,
-      announcement_date: document.getElementById('seasonFormAnnouncement').value || null,
+      nominees_announcement_date: document.getElementById('seasonFormNomineesAnnouncement').value || null,
+      judging_open_date: document.getElementById('seasonFormJudgingOpen').value || null,
+      judging_close_date: document.getElementById('seasonFormJudgingClose').value || null,
+      voting_open_date: document.getElementById('seasonFormVotingOpen').value || null,
+      voting_close_date: document.getElementById('seasonFormVotingClose').value || null,
+      winners_announcement_date: document.getElementById('seasonFormWinnersAnnouncement').value || null,
       is_default: isDefault,
       updated_at: new Date().toISOString()
     };
@@ -797,7 +819,7 @@ British Trade Awards Team
     const season = this.allSeasons.find(s => s.id === seasonId);
     if (!season) return;
 
-    if (!confirm(`Apply "${season.name}" dates to ALL awards for ${season.year}?\n\nThis will update entry open/close, judging, and announcement dates.`)) return;
+    if (!confirm(`Apply "${season.name}" dates to ALL awards for ${season.year}?\n\nThis will update all key dates (entries, nominees, judging, voting, winners).`)) return;
 
     try {
       utils.showLoading();
@@ -805,8 +827,12 @@ British Trade Awards Team
       const updates = {
         entry_open_date: season.entry_open_date,
         entry_close_date: season.entry_close_date,
-        judging_date: season.judging_date,
-        announcement_date: season.announcement_date
+        nominees_announcement_date: season.nominees_announcement_date,
+        judging_open_date: season.judging_open_date,
+        judging_close_date: season.judging_close_date,
+        voting_open_date: season.voting_open_date,
+        voting_close_date: season.voting_close_date,
+        winners_announcement_date: season.winners_announcement_date
       };
 
       const { error } = await STATE.client

@@ -802,6 +802,9 @@
                 <button class="btn btn-outline-secondary btn-sm" onclick="awardsModule.exportAwards()">
                   <i class="bi bi-download me-1"></i>Export CSV
                 </button>
+                <button class="btn btn-outline-info btn-sm" onclick="awardsModule.rolloverToNextYear()">
+                  <i class="bi bi-arrow-repeat me-1"></i>Roll Over to Next Year
+                </button>
                 <div class="badge bg-primary-subtle text-primary fs-6">
                   <span id="awardsCount">0</span> awards
                 </div>
@@ -3467,16 +3470,18 @@
                       <tr>
                         <th>Season Name</th>
                         <th>Year</th>
-                        <th>Entry Opens</th>
-                        <th>Entry Closes</th>
+                        <th>Status</th>
+                        <th>Entries</th>
+                        <th>Nominees</th>
                         <th>Judging</th>
-                        <th>Announcement</th>
+                        <th>Voting</th>
+                        <th>Winners</th>
                         <th>Default</th>
                         <th class="text-center">Actions</th>
                       </tr>
                     </thead>
                     <tbody id="seasonsTableBody">
-                      <tr><td colspan="8" class="text-center text-muted py-3">Loading seasons...</td></tr>
+                      <tr><td colspan="10" class="text-center text-muted py-3">Loading seasons...</td></tr>
                     </tbody>
                   </table>
                 </div>
@@ -3940,25 +3945,54 @@ Available placeholders:
                 <label for="seasonFormName" class="form-label fw-semibold">Season Name</label>
                 <input type="text" class="form-control" id="seasonFormName" placeholder="e.g. 2026 Main Season" required>
               </div>
-              <div class="col-md-4">
+              <div class="col-md-2">
                 <label for="seasonFormYear" class="form-label fw-semibold">Year</label>
                 <input type="number" class="form-control" id="seasonFormYear" value="2026" min="2024" max="2030" required>
               </div>
+              <div class="col-md-2">
+                <label for="seasonFormStatus" class="form-label fw-semibold">Status</label>
+                <select class="form-select" id="seasonFormStatus">
+                  <option value="upcoming">Upcoming</option>
+                  <option value="open">Open</option>
+                  <option value="closed">Closed</option>
+                </select>
+              </div>
+              <div class="col-12"><hr class="my-1"><small class="text-muted fw-semibold">Entries (CTA)</small></div>
               <div class="col-md-6">
-                <label for="seasonFormEntryOpen" class="form-label fw-semibold">Entry Opens</label>
+                <label for="seasonFormEntryOpen" class="form-label">Entry Opens</label>
                 <input type="date" class="form-control" id="seasonFormEntryOpen">
               </div>
               <div class="col-md-6">
-                <label for="seasonFormEntryClose" class="form-label fw-semibold">Entry Closes</label>
+                <label for="seasonFormEntryClose" class="form-label">Entry Closes</label>
                 <input type="date" class="form-control" id="seasonFormEntryClose">
               </div>
+              <div class="col-12"><hr class="my-1"><small class="text-muted fw-semibold">Nominees Announced</small></div>
               <div class="col-md-6">
-                <label for="seasonFormJudging" class="form-label fw-semibold">Judging Date</label>
-                <input type="date" class="form-control" id="seasonFormJudging">
+                <label for="seasonFormNomineesAnnouncement" class="form-label">Nominees Announcement Date</label>
+                <input type="date" class="form-control" id="seasonFormNomineesAnnouncement">
+              </div>
+              <div class="col-12"><hr class="my-1"><small class="text-muted fw-semibold">Judging Period</small></div>
+              <div class="col-md-6">
+                <label for="seasonFormJudgingOpen" class="form-label">Judging Opens</label>
+                <input type="date" class="form-control" id="seasonFormJudgingOpen">
               </div>
               <div class="col-md-6">
-                <label for="seasonFormAnnouncement" class="form-label fw-semibold">Announcement Date</label>
-                <input type="date" class="form-control" id="seasonFormAnnouncement">
+                <label for="seasonFormJudgingClose" class="form-label">Judging Closes</label>
+                <input type="date" class="form-control" id="seasonFormJudgingClose">
+              </div>
+              <div class="col-12"><hr class="my-1"><small class="text-muted fw-semibold">Voting Period</small></div>
+              <div class="col-md-6">
+                <label for="seasonFormVotingOpen" class="form-label">Voting Opens</label>
+                <input type="date" class="form-control" id="seasonFormVotingOpen">
+              </div>
+              <div class="col-md-6">
+                <label for="seasonFormVotingClose" class="form-label">Voting Closes</label>
+                <input type="date" class="form-control" id="seasonFormVotingClose">
+              </div>
+              <div class="col-12"><hr class="my-1"><small class="text-muted fw-semibold">Winners Announced</small></div>
+              <div class="col-md-6">
+                <label for="seasonFormWinnersAnnouncement" class="form-label">Winners Announcement Date</label>
+                <input type="date" class="form-control" id="seasonFormWinnersAnnouncement">
               </div>
               <div class="col-12">
                 <div class="form-check">
@@ -4033,20 +4067,36 @@ Available placeholders:
               </div>
               <div class="col-12"><hr class="my-1"><small class="text-muted fw-semibold">Key Dates</small></div>
               <div class="col-md-3">
-                <label for="awardFormEntryOpen" class="form-label fw-semibold">Entry Opens</label>
-                <input type="date" class="form-control" id="awardFormEntryOpen">
+                <label for="awardFormEntryOpen" class="form-label small">Entry Opens</label>
+                <input type="date" class="form-control form-control-sm" id="awardFormEntryOpen">
               </div>
               <div class="col-md-3">
-                <label for="awardFormEntryClose" class="form-label fw-semibold">Entry Closes</label>
-                <input type="date" class="form-control" id="awardFormEntryClose">
+                <label for="awardFormEntryClose" class="form-label small">Entry Closes</label>
+                <input type="date" class="form-control form-control-sm" id="awardFormEntryClose">
               </div>
               <div class="col-md-3">
-                <label for="awardFormJudging" class="form-label fw-semibold">Judging</label>
-                <input type="date" class="form-control" id="awardFormJudging">
+                <label for="awardFormNomineesAnnouncement" class="form-label small">Nominees Announced</label>
+                <input type="date" class="form-control form-control-sm" id="awardFormNomineesAnnouncement">
               </div>
               <div class="col-md-3">
-                <label for="awardFormAnnouncement" class="form-label fw-semibold">Announcement</label>
-                <input type="date" class="form-control" id="awardFormAnnouncement">
+                <label for="awardFormJudgingOpen" class="form-label small">Judging Opens</label>
+                <input type="date" class="form-control form-control-sm" id="awardFormJudgingOpen">
+              </div>
+              <div class="col-md-3">
+                <label for="awardFormJudgingClose" class="form-label small">Judging Closes</label>
+                <input type="date" class="form-control form-control-sm" id="awardFormJudgingClose">
+              </div>
+              <div class="col-md-3">
+                <label for="awardFormVotingOpen" class="form-label small">Voting Opens</label>
+                <input type="date" class="form-control form-control-sm" id="awardFormVotingOpen">
+              </div>
+              <div class="col-md-3">
+                <label for="awardFormVotingClose" class="form-label small">Voting Closes</label>
+                <input type="date" class="form-control form-control-sm" id="awardFormVotingClose">
+              </div>
+              <div class="col-md-3">
+                <label for="awardFormWinnersAnnouncement" class="form-label small">Winners Announced</label>
+                <input type="date" class="form-control form-control-sm" id="awardFormWinnersAnnouncement">
               </div>
               <div class="col-12">
                 <label for="awardFormDescription" class="form-label fw-semibold">Description</label>

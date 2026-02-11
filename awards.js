@@ -341,6 +341,11 @@ updateCountyFilterByRegion() {
         winnerHtml = `<span class="badge bg-warning text-dark small"><i class="bi bi-star me-1"></i>${counts.shortlisted} shortlisted</span>`;
       }
 
+      // Previous year defending champion
+      if (award.prev_year_winner) {
+        winnerHtml += `<div class="small text-muted mt-1" title="Previous year: 1st ${utils.escapeHtml(award.prev_year_winner)}${award.prev_year_2nd ? ', 2nd ' + utils.escapeHtml(award.prev_year_2nd) : ''}${award.prev_year_3rd ? ', 3rd ' + utils.escapeHtml(award.prev_year_3rd) : ''}"><i class="bi bi-clock-history me-1"></i>Prev: ${utils.escapeHtml(award.prev_year_winner)}</div>`;
+      }
+
       return `
         <tr class="fade-in">
           <td><input type="checkbox" class="form-check-input award-select-cb" value="${award.id}" onchange="awardsModule.toggleSelection('${award.id}', this.checked)" ${this.selectedAwards.has(award.id) ? 'checked' : ''}></td>
@@ -486,23 +491,39 @@ updateCountyFilterByRegion() {
             </table>
           </div>
           <div class="col-md-6">
-            <h6 class="text-muted mb-3"><i class="bi bi-calendar me-2"></i>Important Dates</h6>
+            <h6 class="text-muted mb-3"><i class="bi bi-calendar me-2"></i>Key Dates</h6>
             <table class="table table-sm">
               <tr>
-                <th width="40%">Entry Open:</th>
+                <th width="40%">Entry Opens:</th>
                 <td>${award.entry_open_date ? new Date(award.entry_open_date).toLocaleDateString('en-GB') : 'N/A'}</td>
               </tr>
               <tr>
-                <th>Entry Close:</th>
+                <th>Entry Closes:</th>
                 <td>${award.entry_close_date ? new Date(award.entry_close_date).toLocaleDateString('en-GB') : 'N/A'}</td>
               </tr>
               <tr>
-                <th>Judging Date:</th>
-                <td>${award.judging_date ? new Date(award.judging_date).toLocaleDateString('en-GB') : 'N/A'}</td>
+                <th>Nominees Announced:</th>
+                <td>${award.nominees_announcement_date ? new Date(award.nominees_announcement_date).toLocaleDateString('en-GB') : 'N/A'}</td>
               </tr>
               <tr>
-                <th>Announcement:</th>
-                <td>${award.announcement_date ? new Date(award.announcement_date).toLocaleDateString('en-GB') : 'N/A'}</td>
+                <th>Judging Opens:</th>
+                <td>${award.judging_open_date ? new Date(award.judging_open_date).toLocaleDateString('en-GB') : 'N/A'}</td>
+              </tr>
+              <tr>
+                <th>Judging Closes:</th>
+                <td>${award.judging_close_date ? new Date(award.judging_close_date).toLocaleDateString('en-GB') : 'N/A'}</td>
+              </tr>
+              <tr>
+                <th>Voting Opens:</th>
+                <td>${award.voting_open_date ? new Date(award.voting_open_date).toLocaleDateString('en-GB') : 'N/A'}</td>
+              </tr>
+              <tr>
+                <th>Voting Closes:</th>
+                <td>${award.voting_close_date ? new Date(award.voting_close_date).toLocaleDateString('en-GB') : 'N/A'}</td>
+              </tr>
+              <tr>
+                <th>Winners Announced:</th>
+                <td>${award.winners_announcement_date ? new Date(award.winners_announcement_date).toLocaleDateString('en-GB') : 'N/A'}</td>
               </tr>
             </table>
           </div>
@@ -512,6 +533,23 @@ updateCountyFilterByRegion() {
           <div class="mb-4">
             <h6 class="text-muted mb-2"><i class="bi bi-file-text me-2"></i>Description</h6>
             <p class="text-muted">${utils.escapeHtml(award.description)}</p>
+          </div>
+        ` : ''}
+
+        ${award.prev_year_winner ? `
+          <div class="mb-4">
+            <h6 class="text-muted mb-3"><i class="bi bi-clock-history me-2"></i>Previous Year's Results</h6>
+            <div class="d-flex flex-wrap gap-2">
+              <span class="badge bg-warning text-dark px-3 py-2">
+                <i class="bi bi-trophy-fill me-1"></i>1st: ${utils.escapeHtml(award.prev_year_winner)}
+              </span>
+              ${award.prev_year_2nd ? `<span class="badge bg-secondary px-3 py-2">
+                <i class="bi bi-award me-1"></i>2nd: ${utils.escapeHtml(award.prev_year_2nd)}
+              </span>` : ''}
+              ${award.prev_year_3rd ? `<span class="badge bg-dark px-3 py-2">
+                <i class="bi bi-award me-1"></i>3rd: ${utils.escapeHtml(award.prev_year_3rd)}
+              </span>` : ''}
+            </div>
           </div>
         ` : ''}
 
@@ -704,8 +742,12 @@ updateCountyFilterByRegion() {
 
     document.getElementById('awardFormEntryOpen').value = season.entry_open_date || '';
     document.getElementById('awardFormEntryClose').value = season.entry_close_date || '';
-    document.getElementById('awardFormJudging').value = season.judging_date || '';
-    document.getElementById('awardFormAnnouncement').value = season.announcement_date || '';
+    document.getElementById('awardFormNomineesAnnouncement').value = season.nominees_announcement_date || '';
+    document.getElementById('awardFormJudgingOpen').value = season.judging_open_date || '';
+    document.getElementById('awardFormJudgingClose').value = season.judging_close_date || '';
+    document.getElementById('awardFormVotingOpen').value = season.voting_open_date || '';
+    document.getElementById('awardFormVotingClose').value = season.voting_close_date || '';
+    document.getElementById('awardFormWinnersAnnouncement').value = season.winners_announcement_date || '';
     document.getElementById('awardFormYear').value = season.year;
   },
 
@@ -719,8 +761,12 @@ updateCountyFilterByRegion() {
     document.getElementById('awardFormStatus').value = 'Active';
     document.getElementById('awardFormEntryOpen').value = '';
     document.getElementById('awardFormEntryClose').value = '';
-    document.getElementById('awardFormJudging').value = '';
-    document.getElementById('awardFormAnnouncement').value = '';
+    document.getElementById('awardFormNomineesAnnouncement').value = '';
+    document.getElementById('awardFormJudgingOpen').value = '';
+    document.getElementById('awardFormJudgingClose').value = '';
+    document.getElementById('awardFormVotingOpen').value = '';
+    document.getElementById('awardFormVotingClose').value = '';
+    document.getElementById('awardFormWinnersAnnouncement').value = '';
     document.getElementById('awardFormDescription').value = '';
     document.getElementById('awardFormModalTitle').innerHTML = '<i class="bi bi-plus-lg me-2"></i>Add Award';
 
@@ -754,8 +800,12 @@ updateCountyFilterByRegion() {
     document.getElementById('awardFormStatus').value = award.status || 'Active';
     document.getElementById('awardFormEntryOpen').value = award.entry_open_date || '';
     document.getElementById('awardFormEntryClose').value = award.entry_close_date || '';
-    document.getElementById('awardFormJudging').value = award.judging_date || '';
-    document.getElementById('awardFormAnnouncement').value = award.announcement_date || '';
+    document.getElementById('awardFormNomineesAnnouncement').value = award.nominees_announcement_date || '';
+    document.getElementById('awardFormJudgingOpen').value = award.judging_open_date || '';
+    document.getElementById('awardFormJudgingClose').value = award.judging_close_date || '';
+    document.getElementById('awardFormVotingOpen').value = award.voting_open_date || '';
+    document.getElementById('awardFormVotingClose').value = award.voting_close_date || '';
+    document.getElementById('awardFormWinnersAnnouncement').value = award.winners_announcement_date || '';
     document.getElementById('awardFormDescription').value = award.description || '';
     document.getElementById('awardFormModalTitle').innerHTML = '<i class="bi bi-pencil me-2"></i>Edit Award';
 
@@ -795,8 +845,12 @@ updateCountyFilterByRegion() {
       status: document.getElementById('awardFormStatus').value,
       entry_open_date: document.getElementById('awardFormEntryOpen').value || null,
       entry_close_date: document.getElementById('awardFormEntryClose').value || null,
-      judging_date: document.getElementById('awardFormJudging').value || null,
-      announcement_date: document.getElementById('awardFormAnnouncement').value || null,
+      nominees_announcement_date: document.getElementById('awardFormNomineesAnnouncement').value || null,
+      judging_open_date: document.getElementById('awardFormJudgingOpen').value || null,
+      judging_close_date: document.getElementById('awardFormJudgingClose').value || null,
+      voting_open_date: document.getElementById('awardFormVotingOpen').value || null,
+      voting_close_date: document.getElementById('awardFormVotingClose').value || null,
+      winners_announcement_date: document.getElementById('awardFormWinnersAnnouncement').value || null,
       description: document.getElementById('awardFormDescription').value.trim() || null
     };
 
@@ -1023,6 +1077,116 @@ updateCountyFilterByRegion() {
     } catch (error) {
       console.error('Error deleting award:', error);
       utils.showToast('Failed to delete award: ' + error.message, 'error');
+    } finally {
+      utils.hideLoading();
+    }
+  },
+
+  /**
+   * Roll over awards from one year to the next as Inactive
+   */
+  async rolloverToNextYear() {
+    // Determine source year from current filter or most common year
+    const years = [...new Set((STATE.allAwards || []).map(a => a.year))].sort((a, b) => b - a);
+
+    if (years.length === 0) {
+      utils.showToast('No awards to roll over', 'warning');
+      return;
+    }
+
+    const sourceYear = parseInt(years[0]);
+    const targetYear = sourceYear + 1;
+
+    // Get awards for the source year
+    const sourceAwards = STATE.allAwards.filter(a => String(a.year) === String(sourceYear));
+
+    if (sourceAwards.length === 0) {
+      utils.showToast(`No awards found for ${sourceYear}`, 'warning');
+      return;
+    }
+
+    // Check if target year already has awards
+    const existingTarget = STATE.allAwards.filter(a => String(a.year) === String(targetYear));
+
+    let message = `Roll over ${sourceAwards.length} awards from ${sourceYear} to ${targetYear}?\n\n`;
+    message += `All copied awards will be set to "Inactive" status, ready for vetting.\n`;
+    message += `Dates will be cleared so you can set new season dates.`;
+
+    if (existingTarget.length > 0) {
+      message += `\n\n⚠️ ${targetYear} already has ${existingTarget.length} awards. Only NEW award names (not already in ${targetYear}) will be copied.`;
+    }
+
+    if (!confirm(message)) return;
+
+    try {
+      utils.showLoading();
+
+      // Get existing award names for target year to avoid duplicates
+      const existingNames = new Set(existingTarget.map(a => a.award_name));
+
+      // Filter out awards that already exist in the target year
+      const awardsToRoll = sourceAwards.filter(a => !existingNames.has(a.award_name));
+
+      if (awardsToRoll.length === 0) {
+        utils.showToast(`All ${sourceYear} awards already exist in ${targetYear}`, 'info');
+        return;
+      }
+
+      // Fetch previous year's winners from award_assignments
+      const sourceAwardIds = awardsToRoll.map(a => a.id);
+      const { data: winnerData } = await STATE.client
+        .from('award_assignments')
+        .select('award_id, winner_position, organisations(company_name)')
+        .in('award_id', sourceAwardIds)
+        .eq('status', 'winner');
+
+      // Build a lookup: award_id -> { 1: 'Company A', 2: 'Company B', 3: 'Company C' }
+      const winnersMap = {};
+      (winnerData || []).forEach(w => {
+        if (!winnersMap[w.award_id]) winnersMap[w.award_id] = {};
+        const pos = w.winner_position || 1;
+        winnersMap[w.award_id][pos] = w.organisations?.company_name || 'Unknown';
+      });
+
+      // Build new award records — copy structure, clear dates, set Inactive, tag prev year results
+      const newAwards = awardsToRoll.map(a => {
+        const prevWinners = winnersMap[a.id] || {};
+        return {
+          award_name: a.award_name,
+          county: a.county,
+          sector: a.sector,
+          year: targetYear,
+          status: 'Inactive',
+          description: a.description,
+          prev_year_winner: prevWinners[1] || null,
+          prev_year_2nd: prevWinners[2] || null,
+          prev_year_3rd: prevWinners[3] || null,
+          entry_open_date: null,
+          entry_close_date: null,
+          nominees_announcement_date: null,
+          judging_open_date: null,
+          judging_close_date: null,
+          voting_open_date: null,
+          voting_close_date: null,
+          winners_announcement_date: null
+        };
+      });
+
+      const { error } = await STATE.client
+        .from('awards')
+        .insert(newAwards);
+
+      if (error) throw error;
+
+      const withWinners = newAwards.filter(a => a.prev_year_winner).length;
+      let msg = `${newAwards.length} awards rolled over to ${targetYear} as Inactive!`;
+      if (withWinners > 0) msg += ` (${withWinners} with previous year results)`;
+      utils.showToast(msg, 'success');
+      await this.loadAwards();
+
+    } catch (error) {
+      console.error('Error rolling over awards:', error);
+      utils.showToast('Failed to roll over awards: ' + error.message, 'error');
     } finally {
       utils.hideLoading();
     }

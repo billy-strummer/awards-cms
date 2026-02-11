@@ -996,6 +996,80 @@ CREATE POLICY "Allow all access to social_campaigns"
 
 
 -- ============================================================
+-- 45. AWARD SEASONS
+-- ============================================================
+
+CREATE TABLE IF NOT EXISTS award_seasons (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  name TEXT NOT NULL,
+  year INTEGER NOT NULL,
+  status TEXT DEFAULT 'upcoming' CHECK (status IN ('upcoming', 'open', 'closed')),
+  entry_open_date DATE,
+  entry_close_date DATE,
+  nominees_announcement_date DATE,
+  judging_open_date DATE,
+  judging_close_date DATE,
+  voting_open_date DATE,
+  voting_close_date DATE,
+  winners_announcement_date DATE,
+  is_default BOOLEAN DEFAULT FALSE,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+ALTER TABLE award_seasons ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Allow all access to award_seasons" ON award_seasons;
+CREATE POLICY "Allow all access to award_seasons"
+  ON award_seasons FOR ALL USING (true) WITH CHECK (true);
+
+
+-- ============================================================
+-- GRANT API ACCESS TO ALL TABLES
+-- Required for Supabase PostgREST to expose tables via the API.
+-- Without these, tables created via SQL Editor will return
+-- "Could not find the table in the schema cache".
+-- ============================================================
+
+DO $$
+DECLARE
+  tbl TEXT;
+BEGIN
+  FOR tbl IN
+    SELECT unnest(ARRAY[
+      'award_years', 'award_seasons', 'organisations', 'organisation_contacts',
+      'award_assignments', 'winners', 'entries', 'entry_files',
+      'events', 'event_templates', 'event_attendees', 'event_tables',
+      'table_assignments', 'event_galleries', 'running_order', 'running_order_settings',
+      'media_gallery', 'gallery_sections', 'media_items', 'winner_media',
+      'organisation_images', 'judge_scores', 'user_roles', 'public_votes',
+      'invoices', 'invoice_line_items', 'payments', 'email_templates',
+      'email_lists', 'email_list_subscribers', 'email_log', 'email_import_batches',
+      'communications', 'social_media_posts', 'banners', 'sponsors',
+      'ai_vetting_runs', 'ai_vetting_results', 'activity_logs', 'counties',
+      'contacts', 'deals', 'payment_reminders', 'event_guests', 'social_campaigns'
+    ])
+  LOOP
+    IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = tbl) THEN
+      EXECUTE format('GRANT ALL ON public.%I TO anon', tbl);
+      EXECUTE format('GRANT ALL ON public.%I TO authenticated', tbl);
+      EXECUTE format('GRANT ALL ON public.%I TO service_role', tbl);
+    END IF;
+  END LOOP;
+END $$;
+
+-- Grant access to views
+GRANT ALL ON public.awards TO anon;
+GRANT ALL ON public.awards TO authenticated;
+GRANT ALL ON public.awards TO service_role;
+GRANT ALL ON public.activity_log TO anon;
+GRANT ALL ON public.activity_log TO authenticated;
+GRANT ALL ON public.activity_log TO service_role;
+
+-- Reload PostgREST schema cache
+NOTIFY pgrst, 'reload schema';
+
+
+-- ============================================================
 -- DONE! Your database is now fully set up.
 -- Refresh your browser to start using the CMS.
 -- ============================================================

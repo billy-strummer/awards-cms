@@ -616,10 +616,7 @@ British Trade Awards Team
    */
   async loadSeasons() {
     try {
-      const { data, error } = await STATE.client
-        .from('award_seasons')
-        .select('*')
-        .order('year', { ascending: false });
+      const { data, error } = await STATE.client.rpc('get_award_seasons');
 
       if (error) throw error;
 
@@ -771,20 +768,22 @@ British Trade Awards Team
 
       // If setting as default, unset other defaults first
       if (isDefault) {
-        await STATE.client
-          .from('award_seasons')
-          .update({ is_default: false })
-          .eq('is_default', true);
+        await STATE.client.rpc('unset_default_seasons');
       }
 
-      let error;
+      let result;
       if (id) {
-        ({ error } = await STATE.client.from('award_seasons').update(seasonData).eq('id', id));
+        result = await STATE.client.rpc('update_award_season', {
+          season_id: id,
+          season_data: seasonData
+        });
       } else {
-        ({ error } = await STATE.client.from('award_seasons').insert(seasonData));
+        result = await STATE.client.rpc('insert_award_season', {
+          season_data: seasonData
+        });
       }
 
-      if (error) throw error;
+      if (result.error) throw result.error;
 
       const modal = bootstrap.Modal.getInstance(document.getElementById('seasonFormModal'));
       if (modal) modal.hide();
@@ -808,7 +807,7 @@ British Trade Awards Team
 
     try {
       utils.showLoading();
-      const { error } = await STATE.client.from('award_seasons').delete().eq('id', seasonId);
+      const { error } = await STATE.client.rpc('delete_award_season', { season_id: seasonId });
       if (error) throw error;
 
       utils.showToast('Season deleted', 'success');

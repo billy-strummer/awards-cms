@@ -334,11 +334,19 @@ const assignmentsModule = {
               title="Mark as Shortlisted">
               <i class="bi bi-star"></i>
             </button>
-            <button class="btn btn-outline-success btn-sm"
-              onclick="assignmentsModule.changeStatus('${assignment.id}', 'winner')"
-              title="Mark as Winner">
-              <i class="bi bi-trophy"></i>
-            </button>
+            <div class="btn-group btn-group-sm">
+              <button class="btn btn-outline-success btn-sm dropdown-toggle"
+                data-bs-toggle="dropdown" title="Set Winner Position">
+                <i class="bi bi-trophy"></i>
+              </button>
+              <ul class="dropdown-menu dropdown-menu-end">
+                <li><a class="dropdown-item" href="javascript:void(0);" onclick="assignmentsModule.setWinnerPosition('${assignment.id}', 1)"><i class="bi bi-star-fill me-2" style="color: #ffd700;"></i>1st Place (Gold)</a></li>
+                <li><a class="dropdown-item" href="javascript:void(0);" onclick="assignmentsModule.setWinnerPosition('${assignment.id}', 2)"><i class="bi bi-star-fill me-2" style="color: #c0c0c0;"></i>2nd Place (Silver)</a></li>
+                <li><a class="dropdown-item" href="javascript:void(0);" onclick="assignmentsModule.setWinnerPosition('${assignment.id}', 3)"><i class="bi bi-star-fill me-2" style="color: #cd7f32;"></i>3rd Place (Bronze)</a></li>
+                <li><hr class="dropdown-divider"></li>
+                <li><a class="dropdown-item" href="javascript:void(0);" onclick="assignmentsModule.changeStatus('${assignment.id}', 'winner')"><i class="bi bi-trophy me-2 text-success"></i>Winner (no position)</a></li>
+              </ul>
+            </div>
             <button class="btn btn-outline-secondary btn-sm"
               onclick="orgsModule.openCompanyProfile('${org.id}', '${utils.escapeHtml(org.company_name).replace(/'/g, "\\'")}')"
               title="View Profile">
@@ -759,6 +767,39 @@ const assignmentsModule = {
         </button>
       </div>
     `;
+  },
+
+  /**
+   * Set winner position (1st, 2nd, 3rd)
+   */
+  async setWinnerPosition(assignmentId, position) {
+    try {
+      utils.showLoading();
+
+      const positionLabels = { 1: '1st Place (Gold)', 2: '2nd Place (Silver)', 3: '3rd Place (Bronze)' };
+
+      const { error } = await STATE.client
+        .from('award_assignments')
+        .update({
+          status: 'winner',
+          winner_position: position,
+          actual_winner: true,
+          announcement_date: new Date().toISOString().split('T')[0],
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', assignmentId);
+
+      if (error) throw error;
+
+      utils.showToast(`Set as ${positionLabels[position]}!`, 'success');
+      await this.refreshAssignments();
+
+    } catch (error) {
+      console.error('Error setting winner position:', error);
+      utils.showToast('Failed to set winner position: ' + error.message, 'error');
+    } finally {
+      utils.hideLoading();
+    }
   },
 
   /**

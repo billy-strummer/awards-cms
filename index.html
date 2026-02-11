@@ -683,6 +683,42 @@
             <p class="section-subtitle">Manage and review award submissions</p>
           </div>
 
+          <!-- Stats Summary -->
+          <div class="row mb-4" id="awardsStatsRow">
+            <div class="col-12">
+              <div class="card border-0 shadow-sm">
+                <div class="card-body py-3">
+                  <div class="row text-center">
+                    <div class="col-md-2">
+                      <h6 class="text-muted mb-1 small">Total Awards</h6>
+                      <h3 class="mb-0 fw-bold text-primary" id="statsTotalAwards">0</h3>
+                    </div>
+                    <div class="col-md-2">
+                      <h6 class="text-muted mb-1 small">Active</h6>
+                      <h3 class="mb-0 fw-bold text-success" id="statsActiveAwards">0</h3>
+                    </div>
+                    <div class="col-md-2">
+                      <h6 class="text-muted mb-1 small">With Nominees</h6>
+                      <h3 class="mb-0 fw-bold text-info" id="statsWithNominees">0</h3>
+                    </div>
+                    <div class="col-md-2">
+                      <h6 class="text-muted mb-1 small">Winners Declared</h6>
+                      <h3 class="mb-0 fw-bold text-warning" id="statsWithWinners">0</h3>
+                    </div>
+                    <div class="col-md-2">
+                      <h6 class="text-muted mb-1 small">Counties</h6>
+                      <h3 class="mb-0 fw-bold text-secondary" id="statsCounties">0</h3>
+                    </div>
+                    <div class="col-md-2">
+                      <h6 class="text-muted mb-1 small">Sectors</h6>
+                      <h3 class="mb-0 fw-bold text-dark" id="statsSectors">0</h3>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
           <!-- Filters Section -->
 <div class="filters-section" style="position: sticky; top: 104px; z-index: 999; background-color: white; padding: 1rem 0; margin-bottom: 1rem; border-bottom: 1px solid #dee2e6;">
   <div class="row g-3">
@@ -759,8 +795,43 @@
               <h5 class="mb-0">
                 <i class="bi bi-list-ul me-2"></i>Awards List
               </h5>
-              <div class="badge bg-primary-subtle text-primary fs-6">
-                <span id="awardsCount">0</span> awards
+              <div class="d-flex align-items-center gap-3">
+                <button class="btn btn-primary btn-sm" onclick="awardsModule.openCreateModal()">
+                  <i class="bi bi-plus-lg me-1"></i>Add Award
+                </button>
+                <button class="btn btn-outline-secondary btn-sm" onclick="awardsModule.exportAwards()">
+                  <i class="bi bi-download me-1"></i>Export CSV
+                </button>
+                <div class="badge bg-primary-subtle text-primary fs-6">
+                  <span id="awardsCount">0</span> awards
+                </div>
+              </div>
+            </div>
+
+            <!-- Bulk Actions Toolbar (hidden until selections made) -->
+            <div id="awardsBulkActions" class="alert alert-primary d-flex align-items-center justify-content-between mb-3" style="display: none !important;">
+              <div>
+                <i class="bi bi-check2-square me-2"></i>
+                <strong><span id="awardsBulkCount">0</span></strong> awards selected
+              </div>
+              <div class="d-flex gap-2">
+                <div class="btn-group btn-group-sm">
+                  <button class="btn btn-success" onclick="awardsModule.bulkSetStatus('Active')">
+                    <i class="bi bi-check-circle me-1"></i>Set Active
+                  </button>
+                  <button class="btn btn-warning" onclick="awardsModule.bulkSetStatus('Archived')">
+                    <i class="bi bi-archive me-1"></i>Archive
+                  </button>
+                  <button class="btn btn-secondary" onclick="awardsModule.bulkSetStatus('Draft')">
+                    <i class="bi bi-file-earmark me-1"></i>Set Draft
+                  </button>
+                </div>
+                <button class="btn btn-danger btn-sm" onclick="awardsModule.bulkDelete()">
+                  <i class="bi bi-trash me-1"></i>Delete Selected
+                </button>
+                <button class="btn btn-outline-secondary btn-sm" onclick="awardsModule.clearSelection()">
+                  <i class="bi bi-x-lg me-1"></i>Clear
+                </button>
               </div>
             </div>
 
@@ -768,16 +839,18 @@
               <table class="table table-hover table-striped align-middle">
                 <thead>
                   <tr>
-                    <th style="width: 35%;">Award Name</th>
-<th style="width: 14%;">Sector</th>
-<th style="width: 10%;">Status</th>
-<th style="width: 10%;" class="text-center">Nominees</th>
-<th style="width: 10%;" class="text-center">Actions</th>
+                    <th style="width: 3%;"><input type="checkbox" class="form-check-input" id="awardsSelectAll" onchange="awardsModule.toggleSelectAll(this.checked)"></th>
+                    <th style="width: 28%;">Award Name</th>
+<th style="width: 12%;">Sector</th>
+<th style="width: 8%;">Status</th>
+<th style="width: 8%;" class="text-center">Nominees</th>
+<th style="width: 14%;">Winner</th>
+<th style="width: 8%;" class="text-center">Actions</th>
                   </tr>
                 </thead>
                 <tbody id="awardsTableBody">
                   <tr>
-                    <td colspan="5" class="text-center py-5">
+                    <td colspan="7" class="text-center py-5">
                       <div class="text-muted">
                         <i class="bi bi-inbox display-3 d-block mb-3 opacity-25"></i>
                         <p class="mb-0">Loading awards...</p>
@@ -3807,6 +3880,80 @@ Available placeholders:
         </div>
         <div class="modal-footer bg-light">
           <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Create/Edit Award Modal -->
+  <div class="modal fade" id="awardFormModal" tabindex="-1" aria-labelledby="awardFormModalTitle" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+      <div class="modal-content">
+        <div class="modal-header bg-primary text-white">
+          <h5 class="modal-title" id="awardFormModalTitle">
+            <i class="bi bi-trophy me-2"></i>Add Award
+          </h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <form id="awardForm">
+            <input type="hidden" id="awardFormId">
+            <div class="row g-3">
+              <div class="col-md-8">
+                <label for="awardFormName" class="form-label fw-semibold">Category Name</label>
+                <input type="text" class="form-control" id="awardFormName" placeholder="e.g. Loft Conversion Company" required>
+                <div class="form-text">The category name (county prefix is added automatically)</div>
+              </div>
+              <div class="col-md-4">
+                <label for="awardFormYear" class="form-label fw-semibold">Year</label>
+                <input type="number" class="form-control" id="awardFormYear" value="2026" min="2024" max="2030" required>
+              </div>
+              <div class="col-md-6">
+                <label for="awardFormCounty" class="form-label fw-semibold">County/City</label>
+                <select class="form-select" id="awardFormCounty" required>
+                  <option value="">Select County/City...</option>
+                </select>
+              </div>
+              <div class="col-md-6">
+                <label for="awardFormSector" class="form-label fw-semibold">Sector</label>
+                <select class="form-select" id="awardFormSector" required>
+                  <option value="">Select Sector...</option>
+                </select>
+              </div>
+              <div class="col-md-6">
+                <label for="awardFormStatus" class="form-label fw-semibold">Status</label>
+                <select class="form-select" id="awardFormStatus">
+                  <option value="Active">Active</option>
+                  <option value="Draft">Draft</option>
+                  <option value="Pending">Pending</option>
+                  <option value="Published">Published</option>
+                  <option value="Archived">Archived</option>
+                </select>
+              </div>
+              <div class="col-md-6">
+                <label for="awardFormEntryOpen" class="form-label fw-semibold">Entry Open Date</label>
+                <input type="date" class="form-control" id="awardFormEntryOpen">
+              </div>
+              <div class="col-md-6">
+                <label for="awardFormEntryClose" class="form-label fw-semibold">Entry Close Date</label>
+                <input type="date" class="form-control" id="awardFormEntryClose">
+              </div>
+              <div class="col-md-6">
+                <label for="awardFormJudging" class="form-label fw-semibold">Judging Date</label>
+                <input type="date" class="form-control" id="awardFormJudging">
+              </div>
+              <div class="col-12">
+                <label for="awardFormDescription" class="form-label fw-semibold">Description</label>
+                <textarea class="form-control" id="awardFormDescription" rows="3" placeholder="Optional description..."></textarea>
+              </div>
+            </div>
+          </form>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="button" class="btn btn-primary" onclick="awardsModule.saveAward()">
+            <i class="bi bi-check-lg me-1"></i>Save Award
+          </button>
         </div>
       </div>
     </div>

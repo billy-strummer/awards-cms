@@ -27,11 +27,20 @@ ALTER TABLE award_seasons ADD COLUMN IF NOT EXISTS judging_close_date DATE;
 -- Allow public access (matches existing RLS pattern)
 ALTER TABLE award_seasons ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Allow all access to award_seasons" ON award_seasons;
 CREATE POLICY "Allow all access to award_seasons"
   ON award_seasons
   FOR ALL
   USING (true)
   WITH CHECK (true);
+
+-- Grant access to Supabase roles (required for PostgREST API access)
+GRANT ALL ON public.award_seasons TO anon;
+GRANT ALL ON public.award_seasons TO authenticated;
+GRANT ALL ON public.award_seasons TO service_role;
+
+-- Reload PostgREST schema cache
+NOTIFY pgrst, 'reload schema';
 
 -- Insert a default 2026 season
 INSERT INTO award_seasons (name, year, is_default)

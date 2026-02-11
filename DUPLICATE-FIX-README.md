@@ -46,7 +46,7 @@ Enhanced the existing cleanup script with:
 
 ### Step 1: Open Supabase SQL Editor
 
-1. Go to your Supabase Dashboard: https://bipndtstiqdydtdegjdx.supabase.co
+1. Go to your Supabase Dashboard: https://qdzyknercdqwhwijbcxf.supabase.co
 2. Navigate to **SQL Editor**
 3. Create a new query
 

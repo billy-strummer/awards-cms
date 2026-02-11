@@ -46,7 +46,7 @@ console.log(`\n📂 CSV File: ${path.basename(csvFilePath)}`);
 console.log(`🔍 Mode: ${isDryRun ? 'DRY RUN (preview only)' : 'LIVE IMPORT'}\n`);
 
 // Supabase Configuration
-const SUPABASE_URL = process.env.SUPABASE_URL || 'https://bipndtstiqdydtdegjdx.supabase.co';
+const SUPABASE_URL = process.env.SUPABASE_URL || 'https://qdzyknercdqwhwijbcxf.supabase.co';
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY || process.env.SUPABASE_KEY;
 
 if (!SUPABASE_KEY) {

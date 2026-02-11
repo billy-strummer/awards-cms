@@ -51,7 +51,7 @@ const crmModule = {
 
     try {
       // Load organisations with CRM summary from view
-      const { data: companies, error } = await supabase
+      const { data: companies, error } = await STATE.client
         .from('organisations_with_crm_summary')
         .select('*')
         .order('last_communication_date', { ascending: false, nullsFirst: false });
@@ -147,7 +147,7 @@ const crmModule = {
     console.log('Loading communications...');
 
     try {
-      let query = supabase
+      let query = STATE.client
         .from('communications')
         .select(`
           *,
@@ -262,7 +262,7 @@ const crmModule = {
     console.log('Loading deals...');
 
     try {
-      let query = supabase
+      let query = STATE.client
         .from('deals')
         .select(`
           *,
@@ -417,7 +417,7 @@ const crmModule = {
     console.log('Loading meetings...');
 
     try {
-      let query = supabase
+      let query = STATE.client
         .from('meeting_notes')
         .select(`
           *,
@@ -521,7 +521,7 @@ const crmModule = {
 
     try {
       // Load all segments with counts
-      const { data: segments, error } = await supabase
+      const { data: segments, error } = await STATE.client
         .from('contact_segments')
         .select(`
           *,
@@ -534,7 +534,7 @@ const crmModule = {
       // Get counts for each segment
       const segmentsWithCounts = await Promise.all(
         segments.map(async segment => {
-          const { count, error } = await supabase
+          const { count, error } = await STATE.client
             .from('organisation_segments')
             .select('*', { count: 'exact', head: true })
             .eq('segment_id', segment.id);
@@ -730,7 +730,7 @@ const crmModule = {
     document.body.insertAdjacentHTML('beforeend', modalHtml);
 
     // Load organisations for dropdown
-    const { data: orgs } = await supabase
+    const { data: orgs } = await STATE.client
       .from('organisations')
       .select('id, company_name')
       .order('company_name');
@@ -771,7 +771,7 @@ const crmModule = {
     };
 
     try {
-      const { error } = await supabase
+      const { error } = await STATE.client
         .from('communications')
         .insert([communicationData]);
 
@@ -807,7 +807,7 @@ const crmModule = {
     }
 
     try {
-      const { error } = await supabase
+      const { error } = await STATE.client
         .from('communications')
         .delete()
         .eq('id', commId);
@@ -838,7 +838,7 @@ const crmModule = {
     }
 
     try {
-      const { error } = await supabase
+      const { error } = await STATE.client
         .from('deals')
         .delete()
         .eq('id', dealId);
@@ -869,7 +869,7 @@ const crmModule = {
     }
 
     try {
-      const { error } = await supabase
+      const { error } = await STATE.client
         .from('meeting_notes')
         .delete()
         .eq('id', meetingId);

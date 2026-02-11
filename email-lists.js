@@ -27,7 +27,7 @@ const emailListsModule = {
   // ============================================
   async loadEmailLists() {
     try {
-      const { data: lists, error } = await supabase
+      const { data: lists, error } = await STATE.client
         .from('email_lists_with_stats')
         .select('*')
         .order('created_at', { ascending: false });
@@ -56,12 +56,12 @@ const emailListsModule = {
   async loadStats() {
     try {
       // Get total lists count
-      const { count: totalLists } = await supabase
+      const { count: totalLists } = await STATE.client
         .from('email_lists')
         .select('*', { count: 'exact', head: true });
 
       // Get total subscribers across all lists
-      const { data: subscribersData } = await supabase
+      const { data: subscribersData } = await STATE.client
         .from('email_list_subscribers')
         .select('id, status, emails_opened, emails_received');
 
@@ -305,7 +305,7 @@ const emailListsModule = {
     };
 
     try {
-      const { error } = await supabase
+      const { error } = await STATE.client
         .from('email_lists')
         .insert([listData]);
 
@@ -325,7 +325,7 @@ const emailListsModule = {
   // ============================================
   async openImportModal(listId = null) {
     // Load lists for dropdown
-    const { data: lists } = await supabase
+    const { data: lists } = await STATE.client
       .from('email_lists')
       .select('id, list_name')
       .eq('is_active', true)
@@ -536,7 +536,7 @@ const emailListsModule = {
       }
 
       // Create import batch
-      const { data: batch, error: batchError } = await supabase
+      const { data: batch, error: batchError } = await STATE.client
         .from('email_import_batches')
         .insert([{
           list_id: listId,
@@ -557,14 +557,14 @@ const emailListsModule = {
         source: activeTab.replace('-tab', '')
       }));
 
-      const { data, error } = await supabase
+      const { data, error } = await STATE.client
         .from('email_list_subscribers')
         .insert(subscribersToInsert);
 
       if (error) throw error;
 
       // Update batch status
-      await supabase
+      await STATE.client
         .from('email_import_batches')
         .update({
           status: 'completed',
@@ -640,7 +640,7 @@ const emailListsModule = {
 
   async exportList(listId) {
     try {
-      const { data: subscribers, error } = await supabase
+      const { data: subscribers, error } = await STATE.client
         .from('email_list_subscribers')
         .select('email, first_name, last_name, company_name, status')
         .eq('list_id', listId);
@@ -677,7 +677,7 @@ const emailListsModule = {
     }
 
     try {
-      const { error } = await supabase
+      const { error } = await STATE.client
         .from('email_lists')
         .delete()
         .eq('id', listId);

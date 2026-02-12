@@ -23,6 +23,9 @@ const dashboardModule = {
       await this.loadActivityFeed();
       await this.loadNotifications();
 
+      // Load awards year summary table
+      await this.loadAwardsYearSummary();
+
       // Load charts
       await this.loadCharts();
 
@@ -84,6 +87,107 @@ const dashboardModule = {
 
     // Update top companies table
     this.updateTopCompanies();
+  },
+
+  /**
+   * Load Awards Year-over-Year Summary table
+   */
+  async loadAwardsYearSummary() {
+    const tbody = document.getElementById('awardsYearSummaryBody');
+    if (!tbody) return;
+
+    try {
+      // Fetch awards, assignments, and entries in parallel
+      const [awardsRes, assignmentsRes, entriesRes] = await Promise.all([
+        STATE.client.from('awards').select('id, year'),
+        STATE.client.from('award_assignments').select('award_id, status'),
+        STATE.client.from('entries').select('id, award_id')
+      ]);
+
+      const awards = awardsRes.data || [];
+      const assignments = assignmentsRes.data || [];
+      const entries = entriesRes.data || [];
+
+      // Build a map of award_id -> year
+      const awardYearMap = {};
+      awards.forEach(a => { awardYearMap[a.id] = a.year; });
+
+      // Get distinct years and sort descending
+      const years = [...new Set(awards.map(a => a.year).filter(Boolean))].sort((a, b) => b - a);
+
+      if (years.length === 0) {
+        tbody.innerHTML = `
+          <tr>
+            <td colspan="4" class="text-center py-4 text-muted">
+              <i class="bi bi-inbox display-6 d-block mb-2 opacity-25"></i>
+              No awards data yet
+            </td>
+          </tr>`;
+        return;
+      }
+
+      // Build award IDs set per year for quick lookup
+      const awardIdsByYear = {};
+      years.forEach(y => {
+        awardIdsByYear[y] = new Set(awards.filter(a => String(a.year) === String(y)).map(a => a.id));
+      });
+
+      // Count nominees (distinct organisations assigned) per year
+      const nomineesByYear = {};
+      years.forEach(y => {
+        const yearAwardIds = awardIdsByYear[y];
+        nomineesByYear[y] = assignments.filter(a => yearAwardIds.has(a.award_id)).length;
+      });
+
+      // Count nominations (entries) per year
+      const nominationsByYear = {};
+      years.forEach(y => {
+        const yearAwardIds = awardIdsByYear[y];
+        nominationsByYear[y] = entries.filter(e => yearAwardIds.has(e.award_id)).length;
+      });
+
+      // Build totals row
+      let totalAwards = 0, totalNominees = 0, totalNominations = 0;
+
+      let html = '';
+      years.forEach(y => {
+        const numAwards = awardIdsByYear[y].size;
+        const numNominees = nomineesByYear[y] || 0;
+        const numNominations = nominationsByYear[y] || 0;
+
+        totalAwards += numAwards;
+        totalNominees += numNominees;
+        totalNominations += numNominations;
+
+        html += `
+          <tr>
+            <td><span class="fw-semibold">${y}</span></td>
+            <td class="text-center"><span class="badge bg-primary rounded-pill">${numAwards}</span></td>
+            <td class="text-center"><span class="badge bg-success rounded-pill">${numNominees}</span></td>
+            <td class="text-center"><span class="badge bg-info rounded-pill">${numNominations}</span></td>
+          </tr>`;
+      });
+
+      // Add totals row
+      html += `
+        <tr class="table-light fw-bold">
+          <td>Total</td>
+          <td class="text-center"><span class="badge bg-primary rounded-pill">${totalAwards}</span></td>
+          <td class="text-center"><span class="badge bg-success rounded-pill">${totalNominees}</span></td>
+          <td class="text-center"><span class="badge bg-info rounded-pill">${totalNominations}</span></td>
+        </tr>`;
+
+      tbody.innerHTML = html;
+
+    } catch (error) {
+      console.error('Error loading awards year summary:', error);
+      tbody.innerHTML = `
+        <tr>
+          <td colspan="4" class="text-center py-3 text-danger">
+            <i class="bi bi-exclamation-triangle me-2"></i>Failed to load awards summary
+          </td>
+        </tr>`;
+    }
   },
 
   /**

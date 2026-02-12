@@ -318,6 +318,11 @@ body.dark-mode {
   box-shadow: var(--shadow-md);
 }
 
+/* Category accordion arrow rotation */
+[data-bs-toggle="collapse"][aria-expanded="true"] .cat-arrow {
+  transform: rotate(90deg);
+}
+
 /* ==================================================== */
 /* TABLES */
 /* ==================================================== */

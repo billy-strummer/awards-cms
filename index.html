@@ -1400,17 +1400,20 @@
                 <thead>
                   <tr>
                     <th style="width: 3%;"><input type="checkbox" class="form-check-input" id="awardsSelectAll" onchange="awardsModule.toggleSelectAll(this.checked)"></th>
-                    <th style="width: 28%; cursor: pointer;" onclick="awardsModule.sortBy('award_name')">Award Name <i class="bi bi-arrow-down-up text-muted ms-1 small"></i></th>
-                    <th style="width: 12%; cursor: pointer;" onclick="awardsModule.sortBy('sector')">Sector <i class="bi bi-arrow-down-up text-muted ms-1 small"></i></th>
-                    <th style="width: 8%; cursor: pointer;" onclick="awardsModule.sortBy('status')">Status <i class="bi bi-arrow-down-up text-muted ms-1 small"></i></th>
-                    <th style="width: 8%; cursor: pointer;" class="text-center" onclick="awardsModule.sortBy('nominees')">Nominees <i class="bi bi-arrow-down-up text-muted ms-1 small"></i></th>
+                    <th style="width: 5%; cursor: pointer;" onclick="awardsModule.sortBy('year')">Year <i class="bi bi-arrow-down-up text-muted ms-1 small"></i></th>
+                    <th style="width: 22%; cursor: pointer;" onclick="awardsModule.sortBy('award_name')">Award Name <i class="bi bi-arrow-down-up text-muted ms-1 small"></i></th>
+                    <th style="width: 12%; cursor: pointer;" onclick="awardsModule.sortBy('county')">County/City <i class="bi bi-arrow-down-up text-muted ms-1 small"></i></th>
+                    <th style="width: 10%; cursor: pointer;" onclick="awardsModule.sortBy('sector')">Sector <i class="bi bi-arrow-down-up text-muted ms-1 small"></i></th>
+                    <th style="width: 7%; cursor: pointer;" onclick="awardsModule.sortBy('status')">Status <i class="bi bi-arrow-down-up text-muted ms-1 small"></i></th>
+                    <th style="width: 6%; cursor: pointer;" class="text-center" onclick="awardsModule.sortBy('nominees')">Nominees <i class="bi bi-arrow-down-up text-muted ms-1 small"></i></th>
+                    <th style="width: 7%;" class="text-center">Phase</th>
                     <th style="width: 14%; cursor: pointer;" onclick="awardsModule.sortBy('winner')">Winner <i class="bi bi-arrow-down-up text-muted ms-1 small"></i></th>
-                    <th style="width: 8%;" class="text-center">Actions</th>
+                    <th style="width: 6%;" class="text-center">Actions</th>
                   </tr>
                 </thead>
                 <tbody id="awardsTableBody">
                   <tr>
-                    <td colspan="7" class="text-center py-5">
+                    <td colspan="10" class="text-center py-5">
                       <div class="text-muted">
                         <i class="bi bi-inbox display-3 d-block mb-3 opacity-25"></i>
                         <p class="mb-0">Loading awards...</p>
@@ -4590,6 +4593,29 @@ Available placeholders:
               <div class="col-md-3">
                 <label for="awardFormWinnersAnnouncement" class="form-label small">Winners Announced</label>
                 <input type="date" class="form-control form-control-sm" id="awardFormWinnersAnnouncement">
+              </div>
+              <div class="col-12">
+                <label class="form-label fw-semibold">Previous Year Results</label>
+                <div class="row g-2">
+                  <div class="col-md-4">
+                    <div class="input-group input-group-sm">
+                      <span class="input-group-text"><i class="bi bi-trophy-fill text-warning"></i></span>
+                      <input type="text" class="form-control" id="awardFormPrevWinner" placeholder="1st Place">
+                    </div>
+                  </div>
+                  <div class="col-md-4">
+                    <div class="input-group input-group-sm">
+                      <span class="input-group-text"><i class="bi bi-award text-secondary"></i></span>
+                      <input type="text" class="form-control" id="awardFormPrev2nd" placeholder="2nd Place">
+                    </div>
+                  </div>
+                  <div class="col-md-4">
+                    <div class="input-group input-group-sm">
+                      <span class="input-group-text"><i class="bi bi-award text-info"></i></span>
+                      <input type="text" class="form-control" id="awardFormPrev3rd" placeholder="3rd Place">
+                    </div>
+                  </div>
+                </div>
               </div>
               <div class="col-12">
                 <label for="awardFormDescription" class="form-label fw-semibold">Description</label>

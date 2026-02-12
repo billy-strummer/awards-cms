@@ -46,6 +46,9 @@ const dashboardModule = {
         await aiVettingModule.updateDashboardCard();
       }
 
+      // Update county/city coverage indicators
+      await this.updateCountyCoverage();
+
       console.log('✅ Dashboard data loaded');
 
     } catch (error) {
@@ -2647,6 +2650,132 @@ const dashboardModule = {
       'archived': 'dark'
     };
     return statusColors[status?.toLowerCase()] || 'secondary';
+  },
+
+  // ============================================
+  // COUNTY/CITY COVERAGE TRACKING
+  // ============================================
+  async updateCountyCoverage() {
+    try {
+      // Get county counts from awards (which counties have award data)
+      const { data: awards } = await STATE.client
+        .from('awards')
+        .select('county');
+
+      // Get county counts from organisations (via award_assignments → awards)
+      const { data: assignments } = await STATE.client
+        .from('award_assignments')
+        .select('award_id, organisation_id');
+
+      const { data: awardData } = await STATE.client
+        .from('awards')
+        .select('id, county');
+
+      // Build county → org count map
+      const awardCountyMap = {};
+      (awardData || []).forEach(a => {
+        if (a.county) awardCountyMap[a.id] = a.county;
+      });
+
+      const countyOrgCounts = {};
+      const countyAwardCounts = {};
+
+      // Count awards per county
+      (awards || []).forEach(a => {
+        if (a.county) {
+          countyAwardCounts[a.county] = (countyAwardCounts[a.county] || 0) + 1;
+        }
+      });
+
+      // Count orgs per county (through assignments)
+      const orgsByCounty = {};
+      (assignments || []).forEach(a => {
+        const county = awardCountyMap[a.award_id];
+        if (county) {
+          if (!orgsByCounty[county]) orgsByCounty[county] = new Set();
+          orgsByCounty[county].add(a.organisation_id);
+        }
+      });
+
+      Object.entries(orgsByCounty).forEach(([county, orgSet]) => {
+        countyOrgCounts[county] = orgSet.size;
+      });
+
+      // Update each county item in the dashboard
+      const allCountyItems = document.querySelectorAll('[data-county]');
+      let coveredCount = 0;
+      const totalCount = allCountyItems.length;
+
+      allCountyItems.forEach(item => {
+        const countyName = item.getAttribute('data-county');
+        const orgCount = countyOrgCounts[countyName] || 0;
+        const awardCount = countyAwardCounts[countyName] || 0;
+
+        // Remove any previous coverage indicators
+        const existing = item.querySelector('.county-coverage');
+        if (existing) existing.remove();
+
+        if (orgCount > 0 || awardCount > 0) {
+          coveredCount++;
+          item.style.color = '#198754';
+          item.style.fontWeight = '600';
+
+          const badge = document.createElement('span');
+          badge.className = 'county-coverage float-end';
+          badge.innerHTML = `<span class="badge bg-success" style="font-size: 0.6rem;" title="${orgCount} orgs, ${awardCount} awards"><i class="bi bi-check-circle-fill me-1"></i>${orgCount} orgs</span>`;
+          item.appendChild(badge);
+        } else {
+          item.style.color = '';
+          item.style.fontWeight = '';
+        }
+      });
+
+      // Update summary stats
+      const statsEl = document.getElementById('countyCoverageStats');
+      if (statsEl) {
+        const pct = totalCount > 0 ? Math.round((coveredCount / totalCount) * 100) : 0;
+        statsEl.innerHTML = `<span class="text-success">${coveredCount}</span> / ${totalCount} counties covered (${pct}%)`;
+      }
+
+      // Update section header badges with coverage counts
+      this._updateSectionCoverage('regEng', countyOrgCounts);
+      this._updateSectionCoverage('regScot', countyOrgCounts);
+      this._updateSectionCoverage('regWales', countyOrgCounts);
+      this._updateSectionCoverage('regCities', countyOrgCounts);
+
+    } catch (error) {
+      console.error('Error updating county coverage:', error);
+    }
+  },
+
+  _updateSectionCoverage(sectionId, countyOrgCounts) {
+    const section = document.getElementById(sectionId);
+    if (!section) return;
+
+    const items = section.querySelectorAll('[data-county]');
+    let covered = 0;
+    items.forEach(item => {
+      const county = item.getAttribute('data-county');
+      if (countyOrgCounts[county] > 0) covered++;
+    });
+
+    // Add coverage badge next to the section's count badge
+    const headerDiv = section.previousElementSibling;
+    if (!headerDiv) return;
+
+    const existingCovBadge = headerDiv.querySelector('.coverage-badge');
+    if (existingCovBadge) existingCovBadge.remove();
+
+    if (covered > 0) {
+      const badge = document.createElement('span');
+      badge.className = 'badge bg-success ms-1 coverage-badge';
+      badge.title = `${covered} of ${items.length} have data`;
+      badge.textContent = `${covered}/${items.length}`;
+      const countBadge = headerDiv.querySelector('.badge');
+      if (countBadge) {
+        countBadge.parentNode.insertBefore(badge, countBadge.nextSibling);
+      }
+    }
   }
 };
 

@@ -116,9 +116,10 @@ async loadOrganisations() {
     // NEW: Calculate and display dashboard stats
     await this.calculateDashboardStats();
     
-    // Populate filter dropdowns
+    // Populate filter dropdowns and restore saved filters
     this.populateFilters();
-    this.renderOrganisations();
+    this.restoreFilters();
+    this.filterOrganisations();
     
     console.log(`✅ Loaded ${STATE.allOrganisations.length} organisations (across ${page} pages)`);
     
@@ -229,6 +230,40 @@ populateFilters() {
 },
 
 /**
+ * Restore saved filter values from localStorage
+ */
+restoreFilters() {
+  try {
+    const saved = JSON.parse(localStorage.getItem('orgsFilters') || '{}');
+    if (saved.year) {
+      const el = document.getElementById('orgsYearFilter');
+      if (el) el.value = saved.year;
+    }
+    if (saved.sector) {
+      const el = document.getElementById('orgsSectorFilter');
+      if (el) el.value = saved.sector;
+    }
+    if (saved.region) {
+      const el = document.getElementById('orgsRegionFilter');
+      if (el) el.value = saved.region;
+      this.updateCountyFilterByRegion();
+    }
+    if (saved.county) {
+      const el = document.getElementById('orgsCountyFilter');
+      if (el) el.value = saved.county;
+    }
+    if (saved.status) {
+      const el = document.getElementById('orgsStatusFilter');
+      if (el) el.value = saved.status;
+    }
+    if (saved.search) {
+      const el = document.getElementById('orgsSearchBox');
+      if (el) el.value = saved.search;
+    }
+  } catch (e) { /* ignore */ }
+},
+
+/**
  * Update county dropdown based on selected region
  */
 updateCountyFilterByRegion() {
@@ -272,6 +307,11 @@ updateCountyFilterByRegion() {
   const region = document.getElementById('orgsRegionFilter')?.value || '';
   const status = document.getElementById('orgsStatusFilter')?.value || '';
   const search = document.getElementById('orgsSearchBox')?.value.toLowerCase().trim() || '';
+
+  // Save filters to localStorage
+  try {
+    localStorage.setItem('orgsFilters', JSON.stringify({ year, sector, county, region, status, search }));
+  } catch (e) { /* ignore */ }
 
   STATE.filteredOrganisations = STATE.allOrganisations.filter(org => {
     // Year filter
@@ -403,7 +443,14 @@ updateCountyFilterByRegion() {
           </span>
         </td>
         <td class="text-center">
-          ${this.getStatusBadge(org.status || 'prospect')}
+          <select class="form-select form-select-sm border-0 p-0 text-center"
+                  style="font-size: 0.75rem; background-position: right 0.25rem center; padding-right: 1.2rem !important; cursor: pointer;"
+                  onchange="orgsModule.quickUpdateStatus('${org.id}', this.value)"
+                  title="Click to change status">
+            ${['prospect','entrant','nominee','shortlisted','winner','sponsor','past_winner'].map(s =>
+              `<option value="${s}" ${(org.status || 'prospect') === s ? 'selected' : ''}>${s.charAt(0).toUpperCase() + s.slice(1).replace('_', ' ')}</option>`
+            ).join('')}
+          </select>
         </td>
         <td class="text-center">
           ${awardsCount > 0 ?
@@ -2177,6 +2224,32 @@ updateCountyFilterByRegion() {
   // UPDATE COMPANY STATUS
   // ============================================
   // ============================================
+  // QUICK INLINE STATUS UPDATE
+  // ============================================
+  async quickUpdateStatus(orgId, newStatus) {
+    try {
+      const { error } = await STATE.client
+        .from('organisations')
+        .update({ status: newStatus })
+        .eq('id', orgId);
+
+      if (error) throw error;
+
+      // Update local state
+      const org = STATE.allOrganisations.find(o => o.id === orgId);
+      if (org) org.status = newStatus;
+
+      const filteredOrg = STATE.filteredOrganisations.find(o => o.id === orgId);
+      if (filteredOrg) filteredOrg.status = newStatus;
+
+      utils.showToast(`Status updated to ${newStatus.replace('_', ' ')}`, 'success');
+    } catch (error) {
+      console.error('Error updating status:', error);
+      utils.showToast('Error updating status: ' + error.message, 'error');
+    }
+  },
+
+  // ============================================
   // DELETE ORGANISATION
   // ============================================
   async deleteOrganisation(orgId, companyName) {
@@ -2296,6 +2369,333 @@ updateCountyFilterByRegion() {
       console.error('Error updating status:', error);
       utils.showToast('Error updating status: ' + error.message, 'error');
     }
+  },
+
+  // ============================================
+  // CSV IMPORT
+  // ============================================
+  _csvData: null,
+  _csvHeaders: null,
+  _csvColumnMap: {},
+
+  // Known DB column mappings from common CSV header names
+  _columnAliases: {
+    'company_name': 'company_name', 'company name': 'company_name', 'companyname': 'company_name',
+    'name': 'company_name', 'business name': 'company_name', 'organisation': 'company_name',
+    'sector': 'sector', 'industry': 'sector', 'category': 'sector',
+    'county': 'county', 'county/city': 'county', 'location': 'county', 'city': 'county',
+    'region': 'region', 'area': 'region',
+    'contact_name': 'contact_name', 'contact name': 'contact_name', 'contact': 'contact_name',
+    'email': 'email', 'email address': 'email', 'e-mail': 'email',
+    'phone': 'contact_phone', 'contact_phone': 'contact_phone', 'telephone': 'contact_phone', 'tel': 'contact_phone',
+    'website': 'website', 'url': 'website', 'web': 'website', 'site': 'website',
+    'address': 'address', 'postal address': 'address',
+    'catchment_area': 'catchment_area', 'catchment area': 'catchment_area', 'catchment': 'catchment_area'
+  },
+
+  _dbFields: ['company_name', 'sector', 'county', 'region', 'contact_name', 'email', 'contact_phone', 'website', 'address', 'catchment_area'],
+
+  parseCSVFile(input) {
+    const file = input.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const text = e.target.result;
+      this._processCSVText(text);
+    };
+    reader.readAsText(file);
+  },
+
+  parseCSVText() {
+    const text = document.getElementById('csvPasteArea').value.trim();
+    if (!text) {
+      utils.showToast('Please paste CSV data first', 'warning');
+      return;
+    }
+    this._processCSVText(text);
+  },
+
+  _processCSVText(text) {
+    const lines = text.split(/\r?\n/).filter(l => l.trim());
+    if (lines.length < 2) {
+      utils.showToast('CSV must have at least a header row and one data row', 'error');
+      return;
+    }
+
+    // Parse header
+    this._csvHeaders = this._parseCSVLine(lines[0]);
+
+    // Parse data rows
+    this._csvData = [];
+    for (let i = 1; i < lines.length; i++) {
+      const values = this._parseCSVLine(lines[i]);
+      if (values.some(v => v.trim())) {
+        this._csvData.push(values);
+      }
+    }
+
+    if (this._csvData.length === 0) {
+      utils.showToast('No data rows found in CSV', 'error');
+      return;
+    }
+
+    // Auto-map columns
+    this._csvColumnMap = {};
+    this._csvHeaders.forEach((header, idx) => {
+      const normalised = header.toLowerCase().trim();
+      if (this._columnAliases[normalised]) {
+        this._csvColumnMap[idx] = this._columnAliases[normalised];
+      }
+    });
+
+    // Show step 2: column mapping
+    this._showColumnMapping();
+  },
+
+  _parseCSVLine(line) {
+    const result = [];
+    let current = '';
+    let inQuotes = false;
+
+    for (let i = 0; i < line.length; i++) {
+      const ch = line[i];
+      if (inQuotes) {
+        if (ch === '"' && line[i + 1] === '"') {
+          current += '"';
+          i++;
+        } else if (ch === '"') {
+          inQuotes = false;
+        } else {
+          current += ch;
+        }
+      } else {
+        if (ch === '"') {
+          inQuotes = true;
+        } else if (ch === ',') {
+          result.push(current.trim());
+          current = '';
+        } else {
+          current += ch;
+        }
+      }
+    }
+    result.push(current.trim());
+    return result;
+  },
+
+  _showColumnMapping() {
+    document.getElementById('csvStep1').style.display = 'none';
+    document.getElementById('csvStep2').style.display = 'block';
+
+    const container = document.getElementById('csvColumnMapping');
+    container.innerHTML = this._csvHeaders.map((header, idx) => {
+      const mapped = this._csvColumnMap[idx] || '';
+      return `
+        <div class="col-md-4 mb-2">
+          <label class="form-label small fw-semibold mb-1">
+            CSV: "${utils.escapeHtml(header)}"
+            <span class="text-muted">(sample: ${utils.escapeHtml(this._csvData[0]?.[idx] || '')})</span>
+          </label>
+          <select class="form-select form-select-sm" onchange="orgsModule._updateColumnMap(${idx}, this.value)">
+            <option value="">-- Skip --</option>
+            ${this._dbFields.map(f => `<option value="${f}" ${mapped === f ? 'selected' : ''}>${f.replace(/_/g, ' ')}</option>`).join('')}
+          </select>
+        </div>
+      `;
+    }).join('');
+
+    // Add apply mapping button
+    container.innerHTML += `
+      <div class="col-12 mt-2">
+        <button class="btn btn-primary" onclick="orgsModule._applyMapping()">
+          <i class="bi bi-eye me-1"></i>Preview Import
+        </button>
+      </div>
+    `;
+  },
+
+  _updateColumnMap(idx, value) {
+    if (value) {
+      this._csvColumnMap[idx] = value;
+    } else {
+      delete this._csvColumnMap[idx];
+    }
+  },
+
+  _applyMapping() {
+    // Check company_name is mapped
+    const hasCompanyName = Object.values(this._csvColumnMap).includes('company_name');
+    if (!hasCompanyName) {
+      utils.showToast('You must map at least the "Company Name" column', 'error');
+      return;
+    }
+
+    // Build preview
+    const existingNames = new Set(
+      STATE.allOrganisations.map(o => (o.company_name || '').toLowerCase())
+    );
+
+    let newCount = 0;
+    let dupCount = 0;
+
+    const previewRows = this._csvData.map(row => {
+      const record = {};
+      Object.entries(this._csvColumnMap).forEach(([idx, field]) => {
+        record[field] = row[parseInt(idx)] || '';
+      });
+
+      const isDuplicate = existingNames.has((record.company_name || '').toLowerCase());
+      if (isDuplicate) dupCount++; else newCount++;
+
+      return { record, isDuplicate };
+    });
+
+    // Show step 3
+    document.getElementById('csvStep2').style.display = 'none';
+    document.getElementById('csvStep3').style.display = 'block';
+
+    const mappedFields = [...new Set(Object.values(this._csvColumnMap))];
+
+    document.getElementById('csvPreviewCount').textContent = previewRows.length;
+    document.getElementById('csvNewCount').textContent = `${newCount} new`;
+    document.getElementById('csvDuplicateCount').textContent = `${dupCount} duplicates`;
+
+    document.getElementById('csvPreviewHeader').innerHTML =
+      '<th>#</th>' +
+      mappedFields.map(f => `<th>${f.replace(/_/g, ' ')}</th>`).join('') +
+      '<th>Status</th>';
+
+    document.getElementById('csvPreviewBody').innerHTML = previewRows.map((item, i) => `
+      <tr class="${item.isDuplicate ? 'table-warning' : ''}">
+        <td class="small">${i + 1}</td>
+        ${mappedFields.map(f => `<td class="small">${utils.escapeHtml(item.record[f] || '-')}</td>`).join('')}
+        <td>
+          ${item.isDuplicate
+            ? '<span class="badge bg-warning text-dark">Duplicate</span>'
+            : '<span class="badge bg-success">New</span>'
+          }
+        </td>
+      </tr>
+    `).join('');
+
+    // Enable import button
+    const importBtn = document.getElementById('csvImportBtn');
+    importBtn.disabled = false;
+    document.getElementById('csvImportBtnCount').textContent = newCount > 0 ? `${newCount}` : `${previewRows.length}`;
+
+    // Store preview for import
+    this._csvPreviewRows = previewRows;
+  },
+
+  async executeCSVImport() {
+    if (!this._csvPreviewRows || this._csvPreviewRows.length === 0) {
+      utils.showToast('No data to import', 'warning');
+      return;
+    }
+
+    // Only import non-duplicates by default, or ask
+    const newRows = this._csvPreviewRows.filter(r => !r.isDuplicate);
+    const dupRows = this._csvPreviewRows.filter(r => r.isDuplicate);
+
+    let rowsToImport = newRows;
+    if (dupRows.length > 0 && newRows.length > 0) {
+      if (confirm(`${dupRows.length} duplicate(s) found. Import only the ${newRows.length} new companies? (Cancel to import ALL including duplicates)`)) {
+        rowsToImport = newRows;
+      } else {
+        rowsToImport = this._csvPreviewRows;
+      }
+    } else if (newRows.length === 0) {
+      if (!confirm(`All ${dupRows.length} companies already exist. Import them anyway as duplicates?`)) {
+        return;
+      }
+      rowsToImport = this._csvPreviewRows;
+    }
+
+    try {
+      utils.showLoading();
+      const importBtn = document.getElementById('csvImportBtn');
+      importBtn.disabled = true;
+      importBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Importing...';
+
+      // Build records
+      const records = rowsToImport.map(item => {
+        const rec = { status: 'prospect' };
+        this._dbFields.forEach(field => {
+          if (item.record[field]) {
+            let val = item.record[field].trim();
+            // Auto-prefix website
+            if (field === 'website' && val && !val.startsWith('http://') && !val.startsWith('https://')) {
+              val = 'https://' + val;
+            }
+            rec[field] = val || null;
+          }
+        });
+        return rec;
+      });
+
+      // Insert in batches of 50
+      let successCount = 0;
+      let errorCount = 0;
+      const batchSize = 50;
+
+      for (let i = 0; i < records.length; i += batchSize) {
+        const batch = records.slice(i, i + batchSize);
+        const { error } = await STATE.client
+          .from('organisations')
+          .insert(batch);
+
+        if (error) {
+          console.error('Batch import error:', error);
+          errorCount += batch.length;
+        } else {
+          successCount += batch.length;
+        }
+      }
+
+      // Close modal
+      bootstrap.Modal.getInstance(document.getElementById('csvImportModal')).hide();
+
+      if (errorCount === 0) {
+        utils.showToast(`Successfully imported ${successCount} organisations!`, 'success');
+      } else {
+        utils.showToast(`${successCount} imported, ${errorCount} failed. Check console for details.`, 'warning');
+      }
+
+      // Reset and reload
+      this.resetCSVImport();
+      await this.loadOrganisations();
+
+      // Update dashboard county coverage
+      if (typeof dashboardModule !== 'undefined' && dashboardModule.updateCountyCoverage) {
+        dashboardModule.updateCountyCoverage();
+      }
+
+    } catch (error) {
+      console.error('CSV import error:', error);
+      utils.showToast('Import failed: ' + error.message, 'error');
+    } finally {
+      utils.hideLoading();
+      const importBtn = document.getElementById('csvImportBtn');
+      if (importBtn) {
+        importBtn.disabled = false;
+        importBtn.innerHTML = '<i class="bi bi-cloud-upload me-1"></i>Import Organisations';
+      }
+    }
+  },
+
+  resetCSVImport() {
+    this._csvData = null;
+    this._csvHeaders = null;
+    this._csvColumnMap = {};
+    this._csvPreviewRows = null;
+
+    document.getElementById('csvStep1').style.display = 'block';
+    document.getElementById('csvStep2').style.display = 'none';
+    document.getElementById('csvStep3').style.display = 'none';
+    document.getElementById('csvFileInput').value = '';
+    document.getElementById('csvPasteArea').value = '';
+    document.getElementById('csvImportBtn').disabled = true;
   }
 };
 

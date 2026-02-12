@@ -2701,6 +2701,24 @@ const dashboardModule = {
         countyOrgCounts[county] = orgSet.size;
       });
 
+      // Also count orgs imported via CSV (stored in catchment_area)
+      const { data: orgsWithCounty } = await STATE.client
+        .from('organisations')
+        .select('id, catchment_area');
+
+      const csvOrgCounts = {};
+      (orgsWithCounty || []).forEach(org => {
+        if (org.catchment_area) {
+          csvOrgCounts[org.catchment_area] = (csvOrgCounts[org.catchment_area] || 0) + 1;
+        }
+      });
+
+      // Also check localStorage for import tracking
+      let importedCounties = {};
+      try {
+        importedCounties = JSON.parse(localStorage.getItem('csvImportedCounties') || '{}');
+      } catch (e) { /* ignore */ }
+
       // Update each county item in the dashboard
       const allCountyItems = document.querySelectorAll('[data-county]');
       let coveredCount = 0;
@@ -2708,21 +2726,27 @@ const dashboardModule = {
 
       allCountyItems.forEach(item => {
         const countyName = item.getAttribute('data-county');
-        const orgCount = countyOrgCounts[countyName] || 0;
+        const orgCount = (countyOrgCounts[countyName] || 0) + (csvOrgCounts[countyName] || 0);
         const awardCount = countyAwardCounts[countyName] || 0;
+        const csvImported = importedCounties[countyName];
 
         // Remove any previous coverage indicators
         const existing = item.querySelector('.county-coverage');
         if (existing) existing.remove();
 
-        if (orgCount > 0 || awardCount > 0) {
+        if (orgCount > 0 || awardCount > 0 || csvImported) {
           coveredCount++;
           item.style.color = '#198754';
           item.style.fontWeight = '600';
 
+          const tooltipParts = [];
+          if (orgCount > 0) tooltipParts.push(`${orgCount} orgs`);
+          if (awardCount > 0) tooltipParts.push(`${awardCount} awards`);
+          if (csvImported) tooltipParts.push(`CSV imported ${new Date(csvImported.lastImport).toLocaleDateString('en-GB')}`);
+
           const badge = document.createElement('span');
           badge.className = 'county-coverage float-end';
-          badge.innerHTML = `<span class="badge bg-success" style="font-size: 0.6rem;" title="${orgCount} orgs, ${awardCount} awards"><i class="bi bi-check-circle-fill me-1"></i>${orgCount} orgs</span>`;
+          badge.innerHTML = `<span class="badge bg-success" style="font-size: 0.6rem;" title="${tooltipParts.join(', ')}"><i class="bi bi-check-circle-fill me-1"></i>${orgCount > 0 ? orgCount + ' orgs' : 'CSV'}</span>`;
           item.appendChild(badge);
         } else {
           item.style.color = '';

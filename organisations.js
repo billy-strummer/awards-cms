@@ -94,17 +94,19 @@ async loadOrganisations() {
     });
 
     // Attach award data to organisations
+    // Priority: award-derived county > org's catchment_area (set by CSV import)
     allData = allData.map(org => {
       const awardId = orgAwardMap[org.id];
       const award = awardMap[awardId];
-      const county = award?.county || null;
-      const region = county ? countyToRegion[county] : null;
+      const awardCounty = award?.county || null;
+      const county = awardCounty || org.catchment_area || null;
+      const region = county ? (countyToRegion[county] || org.region) : (org.region || null);
 
       return {
         ...org,
         county: county,
         region: region,
-        sector: award?.sector || null,
+        sector: award?.sector || org.sector || null,
         year: award?.year || null,
         awards_count: orgAwardsCount[org.id] || 0
       };
@@ -2393,11 +2395,26 @@ updateCountyFilterByRegion() {
     'catchment_area': 'catchment_area', 'catchment area': 'catchment_area', 'catchment': 'catchment_area'
   },
 
-  _dbFields: ['company_name', 'sector', 'county', 'region', 'contact_name', 'email', 'contact_phone', 'website', 'address', 'catchment_area'],
+  _dbFields: ['company_name', 'sector', 'region', 'contact_name', 'email', 'contact_phone', 'website', 'address', 'catchment_area'],
+
+  _getSelectedCounty() {
+    const val = document.getElementById('csvCountySelect')?.value || '';
+    if (!val) {
+      utils.showToast('Please select a County/City first', 'error');
+      document.getElementById('csvCountySelect')?.focus();
+      return null;
+    }
+    return val;
+  },
 
   parseCSVFile(input) {
     const file = input.files[0];
     if (!file) return;
+
+    if (!this._getSelectedCounty()) {
+      input.value = '';
+      return;
+    }
 
     const reader = new FileReader();
     reader.onload = (e) => {
@@ -2408,6 +2425,8 @@ updateCountyFilterByRegion() {
   },
 
   parseCSVText() {
+    if (!this._getSelectedCounty()) return;
+
     const text = document.getElementById('csvPasteArea').value.trim();
     if (!text) {
       utils.showToast('Please paste CSV data first', 'warning');
@@ -2488,8 +2507,18 @@ updateCountyFilterByRegion() {
     document.getElementById('csvStep1').style.display = 'none';
     document.getElementById('csvStep2').style.display = 'block';
 
+    const selectedCounty = this._getSelectedCounty();
+
     const container = document.getElementById('csvColumnMapping');
-    container.innerHTML = this._csvHeaders.map((header, idx) => {
+    container.innerHTML = `
+      <div class="col-12 mb-2">
+        <div class="alert alert-success py-2 mb-2">
+          <i class="bi bi-geo-alt-fill me-1"></i>
+          Importing for: <strong>${utils.escapeHtml(selectedCounty)}</strong>
+          <small class="text-muted ms-2">(all imported orgs will be tagged to this county)</small>
+        </div>
+      </div>
+    ` + this._csvHeaders.map((header, idx) => {
       const mapped = this._csvColumnMap[idx] || '';
       return `
         <div class="col-md-4 mb-2">
@@ -2618,9 +2647,12 @@ updateCountyFilterByRegion() {
       importBtn.disabled = true;
       importBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Importing...';
 
-      // Build records
+      const selectedCounty = this._getSelectedCounty();
+      if (!selectedCounty) return;
+
+      // Build records - tag each org with the selected county
       const records = rowsToImport.map(item => {
-        const rec = { status: 'prospect' };
+        const rec = { status: 'prospect', catchment_area: selectedCounty };
         this._dbFields.forEach(field => {
           if (item.record[field]) {
             let val = item.record[field].trim();
@@ -2631,6 +2663,8 @@ updateCountyFilterByRegion() {
             rec[field] = val || null;
           }
         });
+        // Don't overwrite catchment_area if CSV had one mapped
+        if (!rec.catchment_area) rec.catchment_area = selectedCounty;
         return rec;
       });
 
@@ -2653,11 +2687,21 @@ updateCountyFilterByRegion() {
         }
       }
 
+      // Track imported counties in localStorage for dashboard
+      try {
+        const imported = JSON.parse(localStorage.getItem('csvImportedCounties') || '{}');
+        imported[selectedCounty] = {
+          count: (imported[selectedCounty]?.count || 0) + successCount,
+          lastImport: new Date().toISOString()
+        };
+        localStorage.setItem('csvImportedCounties', JSON.stringify(imported));
+      } catch (e) { /* ignore */ }
+
       // Close modal
       bootstrap.Modal.getInstance(document.getElementById('csvImportModal')).hide();
 
       if (errorCount === 0) {
-        utils.showToast(`Successfully imported ${successCount} organisations!`, 'success');
+        utils.showToast(`Successfully imported ${successCount} organisations for ${selectedCounty}!`, 'success');
       } else {
         utils.showToast(`${successCount} imported, ${errorCount} failed. Check console for details.`, 'warning');
       }

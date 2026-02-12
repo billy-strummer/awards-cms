@@ -1726,10 +1726,67 @@
           <div class="modal-body">
             <!-- Step 1: File Upload -->
             <div id="csvStep1">
+              <!-- County/City Selector (Required) -->
+              <div class="card border-primary mb-3">
+                <div class="card-body py-3">
+                  <div class="row align-items-center">
+                    <div class="col-md-4">
+                      <label for="csvCountySelect" class="form-label fw-bold mb-0">
+                        <i class="bi bi-geo-alt-fill text-primary me-1"></i>County / City *
+                      </label>
+                      <small class="text-muted d-block">Which county/city is this CSV for?</small>
+                    </div>
+                    <div class="col-md-8">
+                      <select class="form-select" id="csvCountySelect" required>
+                        <option value="">-- Select County or City --</option>
+                        <optgroup label="England Counties (38)">
+                          <option>Bedfordshire</option><option>Berkshire</option><option>Buckinghamshire</option>
+                          <option>Cambridgeshire</option><option>Cheshire</option><option>Cornwall</option>
+                          <option>Cumbria</option><option>Derbyshire</option><option>Devon</option>
+                          <option>Dorset</option><option>County Durham</option><option>East Riding of Yorkshire</option>
+                          <option>Essex</option><option>Gloucestershire</option><option>Hampshire</option>
+                          <option>Herefordshire</option><option>Hertfordshire</option><option>Isle of Wight</option>
+                          <option>Kent</option><option>Lancashire</option><option>Leicestershire</option>
+                          <option>Lincolnshire</option><option>Norfolk</option><option>Northamptonshire</option>
+                          <option>North Yorkshire</option><option>Northumberland</option><option>Nottinghamshire</option>
+                          <option>Oxfordshire</option><option>Rutland</option><option>Shropshire</option>
+                          <option>Somerset</option><option>South Yorkshire</option><option>Staffordshire</option>
+                          <option>Suffolk</option><option>Surrey</option><option>Sussex</option>
+                          <option>Tyne & Wear</option><option>Warwickshire</option><option>West Yorkshire</option>
+                          <option>Wiltshire</option><option>Worcestershire</option>
+                        </optgroup>
+                        <optgroup label="Scotland (14)">
+                          <option>Argyll & Bute</option><option>Ayrshire</option><option>Central Scotland</option>
+                          <option>Dumfries & Galloway</option><option>Dunbartonshire</option><option>Fife</option>
+                          <option>Grampian</option><option>Highlands</option><option>Lanarkshire</option>
+                          <option>Lothian</option><option>Renfrewshire</option><option>Scottish Borders</option>
+                          <option>Scottish Islands</option><option>Tayside</option>
+                        </optgroup>
+                        <optgroup label="Wales (12)">
+                          <option>Anglesey</option><option>Carmarthenshire</option><option>Ceredigion</option>
+                          <option>Conwy</option><option>Denbighshire</option><option>Flintshire</option>
+                          <option>Glamorgan</option><option>Gwent</option><option>Gwynedd</option>
+                          <option>Pembrokeshire</option><option>Powys</option><option>Wrexham</option>
+                        </optgroup>
+                        <optgroup label="Cities (20)">
+                          <option>Birmingham</option><option>Bournemouth</option><option>Bradford</option>
+                          <option>Brighton & Hove</option><option>Bristol</option><option>Cardiff</option>
+                          <option>Coventry</option><option>Edinburgh</option><option>Glasgow</option>
+                          <option>Leeds</option><option>Leicester</option><option>Liverpool</option>
+                          <option>London</option><option>Manchester</option><option>Middlesborough</option>
+                          <option>Newcastle</option><option>Nottingham</option><option>Sheffield</option>
+                          <option>Southampton</option><option>Swansea</option>
+                        </optgroup>
+                      </select>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
               <div class="alert alert-info">
                 <i class="bi bi-info-circle me-2"></i>
                 <strong>CSV Format:</strong> Your file should have headers in the first row.
-                Supported columns: Company Name, Sector, County, Region, Contact Name, Email, Phone, Website, Address, Catchment Area
+                Supported columns: Company Name, Sector, Contact Name, Email, Phone, Website, Address, Catchment Area
               </div>
               <div class="mb-3">
                 <label for="csvFileInput" class="form-label fw-semibold">Select CSV File</label>
@@ -1738,8 +1795,8 @@
               </div>
               <div class="mb-3">
                 <label class="form-label fw-semibold">Or paste CSV content:</label>
-                <textarea class="form-control" id="csvPasteArea" rows="6"
-                          placeholder="company_name,sector,county,email&#10;Acme Ltd,Manufacturing,Kent,info@acme.com&#10;..."></textarea>
+                <textarea class="form-control" id="csvPasteArea" rows="5"
+                          placeholder="company_name,sector,email&#10;Acme Ltd,Manufacturing,info@acme.com&#10;..."></textarea>
                 <button class="btn btn-sm btn-outline-primary mt-2" onclick="orgsModule.parseCSVText()">
                   <i class="bi bi-clipboard-check me-1"></i>Parse Pasted Data
                 </button>

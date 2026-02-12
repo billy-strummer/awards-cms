@@ -1368,17 +1368,15 @@ const emailBuilder = {
     try {
       utils.showToast('Sending test email...', 'info');
 
-      const { data, error } = await STATE.client.functions.invoke('send-campaign', {
-        body: {
-          mode: 'test',
-          to: email,
-          subject: subject,
-          html: html,
-          fromName: fromName
-        }
+      const { data, error } = await STATE.client.rpc('send_test_email', {
+        p_to: email,
+        p_subject: subject,
+        p_html: html,
+        p_from_name: fromName
       });
 
       if (error) throw error;
+      if (data && !data.success) throw new Error(data.error || 'Send failed');
 
       utils.showToast(`Test email sent to ${email}!`, 'success');
     } catch (error) {
@@ -1425,31 +1423,20 @@ const emailBuilder = {
     const html = this.generateFullHTML();
 
     try {
-      utils.showToast('Sending campaign...', 'info');
+      utils.showToast('Sending campaign... this may take a moment.', 'info');
 
-      const { data, error } = await STATE.client.functions.invoke('send-campaign', {
-        body: {
-          mode: 'campaign',
-          listId: listId,
-          subject: subject,
-          html: html,
-          fromName: fromName,
-          campaignName: campaignName || subject
-        }
+      const { data, error } = await STATE.client.rpc('send_campaign_emails', {
+        p_list_id: listId,
+        p_subject: subject,
+        p_html: html,
+        p_from_name: fromName,
+        p_campaign_name: campaignName || subject
       });
 
       if (error) throw error;
+      if (data && !data.success) throw new Error(data.error || 'Campaign send failed');
 
       utils.showToast(`Campaign sent to ${data?.sent || count} recipients!`, 'success');
-
-      // Log the campaign
-      await STATE.client.from('email_log').insert({
-        template_key: 'CAMPAIGN',
-        recipient_email: `list:${listId}`,
-        subject: subject,
-        status: 'sent',
-        sent_at: new Date().toISOString()
-      });
 
     } catch (error) {
       console.error('Error sending campaign:', error);

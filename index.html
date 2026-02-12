@@ -376,6 +376,42 @@
             </div>
           </div>
 
+          <!-- Awards Year-over-Year Summary Table -->
+          <div class="content-card mb-5">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+              <div>
+                <h3 class="h5 mb-1">
+                  <i class="bi bi-trophy-fill text-primary me-2"></i>Awards Overview by Year
+                </h3>
+                <p class="text-muted small mb-0">Year-by-year breakdown of awards, nominees and nominations</p>
+              </div>
+              <button class="btn btn-outline-primary btn-sm" onclick="dashboardModule.navigateToSection('awards')">
+                <i class="bi bi-arrow-right me-1"></i>View Awards
+              </button>
+            </div>
+
+            <div class="table-responsive">
+              <table class="table table-hover align-middle">
+                <thead class="table-light">
+                  <tr>
+                    <th><i class="bi bi-calendar3 me-1"></i>Year</th>
+                    <th class="text-center"><i class="bi bi-trophy me-1"></i># Awards</th>
+                    <th class="text-center"><i class="bi bi-people me-1"></i># Nominees</th>
+                    <th class="text-center"><i class="bi bi-file-earmark-text me-1"></i># Nominations</th>
+                  </tr>
+                </thead>
+                <tbody id="awardsYearSummaryBody">
+                  <tr>
+                    <td colspan="4" class="text-center py-4 text-muted">
+                      <div class="spinner-border spinner-border-sm mb-2" role="status"></div>
+                      <p class="mb-0 small">Loading awards data...</p>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
           <!-- Completion Rate & Upcoming Deadlines Widgets -->
           <div class="row g-4 mb-5">
             <!-- Completion Rate Widget -->

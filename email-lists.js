@@ -202,6 +202,7 @@ const emailListsModule = {
       'sponsors': '<span class="badge bg-primary"><i class="bi bi-award me-1"></i>Sponsors</span>',
       'vip': '<span class="badge bg-danger"><i class="bi bi-star-fill me-1"></i>VIP</span>',
       'event': '<span class="badge bg-info"><i class="bi bi-calendar-event me-1"></i>Event</span>',
+      'media': '<span class="badge bg-purple" style="background-color:#6f42c1!important"><i class="bi bi-camera-reels me-1"></i>Media</span>',
       'custom': '<span class="badge bg-dark">Custom</span>'
     };
     return types[type] || '<span class="badge bg-secondary">General</span>';
@@ -239,6 +240,7 @@ const emailListsModule = {
                       <option value="sponsors">Sponsors</option>
                       <option value="vip">VIP</option>
                       <option value="event">Event</option>
+                      <option value="media">Media</option>
                       <option value="custom">Custom</option>
                     </select>
                   </div>

@@ -949,6 +949,41 @@
             </div>
           </div>
 
+          <!-- Geographic Distribution Widget -->
+          <div class="row g-4 mb-5">
+            <div class="col-lg-6">
+              <div class="content-card h-100">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                  <h5 class="mb-0">
+                    <i class="bi bi-geo-alt text-primary me-2"></i>Geographic Distribution
+                  </h5>
+                  <span class="badge bg-primary" id="geoTotalOrgs">0 orgs</span>
+                </div>
+                <p class="text-muted small mb-3">Organisation coverage by country</p>
+                <div id="geoDistributionWidget">
+                  <div class="text-center py-4 text-muted">
+                    <div class="spinner-border spinner-border-sm" role="status"></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="col-lg-6">
+              <div class="content-card h-100">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                  <h5 class="mb-0">
+                    <i class="bi bi-bar-chart text-info me-2"></i>Top Counties by Orgs
+                  </h5>
+                </div>
+                <p class="text-muted small mb-3">Counties with the most registered organisations</p>
+                <div id="topCountiesWidget">
+                  <div class="text-center py-4 text-muted">
+                    <div class="spinner-border spinner-border-sm" role="status"></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
           <!-- Completion Rate & Upcoming Deadlines Widgets -->
           <div class="row g-4 mb-5">
             <!-- Completion Rate Widget -->
@@ -1543,7 +1578,7 @@
             </label>
             <select class="form-select form-select-sm" id="orgsStatusFilter"
                     onchange="orgsModule.filterOrganisations()">
-              <option value="">All</option>
+              <option value="">Active</option>
               <option value="prospect">Prospect</option>
               <option value="entrant">Entrant</option>
               <option value="nominee">Nominee</option>
@@ -1551,13 +1586,15 @@
               <option value="winner">Winner</option>
               <option value="sponsor">Sponsor</option>
               <option value="past_winner">Past Winner</option>
+              <option value="archived">Archived</option>
+              <option value="all">All (inc. Archived)</option>
             </select>
           </div>
 
           <!-- Buttons (Right Aligned) -->
-          <div class="col-md-1 text-end">
+          <div class="col-md-2 text-end">
             <label class="form-label small mb-1">&nbsp;</label>
-            <div class="d-flex gap-1">
+            <div class="d-flex gap-1 justify-content-end flex-wrap">
               <button class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#addNewOrgModal" title="Add Company">
                 <i class="bi bi-plus-lg"></i>
               </button>
@@ -1566,6 +1603,9 @@
               </button>
               <button class="btn btn-sm btn-outline-primary" onclick="orgsModule.exportToCSV()" title="Export CSV">
                 <i class="bi bi-download"></i>
+              </button>
+              <button class="btn btn-sm btn-outline-warning" onclick="orgsModule.showDuplicateCheck()" title="Check Duplicates">
+                <i class="bi bi-files"></i>
               </button>
             </div>
           </div>
@@ -1670,6 +1710,52 @@
                   <label for="newCompanySector" class="form-label">Sector</label>
                   <input type="text" class="form-control" id="newCompanySector" placeholder="e.g. Manufacturing">
                 </div>
+                <div class="col-md-6">
+                  <label for="newCompanyCounty" class="form-label">County / City</label>
+                  <select class="form-select" id="newCompanyCounty">
+                    <option value="">-- Select --</option>
+                    <optgroup label="England Counties">
+                      <option>Bedfordshire</option><option>Berkshire</option><option>Buckinghamshire</option>
+                      <option>Cambridgeshire</option><option>Cheshire</option><option>Cornwall</option>
+                      <option>Cumbria</option><option>Derbyshire</option><option>Devon</option>
+                      <option>Dorset</option><option>County Durham</option><option>East Riding of Yorkshire</option>
+                      <option>Essex</option><option>Gloucestershire</option><option>Hampshire</option>
+                      <option>Herefordshire</option><option>Hertfordshire</option><option>Isle of Wight</option>
+                      <option>Kent</option><option>Lancashire</option><option>Leicestershire</option>
+                      <option>Lincolnshire</option><option>Norfolk</option><option>Northamptonshire</option>
+                      <option>North Yorkshire</option><option>Northumberland</option><option>Nottinghamshire</option>
+                      <option>Oxfordshire</option><option>Rutland</option><option>Shropshire</option>
+                      <option>Somerset</option><option>South Yorkshire</option><option>Staffordshire</option>
+                      <option>Suffolk</option><option>Surrey</option><option>Sussex</option>
+                      <option>Tyne & Wear</option><option>Warwickshire</option><option>West Yorkshire</option>
+                      <option>Wiltshire</option><option>Worcestershire</option>
+                    </optgroup>
+                    <optgroup label="Scotland">
+                      <option>Argyll & Bute</option><option>Ayrshire</option><option>Central Scotland</option>
+                      <option>Dumfries & Galloway</option><option>Dunbartonshire</option><option>Fife</option>
+                      <option>Grampian</option><option>Highlands</option><option>Lanarkshire</option>
+                      <option>Lothian</option><option>Renfrewshire</option><option>Scottish Borders</option>
+                      <option>Scottish Islands</option><option>Tayside</option>
+                    </optgroup>
+                    <optgroup label="Wales">
+                      <option>Anglesey</option><option>Carmarthenshire</option><option>Ceredigion</option>
+                      <option>Conwy</option><option>Denbighshire</option><option>Flintshire</option>
+                      <option>Glamorgan</option><option>Gwent</option><option>Gwynedd</option>
+                      <option>Pembrokeshire</option><option>Powys</option><option>Wrexham</option>
+                    </optgroup>
+                    <optgroup label="Cities">
+                      <option>Birmingham</option><option>Bournemouth</option><option>Bradford</option>
+                      <option>Brighton & Hove</option><option>Bristol</option><option>Cardiff</option>
+                      <option>Coventry</option><option>Edinburgh</option><option>Glasgow</option>
+                      <option>Leeds</option><option>Leicester</option><option>Liverpool</option>
+                      <option>London</option><option>Manchester</option><option>Middlesborough</option>
+                      <option>Newcastle</option><option>Nottingham</option><option>Sheffield</option>
+                      <option>Southampton</option><option>Swansea</option>
+                    </optgroup>
+                  </select>
+                </div>
+              </div>
+              <div class="row mb-3">
                 <div class="col-md-6">
                   <label for="newCompanyRegion" class="form-label">Region</label>
                   <input type="text" class="form-control" id="newCompanyRegion" placeholder="e.g. North West">
@@ -1851,20 +1937,35 @@
     <div id="bulkActionsBar"
          style="display: none; position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%); z-index: 1050;">
       <div class="card border-0 shadow-lg">
-        <div class="card-body d-flex align-items-center gap-3 py-2 px-4">
+        <div class="card-body d-flex align-items-center gap-3 py-2 px-4 flex-wrap">
           <span class="fw-semibold">
             <i class="bi bi-check-square me-2"></i>
             <span id="selectedCount">0</span> selected
           </span>
           <div class="vr"></div>
+          <div class="dropdown">
+            <button class="btn btn-sm btn-warning dropdown-toggle" data-bs-toggle="dropdown">
+              <i class="bi bi-arrow-repeat me-1"></i>Change Status
+            </button>
+            <ul class="dropdown-menu">
+              <li><a class="dropdown-item" href="#" onclick="orgsModule.bulkStatusChange('prospect')">Prospect</a></li>
+              <li><a class="dropdown-item" href="#" onclick="orgsModule.bulkStatusChange('entrant')">Entrant</a></li>
+              <li><a class="dropdown-item" href="#" onclick="orgsModule.bulkStatusChange('nominee')">Nominee</a></li>
+              <li><a class="dropdown-item" href="#" onclick="orgsModule.bulkStatusChange('shortlisted')">Shortlisted</a></li>
+              <li><a class="dropdown-item" href="#" onclick="orgsModule.bulkStatusChange('winner')">Winner</a></li>
+              <li><a class="dropdown-item" href="#" onclick="orgsModule.bulkStatusChange('sponsor')">Sponsor</a></li>
+              <li><hr class="dropdown-menu-divider"></li>
+              <li><a class="dropdown-item text-danger" href="#" onclick="orgsModule.bulkStatusChange('archived')">Archive</a></li>
+            </ul>
+          </div>
           <button class="btn btn-sm btn-primary" onclick="orgsModule.bulkEmail()">
             <i class="bi bi-envelope me-1"></i>Email
           </button>
           <button class="btn btn-sm btn-success" onclick="orgsModule.bulkExport()">
-            <i class="bi bi-download me-1"></i>Export Selected
+            <i class="bi bi-download me-1"></i>Export
           </button>
           <button class="btn btn-sm btn-danger" onclick="orgsModule.bulkDelete()">
-            <i class="bi bi-trash me-1"></i>Delete Selected
+            <i class="bi bi-archive me-1"></i>Archive
           </button>
           <button class="btn btn-sm btn-outline-secondary" onclick="orgsModule.clearSelection()">
             <i class="bi bi-x-lg me-1"></i>Clear

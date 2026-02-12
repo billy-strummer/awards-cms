@@ -315,12 +315,20 @@ updateCountyFilterByRegion() {
     localStorage.setItem('orgsFilters', JSON.stringify({ year, sector, county, region, status, search }));
   } catch (e) { /* ignore */ }
 
+  // Hide archived by default unless status filter is 'archived' or 'all'
+  const showArchived = status === 'archived' || status === 'all';
+
   STATE.filteredOrganisations = STATE.allOrganisations.filter(org => {
+    const orgStatus = org.status || 'prospect';
+
+    // Hide archived unless explicitly filtering for them
+    if (!showArchived && orgStatus === 'archived') return false;
+
     // Year filter
     if (year && String(org.year || '') !== String(year)) return false;
 
-    // Status filter
-    if (status && (org.status || 'prospect') !== status) return false;
+    // Status filter (skip if 'all')
+    if (status && status !== 'all' && orgStatus !== status) return false;
 
     // Sector filter
     if (sector && org.sector !== sector) return false;
@@ -331,19 +339,15 @@ updateCountyFilterByRegion() {
     // Region filter
     if (region && org.region !== region) return false;
 
-    // Search filter - searches across multiple fields
+    // Search filter - searches ALL fields including county, sector, status
     if (search) {
-      const companyName = org.company_name?.toLowerCase() || '';
-      const contact = org.contact_name?.toLowerCase() || '';
-      const email = org.email?.toLowerCase() || '';
-      const website = org.website?.toLowerCase() || '';
-      const notes = org.notes?.toLowerCase() || '';
+      const searchFields = [
+        org.company_name, org.contact_name, org.email, org.website,
+        org.notes, org.county, org.sector, org.region,
+        org.catchment_area, org.address, orgStatus
+      ].map(f => (f || '').toLowerCase());
 
-      if (!companyName.includes(search) &&
-          !contact.includes(search) &&
-          !email.includes(search) &&
-          !website.includes(search) &&
-          !notes.includes(search)) {
+      if (!searchFields.some(f => f.includes(search))) {
         return false;
       }
     }
@@ -449,8 +453,8 @@ updateCountyFilterByRegion() {
                   style="font-size: 0.75rem; background-position: right 0.25rem center; padding-right: 1.2rem !important; cursor: pointer;"
                   onchange="orgsModule.quickUpdateStatus('${org.id}', this.value)"
                   title="Click to change status">
-            ${['prospect','entrant','nominee','shortlisted','winner','sponsor','past_winner'].map(s =>
-              `<option value="${s}" ${(org.status || 'prospect') === s ? 'selected' : ''}>${s.charAt(0).toUpperCase() + s.slice(1).replace('_', ' ')}</option>`
+            ${this._getStatusOptions(org.status || 'prospect').map(s =>
+              `<option value="${s.value}" ${(org.status || 'prospect') === s.value ? 'selected' : ''}>${s.label}</option>`
             ).join('')}
           </select>
         </td>
@@ -467,11 +471,14 @@ updateCountyFilterByRegion() {
                     title="View Profile">
               <i class="bi bi-eye"></i>
             </button>
-            <button class="btn btn-sm btn-outline-danger"
-                    onclick="orgsModule.deleteOrganisation('${org.id}', '${escapedName}')"
-                    title="Delete">
-              <i class="bi bi-trash"></i>
-            </button>
+            ${(org.status || 'prospect') === 'archived'
+              ? `<button class="btn btn-sm btn-outline-success"
+                      onclick="orgsModule.restoreOrganisation('${org.id}', '${escapedName}')"
+                      title="Restore"><i class="bi bi-arrow-counterclockwise"></i></button>`
+              : `<button class="btn btn-sm btn-outline-danger"
+                      onclick="orgsModule.deleteOrganisation('${org.id}', '${escapedName}')"
+                      title="Archive"><i class="bi bi-archive"></i></button>`
+            }
           </div>
         </td>
       </tr>
@@ -1979,6 +1986,8 @@ updateCountyFilterByRegion() {
       }
     }
 
+    const selectedCounty = document.getElementById('newCompanyCounty')?.value || '';
+
     const companyData = {
       company_name: companyName,
       sector: document.getElementById('newCompanySector').value,
@@ -1988,7 +1997,7 @@ updateCountyFilterByRegion() {
       website: website,
       region: document.getElementById('newCompanyRegion').value,
       address: document.getElementById('newCompanyAddress').value.trim() || null,
-      catchment_area: document.getElementById('newCompanyCatchment').value.trim() || null,
+      catchment_area: selectedCounty || document.getElementById('newCompanyCatchment').value.trim() || null,
       status: 'prospect'
     };
 
@@ -2230,6 +2239,9 @@ updateCountyFilterByRegion() {
   // ============================================
   async quickUpdateStatus(orgId, newStatus) {
     try {
+      const org = STATE.allOrganisations.find(o => o.id === orgId);
+      const oldStatus = org?.status || 'prospect';
+
       const { error } = await STATE.client
         .from('organisations')
         .update({ status: newStatus })
@@ -2238,11 +2250,12 @@ updateCountyFilterByRegion() {
       if (error) throw error;
 
       // Update local state
-      const org = STATE.allOrganisations.find(o => o.id === orgId);
       if (org) org.status = newStatus;
-
       const filteredOrg = STATE.filteredOrganisations.find(o => o.id === orgId);
       if (filteredOrg) filteredOrg.status = newStatus;
+
+      // Audit trail
+      this._logAudit(orgId, 'status_change', org?.company_name || '', `Status: ${oldStatus} → ${newStatus}`);
 
       utils.showToast(`Status updated to ${newStatus.replace('_', ' ')}`, 'success');
     } catch (error) {
@@ -2252,50 +2265,94 @@ updateCountyFilterByRegion() {
   },
 
   // ============================================
-  // DELETE ORGANISATION
+  // ARCHIVE ORGANISATION (Soft Delete)
   // ============================================
   async deleteOrganisation(orgId, companyName) {
-    if (!confirm(`Are you sure you want to delete "${companyName}"? This will also remove all award assignments for this company. This action cannot be undone.`)) {
+    if (!confirm(`Archive "${companyName}"? This will hide it from the main list but keep all data intact. You can restore it later from the "Show Archived" filter.`)) {
       return;
     }
 
     try {
       utils.showLoading();
 
-      // Delete award assignments first (FK constraint)
-      await STATE.client
-        .from('award_assignments')
-        .delete()
-        .eq('organisation_id', orgId);
-
-      // Delete the organisation
       const { error } = await STATE.client
         .from('organisations')
-        .delete()
+        .update({ status: 'archived' })
         .eq('id', orgId);
 
       if (error) throw error;
 
-      utils.showToast(`"${companyName}" deleted successfully`, 'success');
+      // Log the action
+      this._logAudit(orgId, 'archived', companyName, 'Organisation archived');
 
-      // Remove from local state
+      utils.showToast(`"${companyName}" archived successfully`, 'success');
+
+      // Update local state
+      const org = STATE.allOrganisations.find(o => o.id === orgId);
+      if (org) org.status = 'archived';
+
+      this.selectedOrgs.delete(orgId);
+      this.filterOrganisations();
+      this.updateBulkActionsBar();
+
+    } catch (error) {
+      console.error('Error archiving organisation:', error);
+      utils.showToast('Error archiving: ' + error.message, 'error');
+    } finally {
+      utils.hideLoading();
+    }
+  },
+
+  async restoreOrganisation(orgId, companyName) {
+    try {
+      const { error } = await STATE.client
+        .from('organisations')
+        .update({ status: 'prospect' })
+        .eq('id', orgId);
+
+      if (error) throw error;
+
+      this._logAudit(orgId, 'restored', companyName, 'Organisation restored from archive');
+
+      const org = STATE.allOrganisations.find(o => o.id === orgId);
+      if (org) org.status = 'prospect';
+
+      utils.showToast(`"${companyName}" restored`, 'success');
+      this.filterOrganisations();
+    } catch (error) {
+      console.error('Error restoring:', error);
+      utils.showToast('Error restoring: ' + error.message, 'error');
+    }
+  },
+
+  async permanentDelete(orgId, companyName) {
+    if (!confirm(`PERMANENTLY delete "${companyName}" and all associated data? This CANNOT be undone.`)) return;
+    if (!confirm(`Final confirmation: Delete "${companyName}" forever?`)) return;
+
+    try {
+      utils.showLoading();
+
+      await STATE.client.from('award_assignments').delete().eq('organisation_id', orgId);
+      const { error } = await STATE.client.from('organisations').delete().eq('id', orgId);
+      if (error) throw error;
+
       STATE.allOrganisations = STATE.allOrganisations.filter(o => o.id !== orgId);
       STATE.filteredOrganisations = STATE.filteredOrganisations.filter(o => o.id !== orgId);
       this.selectedOrgs.delete(orgId);
 
+      utils.showToast(`"${companyName}" permanently deleted`, 'success');
       this.renderOrganisations();
       this.updateBulkActionsBar();
-
     } catch (error) {
-      console.error('Error deleting organisation:', error);
-      utils.showToast('Error deleting organisation: ' + error.message, 'error');
+      console.error('Error deleting:', error);
+      utils.showToast('Error: ' + error.message, 'error');
     } finally {
       utils.hideLoading();
     }
   },
 
   // ============================================
-  // BULK DELETE
+  // BULK ARCHIVE
   // ============================================
   async bulkDelete() {
     if (this.selectedOrgs.size === 0) {
@@ -2304,42 +2361,75 @@ updateCountyFilterByRegion() {
     }
 
     const count = this.selectedOrgs.size;
-    if (!confirm(`Are you sure you want to delete ${count} organisation(s)? This will also remove their award assignments. This action cannot be undone.`)) {
+    if (!confirm(`Archive ${count} organisation(s)? They will be hidden from the main list but can be restored later.`)) {
       return;
     }
 
     try {
       utils.showLoading();
-
       const orgIds = Array.from(this.selectedOrgs);
 
-      // Delete award assignments first
-      await STATE.client
-        .from('award_assignments')
-        .delete()
-        .in('organisation_id', orgIds);
-
-      // Delete organisations
       const { error } = await STATE.client
         .from('organisations')
-        .delete()
+        .update({ status: 'archived' })
         .in('id', orgIds);
 
       if (error) throw error;
 
-      utils.showToast(`${count} organisation(s) deleted successfully`, 'success');
-
-      // Remove from local state
-      STATE.allOrganisations = STATE.allOrganisations.filter(o => !this.selectedOrgs.has(o.id));
-      STATE.filteredOrganisations = STATE.filteredOrganisations.filter(o => !this.selectedOrgs.has(o.id));
+      // Update local state
+      orgIds.forEach(id => {
+        const org = STATE.allOrganisations.find(o => o.id === id);
+        if (org) org.status = 'archived';
+      });
       this.selectedOrgs.clear();
 
-      this.renderOrganisations();
+      utils.showToast(`${count} organisation(s) archived`, 'success');
+      this.filterOrganisations();
       this.updateBulkActionsBar();
 
     } catch (error) {
-      console.error('Error bulk deleting:', error);
-      utils.showToast('Error deleting organisations: ' + error.message, 'error');
+      console.error('Error bulk archiving:', error);
+      utils.showToast('Error archiving: ' + error.message, 'error');
+    } finally {
+      utils.hideLoading();
+    }
+  },
+
+  // ============================================
+  // BULK STATUS CHANGE
+  // ============================================
+  async bulkStatusChange(newStatus) {
+    if (this.selectedOrgs.size === 0) {
+      utils.showToast('No organisations selected', 'warning');
+      return;
+    }
+
+    const count = this.selectedOrgs.size;
+    if (!confirm(`Change status of ${count} organisation(s) to "${newStatus.replace('_', ' ')}"?`)) return;
+
+    try {
+      utils.showLoading();
+      const orgIds = Array.from(this.selectedOrgs);
+
+      const { error } = await STATE.client
+        .from('organisations')
+        .update({ status: newStatus })
+        .in('id', orgIds);
+
+      if (error) throw error;
+
+      orgIds.forEach(id => {
+        const org = STATE.allOrganisations.find(o => o.id === id);
+        if (org) org.status = newStatus;
+        const fOrg = STATE.filteredOrganisations.find(o => o.id === id);
+        if (fOrg) fOrg.status = newStatus;
+      });
+
+      utils.showToast(`${count} org(s) updated to ${newStatus.replace('_', ' ')}`, 'success');
+      this.renderOrganisations();
+    } catch (error) {
+      console.error('Error bulk status change:', error);
+      utils.showToast('Error: ' + error.message, 'error');
     } finally {
       utils.hideLoading();
     }
@@ -2371,6 +2461,329 @@ updateCountyFilterByRegion() {
       console.error('Error updating status:', error);
       utils.showToast('Error updating status: ' + error.message, 'error');
     }
+  },
+
+  // ============================================
+  // STATUS WORKFLOW ENFORCEMENT
+  // ============================================
+  _statusFlow: {
+    'prospect':    { next: ['entrant', 'sponsor'], label: 'Prospect' },
+    'entrant':     { next: ['nominee', 'prospect'], label: 'Entrant' },
+    'nominee':     { next: ['shortlisted', 'entrant'], label: 'Nominee' },
+    'shortlisted': { next: ['winner', 'nominee'], label: 'Shortlisted' },
+    'winner':      { next: ['past_winner'], label: 'Winner' },
+    'past_winner': { next: ['entrant', 'prospect'], label: 'Past Winner' },
+    'sponsor':     { next: ['prospect'], label: 'Sponsor' },
+    'archived':    { next: ['prospect'], label: 'Archived' }
+  },
+
+  _getStatusOptions(currentStatus) {
+    const flow = this._statusFlow[currentStatus];
+    if (!flow) return [{ value: currentStatus, label: currentStatus }];
+
+    // Show current + valid next statuses
+    const options = [{ value: currentStatus, label: flow.label + ' (current)' }];
+    (flow.next || []).forEach(s => {
+      const f = this._statusFlow[s];
+      if (f) options.push({ value: s, label: f.label });
+    });
+    return options;
+  },
+
+  // ============================================
+  // AUDIT TRAIL (localStorage-based)
+  // ============================================
+  _logAudit(orgId, action, companyName, details) {
+    try {
+      const key = 'orgAuditLog';
+      const log = JSON.parse(localStorage.getItem(key) || '[]');
+      log.unshift({
+        orgId,
+        companyName,
+        action,
+        details,
+        timestamp: new Date().toISOString()
+      });
+      // Keep last 500 entries
+      if (log.length > 500) log.length = 500;
+      localStorage.setItem(key, JSON.stringify(log));
+    } catch (e) { /* ignore */ }
+  },
+
+  getAuditLog(orgId) {
+    try {
+      const log = JSON.parse(localStorage.getItem('orgAuditLog') || '[]');
+      if (orgId) return log.filter(e => e.orgId === orgId);
+      return log;
+    } catch (e) { return []; }
+  },
+
+  renderAuditLog(orgId) {
+    const log = this.getAuditLog(orgId);
+    if (log.length === 0) return '<p class="text-muted small">No activity recorded yet</p>';
+
+    return `<div class="list-group list-group-flush" style="max-height: 300px; overflow-y: auto;">
+      ${log.slice(0, 50).map(entry => {
+        const date = new Date(entry.timestamp);
+        const timeAgo = this._timeAgo(date);
+        const icons = {
+          'status_change': 'bi-arrow-repeat text-primary',
+          'archived': 'bi-archive text-warning',
+          'restored': 'bi-arrow-counterclockwise text-success',
+          'created': 'bi-plus-circle text-success',
+          'email_sent': 'bi-envelope text-info',
+          'note_added': 'bi-sticky text-secondary',
+          'csv_import': 'bi-file-earmark-arrow-up text-primary'
+        };
+        const icon = icons[entry.action] || 'bi-clock-history text-muted';
+        return `<div class="list-group-item px-0 py-2 border-0">
+          <div class="d-flex align-items-start">
+            <i class="bi ${icon} me-2 mt-1"></i>
+            <div>
+              <div class="small fw-semibold">${utils.escapeHtml(entry.details || entry.action)}</div>
+              <div class="text-muted" style="font-size: 0.7rem;">${timeAgo} &middot; ${date.toLocaleDateString('en-GB')} ${date.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}</div>
+            </div>
+          </div>
+        </div>`;
+      }).join('')}
+    </div>`;
+  },
+
+  _timeAgo(date) {
+    const seconds = Math.floor((Date.now() - date.getTime()) / 1000);
+    if (seconds < 60) return 'just now';
+    if (seconds < 3600) return Math.floor(seconds / 60) + 'm ago';
+    if (seconds < 86400) return Math.floor(seconds / 3600) + 'h ago';
+    if (seconds < 604800) return Math.floor(seconds / 86400) + 'd ago';
+    return date.toLocaleDateString('en-GB');
+  },
+
+  // ============================================
+  // DUPLICATE DETECTION
+  // ============================================
+  _normaliseForMatch(str) {
+    return (str || '').toLowerCase()
+      .replace(/\b(ltd|limited|plc|inc|llp|llc|&|and|the|co|company)\b/g, '')
+      .replace(/[^a-z0-9]/g, '')
+      .trim();
+  },
+
+  findDuplicates(companyName) {
+    const normalised = this._normaliseForMatch(companyName);
+    if (!normalised || normalised.length < 3) return [];
+
+    return STATE.allOrganisations.filter(org => {
+      const orgNorm = this._normaliseForMatch(org.company_name);
+      if (!orgNorm) return false;
+
+      // Exact normalised match
+      if (orgNorm === normalised) return true;
+
+      // One contains the other
+      if (orgNorm.includes(normalised) || normalised.includes(orgNorm)) return true;
+
+      // Levenshtein distance for short names
+      if (normalised.length < 15 && orgNorm.length < 15) {
+        return this._levenshtein(orgNorm, normalised) <= 2;
+      }
+
+      return false;
+    });
+  },
+
+  _levenshtein(a, b) {
+    const m = a.length, n = b.length;
+    const dp = Array.from({ length: m + 1 }, () => Array(n + 1).fill(0));
+    for (let i = 0; i <= m; i++) dp[i][0] = i;
+    for (let j = 0; j <= n; j++) dp[0][j] = j;
+    for (let i = 1; i <= m; i++) {
+      for (let j = 1; j <= n; j++) {
+        dp[i][j] = a[i-1] === b[j-1]
+          ? dp[i-1][j-1]
+          : 1 + Math.min(dp[i-1][j], dp[i][j-1], dp[i-1][j-1]);
+      }
+    }
+    return dp[m][n];
+  },
+
+  showDuplicateCheck() {
+    const dupeMap = new Map();
+
+    STATE.allOrganisations.forEach(org => {
+      const norm = this._normaliseForMatch(org.company_name);
+      if (!norm) return;
+      if (!dupeMap.has(norm)) dupeMap.set(norm, []);
+      dupeMap.get(norm).push(org);
+    });
+
+    const duplicateGroups = Array.from(dupeMap.values()).filter(group => group.length > 1);
+
+    if (duplicateGroups.length === 0) {
+      utils.showToast('No duplicates found!', 'success');
+      return;
+    }
+
+    let html = `<div class="alert alert-warning"><i class="bi bi-exclamation-triangle me-2"></i>Found ${duplicateGroups.length} potential duplicate group(s)</div>`;
+
+    duplicateGroups.forEach((group, idx) => {
+      html += `<div class="card mb-2"><div class="card-body py-2">
+        <h6 class="mb-2">Group ${idx + 1}: "${utils.escapeHtml(group[0].company_name)}"</h6>
+        <div class="table-responsive"><table class="table table-sm mb-0">
+          <thead><tr><th>Name</th><th>Email</th><th>Status</th><th>Awards</th><th>Action</th></tr></thead>
+          <tbody>
+          ${group.map(org => `<tr>
+            <td class="small">${utils.escapeHtml(org.company_name)}</td>
+            <td class="small">${utils.escapeHtml(org.email || '-')}</td>
+            <td><span class="badge bg-secondary">${org.status || 'prospect'}</span></td>
+            <td class="text-center">${org.awards_count || 0}</td>
+            <td><button class="btn btn-sm btn-outline-danger" onclick="orgsModule.deleteOrganisation('${org.id}', '${utils.escapeHtml(org.company_name).replace(/'/g, "\\'")}')">Archive</button></td>
+          </tr>`).join('')}
+          </tbody>
+        </table></div>
+      </div></div>`;
+    });
+
+    // Show in a modal
+    const modalHtml = `<div class="modal fade" id="duplicateCheckModal" tabindex="-1">
+      <div class="modal-dialog modal-lg"><div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title"><i class="bi bi-files me-2"></i>Duplicate Detection</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body" style="max-height: 500px; overflow-y: auto;">${html}</div>
+        <div class="modal-footer"><button class="btn btn-secondary" data-bs-dismiss="modal">Close</button></div>
+      </div></div>
+    </div>`;
+
+    // Remove existing and create new
+    document.getElementById('duplicateCheckModal')?.remove();
+    document.body.insertAdjacentHTML('beforeend', modalHtml);
+    new bootstrap.Modal(document.getElementById('duplicateCheckModal')).show();
+  },
+
+  // ============================================
+  // EMAIL TEMPLATES
+  // ============================================
+  _emailTemplates: [
+    {
+      id: 'shortlist_notify',
+      name: 'Shortlist Notification',
+      subject: 'Congratulations - You have been shortlisted!',
+      body: `Dear {contact_name},\n\nWe are delighted to inform you that {company_name} has been shortlisted for the British Trade Awards.\n\nThe awards ceremony will take place shortly, and we will be in touch with further details.\n\nKind regards,\nBritish Trade Awards Team`
+    },
+    {
+      id: 'winner_notify',
+      name: 'Winner Announcement',
+      subject: 'You are a Winner - British Trade Awards!',
+      body: `Dear {contact_name},\n\nCongratulations! We are thrilled to announce that {company_name} has won at the British Trade Awards!\n\nPlease find attached your winner's pack with logos, press release template, and trophy collection details.\n\nKind regards,\nBritish Trade Awards Team`
+    },
+    {
+      id: 'entry_invite',
+      name: 'Entry Invitation',
+      subject: 'British Trade Awards - Invitation to Enter',
+      body: `Dear {contact_name},\n\nWe would like to invite {company_name} to enter the British Trade Awards this year.\n\nEntries are now open and close on [DATE]. You can enter online at [URL].\n\nKind regards,\nBritish Trade Awards Team`
+    },
+    {
+      id: 'feedback_request',
+      name: 'Feedback Request',
+      subject: 'British Trade Awards - We value your feedback',
+      body: `Dear {contact_name},\n\nThank you for participating in the British Trade Awards. We would love to hear your feedback to help us improve.\n\nPlease take a moment to complete our short survey: [SURVEY_URL]\n\nKind regards,\nBritish Trade Awards Team`
+    },
+    {
+      id: 'sponsor_inquiry',
+      name: 'Sponsorship Inquiry',
+      subject: 'Sponsorship Opportunities - British Trade Awards',
+      body: `Dear {contact_name},\n\nWe are reaching out to {company_name} regarding sponsorship opportunities for the upcoming British Trade Awards.\n\nWe have several packages available, including category sponsorship and headline sponsorship.\n\nWould you be available for a brief call to discuss?\n\nKind regards,\nBritish Trade Awards Team`
+    }
+  ],
+
+  openEmailTemplate(orgId) {
+    const org = STATE.allOrganisations.find(o => o.id === orgId) || {};
+    const templates = this._emailTemplates;
+
+    let html = `<div class="list-group">
+      ${templates.map(t => {
+        const subject = t.subject.replace(/{company_name}/g, org.company_name || '').replace(/{contact_name}/g, org.contact_name || 'Sir/Madam');
+        const body = t.body.replace(/{company_name}/g, org.company_name || '').replace(/{contact_name}/g, org.contact_name || 'Sir/Madam');
+        return `<a href="mailto:${org.email || ''}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}"
+                   class="list-group-item list-group-item-action"
+                   onclick="orgsModule._logComms('${orgId}', '${t.id}', '${utils.escapeHtml(org.company_name || '').replace(/'/g, "\\'")}')">
+          <div class="d-flex justify-content-between align-items-center">
+            <div>
+              <h6 class="mb-1">${t.name}</h6>
+              <small class="text-muted">${t.subject}</small>
+            </div>
+            <i class="bi bi-envelope text-primary"></i>
+          </div>
+        </a>`;
+      }).join('')}
+    </div>`;
+
+    document.getElementById('duplicateCheckModal')?.remove();
+    const modalHtml = `<div class="modal fade" id="duplicateCheckModal" tabindex="-1">
+      <div class="modal-dialog"><div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title"><i class="bi bi-envelope me-2"></i>Email ${utils.escapeHtml(org.company_name || '')}</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">${html}</div>
+        <div class="modal-footer"><button class="btn btn-secondary" data-bs-dismiss="modal">Close</button></div>
+      </div></div>
+    </div>`;
+
+    document.body.insertAdjacentHTML('beforeend', modalHtml);
+    new bootstrap.Modal(document.getElementById('duplicateCheckModal')).show();
+  },
+
+  // ============================================
+  // COMMUNICATION HISTORY
+  // ============================================
+  _logComms(orgId, templateId, companyName) {
+    try {
+      const key = 'orgCommsLog';
+      const log = JSON.parse(localStorage.getItem(key) || '[]');
+      const template = this._emailTemplates.find(t => t.id === templateId);
+      log.unshift({
+        orgId,
+        companyName,
+        templateId,
+        templateName: template?.name || templateId,
+        subject: template?.subject || '',
+        timestamp: new Date().toISOString()
+      });
+      if (log.length > 1000) log.length = 1000;
+      localStorage.setItem(key, JSON.stringify(log));
+
+      this._logAudit(orgId, 'email_sent', companyName, `Email sent: ${template?.name || templateId}`);
+    } catch (e) { /* ignore */ }
+  },
+
+  getCommsHistory(orgId) {
+    try {
+      const log = JSON.parse(localStorage.getItem('orgCommsLog') || '[]');
+      if (orgId) return log.filter(e => e.orgId === orgId);
+      return log;
+    } catch (e) { return []; }
+  },
+
+  renderCommsHistory(orgId) {
+    const history = this.getCommsHistory(orgId);
+    if (history.length === 0) return '<p class="text-muted small">No communications recorded yet</p>';
+
+    return `<div class="list-group list-group-flush" style="max-height: 250px; overflow-y: auto;">
+      ${history.map(entry => {
+        const date = new Date(entry.timestamp);
+        return `<div class="list-group-item px-0 py-2 border-0">
+          <div class="d-flex align-items-center">
+            <i class="bi bi-envelope-check text-success me-2"></i>
+            <div>
+              <div class="small fw-semibold">${utils.escapeHtml(entry.templateName)}</div>
+              <div class="text-muted" style="font-size: 0.7rem;">${date.toLocaleDateString('en-GB')} ${date.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}</div>
+            </div>
+          </div>
+        </div>`;
+      }).join('')}
+    </div>`;
   },
 
   // ============================================

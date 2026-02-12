@@ -49,6 +49,9 @@ const dashboardModule = {
       // Update county/city coverage indicators
       await this.updateCountyCoverage();
 
+      // Load geographic distribution
+      await this.loadGeoDistribution();
+
       console.log('✅ Dashboard data loaded');
 
     } catch (error) {
@@ -2799,6 +2802,104 @@ const dashboardModule = {
       if (countBadge) {
         countBadge.parentNode.insertBefore(badge, countBadge.nextSibling);
       }
+    }
+  },
+
+  // ============================================
+  // GEOGRAPHIC DISTRIBUTION WIDGET
+  // ============================================
+  async loadGeoDistribution() {
+    const geoWidget = document.getElementById('geoDistributionWidget');
+    const topWidget = document.getElementById('topCountiesWidget');
+    if (!geoWidget && !topWidget) return;
+
+    try {
+      // Get orgs with their county info
+      const { data: orgs } = await STATE.client
+        .from('organisations')
+        .select('id, catchment_area, status');
+
+      const activeOrgs = (orgs || []).filter(o => o.status !== 'archived');
+      const totalOrgs = activeOrgs.length;
+
+      // England counties, Scotland regions, Wales areas, Cities
+      const englandCounties = ['Bedfordshire','Berkshire','Buckinghamshire','Cambridgeshire','Cheshire','Cornwall','Cumbria','Derbyshire','Devon','Dorset','County Durham','East Riding of Yorkshire','Essex','Gloucestershire','Hampshire','Herefordshire','Hertfordshire','Isle of Wight','Kent','Lancashire','Leicestershire','Lincolnshire','Norfolk','Northamptonshire','North Yorkshire','Northumberland','Nottinghamshire','Oxfordshire','Rutland','Shropshire','Somerset','South Yorkshire','Staffordshire','Suffolk','Surrey','Sussex','Tyne & Wear','Warwickshire','West Yorkshire','Wiltshire','Worcestershire'];
+      const scotlandRegions = ['Argyll & Bute','Ayrshire','Central Scotland','Dumfries & Galloway','Dunbartonshire','Fife','Grampian','Highlands','Lanarkshire','Lothian','Renfrewshire','Scottish Borders','Scottish Islands','Tayside'];
+      const walesAreas = ['Anglesey','Carmarthenshire','Ceredigion','Conwy','Denbighshire','Flintshire','Glamorgan','Gwent','Gwynedd','Pembrokeshire','Powys','Wrexham'];
+      const cities = ['Birmingham','Bournemouth','Bradford','Brighton & Hove','Bristol','Cardiff','Coventry','Edinburgh','Glasgow','Leeds','Leicester','Liverpool','London','Manchester','Middlesborough','Newcastle','Nottingham','Sheffield','Southampton','Swansea'];
+
+      const countyCounts = {};
+      activeOrgs.forEach(org => {
+        if (org.catchment_area) {
+          countyCounts[org.catchment_area] = (countyCounts[org.catchment_area] || 0) + 1;
+        }
+      });
+
+      const countRegion = (list) => {
+        let count = 0;
+        list.forEach(c => { count += (countyCounts[c] || 0); });
+        return count;
+      };
+
+      const engCount = countRegion(englandCounties);
+      const scotCount = countRegion(scotlandRegions);
+      const walesCount = countRegion(walesAreas);
+      const citiesCount = countRegion(cities);
+      const unassigned = totalOrgs - engCount - scotCount - walesCount - citiesCount;
+
+      // Update total badge
+      const totalBadge = document.getElementById('geoTotalOrgs');
+      if (totalBadge) totalBadge.textContent = `${totalOrgs} orgs`;
+
+      // Render country breakdown
+      if (geoWidget) {
+        const regions = [
+          { name: 'England', count: engCount, color: 'danger', icon: '&#127988;&#917607;&#917602;&#917605;&#917614;&#917607;&#917631;' },
+          { name: 'Scotland', count: scotCount, color: 'primary', icon: '&#127988;&#917607;&#917602;&#917619;&#917603;&#917620;&#917631;' },
+          { name: 'Wales', count: walesCount, color: 'success', icon: '&#127988;&#917607;&#917602;&#917623;&#917612;&#917619;&#917631;' },
+          { name: 'Cities', count: citiesCount, color: 'info', icon: '<i class="bi bi-buildings"></i>' },
+          { name: 'Unassigned', count: unassigned, color: 'secondary', icon: '<i class="bi bi-question-circle"></i>' }
+        ];
+
+        geoWidget.innerHTML = regions.map(r => {
+          const pct = totalOrgs > 0 ? Math.round((r.count / totalOrgs) * 100) : 0;
+          return `<div class="d-flex align-items-center mb-2">
+            <span class="me-2" style="width: 24px; text-align: center;">${r.icon}</span>
+            <span class="small fw-semibold" style="width: 80px;">${r.name}</span>
+            <div class="progress flex-grow-1 me-2" style="height: 20px;">
+              <div class="progress-bar bg-${r.color}" style="width: ${pct}%">${r.count > 0 ? r.count : ''}</div>
+            </div>
+            <span class="small text-muted" style="width: 40px; text-align: right;">${pct}%</span>
+          </div>`;
+        }).join('');
+      }
+
+      // Render top counties
+      if (topWidget) {
+        const sorted = Object.entries(countyCounts)
+          .sort((a, b) => b[1] - a[1])
+          .slice(0, 10);
+
+        if (sorted.length === 0) {
+          topWidget.innerHTML = '<p class="text-muted small text-center py-3">No county data yet. Import CSVs to see distribution.</p>';
+        } else {
+          const maxCount = sorted[0][1];
+          topWidget.innerHTML = sorted.map(([county, count], i) => {
+            const pct = Math.round((count / maxCount) * 100);
+            return `<div class="d-flex align-items-center mb-2">
+              <span class="badge bg-light text-dark me-2" style="width: 24px; text-align: center;">${i + 1}</span>
+              <span class="small fw-semibold" style="width: 140px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${county}">${county}</span>
+              <div class="progress flex-grow-1 me-2" style="height: 16px;">
+                <div class="progress-bar bg-primary" style="width: ${pct}%"></div>
+              </div>
+              <span class="badge bg-primary">${count}</span>
+            </div>`;
+          }).join('');
+        }
+      }
+    } catch (error) {
+      console.error('Error loading geo distribution:', error);
+      if (geoWidget) geoWidget.innerHTML = '<p class="text-muted small">Error loading data</p>';
     }
   }
 };

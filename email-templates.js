@@ -29,7 +29,7 @@ const emailTemplatesModule = {
       const { data: templates, error } = await STATE.client
         .from('email_templates')
         .select('*')
-        .order('template_type', { ascending: true });
+        .order('template_type', { ascending: true, nullsFirst: false });
 
       if (error) throw error;
 

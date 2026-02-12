@@ -297,13 +297,10 @@ const emailListsModule = {
 
     const listData = {
       list_name: document.getElementById('listName').value,
-      description: document.getElementById('listDescription').value,
       list_type: document.getElementById('listType').value,
       color: document.getElementById('listColor').value,
       icon: document.getElementById('listIcon').value,
-      is_active: document.getElementById('listActive').checked,
-      auto_clean: document.getElementById('listAutoClean').checked,
-      created_by: currentUser?.id || 'system'
+      is_active: document.getElementById('listActive').checked
     };
 
     try {

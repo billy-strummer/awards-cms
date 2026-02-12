@@ -642,12 +642,12 @@ const emailBuilder = {
     // Define template structures
     const templates = {
       winner: {
-        name: 'Winner Announcement 2024',
+        name: 'Winner Announcement ' + new Date().getFullYear(),
         subject: '🏆 Congratulations! You\'ve Won {{award_name}}',
         blocks: ['header', 'hero', 'text', 'company-profile', 'award-list', 'button', 'social-links', 'footer']
       },
       nominee: {
-        name: 'Nominee Notification 2024',
+        name: 'Nominee Notification ' + new Date().getFullYear(),
         subject: '⭐ You\'ve Been Nominated for {{award_name}}',
         blocks: ['header', 'hero', 'text', 'company-profile', 'button', 'divider', 'text', 'social-links', 'footer']
       },
@@ -856,9 +856,7 @@ const emailBuilder = {
    * Get Client Promotion HTML Template
    */
   getClientPromotionHTML() {
-    const badgeImg = this.promotionMode === 'winner'
-      ? 'img/winner-logo.png'
-      : 'img/nominee-winner-logo.png';
+    const badgeHTML = this.generateBadge(this.promotionMode);
 
     return `
       <table width="100%" border="0" cellspacing="0" cellpadding="0" bgcolor="#e7e7e2">
@@ -919,7 +917,7 @@ const emailBuilder = {
                               </div>
                               <br>
                               <div id="drop-badge" class="drop-zone" data-content-type="badge" style="min-height: 160px; border: 2px dashed #ccc; padding: 20px; display: inline-block; cursor: pointer;">
-                                <p style="margin: 0; color: #999; font-family: Arial, sans-serif;">🏆 ${this.promotionMode === 'winner' ? 'Winner' : 'Nominee'} badge will appear here</p>
+                                ${badgeHTML}
                               </div>
                             </td>
                           </tr>

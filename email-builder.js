@@ -23,6 +23,7 @@ const emailBuilder = {
 
     this.setupDragAndDrop();
     this.loadOrganisations();
+    this.loadEmailLists();
     this.setupVariableCopy();
     this.initialized = true;
     console.log('✅ Email Builder initialized');
@@ -1300,6 +1301,162 @@ const emailBuilder = {
   /**
    * Generate Winner/Nominee Badge
    */
+  /**
+   * Load email lists into the send dropdown
+   */
+  async loadEmailLists() {
+    try {
+      const { data: lists, error } = await STATE.client
+        .from('email_lists')
+        .select('id, list_name, list_type, is_active')
+        .eq('is_active', true)
+        .order('list_name', { ascending: true });
+
+      if (error) throw error;
+
+      const select = document.getElementById('builderEmailList');
+      if (select) {
+        select.innerHTML = '<option value="">Choose email list...</option>' +
+          (lists || []).map(list => {
+            const typeLabel = list.list_type ? ` (${list.list_type})` : '';
+            return `<option value="${list.id}">${utils.escapeHtml(list.list_name)}${typeLabel}</option>`;
+          }).join('');
+
+        select.addEventListener('change', async (e) => {
+          const countEl = document.getElementById('builderListCount');
+          if (e.target.value && countEl) {
+            const { count, error: countErr } = await STATE.client
+              .from('email_list_subscribers')
+              .select('id', { count: 'exact', head: true })
+              .eq('list_id', e.target.value)
+              .eq('status', 'active');
+
+            if (!countErr) {
+              countEl.textContent = `${count || 0} active subscribers`;
+            }
+          } else if (countEl) {
+            countEl.textContent = '';
+          }
+        });
+      }
+    } catch (error) {
+      console.error('Error loading email lists:', error);
+    }
+  },
+
+  /**
+   * Send test email to a single address
+   */
+  async sendTestEmail() {
+    const subject = document.getElementById('builderSubject')?.value;
+    if (!subject) {
+      utils.showToast('Please enter a subject line first', 'warning');
+      return;
+    }
+
+    if (this.blocks.length === 0) {
+      utils.showToast('Please add some content to your email first', 'warning');
+      return;
+    }
+
+    const email = prompt('Enter email address to send a test to:');
+    if (!email || !email.includes('@')) return;
+
+    const html = this.generateFullHTML();
+    const fromName = document.getElementById('builderFromName')?.value || 'British Trade Awards';
+
+    try {
+      utils.showToast('Sending test email...', 'info');
+
+      const { data, error } = await STATE.client.functions.invoke('send-campaign', {
+        body: {
+          mode: 'test',
+          to: email,
+          subject: subject,
+          html: html,
+          fromName: fromName
+        }
+      });
+
+      if (error) throw error;
+
+      utils.showToast(`Test email sent to ${email}!`, 'success');
+    } catch (error) {
+      console.error('Error sending test email:', error);
+      utils.showToast('Failed to send test email: ' + error.message, 'error');
+    }
+  },
+
+  /**
+   * Send campaign to selected email list
+   */
+  async sendCampaign() {
+    const listId = document.getElementById('builderEmailList')?.value;
+    const subject = document.getElementById('builderSubject')?.value;
+    const campaignName = document.getElementById('builderCampaignName')?.value;
+    const fromName = document.getElementById('builderFromName')?.value || 'British Trade Awards';
+
+    if (!listId) {
+      utils.showToast('Please select an email list to send to', 'warning');
+      return;
+    }
+    if (!subject) {
+      utils.showToast('Please enter a subject line', 'warning');
+      return;
+    }
+    if (this.blocks.length === 0) {
+      utils.showToast('Please add some content to your email first', 'warning');
+      return;
+    }
+
+    // Get subscriber count for confirmation
+    const { count } = await STATE.client
+      .from('email_list_subscribers')
+      .select('id', { count: 'exact', head: true })
+      .eq('list_id', listId)
+      .eq('status', 'active');
+
+    const listName = document.getElementById('builderEmailList')?.selectedOptions[0]?.text || 'selected list';
+
+    if (!confirm(`Send "${subject}" to ${count || 0} subscribers in "${listName}"?\n\nThis action cannot be undone.`)) {
+      return;
+    }
+
+    const html = this.generateFullHTML();
+
+    try {
+      utils.showToast('Sending campaign...', 'info');
+
+      const { data, error } = await STATE.client.functions.invoke('send-campaign', {
+        body: {
+          mode: 'campaign',
+          listId: listId,
+          subject: subject,
+          html: html,
+          fromName: fromName,
+          campaignName: campaignName || subject
+        }
+      });
+
+      if (error) throw error;
+
+      utils.showToast(`Campaign sent to ${data?.sent || count} recipients!`, 'success');
+
+      // Log the campaign
+      await STATE.client.from('email_log').insert({
+        template_key: 'CAMPAIGN',
+        recipient_email: `list:${listId}`,
+        subject: subject,
+        status: 'sent',
+        sent_at: new Date().toISOString()
+      });
+
+    } catch (error) {
+      console.error('Error sending campaign:', error);
+      utils.showToast('Failed to send campaign: ' + error.message, 'error');
+    }
+  },
+
   generateBadge(mode) {
     const isWinner = mode === 'winner';
     const color = isWinner ? '#FFD700' : '#C0C0C0';

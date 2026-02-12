@@ -3296,6 +3296,35 @@
 
                     <hr>
 
+                    <!-- Send Campaign -->
+                    <div class="mb-4">
+                      <h6 class="mb-3"><i class="bi bi-send me-2"></i>Send Campaign</h6>
+
+                      <div class="mb-3">
+                        <label class="form-label small">Send To List</label>
+                        <select class="form-select form-select-sm" id="builderEmailList">
+                          <option value="">Choose email list...</option>
+                        </select>
+                        <small class="text-muted d-block mt-1" id="builderListCount"></small>
+                      </div>
+
+                      <div class="mb-3">
+                        <label class="form-label small">From Name</label>
+                        <input type="text" class="form-control form-control-sm" id="builderFromName" value="British Trade Awards">
+                      </div>
+
+                      <div class="d-grid gap-2">
+                        <button class="btn btn-outline-info btn-sm" onclick="emailBuilder.sendTestEmail()">
+                          <i class="bi bi-envelope-check me-1"></i>Send Test Email
+                        </button>
+                        <button class="btn btn-warning btn-sm" onclick="emailBuilder.sendCampaign()">
+                          <i class="bi bi-send-fill me-1"></i>Send to List
+                        </button>
+                      </div>
+                    </div>
+
+                    <hr>
+
                     <!-- Quick Actions -->
                     <div class="d-grid gap-2">
                       <button class="btn btn-success btn-sm" onclick="emailBuilder.exportHTML()">

@@ -79,31 +79,36 @@ async loadOrganisations() {
     });
     
     // Create lookup maps
-    const orgAwardMap = {};
+    const orgAwardMap = {};      // org_id → first award_id (for county/region)
+    const orgAwardsCount = {};   // org_id → total assignments count
     assignments?.forEach(a => {
       if (!orgAwardMap[a.organisation_id]) {
         orgAwardMap[a.organisation_id] = a.award_id;
       }
+      orgAwardsCount[a.organisation_id] = (orgAwardsCount[a.organisation_id] || 0) + 1;
     });
-    
+
     const awardMap = {};
     awards?.forEach(a => {
       awardMap[a.id] = a;
     });
-    
+
     // Attach award data to organisations
+    // Priority: award-derived county > org's catchment_area (set by CSV import)
     allData = allData.map(org => {
       const awardId = orgAwardMap[org.id];
       const award = awardMap[awardId];
-      const county = award?.county || null;
-      const region = county ? countyToRegion[county] : null;
-      
+      const awardCounty = award?.county || null;
+      const county = awardCounty || org.catchment_area || null;
+      const region = county ? (countyToRegion[county] || org.region) : (org.region || null);
+
       return {
         ...org,
         county: county,
         region: region,
-        sector: award?.sector || null,
-        year: award?.year || null
+        sector: award?.sector || org.sector || null,
+        year: award?.year || null,
+        awards_count: orgAwardsCount[org.id] || 0
       };
     });
     
@@ -113,9 +118,10 @@ async loadOrganisations() {
     // NEW: Calculate and display dashboard stats
     await this.calculateDashboardStats();
     
-    // Populate filter dropdowns
+    // Populate filter dropdowns and restore saved filters
     this.populateFilters();
-    this.renderOrganisations();
+    this.restoreFilters();
+    this.filterOrganisations();
     
     console.log(`✅ Loaded ${STATE.allOrganisations.length} organisations (across ${page} pages)`);
     
@@ -226,6 +232,40 @@ populateFilters() {
 },
 
 /**
+ * Restore saved filter values from localStorage
+ */
+restoreFilters() {
+  try {
+    const saved = JSON.parse(localStorage.getItem('orgsFilters') || '{}');
+    if (saved.year) {
+      const el = document.getElementById('orgsYearFilter');
+      if (el) el.value = saved.year;
+    }
+    if (saved.sector) {
+      const el = document.getElementById('orgsSectorFilter');
+      if (el) el.value = saved.sector;
+    }
+    if (saved.region) {
+      const el = document.getElementById('orgsRegionFilter');
+      if (el) el.value = saved.region;
+      this.updateCountyFilterByRegion();
+    }
+    if (saved.county) {
+      const el = document.getElementById('orgsCountyFilter');
+      if (el) el.value = saved.county;
+    }
+    if (saved.status) {
+      const el = document.getElementById('orgsStatusFilter');
+      if (el) el.value = saved.status;
+    }
+    if (saved.search) {
+      const el = document.getElementById('orgsSearchBox');
+      if (el) el.value = saved.search;
+    }
+  } catch (e) { /* ignore */ }
+},
+
+/**
  * Update county dropdown based on selected region
  */
 updateCountyFilterByRegion() {
@@ -270,9 +310,25 @@ updateCountyFilterByRegion() {
   const status = document.getElementById('orgsStatusFilter')?.value || '';
   const search = document.getElementById('orgsSearchBox')?.value.toLowerCase().trim() || '';
 
+  // Save filters to localStorage
+  try {
+    localStorage.setItem('orgsFilters', JSON.stringify({ year, sector, county, region, status, search }));
+  } catch (e) { /* ignore */ }
+
+  // Hide archived by default unless status filter is 'archived' or 'all'
+  const showArchived = status === 'archived' || status === 'all';
+
   STATE.filteredOrganisations = STATE.allOrganisations.filter(org => {
-    // Status filter
-    if (status && (org.status || 'prospect') !== status) return false;
+    const orgStatus = org.status || 'prospect';
+
+    // Hide archived unless explicitly filtering for them
+    if (!showArchived && orgStatus === 'archived') return false;
+
+    // Year filter
+    if (year && String(org.year || '') !== String(year)) return false;
+
+    // Status filter (skip if 'all')
+    if (status && status !== 'all' && orgStatus !== status) return false;
 
     // Sector filter
     if (sector && org.sector !== sector) return false;
@@ -283,19 +339,15 @@ updateCountyFilterByRegion() {
     // Region filter
     if (region && org.region !== region) return false;
 
-    // Search filter - searches across multiple fields
+    // Search filter - searches ALL fields including county, sector, status
     if (search) {
-      const companyName = org.company_name?.toLowerCase() || '';
-      const contact = org.contact_name?.toLowerCase() || '';
-      const email = org.email?.toLowerCase() || '';
-      const website = org.website?.toLowerCase() || '';
-      const notes = org.notes?.toLowerCase() || '';
+      const searchFields = [
+        org.company_name, org.contact_name, org.email, org.website,
+        org.notes, org.county, org.sector, org.region,
+        org.catchment_area, org.address, orgStatus
+      ].map(f => (f || '').toLowerCase());
 
-      if (!companyName.includes(search) &&
-          !contact.includes(search) &&
-          !email.includes(search) &&
-          !website.includes(search) &&
-          !notes.includes(search)) {
+      if (!searchFields.some(f => f.includes(search))) {
         return false;
       }
     }
@@ -324,7 +376,7 @@ updateCountyFilterByRegion() {
   if (STATE.filteredOrganisations.length === 0) {
     tbody.innerHTML = `
       <tr>
-        <td colspan="10" class="text-center py-5">
+        <td colspan="11" class="text-center py-5">
           <i class="bi bi-inbox display-4 text-muted opacity-25"></i>
           <p class="text-muted mt-3 mb-0">No organisations found</p>
         </td>
@@ -335,28 +387,29 @@ updateCountyFilterByRegion() {
 
   tbody.innerHTML = STATE.filteredOrganisations.map(org => {
     const isSelected = this.selectedOrgs.has(org.id);
-    const awardsCount = org.awards_count || 0; // You'll need to add this to your query
-    
+    const awardsCount = org.awards_count || 0;
+    const escapedName = utils.escapeHtml(org.company_name || '').replace(/'/g, "\\'");
+
     return `
       <tr class="fade-in ${isSelected ? 'table-active' : ''}">
         <td class="text-center">
-          <input type="checkbox" class="form-check-input" 
+          <input type="checkbox" class="form-check-input"
                  ${isSelected ? 'checked' : ''}
                  onchange="orgsModule.toggleOrgSelection('${org.id}')">
         </td>
         <td>
           <div class="d-flex align-items-center">
-            ${org.logo_url ? 
-              `<img src="${org.logo_url}" alt="${utils.escapeHtml(org.company_name)}" 
+            ${org.logo_url ?
+              `<img src="${org.logo_url}" alt="${utils.escapeHtml(org.company_name)}"
                    class="me-2 rounded" style="width: 40px; height: 28px; object-fit: contain; border: 1px solid #e0e0e0;">` :
-              `<div class="me-2 d-flex align-items-center justify-content-center rounded" 
+              `<div class="me-2 d-flex align-items-center justify-content-center rounded"
                    style="width: 40px; height: 28px; background: #f5f5f5; border: 1px solid #e0e0e0;">
                 <i class="bi bi-building text-muted" style="font-size: 0.8rem;"></i>
               </div>`
             }
-            <a class="text-primary text-decoration-none fw-semibold" 
+            <a class="text-primary text-decoration-none fw-semibold"
                style="cursor: pointer;"
-               onclick="orgsModule.openCompanyProfile('${org.id}', '${utils.escapeHtml(org.company_name || '').replace(/'/g, "\\'")}')">
+               onclick="orgsModule.openCompanyProfile('${org.id}', '${escapedName}')">
               ${utils.escapeHtml(org.company_name || 'N/A')}
             </a>
           </div>
@@ -371,19 +424,21 @@ updateCountyFilterByRegion() {
             ${utils.escapeHtml(org.county || '-')}
           </span>
         </td>
-        <td class="small">${utils.escapeHtml(org.contact_name || '-')}</td>
+        <td class="small" title="${utils.escapeHtml(org.contact_name || '')}">
+          ${utils.escapeHtml(org.contact_name ? (org.contact_name.length > 18 ? org.contact_name.substring(0, 18) + '...' : org.contact_name) : '-')}
+        </td>
         <td class="small">
-          ${org.email ? 
-            `<a href="mailto:${org.email}" class="text-decoration-none">
-              ${utils.truncate(org.email, 25)}
+          ${org.email ?
+            `<a href="mailto:${org.email}" class="text-decoration-none" title="${utils.escapeHtml(org.email)}">
+              ${org.email.length > 25 ? utils.escapeHtml(org.email.substring(0, 25)) + '...' : utils.escapeHtml(org.email)}
             </a>` : '-'
           }
         </td>
         <td class="small">
-          ${org.website ? 
-            `<a href="${org.website.startsWith('http') ? org.website : 'https://' + org.website}" 
-                target="_blank" class="text-decoration-none">
-              ${utils.truncate(org.website.replace(/https?:\/\/(www\.)?/, ''), 20)}
+          ${org.website ?
+            `<a href="${org.website.startsWith('http') ? org.website : 'https://' + org.website}"
+                target="_blank" class="text-decoration-none" title="${utils.escapeHtml(org.website)}">
+              ${(() => { const clean = org.website.replace(/https?:\/\/(www\.)?/, ''); return clean.length > 20 ? utils.escapeHtml(clean.substring(0, 20)) + '...' : utils.escapeHtml(clean); })()}
               <i class="bi bi-box-arrow-up-right ms-1" style="font-size: 0.7rem;"></i>
             </a>` : '-'
           }
@@ -394,17 +449,37 @@ updateCountyFilterByRegion() {
           </span>
         </td>
         <td class="text-center">
-          ${awardsCount > 0 ? 
-            `<span class="badge bg-warning text-dark">${awardsCount}</span>` : 
+          <select class="form-select form-select-sm border-0 p-0 text-center"
+                  style="font-size: 0.75rem; background-position: right 0.25rem center; padding-right: 1.2rem !important; cursor: pointer;"
+                  onchange="orgsModule.quickUpdateStatus('${org.id}', this.value)"
+                  title="Click to change status">
+            ${this._getStatusOptions(org.status || 'prospect').map(s =>
+              `<option value="${s.value}" ${(org.status || 'prospect') === s.value ? 'selected' : ''}>${s.label}</option>`
+            ).join('')}
+          </select>
+        </td>
+        <td class="text-center">
+          ${awardsCount > 0 ?
+            `<span class="badge bg-warning text-dark">${awardsCount}</span>` :
             `<span class="text-muted">-</span>`
           }
         </td>
         <td class="text-center">
-          <button class="btn btn-sm btn-outline-primary" 
-                  onclick="orgsModule.openCompanyProfile('${org.id}', '${utils.escapeHtml(org.company_name || '').replace(/'/g, "\\'")}')"
-                  title="View Profile">
-            <i class="bi bi-eye"></i>
-          </button>
+          <div class="btn-group btn-group-sm">
+            <button class="btn btn-sm btn-outline-secondary"
+                    onclick="orgsModule.openCompanyProfile('${org.id}', '${escapedName}')"
+                    title="View Profile">
+              <i class="bi bi-eye"></i>
+            </button>
+            ${(org.status || 'prospect') === 'archived'
+              ? `<button class="btn btn-sm btn-outline-success"
+                      onclick="orgsModule.restoreOrganisation('${org.id}', '${escapedName}')"
+                      title="Restore"><i class="bi bi-arrow-counterclockwise"></i></button>`
+              : `<button class="btn btn-sm btn-outline-danger"
+                      onclick="orgsModule.deleteOrganisation('${org.id}', '${escapedName}')"
+                      title="Archive"><i class="bi bi-archive"></i></button>`
+            }
+          </div>
         </td>
       </tr>
     `;
@@ -1324,15 +1399,28 @@ updateCountyFilterByRegion() {
   /**
    * Fetch company logo from their website URL
    * @param {string} orgId - Organisation ID
-   * @param {string} websiteUrl - Company website URL
-   * @param {string} companyName - Company name
+   * @param {string} [websiteUrl] - Company website URL (optional, looked up from state)
+   * @param {string} [companyName] - Company name (optional)
    */
   async fetchLogoFromWebsite(orgId, websiteUrl, companyName) {
     try {
-      utils.showLoading();
+      // If no websiteUrl provided, look it up from state
+      if (!websiteUrl) {
+        const org = STATE.allOrganisations.find(o => o.id === orgId);
+        if (!org || !org.website) {
+          utils.showToast('Please add a website URL first', 'warning');
+          return;
+        }
+        websiteUrl = org.website;
+        companyName = org.company_name;
+      }
+
+      utils.showLoading('Fetching logo...');
 
       // Clean up the website URL to get the domain
-      let domain = websiteUrl.replace(/^https?:\/\//, '').replace(/^www\./, '').split('/')[0];
+      let cleanUrl = websiteUrl.trim();
+      if (!cleanUrl.startsWith('http')) cleanUrl = 'https://' + cleanUrl;
+      let domain = new URL(cleanUrl).hostname.replace(/^www\./, '');
 
       // Try multiple logo services in order
       const logoServices = [
@@ -1660,63 +1748,6 @@ updateCountyFilterByRegion() {
   },
 
   /**
-   * Extract and set company logo from website
-   */
-  async fetchLogoFromWebsite(orgId) {
-    try {
-      const org = STATE.allOrganisations.find(o => o.id === orgId);
-      if (!org || !org.website) {
-        utils.showToast('Please add a website URL first', 'warning');
-        return;
-      }
-
-      utils.showLoading('Fetching logo...');
-
-      // Clean up website URL
-      let websiteUrl = org.website.trim();
-      if (!websiteUrl.startsWith('http')) {
-        websiteUrl = 'https://' + websiteUrl;
-      }
-
-      // Extract domain
-      const domain = new URL(websiteUrl).hostname;
-
-      // Try Clearbit first (best quality), then fallback to Google favicon
-      const logoUrl = `https://logo.clearbit.com/${domain}`;
-
-      // Update database
-      const { error } = await STATE.client
-        .from('organisations')
-        .update({ logo_url: logoUrl })
-        .eq('id', orgId);
-
-      if (error) throw error;
-
-      // Update local state
-      const orgIndex = STATE.allOrganisations.findIndex(o => o.id === orgId);
-      if (orgIndex !== -1) {
-        STATE.allOrganisations[orgIndex].logo_url = logoUrl;
-      }
-
-      const filteredIndex = STATE.filteredOrganisations.findIndex(o => o.id === orgId);
-      if (filteredIndex !== -1) {
-        STATE.filteredOrganisations[filteredIndex].logo_url = logoUrl;
-      }
-
-      utils.showToast('Logo fetched successfully!', 'success');
-
-      // Refresh the profile view
-      await this.openCompanyProfile(orgId, org.company_name);
-
-    } catch (error) {
-      console.error('Error fetching logo:', error);
-      utils.showToast('Error fetching logo: ' + error.message, 'error');
-    } finally {
-      utils.hideLoading();
-    }
-  },
-
-  /**
    * Cancel edit mode and revert to view mode
    * @param {string} orgId - Organisation ID
    * @param {string} companyName - Company name
@@ -1930,16 +1961,43 @@ updateCountyFilterByRegion() {
       return;
     }
 
+    const companyName = document.getElementById('newCompanyName').value.trim();
+    const email = document.getElementById('newCompanyEmail').value.trim();
+    let website = document.getElementById('newCompanyWebsite').value.trim() || null;
+
+    // Validate email format if provided
+    if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      utils.showToast('Please enter a valid email address', 'error');
+      return;
+    }
+
+    // Auto-prefix website URL
+    if (website && !website.startsWith('http://') && !website.startsWith('https://')) {
+      website = 'https://' + website;
+    }
+
+    // Check for duplicate company name
+    const duplicate = STATE.allOrganisations.find(
+      o => o.company_name?.toLowerCase() === companyName.toLowerCase()
+    );
+    if (duplicate) {
+      if (!confirm(`A company named "${duplicate.company_name}" already exists. Add anyway?`)) {
+        return;
+      }
+    }
+
+    const selectedCounty = document.getElementById('newCompanyCounty')?.value || '';
+
     const companyData = {
-      company_name: document.getElementById('newCompanyName').value.trim(),
+      company_name: companyName,
       sector: document.getElementById('newCompanySector').value,
       contact_name: document.getElementById('newContactName').value.trim() || null,
       contact_phone: document.getElementById('newContactPhone').value.trim() || null,
-      email: document.getElementById('newCompanyEmail').value.trim(),
-      website: document.getElementById('newCompanyWebsite').value.trim() || null,
+      email: email || null,
+      website: website,
       region: document.getElementById('newCompanyRegion').value,
       address: document.getElementById('newCompanyAddress').value.trim() || null,
-      catchment_area: document.getElementById('newCompanyCatchment').value.trim() || null,
+      catchment_area: selectedCounty || document.getElementById('newCompanyCatchment').value.trim() || null,
       status: 'prospect'
     };
 
@@ -2038,9 +2096,25 @@ updateCountyFilterByRegion() {
           valA = (a.county || '').toLowerCase();
           valB = (b.county || '').toLowerCase();
           break;
+        case 'contact':
+          valA = (a.contact_name || '').toLowerCase();
+          valB = (b.contact_name || '').toLowerCase();
+          break;
+        case 'email':
+          valA = (a.email || '').toLowerCase();
+          valB = (b.email || '').toLowerCase();
+          break;
         case 'region':
           valA = (a.region || '').toLowerCase();
           valB = (b.region || '').toLowerCase();
+          break;
+        case 'status':
+          valA = (a.status || 'prospect').toLowerCase();
+          valB = (b.status || 'prospect').toLowerCase();
+          break;
+        case 'awards':
+          valA = a.awards_count || 0;
+          valB = b.awards_count || 0;
           break;
         default:
           valA = (a.company_name || '').toLowerCase();
@@ -2065,7 +2139,7 @@ updateCountyFilterByRegion() {
     }
 
     const csv = [
-      'Company Name,Sector,County,Region,Contact Name,Email,Phone,Website,Status',
+      'Company Name,Sector,County,Region,Contact Name,Email,Phone,Website,Status,Awards Count,Address,Catchment Area',
       ...data.map(org =>
         [
           `"${(org.company_name || '').replace(/"/g, '""')}"`,
@@ -2076,7 +2150,10 @@ updateCountyFilterByRegion() {
           `"${(org.email || '').replace(/"/g, '""')}"`,
           `"${(org.contact_phone || '').replace(/"/g, '""')}"`,
           `"${(org.website || '').replace(/"/g, '""')}"`,
-          `"${(org.status || 'prospect').replace(/"/g, '""')}"`
+          `"${(org.status || 'prospect').replace(/"/g, '""')}"`,
+          `"${org.awards_count || 0}"`,
+          `"${(org.address || '').replace(/"/g, '""')}"`,
+          `"${(org.catchment_area || '').replace(/"/g, '""')}"`
         ].join(',')
       )
     ].join('\n');
@@ -2157,6 +2234,207 @@ updateCountyFilterByRegion() {
   // ============================================
   // UPDATE COMPANY STATUS
   // ============================================
+  // ============================================
+  // QUICK INLINE STATUS UPDATE
+  // ============================================
+  async quickUpdateStatus(orgId, newStatus) {
+    try {
+      const org = STATE.allOrganisations.find(o => o.id === orgId);
+      const oldStatus = org?.status || 'prospect';
+
+      const { error } = await STATE.client
+        .from('organisations')
+        .update({ status: newStatus })
+        .eq('id', orgId);
+
+      if (error) throw error;
+
+      // Update local state
+      if (org) org.status = newStatus;
+      const filteredOrg = STATE.filteredOrganisations.find(o => o.id === orgId);
+      if (filteredOrg) filteredOrg.status = newStatus;
+
+      // Audit trail
+      this._logAudit(orgId, 'status_change', org?.company_name || '', `Status: ${oldStatus} → ${newStatus}`);
+
+      utils.showToast(`Status updated to ${newStatus.replace('_', ' ')}`, 'success');
+    } catch (error) {
+      console.error('Error updating status:', error);
+      utils.showToast('Error updating status: ' + error.message, 'error');
+    }
+  },
+
+  // ============================================
+  // ARCHIVE ORGANISATION (Soft Delete)
+  // ============================================
+  async deleteOrganisation(orgId, companyName) {
+    if (!confirm(`Archive "${companyName}"? This will hide it from the main list but keep all data intact. You can restore it later from the "Show Archived" filter.`)) {
+      return;
+    }
+
+    try {
+      utils.showLoading();
+
+      const { error } = await STATE.client
+        .from('organisations')
+        .update({ status: 'archived' })
+        .eq('id', orgId);
+
+      if (error) throw error;
+
+      // Log the action
+      this._logAudit(orgId, 'archived', companyName, 'Organisation archived');
+
+      utils.showToast(`"${companyName}" archived successfully`, 'success');
+
+      // Update local state
+      const org = STATE.allOrganisations.find(o => o.id === orgId);
+      if (org) org.status = 'archived';
+
+      this.selectedOrgs.delete(orgId);
+      this.filterOrganisations();
+      this.updateBulkActionsBar();
+
+    } catch (error) {
+      console.error('Error archiving organisation:', error);
+      utils.showToast('Error archiving: ' + error.message, 'error');
+    } finally {
+      utils.hideLoading();
+    }
+  },
+
+  async restoreOrganisation(orgId, companyName) {
+    try {
+      const { error } = await STATE.client
+        .from('organisations')
+        .update({ status: 'prospect' })
+        .eq('id', orgId);
+
+      if (error) throw error;
+
+      this._logAudit(orgId, 'restored', companyName, 'Organisation restored from archive');
+
+      const org = STATE.allOrganisations.find(o => o.id === orgId);
+      if (org) org.status = 'prospect';
+
+      utils.showToast(`"${companyName}" restored`, 'success');
+      this.filterOrganisations();
+    } catch (error) {
+      console.error('Error restoring:', error);
+      utils.showToast('Error restoring: ' + error.message, 'error');
+    }
+  },
+
+  async permanentDelete(orgId, companyName) {
+    if (!confirm(`PERMANENTLY delete "${companyName}" and all associated data? This CANNOT be undone.`)) return;
+    if (!confirm(`Final confirmation: Delete "${companyName}" forever?`)) return;
+
+    try {
+      utils.showLoading();
+
+      await STATE.client.from('award_assignments').delete().eq('organisation_id', orgId);
+      const { error } = await STATE.client.from('organisations').delete().eq('id', orgId);
+      if (error) throw error;
+
+      STATE.allOrganisations = STATE.allOrganisations.filter(o => o.id !== orgId);
+      STATE.filteredOrganisations = STATE.filteredOrganisations.filter(o => o.id !== orgId);
+      this.selectedOrgs.delete(orgId);
+
+      utils.showToast(`"${companyName}" permanently deleted`, 'success');
+      this.renderOrganisations();
+      this.updateBulkActionsBar();
+    } catch (error) {
+      console.error('Error deleting:', error);
+      utils.showToast('Error: ' + error.message, 'error');
+    } finally {
+      utils.hideLoading();
+    }
+  },
+
+  // ============================================
+  // BULK ARCHIVE
+  // ============================================
+  async bulkDelete() {
+    if (this.selectedOrgs.size === 0) {
+      utils.showToast('No organisations selected', 'warning');
+      return;
+    }
+
+    const count = this.selectedOrgs.size;
+    if (!confirm(`Archive ${count} organisation(s)? They will be hidden from the main list but can be restored later.`)) {
+      return;
+    }
+
+    try {
+      utils.showLoading();
+      const orgIds = Array.from(this.selectedOrgs);
+
+      const { error } = await STATE.client
+        .from('organisations')
+        .update({ status: 'archived' })
+        .in('id', orgIds);
+
+      if (error) throw error;
+
+      // Update local state
+      orgIds.forEach(id => {
+        const org = STATE.allOrganisations.find(o => o.id === id);
+        if (org) org.status = 'archived';
+      });
+      this.selectedOrgs.clear();
+
+      utils.showToast(`${count} organisation(s) archived`, 'success');
+      this.filterOrganisations();
+      this.updateBulkActionsBar();
+
+    } catch (error) {
+      console.error('Error bulk archiving:', error);
+      utils.showToast('Error archiving: ' + error.message, 'error');
+    } finally {
+      utils.hideLoading();
+    }
+  },
+
+  // ============================================
+  // BULK STATUS CHANGE
+  // ============================================
+  async bulkStatusChange(newStatus) {
+    if (this.selectedOrgs.size === 0) {
+      utils.showToast('No organisations selected', 'warning');
+      return;
+    }
+
+    const count = this.selectedOrgs.size;
+    if (!confirm(`Change status of ${count} organisation(s) to "${newStatus.replace('_', ' ')}"?`)) return;
+
+    try {
+      utils.showLoading();
+      const orgIds = Array.from(this.selectedOrgs);
+
+      const { error } = await STATE.client
+        .from('organisations')
+        .update({ status: newStatus })
+        .in('id', orgIds);
+
+      if (error) throw error;
+
+      orgIds.forEach(id => {
+        const org = STATE.allOrganisations.find(o => o.id === id);
+        if (org) org.status = newStatus;
+        const fOrg = STATE.filteredOrganisations.find(o => o.id === id);
+        if (fOrg) fOrg.status = newStatus;
+      });
+
+      utils.showToast(`${count} org(s) updated to ${newStatus.replace('_', ' ')}`, 'success');
+      this.renderOrganisations();
+    } catch (error) {
+      console.error('Error bulk status change:', error);
+      utils.showToast('Error: ' + error.message, 'error');
+    } finally {
+      utils.hideLoading();
+    }
+  },
+
   async updateOrgStatus(orgId, newStatus) {
     try {
       const { error } = await STATE.client
@@ -2183,6 +2461,698 @@ updateCountyFilterByRegion() {
       console.error('Error updating status:', error);
       utils.showToast('Error updating status: ' + error.message, 'error');
     }
+  },
+
+  // ============================================
+  // STATUS WORKFLOW ENFORCEMENT
+  // ============================================
+  _statusFlow: {
+    'prospect':    { next: ['entrant', 'sponsor'], label: 'Prospect' },
+    'entrant':     { next: ['nominee', 'prospect'], label: 'Entrant' },
+    'nominee':     { next: ['shortlisted', 'entrant'], label: 'Nominee' },
+    'shortlisted': { next: ['winner', 'nominee'], label: 'Shortlisted' },
+    'winner':      { next: ['past_winner'], label: 'Winner' },
+    'past_winner': { next: ['entrant', 'prospect'], label: 'Past Winner' },
+    'sponsor':     { next: ['prospect'], label: 'Sponsor' },
+    'archived':    { next: ['prospect'], label: 'Archived' }
+  },
+
+  _getStatusOptions(currentStatus) {
+    const flow = this._statusFlow[currentStatus];
+    if (!flow) return [{ value: currentStatus, label: currentStatus }];
+
+    // Show current + valid next statuses
+    const options = [{ value: currentStatus, label: flow.label + ' (current)' }];
+    (flow.next || []).forEach(s => {
+      const f = this._statusFlow[s];
+      if (f) options.push({ value: s, label: f.label });
+    });
+    return options;
+  },
+
+  // ============================================
+  // AUDIT TRAIL (localStorage-based)
+  // ============================================
+  _logAudit(orgId, action, companyName, details) {
+    try {
+      const key = 'orgAuditLog';
+      const log = JSON.parse(localStorage.getItem(key) || '[]');
+      log.unshift({
+        orgId,
+        companyName,
+        action,
+        details,
+        timestamp: new Date().toISOString()
+      });
+      // Keep last 500 entries
+      if (log.length > 500) log.length = 500;
+      localStorage.setItem(key, JSON.stringify(log));
+    } catch (e) { /* ignore */ }
+  },
+
+  getAuditLog(orgId) {
+    try {
+      const log = JSON.parse(localStorage.getItem('orgAuditLog') || '[]');
+      if (orgId) return log.filter(e => e.orgId === orgId);
+      return log;
+    } catch (e) { return []; }
+  },
+
+  renderAuditLog(orgId) {
+    const log = this.getAuditLog(orgId);
+    if (log.length === 0) return '<p class="text-muted small">No activity recorded yet</p>';
+
+    return `<div class="list-group list-group-flush" style="max-height: 300px; overflow-y: auto;">
+      ${log.slice(0, 50).map(entry => {
+        const date = new Date(entry.timestamp);
+        const timeAgo = this._timeAgo(date);
+        const icons = {
+          'status_change': 'bi-arrow-repeat text-primary',
+          'archived': 'bi-archive text-warning',
+          'restored': 'bi-arrow-counterclockwise text-success',
+          'created': 'bi-plus-circle text-success',
+          'email_sent': 'bi-envelope text-info',
+          'note_added': 'bi-sticky text-secondary',
+          'csv_import': 'bi-file-earmark-arrow-up text-primary'
+        };
+        const icon = icons[entry.action] || 'bi-clock-history text-muted';
+        return `<div class="list-group-item px-0 py-2 border-0">
+          <div class="d-flex align-items-start">
+            <i class="bi ${icon} me-2 mt-1"></i>
+            <div>
+              <div class="small fw-semibold">${utils.escapeHtml(entry.details || entry.action)}</div>
+              <div class="text-muted" style="font-size: 0.7rem;">${timeAgo} &middot; ${date.toLocaleDateString('en-GB')} ${date.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}</div>
+            </div>
+          </div>
+        </div>`;
+      }).join('')}
+    </div>`;
+  },
+
+  _timeAgo(date) {
+    const seconds = Math.floor((Date.now() - date.getTime()) / 1000);
+    if (seconds < 60) return 'just now';
+    if (seconds < 3600) return Math.floor(seconds / 60) + 'm ago';
+    if (seconds < 86400) return Math.floor(seconds / 3600) + 'h ago';
+    if (seconds < 604800) return Math.floor(seconds / 86400) + 'd ago';
+    return date.toLocaleDateString('en-GB');
+  },
+
+  // ============================================
+  // DUPLICATE DETECTION
+  // ============================================
+  _normaliseForMatch(str) {
+    return (str || '').toLowerCase()
+      .replace(/\b(ltd|limited|plc|inc|llp|llc|&|and|the|co|company)\b/g, '')
+      .replace(/[^a-z0-9]/g, '')
+      .trim();
+  },
+
+  findDuplicates(companyName) {
+    const normalised = this._normaliseForMatch(companyName);
+    if (!normalised || normalised.length < 3) return [];
+
+    return STATE.allOrganisations.filter(org => {
+      const orgNorm = this._normaliseForMatch(org.company_name);
+      if (!orgNorm) return false;
+
+      // Exact normalised match
+      if (orgNorm === normalised) return true;
+
+      // One contains the other
+      if (orgNorm.includes(normalised) || normalised.includes(orgNorm)) return true;
+
+      // Levenshtein distance for short names
+      if (normalised.length < 15 && orgNorm.length < 15) {
+        return this._levenshtein(orgNorm, normalised) <= 2;
+      }
+
+      return false;
+    });
+  },
+
+  _levenshtein(a, b) {
+    const m = a.length, n = b.length;
+    const dp = Array.from({ length: m + 1 }, () => Array(n + 1).fill(0));
+    for (let i = 0; i <= m; i++) dp[i][0] = i;
+    for (let j = 0; j <= n; j++) dp[0][j] = j;
+    for (let i = 1; i <= m; i++) {
+      for (let j = 1; j <= n; j++) {
+        dp[i][j] = a[i-1] === b[j-1]
+          ? dp[i-1][j-1]
+          : 1 + Math.min(dp[i-1][j], dp[i][j-1], dp[i-1][j-1]);
+      }
+    }
+    return dp[m][n];
+  },
+
+  showDuplicateCheck() {
+    const dupeMap = new Map();
+
+    STATE.allOrganisations.forEach(org => {
+      const norm = this._normaliseForMatch(org.company_name);
+      if (!norm) return;
+      if (!dupeMap.has(norm)) dupeMap.set(norm, []);
+      dupeMap.get(norm).push(org);
+    });
+
+    const duplicateGroups = Array.from(dupeMap.values()).filter(group => group.length > 1);
+
+    if (duplicateGroups.length === 0) {
+      utils.showToast('No duplicates found!', 'success');
+      return;
+    }
+
+    let html = `<div class="alert alert-warning"><i class="bi bi-exclamation-triangle me-2"></i>Found ${duplicateGroups.length} potential duplicate group(s)</div>`;
+
+    duplicateGroups.forEach((group, idx) => {
+      html += `<div class="card mb-2"><div class="card-body py-2">
+        <h6 class="mb-2">Group ${idx + 1}: "${utils.escapeHtml(group[0].company_name)}"</h6>
+        <div class="table-responsive"><table class="table table-sm mb-0">
+          <thead><tr><th>Name</th><th>Email</th><th>Status</th><th>Awards</th><th>Action</th></tr></thead>
+          <tbody>
+          ${group.map(org => `<tr>
+            <td class="small">${utils.escapeHtml(org.company_name)}</td>
+            <td class="small">${utils.escapeHtml(org.email || '-')}</td>
+            <td><span class="badge bg-secondary">${org.status || 'prospect'}</span></td>
+            <td class="text-center">${org.awards_count || 0}</td>
+            <td><button class="btn btn-sm btn-outline-danger" onclick="orgsModule.deleteOrganisation('${org.id}', '${utils.escapeHtml(org.company_name).replace(/'/g, "\\'")}')">Archive</button></td>
+          </tr>`).join('')}
+          </tbody>
+        </table></div>
+      </div></div>`;
+    });
+
+    // Show in a modal
+    const modalHtml = `<div class="modal fade" id="duplicateCheckModal" tabindex="-1">
+      <div class="modal-dialog modal-lg"><div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title"><i class="bi bi-files me-2"></i>Duplicate Detection</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body" style="max-height: 500px; overflow-y: auto;">${html}</div>
+        <div class="modal-footer"><button class="btn btn-secondary" data-bs-dismiss="modal">Close</button></div>
+      </div></div>
+    </div>`;
+
+    // Remove existing and create new
+    document.getElementById('duplicateCheckModal')?.remove();
+    document.body.insertAdjacentHTML('beforeend', modalHtml);
+    new bootstrap.Modal(document.getElementById('duplicateCheckModal')).show();
+  },
+
+  // ============================================
+  // EMAIL TEMPLATES
+  // ============================================
+  _emailTemplates: [
+    {
+      id: 'shortlist_notify',
+      name: 'Shortlist Notification',
+      subject: 'Congratulations - You have been shortlisted!',
+      body: `Dear {contact_name},\n\nWe are delighted to inform you that {company_name} has been shortlisted for the British Trade Awards.\n\nThe awards ceremony will take place shortly, and we will be in touch with further details.\n\nKind regards,\nBritish Trade Awards Team`
+    },
+    {
+      id: 'winner_notify',
+      name: 'Winner Announcement',
+      subject: 'You are a Winner - British Trade Awards!',
+      body: `Dear {contact_name},\n\nCongratulations! We are thrilled to announce that {company_name} has won at the British Trade Awards!\n\nPlease find attached your winner's pack with logos, press release template, and trophy collection details.\n\nKind regards,\nBritish Trade Awards Team`
+    },
+    {
+      id: 'entry_invite',
+      name: 'Entry Invitation',
+      subject: 'British Trade Awards - Invitation to Enter',
+      body: `Dear {contact_name},\n\nWe would like to invite {company_name} to enter the British Trade Awards this year.\n\nEntries are now open and close on [DATE]. You can enter online at [URL].\n\nKind regards,\nBritish Trade Awards Team`
+    },
+    {
+      id: 'feedback_request',
+      name: 'Feedback Request',
+      subject: 'British Trade Awards - We value your feedback',
+      body: `Dear {contact_name},\n\nThank you for participating in the British Trade Awards. We would love to hear your feedback to help us improve.\n\nPlease take a moment to complete our short survey: [SURVEY_URL]\n\nKind regards,\nBritish Trade Awards Team`
+    },
+    {
+      id: 'sponsor_inquiry',
+      name: 'Sponsorship Inquiry',
+      subject: 'Sponsorship Opportunities - British Trade Awards',
+      body: `Dear {contact_name},\n\nWe are reaching out to {company_name} regarding sponsorship opportunities for the upcoming British Trade Awards.\n\nWe have several packages available, including category sponsorship and headline sponsorship.\n\nWould you be available for a brief call to discuss?\n\nKind regards,\nBritish Trade Awards Team`
+    }
+  ],
+
+  openEmailTemplate(orgId) {
+    const org = STATE.allOrganisations.find(o => o.id === orgId) || {};
+    const templates = this._emailTemplates;
+
+    let html = `<div class="list-group">
+      ${templates.map(t => {
+        const subject = t.subject.replace(/{company_name}/g, org.company_name || '').replace(/{contact_name}/g, org.contact_name || 'Sir/Madam');
+        const body = t.body.replace(/{company_name}/g, org.company_name || '').replace(/{contact_name}/g, org.contact_name || 'Sir/Madam');
+        return `<a href="mailto:${org.email || ''}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}"
+                   class="list-group-item list-group-item-action"
+                   onclick="orgsModule._logComms('${orgId}', '${t.id}', '${utils.escapeHtml(org.company_name || '').replace(/'/g, "\\'")}')">
+          <div class="d-flex justify-content-between align-items-center">
+            <div>
+              <h6 class="mb-1">${t.name}</h6>
+              <small class="text-muted">${t.subject}</small>
+            </div>
+            <i class="bi bi-envelope text-primary"></i>
+          </div>
+        </a>`;
+      }).join('')}
+    </div>`;
+
+    document.getElementById('duplicateCheckModal')?.remove();
+    const modalHtml = `<div class="modal fade" id="duplicateCheckModal" tabindex="-1">
+      <div class="modal-dialog"><div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title"><i class="bi bi-envelope me-2"></i>Email ${utils.escapeHtml(org.company_name || '')}</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">${html}</div>
+        <div class="modal-footer"><button class="btn btn-secondary" data-bs-dismiss="modal">Close</button></div>
+      </div></div>
+    </div>`;
+
+    document.body.insertAdjacentHTML('beforeend', modalHtml);
+    new bootstrap.Modal(document.getElementById('duplicateCheckModal')).show();
+  },
+
+  // ============================================
+  // COMMUNICATION HISTORY
+  // ============================================
+  _logComms(orgId, templateId, companyName) {
+    try {
+      const key = 'orgCommsLog';
+      const log = JSON.parse(localStorage.getItem(key) || '[]');
+      const template = this._emailTemplates.find(t => t.id === templateId);
+      log.unshift({
+        orgId,
+        companyName,
+        templateId,
+        templateName: template?.name || templateId,
+        subject: template?.subject || '',
+        timestamp: new Date().toISOString()
+      });
+      if (log.length > 1000) log.length = 1000;
+      localStorage.setItem(key, JSON.stringify(log));
+
+      this._logAudit(orgId, 'email_sent', companyName, `Email sent: ${template?.name || templateId}`);
+    } catch (e) { /* ignore */ }
+  },
+
+  getCommsHistory(orgId) {
+    try {
+      const log = JSON.parse(localStorage.getItem('orgCommsLog') || '[]');
+      if (orgId) return log.filter(e => e.orgId === orgId);
+      return log;
+    } catch (e) { return []; }
+  },
+
+  renderCommsHistory(orgId) {
+    const history = this.getCommsHistory(orgId);
+    if (history.length === 0) return '<p class="text-muted small">No communications recorded yet</p>';
+
+    return `<div class="list-group list-group-flush" style="max-height: 250px; overflow-y: auto;">
+      ${history.map(entry => {
+        const date = new Date(entry.timestamp);
+        return `<div class="list-group-item px-0 py-2 border-0">
+          <div class="d-flex align-items-center">
+            <i class="bi bi-envelope-check text-success me-2"></i>
+            <div>
+              <div class="small fw-semibold">${utils.escapeHtml(entry.templateName)}</div>
+              <div class="text-muted" style="font-size: 0.7rem;">${date.toLocaleDateString('en-GB')} ${date.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}</div>
+            </div>
+          </div>
+        </div>`;
+      }).join('')}
+    </div>`;
+  },
+
+  // ============================================
+  // CSV IMPORT
+  // ============================================
+  _csvData: null,
+  _csvHeaders: null,
+  _csvColumnMap: {},
+
+  // Known DB column mappings from common CSV header names
+  _columnAliases: {
+    'company_name': 'company_name', 'company name': 'company_name', 'companyname': 'company_name',
+    'name': 'company_name', 'business name': 'company_name', 'organisation': 'company_name',
+    'sector': 'sector', 'industry': 'sector', 'category': 'sector',
+    'county': 'county', 'county/city': 'county', 'location': 'county', 'city': 'county',
+    'region': 'region', 'area': 'region',
+    'contact_name': 'contact_name', 'contact name': 'contact_name', 'contact': 'contact_name',
+    'email': 'email', 'email address': 'email', 'e-mail': 'email',
+    'phone': 'contact_phone', 'contact_phone': 'contact_phone', 'telephone': 'contact_phone', 'tel': 'contact_phone',
+    'website': 'website', 'url': 'website', 'web': 'website', 'site': 'website',
+    'address': 'address', 'postal address': 'address',
+    'catchment_area': 'catchment_area', 'catchment area': 'catchment_area', 'catchment': 'catchment_area'
+  },
+
+  _dbFields: ['company_name', 'sector', 'region', 'contact_name', 'email', 'contact_phone', 'website', 'address', 'catchment_area'],
+
+  _getSelectedCounty() {
+    const val = document.getElementById('csvCountySelect')?.value || '';
+    if (!val) {
+      utils.showToast('Please select a County/City first', 'error');
+      document.getElementById('csvCountySelect')?.focus();
+      return null;
+    }
+    return val;
+  },
+
+  parseCSVFile(input) {
+    const file = input.files[0];
+    if (!file) return;
+
+    if (!this._getSelectedCounty()) {
+      input.value = '';
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const text = e.target.result;
+      this._processCSVText(text);
+    };
+    reader.readAsText(file);
+  },
+
+  parseCSVText() {
+    if (!this._getSelectedCounty()) return;
+
+    const text = document.getElementById('csvPasteArea').value.trim();
+    if (!text) {
+      utils.showToast('Please paste CSV data first', 'warning');
+      return;
+    }
+    this._processCSVText(text);
+  },
+
+  _processCSVText(text) {
+    const lines = text.split(/\r?\n/).filter(l => l.trim());
+    if (lines.length < 2) {
+      utils.showToast('CSV must have at least a header row and one data row', 'error');
+      return;
+    }
+
+    // Parse header
+    this._csvHeaders = this._parseCSVLine(lines[0]);
+
+    // Parse data rows
+    this._csvData = [];
+    for (let i = 1; i < lines.length; i++) {
+      const values = this._parseCSVLine(lines[i]);
+      if (values.some(v => v.trim())) {
+        this._csvData.push(values);
+      }
+    }
+
+    if (this._csvData.length === 0) {
+      utils.showToast('No data rows found in CSV', 'error');
+      return;
+    }
+
+    // Auto-map columns
+    this._csvColumnMap = {};
+    this._csvHeaders.forEach((header, idx) => {
+      const normalised = header.toLowerCase().trim();
+      if (this._columnAliases[normalised]) {
+        this._csvColumnMap[idx] = this._columnAliases[normalised];
+      }
+    });
+
+    // Show step 2: column mapping
+    this._showColumnMapping();
+  },
+
+  _parseCSVLine(line) {
+    const result = [];
+    let current = '';
+    let inQuotes = false;
+
+    for (let i = 0; i < line.length; i++) {
+      const ch = line[i];
+      if (inQuotes) {
+        if (ch === '"' && line[i + 1] === '"') {
+          current += '"';
+          i++;
+        } else if (ch === '"') {
+          inQuotes = false;
+        } else {
+          current += ch;
+        }
+      } else {
+        if (ch === '"') {
+          inQuotes = true;
+        } else if (ch === ',') {
+          result.push(current.trim());
+          current = '';
+        } else {
+          current += ch;
+        }
+      }
+    }
+    result.push(current.trim());
+    return result;
+  },
+
+  _showColumnMapping() {
+    document.getElementById('csvStep1').style.display = 'none';
+    document.getElementById('csvStep2').style.display = 'block';
+
+    const selectedCounty = this._getSelectedCounty();
+
+    const container = document.getElementById('csvColumnMapping');
+    container.innerHTML = `
+      <div class="col-12 mb-2">
+        <div class="alert alert-success py-2 mb-2">
+          <i class="bi bi-geo-alt-fill me-1"></i>
+          Importing for: <strong>${utils.escapeHtml(selectedCounty)}</strong>
+          <small class="text-muted ms-2">(all imported orgs will be tagged to this county)</small>
+        </div>
+      </div>
+    ` + this._csvHeaders.map((header, idx) => {
+      const mapped = this._csvColumnMap[idx] || '';
+      return `
+        <div class="col-md-4 mb-2">
+          <label class="form-label small fw-semibold mb-1">
+            CSV: "${utils.escapeHtml(header)}"
+            <span class="text-muted">(sample: ${utils.escapeHtml(this._csvData[0]?.[idx] || '')})</span>
+          </label>
+          <select class="form-select form-select-sm" onchange="orgsModule._updateColumnMap(${idx}, this.value)">
+            <option value="">-- Skip --</option>
+            ${this._dbFields.map(f => `<option value="${f}" ${mapped === f ? 'selected' : ''}>${f.replace(/_/g, ' ')}</option>`).join('')}
+          </select>
+        </div>
+      `;
+    }).join('');
+
+    // Add apply mapping button
+    container.innerHTML += `
+      <div class="col-12 mt-2">
+        <button class="btn btn-primary" onclick="orgsModule._applyMapping()">
+          <i class="bi bi-eye me-1"></i>Preview Import
+        </button>
+      </div>
+    `;
+  },
+
+  _updateColumnMap(idx, value) {
+    if (value) {
+      this._csvColumnMap[idx] = value;
+    } else {
+      delete this._csvColumnMap[idx];
+    }
+  },
+
+  _applyMapping() {
+    // Check company_name is mapped
+    const hasCompanyName = Object.values(this._csvColumnMap).includes('company_name');
+    if (!hasCompanyName) {
+      utils.showToast('You must map at least the "Company Name" column', 'error');
+      return;
+    }
+
+    // Build preview
+    const existingNames = new Set(
+      STATE.allOrganisations.map(o => (o.company_name || '').toLowerCase())
+    );
+
+    let newCount = 0;
+    let dupCount = 0;
+
+    const previewRows = this._csvData.map(row => {
+      const record = {};
+      Object.entries(this._csvColumnMap).forEach(([idx, field]) => {
+        record[field] = row[parseInt(idx)] || '';
+      });
+
+      const isDuplicate = existingNames.has((record.company_name || '').toLowerCase());
+      if (isDuplicate) dupCount++; else newCount++;
+
+      return { record, isDuplicate };
+    });
+
+    // Show step 3
+    document.getElementById('csvStep2').style.display = 'none';
+    document.getElementById('csvStep3').style.display = 'block';
+
+    const mappedFields = [...new Set(Object.values(this._csvColumnMap))];
+
+    document.getElementById('csvPreviewCount').textContent = previewRows.length;
+    document.getElementById('csvNewCount').textContent = `${newCount} new`;
+    document.getElementById('csvDuplicateCount').textContent = `${dupCount} duplicates`;
+
+    document.getElementById('csvPreviewHeader').innerHTML =
+      '<th>#</th>' +
+      mappedFields.map(f => `<th>${f.replace(/_/g, ' ')}</th>`).join('') +
+      '<th>Status</th>';
+
+    document.getElementById('csvPreviewBody').innerHTML = previewRows.map((item, i) => `
+      <tr class="${item.isDuplicate ? 'table-warning' : ''}">
+        <td class="small">${i + 1}</td>
+        ${mappedFields.map(f => `<td class="small">${utils.escapeHtml(item.record[f] || '-')}</td>`).join('')}
+        <td>
+          ${item.isDuplicate
+            ? '<span class="badge bg-warning text-dark">Duplicate</span>'
+            : '<span class="badge bg-success">New</span>'
+          }
+        </td>
+      </tr>
+    `).join('');
+
+    // Enable import button
+    const importBtn = document.getElementById('csvImportBtn');
+    importBtn.disabled = false;
+    document.getElementById('csvImportBtnCount').textContent = newCount > 0 ? `${newCount}` : `${previewRows.length}`;
+
+    // Store preview for import
+    this._csvPreviewRows = previewRows;
+  },
+
+  async executeCSVImport() {
+    if (!this._csvPreviewRows || this._csvPreviewRows.length === 0) {
+      utils.showToast('No data to import', 'warning');
+      return;
+    }
+
+    // Only import non-duplicates by default, or ask
+    const newRows = this._csvPreviewRows.filter(r => !r.isDuplicate);
+    const dupRows = this._csvPreviewRows.filter(r => r.isDuplicate);
+
+    let rowsToImport = newRows;
+    if (dupRows.length > 0 && newRows.length > 0) {
+      if (confirm(`${dupRows.length} duplicate(s) found. Import only the ${newRows.length} new companies? (Cancel to import ALL including duplicates)`)) {
+        rowsToImport = newRows;
+      } else {
+        rowsToImport = this._csvPreviewRows;
+      }
+    } else if (newRows.length === 0) {
+      if (!confirm(`All ${dupRows.length} companies already exist. Import them anyway as duplicates?`)) {
+        return;
+      }
+      rowsToImport = this._csvPreviewRows;
+    }
+
+    try {
+      utils.showLoading();
+      const importBtn = document.getElementById('csvImportBtn');
+      importBtn.disabled = true;
+      importBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Importing...';
+
+      const selectedCounty = this._getSelectedCounty();
+      if (!selectedCounty) return;
+
+      // Build records - tag each org with the selected county
+      const records = rowsToImport.map(item => {
+        const rec = { status: 'prospect', catchment_area: selectedCounty };
+        this._dbFields.forEach(field => {
+          if (item.record[field]) {
+            let val = item.record[field].trim();
+            // Auto-prefix website
+            if (field === 'website' && val && !val.startsWith('http://') && !val.startsWith('https://')) {
+              val = 'https://' + val;
+            }
+            rec[field] = val || null;
+          }
+        });
+        // Don't overwrite catchment_area if CSV had one mapped
+        if (!rec.catchment_area) rec.catchment_area = selectedCounty;
+        return rec;
+      });
+
+      // Insert in batches of 50
+      let successCount = 0;
+      let errorCount = 0;
+      const batchSize = 50;
+
+      for (let i = 0; i < records.length; i += batchSize) {
+        const batch = records.slice(i, i + batchSize);
+        const { error } = await STATE.client
+          .from('organisations')
+          .insert(batch);
+
+        if (error) {
+          console.error('Batch import error:', error);
+          errorCount += batch.length;
+        } else {
+          successCount += batch.length;
+        }
+      }
+
+      // Track imported counties in localStorage for dashboard
+      try {
+        const imported = JSON.parse(localStorage.getItem('csvImportedCounties') || '{}');
+        imported[selectedCounty] = {
+          count: (imported[selectedCounty]?.count || 0) + successCount,
+          lastImport: new Date().toISOString()
+        };
+        localStorage.setItem('csvImportedCounties', JSON.stringify(imported));
+      } catch (e) { /* ignore */ }
+
+      // Close modal
+      bootstrap.Modal.getInstance(document.getElementById('csvImportModal')).hide();
+
+      if (errorCount === 0) {
+        utils.showToast(`Successfully imported ${successCount} organisations for ${selectedCounty}!`, 'success');
+      } else {
+        utils.showToast(`${successCount} imported, ${errorCount} failed. Check console for details.`, 'warning');
+      }
+
+      // Reset and reload
+      this.resetCSVImport();
+      await this.loadOrganisations();
+
+      // Update dashboard county coverage
+      if (typeof dashboardModule !== 'undefined' && dashboardModule.updateCountyCoverage) {
+        dashboardModule.updateCountyCoverage();
+      }
+
+    } catch (error) {
+      console.error('CSV import error:', error);
+      utils.showToast('Import failed: ' + error.message, 'error');
+    } finally {
+      utils.hideLoading();
+      const importBtn = document.getElementById('csvImportBtn');
+      if (importBtn) {
+        importBtn.disabled = false;
+        importBtn.innerHTML = '<i class="bi bi-cloud-upload me-1"></i>Import Organisations';
+      }
+    }
+  },
+
+  resetCSVImport() {
+    this._csvData = null;
+    this._csvHeaders = null;
+    this._csvColumnMap = {};
+    this._csvPreviewRows = null;
+
+    document.getElementById('csvStep1').style.display = 'block';
+    document.getElementById('csvStep2').style.display = 'none';
+    document.getElementById('csvStep3').style.display = 'none';
+    document.getElementById('csvFileInput').value = '';
+    document.getElementById('csvPasteArea').value = '';
+    document.getElementById('csvImportBtn').disabled = true;
   }
 };
 

@@ -46,6 +46,12 @@ const dashboardModule = {
         await aiVettingModule.updateDashboardCard();
       }
 
+      // Update county/city coverage indicators
+      await this.updateCountyCoverage();
+
+      // Load geographic distribution
+      await this.loadGeoDistribution();
+
       console.log('✅ Dashboard data loaded');
 
     } catch (error) {
@@ -2647,6 +2653,254 @@ const dashboardModule = {
       'archived': 'dark'
     };
     return statusColors[status?.toLowerCase()] || 'secondary';
+  },
+
+  // ============================================
+  // COUNTY/CITY COVERAGE TRACKING
+  // ============================================
+  async updateCountyCoverage() {
+    try {
+      // Get county counts from awards (which counties have award data)
+      const { data: awards } = await STATE.client
+        .from('awards')
+        .select('county');
+
+      // Get county counts from organisations (via award_assignments → awards)
+      const { data: assignments } = await STATE.client
+        .from('award_assignments')
+        .select('award_id, organisation_id');
+
+      const { data: awardData } = await STATE.client
+        .from('awards')
+        .select('id, county');
+
+      // Build county → org count map
+      const awardCountyMap = {};
+      (awardData || []).forEach(a => {
+        if (a.county) awardCountyMap[a.id] = a.county;
+      });
+
+      const countyOrgCounts = {};
+      const countyAwardCounts = {};
+
+      // Count awards per county
+      (awards || []).forEach(a => {
+        if (a.county) {
+          countyAwardCounts[a.county] = (countyAwardCounts[a.county] || 0) + 1;
+        }
+      });
+
+      // Count orgs per county (through assignments)
+      const orgsByCounty = {};
+      (assignments || []).forEach(a => {
+        const county = awardCountyMap[a.award_id];
+        if (county) {
+          if (!orgsByCounty[county]) orgsByCounty[county] = new Set();
+          orgsByCounty[county].add(a.organisation_id);
+        }
+      });
+
+      Object.entries(orgsByCounty).forEach(([county, orgSet]) => {
+        countyOrgCounts[county] = orgSet.size;
+      });
+
+      // Also count orgs imported via CSV (stored in catchment_area)
+      const { data: orgsWithCounty } = await STATE.client
+        .from('organisations')
+        .select('id, catchment_area');
+
+      const csvOrgCounts = {};
+      (orgsWithCounty || []).forEach(org => {
+        if (org.catchment_area) {
+          csvOrgCounts[org.catchment_area] = (csvOrgCounts[org.catchment_area] || 0) + 1;
+        }
+      });
+
+      // Also check localStorage for import tracking
+      let importedCounties = {};
+      try {
+        importedCounties = JSON.parse(localStorage.getItem('csvImportedCounties') || '{}');
+      } catch (e) { /* ignore */ }
+
+      // Update each county item in the dashboard
+      const allCountyItems = document.querySelectorAll('[data-county]');
+      let coveredCount = 0;
+      const totalCount = allCountyItems.length;
+
+      allCountyItems.forEach(item => {
+        const countyName = item.getAttribute('data-county');
+        const orgCount = (countyOrgCounts[countyName] || 0) + (csvOrgCounts[countyName] || 0);
+        const awardCount = countyAwardCounts[countyName] || 0;
+        const csvImported = importedCounties[countyName];
+
+        // Remove any previous coverage indicators
+        const existing = item.querySelector('.county-coverage');
+        if (existing) existing.remove();
+
+        if (orgCount > 0 || awardCount > 0 || csvImported) {
+          coveredCount++;
+          item.style.color = '#198754';
+          item.style.fontWeight = '600';
+
+          const tooltipParts = [];
+          if (orgCount > 0) tooltipParts.push(`${orgCount} orgs`);
+          if (awardCount > 0) tooltipParts.push(`${awardCount} awards`);
+          if (csvImported) tooltipParts.push(`CSV imported ${new Date(csvImported.lastImport).toLocaleDateString('en-GB')}`);
+
+          const badge = document.createElement('span');
+          badge.className = 'county-coverage float-end';
+          badge.innerHTML = `<span class="badge bg-success" style="font-size: 0.6rem;" title="${tooltipParts.join(', ')}"><i class="bi bi-check-circle-fill me-1"></i>${orgCount > 0 ? orgCount + ' orgs' : 'CSV'}</span>`;
+          item.appendChild(badge);
+        } else {
+          item.style.color = '';
+          item.style.fontWeight = '';
+        }
+      });
+
+      // Update summary stats
+      const statsEl = document.getElementById('countyCoverageStats');
+      if (statsEl) {
+        const pct = totalCount > 0 ? Math.round((coveredCount / totalCount) * 100) : 0;
+        statsEl.innerHTML = `<span class="text-success">${coveredCount}</span> / ${totalCount} counties covered (${pct}%)`;
+      }
+
+      // Update section header badges with coverage counts
+      this._updateSectionCoverage('regEng', countyOrgCounts);
+      this._updateSectionCoverage('regScot', countyOrgCounts);
+      this._updateSectionCoverage('regWales', countyOrgCounts);
+      this._updateSectionCoverage('regCities', countyOrgCounts);
+
+    } catch (error) {
+      console.error('Error updating county coverage:', error);
+    }
+  },
+
+  _updateSectionCoverage(sectionId, countyOrgCounts) {
+    const section = document.getElementById(sectionId);
+    if (!section) return;
+
+    const items = section.querySelectorAll('[data-county]');
+    let covered = 0;
+    items.forEach(item => {
+      const county = item.getAttribute('data-county');
+      if (countyOrgCounts[county] > 0) covered++;
+    });
+
+    // Add coverage badge next to the section's count badge
+    const headerDiv = section.previousElementSibling;
+    if (!headerDiv) return;
+
+    const existingCovBadge = headerDiv.querySelector('.coverage-badge');
+    if (existingCovBadge) existingCovBadge.remove();
+
+    if (covered > 0) {
+      const badge = document.createElement('span');
+      badge.className = 'badge bg-success ms-1 coverage-badge';
+      badge.title = `${covered} of ${items.length} have data`;
+      badge.textContent = `${covered}/${items.length}`;
+      const countBadge = headerDiv.querySelector('.badge');
+      if (countBadge) {
+        countBadge.parentNode.insertBefore(badge, countBadge.nextSibling);
+      }
+    }
+  },
+
+  // ============================================
+  // GEOGRAPHIC DISTRIBUTION WIDGET
+  // ============================================
+  async loadGeoDistribution() {
+    const geoWidget = document.getElementById('geoDistributionWidget');
+    const topWidget = document.getElementById('topCountiesWidget');
+    if (!geoWidget && !topWidget) return;
+
+    try {
+      // Get orgs with their county info
+      const { data: orgs } = await STATE.client
+        .from('organisations')
+        .select('id, catchment_area, status');
+
+      const activeOrgs = (orgs || []).filter(o => o.status !== 'archived');
+      const totalOrgs = activeOrgs.length;
+
+      // England counties, Scotland regions, Wales areas, Cities
+      const englandCounties = ['Bedfordshire','Berkshire','Buckinghamshire','Cambridgeshire','Cheshire','Cornwall','Cumbria','Derbyshire','Devon','Dorset','County Durham','East Riding of Yorkshire','Essex','Gloucestershire','Hampshire','Herefordshire','Hertfordshire','Isle of Wight','Kent','Lancashire','Leicestershire','Lincolnshire','Norfolk','Northamptonshire','North Yorkshire','Northumberland','Nottinghamshire','Oxfordshire','Rutland','Shropshire','Somerset','South Yorkshire','Staffordshire','Suffolk','Surrey','Sussex','Tyne & Wear','Warwickshire','West Yorkshire','Wiltshire','Worcestershire'];
+      const scotlandRegions = ['Argyll & Bute','Ayrshire','Central Scotland','Dumfries & Galloway','Dunbartonshire','Fife','Grampian','Highlands','Lanarkshire','Lothian','Renfrewshire','Scottish Borders','Scottish Islands','Tayside'];
+      const walesAreas = ['Anglesey','Carmarthenshire','Ceredigion','Conwy','Denbighshire','Flintshire','Glamorgan','Gwent','Gwynedd','Pembrokeshire','Powys','Wrexham'];
+      const cities = ['Birmingham','Bournemouth','Bradford','Brighton & Hove','Bristol','Cardiff','Coventry','Edinburgh','Glasgow','Leeds','Leicester','Liverpool','London','Manchester','Middlesborough','Newcastle','Nottingham','Sheffield','Southampton','Swansea'];
+
+      const countyCounts = {};
+      activeOrgs.forEach(org => {
+        if (org.catchment_area) {
+          countyCounts[org.catchment_area] = (countyCounts[org.catchment_area] || 0) + 1;
+        }
+      });
+
+      const countRegion = (list) => {
+        let count = 0;
+        list.forEach(c => { count += (countyCounts[c] || 0); });
+        return count;
+      };
+
+      const engCount = countRegion(englandCounties);
+      const scotCount = countRegion(scotlandRegions);
+      const walesCount = countRegion(walesAreas);
+      const citiesCount = countRegion(cities);
+      const unassigned = totalOrgs - engCount - scotCount - walesCount - citiesCount;
+
+      // Update total badge
+      const totalBadge = document.getElementById('geoTotalOrgs');
+      if (totalBadge) totalBadge.textContent = `${totalOrgs} orgs`;
+
+      // Render country breakdown
+      if (geoWidget) {
+        const regions = [
+          { name: 'England', count: engCount, color: 'danger', icon: '&#127988;&#917607;&#917602;&#917605;&#917614;&#917607;&#917631;' },
+          { name: 'Scotland', count: scotCount, color: 'primary', icon: '&#127988;&#917607;&#917602;&#917619;&#917603;&#917620;&#917631;' },
+          { name: 'Wales', count: walesCount, color: 'success', icon: '&#127988;&#917607;&#917602;&#917623;&#917612;&#917619;&#917631;' },
+          { name: 'Cities', count: citiesCount, color: 'info', icon: '<i class="bi bi-buildings"></i>' },
+          { name: 'Unassigned', count: unassigned, color: 'secondary', icon: '<i class="bi bi-question-circle"></i>' }
+        ];
+
+        geoWidget.innerHTML = regions.map(r => {
+          const pct = totalOrgs > 0 ? Math.round((r.count / totalOrgs) * 100) : 0;
+          return `<div class="d-flex align-items-center mb-2">
+            <span class="me-2" style="width: 24px; text-align: center;">${r.icon}</span>
+            <span class="small fw-semibold" style="width: 80px;">${r.name}</span>
+            <div class="progress flex-grow-1 me-2" style="height: 20px;">
+              <div class="progress-bar bg-${r.color}" style="width: ${pct}%">${r.count > 0 ? r.count : ''}</div>
+            </div>
+            <span class="small text-muted" style="width: 40px; text-align: right;">${pct}%</span>
+          </div>`;
+        }).join('');
+      }
+
+      // Render top counties
+      if (topWidget) {
+        const sorted = Object.entries(countyCounts)
+          .sort((a, b) => b[1] - a[1])
+          .slice(0, 10);
+
+        if (sorted.length === 0) {
+          topWidget.innerHTML = '<p class="text-muted small text-center py-3">No county data yet. Import CSVs to see distribution.</p>';
+        } else {
+          const maxCount = sorted[0][1];
+          topWidget.innerHTML = sorted.map(([county, count], i) => {
+            const pct = Math.round((count / maxCount) * 100);
+            return `<div class="d-flex align-items-center mb-2">
+              <span class="badge bg-light text-dark me-2" style="width: 24px; text-align: center;">${i + 1}</span>
+              <span class="small fw-semibold" style="width: 140px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${county}">${county}</span>
+              <div class="progress flex-grow-1 me-2" style="height: 16px;">
+                <div class="progress-bar bg-primary" style="width: ${pct}%"></div>
+              </div>
+              <span class="badge bg-primary">${count}</span>
+            </div>`;
+          }).join('');
+        }
+      }
+    } catch (error) {
+      console.error('Error loading geo distribution:', error);
+      if (geoWidget) geoWidget.innerHTML = '<p class="text-muted small">Error loading data</p>';
+    }
   }
 };
 

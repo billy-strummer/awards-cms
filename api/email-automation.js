@@ -22,193 +22,318 @@ const supabase = createClient(
 sgMail.setApiKey(process.env.SENDGRID_API_KEY);
 
 /**
+ * Email wrapper - provides consistent BTA branding for all emails
+ * Logo URL should be set via LOGO_URL env var or defaults to BTA text header
+ */
+const BTA_LOGO_URL = process.env.BTA_LOGO_URL || '';
+
+function wrapEmailTemplate(bodyContent) {
+  const logoBlock = BTA_LOGO_URL
+    ? `<img src="${BTA_LOGO_URL}" alt="British Trade Awards" style="max-width: 280px; height: auto; display: block; margin: 0 auto;">`
+    : `<h2 style="margin: 0; font-family: Georgia, 'Times New Roman', serif; font-size: 28px; color: #1a1a1a; letter-spacing: 1px;">British Trade Awards</h2>`;
+
+  return `
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+      <meta charset="UTF-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    </head>
+    <body style="margin: 0; padding: 0; background-color: #f4f4f0; font-family: Arial, Helvetica, sans-serif;">
+      <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color: #f4f4f0;">
+        <tr>
+          <td align="center" style="padding: 30px 20px;">
+            <table width="600" cellpadding="0" cellspacing="0" border="0" style="background-color: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.08);">
+              <!-- Logo Header -->
+              <tr>
+                <td align="center" style="padding: 30px 40px; border-bottom: 2px solid #cc9900;">
+                  ${logoBlock}
+                </td>
+              </tr>
+              <!-- Email Body -->
+              <tr>
+                <td style="padding: 0; font-family: Arial, Helvetica, sans-serif; font-size: 16px; line-height: 1.6; color: #333333;">
+                  ${bodyContent}
+                </td>
+              </tr>
+              <!-- Footer -->
+              <tr>
+                <td style="padding: 30px 40px; background-color: #1a1a1a; text-align: center;">
+                  <p style="margin: 0 0 8px 0; font-family: Arial, sans-serif; font-size: 14px; color: #ffffff;">
+                    &copy; ${new Date().getFullYear()} British Trade Awards. All rights reserved.
+                  </p>
+                  <p style="margin: 0 0 8px 0; font-family: Arial, sans-serif; font-size: 12px; color: #aaaaaa;">
+                    <a href="https://www.britishtradeawards.com" style="color: #cc9900; text-decoration: none;">britishtradeawards.com</a>
+                    &nbsp;|&nbsp;
+                    <a href="mailto:awards@britishtradeawards.com" style="color: #cc9900; text-decoration: none;">awards@britishtradeawards.com</a>
+                  </p>
+                  <p style="margin: 0; font-family: Arial, sans-serif; font-size: 11px; color: #888888;">
+                    <a href="{{unsubscribe_link}}" style="color: #888888; text-decoration: underline;">Unsubscribe</a>
+                  </p>
+                </td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+      </table>
+    </body>
+    </html>
+  `;
+}
+
+/**
  * Email Templates
  */
 const EMAIL_TEMPLATES = {
   ENTRY_CONFIRMATION: {
     subject: '✅ Entry Confirmed - {{entry_number}}',
-    template: `
-      <h1>Entry Submitted Successfully!</h1>
-      <p>Dear {{contact_name}},</p>
-      <p>Thank you for submitting your entry for the <strong>{{award_name}}</strong>.</p>
+    template: wrapEmailTemplate(`
+      <div style="padding: 30px 40px;">
+        <h1 style="margin: 0 0 20px 0; font-family: Arial, sans-serif; font-size: 28px; color: #1a1a1a;">Entry Submitted Successfully!</h1>
+        <p>Dear {{contact_name}},</p>
+        <p>Thank you for submitting your entry for the <strong>{{award_name}}</strong>.</p>
 
-      <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; margin: 20px 0;">
-        <h3>Entry Details:</h3>
-        <p><strong>Entry Number:</strong> {{entry_number}}</p>
-        <p><strong>Company:</strong> {{company_name}}</p>
-        <p><strong>Award:</strong> {{award_name}}</p>
-        <p><strong>Entry Title:</strong> {{entry_title}}</p>
+        <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; margin: 20px 0;">
+          <h3 style="margin-top: 0;">Entry Details:</h3>
+          <p style="margin: 5px 0;"><strong>Entry Number:</strong> {{entry_number}}</p>
+          <p style="margin: 5px 0;"><strong>Company:</strong> {{company_name}}</p>
+          <p style="margin: 5px 0;"><strong>Award:</strong> {{award_name}}</p>
+          <p style="margin: 5px 0;"><strong>Entry Title:</strong> {{entry_title}}</p>
+        </div>
+
+        <h3>What Happens Next?</h3>
+        <ol>
+          <li>Your entry will be reviewed by our judging panel</li>
+          <li>Judging period: {{judging_start}} - {{judging_end}}</li>
+          <li>Shortlist announced: {{shortlist_date}}</li>
+          <li>Winners announced: {{winner_date}}</li>
+        </ol>
+
+        <p>You'll receive email updates at each stage of the process.</p>
+
+        <p>Best of luck!</p>
+        <p><strong>British Trade Awards Team</strong></p>
       </div>
-
-      <h3>What Happens Next?</h3>
-      <ol>
-        <li>Your entry will be reviewed by our judging panel</li>
-        <li>Judging period: {{judging_start}} - {{judging_end}}</li>
-        <li>Shortlist announced: {{shortlist_date}}</li>
-        <li>Winners announced: {{winner_date}}</li>
-      </ol>
-
-      <p>You'll receive email updates at each stage of the process.</p>
-
-      <p>Best of luck!</p>
-      <p><strong>British Trade Awards Team</strong></p>
-    `
+    `)
   },
 
   PAYMENT_REMINDER: {
     subject: '💳 Payment Pending - Entry {{entry_number}}',
-    template: `
-      <h1>Payment Reminder</h1>
-      <p>Dear {{contact_name}},</p>
-      <p>Your entry <strong>{{entry_number}}</strong> is currently pending payment.</p>
+    template: wrapEmailTemplate(`
+      <div style="padding: 30px 40px;">
+        <h1 style="margin: 0 0 20px 0; font-family: Arial, sans-serif; font-size: 28px; color: #1a1a1a;">Payment Reminder</h1>
+        <p>Dear {{contact_name}},</p>
+        <p>Your entry <strong>{{entry_number}}</strong> is currently pending payment.</p>
 
-      <p><strong>Amount Due:</strong> £{{entry_fee}}</p>
-      <p><strong>Entry:</strong> {{entry_title}}</p>
+        <p><strong>Amount Due:</strong> £{{entry_fee}}</p>
+        <p><strong>Entry:</strong> {{entry_title}}</p>
 
-      <p>Please complete your payment to confirm your entry:</p>
-      <a href="{{payment_link}}" style="background: #0d6efd; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block; margin: 20px 0;">
-        Complete Payment
-      </a>
+        <p>Please complete your payment to confirm your entry:</p>
+        <table cellpadding="0" cellspacing="0" border="0" style="margin: 20px 0;">
+          <tr>
+            <td style="background: #0d6efd; border-radius: 6px;">
+              <a href="{{payment_link}}" style="color: #ffffff; padding: 12px 24px; text-decoration: none; display: inline-block; font-family: Arial, sans-serif; font-weight: bold;">
+                Complete Payment
+              </a>
+            </td>
+          </tr>
+        </table>
 
-      <p>If you have any questions, please contact us.</p>
-    `
+        <p>If you have any questions, please contact us.</p>
+      </div>
+    `)
   },
 
   SHORTLIST_NOTIFICATION: {
     subject: '🌟 Congratulations - You\'ve Been Shortlisted!',
-    template: `
-      <h1>🌟 You've Been Shortlisted!</h1>
-      <p>Dear {{contact_name}},</p>
+    template: wrapEmailTemplate(`
+      <div style="padding: 30px 40px;">
+        <h1 style="margin: 0 0 20px 0; font-family: Arial, sans-serif; font-size: 28px; color: #1a1a1a;">🌟 You've Been Shortlisted!</h1>
+        <p>Dear {{contact_name}},</p>
 
-      <p>We're delighted to inform you that <strong>{{company_name}}</strong> has been shortlisted for the <strong>{{award_name}}</strong> at the British Trade Awards 2025!</p>
+        <p>We're delighted to inform you that <strong>{{company_name}}</strong> has been shortlisted for the <strong>{{award_name}}</strong> at the British Trade Awards!</p>
 
-      <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; border-radius: 12px; margin: 20px 0; text-align: center;">
-        <h2 style="color: white; margin: 0;">Shortlisted</h2>
-        <h3 style="color: white; opacity: 0.9;">{{award_name}}</h3>
+        <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; border-radius: 12px; margin: 20px 0; text-align: center;">
+          <h2 style="color: white; margin: 0;">Shortlisted</h2>
+          <h3 style="color: white; opacity: 0.9; margin: 10px 0 0 0;">{{award_name}}</h3>
+        </div>
+
+        <p>Your entry impressed our judges and made it through to the final round.</p>
+
+        <h3>Next Steps:</h3>
+        <ul>
+          <li><strong>Winner Announcement:</strong> {{winner_date}}</li>
+          <li><strong>Awards Ceremony:</strong> {{ceremony_date}} at {{ceremony_venue}}</li>
+          <li>Book your tickets to the ceremony</li>
+        </ul>
+
+        <table cellpadding="0" cellspacing="0" border="0" style="margin: 20px 0;">
+          <tr>
+            <td style="background: #28a745; border-radius: 6px;">
+              <a href="{{ceremony_tickets_link}}" style="color: #ffffff; padding: 12px 24px; text-decoration: none; display: inline-block; font-family: Arial, sans-serif; font-weight: bold;">
+                Book Ceremony Tickets
+              </a>
+            </td>
+          </tr>
+        </table>
+
+        <p>Congratulations once again!</p>
+        <p><strong>British Trade Awards Team</strong></p>
       </div>
-
-      <p>Your entry impressed our judges and made it through to the final round.</p>
-
-      <h3>Next Steps:</h3>
-      <ul>
-        <li><strong>Winner Announcement:</strong> {{winner_date}}</li>
-        <li><strong>Awards Ceremony:</strong> {{ceremony_date}} at {{ceremony_venue}}</li>
-        <li>Book your tickets to the ceremony</li>
-      </ul>
-
-      <a href="{{ceremony_tickets_link}}" style="background: #28a745; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block; margin: 20px 0;">
-        Book Ceremony Tickets
-      </a>
-
-      <p>Congratulations once again!</p>
-      <p><strong>British Trade Awards Team</strong></p>
-    `
+    `)
   },
 
   WINNER_ANNOUNCEMENT: {
     subject: '🏆 WINNER - {{award_name}}!',
-    template: `
+    template: wrapEmailTemplate(`
       <div style="background: linear-gradient(135deg, #FFD700 0%, #FFA500 100%); padding: 40px; text-align: center;">
-        <h1 style="color: white; font-size: 48px; margin: 0;">🏆</h1>
-        <h1 style="color: white; margin: 10px 0;">WINNER!</h1>
+        <table width="100%" cellpadding="0" cellspacing="0" border="0">
+          <tr>
+            <td align="center">
+              <div style="display: inline-block; background: rgba(255,255,255,0.2); border-radius: 50%; width: 80px; height: 80px; line-height: 80px; font-size: 48px; margin-bottom: 10px;">🏆</div>
+            </td>
+          </tr>
+          <tr>
+            <td align="center">
+              <h1 style="color: #ffffff; font-family: Arial, sans-serif; font-size: 36px; margin: 10px 0 0 0; text-shadow: 0 2px 4px rgba(0,0,0,0.2);">WINNER!</h1>
+            </td>
+          </tr>
+        </table>
       </div>
 
-      <div style="padding: 30px;">
+      <div style="padding: 30px 40px;">
         <p>Dear {{contact_name}},</p>
 
-        <p style="font-size: 18px;"><strong>Congratulations!</strong> We are thrilled to announce that <strong>{{company_name}}</strong> is the winner of the <strong>{{award_name}}</strong> at the British Trade Awards 2025!</p>
+        <p style="font-size: 18px;"><strong>Congratulations!</strong> We are thrilled to announce that <strong>{{company_name}}</strong> is the winner of the <strong>{{award_name}}</strong> at the British Trade Awards!</p>
 
         <p>Your exceptional work has set the standard for excellence in British trade and business.</p>
 
-        <h3>Your Winner's Package Includes:</h3>
-        <ul>
-          <li>✅ Digital winner's certificate</li>
-          <li>✅ Winner's logo and badge for your marketing</li>
-          <li>✅ Press release and media coverage</li>
-          <li>✅ Feature on our website and social media</li>
-          <li>✅ Winner's trophy (presented at ceremony)</li>
-        </ul>
+        <div style="background: #fffbeb; border: 1px solid #fbbf24; border-radius: 8px; padding: 20px; margin: 25px 0;">
+          <h3 style="margin-top: 0; color: #92400e;">Your Winner's Package Includes:</h3>
+          <table cellpadding="0" cellspacing="0" border="0" width="100%">
+            <tr><td style="padding: 4px 0; font-size: 15px;">✅ Digital winner's certificate</td></tr>
+            <tr><td style="padding: 4px 0; font-size: 15px;">✅ Winner's logo and badge for your marketing</td></tr>
+            <tr><td style="padding: 4px 0; font-size: 15px;">✅ Press release and media coverage</td></tr>
+            <tr><td style="padding: 4px 0; font-size: 15px;">✅ Feature on our website and social media</td></tr>
+            <tr><td style="padding: 4px 0; font-size: 15px;">✅ Winner's trophy (presented at ceremony)</td></tr>
+          </table>
+        </div>
 
-        <a href="{{winners_portal_link}}" style="background: #FFD700; color: #1a1a1a; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block; margin: 20px 0; font-weight: bold;">
-          Access Winner's Portal
-        </a>
+        <table cellpadding="0" cellspacing="0" border="0" style="margin: 25px 0;" align="center">
+          <tr>
+            <td style="background: linear-gradient(135deg, #FFD700 0%, #FFA500 100%); border-radius: 6px; box-shadow: 0 2px 4px rgba(0,0,0,0.15);">
+              <a href="{{winners_portal_link}}" style="color: #1a1a1a; padding: 14px 30px; text-decoration: none; display: inline-block; font-family: Arial, sans-serif; font-weight: bold; font-size: 16px;">
+                Access Winner's Portal
+              </a>
+            </td>
+          </tr>
+        </table>
 
-        <p><strong>Awards Ceremony:</strong><br>
-        {{ceremony_date}} at {{ceremony_venue}}</p>
+        <div style="background: #f8f9fa; border-radius: 8px; padding: 20px; margin: 20px 0; text-align: center;">
+          <p style="margin: 0; font-size: 15px;"><strong>Awards Ceremony</strong></p>
+          <p style="margin: 8px 0 0 0; font-size: 15px;">{{ceremony_date}} at {{ceremony_venue}}</p>
+        </div>
 
         <p>We look forward to celebrating with you!</p>
 
         <p><strong>British Trade Awards Team</strong></p>
       </div>
-    `
+    `)
   },
 
   JUDGE_ASSIGNMENT: {
     subject: '⚖️ New Judging Assignment - British Trade Awards',
-    template: `
-      <h1>New Judging Assignment</h1>
-      <p>Dear {{judge_name}},</p>
+    template: wrapEmailTemplate(`
+      <div style="padding: 30px 40px;">
+        <h1 style="margin: 0 0 20px 0; font-family: Arial, sans-serif; font-size: 28px; color: #1a1a1a;">New Judging Assignment</h1>
+        <p>Dear {{judge_name}},</p>
 
-      <p>You have been assigned {{entry_count}} new entries to judge for the British Trade Awards 2025.</p>
+        <p>You have been assigned {{entry_count}} new entries to judge for the British Trade Awards.</p>
 
-      <p><strong>Judging Deadline:</strong> {{deadline}}</p>
+        <p><strong>Judging Deadline:</strong> {{deadline}}</p>
 
-      <h3>Awards to Judge:</h3>
-      <ul>
-        {{award_list}}
-      </ul>
+        <h3>Awards to Judge:</h3>
+        <ul>
+          {{award_list}}
+        </ul>
 
-      <a href="{{judge_portal_link}}" style="background: #0d6efd; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block; margin: 20px 0;">
-        Start Judging
-      </a>
+        <table cellpadding="0" cellspacing="0" border="0" style="margin: 20px 0;">
+          <tr>
+            <td style="background: #0d6efd; border-radius: 6px;">
+              <a href="{{judge_portal_link}}" style="color: #ffffff; padding: 12px 24px; text-decoration: none; display: inline-block; font-family: Arial, sans-serif; font-weight: bold;">
+                Start Judging
+              </a>
+            </td>
+          </tr>
+        </table>
 
-      <p>Please complete your scoring by the deadline. If you have any questions or conflicts of interest, please contact us immediately.</p>
+        <p>Please complete your scoring by the deadline. If you have any questions or conflicts of interest, please contact us immediately.</p>
 
-      <p>Thank you for your contribution to the awards!</p>
-    `
+        <p>Thank you for your contribution to the awards!</p>
+      </div>
+    `)
   },
 
   JUDGE_REMINDER: {
     subject: '⏰ Judging Deadline Reminder - {{days_left}} Days Left',
-    template: `
-      <h1>Judging Deadline Approaching</h1>
-      <p>Dear {{judge_name}},</p>
+    template: wrapEmailTemplate(`
+      <div style="padding: 30px 40px;">
+        <h1 style="margin: 0 0 20px 0; font-family: Arial, sans-serif; font-size: 28px; color: #1a1a1a;">Judging Deadline Approaching</h1>
+        <p>Dear {{judge_name}},</p>
 
-      <p>This is a reminder that the judging deadline is approaching in <strong>{{days_left}} days</strong>.</p>
+        <p>This is a reminder that the judging deadline is approaching in <strong>{{days_left}} days</strong>.</p>
 
-      <p><strong>Deadline:</strong> {{deadline}}</p>
+        <p><strong>Deadline:</strong> {{deadline}}</p>
 
-      <h3>Your Progress:</h3>
-      <p>✅ Completed: {{scored_count}}/{{total_count}} entries</p>
-      <p>⏳ Remaining: {{pending_count}} entries</p>
+        <h3>Your Progress:</h3>
+        <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; margin: 15px 0;">
+          <p style="margin: 5px 0;">✅ Completed: {{scored_count}}/{{total_count}} entries</p>
+          <p style="margin: 5px 0;">⏳ Remaining: {{pending_count}} entries</p>
+        </div>
 
-      <a href="{{judge_portal_link}}" style="background: #0d6efd; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block; margin: 20px 0;">
-        Continue Judging
-      </a>
+        <table cellpadding="0" cellspacing="0" border="0" style="margin: 20px 0;">
+          <tr>
+            <td style="background: #0d6efd; border-radius: 6px;">
+              <a href="{{judge_portal_link}}" style="color: #ffffff; padding: 12px 24px; text-decoration: none; display: inline-block; font-family: Arial, sans-serif; font-weight: bold;">
+                Continue Judging
+              </a>
+            </td>
+          </tr>
+        </table>
 
-      <p>Thank you for your time and expertise!</p>
-    `
+        <p>Thank you for your time and expertise!</p>
+      </div>
+    `)
   },
 
   DEADLINE_REMINDER: {
     subject: '⏰ Reminder: {{deadline_type}} Deadline in {{days_left}} Days',
-    template: `
-      <h1>Deadline Reminder</h1>
-      <p>Dear {{recipient_name}},</p>
+    template: wrapEmailTemplate(`
+      <div style="padding: 30px 40px;">
+        <h1 style="margin: 0 0 20px 0; font-family: Arial, sans-serif; font-size: 28px; color: #1a1a1a;">Deadline Reminder</h1>
+        <p>Dear {{recipient_name}},</p>
 
-      <p>This is a reminder that the <strong>{{deadline_type}}</strong> deadline is approaching.</p>
+        <p>This is a reminder that the <strong>{{deadline_type}}</strong> deadline is approaching.</p>
 
-      <div style="background: #fff3cd; border-left: 4px solid #ffc107; padding: 20px; margin: 20px 0;">
-        <h3 style="margin-top: 0;">⏰ {{days_left}} Days Remaining</h3>
-        <p><strong>Deadline:</strong> {{deadline_date}}</p>
+        <div style="background: #fff3cd; border-left: 4px solid #ffc107; padding: 20px; margin: 20px 0; border-radius: 0 8px 8px 0;">
+          <h3 style="margin-top: 0;">⏰ {{days_left}} Days Remaining</h3>
+          <p style="margin-bottom: 0;"><strong>Deadline:</strong> {{deadline_date}}</p>
+        </div>
+
+        <p>{{action_required}}</p>
+
+        <table cellpadding="0" cellspacing="0" border="0" style="margin: 20px 0;">
+          <tr>
+            <td style="background: #0d6efd; border-radius: 6px;">
+              <a href="{{action_link}}" style="color: #ffffff; padding: 12px 24px; text-decoration: none; display: inline-block; font-family: Arial, sans-serif; font-weight: bold;">
+                {{action_button_text}}
+              </a>
+            </td>
+          </tr>
+        </table>
       </div>
-
-      <p>{{action_required}}</p>
-
-      <a href="{{action_link}}" style="background: #0d6efd; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block; margin: 20px 0;">
-        {{action_button_text}}
-      </a>
-    `
+    `)
   }
 };
 

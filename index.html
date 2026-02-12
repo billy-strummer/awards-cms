@@ -1102,11 +1102,8 @@
                   <h6 class="chart-title">
                     <i class="bi bi-trophy me-2"></i>Winners by Year
                   </h6>
-                  <div id="winnersYearChart" class="chart-canvas" style="height: 300px;">
-                    <div class="text-center py-5 text-muted">
-                      <i class="bi bi-bar-chart display-4 d-block mb-2 opacity-25"></i>
-                      Loading chart...
-                    </div>
+                  <div style="position: relative; height: 300px;">
+                    <canvas id="winnersYearChart"></canvas>
                   </div>
                 </div>
               </div>
@@ -1117,11 +1114,8 @@
                   <h6 class="chart-title">
                     <i class="bi bi-pie-chart me-2"></i>Top Award Categories
                   </h6>
-                  <div id="categoryChart" class="chart-canvas" style="height: 300px;">
-                    <div class="text-center py-5 text-muted">
-                      <i class="bi bi-bar-chart display-4 d-block mb-2 opacity-25"></i>
-                      Loading chart...
-                    </div>
+                  <div style="position: relative; height: 300px;">
+                    <canvas id="categoryChart"></canvas>
                   </div>
                 </div>
               </div>
@@ -1132,11 +1126,8 @@
                   <h6 class="chart-title">
                     <i class="bi bi-building me-2"></i>Sector Distribution
                   </h6>
-                  <div id="sectorChart" class="chart-canvas" style="height: 300px; overflow-y: auto;">
-                    <div class="text-center py-5 text-muted">
-                      <i class="bi bi-bar-chart display-4 d-block mb-2 opacity-25"></i>
-                      Loading chart...
-                    </div>
+                  <div style="position: relative; height: 300px;">
+                    <canvas id="sectorChart"></canvas>
                   </div>
                 </div>
               </div>
@@ -1147,11 +1138,8 @@
                   <h6 class="chart-title">
                     <i class="bi bi-geo-alt me-2"></i>Regional Breakdown
                   </h6>
-                  <div id="regionChart" class="chart-canvas" style="height: 300px; overflow-y: auto;">
-                    <div class="text-center py-5 text-muted">
-                      <i class="bi bi-bar-chart display-4 d-block mb-2 opacity-25"></i>
-                      Loading chart...
-                    </div>
+                  <div style="position: relative; height: 300px;">
+                    <canvas id="regionChart"></canvas>
                   </div>
                 </div>
               </div>
@@ -7514,7 +7502,10 @@ in recognition of excellence
 
   <!-- Bootstrap JS Bundle -->
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-  
+
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+
   <!-- Supabase Client -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 

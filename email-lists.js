@@ -202,6 +202,7 @@ const emailListsModule = {
       'sponsors': '<span class="badge bg-primary"><i class="bi bi-award me-1"></i>Sponsors</span>',
       'vip': '<span class="badge bg-danger"><i class="bi bi-star-fill me-1"></i>VIP</span>',
       'event': '<span class="badge bg-info"><i class="bi bi-calendar-event me-1"></i>Event</span>',
+      'media': '<span class="badge bg-purple" style="background-color:#6f42c1!important"><i class="bi bi-camera-reels me-1"></i>Media</span>',
       'custom': '<span class="badge bg-dark">Custom</span>'
     };
     return types[type] || '<span class="badge bg-secondary">General</span>';
@@ -239,6 +240,7 @@ const emailListsModule = {
                       <option value="sponsors">Sponsors</option>
                       <option value="vip">VIP</option>
                       <option value="event">Event</option>
+                      <option value="media">Media</option>
                       <option value="custom">Custom</option>
                     </select>
                   </div>
@@ -295,13 +297,10 @@ const emailListsModule = {
 
     const listData = {
       list_name: document.getElementById('listName').value,
-      description: document.getElementById('listDescription').value,
       list_type: document.getElementById('listType').value,
       color: document.getElementById('listColor').value,
       icon: document.getElementById('listIcon').value,
-      is_active: document.getElementById('listActive').checked,
-      auto_clean: document.getElementById('listAutoClean').checked,
-      created_by: currentUser?.id || 'system'
+      is_active: document.getElementById('listActive').checked
     };
 
     try {
@@ -532,45 +531,50 @@ const emailListsModule = {
 
       if (subscribers.length === 0) {
         showNotification('No valid subscribers to import', 'warning');
+        document.getElementById('importProgress').style.display = 'none';
         return;
       }
 
-      // Create import batch
-      const { data: batch, error: batchError } = await STATE.client
+      // Log import batch
+      const { data: batch } = await STATE.client
         .from('email_import_batches')
         .insert([{
-          list_id: listId,
-          import_type: activeTab.replace('-tab', ''),
-          total_rows: subscribers.length,
-          imported_by: currentUser?.id || 'system'
+          file_name: activeTab.replace('-tab', '') + '-import-' + new Date().toISOString(),
+          total_records: subscribers.length,
+          imported: 0,
+          status: 'processing'
         }])
         .select()
         .single();
 
-      if (batchError) throw batchError;
-
-      // Insert subscribers
+      // Insert subscribers (only columns that exist in the table)
       const subscribersToInsert = subscribers.map(sub => ({
-        ...sub,
         list_id: listId,
-        import_batch_id: batch.id,
-        source: activeTab.replace('-tab', '')
+        email: sub.email,
+        first_name: sub.first_name || null,
+        last_name: sub.last_name || null,
+        company_name: sub.company_name || null,
+        status: 'active'
       }));
+
+      const skipDuplicates = document.getElementById('csvSkipDuplicates')?.checked;
 
       const { data, error } = await STATE.client
         .from('email_list_subscribers')
-        .insert(subscribersToInsert);
+        .insert(subscribersToInsert, { onConflict: skipDuplicates ? 'ignore' : undefined });
 
       if (error) throw error;
 
-      // Update batch status
-      await STATE.client
-        .from('email_import_batches')
-        .update({
-          status: 'completed',
-          successful_imports: subscribers.length
-        })
-        .eq('id', batch.id);
+      // Update batch as completed
+      if (batch) {
+        await STATE.client
+          .from('email_import_batches')
+          .update({
+            status: 'completed',
+            imported: subscribers.length
+          })
+          .eq('id', batch.id);
+      }
 
       showNotification(`Successfully imported ${subscribers.length} subscribers`, 'success');
       bootstrap.Modal.getInstance(document.getElementById('importModal')).hide();

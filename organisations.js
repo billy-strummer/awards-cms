@@ -1953,7 +1953,7 @@ updateCountyFilterByRegion() {
       if (error) throw error;
 
       utils.showToast('Company added successfully!', 'success');
-      bootstrap.Modal.getInstance(document.getElementById('addCompanyModal')).hide();
+      bootstrap.Modal.getInstance(document.getElementById('addNewOrgModal')).hide();
       form.reset();
       await this.loadOrganisations();
 

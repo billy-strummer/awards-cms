@@ -994,7 +994,7 @@
           <div class="col-md-1 text-end">
             <label class="form-label small mb-1">&nbsp;</label>
             <div class="d-flex gap-1">
-              <button class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#addCompanyModal" title="Add Company">
+              <button class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#addNewOrgModal" title="Add Company">
                 <i class="bi bi-plus-lg"></i>
               </button>
               <button class="btn btn-sm btn-outline-primary" onclick="orgsModule.exportToCSV()" title="Export CSV">
@@ -1053,155 +1053,6 @@
               </tr>
             </tbody>
           </table>
-          <!-- Add Company Modal -->
-<div class="modal fade" id="addCompanyModal" tabindex="-1" aria-labelledby="addCompanyModalLabel" aria-hidden="true">
-  <div class="modal-dialog modal-lg">
-    <div class="modal-content">
-      <div class="modal-header bg-primary text-white">
-        <h5 class="modal-title" id="addCompanyModalLabel">
-          <i class="bi bi-building me-2"></i>Add New Company
-        </h5>
-        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
-      </div>
-      <div class="modal-body">
-        <form id="addCompanyForm">
-          <div class="row g-3">
-            
-            <!-- Company Name (Required) -->
-            <div class="col-md-6">
-              <label for="newCompanyName" class="form-label fw-semibold">
-                Company Name <span class="text-danger">*</span>
-              </label>
-              <input type="text" class="form-control" id="newCompanyName" required 
-                     placeholder="e.g., ABC Construction Ltd">
-            </div>
-            
-            <!-- Sector (Required) -->
-            <div class="col-md-6">
-              <label for="newCompanySector" class="form-label fw-semibold">
-                Sector <span class="text-danger">*</span>
-              </label>
-              <select class="form-select" id="newCompanySector" required>
-                <option value="">Select Sector...</option>
-                <option value="Building & Construction">Building & Construction</option>
-                <option value="Mechanical, Electrical & Plumbing">Mechanical, Electrical & Plumbing</option>
-                <option value="Interior Fit-Out & Finishing">Interior Fit-Out & Finishing</option>
-                <option value="Energy, Tech & Sustainability">Energy, Tech & Sustainability</option>
-                <!-- Add your other sectors here -->
-              </select>
-            </div>
-            
-            <!-- Contact Name -->
-            <div class="col-md-6">
-              <label for="newContactName" class="form-label fw-semibold">
-                Contact Name
-              </label>
-              <input type="text" class="form-control" id="newContactName" 
-                     placeholder="e.g., John Smith">
-            </div>
-            
-            <!-- Contact Phone -->
-            <div class="col-md-6">
-              <label for="newContactPhone" class="form-label fw-semibold">
-                Contact Phone
-              </label>
-              <input type="tel" class="form-control" id="newContactPhone" 
-                     placeholder="e.g., 01234 567890">
-            </div>
-            
-            <!-- Email (Required) -->
-            <div class="col-md-6">
-              <label for="newCompanyEmail" class="form-label fw-semibold">
-                Email <span class="text-danger">*</span>
-              </label>
-              <input type="email" class="form-control" id="newCompanyEmail" required 
-                     placeholder="e.g., info@company.co.uk">
-            </div>
-            
-            <!-- Website -->
-            <div class="col-md-6">
-              <label for="newCompanyWebsite" class="form-label fw-semibold">
-                Website
-              </label>
-              <input type="url" class="form-control" id="newCompanyWebsite" 
-                     placeholder="e.g., https://www.company.co.uk">
-            </div>
-            
-            <!-- County -->
-            <div class="col-md-6">
-              <label for="newCompanyCounty" class="form-label fw-semibold">
-                County
-              </label>
-              <select class="form-select" id="newCompanyCounty">
-                <option value="">Select County...</option>
-                <option value="Cornwall">Cornwall</option>
-                <option value="Devon">Devon</option>
-                <option value="Somerset">Somerset</option>
-                <option value="Dorset">Dorset</option>
-                <option value="Bedfordshire">Bedfordshire</option>
-                <option value="Buckinghamshire">Buckinghamshire</option>
-                <!-- Add all your UK counties -->
-              </select>
-            </div>
-            
-            <!-- Region (Required) -->
-            <div class="col-md-6">
-              <label for="newCompanyRegion" class="form-label fw-semibold">
-                Region <span class="text-danger">*</span>
-              </label>
-              <select class="form-select" id="newCompanyRegion" required>
-                <option value="">Select Region...</option>
-                <option value="South West">South West</option>
-                <option value="South East">South East</option>
-                <option value="East of England">East of England</option>
-                <option value="London">London</option>
-                <option value="Midlands">Midlands</option>
-                <option value="North West">North West</option>
-                <option value="North East">North East</option>
-                <option value="Yorkshire">Yorkshire</option>
-                <option value="Scotland">Scotland</option>
-                <option value="Wales">Wales</option>
-                <option value="Northern Ireland">Northern Ireland</option>
-              </select>
-            </div>
-            
-            <!-- Address -->
-            <div class="col-12">
-              <label for="newCompanyAddress" class="form-label fw-semibold">
-                Address
-              </label>
-              <textarea class="form-control" id="newCompanyAddress" rows="2" 
-                        placeholder="Full address including postcode"></textarea>
-            </div>
-            
-            <!-- Catchment Area -->
-            <div class="col-12">
-              <label for="newCompanyCatchment" class="form-label fw-semibold">
-                Catchment Area
-              </label>
-              <textarea class="form-control" id="newCompanyCatchment" rows="2" 
-                        placeholder="e.g., South West England, National, London & Southeast"></textarea>
-            </div>
-            
-          </div>
-          
-          <div class="alert alert-info mt-3 mb-0">
-            <i class="bi bi-info-circle me-2"></i>
-            <small>Fields marked with <span class="text-danger">*</span> are required</small>
-          </div>
-        </form>
-      </div>
-      <div class="modal-footer bg-light">
-        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
-          <i class="bi bi-x-circle me-1"></i>Cancel
-        </button>
-        <button type="button" class="btn btn-primary" onclick="orgsModule.saveNewCompany()">
-          <i class="bi bi-check-circle me-1"></i>Save Company
-        </button>
-      </div>
-    </div>
-  </div>
-</div>
         </div>
       </div>
       
@@ -1214,6 +1065,70 @@
           <small class="text-muted">
             <i class="bi bi-clock me-1"></i>Last refreshed: <span id="orgsLastRefresh">-</span>
           </small>
+        </div>
+      </div>
+    </div>
+
+    <!-- Add New Organisation Modal -->
+    <div class="modal fade" id="addNewOrgModal" tabindex="-1" aria-labelledby="addNewOrgModalLabel" aria-hidden="true">
+      <div class="modal-dialog">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title" id="addNewOrgModalLabel">
+              <i class="bi bi-plus-circle me-2"></i>Add New Company
+            </h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div class="modal-body">
+            <form id="addCompanyForm">
+              <div class="mb-3">
+                <label for="newCompanyName" class="form-label">Company Name *</label>
+                <input type="text" class="form-control" id="newCompanyName" required>
+              </div>
+              <div class="row mb-3">
+                <div class="col-md-6">
+                  <label for="newCompanySector" class="form-label">Sector</label>
+                  <input type="text" class="form-control" id="newCompanySector" placeholder="e.g. Manufacturing">
+                </div>
+                <div class="col-md-6">
+                  <label for="newCompanyRegion" class="form-label">Region</label>
+                  <input type="text" class="form-control" id="newCompanyRegion" placeholder="e.g. North West">
+                </div>
+              </div>
+              <div class="row mb-3">
+                <div class="col-md-6">
+                  <label for="newContactName" class="form-label">Contact Name</label>
+                  <input type="text" class="form-control" id="newContactName">
+                </div>
+                <div class="col-md-6">
+                  <label for="newContactPhone" class="form-label">Phone</label>
+                  <input type="tel" class="form-control" id="newContactPhone">
+                </div>
+              </div>
+              <div class="mb-3">
+                <label for="newCompanyEmail" class="form-label">Email</label>
+                <input type="email" class="form-control" id="newCompanyEmail">
+              </div>
+              <div class="mb-3">
+                <label for="newCompanyWebsite" class="form-label">Website</label>
+                <input type="url" class="form-control" id="newCompanyWebsite" placeholder="https://">
+              </div>
+              <div class="mb-3">
+                <label for="newCompanyAddress" class="form-label">Address</label>
+                <textarea class="form-control" id="newCompanyAddress" rows="2"></textarea>
+              </div>
+              <div class="mb-3">
+                <label for="newCompanyCatchment" class="form-label">Catchment Area</label>
+                <input type="text" class="form-control" id="newCompanyCatchment" placeholder="e.g. Greater Manchester">
+              </div>
+            </form>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+            <button type="button" class="btn btn-primary" onclick="orgsModule.saveNewCompany()">
+              <i class="bi bi-check-lg me-1"></i>Save Company
+            </button>
+          </div>
         </div>
       </div>
     </div>

@@ -249,7 +249,7 @@ const dashboardModule = {
       // Get recent entries (last 5) - SELF-NOMINATIONS INCLUDED
       const { data: recentEntries } = await STATE.client
         .from('entries')
-        .select('*, organisations(company_name), awards(award_name)')
+        .select('*, organisations(company_name), award_years(award_name)')
         .order('created_at', { ascending: false })
         .limit(5);
 
@@ -261,7 +261,7 @@ const dashboardModule = {
             icon: isSelfNom ? 'person-raised-hand' : 'file-earmark-text',
             color: isSelfNom ? 'info' : 'warning',
             title: isSelfNom ? 'New Self-Nomination' : 'New Entry',
-            description: `${entry.organisations?.company_name || 'Unknown'} - ${entry.awards?.award_name || 'Unknown Award'}`,
+            description: `${entry.organisations?.company_name || 'Unknown'} - ${entry.award_years?.award_name || 'Unknown Award'}`,
             time: entry.created_at
           });
         });
@@ -270,7 +270,7 @@ const dashboardModule = {
       // Get recent awards (last 10)
       const { data: recentAwards } = await STATE.client
         .from('awards')
-        .select('*, organisations(company_name)')
+        .select('*')
         .order('created_at', { ascending: false })
         .limit(5);
 
@@ -281,7 +281,7 @@ const dashboardModule = {
             icon: 'trophy',
             color: 'primary',
             title: 'New Award Added',
-            description: `${utils.formatAwardName(award)} - ${award.organisations?.company_name || 'Unknown'}`,
+            description: `${utils.formatAwardName(award)}`,
             time: award.created_at
           });
         });

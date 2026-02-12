@@ -78,8 +78,7 @@ const entriesModule = {
         .select(`
           *,
           organisations(company_name, logo_url),
-          awards(award_name, sector, county),
-          invoices(status, total_amount)
+          award_years(award_name, sector, county)
         `)
         .order('submission_date', { ascending: false });
 
@@ -157,7 +156,7 @@ const entriesModule = {
 
     tbody.innerHTML = this.filteredEntries.map(entry => {
       const companyName = entry.organisations?.company_name || 'Unknown';
-      const awardName = entry.awards?.award_name || 'Unknown';
+      const awardName = entry.award_years?.award_name || 'Unknown';
       const statusBadge = this.getStatusBadge(entry.status);
       const paymentBadge = this.getPaymentBadge(entry.payment_status);
       const selfNomBadge = entry.is_self_nomination
@@ -293,7 +292,7 @@ const entriesModule = {
       if (this.currentFilters.search) {
         const searchLower = this.currentFilters.search;
         const companyName = (entry.organisations?.company_name || '').toLowerCase();
-        const awardName = (entry.awards?.award_name || '').toLowerCase();
+        const awardName = (entry.award_years?.award_name || '').toLowerCase();
         const entryTitle = (entry.entry_title || '').toLowerCase();
         const entryNumber = (entry.entry_number || '').toLowerCase();
 
@@ -355,8 +354,7 @@ const entriesModule = {
         .select(`
           *,
           organisations(*),
-          awards(*),
-          invoices(*),
+          award_years(*),
           entry_files(*),
           judge_scores(*)
         `)
@@ -441,15 +439,15 @@ const entriesModule = {
                       <table class="table table-sm table-borderless mb-0">
                         <tr>
                           <td class="text-muted">Award:</td>
-                          <td><strong>${entry.awards?.award_name || 'N/A'}</strong></td>
+                          <td><strong>${entry.award_years?.award_name || 'N/A'}</strong></td>
                         </tr>
                         <tr>
                           <td class="text-muted">Sector:</td>
-                          <td>${entry.awards?.sector || 'N/A'}</td>
+                          <td>${entry.award_years?.sector || 'N/A'}</td>
                         </tr>
                         <tr>
                           <td class="text-muted">County/City:</td>
-                          <td>${entry.awards?.county || 'N/A'}</td>
+                          <td>${entry.award_years?.county || 'N/A'}</td>
                         </tr>
                         <tr>
                           <td class="text-muted">Entry Type:</td>
@@ -920,7 +918,7 @@ const entriesModule = {
       const rows = entriesToExport.map(entry => [
         entry.entry_number,
         entry.organisations?.company_name || '',
-        entry.awards?.award_name || '',
+        entry.award_years?.award_name || '',
         entry.entry_title,
         entry.status,
         entry.average_score || '',

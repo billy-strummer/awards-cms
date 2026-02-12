@@ -204,7 +204,7 @@ const marketingModule = {
         .from('sponsors')
         .select('*')
         .order('tier', { ascending: true })
-        .order('display_order', { ascending: true });
+        .order('display_order', { ascending: true, nullsFirst: false });
 
       if (error) throw error;
 
@@ -343,7 +343,7 @@ const marketingModule = {
       const { data, error } = await STATE.client
         .from('social_campaigns')
         .select('*')
-        .order('scheduled_date', { ascending: false });
+        .order('scheduled_date', { ascending: false, nullsFirst: false });
 
       if (error) throw error;
 
@@ -470,8 +470,8 @@ const marketingModule = {
       const { data, error } = await STATE.client
         .from('email_templates')
         .select('*')
-        .order('category', { ascending: true })
-        .order('template_name', { ascending: true });
+        .order('category', { ascending: true, nullsFirst: false })
+        .order('template_name', { ascending: true, nullsFirst: false });
 
       if (error) throw error;
 

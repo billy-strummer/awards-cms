@@ -1070,246 +1070,294 @@ const dashboardModule = {
     utils.showToast('Charts refreshed', 'success');
   },
 
+  // Store chart instances for cleanup on refresh
+  _chartInstances: {},
+
   /**
-   * Render Winners by Year Chart (Line Chart)
+   * Destroy an existing chart instance before re-rendering
+   */
+  _destroyChart(id) {
+    if (this._chartInstances[id]) {
+      this._chartInstances[id].destroy();
+      delete this._chartInstances[id];
+    }
+  },
+
+  /**
+   * Color palette for charts
+   */
+  _chartColors: [
+    '#4361ee', '#3a0ca3', '#7209b7', '#f72585', '#4cc9f0',
+    '#06d6a0', '#ffd166', '#ef476f', '#118ab2', '#073b4c',
+    '#e63946', '#457b9d', '#2a9d8f', '#e9c46a', '#264653'
+  ],
+
+  /**
+   * Render Winners by Year Chart (Line Chart with gradient fill)
    */
   async renderWinnersYearChart() {
-    const container = document.getElementById('winnersYearChart');
+    const canvas = document.getElementById('winnersYearChart');
+    this._destroyChart('winnersYear');
 
     if (!STATE.allWinners || STATE.allWinners.length === 0) {
-      container.innerHTML = `
-        <div class="chart-empty">
-          <i class="bi bi-bar-chart"></i>
-          <div>No winner data available</div>
-        </div>
-      `;
+      canvas.parentElement.innerHTML = `<div class="text-center py-5 text-muted"><i class="bi bi-trophy display-4 d-block mb-2 opacity-25"></i>No winner data yet</div>`;
       return;
     }
 
-    // Group winners by year
     const yearCounts = {};
     STATE.allWinners.forEach(winner => {
       const year = winner.awards?.year || new Date(winner.created_at).getFullYear();
       yearCounts[year] = (yearCounts[year] || 0) + 1;
     });
 
-    // Sort years
     const years = Object.keys(yearCounts).sort();
-    if (years.length === 0) {
-      container.innerHTML = `<div class="chart-empty"><i class="bi bi-bar-chart"></i><div>No data to display</div></div>`;
-      return;
-    }
+    if (years.length === 0) return;
 
-    const data = years.map(year => ({ label: year, value: yearCounts[year] }));
-    this.renderLineChart(container, data, 'Winners', '#0d6efd');
+    const ctx = canvas.getContext('2d');
+    const gradient = ctx.createLinearGradient(0, 0, 0, 280);
+    gradient.addColorStop(0, 'rgba(67, 97, 238, 0.3)');
+    gradient.addColorStop(1, 'rgba(67, 97, 238, 0.02)');
+
+    this._chartInstances['winnersYear'] = new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels: years,
+        datasets: [{
+          label: 'Winners',
+          data: years.map(y => yearCounts[y]),
+          borderColor: '#4361ee',
+          backgroundColor: gradient,
+          fill: true,
+          tension: 0.35,
+          borderWidth: 3,
+          pointBackgroundColor: '#fff',
+          pointBorderColor: '#4361ee',
+          pointBorderWidth: 2,
+          pointRadius: 5,
+          pointHoverRadius: 8
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            backgroundColor: 'rgba(0,0,0,0.8)',
+            titleFont: { size: 13 },
+            bodyFont: { size: 12 },
+            padding: 10,
+            cornerRadius: 8,
+            callbacks: {
+              label: ctx => `${ctx.parsed.y} winners`
+            }
+          }
+        },
+        scales: {
+          y: {
+            beginAtZero: true,
+            ticks: { precision: 0, font: { size: 11 } },
+            grid: { color: 'rgba(0,0,0,0.06)' }
+          },
+          x: {
+            grid: { display: false },
+            ticks: { font: { size: 11 } }
+          }
+        }
+      }
+    });
   },
 
   /**
-   * Render Category Distribution Chart (Bar Chart)
+   * Render Category Distribution Chart (Doughnut)
    */
   async renderCategoryChart() {
-    const container = document.getElementById('categoryChart');
+    const canvas = document.getElementById('categoryChart');
+    this._destroyChart('category');
 
     if (!STATE.allAwards || STATE.allAwards.length === 0) {
-      container.innerHTML = `
-        <div class="chart-empty">
-          <i class="bi bi-pie-chart"></i>
-          <div>No award data available</div>
-        </div>
-      `;
+      canvas.parentElement.innerHTML = `<div class="text-center py-5 text-muted"><i class="bi bi-pie-chart display-4 d-block mb-2 opacity-25"></i>No award data yet</div>`;
       return;
     }
 
-    // Count by category
     const categoryCounts = {};
     STATE.allAwards.forEach(award => {
       const category = award.award_category || 'Unknown';
       categoryCounts[category] = (categoryCounts[category] || 0) + 1;
     });
 
-    // Sort by count and take top 8
-    const sortedCategories = Object.entries(categoryCounts)
-      .sort((a, b) => b[1] - a[1])
-      .slice(0, 8);
+    const sorted = Object.entries(categoryCounts).sort((a, b) => b[1] - a[1]).slice(0, 8);
+    if (sorted.length === 0) return;
 
-    if (sortedCategories.length === 0) {
-      container.innerHTML = `<div class="chart-empty"><i class="bi bi-pie-chart"></i><div>No data to display</div></div>`;
-      return;
-    }
+    const labels = sorted.map(([l]) => l.length > 25 ? l.substring(0, 25) + '...' : l);
+    const values = sorted.map(([, v]) => v);
 
-    const data = sortedCategories.map(([label, value]) => ({
-      label: label.length > 20 ? label.substring(0, 20) + '...' : label,
-      value
-    }));
-    this.renderBarChart(container, data, 'Awards', '#28a745');
+    this._chartInstances['category'] = new Chart(canvas.getContext('2d'), {
+      type: 'doughnut',
+      data: {
+        labels,
+        datasets: [{
+          data: values,
+          backgroundColor: this._chartColors.slice(0, sorted.length),
+          borderWidth: 2,
+          borderColor: '#fff',
+          hoverOffset: 8
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        cutout: '55%',
+        plugins: {
+          legend: {
+            position: 'right',
+            labels: { font: { size: 11 }, padding: 8, boxWidth: 12, usePointStyle: true }
+          },
+          tooltip: {
+            backgroundColor: 'rgba(0,0,0,0.8)',
+            padding: 10,
+            cornerRadius: 8,
+            callbacks: {
+              label: ctx => {
+                const total = ctx.dataset.data.reduce((a, b) => a + b, 0);
+                const pct = ((ctx.parsed / total) * 100).toFixed(1);
+                return ` ${ctx.parsed} awards (${pct}%)`;
+              }
+            }
+          }
+        }
+      }
+    });
   },
 
   /**
-   * Render Sector Distribution Chart (Bar Chart)
+   * Render Sector Distribution Chart (Horizontal Bar)
    */
   async renderSectorChart() {
-    const container = document.getElementById('sectorChart');
+    const canvas = document.getElementById('sectorChart');
+    this._destroyChart('sector');
 
     if (!STATE.allAwards || STATE.allAwards.length === 0) {
-      container.innerHTML = `
-        <div class="chart-empty">
-          <i class="bi bi-building"></i>
-          <div>No sector data available</div>
-        </div>
-      `;
+      canvas.parentElement.innerHTML = `<div class="text-center py-5 text-muted"><i class="bi bi-building display-4 d-block mb-2 opacity-25"></i>No sector data yet</div>`;
       return;
     }
 
-    // Count by sector
     const sectorCounts = {};
     STATE.allAwards.forEach(award => {
       const sector = award.sector || 'Unknown';
       sectorCounts[sector] = (sectorCounts[sector] || 0) + 1;
     });
 
-    // Sort by count - show all sectors
-    const sortedSectors = Object.entries(sectorCounts)
-      .sort((a, b) => b[1] - a[1]);
+    const sorted = Object.entries(sectorCounts).sort((a, b) => b[1] - a[1]).slice(0, 10);
+    if (sorted.length === 0) return;
 
-    if (sortedSectors.length === 0) {
-      container.innerHTML = `<div class="chart-empty"><i class="bi bi-building"></i><div>No data to display</div></div>`;
-      return;
-    }
+    const labels = sorted.map(([l]) => l.length > 22 ? l.substring(0, 22) + '...' : l);
+    const values = sorted.map(([, v]) => v);
 
-    const data = sortedSectors.map(([label, value]) => ({
-      label: label.length > 20 ? label.substring(0, 20) + '...' : label,
-      value
-    }));
-    this.renderBarChart(container, data, 'Awards', '#17a2b8');
+    this._chartInstances['sector'] = new Chart(canvas.getContext('2d'), {
+      type: 'bar',
+      data: {
+        labels,
+        datasets: [{
+          label: 'Awards',
+          data: values,
+          backgroundColor: this._chartColors.slice(0, sorted.length).map(c => c + 'cc'),
+          borderColor: this._chartColors.slice(0, sorted.length),
+          borderWidth: 1,
+          borderRadius: 4,
+          barPercentage: 0.7
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        indexAxis: 'y',
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            backgroundColor: 'rgba(0,0,0,0.8)',
+            padding: 10,
+            cornerRadius: 8,
+            callbacks: {
+              label: ctx => ` ${ctx.parsed.x} awards`
+            }
+          }
+        },
+        scales: {
+          x: {
+            beginAtZero: true,
+            ticks: { precision: 0, font: { size: 11 } },
+            grid: { color: 'rgba(0,0,0,0.06)' }
+          },
+          y: {
+            grid: { display: false },
+            ticks: { font: { size: 11 } }
+          }
+        }
+      }
+    });
   },
 
   /**
-   * Render Region Distribution Chart (Bar Chart)
+   * Render Region Distribution Chart (Polar Area)
    */
   async renderRegionChart() {
-    const container = document.getElementById('regionChart');
+    const canvas = document.getElementById('regionChart');
+    this._destroyChart('region');
 
     if (!STATE.allAwards || STATE.allAwards.length === 0) {
-      container.innerHTML = `
-        <div class="chart-empty">
-          <i class="bi bi-geo-alt"></i>
-          <div>No region data available</div>
-        </div>
-      `;
+      canvas.parentElement.innerHTML = `<div class="text-center py-5 text-muted"><i class="bi bi-geo-alt display-4 d-block mb-2 opacity-25"></i>No region data yet</div>`;
       return;
     }
 
-    // Count by county/city
     const regionCounts = {};
     STATE.allAwards.forEach(award => {
       const region = award.county || 'Unknown';
       regionCounts[region] = (regionCounts[region] || 0) + 1;
     });
 
-    // Sort by count - show all regions
-    const sortedRegions = Object.entries(regionCounts)
-      .sort((a, b) => b[1] - a[1]);
+    const sorted = Object.entries(regionCounts).sort((a, b) => b[1] - a[1]).slice(0, 12);
+    if (sorted.length === 0) return;
 
-    if (sortedRegions.length === 0) {
-      container.innerHTML = `<div class="chart-empty"><i class="bi bi-geo-alt"></i><div>No data to display</div></div>`;
-      return;
-    }
+    const labels = sorted.map(([l]) => l);
+    const values = sorted.map(([, v]) => v);
 
-    const data = sortedRegions.map(([label, value]) => ({ label, value }));
-    this.renderBarChart(container, data, 'Awards', '#ffc107');
-  },
-
-  /**
-   * Render a line chart using SVG
-   */
-  renderLineChart(container, data, label, color) {
-    const width = container.offsetWidth;
-    const height = 260;
-    const padding = { top: 20, right: 20, bottom: 40, left: 50 };
-    const chartWidth = width - padding.left - padding.right;
-    const chartHeight = height - padding.top - padding.bottom;
-
-    const maxValue = Math.max(...data.map(d => d.value));
-    const minValue = 0;
-    const valueRange = maxValue - minValue || 1;
-
-    // Create SVG
-    let svg = `<svg class="chart-svg" width="${width}" height="${height}" xmlns="http://www.w3.org/2000/svg">`;
-
-    // Grid lines
-    for (let i = 0; i <= 5; i++) {
-      const y = padding.top + (chartHeight / 5) * i;
-      svg += `<line x1="${padding.left}" y1="${y}" x2="${width - padding.right}" y2="${y}" class="chart-grid-line"/>`;
-      const value = Math.round(maxValue - (maxValue / 5) * i);
-      svg += `<text x="${padding.left - 10}" y="${y + 4}" text-anchor="end" class="chart-axis-label">${value}</text>`;
-    }
-
-    // X-axis
-    svg += `<line x1="${padding.left}" y1="${height - padding.bottom}" x2="${width - padding.right}" y2="${height - padding.bottom}" class="chart-axis-line"/>`;
-
-    // Y-axis
-    svg += `<line x1="${padding.left}" y1="${padding.top}" x2="${padding.left}" y2="${height - padding.bottom}" class="chart-axis-line"/>`;
-
-    // Plot line
-    const points = data.map((d, i) => {
-      const x = padding.left + (chartWidth / (data.length - 1 || 1)) * i;
-      const y = height - padding.bottom - ((d.value - minValue) / valueRange) * chartHeight;
-      return `${x},${y}`;
-    }).join(' ');
-
-    svg += `<polyline points="${points}" class="chart-line" stroke="${color}" fill="none"/>`;
-
-    // Plot dots
-    data.forEach((d, i) => {
-      const x = padding.left + (chartWidth / (data.length - 1 || 1)) * i;
-      const y = height - padding.bottom - ((d.value - minValue) / valueRange) * chartHeight;
-      svg += `<circle cx="${x}" cy="${y}" r="4" fill="${color}" class="chart-dot">
-        <title>${d.label}: ${d.value} ${label}</title>
-      </circle>`;
-
-      // X-axis labels
-      svg += `<text x="${x}" y="${height - padding.bottom + 20}" text-anchor="middle" class="chart-axis-label">${d.label}</text>`;
+    this._chartInstances['region'] = new Chart(canvas.getContext('2d'), {
+      type: 'polarArea',
+      data: {
+        labels,
+        datasets: [{
+          data: values,
+          backgroundColor: this._chartColors.slice(0, sorted.length).map(c => c + '99'),
+          borderColor: this._chartColors.slice(0, sorted.length),
+          borderWidth: 1
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: {
+            position: 'right',
+            labels: { font: { size: 10 }, padding: 6, boxWidth: 10, usePointStyle: true }
+          },
+          tooltip: {
+            backgroundColor: 'rgba(0,0,0,0.8)',
+            padding: 10,
+            cornerRadius: 8,
+            callbacks: {
+              label: ctx => ` ${ctx.parsed.r} awards`
+            }
+          }
+        },
+        scales: {
+          r: {
+            ticks: { display: false },
+            grid: { color: 'rgba(0,0,0,0.06)' }
+          }
+        }
+      }
     });
-
-    svg += `</svg>`;
-    container.innerHTML = svg;
-  },
-
-  /**
-   * Render a horizontal bar chart using SVG
-   */
-  renderBarChart(container, data, label, color) {
-    const width = container.offsetWidth;
-    const barHeight = 25; // Fixed height per bar
-    const barSpacing = 5; // Space between bars
-    const padding = { top: 10, right: 40, bottom: 10, left: 120 };
-    const height = Math.max(260, padding.top + padding.bottom + (data.length * (barHeight + barSpacing)));
-    const chartWidth = width - padding.left - padding.right;
-
-    const maxValue = Math.max(...data.map(d => d.value));
-
-    // Create SVG
-    let svg = `<svg class="chart-svg" width="${width}" height="${height}" xmlns="http://www.w3.org/2000/svg">`;
-
-    // Render bars
-    data.forEach((d, i) => {
-      const barWidth = (d.value / maxValue) * chartWidth;
-      const y = padding.top + i * (barHeight + barSpacing);
-
-      // Bar
-      svg += `<rect x="${padding.left}" y="${y}" width="${barWidth}" height="${barHeight}" fill="${color}" class="chart-bar" opacity="0.8">
-        <title>${d.label}: ${d.value} ${label}</title>
-      </rect>`;
-
-      // Label
-      svg += `<text x="${padding.left - 10}" y="${y + barHeight / 2 + 4}" text-anchor="end" class="chart-axis-label" font-size="11px">${d.label}</text>`;
-
-      // Value
-      svg += `<text x="${padding.left + barWidth + 5}" y="${y + barHeight / 2 + 4}" class="chart-axis-label" font-weight="600">${d.value}</text>`;
-    });
-
-    svg += `</svg>`;
-    container.innerHTML = svg;
   },
 
   /* ==================================================== */

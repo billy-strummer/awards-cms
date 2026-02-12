@@ -267,36 +267,39 @@ updateCountyFilterByRegion() {
   const sector = document.getElementById('orgsSectorFilter')?.value || '';
   const county = document.getElementById('orgsCountyFilter')?.value || '';
   const region = document.getElementById('orgsRegionFilter')?.value || '';
+  const status = document.getElementById('orgsStatusFilter')?.value || '';
   const search = document.getElementById('orgsSearchBox')?.value.toLowerCase().trim() || '';
 
   STATE.filteredOrganisations = STATE.allOrganisations.filter(org => {
-    // Year filter (filters organisations based on award year - optional)
-    // Skip for now unless you have year data on organisations
-    
+    // Status filter
+    if (status && (org.status || 'prospect') !== status) return false;
+
     // Sector filter
     if (sector && org.sector !== sector) return false;
-    
-    // County filter (NEW)
+
+    // County filter
     if (county && org.county !== county) return false;
-    
+
     // Region filter
     if (region && org.region !== region) return false;
-    
+
     // Search filter - searches across multiple fields
     if (search) {
       const companyName = org.company_name?.toLowerCase() || '';
       const contact = org.contact_name?.toLowerCase() || '';
       const email = org.email?.toLowerCase() || '';
       const website = org.website?.toLowerCase() || '';
-      
-      if (!companyName.includes(search) && 
-          !contact.includes(search) && 
+      const notes = org.notes?.toLowerCase() || '';
+
+      if (!companyName.includes(search) &&
+          !contact.includes(search) &&
           !email.includes(search) &&
-          !website.includes(search)) {
+          !website.includes(search) &&
+          !notes.includes(search)) {
         return false;
       }
     }
-    
+
     return true;
   });
 
@@ -487,10 +490,7 @@ updateCountyFilterByRegion() {
       // Fetch media gallery items tagged to this organisation
       const { data: taggedMedia, error: mediaError } = await STATE.client
         .from('media_gallery')
-        .select(`
-          *,
-          events!media_gallery_event_id_fkey (*)
-        `)
+        .select('*')
         .eq('organisation_id', orgId)
         .order('created_at', { ascending: false });
 
@@ -526,7 +526,7 @@ updateCountyFilterByRegion() {
         .from('entries')
         .select(`
           *,
-          awards (award_name, year)
+          award_years (award_name, year)
         `)
         .eq('organisation_id', orgId)
         .eq('allow_public_voting', true)
@@ -630,6 +630,37 @@ updateCountyFilterByRegion() {
                   <textarea class="form-control form-control-sm edit-mode" id="editCatchmentArea"
                     rows="3" style="display: none;" placeholder="e.g., London, Southeast England, National">${utils.escapeHtml(org.catchment_area || '')}</textarea>
                 </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Status & Notes Row -->
+        <div class="row mt-3">
+          <div class="col-md-6 mb-3">
+            <h6 class="text-muted mb-2"><i class="bi bi-flag me-2"></i>Company Status</h6>
+            <div class="card">
+              <div class="card-body">
+                <div class="d-flex flex-wrap gap-1">
+                  ${['prospect','entrant','nominee','shortlisted','winner','sponsor','past_winner'].map(s => `
+                    <button class="btn btn-sm ${org.status === s ? 'btn-primary' : 'btn-outline-secondary'}"
+                      onclick="orgsModule.updateOrgStatus('${org.id}', '${s}')">
+                      ${s.charAt(0).toUpperCase() + s.slice(1).replace('_', ' ')}
+                    </button>
+                  `).join('')}
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="col-md-6 mb-3">
+            <h6 class="text-muted mb-2"><i class="bi bi-journal-text me-2"></i>Internal Notes</h6>
+            <div class="card">
+              <div class="card-body">
+                <textarea class="form-control mb-2" id="editOrgNotes" rows="3"
+                  placeholder="Add internal notes about this company...">${utils.escapeHtml(org.notes || '')}</textarea>
+                <button class="btn btn-sm btn-primary" onclick="orgsModule.saveOrgNotes('${org.id}')">
+                  <i class="bi bi-save me-1"></i>Save Notes
+                </button>
               </div>
             </div>
           </div>
@@ -753,7 +784,7 @@ updateCountyFilterByRegion() {
                           <tr>
                             <td><span class="badge bg-primary">${utils.escapeHtml(entry.entry_number)}</span></td>
                             <td>
-                              <strong>${utils.escapeHtml(entry.awards ? utils.formatAwardName(entry.awards) : 'N/A')}</strong>
+                              <strong>${utils.escapeHtml(entry.award_years ? utils.formatAwardName(entry.award_years) : 'N/A')}</strong>
                             </td>
                             <td>${utils.escapeHtml(entry.entry_title || 'N/A')}</td>
                             <td>
@@ -1871,6 +1902,287 @@ updateCountyFilterByRegion() {
       'non-attendee': '<span class="badge bg-secondary"><i class="bi bi-x-circle me-1"></i>Non-Attendee</span>'
     };
     return packages[packageType] || packages['bronze'];
+  },
+
+  // ============================================
+  // STATUS BADGE
+  // ============================================
+  getStatusBadge(status) {
+    const badges = {
+      'prospect': '<span class="badge bg-secondary">Prospect</span>',
+      'entrant': '<span class="badge bg-info">Entrant</span>',
+      'nominee': '<span class="badge bg-primary">Nominee</span>',
+      'shortlisted': '<span class="badge bg-warning text-dark">Shortlisted</span>',
+      'winner': '<span class="badge bg-success">Winner</span>',
+      'sponsor': '<span class="badge bg-danger">Sponsor</span>',
+      'past_winner': '<span class="badge bg-dark">Past Winner</span>'
+    };
+    return badges[status] || badges['prospect'];
+  },
+
+  // ============================================
+  // SAVE NEW COMPANY
+  // ============================================
+  async saveNewCompany() {
+    const form = document.getElementById('addCompanyForm');
+    if (!form.checkValidity()) {
+      form.reportValidity();
+      return;
+    }
+
+    const companyData = {
+      company_name: document.getElementById('newCompanyName').value.trim(),
+      sector: document.getElementById('newCompanySector').value,
+      contact_name: document.getElementById('newContactName').value.trim() || null,
+      contact_phone: document.getElementById('newContactPhone').value.trim() || null,
+      email: document.getElementById('newCompanyEmail').value.trim(),
+      website: document.getElementById('newCompanyWebsite').value.trim() || null,
+      region: document.getElementById('newCompanyRegion').value,
+      address: document.getElementById('newCompanyAddress').value.trim() || null,
+      catchment_area: document.getElementById('newCompanyCatchment').value.trim() || null,
+      status: 'prospect'
+    };
+
+    try {
+      utils.showLoading();
+
+      const { error } = await STATE.client
+        .from('organisations')
+        .insert([companyData]);
+
+      if (error) throw error;
+
+      utils.showToast('Company added successfully!', 'success');
+      bootstrap.Modal.getInstance(document.getElementById('addCompanyModal')).hide();
+      form.reset();
+      await this.loadOrganisations();
+
+    } catch (error) {
+      console.error('Error saving new company:', error);
+      utils.showToast('Error saving company: ' + error.message, 'error');
+    } finally {
+      utils.hideLoading();
+    }
+  },
+
+  // ============================================
+  // SELECT ALL / TOGGLE SELECTION
+  // ============================================
+  toggleSelectAll() {
+    const checkbox = document.getElementById('selectAllOrgs');
+    if (checkbox.checked) {
+      STATE.filteredOrganisations.forEach(org => this.selectedOrgs.add(org.id));
+    } else {
+      this.selectedOrgs.clear();
+    }
+    this.renderOrganisations();
+    this.updateBulkActionsBar();
+  },
+
+  toggleOrgSelection(orgId) {
+    if (this.selectedOrgs.has(orgId)) {
+      this.selectedOrgs.delete(orgId);
+    } else {
+      this.selectedOrgs.add(orgId);
+    }
+    // Update select all checkbox
+    const selectAll = document.getElementById('selectAllOrgs');
+    if (selectAll) {
+      selectAll.checked = this.selectedOrgs.size === STATE.filteredOrganisations.length;
+    }
+    this.updateBulkActionsBar();
+  },
+
+  updateBulkActionsBar() {
+    const bar = document.getElementById('bulkActionsBar');
+    const countEl = document.getElementById('selectedCount');
+    if (bar && countEl) {
+      countEl.textContent = this.selectedOrgs.size;
+      bar.style.display = this.selectedOrgs.size > 0 ? 'block' : 'none';
+    }
+  },
+
+  clearSelection() {
+    this.selectedOrgs.clear();
+    const selectAll = document.getElementById('selectAllOrgs');
+    if (selectAll) selectAll.checked = false;
+    this.renderOrganisations();
+    this.updateBulkActionsBar();
+  },
+
+  // ============================================
+  // SORTING
+  // ============================================
+  sortBy(field) {
+    if (this.sortField === field) {
+      this.sortDirection = this.sortDirection === 'asc' ? 'desc' : 'asc';
+    } else {
+      this.sortField = field;
+      this.sortDirection = 'asc';
+    }
+
+    const dir = this.sortDirection === 'asc' ? 1 : -1;
+
+    STATE.filteredOrganisations.sort((a, b) => {
+      let valA, valB;
+      switch (field) {
+        case 'company':
+          valA = (a.company_name || '').toLowerCase();
+          valB = (b.company_name || '').toLowerCase();
+          break;
+        case 'sector':
+          valA = (a.sector || '').toLowerCase();
+          valB = (b.sector || '').toLowerCase();
+          break;
+        case 'county':
+          valA = (a.county || '').toLowerCase();
+          valB = (b.county || '').toLowerCase();
+          break;
+        case 'region':
+          valA = (a.region || '').toLowerCase();
+          valB = (b.region || '').toLowerCase();
+          break;
+        default:
+          valA = (a.company_name || '').toLowerCase();
+          valB = (b.company_name || '').toLowerCase();
+      }
+      if (valA < valB) return -1 * dir;
+      if (valA > valB) return 1 * dir;
+      return 0;
+    });
+
+    this.renderOrganisations();
+  },
+
+  // ============================================
+  // EXPORT CSV
+  // ============================================
+  exportToCSV() {
+    const data = STATE.filteredOrganisations;
+    if (data.length === 0) {
+      utils.showToast('No organisations to export', 'warning');
+      return;
+    }
+
+    const csv = [
+      'Company Name,Sector,County,Region,Contact Name,Email,Phone,Website,Status',
+      ...data.map(org =>
+        [
+          `"${(org.company_name || '').replace(/"/g, '""')}"`,
+          `"${(org.sector || '').replace(/"/g, '""')}"`,
+          `"${(org.county || '').replace(/"/g, '""')}"`,
+          `"${(org.region || '').replace(/"/g, '""')}"`,
+          `"${(org.contact_name || '').replace(/"/g, '""')}"`,
+          `"${(org.email || '').replace(/"/g, '""')}"`,
+          `"${(org.contact_phone || '').replace(/"/g, '""')}"`,
+          `"${(org.website || '').replace(/"/g, '""')}"`,
+          `"${(org.status || 'prospect').replace(/"/g, '""')}"`
+        ].join(',')
+      )
+    ].join('\n');
+
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `organisations-export-${new Date().toISOString().split('T')[0]}.csv`;
+    a.click();
+    window.URL.revokeObjectURL(url);
+
+    utils.showToast(`Exported ${data.length} organisations`, 'success');
+  },
+
+  // ============================================
+  // BULK EMAIL
+  // ============================================
+  bulkEmail() {
+    if (this.selectedOrgs.size === 0) {
+      utils.showToast('No organisations selected', 'warning');
+      return;
+    }
+
+    const selectedData = STATE.allOrganisations.filter(org => this.selectedOrgs.has(org.id));
+    const emails = selectedData
+      .map(org => org.email)
+      .filter(e => e)
+      .join(',');
+
+    if (emails) {
+      window.location.href = `mailto:${emails}`;
+      utils.showToast(`Opening email for ${selectedData.length} companies`, 'success');
+    } else {
+      utils.showToast('No email addresses found for selected companies', 'warning');
+    }
+  },
+
+  // ============================================
+  // BULK EXPORT
+  // ============================================
+  bulkExport() {
+    if (this.selectedOrgs.size === 0) {
+      utils.showToast('No organisations selected', 'warning');
+      return;
+    }
+
+    const originalFiltered = STATE.filteredOrganisations;
+    STATE.filteredOrganisations = STATE.allOrganisations.filter(org => this.selectedOrgs.has(org.id));
+    this.exportToCSV();
+    STATE.filteredOrganisations = originalFiltered;
+  },
+
+  // ============================================
+  // SAVE NOTES
+  // ============================================
+  async saveOrgNotes(orgId) {
+    const notes = document.getElementById('editOrgNotes')?.value?.trim() || '';
+    try {
+      const { error } = await STATE.client
+        .from('organisations')
+        .update({ notes: notes || null })
+        .eq('id', orgId);
+
+      if (error) throw error;
+
+      // Update local state
+      const org = STATE.allOrganisations.find(o => o.id === orgId);
+      if (org) org.notes = notes;
+
+      utils.showToast('Notes saved', 'success');
+    } catch (error) {
+      console.error('Error saving notes:', error);
+      utils.showToast('Error saving notes: ' + error.message, 'error');
+    }
+  },
+
+  // ============================================
+  // UPDATE COMPANY STATUS
+  // ============================================
+  async updateOrgStatus(orgId, newStatus) {
+    try {
+      const { error } = await STATE.client
+        .from('organisations')
+        .update({ status: newStatus })
+        .eq('id', orgId);
+
+      if (error) throw error;
+
+      // Update local state
+      const org = STATE.allOrganisations.find(o => o.id === orgId);
+      if (org) org.status = newStatus;
+
+      const filteredOrg = STATE.filteredOrganisations.find(o => o.id === orgId);
+      if (filteredOrg) filteredOrg.status = newStatus;
+
+      utils.showToast(`Status updated to ${newStatus}`, 'success');
+
+      // Refresh the profile
+      if (org) {
+        await this.openCompanyProfile(orgId, org.company_name);
+      }
+    } catch (error) {
+      console.error('Error updating status:', error);
+      utils.showToast('Error updating status: ' + error.message, 'error');
+    }
   }
 };
 

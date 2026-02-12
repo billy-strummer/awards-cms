@@ -972,12 +972,35 @@
 </div>
 
           
-          <!-- Export Button (Right Aligned) -->
-          <div class="col-md-2 text-end">
+          <!-- Status Filter -->
+          <div class="col-md-1">
+            <label for="orgsStatusFilter" class="form-label small fw-semibold mb-1">
+              <i class="bi bi-flag me-1"></i>Status
+            </label>
+            <select class="form-select form-select-sm" id="orgsStatusFilter"
+                    onchange="orgsModule.filterOrganisations()">
+              <option value="">All</option>
+              <option value="prospect">Prospect</option>
+              <option value="entrant">Entrant</option>
+              <option value="nominee">Nominee</option>
+              <option value="shortlisted">Shortlisted</option>
+              <option value="winner">Winner</option>
+              <option value="sponsor">Sponsor</option>
+              <option value="past_winner">Past Winner</option>
+            </select>
+          </div>
+
+          <!-- Buttons (Right Aligned) -->
+          <div class="col-md-1 text-end">
             <label class="form-label small mb-1">&nbsp;</label>
-            <button class="btn btn-sm btn-outline-primary w-100" onclick="orgsModule.exportToCSV()">
-              <i class="bi bi-download me-1"></i>Export CSV
-            </button>
+            <div class="d-flex gap-1">
+              <button class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#addCompanyModal" title="Add Company">
+                <i class="bi bi-plus-lg"></i>
+              </button>
+              <button class="btn btn-sm btn-outline-primary" onclick="orgsModule.exportToCSV()" title="Export CSV">
+                <i class="bi bi-download"></i>
+              </button>
+            </div>
           </div>
         </div>
       </div>

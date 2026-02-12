@@ -33,29 +33,7 @@ const awardsModule = {
         if (!data || data.length === 0) {
           hasMore = false;
         } else {
-          const dataWithRegions = await Promise.all(data.map(async (award) => {
-            let actualRegion = null;
-
-            if (award.county) {
-              const { data: countyData } = await STATE.client
-                .from('counties')
-                .select('Name, region_id, regions(name)')
-                .ilike('Name', award.county)
-                .single();
-
-              if (countyData?.regions?.name) {
-                actualRegion = countyData.regions.name;
-              }
-            }
-
-            return {
-              ...award,
-              _actualRegion: actualRegion,
-              _countyName: award.county
-            };
-          }));
-
-          allData = allData.concat(dataWithRegions);
+          allData = allData.concat(data);
           page++;
 
           if (data.length < pageSize) {
@@ -64,7 +42,25 @@ const awardsModule = {
         }
       }
 
-      STATE.allAwards = allData;
+      // Batch lookup regions for all counties in one query
+      const uniqueCounties = [...new Set(allData.map(a => a.county).filter(Boolean))];
+      const countyRegionMap = {};
+      if (uniqueCounties.length > 0) {
+        const { data: countyData } = await STATE.client
+          .from('counties')
+          .select('Name, regions(name)')
+          .in('Name', uniqueCounties);
+
+        (countyData || []).forEach(c => {
+          countyRegionMap[c.Name] = c.regions?.name || null;
+        });
+      }
+
+      STATE.allAwards = allData.map(award => ({
+        ...award,
+        _actualRegion: award.county ? (countyRegionMap[award.county] || null) : null,
+        _countyName: award.county
+      }));
 
       await this.loadAssignmentCounts();
 
@@ -138,27 +134,24 @@ const awardsModule = {
   },
 
   /**
-   * Populate year filter with only 2026+
+   * Populate year filter with all years found in data
    */
   populateYearFilter() {
-    const currentYear = new Date().getFullYear();
     const yearSelect = document.getElementById('awardsYearFilterSelect');
-    
+
     if (yearSelect) {
-      // Get unique years from awards that are >= 2026
       const uniqueYears = [...new Set(STATE.allAwards
         .map(a => {
-          // Handle both string dates like "2026-01-01" and year numbers
           if (typeof a.year === 'string' && a.year.includes('-')) {
             return parseInt(a.year.split('-')[0]);
           }
           return parseInt(a.year);
         })
-        .filter(y => y && y >= currentYear)
-      )].sort((a, b) => b - a); // Sort descending (newest first)
-      
+        .filter(y => y && !isNaN(y))
+      )].sort((a, b) => b - a);
+
       yearSelect.innerHTML = '<option value="">All Years</option>' +
-        uniqueYears.map(year => 
+        uniqueYears.map(year =>
           `<option value="${year}">${year}</option>`
         ).join('');
     }
@@ -270,9 +263,17 @@ const awardsModule = {
       let valA, valB;
 
       switch (column) {
+        case 'year':
+          valA = parseInt(a.year) || 0;
+          valB = parseInt(b.year) || 0;
+          return (valA - valB) * dir;
         case 'award_name':
           valA = utils.formatAwardName(a).toLowerCase();
           valB = utils.formatAwardName(b).toLowerCase();
+          break;
+        case 'county':
+          valA = (a.county || '').toLowerCase();
+          valB = (b.county || '').toLowerCase();
           break;
         case 'sector':
           valA = (a.sector || '').toLowerCase();
@@ -321,7 +322,7 @@ const awardsModule = {
         } else {
           awardYear = award.year;
         }
-        if (awardYear != year) return false;
+        if (String(awardYear) !== String(year)) return false;
       }
 
       // Status filter
@@ -336,12 +337,18 @@ const awardsModule = {
       // Region filter (actual region like "South West")
       if (region && award._actualRegion !== region) return false;
 
-      // Search filter (searches full award name, category, county, and winner)
+      // Search filter (award name, county, sector, status, winner, description)
       if (search) {
-        const fullName = utils.formatAwardName(award).toLowerCase();
-        const winnerName = (award._winnerName || '').toLowerCase();
+        const searchFields = [
+          utils.formatAwardName(award),
+          award.county || '',
+          award.sector || '',
+          award.status || '',
+          award._winnerName || '',
+          award.description || ''
+        ].join(' ').toLowerCase();
 
-        if (!fullName.includes(search) && !winnerName.includes(search)) {
+        if (!searchFields.includes(search)) {
           return false;
         }
       }
@@ -356,6 +363,42 @@ const awardsModule = {
   /**
    * Render awards table
    */
+  /**
+   * Get the current phase of an award based on dates
+   */
+  getAwardPhase(award) {
+    const now = new Date();
+    const dates = {
+      entryOpen: award.entry_open_date ? new Date(award.entry_open_date) : null,
+      entryClose: award.entry_close_date ? new Date(award.entry_close_date) : null,
+      judgingOpen: award.judging_open_date ? new Date(award.judging_open_date) : null,
+      judgingClose: award.judging_close_date ? new Date(award.judging_close_date) : null,
+      votingOpen: award.voting_open_date ? new Date(award.voting_open_date) : null,
+      votingClose: award.voting_close_date ? new Date(award.voting_close_date) : null,
+      winnersAnnouncement: award.winners_announcement_date ? new Date(award.winners_announcement_date) : null
+    };
+
+    if (dates.winnersAnnouncement && now >= dates.winnersAnnouncement) {
+      return { label: 'Complete', color: 'success', icon: 'check-circle' };
+    }
+    if (dates.votingOpen && dates.votingClose && now >= dates.votingOpen && now <= dates.votingClose) {
+      return { label: 'Voting', color: 'info', icon: 'hand-thumbs-up' };
+    }
+    if (dates.judgingOpen && dates.judgingClose && now >= dates.judgingOpen && now <= dates.judgingClose) {
+      return { label: 'Judging', color: 'warning', icon: 'clipboard-check' };
+    }
+    if (dates.entryOpen && dates.entryClose && now >= dates.entryOpen && now <= dates.entryClose) {
+      return { label: 'Entries Open', color: 'primary', icon: 'pencil-square' };
+    }
+    if (dates.entryOpen && now < dates.entryOpen) {
+      return { label: 'Upcoming', color: 'secondary', icon: 'clock' };
+    }
+    if (dates.entryClose && now > dates.entryClose && (!dates.judgingOpen || now < dates.judgingOpen)) {
+      return { label: 'Entries Closed', color: 'dark', icon: 'lock' };
+    }
+    return { label: '-', color: 'light', icon: '' };
+  },
+
   renderAwards() {
     const tbody = document.getElementById('awardsTableBody');
     const count = document.getElementById('awardsCount');
@@ -363,7 +406,7 @@ const awardsModule = {
     count.textContent = STATE.filteredAwards.length;
 
     if (STATE.filteredAwards.length === 0) {
-      utils.showEmptyState('awardsTableBody', 7, 'No awards found matching your filters');
+      utils.showEmptyState('awardsTableBody', 10, 'No awards found matching your filters');
       return;
     }
 
@@ -375,29 +418,29 @@ const awardsModule = {
 
       const fullName = utils.formatAwardName(award);
 
-      // Winner display
+      // Simplified winner display
       let winnerHtml = '<span class="text-muted small">-</span>';
       if (award._winnerName) {
+        const prevTitle = award.prev_year_winner ? `\nPrev: ${award.prev_year_winner}` : '';
         winnerHtml = `
-          <div class="d-flex align-items-center gap-1">
-            <span class="badge bg-success"><i class="bi bi-trophy-fill me-1"></i>Winner</span>
-            <span class="small fw-semibold">${utils.escapeHtml(award._winnerName)}</span>
-          </div>`;
-        if (award._runnerUpName) {
-          winnerHtml += `<div class="small text-muted mt-1"><i class="bi bi-award me-1"></i>${utils.escapeHtml(award._runnerUpName)}</div>`;
-        }
+          <span class="small fw-semibold" title="${utils.escapeHtml(award._winnerName)}${award._runnerUpName ? '\n2nd: ' + utils.escapeHtml(award._runnerUpName) : ''}${prevTitle}">
+            <i class="bi bi-trophy-fill text-success me-1"></i>${utils.escapeHtml(award._winnerName)}
+          </span>`;
       } else if (counts.shortlisted > 0) {
-        winnerHtml = `<span class="badge bg-warning text-dark small"><i class="bi bi-star me-1"></i>${counts.shortlisted} shortlisted</span>`;
+        winnerHtml = `<span class="badge bg-warning text-dark small">${counts.shortlisted} shortlisted</span>`;
+      } else if (award.prev_year_winner) {
+        winnerHtml = `<span class="small text-muted" title="Previous: ${utils.escapeHtml(award.prev_year_winner)}"><i class="bi bi-clock-history me-1"></i>Prev: ${utils.escapeHtml(award.prev_year_winner)}</span>`;
       }
 
-      // Previous year defending champion
-      if (award.prev_year_winner) {
-        winnerHtml += `<div class="small text-muted mt-1" title="Previous year: 1st ${utils.escapeHtml(award.prev_year_winner)}${award.prev_year_2nd ? ', 2nd ' + utils.escapeHtml(award.prev_year_2nd) : ''}${award.prev_year_3rd ? ', 3rd ' + utils.escapeHtml(award.prev_year_3rd) : ''}"><i class="bi bi-clock-history me-1"></i>Prev: ${utils.escapeHtml(award.prev_year_winner)}</div>`;
-      }
+      // Phase badge
+      const phase = this.getAwardPhase(award);
+      const phaseHtml = phase.label === '-' ? '<span class="text-muted small">-</span>' :
+        `<span class="badge bg-${phase.color}-subtle text-${phase.color}" style="font-size: 0.7rem;">${phase.icon ? '<i class="bi bi-' + phase.icon + ' me-1"></i>' : ''}${phase.label}</span>`;
 
       return `
         <tr class="fade-in">
           <td><input type="checkbox" class="form-check-input award-select-cb" value="${award.id}" onchange="awardsModule.toggleSelection('${award.id}', this.checked)" ${this.selectedAwards.has(award.id) ? 'checked' : ''}></td>
+          <td class="text-center"><span class="badge bg-light text-dark">${award.year || '-'}</span></td>
           <td>
             <a href="javascript:void(0);"
                class="text-decoration-none fw-semibold text-primary"
@@ -405,9 +448,10 @@ const awardsModule = {
               ${utils.escapeHtml(fullName)}
             </a>
           </td>
+          <td><span class="small">${utils.escapeHtml(award.county || '-')}</span></td>
           <td>
-            <span class="badge bg-info-subtle text-info">
-              <i class="bi bi-briefcase me-1"></i>${utils.escapeHtml(award.sector || '-')}
+            <span class="badge bg-info-subtle text-info" style="font-size: 0.7rem;">
+              ${utils.escapeHtml(award.sector || '-')}
             </span>
           </td>
           <td>${utils.getStatusBadge(award.status || 'Draft')}</td>
@@ -415,16 +459,17 @@ const awardsModule = {
             <div class="assignment-count-badge ${countBadgeClass}"
               style="cursor: pointer;"
               onclick="assignmentsModule.openAssignmentsModal('${award.id}', '${utils.escapeHtml(fullName).replace(/'/g, "\\'")}')"
-              title="Click to view: ${counts.nominated} nominated, ${counts.shortlisted} shortlisted, ${counts.winner} winner">
+              title="${counts.nominated} nominated, ${counts.shortlisted} shortlisted, ${counts.winner} winner">
               <i class="bi bi-people-fill"></i>
               <span>${counts.total}</span>
             </div>
           </td>
+          <td class="text-center">${phaseHtml}</td>
           <td>${winnerHtml}</td>
           <td class="text-center">
             <div class="btn-group btn-group-sm">
-              <button class="btn btn-primary dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
-                <i class="bi bi-gear"></i>
+              <button class="btn btn-outline-secondary btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                <i class="bi bi-three-dots-vertical"></i>
               </button>
               <ul class="dropdown-menu dropdown-menu-end">
                 <li>
@@ -783,6 +828,9 @@ const awardsModule = {
     document.getElementById('awardFormVotingClose').value = '';
     document.getElementById('awardFormWinnersAnnouncement').value = '';
     document.getElementById('awardFormDescription').value = '';
+    document.getElementById('awardFormPrevWinner').value = '';
+    document.getElementById('awardFormPrev2nd').value = '';
+    document.getElementById('awardFormPrev3rd').value = '';
     document.getElementById('awardFormModalTitle').innerHTML = '<i class="bi bi-plus-lg me-2"></i>Add Award';
 
     // Populate county dropdown from REGIONS
@@ -822,6 +870,9 @@ const awardsModule = {
     document.getElementById('awardFormVotingClose').value = award.voting_close_date || '';
     document.getElementById('awardFormWinnersAnnouncement').value = award.winners_announcement_date || '';
     document.getElementById('awardFormDescription').value = award.description || '';
+    document.getElementById('awardFormPrevWinner').value = award.prev_year_winner || '';
+    document.getElementById('awardFormPrev2nd').value = award.prev_year_2nd || '';
+    document.getElementById('awardFormPrev3rd').value = award.prev_year_3rd || '';
     document.getElementById('awardFormModalTitle').innerHTML = '<i class="bi bi-pencil me-2"></i>Edit Award';
 
     // Populate county dropdown
@@ -895,7 +946,10 @@ const awardsModule = {
       voting_open_date: document.getElementById('awardFormVotingOpen').value || null,
       voting_close_date: document.getElementById('awardFormVotingClose').value || null,
       winners_announcement_date: document.getElementById('awardFormWinnersAnnouncement').value || null,
-      description: document.getElementById('awardFormDescription').value.trim() || null
+      description: document.getElementById('awardFormDescription').value.trim() || null,
+      prev_year_winner: document.getElementById('awardFormPrevWinner').value.trim() || null,
+      prev_year_2nd: document.getElementById('awardFormPrev2nd').value.trim() || null,
+      prev_year_3rd: document.getElementById('awardFormPrev3rd').value.trim() || null
     };
 
     // Validate date order
@@ -1095,18 +1149,20 @@ const awardsModule = {
       return;
     }
 
-    const headers = ['Award Name', 'Category', 'County/City', 'Sector', 'Year', 'Status', 'Nominees', 'Winner'];
+    const headers = ['Award Name', 'Category', 'County/City', 'Region', 'Sector', 'Year', 'Status', 'Nominees', 'Winner', 'Prev Year Winner'];
     const rows = awards.map(a => {
       const counts = a._assignmentCounts || { total: 0 };
       return [
         utils.formatAwardName(a),
         a.award_name || '',
         a.county || '',
+        a._actualRegion || '',
         a.sector || '',
         a.year || '',
         a.status || '',
         counts.total,
-        a._winnerName || ''
+        a._winnerName || '',
+        a.prev_year_winner || ''
       ];
     });
 
@@ -1154,7 +1210,7 @@ const awardsModule = {
   },
 
   /**
-   * Roll over awards from one year to the next as Inactive
+   * Roll over awards from one year to the next as Draft
    */
   async rolloverToNextYear() {
     // Determine source year from current filter or most common year
@@ -1180,7 +1236,7 @@ const awardsModule = {
     const existingTarget = STATE.allAwards.filter(a => String(a.year) === String(targetYear));
 
     let message = `Roll over ${sourceAwards.length} awards from ${sourceYear} to ${targetYear}?\n\n`;
-    message += `All copied awards will be set to "Inactive" status, ready for vetting.\n`;
+    message += `All copied awards will be set to "Draft" status, ready for vetting.\n`;
     message += `Dates will be cleared so you can set new season dates.`;
 
     if (existingTarget.length > 0) {
@@ -1219,7 +1275,7 @@ const awardsModule = {
         winnersMap[w.award_id][pos] = w.organisations?.company_name || 'Unknown';
       });
 
-      // Build new award records — copy structure, clear dates, set Inactive, tag prev year results
+      // Build new award records — copy structure, clear dates, set Draft, tag prev year results
       const newAwards = awardsToRoll.map(a => {
         const prevWinners = winnersMap[a.id] || {};
         return {
@@ -1227,7 +1283,7 @@ const awardsModule = {
           county: a.county,
           sector: a.sector,
           year: targetYear,
-          status: 'Inactive',
+          status: 'Draft',
           description: a.description,
           prev_year_winner: prevWinners[1] || null,
           prev_year_2nd: prevWinners[2] || null,
@@ -1250,7 +1306,7 @@ const awardsModule = {
       if (error) throw error;
 
       const withWinners = newAwards.filter(a => a.prev_year_winner).length;
-      let msg = `${newAwards.length} awards rolled over to ${targetYear} as Inactive!`;
+      let msg = `${newAwards.length} awards rolled over to ${targetYear} as Draft!`;
       if (withWinners > 0) msg += ` (${withWinners} with previous year results)`;
       utils.showToast(msg, 'success');
       await this.loadAwards();

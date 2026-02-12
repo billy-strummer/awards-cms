@@ -1584,27 +1584,40 @@
           <table class="table table-hover table-sm mb-0 align-middle">
             <thead class="table-light">
               <tr>
-                <th width="30" class="text-center">
-                  <input type="checkbox" class="form-check-input" id="selectAllOrgs" 
+                <th style="width: 3%;" class="text-center">
+                  <input type="checkbox" class="form-check-input" id="selectAllOrgs"
                          onchange="orgsModule.toggleSelectAll()">
                 </th>
-                <th class="fw-semibold" style="cursor: pointer;" onclick="orgsModule.sortBy('company')">
-                  Company Name 
+                <th style="width: 18%; cursor: pointer;" class="fw-semibold" onclick="orgsModule.sortBy('company')">
+                  Company Name
                   <i class="bi bi-arrow-down-up text-muted ms-1 small"></i>
                 </th>
-                <th width="140">Sector</th>
-                <th width="120">County</th>
-                <th width="100">Contact</th>
-                <th width="180">Email</th>
-                <th width="160">Website</th>
-                <th width="100">Region</th>
-                <th width="60" class="text-center">Awards</th>
-                <th width="80" class="text-center">Actions</th>
+                <th style="width: 10%; cursor: pointer;" onclick="orgsModule.sortBy('sector')">
+                  Sector <i class="bi bi-arrow-down-up text-muted ms-1 small"></i>
+                </th>
+                <th style="width: 10%; cursor: pointer;" onclick="orgsModule.sortBy('county')">
+                  County <i class="bi bi-arrow-down-up text-muted ms-1 small"></i>
+                </th>
+                <th style="width: 9%; cursor: pointer;" onclick="orgsModule.sortBy('contact')">
+                  Contact <i class="bi bi-arrow-down-up text-muted ms-1 small"></i>
+                </th>
+                <th style="width: 13%;">Email</th>
+                <th style="width: 10%;">Website</th>
+                <th style="width: 8%; cursor: pointer;" onclick="orgsModule.sortBy('region')">
+                  Region <i class="bi bi-arrow-down-up text-muted ms-1 small"></i>
+                </th>
+                <th style="width: 7%; cursor: pointer;" onclick="orgsModule.sortBy('status')">
+                  Status <i class="bi bi-arrow-down-up text-muted ms-1 small"></i>
+                </th>
+                <th style="width: 5%; cursor: pointer; text-align: center;" onclick="orgsModule.sortBy('awards')">
+                  Awards <i class="bi bi-arrow-down-up text-muted ms-1 small"></i>
+                </th>
+                <th style="width: 7%;" class="text-center">Actions</th>
               </tr>
             </thead>
             <tbody id="orgsTableBody">
               <tr>
-                <td colspan="10" class="text-center py-5">
+                <td colspan="11" class="text-center py-5">
                   <div class="text-muted">
                     <div class="spinner-border spinner-border-sm mb-2" role="status"></div>
                     <p class="mb-0 small">Loading organisations...</p>
@@ -1708,6 +1721,9 @@
           </button>
           <button class="btn btn-sm btn-success" onclick="orgsModule.bulkExport()">
             <i class="bi bi-download me-1"></i>Export Selected
+          </button>
+          <button class="btn btn-sm btn-danger" onclick="orgsModule.bulkDelete()">
+            <i class="bi bi-trash me-1"></i>Delete Selected
           </button>
           <button class="btn btn-sm btn-outline-secondary" onclick="orgsModule.clearSelection()">
             <i class="bi bi-x-lg me-1"></i>Clear

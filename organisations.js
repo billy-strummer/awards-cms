@@ -79,31 +79,34 @@ async loadOrganisations() {
     });
     
     // Create lookup maps
-    const orgAwardMap = {};
+    const orgAwardMap = {};      // org_id → first award_id (for county/region)
+    const orgAwardsCount = {};   // org_id → total assignments count
     assignments?.forEach(a => {
       if (!orgAwardMap[a.organisation_id]) {
         orgAwardMap[a.organisation_id] = a.award_id;
       }
+      orgAwardsCount[a.organisation_id] = (orgAwardsCount[a.organisation_id] || 0) + 1;
     });
-    
+
     const awardMap = {};
     awards?.forEach(a => {
       awardMap[a.id] = a;
     });
-    
+
     // Attach award data to organisations
     allData = allData.map(org => {
       const awardId = orgAwardMap[org.id];
       const award = awardMap[awardId];
       const county = award?.county || null;
       const region = county ? countyToRegion[county] : null;
-      
+
       return {
         ...org,
         county: county,
         region: region,
         sector: award?.sector || null,
-        year: award?.year || null
+        year: award?.year || null,
+        awards_count: orgAwardsCount[org.id] || 0
       };
     });
     
@@ -271,6 +274,9 @@ updateCountyFilterByRegion() {
   const search = document.getElementById('orgsSearchBox')?.value.toLowerCase().trim() || '';
 
   STATE.filteredOrganisations = STATE.allOrganisations.filter(org => {
+    // Year filter
+    if (year && String(org.year || '') !== String(year)) return false;
+
     // Status filter
     if (status && (org.status || 'prospect') !== status) return false;
 
@@ -324,7 +330,7 @@ updateCountyFilterByRegion() {
   if (STATE.filteredOrganisations.length === 0) {
     tbody.innerHTML = `
       <tr>
-        <td colspan="10" class="text-center py-5">
+        <td colspan="11" class="text-center py-5">
           <i class="bi bi-inbox display-4 text-muted opacity-25"></i>
           <p class="text-muted mt-3 mb-0">No organisations found</p>
         </td>
@@ -335,28 +341,29 @@ updateCountyFilterByRegion() {
 
   tbody.innerHTML = STATE.filteredOrganisations.map(org => {
     const isSelected = this.selectedOrgs.has(org.id);
-    const awardsCount = org.awards_count || 0; // You'll need to add this to your query
-    
+    const awardsCount = org.awards_count || 0;
+    const escapedName = utils.escapeHtml(org.company_name || '').replace(/'/g, "\\'");
+
     return `
       <tr class="fade-in ${isSelected ? 'table-active' : ''}">
         <td class="text-center">
-          <input type="checkbox" class="form-check-input" 
+          <input type="checkbox" class="form-check-input"
                  ${isSelected ? 'checked' : ''}
                  onchange="orgsModule.toggleOrgSelection('${org.id}')">
         </td>
         <td>
           <div class="d-flex align-items-center">
-            ${org.logo_url ? 
-              `<img src="${org.logo_url}" alt="${utils.escapeHtml(org.company_name)}" 
+            ${org.logo_url ?
+              `<img src="${org.logo_url}" alt="${utils.escapeHtml(org.company_name)}"
                    class="me-2 rounded" style="width: 40px; height: 28px; object-fit: contain; border: 1px solid #e0e0e0;">` :
-              `<div class="me-2 d-flex align-items-center justify-content-center rounded" 
+              `<div class="me-2 d-flex align-items-center justify-content-center rounded"
                    style="width: 40px; height: 28px; background: #f5f5f5; border: 1px solid #e0e0e0;">
                 <i class="bi bi-building text-muted" style="font-size: 0.8rem;"></i>
               </div>`
             }
-            <a class="text-primary text-decoration-none fw-semibold" 
+            <a class="text-primary text-decoration-none fw-semibold"
                style="cursor: pointer;"
-               onclick="orgsModule.openCompanyProfile('${org.id}', '${utils.escapeHtml(org.company_name || '').replace(/'/g, "\\'")}')">
+               onclick="orgsModule.openCompanyProfile('${org.id}', '${escapedName}')">
               ${utils.escapeHtml(org.company_name || 'N/A')}
             </a>
           </div>
@@ -371,19 +378,21 @@ updateCountyFilterByRegion() {
             ${utils.escapeHtml(org.county || '-')}
           </span>
         </td>
-        <td class="small">${utils.escapeHtml(org.contact_name || '-')}</td>
+        <td class="small" title="${utils.escapeHtml(org.contact_name || '')}">
+          ${utils.escapeHtml(org.contact_name ? (org.contact_name.length > 18 ? org.contact_name.substring(0, 18) + '...' : org.contact_name) : '-')}
+        </td>
         <td class="small">
-          ${org.email ? 
-            `<a href="mailto:${org.email}" class="text-decoration-none">
-              ${utils.truncate(org.email, 25)}
+          ${org.email ?
+            `<a href="mailto:${org.email}" class="text-decoration-none" title="${utils.escapeHtml(org.email)}">
+              ${org.email.length > 25 ? utils.escapeHtml(org.email.substring(0, 25)) + '...' : utils.escapeHtml(org.email)}
             </a>` : '-'
           }
         </td>
         <td class="small">
-          ${org.website ? 
-            `<a href="${org.website.startsWith('http') ? org.website : 'https://' + org.website}" 
-                target="_blank" class="text-decoration-none">
-              ${utils.truncate(org.website.replace(/https?:\/\/(www\.)?/, ''), 20)}
+          ${org.website ?
+            `<a href="${org.website.startsWith('http') ? org.website : 'https://' + org.website}"
+                target="_blank" class="text-decoration-none" title="${utils.escapeHtml(org.website)}">
+              ${(() => { const clean = org.website.replace(/https?:\/\/(www\.)?/, ''); return clean.length > 20 ? utils.escapeHtml(clean.substring(0, 20)) + '...' : utils.escapeHtml(clean); })()}
               <i class="bi bi-box-arrow-up-right ms-1" style="font-size: 0.7rem;"></i>
             </a>` : '-'
           }
@@ -394,17 +403,27 @@ updateCountyFilterByRegion() {
           </span>
         </td>
         <td class="text-center">
-          ${awardsCount > 0 ? 
-            `<span class="badge bg-warning text-dark">${awardsCount}</span>` : 
+          ${this.getStatusBadge(org.status || 'prospect')}
+        </td>
+        <td class="text-center">
+          ${awardsCount > 0 ?
+            `<span class="badge bg-warning text-dark">${awardsCount}</span>` :
             `<span class="text-muted">-</span>`
           }
         </td>
         <td class="text-center">
-          <button class="btn btn-sm btn-outline-primary" 
-                  onclick="orgsModule.openCompanyProfile('${org.id}', '${utils.escapeHtml(org.company_name || '').replace(/'/g, "\\'")}')"
-                  title="View Profile">
-            <i class="bi bi-eye"></i>
-          </button>
+          <div class="btn-group btn-group-sm">
+            <button class="btn btn-sm btn-outline-secondary"
+                    onclick="orgsModule.openCompanyProfile('${org.id}', '${escapedName}')"
+                    title="View Profile">
+              <i class="bi bi-eye"></i>
+            </button>
+            <button class="btn btn-sm btn-outline-danger"
+                    onclick="orgsModule.deleteOrganisation('${org.id}', '${escapedName}')"
+                    title="Delete">
+              <i class="bi bi-trash"></i>
+            </button>
+          </div>
         </td>
       </tr>
     `;
@@ -1324,15 +1343,28 @@ updateCountyFilterByRegion() {
   /**
    * Fetch company logo from their website URL
    * @param {string} orgId - Organisation ID
-   * @param {string} websiteUrl - Company website URL
-   * @param {string} companyName - Company name
+   * @param {string} [websiteUrl] - Company website URL (optional, looked up from state)
+   * @param {string} [companyName] - Company name (optional)
    */
   async fetchLogoFromWebsite(orgId, websiteUrl, companyName) {
     try {
-      utils.showLoading();
+      // If no websiteUrl provided, look it up from state
+      if (!websiteUrl) {
+        const org = STATE.allOrganisations.find(o => o.id === orgId);
+        if (!org || !org.website) {
+          utils.showToast('Please add a website URL first', 'warning');
+          return;
+        }
+        websiteUrl = org.website;
+        companyName = org.company_name;
+      }
+
+      utils.showLoading('Fetching logo...');
 
       // Clean up the website URL to get the domain
-      let domain = websiteUrl.replace(/^https?:\/\//, '').replace(/^www\./, '').split('/')[0];
+      let cleanUrl = websiteUrl.trim();
+      if (!cleanUrl.startsWith('http')) cleanUrl = 'https://' + cleanUrl;
+      let domain = new URL(cleanUrl).hostname.replace(/^www\./, '');
 
       // Try multiple logo services in order
       const logoServices = [
@@ -1660,63 +1692,6 @@ updateCountyFilterByRegion() {
   },
 
   /**
-   * Extract and set company logo from website
-   */
-  async fetchLogoFromWebsite(orgId) {
-    try {
-      const org = STATE.allOrganisations.find(o => o.id === orgId);
-      if (!org || !org.website) {
-        utils.showToast('Please add a website URL first', 'warning');
-        return;
-      }
-
-      utils.showLoading('Fetching logo...');
-
-      // Clean up website URL
-      let websiteUrl = org.website.trim();
-      if (!websiteUrl.startsWith('http')) {
-        websiteUrl = 'https://' + websiteUrl;
-      }
-
-      // Extract domain
-      const domain = new URL(websiteUrl).hostname;
-
-      // Try Clearbit first (best quality), then fallback to Google favicon
-      const logoUrl = `https://logo.clearbit.com/${domain}`;
-
-      // Update database
-      const { error } = await STATE.client
-        .from('organisations')
-        .update({ logo_url: logoUrl })
-        .eq('id', orgId);
-
-      if (error) throw error;
-
-      // Update local state
-      const orgIndex = STATE.allOrganisations.findIndex(o => o.id === orgId);
-      if (orgIndex !== -1) {
-        STATE.allOrganisations[orgIndex].logo_url = logoUrl;
-      }
-
-      const filteredIndex = STATE.filteredOrganisations.findIndex(o => o.id === orgId);
-      if (filteredIndex !== -1) {
-        STATE.filteredOrganisations[filteredIndex].logo_url = logoUrl;
-      }
-
-      utils.showToast('Logo fetched successfully!', 'success');
-
-      // Refresh the profile view
-      await this.openCompanyProfile(orgId, org.company_name);
-
-    } catch (error) {
-      console.error('Error fetching logo:', error);
-      utils.showToast('Error fetching logo: ' + error.message, 'error');
-    } finally {
-      utils.hideLoading();
-    }
-  },
-
-  /**
    * Cancel edit mode and revert to view mode
    * @param {string} orgId - Organisation ID
    * @param {string} companyName - Company name
@@ -1930,13 +1905,38 @@ updateCountyFilterByRegion() {
       return;
     }
 
+    const companyName = document.getElementById('newCompanyName').value.trim();
+    const email = document.getElementById('newCompanyEmail').value.trim();
+    let website = document.getElementById('newCompanyWebsite').value.trim() || null;
+
+    // Validate email format if provided
+    if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      utils.showToast('Please enter a valid email address', 'error');
+      return;
+    }
+
+    // Auto-prefix website URL
+    if (website && !website.startsWith('http://') && !website.startsWith('https://')) {
+      website = 'https://' + website;
+    }
+
+    // Check for duplicate company name
+    const duplicate = STATE.allOrganisations.find(
+      o => o.company_name?.toLowerCase() === companyName.toLowerCase()
+    );
+    if (duplicate) {
+      if (!confirm(`A company named "${duplicate.company_name}" already exists. Add anyway?`)) {
+        return;
+      }
+    }
+
     const companyData = {
-      company_name: document.getElementById('newCompanyName').value.trim(),
+      company_name: companyName,
       sector: document.getElementById('newCompanySector').value,
       contact_name: document.getElementById('newContactName').value.trim() || null,
       contact_phone: document.getElementById('newContactPhone').value.trim() || null,
-      email: document.getElementById('newCompanyEmail').value.trim(),
-      website: document.getElementById('newCompanyWebsite').value.trim() || null,
+      email: email || null,
+      website: website,
       region: document.getElementById('newCompanyRegion').value,
       address: document.getElementById('newCompanyAddress').value.trim() || null,
       catchment_area: document.getElementById('newCompanyCatchment').value.trim() || null,
@@ -2038,9 +2038,25 @@ updateCountyFilterByRegion() {
           valA = (a.county || '').toLowerCase();
           valB = (b.county || '').toLowerCase();
           break;
+        case 'contact':
+          valA = (a.contact_name || '').toLowerCase();
+          valB = (b.contact_name || '').toLowerCase();
+          break;
+        case 'email':
+          valA = (a.email || '').toLowerCase();
+          valB = (b.email || '').toLowerCase();
+          break;
         case 'region':
           valA = (a.region || '').toLowerCase();
           valB = (b.region || '').toLowerCase();
+          break;
+        case 'status':
+          valA = (a.status || 'prospect').toLowerCase();
+          valB = (b.status || 'prospect').toLowerCase();
+          break;
+        case 'awards':
+          valA = a.awards_count || 0;
+          valB = b.awards_count || 0;
           break;
         default:
           valA = (a.company_name || '').toLowerCase();
@@ -2065,7 +2081,7 @@ updateCountyFilterByRegion() {
     }
 
     const csv = [
-      'Company Name,Sector,County,Region,Contact Name,Email,Phone,Website,Status',
+      'Company Name,Sector,County,Region,Contact Name,Email,Phone,Website,Status,Awards Count,Address,Catchment Area',
       ...data.map(org =>
         [
           `"${(org.company_name || '').replace(/"/g, '""')}"`,
@@ -2076,7 +2092,10 @@ updateCountyFilterByRegion() {
           `"${(org.email || '').replace(/"/g, '""')}"`,
           `"${(org.contact_phone || '').replace(/"/g, '""')}"`,
           `"${(org.website || '').replace(/"/g, '""')}"`,
-          `"${(org.status || 'prospect').replace(/"/g, '""')}"`
+          `"${(org.status || 'prospect').replace(/"/g, '""')}"`,
+          `"${org.awards_count || 0}"`,
+          `"${(org.address || '').replace(/"/g, '""')}"`,
+          `"${(org.catchment_area || '').replace(/"/g, '""')}"`
         ].join(',')
       )
     ].join('\n');
@@ -2157,6 +2176,100 @@ updateCountyFilterByRegion() {
   // ============================================
   // UPDATE COMPANY STATUS
   // ============================================
+  // ============================================
+  // DELETE ORGANISATION
+  // ============================================
+  async deleteOrganisation(orgId, companyName) {
+    if (!confirm(`Are you sure you want to delete "${companyName}"? This will also remove all award assignments for this company. This action cannot be undone.`)) {
+      return;
+    }
+
+    try {
+      utils.showLoading();
+
+      // Delete award assignments first (FK constraint)
+      await STATE.client
+        .from('award_assignments')
+        .delete()
+        .eq('organisation_id', orgId);
+
+      // Delete the organisation
+      const { error } = await STATE.client
+        .from('organisations')
+        .delete()
+        .eq('id', orgId);
+
+      if (error) throw error;
+
+      utils.showToast(`"${companyName}" deleted successfully`, 'success');
+
+      // Remove from local state
+      STATE.allOrganisations = STATE.allOrganisations.filter(o => o.id !== orgId);
+      STATE.filteredOrganisations = STATE.filteredOrganisations.filter(o => o.id !== orgId);
+      this.selectedOrgs.delete(orgId);
+
+      this.renderOrganisations();
+      this.updateBulkActionsBar();
+
+    } catch (error) {
+      console.error('Error deleting organisation:', error);
+      utils.showToast('Error deleting organisation: ' + error.message, 'error');
+    } finally {
+      utils.hideLoading();
+    }
+  },
+
+  // ============================================
+  // BULK DELETE
+  // ============================================
+  async bulkDelete() {
+    if (this.selectedOrgs.size === 0) {
+      utils.showToast('No organisations selected', 'warning');
+      return;
+    }
+
+    const count = this.selectedOrgs.size;
+    if (!confirm(`Are you sure you want to delete ${count} organisation(s)? This will also remove their award assignments. This action cannot be undone.`)) {
+      return;
+    }
+
+    try {
+      utils.showLoading();
+
+      const orgIds = Array.from(this.selectedOrgs);
+
+      // Delete award assignments first
+      await STATE.client
+        .from('award_assignments')
+        .delete()
+        .in('organisation_id', orgIds);
+
+      // Delete organisations
+      const { error } = await STATE.client
+        .from('organisations')
+        .delete()
+        .in('id', orgIds);
+
+      if (error) throw error;
+
+      utils.showToast(`${count} organisation(s) deleted successfully`, 'success');
+
+      // Remove from local state
+      STATE.allOrganisations = STATE.allOrganisations.filter(o => !this.selectedOrgs.has(o.id));
+      STATE.filteredOrganisations = STATE.filteredOrganisations.filter(o => !this.selectedOrgs.has(o.id));
+      this.selectedOrgs.clear();
+
+      this.renderOrganisations();
+      this.updateBulkActionsBar();
+
+    } catch (error) {
+      console.error('Error bulk deleting:', error);
+      utils.showToast('Error deleting organisations: ' + error.message, 'error');
+    } finally {
+      utils.hideLoading();
+    }
+  },
+
   async updateOrgStatus(orgId, newStatus) {
     try {
       const { error } = await STATE.client

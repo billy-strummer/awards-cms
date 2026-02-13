@@ -801,7 +801,18 @@ const emailBuilder = {
    * Load predefined template
    */
   loadTemplate(templateType) {
-    if (!templateType) return;
+    // Blank Canvas: clear everything and reset
+    if (!templateType) {
+      this.blocks = [];
+      this.canvas.innerHTML = '';
+      this.showEmptyState();
+      document.getElementById('builderCampaignName').value = '';
+      document.getElementById('builderSubject').value = '';
+      document.getElementById('builderPreheader').value = '';
+      this.updatePreview();
+      utils.showToast('Canvas cleared', 'info');
+      return;
+    }
 
     // Clear existing blocks
     this.blocks = [];

@@ -25,6 +25,8 @@ const emailBuilder = {
     this.loadOrganisations();
     this.loadEmailLists();
     this.setupVariableCopy();
+    this.setupSchedulerDefaults();
+    this.loadCampaignLog();
     this.initialized = true;
     console.log('✅ Email Builder initialized');
   },
@@ -1632,10 +1634,416 @@ const emailBuilder = {
 
       utils.showToast(`Campaign sent to ${data?.sent || count} recipients!`, 'success');
 
+      // Refresh campaign log
+      this.loadCampaignLog();
+
     } catch (error) {
       console.error('Error sending campaign:', error);
       utils.showToast('Failed to send campaign: ' + error.message, 'error');
     }
+  },
+
+  /**
+   * Setup scheduler date defaults
+   */
+  setupSchedulerDefaults() {
+    const dateInput = document.getElementById('builderScheduleDate');
+    if (dateInput) {
+      const tomorrow = new Date();
+      tomorrow.setDate(tomorrow.getDate() + 1);
+      dateInput.min = tomorrow.toISOString().split('T')[0];
+      dateInput.value = tomorrow.toISOString().split('T')[0];
+    }
+    // Update preview when date/time changes
+    document.getElementById('builderScheduleDate')?.addEventListener('change', () => this.updateSchedulePreview());
+    document.getElementById('builderScheduleTime')?.addEventListener('change', () => this.updateSchedulePreview());
+    this.updateSchedulePreview();
+  },
+
+  /**
+   * Toggle between Send Now and Schedule modes
+   */
+  toggleScheduler() {
+    const isScheduled = document.getElementById('sendModeScheduled')?.checked;
+    const scheduleOpts = document.getElementById('scheduleOptions');
+    const btnSend = document.getElementById('btnSendCampaign');
+    const btnSchedule = document.getElementById('btnScheduleCampaign');
+
+    if (scheduleOpts) scheduleOpts.style.display = isScheduled ? 'block' : 'none';
+    if (btnSend) btnSend.style.display = isScheduled ? 'none' : '';
+    if (btnSchedule) btnSchedule.style.display = isScheduled ? '' : 'none';
+    this.updateSchedulePreview();
+  },
+
+  /**
+   * Update schedule date/time preview text
+   */
+  updateSchedulePreview() {
+    const previewEl = document.getElementById('schedulePreview');
+    if (!previewEl) return;
+
+    const date = document.getElementById('builderScheduleDate')?.value;
+    const time = document.getElementById('builderScheduleTime')?.value;
+
+    if (date && time) {
+      const dt = new Date(`${date}T${time}`);
+      const opts = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' };
+      previewEl.innerHTML = `<i class="bi bi-clock me-1"></i>Will send: ${dt.toLocaleDateString('en-GB', opts)}`;
+    } else {
+      previewEl.textContent = '';
+    }
+  },
+
+  /**
+   * Schedule campaign for later sending
+   */
+  async scheduleCampaign() {
+    const listId = document.getElementById('builderEmailList')?.value;
+    const subject = document.getElementById('builderSubject')?.value;
+    const campaignName = document.getElementById('builderCampaignName')?.value;
+    const fromName = document.getElementById('builderFromName')?.value || 'British Trade Awards';
+    const fromEmail = document.getElementById('builderFromEmail')?.value || 'awards@britishtradeawards.com';
+    const replyTo = document.getElementById('builderReplyTo')?.value || fromEmail;
+    const scheduleDate = document.getElementById('builderScheduleDate')?.value;
+    const scheduleTime = document.getElementById('builderScheduleTime')?.value;
+
+    if (!listId) {
+      utils.showToast('Please select an email list', 'warning');
+      return;
+    }
+    if (!subject) {
+      utils.showToast('Please enter a subject line', 'warning');
+      return;
+    }
+    if (this.blocks.length === 0) {
+      utils.showToast('Please add some content to your email first', 'warning');
+      return;
+    }
+    if (!scheduleDate || !scheduleTime) {
+      utils.showToast('Please set a date and time for scheduling', 'warning');
+      return;
+    }
+
+    const scheduledAt = new Date(`${scheduleDate}T${scheduleTime}`);
+    if (scheduledAt <= new Date()) {
+      utils.showToast('Scheduled time must be in the future', 'warning');
+      return;
+    }
+
+    // Get subscriber count for confirmation
+    const { count } = await STATE.client
+      .from('email_list_subscribers')
+      .select('id', { count: 'exact', head: true })
+      .eq('list_id', listId)
+      .eq('status', 'active');
+
+    const listName = document.getElementById('builderEmailList')?.selectedOptions[0]?.text || 'selected list';
+    const opts = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' };
+
+    if (!confirm(`Schedule "${subject}" to ${count || 0} subscribers in "${listName}"?\n\nScheduled for: ${scheduledAt.toLocaleDateString('en-GB', opts)}`)) {
+      return;
+    }
+
+    const html = this.generateFullHTML();
+
+    try {
+      utils.showToast('Scheduling campaign...', 'info');
+
+      const { data, error } = await STATE.client
+        .from('email_campaigns')
+        .insert({
+          campaign_name: campaignName || subject,
+          subject: subject,
+          status: 'Scheduled',
+          scheduled_date: scheduledAt.toISOString(),
+          total_recipients: count || 0,
+          recipients: listId,
+          notes: JSON.stringify({
+            html,
+            from_name: fromName,
+            from_email: fromEmail,
+            reply_to: replyTo,
+            list_id: listId,
+            list_name: listName
+          })
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      utils.showToast(`Campaign scheduled for ${scheduledAt.toLocaleDateString('en-GB', opts)}`, 'success');
+      this.loadCampaignLog();
+    } catch (error) {
+      console.error('Error scheduling campaign:', error);
+      utils.showToast('Failed to schedule campaign: ' + error.message, 'error');
+    }
+  },
+
+  /**
+   * Load campaign log from database
+   */
+  async loadCampaignLog() {
+    const tbody = document.getElementById('campaignLogBody');
+    if (!tbody) return;
+
+    try {
+      const filter = document.getElementById('campaignLogFilter')?.value || 'all';
+
+      let query = STATE.client
+        .from('email_campaigns')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .limit(50);
+
+      if (filter !== 'all') {
+        query = query.eq('status', filter);
+      }
+
+      const { data: campaigns, error } = await query;
+
+      if (error) throw error;
+
+      if (!campaigns || campaigns.length === 0) {
+        tbody.innerHTML = `
+          <tr>
+            <td colspan="9" class="text-center text-muted py-4">
+              <i class="bi bi-journal-text d-block mb-2" style="font-size: 1.5rem; opacity: 0.3;"></i>
+              No campaigns found
+            </td>
+          </tr>`;
+        return;
+      }
+
+      tbody.innerHTML = campaigns.map(c => {
+        const statusBadge = this.getStatusBadge(c.status);
+        const sentDate = c.sent_date ? new Date(c.sent_date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '';
+        const scheduledDate = c.scheduled_date ? new Date(c.scheduled_date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '';
+        const displayDate = sentDate || scheduledDate || '-';
+        const openRate = c.total_recipients > 0 ? Math.round((c.opened_count || 0) / c.total_recipients * 100) : 0;
+        const clickRate = c.total_recipients > 0 ? Math.round((c.clicked_count || 0) / c.total_recipients * 100) : 0;
+
+        return `
+          <tr>
+            <td class="text-truncate" style="max-width: 150px;" title="${utils.escapeHtml(c.campaign_name || '')}">${utils.escapeHtml(c.campaign_name || 'Untitled')}</td>
+            <td class="text-truncate" style="max-width: 180px;" title="${utils.escapeHtml(c.subject || '')}">${utils.escapeHtml(c.subject || '-')}</td>
+            <td>${statusBadge}</td>
+            <td>${c.total_recipients || 0}</td>
+            <td>${c.opened_count || 0} <small class="text-muted">(${openRate}%)</small></td>
+            <td>${c.clicked_count || 0} <small class="text-muted">(${clickRate}%)</small></td>
+            <td>${c.bounced_count || 0}</td>
+            <td><small>${displayDate}</small></td>
+            <td>
+              ${c.status === 'Scheduled' ? `<button class="btn btn-outline-danger btn-sm py-0 px-1" onclick="emailBuilder.cancelScheduledCampaign('${c.id}')" title="Cancel"><i class="bi bi-x-circle"></i></button>` : ''}
+              <button class="btn btn-outline-secondary btn-sm py-0 px-1" onclick="emailBuilder.viewCampaignDetail('${c.id}')" title="View Details"><i class="bi bi-eye"></i></button>
+            </td>
+          </tr>`;
+      }).join('');
+
+    } catch (error) {
+      console.error('Error loading campaign log:', error);
+      tbody.innerHTML = `<tr><td colspan="9" class="text-center text-danger py-3">Failed to load campaign log</td></tr>`;
+    }
+  },
+
+  /**
+   * Get status badge HTML
+   */
+  getStatusBadge(status) {
+    const badges = {
+      'Sent': '<span class="badge bg-success">Sent</span>',
+      'Scheduled': '<span class="badge bg-primary">Scheduled</span>',
+      'Draft': '<span class="badge bg-secondary">Draft</span>',
+      'Cancelled': '<span class="badge bg-danger">Cancelled</span>',
+      'Sending': '<span class="badge bg-warning text-dark">Sending</span>',
+      'Failed': '<span class="badge bg-danger">Failed</span>'
+    };
+    return badges[status] || `<span class="badge bg-secondary">${utils.escapeHtml(status || 'Unknown')}</span>`;
+  },
+
+  /**
+   * Cancel a scheduled campaign
+   */
+  async cancelScheduledCampaign(campaignId) {
+    if (!confirm('Cancel this scheduled campaign? This cannot be undone.')) return;
+
+    try {
+      const { error } = await STATE.client
+        .from('email_campaigns')
+        .update({ status: 'Cancelled' })
+        .eq('id', campaignId)
+        .eq('status', 'Scheduled');
+
+      if (error) throw error;
+
+      utils.showToast('Scheduled campaign cancelled', 'info');
+      this.loadCampaignLog();
+    } catch (error) {
+      console.error('Error cancelling campaign:', error);
+      utils.showToast('Failed to cancel campaign: ' + error.message, 'error');
+    }
+  },
+
+  /**
+   * View campaign detail (recipients, delivery status)
+   */
+  async viewCampaignDetail(campaignId) {
+    try {
+      const { data: campaign, error: campError } = await STATE.client
+        .from('email_campaigns')
+        .select('*')
+        .eq('id', campaignId)
+        .single();
+
+      if (campError) throw campError;
+
+      // Try to load recipient-level logs
+      const { data: logs, error: logError } = await STATE.client
+        .from('email_campaign_recipients')
+        .select('*')
+        .eq('campaign_id', campaignId)
+        .order('sent_at', { ascending: false })
+        .limit(100);
+
+      const statusBadge = this.getStatusBadge(campaign.status);
+      const created = campaign.created_at ? new Date(campaign.created_at).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '-';
+      const sent = campaign.sent_date ? new Date(campaign.sent_date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '-';
+      const scheduled = campaign.scheduled_date ? new Date(campaign.scheduled_date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '-';
+
+      let recipientRows = '';
+      if (logs && logs.length > 0) {
+        recipientRows = logs.map(l => `
+          <tr>
+            <td>${utils.escapeHtml(l.email || '-')}</td>
+            <td>${this.getRecipientStatusBadge(l.status)}</td>
+            <td>${l.sent_at ? new Date(l.sent_at).toLocaleString('en-GB') : '-'}</td>
+            <td>${l.opened_at ? new Date(l.opened_at).toLocaleString('en-GB') : '-'}</td>
+            <td>${l.clicked_at ? new Date(l.clicked_at).toLocaleString('en-GB') : '-'}</td>
+            <td>${l.bounce_reason ? `<small class="text-danger">${utils.escapeHtml(l.bounce_reason)}</small>` : '-'}</td>
+          </tr>
+        `).join('');
+      } else {
+        recipientRows = '<tr><td colspan="6" class="text-center text-muted py-3">No recipient data available</td></tr>';
+      }
+
+      // Show modal with campaign details
+      const modalHTML = `
+        <div class="modal fade" id="campaignDetailModal" tabindex="-1">
+          <div class="modal-dialog modal-xl">
+            <div class="modal-content">
+              <div class="modal-header">
+                <h5 class="modal-title"><i class="bi bi-journal-text me-2"></i>Campaign Details</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+              </div>
+              <div class="modal-body">
+                <div class="row g-3 mb-4">
+                  <div class="col-md-4">
+                    <div class="p-3 border rounded">
+                      <small class="text-muted d-block">Campaign</small>
+                      <strong>${utils.escapeHtml(campaign.campaign_name || 'Untitled')}</strong>
+                    </div>
+                  </div>
+                  <div class="col-md-4">
+                    <div class="p-3 border rounded">
+                      <small class="text-muted d-block">Subject</small>
+                      <strong>${utils.escapeHtml(campaign.subject || '-')}</strong>
+                    </div>
+                  </div>
+                  <div class="col-md-4">
+                    <div class="p-3 border rounded">
+                      <small class="text-muted d-block">Status</small>
+                      ${statusBadge}
+                    </div>
+                  </div>
+                </div>
+                <div class="row g-3 mb-4">
+                  <div class="col-md-3 text-center">
+                    <div class="p-3 border rounded">
+                      <div class="fs-4 fw-bold text-primary">${campaign.total_recipients || 0}</div>
+                      <small class="text-muted">Recipients</small>
+                    </div>
+                  </div>
+                  <div class="col-md-3 text-center">
+                    <div class="p-3 border rounded">
+                      <div class="fs-4 fw-bold text-success">${campaign.opened_count || 0}</div>
+                      <small class="text-muted">Opened</small>
+                    </div>
+                  </div>
+                  <div class="col-md-3 text-center">
+                    <div class="p-3 border rounded">
+                      <div class="fs-4 fw-bold text-info">${campaign.clicked_count || 0}</div>
+                      <small class="text-muted">Clicked</small>
+                    </div>
+                  </div>
+                  <div class="col-md-3 text-center">
+                    <div class="p-3 border rounded">
+                      <div class="fs-4 fw-bold text-danger">${campaign.bounced_count || 0}</div>
+                      <small class="text-muted">Bounced</small>
+                    </div>
+                  </div>
+                </div>
+                <div class="row g-3 mb-4">
+                  <div class="col-md-4"><small class="text-muted">Created:</small> <small>${created}</small></div>
+                  <div class="col-md-4"><small class="text-muted">Scheduled:</small> <small>${scheduled}</small></div>
+                  <div class="col-md-4"><small class="text-muted">Sent:</small> <small>${sent}</small></div>
+                </div>
+                <h6 class="mb-3"><i class="bi bi-people me-2"></i>Recipient Delivery Log</h6>
+                <div class="table-responsive" style="max-height: 400px; overflow-y: auto;">
+                  <table class="table table-sm table-hover">
+                    <thead class="table-light sticky-top">
+                      <tr>
+                        <th>Email</th>
+                        <th>Status</th>
+                        <th>Sent</th>
+                        <th>Opened</th>
+                        <th>Clicked</th>
+                        <th>Bounce Reason</th>
+                      </tr>
+                    </thead>
+                    <tbody>${recipientRows}</tbody>
+                  </table>
+                </div>
+              </div>
+              <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+              </div>
+            </div>
+          </div>
+        </div>`;
+
+      // Remove any existing modal
+      document.getElementById('campaignDetailModal')?.remove();
+      document.body.insertAdjacentHTML('beforeend', modalHTML);
+
+      const modal = new bootstrap.Modal(document.getElementById('campaignDetailModal'));
+      modal.show();
+
+      // Cleanup on close
+      document.getElementById('campaignDetailModal').addEventListener('hidden.bs.modal', function () {
+        this.remove();
+      });
+
+    } catch (error) {
+      console.error('Error loading campaign detail:', error);
+      utils.showToast('Failed to load campaign details: ' + error.message, 'error');
+    }
+  },
+
+  /**
+   * Get recipient-level status badge
+   */
+  getRecipientStatusBadge(status) {
+    const badges = {
+      'pending': '<span class="badge bg-secondary">Pending</span>',
+      'sent': '<span class="badge bg-info">Sent</span>',
+      'delivered': '<span class="badge bg-success">Delivered</span>',
+      'opened': '<span class="badge bg-primary">Opened</span>',
+      'clicked': '<span class="badge bg-warning text-dark">Clicked</span>',
+      'bounced': '<span class="badge bg-danger">Bounced</span>',
+      'failed': '<span class="badge bg-danger">Failed</span>',
+      'unsubscribed': '<span class="badge bg-dark">Unsubscribed</span>'
+    };
+    return badges[status] || `<span class="badge bg-secondary">${utils.escapeHtml(status || 'Unknown')}</span>`;
   },
 
   generateBadge(mode) {

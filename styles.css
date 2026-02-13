@@ -2342,6 +2342,64 @@ body.dark-mode .email-html-preview {
   }
 }
 
+/* Campaign Log Styles */
+#campaignLogSection .content-card {
+  padding: 20px;
+  border-radius: 8px;
+}
+
+#campaignLogTable th {
+  font-size: 0.8rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: #6c757d;
+  white-space: nowrap;
+  border-bottom: 2px solid #dee2e6;
+}
+
+#campaignLogTable td {
+  font-size: 0.85rem;
+  vertical-align: middle;
+}
+
+#campaignLogTable .badge {
+  font-size: 0.75rem;
+}
+
+/* Schedule options styling */
+#scheduleOptions {
+  background: #f0f4ff;
+  border: 1px solid #b8d0ff;
+  border-radius: 6px;
+  padding: 12px;
+  margin-bottom: 12px;
+}
+
+#schedulePreview {
+  font-size: 0.8rem;
+  color: #0d6efd;
+}
+
+/* Dark mode for campaign log */
+body.dark-mode #campaignLogTable th {
+  color: #9ca3af;
+  border-bottom-color: #374151;
+}
+
+body.dark-mode #campaignLogTable td {
+  color: #e5e7eb;
+}
+
+body.dark-mode #scheduleOptions {
+  background: #1e293b;
+  border-color: #334155;
+}
+
+body.dark-mode #schedulePreview {
+  color: #60a5fa;
+}
+
 /* ==================================================== */
 /* SOCIAL MEDIA MANAGER STYLES */
 /* ==================================================== */

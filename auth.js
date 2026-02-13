@@ -36,7 +36,8 @@ const authModule = {
         stack: error.stack
       });
       utils.showToast('Failed to connect to database: ' + error.message, 'error');
-      this.updateConnectionStatus(false);
+      // Show login page so user isn't stuck on blank/splash screen
+      this.showLogin();
     }
   },
 
@@ -217,9 +218,20 @@ const authModule = {
   },
 
   /**
+   * Hide the splash screen
+   */
+  hideSplash() {
+    const splash = document.getElementById('splashScreen');
+    if (splash) {
+      splash.style.display = 'none';
+    }
+  },
+
+  /**
    * Show login page
    */
   showLogin() {
+    this.hideSplash();
     document.getElementById('loginPage').style.display = 'block';
     document.getElementById('dashboardPage').style.display = 'none';
     document.getElementById('loginEmail').focus();
@@ -229,6 +241,7 @@ const authModule = {
    * Show dashboard page
    */
   showDashboard() {
+    this.hideSplash();
     document.getElementById('loginPage').style.display = 'none';
     document.getElementById('dashboardPage').style.display = 'block';
     

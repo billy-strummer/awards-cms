@@ -174,13 +174,13 @@ const emailListsModule = {
                 <button class="btn btn-sm btn-outline-success" onclick="emailListsModule.addSubscriber('${list.id}')" title="Add Subscriber">
                   <i class="bi bi-person-plus"></i>
                 </button>
-                <button class="btn btn-sm btn-outline-info" onclick="emailListsModule.openImportModal('${list.id}')" title="Import">
+                <button class="btn btn-sm btn-outline-success" onclick="emailListsModule.openImportModal('${list.id}')" title="Import">
                   <i class="bi bi-upload"></i>
                 </button>
                 <button class="btn btn-sm btn-outline-secondary" onclick="emailListsModule.editList('${list.id}')" title="Edit">
                   <i class="bi bi-pencil"></i>
                 </button>
-                <button class="btn btn-sm btn-outline-primary" onclick="emailListsModule.exportList('${list.id}')" title="Export">
+                <button class="btn btn-sm btn-outline-secondary" onclick="emailListsModule.exportList('${list.id}')" title="Export">
                   <i class="bi bi-download"></i>
                 </button>
                 <button class="btn btn-sm btn-outline-danger" onclick="emailListsModule.deleteList('${list.id}')" title="Delete">

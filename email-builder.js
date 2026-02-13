@@ -543,6 +543,8 @@ const emailBuilder = {
       .map(wrapper => wrapper.innerHTML.replace(/<div class="email-block-controls">[\s\S]*?<\/div>/, ''))
       .join('');
 
+    const preheader = document.getElementById('builderPreheader')?.value || '';
+
     return `
       <!DOCTYPE html>
       <html lang="en">
@@ -553,6 +555,7 @@ const emailBuilder = {
         <title>${document.getElementById('builderCampaignName')?.value || 'Email Campaign'}</title>
       </head>
       <body style="margin: 0; padding: 0; font-family: Arial, sans-serif;">
+        ${preheader ? `<div style="display:none;font-size:1px;color:#f8f9fa;line-height:1px;max-height:0px;max-width:0px;opacity:0;overflow:hidden;">${preheader}</div>` : ''}
         <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color: #f8f9fa;">
           <tr>
             <td align="center" style="padding: 40px 20px;">
@@ -1364,6 +1367,8 @@ const emailBuilder = {
 
     const html = this.generateFullHTML();
     const fromName = document.getElementById('builderFromName')?.value || 'British Trade Awards';
+    const fromEmail = document.getElementById('builderFromEmail')?.value || 'awards@britishtradeawards.com';
+    const replyTo = document.getElementById('builderReplyTo')?.value || fromEmail;
 
     try {
       utils.showToast('Sending test email...', 'info');
@@ -1372,7 +1377,9 @@ const emailBuilder = {
         p_to: email,
         p_subject: subject,
         p_html: html,
-        p_from_name: fromName
+        p_from_name: fromName,
+        p_from_email: fromEmail,
+        p_reply_to: replyTo
       });
 
       if (error) throw error;
@@ -1393,6 +1400,8 @@ const emailBuilder = {
     const subject = document.getElementById('builderSubject')?.value;
     const campaignName = document.getElementById('builderCampaignName')?.value;
     const fromName = document.getElementById('builderFromName')?.value || 'British Trade Awards';
+    const fromEmail = document.getElementById('builderFromEmail')?.value || 'awards@britishtradeawards.com';
+    const replyTo = document.getElementById('builderReplyTo')?.value || fromEmail;
 
     if (!listId) {
       utils.showToast('Please select an email list to send to', 'warning');
@@ -1430,6 +1439,8 @@ const emailBuilder = {
         p_subject: subject,
         p_html: html,
         p_from_name: fromName,
+        p_from_email: fromEmail,
+        p_reply_to: replyTo,
         p_campaign_name: campaignName || subject
       });
 

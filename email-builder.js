@@ -1634,6 +1634,28 @@ const emailBuilder = {
 
       utils.showToast(`Campaign sent to ${data?.sent || count} recipients!`, 'success');
 
+      // Log the campaign with full data for cloning
+      try {
+        await STATE.client.from('email_campaigns').insert({
+          campaign_name: campaignName || subject,
+          subject: subject,
+          status: 'Sent',
+          sent_date: new Date().toISOString(),
+          total_recipients: count || 0,
+          recipients: listId,
+          notes: JSON.stringify({
+            html,
+            from_name: fromName,
+            from_email: fromEmail,
+            reply_to: replyTo,
+            list_id: listId,
+            list_name: listName
+          })
+        });
+      } catch (logErr) {
+        console.warn('Campaign sent but failed to log:', logErr);
+      }
+
       // Refresh campaign log
       this.loadCampaignLog();
 
@@ -1833,8 +1855,9 @@ const emailBuilder = {
             <td>${c.clicked_count || 0} <small class="text-muted">(${clickRate}%)</small></td>
             <td>${c.bounced_count || 0}</td>
             <td><small>${displayDate}</small></td>
-            <td>
+            <td class="text-nowrap">
               ${c.status === 'Scheduled' ? `<button class="btn btn-outline-danger btn-sm py-0 px-1" onclick="emailBuilder.cancelScheduledCampaign('${c.id}')" title="Cancel"><i class="bi bi-x-circle"></i></button>` : ''}
+              ${c.status !== 'Scheduled' && c.status !== 'Sending' ? `<button class="btn btn-outline-primary btn-sm py-0 px-1" onclick="emailBuilder.cloneCampaign('${c.id}')" title="Clone &amp; Resend"><i class="bi bi-copy"></i></button>` : ''}
               <button class="btn btn-outline-secondary btn-sm py-0 px-1" onclick="emailBuilder.viewCampaignDetail('${c.id}')" title="View Details"><i class="bi bi-eye"></i></button>
             </td>
           </tr>`;
@@ -1881,6 +1904,91 @@ const emailBuilder = {
     } catch (error) {
       console.error('Error cancelling campaign:', error);
       utils.showToast('Failed to cancel campaign: ' + error.message, 'error');
+    }
+  },
+
+  /**
+   * Clone a campaign - load its data back into the builder for resending
+   */
+  async cloneCampaign(campaignId) {
+    try {
+      const { data: campaign, error } = await STATE.client
+        .from('email_campaigns')
+        .select('*')
+        .eq('id', campaignId)
+        .single();
+
+      if (error) throw error;
+
+      let notes = {};
+      try { notes = JSON.parse(campaign.notes || '{}'); } catch (e) {}
+
+      // Populate campaign settings
+      const nameInput = document.getElementById('builderCampaignName');
+      const subjectInput = document.getElementById('builderSubject');
+      const preheaderInput = document.getElementById('builderPreheader');
+      const fromNameInput = document.getElementById('builderFromName');
+      const fromEmailInput = document.getElementById('builderFromEmail');
+      const replyToInput = document.getElementById('builderReplyTo');
+      const listSelect = document.getElementById('builderEmailList');
+
+      if (nameInput) nameInput.value = (campaign.campaign_name || '') + ' (Copy)';
+      if (subjectInput) subjectInput.value = campaign.subject || '';
+      if (fromNameInput && notes.from_name) fromNameInput.value = notes.from_name;
+      if (fromEmailInput && notes.from_email) fromEmailInput.value = notes.from_email;
+      if (replyToInput && notes.reply_to) replyToInput.value = notes.reply_to;
+
+      // Try to select the same list
+      if (listSelect && notes.list_id) {
+        listSelect.value = notes.list_id;
+        listSelect.dispatchEvent(new Event('change'));
+      }
+
+      // Load the saved HTML into the canvas
+      if (notes.html) {
+        // Clear existing blocks
+        this.blocks = [];
+        this.canvas.innerHTML = '';
+
+        // Create a single HTML code block with the full email content
+        // Extract the inner content from the email wrapper
+        const parser = new DOMParser();
+        const doc = parser.parseFromString(notes.html, 'text/html');
+        const innerTable = doc.querySelector('table table');
+        const bodyContent = innerTable ? innerTable.innerHTML : doc.body.innerHTML;
+
+        const blockId = 'block_' + Date.now();
+        const blockWrapper = document.createElement('div');
+        blockWrapper.className = 'email-block-wrapper';
+        blockWrapper.setAttribute('data-block-id', blockId);
+        blockWrapper.innerHTML = this.getHtmlCodeBlock(blockId);
+
+        // Set the HTML content in the code editor
+        const textarea = blockWrapper.querySelector('.email-html-code-editor');
+        if (textarea) {
+          textarea.value = bodyContent;
+        }
+
+        this.canvas.appendChild(blockWrapper);
+        this.blocks.push({ id: blockId, type: 'html-code' });
+        this.addBlockControls(blockWrapper, blockId);
+        this.updatePreview();
+      }
+
+      // Switch to Send Now mode
+      const sendNowRadio = document.getElementById('sendModeNow');
+      if (sendNowRadio) {
+        sendNowRadio.checked = true;
+        this.toggleScheduler();
+      }
+
+      // Scroll to top of builder
+      document.getElementById('emailCanvas')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+      utils.showToast(`Campaign "${campaign.campaign_name}" cloned - review and send again`, 'success');
+    } catch (error) {
+      console.error('Error cloning campaign:', error);
+      utils.showToast('Failed to clone campaign: ' + error.message, 'error');
     }
   },
 

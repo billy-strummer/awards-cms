@@ -3258,7 +3258,25 @@
 
                       <div class="mb-3">
                         <label class="form-label small">Subject Line</label>
-                        <input type="text" class="form-control form-control-sm" id="builderSubject" placeholder="Congratulations {{company_name}}!">
+                        <input type="text" class="form-control form-control-sm" id="builderSubject" placeholder="Congratulations {{company_name}}!" oninput="emailBuilder.updateSubjectCounter()">
+                      </div>
+
+                      <!-- A/B Testing Toggle -->
+                      <div class="mb-3">
+                        <div class="form-check form-switch">
+                          <input class="form-check-input" type="checkbox" id="abTestToggle" onchange="emailBuilder.toggleABTest()">
+                          <label class="form-check-label small" for="abTestToggle">A/B Test Subject Line</label>
+                        </div>
+                      </div>
+                      <div id="abTestSection" style="display: none;">
+                        <div class="mb-2">
+                          <label class="form-label small">Subject B (variant)</label>
+                          <input type="text" class="form-control form-control-sm" id="abVariantB" placeholder="Alternative subject line..." oninput="emailBuilder.abVariantB = this.value">
+                        </div>
+                        <div class="mb-3">
+                          <label class="form-label small">Split: <span id="abSplitLabel">50/50</span></label>
+                          <input type="range" class="form-range" id="abSplitPercent" min="10" max="90" step="10" value="50" oninput="document.getElementById('abSplitLabel').textContent = this.value + '/' + (100 - this.value)">
+                        </div>
                       </div>
 
                       <div class="mb-3">
@@ -3382,6 +3400,9 @@
                         <button class="btn btn-primary btn-sm" id="btnScheduleCampaign" style="display: none;" onclick="emailBuilder.scheduleCampaign()">
                           <i class="bi bi-clock-fill me-1"></i>Schedule Campaign
                         </button>
+                        <button class="btn btn-info btn-sm" id="btnABCampaign" style="display: none;" onclick="emailBuilder.sendABCampaign()">
+                          <i class="bi bi-diagram-2 me-1"></i>Send A/B Test
+                        </button>
                       </div>
                     </div>
 
@@ -3389,11 +3410,17 @@
 
                     <!-- Quick Actions -->
                     <div class="d-grid gap-2">
+                      <button class="btn btn-outline-warning btn-sm" onclick="emailBuilder.saveDraft()">
+                        <i class="bi bi-file-earmark me-1"></i>Save Draft
+                      </button>
                       <button class="btn btn-success btn-sm" onclick="emailBuilder.exportHTML()">
                         <i class="bi bi-download me-1"></i>Export HTML
                       </button>
                       <button class="btn btn-primary btn-sm" onclick="emailBuilder.saveTemplate()">
                         <i class="bi bi-save me-1"></i>Save Template
+                      </button>
+                      <button class="btn btn-outline-info btn-sm" onclick="emailBuilder.checkSpamScore()">
+                        <i class="bi bi-shield-check me-1"></i>Spam Check
                       </button>
                       <button class="btn btn-outline-secondary btn-sm" onclick="emailBuilder.clearCanvas()">
                         <i class="bi bi-trash me-1"></i>Clear All
@@ -3408,13 +3435,23 @@
                   <div class="p-3">
                     <div class="d-flex justify-content-between align-items-center mb-3">
                       <h6 class="mb-0"><i class="bi bi-palette me-2"></i>Email Canvas</h6>
-                      <div class="btn-group btn-group-sm" role="group">
-                        <button class="btn btn-outline-secondary active" onclick="emailBuilder.setViewMode('desktop')">
-                          <i class="bi bi-display"></i>
-                        </button>
-                        <button class="btn btn-outline-secondary" onclick="emailBuilder.setViewMode('mobile')">
-                          <i class="bi bi-phone"></i>
-                        </button>
+                      <div class="d-flex gap-2">
+                        <div class="btn-group btn-group-sm" role="group">
+                          <button class="btn btn-outline-secondary" onclick="emailBuilder.undo()" title="Undo (Ctrl+Z)">
+                            <i class="bi bi-arrow-counterclockwise"></i>
+                          </button>
+                          <button class="btn btn-outline-secondary" onclick="emailBuilder.redo()" title="Redo (Ctrl+Y)">
+                            <i class="bi bi-arrow-clockwise"></i>
+                          </button>
+                        </div>
+                        <div class="btn-group btn-group-sm" role="group">
+                          <button class="btn btn-outline-secondary active" onclick="emailBuilder.setViewMode('desktop')">
+                            <i class="bi bi-display"></i>
+                          </button>
+                          <button class="btn btn-outline-secondary" onclick="emailBuilder.setViewMode('mobile')">
+                            <i class="bi bi-phone"></i>
+                          </button>
+                        </div>
                       </div>
                     </div>
 
@@ -3450,6 +3487,8 @@
                         <code class="variable-tag">{{website}}</code>
                         <code class="variable-tag">{{event_name}}</code>
                         <code class="variable-tag">{{event_date}}</code>
+                        <code class="variable-tag">{{unsubscribe_url}}</code>
+                        <code class="variable-tag">{{view_in_browser_url}}</code>
                       </div>
                       <small class="text-muted d-block mt-2">Click to copy to clipboard</small>
                     </div>
@@ -3465,11 +3504,14 @@
                   <div class="d-flex justify-content-between align-items-center mb-3">
                     <h6 class="mb-0"><i class="bi bi-journal-text me-2"></i>Campaign Log</h6>
                     <div class="d-flex gap-2 align-items-center">
-                      <select class="form-select form-select-sm" id="campaignLogFilter" style="width: auto;" onchange="emailBuilder.loadCampaignLog()">
+                      <input type="text" class="form-control form-control-sm" id="campaignLogSearchInput" placeholder="Search campaigns..." style="width: 180px;" oninput="emailBuilder.searchCampaigns(this.value)">
+                      <select class="form-select form-select-sm" id="campaignLogFilter" style="width: auto;" onchange="emailBuilder.campaignLogPage = 0; emailBuilder.loadCampaignLog()">
                         <option value="all">All Campaigns</option>
                         <option value="Sent">Sent</option>
                         <option value="Scheduled">Scheduled</option>
                         <option value="Draft">Draft</option>
+                        <option value="Sending">Sending</option>
+                        <option value="Failed">Failed</option>
                         <option value="Cancelled">Cancelled</option>
                       </select>
                       <button class="btn btn-outline-secondary btn-sm" onclick="emailBuilder.loadCampaignLog()" title="Refresh">
@@ -3503,6 +3545,8 @@
                       </tbody>
                     </table>
                   </div>
+                  <!-- Pagination -->
+                  <div class="d-flex justify-content-end mt-2" id="campaignLogPagination"></div>
                 </div>
               </div>
 

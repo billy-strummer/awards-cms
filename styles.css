@@ -1999,6 +1999,29 @@ body.dark-mode .quick-action-item span {
   background: var(--danger-color);
 }
 
+/* Image & Button Block Controls */
+.email-image-controls,
+.email-button-controls {
+  border-bottom: 1px solid #dee2e6;
+  padding-bottom: 6px;
+}
+
+.email-image-controls .form-control,
+.email-button-controls .form-control {
+  font-size: 12px;
+}
+
+/* Autosave Recovery Banner */
+#autosaveRecoveryBanner {
+  border-left: 4px solid #0d6efd;
+  animation: slideDown 0.3s ease-out;
+}
+
+@keyframes slideDown {
+  from { transform: translateY(-20px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
 /* Right Panel - Preview */
 .email-preview-panel {
   background: white;

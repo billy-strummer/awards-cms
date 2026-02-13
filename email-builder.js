@@ -11,6 +11,21 @@ const emailBuilder = {
   promotionMode: 'nominee', // 'nominee' or 'winner'
   selectedCompany: null,
   contentLibraryVisible: false,
+  // Undo/Redo history
+  undoStack: [],
+  redoStack: [],
+  maxUndoSteps: 30,
+  // Autosave
+  hasUnsavedChanges: false,
+  autosaveTimer: null,
+  // Campaign log pagination
+  campaignLogPage: 0,
+  campaignLogPageSize: 20,
+  campaignLogTotal: 0,
+  campaignLogSearch: '',
+  // A/B Testing
+  abTestEnabled: false,
+  abVariantB: '',
 
   /**
    * Initialize email builder
@@ -26,6 +41,9 @@ const emailBuilder = {
     this.loadEmailLists();
     this.setupVariableCopy();
     this.setupSchedulerDefaults();
+    this.setupSubjectLineCounter();
+    this.setupAutosave();
+    this.setupUnsavedChangesWarning();
     this.loadCampaignLog();
     this.initialized = true;
     console.log('✅ Email Builder initialized');
@@ -145,6 +163,8 @@ const emailBuilder = {
    * Add block to canvas
    */
   addBlock(blockType) {
+    this.saveUndoState();
+
     // Clear empty state if this is first block
     if (this.blocks.length === 0) {
       this.canvas.innerHTML = '';
@@ -161,6 +181,7 @@ const emailBuilder = {
     this.canvas.appendChild(blockWrapper);
 
     this.blocks.push({ id: blockId, type: blockType });
+    this.markUnsavedChanges();
     this.updatePreview();
 
     // Add edit/delete controls
@@ -366,38 +387,6 @@ const emailBuilder = {
     `;
   },
 
-  getButtonBlock() {
-    return `
-      <table width="100%" cellpadding="0" cellspacing="0" border="0">
-        <tr>
-          <td style="padding: 30px 40px;" align="center">
-            <table cellpadding="0" cellspacing="0" border="0">
-              <tr>
-                <td style="background-color: #0d6efd; border-radius: 6px; padding: 15px 40px;">
-                  <a href="{{website}}" style="color: #ffffff; font-family: Arial, sans-serif; font-size: 16px; font-weight: bold; text-decoration: none; display: inline-block;">
-                    View Your Profile
-                  </a>
-                </td>
-              </tr>
-            </table>
-          </td>
-        </tr>
-      </table>
-    `;
-  },
-
-  getImageBlock() {
-    return `
-      <table width="100%" cellpadding="0" cellspacing="0" border="0">
-        <tr>
-          <td style="padding: 20px 40px;">
-            <img src="data:image/svg+xml,${encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="520" height="300"><rect width="520" height="300" fill="#dee2e6" rx="8"/><text x="260" y="155" text-anchor="middle" font-family="Arial,sans-serif" font-size="18" fill="#6c757d">Add Your Image</text></svg>')}" alt="Image" style="width: 100%; max-width: 520px; height: auto; display: block; border-radius: 8px;">
-          </td>
-        </tr>
-      </table>
-    `;
-  },
-
   getDividerBlock() {
     return `
       <table width="100%" cellpadding="0" cellspacing="0" border="0">
@@ -526,27 +515,6 @@ const emailBuilder = {
     `;
   },
 
-  getFooterBlock() {
-    return `
-      <table width="100%" cellpadding="0" cellspacing="0" border="0">
-        <tr>
-          <td style="padding: 40px; background-color: #212529; text-align: center;">
-            <p style="margin: 0 0 10px 0; font-family: Arial, sans-serif; font-size: 14px; color: #ffffff;">
-              © ${new Date().getFullYear()} British Trade Awards. All rights reserved.
-            </p>
-            <p style="margin: 0 0 10px 0; font-family: Arial, sans-serif; font-size: 12px; color: #adb5bd;">
-              You received this email because you are a registered participant in the British Trade Awards.
-            </p>
-            <p style="margin: 0; font-family: Arial, sans-serif; font-size: 12px;">
-              <a href="#" style="color: #0d6efd; text-decoration: none;">Unsubscribe</a> |
-              <a href="#" style="color: #0d6efd; text-decoration: none;">View in Browser</a>
-            </p>
-          </td>
-        </tr>
-      </table>
-    `;
-  },
-
   /**
    * Add block controls (edit/delete/move)
    */
@@ -560,6 +528,9 @@ const emailBuilder = {
       <button class="btn btn-sm btn-outline-primary" onclick="emailBuilder.moveBlockDown('${blockId}')" title="Move Down">
         <i class="bi bi-arrow-down"></i>
       </button>
+      <button class="btn btn-sm btn-outline-info" onclick="emailBuilder.duplicateBlock('${blockId}')" title="Duplicate">
+        <i class="bi bi-copy"></i>
+      </button>
       <button class="btn btn-sm btn-outline-danger" onclick="emailBuilder.deleteBlock('${blockId}')" title="Delete">
         <i class="bi bi-trash"></i>
       </button>
@@ -571,9 +542,11 @@ const emailBuilder = {
    * Move block up
    */
   moveBlockUp(blockId) {
+    this.saveUndoState();
     const wrapper = document.querySelector(`[data-block-id="${blockId}"]`);
     if (wrapper && wrapper.previousElementSibling) {
       this.canvas.insertBefore(wrapper, wrapper.previousElementSibling);
+      this.markUnsavedChanges();
       this.updatePreview();
     }
   },
@@ -582,9 +555,11 @@ const emailBuilder = {
    * Move block down
    */
   moveBlockDown(blockId) {
+    this.saveUndoState();
     const wrapper = document.querySelector(`[data-block-id="${blockId}"]`);
     if (wrapper && wrapper.nextElementSibling) {
       this.canvas.insertBefore(wrapper.nextElementSibling, wrapper);
+      this.markUnsavedChanges();
       this.updatePreview();
     }
   },
@@ -593,10 +568,12 @@ const emailBuilder = {
    * Delete block
    */
   deleteBlock(blockId) {
+    this.saveUndoState();
     const wrapper = document.querySelector(`[data-block-id="${blockId}"]`);
     if (wrapper) {
       wrapper.remove();
       this.blocks = this.blocks.filter(b => b.id !== blockId);
+      this.markUnsavedChanges();
       this.updatePreview();
 
       if (this.blocks.length === 0) {
@@ -1191,7 +1168,7 @@ const emailBuilder = {
    */
   async loadContentLibraryContent(panel) {
     // Load organisations with enhanced profile info
-    const { data: orgs, error } = await supabase
+    const { data: orgs, error } = await STATE.client
       .from('award_assignments')
       .select(`
         organisation_id,
@@ -1309,7 +1286,7 @@ const emailBuilder = {
 
     try {
       // Load company details
-      const { data: org, error: orgError } = await supabase
+      const { data: org, error: orgError } = await STATE.client
         .from('organisations')
         .select('*')
         .eq('id', orgId)
@@ -1320,7 +1297,7 @@ const emailBuilder = {
       this.selectedCompany = org;
 
       // Load company images from media gallery
-      const { data: images, error: imgError } = await supabase
+      const { data: images, error: imgError } = await STATE.client
         .from('media_items')
         .select('*')
         .eq('organisation_id', orgId)
@@ -1486,9 +1463,6 @@ const emailBuilder = {
     this.updatePreview();
   },
 
-  /**
-   * Generate Winner/Nominee Badge
-   */
   /**
    * Load email lists into the send dropdown
    */
@@ -1803,73 +1777,6 @@ const emailBuilder = {
   },
 
   /**
-   * Load campaign log from database
-   */
-  async loadCampaignLog() {
-    const tbody = document.getElementById('campaignLogBody');
-    if (!tbody) return;
-
-    try {
-      const filter = document.getElementById('campaignLogFilter')?.value || 'all';
-
-      let query = STATE.client
-        .from('email_campaigns')
-        .select('*')
-        .order('created_at', { ascending: false })
-        .limit(50);
-
-      if (filter !== 'all') {
-        query = query.eq('status', filter);
-      }
-
-      const { data: campaigns, error } = await query;
-
-      if (error) throw error;
-
-      if (!campaigns || campaigns.length === 0) {
-        tbody.innerHTML = `
-          <tr>
-            <td colspan="9" class="text-center text-muted py-4">
-              <i class="bi bi-journal-text d-block mb-2" style="font-size: 1.5rem; opacity: 0.3;"></i>
-              No campaigns found
-            </td>
-          </tr>`;
-        return;
-      }
-
-      tbody.innerHTML = campaigns.map(c => {
-        const statusBadge = this.getStatusBadge(c.status);
-        const sentDate = c.sent_date ? new Date(c.sent_date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '';
-        const scheduledDate = c.scheduled_date ? new Date(c.scheduled_date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '';
-        const displayDate = sentDate || scheduledDate || '-';
-        const openRate = c.total_recipients > 0 ? Math.round((c.opened_count || 0) / c.total_recipients * 100) : 0;
-        const clickRate = c.total_recipients > 0 ? Math.round((c.clicked_count || 0) / c.total_recipients * 100) : 0;
-
-        return `
-          <tr>
-            <td class="text-truncate" style="max-width: 150px;" title="${utils.escapeHtml(c.campaign_name || '')}">${utils.escapeHtml(c.campaign_name || 'Untitled')}</td>
-            <td class="text-truncate" style="max-width: 180px;" title="${utils.escapeHtml(c.subject || '')}">${utils.escapeHtml(c.subject || '-')}</td>
-            <td>${statusBadge}</td>
-            <td>${c.total_recipients || 0}</td>
-            <td>${c.opened_count || 0} <small class="text-muted">(${openRate}%)</small></td>
-            <td>${c.clicked_count || 0} <small class="text-muted">(${clickRate}%)</small></td>
-            <td>${c.bounced_count || 0}</td>
-            <td><small>${displayDate}</small></td>
-            <td class="text-nowrap">
-              ${c.status === 'Scheduled' ? `<button class="btn btn-outline-danger btn-sm py-0 px-1" onclick="emailBuilder.cancelScheduledCampaign('${c.id}')" title="Cancel"><i class="bi bi-x-circle"></i></button>` : ''}
-              ${c.status !== 'Scheduled' && c.status !== 'Sending' ? `<button class="btn btn-outline-primary btn-sm py-0 px-1" onclick="emailBuilder.cloneCampaign('${c.id}')" title="Clone &amp; Resend"><i class="bi bi-copy"></i></button>` : ''}
-              <button class="btn btn-outline-secondary btn-sm py-0 px-1" onclick="emailBuilder.viewCampaignDetail('${c.id}')" title="View Details"><i class="bi bi-eye"></i></button>
-            </td>
-          </tr>`;
-      }).join('');
-
-    } catch (error) {
-      console.error('Error loading campaign log:', error);
-      tbody.innerHTML = `<tr><td colspan="9" class="text-center text-danger py-3">Failed to load campaign log</td></tr>`;
-    }
-  },
-
-  /**
    * Get status badge HTML
    */
   getStatusBadge(status) {
@@ -2152,6 +2059,990 @@ const emailBuilder = {
       'unsubscribed': '<span class="badge bg-dark">Unsubscribed</span>'
     };
     return badges[status] || `<span class="badge bg-secondary">${utils.escapeHtml(status || 'Unknown')}</span>`;
+  },
+
+  // ==================================================
+  // BLOCK DUPLICATION
+  // ==================================================
+
+  /**
+   * Duplicate a block on the canvas
+   */
+  duplicateBlock(blockId) {
+    this.saveUndoState();
+    const wrapper = document.querySelector(`[data-block-id="${blockId}"]`);
+    if (!wrapper) return;
+
+    const newBlockId = 'block-' + Date.now();
+    const clone = wrapper.cloneNode(true);
+    clone.setAttribute('data-block-id', newBlockId);
+
+    // Update any block-specific IDs in the clone
+    clone.querySelectorAll(`[data-block="${blockId}"]`).forEach(el => {
+      el.setAttribute('data-block', newBlockId);
+    });
+    clone.querySelectorAll(`[data-for="${blockId}"]`).forEach(el => {
+      el.setAttribute('data-for', newBlockId);
+    });
+
+    // Update onclick handlers in controls
+    const controls = clone.querySelector('.email-block-controls');
+    if (controls) controls.remove();
+
+    // Insert after original
+    wrapper.insertAdjacentElement('afterend', clone);
+
+    // Find original block type
+    const originalBlock = this.blocks.find(b => b.id === blockId);
+    this.blocks.push({ id: newBlockId, type: originalBlock?.type || 'text' });
+
+    // Add fresh controls
+    this.addBlockControls(clone, newBlockId);
+
+    // Rewire rich text preview updates
+    const richContent = clone.querySelector('.email-richtext-content');
+    if (richContent) {
+      richContent.addEventListener('input', () => this.updatePreview());
+    }
+
+    this.markUnsavedChanges();
+    this.updatePreview();
+    utils.showToast('Block duplicated', 'success');
+  },
+
+  // ==================================================
+  // IMAGE URL/UPLOAD FOR IMAGE BLOCKS
+  // ==================================================
+
+  /**
+   * Get image block with URL input
+   */
+  getImageBlock() {
+    const blockId = 'img-' + Date.now();
+    return `
+      <table width="100%" cellpadding="0" cellspacing="0" border="0">
+        <tr>
+          <td style="padding: 20px 40px;">
+            <div class="email-image-controls" style="margin-bottom: 8px;">
+              <div class="input-group input-group-sm">
+                <span class="input-group-text"><i class="bi bi-link-45deg"></i></span>
+                <input type="text" class="form-control form-control-sm email-image-url" placeholder="Paste image URL..." data-img-id="${blockId}" onchange="emailBuilder.updateImageFromUrl(this)">
+              </div>
+            </div>
+            <img src="data:image/svg+xml,${encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="520" height="300"><rect width="520" height="300" fill="#dee2e6" rx="8"/><text x="260" y="145" text-anchor="middle" font-family="Arial,sans-serif" font-size="18" fill="#6c757d">Paste an image URL above</text><text x="260" y="170" text-anchor="middle" font-family="Arial,sans-serif" font-size="14" fill="#adb5bd">or drag an image from your media gallery</text></svg>')}" alt="Image" data-img-target="${blockId}" style="width: 100%; max-width: 520px; height: auto; display: block; border-radius: 8px;">
+          </td>
+        </tr>
+      </table>
+    `;
+  },
+
+  /**
+   * Update image from URL input
+   */
+  updateImageFromUrl(input) {
+    const url = input.value.trim();
+    if (!url) return;
+    const imgId = input.getAttribute('data-img-id');
+    const img = document.querySelector(`img[data-img-target="${imgId}"]`);
+    if (img) {
+      img.src = url;
+      this.markUnsavedChanges();
+      this.updatePreview();
+    }
+  },
+
+  // ==================================================
+  // BUTTON URL/TEXT EDITING
+  // ==================================================
+
+  /**
+   * Get button block with editable URL and text
+   */
+  getButtonBlock() {
+    const blockId = 'btn-' + Date.now();
+    return `
+      <table width="100%" cellpadding="0" cellspacing="0" border="0">
+        <tr>
+          <td style="padding: 10px 40px 0;">
+            <div class="email-button-controls" style="margin-bottom: 8px;">
+              <div class="row g-1">
+                <div class="col-5">
+                  <input type="text" class="form-control form-control-sm" placeholder="Button text" value="View Your Profile" data-btn-text="${blockId}" onchange="emailBuilder.updateButtonFromControls('${blockId}')">
+                </div>
+                <div class="col-5">
+                  <input type="text" class="form-control form-control-sm" placeholder="Button URL" value="{{website}}" data-btn-url="${blockId}" onchange="emailBuilder.updateButtonFromControls('${blockId}')">
+                </div>
+                <div class="col-2">
+                  <input type="color" class="form-control form-control-sm form-control-color w-100" value="#0d6efd" data-btn-color="${blockId}" onchange="emailBuilder.updateButtonFromControls('${blockId}')" title="Button colour">
+                </div>
+              </div>
+            </div>
+          </td>
+        </tr>
+        <tr>
+          <td style="padding: 10px 40px 30px;" align="center">
+            <table cellpadding="0" cellspacing="0" border="0">
+              <tr>
+                <td data-btn-target="${blockId}" style="background-color: #0d6efd; border-radius: 6px; padding: 15px 40px;">
+                  <a href="{{website}}" style="color: #ffffff; font-family: Arial, sans-serif; font-size: 16px; font-weight: bold; text-decoration: none; display: inline-block;">
+                    View Your Profile
+                  </a>
+                </td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+      </table>
+    `;
+  },
+
+  /**
+   * Update button from editing controls
+   */
+  updateButtonFromControls(blockId) {
+    const textInput = document.querySelector(`[data-btn-text="${blockId}"]`);
+    const urlInput = document.querySelector(`[data-btn-url="${blockId}"]`);
+    const colorInput = document.querySelector(`[data-btn-color="${blockId}"]`);
+    const target = document.querySelector(`[data-btn-target="${blockId}"]`);
+
+    if (!target) return;
+
+    const text = textInput?.value || 'Click Here';
+    const url = urlInput?.value || '#';
+    const color = colorInput?.value || '#0d6efd';
+
+    target.style.backgroundColor = color;
+    const link = target.querySelector('a');
+    if (link) {
+      link.textContent = text;
+      link.href = url;
+    }
+
+    this.markUnsavedChanges();
+    this.updatePreview();
+  },
+
+  // ==================================================
+  // UNDO / REDO
+  // ==================================================
+
+  /**
+   * Save current canvas state to undo stack
+   */
+  saveUndoState() {
+    const state = {
+      canvasHTML: this.canvas.innerHTML,
+      blocks: JSON.parse(JSON.stringify(this.blocks))
+    };
+    this.undoStack.push(state);
+    if (this.undoStack.length > this.maxUndoSteps) {
+      this.undoStack.shift();
+    }
+    // Clear redo stack when a new action is performed
+    this.redoStack = [];
+  },
+
+  /**
+   * Undo last action
+   */
+  undo() {
+    if (this.undoStack.length === 0) {
+      utils.showToast('Nothing to undo', 'info');
+      return;
+    }
+
+    // Save current state to redo stack
+    this.redoStack.push({
+      canvasHTML: this.canvas.innerHTML,
+      blocks: JSON.parse(JSON.stringify(this.blocks))
+    });
+
+    const state = this.undoStack.pop();
+    this.canvas.innerHTML = state.canvasHTML;
+    this.blocks = state.blocks;
+
+    // Rewire event listeners for contenteditable and rich text
+    this.rewireCanvasEvents();
+    this.updatePreview();
+    utils.showToast('Undone', 'info');
+  },
+
+  /**
+   * Redo last undone action
+   */
+  redo() {
+    if (this.redoStack.length === 0) {
+      utils.showToast('Nothing to redo', 'info');
+      return;
+    }
+
+    // Save current state to undo stack
+    this.undoStack.push({
+      canvasHTML: this.canvas.innerHTML,
+      blocks: JSON.parse(JSON.stringify(this.blocks))
+    });
+
+    const state = this.redoStack.pop();
+    this.canvas.innerHTML = state.canvasHTML;
+    this.blocks = state.blocks;
+
+    this.rewireCanvasEvents();
+    this.updatePreview();
+    utils.showToast('Redone', 'info');
+  },
+
+  /**
+   * Rewire event listeners after undo/redo restore
+   */
+  rewireCanvasEvents() {
+    this.canvas.querySelectorAll('.email-richtext-content').forEach(el => {
+      el.addEventListener('input', () => this.updatePreview());
+    });
+    this.canvas.querySelectorAll('[contenteditable="true"]').forEach(el => {
+      el.addEventListener('input', () => {
+        this.markUnsavedChanges();
+        this.updatePreview();
+      });
+    });
+  },
+
+  // ==================================================
+  // SAVE / LOAD DRAFTS
+  // ==================================================
+
+  /**
+   * Save current email as a draft
+   */
+  async saveDraft() {
+    const campaignName = document.getElementById('builderCampaignName')?.value;
+    const subject = document.getElementById('builderSubject')?.value;
+
+    if (!campaignName && !subject && this.blocks.length === 0) {
+      utils.showToast('Nothing to save as draft', 'warning');
+      return;
+    }
+
+    const html = this.generateFullHTML();
+    const fromName = document.getElementById('builderFromName')?.value || '';
+    const fromEmail = document.getElementById('builderFromEmail')?.value || '';
+    const replyTo = document.getElementById('builderReplyTo')?.value || '';
+    const listId = document.getElementById('builderEmailList')?.value || '';
+    const preheader = document.getElementById('builderPreheader')?.value || '';
+
+    try {
+      // Check if we have an existing draft for this campaign name
+      const draftData = {
+        campaign_name: campaignName || 'Untitled Draft',
+        subject: subject || '',
+        status: 'Draft',
+        total_recipients: 0,
+        notes: JSON.stringify({
+          html,
+          from_name: fromName,
+          from_email: fromEmail,
+          reply_to: replyTo,
+          list_id: listId,
+          preheader: preheader,
+          canvas_html: this.canvas.innerHTML,
+          blocks: this.blocks,
+          ab_enabled: this.abTestEnabled,
+          ab_variant_b: this.abVariantB
+        })
+      };
+
+      const { error } = await STATE.client
+        .from('email_campaigns')
+        .insert(draftData);
+
+      if (error) throw error;
+
+      this.hasUnsavedChanges = false;
+      utils.showToast('Draft saved successfully!', 'success');
+      this.loadCampaignLog();
+    } catch (error) {
+      console.error('Error saving draft:', error);
+      utils.showToast('Failed to save draft: ' + error.message, 'error');
+    }
+  },
+
+  /**
+   * Load a draft back into the builder
+   */
+  async loadDraft(campaignId) {
+    try {
+      const { data: campaign, error } = await STATE.client
+        .from('email_campaigns')
+        .select('*')
+        .eq('id', campaignId)
+        .single();
+
+      if (error) throw error;
+
+      let notes = {};
+      try { notes = JSON.parse(campaign.notes || '{}'); } catch (e) {}
+
+      // Populate settings
+      const nameInput = document.getElementById('builderCampaignName');
+      const subjectInput = document.getElementById('builderSubject');
+      const preheaderInput = document.getElementById('builderPreheader');
+      const fromNameInput = document.getElementById('builderFromName');
+      const fromEmailInput = document.getElementById('builderFromEmail');
+      const replyToInput = document.getElementById('builderReplyTo');
+      const listSelect = document.getElementById('builderEmailList');
+
+      if (nameInput) nameInput.value = campaign.campaign_name || '';
+      if (subjectInput) subjectInput.value = campaign.subject || '';
+      if (preheaderInput && notes.preheader) preheaderInput.value = notes.preheader;
+      if (fromNameInput && notes.from_name) fromNameInput.value = notes.from_name;
+      if (fromEmailInput && notes.from_email) fromEmailInput.value = notes.from_email;
+      if (replyToInput && notes.reply_to) replyToInput.value = notes.reply_to;
+
+      if (listSelect && notes.list_id) {
+        listSelect.value = notes.list_id;
+        listSelect.dispatchEvent(new Event('change'));
+      }
+
+      // Restore A/B test state
+      if (notes.ab_enabled) {
+        this.abTestEnabled = true;
+        this.abVariantB = notes.ab_variant_b || '';
+        const abToggle = document.getElementById('abTestToggle');
+        if (abToggle) abToggle.checked = true;
+        const abSection = document.getElementById('abTestSection');
+        if (abSection) abSection.style.display = 'block';
+        const abInput = document.getElementById('abVariantB');
+        if (abInput) abInput.value = this.abVariantB;
+      }
+
+      // Restore canvas - prefer stored canvas HTML for block-level fidelity
+      if (notes.canvas_html && notes.blocks) {
+        this.blocks = notes.blocks;
+        this.canvas.innerHTML = notes.canvas_html;
+        this.rewireCanvasEvents();
+      } else if (notes.html) {
+        // Fallback: load as single HTML code block (same as clone)
+        this.blocks = [];
+        this.canvas.innerHTML = '';
+        const blockId = 'block_' + Date.now();
+        const blockWrapper = document.createElement('div');
+        blockWrapper.className = 'email-block-wrapper';
+        blockWrapper.setAttribute('data-block-id', blockId);
+        blockWrapper.innerHTML = this.getHtmlCodeBlock(blockId);
+        const parser = new DOMParser();
+        const doc = parser.parseFromString(notes.html, 'text/html');
+        const innerTable = doc.querySelector('table table');
+        const bodyContent = innerTable ? innerTable.innerHTML : doc.body.innerHTML;
+        const textarea = blockWrapper.querySelector('.email-html-code-editor');
+        if (textarea) textarea.value = bodyContent;
+        this.canvas.appendChild(blockWrapper);
+        this.blocks.push({ id: blockId, type: 'html-code' });
+        this.addBlockControls(blockWrapper, blockId);
+      }
+
+      // Update subject counter
+      this.updateSubjectCounter();
+      this.updatePreview();
+      this.hasUnsavedChanges = false;
+
+      document.getElementById('emailCanvas')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      utils.showToast(`Draft "${campaign.campaign_name}" loaded`, 'success');
+
+    } catch (error) {
+      console.error('Error loading draft:', error);
+      utils.showToast('Failed to load draft: ' + error.message, 'error');
+    }
+  },
+
+  // ==================================================
+  // SUBJECT LINE CHARACTER COUNTER
+  // ==================================================
+
+  /**
+   * Setup subject line character counter
+   */
+  setupSubjectLineCounter() {
+    const subjectInput = document.getElementById('builderSubject');
+    if (!subjectInput) return;
+
+    // Create counter element
+    const counter = document.createElement('div');
+    counter.id = 'subjectCharCounter';
+    counter.className = 'small mt-1';
+    counter.style.cssText = 'transition: color 0.2s;';
+    subjectInput.parentElement.appendChild(counter);
+
+    subjectInput.addEventListener('input', () => this.updateSubjectCounter());
+    this.updateSubjectCounter();
+  },
+
+  /**
+   * Update the subject line character counter
+   */
+  updateSubjectCounter() {
+    const subjectInput = document.getElementById('builderSubject');
+    const counter = document.getElementById('subjectCharCounter');
+    if (!subjectInput || !counter) return;
+
+    const len = subjectInput.value.length;
+    let color = '#6c757d';
+    let message = `${len} characters`;
+
+    if (len > 0 && len <= 41) {
+      color = '#198754';
+      message += ' - Good length for mobile';
+    } else if (len > 41 && len <= 60) {
+      color = '#0d6efd';
+      message += ' - Good length';
+    } else if (len > 60 && len <= 80) {
+      color = '#fd7e14';
+      message += ' - May be truncated on mobile';
+    } else if (len > 80) {
+      color = '#dc3545';
+      message += ' - Too long, will be truncated';
+    }
+
+    counter.style.color = color;
+    counter.textContent = message;
+  },
+
+  // ==================================================
+  // SPAM SCORE / DELIVERABILITY CHECK
+  // ==================================================
+
+  /**
+   * Check email content for spam triggers
+   */
+  checkSpamScore() {
+    const subject = document.getElementById('builderSubject')?.value || '';
+    const html = this.generateFullHTML();
+    const text = html.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ');
+
+    let score = 0;
+    const issues = [];
+
+    // Check subject line
+    if (subject === subject.toUpperCase() && subject.length > 3) {
+      score += 3;
+      issues.push({ severity: 'high', text: 'Subject line is ALL CAPS' });
+    }
+    if ((subject.match(/!/g) || []).length > 1) {
+      score += 2;
+      issues.push({ severity: 'medium', text: 'Multiple exclamation marks in subject' });
+    }
+    if (/\$\d|free|winner|congratulations|urgent|act now|limited time/i.test(subject)) {
+      score += 2;
+      issues.push({ severity: 'medium', text: 'Subject contains common spam trigger words' });
+    }
+
+    // Check body content
+    const spamWords = ['buy now', 'click here', 'free gift', 'no obligation', 'risk free', 'act immediately', 'don\'t delete', 'double your', 'earn extra cash', 'million dollars', 'as seen on', 'order now', 'special promotion', 'this is not spam', 'you have been selected'];
+    const lowerText = text.toLowerCase();
+    spamWords.forEach(word => {
+      if (lowerText.includes(word)) {
+        score += 1;
+        issues.push({ severity: 'low', text: `Body contains spam phrase: "${word}"` });
+      }
+    });
+
+    // Check for excessive caps in body
+    const words = text.split(/\s+/).filter(w => w.length > 3);
+    const capsWords = words.filter(w => w === w.toUpperCase());
+    if (words.length > 0 && (capsWords.length / words.length) > 0.3) {
+      score += 2;
+      issues.push({ severity: 'medium', text: 'Too many ALL CAPS words in body' });
+    }
+
+    // Check for missing unsubscribe
+    if (!html.includes('unsubscribe') && !html.includes('Unsubscribe')) {
+      score += 3;
+      issues.push({ severity: 'high', text: 'No unsubscribe link found (required by law)' });
+    }
+
+    // Check image-to-text ratio
+    const imgCount = (html.match(/<img/gi) || []).length;
+    if (imgCount > 5 && text.length < 200) {
+      score += 2;
+      issues.push({ severity: 'medium', text: 'Too many images with little text (poor image-to-text ratio)' });
+    }
+
+    // Check for missing preheader
+    const preheader = document.getElementById('builderPreheader')?.value || '';
+    if (!preheader) {
+      score += 1;
+      issues.push({ severity: 'low', text: 'No preview text (preheader) set' });
+    }
+
+    // Determine overall rating
+    let rating, ratingColor, ratingIcon;
+    if (score <= 2) {
+      rating = 'Excellent';
+      ratingColor = '#198754';
+      ratingIcon = 'bi-check-circle-fill';
+    } else if (score <= 5) {
+      rating = 'Good';
+      ratingColor = '#0d6efd';
+      ratingIcon = 'bi-info-circle-fill';
+    } else if (score <= 8) {
+      rating = 'Needs Improvement';
+      ratingColor = '#fd7e14';
+      ratingIcon = 'bi-exclamation-triangle-fill';
+    } else {
+      rating = 'High Spam Risk';
+      ratingColor = '#dc3545';
+      ratingIcon = 'bi-x-circle-fill';
+    }
+
+    const issuesHTML = issues.length > 0
+      ? issues.map(i => {
+          const icon = i.severity === 'high' ? 'bi-x-circle text-danger' : i.severity === 'medium' ? 'bi-exclamation-triangle text-warning' : 'bi-info-circle text-info';
+          return `<li class="mb-1"><i class="bi ${icon} me-2"></i>${i.text}</li>`;
+        }).join('')
+      : '<li class="text-success"><i class="bi bi-check-circle me-2"></i>No issues found!</li>';
+
+    const modalHTML = `
+      <div class="modal fade" id="spamCheckModal" tabindex="-1">
+        <div class="modal-dialog">
+          <div class="modal-content">
+            <div class="modal-header">
+              <h5 class="modal-title"><i class="bi bi-shield-check me-2"></i>Deliverability Check</h5>
+              <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+              <div class="text-center mb-4">
+                <i class="bi ${ratingIcon} display-3" style="color: ${ratingColor}"></i>
+                <h4 class="mt-2" style="color: ${ratingColor}">${rating}</h4>
+                <p class="text-muted">Score: ${score}/15 (lower is better)</p>
+                <div class="progress" style="height: 8px;">
+                  <div class="progress-bar" role="progressbar" style="width: ${Math.min(score / 15 * 100, 100)}%; background-color: ${ratingColor}"></div>
+                </div>
+              </div>
+              <h6 class="mb-2">Issues Found:</h6>
+              <ul class="list-unstyled">${issuesHTML}</ul>
+            </div>
+            <div class="modal-footer">
+              <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+
+    document.getElementById('spamCheckModal')?.remove();
+    document.body.insertAdjacentHTML('beforeend', modalHTML);
+    const modal = new bootstrap.Modal(document.getElementById('spamCheckModal'));
+    modal.show();
+    document.getElementById('spamCheckModal').addEventListener('hidden.bs.modal', function() { this.remove(); });
+  },
+
+  // ==================================================
+  // A/B TESTING FOR SUBJECT LINES
+  // ==================================================
+
+  /**
+   * Toggle A/B testing
+   */
+  toggleABTest() {
+    this.abTestEnabled = document.getElementById('abTestToggle')?.checked || false;
+    const section = document.getElementById('abTestSection');
+    if (section) section.style.display = this.abTestEnabled ? 'block' : 'none';
+    const abBtn = document.getElementById('btnABCampaign');
+    if (abBtn) abBtn.style.display = this.abTestEnabled ? '' : 'none';
+  },
+
+  /**
+   * Send campaign with A/B test (splits list)
+   */
+  async sendABCampaign() {
+    const listId = document.getElementById('builderEmailList')?.value;
+    const subjectA = document.getElementById('builderSubject')?.value;
+    const subjectB = document.getElementById('abVariantB')?.value;
+    const campaignName = document.getElementById('builderCampaignName')?.value;
+    const fromName = document.getElementById('builderFromName')?.value || 'British Trade Awards';
+    const fromEmail = document.getElementById('builderFromEmail')?.value || 'awards@britishtradeawards.com';
+    const replyTo = document.getElementById('builderReplyTo')?.value || fromEmail;
+    const splitPercent = parseInt(document.getElementById('abSplitPercent')?.value || '50', 10);
+
+    if (!listId) { utils.showToast('Please select an email list', 'warning'); return; }
+    if (!subjectA) { utils.showToast('Please enter Subject A', 'warning'); return; }
+    if (!subjectB) { utils.showToast('Please enter Subject B (variant)', 'warning'); return; }
+    if (this.blocks.length === 0) { utils.showToast('Please add content first', 'warning'); return; }
+
+    const { count } = await STATE.client
+      .from('email_list_subscribers')
+      .select('id', { count: 'exact', head: true })
+      .eq('list_id', listId)
+      .eq('status', 'active');
+
+    const countA = Math.round((count || 0) * splitPercent / 100);
+    const countB = (count || 0) - countA;
+    const listName = document.getElementById('builderEmailList')?.selectedOptions[0]?.text || 'selected list';
+
+    if (!confirm(`A/B Test Campaign:\n\nVariant A (${splitPercent}%): "${subjectA}" -> ${countA} recipients\nVariant B (${100 - splitPercent}%): "${subjectB}" -> ${countB} recipients\n\nTotal: ${count} in "${listName}"\n\nProceed?`)) {
+      return;
+    }
+
+    const html = this.generateFullHTML();
+
+    try {
+      utils.showToast('Sending A/B test campaign...', 'info');
+
+      // Send variant A
+      const { error: errorA } = await STATE.client.rpc('send_campaign_emails', {
+        p_list_id: listId,
+        p_subject: subjectA,
+        p_html: html,
+        p_from_name: fromName,
+        p_from_email: fromEmail,
+        p_reply_to: replyTo,
+        p_campaign_name: (campaignName || subjectA) + ' [A]',
+        p_limit: countA
+      });
+
+      // Send variant B
+      const { error: errorB } = await STATE.client.rpc('send_campaign_emails', {
+        p_list_id: listId,
+        p_subject: subjectB,
+        p_html: html,
+        p_from_name: fromName,
+        p_from_email: fromEmail,
+        p_reply_to: replyTo,
+        p_campaign_name: (campaignName || subjectB) + ' [B]',
+        p_offset: countA
+      });
+
+      if (errorA) throw errorA;
+      if (errorB) throw errorB;
+
+      // Log both campaigns
+      await STATE.client.from('email_campaigns').insert([
+        {
+          campaign_name: (campaignName || subjectA) + ' [A/B Test - A]',
+          subject: subjectA,
+          status: 'Sent',
+          sent_date: new Date().toISOString(),
+          total_recipients: countA,
+          recipients: listId,
+          notes: JSON.stringify({ html, from_name: fromName, from_email: fromEmail, reply_to: replyTo, ab_test: true, variant: 'A', split: splitPercent })
+        },
+        {
+          campaign_name: (campaignName || subjectB) + ' [A/B Test - B]',
+          subject: subjectB,
+          status: 'Sent',
+          sent_date: new Date().toISOString(),
+          total_recipients: countB,
+          recipients: listId,
+          notes: JSON.stringify({ html, from_name: fromName, from_email: fromEmail, reply_to: replyTo, ab_test: true, variant: 'B', split: 100 - splitPercent })
+        }
+      ]);
+
+      utils.showToast(`A/B test sent! A: ${countA} recipients, B: ${countB} recipients`, 'success');
+      this.loadCampaignLog();
+    } catch (error) {
+      console.error('Error sending A/B campaign:', error);
+      utils.showToast('Failed to send A/B campaign: ' + error.message, 'error');
+    }
+  },
+
+  // ==================================================
+  // UNSUBSCRIBE LINK HANDLING
+  // ==================================================
+
+  /**
+   * Get footer block with real unsubscribe URL
+   */
+  getFooterBlock() {
+    return `
+      <table width="100%" cellpadding="0" cellspacing="0" border="0">
+        <tr>
+          <td style="padding: 40px; background-color: #212529; text-align: center;">
+            <p style="margin: 0 0 10px 0; font-family: Arial, sans-serif; font-size: 14px; color: #ffffff;">
+              &copy; ${new Date().getFullYear()} British Trade Awards. All rights reserved.
+            </p>
+            <p style="margin: 0 0 10px 0; font-family: Arial, sans-serif; font-size: 12px; color: #adb5bd;">
+              You received this email because you are a registered participant in the British Trade Awards.
+            </p>
+            <p style="margin: 0; font-family: Arial, sans-serif; font-size: 12px;">
+              <a href="{{unsubscribe_url}}" style="color: #0d6efd; text-decoration: none;">Unsubscribe</a> |
+              <a href="{{view_in_browser_url}}" style="color: #0d6efd; text-decoration: none;">View in Browser</a>
+            </p>
+          </td>
+        </tr>
+      </table>
+    `;
+  },
+
+  // ==================================================
+  // CAMPAIGN SEARCH & PAGINATION
+  // ==================================================
+
+  /**
+   * Load campaign log with search and pagination
+   */
+  async loadCampaignLog() {
+    const tbody = document.getElementById('campaignLogBody');
+    if (!tbody) return;
+
+    try {
+      const filter = document.getElementById('campaignLogFilter')?.value || 'all';
+      const search = this.campaignLogSearch || '';
+      const offset = this.campaignLogPage * this.campaignLogPageSize;
+
+      // Build query for count
+      let countQuery = STATE.client
+        .from('email_campaigns')
+        .select('*', { count: 'exact', head: true });
+
+      if (filter !== 'all') countQuery = countQuery.eq('status', filter);
+      if (search) countQuery = countQuery.or(`campaign_name.ilike.%${search}%,subject.ilike.%${search}%`);
+
+      const { count: totalCount } = await countQuery;
+      this.campaignLogTotal = totalCount || 0;
+
+      // Build data query
+      let query = STATE.client
+        .from('email_campaigns')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .range(offset, offset + this.campaignLogPageSize - 1);
+
+      if (filter !== 'all') query = query.eq('status', filter);
+      if (search) query = query.or(`campaign_name.ilike.%${search}%,subject.ilike.%${search}%`);
+
+      const { data: campaigns, error } = await query;
+
+      if (error) throw error;
+
+      if (!campaigns || campaigns.length === 0) {
+        tbody.innerHTML = `
+          <tr>
+            <td colspan="9" class="text-center text-muted py-4">
+              <i class="bi bi-journal-text d-block mb-2" style="font-size: 1.5rem; opacity: 0.3;"></i>
+              ${search ? 'No campaigns matching "' + utils.escapeHtml(search) + '"' : 'No campaigns found'}
+            </td>
+          </tr>`;
+        this.renderCampaignPagination();
+        return;
+      }
+
+      tbody.innerHTML = campaigns.map(c => {
+        const statusBadge = this.getStatusBadge(c.status);
+        const sentDate = c.sent_date ? new Date(c.sent_date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '';
+        const scheduledDate = c.scheduled_date ? new Date(c.scheduled_date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '';
+        const displayDate = sentDate || scheduledDate || '-';
+        const openRate = c.total_recipients > 0 ? Math.round((c.opened_count || 0) / c.total_recipients * 100) : 0;
+        const clickRate = c.total_recipients > 0 ? Math.round((c.clicked_count || 0) / c.total_recipients * 100) : 0;
+
+        return `
+          <tr>
+            <td class="text-truncate" style="max-width: 150px;" title="${utils.escapeHtml(c.campaign_name || '')}">${utils.escapeHtml(c.campaign_name || 'Untitled')}</td>
+            <td class="text-truncate" style="max-width: 180px;" title="${utils.escapeHtml(c.subject || '')}">${utils.escapeHtml(c.subject || '-')}</td>
+            <td>${statusBadge}</td>
+            <td>${c.total_recipients || 0}</td>
+            <td>${c.opened_count || 0} <small class="text-muted">(${openRate}%)</small></td>
+            <td>${c.clicked_count || 0} <small class="text-muted">(${clickRate}%)</small></td>
+            <td>${c.bounced_count || 0}</td>
+            <td><small>${displayDate}</small></td>
+            <td class="text-nowrap">
+              ${c.status === 'Draft' ? `<button class="btn btn-outline-success btn-sm py-0 px-1" onclick="emailBuilder.loadDraft('${c.id}')" title="Load Draft"><i class="bi bi-pencil-square"></i></button>` : ''}
+              ${c.status === 'Scheduled' ? `<button class="btn btn-outline-danger btn-sm py-0 px-1" onclick="emailBuilder.cancelScheduledCampaign('${c.id}')" title="Cancel"><i class="bi bi-x-circle"></i></button>` : ''}
+              ${c.status !== 'Scheduled' && c.status !== 'Sending' && c.status !== 'Draft' ? `<button class="btn btn-outline-primary btn-sm py-0 px-1" onclick="emailBuilder.cloneCampaign('${c.id}')" title="Clone &amp; Resend"><i class="bi bi-copy"></i></button>` : ''}
+              <button class="btn btn-outline-secondary btn-sm py-0 px-1" onclick="emailBuilder.viewCampaignDetail('${c.id}')" title="View Details"><i class="bi bi-eye"></i></button>
+            </td>
+          </tr>`;
+      }).join('');
+
+      this.renderCampaignPagination();
+
+    } catch (error) {
+      console.error('Error loading campaign log:', error);
+      tbody.innerHTML = `<tr><td colspan="9" class="text-center text-danger py-3">Failed to load campaign log</td></tr>`;
+    }
+  },
+
+  /**
+   * Render pagination controls for campaign log
+   */
+  renderCampaignPagination() {
+    const container = document.getElementById('campaignLogPagination');
+    if (!container) return;
+
+    const totalPages = Math.ceil(this.campaignLogTotal / this.campaignLogPageSize);
+    const currentPage = this.campaignLogPage;
+
+    if (totalPages <= 1) {
+      container.innerHTML = `<small class="text-muted">${this.campaignLogTotal} campaign${this.campaignLogTotal !== 1 ? 's' : ''}</small>`;
+      return;
+    }
+
+    const startRecord = currentPage * this.campaignLogPageSize + 1;
+    const endRecord = Math.min((currentPage + 1) * this.campaignLogPageSize, this.campaignLogTotal);
+
+    container.innerHTML = `
+      <div class="d-flex align-items-center gap-2">
+        <small class="text-muted">${startRecord}-${endRecord} of ${this.campaignLogTotal}</small>
+        <div class="btn-group btn-group-sm">
+          <button class="btn btn-outline-secondary" ${currentPage === 0 ? 'disabled' : ''} onclick="emailBuilder.campaignLogPage = 0; emailBuilder.loadCampaignLog();" title="First">
+            <i class="bi bi-chevron-double-left"></i>
+          </button>
+          <button class="btn btn-outline-secondary" ${currentPage === 0 ? 'disabled' : ''} onclick="emailBuilder.campaignLogPage--; emailBuilder.loadCampaignLog();" title="Previous">
+            <i class="bi bi-chevron-left"></i>
+          </button>
+          <button class="btn btn-outline-secondary" disabled>
+            ${currentPage + 1} / ${totalPages}
+          </button>
+          <button class="btn btn-outline-secondary" ${currentPage >= totalPages - 1 ? 'disabled' : ''} onclick="emailBuilder.campaignLogPage++; emailBuilder.loadCampaignLog();" title="Next">
+            <i class="bi bi-chevron-right"></i>
+          </button>
+          <button class="btn btn-outline-secondary" ${currentPage >= totalPages - 1 ? 'disabled' : ''} onclick="emailBuilder.campaignLogPage = ${totalPages - 1}; emailBuilder.loadCampaignLog();" title="Last">
+            <i class="bi bi-chevron-double-right"></i>
+          </button>
+        </div>
+      </div>
+    `;
+  },
+
+  /**
+   * Search campaigns
+   */
+  searchCampaigns(query) {
+    this.campaignLogSearch = query;
+    this.campaignLogPage = 0;
+    this.loadCampaignLog();
+  },
+
+  // ==================================================
+  // AUTOSAVE & UNSAVED CHANGES WARNING
+  // ==================================================
+
+  /**
+   * Mark that there are unsaved changes
+   */
+  markUnsavedChanges() {
+    this.hasUnsavedChanges = true;
+  },
+
+  /**
+   * Setup autosave (saves to localStorage periodically)
+   */
+  setupAutosave() {
+    // Autosave to localStorage every 30 seconds if there are changes
+    this.autosaveTimer = setInterval(() => {
+      if (this.hasUnsavedChanges && this.blocks.length > 0) {
+        this.autosaveToLocalStorage();
+      }
+    }, 30000);
+
+    // Check for recovered autosave on init
+    this.checkAutosaveRecovery();
+  },
+
+  /**
+   * Save current state to localStorage
+   */
+  autosaveToLocalStorage() {
+    try {
+      const state = {
+        timestamp: Date.now(),
+        campaignName: document.getElementById('builderCampaignName')?.value || '',
+        subject: document.getElementById('builderSubject')?.value || '',
+        preheader: document.getElementById('builderPreheader')?.value || '',
+        canvasHTML: this.canvas.innerHTML,
+        blocks: this.blocks
+      };
+      localStorage.setItem('emailBuilder_autosave', JSON.stringify(state));
+    } catch (e) {
+      // localStorage may be full or disabled
+    }
+  },
+
+  /**
+   * Check if there's an autosaved state to recover
+   */
+  checkAutosaveRecovery() {
+    try {
+      const saved = localStorage.getItem('emailBuilder_autosave');
+      if (!saved) return;
+
+      const state = JSON.parse(saved);
+      const age = Date.now() - state.timestamp;
+
+      // Only offer recovery if autosave is less than 24 hours old and has content
+      if (age > 86400000 || !state.blocks || state.blocks.length === 0) {
+        localStorage.removeItem('emailBuilder_autosave');
+        return;
+      }
+
+      const timeAgo = age < 60000 ? 'just now' :
+        age < 3600000 ? Math.round(age / 60000) + ' minutes ago' :
+        Math.round(age / 3600000) + ' hours ago';
+
+      const campaignInfo = state.campaignName ? ` ("${state.campaignName}")` : '';
+
+      // Show recovery banner
+      const banner = document.createElement('div');
+      banner.id = 'autosaveRecoveryBanner';
+      banner.className = 'alert alert-info alert-dismissible d-flex align-items-center mb-3';
+      banner.innerHTML = `
+        <i class="bi bi-clock-history me-2"></i>
+        <div class="flex-grow-1">
+          <strong>Unsaved work found</strong>${campaignInfo} from ${timeAgo}
+        </div>
+        <button class="btn btn-sm btn-primary me-2" onclick="emailBuilder.recoverAutosave()">
+          <i class="bi bi-arrow-counterclockwise me-1"></i>Recover
+        </button>
+        <button type="button" class="btn-close" onclick="localStorage.removeItem('emailBuilder_autosave'); this.parentElement.remove();"></button>
+      `;
+
+      const canvas = document.getElementById('emailCanvas');
+      if (canvas && canvas.parentElement) {
+        canvas.parentElement.insertBefore(banner, canvas);
+      }
+    } catch (e) {
+      // Ignore parse errors
+    }
+  },
+
+  /**
+   * Recover from autosave
+   */
+  recoverAutosave() {
+    try {
+      const saved = localStorage.getItem('emailBuilder_autosave');
+      if (!saved) return;
+
+      const state = JSON.parse(saved);
+
+      if (state.campaignName) document.getElementById('builderCampaignName').value = state.campaignName;
+      if (state.subject) document.getElementById('builderSubject').value = state.subject;
+      if (state.preheader) document.getElementById('builderPreheader').value = state.preheader;
+
+      if (state.canvasHTML && state.blocks) {
+        this.blocks = state.blocks;
+        this.canvas.innerHTML = state.canvasHTML;
+        this.rewireCanvasEvents();
+        this.updatePreview();
+      }
+
+      this.updateSubjectCounter();
+      localStorage.removeItem('emailBuilder_autosave');
+      document.getElementById('autosaveRecoveryBanner')?.remove();
+      utils.showToast('Previous work recovered!', 'success');
+    } catch (e) {
+      utils.showToast('Failed to recover autosave', 'error');
+    }
+  },
+
+  /**
+   * Setup beforeunload warning for unsaved changes
+   */
+  setupUnsavedChangesWarning() {
+    window.addEventListener('beforeunload', (e) => {
+      if (this.hasUnsavedChanges && this.blocks.length > 0) {
+        e.preventDefault();
+        e.returnValue = 'You have unsaved changes in the email builder. Are you sure you want to leave?';
+        return e.returnValue;
+      }
+    });
   },
 
   generateBadge(mode) {

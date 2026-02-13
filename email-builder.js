@@ -124,6 +124,14 @@ const emailBuilder = {
 
       this.currentOrg = { ...org, awards };
 
+      // Update any header block logos on canvas with the real org logo
+      if (org.logo_url) {
+        this.canvas?.querySelectorAll('.email-block-wrapper img[alt="Logo"]').forEach(img => {
+          img.src = org.logo_url;
+        });
+        this.updatePreview();
+      }
+
       utils.showToast('Organisation data loaded - ready to auto-populate!', 'success');
     } catch (error) {
       console.error('Error loading organisation:', error);
@@ -189,7 +197,7 @@ const emailBuilder = {
    * Block Templates
    */
   getHeaderBlock() {
-    const logo = this.currentOrg?.logo_url || 'https://via.placeholder.com/250x100?text=Your+Logo';
+    const logo = this.currentOrg?.logo_url || `data:image/svg+xml,${encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="250" height="100"><rect width="250" height="100" fill="#e9ecef" rx="8"/><text x="125" y="55" text-anchor="middle" font-family="Arial,sans-serif" font-size="16" fill="#6c757d">Your Logo</text></svg>')}`;
     return `
       <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color: #ffffff; padding: 20px;">
         <tr>
@@ -202,7 +210,7 @@ const emailBuilder = {
   },
 
   getHeroBlock() {
-    const heroImage = 'https://via.placeholder.com/600x300?text=Hero+Image';
+    const heroImage = `data:image/svg+xml,${encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="600" height="300"><rect width="600" height="300" fill="#dee2e6" rx="8"/><text x="300" y="155" text-anchor="middle" font-family="Arial,sans-serif" font-size="20" fill="#6c757d">Hero Image</text></svg>')}`;
     return `
       <table width="100%" cellpadding="0" cellspacing="0" border="0">
         <tr>
@@ -381,7 +389,7 @@ const emailBuilder = {
       <table width="100%" cellpadding="0" cellspacing="0" border="0">
         <tr>
           <td style="padding: 20px 40px;">
-            <img src="https://via.placeholder.com/520x300?text=Add+Your+Image" alt="Image" style="width: 100%; max-width: 520px; height: auto; display: block; border-radius: 8px;">
+            <img src="data:image/svg+xml,${encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="520" height="300"><rect width="520" height="300" fill="#dee2e6" rx="8"/><text x="260" y="155" text-anchor="middle" font-family="Arial,sans-serif" font-size="18" fill="#6c757d">Add Your Image</text></svg>')}" alt="Image" style="width: 100%; max-width: 520px; height: auto; display: block; border-radius: 8px;">
           </td>
         </tr>
       </table>

@@ -155,6 +155,12 @@ const emailBuilder = {
 
     // Add edit/delete controls
     this.addBlockControls(blockWrapper, blockId);
+
+    // Wire up rich text content to update preview on input
+    const richContent = blockWrapper.querySelector('.email-richtext-content');
+    if (richContent) {
+      richContent.addEventListener('input', () => this.updatePreview());
+    }
   },
 
   /**
@@ -171,6 +177,8 @@ const emailBuilder = {
       'image': this.getImageBlock(),
       'divider': this.getDividerBlock(),
       'social-links': this.getSocialLinksBlock(),
+      'richtext': this.getRichTextBlock(blockId),
+      'html-code': this.getHtmlCodeBlock(blockId),
       'footer': this.getFooterBlock()
     };
 
@@ -430,6 +438,84 @@ const emailBuilder = {
     `;
   },
 
+  getRichTextBlock(blockId) {
+    return `
+      <div class="email-richtext-toolbar" data-for="${blockId}">
+        <div class="richtext-toolbar-row">
+          <select class="richtext-font-size" onchange="emailBuilder.richTextCmd('fontSize', this.value, '${blockId}'); this.selectedIndex=0;" title="Font Size">
+            <option value="" disabled selected>Size</option>
+            <option value="1">Small</option>
+            <option value="3">Normal</option>
+            <option value="4">Medium</option>
+            <option value="5">Large</option>
+            <option value="6">X-Large</option>
+            <option value="7">Huge</option>
+          </select>
+          <div class="richtext-btn-group">
+            <button type="button" onclick="emailBuilder.richTextCmd('bold', null, '${blockId}')" title="Bold"><i class="bi bi-type-bold"></i></button>
+            <button type="button" onclick="emailBuilder.richTextCmd('italic', null, '${blockId}')" title="Italic"><i class="bi bi-type-italic"></i></button>
+            <button type="button" onclick="emailBuilder.richTextCmd('underline', null, '${blockId}')" title="Underline"><i class="bi bi-type-underline"></i></button>
+            <button type="button" onclick="emailBuilder.richTextCmd('strikeThrough', null, '${blockId}')" title="Strikethrough"><i class="bi bi-type-strikethrough"></i></button>
+          </div>
+          <div class="richtext-btn-group">
+            <button type="button" onclick="emailBuilder.richTextCmd('justifyLeft', null, '${blockId}')" title="Align Left"><i class="bi bi-text-left"></i></button>
+            <button type="button" onclick="emailBuilder.richTextCmd('justifyCenter', null, '${blockId}')" title="Align Center"><i class="bi bi-text-center"></i></button>
+            <button type="button" onclick="emailBuilder.richTextCmd('justifyRight', null, '${blockId}')" title="Align Right"><i class="bi bi-text-right"></i></button>
+          </div>
+          <div class="richtext-btn-group">
+            <button type="button" onclick="emailBuilder.richTextCmd('insertUnorderedList', null, '${blockId}')" title="Bullet List"><i class="bi bi-list-ul"></i></button>
+            <button type="button" onclick="emailBuilder.richTextCmd('insertOrderedList', null, '${blockId}')" title="Numbered List"><i class="bi bi-list-ol"></i></button>
+          </div>
+          <div class="richtext-btn-group">
+            <button type="button" onclick="emailBuilder.insertLink('${blockId}')" title="Insert Link"><i class="bi bi-link-45deg"></i></button>
+            <button type="button" onclick="emailBuilder.richTextCmd('removeFormat', null, '${blockId}')" title="Clear Formatting"><i class="bi bi-eraser"></i></button>
+          </div>
+          <div class="richtext-btn-group">
+            <label title="Text Color" class="richtext-color-label">
+              <i class="bi bi-palette"></i>
+              <input type="color" value="#212529" onchange="emailBuilder.richTextCmd('foreColor', this.value, '${blockId}')" class="richtext-color-input">
+            </label>
+            <label title="Highlight Color" class="richtext-color-label">
+              <i class="bi bi-paint-bucket"></i>
+              <input type="color" value="#ffffff" onchange="emailBuilder.richTextCmd('hiliteColor', this.value, '${blockId}')" class="richtext-color-input">
+            </label>
+          </div>
+        </div>
+      </div>
+      <table width="100%" cellpadding="0" cellspacing="0" border="0">
+        <tr>
+          <td style="padding: 30px 40px;">
+            <div class="email-richtext-content" contenteditable="true" data-block="${blockId}" style="font-family: Arial, sans-serif; font-size: 16px; line-height: 1.6; color: #212529; min-height: 80px; outline: none;">
+              <p>Start typing your content here...</p>
+            </div>
+          </td>
+        </tr>
+      </table>
+    `;
+  },
+
+  getHtmlCodeBlock(blockId) {
+    return `
+      <div class="email-html-code-header" data-for="${blockId}">
+        <span><i class="bi bi-code-slash me-1"></i>HTML Code</span>
+        <button type="button" class="btn btn-outline-primary btn-sm" onclick="emailBuilder.previewHtmlBlock('${blockId}')" title="Preview HTML">
+          <i class="bi bi-eye me-1"></i>Preview
+        </button>
+      </div>
+      <div class="email-html-code-wrap">
+        <textarea class="email-html-code-editor" data-block="${blockId}" placeholder="Paste or write your HTML here..." spellcheck="false" oninput="emailBuilder.onHtmlBlockInput('${blockId}')">&lt;table width="100%" cellpadding="0" cellspacing="0" border="0"&gt;
+  &lt;tr&gt;
+    &lt;td style="padding: 30px 40px;"&gt;
+      &lt;p style="font-family: Arial, sans-serif; font-size: 16px; color: #212529;"&gt;
+        Your custom HTML here...
+      &lt;/p&gt;
+    &lt;/td&gt;
+  &lt;/tr&gt;
+&lt;/table&gt;</textarea>
+      </div>
+    `;
+  },
+
   getFooterBlock() {
     return `
       <table width="100%" cellpadding="0" cellspacing="0" border="0">
@@ -510,6 +596,71 @@ const emailBuilder = {
   },
 
   /**
+   * Rich text toolbar command execution
+   */
+  richTextCmd(command, value, blockId) {
+    const contentDiv = document.querySelector(`.email-richtext-content[data-block="${blockId}"]`);
+    if (!contentDiv) return;
+    contentDiv.focus();
+    document.execCommand(command, false, value);
+    this.updatePreview();
+  },
+
+  /**
+   * Insert link in rich text block
+   */
+  insertLink(blockId) {
+    const url = prompt('Enter URL:', 'https://');
+    if (!url) return;
+    const contentDiv = document.querySelector(`.email-richtext-content[data-block="${blockId}"]`);
+    if (!contentDiv) return;
+    contentDiv.focus();
+    document.execCommand('createLink', false, url);
+    // Style the newly created link
+    const links = contentDiv.querySelectorAll('a:not([style])');
+    links.forEach(link => {
+      link.style.color = '#0d6efd';
+      link.style.textDecoration = 'underline';
+    });
+    this.updatePreview();
+  },
+
+  /**
+   * Preview HTML code block
+   */
+  previewHtmlBlock(blockId) {
+    const textarea = document.querySelector(`.email-html-code-editor[data-block="${blockId}"]`);
+    if (!textarea) return;
+    const wrapper = textarea.closest('.email-block-wrapper');
+    const codeWrap = wrapper.querySelector('.email-html-code-wrap');
+    let previewDiv = wrapper.querySelector('.email-html-preview');
+
+    if (previewDiv) {
+      // Toggle back to editor
+      previewDiv.remove();
+      codeWrap.style.display = '';
+      const btn = wrapper.querySelector('.email-html-code-header button');
+      if (btn) btn.innerHTML = '<i class="bi bi-eye me-1"></i>Preview';
+    } else {
+      // Show preview
+      previewDiv = document.createElement('div');
+      previewDiv.className = 'email-html-preview';
+      previewDiv.innerHTML = textarea.value;
+      codeWrap.style.display = 'none';
+      codeWrap.insertAdjacentElement('afterend', previewDiv);
+      const btn = wrapper.querySelector('.email-html-code-header button');
+      if (btn) btn.innerHTML = '<i class="bi bi-code-slash me-1"></i>Edit';
+    }
+  },
+
+  /**
+   * Handle HTML code block input
+   */
+  onHtmlBlockInput(blockId) {
+    this.updatePreview();
+  },
+
+  /**
    * Show empty state
    */
   showEmptyState() {
@@ -540,7 +691,20 @@ const emailBuilder = {
    */
   generateFullHTML() {
     const blocks = Array.from(this.canvas.querySelectorAll('.email-block-wrapper'))
-      .map(wrapper => wrapper.innerHTML.replace(/<div class="email-block-controls">[\s\S]*?<\/div>/, ''))
+      .map(wrapper => {
+        // HTML code block: use textarea value as raw HTML
+        const htmlEditor = wrapper.querySelector('.email-html-code-editor');
+        if (htmlEditor) {
+          return htmlEditor.value;
+        }
+        // Rich text block: extract only the content div, wrap in table
+        const richContent = wrapper.querySelector('.email-richtext-content');
+        if (richContent) {
+          return `<table width="100%" cellpadding="0" cellspacing="0" border="0"><tr><td style="padding: 30px 40px; font-family: Arial, sans-serif; font-size: 16px; line-height: 1.6; color: #212529;">${richContent.innerHTML}</td></tr></table>`;
+        }
+        // Standard blocks: strip controls
+        return wrapper.innerHTML.replace(/<div class="email-block-controls">[\s\S]*?<\/div>/, '');
+      })
       .join('');
 
     const preheader = document.getElementById('builderPreheader')?.value || '';

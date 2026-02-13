@@ -549,6 +549,36 @@ body.dark-mode {
 }
 
 /* ==================================================== */
+/* SPLASH SCREEN */
+/* ==================================================== */
+.splash-screen {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: #f8f9fa;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10000;
+}
+
+.splash-content {
+  text-align: center;
+}
+
+.splash-icon {
+  font-size: 3rem;
+  color: var(--primary-color, #0d6efd);
+}
+
+.splash-content h2 {
+  margin-top: 0.5rem;
+  color: #333;
+}
+
+/* ==================================================== */
 /* CONNECTION STATUS */
 /* ==================================================== */
 .connection-status {

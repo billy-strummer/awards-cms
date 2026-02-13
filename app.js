@@ -312,6 +312,15 @@ document.addEventListener('DOMContentLoaded', function() {
   // STEP 8: Check for existing session
   // ==========================================
   authModule.checkSession();
+
+  // Safety timeout: if splash screen is still visible after 10s, force show login
+  setTimeout(() => {
+    const splash = document.getElementById('splashScreen');
+    if (splash && splash.style.display !== 'none') {
+      console.warn('⚠️ Splash screen timeout - forcing login page');
+      authModule.showLogin();
+    }
+  }, 10000);
   
   // ==========================================
   // STEP 9: Page Visibility API

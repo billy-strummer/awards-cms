@@ -54,6 +54,14 @@ Vote now: {{website}}
     }
   },
 
+  // Recommended image dimensions per platform
+  platformImageSizes: {
+    twitter: { width: 1200, height: 675, label: 'Twitter (1200x675)' },
+    facebook: { width: 1200, height: 630, label: 'Facebook (1200x630)' },
+    instagram: { width: 1080, height: 1080, label: 'Instagram (1080x1080)' },
+    linkedin: { width: 1200, height: 627, label: 'LinkedIn (1200x627)' }
+  },
+
   async initialize() {
     try {
       utils.showLoading();
@@ -66,8 +74,11 @@ Vote now: {{website}}
         this.initialized = true;
       }
 
-      await this.loadScheduledPosts();
-      await this.loadDraftPosts();
+      await Promise.all([
+        this.loadScheduledPosts(),
+        this.loadDraftPosts(),
+        this.loadPublishedPosts()
+      ]);
 
     } catch (error) {
       console.error('Error initializing social media manager:', error);
@@ -302,6 +313,9 @@ Vote now: {{website}}
         `;
       }
     });
+
+    // Validate dimensions for the selected image
+    this.validateImageDimensions(imageUrl);
   },
 
   async handleImageUpload() {
@@ -337,6 +351,7 @@ Vote now: {{website}}
       }
 
       this.updateImagePreview();
+      this.validateImageDimensions(this.uploadedImageUrl);
       utils.showToast('Image uploaded successfully', 'success');
 
     } catch (error) {
@@ -344,6 +359,7 @@ Vote now: {{website}}
       // Fallback to local preview
       this.uploadedImageUrl = URL.createObjectURL(file);
       this.updateImagePreview();
+      this.validateImageDimensions(this.uploadedImageUrl);
       utils.showToast('Image loaded locally (storage upload unavailable)', 'warning');
     } finally {
       utils.hideLoading();
@@ -835,6 +851,20 @@ Vote now: {{website}}
     this.uploadedImageUrl = null;
     this.currentTemplate = null;
 
+    // Clear platform overrides
+    const overrideToggle = document.getElementById('smPlatformOverrides');
+    if (overrideToggle) overrideToggle.checked = false;
+    const overrideContainer = document.getElementById('platformOverridesContainer');
+    if (overrideContainer) overrideContainer.style.display = 'none';
+    ['smTwitterContent', 'smFacebookContent', 'smInstagramContent', 'smLinkedInContent'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.value = '';
+    });
+
+    // Clear image warnings
+    const warningContainer = document.getElementById('imageSizeWarning');
+    if (warningContainer) warningContainer.innerHTML = '';
+
     document.querySelectorAll('.template-card').forEach(card => {
       card.classList.remove('selected');
     });
@@ -849,6 +879,501 @@ Vote now: {{website}}
 
   openPlatformSettings() {
     utils.showToast('Platform connection settings require OAuth API keys for Twitter, Facebook, Instagram and LinkedIn. Configure these in your .env file.', 'info');
+  },
+
+  /* ==================================================== */
+  /* PUBLISHED POSTS HISTORY */
+  /* ==================================================== */
+
+  async loadPublishedPosts() {
+    try {
+      const { data: posts, error } = await STATE.client
+        .from('social_media_posts')
+        .select(`
+          *,
+          organisations:company_id(company_name),
+          awards:award_id(award_name)
+        `)
+        .eq('status', 'published')
+        .order('created_at', { ascending: false })
+        .limit(20);
+
+      if (error) throw error;
+
+      this.renderPublishedPosts(posts || []);
+
+    } catch (error) {
+      console.error('Error loading published posts:', error);
+    }
+  },
+
+  renderPublishedPosts(posts) {
+    const container = document.getElementById('publishedPostsList');
+    const countBadge = document.getElementById('publishedPostsCount');
+
+    if (countBadge) countBadge.textContent = posts.length;
+    if (!container) return;
+
+    if (posts.length === 0) {
+      container.innerHTML = `
+        <div class="text-center text-muted py-4">
+          <i class="bi bi-send display-4 d-block mb-2 opacity-25"></i>
+          No published posts yet
+        </div>
+      `;
+      return;
+    }
+
+    container.innerHTML = posts.map(post => {
+      const createdDate = new Date(post.created_at);
+      const companyName = utils.escapeHtml(post.organisations?.company_name || 'No company');
+      const awardName = utils.escapeHtml(post.awards?.award_name || 'No award');
+      const contentPreview = utils.escapeHtml(this.truncate(post.content, 120));
+
+      const platformBadges = (post.platforms || []).map(platform => {
+        const icons = {
+          twitter: '<i class="bi bi-twitter text-info"></i>',
+          facebook: '<i class="bi bi-facebook text-primary"></i>',
+          instagram: '<i class="bi bi-instagram text-danger"></i>',
+          linkedin: '<i class="bi bi-linkedin text-info"></i>'
+        };
+        return `<span class="badge bg-light text-dark">${icons[platform] || ''} ${utils.escapeHtml(platform)}</span>`;
+      }).join('');
+
+      return `
+        <div class="published-post-item border-bottom py-3">
+          <div class="d-flex justify-content-between align-items-start">
+            <div class="flex-grow-1">
+              <h6 class="mb-1">${companyName} - ${awardName}</h6>
+              <div class="post-preview small text-muted mb-2">${contentPreview}</div>
+              <div class="d-flex align-items-center gap-3">
+                <small class="text-muted">
+                  <i class="bi bi-clock me-1"></i>${createdDate.toLocaleDateString()} ${createdDate.toLocaleTimeString([], {hour: '2-digit', minute: '2-digit'})}
+                </small>
+                <div class="platform-badges">${platformBadges}</div>
+              </div>
+            </div>
+            <button class="btn btn-sm btn-outline-primary" onclick="socialMediaModule.reusePost('${post.id}')" title="Reuse this post">
+              <i class="bi bi-arrow-repeat"></i>
+            </button>
+          </div>
+        </div>
+      `;
+    }).join('');
+  },
+
+  /**
+   * Reuse a published post — loads it into the form as a new post
+   */
+  async reusePost(postId) {
+    try {
+      utils.showLoading();
+
+      const { data: post, error } = await STATE.client
+        .from('social_media_posts')
+        .select('*')
+        .eq('id', postId)
+        .single();
+
+      if (error) throw error;
+
+      // Do NOT set editingPostId - this creates a new post
+      document.getElementById('smPostContent').value = post.content || '';
+
+      if (post.company_id) {
+        document.getElementById('smCompanySelect').value = post.company_id;
+      }
+      if (post.award_id) {
+        document.getElementById('smAwardSelect').value = post.award_id;
+      }
+
+      const platforms = post.platforms || [];
+      document.getElementById('platformTwitter').checked = platforms.includes('twitter');
+      document.getElementById('platformFacebook').checked = platforms.includes('facebook');
+      document.getElementById('platformInstagram').checked = platforms.includes('instagram');
+      document.getElementById('platformLinkedIn').checked = platforms.includes('linkedin');
+
+      if (post.template_type) {
+        this.currentTemplate = post.template_type;
+      }
+
+      this.updatePostPreview();
+      document.getElementById('smPostContent').scrollIntoView({ behavior: 'smooth' });
+
+      utils.showToast('Post loaded — edit and publish as a new post', 'info');
+
+    } catch (error) {
+      console.error('Error loading post:', error);
+      utils.showToast('Failed to load post: ' + error.message, 'error');
+    } finally {
+      utils.hideLoading();
+    }
+  },
+
+  /* ==================================================== */
+  /* BULK POSTING */
+  /* ==================================================== */
+
+  async openBulkGenerateModal() {
+    const modal = document.getElementById('bulkGenerateModal');
+    if (!modal) return;
+
+    // Populate award select in modal
+    const awardSelect = document.getElementById('bulkAwardSelect');
+    if (awardSelect) {
+      const mainSelect = document.getElementById('smAwardSelect');
+      awardSelect.innerHTML = mainSelect.innerHTML;
+    }
+
+    const bsModal = new bootstrap.Modal(modal);
+    bsModal.show();
+  },
+
+  async bulkGenerate() {
+    const awardId = document.getElementById('bulkAwardSelect').value;
+    const templateType = document.getElementById('bulkTemplateType').value;
+
+    if (!awardId) {
+      utils.showToast('Please select an award category', 'warning');
+      return;
+    }
+
+    if (!templateType) {
+      utils.showToast('Please select a template type', 'warning');
+      return;
+    }
+
+    try {
+      utils.showLoading();
+
+      // Get the award name
+      const awardSelect = document.getElementById('bulkAwardSelect');
+      const awardName = awardSelect.options[awardSelect.selectedIndex].text.trim();
+
+      // Fetch nominees/winners for this award from assignments
+      const statusFilter = templateType === 'winner' ? 'winner' : 'nominated';
+      const { data: assignments, error } = await STATE.client
+        .from('award_assignments')
+        .select(`
+          *,
+          organisations:organisation_id(id, company_name, logo_url, website)
+        `)
+        .eq('award_id', awardId)
+        .eq('status', statusFilter);
+
+      if (error) throw error;
+
+      if (!assignments || assignments.length === 0) {
+        utils.showToast(`No ${statusFilter} companies found for this award`, 'warning');
+        return;
+      }
+
+      const template = this.templates[templateType];
+      if (!template) {
+        utils.showToast('Invalid template type', 'error');
+        return;
+      }
+
+      const platforms = [];
+      if (document.getElementById('bulkPlatformTwitter').checked) platforms.push('twitter');
+      if (document.getElementById('bulkPlatformFacebook').checked) platforms.push('facebook');
+      if (document.getElementById('bulkPlatformInstagram').checked) platforms.push('instagram');
+      if (document.getElementById('bulkPlatformLinkedIn').checked) platforms.push('linkedin');
+
+      if (platforms.length === 0) {
+        utils.showToast('Please select at least one platform', 'warning');
+        return;
+      }
+
+      const saveAs = document.getElementById('bulkSaveAs').value;
+
+      // Generate posts for each company
+      const posts = assignments.map(assignment => {
+        const company = assignment.organisations;
+        if (!company) return null;
+
+        return {
+          company_id: company.id,
+          award_id: awardId,
+          content: template.content,
+          template_type: templateType,
+          platforms: platforms,
+          image_url: company.logo_url || null,
+          add_logo_overlay: true,
+          status: saveAs,
+          created_at: new Date().toISOString()
+        };
+      }).filter(Boolean);
+
+      if (posts.length === 0) {
+        utils.showToast('No valid posts to generate', 'warning');
+        return;
+      }
+
+      const { error: insertError } = await STATE.client
+        .from('social_media_posts')
+        .insert(posts);
+
+      if (insertError) throw insertError;
+
+      // Close modal
+      const modal = bootstrap.Modal.getInstance(document.getElementById('bulkGenerateModal'));
+      if (modal) modal.hide();
+
+      utils.showToast(`Generated ${posts.length} posts as ${saveAs === 'draft' ? 'drafts' : 'scheduled'}`, 'success');
+
+      // Refresh lists
+      await Promise.all([
+        this.loadScheduledPosts(),
+        this.loadDraftPosts(),
+        this.loadPublishedPosts()
+      ]);
+
+    } catch (error) {
+      console.error('Error bulk generating posts:', error);
+      utils.showToast('Failed to generate posts: ' + error.message, 'error');
+    } finally {
+      utils.hideLoading();
+    }
+  },
+
+  /* ==================================================== */
+  /* PLATFORM-SPECIFIC CONTENT */
+  /* ==================================================== */
+
+  togglePlatformOverrides() {
+    const container = document.getElementById('platformOverridesContainer');
+    const toggle = document.getElementById('smPlatformOverrides');
+    if (!container || !toggle) return;
+
+    if (toggle.checked) {
+      container.style.display = 'block';
+      this.syncPlatformOverrides();
+    } else {
+      container.style.display = 'none';
+    }
+  },
+
+  /**
+   * Copy main content into platform-specific fields as starting point
+   */
+  syncPlatformOverrides() {
+    const mainContent = document.getElementById('smPostContent').value;
+    const fields = ['smTwitterContent', 'smFacebookContent', 'smInstagramContent', 'smLinkedInContent'];
+    fields.forEach(id => {
+      const el = document.getElementById(id);
+      if (el && !el.value) {
+        el.value = mainContent;
+      }
+    });
+  },
+
+  /**
+   * Get content for a specific platform (override or main)
+   */
+  getContentForPlatform(platform) {
+    const toggle = document.getElementById('smPlatformOverrides');
+    if (toggle && toggle.checked) {
+      const fieldMap = {
+        twitter: 'smTwitterContent',
+        facebook: 'smFacebookContent',
+        instagram: 'smInstagramContent',
+        linkedin: 'smLinkedInContent'
+      };
+      const field = document.getElementById(fieldMap[platform]);
+      if (field && field.value.trim()) {
+        return field.value.trim();
+      }
+    }
+    return document.getElementById('smPostContent').value.trim();
+  },
+
+  /* ==================================================== */
+  /* IMAGE SIZE VALIDATION */
+  /* ==================================================== */
+
+  /**
+   * Validate image dimensions and show warnings for platform requirements
+   */
+  validateImageDimensions(imageUrl) {
+    const warningContainer = document.getElementById('imageSizeWarning');
+    if (!warningContainer) return;
+
+    if (!imageUrl) {
+      warningContainer.innerHTML = '';
+      return;
+    }
+
+    const img = new Image();
+    img.onload = () => {
+      const width = img.naturalWidth;
+      const height = img.naturalHeight;
+      const warnings = [];
+
+      const platforms = this.platformImageSizes;
+      for (const [platform, spec] of Object.entries(platforms)) {
+        const checkbox = document.getElementById(`platform${platform.charAt(0).toUpperCase() + platform.slice(1)}`);
+        if (!checkbox || !checkbox.checked) continue;
+
+        const widthRatio = width / spec.width;
+        const heightRatio = height / spec.height;
+
+        // Warn if image is significantly smaller than recommended or wrong aspect ratio
+        if (width < spec.width * 0.5 || height < spec.height * 0.5) {
+          warnings.push(`<i class="bi bi-exclamation-triangle text-warning me-1"></i>${spec.label}: Image too small (${width}x${height}), recommended ${spec.width}x${spec.height}`);
+        } else {
+          const expectedRatio = spec.width / spec.height;
+          const actualRatio = width / height;
+          if (Math.abs(expectedRatio - actualRatio) > 0.3) {
+            warnings.push(`<i class="bi bi-info-circle text-info me-1"></i>${spec.label}: Aspect ratio differs — your image is ${width}x${height}, recommended ${spec.width}x${spec.height}`);
+          }
+        }
+      };
+
+      if (warnings.length > 0) {
+        warningContainer.innerHTML = `
+          <div class="alert alert-light border mt-2 mb-0 py-2 px-3">
+            <small class="fw-bold d-block mb-1">Image size recommendations:</small>
+            ${warnings.map(w => `<small class="d-block">${w}</small>`).join('')}
+          </div>
+        `;
+      } else {
+        warningContainer.innerHTML = `
+          <div class="alert alert-success mt-2 mb-0 py-2 px-3">
+            <small><i class="bi bi-check-circle me-1"></i>Image dimensions look good (${width}x${height})</small>
+          </div>
+        `;
+      }
+    };
+
+    img.onerror = () => {
+      warningContainer.innerHTML = '';
+    };
+
+    img.src = imageUrl;
+  },
+
+  /* ==================================================== */
+  /* POST ANALYTICS */
+  /* ==================================================== */
+
+  async loadAnalytics() {
+    const container = document.getElementById('analyticsContent');
+    if (!container) return;
+
+    try {
+      // Count posts by status
+      const { data: allPosts, error } = await STATE.client
+        .from('social_media_posts')
+        .select('status, platforms, created_at');
+
+      if (error) throw error;
+
+      const posts = allPosts || [];
+      const published = posts.filter(p => p.status === 'published');
+      const scheduled = posts.filter(p => p.status === 'scheduled');
+      const drafts = posts.filter(p => p.status === 'draft');
+
+      // Count by platform
+      const platformCounts = { twitter: 0, facebook: 0, instagram: 0, linkedin: 0 };
+      published.forEach(post => {
+        (post.platforms || []).forEach(p => {
+          if (platformCounts[p] !== undefined) platformCounts[p]++;
+        });
+      });
+
+      // Posts this week
+      const weekAgo = new Date();
+      weekAgo.setDate(weekAgo.getDate() - 7);
+      const thisWeek = published.filter(p => new Date(p.created_at) >= weekAgo);
+
+      // Posts this month
+      const monthAgo = new Date();
+      monthAgo.setDate(monthAgo.getDate() - 30);
+      const thisMonth = published.filter(p => new Date(p.created_at) >= monthAgo);
+
+      container.innerHTML = `
+        <div class="row g-3 mb-4">
+          <div class="col-md-3">
+            <div class="text-center p-3 border rounded">
+              <div class="fs-3 fw-bold text-success">${published.length}</div>
+              <small class="text-muted">Published</small>
+            </div>
+          </div>
+          <div class="col-md-3">
+            <div class="text-center p-3 border rounded">
+              <div class="fs-3 fw-bold text-primary">${scheduled.length}</div>
+              <small class="text-muted">Scheduled</small>
+            </div>
+          </div>
+          <div class="col-md-3">
+            <div class="text-center p-3 border rounded">
+              <div class="fs-3 fw-bold text-secondary">${drafts.length}</div>
+              <small class="text-muted">Drafts</small>
+            </div>
+          </div>
+          <div class="col-md-3">
+            <div class="text-center p-3 border rounded">
+              <div class="fs-3 fw-bold text-info">${posts.length}</div>
+              <small class="text-muted">Total Posts</small>
+            </div>
+          </div>
+        </div>
+
+        <div class="row g-3 mb-4">
+          <div class="col-md-6">
+            <div class="card">
+              <div class="card-body">
+                <h6 class="card-title"><i class="bi bi-graph-up me-2"></i>Activity</h6>
+                <div class="d-flex justify-content-between py-2 border-bottom">
+                  <span class="text-muted">This week</span>
+                  <strong>${thisWeek.length} posts</strong>
+                </div>
+                <div class="d-flex justify-content-between py-2 border-bottom">
+                  <span class="text-muted">This month</span>
+                  <strong>${thisMonth.length} posts</strong>
+                </div>
+                <div class="d-flex justify-content-between py-2">
+                  <span class="text-muted">All time</span>
+                  <strong>${published.length} posts</strong>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="col-md-6">
+            <div class="card">
+              <div class="card-body">
+                <h6 class="card-title"><i class="bi bi-share me-2"></i>Posts by Platform</h6>
+                <div class="d-flex justify-content-between py-2 border-bottom">
+                  <span><i class="bi bi-twitter text-info me-2"></i>Twitter/X</span>
+                  <strong>${platformCounts.twitter}</strong>
+                </div>
+                <div class="d-flex justify-content-between py-2 border-bottom">
+                  <span><i class="bi bi-facebook text-primary me-2"></i>Facebook</span>
+                  <strong>${platformCounts.facebook}</strong>
+                </div>
+                <div class="d-flex justify-content-between py-2 border-bottom">
+                  <span><i class="bi bi-instagram text-danger me-2"></i>Instagram</span>
+                  <strong>${platformCounts.instagram}</strong>
+                </div>
+                <div class="d-flex justify-content-between py-2">
+                  <span><i class="bi bi-linkedin text-info me-2"></i>LinkedIn</span>
+                  <strong>${platformCounts.linkedin}</strong>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      `;
+
+    } catch (error) {
+      console.error('Error loading analytics:', error);
+      container.innerHTML = `
+        <div class="alert alert-danger">
+          <i class="bi bi-exclamation-triangle me-2"></i>Failed to load analytics
+        </div>
+      `;
+    }
   }
 };
 

@@ -2755,7 +2755,7 @@
                         <label class="form-label fw-bold">Post Template</label>
                         <div class="row g-3">
                           <div class="col-md-4">
-                            <div class="card template-card" onclick="socialMediaModule.selectTemplate('nominee')">
+                            <div class="card template-card" onclick="socialMediaModule.selectTemplate('nominee', event)">
                               <div class="card-body text-center">
                                 <i class="bi bi-star text-warning fs-1 mb-2"></i>
                                 <h6>Nominee Announcement</h6>
@@ -2764,7 +2764,7 @@
                             </div>
                           </div>
                           <div class="col-md-4">
-                            <div class="card template-card" onclick="socialMediaModule.selectTemplate('winner')">
+                            <div class="card template-card" onclick="socialMediaModule.selectTemplate('winner', event)">
                               <div class="card-body text-center">
                                 <i class="bi bi-trophy text-success fs-1 mb-2"></i>
                                 <h6>Winner Announcement</h6>
@@ -2773,7 +2773,7 @@
                             </div>
                           </div>
                           <div class="col-md-4">
-                            <div class="card template-card" onclick="socialMediaModule.selectTemplate('voting')">
+                            <div class="card template-card" onclick="socialMediaModule.selectTemplate('voting', event)">
                               <div class="card-body text-center">
                                 <i class="bi bi-hand-thumbs-up text-primary fs-1 mb-2"></i>
                                 <h6>Voting Reminder</h6>
@@ -2935,7 +2935,7 @@
                   </div>
 
                   <!-- Scheduled Posts -->
-                  <div class="card">
+                  <div class="card mb-4">
                     <div class="card-header d-flex justify-content-between align-items-center">
                       <h5 class="mb-0">
                         <i class="bi bi-calendar-check me-2"></i>Scheduled Posts
@@ -2947,6 +2947,23 @@
                         <div class="text-center text-muted py-4">
                           <i class="bi bi-calendar-x display-4 d-block mb-2 opacity-25"></i>
                           No scheduled posts
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Draft Posts -->
+                  <div class="card">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                      <h5 class="mb-0">
+                        <i class="bi bi-file-earmark-text me-2"></i>Drafts
+                      </h5>
+                      <span class="badge bg-secondary" id="draftPostsCount">0</span>
+                    </div>
+                    <div class="card-body">
+                      <div id="draftPostsList">
+                        <div class="text-center text-muted py-3">
+                          <small>No drafts</small>
                         </div>
                       </div>
                     </div>
@@ -3044,6 +3061,9 @@
                             <div class="preview-content" id="instagramPreviewText">
                               Your caption will appear here...
                             </div>
+                            <div class="preview-meta">
+                              <small class="text-muted">Character count: <span id="instagramCharCount">0</span>/2,200</small>
+                            </div>
                           </div>
                         </div>
 
@@ -3060,6 +3080,9 @@
                               <div class="text-center text-muted py-4">
                                 <i class="bi bi-image opacity-25 fs-1"></i>
                               </div>
+                            </div>
+                            <div class="preview-meta">
+                              <small class="text-muted">Character count: <span id="linkedinCharCount">0</span>/3,000</small>
                             </div>
                           </div>
                         </div>

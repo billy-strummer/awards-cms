@@ -10,7 +10,16 @@ const socialMediaModule = {
   logoOverlayEnabled: true,
   editingPostId: null,
   allPosts: [],
+  initialized: false,
   britishTradeAwardsLogoUrl: '/assets/british-trade-awards-logo.png',
+
+  // Platform character limits
+  platformLimits: {
+    twitter: 280,
+    facebook: 63206,
+    instagram: 2200,
+    linkedin: 3000
+  },
 
   templates: {
     nominee: {
@@ -21,7 +30,7 @@ We're proud to recognize their outstanding achievements.
 
 Cast your vote now: {{website}}
 
-#BritishTradeAwards #{{award_name}} #Excellence`
+#BritishTradeAwards #{{award_hashtag}} #Excellence`
     },
     winner: {
       name: 'Winner Announcement',
@@ -31,7 +40,7 @@ Their exceptional work has set the standard for excellence in British trade.
 
 Learn more about their winning entry: {{website}}
 
-#BritishTradeAwards #Winner #{{award_name}}`
+#BritishTradeAwards #Winner #{{award_hashtag}}`
     },
     voting: {
       name: 'Voting Reminder',
@@ -41,7 +50,7 @@ Show your support and cast your vote today.
 
 Vote now: {{website}}
 
-#BritishTradeAwards #VoteNow #{{award_name}}`
+#BritishTradeAwards #VoteNow #{{award_hashtag}}`
     }
   },
 
@@ -49,18 +58,33 @@ Vote now: {{website}}
     try {
       utils.showLoading();
 
-      await this.loadCompanies();
-      await this.loadAwards();
+      if (!this.initialized) {
+        await this.loadCompanies();
+        await this.loadAwards();
+        this.setupImageSourceHandlers();
+        this.setupScheduleDateMin();
+        this.initialized = true;
+      }
+
       await this.loadScheduledPosts();
       await this.loadDraftPosts();
-
-      this.setupImageSourceHandlers();
 
     } catch (error) {
       console.error('Error initializing social media manager:', error);
       utils.showToast('Failed to load social media manager: ' + error.message, 'error');
     } finally {
       utils.hideLoading();
+    }
+  },
+
+  /**
+   * Set minimum date on schedule input to prevent past dates
+   */
+  setupScheduleDateMin() {
+    const dateInput = document.getElementById('smScheduleDate');
+    if (dateInput) {
+      const today = new Date().toISOString().split('T')[0];
+      dateInput.setAttribute('min', today);
     }
   },
 
@@ -74,14 +98,15 @@ Vote now: {{website}}
     if (error) throw error;
 
     const select = document.getElementById('smCompanySelect');
-    select.innerHTML = '<option value="">Select company...</option>' +
-      companies.map(company => `
-        <option value="${company.id}"
-                data-logo="${company.logo_url || ''}"
-                data-website="${company.website || ''}">
-          ${company.company_name}
-        </option>
-      `).join('');
+    select.innerHTML = '<option value="">Select company...</option>';
+    (companies || []).forEach(company => {
+      const option = document.createElement('option');
+      option.value = company.id;
+      option.textContent = company.company_name;
+      option.dataset.logo = company.logo_url || '';
+      option.dataset.website = company.website || '';
+      select.appendChild(option);
+    });
   },
 
   async loadAwards() {
@@ -94,20 +119,24 @@ Vote now: {{website}}
     if (error) throw error;
 
     const select = document.getElementById('smAwardSelect');
-    select.innerHTML = '<option value="">Select award...</option>' +
-      awards.map(award => `
-        <option value="${award.id}">
-          ${award.award_name}
-        </option>
-      `).join('');
+    select.innerHTML = '<option value="">Select award...</option>';
+    (awards || []).forEach(award => {
+      const option = document.createElement('option');
+      option.value = award.id;
+      option.textContent = award.award_name;
+      select.appendChild(option);
+    });
   },
 
-  selectTemplate(templateKey) {
+  selectTemplate(templateKey, event) {
     document.querySelectorAll('.template-card').forEach(card => {
       card.classList.remove('selected');
     });
 
-    event.target.closest('.template-card').classList.add('selected');
+    if (event) {
+      const card = event.target.closest('.template-card');
+      if (card) card.classList.add('selected');
+    }
 
     this.currentTemplate = templateKey;
     const template = this.templates[templateKey];
@@ -117,21 +146,30 @@ Vote now: {{website}}
     this.updatePostPreview();
   },
 
+  /**
+   * Convert a string to a valid hashtag (remove spaces, special chars)
+   */
+  toHashtag(str) {
+    return str.replace(/[^a-zA-Z0-9]/g, '');
+  },
+
   updatePostPreview() {
     const content = document.getElementById('smPostContent').value;
     const companySelect = document.getElementById('smCompanySelect');
     const awardSelect = document.getElementById('smAwardSelect');
 
     const selectedCompanyOption = companySelect.options[companySelect.selectedIndex];
-    const companyName = selectedCompanyOption ? selectedCompanyOption.text.trim() : '{{company_name}}';
-    const companyWebsite = selectedCompanyOption ? selectedCompanyOption.dataset.website : 'https://britishtrade.awards';
+    const companyName = (selectedCompanyOption && selectedCompanyOption.value) ? selectedCompanyOption.text.trim() : '{{company_name}}';
+    const companyWebsite = (selectedCompanyOption && selectedCompanyOption.value) ? (selectedCompanyOption.dataset.website || 'https://britishtrade.awards') : 'https://britishtrade.awards';
 
-    const awardName = awardSelect.options[awardSelect.selectedIndex]?.text.trim() || '{{award_name}}';
+    const awardName = (awardSelect.options[awardSelect.selectedIndex]?.value) ? awardSelect.options[awardSelect.selectedIndex].text.trim() : '{{award_name}}';
+    const awardHashtag = awardName.startsWith('{{') ? '{{award_hashtag}}' : this.toHashtag(awardName);
     const currentYear = new Date().getFullYear();
 
     let processedContent = content
       .replace(/\{\{company_name\}\}/g, companyName)
       .replace(/\{\{award_name\}\}/g, awardName)
+      .replace(/\{\{award_hashtag\}\}/g, awardHashtag)
       .replace(/\{\{year\}\}/g, currentYear)
       .replace(/\{\{website\}\}/g, companyWebsite);
 
@@ -141,19 +179,50 @@ Vote now: {{website}}
       if (el) el.textContent = processedContent;
     });
 
-    const charCount = document.getElementById('twitterCharCount');
-    if (charCount) {
-      charCount.textContent = processedContent.length;
-      if (processedContent.length > 280) {
-        charCount.style.color = '#dc3545';
-      } else if (processedContent.length > 250) {
-        charCount.style.color = '#ffc107';
+    this.updateCharacterCounts(processedContent);
+    this.updateImagePreview();
+  },
+
+  /**
+   * Update character counts for all platforms
+   */
+  updateCharacterCounts(processedContent) {
+    const len = processedContent.length;
+
+    // Twitter
+    const twitterCount = document.getElementById('twitterCharCount');
+    if (twitterCount) {
+      twitterCount.textContent = len;
+      if (len > 280) {
+        twitterCount.closest('.preview-meta').className = 'preview-meta text-danger';
+      } else if (len > 250) {
+        twitterCount.closest('.preview-meta').className = 'preview-meta text-warning';
       } else {
-        charCount.style.color = '#6c757d';
+        twitterCount.closest('.preview-meta').className = 'preview-meta';
       }
     }
 
-    this.updateImagePreview();
+    // Instagram
+    const igCount = document.getElementById('instagramCharCount');
+    if (igCount) {
+      igCount.textContent = len;
+      if (len > 2200) {
+        igCount.closest('.preview-meta').className = 'preview-meta text-danger';
+      } else {
+        igCount.closest('.preview-meta').className = 'preview-meta';
+      }
+    }
+
+    // LinkedIn
+    const liCount = document.getElementById('linkedinCharCount');
+    if (liCount) {
+      liCount.textContent = len;
+      if (len > 3000) {
+        liCount.closest('.preview-meta').className = 'preview-meta text-danger';
+      } else {
+        liCount.closest('.preview-meta').className = 'preview-meta';
+      }
+    }
   },
 
   setupImageSourceHandlers() {
@@ -205,14 +274,26 @@ Vote now: {{website}}
       if (!previewDiv) return;
 
       if (imageUrl) {
-        previewDiv.innerHTML = `
-          <div class="image-preview-container">
-            <img src="${imageUrl}" alt="Post image" style="max-width: 100%; height: auto;">
-            ${addLogoOverlay ? `
-              <img src="${this.britishTradeAwardsLogoUrl}" alt="British Trade Awards" class="logo-overlay">
-            ` : ''}
-          </div>
-        `;
+        const container = document.createElement('div');
+        container.className = 'image-preview-container';
+
+        const img = document.createElement('img');
+        img.src = imageUrl;
+        img.alt = 'Post image';
+        img.style.maxWidth = '100%';
+        img.style.height = 'auto';
+        container.appendChild(img);
+
+        if (addLogoOverlay) {
+          const logo = document.createElement('img');
+          logo.src = this.britishTradeAwardsLogoUrl;
+          logo.alt = 'British Trade Awards';
+          logo.className = 'logo-overlay';
+          container.appendChild(logo);
+        }
+
+        previewDiv.innerHTML = '';
+        previewDiv.appendChild(container);
       } else {
         previewDiv.innerHTML = `
           <div class="text-center text-muted py-4">
@@ -301,6 +382,12 @@ Vote now: {{website}}
         return;
       }
 
+      // Confirm before posting immediately
+      if (postType === 'immediate') {
+        const platformNames = platforms.map(p => p.charAt(0).toUpperCase() + p.slice(1)).join(', ');
+        if (!confirm(`Post immediately to ${platformNames}?`)) return;
+      }
+
       let scheduledFor = null;
       if (postType === 'scheduled') {
         const scheduleDate = document.getElementById('smScheduleDate').value;
@@ -308,6 +395,13 @@ Vote now: {{website}}
 
         if (!scheduleDate || !scheduleTime) {
           utils.showToast('Please select a date and time for scheduling', 'warning');
+          return;
+        }
+
+        // Validate not in the past
+        const scheduledDateTime = new Date(`${scheduleDate}T${scheduleTime}:00`);
+        if (scheduledDateTime <= new Date()) {
+          utils.showToast('Scheduled date/time must be in the future', 'warning');
           return;
         }
 
@@ -476,6 +570,15 @@ Vote now: {{website}}
     }
   },
 
+  /**
+   * Safely truncate text, only adding ellipsis if actually truncated
+   */
+  truncate(text, maxLen) {
+    if (!text) return '';
+    if (text.length <= maxLen) return text;
+    return text.substring(0, maxLen) + '...';
+  },
+
   renderScheduledPosts(posts) {
     const container = document.getElementById('scheduledPostsList');
     const countBadge = document.getElementById('scheduledPostsCount');
@@ -496,6 +599,10 @@ Vote now: {{website}}
 
     container.innerHTML = posts.map(post => {
       const scheduledDate = new Date(post.scheduled_for);
+      const companyName = utils.escapeHtml(post.organisations?.company_name || 'No company');
+      const awardName = utils.escapeHtml(post.awards?.award_name || 'No award');
+      const contentPreview = utils.escapeHtml(this.truncate(post.content, 100));
+
       const platformBadges = (post.platforms || []).map(platform => {
         const icons = {
           twitter: '<i class="bi bi-twitter text-info"></i>',
@@ -503,7 +610,7 @@ Vote now: {{website}}
           instagram: '<i class="bi bi-instagram text-danger"></i>',
           linkedin: '<i class="bi bi-linkedin text-info"></i>'
         };
-        return `<span class="badge bg-light text-dark">${icons[platform] || ''} ${platform}</span>`;
+        return `<span class="badge bg-light text-dark">${icons[platform] || ''} ${utils.escapeHtml(platform)}</span>`;
       }).join('');
 
       return `
@@ -511,9 +618,9 @@ Vote now: {{website}}
           <div class="d-flex justify-content-between align-items-start">
             <div class="flex-grow-1">
               <h6 class="mb-1">
-                ${post.organisations?.company_name || 'No company'} - ${post.awards?.award_name || 'No award'}
+                ${companyName} - ${awardName}
               </h6>
-              <div class="post-preview">${post.content.substring(0, 100)}...</div>
+              <div class="post-preview">${contentPreview}</div>
               <div class="post-meta">
                 <span><i class="bi bi-calendar3 me-1"></i>${scheduledDate.toLocaleDateString()}</span>
                 <span><i class="bi bi-clock me-1"></i>${scheduledDate.toLocaleTimeString()}</span>
@@ -540,6 +647,9 @@ Vote now: {{website}}
     const container = document.getElementById('draftPostsList');
     if (!container) return;
 
+    const countBadge = document.getElementById('draftPostsCount');
+    if (countBadge) countBadge.textContent = posts.length;
+
     if (posts.length === 0) {
       container.innerHTML = `
         <div class="text-center text-muted py-3">
@@ -549,24 +659,28 @@ Vote now: {{website}}
       return;
     }
 
-    container.innerHTML = posts.map(post => `
-      <div class="draft-post-item border-bottom py-2">
-        <div class="d-flex justify-content-between align-items-start">
-          <div class="flex-grow-1">
-            <div class="small text-truncate" style="max-width: 250px;">${post.content.substring(0, 80)}...</div>
-            <small class="text-muted">${new Date(post.created_at).toLocaleDateString()}</small>
-          </div>
-          <div class="d-flex gap-1">
-            <button class="btn btn-sm btn-outline-primary" onclick="socialMediaModule.editScheduledPost('${post.id}')" title="Edit">
-              <i class="bi bi-pencil"></i>
-            </button>
-            <button class="btn btn-sm btn-outline-danger" onclick="socialMediaModule.deleteScheduledPost('${post.id}')" title="Delete">
-              <i class="bi bi-trash"></i>
-            </button>
+    container.innerHTML = posts.map(post => {
+      const contentPreview = utils.escapeHtml(this.truncate(post.content, 80));
+
+      return `
+        <div class="draft-post-item border-bottom py-2">
+          <div class="d-flex justify-content-between align-items-start">
+            <div class="flex-grow-1">
+              <div class="small text-truncate" style="max-width: 250px;">${contentPreview}</div>
+              <small class="text-muted">${new Date(post.created_at).toLocaleDateString()}</small>
+            </div>
+            <div class="d-flex gap-1">
+              <button class="btn btn-sm btn-outline-primary" onclick="socialMediaModule.editScheduledPost('${post.id}')" title="Edit">
+                <i class="bi bi-pencil"></i>
+              </button>
+              <button class="btn btn-sm btn-outline-danger" onclick="socialMediaModule.deleteScheduledPost('${post.id}')" title="Delete">
+                <i class="bi bi-trash"></i>
+              </button>
+            </div>
           </div>
         </div>
-      </div>
-    `).join('');
+      `;
+    }).join('');
   },
 
   /**
@@ -586,6 +700,7 @@ Vote now: {{website}}
 
       // Set editing mode
       this.editingPostId = postId;
+      this.showEditingIndicator(true);
 
       // Populate form fields
       document.getElementById('smPostContent').value = post.content || '';
@@ -641,6 +756,34 @@ Vote now: {{website}}
     }
   },
 
+  /**
+   * Show/hide editing indicator banner
+   */
+  showEditingIndicator(show) {
+    let banner = document.getElementById('editingBanner');
+    if (show) {
+      if (!banner) {
+        const postCard = document.getElementById('smPostContent')?.closest('.card');
+        if (!postCard) return;
+        const header = postCard.querySelector('.card-header');
+        if (!header) return;
+
+        banner = document.createElement('div');
+        banner.id = 'editingBanner';
+        banner.className = 'alert alert-warning mb-0 rounded-0 d-flex justify-content-between align-items-center';
+        banner.innerHTML = `
+          <span><i class="bi bi-pencil-square me-2"></i><strong>Editing post</strong> — changes will update the existing post</span>
+          <button class="btn btn-sm btn-outline-warning" onclick="socialMediaModule.clearForm()">
+            <i class="bi bi-x-circle me-1"></i>Cancel Edit
+          </button>
+        `;
+        header.insertAdjacentElement('afterend', banner);
+      }
+    } else {
+      if (banner) banner.remove();
+    }
+  },
+
   async deleteScheduledPost(postId) {
     if (!confirm('Are you sure you want to delete this post?')) return;
 
@@ -664,6 +807,8 @@ Vote now: {{website}}
 
   clearForm() {
     this.editingPostId = null;
+    this.showEditingIndicator(false);
+
     document.getElementById('smPostContent').value = '';
     document.getElementById('smCompanySelect').value = '';
     document.getElementById('smAwardSelect').value = '';

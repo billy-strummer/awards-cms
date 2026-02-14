@@ -1863,32 +1863,36 @@ body.dark-mode .quick-action-item span {
 
 .email-block-palette {
   display: grid;
-  grid-template-columns: 1fr;
-  gap: var(--spacing-sm);
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
   margin-bottom: var(--spacing-lg);
 }
 
 .email-block-item {
   display: flex;
+  flex-direction: column;
   align-items: center;
-  gap: var(--spacing-sm);
-  padding: var(--spacing-md);
+  justify-content: center;
+  text-align: center;
+  gap: 4px;
+  padding: 8px 4px;
   background: #f8f9fa;
   border: 2px dashed #dee2e6;
   border-radius: var(--radius-sm);
   cursor: grab;
   transition: all var(--transition-fast);
-  font-size: 0.9rem;
+  font-size: 0.7rem;
   font-weight: var(--font-weight-medium);
   color: #495057;
   user-select: none;
+  white-space: nowrap;
+  overflow: hidden;
 }
 
 .email-block-item:hover {
   background: #e9ecef;
   border-color: var(--primary-color);
   color: var(--primary-color);
-  transform: translateX(4px);
 }
 
 .email-block-item:active {
@@ -1897,7 +1901,7 @@ body.dark-mode .quick-action-item span {
 }
 
 .email-block-item i {
-  font-size: 1.1rem;
+  font-size: 1.2rem;
   opacity: 0.8;
 }
 

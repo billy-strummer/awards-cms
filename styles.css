@@ -1851,6 +1851,15 @@ body.dark-mode .quick-action-item span {
   min-height: 600px;
 }
 
+/* Email Builder Sidebar */
+.email-builder-sidebar {
+  background: #fff;
+}
+
+body.dark-mode .email-builder-sidebar {
+  background: var(--dark-color);
+}
+
 /* Left Panel - Blocks Palette */
 .email-blocks-panel {
   background: white;
@@ -1960,18 +1969,18 @@ body.dark-mode .quick-action-item span {
   box-shadow: 0 0 0 4px rgba(13, 110, 253, 0.1);
 }
 
-/* Block Controls */
+/* Block Controls — compact dark bar, bottom-right */
 .email-block-controls {
   position: absolute;
-  top: 8px;
+  bottom: 8px;
   right: 8px;
   display: none;
-  gap: 4px;
+  gap: 1px;
   z-index: 10;
-  background: rgba(255, 255, 255, 0.95);
-  padding: 4px;
+  background: rgba(33, 37, 41, 0.92);
+  padding: 3px;
   border-radius: var(--radius-sm);
-  box-shadow: var(--shadow-md);
+  backdrop-filter: blur(4px);
 }
 
 .email-block-wrapper:hover .email-block-controls {
@@ -1979,29 +1988,29 @@ body.dark-mode .quick-action-item span {
 }
 
 .email-block-controls button {
-  width: 32px;
-  height: 32px;
+  width: 28px;
+  height: 28px;
   padding: 0;
   border: none;
-  background: white;
-  border-radius: var(--radius-sm);
+  background: transparent;
+  border-radius: 3px;
   cursor: pointer;
   transition: all var(--transition-fast);
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #6c757d;
-  box-shadow: var(--shadow-sm);
+  color: #adb5bd;
+  font-size: 0.78rem;
 }
 
 .email-block-controls button:hover {
-  background: var(--primary-color);
+  background: rgba(255, 255, 255, 0.15);
   color: white;
-  transform: scale(1.1);
 }
 
-.email-block-controls button.btn-danger:hover {
-  background: var(--danger-color);
+.email-block-controls button.btn-outline-danger:hover {
+  background: rgba(220, 53, 69, 0.4);
+  color: #ff6b7a;
 }
 
 /* Image & Button Block Controls */
@@ -2248,6 +2257,20 @@ body.dark-mode .quick-action-item span {
   padding: 8px 12px;
   font-size: 0.8rem;
   font-family: 'Courier New', monospace;
+}
+
+.email-html-code-header.preview-active {
+  background: #1a5928;
+  color: #d4edda;
+}
+
+.email-html-code-header.preview-active button {
+  border-color: #d4edda;
+  color: #d4edda;
+}
+
+.email-html-code-header.preview-active button:hover {
+  background: rgba(255, 255, 255, 0.15);
 }
 
 .email-html-code-wrap {

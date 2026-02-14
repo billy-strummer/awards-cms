@@ -1922,6 +1922,7 @@ body.dark-mode .quick-action-item span {
   border-radius: var(--radius-sm);
   transition: all var(--transition-fast);
   position: relative;
+  overflow: hidden;
 }
 
 .email-canvas.drag-over {
@@ -2117,6 +2118,8 @@ body.dark-mode .quick-action-item span {
   transition: outline var(--transition-fast);
   padding: 4px;
   border-radius: var(--radius-sm);
+  overflow-wrap: break-word;
+  word-break: break-word;
 }
 
 [contenteditable="true"]:hover {
@@ -2226,6 +2229,8 @@ body.dark-mode .quick-action-item span {
   transition: outline 0.15s ease;
   padding: 4px;
   border-radius: 2px;
+  overflow-wrap: break-word;
+  word-break: break-word;
 }
 
 .email-richtext-content:focus {

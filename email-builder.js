@@ -525,16 +525,16 @@ const emailBuilder = {
     const controls = document.createElement('div');
     controls.className = 'email-block-controls';
     controls.innerHTML = `
-      <button class="btn btn-sm btn-outline-primary" onclick="emailBuilder.moveBlockUp('${blockId}')" title="Move Up">
+      <button onclick="emailBuilder.moveBlockUp('${blockId}')" title="Move Up">
         <i class="bi bi-arrow-up"></i>
       </button>
-      <button class="btn btn-sm btn-outline-primary" onclick="emailBuilder.moveBlockDown('${blockId}')" title="Move Down">
+      <button onclick="emailBuilder.moveBlockDown('${blockId}')" title="Move Down">
         <i class="bi bi-arrow-down"></i>
       </button>
-      <button class="btn btn-sm btn-outline-info" onclick="emailBuilder.duplicateBlock('${blockId}')" title="Duplicate">
+      <button onclick="emailBuilder.duplicateBlock('${blockId}')" title="Duplicate">
         <i class="bi bi-copy"></i>
       </button>
-      <button class="btn btn-sm btn-outline-danger" onclick="emailBuilder.deleteBlock('${blockId}')" title="Delete">
+      <button class="btn-outline-danger" onclick="emailBuilder.deleteBlock('${blockId}')" title="Delete">
         <i class="bi bi-trash"></i>
       </button>
     `;
@@ -623,14 +623,18 @@ const emailBuilder = {
     if (!textarea) return;
     const wrapper = textarea.closest('.email-block-wrapper');
     const codeWrap = wrapper.querySelector('.email-html-code-wrap');
+    const header = wrapper.querySelector('.email-html-code-header');
     let previewDiv = wrapper.querySelector('.email-html-preview');
 
     if (previewDiv) {
       // Toggle back to editor
       previewDiv.remove();
       codeWrap.style.display = '';
-      const btn = wrapper.querySelector('.email-html-code-header button');
+      header.classList.remove('preview-active');
+      const btn = header.querySelector('button');
       if (btn) btn.innerHTML = '<i class="bi bi-eye me-1"></i>Preview';
+      const label = header.querySelector('span');
+      if (label) label.innerHTML = '<i class="bi bi-code-slash me-1"></i>HTML Code';
     } else {
       // Show preview
       previewDiv = document.createElement('div');
@@ -638,8 +642,11 @@ const emailBuilder = {
       previewDiv.innerHTML = textarea.value;
       codeWrap.style.display = 'none';
       codeWrap.insertAdjacentElement('afterend', previewDiv);
-      const btn = wrapper.querySelector('.email-html-code-header button');
-      if (btn) btn.innerHTML = '<i class="bi bi-code-slash me-1"></i>Edit';
+      header.classList.add('preview-active');
+      const btn = header.querySelector('button');
+      if (btn) btn.innerHTML = '<i class="bi bi-code-slash me-1"></i>Edit HTML';
+      const label = header.querySelector('span');
+      if (label) label.innerHTML = '<i class="bi bi-eye me-1"></i>Preview Mode';
     }
   },
 
@@ -1072,12 +1079,22 @@ const emailBuilder = {
     document.getElementById('builderSubject').value = '';
     document.getElementById('builderPreheader').value = '';
 
-    // Focus the textarea
+    // Auto-switch to preview after user pastes HTML
     const textarea = blockWrapper.querySelector('.email-html-code-editor');
-    if (textarea) textarea.focus();
+    if (textarea) {
+      textarea.focus();
+      textarea.addEventListener('paste', () => {
+        setTimeout(() => {
+          if (textarea.value.trim()) {
+            this.previewHtmlBlock(blockId);
+            this.updatePreview();
+          }
+        }, 100);
+      });
+    }
 
     this.updatePreview();
-    utils.showToast('Paste your HTML code below — use the block palette to add extra sections', 'info');
+    utils.showToast('Paste your HTML code below — it will auto-preview once pasted', 'info');
   },
 
   async loadClientPromotionTemplate() {

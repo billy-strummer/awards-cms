@@ -45,6 +45,9 @@ const emailBuilder = {
     this.setupAutosave();
     this.setupUnsavedChangesWarning();
     this.loadCampaignLog();
+    // Show block palette since Blank Canvas is the default
+    const palette = document.getElementById('blockPaletteSection');
+    if (palette) palette.style.display = 'block';
     this.initialized = true;
     console.log('✅ Email Builder initialized');
   },
@@ -788,6 +791,10 @@ const emailBuilder = {
    * Load predefined template
    */
   loadTemplate(templateType) {
+    // Show/hide block palette based on template type
+    const palette = document.getElementById('blockPaletteSection');
+    if (palette) palette.style.display = !templateType ? 'block' : 'none';
+
     // Blank Canvas: clear everything and reset
     if (!templateType) {
       this.blocks = [];

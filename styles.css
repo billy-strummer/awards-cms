@@ -1851,6 +1851,15 @@ body.dark-mode .quick-action-item span {
   min-height: 600px;
 }
 
+/* Email Builder Sidebar */
+.email-builder-sidebar {
+  background: #fff;
+}
+
+body.dark-mode .email-builder-sidebar {
+  background: var(--dark-color);
+}
+
 /* Left Panel - Blocks Palette */
 .email-blocks-panel {
   background: white;

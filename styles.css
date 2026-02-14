@@ -2036,7 +2036,8 @@ body.dark-mode .html-toolkit-label {
   border-radius: var(--radius-sm);
   transition: all var(--transition-fast);
   position: relative;
-  overflow: hidden;
+  overflow-x: hidden;
+  overflow-y: visible;
 }
 
 .email-canvas.drag-over {
@@ -2407,6 +2408,24 @@ body.dark-mode .html-toolkit-label {
   border: none;
   min-height: 60px;
   background: white;
+  overflow-x: hidden;
+  max-width: 100%;
+}
+
+/* Force pasted email HTML to respect container width */
+.email-html-preview table {
+  max-width: 100% !important;
+  width: 100% !important;
+}
+
+.email-html-preview img {
+  max-width: 100% !important;
+  height: auto !important;
+}
+
+.email-html-preview td {
+  word-wrap: break-word;
+  overflow-wrap: break-word;
 }
 
 /* Dark Mode Support */

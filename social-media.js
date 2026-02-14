@@ -77,7 +77,8 @@ Vote now: {{website}}
       await Promise.all([
         this.loadScheduledPosts(),
         this.loadDraftPosts(),
-        this.loadPublishedPosts()
+        this.loadPublishedPosts(),
+        this.loadAnalytics()
       ]);
 
     } catch (error) {
@@ -164,8 +165,10 @@ Vote now: {{website}}
     return str.replace(/[^a-zA-Z0-9]/g, '');
   },
 
-  updatePostPreview() {
-    const content = document.getElementById('smPostContent').value;
+  /**
+   * Process template placeholders in content string
+   */
+  processPlaceholders(content) {
     const companySelect = document.getElementById('smCompanySelect');
     const awardSelect = document.getElementById('smAwardSelect');
 
@@ -177,63 +180,89 @@ Vote now: {{website}}
     const awardHashtag = awardName.startsWith('{{') ? '{{award_hashtag}}' : this.toHashtag(awardName);
     const currentYear = new Date().getFullYear();
 
-    let processedContent = content
+    return content
       .replace(/\{\{company_name\}\}/g, companyName)
       .replace(/\{\{award_name\}\}/g, awardName)
       .replace(/\{\{award_hashtag\}\}/g, awardHashtag)
       .replace(/\{\{year\}\}/g, currentYear)
       .replace(/\{\{website\}\}/g, companyWebsite);
+  },
 
-    const previewIds = ['twitterPreviewText', 'facebookPreviewText', 'instagramPreviewText', 'linkedinPreviewText'];
-    previewIds.forEach(id => {
-      const el = document.getElementById(id);
-      if (el) el.textContent = processedContent;
-    });
+  updatePostPreview() {
+    const mainContent = document.getElementById('smPostContent').value;
+    const overrideToggle = document.getElementById('smPlatformOverrides');
+    const overridesEnabled = overrideToggle && overrideToggle.checked;
 
-    this.updateCharacterCounts(processedContent);
+    // Map preview element IDs to platform override field IDs
+    const platformMap = {
+      twitterPreviewText: 'smTwitterContent',
+      facebookPreviewText: 'smFacebookContent',
+      instagramPreviewText: 'smInstagramContent',
+      linkedinPreviewText: 'smLinkedInContent'
+    };
+
+    let mainProcessed = this.processPlaceholders(mainContent);
+
+    for (const [previewId, overrideFieldId] of Object.entries(platformMap)) {
+      const el = document.getElementById(previewId);
+      if (!el) continue;
+
+      let content = mainContent;
+      if (overridesEnabled) {
+        const overrideField = document.getElementById(overrideFieldId);
+        if (overrideField && overrideField.value.trim()) {
+          content = overrideField.value;
+        }
+      }
+
+      el.textContent = this.processPlaceholders(content);
+    }
+
+    this.updateCharacterCounts();
     this.updateImagePreview();
   },
 
   /**
-   * Update character counts for all platforms
+   * Update character counts for all platforms, using per-platform content when overrides are enabled
    */
-  updateCharacterCounts(processedContent) {
-    const len = processedContent.length;
+  updateCharacterCounts() {
+    const overrideToggle = document.getElementById('smPlatformOverrides');
+    const overridesEnabled = overrideToggle && overrideToggle.checked;
+    const mainContent = document.getElementById('smPostContent').value;
 
-    // Twitter
-    const twitterCount = document.getElementById('twitterCharCount');
-    if (twitterCount) {
-      twitterCount.textContent = len;
-      if (len > 280) {
-        twitterCount.closest('.preview-meta').className = 'preview-meta text-danger';
-      } else if (len > 250) {
-        twitterCount.closest('.preview-meta').className = 'preview-meta text-warning';
-      } else {
-        twitterCount.closest('.preview-meta').className = 'preview-meta';
-      }
-    }
+    const countConfigs = [
+      { countId: 'twitterCharCount', overrideId: 'smTwitterContent', limit: 280, warnAt: 250 },
+      { countId: 'instagramCharCount', overrideId: 'smInstagramContent', limit: 2200, warnAt: null },
+      { countId: 'linkedinCharCount', overrideId: 'smLinkedInContent', limit: 3000, warnAt: null }
+    ];
 
-    // Instagram
-    const igCount = document.getElementById('instagramCharCount');
-    if (igCount) {
-      igCount.textContent = len;
-      if (len > 2200) {
-        igCount.closest('.preview-meta').className = 'preview-meta text-danger';
-      } else {
-        igCount.closest('.preview-meta').className = 'preview-meta';
-      }
-    }
+    countConfigs.forEach(({ countId, overrideId, limit, warnAt }) => {
+      const countEl = document.getElementById(countId);
+      if (!countEl) return;
 
-    // LinkedIn
-    const liCount = document.getElementById('linkedinCharCount');
-    if (liCount) {
-      liCount.textContent = len;
-      if (len > 3000) {
-        liCount.closest('.preview-meta').className = 'preview-meta text-danger';
-      } else {
-        liCount.closest('.preview-meta').className = 'preview-meta';
+      let content = mainContent;
+      if (overridesEnabled) {
+        const overrideField = document.getElementById(overrideId);
+        if (overrideField && overrideField.value.trim()) {
+          content = overrideField.value;
+        }
       }
-    }
+
+      const processed = this.processPlaceholders(content);
+      const len = processed.length;
+      countEl.textContent = len;
+
+      const meta = countEl.closest('.preview-meta');
+      if (!meta) return;
+
+      if (len > limit) {
+        meta.className = 'preview-meta text-danger';
+      } else if (warnAt && len > warnAt) {
+        meta.className = 'preview-meta text-warning';
+      } else {
+        meta.className = 'preview-meta';
+      }
+    });
   },
 
   setupImageSourceHandlers() {
@@ -437,10 +466,20 @@ Vote now: {{website}}
         imageUrl = this.uploadedImageUrl;
       }
 
+      // Build platform-specific content if overrides are enabled
+      const platformContent = {};
+      const overrideToggle = document.getElementById('smPlatformOverrides');
+      if (overrideToggle && overrideToggle.checked) {
+        platforms.forEach(p => {
+          platformContent[p] = this.getContentForPlatform(p);
+        });
+      }
+
       const postData = {
         company_id: companyId,
         award_id: awardId,
         content: content,
+        platform_content: Object.keys(platformContent).length > 0 ? platformContent : null,
         template_type: this.currentTemplate,
         platforms: platforms,
         image_url: imageUrl,
@@ -477,8 +516,11 @@ Vote now: {{website}}
         }
       }
 
-      await this.loadScheduledPosts();
-      await this.loadDraftPosts();
+      await Promise.all([
+        this.loadScheduledPosts(),
+        this.loadDraftPosts(),
+        this.loadPublishedPosts()
+      ]);
 
       this.clearForm();
 
@@ -506,12 +548,37 @@ Vote now: {{website}}
       if (document.getElementById('platformInstagram').checked) platforms.push('instagram');
       if (document.getElementById('platformLinkedIn').checked) platforms.push('linkedin');
 
+      // Build platform-specific content if overrides are enabled
+      const platformContent = {};
+      const overrideToggle = document.getElementById('smPlatformOverrides');
+      if (overrideToggle && overrideToggle.checked) {
+        platforms.forEach(p => {
+          platformContent[p] = this.getContentForPlatform(p);
+        });
+      }
+
+      const imageSource = document.querySelector('input[name="imageSource"]:checked')?.value;
+      const addLogoOverlayEl = document.getElementById('smAddLogoOverlay');
+      const addLogoOverlay = addLogoOverlayEl ? addLogoOverlayEl.checked : false;
+
+      let imageUrl = null;
+      if (imageSource === 'company_logo') {
+        const companySelect = document.getElementById('smCompanySelect');
+        const selectedOption = companySelect.options[companySelect.selectedIndex];
+        imageUrl = selectedOption?.dataset.logo || null;
+      } else if (imageSource === 'custom') {
+        imageUrl = this.uploadedImageUrl;
+      }
+
       const draftData = {
         company_id: companyId || null,
         award_id: awardId || null,
         content: content,
+        platform_content: Object.keys(platformContent).length > 0 ? platformContent : null,
         template_type: this.currentTemplate,
         platforms: platforms,
+        image_url: imageUrl,
+        add_logo_overlay: addLogoOverlay,
         status: 'draft',
         created_at: new Date().toISOString()
       };
@@ -756,6 +823,27 @@ Vote now: {{website}}
         this.currentTemplate = post.template_type;
       }
 
+      // Restore platform-specific overrides
+      if (post.platform_content && typeof post.platform_content === 'object') {
+        const overrideToggle = document.getElementById('smPlatformOverrides');
+        if (overrideToggle) {
+          overrideToggle.checked = true;
+          this.togglePlatformOverrides();
+        }
+        const fieldMap = {
+          twitter: 'smTwitterContent',
+          facebook: 'smFacebookContent',
+          instagram: 'smInstagramContent',
+          linkedin: 'smLinkedInContent'
+        };
+        for (const [platform, fieldId] of Object.entries(fieldMap)) {
+          const field = document.getElementById(fieldId);
+          if (field && post.platform_content[platform]) {
+            field.value = post.platform_content[platform];
+          }
+        }
+      }
+
       // Update preview
       this.updatePostPreview();
 
@@ -812,8 +900,11 @@ Vote now: {{website}}
       if (error) throw error;
 
       utils.showToast('Post deleted successfully', 'success');
-      await this.loadScheduledPosts();
-      await this.loadDraftPosts();
+      await Promise.all([
+        this.loadScheduledPosts(),
+        this.loadDraftPosts(),
+        this.loadPublishedPosts()
+      ]);
 
     } catch (error) {
       console.error('Error deleting post:', error);
@@ -995,6 +1086,27 @@ Vote now: {{website}}
 
       if (post.template_type) {
         this.currentTemplate = post.template_type;
+      }
+
+      // Restore platform-specific overrides if present
+      if (post.platform_content && typeof post.platform_content === 'object') {
+        const overrideToggle = document.getElementById('smPlatformOverrides');
+        if (overrideToggle) {
+          overrideToggle.checked = true;
+          this.togglePlatformOverrides();
+        }
+        const fieldMap = {
+          twitter: 'smTwitterContent',
+          facebook: 'smFacebookContent',
+          instagram: 'smInstagramContent',
+          linkedin: 'smLinkedInContent'
+        };
+        for (const [platform, fieldId] of Object.entries(fieldMap)) {
+          const field = document.getElementById(fieldId);
+          if (field && post.platform_content[platform]) {
+            field.value = post.platform_content[platform];
+          }
+        }
       }
 
       this.updatePostPreview();

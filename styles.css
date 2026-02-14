@@ -2036,7 +2036,8 @@ body.dark-mode .html-toolkit-label {
   border-radius: var(--radius-sm);
   transition: all var(--transition-fast);
   position: relative;
-  overflow: hidden;
+  overflow-x: hidden;
+  overflow-y: visible;
 }
 
 .email-canvas.drag-over {

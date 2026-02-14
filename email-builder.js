@@ -887,13 +887,7 @@ ${content}
    */
   updatePreview() {
     const html = this.generateFullHTML();
-    const iframe = document.getElementById('emailPreviewFrame');
-    if (iframe) {
-      const doc = iframe.contentDocument || iframe.contentWindow.document;
-      doc.open();
-      doc.write(html);
-      doc.close();
-    }
+    this.writePreviewIframe(html);
   },
 
   /**
@@ -933,7 +927,7 @@ ${content}
         <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color: #f8f9fa;">
           <tr>
             <td align="center" style="padding: 40px 20px;">
-              <table width="600" cellpadding="0" cellspacing="0" border="0" style="background-color: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
+              <table cellpadding="0" cellspacing="0" border="0" style="max-width: 600px; width: 100%; background-color: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
                 ${blocks}
               </table>
             </td>
@@ -1221,21 +1215,57 @@ ${content}
   },
 
   /**
+   * Responsive CSS injected into preview iframe to make email content fit
+   */
+  previewResponsiveCSS: `<style>
+    /* Force all tables to respect container */
+    table { max-width: 100% !important; }
+    img { max-width: 100% !important; height: auto !important; }
+    td, th { word-wrap: break-word !important; overflow-wrap: break-word !important; }
+    body { margin: 0 !important; padding: 0 !important; width: 100% !important; overflow-x: hidden !important; }
+    /* Override fixed-width table attributes */
+    table[width] { width: 100% !important; }
+  </style>`,
+
+  /** Current preview mode */
+  previewDeviceMode: 'desktop',
+
+  /**
+   * Write HTML into the preview iframe with responsive overrides
+   */
+  writePreviewIframe(html) {
+    const iframe = document.getElementById('emailPreviewFrame');
+    if (!iframe) return;
+
+    // Inject responsive CSS just before </head> or at start of <body>
+    let enhanced = html;
+    if (enhanced.includes('</head>')) {
+      enhanced = enhanced.replace('</head>', this.previewResponsiveCSS + '</head>');
+    } else if (enhanced.includes('<body')) {
+      enhanced = enhanced.replace('<body', this.previewResponsiveCSS + '<body');
+    } else {
+      enhanced = this.previewResponsiveCSS + enhanced;
+    }
+
+    const doc = iframe.contentDocument || iframe.contentWindow.document;
+    doc.open();
+    doc.write(enhanced);
+    doc.close();
+  },
+
+  /**
    * Open fullscreen preview modal
    */
   openPreviewModal() {
+    this.previewDeviceMode = 'desktop';
     const html = this.generateFullHTML();
     const modal = document.getElementById('emailPreviewModal');
     if (!modal) return;
 
-    // Write HTML into iframe immediately
     const iframe = document.getElementById('emailPreviewFrame');
-    if (iframe) {
-      const doc = iframe.contentDocument || iframe.contentWindow.document;
-      doc.open();
-      doc.write(html);
-      doc.close();
-    }
+    if (iframe) iframe.style.width = '100%';
+
+    this.writePreviewIframe(html);
 
     const bsModal = new bootstrap.Modal(modal);
     bsModal.show();
@@ -1245,10 +1275,14 @@ ${content}
    * Switch preview device in modal (desktop/mobile)
    */
   setPreviewDevice(mode, btn) {
+    this.previewDeviceMode = mode;
     const iframe = document.getElementById('emailPreviewFrame');
     if (iframe) {
       iframe.style.width = mode === 'mobile' ? '375px' : '100%';
     }
+    // Re-render content so responsive CSS applies at correct width
+    const html = this.generateFullHTML();
+    this.writePreviewIframe(html);
     // Update button states
     if (btn) {
       const group = btn.closest('.btn-group');

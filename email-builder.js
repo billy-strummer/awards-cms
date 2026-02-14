@@ -1226,20 +1226,19 @@ ${content}
   openPreviewModal() {
     const html = this.generateFullHTML();
     const modal = document.getElementById('emailPreviewModal');
-    if (modal) {
-      const bsModal = new bootstrap.Modal(modal);
-      bsModal.show();
-      // Write into iframe after modal is visible so it sizes correctly
-      modal.addEventListener('shown.bs.modal', () => {
-        const iframe = document.getElementById('emailPreviewFrame');
-        if (iframe) {
-          const doc = iframe.contentDocument || iframe.contentWindow.document;
-          doc.open();
-          doc.write(html);
-          doc.close();
-        }
-      }, { once: true });
+    if (!modal) return;
+
+    // Write HTML into iframe immediately
+    const iframe = document.getElementById('emailPreviewFrame');
+    if (iframe) {
+      const doc = iframe.contentDocument || iframe.contentWindow.document;
+      doc.open();
+      doc.write(html);
+      doc.close();
     }
+
+    const bsModal = new bootstrap.Modal(modal);
+    bsModal.show();
   },
 
   /**
@@ -1248,7 +1247,7 @@ ${content}
   setPreviewDevice(mode, btn) {
     const iframe = document.getElementById('emailPreviewFrame');
     if (iframe) {
-      iframe.style.width = mode === 'mobile' ? '375px' : '600px';
+      iframe.style.width = mode === 'mobile' ? '375px' : '100%';
     }
     // Update button states
     if (btn) {

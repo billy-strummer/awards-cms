@@ -1999,6 +1999,37 @@ body.dark-mode .html-toolkit-label {
   position: relative;
 }
 
+/* Fullscreen Preview Modal */
+#emailPreviewModal .modal-dialog {
+  max-width: 100vw;
+  width: 100vw;
+  height: 100vh;
+  margin: 0;
+}
+
+#emailPreviewModal .modal-content {
+  height: 100vh;
+  border: none;
+  border-radius: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+#emailPreviewModal .modal-body {
+  flex: 1;
+  overflow: hidden;
+  display: flex;
+  justify-content: center;
+  padding: 0;
+  background: #2d2d2d;
+}
+
+#emailPreviewModal #emailPreviewFrame {
+  border: none;
+  background: white;
+  height: 100%;
+}
+
 .email-canvas {
   background: white;
   border: 2px dashed #dee2e6;
@@ -2372,9 +2403,8 @@ body.dark-mode .html-toolkit-label {
 }
 
 .email-html-preview {
-  padding: 20px;
-  border: 2px dashed #dee2e6;
-  border-top: none;
+  padding: 0;
+  border: none;
   min-height: 60px;
   background: white;
 }
@@ -2449,7 +2479,6 @@ body.dark-mode .richtext-font-size {
 
 body.dark-mode .email-html-preview {
   background: #2d2d2d;
-  border-color: #404040;
 }
 
 /* Responsive Design */

@@ -45,6 +45,9 @@ const emailBuilder = {
     this.setupAutosave();
     this.setupUnsavedChangesWarning();
     this.loadCampaignLog();
+    // Show block palette since Blank Canvas is the default
+    const palette = document.getElementById('blockPaletteSection');
+    if (palette) palette.style.display = 'block';
     this.initialized = true;
     console.log('✅ Email Builder initialized');
   },
@@ -788,6 +791,10 @@ const emailBuilder = {
    * Load predefined template
    */
   loadTemplate(templateType) {
+    // Show/hide block palette based on template type
+    const palette = document.getElementById('blockPaletteSection');
+    if (palette) palette.style.display = !templateType ? 'block' : 'none';
+
     // Blank Canvas: clear everything and reset
     if (!templateType) {
       this.blocks = [];
@@ -980,6 +987,36 @@ const emailBuilder = {
     const buttons = document.querySelectorAll('.email-canvas').parentElement.querySelectorAll('.btn-group button');
     buttons.forEach(btn => btn.classList.remove('active'));
     event.target.classList.add('active');
+  },
+
+  /**
+   * Open full-width preview modal
+   */
+  openPreviewModal() {
+    this.updatePreview();
+    const modal = document.getElementById('emailPreviewModal');
+    if (modal) {
+      const bsModal = new bootstrap.Modal(modal);
+      bsModal.show();
+    }
+  },
+
+  /**
+   * Switch preview device in modal (desktop/mobile)
+   */
+  setPreviewDevice(mode, btn) {
+    const iframe = document.getElementById('emailPreviewFrame');
+    if (iframe) {
+      iframe.style.width = mode === 'mobile' ? '375px' : '600px';
+    }
+    // Update button states
+    if (btn) {
+      const group = btn.closest('.btn-group');
+      if (group) {
+        group.querySelectorAll('button').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+      }
+    }
   },
 
   /**

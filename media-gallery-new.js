@@ -1572,14 +1572,14 @@ const mediaGalleryModule = {
         <div class="d-flex justify-content-between align-items-center mb-3">
           <h5><i class="bi bi-images me-2"></i>${utils.escapeHtml(sectionName)}</h5>
           <div class="btn-group">
-            <button class="btn btn-primary" onclick="mediaGalleryModule.openUploadPhotosModal()">
-              <i class="bi bi-cloud-upload me-2"></i>Upload Photos
+            <button class="btn btn-sm btn-primary" onclick="mediaGalleryModule.openUploadPhotosModal()">
+              <i class="bi bi-upload me-1"></i>Upload Photos
             </button>
-            <button class="btn btn-outline-primary" onclick="mediaGalleryModule.openYouTubeVideoModal()">
-              <i class="bi bi-youtube me-2"></i>Add YouTube Video
+            <button class="btn btn-sm btn-outline-primary" onclick="mediaGalleryModule.openYouTubeVideoModal()">
+              <i class="bi bi-youtube me-1"></i>Add YouTube Video
             </button>
-            <button class="btn btn-outline-info" onclick="mediaGalleryModule.downloadAllPhotos('${utils.escapeHtml(sectionName).replace(/'/g, "\\'")}')">
-              <i class="bi bi-download me-2"></i>Download All
+            <button class="btn btn-sm btn-outline-secondary" onclick="mediaGalleryModule.downloadAllPhotos('${utils.escapeHtml(sectionName).replace(/'/g, "\\'")}')">
+              <i class="bi bi-download me-1"></i>Download All
             </button>
           </div>
         </div>
@@ -1666,7 +1666,7 @@ const mediaGalleryModule = {
                 <button class="btn btn-secondary" onclick="mediaGalleryModule.bulkUnpublish()" title="Unpublish selected">
                   <i class="bi bi-eye-slash me-1"></i>Unpublish
                 </button>
-                <button class="btn btn-info" onclick="mediaGalleryModule.bulkDownload()" title="Download selected">
+                <button class="btn btn-outline-secondary" onclick="mediaGalleryModule.bulkDownload()" title="Download selected">
                   <i class="bi bi-download me-1"></i>Download
                 </button>
                 <button class="btn btn-danger" onclick="mediaGalleryModule.bulkDelete()" title="Delete selected">
@@ -1964,7 +1964,7 @@ const mediaGalleryModule = {
                 <i class="bi bi-tag"></i>
               </button>
               ${!isYouTube ? `
-                <button class="btn btn-outline-info" onclick="mediaGalleryModule.downloadPhoto('${photo.file_url}', '${utils.escapeHtml(photo.title || 'photo').replace(/'/g, "\\'")}'); event.stopPropagation();" title="Download">
+                <button class="btn btn-outline-secondary" onclick="mediaGalleryModule.downloadPhoto('${photo.file_url}', '${utils.escapeHtml(photo.title || 'photo').replace(/'/g, "\\'")}'); event.stopPropagation();" title="Download">
                   <i class="bi bi-download"></i>
                 </button>
               ` : ''}

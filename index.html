@@ -179,11 +179,6 @@
         </button>
       </li>
       <li class="nav-item" role="presentation">
-        <button class="nav-link" id="social-media-tab" data-bs-toggle="tab" data-bs-target="#social-media" type="button" role="tab">
-          <i class="bi bi-share me-2"></i>Social Media
-        </button>
-      </li>
-      <li class="nav-item" role="presentation">
         <button class="nav-link" id="events-tab" data-bs-toggle="tab" data-bs-target="#events" type="button" role="tab">
           <i class="bi bi-calendar-event me-2"></i>Events
         </button>
@@ -191,11 +186,6 @@
       <li class="nav-item" role="presentation">
         <button class="nav-link" id="reports-tab" data-bs-toggle="tab" data-bs-target="#reports" type="button" role="tab">
           <i class="bi bi-graph-up me-2"></i>Reports
-        </button>
-      </li>
-      <li class="nav-item" role="presentation">
-        <button class="nav-link" id="email-templates-tab" data-bs-toggle="tab" data-bs-target="#email-templates" type="button" role="tab">
-          <i class="bi bi-envelope-paper me-2"></i>Email Templates
         </button>
       </li>
       <li class="nav-item" role="presentation">
@@ -1614,10 +1604,10 @@
                 <i class="bi bi-plus-lg"></i>
               </button>
               <button class="btn btn-sm btn-outline-success" data-bs-toggle="modal" data-bs-target="#csvImportModal" title="Import CSV">
-                <i class="bi bi-upload"></i>
+                <i class="bi bi-upload me-1"></i>Import
               </button>
-              <button class="btn btn-sm btn-outline-primary" onclick="orgsModule.exportToCSV()" title="Export CSV">
-                <i class="bi bi-download"></i>
+              <button class="btn btn-sm btn-outline-secondary" onclick="orgsModule.exportToCSV()" title="Export CSV">
+                <i class="bi bi-download me-1"></i>Export
               </button>
               <button class="btn btn-sm btn-outline-warning" onclick="orgsModule.showDuplicateCheck()" title="Check Duplicates">
                 <i class="bi bi-files"></i>
@@ -1976,7 +1966,7 @@
           <button class="btn btn-sm btn-primary" onclick="orgsModule.bulkEmail()">
             <i class="bi bi-envelope me-1"></i>Email
           </button>
-          <button class="btn btn-sm btn-success" onclick="orgsModule.bulkExport()">
+          <button class="btn btn-sm btn-outline-secondary" onclick="orgsModule.bulkExport()">
             <i class="bi bi-download me-1"></i>Export
           </button>
           <button class="btn btn-sm btn-danger" onclick="orgsModule.bulkDelete()">
@@ -2061,7 +2051,7 @@
                 <button class="btn btn-success btn-sm" onclick="winnersModule.openPressReleaseExport()">
                   <i class="bi bi-file-earmark-text me-1"></i>Press Release
                 </button>
-                <button class="btn btn-danger btn-sm" onclick="winnersModule.exportFilteredWinners()">
+                <button class="btn btn-outline-secondary btn-sm" onclick="winnersModule.exportFilteredWinners()">
                   <i class="bi bi-file-pdf me-1"></i>Export PDF
                 </button>
                 <button class="btn btn-success btn-sm" onclick="winnersModule.openCertificateGenerator()">
@@ -2222,14 +2212,14 @@
                 </div>
               </div>
               <div class="mt-3 d-flex gap-2">
-                <button class="btn btn-primary" onclick="entriesModule.openPublicFormLink()">
-                  <i class="bi bi-link-45deg me-2"></i>Get Public Entry Form Link
+                <button class="btn btn-sm btn-primary" onclick="entriesModule.openPublicFormLink()">
+                  <i class="bi bi-link-45deg me-1"></i>Get Public Entry Form Link
                 </button>
-                <button class="btn btn-outline-secondary" onclick="entriesModule.exportEntries()">
-                  <i class="bi bi-download me-2"></i>Export to CSV
+                <button class="btn btn-sm btn-outline-secondary" onclick="entriesModule.exportEntries()">
+                  <i class="bi bi-download me-1"></i>Export CSV
                 </button>
-                <button class="btn btn-outline-danger" onclick="entriesModule.bulkActions()">
-                  <i class="bi bi-list-check me-2"></i>Bulk Actions
+                <button class="btn btn-sm btn-outline-danger" onclick="entriesModule.bulkActions()">
+                  <i class="bi bi-list-check me-1"></i>Bulk Actions
                 </button>
               </div>
             </div>
@@ -2543,405 +2533,6 @@
       </div>
 
       <!-- ==================================================== -->
-      <!-- SOCIAL MEDIA MANAGER TAB -->
-      <!-- ==================================================== -->
-      <div class="tab-pane fade" id="social-media" role="tabpanel">
-        <div class="container-fluid">
-
-          <!-- Page Header -->
-          <div class="section-header">
-            <h1 class="section-title">
-              <i class="bi bi-share me-2"></i>Social Media Manager
-            </h1>
-            <p class="section-subtitle">Automate and schedule posts across all platforms</p>
-          </div>
-
-          <!-- Main Content -->
-          <div class="row g-4">
-
-            <!-- Left Column: Post Composer -->
-            <div class="col-lg-8">
-
-              <!-- Create Post Card -->
-              <div class="card mb-4">
-                <div class="card-header">
-                  <h5 class="mb-0">
-                    <i class="bi bi-pencil-square me-2"></i>Create New Post
-                  </h5>
-                </div>
-                <div class="card-body">
-
-                  <!-- Template Selection -->
-                  <div class="mb-4">
-                    <label class="form-label fw-bold">Post Template</label>
-                    <div class="row g-3">
-                      <div class="col-md-4">
-                        <div class="card template-card" onclick="socialMediaModule.selectTemplate('nominee')">
-                          <div class="card-body text-center">
-                            <i class="bi bi-star text-warning fs-1 mb-2"></i>
-                            <h6>Nominee Announcement</h6>
-                            <small class="text-muted">Announce nominees</small>
-                          </div>
-                        </div>
-                      </div>
-                      <div class="col-md-4">
-                        <div class="card template-card" onclick="socialMediaModule.selectTemplate('winner')">
-                          <div class="card-body text-center">
-                            <i class="bi bi-trophy text-success fs-1 mb-2"></i>
-                            <h6>Winner Announcement</h6>
-                            <small class="text-muted">Celebrate winners</small>
-                          </div>
-                        </div>
-                      </div>
-                      <div class="col-md-4">
-                        <div class="card template-card" onclick="socialMediaModule.selectTemplate('voting')">
-                          <div class="card-body text-center">
-                            <i class="bi bi-hand-thumbs-up text-primary fs-1 mb-2"></i>
-                            <h6>Voting Reminder</h6>
-                            <small class="text-muted">Encourage voting</small>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  <!-- Company/Nominee Selection -->
-                  <div class="row g-3 mb-3">
-                    <div class="col-md-6">
-                      <label for="smCompanySelect" class="form-label">
-                        Company/Nominee <span class="text-danger">*</span>
-                      </label>
-                      <select class="form-select" id="smCompanySelect" onchange="socialMediaModule.updatePostPreview()">
-                        <option value="">Select company...</option>
-                      </select>
-                    </div>
-                    <div class="col-md-6">
-                      <label for="smAwardSelect" class="form-label">
-                        Award Category <span class="text-danger">*</span>
-                      </label>
-                      <select class="form-select" id="smAwardSelect" onchange="socialMediaModule.updatePostPreview()">
-                        <option value="">Select award...</option>
-                      </select>
-                    </div>
-                  </div>
-
-                  <!-- Post Content -->
-                  <div class="mb-3">
-                    <label for="smPostContent" class="form-label">
-                      Post Content
-                      <small class="text-muted">(Use {{company_name}} and {{award_name}} as placeholders)</small>
-                    </label>
-                    <textarea class="form-control" id="smPostContent" rows="5" onkeyup="socialMediaModule.updatePostPreview()" placeholder="Write your post here... Use {{company_name}} and {{award_name}} to insert dynamic content"></textarea>
-                    <div class="form-text">
-                      <strong>Available variables:</strong> {{company_name}}, {{award_name}}, {{year}}, {{website}}
-                    </div>
-                  </div>
-
-                  <!-- Image Options -->
-                  <div class="mb-3">
-                    <label class="form-label fw-bold">
-                      <i class="bi bi-image me-1"></i>Post Image
-                    </label>
-                    <div class="row g-3">
-                      <div class="col-md-6">
-                        <div class="form-check">
-                          <input class="form-check-input" type="radio" name="imageSource" id="imageCompanyLogo" value="company_logo" checked onchange="socialMediaModule.updateImagePreview()">
-                          <label class="form-check-label" for="imageCompanyLogo">
-                            Company Logo
-                          </label>
-                        </div>
-                      </div>
-                      <div class="col-md-6">
-                        <div class="form-check">
-                          <input class="form-check-input" type="radio" name="imageSource" id="imageCustom" value="custom" onchange="socialMediaModule.updateImagePreview()">
-                          <label class="form-check-label" for="imageCustom">
-                            Upload Custom Image
-                          </label>
-                        </div>
-                      </div>
-                    </div>
-
-                    <!-- Custom Image Upload -->
-                    <div id="customImageUpload" class="mt-3" style="display: none;">
-                      <input type="file" class="form-control" id="smCustomImage" accept="image/*" onchange="socialMediaModule.handleImageUpload()">
-                    </div>
-
-                    <!-- Add British Trade Awards Logo Overlay -->
-                    <div class="mt-3">
-                      <div class="form-check">
-                        <input class="form-check-input" type="checkbox" id="smAddLogoOverlay" checked onchange="socialMediaModule.updateImagePreview()">
-                        <label class="form-check-label" for="smAddLogoOverlay">
-                          <i class="bi bi-badge-tm me-1"></i>Add British Trade Awards Logo Overlay
-                        </label>
-                      </div>
-                      <small class="text-muted d-block mt-1">Logo will be placed in the corner with transparency</small>
-                    </div>
-                  </div>
-
-                  <!-- Platform Selection -->
-                  <div class="mb-3">
-                    <label class="form-label fw-bold">
-                      <i class="bi bi-share-fill me-1"></i>Post To
-                    </label>
-                    <div class="row g-2">
-                      <div class="col-md-3">
-                        <div class="form-check">
-                          <input class="form-check-input" type="checkbox" id="platformTwitter" checked>
-                          <label class="form-check-label" for="platformTwitter">
-                            <i class="bi bi-twitter text-info me-1"></i>Twitter/X
-                          </label>
-                        </div>
-                      </div>
-                      <div class="col-md-3">
-                        <div class="form-check">
-                          <input class="form-check-input" type="checkbox" id="platformFacebook" checked>
-                          <label class="form-check-label" for="platformFacebook">
-                            <i class="bi bi-facebook text-primary me-1"></i>Facebook
-                          </label>
-                        </div>
-                      </div>
-                      <div class="col-md-3">
-                        <div class="form-check">
-                          <input class="form-check-input" type="checkbox" id="platformInstagram" checked>
-                          <label class="form-check-label" for="platformInstagram">
-                            <i class="bi bi-instagram text-danger me-1"></i>Instagram
-                          </label>
-                        </div>
-                      </div>
-                      <div class="col-md-3">
-                        <div class="form-check">
-                          <input class="form-check-input" type="checkbox" id="platformLinkedIn" checked>
-                          <label class="form-check-label" for="platformLinkedIn">
-                            <i class="bi bi-linkedin text-info me-1"></i>LinkedIn
-                          </label>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  <!-- Scheduling -->
-                  <div class="row g-3 mb-3">
-                    <div class="col-md-6">
-                      <label for="smScheduleDate" class="form-label">
-                        <i class="bi bi-calendar3 me-1"></i>Schedule Date
-                      </label>
-                      <input type="date" class="form-control" id="smScheduleDate">
-                      <small class="text-muted">Leave empty to post immediately</small>
-                    </div>
-                    <div class="col-md-6">
-                      <label for="smScheduleTime" class="form-label">
-                        <i class="bi bi-clock me-1"></i>Schedule Time
-                      </label>
-                      <input type="time" class="form-control" id="smScheduleTime">
-                    </div>
-                  </div>
-
-                  <!-- Action Buttons -->
-                  <div class="d-flex gap-2">
-                    <button class="btn btn-primary" onclick="socialMediaModule.savePost('scheduled')">
-                      <i class="bi bi-clock-history me-2"></i>Schedule Post
-                    </button>
-                    <button class="btn btn-success" onclick="socialMediaModule.savePost('immediate')">
-                      <i class="bi bi-send me-2"></i>Post Now
-                    </button>
-                    <button class="btn btn-outline-secondary" onclick="socialMediaModule.saveDraft()">
-                      <i class="bi bi-save me-2"></i>Save Draft
-                    </button>
-                    <button class="btn btn-outline-danger" onclick="socialMediaModule.clearForm()">
-                      <i class="bi bi-x-circle me-2"></i>Clear
-                    </button>
-                  </div>
-
-                </div>
-              </div>
-
-              <!-- Scheduled Posts -->
-              <div class="card">
-                <div class="card-header d-flex justify-content-between align-items-center">
-                  <h5 class="mb-0">
-                    <i class="bi bi-calendar-check me-2"></i>Scheduled Posts
-                  </h5>
-                  <span class="badge bg-primary" id="scheduledPostsCount">0</span>
-                </div>
-                <div class="card-body">
-                  <div id="scheduledPostsList">
-                    <div class="text-center text-muted py-4">
-                      <i class="bi bi-calendar-x display-4 d-block mb-2 opacity-25"></i>
-                      No scheduled posts
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-            </div>
-
-            <!-- Right Column: Preview & Platforms -->
-            <div class="col-lg-4">
-
-              <!-- Live Preview -->
-              <div class="card mb-4 sticky-top" style="top: 20px;">
-                <div class="card-header">
-                  <h5 class="mb-0">
-                    <i class="bi bi-eye me-2"></i>Live Preview
-                  </h5>
-                </div>
-                <div class="card-body">
-
-                  <!-- Platform Tabs -->
-                  <ul class="nav nav-pills mb-3" role="tablist">
-                    <li class="nav-item" role="presentation">
-                      <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#previewTwitter">
-                        <i class="bi bi-twitter"></i>
-                      </button>
-                    </li>
-                    <li class="nav-item" role="presentation">
-                      <button class="nav-link" data-bs-toggle="tab" data-bs-target="#previewFacebook">
-                        <i class="bi bi-facebook"></i>
-                      </button>
-                    </li>
-                    <li class="nav-item" role="presentation">
-                      <button class="nav-link" data-bs-toggle="tab" data-bs-target="#previewInstagram">
-                        <i class="bi bi-instagram"></i>
-                      </button>
-                    </li>
-                    <li class="nav-item" role="presentation">
-                      <button class="nav-link" data-bs-toggle="tab" data-bs-target="#previewLinkedIn">
-                        <i class="bi bi-linkedin"></i>
-                      </button>
-                    </li>
-                  </ul>
-
-                  <!-- Preview Content -->
-                  <div class="tab-content">
-                    <!-- Twitter Preview -->
-                    <div class="tab-pane fade show active" id="previewTwitter">
-                      <div class="social-preview twitter-preview">
-                        <div class="preview-header">
-                          <strong>British Trade Awards</strong>
-                          <small class="text-muted">@BritishTradeAwards</small>
-                        </div>
-                        <div class="preview-content" id="twitterPreviewText">
-                          Your post will appear here...
-                        </div>
-                        <div class="preview-image" id="twitterPreviewImage">
-                          <div class="text-center text-muted py-4">
-                            <i class="bi bi-image opacity-25 fs-1"></i>
-                          </div>
-                        </div>
-                        <div class="preview-meta">
-                          <small class="text-muted">Character count: <span id="twitterCharCount">0</span>/280</small>
-                        </div>
-                      </div>
-                    </div>
-
-                    <!-- Facebook Preview -->
-                    <div class="tab-pane fade" id="previewFacebook">
-                      <div class="social-preview facebook-preview">
-                        <div class="preview-header">
-                          <strong>British Trade Awards</strong>
-                        </div>
-                        <div class="preview-content" id="facebookPreviewText">
-                          Your post will appear here...
-                        </div>
-                        <div class="preview-image" id="facebookPreviewImage">
-                          <div class="text-center text-muted py-4">
-                            <i class="bi bi-image opacity-25 fs-1"></i>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-
-                    <!-- Instagram Preview -->
-                    <div class="tab-pane fade" id="previewInstagram">
-                      <div class="social-preview instagram-preview">
-                        <div class="preview-header">
-                          <strong>britishtrade_awards</strong>
-                        </div>
-                        <div class="preview-image" id="instagramPreviewImage">
-                          <div class="text-center text-muted py-4">
-                            <i class="bi bi-image opacity-25 fs-1"></i>
-                          </div>
-                        </div>
-                        <div class="preview-content" id="instagramPreviewText">
-                          Your caption will appear here...
-                        </div>
-                      </div>
-                    </div>
-
-                    <!-- LinkedIn Preview -->
-                    <div class="tab-pane fade" id="previewLinkedIn">
-                      <div class="social-preview linkedin-preview">
-                        <div class="preview-header">
-                          <strong>British Trade Awards</strong>
-                        </div>
-                        <div class="preview-content" id="linkedinPreviewText">
-                          Your post will appear here...
-                        </div>
-                        <div class="preview-image" id="linkedinPreviewImage">
-                          <div class="text-center text-muted py-4">
-                            <i class="bi bi-image opacity-25 fs-1"></i>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                </div>
-              </div>
-
-              <!-- Connected Platforms -->
-              <div class="card">
-                <div class="card-header">
-                  <h5 class="mb-0">
-                    <i class="bi bi-plug me-2"></i>Connected Platforms
-                  </h5>
-                </div>
-                <div class="card-body">
-                  <div id="connectedPlatformsList">
-                    <!-- Platform connections will be loaded here -->
-                    <div class="d-flex justify-content-between align-items-center mb-2 p-2 border rounded">
-                      <div>
-                        <i class="bi bi-twitter text-info me-2"></i>
-                        <strong>Twitter/X</strong>
-                      </div>
-                      <span class="badge bg-secondary">Not Connected</span>
-                    </div>
-                    <div class="d-flex justify-content-between align-items-center mb-2 p-2 border rounded">
-                      <div>
-                        <i class="bi bi-facebook text-primary me-2"></i>
-                        <strong>Facebook</strong>
-                      </div>
-                      <span class="badge bg-secondary">Not Connected</span>
-                    </div>
-                    <div class="d-flex justify-content-between align-items-center mb-2 p-2 border rounded">
-                      <div>
-                        <i class="bi bi-instagram text-danger me-2"></i>
-                        <strong>Instagram</strong>
-                      </div>
-                      <span class="badge bg-secondary">Not Connected</span>
-                    </div>
-                    <div class="d-flex justify-content-between align-items-center mb-2 p-2 border rounded">
-                      <div>
-                        <i class="bi bi-linkedin text-info me-2"></i>
-                        <strong>LinkedIn</strong>
-                      </div>
-                      <span class="badge bg-secondary">Not Connected</span>
-                    </div>
-                  </div>
-                  <button class="btn btn-outline-primary btn-sm w-100 mt-3" onclick="socialMediaModule.openPlatformSettings()">
-                    <i class="bi bi-gear me-2"></i>Configure Platforms
-                  </button>
-                </div>
-              </div>
-
-            </div>
-
-          </div>
-
-        </div>
-      </div>
-
-      <!-- ==================================================== -->
       <!-- EVENTS TAB -->
       <!-- ==================================================== -->
       <div class="tab-pane fade" id="events" role="tabpanel">
@@ -3037,66 +2628,15 @@
             <p class="text-muted mb-4">Download reports in various formats</p>
             
             <div class="d-flex gap-2 flex-wrap">
-              <button class="btn btn-outline-primary">
-                <i class="bi bi-file-earmark-spreadsheet me-2"></i>Export Awards (CSV)
+              <button class="btn btn-sm btn-outline-secondary">
+                <i class="bi bi-download me-1"></i>Export Awards (CSV)
               </button>
-              <button class="btn btn-outline-success">
-                <i class="bi bi-file-earmark-spreadsheet me-2"></i>Export Organisations (CSV)
+              <button class="btn btn-sm btn-outline-secondary">
+                <i class="bi bi-download me-1"></i>Export Organisations (CSV)
               </button>
-              <button class="btn btn-outline-info">
-                <i class="bi bi-file-earmark-spreadsheet me-2"></i>Export Winners (CSV)
+              <button class="btn btn-sm btn-outline-secondary">
+                <i class="bi bi-download me-1"></i>Export Winners (CSV)
               </button>
-            </div>
-          </div>
-
-        </div>
-      </div>
-
-      <!-- ==================================================== -->
-      <!-- EMAIL TEMPLATES TAB -->
-      <!-- ==================================================== -->
-      <div class="tab-pane fade" id="email-templates" role="tabpanel">
-        <div class="container-fluid">
-
-          <!-- Page Header -->
-          <div class="section-header mb-4">
-            <h1 class="section-title">
-              <i class="bi bi-envelope-paper me-2"></i>Email Templates
-            </h1>
-            <p class="section-subtitle">Manage automated email templates with dynamic placeholders</p>
-          </div>
-
-          <!-- Template List -->
-          <div class="row">
-            <div class="col-md-4">
-              <div class="card">
-                <div class="card-header d-flex justify-content-between align-items-center">
-                  <h5 class="mb-0">Templates</h5>
-                  <button class="btn btn-sm btn-primary" onclick="emailTemplatesModule.newTemplate()">
-                    <i class="bi bi-plus-circle me-1"></i>New
-                  </button>
-                </div>
-                <div class="list-group list-group-flush" id="templatesList">
-                  <div class="text-center py-5">
-                    <i class="bi bi-hourglass-split display-4 d-block mb-2 opacity-25"></i>
-                    Loading templates...
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div class="col-md-8">
-              <div class="card">
-                <div class="card-header">
-                  <h5 class="mb-0" id="editorTitle">Select a template</h5>
-                </div>
-                <div class="card-body" id="templateEditor">
-                  <div class="text-center py-5 text-muted">
-                    <i class="bi bi-envelope display-1 opacity-25 d-block mb-3"></i>
-                    <p>Select a template from the list to edit</p>
-                  </div>
-                </div>
-              </div>
             </div>
           </div>
 
@@ -3191,33 +2731,629 @@
             <!-- Social Media Sub-Tab -->
             <div class="tab-pane fade" id="social-content" role="tabpanel">
               <div class="d-flex justify-content-between align-items-center mb-4">
-                <h4><i class="bi bi-share me-2"></i>Social Media Campaigns</h4>
-                <button class="btn btn-primary" onclick="marketingModule.openAddCampaignModal()">
-                  <i class="bi bi-plus-lg me-2"></i>New Campaign
-                </button>
-              </div>
-
-              <div id="campaignsGrid">
-                <div class="text-center py-5 text-muted">
-                  <i class="bi bi-hourglass-split display-4 d-block mb-2 opacity-25"></i>
-                  Loading campaigns...
+                <div>
+                  <h4><i class="bi bi-share me-2"></i>Social Media Manager</h4>
+                  <p class="text-muted mb-0">Automate and schedule posts across all platforms</p>
+                </div>
+                <div class="d-flex gap-2">
+                  <button class="btn btn-outline-primary" onclick="socialMediaModule.openBulkGenerateModal()">
+                    <i class="bi bi-collection me-2"></i>Bulk Generate
+                  </button>
+                  <button class="btn btn-outline-secondary" onclick="socialMediaModule.loadAnalytics(); document.getElementById('analyticsSection').scrollIntoView({behavior:'smooth'})">
+                    <i class="bi bi-graph-up me-2"></i>Analytics
+                  </button>
                 </div>
               </div>
+
+              <!-- Main Content -->
+              <div class="row g-4">
+
+                <!-- Left Column: Post Composer -->
+                <div class="col-lg-8">
+
+                  <!-- Create Post Card -->
+                  <div class="card mb-4">
+                    <div class="card-header">
+                      <h5 class="mb-0">
+                        <i class="bi bi-pencil-square me-2"></i>Create New Post
+                      </h5>
+                    </div>
+                    <div class="card-body">
+
+                      <!-- Template Selection -->
+                      <div class="mb-4">
+                        <label class="form-label fw-bold">Post Template</label>
+                        <div class="row g-3">
+                          <div class="col-md-4">
+                            <div class="card template-card" onclick="socialMediaModule.selectTemplate('nominee', event)">
+                              <div class="card-body text-center">
+                                <i class="bi bi-star text-warning fs-1 mb-2"></i>
+                                <h6>Nominee Announcement</h6>
+                                <small class="text-muted">Announce nominees</small>
+                              </div>
+                            </div>
+                          </div>
+                          <div class="col-md-4">
+                            <div class="card template-card" onclick="socialMediaModule.selectTemplate('winner', event)">
+                              <div class="card-body text-center">
+                                <i class="bi bi-trophy text-success fs-1 mb-2"></i>
+                                <h6>Winner Announcement</h6>
+                                <small class="text-muted">Celebrate winners</small>
+                              </div>
+                            </div>
+                          </div>
+                          <div class="col-md-4">
+                            <div class="card template-card" onclick="socialMediaModule.selectTemplate('voting', event)">
+                              <div class="card-body text-center">
+                                <i class="bi bi-hand-thumbs-up text-primary fs-1 mb-2"></i>
+                                <h6>Voting Reminder</h6>
+                                <small class="text-muted">Encourage voting</small>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      <!-- Company/Nominee Selection -->
+                      <div class="row g-3 mb-3">
+                        <div class="col-md-6">
+                          <label for="smCompanySelect" class="form-label">
+                            Company/Nominee <span class="text-danger">*</span>
+                          </label>
+                          <select class="form-select" id="smCompanySelect" onchange="socialMediaModule.updatePostPreview()">
+                            <option value="">Select company...</option>
+                          </select>
+                        </div>
+                        <div class="col-md-6">
+                          <label for="smAwardSelect" class="form-label">
+                            Award Category <span class="text-danger">*</span>
+                          </label>
+                          <select class="form-select" id="smAwardSelect" onchange="socialMediaModule.updatePostPreview()">
+                            <option value="">Select award...</option>
+                          </select>
+                        </div>
+                      </div>
+
+                      <!-- Post Content -->
+                      <div class="mb-3">
+                        <label for="smPostContent" class="form-label">
+                          Post Content
+                          <small class="text-muted">(Use {{company_name}} and {{award_name}} as placeholders)</small>
+                        </label>
+                        <textarea class="form-control" id="smPostContent" rows="5" onkeyup="socialMediaModule.updatePostPreview()" placeholder="Write your post here... Use {{company_name}} and {{award_name}} to insert dynamic content"></textarea>
+                        <div class="form-text">
+                          <strong>Available variables:</strong> {{company_name}}, {{award_name}}, {{award_hashtag}}, {{year}}, {{website}}
+                        </div>
+                      </div>
+
+                      <!-- Platform-Specific Content -->
+                      <div class="mb-3">
+                        <div class="form-check">
+                          <input class="form-check-input" type="checkbox" id="smPlatformOverrides" onchange="socialMediaModule.togglePlatformOverrides()">
+                          <label class="form-check-label" for="smPlatformOverrides">
+                            <i class="bi bi-sliders me-1"></i>Customise content per platform
+                          </label>
+                        </div>
+
+                        <div id="platformOverridesContainer" style="display: none;" class="mt-3">
+                          <div class="row g-3">
+                            <div class="col-md-6">
+                              <label class="form-label small">
+                                <i class="bi bi-twitter text-info me-1"></i>Twitter/X
+                                <span class="text-muted">(280 chars)</span>
+                              </label>
+                              <textarea class="form-control form-control-sm" id="smTwitterContent" rows="3" placeholder="Twitter-specific content..."></textarea>
+                            </div>
+                            <div class="col-md-6">
+                              <label class="form-label small">
+                                <i class="bi bi-facebook text-primary me-1"></i>Facebook
+                              </label>
+                              <textarea class="form-control form-control-sm" id="smFacebookContent" rows="3" placeholder="Facebook-specific content..."></textarea>
+                            </div>
+                            <div class="col-md-6">
+                              <label class="form-label small">
+                                <i class="bi bi-instagram text-danger me-1"></i>Instagram
+                                <span class="text-muted">(2,200 chars)</span>
+                              </label>
+                              <textarea class="form-control form-control-sm" id="smInstagramContent" rows="3" placeholder="Instagram-specific caption..."></textarea>
+                            </div>
+                            <div class="col-md-6">
+                              <label class="form-label small">
+                                <i class="bi bi-linkedin text-info me-1"></i>LinkedIn
+                                <span class="text-muted">(3,000 chars)</span>
+                              </label>
+                              <textarea class="form-control form-control-sm" id="smLinkedInContent" rows="3" placeholder="LinkedIn-specific content..."></textarea>
+                            </div>
+                          </div>
+                          <small class="text-muted d-block mt-2">Leave blank to use the main post content above</small>
+                        </div>
+                      </div>
+
+                      <!-- Image Options -->
+                      <div class="mb-3">
+                        <label class="form-label fw-bold">
+                          <i class="bi bi-image me-1"></i>Post Image
+                        </label>
+                        <div class="row g-3">
+                          <div class="col-md-6">
+                            <div class="form-check">
+                              <input class="form-check-input" type="radio" name="imageSource" id="imageCompanyLogo" value="company_logo" checked onchange="socialMediaModule.updateImagePreview()">
+                              <label class="form-check-label" for="imageCompanyLogo">
+                                Company Logo
+                              </label>
+                            </div>
+                          </div>
+                          <div class="col-md-6">
+                            <div class="form-check">
+                              <input class="form-check-input" type="radio" name="imageSource" id="imageCustom" value="custom" onchange="socialMediaModule.updateImagePreview()">
+                              <label class="form-check-label" for="imageCustom">
+                                Upload Custom Image
+                              </label>
+                            </div>
+                          </div>
+                        </div>
+
+                        <!-- Custom Image Upload -->
+                        <div id="customImageUpload" class="mt-3" style="display: none;">
+                          <input type="file" class="form-control" id="smCustomImage" accept="image/*" onchange="socialMediaModule.handleImageUpload()">
+                        </div>
+
+                        <!-- Image Size Warnings -->
+                        <div id="imageSizeWarning"></div>
+
+                        <!-- Add British Trade Awards Logo Overlay -->
+                        <div class="mt-3">
+                          <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="smAddLogoOverlay" checked onchange="socialMediaModule.updateImagePreview()">
+                            <label class="form-check-label" for="smAddLogoOverlay">
+                              <i class="bi bi-badge-tm me-1"></i>Add British Trade Awards Logo Overlay
+                            </label>
+                          </div>
+                          <small class="text-muted d-block mt-1">Logo will be placed in the corner with transparency</small>
+                        </div>
+                      </div>
+
+                      <!-- Platform Selection -->
+                      <div class="mb-3">
+                        <label class="form-label fw-bold">
+                          <i class="bi bi-share-fill me-1"></i>Post To
+                        </label>
+                        <div class="row g-2">
+                          <div class="col-md-3">
+                            <div class="form-check">
+                              <input class="form-check-input" type="checkbox" id="platformTwitter" checked>
+                              <label class="form-check-label" for="platformTwitter">
+                                <i class="bi bi-twitter text-info me-1"></i>Twitter/X
+                              </label>
+                            </div>
+                          </div>
+                          <div class="col-md-3">
+                            <div class="form-check">
+                              <input class="form-check-input" type="checkbox" id="platformFacebook" checked>
+                              <label class="form-check-label" for="platformFacebook">
+                                <i class="bi bi-facebook text-primary me-1"></i>Facebook
+                              </label>
+                            </div>
+                          </div>
+                          <div class="col-md-3">
+                            <div class="form-check">
+                              <input class="form-check-input" type="checkbox" id="platformInstagram" checked>
+                              <label class="form-check-label" for="platformInstagram">
+                                <i class="bi bi-instagram text-danger me-1"></i>Instagram
+                              </label>
+                            </div>
+                          </div>
+                          <div class="col-md-3">
+                            <div class="form-check">
+                              <input class="form-check-input" type="checkbox" id="platformLinkedIn" checked>
+                              <label class="form-check-label" for="platformLinkedIn">
+                                <i class="bi bi-linkedin text-info me-1"></i>LinkedIn
+                              </label>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      <!-- Scheduling -->
+                      <div class="row g-3 mb-3">
+                        <div class="col-md-6">
+                          <label for="smScheduleDate" class="form-label">
+                            <i class="bi bi-calendar3 me-1"></i>Schedule Date
+                          </label>
+                          <input type="date" class="form-control" id="smScheduleDate">
+                          <small class="text-muted">Leave empty to post immediately</small>
+                        </div>
+                        <div class="col-md-6">
+                          <label for="smScheduleTime" class="form-label">
+                            <i class="bi bi-clock me-1"></i>Schedule Time
+                          </label>
+                          <input type="time" class="form-control" id="smScheduleTime">
+                        </div>
+                      </div>
+
+                      <!-- Action Buttons -->
+                      <div class="d-flex gap-2">
+                        <button class="btn btn-primary" onclick="socialMediaModule.savePost('scheduled')">
+                          <i class="bi bi-clock-history me-2"></i>Schedule Post
+                        </button>
+                        <button class="btn btn-success" onclick="socialMediaModule.savePost('immediate')">
+                          <i class="bi bi-send me-2"></i>Post Now
+                        </button>
+                        <button class="btn btn-outline-secondary" onclick="socialMediaModule.saveDraft()">
+                          <i class="bi bi-save me-2"></i>Save Draft
+                        </button>
+                        <button class="btn btn-outline-danger" onclick="socialMediaModule.clearForm()">
+                          <i class="bi bi-x-circle me-2"></i>Clear
+                        </button>
+                      </div>
+
+                    </div>
+                  </div>
+
+                  <!-- Scheduled Posts -->
+                  <div class="card mb-4">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                      <h5 class="mb-0">
+                        <i class="bi bi-calendar-check me-2"></i>Scheduled Posts
+                      </h5>
+                      <span class="badge bg-primary" id="scheduledPostsCount">0</span>
+                    </div>
+                    <div class="card-body">
+                      <div id="scheduledPostsList">
+                        <div class="text-center text-muted py-4">
+                          <i class="bi bi-calendar-x display-4 d-block mb-2 opacity-25"></i>
+                          No scheduled posts
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Draft Posts -->
+                  <div class="card mb-4">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                      <h5 class="mb-0">
+                        <i class="bi bi-file-earmark-text me-2"></i>Drafts
+                      </h5>
+                      <span class="badge bg-secondary" id="draftPostsCount">0</span>
+                    </div>
+                    <div class="card-body">
+                      <div id="draftPostsList">
+                        <div class="text-center text-muted py-3">
+                          <small>No drafts</small>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Published Posts History -->
+                  <div class="card mb-4">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                      <h5 class="mb-0">
+                        <i class="bi bi-send-check me-2"></i>Published Posts
+                      </h5>
+                      <span class="badge bg-success" id="publishedPostsCount">0</span>
+                    </div>
+                    <div class="card-body">
+                      <div id="publishedPostsList">
+                        <div class="text-center text-muted py-4">
+                          <i class="bi bi-send display-4 d-block mb-2 opacity-25"></i>
+                          No published posts yet
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Analytics Section -->
+                  <div class="card" id="analyticsSection">
+                    <div class="card-header">
+                      <h5 class="mb-0">
+                        <i class="bi bi-graph-up me-2"></i>Post Analytics
+                      </h5>
+                    </div>
+                    <div class="card-body" id="analyticsContent">
+                      <div class="text-center text-muted py-4">
+                        <i class="bi bi-graph-up display-4 d-block mb-2 opacity-25"></i>
+                        <p>Click "Analytics" to load statistics</p>
+                      </div>
+                    </div>
+                  </div>
+
+                </div>
+
+                <!-- Right Column: Preview & Platforms -->
+                <div class="col-lg-4">
+
+                  <!-- Live Preview -->
+                  <div class="card mb-4 sticky-top" style="top: 20px;">
+                    <div class="card-header">
+                      <h5 class="mb-0">
+                        <i class="bi bi-eye me-2"></i>Live Preview
+                      </h5>
+                    </div>
+                    <div class="card-body">
+
+                      <!-- Platform Tabs -->
+                      <ul class="nav nav-pills mb-3" role="tablist">
+                        <li class="nav-item" role="presentation">
+                          <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#previewTwitter">
+                            <i class="bi bi-twitter"></i>
+                          </button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                          <button class="nav-link" data-bs-toggle="tab" data-bs-target="#previewFacebook">
+                            <i class="bi bi-facebook"></i>
+                          </button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                          <button class="nav-link" data-bs-toggle="tab" data-bs-target="#previewInstagram">
+                            <i class="bi bi-instagram"></i>
+                          </button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                          <button class="nav-link" data-bs-toggle="tab" data-bs-target="#previewLinkedIn">
+                            <i class="bi bi-linkedin"></i>
+                          </button>
+                        </li>
+                      </ul>
+
+                      <!-- Preview Content -->
+                      <div class="tab-content">
+                        <!-- Twitter Preview -->
+                        <div class="tab-pane fade show active" id="previewTwitter">
+                          <div class="social-preview twitter-preview">
+                            <div class="preview-header">
+                              <strong>British Trade Awards</strong>
+                              <small class="text-muted">@BritishTradeAwards</small>
+                            </div>
+                            <div class="preview-content" id="twitterPreviewText">
+                              Your post will appear here...
+                            </div>
+                            <div class="preview-image" id="twitterPreviewImage">
+                              <div class="text-center text-muted py-4">
+                                <i class="bi bi-image opacity-25 fs-1"></i>
+                              </div>
+                            </div>
+                            <div class="preview-meta">
+                              <small class="text-muted">Character count: <span id="twitterCharCount">0</span>/280</small>
+                            </div>
+                          </div>
+                        </div>
+
+                        <!-- Facebook Preview -->
+                        <div class="tab-pane fade" id="previewFacebook">
+                          <div class="social-preview facebook-preview">
+                            <div class="preview-header">
+                              <strong>British Trade Awards</strong>
+                            </div>
+                            <div class="preview-content" id="facebookPreviewText">
+                              Your post will appear here...
+                            </div>
+                            <div class="preview-image" id="facebookPreviewImage">
+                              <div class="text-center text-muted py-4">
+                                <i class="bi bi-image opacity-25 fs-1"></i>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+
+                        <!-- Instagram Preview -->
+                        <div class="tab-pane fade" id="previewInstagram">
+                          <div class="social-preview instagram-preview">
+                            <div class="preview-header">
+                              <strong>britishtrade_awards</strong>
+                            </div>
+                            <div class="preview-image" id="instagramPreviewImage">
+                              <div class="text-center text-muted py-4">
+                                <i class="bi bi-image opacity-25 fs-1"></i>
+                              </div>
+                            </div>
+                            <div class="preview-content" id="instagramPreviewText">
+                              Your caption will appear here...
+                            </div>
+                            <div class="preview-meta">
+                              <small class="text-muted">Character count: <span id="instagramCharCount">0</span>/2,200</small>
+                            </div>
+                          </div>
+                        </div>
+
+                        <!-- LinkedIn Preview -->
+                        <div class="tab-pane fade" id="previewLinkedIn">
+                          <div class="social-preview linkedin-preview">
+                            <div class="preview-header">
+                              <strong>British Trade Awards</strong>
+                            </div>
+                            <div class="preview-content" id="linkedinPreviewText">
+                              Your post will appear here...
+                            </div>
+                            <div class="preview-image" id="linkedinPreviewImage">
+                              <div class="text-center text-muted py-4">
+                                <i class="bi bi-image opacity-25 fs-1"></i>
+                              </div>
+                            </div>
+                            <div class="preview-meta">
+                              <small class="text-muted">Character count: <span id="linkedinCharCount">0</span>/3,000</small>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                    </div>
+                  </div>
+
+                  <!-- Connected Platforms -->
+                  <div class="card">
+                    <div class="card-header">
+                      <h5 class="mb-0">
+                        <i class="bi bi-plug me-2"></i>Connected Platforms
+                      </h5>
+                    </div>
+                    <div class="card-body">
+                      <div id="connectedPlatformsList">
+                        <div class="d-flex justify-content-between align-items-center mb-2 p-2 border rounded">
+                          <div>
+                            <i class="bi bi-twitter text-info me-2"></i>
+                            <strong>Twitter/X</strong>
+                          </div>
+                          <span class="badge bg-secondary">Not Connected</span>
+                        </div>
+                        <div class="d-flex justify-content-between align-items-center mb-2 p-2 border rounded">
+                          <div>
+                            <i class="bi bi-facebook text-primary me-2"></i>
+                            <strong>Facebook</strong>
+                          </div>
+                          <span class="badge bg-secondary">Not Connected</span>
+                        </div>
+                        <div class="d-flex justify-content-between align-items-center mb-2 p-2 border rounded">
+                          <div>
+                            <i class="bi bi-instagram text-danger me-2"></i>
+                            <strong>Instagram</strong>
+                          </div>
+                          <span class="badge bg-secondary">Not Connected</span>
+                        </div>
+                        <div class="d-flex justify-content-between align-items-center mb-2 p-2 border rounded">
+                          <div>
+                            <i class="bi bi-linkedin text-info me-2"></i>
+                            <strong>LinkedIn</strong>
+                          </div>
+                          <span class="badge bg-secondary">Not Connected</span>
+                        </div>
+                      </div>
+                      <button class="btn btn-outline-primary btn-sm w-100 mt-3" onclick="socialMediaModule.openPlatformSettings()">
+                        <i class="bi bi-gear me-2"></i>Configure Platforms
+                      </button>
+                    </div>
+                  </div>
+
+                </div>
+
+              </div>
+
+              <!-- Bulk Generate Modal -->
+              <div class="modal fade" id="bulkGenerateModal" tabindex="-1">
+                <div class="modal-dialog">
+                  <div class="modal-content">
+                    <div class="modal-header">
+                      <h5 class="modal-title">
+                        <i class="bi bi-collection me-2"></i>Bulk Generate Posts
+                      </h5>
+                      <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                      <p class="text-muted">Generate posts for all nominees or winners in an award category.</p>
+
+                      <div class="mb-3">
+                        <label for="bulkAwardSelect" class="form-label">Award Category <span class="text-danger">*</span></label>
+                        <select class="form-select" id="bulkAwardSelect">
+                          <option value="">Select award...</option>
+                        </select>
+                      </div>
+
+                      <div class="mb-3">
+                        <label for="bulkTemplateType" class="form-label">Template Type <span class="text-danger">*</span></label>
+                        <select class="form-select" id="bulkTemplateType">
+                          <option value="">Select template...</option>
+                          <option value="nominee">Nominee Announcement</option>
+                          <option value="winner">Winner Announcement</option>
+                          <option value="voting">Voting Reminder</option>
+                        </select>
+                      </div>
+
+                      <div class="mb-3">
+                        <label class="form-label">Platforms</label>
+                        <div class="row g-2">
+                          <div class="col-6">
+                            <div class="form-check">
+                              <input class="form-check-input" type="checkbox" id="bulkPlatformTwitter" checked>
+                              <label class="form-check-label" for="bulkPlatformTwitter">
+                                <i class="bi bi-twitter text-info me-1"></i>Twitter/X
+                              </label>
+                            </div>
+                          </div>
+                          <div class="col-6">
+                            <div class="form-check">
+                              <input class="form-check-input" type="checkbox" id="bulkPlatformFacebook" checked>
+                              <label class="form-check-label" for="bulkPlatformFacebook">
+                                <i class="bi bi-facebook text-primary me-1"></i>Facebook
+                              </label>
+                            </div>
+                          </div>
+                          <div class="col-6">
+                            <div class="form-check">
+                              <input class="form-check-input" type="checkbox" id="bulkPlatformInstagram" checked>
+                              <label class="form-check-label" for="bulkPlatformInstagram">
+                                <i class="bi bi-instagram text-danger me-1"></i>Instagram
+                              </label>
+                            </div>
+                          </div>
+                          <div class="col-6">
+                            <div class="form-check">
+                              <input class="form-check-input" type="checkbox" id="bulkPlatformLinkedIn" checked>
+                              <label class="form-check-label" for="bulkPlatformLinkedIn">
+                                <i class="bi bi-linkedin text-info me-1"></i>LinkedIn
+                              </label>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div class="mb-3">
+                        <label for="bulkSaveAs" class="form-label">Save As</label>
+                        <select class="form-select" id="bulkSaveAs">
+                          <option value="draft">Drafts (review before posting)</option>
+                          <option value="scheduled">Scheduled</option>
+                        </select>
+                      </div>
+                    </div>
+                    <div class="modal-footer">
+                      <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                      <button type="button" class="btn btn-primary" onclick="socialMediaModule.bulkGenerate()">
+                        <i class="bi bi-collection me-2"></i>Generate Posts
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
             </div>
 
             <!-- Email Templates Sub-Tab -->
             <div class="tab-pane fade" id="email-templates-content" role="tabpanel">
               <div class="d-flex justify-content-between align-items-center mb-4">
-                <h4><i class="bi bi-envelope me-2"></i>Email Templates</h4>
-                <button class="btn btn-primary" onclick="marketingModule.openAddEmailTemplateModal()">
-                  <i class="bi bi-plus-lg me-2"></i>New Template
-                </button>
+                <h4><i class="bi bi-envelope-paper me-2"></i>Email Templates</h4>
+                <p class="text-muted mb-0">Manage automated email templates with dynamic placeholders</p>
               </div>
 
-              <div id="emailTemplatesGrid">
-                <div class="text-center py-5 text-muted">
-                  <i class="bi bi-hourglass-split display-4 d-block mb-2 opacity-25"></i>
-                  Loading email templates...
+              <!-- Template List + Editor -->
+              <div class="row">
+                <div class="col-md-4">
+                  <div class="card">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                      <h5 class="mb-0">Templates</h5>
+                      <button class="btn btn-sm btn-primary" onclick="emailTemplatesModule.newTemplate()">
+                        <i class="bi bi-plus-circle me-1"></i>New
+                      </button>
+                    </div>
+                    <div class="list-group list-group-flush" id="templatesList">
+                      <div class="text-center py-5">
+                        <i class="bi bi-hourglass-split display-4 d-block mb-2 opacity-25"></i>
+                        Loading templates...
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="col-md-8">
+                  <div class="card">
+                    <div class="card-header">
+                      <h5 class="mb-0" id="editorTitle">Select a template</h5>
+                    </div>
+                    <div class="card-body" id="templateEditor">
+                      <div class="text-center py-5 text-muted">
+                        <i class="bi bi-envelope display-1 opacity-25 d-block mb-3"></i>
+                        <p>Select a template from the list to edit</p>
+                      </div>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
@@ -3227,7 +3363,7 @@
               <div class="row g-0" style="height: calc(100vh - 280px); min-height: 600px;">
 
                 <!-- Left Sidebar - Blocks & Settings -->
-                <div class="col-md-3 border-end" style="overflow-y: auto;">
+                <div class="col-md-3 border-end" style="overflow-y: auto; position: relative; z-index: 2;">
                   <div class="p-3">
 
                     <!-- Template Selector -->
@@ -3258,7 +3394,30 @@
 
                       <div class="mb-3">
                         <label class="form-label small">Subject Line</label>
-                        <input type="text" class="form-control form-control-sm" id="builderSubject" placeholder="Congratulations {{company_name}}!">
+                        <input type="text" class="form-control form-control-sm" id="builderSubject" placeholder="Congratulations {{company_name}}!" oninput="emailBuilder.updateSubjectCounter()">
+                      </div>
+
+                      <!-- A/B Testing Toggle -->
+                      <div class="mb-3">
+                        <div class="form-check form-switch">
+                          <input class="form-check-input" type="checkbox" id="abTestToggle" onchange="emailBuilder.toggleABTest()">
+                          <label class="form-check-label small" for="abTestToggle">A/B Test Subject Line</label>
+                        </div>
+                      </div>
+                      <div id="abTestSection" style="display: none;">
+                        <div class="mb-2">
+                          <label class="form-label small">Subject B (variant)</label>
+                          <input type="text" class="form-control form-control-sm" id="abVariantB" placeholder="Alternative subject line..." oninput="emailBuilder.abVariantB = this.value">
+                        </div>
+                        <div class="mb-3">
+                          <label class="form-label small">Split: <span id="abSplitLabel">50/50</span></label>
+                          <input type="range" class="form-range" id="abSplitPercent" min="10" max="90" step="10" value="50" oninput="document.getElementById('abSplitLabel').textContent = this.value + '/' + (100 - this.value)">
+                        </div>
+                      </div>
+
+                      <div class="mb-3">
+                        <label class="form-label small">Preview Text <small class="text-muted">(preheader)</small></label>
+                        <input type="text" class="form-control form-control-sm" id="builderPreheader" placeholder="Shown after subject in inbox...">
                       </div>
 
                       <div class="mb-3">
@@ -3303,6 +3462,12 @@
                         <div class="email-block-item" draggable="true" data-block-type="social-links">
                           <i class="bi bi-share"></i> Social Links
                         </div>
+                        <div class="email-block-item" draggable="true" data-block-type="richtext">
+                          <i class="bi bi-type-bold"></i> Rich Text
+                        </div>
+                        <div class="email-block-item" draggable="true" data-block-type="html-code">
+                          <i class="bi bi-code-slash"></i> HTML Code
+                        </div>
                         <div class="email-block-item" draggable="true" data-block-type="footer">
                           <i class="bi bi-layout-text-window"></i> Footer
                         </div>
@@ -3328,12 +3493,51 @@
                         <input type="text" class="form-control form-control-sm" id="builderFromName" value="British Trade Awards">
                       </div>
 
+                      <div class="mb-3">
+                        <label class="form-label small">From Email</label>
+                        <input type="email" class="form-control form-control-sm" id="builderFromEmail" value="awards@britishtradeawards.com">
+                      </div>
+
+                      <div class="mb-3">
+                        <label class="form-label small">Reply-To Email</label>
+                        <input type="email" class="form-control form-control-sm" id="builderReplyTo" placeholder="Same as from email">
+                      </div>
+
+                      <!-- Send Mode Toggle -->
+                      <div class="mb-3">
+                        <div class="btn-group btn-group-sm w-100" role="group">
+                          <input type="radio" class="btn-check" name="sendMode" id="sendModeNow" value="now" checked onchange="emailBuilder.toggleScheduler()">
+                          <label class="btn btn-outline-secondary" for="sendModeNow"><i class="bi bi-send me-1"></i>Send Now</label>
+                          <input type="radio" class="btn-check" name="sendMode" id="sendModeScheduled" value="scheduled" onchange="emailBuilder.toggleScheduler()">
+                          <label class="btn btn-outline-secondary" for="sendModeScheduled"><i class="bi bi-clock me-1"></i>Schedule</label>
+                        </div>
+                      </div>
+
+                      <!-- Schedule Options (hidden by default) -->
+                      <div id="scheduleOptions" style="display: none;">
+                        <div class="mb-2">
+                          <label class="form-label small">Send Date</label>
+                          <input type="date" class="form-control form-control-sm" id="builderScheduleDate">
+                        </div>
+                        <div class="mb-3">
+                          <label class="form-label small">Send Time</label>
+                          <input type="time" class="form-control form-control-sm" id="builderScheduleTime" value="09:00">
+                        </div>
+                        <small class="text-muted d-block mb-2" id="schedulePreview"></small>
+                      </div>
+
                       <div class="d-grid gap-2">
                         <button class="btn btn-outline-info btn-sm" onclick="emailBuilder.sendTestEmail()">
                           <i class="bi bi-envelope-check me-1"></i>Send Test Email
                         </button>
-                        <button class="btn btn-warning btn-sm" onclick="emailBuilder.sendCampaign()">
+                        <button class="btn btn-warning btn-sm" id="btnSendCampaign" onclick="emailBuilder.sendCampaign()">
                           <i class="bi bi-send-fill me-1"></i>Send to List
+                        </button>
+                        <button class="btn btn-primary btn-sm" id="btnScheduleCampaign" style="display: none;" onclick="emailBuilder.scheduleCampaign()">
+                          <i class="bi bi-clock-fill me-1"></i>Schedule Campaign
+                        </button>
+                        <button class="btn btn-info btn-sm" id="btnABCampaign" style="display: none;" onclick="emailBuilder.sendABCampaign()">
+                          <i class="bi bi-diagram-2 me-1"></i>Send A/B Test
                         </button>
                       </div>
                     </div>
@@ -3342,11 +3546,17 @@
 
                     <!-- Quick Actions -->
                     <div class="d-grid gap-2">
-                      <button class="btn btn-success btn-sm" onclick="emailBuilder.exportHTML()">
+                      <button class="btn btn-outline-warning btn-sm" onclick="emailBuilder.saveDraft()">
+                        <i class="bi bi-file-earmark me-1"></i>Save Draft
+                      </button>
+                      <button class="btn btn-outline-secondary btn-sm" onclick="emailBuilder.exportHTML()">
                         <i class="bi bi-download me-1"></i>Export HTML
                       </button>
                       <button class="btn btn-primary btn-sm" onclick="emailBuilder.saveTemplate()">
                         <i class="bi bi-save me-1"></i>Save Template
+                      </button>
+                      <button class="btn btn-outline-info btn-sm" onclick="emailBuilder.checkSpamScore()">
+                        <i class="bi bi-shield-check me-1"></i>Spam Check
                       </button>
                       <button class="btn btn-outline-secondary btn-sm" onclick="emailBuilder.clearCanvas()">
                         <i class="bi bi-trash me-1"></i>Clear All
@@ -3357,17 +3567,27 @@
                 </div>
 
                 <!-- Center - Canvas/Builder -->
-                <div class="col-md-6 border-end bg-light" style="overflow-y: auto;">
+                <div class="col-md-6 border-end bg-light" style="overflow-y: auto; position: relative; z-index: 1;">
                   <div class="p-3">
                     <div class="d-flex justify-content-between align-items-center mb-3">
                       <h6 class="mb-0"><i class="bi bi-palette me-2"></i>Email Canvas</h6>
-                      <div class="btn-group btn-group-sm" role="group">
-                        <button class="btn btn-outline-secondary active" onclick="emailBuilder.setViewMode('desktop')">
-                          <i class="bi bi-display"></i>
-                        </button>
-                        <button class="btn btn-outline-secondary" onclick="emailBuilder.setViewMode('mobile')">
-                          <i class="bi bi-phone"></i>
-                        </button>
+                      <div class="d-flex gap-2">
+                        <div class="btn-group btn-group-sm" role="group">
+                          <button class="btn btn-outline-secondary" onclick="emailBuilder.undo()" title="Undo (Ctrl+Z)">
+                            <i class="bi bi-arrow-counterclockwise"></i>
+                          </button>
+                          <button class="btn btn-outline-secondary" onclick="emailBuilder.redo()" title="Redo (Ctrl+Y)">
+                            <i class="bi bi-arrow-clockwise"></i>
+                          </button>
+                        </div>
+                        <div class="btn-group btn-group-sm" role="group">
+                          <button class="btn btn-outline-secondary active" onclick="emailBuilder.setViewMode('desktop')">
+                            <i class="bi bi-display"></i>
+                          </button>
+                          <button class="btn btn-outline-secondary" onclick="emailBuilder.setViewMode('mobile')">
+                            <i class="bi bi-phone"></i>
+                          </button>
+                        </div>
                       </div>
                     </div>
 
@@ -3382,7 +3602,7 @@
                 </div>
 
                 <!-- Right Sidebar - Live Preview -->
-                <div class="col-md-3" style="overflow-y: auto;">
+                <div class="col-md-3" style="overflow-y: auto; position: relative; z-index: 2;">
                   <div class="p-3">
                     <h6 class="mb-3"><i class="bi bi-eye me-2"></i>Live Preview</h6>
 
@@ -3403,6 +3623,8 @@
                         <code class="variable-tag">{{website}}</code>
                         <code class="variable-tag">{{event_name}}</code>
                         <code class="variable-tag">{{event_date}}</code>
+                        <code class="variable-tag">{{unsubscribe_url}}</code>
+                        <code class="variable-tag">{{view_in_browser_url}}</code>
                       </div>
                       <small class="text-muted d-block mt-2">Click to copy to clipboard</small>
                     </div>
@@ -3411,6 +3633,59 @@
                 </div>
 
               </div>
+
+              <!-- Campaign Log / Status Panel -->
+              <div class="mt-3" id="campaignLogSection">
+                <div class="content-card">
+                  <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h6 class="mb-0"><i class="bi bi-journal-text me-2"></i>Campaign Log</h6>
+                    <div class="d-flex gap-2 align-items-center">
+                      <input type="text" class="form-control form-control-sm" id="campaignLogSearchInput" placeholder="Search campaigns..." style="width: 180px;" oninput="emailBuilder.searchCampaigns(this.value)">
+                      <select class="form-select form-select-sm" id="campaignLogFilter" style="width: auto;" onchange="emailBuilder.campaignLogPage = 0; emailBuilder.loadCampaignLog()">
+                        <option value="all">All Campaigns</option>
+                        <option value="Sent">Sent</option>
+                        <option value="Scheduled">Scheduled</option>
+                        <option value="Draft">Draft</option>
+                        <option value="Sending">Sending</option>
+                        <option value="Failed">Failed</option>
+                        <option value="Cancelled">Cancelled</option>
+                      </select>
+                      <button class="btn btn-outline-secondary btn-sm" onclick="emailBuilder.loadCampaignLog()" title="Refresh">
+                        <i class="bi bi-arrow-clockwise"></i>
+                      </button>
+                    </div>
+                  </div>
+
+                  <div class="table-responsive">
+                    <table class="table table-sm table-hover mb-0" id="campaignLogTable">
+                      <thead>
+                        <tr>
+                          <th>Campaign</th>
+                          <th>Subject</th>
+                          <th>Status</th>
+                          <th>Recipients</th>
+                          <th>Opened</th>
+                          <th>Clicked</th>
+                          <th>Bounced</th>
+                          <th>Sent / Scheduled</th>
+                          <th>Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody id="campaignLogBody">
+                        <tr>
+                          <td colspan="9" class="text-center text-muted py-4">
+                            <i class="bi bi-journal-text d-block mb-2" style="font-size: 1.5rem; opacity: 0.3;"></i>
+                            No campaigns yet
+                          </td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                  <!-- Pagination -->
+                  <div class="d-flex justify-content-end mt-2" id="campaignLogPagination"></div>
+                </div>
+              </div>
+
             </div>
 
             <!-- Email Lists Sub-Tab -->
@@ -3452,11 +3727,11 @@
               <div class="d-flex justify-content-between align-items-center mb-4">
                 <h4><i class="bi bi-list-ul me-2"></i>Email Lists</h4>
                 <div class="btn-group">
-                  <button class="btn btn-primary" onclick="emailListsModule.openCreateListModal()">
-                    <i class="bi bi-plus-lg me-2"></i>Create List
+                  <button class="btn btn-sm btn-primary" onclick="emailListsModule.openCreateListModal()">
+                    <i class="bi bi-plus-lg me-1"></i>Create List
                   </button>
-                  <button class="btn btn-success" onclick="emailListsModule.openImportModal()">
-                    <i class="bi bi-upload me-2"></i>Import Subscribers
+                  <button class="btn btn-sm btn-outline-success" onclick="emailListsModule.openImportModal()">
+                    <i class="bi bi-upload me-1"></i>Import
                   </button>
                 </div>
               </div>
@@ -4310,20 +4585,20 @@
                   <h6 class="mb-3">Export Individual Tables</h6>
                   <p class="small text-muted mb-3">Export specific tables as CSV files</p>
                   <div class="d-flex gap-2 flex-wrap">
-                    <button class="btn btn-outline-primary btn-sm" onclick="dashboardModule.exportAwardsCSV()">
-                      <i class="bi bi-file-earmark-spreadsheet me-1"></i>Awards
+                    <button class="btn btn-outline-secondary btn-sm" onclick="dashboardModule.exportAwardsCSV()">
+                      <i class="bi bi-download me-1"></i>Awards
                     </button>
-                    <button class="btn btn-outline-success btn-sm" onclick="dashboardModule.exportOrganisationsCSV()">
-                      <i class="bi bi-file-earmark-spreadsheet me-1"></i>Organisations
+                    <button class="btn btn-outline-secondary btn-sm" onclick="dashboardModule.exportOrganisationsCSV()">
+                      <i class="bi bi-download me-1"></i>Organisations
                     </button>
-                    <button class="btn btn-outline-info btn-sm" onclick="dashboardModule.exportWinnersCSV()">
-                      <i class="bi bi-file-earmark-spreadsheet me-1"></i>Winners
+                    <button class="btn btn-outline-secondary btn-sm" onclick="dashboardModule.exportWinnersCSV()">
+                      <i class="bi bi-download me-1"></i>Winners
                     </button>
-                    <button class="btn btn-outline-warning btn-sm" onclick="settingsModule.exportEventsCSV()">
-                      <i class="bi bi-file-earmark-spreadsheet me-1"></i>Events
+                    <button class="btn btn-outline-secondary btn-sm" onclick="settingsModule.exportEventsCSV()">
+                      <i class="bi bi-download me-1"></i>Events
                     </button>
                     <button class="btn btn-outline-secondary btn-sm" onclick="settingsModule.exportMediaCSV()">
-                      <i class="bi bi-file-earmark-spreadsheet me-1"></i>Media Gallery
+                      <i class="bi bi-download me-1"></i>Media Gallery
                     </button>
                   </div>
                 </div>
@@ -5703,7 +5978,7 @@ Available placeholders:
               </p>
             </div>
             <div class="d-flex gap-2">
-              <button class="btn btn-outline-primary btn-sm" onclick="eventsModule.exportAttendees()">
+              <button class="btn btn-outline-secondary btn-sm" onclick="eventsModule.exportAttendees()">
                 <i class="bi bi-download me-1"></i>Export List
               </button>
               <button class="btn btn-primary btn-sm" onclick="eventsModule.openAddAttendeeForm()">
@@ -7155,8 +7430,8 @@ in recognition of excellence
 
         </div>
         <div class="modal-footer">
-          <button type="button" class="btn btn-outline-secondary" onclick="dashboardModule.exportSalesData()">
-            <i class="bi bi-download me-2"></i>Export Report
+          <button type="button" class="btn btn-sm btn-outline-secondary" onclick="dashboardModule.exportSalesData()">
+            <i class="bi bi-download me-1"></i>Export Report
           </button>
           <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
         </div>
@@ -7782,7 +8057,7 @@ in recognition of excellence
               <button class="btn btn-warning btn-sm" onclick="aiVettingModule.runVetting()" id="runVettingBtn">
                 <i class="bi bi-robot me-1"></i>Run AI Vetting
               </button>
-              <button class="btn btn-outline-primary btn-sm" onclick="aiVettingModule.exportResults()">
+              <button class="btn btn-outline-secondary btn-sm" onclick="aiVettingModule.exportResults()">
                 <i class="bi bi-download me-1"></i>Export
               </button>
             </div>

@@ -914,17 +914,17 @@ const eventsModule = {
 
               <!-- Actions Bar -->
               <div class="mb-3 d-flex gap-2">
-                <button class="btn btn-primary" onclick="eventsModule.syncFromRSVPs()">
-                  <i class="bi bi-arrow-repeat me-2"></i>Sync from RSVPs
+                <button class="btn btn-sm btn-primary" onclick="eventsModule.syncFromRSVPs()">
+                  <i class="bi bi-arrow-repeat me-1"></i>Sync from RSVPs
                 </button>
-                <button class="btn btn-outline-secondary" onclick="eventsModule.addManualEntry()">
-                  <i class="bi bi-plus-circle me-2"></i>Add Manual Entry
+                <button class="btn btn-sm btn-outline-secondary" onclick="eventsModule.addManualEntry()">
+                  <i class="bi bi-plus-circle me-1"></i>Add Manual Entry
                 </button>
-                <button class="btn btn-outline-info" onclick="eventsModule.exportRunningOrder()">
-                  <i class="bi bi-download me-2"></i>Export
+                <button class="btn btn-sm btn-outline-secondary" onclick="eventsModule.exportRunningOrder()">
+                  <i class="bi bi-download me-1"></i>Export
                 </button>
-                <button class="btn btn-outline-primary" onclick="eventsModule.printRunningOrder()">
-                  <i class="bi bi-printer me-2"></i>Print
+                <button class="btn btn-sm btn-outline-secondary" onclick="eventsModule.printRunningOrder()">
+                  <i class="bi bi-printer me-1"></i>Print
                 </button>
                 <div class="ms-auto">
                   <span class="badge bg-secondary fs-6">
@@ -1743,7 +1743,7 @@ const eventsModule = {
                         <button class="btn btn-sm btn-outline-secondary" onclick="eventsModule.autoAssignGuests()">
                           <i class="bi bi-magic me-1"></i>Auto Assign
                         </button>
-                        <button class="btn btn-sm btn-outline-info" onclick="eventsModule.exportTablePlan()">
+                        <button class="btn btn-sm btn-outline-secondary" onclick="eventsModule.exportTablePlan()">
                           <i class="bi bi-download me-1"></i>Export
                         </button>
                       </div>

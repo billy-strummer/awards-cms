@@ -1999,6 +1999,29 @@ body.dark-mode .quick-action-item span {
   background: var(--danger-color);
 }
 
+/* Image & Button Block Controls */
+.email-image-controls,
+.email-button-controls {
+  border-bottom: 1px solid #dee2e6;
+  padding-bottom: 6px;
+}
+
+.email-image-controls .form-control,
+.email-button-controls .form-control {
+  font-size: 12px;
+}
+
+/* Autosave Recovery Banner */
+#autosaveRecoveryBanner {
+  border-left: 4px solid #0d6efd;
+  animation: slideDown 0.3s ease-out;
+}
+
+@keyframes slideDown {
+  from { transform: translateY(-20px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
 /* Right Panel - Preview */
 .email-preview-panel {
   background: white;
@@ -2101,6 +2124,155 @@ body.dark-mode .quick-action-item span {
   background: rgba(13, 110, 253, 0.05);
 }
 
+/* Rich Text Toolbar */
+.email-richtext-toolbar {
+  background: #f1f3f5;
+  border-bottom: 1px solid #dee2e6;
+  padding: 6px 10px;
+}
+
+.richtext-toolbar-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+}
+
+.richtext-btn-group {
+  display: inline-flex;
+  gap: 2px;
+  padding: 0 4px;
+  border-right: 1px solid #dee2e6;
+}
+
+.richtext-btn-group:last-child {
+  border-right: none;
+}
+
+.richtext-btn-group button,
+.richtext-color-label {
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  border: 1px solid transparent;
+  background: transparent;
+  border-radius: var(--radius-sm, 4px);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.85rem;
+  color: #495057;
+  transition: all 0.15s ease;
+}
+
+.richtext-btn-group button:hover,
+.richtext-color-label:hover {
+  background: #dee2e6;
+  border-color: #ced4da;
+  color: #212529;
+}
+
+.richtext-btn-group button:active {
+  background: #ced4da;
+}
+
+.richtext-font-size {
+  height: 30px;
+  padding: 2px 4px;
+  border: 1px solid #ced4da;
+  border-radius: var(--radius-sm, 4px);
+  background: white;
+  font-size: 0.78rem;
+  color: #495057;
+  cursor: pointer;
+  margin-right: 4px;
+}
+
+.richtext-color-input {
+  position: absolute;
+  opacity: 0;
+  width: 0;
+  height: 0;
+  pointer-events: none;
+}
+
+.richtext-color-label {
+  position: relative;
+  overflow: visible;
+}
+
+.richtext-color-label input[type="color"] {
+  position: absolute;
+  bottom: -2px;
+  left: 0;
+  width: 100%;
+  height: 4px;
+  padding: 0;
+  border: none;
+  cursor: pointer;
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.email-richtext-content {
+  min-height: 80px;
+  border: none;
+  outline: 2px dashed transparent;
+  transition: outline 0.15s ease;
+  padding: 4px;
+  border-radius: 2px;
+}
+
+.email-richtext-content:focus {
+  outline-color: var(--primary-color, #0d6efd);
+  background: rgba(13, 110, 253, 0.02);
+}
+
+/* HTML Code Block */
+.email-html-code-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: #1e1e2e;
+  color: #cdd6f4;
+  padding: 8px 12px;
+  font-size: 0.8rem;
+  font-family: 'Courier New', monospace;
+}
+
+.email-html-code-wrap {
+  position: relative;
+}
+
+.email-html-code-editor {
+  width: 100%;
+  min-height: 180px;
+  padding: 12px 14px;
+  border: none;
+  resize: vertical;
+  font-family: 'Courier New', Consolas, Monaco, monospace;
+  font-size: 0.82rem;
+  line-height: 1.5;
+  tab-size: 2;
+  background: #282a36;
+  color: #f8f8f2;
+  outline: none;
+  box-sizing: border-box;
+}
+
+.email-html-code-editor::placeholder {
+  color: #6272a4;
+}
+
+.email-html-preview {
+  padding: 20px;
+  border: 2px dashed #dee2e6;
+  border-top: none;
+  min-height: 60px;
+  background: white;
+}
+
 /* Dark Mode Support */
 body.dark-mode .email-blocks-panel,
 body.dark-mode .email-canvas-panel,
@@ -2143,6 +2315,37 @@ body.dark-mode [contenteditable="true"]:focus {
   background: rgba(13, 110, 253, 0.1);
 }
 
+body.dark-mode .email-richtext-toolbar {
+  background: #2d2d2d;
+  border-color: #404040;
+}
+
+body.dark-mode .richtext-btn-group {
+  border-color: #404040;
+}
+
+body.dark-mode .richtext-btn-group button,
+body.dark-mode .richtext-color-label {
+  color: #e9ecef;
+}
+
+body.dark-mode .richtext-btn-group button:hover,
+body.dark-mode .richtext-color-label:hover {
+  background: #404040;
+  border-color: #505050;
+}
+
+body.dark-mode .richtext-font-size {
+  background: #3a3a3a;
+  border-color: #505050;
+  color: #e9ecef;
+}
+
+body.dark-mode .email-html-preview {
+  background: #2d2d2d;
+  border-color: #404040;
+}
+
 /* Responsive Design */
 @media (max-width: 1400px) {
   .email-builder-layout {
@@ -2160,6 +2363,64 @@ body.dark-mode [contenteditable="true"]:focus {
   .email-preview-panel {
     max-height: 400px;
   }
+}
+
+/* Campaign Log Styles */
+#campaignLogSection .content-card {
+  padding: 20px;
+  border-radius: 8px;
+}
+
+#campaignLogTable th {
+  font-size: 0.8rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: #6c757d;
+  white-space: nowrap;
+  border-bottom: 2px solid #dee2e6;
+}
+
+#campaignLogTable td {
+  font-size: 0.85rem;
+  vertical-align: middle;
+}
+
+#campaignLogTable .badge {
+  font-size: 0.75rem;
+}
+
+/* Schedule options styling */
+#scheduleOptions {
+  background: #f0f4ff;
+  border: 1px solid #b8d0ff;
+  border-radius: 6px;
+  padding: 12px;
+  margin-bottom: 12px;
+}
+
+#schedulePreview {
+  font-size: 0.8rem;
+  color: #0d6efd;
+}
+
+/* Dark mode for campaign log */
+body.dark-mode #campaignLogTable th {
+  color: #9ca3af;
+  border-bottom-color: #374151;
+}
+
+body.dark-mode #campaignLogTable td {
+  color: #e5e7eb;
+}
+
+body.dark-mode #scheduleOptions {
+  background: #1e293b;
+  border-color: #334155;
+}
+
+body.dark-mode #schedulePreview {
+  color: #60a5fa;
 }
 
 /* ==================================================== */

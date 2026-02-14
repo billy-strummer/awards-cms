@@ -174,13 +174,13 @@ const emailListsModule = {
                 <button class="btn btn-sm btn-outline-success" onclick="emailListsModule.addSubscriber('${list.id}')" title="Add Subscriber">
                   <i class="bi bi-person-plus"></i>
                 </button>
-                <button class="btn btn-sm btn-outline-info" onclick="emailListsModule.openImportModal('${list.id}')" title="Import">
+                <button class="btn btn-sm btn-outline-success" onclick="emailListsModule.openImportModal('${list.id}')" title="Import">
                   <i class="bi bi-upload"></i>
                 </button>
                 <button class="btn btn-sm btn-outline-secondary" onclick="emailListsModule.editList('${list.id}')" title="Edit">
                   <i class="bi bi-pencil"></i>
                 </button>
-                <button class="btn btn-sm btn-outline-primary" onclick="emailListsModule.exportList('${list.id}')" title="Export">
+                <button class="btn btn-sm btn-outline-secondary" onclick="emailListsModule.exportList('${list.id}')" title="Export">
                   <i class="bi bi-download"></i>
                 </button>
                 <button class="btn btn-sm btn-outline-danger" onclick="emailListsModule.deleteList('${list.id}')" title="Delete">
@@ -297,10 +297,12 @@ const emailListsModule = {
 
     const listData = {
       list_name: document.getElementById('listName').value,
+      description: document.getElementById('listDescription').value || null,
       list_type: document.getElementById('listType').value,
       color: document.getElementById('listColor').value,
       icon: document.getElementById('listIcon').value,
-      is_active: document.getElementById('listActive').checked
+      is_active: document.getElementById('listActive').checked,
+      auto_clean: document.getElementById('listAutoClean').checked
     };
 
     try {
@@ -619,8 +621,122 @@ const emailListsModule = {
   },
 
   async importFromCRM() {
-    showNotification('CRM import coming soon', 'info');
-    return [];
+    const selectedSegments = Array.from(document.getElementById('crmSegmentSelect')?.selectedOptions || [])
+      .map(opt => opt.value);
+
+    if (selectedSegments.length === 0) {
+      showNotification('Please select at least one CRM segment', 'warning');
+      return [];
+    }
+
+    const includeContacts = document.getElementById('crmIncludeContacts')?.checked;
+
+    try {
+      // Map CRM segments to database queries
+      const segmentQueries = {
+        'past_winners': async () => {
+          const { data } = await STATE.client
+            .from('award_assignments')
+            .select('organisations(id, company_name, contact_email, contact_first_name, contact_last_name)')
+            .eq('status', 'winner')
+            .not('organisations', 'is', null);
+          return (data || []).filter(d => d.organisations?.contact_email).map(d => ({
+            email: d.organisations.contact_email,
+            first_name: d.organisations.contact_first_name || '',
+            last_name: d.organisations.contact_last_name || '',
+            company_name: d.organisations.company_name || ''
+          }));
+        },
+        'current_nominees': async () => {
+          const { data } = await STATE.client
+            .from('award_assignments')
+            .select('organisations(id, company_name, contact_email, contact_first_name, contact_last_name)')
+            .eq('status', 'nominee')
+            .not('organisations', 'is', null);
+          return (data || []).filter(d => d.organisations?.contact_email).map(d => ({
+            email: d.organisations.contact_email,
+            first_name: d.organisations.contact_first_name || '',
+            last_name: d.organisations.contact_last_name || '',
+            company_name: d.organisations.company_name || ''
+          }));
+        },
+        'sponsors': async () => {
+          const { data } = await STATE.client
+            .from('organisations')
+            .select('company_name, contact_email, contact_first_name, contact_last_name')
+            .eq('is_sponsor', true)
+            .not('contact_email', 'is', null);
+          return (data || []).map(org => ({
+            email: org.contact_email,
+            first_name: org.contact_first_name || '',
+            last_name: org.contact_last_name || '',
+            company_name: org.company_name || ''
+          }));
+        },
+        'vip_contacts': async () => {
+          const { data } = await STATE.client
+            .from('organisations')
+            .select('company_name, contact_email, contact_first_name, contact_last_name')
+            .eq('vip', true)
+            .not('contact_email', 'is', null);
+          return (data || []).map(org => ({
+            email: org.contact_email,
+            first_name: org.contact_first_name || '',
+            last_name: org.contact_last_name || '',
+            company_name: org.company_name || ''
+          }));
+        },
+        'industry_leaders': async () => {
+          const { data } = await STATE.client
+            .from('organisations')
+            .select('company_name, contact_email, contact_first_name, contact_last_name')
+            .eq('industry_leader', true)
+            .not('contact_email', 'is', null);
+          return (data || []).map(org => ({
+            email: org.contact_email,
+            first_name: org.contact_first_name || '',
+            last_name: org.contact_last_name || '',
+            company_name: org.company_name || ''
+          }));
+        },
+        'renewal_prospects': async () => {
+          const { data } = await STATE.client
+            .from('organisations')
+            .select('company_name, contact_email, contact_first_name, contact_last_name')
+            .not('contact_email', 'is', null);
+          return (data || []).map(org => ({
+            email: org.contact_email,
+            first_name: org.contact_first_name || '',
+            last_name: org.contact_last_name || '',
+            company_name: org.company_name || ''
+          }));
+        }
+      };
+
+      let allSubscribers = [];
+      for (const segment of selectedSegments) {
+        if (segmentQueries[segment]) {
+          const subs = await segmentQueries[segment]();
+          allSubscribers = allSubscribers.concat(subs);
+        }
+      }
+
+      // Deduplicate by email
+      const seen = new Set();
+      const unique = allSubscribers.filter(s => {
+        if (!s.email || seen.has(s.email.toLowerCase())) return false;
+        seen.add(s.email.toLowerCase());
+        return true;
+      });
+
+      showNotification(`Found ${unique.length} contacts from ${selectedSegments.length} segment(s)`, 'info');
+      return unique;
+
+    } catch (error) {
+      console.error('CRM import error:', error);
+      showNotification('Error importing from CRM: ' + error.message, 'error');
+      return [];
+    }
   },
 
   // ============================================
@@ -628,18 +744,448 @@ const emailListsModule = {
   // ============================================
   async viewSubscribers(listId, listName) {
     this.currentListId = listId;
-    showNotification(`Viewing subscribers for ${listName} - full view coming soon`, 'info');
+
+    try {
+      const { data: subscribers, error } = await STATE.client
+        .from('email_list_subscribers')
+        .select('*')
+        .eq('list_id', listId)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+
+      const subs = subscribers || [];
+
+      const statusCounts = {
+        active: subs.filter(s => s.status === 'active').length,
+        unsubscribed: subs.filter(s => s.status === 'unsubscribed').length,
+        bounced: subs.filter(s => s.status === 'bounced').length,
+        pending: subs.filter(s => s.status === 'pending').length
+      };
+
+      const subscriberRows = subs.length > 0
+        ? subs.map(s => {
+            const statusBadge = {
+              'active': '<span class="badge bg-success">Active</span>',
+              'unsubscribed': '<span class="badge bg-warning text-dark">Unsubscribed</span>',
+              'bounced': '<span class="badge bg-danger">Bounced</span>',
+              'complained': '<span class="badge bg-danger">Complained</span>',
+              'pending': '<span class="badge bg-secondary">Pending</span>'
+            }[s.status] || `<span class="badge bg-secondary">${s.status}</span>`;
+
+            const openRate = s.emails_received > 0 ? Math.round((s.emails_opened / s.emails_received) * 100) : 0;
+            const addedDate = s.created_at ? new Date(s.created_at).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : '-';
+
+            return `
+              <tr>
+                <td>${utils.escapeHtml(s.email)}</td>
+                <td>${utils.escapeHtml(s.first_name || '-')}</td>
+                <td>${utils.escapeHtml(s.last_name || '-')}</td>
+                <td>${utils.escapeHtml(s.company_name || '-')}</td>
+                <td>${statusBadge}</td>
+                <td>${s.emails_received || 0}</td>
+                <td>${openRate}%</td>
+                <td><small>${addedDate}</small></td>
+                <td class="text-nowrap">
+                  ${s.status === 'active' ? `<button class="btn btn-outline-warning btn-sm py-0 px-1" onclick="emailListsModule.updateSubscriberStatus('${s.id}', 'unsubscribed')" title="Unsubscribe"><i class="bi bi-person-dash"></i></button>` : ''}
+                  ${s.status === 'unsubscribed' ? `<button class="btn btn-outline-success btn-sm py-0 px-1" onclick="emailListsModule.updateSubscriberStatus('${s.id}', 'active')" title="Resubscribe"><i class="bi bi-person-check"></i></button>` : ''}
+                  <button class="btn btn-outline-danger btn-sm py-0 px-1" onclick="emailListsModule.deleteSubscriber('${s.id}', '${listId}')" title="Remove"><i class="bi bi-trash"></i></button>
+                </td>
+              </tr>
+            `;
+          }).join('')
+        : '<tr><td colspan="9" class="text-center text-muted py-4">No subscribers in this list</td></tr>';
+
+      const modalHtml = `
+        <div class="modal fade" id="subscribersModal" tabindex="-1">
+          <div class="modal-dialog modal-xl">
+            <div class="modal-content">
+              <div class="modal-header">
+                <h5 class="modal-title"><i class="bi bi-people me-2"></i>Subscribers - ${utils.escapeHtml(listName)}</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+              </div>
+              <div class="modal-body">
+                <!-- Stats Row -->
+                <div class="row g-2 mb-3">
+                  <div class="col-md-3">
+                    <div class="p-2 bg-light rounded text-center">
+                      <div class="fw-bold text-primary">${subs.length}</div>
+                      <small class="text-muted">Total</small>
+                    </div>
+                  </div>
+                  <div class="col-md-3">
+                    <div class="p-2 bg-light rounded text-center">
+                      <div class="fw-bold text-success">${statusCounts.active}</div>
+                      <small class="text-muted">Active</small>
+                    </div>
+                  </div>
+                  <div class="col-md-3">
+                    <div class="p-2 bg-light rounded text-center">
+                      <div class="fw-bold text-warning">${statusCounts.unsubscribed}</div>
+                      <small class="text-muted">Unsubscribed</small>
+                    </div>
+                  </div>
+                  <div class="col-md-3">
+                    <div class="p-2 bg-light rounded text-center">
+                      <div class="fw-bold text-danger">${statusCounts.bounced}</div>
+                      <small class="text-muted">Bounced</small>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Search & Filter -->
+                <div class="d-flex gap-2 mb-3">
+                  <input type="text" class="form-control form-control-sm" id="subscriberSearch" placeholder="Search by email or name..." oninput="emailListsModule.filterSubscriberTable()">
+                  <select class="form-select form-select-sm" id="subscriberStatusFilter" style="width: 150px;" onchange="emailListsModule.filterSubscriberTable()">
+                    <option value="all">All Status</option>
+                    <option value="active">Active</option>
+                    <option value="unsubscribed">Unsubscribed</option>
+                    <option value="bounced">Bounced</option>
+                    <option value="pending">Pending</option>
+                  </select>
+                  <button class="btn btn-sm btn-outline-primary" onclick="emailListsModule.addSubscriber('${listId}')">
+                    <i class="bi bi-person-plus me-1"></i>Add
+                  </button>
+                </div>
+
+                <!-- Subscribers Table -->
+                <div class="table-responsive" style="max-height: 500px; overflow-y: auto;">
+                  <table class="table table-sm table-hover mb-0" id="subscribersTable">
+                    <thead class="table-light sticky-top">
+                      <tr>
+                        <th>Email</th>
+                        <th>First Name</th>
+                        <th>Last Name</th>
+                        <th>Company</th>
+                        <th>Status</th>
+                        <th>Emails</th>
+                        <th>Open Rate</th>
+                        <th>Added</th>
+                        <th>Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody id="subscribersTableBody">
+                      ${subscriberRows}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+              <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      `;
+
+      document.getElementById('subscribersModal')?.remove();
+      document.body.insertAdjacentHTML('beforeend', modalHtml);
+      const modal = new bootstrap.Modal(document.getElementById('subscribersModal'));
+      modal.show();
+      document.getElementById('subscribersModal').addEventListener('hidden.bs.modal', function() { this.remove(); });
+
+    } catch (error) {
+      console.error('Error loading subscribers:', error);
+      showNotification('Error loading subscribers: ' + error.message, 'error');
+    }
+  },
+
+  /**
+   * Filter subscriber table by search and status
+   */
+  filterSubscriberTable() {
+    const search = (document.getElementById('subscriberSearch')?.value || '').toLowerCase();
+    const status = document.getElementById('subscriberStatusFilter')?.value || 'all';
+    const rows = document.querySelectorAll('#subscribersTableBody tr');
+
+    rows.forEach(row => {
+      const text = row.textContent.toLowerCase();
+      const rowStatus = row.querySelector('.badge')?.textContent?.toLowerCase() || '';
+      const matchesSearch = !search || text.includes(search);
+      const matchesStatus = status === 'all' || rowStatus === status;
+      row.style.display = matchesSearch && matchesStatus ? '' : 'none';
+    });
+  },
+
+  /**
+   * Update subscriber status
+   */
+  async updateSubscriberStatus(subscriberId, newStatus) {
+    try {
+      const { error } = await STATE.client
+        .from('email_list_subscribers')
+        .update({ status: newStatus })
+        .eq('id', subscriberId);
+
+      if (error) throw error;
+
+      showNotification(`Subscriber ${newStatus === 'active' ? 'resubscribed' : 'unsubscribed'} successfully`, 'success');
+
+      // Refresh the modal if open
+      if (this.currentListId) {
+        const list = this.currentLists.find(l => l.id === this.currentListId);
+        if (list) {
+          bootstrap.Modal.getInstance(document.getElementById('subscribersModal'))?.hide();
+          setTimeout(() => this.viewSubscribers(this.currentListId, list.list_name), 300);
+        }
+      }
+      this.loadAllData();
+    } catch (error) {
+      console.error('Error updating subscriber:', error);
+      showNotification('Error updating subscriber: ' + error.message, 'error');
+    }
+  },
+
+  /**
+   * Delete a subscriber from a list
+   */
+  async deleteSubscriber(subscriberId, listId) {
+    if (!confirm('Remove this subscriber from the list?')) return;
+
+    try {
+      const { error } = await STATE.client
+        .from('email_list_subscribers')
+        .delete()
+        .eq('id', subscriberId);
+
+      if (error) throw error;
+
+      showNotification('Subscriber removed', 'success');
+
+      // Refresh the modal
+      if (listId) {
+        const list = this.currentLists.find(l => l.id === listId);
+        if (list) {
+          bootstrap.Modal.getInstance(document.getElementById('subscribersModal'))?.hide();
+          setTimeout(() => this.viewSubscribers(listId, list.list_name), 300);
+        }
+      }
+      this.loadAllData();
+    } catch (error) {
+      console.error('Error deleting subscriber:', error);
+      showNotification('Error removing subscriber: ' + error.message, 'error');
+    }
   },
 
   // ============================================
   // OTHER ACTIONS
   // ============================================
   async addSubscriber(listId) {
-    showNotification('Add subscriber modal coming soon', 'info');
+    const modalHtml = `
+      <div class="modal fade" id="addSubscriberModal" tabindex="-1">
+        <div class="modal-dialog">
+          <div class="modal-content">
+            <div class="modal-header">
+              <h5 class="modal-title"><i class="bi bi-person-plus me-2"></i>Add Subscriber</h5>
+              <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+              <form id="addSubscriberForm">
+                <div class="mb-3">
+                  <label class="form-label">Email Address <span class="text-danger">*</span></label>
+                  <input type="email" class="form-control" id="subEmail" required placeholder="john@example.com">
+                </div>
+                <div class="row">
+                  <div class="col-md-6 mb-3">
+                    <label class="form-label">First Name</label>
+                    <input type="text" class="form-control" id="subFirstName" placeholder="John">
+                  </div>
+                  <div class="col-md-6 mb-3">
+                    <label class="form-label">Last Name</label>
+                    <input type="text" class="form-control" id="subLastName" placeholder="Smith">
+                  </div>
+                </div>
+                <div class="mb-3">
+                  <label class="form-label">Company Name</label>
+                  <input type="text" class="form-control" id="subCompanyName" placeholder="Acme Corp">
+                </div>
+              </form>
+            </div>
+            <div class="modal-footer">
+              <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+              <button type="button" class="btn btn-primary" onclick="emailListsModule.saveSubscriber('${listId}')">
+                <i class="bi bi-person-plus me-2"></i>Add Subscriber
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+
+    document.getElementById('addSubscriberModal')?.remove();
+    document.body.insertAdjacentHTML('beforeend', modalHtml);
+    const modal = new bootstrap.Modal(document.getElementById('addSubscriberModal'));
+    modal.show();
   },
 
+  /**
+   * Save a new subscriber to a list
+   */
+  async saveSubscriber(listId) {
+    const form = document.getElementById('addSubscriberForm');
+    if (!form.checkValidity()) {
+      form.reportValidity();
+      return;
+    }
+
+    const email = document.getElementById('subEmail').value.trim();
+    if (!email || !email.includes('@')) {
+      showNotification('Please enter a valid email address', 'warning');
+      return;
+    }
+
+    try {
+      const { error } = await STATE.client
+        .from('email_list_subscribers')
+        .insert({
+          list_id: listId,
+          email: email,
+          first_name: document.getElementById('subFirstName').value.trim() || null,
+          last_name: document.getElementById('subLastName').value.trim() || null,
+          company_name: document.getElementById('subCompanyName').value.trim() || null,
+          status: 'active',
+          source: 'manual'
+        });
+
+      if (error) {
+        if (error.message?.includes('duplicate') || error.code === '23505') {
+          showNotification('This email already exists in this list', 'warning');
+          return;
+        }
+        throw error;
+      }
+
+      showNotification('Subscriber added successfully', 'success');
+      bootstrap.Modal.getInstance(document.getElementById('addSubscriberModal'))?.hide();
+
+      // Refresh the subscribers modal if it's open
+      const subModal = document.getElementById('subscribersModal');
+      if (subModal) {
+        const list = this.currentLists.find(l => l.id === listId);
+        if (list) {
+          bootstrap.Modal.getInstance(subModal)?.hide();
+          setTimeout(() => this.viewSubscribers(listId, list.list_name), 300);
+        }
+      }
+
+      this.loadAllData();
+    } catch (error) {
+      console.error('Error adding subscriber:', error);
+      showNotification('Error adding subscriber: ' + error.message, 'error');
+    }
+  },
+
+  /**
+   * Edit list details
+   */
   async editList(listId) {
-    showNotification('Edit list modal coming soon', 'info');
+    const list = this.currentLists.find(l => l.id === listId);
+    if (!list) {
+      showNotification('List not found', 'error');
+      return;
+    }
+
+    const modalHtml = `
+      <div class="modal fade" id="editListModal" tabindex="-1">
+        <div class="modal-dialog">
+          <div class="modal-content">
+            <div class="modal-header">
+              <h5 class="modal-title"><i class="bi bi-pencil me-2"></i>Edit Email List</h5>
+              <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+              <form id="editListForm">
+                <div class="mb-3">
+                  <label class="form-label">List Name <span class="text-danger">*</span></label>
+                  <input type="text" class="form-control" id="editListName" required value="${utils.escapeHtml(list.list_name || '')}">
+                </div>
+                <div class="mb-3">
+                  <label class="form-label">Description</label>
+                  <textarea class="form-control" id="editListDescription" rows="2">${utils.escapeHtml(list.description || '')}</textarea>
+                </div>
+                <div class="row">
+                  <div class="col-md-6 mb-3">
+                    <label class="form-label">List Type</label>
+                    <select class="form-select" id="editListType">
+                      <option value="general" ${list.list_type === 'general' ? 'selected' : ''}>General</option>
+                      <option value="winners" ${list.list_type === 'winners' ? 'selected' : ''}>Winners</option>
+                      <option value="nominees" ${list.list_type === 'nominees' ? 'selected' : ''}>Nominees</option>
+                      <option value="sponsors" ${list.list_type === 'sponsors' ? 'selected' : ''}>Sponsors</option>
+                      <option value="vip" ${list.list_type === 'vip' ? 'selected' : ''}>VIP</option>
+                      <option value="event" ${list.list_type === 'event' ? 'selected' : ''}>Event</option>
+                      <option value="media" ${list.list_type === 'media' ? 'selected' : ''}>Media</option>
+                      <option value="custom" ${list.list_type === 'custom' ? 'selected' : ''}>Custom</option>
+                    </select>
+                  </div>
+                  <div class="col-md-6 mb-3">
+                    <label class="form-label">Color</label>
+                    <input type="color" class="form-control form-control-color" id="editListColor" value="${list.color || '#6c757d'}">
+                  </div>
+                </div>
+                <div class="mb-3">
+                  <label class="form-label">Icon (Bootstrap Icon)</label>
+                  <input type="text" class="form-control" id="editListIcon" value="${utils.escapeHtml(list.icon || '')}" placeholder="e.g., list-ul, envelope, trophy">
+                </div>
+                <div class="form-check mb-2">
+                  <input class="form-check-input" type="checkbox" id="editListActive" ${list.is_active ? 'checked' : ''}>
+                  <label class="form-check-label" for="editListActive">Active</label>
+                </div>
+                <div class="form-check mb-2">
+                  <input class="form-check-input" type="checkbox" id="editListAutoClean" ${list.auto_clean ? 'checked' : ''}>
+                  <label class="form-check-label" for="editListAutoClean">Auto-clean (remove bounced/unsubscribed)</label>
+                </div>
+              </form>
+            </div>
+            <div class="modal-footer">
+              <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+              <button type="button" class="btn btn-primary" onclick="emailListsModule.saveEditedList('${listId}')">
+                <i class="bi bi-save me-2"></i>Save Changes
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+
+    document.getElementById('editListModal')?.remove();
+    document.body.insertAdjacentHTML('beforeend', modalHtml);
+    const modal = new bootstrap.Modal(document.getElementById('editListModal'));
+    modal.show();
+  },
+
+  /**
+   * Save edited list details
+   */
+  async saveEditedList(listId) {
+    const form = document.getElementById('editListForm');
+    if (!form.checkValidity()) {
+      form.reportValidity();
+      return;
+    }
+
+    try {
+      const { error } = await STATE.client
+        .from('email_lists')
+        .update({
+          list_name: document.getElementById('editListName').value,
+          description: document.getElementById('editListDescription').value || null,
+          list_type: document.getElementById('editListType').value,
+          color: document.getElementById('editListColor').value,
+          icon: document.getElementById('editListIcon').value || null,
+          is_active: document.getElementById('editListActive').checked,
+          auto_clean: document.getElementById('editListAutoClean').checked
+        })
+        .eq('id', listId);
+
+      if (error) throw error;
+
+      showNotification('List updated successfully', 'success');
+      bootstrap.Modal.getInstance(document.getElementById('editListModal'))?.hide();
+      this.loadAllData();
+    } catch (error) {
+      console.error('Error updating list:', error);
+      showNotification('Error updating list: ' + error.message, 'error');
+    }
   },
 
   async exportList(listId) {

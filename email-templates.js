@@ -327,14 +327,62 @@ const emailTemplatesModule = {
   },
 
   /**
-   * Send test email
+   * Send test email using the current template with sample data
    */
-  sendTestEmail() {
-    const email = prompt('Enter email address to send test to:');
-    if (!email) return;
+  async sendTestEmail() {
+    if (!this.currentTemplate) {
+      utils.showToast('Please select a template first', 'warning');
+      return;
+    }
 
-    // TODO: Implement actual email sending
-    utils.showToast('Test email functionality - Coming soon. Would send to: ' + email, 'info');
+    const email = prompt('Enter email address to send test to:');
+    if (!email || !email.includes('@')) return;
+
+    const subject = document.getElementById('templateSubject')?.value || this.currentTemplate.subject;
+    const body = document.getElementById('templateBody')?.value || this.currentTemplate.body;
+
+    // Replace placeholders with sample data for test
+    const sampleData = {
+      ENTRY_NUMBER: 'BTA-2025-0001',
+      CONTACT_NAME: 'John Smith',
+      COMPANY_NAME: 'Acme Corporation Ltd',
+      AWARD_NAME: 'Export Excellence Award',
+      SECTOR: 'Manufacturing',
+      REGION: 'Greater London',
+      UPLOAD_LINK: 'https://example.com/upload',
+      DEADLINE_DATE: '31st December 2025',
+      ANNOUNCEMENT_DATE: '15th February 2026',
+      CONTACT_EMAIL: 'awards@britishtradeawards.com'
+    };
+
+    let testSubject = subject;
+    let testBody = body;
+    Object.keys(sampleData).forEach(key => {
+      const regex = new RegExp(`\\{${key}\\}`, 'g');
+      testSubject = testSubject.replace(regex, sampleData[key]);
+      testBody = testBody.replace(regex, sampleData[key]);
+    });
+
+    try {
+      utils.showToast('Sending test email...', 'info');
+
+      const { data, error } = await STATE.client.rpc('send_test_email', {
+        p_to: email,
+        p_subject: '[TEST] ' + testSubject,
+        p_html: testBody,
+        p_from_name: 'British Trade Awards',
+        p_from_email: 'awards@britishtradeawards.com',
+        p_reply_to: 'awards@britishtradeawards.com'
+      });
+
+      if (error) throw error;
+      if (data && !data.success) throw new Error(data.error || 'Send failed');
+
+      utils.showToast(`Test email sent to ${email}!`, 'success');
+    } catch (error) {
+      console.error('Error sending test email:', error);
+      utils.showToast('Failed to send test email: ' + error.message, 'error');
+    }
   },
 
   /**
@@ -372,20 +420,158 @@ const emailTemplatesModule = {
   },
 
   /**
-   * Create new template
+   * Create new template via modal
    */
   newTemplate() {
-    utils.showToast('Create new template functionality - Coming soon', 'info');
-    // TODO: Implement create new template
+    const modalHtml = `
+      <div class="modal fade" id="newTemplateModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+          <div class="modal-content">
+            <div class="modal-header">
+              <h5 class="modal-title"><i class="bi bi-plus-circle me-2"></i>Create New Template</h5>
+              <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+              <form id="newTemplateForm">
+                <div class="row mb-3">
+                  <div class="col-md-6">
+                    <label class="form-label">Template Name <span class="text-danger">*</span></label>
+                    <input type="text" class="form-control" id="newTemplateName" required placeholder="e.g., Welcome Email">
+                  </div>
+                  <div class="col-md-6">
+                    <label class="form-label">Template Type <span class="text-danger">*</span></label>
+                    <select class="form-select" id="newTemplateType" required>
+                      <option value="confirmation">Confirmation</option>
+                      <option value="reminder">Reminder</option>
+                      <option value="approval">Approval</option>
+                      <option value="rejection">Rejection</option>
+                      <option value="general" selected>General</option>
+                    </select>
+                  </div>
+                </div>
+                <div class="mb-3">
+                  <label class="form-label">Description</label>
+                  <input type="text" class="form-control" id="newTemplateDescription" placeholder="Brief description of when this template is used">
+                </div>
+                <div class="mb-3">
+                  <label class="form-label">Subject Line <span class="text-danger">*</span></label>
+                  <input type="text" class="form-control" id="newTemplateSubject" required placeholder="e.g., Welcome to the British Trade Awards, {CONTACT_NAME}">
+                </div>
+                <div class="mb-3">
+                  <label class="form-label">Email Body <span class="text-danger">*</span></label>
+                  <textarea class="form-control" id="newTemplateBody" rows="12" required style="font-family: monospace;" placeholder="Write your email body here. Use placeholders like {CONTACT_NAME}, {COMPANY_NAME}, etc."></textarea>
+                </div>
+                <div class="mb-3">
+                  <label class="form-label">Available Placeholders <small class="text-muted">(comma-separated)</small></label>
+                  <input type="text" class="form-control" id="newTemplatePlaceholders" placeholder="e.g., CONTACT_NAME, COMPANY_NAME, AWARD_NAME">
+                  <small class="text-muted">These will be shown to users when editing the template</small>
+                </div>
+                <div class="row">
+                  <div class="col-md-6">
+                    <div class="form-check form-switch">
+                      <input class="form-check-input" type="checkbox" id="newTemplateActive" checked>
+                      <label class="form-check-label" for="newTemplateActive">Active</label>
+                    </div>
+                  </div>
+                  <div class="col-md-6">
+                    <div class="form-check form-switch">
+                      <input class="form-check-input" type="checkbox" id="newTemplateDefault">
+                      <label class="form-check-label" for="newTemplateDefault">Default for this type</label>
+                    </div>
+                  </div>
+                </div>
+              </form>
+            </div>
+            <div class="modal-footer">
+              <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+              <button type="button" class="btn btn-primary" onclick="emailTemplatesModule.saveNewTemplate()">
+                <i class="bi bi-save me-2"></i>Create Template
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+
+    const existing = document.getElementById('newTemplateModal');
+    if (existing) existing.remove();
+
+    document.body.insertAdjacentHTML('beforeend', modalHtml);
+    const modal = new bootstrap.Modal(document.getElementById('newTemplateModal'));
+    modal.show();
+  },
+
+  /**
+   * Save a new template to the database
+   */
+  async saveNewTemplate() {
+    const form = document.getElementById('newTemplateForm');
+    if (!form.checkValidity()) {
+      form.reportValidity();
+      return;
+    }
+
+    const placeholdersRaw = document.getElementById('newTemplatePlaceholders').value;
+    const placeholders = placeholdersRaw
+      ? placeholdersRaw.split(',').map(p => p.trim()).filter(p => p)
+      : [];
+
+    const templateData = {
+      template_name: document.getElementById('newTemplateName').value,
+      template_type: document.getElementById('newTemplateType').value,
+      description: document.getElementById('newTemplateDescription').value || null,
+      subject: document.getElementById('newTemplateSubject').value,
+      body: document.getElementById('newTemplateBody').value,
+      available_placeholders: placeholders.length > 0 ? placeholders : null,
+      is_active: document.getElementById('newTemplateActive').checked,
+      is_default: document.getElementById('newTemplateDefault').checked,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+      created_by: STATE.user?.email || 'admin',
+      last_modified_by: STATE.user?.email || 'admin'
+    };
+
+    try {
+      const { data, error } = await STATE.client
+        .from('email_templates')
+        .insert(templateData)
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      utils.showToast('Template created successfully!', 'success');
+      bootstrap.Modal.getInstance(document.getElementById('newTemplateModal')).hide();
+      await this.loadTemplates();
+
+      // Auto-select the new template
+      if (data?.id) {
+        this.selectTemplate(data.id);
+      }
+    } catch (error) {
+      console.error('Error creating template:', error);
+      utils.showToast('Failed to create template: ' + error.message, 'error');
+    }
   }
 };
 
-// Initialize when email templates tab is shown
+// Initialize when email templates sub-tab is shown within Marketing
 document.addEventListener('DOMContentLoaded', () => {
-  const emailTemplatesTab = document.getElementById('email-templates-tab');
-  if (emailTemplatesTab) {
-    emailTemplatesTab.addEventListener('shown.bs.tab', () => {
+  // Trigger when the Marketing > Email Templates pill is shown
+  const emailTemplatesSubTab = document.getElementById('email-templates-subtab');
+  if (emailTemplatesSubTab) {
+    emailTemplatesSubTab.addEventListener('shown.bs.tab', () => {
       emailTemplatesModule.initialize();
+    });
+  }
+
+  // Also trigger when Marketing tab is shown and Email Templates sub-tab is already active
+  const marketingTab = document.getElementById('marketing-tab');
+  if (marketingTab) {
+    marketingTab.addEventListener('shown.bs.tab', () => {
+      if (emailTemplatesSubTab && emailTemplatesSubTab.classList.contains('active')) {
+        emailTemplatesModule.initialize();
+      }
     });
   }
 });

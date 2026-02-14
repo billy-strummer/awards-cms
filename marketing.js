@@ -6,7 +6,6 @@ const marketingModule = {
   currentBanners: [],
   currentSponsors: [],
   currentCampaigns: [],
-  currentEmailTemplates: [],
 
   /* ==================================================== */
   /* INITIALIZATION */
@@ -21,8 +20,7 @@ const marketingModule = {
       await Promise.all([
         this.loadBanners(),
         this.loadSponsors(),
-        this.loadSocialCampaigns(),
-        this.loadEmailTemplates()
+        this.loadSocialCampaigns()
       ]);
       console.log('✅ Marketing data loaded');
     } catch (error) {
@@ -459,108 +457,6 @@ const marketingModule = {
   },
 
   /* ==================================================== */
-  /* EMAIL TEMPLATES */
-  /* ==================================================== */
-
-  /**
-   * Load email templates
-   */
-  async loadEmailTemplates() {
-    try {
-      const { data, error } = await STATE.client
-        .from('email_templates')
-        .select('*')
-        .order('category', { ascending: true, nullsFirst: false })
-        .order('template_name', { ascending: true, nullsFirst: false });
-
-      if (error) throw error;
-
-      this.currentEmailTemplates = data || [];
-      this.renderEmailTemplates();
-    } catch (error) {
-      console.error('Error loading email templates:', error);
-      document.getElementById('emailTemplatesGrid').innerHTML = `
-        <div class="alert alert-danger">
-          <i class="bi bi-exclamation-triangle me-2"></i>
-          Failed to load email templates: ${error.message}
-        </div>
-      `;
-    }
-  },
-
-  /**
-   * Render email templates
-   */
-  renderEmailTemplates() {
-    const container = document.getElementById('emailTemplatesGrid');
-
-    if (this.currentEmailTemplates.length === 0) {
-      container.innerHTML = `
-        <div class="alert alert-info">
-          <i class="bi bi-info-circle me-2"></i>
-          No email templates found. Click "New Template" to create your first marketing email template.
-        </div>
-      `;
-      return;
-    }
-
-    container.innerHTML = `
-      <div class="row g-4">
-        ${this.currentEmailTemplates.map(template => this.renderEmailTemplateCard(template)).join('')}
-      </div>
-    `;
-  },
-
-  /**
-   * Render email template card
-   */
-  renderEmailTemplateCard(template) {
-    return `
-      <div class="col-md-6 col-lg-4">
-        <div class="card h-100">
-          <div class="card-body">
-            <div class="d-flex justify-content-between align-items-start mb-2">
-              <h6 class="card-title mb-0">${utils.escapeHtml(template.template_name)}</h6>
-              ${template.is_active ?
-                '<span class="badge bg-success">Active</span>' :
-                '<span class="badge bg-secondary">Inactive</span>'}
-            </div>
-            ${template.category ?
-              `<span class="badge bg-primary-subtle text-primary mb-2">${utils.escapeHtml(template.category)}</span>` : ''}
-            <p class="card-text small text-muted mb-2">
-              <strong>Subject:</strong> ${utils.escapeHtml(template.subject)}
-            </p>
-            <p class="card-text small text-muted mb-3">
-              <i class="bi bi-arrow-repeat"></i> Used ${template.usage_count || 0} times
-              ${template.last_used_at ? `<br><i class="bi bi-clock"></i> Last used ${utils.formatRelativeTime(template.last_used_at)}` : ''}
-            </p>
-            <div class="btn-group w-100" role="group">
-              <button class="btn btn-sm btn-outline-primary" onclick="marketingModule.previewTemplate('${template.id}')" title="Preview">
-                <i class="bi bi-eye"></i>
-              </button>
-              <button class="btn btn-sm btn-outline-secondary" onclick="marketingModule.editTemplate('${template.id}')" title="Edit">
-                <i class="bi bi-pencil"></i>
-              </button>
-              <button class="btn btn-sm btn-outline-success" onclick="marketingModule.useTemplate('${template.id}')" title="Use">
-                <i class="bi bi-send"></i>
-              </button>
-              <button class="btn btn-sm btn-outline-danger" onclick="marketingModule.deleteTemplate('${template.id}')" title="Delete">
-                <i class="bi bi-trash"></i>
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
-    `;
-  },
-
-  /**
-   * Open add email template modal
-   */
-  openAddEmailTemplateModal() {
-    utils.showToast('Email template creation coming soon! Database tables are ready.', 'info');
-  },
-
   /* ==================================================== */
   /* UTILITY FUNCTIONS */
   /* ==================================================== */

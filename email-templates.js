@@ -555,12 +555,23 @@ const emailTemplatesModule = {
   }
 };
 
-// Initialize when email templates tab is shown
+// Initialize when email templates sub-tab is shown within Marketing
 document.addEventListener('DOMContentLoaded', () => {
-  const emailTemplatesTab = document.getElementById('email-templates-tab');
-  if (emailTemplatesTab) {
-    emailTemplatesTab.addEventListener('shown.bs.tab', () => {
+  // Trigger when the Marketing > Email Templates pill is shown
+  const emailTemplatesSubTab = document.getElementById('email-templates-subtab');
+  if (emailTemplatesSubTab) {
+    emailTemplatesSubTab.addEventListener('shown.bs.tab', () => {
       emailTemplatesModule.initialize();
+    });
+  }
+
+  // Also trigger when Marketing tab is shown and Email Templates sub-tab is already active
+  const marketingTab = document.getElementById('marketing-tab');
+  if (marketingTab) {
+    marketingTab.addEventListener('shown.bs.tab', () => {
+      if (emailTemplatesSubTab && emailTemplatesSubTab.classList.contains('active')) {
+        emailTemplatesModule.initialize();
+      }
     });
   }
 });

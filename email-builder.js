@@ -927,7 +927,7 @@ ${content}
         <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color: #f8f9fa;">
           <tr>
             <td align="center" style="padding: 40px 20px;">
-              <table cellpadding="0" cellspacing="0" border="0" style="max-width: 600px; width: 100%; background-color: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
+              <table class="email-container" cellpadding="0" cellspacing="0" border="0" style="max-width: 600px; width: 100%; background-color: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
                 ${blocks}
               </table>
             </td>
@@ -1218,13 +1218,15 @@ ${content}
    * Responsive CSS injected into preview iframe to make email content fit
    */
   previewResponsiveCSS: `<style>
-    /* Force all tables to respect container */
-    table { max-width: 100% !important; }
+    /* Preserve 600px container width */
+    .email-container { max-width: 600px !important; width: 100% !important; }
+    /* Force inner tables to respect container */
+    .email-container table { max-width: 100% !important; }
     img { max-width: 100% !important; height: auto !important; }
     td, th { word-wrap: break-word !important; overflow-wrap: break-word !important; }
     body { margin: 0 !important; padding: 0 !important; width: 100% !important; overflow-x: hidden !important; }
-    /* Override fixed-width table attributes */
-    table[width] { width: 100% !important; }
+    /* Override fixed-width table attributes inside container */
+    .email-container table[width] { width: 100% !important; }
   </style>`,
 
   /** Current preview mode */

@@ -791,9 +791,9 @@ const emailBuilder = {
    * Load predefined template
    */
   loadTemplate(templateType) {
-    // Show/hide block palette based on template type
+    // Show block palette for Blank Canvas and Paste HTML, hide for pre-built templates
     const palette = document.getElementById('blockPaletteSection');
-    if (palette) palette.style.display = !templateType ? 'block' : 'none';
+    if (palette) palette.style.display = (!templateType || templateType === 'paste-html') ? 'block' : 'none';
 
     // Blank Canvas: clear everything and reset
     if (!templateType) {
@@ -805,6 +805,14 @@ const emailBuilder = {
       document.getElementById('builderPreheader').value = '';
       this.updatePreview();
       utils.showToast('Canvas cleared', 'info');
+      return;
+    }
+
+    // Paste HTML: single large HTML code block for pasting existing email code
+    if (templateType === 'paste-html') {
+      this.blocks = [];
+      this.canvas.innerHTML = '';
+      this.loadPasteHtmlTemplate();
       return;
     }
 
@@ -1035,6 +1043,43 @@ const emailBuilder = {
   /**
    * Load Client Promotion Template
    */
+  /**
+   * Load "I Have HTML" template — a single large HTML code editor
+   */
+  loadPasteHtmlTemplate() {
+    const blockId = 'block-' + Date.now();
+
+    const blockWrapper = document.createElement('div');
+    blockWrapper.className = 'email-block-wrapper';
+    blockWrapper.setAttribute('data-block-id', blockId);
+    blockWrapper.innerHTML = `
+      <div class="email-html-code-header" data-for="${blockId}">
+        <span><i class="bi bi-code-slash me-1"></i>Paste Your HTML</span>
+        <button type="button" class="btn btn-outline-primary btn-sm" onclick="emailBuilder.previewHtmlBlock('${blockId}')" title="Preview HTML">
+          <i class="bi bi-eye me-1"></i>Preview
+        </button>
+      </div>
+      <div class="email-html-code-wrap">
+        <textarea class="email-html-code-editor" data-block="${blockId}" placeholder="Paste your full email HTML here..." spellcheck="false" oninput="emailBuilder.onHtmlBlockInput('${blockId}')" style="min-height: 500px;"></textarea>
+      </div>
+    `;
+
+    this.canvas.appendChild(blockWrapper);
+    this.blocks.push({ id: blockId, type: 'html-code' });
+    this.addBlockControls(blockWrapper, blockId);
+
+    document.getElementById('builderCampaignName').value = '';
+    document.getElementById('builderSubject').value = '';
+    document.getElementById('builderPreheader').value = '';
+
+    // Focus the textarea
+    const textarea = blockWrapper.querySelector('.email-html-code-editor');
+    if (textarea) textarea.focus();
+
+    this.updatePreview();
+    utils.showToast('Paste your HTML code below — use the block palette to add extra sections', 'info');
+  },
+
   async loadClientPromotionTemplate() {
     console.log('Loading Client Promotion template...');
 

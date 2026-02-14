@@ -5,7 +5,6 @@
 const marketingModule = {
   currentBanners: [],
   currentSponsors: [],
-  currentCampaigns: [],
 
   /* ==================================================== */
   /* INITIALIZATION */
@@ -19,8 +18,7 @@ const marketingModule = {
       utils.showLoading();
       await Promise.all([
         this.loadBanners(),
-        this.loadSponsors(),
-        this.loadSocialCampaigns()
+        this.loadSponsors()
       ]);
       console.log('✅ Marketing data loaded');
     } catch (error) {
@@ -327,133 +325,6 @@ const marketingModule = {
    */
   openAddSponsorModal() {
     utils.showToast('Sponsor creation coming soon! Database tables are ready.', 'info');
-  },
-
-  /* ==================================================== */
-  /* SOCIAL MEDIA CAMPAIGNS */
-  /* ==================================================== */
-
-  /**
-   * Load social media campaigns
-   */
-  async loadSocialCampaigns() {
-    try {
-      const { data, error } = await STATE.client
-        .from('social_campaigns')
-        .select('*')
-        .order('scheduled_date', { ascending: false, nullsFirst: false });
-
-      if (error) throw error;
-
-      this.currentCampaigns = data || [];
-      this.renderSocialCampaigns();
-    } catch (error) {
-      console.error('Error loading social campaigns:', error);
-      document.getElementById('campaignsGrid').innerHTML = `
-        <div class="alert alert-danger">
-          <i class="bi bi-exclamation-triangle me-2"></i>
-          Failed to load campaigns: ${error.message}
-        </div>
-      `;
-    }
-  },
-
-  /**
-   * Render social campaigns
-   */
-  renderSocialCampaigns() {
-    const container = document.getElementById('campaignsGrid');
-
-    if (this.currentCampaigns.length === 0) {
-      container.innerHTML = `
-        <div class="alert alert-info">
-          <i class="bi bi-info-circle me-2"></i>
-          No social media campaigns found. Click "New Campaign" to plan your first post.
-        </div>
-      `;
-      return;
-    }
-
-    container.innerHTML = `
-      <div class="table-responsive">
-        <table class="table table-hover">
-          <thead>
-            <tr>
-              <th>Campaign Name</th>
-              <th>Platform</th>
-              <th>Status</th>
-              <th>Scheduled Date</th>
-              <th>Engagement</th>
-              <th width="150" class="text-center">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${this.currentCampaigns.map(campaign => this.renderCampaignRow(campaign)).join('')}
-          </tbody>
-        </table>
-      </div>
-    `;
-  },
-
-  /**
-   * Render campaign table row
-   */
-  renderCampaignRow(campaign) {
-    const statusBadge = {
-      'Draft': '<span class="badge bg-secondary">Draft</span>',
-      'Scheduled': '<span class="badge bg-primary">Scheduled</span>',
-      'Posted': '<span class="badge bg-success">Posted</span>',
-      'Cancelled': '<span class="badge bg-danger">Cancelled</span>'
-    }[campaign.status] || '<span class="badge bg-secondary">Unknown</span>';
-
-    const platformIcon = {
-      'Twitter': 'twitter',
-      'LinkedIn': 'linkedin',
-      'Instagram': 'instagram',
-      'Facebook': 'facebook',
-      'Multiple': 'share'
-    }[campaign.platform] || 'share';
-
-    const engagement = campaign.likes + campaign.shares + campaign.comments;
-
-    return `
-      <tr>
-        <td>
-          <strong>${utils.escapeHtml(campaign.campaign_name)}</strong>
-          ${campaign.hashtags ? `<br><small class="text-muted">${utils.escapeHtml(campaign.hashtags)}</small>` : ''}
-        </td>
-        <td>
-          <i class="bi bi-${platformIcon} me-1"></i>${campaign.platform}
-        </td>
-        <td>${statusBadge}</td>
-        <td>${campaign.scheduled_date ? utils.formatDate(campaign.scheduled_date) : '-'}</td>
-        <td>
-          <i class="bi bi-heart"></i> ${campaign.likes || 0}
-          <i class="bi bi-share ms-2"></i> ${campaign.shares || 0}
-          <i class="bi bi-chat ms-2"></i> ${campaign.comments || 0}
-        </td>
-        <td class="text-center">
-          <div class="btn-group btn-group-sm" role="group">
-            <button class="btn btn-outline-primary" onclick="marketingModule.viewCampaign('${campaign.id}')" title="View">
-              <i class="bi bi-eye"></i>
-            </button>
-            <button class="btn btn-outline-secondary" onclick="marketingModule.editCampaign('${campaign.id}')" title="Edit">
-              <i class="bi bi-pencil"></i>
-            </button>
-            <button class="btn btn-outline-danger" onclick="marketingModule.deleteCampaign('${campaign.id}')" title="Delete">
-              <i class="bi bi-trash"></i>
-            </button>
-          </div>
-        </td>
-      </tr>
-    `;
-  },
-
-  /**
-   * Open add campaign modal
-   */
-  openAddCampaignModal() {
-    utils.showToast('Social campaign creation coming soon! Database tables are ready.', 'info');
   },
 
   /* ==================================================== */

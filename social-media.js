@@ -707,11 +707,23 @@ Vote now: {{website}}
   }
 };
 
+// Initialize when social media sub-tab is shown within Marketing
 document.addEventListener('DOMContentLoaded', () => {
-  const socialMediaTab = document.getElementById('social-media-tab');
-  if (socialMediaTab) {
-    socialMediaTab.addEventListener('shown.bs.tab', () => {
+  // Trigger when the Marketing > Social Media pill is shown
+  const socialSubTab = document.getElementById('social-subtab');
+  if (socialSubTab) {
+    socialSubTab.addEventListener('shown.bs.tab', () => {
       socialMediaModule.initialize();
+    });
+  }
+
+  // Also trigger when Marketing tab is shown and Social Media sub-tab is already active
+  const marketingTab = document.getElementById('marketing-tab');
+  if (marketingTab) {
+    marketingTab.addEventListener('shown.bs.tab', () => {
+      if (socialSubTab && socialSubTab.classList.contains('active')) {
+        socialMediaModule.initialize();
+      }
     });
   }
 });

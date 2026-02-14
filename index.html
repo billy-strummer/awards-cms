@@ -3427,6 +3427,107 @@
                       </div>
                     </div>
 
+                    <!-- HTML Toolkit (shown for "I Have HTML" mode) -->
+                    <div class="mb-4" id="htmlToolkitSection" style="display: none;">
+                      <hr>
+                      <h6 class="mb-3"><i class="bi bi-tools me-2"></i>HTML Toolkit</h6>
+
+                      <!-- Structure -->
+                      <div class="html-toolkit-group">
+                        <label class="html-toolkit-label">Structure</label>
+                        <div class="html-toolkit-grid">
+                          <button class="html-toolkit-btn" onclick="emailBuilder.insertHtmlSnippet('table-row')" title="Table Row with Padding">
+                            <i class="bi bi-table"></i> Padded Row
+                          </button>
+                          <button class="html-toolkit-btn" onclick="emailBuilder.insertHtmlSnippet('two-column')" title="Two Column Layout">
+                            <i class="bi bi-layout-split"></i> 2 Columns
+                          </button>
+                          <button class="html-toolkit-btn" onclick="emailBuilder.insertHtmlSnippet('three-column')" title="Three Column Layout">
+                            <i class="bi bi-layout-three-columns"></i> 3 Columns
+                          </button>
+                          <button class="html-toolkit-btn" onclick="emailBuilder.insertHtmlSnippet('full-width-wrapper')" title="Full Width Container">
+                            <i class="bi bi-aspect-ratio"></i> Container
+                          </button>
+                        </div>
+                      </div>
+
+                      <!-- Spacing -->
+                      <div class="html-toolkit-group">
+                        <label class="html-toolkit-label">Spacing</label>
+                        <div class="html-toolkit-grid">
+                          <button class="html-toolkit-btn" onclick="emailBuilder.insertHtmlSnippet('spacer-sm')" title="Small Spacer (10px)">
+                            <i class="bi bi-distribute-vertical"></i> 10px
+                          </button>
+                          <button class="html-toolkit-btn" onclick="emailBuilder.insertHtmlSnippet('spacer-md')" title="Medium Spacer (20px)">
+                            <i class="bi bi-distribute-vertical"></i> 20px
+                          </button>
+                          <button class="html-toolkit-btn" onclick="emailBuilder.insertHtmlSnippet('spacer-lg')" title="Large Spacer (40px)">
+                            <i class="bi bi-distribute-vertical"></i> 40px
+                          </button>
+                          <button class="html-toolkit-btn" onclick="emailBuilder.insertHtmlSnippet('divider')" title="Horizontal Line">
+                            <i class="bi bi-dash-lg"></i> Divider
+                          </button>
+                        </div>
+                      </div>
+
+                      <!-- Content -->
+                      <div class="html-toolkit-group">
+                        <label class="html-toolkit-label">Content</label>
+                        <div class="html-toolkit-grid">
+                          <button class="html-toolkit-btn" onclick="emailBuilder.insertHtmlSnippet('heading')" title="Heading">
+                            <i class="bi bi-type-h1"></i> Heading
+                          </button>
+                          <button class="html-toolkit-btn" onclick="emailBuilder.insertHtmlSnippet('paragraph')" title="Paragraph">
+                            <i class="bi bi-text-paragraph"></i> Paragraph
+                          </button>
+                          <button class="html-toolkit-btn" onclick="emailBuilder.insertHtmlSnippet('image')" title="Image">
+                            <i class="bi bi-image"></i> Image
+                          </button>
+                          <button class="html-toolkit-btn" onclick="emailBuilder.insertHtmlSnippet('button')" title="CTA Button">
+                            <i class="bi bi-cursor"></i> Button
+                          </button>
+                        </div>
+                      </div>
+
+                      <!-- Styling -->
+                      <div class="html-toolkit-group">
+                        <label class="html-toolkit-label">Style Helpers</label>
+                        <div class="html-toolkit-grid">
+                          <button class="html-toolkit-btn" onclick="emailBuilder.insertHtmlSnippet('bg-section')" title="Background Color Section">
+                            <i class="bi bi-palette"></i> BG Section
+                          </button>
+                          <button class="html-toolkit-btn" onclick="emailBuilder.insertHtmlSnippet('link')" title="Styled Link">
+                            <i class="bi bi-link-45deg"></i> Link
+                          </button>
+                          <button class="html-toolkit-btn" onclick="emailBuilder.insertHtmlSnippet('bold-text')" title="Bold Text">
+                            <i class="bi bi-type-bold"></i> Bold
+                          </button>
+                          <button class="html-toolkit-btn" onclick="emailBuilder.insertHtmlSnippet('preheader')" title="Hidden Preheader Text">
+                            <i class="bi bi-eye-slash"></i> Preheader
+                          </button>
+                        </div>
+                      </div>
+
+                      <!-- Quick Padding -->
+                      <div class="html-toolkit-group">
+                        <label class="html-toolkit-label">Wrap Selection</label>
+                        <div class="html-toolkit-grid">
+                          <button class="html-toolkit-btn" onclick="emailBuilder.wrapHtmlSelection('padding', '20px')" title="Add 20px Padding">
+                            <i class="bi bi-border-outer"></i> +Padding
+                          </button>
+                          <button class="html-toolkit-btn" onclick="emailBuilder.wrapHtmlSelection('center')" title="Center Align">
+                            <i class="bi bi-text-center"></i> Center
+                          </button>
+                          <button class="html-toolkit-btn" onclick="emailBuilder.wrapHtmlSelection('table-cell')" title="Wrap in Table Cell">
+                            <i class="bi bi-grid-1x2"></i> Table Cell
+                          </button>
+                          <button class="html-toolkit-btn" onclick="emailBuilder.wrapHtmlSelection('conditional')" title="Outlook Conditional">
+                            <i class="bi bi-envelope"></i> Outlook If
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+
                     <hr>
 
                     <!-- Campaign Settings -->

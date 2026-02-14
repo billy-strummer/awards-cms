@@ -658,6 +658,219 @@ const emailBuilder = {
   },
 
   /**
+   * HTML Toolkit — snippet definitions
+   */
+  htmlSnippets: {
+    'table-row': `<table width="100%" cellpadding="0" cellspacing="0" border="0">
+  <tr>
+    <td style="padding: 20px 40px; font-family: Arial, sans-serif; font-size: 16px; color: #333333;">
+      Your content here...
+    </td>
+  </tr>
+</table>`,
+    'two-column': `<table width="100%" cellpadding="0" cellspacing="0" border="0">
+  <tr>
+    <td width="50%" style="padding: 20px; vertical-align: top; font-family: Arial, sans-serif; font-size: 14px; color: #333333;">
+      Left column
+    </td>
+    <td width="50%" style="padding: 20px; vertical-align: top; font-family: Arial, sans-serif; font-size: 14px; color: #333333;">
+      Right column
+    </td>
+  </tr>
+</table>`,
+    'three-column': `<table width="100%" cellpadding="0" cellspacing="0" border="0">
+  <tr>
+    <td width="33%" style="padding: 15px; vertical-align: top; font-family: Arial, sans-serif; font-size: 14px; color: #333333;">
+      Column 1
+    </td>
+    <td width="34%" style="padding: 15px; vertical-align: top; font-family: Arial, sans-serif; font-size: 14px; color: #333333;">
+      Column 2
+    </td>
+    <td width="33%" style="padding: 15px; vertical-align: top; font-family: Arial, sans-serif; font-size: 14px; color: #333333;">
+      Column 3
+    </td>
+  </tr>
+</table>`,
+    'full-width-wrapper': `<table width="100%" cellpadding="0" cellspacing="0" border="0">
+  <tr>
+    <td align="center">
+      <table width="600" cellpadding="0" cellspacing="0" border="0" style="max-width: 600px; width: 100%;">
+        <tr>
+          <td style="padding: 30px 40px; font-family: Arial, sans-serif;">
+            Content inside 600px container...
+          </td>
+        </tr>
+      </table>
+    </td>
+  </tr>
+</table>`,
+    'spacer-sm': `<table width="100%" cellpadding="0" cellspacing="0" border="0">
+  <tr><td style="height: 10px; font-size: 0; line-height: 0;">&nbsp;</td></tr>
+</table>`,
+    'spacer-md': `<table width="100%" cellpadding="0" cellspacing="0" border="0">
+  <tr><td style="height: 20px; font-size: 0; line-height: 0;">&nbsp;</td></tr>
+</table>`,
+    'spacer-lg': `<table width="100%" cellpadding="0" cellspacing="0" border="0">
+  <tr><td style="height: 40px; font-size: 0; line-height: 0;">&nbsp;</td></tr>
+</table>`,
+    'divider': `<table width="100%" cellpadding="0" cellspacing="0" border="0">
+  <tr>
+    <td style="padding: 15px 40px;">
+      <hr style="border: none; border-top: 1px solid #dddddd; margin: 0;">
+    </td>
+  </tr>
+</table>`,
+    'heading': `<table width="100%" cellpadding="0" cellspacing="0" border="0">
+  <tr>
+    <td style="padding: 10px 40px;">
+      <h2 style="font-family: Arial, sans-serif; font-size: 24px; color: #1a1a2e; margin: 0;">
+        Your Heading
+      </h2>
+    </td>
+  </tr>
+</table>`,
+    'paragraph': `<table width="100%" cellpadding="0" cellspacing="0" border="0">
+  <tr>
+    <td style="padding: 10px 40px;">
+      <p style="font-family: Arial, sans-serif; font-size: 16px; line-height: 1.6; color: #333333; margin: 0;">
+        Your paragraph text goes here. You can write as much as you need.
+      </p>
+    </td>
+  </tr>
+</table>`,
+    'image': `<table width="100%" cellpadding="0" cellspacing="0" border="0">
+  <tr>
+    <td style="padding: 10px 40px;" align="center">
+      <img src="https://placehold.co/560x200/e8e8e8/666?text=Your+Image" alt="Description" width="560" style="max-width: 100%; height: auto; display: block; border-radius: 4px;">
+    </td>
+  </tr>
+</table>`,
+    'button': `<table width="100%" cellpadding="0" cellspacing="0" border="0">
+  <tr>
+    <td align="center" style="padding: 20px 40px;">
+      <!--[if mso]><v:roundrect xmlns:v="urn:schemas-microsoft-com:vml" href="https://example.com" style="height:48px;v-text-anchor:middle;width:220px;" arcsize="10%" strokecolor="#1a1a2e" fillcolor="#1a1a2e"><center style="color:#ffffff;font-family:Arial,sans-serif;font-size:16px;font-weight:bold;">Button Text</center></v:roundrect><![endif]-->
+      <!--[if !mso]><!-->
+      <a href="https://example.com" target="_blank" style="background-color: #1a1a2e; color: #ffffff; font-family: Arial, sans-serif; font-size: 16px; font-weight: bold; text-decoration: none; padding: 14px 40px; border-radius: 5px; display: inline-block;">
+        Button Text
+      </a>
+      <!--<![endif]-->
+    </td>
+  </tr>
+</table>`,
+    'bg-section': `<table width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color: #f5f5f5;">
+  <tr>
+    <td style="padding: 30px 40px; font-family: Arial, sans-serif; font-size: 16px; color: #333333;">
+      Content on coloured background...
+    </td>
+  </tr>
+</table>`,
+    'link': `<a href="https://example.com" target="_blank" style="color: #0d6efd; text-decoration: underline; font-family: Arial, sans-serif;">Link Text</a>`,
+    'bold-text': `<strong style="font-weight: bold;">Bold text</strong>`,
+    'preheader': `<div style="display: none; max-height: 0; overflow: hidden; mso-hide: all;">
+  Your preheader text goes here — this shows in inbox previews but not in the email body.
+</div>`,
+  },
+
+  /**
+   * Insert an HTML snippet at cursor position in the active textarea
+   */
+  insertHtmlSnippet(snippetKey) {
+    const snippet = this.htmlSnippets[snippetKey];
+    if (!snippet) return;
+
+    const textarea = this.canvas.querySelector('.email-html-code-editor');
+    if (!textarea) {
+      utils.showToast('No HTML editor active — switch to Edit mode first', 'warning');
+      return;
+    }
+
+    // Make sure we're in edit mode (not preview)
+    const wrapper = textarea.closest('.email-block-wrapper');
+    const codeWrap = wrapper?.querySelector('.email-html-code-wrap');
+    if (codeWrap && codeWrap.style.display === 'none') {
+      const blockId = textarea.getAttribute('data-block');
+      this.previewHtmlBlock(blockId);
+    }
+
+    const start = textarea.selectionStart;
+    const end = textarea.selectionEnd;
+    const before = textarea.value.substring(0, start);
+    const after = textarea.value.substring(end);
+
+    textarea.value = before + '\n' + snippet + '\n' + after;
+    textarea.focus();
+
+    const newPos = start + snippet.length + 2;
+    textarea.selectionStart = textarea.selectionEnd = newPos;
+
+    this.updatePreview();
+    this.markUnsavedChanges();
+  },
+
+  /**
+   * Wrap selected text in the HTML editor
+   */
+  wrapHtmlSelection(wrapType, value) {
+    const textarea = this.canvas.querySelector('.email-html-code-editor');
+    if (!textarea) {
+      utils.showToast('No HTML editor active — switch to Edit mode first', 'warning');
+      return;
+    }
+
+    // Make sure we're in edit mode
+    const wrapper = textarea.closest('.email-block-wrapper');
+    const codeWrap = wrapper?.querySelector('.email-html-code-wrap');
+    if (codeWrap && codeWrap.style.display === 'none') {
+      const blockId = textarea.getAttribute('data-block');
+      this.previewHtmlBlock(blockId);
+    }
+
+    const start = textarea.selectionStart;
+    const end = textarea.selectionEnd;
+    const selected = textarea.value.substring(start, end);
+    const before = textarea.value.substring(0, start);
+    const after = textarea.value.substring(end);
+
+    let wrapped = '';
+    const content = selected || 'Your content here...';
+
+    switch (wrapType) {
+      case 'padding':
+        wrapped = `<table width="100%" cellpadding="0" cellspacing="0" border="0">
+  <tr><td style="padding: ${value || '20px'};">
+${content}
+  </td></tr>
+</table>`;
+        break;
+      case 'center':
+        wrapped = `<table width="100%" cellpadding="0" cellspacing="0" border="0">
+  <tr><td align="center" style="text-align: center;">
+${content}
+  </td></tr>
+</table>`;
+        break;
+      case 'table-cell':
+        wrapped = `<td style="padding: 10px; font-family: Arial, sans-serif; font-size: 14px; color: #333333; vertical-align: top;">
+${content}
+</td>`;
+        break;
+      case 'conditional':
+        wrapped = `<!--[if mso]>
+${content}
+<![endif]-->`;
+        break;
+    }
+
+    textarea.value = before + wrapped + after;
+    textarea.focus();
+    textarea.selectionStart = start;
+    textarea.selectionEnd = start + wrapped.length;
+
+    this.updatePreview();
+    this.markUnsavedChanges();
+  },
+
+  /**
    * Show empty state
    */
   showEmptyState() {
@@ -801,6 +1014,9 @@ const emailBuilder = {
     // Show block palette for Blank Canvas and Paste HTML, hide for pre-built templates
     const palette = document.getElementById('blockPaletteSection');
     if (palette) palette.style.display = (!templateType || templateType === 'paste-html') ? 'block' : 'none';
+    // Show HTML toolkit only for "I Have HTML" mode
+    const toolkit = document.getElementById('htmlToolkitSection');
+    if (toolkit) toolkit.style.display = (templateType === 'paste-html') ? 'block' : 'none';
 
     // Blank Canvas: clear everything and reset
     if (!templateType) {

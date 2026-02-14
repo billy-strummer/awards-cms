@@ -464,7 +464,7 @@ British Trade Awards Team
     document.getElementById('previewSubject').textContent = previewSubject;
     document.getElementById('previewBody').textContent = previewBody;
 
-    const modal = new bootstrap.Modal(document.getElementById('emailPreviewModal'));
+    const modal = new bootstrap.Modal(document.getElementById('emailTemplatePreviewModal'));
     modal.show();
   },
 

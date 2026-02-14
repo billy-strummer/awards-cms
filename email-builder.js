@@ -1221,14 +1221,24 @@ ${content}
   },
 
   /**
-   * Open full-width preview modal
+   * Open fullscreen preview modal
    */
   openPreviewModal() {
-    this.updatePreview();
+    const html = this.generateFullHTML();
     const modal = document.getElementById('emailPreviewModal');
     if (modal) {
       const bsModal = new bootstrap.Modal(modal);
       bsModal.show();
+      // Write into iframe after modal is visible so it sizes correctly
+      modal.addEventListener('shown.bs.modal', () => {
+        const iframe = document.getElementById('emailPreviewFrame');
+        if (iframe) {
+          const doc = iframe.contentDocument || iframe.contentWindow.document;
+          doc.open();
+          doc.write(html);
+          doc.close();
+        }
+      }, { once: true });
     }
   },
 

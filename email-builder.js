@@ -990,6 +990,36 @@ const emailBuilder = {
   },
 
   /**
+   * Open full-width preview modal
+   */
+  openPreviewModal() {
+    this.updatePreview();
+    const modal = document.getElementById('emailPreviewModal');
+    if (modal) {
+      const bsModal = new bootstrap.Modal(modal);
+      bsModal.show();
+    }
+  },
+
+  /**
+   * Switch preview device in modal (desktop/mobile)
+   */
+  setPreviewDevice(mode, btn) {
+    const iframe = document.getElementById('emailPreviewFrame');
+    if (iframe) {
+      iframe.style.width = mode === 'mobile' ? '375px' : '600px';
+    }
+    // Update button states
+    if (btn) {
+      const group = btn.closest('.btn-group');
+      if (group) {
+        group.querySelectorAll('button').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+      }
+    }
+  },
+
+  /**
    * Setup variable copy functionality
    */
   setupVariableCopy() {

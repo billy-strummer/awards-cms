@@ -217,12 +217,20 @@ async loadOrganisations() {
       set('orgsMissingLogo', missingLogo);
       set('orgsLastUpdated', new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }));
 
-      // Pipeline badges
+      // Pipeline badges with conversion rates
+      const convRates = this._calculateConversionRates(statusCounts);
       set('orgsPipelineProspect', statusCounts.prospect + ' Prospects');
       set('orgsPipelineEntrant', statusCounts.entrant + ' Entrants');
       set('orgsPipelineNominee', statusCounts.nominee + ' Nominees');
       set('orgsPipelineShortlisted', statusCounts.shortlisted + ' Shortlisted');
       set('orgsPipelineWinner', statusCounts.winner + ' Winners');
+
+      // Set conversion rate badges
+      const setConv = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val + '%'; };
+      setConv('orgsConvProspectEntrant', convRates.prospect_to_entrant || 0);
+      setConv('orgsConvEntrantNominee', convRates.entrant_to_nominee || 0);
+      setConv('orgsConvNomineeShortlisted', convRates.nominee_to_shortlisted || 0);
+      setConv('orgsConvShortlistedWinner', convRates.shortlisted_to_winner || 0);
 
     } catch (error) {
       console.error('Error calculating dashboard stats:', error);
@@ -473,6 +481,11 @@ updateCountyFilterByRegion() {
   if (total) total.textContent = STATE.allOrganisations.length;
   if (lastRefresh) lastRefresh.textContent = new Date().toLocaleTimeString('en-GB');
 
+  // Dynamic phone column header
+  const phoneHeaderEl = document.getElementById('phoneColHeader');
+  if (phoneHeaderEl) phoneHeaderEl.style.display = this._showPhoneColumn ? '' : 'none';
+  const colSpan = this._showPhoneColumn ? 14 : 13;
+
   if (STATE.filteredOrganisations.length === 0) {
     // Build active filters summary
     const activeFilters = [];
@@ -498,7 +511,7 @@ updateCountyFilterByRegion() {
 
     tbody.innerHTML = `
       <tr>
-        <td colspan="13" class="text-center py-5">
+        <td colspan="${colSpan}" class="text-center py-5">
           <i class="bi bi-inbox display-4 text-muted opacity-25"></i>
           <p class="text-muted mt-3 mb-0">No organisations found</p>
           ${filterSummary}
@@ -589,6 +602,7 @@ updateCountyFilterByRegion() {
             ).join('')}
           </select>
         </td>
+        ${this._showPhoneColumn ? `<td class="small">${utils.escapeHtml(org.contact_phone || '-')}</td>` : ''}
         <td class="text-center">
           ${awardsCount > 0 ?
             `<span class="badge bg-warning text-dark">${awardsCount}</span>` :
@@ -1278,7 +1292,108 @@ updateCountyFilterByRegion() {
             </div>`
           }
         </div>
+
+        <!-- Organisation Contacts Section (Area 4) -->
+        <div class="mt-4">
+          <h6 class="text-muted mb-3"><i class="bi bi-people me-2"></i>Organisation Contacts</h6>
+          <div class="card"><div class="card-body">
+            <div id="orgContactsList">Loading contacts...</div>
+            <hr class="my-3">
+            <h6 class="small fw-semibold">Add New Contact</h6>
+            <div class="row g-2">
+              <div class="col-md-2"><input type="text" class="form-control form-control-sm" id="newContactFirstName" placeholder="First Name"></div>
+              <div class="col-md-2"><input type="text" class="form-control form-control-sm" id="newContactLastName" placeholder="Last Name"></div>
+              <div class="col-md-2"><input type="text" class="form-control form-control-sm" id="newContactJobTitle" placeholder="Job Title"></div>
+              <div class="col-md-2"><input type="email" class="form-control form-control-sm" id="newContactEmailAddr" placeholder="Email"></div>
+              <div class="col-md-2"><input type="tel" class="form-control form-control-sm" id="newContactPhoneNum" placeholder="Phone"></div>
+              <div class="col-md-2">
+                <div class="form-check form-check-inline"><input class="form-check-input" type="checkbox" id="newContactIsPrimary"><label class="form-check-label small">Primary</label></div>
+                <div class="form-check form-check-inline"><input class="form-check-input" type="checkbox" id="newContactReceiveEmails" checked><label class="form-check-label small">Emails</label></div>
+              </div>
+            </div>
+            <button class="btn btn-sm btn-primary mt-2" onclick="orgsModule.addContact('${orgId}')"><i class="bi bi-plus me-1"></i>Add Contact</button>
+          </div></div>
+        </div>
+
+        <!-- Activity Timeline Section (Area 5) -->
+        <div class="mt-4">
+          <h6 class="text-muted mb-3"><i class="bi bi-clock-history me-2"></i>Activity Timeline</h6>
+          <div class="card"><div class="card-body" id="orgActivityTimeline">Loading activity...</div></div>
+        </div>
+
+        <!-- Communications History & Stats (Area 6) -->
+        <div class="mt-4">
+          <div class="row">
+            <div class="col-md-6">
+              <h6 class="text-muted mb-3"><i class="bi bi-envelope-check me-2"></i>Communications History</h6>
+              <div class="card"><div class="card-body" id="orgCommsHistory">Loading...</div></div>
+            </div>
+            <div class="col-md-6">
+              <h6 class="text-muted mb-3"><i class="bi bi-calendar-check me-2"></i>Scheduled Follow-ups</h6>
+              <div class="card"><div class="card-body">
+                <div id="orgFollowUpsList"></div>
+                <hr class="my-2">
+                <div class="row g-2">
+                  <div class="col-5"><input type="date" class="form-control form-control-sm" id="followUpDate" min="${new Date().toISOString().split('T')[0]}"></div>
+                  <div class="col-5"><input type="text" class="form-control form-control-sm" id="followUpNote" placeholder="Reminder note..."></div>
+                  <div class="col-2"><button class="btn btn-sm btn-primary w-100" onclick="orgsModule.addFollowUp('${orgId}')"><i class="bi bi-plus"></i></button></div>
+                </div>
+              </div></div>
+            </div>
+          </div>
+          <div class="mt-2 d-flex gap-2">
+            <button class="btn btn-sm btn-outline-primary" onclick="orgsModule.openEmailTemplate('${orgId}')"><i class="bi bi-envelope me-1"></i>Email Templates</button>
+            <button class="btn btn-sm btn-outline-success" onclick="orgsModule.openSMSTemplate('${orgId}')"><i class="bi bi-chat-dots me-1"></i>SMS / WhatsApp</button>
+          </div>
+        </div>
+
+        <!-- Document Attachments Section (Area 5) -->
+        <div class="mt-4">
+          <h6 class="text-muted mb-3"><i class="bi bi-file-earmark me-2"></i>Document Attachments</h6>
+          <div class="card"><div class="card-body">
+            <div id="orgDocumentsList">Loading documents...</div>
+            <hr class="my-2">
+            <div class="row g-2 align-items-end">
+              <div class="col-md-4"><input type="file" class="form-control form-control-sm" id="docUploadInput"></div>
+              <div class="col-md-4"><input type="text" class="form-control form-control-sm" id="docTitle" placeholder="Document title..."></div>
+              <div class="col-md-4"><button class="btn btn-sm btn-primary" onclick="orgsModule.uploadDocument('${orgId}')"><i class="bi bi-cloud-upload me-1"></i>Upload</button></div>
+            </div>
+          </div></div>
+        </div>
+
+        <!-- Custom Fields Section (Area 5) -->
+        <div class="mt-4">
+          <h6 class="text-muted mb-3"><i class="bi bi-sliders me-2"></i>Custom Fields</h6>
+          <div class="card"><div class="card-body">
+            <div id="orgCustomFieldsList"></div>
+            <hr class="my-2">
+            <div class="row g-2 align-items-end">
+              <div class="col-md-4"><input type="text" class="form-control form-control-sm" id="customFieldName" placeholder="Field name..."></div>
+              <div class="col-md-4"><input type="text" class="form-control form-control-sm" id="customFieldValue" placeholder="Value..."></div>
+              <div class="col-md-4"><button class="btn btn-sm btn-primary" onclick="orgsModule.addCustomField('${orgId}')"><i class="bi bi-plus me-1"></i>Add Field</button></div>
+            </div>
+          </div></div>
+        </div>
+
+        <!-- Data Completeness Score (Area 9) -->
+        <div class="mt-4">
+          <h6 class="text-muted mb-3"><i class="bi bi-speedometer2 me-2"></i>Data Completeness</h6>
+          <div class="card"><div class="card-body">
+            <div class="d-flex align-items-center gap-3">
+              <div class="progress flex-grow-1" style="height: 24px;">
+                <div class="progress-bar ${this.calculateCompletenessScore(org) >= 70 ? 'bg-success' : this.calculateCompletenessScore(org) >= 40 ? 'bg-warning' : 'bg-danger'}" style="width: ${this.calculateCompletenessScore(org)}%">
+                  ${this.calculateCompletenessScore(org)}%
+                </div>
+              </div>
+              <span class="fw-bold">${this.calculateCompletenessScore(org)}%</span>
+            </div>
+            <small class="text-muted mt-1 d-block">Based on: name, email, contact, phone, website, logo, sector, region, address, description</small>
+          </div></div>
+        </div>
       `;
+
+      // Load async sections after render
+      this._loadProfileAsyncSections(orgId);
 
       // Store current org data for editing
       this.currentEditingOrg = org;
@@ -1300,6 +1415,125 @@ updateCountyFilterByRegion() {
           Failed to load company profile: ${error.message}
         </div>
       `;
+    }
+  },
+
+  /**
+   * Load async sections for company profile (contacts, timeline, comms, docs, custom fields)
+   */
+  async _loadProfileAsyncSections(orgId) {
+    // Load contacts
+    const contacts = await this.loadOrgContacts(orgId);
+    const contactsEl = document.getElementById('orgContactsList');
+    if (contactsEl) contactsEl.innerHTML = this.renderContactsSection(orgId, contacts);
+
+    // Load activity timeline (merge audit + comms)
+    const [auditLog, commsLog] = await Promise.all([
+      this.getAuditLog(orgId),
+      this.getCommsHistory(orgId)
+    ]);
+    const timeline = [
+      ...auditLog.map(e => ({ ...e, type: 'audit', sortDate: new Date(e.timestamp || e.created_at) })),
+      ...commsLog.map(e => ({ ...e, type: 'comms', sortDate: new Date(e.timestamp || e.created_at) }))
+    ].sort((a, b) => b.sortDate - a.sortDate).slice(0, 30);
+
+    const timelineEl = document.getElementById('orgActivityTimeline');
+    if (timelineEl) {
+      if (timeline.length === 0) {
+        timelineEl.innerHTML = '<p class="text-muted small">No activity recorded yet</p>';
+      } else {
+        timelineEl.innerHTML = `<div class="list-group list-group-flush" style="max-height: 300px; overflow-y: auto;">
+          ${timeline.map(e => {
+            const date = e.sortDate;
+            const timeAgo = this._timeAgo(date);
+            const isComms = e.type === 'comms';
+            const icon = isComms ? 'bi-envelope-check text-success' : ({
+              'status_change': 'bi-arrow-repeat text-primary', 'archived': 'bi-archive text-warning',
+              'restored': 'bi-arrow-counterclockwise text-success', 'created': 'bi-plus-circle text-success',
+              'email_sent': 'bi-envelope text-info', 'note_added': 'bi-sticky text-secondary',
+              'csv_import': 'bi-file-earmark-arrow-up text-primary'
+            }[e.action] || 'bi-clock-history text-muted');
+            const label = isComms
+              ? `Email sent: ${utils.escapeHtml(e.templateName || e.template_name || 'Unknown')}`
+              : utils.escapeHtml(e.details || e.action);
+            return `<div class="list-group-item px-0 py-2 border-0">
+              <div class="d-flex align-items-start">
+                <i class="bi ${icon} me-2 mt-1"></i>
+                <div class="flex-grow-1">
+                  <div class="small fw-semibold">${label}</div>
+                  <div class="text-muted" style="font-size: 0.7rem;">${timeAgo} &middot; ${date.toLocaleDateString('en-GB')} ${date.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}</div>
+                </div>
+              </div>
+            </div>`;
+          }).join('')}
+        </div>`;
+      }
+    }
+
+    // Load comms history
+    const commsEl = document.getElementById('orgCommsHistory');
+    if (commsEl) commsEl.innerHTML = await this.renderCommsHistory(orgId);
+
+    // Load follow-ups
+    const followUps = this.getFollowUps(orgId);
+    const followUpsEl = document.getElementById('orgFollowUpsList');
+    if (followUpsEl) {
+      if (followUps.length === 0) {
+        followUpsEl.innerHTML = '<p class="text-muted small mb-0">No scheduled follow-ups</p>';
+      } else {
+        followUpsEl.innerHTML = `<div class="list-group list-group-flush">
+          ${followUps.map((f, i) => {
+            const isOverdue = !f.done && new Date(f.date) < new Date();
+            return `<div class="list-group-item px-0 py-2 border-0 d-flex align-items-center ${f.done ? 'text-muted' : ''}">
+              <i class="bi ${f.done ? 'bi-check-circle text-success' : isOverdue ? 'bi-exclamation-circle text-danger' : 'bi-clock text-warning'} me-2"></i>
+              <div class="flex-grow-1">
+                <div class="small ${f.done ? 'text-decoration-line-through' : 'fw-semibold'}">${utils.escapeHtml(f.note || 'Follow up')}</div>
+                <div class="text-muted" style="font-size: 0.7rem;">${new Date(f.date).toLocaleDateString('en-GB')} ${isOverdue && !f.done ? '<span class="text-danger">OVERDUE</span>' : ''}</div>
+              </div>
+              ${!f.done ? `<button class="btn btn-sm btn-outline-success me-1" onclick="orgsModule.completeFollowUp('${orgId}',${i})"><i class="bi bi-check"></i></button>` : ''}
+              <button class="btn btn-sm btn-outline-danger" onclick="orgsModule.deleteFollowUp('${orgId}',${i})"><i class="bi bi-x"></i></button>
+            </div>`;
+          }).join('')}
+        </div>`;
+      }
+    }
+
+    // Load documents
+    const docs = await this.getDocuments(orgId);
+    const docsEl = document.getElementById('orgDocumentsList');
+    if (docsEl) {
+      if (docs.length === 0) {
+        docsEl.innerHTML = '<p class="text-muted small mb-0">No documents attached yet</p>';
+      } else {
+        docsEl.innerHTML = `<div class="list-group list-group-flush">
+          ${docs.map(d => `<a href="${d.file_url}" target="_blank" class="list-group-item list-group-item-action d-flex align-items-center py-2 px-0 border-0">
+            <i class="bi bi-file-earmark me-2 text-primary"></i>
+            <div class="flex-grow-1">
+              <div class="small fw-semibold">${utils.escapeHtml(d.title || 'Document')}</div>
+              <div class="text-muted" style="font-size: 0.7rem;">${d.file_size ? Math.round(d.file_size / 1024) + ' KB' : ''} ${d.created_at ? '&middot; ' + new Date(d.created_at).toLocaleDateString('en-GB') : ''}</div>
+            </div>
+            <i class="bi bi-box-arrow-up-right text-muted"></i>
+          </a>`).join('')}
+        </div>`;
+      }
+    }
+
+    // Load custom fields
+    const customFields = this.getCustomFields(orgId);
+    const cfEl = document.getElementById('orgCustomFieldsList');
+    if (cfEl) {
+      const entries = Object.entries(customFields);
+      if (entries.length === 0) {
+        cfEl.innerHTML = '<p class="text-muted small mb-0">No custom fields defined</p>';
+      } else {
+        cfEl.innerHTML = entries.map(([name, value]) => `
+          <div class="d-flex align-items-center mb-1">
+            <span class="small fw-semibold me-2" style="width: 120px;">${utils.escapeHtml(name)}:</span>
+            <span class="small flex-grow-1">${utils.escapeHtml(value)}</span>
+            <button class="btn btn-sm btn-outline-danger py-0" onclick="orgsModule.removeCustomField('${orgId}','${utils.escapeHtml(name).replace(/'/g, "\\'")}')"><i class="bi bi-x"></i></button>
+          </div>
+        `).join('');
+      }
     }
   },
 
@@ -3633,8 +3867,9 @@ updateCountyFilterByRegion() {
       mappedFields.map(f => `<th>${f.replace(/_/g, ' ')}</th>`).join('') +
       '<th>Status</th>';
 
-    document.getElementById('csvPreviewBody').innerHTML = previewRows.map((item, i) => `
-      <tr class="${item.isDuplicate ? 'table-warning' : ''}">
+    document.getElementById('csvPreviewBody').innerHTML = previewRows.map((item, i) => {
+      const issues = this._validateImportRow(item.record);
+      return `<tr class="${item.isDuplicate ? 'table-warning' : ''} ${issues.length > 0 ? 'table-danger' : ''}">
         <td class="small">${i + 1}</td>
         ${mappedFields.map(f => `<td class="small">${utils.escapeHtml(item.record[f] || '-')}</td>`).join('')}
         <td>
@@ -3642,9 +3877,10 @@ updateCountyFilterByRegion() {
             ? '<span class="badge bg-warning text-dark">Duplicate</span>'
             : '<span class="badge bg-success">New</span>'
           }
+          ${issues.length > 0 ? `<span class="badge bg-danger ms-1" title="${utils.escapeHtml(issues.join(', '))}">Issues: ${issues.length}</span>` : ''}
         </td>
-      </tr>
-    `).join('');
+      </tr>`;
+    }).join('');
 
     // Enable import button
     const importBtn = document.getElementById('csvImportBtn');
@@ -3666,7 +3902,14 @@ updateCountyFilterByRegion() {
     const dupRows = this._csvPreviewRows.filter(r => r.isDuplicate);
 
     let rowsToImport = newRows;
-    if (dupRows.length > 0 && newRows.length > 0) {
+    let mergeRows = [];
+
+    if (this._importMergeMode && dupRows.length > 0) {
+      // Merge mode: update existing records with new data
+      mergeRows = dupRows;
+      rowsToImport = newRows;
+      if (!confirm(`Merge mode: ${dupRows.length} existing record(s) will be updated, ${newRows.length} new record(s) will be inserted. Continue?`)) return;
+    } else if (dupRows.length > 0 && newRows.length > 0) {
       if (confirm(`${dupRows.length} duplicate(s) found. Import only the ${newRows.length} new companies? (Cancel to import ALL including duplicates)`)) {
         rowsToImport = newRows;
       } else {
@@ -3725,6 +3968,30 @@ updateCountyFilterByRegion() {
         }
       }
 
+      // Handle merge mode: update existing records
+      let mergeCount = 0;
+      if (mergeRows.length > 0) {
+        for (const item of mergeRows) {
+          try {
+            const existingOrg = STATE.allOrganisations.find(o =>
+              (o.company_name || '').toLowerCase() === (item.record.company_name || '').toLowerCase()
+            );
+            if (existingOrg) {
+              const updateData = {};
+              this._dbFields.forEach(field => {
+                if (item.record[field] && item.record[field].trim()) {
+                  updateData[field] = item.record[field].trim();
+                }
+              });
+              if (Object.keys(updateData).length > 0) {
+                const { error } = await STATE.client.from('organisations').update(updateData).eq('id', existingOrg.id);
+                if (!error) mergeCount++;
+              }
+            }
+          } catch (e) { console.error('Merge error:', e); }
+        }
+      }
+
       // Track imported counties in localStorage for dashboard
       try {
         const imported = JSON.parse(localStorage.getItem('csvImportedCounties') || '{}');
@@ -3734,6 +4001,11 @@ updateCountyFilterByRegion() {
         };
         localStorage.setItem('csvImportedCounties', JSON.stringify(imported));
       } catch (e) { /* ignore */ }
+
+      // Log import history
+      const fileInput = document.getElementById('csvFileInput');
+      const filename = fileInput?.files?.[0]?.name || 'pasted-data.csv';
+      this._logImportHistory(filename, successCount, selectedCounty);
 
       // Close modal
       bootstrap.Modal.getInstance(document.getElementById('csvImportModal')).hide();
@@ -3778,6 +4050,1056 @@ updateCountyFilterByRegion() {
     document.getElementById('csvFileInput').value = '';
     document.getElementById('csvPasteArea').value = '';
     document.getElementById('csvImportBtn').disabled = true;
+  },
+
+  // ============================================
+  // SAVED FILTER PRESETS
+  // ============================================
+  _populateFilterPresets() {
+    const presetSelect = document.getElementById('orgsFilterPreset');
+    if (!presetSelect) return;
+    try {
+      const presets = JSON.parse(localStorage.getItem('orgsFilterPresets') || '{}');
+      presetSelect.innerHTML = '<option value="">-- Saved Presets --</option>' +
+        Object.keys(presets).map(name => `<option value="${utils.escapeHtml(name)}">${utils.escapeHtml(name)}</option>`).join('');
+    } catch (e) { /* ignore */ }
+  },
+
+  saveFilterPreset() {
+    const name = prompt('Name this filter preset:');
+    if (!name || !name.trim()) return;
+    try {
+      const presets = JSON.parse(localStorage.getItem('orgsFilterPresets') || '{}');
+      presets[name.trim()] = {
+        year: document.getElementById('orgsYearFilter')?.value || '',
+        sector: document.getElementById('orgsSectorFilter')?.value || '',
+        region: document.getElementById('orgsRegionFilter')?.value || '',
+        county: document.getElementById('orgsCountyFilter')?.value || '',
+        status: document.getElementById('orgsStatusFilter')?.value || '',
+        search: document.getElementById('orgsSearchBox')?.value || '',
+        tier: document.getElementById('orgsTierFilter')?.value || '',
+        tag: document.getElementById('orgsTagFilter')?.value || '',
+        logoFilter: document.getElementById('orgsLogoFilter')?.value || '',
+        dateFilter: document.getElementById('orgsDateFilter')?.value || ''
+      };
+      localStorage.setItem('orgsFilterPresets', JSON.stringify(presets));
+      this._populateFilterPresets();
+      document.getElementById('orgsFilterPreset').value = name.trim();
+      utils.showToast(`Preset "${name.trim()}" saved`, 'success');
+    } catch (e) { utils.showToast('Error saving preset', 'error'); }
+  },
+
+  loadFilterPreset(name) {
+    if (!name) return;
+    try {
+      const presets = JSON.parse(localStorage.getItem('orgsFilterPresets') || '{}');
+      const preset = presets[name];
+      if (!preset) return;
+      document.getElementById('orgsYearFilter').value = preset.year || '';
+      document.getElementById('orgsSectorFilter').value = preset.sector || '';
+      document.getElementById('orgsRegionFilter').value = preset.region || '';
+      if (preset.region) this.updateCountyFilterByRegion();
+      document.getElementById('orgsCountyFilter').value = preset.county || '';
+      document.getElementById('orgsStatusFilter').value = preset.status || '';
+      document.getElementById('orgsSearchBox').value = preset.search || '';
+      const tierEl = document.getElementById('orgsTierFilter');
+      if (tierEl) tierEl.value = preset.tier || '';
+      const tagEl = document.getElementById('orgsTagFilter');
+      if (tagEl) tagEl.value = preset.tag || '';
+      const logoEl = document.getElementById('orgsLogoFilter');
+      if (logoEl) logoEl.value = preset.logoFilter || '';
+      const dateEl = document.getElementById('orgsDateFilter');
+      if (dateEl) dateEl.value = preset.dateFilter || '';
+      this.filterOrganisations();
+      utils.showToast(`Preset "${name}" loaded`, 'success');
+    } catch (e) { /* ignore */ }
+  },
+
+  deleteFilterPreset() {
+    const presetSelect = document.getElementById('orgsFilterPreset');
+    const name = presetSelect?.value;
+    if (!name) { utils.showToast('Select a preset to delete', 'warning'); return; }
+    if (!confirm(`Delete preset "${name}"?`)) return;
+    try {
+      const presets = JSON.parse(localStorage.getItem('orgsFilterPresets') || '{}');
+      delete presets[name];
+      localStorage.setItem('orgsFilterPresets', JSON.stringify(presets));
+      this._populateFilterPresets();
+      utils.showToast(`Preset "${name}" deleted`, 'success');
+    } catch (e) { /* ignore */ }
+  },
+
+  // ============================================
+  // AREA 1: CONVERSION % RATES FOR PIPELINE
+  // ============================================
+  _calculateConversionRates(statusCounts) {
+    const pipeline = ['prospect', 'entrant', 'nominee', 'shortlisted', 'winner'];
+    const rates = {};
+    for (let i = 0; i < pipeline.length - 1; i++) {
+      const from = pipeline[i];
+      const to = pipeline[i + 1];
+      const fromCount = statusCounts[from] || 0;
+      const toCount = statusCounts[to] || 0;
+      rates[`${from}_to_${to}`] = fromCount > 0 ? Math.round((toCount / fromCount) * 100) : 0;
+    }
+    return rates;
+  },
+
+  // ============================================
+  // AREA 3: PHONE COLUMN TOGGLE
+  // ============================================
+  _showPhoneColumn: false,
+
+  togglePhoneColumn() {
+    this._showPhoneColumn = !this._showPhoneColumn;
+    const btn = document.getElementById('togglePhoneColBtn');
+    if (btn) btn.classList.toggle('active', this._showPhoneColumn);
+    this.renderOrganisations();
+  },
+
+  // ============================================
+  // AREA 4: ORGANISATION CONTACTS (Multi-contact)
+  // ============================================
+  async loadOrgContacts(orgId) {
+    try {
+      const { data, error } = await STATE.client
+        .from('organisation_contacts')
+        .select('*')
+        .eq('organisation_id', orgId)
+        .order('is_primary', { ascending: false });
+      if (error) throw error;
+      return data || [];
+    } catch (e) {
+      console.error('Error loading contacts:', e);
+      return [];
+    }
+  },
+
+  renderContactsSection(orgId, contacts) {
+    if (!contacts || contacts.length === 0) {
+      return `<div class="alert alert-info small">
+        <i class="bi bi-info-circle me-2"></i>No additional contacts. Use the form below to add contacts.
+      </div>`;
+    }
+    return `<div class="table-responsive">
+      <table class="table table-sm table-hover mb-0">
+        <thead><tr>
+          <th>Name</th><th>Job Title</th><th>Email</th><th>Phone</th><th>Primary</th><th>Emails</th><th>Actions</th>
+        </tr></thead>
+        <tbody>
+          ${contacts.map(c => `<tr>
+            <td class="small">${utils.escapeHtml((c.first_name || '') + ' ' + (c.last_name || ''))}</td>
+            <td class="small">${utils.escapeHtml(c.job_title || '-')}</td>
+            <td class="small">${c.email ? `<a href="mailto:${c.email}">${utils.escapeHtml(c.email)}</a>` : '-'}</td>
+            <td class="small">${utils.escapeHtml(c.phone || c.mobile || '-')}</td>
+            <td class="text-center">${c.is_primary ? '<i class="bi bi-star-fill text-warning"></i>' : '<i class="bi bi-star text-muted" style="cursor:pointer" onclick="orgsModule.setPrimaryContact(\''+orgId+'\',\''+c.id+'\')"></i>'}</td>
+            <td class="text-center">${c.receive_emails ? '<i class="bi bi-check-circle text-success"></i>' : '<i class="bi bi-x-circle text-muted" style="cursor:pointer" onclick="orgsModule.toggleContactEmails(\''+orgId+'\',\''+c.id+'\',true)"></i>'}</td>
+            <td><button class="btn btn-sm btn-outline-danger" onclick="orgsModule.deleteContact('${orgId}','${c.id}')"><i class="bi bi-trash"></i></button></td>
+          </tr>`).join('')}
+        </tbody>
+      </table>
+    </div>`;
+  },
+
+  async addContact(orgId) {
+    const firstName = document.getElementById('newContactFirstName')?.value.trim();
+    const lastName = document.getElementById('newContactLastName')?.value.trim();
+    const jobTitle = document.getElementById('newContactJobTitle')?.value.trim();
+    const email = document.getElementById('newContactEmailAddr')?.value.trim();
+    const phone = document.getElementById('newContactPhoneNum')?.value.trim();
+    const isPrimary = document.getElementById('newContactIsPrimary')?.checked || false;
+    const receiveEmails = document.getElementById('newContactReceiveEmails')?.checked || true;
+
+    if (!firstName && !lastName) { utils.showToast('Please enter a name', 'warning'); return; }
+
+    try {
+      if (isPrimary) {
+        await STATE.client.from('organisation_contacts').update({ is_primary: false }).eq('organisation_id', orgId);
+      }
+      const { error } = await STATE.client.from('organisation_contacts').insert([{
+        organisation_id: orgId, first_name: firstName || null, last_name: lastName || null,
+        job_title: jobTitle || null, email: email || null, phone: phone || null,
+        is_primary: isPrimary, receive_emails: receiveEmails
+      }]);
+      if (error) throw error;
+      utils.showToast('Contact added', 'success');
+      const org = STATE.allOrganisations.find(o => o.id === orgId);
+      if (org) await this.openCompanyProfile(orgId, org.company_name);
+    } catch (e) {
+      console.error('Error adding contact:', e);
+      utils.showToast('Error: ' + e.message, 'error');
+    }
+  },
+
+  async deleteContact(orgId, contactId) {
+    if (!confirm('Delete this contact?')) return;
+    try {
+      const { error } = await STATE.client.from('organisation_contacts').delete().eq('id', contactId);
+      if (error) throw error;
+      utils.showToast('Contact deleted', 'success');
+      const org = STATE.allOrganisations.find(o => o.id === orgId);
+      if (org) await this.openCompanyProfile(orgId, org.company_name);
+    } catch (e) {
+      utils.showToast('Error: ' + e.message, 'error');
+    }
+  },
+
+  async setPrimaryContact(orgId, contactId) {
+    try {
+      await STATE.client.from('organisation_contacts').update({ is_primary: false }).eq('organisation_id', orgId);
+      await STATE.client.from('organisation_contacts').update({ is_primary: true }).eq('id', contactId);
+      utils.showToast('Primary contact updated', 'success');
+      const org = STATE.allOrganisations.find(o => o.id === orgId);
+      if (org) await this.openCompanyProfile(orgId, org.company_name);
+    } catch (e) {
+      utils.showToast('Error: ' + e.message, 'error');
+    }
+  },
+
+  async toggleContactEmails(orgId, contactId, value) {
+    try {
+      await STATE.client.from('organisation_contacts').update({ receive_emails: value }).eq('id', contactId);
+      utils.showToast(value ? 'Will receive emails' : 'Opted out of emails', 'success');
+      const org = STATE.allOrganisations.find(o => o.id === orgId);
+      if (org) await this.openCompanyProfile(orgId, org.company_name);
+    } catch (e) {
+      utils.showToast('Error: ' + e.message, 'error');
+    }
+  },
+
+  // ============================================
+  // AREA 5: CUSTOM FIELDS
+  // ============================================
+  _customFieldsKey: 'orgCustomFields',
+
+  getCustomFields(orgId) {
+    try {
+      const all = JSON.parse(localStorage.getItem(this._customFieldsKey) || '{}');
+      return all[orgId] || {};
+    } catch (e) { return {}; }
+  },
+
+  saveCustomField(orgId, fieldName, fieldValue) {
+    try {
+      const all = JSON.parse(localStorage.getItem(this._customFieldsKey) || '{}');
+      if (!all[orgId]) all[orgId] = {};
+      if (fieldValue) {
+        all[orgId][fieldName] = fieldValue;
+      } else {
+        delete all[orgId][fieldName];
+      }
+      localStorage.setItem(this._customFieldsKey, JSON.stringify(all));
+      utils.showToast('Custom field saved', 'success');
+    } catch (e) { utils.showToast('Error saving custom field', 'error'); }
+  },
+
+  addCustomField(orgId) {
+    const name = document.getElementById('customFieldName')?.value.trim();
+    const value = document.getElementById('customFieldValue')?.value.trim();
+    if (!name) { utils.showToast('Enter a field name', 'warning'); return; }
+    this.saveCustomField(orgId, name, value);
+    const org = STATE.allOrganisations.find(o => o.id === orgId);
+    if (org) this.openCompanyProfile(orgId, org.company_name);
+  },
+
+  removeCustomField(orgId, fieldName) {
+    this.saveCustomField(orgId, fieldName, null);
+    const org = STATE.allOrganisations.find(o => o.id === orgId);
+    if (org) this.openCompanyProfile(orgId, org.company_name);
+  },
+
+  // ============================================
+  // AREA 5: DOCUMENT ATTACHMENTS
+  // ============================================
+  async uploadDocument(orgId) {
+    const fileInput = document.getElementById('docUploadInput');
+    const docTitle = document.getElementById('docTitle')?.value.trim() || '';
+    if (!fileInput?.files?.[0]) { utils.showToast('Select a file', 'warning'); return; }
+
+    const file = fileInput.files[0];
+    try {
+      utils.showLoading('Uploading document...');
+      const timestamp = Date.now();
+      const fileName = `documents/${orgId}/${timestamp}_${file.name}`;
+      const { error: uploadError } = await STATE.client.storage.from('media-gallery').upload(fileName, file);
+      if (uploadError) throw uploadError;
+      const { data: urlData } = STATE.client.storage.from('media-gallery').getPublicUrl(fileName);
+
+      // Store in organisation_documents or fallback to localStorage
+      try {
+        const { error } = await STATE.client.from('organisation_documents').insert([{
+          organisation_id: orgId, file_url: urlData.publicUrl, title: docTitle || file.name,
+          file_type: file.type, file_size: file.size
+        }]);
+        if (error) throw error;
+      } catch (dbErr) {
+        // Fallback: store in localStorage
+        const docs = JSON.parse(localStorage.getItem('orgDocuments') || '{}');
+        if (!docs[orgId]) docs[orgId] = [];
+        docs[orgId].push({ url: urlData.publicUrl, title: docTitle || file.name, type: file.type, size: file.size, date: new Date().toISOString() });
+        localStorage.setItem('orgDocuments', JSON.stringify(docs));
+      }
+
+      utils.showToast('Document uploaded', 'success');
+      const org = STATE.allOrganisations.find(o => o.id === orgId);
+      if (org) await this.openCompanyProfile(orgId, org.company_name);
+    } catch (e) {
+      utils.showToast('Error: ' + e.message, 'error');
+    } finally {
+      utils.hideLoading();
+    }
+  },
+
+  async getDocuments(orgId) {
+    try {
+      const { data, error } = await STATE.client.from('organisation_documents').select('*').eq('organisation_id', orgId).order('created_at', { ascending: false });
+      if (error) throw error;
+      return data || [];
+    } catch (e) {
+      // Fallback to localStorage
+      try {
+        const docs = JSON.parse(localStorage.getItem('orgDocuments') || '{}');
+        return (docs[orgId] || []).map(d => ({ file_url: d.url, title: d.title, file_type: d.type, file_size: d.size, created_at: d.date }));
+      } catch (e2) { return []; }
+    }
+  },
+
+  // ============================================
+  // AREA 6: SCHEDULED FOLLOW-UPS
+  // ============================================
+  _followUpsKey: 'orgFollowUps',
+
+  getFollowUps(orgId) {
+    try {
+      const all = JSON.parse(localStorage.getItem(this._followUpsKey) || '[]');
+      if (orgId) return all.filter(f => f.orgId === orgId);
+      return all;
+    } catch (e) { return []; }
+  },
+
+  addFollowUp(orgId) {
+    const date = document.getElementById('followUpDate')?.value;
+    const note = document.getElementById('followUpNote')?.value.trim();
+    if (!date) { utils.showToast('Select a date', 'warning'); return; }
+
+    const org = STATE.allOrganisations.find(o => o.id === orgId);
+    try {
+      const all = JSON.parse(localStorage.getItem(this._followUpsKey) || '[]');
+      all.push({ orgId, companyName: org?.company_name || '', date, note, done: false, created: new Date().toISOString() });
+      localStorage.setItem(this._followUpsKey, JSON.stringify(all));
+      utils.showToast('Follow-up scheduled', 'success');
+      if (org) this.openCompanyProfile(orgId, org.company_name);
+    } catch (e) { utils.showToast('Error', 'error'); }
+  },
+
+  completeFollowUp(orgId, index) {
+    try {
+      const all = JSON.parse(localStorage.getItem(this._followUpsKey) || '[]');
+      const orgFollowUps = all.filter(f => f.orgId === orgId);
+      if (orgFollowUps[index]) orgFollowUps[index].done = true;
+      const others = all.filter(f => f.orgId !== orgId);
+      localStorage.setItem(this._followUpsKey, JSON.stringify([...others, ...orgFollowUps]));
+      utils.showToast('Follow-up completed', 'success');
+      const org = STATE.allOrganisations.find(o => o.id === orgId);
+      if (org) this.openCompanyProfile(orgId, org.company_name);
+    } catch (e) { /* ignore */ }
+  },
+
+  deleteFollowUp(orgId, index) {
+    try {
+      const all = JSON.parse(localStorage.getItem(this._followUpsKey) || '[]');
+      const orgFollowUps = all.filter(f => f.orgId === orgId);
+      orgFollowUps.splice(index, 1);
+      const others = all.filter(f => f.orgId !== orgId);
+      localStorage.setItem(this._followUpsKey, JSON.stringify([...others, ...orgFollowUps]));
+      utils.showToast('Follow-up deleted', 'success');
+      const org = STATE.allOrganisations.find(o => o.id === orgId);
+      if (org) this.openCompanyProfile(orgId, org.company_name);
+    } catch (e) { /* ignore */ }
+  },
+
+  // ============================================
+  // AREA 6: SMS/WHATSAPP TEMPLATES
+  // ============================================
+  _smsTemplates: [
+    { id: 'sms_shortlist', name: 'Shortlist SMS', body: 'Hi {contact_name}, great news! {company_name} has been shortlisted for the British Trade Awards. Check your email for details.' },
+    { id: 'sms_winner', name: 'Winner SMS', body: 'Congratulations {contact_name}! {company_name} has won at the British Trade Awards! Details in your inbox.' },
+    { id: 'sms_reminder', name: 'Entry Reminder', body: 'Hi {contact_name}, just a reminder that entries for British Trade Awards close soon. Don\'t miss out!' }
+  ],
+
+  _whatsappTemplates: [
+    { id: 'wa_shortlist', name: 'Shortlist WhatsApp', body: 'Hi {contact_name}! Exciting news - {company_name} has been shortlisted for the British Trade Awards! Check your email for all the details.' },
+    { id: 'wa_winner', name: 'Winner WhatsApp', body: 'Congratulations {contact_name}! We\'re thrilled to let you know that {company_name} has won at the British Trade Awards! Full details coming to your inbox.' },
+    { id: 'wa_invite', name: 'Invitation WhatsApp', body: 'Hi {contact_name}, we\'d love to invite {company_name} to enter the British Trade Awards this year. Interested? Reply for more info!' }
+  ],
+
+  openSMSTemplate(orgId) {
+    const org = STATE.allOrganisations.find(o => o.id === orgId) || {};
+    const phone = org.contact_phone || '';
+    const cleanPhone = phone.replace(/[^0-9+]/g, '');
+
+    let html = `<div class="mb-3"><strong>Phone:</strong> ${utils.escapeHtml(phone || 'No phone number')}</div>
+    <h6 class="fw-semibold mb-2">SMS Templates</h6>
+    <div class="list-group mb-3">
+      ${this._smsTemplates.map(t => {
+        const body = t.body.replace(/{company_name}/g, org.company_name || '').replace(/{contact_name}/g, org.contact_name || '');
+        return `<a href="sms:${cleanPhone}?body=${encodeURIComponent(body)}" class="list-group-item list-group-item-action">
+          <div class="d-flex justify-content-between"><div><h6 class="mb-1">${t.name}</h6><small class="text-muted">${utils.escapeHtml(body.substring(0, 80))}...</small></div><i class="bi bi-chat-dots text-success"></i></div>
+        </a>`;
+      }).join('')}
+    </div>
+    <h6 class="fw-semibold mb-2">WhatsApp Templates</h6>
+    <div class="list-group">
+      ${this._whatsappTemplates.map(t => {
+        const body = t.body.replace(/{company_name}/g, org.company_name || '').replace(/{contact_name}/g, org.contact_name || '');
+        return `<a href="https://wa.me/${cleanPhone.replace('+', '')}?text=${encodeURIComponent(body)}" target="_blank" class="list-group-item list-group-item-action">
+          <div class="d-flex justify-content-between"><div><h6 class="mb-1">${t.name}</h6><small class="text-muted">${utils.escapeHtml(body.substring(0, 80))}...</small></div><i class="bi bi-whatsapp text-success"></i></div>
+        </a>`;
+      }).join('')}
+    </div>`;
+
+    this._showDynamicModal('SMS / WhatsApp', html, 'bi-phone');
+  },
+
+  // ============================================
+  // AREA 7: GLOBAL AUDIT LOG WITH FILTERS & DIFF
+  // ============================================
+  async showGlobalAuditLog() {
+    utils.showLoading();
+    try {
+      const log = await this.getAuditLog(null);
+      let html = `<div class="row g-2 mb-3">
+        <div class="col-md-3"><select class="form-select form-select-sm" id="auditActionFilter" onchange="orgsModule._filterAuditLog()">
+          <option value="">All Actions</option>
+          <option value="status_change">Status Change</option><option value="archived">Archived</option>
+          <option value="restored">Restored</option><option value="created">Created</option>
+          <option value="email_sent">Email Sent</option><option value="note_added">Note Added</option>
+          <option value="csv_import">CSV Import</option>
+        </select></div>
+        <div class="col-md-3"><input type="date" class="form-control form-control-sm" id="auditDateFrom" onchange="orgsModule._filterAuditLog()" placeholder="From"></div>
+        <div class="col-md-3"><input type="date" class="form-control form-control-sm" id="auditDateTo" onchange="orgsModule._filterAuditLog()" placeholder="To"></div>
+        <div class="col-md-3"><input type="text" class="form-control form-control-sm" id="auditSearchFilter" oninput="orgsModule._filterAuditLog()" placeholder="Search..."></div>
+      </div>
+      <div id="auditLogContent" style="max-height: 500px; overflow-y: auto;">
+        ${this._renderAuditEntries(log)}
+      </div>`;
+
+      this._showDynamicModal('Global Audit Log', html, 'bi-journal-text', 'modal-xl');
+      this._cachedAuditLog = log;
+    } catch (e) {
+      utils.showToast('Error loading audit log', 'error');
+    } finally { utils.hideLoading(); }
+  },
+
+  _cachedAuditLog: [],
+
+  _filterAuditLog() {
+    const action = document.getElementById('auditActionFilter')?.value || '';
+    const dateFrom = document.getElementById('auditDateFrom')?.value || '';
+    const dateTo = document.getElementById('auditDateTo')?.value || '';
+    const search = (document.getElementById('auditSearchFilter')?.value || '').toLowerCase();
+
+    let filtered = this._cachedAuditLog;
+    if (action) filtered = filtered.filter(e => e.action === action);
+    if (dateFrom) filtered = filtered.filter(e => (e.timestamp || e.created_at) >= dateFrom);
+    if (dateTo) filtered = filtered.filter(e => (e.timestamp || e.created_at) <= dateTo + 'T23:59:59');
+    if (search) filtered = filtered.filter(e =>
+      (e.company_name || '').toLowerCase().includes(search) ||
+      (e.details || '').toLowerCase().includes(search)
+    );
+
+    const container = document.getElementById('auditLogContent');
+    if (container) container.innerHTML = this._renderAuditEntries(filtered);
+  },
+
+  _renderAuditEntries(entries) {
+    if (!entries || entries.length === 0) return '<p class="text-muted text-center">No audit entries found</p>';
+    const icons = {
+      'status_change': 'bi-arrow-repeat text-primary',
+      'archived': 'bi-archive text-warning',
+      'restored': 'bi-arrow-counterclockwise text-success',
+      'created': 'bi-plus-circle text-success',
+      'email_sent': 'bi-envelope text-info',
+      'note_added': 'bi-sticky text-secondary',
+      'csv_import': 'bi-file-earmark-arrow-up text-primary'
+    };
+    return `<table class="table table-sm table-hover"><thead><tr><th>Time</th><th>Company</th><th>Action</th><th>Details</th></tr></thead><tbody>
+      ${entries.map(e => {
+        const date = new Date(e.timestamp || e.created_at);
+        const icon = icons[e.action] || 'bi-clock-history text-muted';
+        // Diff view: parse "Status: X → Y" from details
+        let detailsHtml = utils.escapeHtml(e.details || e.action);
+        const diffMatch = (e.details || '').match(/(.+?):\s*(.+?)\s*→\s*(.+)/);
+        if (diffMatch) {
+          detailsHtml = `${utils.escapeHtml(diffMatch[1])}: <span class="text-danger text-decoration-line-through">${utils.escapeHtml(diffMatch[2])}</span> → <span class="text-success fw-semibold">${utils.escapeHtml(diffMatch[3])}</span>`;
+        }
+        return `<tr>
+          <td class="small text-muted text-nowrap">${date.toLocaleDateString('en-GB')} ${date.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}</td>
+          <td class="small fw-semibold">${utils.escapeHtml(e.company_name || e.companyName || '-')}</td>
+          <td><span class="badge bg-light text-dark"><i class="bi ${icon} me-1"></i>${utils.escapeHtml(e.action)}</span></td>
+          <td class="small">${detailsHtml}</td>
+        </tr>`;
+      }).join('')}
+    </tbody></table>`;
+  },
+
+  // Enhanced audit logging with old/new values for diff view
+  async _logAuditWithDiff(orgId, action, companyName, field, oldValue, newValue) {
+    const details = `${field}: ${oldValue || '(empty)'} → ${newValue || '(empty)'}`;
+    await this._logAudit(orgId, action, companyName, details);
+  },
+
+  // ============================================
+  // AREA 8: BULK TAG ASSIGNMENT
+  // ============================================
+  showBulkTagModal() {
+    if (this.selectedOrgs.size === 0) { utils.showToast('No organisations selected', 'warning'); return; }
+    const allTags = new Set();
+    STATE.allOrganisations.forEach(o => { if (o.tags) o.tags.forEach(t => allTags.add(t)); });
+
+    const html = `<p class="small text-muted">Apply to <strong>${this.selectedOrgs.size}</strong> selected organisations</p>
+      <div class="mb-3">
+        <label class="form-label fw-semibold">Add Tag</label>
+        <div class="input-group">
+          <input type="text" class="form-control" id="bulkTagInput" list="bulkTagSuggestions" placeholder="Enter tag name...">
+          <datalist id="bulkTagSuggestions">${[...allTags].sort().map(t => `<option value="${utils.escapeHtml(t)}">`).join('')}</datalist>
+          <button class="btn btn-primary" onclick="orgsModule.executeBulkTagAdd()"><i class="bi bi-plus me-1"></i>Add</button>
+        </div>
+      </div>
+      <div class="mb-3">
+        <label class="form-label fw-semibold">Remove Tag</label>
+        <select class="form-select" id="bulkTagRemoveSelect">
+          <option value="">-- Select tag to remove --</option>
+          ${[...allTags].sort().map(t => `<option value="${utils.escapeHtml(t)}">${utils.escapeHtml(t)}</option>`).join('')}
+        </select>
+        <button class="btn btn-outline-danger btn-sm mt-2" onclick="orgsModule.executeBulkTagRemove()"><i class="bi bi-trash me-1"></i>Remove from Selected</button>
+      </div>`;
+
+    this._showDynamicModal('Bulk Tag Assignment', html, 'bi-tags');
+  },
+
+  async executeBulkTagAdd() {
+    const tag = document.getElementById('bulkTagInput')?.value.trim();
+    if (!tag) { utils.showToast('Enter a tag', 'warning'); return; }
+
+    try {
+      utils.showLoading();
+      const orgIds = Array.from(this.selectedOrgs);
+      let count = 0;
+      for (const id of orgIds) {
+        const org = STATE.allOrganisations.find(o => o.id === id);
+        const currentTags = org?.tags || [];
+        if (!currentTags.includes(tag)) {
+          const newTags = [...currentTags, tag];
+          await STATE.client.from('organisations').update({ tags: newTags }).eq('id', id);
+          if (org) org.tags = newTags;
+          count++;
+        }
+      }
+      utils.showToast(`Tag "${tag}" added to ${count} org(s)`, 'success');
+      this.renderOrganisations();
+    } catch (e) { utils.showToast('Error: ' + e.message, 'error'); }
+    finally { utils.hideLoading(); }
+  },
+
+  async executeBulkTagRemove() {
+    const tag = document.getElementById('bulkTagRemoveSelect')?.value;
+    if (!tag) { utils.showToast('Select a tag', 'warning'); return; }
+
+    try {
+      utils.showLoading();
+      const orgIds = Array.from(this.selectedOrgs);
+      let count = 0;
+      for (const id of orgIds) {
+        const org = STATE.allOrganisations.find(o => o.id === id);
+        const currentTags = org?.tags || [];
+        if (currentTags.includes(tag)) {
+          const newTags = currentTags.filter(t => t !== tag);
+          await STATE.client.from('organisations').update({ tags: newTags }).eq('id', id);
+          if (org) org.tags = newTags;
+          count++;
+        }
+      }
+      utils.showToast(`Tag "${tag}" removed from ${count} org(s)`, 'success');
+      this.renderOrganisations();
+    } catch (e) { utils.showToast('Error: ' + e.message, 'error'); }
+    finally { utils.hideLoading(); }
+  },
+
+  // ============================================
+  // AREA 8: BULK ASSIGN TO AWARD
+  // ============================================
+  async showBulkAssignAwardModal() {
+    if (this.selectedOrgs.size === 0) { utils.showToast('No organisations selected', 'warning'); return; }
+
+    utils.showLoading();
+    try {
+      const { data: awards } = await STATE.client.from('awards').select('id, award_name, county, sector, year').order('year', { ascending: false });
+      const html = `<p class="small text-muted">Assign <strong>${this.selectedOrgs.size}</strong> selected organisations to an award</p>
+        <div class="mb-3">
+          <label class="form-label fw-semibold">Select Award</label>
+          <select class="form-select" id="bulkAssignAwardSelect">
+            <option value="">-- Select Award --</option>
+            ${(awards || []).map(a => `<option value="${a.id}">${utils.escapeHtml(a.year + ' - ' + (a.award_name || a.county + ' ' + a.sector))}</option>`).join('')}
+          </select>
+        </div>
+        <div class="mb-3">
+          <label class="form-label fw-semibold">Assignment Status</label>
+          <select class="form-select" id="bulkAssignStatus">
+            <option value="nominated">Nominated</option><option value="shortlisted">Shortlisted</option><option value="winner">Winner</option>
+          </select>
+        </div>
+        <button class="btn btn-primary" onclick="orgsModule.executeBulkAssignAward()"><i class="bi bi-trophy me-1"></i>Assign</button>`;
+
+      this._showDynamicModal('Bulk Assign to Award', html, 'bi-trophy');
+    } catch (e) { utils.showToast('Error loading awards', 'error'); }
+    finally { utils.hideLoading(); }
+  },
+
+  async executeBulkAssignAward() {
+    const awardId = document.getElementById('bulkAssignAwardSelect')?.value;
+    const status = document.getElementById('bulkAssignStatus')?.value || 'nominated';
+    if (!awardId) { utils.showToast('Select an award', 'warning'); return; }
+
+    try {
+      utils.showLoading();
+      const orgIds = Array.from(this.selectedOrgs);
+      const records = orgIds.map(orgId => ({ award_id: awardId, organisation_id: orgId, status }));
+      const { error } = await STATE.client.from('award_assignments').upsert(records, { onConflict: 'award_id,organisation_id' });
+      if (error) throw error;
+      utils.showToast(`${orgIds.length} org(s) assigned to award`, 'success');
+      await this.loadOrganisations();
+    } catch (e) { utils.showToast('Error: ' + e.message, 'error'); }
+    finally { utils.hideLoading(); }
+  },
+
+  // ============================================
+  // AREA 8: MERGE DUPLICATES
+  // ============================================
+  showMergeDuplicatesModal() {
+    if (this.selectedOrgs.size !== 2) {
+      utils.showToast('Select exactly 2 organisations to merge', 'warning');
+      return;
+    }
+
+    const [id1, id2] = Array.from(this.selectedOrgs);
+    const org1 = STATE.allOrganisations.find(o => o.id === id1);
+    const org2 = STATE.allOrganisations.find(o => o.id === id2);
+    if (!org1 || !org2) return;
+
+    const fields = ['company_name', 'contact_name', 'email', 'contact_phone', 'website', 'sector', 'region', 'address', 'catchment_area', 'description', 'tier', 'status', 'logo_url'];
+
+    let html = `<div class="alert alert-warning small"><i class="bi bi-exclamation-triangle me-2"></i>Select which value to keep for each field. The other organisation will be deleted.</div>
+    <table class="table table-sm"><thead><tr><th>Field</th><th>Organisation A</th><th>Organisation B</th></tr></thead><tbody>
+    ${fields.map(f => {
+      const v1 = org1[f] || '';
+      const v2 = org2[f] || '';
+      return `<tr>
+        <td class="fw-semibold small">${f.replace(/_/g, ' ')}</td>
+        <td><label class="d-flex align-items-center small"><input type="radio" name="merge_${f}" value="a" class="me-2" ${v1 ? 'checked' : ''}>${utils.escapeHtml(String(v1) || '(empty)')}</label></td>
+        <td><label class="d-flex align-items-center small"><input type="radio" name="merge_${f}" value="b" class="me-2" ${!v1 && v2 ? 'checked' : ''}>${utils.escapeHtml(String(v2) || '(empty)')}</label></td>
+      </tr>`;
+    }).join('')}
+    </tbody></table>
+    <button class="btn btn-danger" onclick="orgsModule.executeMerge('${id1}','${id2}')"><i class="bi bi-intersect me-1"></i>Merge (keeps selected values, deletes other)</button>`;
+
+    this._showDynamicModal('Merge Organisations', html, 'bi-intersect', 'modal-lg');
+  },
+
+  async executeMerge(id1, id2) {
+    if (!confirm('This will merge the two organisations. The non-primary org will be deleted. Continue?')) return;
+
+    const org1 = STATE.allOrganisations.find(o => o.id === id1);
+    const org2 = STATE.allOrganisations.find(o => o.id === id2);
+    const fields = ['company_name', 'contact_name', 'email', 'contact_phone', 'website', 'sector', 'region', 'address', 'catchment_area', 'description', 'tier', 'status', 'logo_url'];
+
+    const merged = {};
+    let keepId = id1, deleteId = id2;
+    fields.forEach(f => {
+      const radio = document.querySelector(`input[name="merge_${f}"]:checked`);
+      if (radio?.value === 'b') {
+        merged[f] = org2[f] || null;
+      } else {
+        merged[f] = org1[f] || null;
+      }
+    });
+
+    try {
+      utils.showLoading();
+      // Update the keeper with merged values
+      const { error } = await STATE.client.from('organisations').update(merged).eq('id', keepId);
+      if (error) throw error;
+
+      // Move award_assignments from deleted org to keeper
+      await STATE.client.from('award_assignments').update({ organisation_id: keepId }).eq('organisation_id', deleteId);
+
+      // Merge tags
+      const keeperTags = org1.tags || [];
+      const deletedTags = org2.tags || [];
+      const mergedTags = [...new Set([...keeperTags, ...deletedTags])];
+      await STATE.client.from('organisations').update({ tags: mergedTags }).eq('id', keepId);
+
+      // Delete the other org
+      await STATE.client.from('organisations').delete().eq('id', deleteId);
+
+      utils.showToast('Organisations merged successfully', 'success');
+      this.selectedOrgs.clear();
+      await this.loadOrganisations();
+    } catch (e) {
+      utils.showToast('Error: ' + e.message, 'error');
+    } finally { utils.hideLoading(); }
+  },
+
+  // ============================================
+  // AREA 9: DATA QUALITY
+  // ============================================
+  calculateCompletenessScore(org) {
+    const keyFields = ['company_name', 'email', 'contact_name', 'contact_phone', 'website', 'logo_url', 'sector', 'region', 'address', 'description'];
+    const filled = keyFields.filter(f => org[f]).length;
+    return Math.round((filled / keyFields.length) * 100);
+  },
+
+  validateEmail(email) {
+    if (!email) return { valid: false, reason: 'Empty' };
+    const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!re.test(email)) return { valid: false, reason: 'Invalid format' };
+    const disposable = ['mailinator.com', 'guerrillamail.com', 'tempmail.com', 'throwaway.email'];
+    const domain = email.split('@')[1]?.toLowerCase();
+    if (disposable.includes(domain)) return { valid: false, reason: 'Disposable email' };
+    return { valid: true, reason: 'OK' };
+  },
+
+  showDataQualityWizard() {
+    const orgs = STATE.allOrganisations.filter(o => (o.status || 'prospect') !== 'archived');
+
+    // Calculate stats
+    const missingEmail = orgs.filter(o => !o.email);
+    const missingPhone = orgs.filter(o => !o.contact_phone);
+    const missingLogo = orgs.filter(o => !o.logo_url);
+    const missingWebsite = orgs.filter(o => !o.website);
+    const missingContact = orgs.filter(o => !o.contact_name);
+    const missingDescription = orgs.filter(o => !o.description);
+
+    const invalidEmails = orgs.filter(o => o.email && !this.validateEmail(o.email).valid);
+    const staleOrgs = orgs.filter(o => {
+      const updated = new Date(o.updated_at || o.created_at || 0);
+      return (Date.now() - updated.getTime()) > 180 * 24 * 60 * 60 * 1000;
+    });
+
+    // Average completeness
+    const avgCompleteness = orgs.length > 0
+      ? Math.round(orgs.reduce((sum, o) => sum + this.calculateCompletenessScore(o), 0) / orgs.length)
+      : 0;
+
+    const html = `
+      <div class="row g-3 mb-4">
+        <div class="col-md-4 text-center">
+          <div class="card border-0 bg-light">
+            <div class="card-body">
+              <h2 class="fw-bold ${avgCompleteness >= 70 ? 'text-success' : avgCompleteness >= 40 ? 'text-warning' : 'text-danger'}">${avgCompleteness}%</h2>
+              <small class="text-muted">Avg. Data Completeness</small>
+            </div>
+          </div>
+        </div>
+        <div class="col-md-4 text-center">
+          <div class="card border-0 bg-light"><div class="card-body"><h2 class="fw-bold text-warning">${invalidEmails.length}</h2><small class="text-muted">Invalid Emails</small></div></div>
+        </div>
+        <div class="col-md-4 text-center">
+          <div class="card border-0 bg-light"><div class="card-body"><h2 class="fw-bold text-danger">${staleOrgs.length}</h2><small class="text-muted">Stale Records (6+ months)</small></div></div>
+        </div>
+      </div>
+      <h6 class="fw-semibold mb-3">Missing Data Breakdown</h6>
+      <div class="list-group mb-3">
+        ${[
+          { label: 'Missing Email', count: missingEmail.length, field: 'email', icon: 'bi-envelope' },
+          { label: 'Missing Phone', count: missingPhone.length, field: 'contact_phone', icon: 'bi-phone' },
+          { label: 'Missing Logo', count: missingLogo.length, field: 'logo_url', icon: 'bi-image' },
+          { label: 'Missing Website', count: missingWebsite.length, field: 'website', icon: 'bi-globe' },
+          { label: 'Missing Contact Name', count: missingContact.length, field: 'contact_name', icon: 'bi-person' },
+          { label: 'Missing Description', count: missingDescription.length, field: 'description', icon: 'bi-text-paragraph' }
+        ].map(item => `
+          <a href="javascript:void(0);" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center"
+             onclick="orgsModule._filterMissingField='${item.field}'; orgsModule.filterOrganisations(); bootstrap.Modal.getInstance(document.getElementById('dynamicOrgModal'))?.hide();">
+            <span><i class="bi ${item.icon} me-2"></i>${item.label}</span>
+            <span class="badge ${item.count > 0 ? 'bg-warning text-dark' : 'bg-success'}">${item.count}</span>
+          </a>
+        `).join('')}
+      </div>
+      ${invalidEmails.length > 0 ? `
+        <h6 class="fw-semibold mb-2">Invalid Emails</h6>
+        <div class="table-responsive mb-3" style="max-height: 200px; overflow-y: auto;">
+          <table class="table table-sm"><thead><tr><th>Company</th><th>Email</th><th>Issue</th></tr></thead><tbody>
+            ${invalidEmails.slice(0, 50).map(o => {
+              const v = this.validateEmail(o.email);
+              return `<tr><td class="small">${utils.escapeHtml(o.company_name)}</td><td class="small">${utils.escapeHtml(o.email)}</td><td class="small text-danger">${v.reason}</td></tr>`;
+            }).join('')}
+          </tbody></table>
+        </div>` : ''}
+      ${staleOrgs.length > 0 ? `
+        <h6 class="fw-semibold mb-2">Stale Records (6+ months without updates)</h6>
+        <div class="table-responsive" style="max-height: 200px; overflow-y: auto;">
+          <table class="table table-sm"><thead><tr><th>Company</th><th>Last Updated</th><th>Status</th></tr></thead><tbody>
+            ${staleOrgs.slice(0, 50).map(o => `<tr>
+              <td class="small">${utils.escapeHtml(o.company_name)}</td>
+              <td class="small text-muted">${o.updated_at ? new Date(o.updated_at).toLocaleDateString('en-GB') : 'Never'}</td>
+              <td>${this.getStatusBadge(o.status || 'prospect')}</td>
+            </tr>`).join('')}
+          </tbody></table>
+        </div>` : ''}`;
+
+    this._showDynamicModal('Data Quality Wizard', html, 'bi-shield-check', 'modal-lg');
+  },
+
+  // ============================================
+  // AREA 10: ANALYTICS & REPORTING
+  // ============================================
+  showAnalyticsDashboard() {
+    const orgs = STATE.allOrganisations.filter(o => (o.status || 'prospect') !== 'archived');
+
+    // Sector breakdown
+    const sectorCounts = {};
+    orgs.forEach(o => { if (o.sector) sectorCounts[o.sector] = (sectorCounts[o.sector] || 0) + 1; });
+    const topSectors = Object.entries(sectorCounts).sort((a, b) => b[1] - a[1]).slice(0, 10);
+    const maxSectorCount = topSectors[0]?.[1] || 1;
+
+    // Regional distribution
+    const regionCounts = {};
+    orgs.forEach(o => { if (o.region) regionCounts[o.region] = (regionCounts[o.region] || 0) + 1; });
+    const topRegions = Object.entries(regionCounts).sort((a, b) => b[1] - a[1]);
+    const maxRegionCount = topRegions[0]?.[1] || 1;
+
+    // Status pipeline
+    const statusCounts = { prospect: 0, entrant: 0, nominee: 0, shortlisted: 0, winner: 0, sponsor: 0, past_winner: 0 };
+    orgs.forEach(o => { const s = o.status || 'prospect'; if (statusCounts[s] !== undefined) statusCounts[s]++; });
+    const conversionRates = this._calculateConversionRates(statusCounts);
+
+    // Year-over-year growth
+    const yearCounts = {};
+    STATE.allOrganisations.forEach(o => {
+      const year = o.created_at ? new Date(o.created_at).getFullYear() : null;
+      if (year) yearCounts[year] = (yearCounts[year] || 0) + 1;
+    });
+    const years = Object.keys(yearCounts).sort();
+
+    // Win rate by sector
+    const sectorWinData = {};
+    orgs.forEach(o => {
+      if (o.sector) {
+        if (!sectorWinData[o.sector]) sectorWinData[o.sector] = { total: 0, winners: 0 };
+        sectorWinData[o.sector].total++;
+        if (o.status === 'winner' || o.status === 'past_winner') sectorWinData[o.sector].winners++;
+      }
+    });
+    const winRates = Object.entries(sectorWinData)
+      .map(([sector, data]) => ({ sector, rate: data.total > 0 ? Math.round((data.winners / data.total) * 100) : 0, winners: data.winners, total: data.total }))
+      .filter(d => d.winners > 0)
+      .sort((a, b) => b.rate - a.rate)
+      .slice(0, 10);
+
+    const statusColors = { prospect: '#6c757d', entrant: '#0dcaf0', nominee: '#0d6efd', shortlisted: '#ffc107', winner: '#198754', sponsor: '#dc3545', past_winner: '#212529' };
+
+    const html = `
+      <div class="row g-4">
+        <!-- Sector Breakdown -->
+        <div class="col-md-6">
+          <h6 class="fw-semibold mb-3"><i class="bi bi-pie-chart me-2"></i>Sector Breakdown (Top 10)</h6>
+          <div class="card"><div class="card-body">
+            ${topSectors.map(([sector, count]) => `
+              <div class="d-flex align-items-center mb-2">
+                <span class="small text-truncate me-2" style="width: 120px;" title="${utils.escapeHtml(sector)}">${utils.escapeHtml(sector)}</span>
+                <div class="flex-grow-1"><div class="progress" style="height: 20px;">
+                  <div class="progress-bar bg-info" style="width: ${(count / maxSectorCount) * 100}%">${count}</div>
+                </div></div>
+              </div>`).join('')}
+            ${topSectors.length === 0 ? '<p class="text-muted small">No sector data</p>' : ''}
+          </div></div>
+        </div>
+
+        <!-- Regional Distribution -->
+        <div class="col-md-6">
+          <h6 class="fw-semibold mb-3"><i class="bi bi-geo-alt me-2"></i>Regional Distribution</h6>
+          <div class="card"><div class="card-body">
+            ${topRegions.map(([region, count]) => `
+              <div class="d-flex align-items-center mb-2">
+                <span class="small text-truncate me-2" style="width: 120px;" title="${utils.escapeHtml(region)}">${utils.escapeHtml(region)}</span>
+                <div class="flex-grow-1"><div class="progress" style="height: 20px;">
+                  <div class="progress-bar bg-success" style="width: ${(count / maxRegionCount) * 100}%">${count}</div>
+                </div></div>
+              </div>`).join('')}
+            ${topRegions.length === 0 ? '<p class="text-muted small">No region data</p>' : ''}
+          </div></div>
+        </div>
+
+        <!-- Status Pipeline with Conversion Rates -->
+        <div class="col-md-6">
+          <h6 class="fw-semibold mb-3"><i class="bi bi-funnel me-2"></i>Status Pipeline & Conversion</h6>
+          <div class="card"><div class="card-body">
+            ${['prospect', 'entrant', 'nominee', 'shortlisted', 'winner'].map((s, i, arr) => {
+              const count = statusCounts[s] || 0;
+              const maxCount = Math.max(...Object.values(statusCounts)) || 1;
+              const convKey = i < arr.length - 1 ? `${s}_to_${arr[i + 1]}` : null;
+              const convRate = convKey ? conversionRates[convKey] : null;
+              return `<div class="d-flex align-items-center mb-1">
+                <span class="small me-2" style="width: 80px;">${s.charAt(0).toUpperCase() + s.slice(1)}</span>
+                <div class="flex-grow-1"><div class="progress" style="height: 22px;">
+                  <div class="progress-bar" style="width: ${(count / maxCount) * 100}%; background-color: ${statusColors[s]}">${count}</div>
+                </div></div>
+              </div>
+              ${convRate !== null ? `<div class="text-end mb-2"><small class="text-muted"><i class="bi bi-arrow-down"></i> ${convRate}% conversion</small></div>` : ''}`;
+            }).join('')}
+          </div></div>
+        </div>
+
+        <!-- Year-over-Year Growth -->
+        <div class="col-md-6">
+          <h6 class="fw-semibold mb-3"><i class="bi bi-graph-up me-2"></i>Year-over-Year Growth</h6>
+          <div class="card"><div class="card-body">
+            ${years.length > 0 ? (() => {
+              const maxYearCount = Math.max(...Object.values(yearCounts)) || 1;
+              return years.map((y, i) => {
+                const count = yearCounts[y];
+                const prevCount = i > 0 ? yearCounts[years[i - 1]] : null;
+                const growth = prevCount ? Math.round(((count - prevCount) / prevCount) * 100) : null;
+                return `<div class="d-flex align-items-center mb-2">
+                  <span class="small fw-semibold me-2" style="width: 50px;">${y}</span>
+                  <div class="flex-grow-1"><div class="progress" style="height: 22px;">
+                    <div class="progress-bar bg-primary" style="width: ${(count / maxYearCount) * 100}%">${count}</div>
+                  </div></div>
+                  ${growth !== null ? `<span class="ms-2 small ${growth >= 0 ? 'text-success' : 'text-danger'}">${growth >= 0 ? '+' : ''}${growth}%</span>` : ''}
+                </div>`;
+              }).join('');
+            })() : '<p class="text-muted small">No year data available</p>'}
+          </div></div>
+        </div>
+
+        <!-- Win Rate by Sector -->
+        <div class="col-12">
+          <h6 class="fw-semibold mb-3"><i class="bi bi-trophy me-2"></i>Win Rate by Sector</h6>
+          <div class="card"><div class="card-body">
+            ${winRates.length > 0 ? `<div class="table-responsive"><table class="table table-sm"><thead><tr><th>Sector</th><th>Total Orgs</th><th>Winners</th><th>Win Rate</th><th></th></tr></thead><tbody>
+              ${winRates.map(d => `<tr>
+                <td class="small fw-semibold">${utils.escapeHtml(d.sector)}</td>
+                <td class="small">${d.total}</td>
+                <td class="small">${d.winners}</td>
+                <td class="small fw-bold ${d.rate >= 50 ? 'text-success' : d.rate >= 25 ? 'text-warning' : 'text-muted'}">${d.rate}%</td>
+                <td><div class="progress" style="height: 12px; width: 100px;"><div class="progress-bar bg-success" style="width: ${d.rate}%"></div></div></td>
+              </tr>`).join('')}
+            </tbody></table></div>` : '<p class="text-muted small">No winners data to show win rates</p>'}
+          </div></div>
+        </div>
+      </div>`;
+
+    this._showDynamicModal('Analytics & Reporting', html, 'bi-bar-chart', 'modal-xl');
+  },
+
+  // ============================================
+  // AREA 11: ENHANCED IMPORT/EXPORT
+  // ============================================
+  // Excel Export
+  exportToExcel() {
+    const data = STATE.filteredOrganisations;
+    if (data.length === 0) { utils.showToast('No organisations to export', 'warning'); return; }
+
+    // Build XML Spreadsheet (compatible with Excel without external libs)
+    const headers = ['Company Name', 'Sector', 'County', 'Region', 'Contact Name', 'Email', 'Phone', 'Website', 'Status', 'Tier', 'Tags', 'Awards Count', 'Address', 'Catchment Area', 'Description', 'Year Founded', 'Employees'];
+    const xmlHeader = '<?xml version="1.0"?><?mso-application progid="Excel.Sheet"?><Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet" xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet"><Worksheet ss:Name="Organisations"><Table>';
+    const headerRow = '<Row>' + headers.map(h => `<Cell><Data ss:Type="String">${this._xmlEscape(h)}</Data></Cell>`).join('') + '</Row>';
+    const dataRows = data.map(org => {
+      const vals = [
+        org.company_name, org.sector, org.county, org.region, org.contact_name,
+        org.email, org.contact_phone, org.website, org.status || 'prospect',
+        org.tier, (org.tags || []).join(', '), String(org.awards_count || 0),
+        org.address, org.catchment_area, org.description, org.year_founded ? String(org.year_founded) : '', org.employee_count ? String(org.employee_count) : ''
+      ];
+      return '<Row>' + vals.map(v => `<Cell><Data ss:Type="String">${this._xmlEscape(v || '')}</Data></Cell>`).join('') + '</Row>';
+    }).join('');
+    const xmlFooter = '</Table></Worksheet></Workbook>';
+    const xml = xmlHeader + headerRow + dataRows + xmlFooter;
+
+    const blob = new Blob([xml], { type: 'application/vnd.ms-excel' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `organisations-export-${new Date().toISOString().split('T')[0]}.xls`;
+    a.click();
+    window.URL.revokeObjectURL(url);
+    utils.showToast(`Exported ${data.length} organisations to Excel`, 'success');
+  },
+
+  _xmlEscape(str) {
+    return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  },
+
+  // Import History
+  _logImportHistory(filename, count, county) {
+    try {
+      const history = JSON.parse(localStorage.getItem('orgImportHistory') || '[]');
+      history.unshift({ filename, count, county, date: new Date().toISOString() });
+      if (history.length > 100) history.length = 100;
+      localStorage.setItem('orgImportHistory', JSON.stringify(history));
+    } catch (e) { /* ignore */ }
+  },
+
+  showImportHistory() {
+    try {
+      const history = JSON.parse(localStorage.getItem('orgImportHistory') || '[]');
+      const html = history.length === 0
+        ? '<p class="text-muted text-center">No import history yet</p>'
+        : `<div class="table-responsive"><table class="table table-sm"><thead><tr><th>Date</th><th>File</th><th>County</th><th>Records</th></tr></thead><tbody>
+          ${history.map(h => `<tr>
+            <td class="small">${new Date(h.date).toLocaleDateString('en-GB')} ${new Date(h.date).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}</td>
+            <td class="small">${utils.escapeHtml(h.filename || 'N/A')}</td>
+            <td class="small">${utils.escapeHtml(h.county || 'N/A')}</td>
+            <td class="small fw-semibold">${h.count}</td>
+          </tr>`).join('')}
+        </tbody></table></div>`;
+
+      this._showDynamicModal('Import History', html, 'bi-clock-history');
+    } catch (e) { utils.showToast('Error loading history', 'error'); }
+  },
+
+  // Enhanced CSV import with validation
+  _validateImportRow(record) {
+    const issues = [];
+    if (!record.company_name || record.company_name.trim().length < 2) issues.push('Company name too short');
+    if (record.email && !this.validateEmail(record.email).valid) issues.push('Invalid email: ' + this.validateEmail(record.email).reason);
+    if (record.website && !/^https?:\/\/.+\..+/.test(record.website) && !/^.+\..+/.test(record.website)) issues.push('Invalid website URL');
+    if (record.contact_phone && !/^[\d\s+\-()]{7,}$/.test(record.contact_phone)) issues.push('Invalid phone format');
+    return issues;
+  },
+
+  // Import merge mode flag
+  _importMergeMode: false,
+
+  toggleImportMergeMode() {
+    this._importMergeMode = !this._importMergeMode;
+    const btn = document.getElementById('importMergeModeBtn');
+    if (btn) {
+      btn.classList.toggle('btn-primary', this._importMergeMode);
+      btn.classList.toggle('btn-outline-secondary', !this._importMergeMode);
+      btn.innerHTML = this._importMergeMode
+        ? '<i class="bi bi-arrow-repeat me-1"></i>Merge Mode: ON'
+        : '<i class="bi bi-arrow-repeat me-1"></i>Merge Mode: OFF';
+    }
+  },
+
+  // ============================================
+  // SHARED DYNAMIC MODAL HELPER
+  // ============================================
+  _showDynamicModal(title, bodyHtml, icon, sizeClass) {
+    document.getElementById('dynamicOrgModal')?.remove();
+    const modalHtml = `<div class="modal fade" id="dynamicOrgModal" tabindex="-1">
+      <div class="modal-dialog ${sizeClass || ''}"><div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title"><i class="bi ${icon || 'bi-info-circle'} me-2"></i>${title}</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body" style="max-height: 70vh; overflow-y: auto;">${bodyHtml}</div>
+        <div class="modal-footer"><button class="btn btn-secondary" data-bs-dismiss="modal">Close</button></div>
+      </div></div>
+    </div>`;
+    document.body.insertAdjacentHTML('beforeend', modalHtml);
+    new bootstrap.Modal(document.getElementById('dynamicOrgModal')).show();
   }
 };
 

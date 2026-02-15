@@ -117,7 +117,7 @@ BEGIN
   v_result := send_single_email(p_to, '[TEST] ' || p_subject, p_html, v_from, p_reply_to);
 
   -- Log the test send
-  INSERT INTO email_logs (recipient_email, subject, status, sent_at)
+  INSERT INTO email_log (recipient_email, subject, status, created_at)
   VALUES (p_to, '[TEST] ' || p_subject, 'sent', NOW());
 
   RETURN v_result;
@@ -207,7 +207,7 @@ BEGIN
   END LOOP;
 
   -- Log the campaign
-  INSERT INTO email_logs (recipient_email, subject, status, sent_at)
+  INSERT INTO email_log (recipient_email, subject, status, created_at)
   VALUES (
     'campaign:' || p_list_id || ' (' || v_count || ' subscribers)',
     COALESCE(p_campaign_name, p_subject),

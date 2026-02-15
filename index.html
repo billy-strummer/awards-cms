@@ -1730,7 +1730,8 @@
               <div class="row mb-3">
                 <div class="col-md-6">
                   <label for="newCompanySector" class="form-label">Sector</label>
-                  <input type="text" class="form-control" id="newCompanySector" placeholder="e.g. Manufacturing">
+                  <input type="text" class="form-control" id="newCompanySector" list="sectorSuggestions" placeholder="e.g. Manufacturing" autocomplete="off">
+                  <datalist id="sectorSuggestions"></datalist>
                 </div>
                 <div class="col-md-6">
                   <label for="newCompanyCounty" class="form-label">County / City</label>
@@ -1967,7 +1968,7 @@
           <div class="vr"></div>
           <div class="dropdown">
             <button class="btn btn-sm btn-warning dropdown-toggle" data-bs-toggle="dropdown">
-              <i class="bi bi-arrow-repeat me-1"></i>Change Status
+              <i class="bi bi-arrow-repeat me-1"></i>Status
             </button>
             <ul class="dropdown-menu">
               <li><a class="dropdown-item" href="#" onclick="orgsModule.bulkStatusChange('prospect')">Prospect</a></li>
@@ -1980,6 +1981,19 @@
               <li><a class="dropdown-item text-danger" href="#" onclick="orgsModule.bulkStatusChange('archived')">Archive</a></li>
             </ul>
           </div>
+          <div class="dropdown">
+            <button class="btn btn-sm btn-info dropdown-toggle" data-bs-toggle="dropdown">
+              <i class="bi bi-pencil-square me-1"></i>Set Field
+            </button>
+            <ul class="dropdown-menu">
+              <li><a class="dropdown-item" href="#" onclick="orgsModule.showBulkFieldModal('sector')"><i class="bi bi-briefcase me-2"></i>Sector</a></li>
+              <li><a class="dropdown-item" href="#" onclick="orgsModule.showBulkFieldModal('region')"><i class="bi bi-geo-alt me-2"></i>Region</a></li>
+              <li><a class="dropdown-item" href="#" onclick="orgsModule.showBulkFieldModal('tier')"><i class="bi bi-award me-2"></i>Tier</a></li>
+            </ul>
+          </div>
+          <button class="btn btn-sm btn-success" onclick="orgsModule.bulkFetchLogos()" title="Fetch logos for selected orgs with websites but no logo">
+            <i class="bi bi-image me-1"></i>Logos
+          </button>
           <button class="btn btn-sm btn-primary" onclick="orgsModule.bulkEmail()">
             <i class="bi bi-envelope me-1"></i>Email
           </button>

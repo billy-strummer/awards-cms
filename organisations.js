@@ -47,13 +47,13 @@ async loadOrganisations() {
       } else {
         allData = allData.concat(data);
         page++;
-        console.log(`📦 Loaded page ${page}: ${data.length} organisations (total so far: ${allData.length})`);
+        // Page loaded
         
         if (data.length < pageSize) {
           hasMore = false;
         }
       }
-    }  // ← ADD THIS CLOSING BRACE FOR THE WHILE LOOP
+    }
     
     // Load award assignments to get county/region/sector for each org
     const { data: assignments } = await STATE.client
@@ -144,8 +144,7 @@ async loadOrganisations() {
     document.getElementById('orgsSearchBox').value = savedFilters.search || lsFilters.search || '';
 
     this.filterOrganisations();
-    
-    console.log(`✅ Loaded ${STATE.allOrganisations.length} organisations (across ${page} pages)`);
+    this.populateSectorSuggestions();
     
   } catch (error) {
     console.error('Error loading organisations:', error);
@@ -217,27 +216,16 @@ populateFilters() {
       sectors.map(s => `<option value="${s}">${utils.escapeHtml(s)}</option>`).join('');
   }
   
-  // Populate county filter - WITH DEBUGGING
-  console.log('🔍 Checking counties in database...');
-  console.log('📊 Sample org:', STATE.allOrganisations[0]); // Show first organisation
-  
+  // Populate county filter
   const counties = [...new Set(STATE.allOrganisations
     .map(o => o.county)
     .filter(c => c)
   )].sort();
-  
-  console.log('🗺️ Found counties:', counties);
-  console.log('📝 Number of counties:', counties.length);
-  
+
   const countySelect = document.getElementById('orgsCountyFilter');
-  console.log('🎯 County dropdown element:', countySelect);
-  
   if (countySelect) {
     countySelect.innerHTML = '<option value="">All</option>' +
       counties.map(c => `<option value="${c}">${utils.escapeHtml(c)}</option>`).join('');
-    console.log('✅ County dropdown populated with', counties.length, 'options');
-  } else {
-    console.warn('⚠️ orgsCountyFilter element not found in HTML');
   }
   
   // Populate region filter
@@ -396,11 +384,34 @@ updateCountyFilterByRegion() {
   if (lastRefresh) lastRefresh.textContent = new Date().toLocaleTimeString('en-GB');
 
   if (STATE.filteredOrganisations.length === 0) {
+    // Build active filters summary
+    const activeFilters = [];
+    const year = document.getElementById('orgsYearFilter')?.value;
+    const sector = document.getElementById('orgsSectorFilter')?.value;
+    const region = document.getElementById('orgsRegionFilter')?.value;
+    const county = document.getElementById('orgsCountyFilter')?.value;
+    const status = document.getElementById('orgsStatusFilter')?.value;
+    const search = document.getElementById('orgsSearchBox')?.value;
+    if (year) activeFilters.push(`Year: <strong>${utils.escapeHtml(year)}</strong>`);
+    if (sector) activeFilters.push(`Sector: <strong>${utils.escapeHtml(sector)}</strong>`);
+    if (region) activeFilters.push(`Region: <strong>${utils.escapeHtml(region)}</strong>`);
+    if (county) activeFilters.push(`County: <strong>${utils.escapeHtml(county)}</strong>`);
+    if (status) activeFilters.push(`Status: <strong>${utils.escapeHtml(status)}</strong>`);
+    if (search) activeFilters.push(`Search: <strong>"${utils.escapeHtml(search)}"</strong>`);
+
+    const filterSummary = activeFilters.length > 0
+      ? `<p class="text-muted small mt-2 mb-2">Active filters: ${activeFilters.join(' &middot; ')}</p>
+         <button class="btn btn-sm btn-outline-primary" onclick="orgsModule.resetFilters()">
+           <i class="bi bi-x-circle me-1"></i>Clear all filters
+         </button>`
+      : '';
+
     tbody.innerHTML = `
       <tr>
         <td colspan="11" class="text-center py-5">
           <i class="bi bi-inbox display-4 text-muted opacity-25"></i>
           <p class="text-muted mt-3 mb-0">No organisations found</p>
+          ${filterSummary}
         </td>
       </tr>
     `;
@@ -436,7 +447,7 @@ updateCountyFilterByRegion() {
             </a>
           </div>
         </td>
-        <td>
+        <td style="cursor: pointer;" ondblclick="orgsModule.startInlineEdit('${org.id}', 'sector', '${utils.escapeHtml(org.sector || '').replace(/'/g, "\\'")}', this)" title="Double-click to edit">
           <span class="badge bg-info-subtle text-info small">
             ${utils.escapeHtml(org.sector || '-')}
           </span>
@@ -446,10 +457,10 @@ updateCountyFilterByRegion() {
             ${utils.escapeHtml(org.county || '-')}
           </span>
         </td>
-        <td class="small" title="${utils.escapeHtml(org.contact_name || '')}">
+        <td class="small" style="cursor: pointer;" ondblclick="orgsModule.startInlineEdit('${org.id}', 'contact', '${utils.escapeHtml(org.contact_name || '').replace(/'/g, "\\'")}', this)" title="Double-click to edit">
           ${utils.escapeHtml(org.contact_name ? (org.contact_name.length > 18 ? org.contact_name.substring(0, 18) + '...' : org.contact_name) : '-')}
         </td>
-        <td class="small">
+        <td class="small" style="cursor: pointer;" ondblclick="orgsModule.startInlineEdit('${org.id}', 'email', '${utils.escapeHtml(org.email || '').replace(/'/g, "\\'")}', this)" title="Double-click to edit">
           ${org.email ?
             `<a href="mailto:${org.email}" class="text-decoration-none" title="${utils.escapeHtml(org.email)}">
               ${org.email.length > 25 ? utils.escapeHtml(org.email.substring(0, 25)) + '...' : utils.escapeHtml(org.email)}
@@ -760,6 +771,113 @@ updateCountyFilterByRegion() {
                 <button class="btn btn-sm btn-primary" onclick="orgsModule.saveOrgNotes('${org.id}')">
                   <i class="bi bi-save me-1"></i>Save Notes
                 </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Company Details Section -->
+        <div class="row mt-3">
+          <div class="col-md-6 mb-3">
+            <h6 class="text-muted mb-2"><i class="bi bi-info-circle me-2"></i>Company Details</h6>
+            <div class="card">
+              <div class="card-body">
+                <div class="mb-2">
+                  <strong>Description:</strong>
+                  <span class="view-mode" id="viewDescription">${utils.escapeHtml(org.description || 'N/A')}</span>
+                  <textarea class="form-control form-control-sm edit-mode" id="editDescription" rows="3" style="display: none;">${utils.escapeHtml(org.description || '')}</textarea>
+                </div>
+                <div class="mb-2">
+                  <strong>Achievements:</strong>
+                  <span class="view-mode" id="viewAchievements">${utils.escapeHtml(org.achievements || 'N/A')}</span>
+                  <textarea class="form-control form-control-sm edit-mode" id="editAchievements" rows="3" style="display: none;">${utils.escapeHtml(org.achievements || '')}</textarea>
+                </div>
+                <div class="row">
+                  <div class="col-6 mb-2">
+                    <strong>Company Size:</strong>
+                    <span class="view-mode" id="viewCompanySize">${utils.escapeHtml(org.company_size || 'N/A')}</span>
+                    <select class="form-select form-select-sm edit-mode" id="editCompanySize" style="display: none;">
+                      <option value="">Select</option>
+                      ${['1-10','11-50','51-200','201-500','500+'].map(s => `<option value="${s}" ${org.company_size === s ? 'selected' : ''}>${s}</option>`).join('')}
+                    </select>
+                  </div>
+                  <div class="col-6 mb-2">
+                    <strong>Employees:</strong>
+                    <span class="view-mode" id="viewEmployeeCount">${org.employee_count || 'N/A'}</span>
+                    <input type="number" class="form-control form-control-sm edit-mode" id="editEmployeeCount" value="${org.employee_count || ''}" style="display: none;" min="0">
+                  </div>
+                </div>
+                <div class="row">
+                  <div class="col-6 mb-2">
+                    <strong>Year Founded:</strong>
+                    <span class="view-mode" id="viewYearFounded">${org.year_founded || 'N/A'}</span>
+                    <input type="number" class="form-control form-control-sm edit-mode" id="editYearFounded" value="${org.year_founded || ''}" style="display: none;" min="1800" max="2026">
+                  </div>
+                  <div class="col-6 mb-2">
+                    <strong>Tier:</strong>
+                    <span class="view-mode" id="viewTier">
+                      ${org.tier ? `<span class="badge bg-warning-subtle text-warning">${utils.escapeHtml(org.tier)}</span>` : 'N/A'}
+                    </span>
+                    <select class="form-select form-select-sm edit-mode" id="editTier" style="display: none;">
+                      <option value="">None</option>
+                      ${['Bronze','Silver','Gold','Platinum'].map(t => `<option value="${t}" ${org.tier === t ? 'selected' : ''}>${t}</option>`).join('')}
+                    </select>
+                  </div>
+                </div>
+                <div class="mb-0">
+                  <strong>Annual Revenue:</strong>
+                  <span class="view-mode" id="viewAnnualRevenue">${org.annual_revenue ? '£' + Number(org.annual_revenue).toLocaleString() : 'N/A'}</span>
+                  <input type="number" class="form-control form-control-sm edit-mode" id="editAnnualRevenue" value="${org.annual_revenue || ''}" style="display: none;" min="0" step="1000" placeholder="e.g. 500000">
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="col-md-6 mb-3">
+            <h6 class="text-muted mb-2"><i class="bi bi-share me-2"></i>Social Media & Tags</h6>
+            <div class="card">
+              <div class="card-body">
+                <div class="mb-2">
+                  <strong><i class="bi bi-linkedin text-primary me-1"></i>LinkedIn:</strong>
+                  <span class="view-mode" id="viewLinkedin">
+                    ${org.linkedin_url ? `<a href="${utils.escapeHtml(org.linkedin_url)}" target="_blank" class="text-decoration-none">${utils.escapeHtml(org.linkedin_url.replace(/https?:\/\/(www\.)?linkedin\.com\//, ''))}</a>` : 'N/A'}
+                  </span>
+                  <input type="url" class="form-control form-control-sm edit-mode" id="editLinkedin" value="${utils.escapeHtml(org.linkedin_url || '')}" style="display: none;" placeholder="https://linkedin.com/company/...">
+                </div>
+                <div class="mb-2">
+                  <strong><i class="bi bi-twitter-x me-1"></i>X/Twitter:</strong>
+                  <span class="view-mode" id="viewTwitter">
+                    ${org.twitter_url ? `<a href="${utils.escapeHtml(org.twitter_url)}" target="_blank" class="text-decoration-none">${utils.escapeHtml(org.twitter_url.replace(/https?:\/\/(www\.)?(twitter|x)\.com\//, '@'))}</a>` : 'N/A'}
+                  </span>
+                  <input type="url" class="form-control form-control-sm edit-mode" id="editTwitter" value="${utils.escapeHtml(org.twitter_url || '')}" style="display: none;" placeholder="https://x.com/...">
+                </div>
+                <div class="mb-2">
+                  <strong><i class="bi bi-facebook text-primary me-1"></i>Facebook:</strong>
+                  <span class="view-mode" id="viewFacebook">
+                    ${org.facebook_url ? `<a href="${utils.escapeHtml(org.facebook_url)}" target="_blank" class="text-decoration-none">${utils.escapeHtml(org.facebook_url.replace(/https?:\/\/(www\.)?facebook\.com\//, ''))}</a>` : 'N/A'}
+                  </span>
+                  <input type="url" class="form-control form-control-sm edit-mode" id="editFacebook" value="${utils.escapeHtml(org.facebook_url || '')}" style="display: none;" placeholder="https://facebook.com/...">
+                </div>
+                <div class="mb-2">
+                  <strong><i class="bi bi-instagram text-danger me-1"></i>Instagram:</strong>
+                  <span class="view-mode" id="viewInstagram">
+                    ${org.instagram_url ? `<a href="${utils.escapeHtml(org.instagram_url)}" target="_blank" class="text-decoration-none">${utils.escapeHtml(org.instagram_url.replace(/https?:\/\/(www\.)?instagram\.com\//, '@'))}</a>` : 'N/A'}
+                  </span>
+                  <input type="url" class="form-control form-control-sm edit-mode" id="editInstagram" value="${utils.escapeHtml(org.instagram_url || '')}" style="display: none;" placeholder="https://instagram.com/...">
+                </div>
+                <hr class="my-2">
+                <div class="mb-0">
+                  <strong><i class="bi bi-tags me-1"></i>Tags:</strong>
+                  <div id="orgTagsContainer">
+                    ${(org.tags && org.tags.length > 0)
+                      ? org.tags.map(t => `<span class="badge bg-secondary me-1 mb-1">${utils.escapeHtml(t)} <a href="javascript:void(0);" class="text-white ms-1" onclick="orgsModule.removeTag('${org.id}', '${utils.escapeHtml(t).replace(/'/g, "\\'")}')"><i class="bi bi-x-circle-fill"></i></a></span>`).join('')
+                      : '<span class="text-muted small">No tags</span>'
+                    }
+                  </div>
+                  <div class="input-group input-group-sm mt-2">
+                    <input type="text" class="form-control" id="newTagInput" placeholder="Add tag..." onkeydown="if(event.key==='Enter'){event.preventDefault();orgsModule.addTag('${org.id}');}">
+                    <button class="btn btn-outline-primary" onclick="orgsModule.addTag('${org.id}')"><i class="bi bi-plus"></i></button>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
@@ -1722,7 +1840,19 @@ updateCountyFilterByRegion() {
         website: document.getElementById('editWebsite').value.trim(),
         region: document.getElementById('editRegion').value,
         address: document.getElementById('editAddress').value.trim(),
-        catchment_area: document.getElementById('editCatchmentArea').value.trim()
+        catchment_area: document.getElementById('editCatchmentArea').value.trim(),
+        // Extended fields
+        description: document.getElementById('editDescription')?.value.trim() || null,
+        achievements: document.getElementById('editAchievements')?.value.trim() || null,
+        company_size: document.getElementById('editCompanySize')?.value || null,
+        employee_count: document.getElementById('editEmployeeCount')?.value ? parseInt(document.getElementById('editEmployeeCount').value) : null,
+        year_founded: document.getElementById('editYearFounded')?.value ? parseInt(document.getElementById('editYearFounded').value) : null,
+        annual_revenue: document.getElementById('editAnnualRevenue')?.value ? parseFloat(document.getElementById('editAnnualRevenue').value) : null,
+        tier: document.getElementById('editTier')?.value || null,
+        linkedin_url: document.getElementById('editLinkedin')?.value.trim() || null,
+        twitter_url: document.getElementById('editTwitter')?.value.trim() || null,
+        facebook_url: document.getElementById('editFacebook')?.value.trim() || null,
+        instagram_url: document.getElementById('editInstagram')?.value.trim() || null
       };
 
       // Update in database
@@ -2169,6 +2299,17 @@ updateCountyFilterByRegion() {
   },
 
   /**
+   * Populate sector suggestions datalist for add/edit forms
+   */
+  populateSectorSuggestions() {
+    const datalist = document.getElementById('sectorSuggestions');
+    if (!datalist) return;
+    const existingSectors = [...new Set(STATE.allOrganisations.map(o => o.sector).filter(Boolean))];
+    const allSectors = [...new Set([...SECTORS, ...existingSectors])].sort();
+    datalist.innerHTML = allSectors.map(s => `<option value="${utils.escapeHtml(s)}">`).join('');
+  },
+
+  /**
    * Reset all filters to default
    */
   resetFilters() {
@@ -2546,40 +2687,53 @@ updateCountyFilterByRegion() {
   },
 
   // ============================================
-  // AUDIT TRAIL (localStorage-based)
+  // AUDIT TRAIL (Supabase-backed, localStorage fallback)
   // ============================================
-  _logAudit(orgId, action, companyName, details) {
+  async _logAudit(orgId, action, companyName, details) {
     try {
-      const key = 'orgAuditLog';
-      const log = JSON.parse(localStorage.getItem(key) || '[]');
-      log.unshift({
-        orgId,
-        companyName,
-        action,
-        details,
-        timestamp: new Date().toISOString()
-      });
-      // Keep last 500 entries
-      if (log.length > 500) log.length = 500;
-      localStorage.setItem(key, JSON.stringify(log));
-    } catch (e) { /* ignore */ }
+      await STATE.client
+        .from('org_audit_log')
+        .insert([{ org_id: orgId, company_name: companyName, action, details }]);
+    } catch (e) {
+      // Fallback to localStorage if table doesn't exist yet
+      try {
+        const key = 'orgAuditLog';
+        const log = JSON.parse(localStorage.getItem(key) || '[]');
+        log.unshift({ orgId, companyName, action, details, timestamp: new Date().toISOString() });
+        if (log.length > 500) log.length = 500;
+        localStorage.setItem(key, JSON.stringify(log));
+      } catch (e2) { /* ignore */ }
+    }
   },
 
-  getAuditLog(orgId) {
+  async getAuditLog(orgId) {
     try {
-      const log = JSON.parse(localStorage.getItem('orgAuditLog') || '[]');
-      if (orgId) return log.filter(e => e.orgId === orgId);
-      return log;
-    } catch (e) { return []; }
+      let query = STATE.client
+        .from('org_audit_log')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .limit(50);
+      if (orgId) query = query.eq('org_id', orgId);
+      const { data, error } = await query;
+      if (error) throw error;
+      return (data || []).map(e => ({ ...e, timestamp: e.created_at }));
+    } catch (e) {
+      // Fallback to localStorage
+      try {
+        const log = JSON.parse(localStorage.getItem('orgAuditLog') || '[]');
+        if (orgId) return log.filter(e => e.orgId === orgId);
+        return log;
+      } catch (e2) { return []; }
+    }
   },
 
-  renderAuditLog(orgId) {
-    const log = this.getAuditLog(orgId);
+  async renderAuditLog(orgId) {
+    const log = await this.getAuditLog(orgId);
     if (log.length === 0) return '<p class="text-muted small">No activity recorded yet</p>';
 
     return `<div class="list-group list-group-flush" style="max-height: 300px; overflow-y: auto;">
       ${log.slice(0, 50).map(entry => {
-        const date = new Date(entry.timestamp);
+        const date = new Date(entry.timestamp || entry.created_at);
         const timeAgo = this._timeAgo(date);
         const icons = {
           'status_change': 'bi-arrow-repeat text-primary',
@@ -2791,38 +2945,57 @@ updateCountyFilterByRegion() {
   },
 
   // ============================================
-  // COMMUNICATION HISTORY
+  // COMMUNICATION HISTORY (Supabase-backed)
   // ============================================
-  _logComms(orgId, templateId, companyName) {
+  async _logComms(orgId, templateId, companyName) {
     try {
-      const key = 'orgCommsLog';
-      const log = JSON.parse(localStorage.getItem(key) || '[]');
       const template = this._emailTemplates.find(t => t.id === templateId);
-      log.unshift({
-        orgId,
-        companyName,
-        templateId,
-        templateName: template?.name || templateId,
-        subject: template?.subject || '',
-        timestamp: new Date().toISOString()
-      });
-      if (log.length > 1000) log.length = 1000;
-      localStorage.setItem(key, JSON.stringify(log));
+      await STATE.client
+        .from('org_comms_log')
+        .insert([{
+          org_id: orgId,
+          company_name: companyName,
+          template_id: templateId,
+          template_name: template?.name || templateId
+        }]);
 
       this._logAudit(orgId, 'email_sent', companyName, `Email sent: ${template?.name || templateId}`);
-    } catch (e) { /* ignore */ }
+    } catch (e) {
+      // Fallback to localStorage
+      try {
+        const key = 'orgCommsLog';
+        const log = JSON.parse(localStorage.getItem(key) || '[]');
+        const template = this._emailTemplates.find(t => t.id === templateId);
+        log.unshift({ orgId, companyName, templateId, templateName: template?.name || templateId, timestamp: new Date().toISOString() });
+        if (log.length > 1000) log.length = 1000;
+        localStorage.setItem(key, JSON.stringify(log));
+      } catch (e2) { /* ignore */ }
+    }
   },
 
-  getCommsHistory(orgId) {
+  async getCommsHistory(orgId) {
     try {
-      const log = JSON.parse(localStorage.getItem('orgCommsLog') || '[]');
-      if (orgId) return log.filter(e => e.orgId === orgId);
-      return log;
-    } catch (e) { return []; }
+      let query = STATE.client
+        .from('org_comms_log')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .limit(50);
+      if (orgId) query = query.eq('org_id', orgId);
+      const { data, error } = await query;
+      if (error) throw error;
+      return (data || []).map(e => ({ ...e, timestamp: e.created_at, templateName: e.template_name }));
+    } catch (e) {
+      // Fallback to localStorage
+      try {
+        const log = JSON.parse(localStorage.getItem('orgCommsLog') || '[]');
+        if (orgId) return log.filter(e => e.orgId === orgId);
+        return log;
+      } catch (e2) { return []; }
+    }
   },
 
-  renderCommsHistory(orgId) {
-    const history = this.getCommsHistory(orgId);
+  async renderCommsHistory(orgId) {
+    const history = await this.getCommsHistory(orgId);
     if (history.length === 0) return '<p class="text-muted small">No communications recorded yet</p>';
 
     return `<div class="list-group list-group-flush" style="max-height: 250px; overflow-y: auto;">
@@ -2839,6 +3012,282 @@ updateCountyFilterByRegion() {
         </div>`;
       }).join('')}
     </div>`;
+  },
+
+  // ============================================
+  // TAG MANAGEMENT
+  // ============================================
+  async addTag(orgId) {
+    const input = document.getElementById('newTagInput');
+    const tag = (input?.value || '').trim();
+    if (!tag) return;
+
+    try {
+      const org = STATE.allOrganisations.find(o => o.id === orgId);
+      const currentTags = org?.tags || [];
+
+      if (currentTags.includes(tag)) {
+        utils.showToast('Tag already exists', 'warning');
+        return;
+      }
+
+      const newTags = [...currentTags, tag];
+      const { error } = await STATE.client
+        .from('organisations')
+        .update({ tags: newTags })
+        .eq('id', orgId);
+
+      if (error) throw error;
+
+      if (org) org.tags = newTags;
+      input.value = '';
+      utils.showToast(`Tag "${tag}" added`, 'success');
+      await this.openCompanyProfile(orgId, org.company_name);
+    } catch (error) {
+      console.error('Error adding tag:', error);
+      utils.showToast('Error adding tag: ' + error.message, 'error');
+    }
+  },
+
+  async removeTag(orgId, tag) {
+    try {
+      const org = STATE.allOrganisations.find(o => o.id === orgId);
+      const newTags = (org?.tags || []).filter(t => t !== tag);
+
+      const { error } = await STATE.client
+        .from('organisations')
+        .update({ tags: newTags })
+        .eq('id', orgId);
+
+      if (error) throw error;
+
+      if (org) org.tags = newTags;
+      utils.showToast(`Tag "${tag}" removed`, 'success');
+      await this.openCompanyProfile(orgId, org.company_name);
+    } catch (error) {
+      console.error('Error removing tag:', error);
+      utils.showToast('Error removing tag: ' + error.message, 'error');
+    }
+  },
+
+  // ============================================
+  // INLINE QUICK-EDIT (table cells)
+  // ============================================
+  startInlineEdit(orgId, field, currentValue, element) {
+    // Prevent opening multiple editors at once
+    if (document.querySelector('.inline-edit-active')) return;
+
+    const td = element.closest('td');
+    const originalHtml = td.innerHTML;
+    td.classList.add('inline-edit-active');
+
+    const inputType = field === 'email' ? 'email' : 'text';
+    const escaped = utils.escapeHtml(currentValue || '');
+    const listAttr = field === 'sector' ? ' list="sectorSuggestions"' : '';
+
+    td.innerHTML = `
+      <div class="input-group input-group-sm">
+        <input type="${inputType}" class="form-control form-control-sm" id="inlineEdit_${field}"
+               value="${escaped}" autofocus${listAttr} autocomplete="off"
+               onkeydown="if(event.key==='Enter')orgsModule.saveInlineEdit('${orgId}','${field}');if(event.key==='Escape')orgsModule.cancelInlineEdit(this,'${orgId}');"
+               style="font-size: 0.8rem;">
+        <button class="btn btn-success btn-sm" onclick="orgsModule.saveInlineEdit('${orgId}','${field}')"><i class="bi bi-check"></i></button>
+        <button class="btn btn-outline-secondary btn-sm" onclick="orgsModule.cancelInlineEdit(this,'${orgId}')"><i class="bi bi-x"></i></button>
+      </div>
+    `;
+
+    // Store original HTML for cancel
+    td.dataset.originalHtml = originalHtml;
+    td.querySelector('input').focus();
+  },
+
+  async saveInlineEdit(orgId, field) {
+    const input = document.getElementById(`inlineEdit_${field}`);
+    if (!input) return;
+
+    const newValue = input.value.trim();
+
+    // Map display field to DB field
+    const fieldMap = { 'contact': 'contact_name', 'email': 'email', 'sector': 'sector' };
+    const dbField = fieldMap[field] || field;
+
+    try {
+      const { error } = await STATE.client
+        .from('organisations')
+        .update({ [dbField]: newValue || null })
+        .eq('id', orgId);
+
+      if (error) throw error;
+
+      // Update local state
+      const org = STATE.allOrganisations.find(o => o.id === orgId);
+      if (org) org[dbField] = newValue || null;
+      const fOrg = STATE.filteredOrganisations.find(o => o.id === orgId);
+      if (fOrg) fOrg[dbField] = newValue || null;
+
+      this.renderOrganisations();
+      utils.showToast(`${field} updated`, 'success');
+    } catch (error) {
+      console.error('Error saving inline edit:', error);
+      utils.showToast('Error: ' + error.message, 'error');
+    }
+  },
+
+  cancelInlineEdit(element, orgId) {
+    const td = element.closest('td');
+    if (td) {
+      td.classList.remove('inline-edit-active');
+      // Re-render to restore original state
+      this.renderOrganisations();
+    }
+  },
+
+  // ============================================
+  // BULK FIELD UPDATES
+  // ============================================
+  async bulkUpdateField(field, value) {
+    if (this.selectedOrgs.size === 0) {
+      utils.showToast('No organisations selected', 'warning');
+      return;
+    }
+
+    const count = this.selectedOrgs.size;
+    const displayValue = value || '(empty)';
+    if (!confirm(`Set ${field} to "${displayValue}" for ${count} organisation(s)?`)) return;
+
+    try {
+      utils.showLoading();
+      const orgIds = Array.from(this.selectedOrgs);
+
+      const { error } = await STATE.client
+        .from('organisations')
+        .update({ [field]: value || null })
+        .in('id', orgIds);
+
+      if (error) throw error;
+
+      orgIds.forEach(id => {
+        const org = STATE.allOrganisations.find(o => o.id === id);
+        if (org) org[field] = value || null;
+        const fOrg = STATE.filteredOrganisations.find(o => o.id === id);
+        if (fOrg) fOrg[field] = value || null;
+      });
+
+      utils.showToast(`${count} org(s) updated: ${field} = ${displayValue}`, 'success');
+      this.renderOrganisations();
+    } catch (error) {
+      console.error('Error bulk updating field:', error);
+      utils.showToast('Error: ' + error.message, 'error');
+    } finally {
+      utils.hideLoading();
+    }
+  },
+
+  showBulkFieldModal(field) {
+    let options = '';
+    if (field === 'sector') {
+      // Combine global SECTORS with any existing custom sectors
+      const existingSectors = [...new Set(STATE.allOrganisations.map(o => o.sector).filter(Boolean))];
+      const allSectors = [...new Set([...SECTORS, ...existingSectors])].sort();
+      options = allSectors.map(s => `<option value="${s}">${utils.escapeHtml(s)}</option>`).join('');
+    } else if (field === 'region') {
+      options = REGIONS.map(r => `<option value="${r}">${utils.escapeHtml(r)}</option>`).join('');
+    } else if (field === 'tier') {
+      options = ['Bronze','Silver','Gold','Platinum'].map(t => `<option value="${t}">${t}</option>`).join('');
+    }
+
+    const modalHtml = `
+      <div class="modal fade" id="bulkFieldModal" tabindex="-1">
+        <div class="modal-dialog modal-sm">
+          <div class="modal-content">
+            <div class="modal-header">
+              <h6 class="modal-title">Bulk Set ${field.charAt(0).toUpperCase() + field.slice(1)}</h6>
+              <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+              <p class="small text-muted mb-2">Apply to <strong>${this.selectedOrgs.size}</strong> selected organisations</p>
+              <select class="form-select" id="bulkFieldValue">
+                <option value="">-- Select --</option>
+                ${options}
+              </select>
+            </div>
+            <div class="modal-footer">
+              <button class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
+              <button class="btn btn-primary btn-sm" onclick="
+                const val = document.getElementById('bulkFieldValue').value;
+                if (!val) { utils.showToast('Please select a value', 'warning'); return; }
+                bootstrap.Modal.getInstance(document.getElementById('bulkFieldModal')).hide();
+                orgsModule.bulkUpdateField('${field}', val);
+              ">Apply</button>
+            </div>
+          </div>
+        </div>
+      </div>`;
+
+    document.getElementById('bulkFieldModal')?.remove();
+    document.body.insertAdjacentHTML('beforeend', modalHtml);
+    new bootstrap.Modal(document.getElementById('bulkFieldModal')).show();
+  },
+
+  // ============================================
+  // BULK AUTO-FETCH LOGOS
+  // ============================================
+  async bulkFetchLogos() {
+    const selected = Array.from(this.selectedOrgs);
+    const orgs = STATE.allOrganisations.filter(o => selected.includes(o.id) && o.website && !o.logo_url);
+
+    if (orgs.length === 0) {
+      utils.showToast('No selected organisations with websites and missing logos', 'warning');
+      return;
+    }
+
+    if (!confirm(`Fetch logos for ${orgs.length} organisations with websites but no logo?`)) return;
+
+    utils.showLoading(`Fetching logos: 0/${orgs.length}`);
+    let successCount = 0;
+    let failCount = 0;
+
+    for (let i = 0; i < orgs.length; i++) {
+      const org = orgs[i];
+      try {
+        let cleanUrl = org.website.trim();
+        if (!cleanUrl.startsWith('http')) cleanUrl = 'https://' + cleanUrl;
+        const domain = new URL(cleanUrl).hostname.replace(/^www\./, '');
+
+        const logoServices = [
+          `https://logo.clearbit.com/${domain}`,
+          `https://www.google.com/s2/favicons?sz=128&domain=${domain}`,
+          `https://icons.duckduckgo.com/ip3/${domain}.ico`
+        ];
+
+        let logoUrl = null;
+        for (const serviceUrl of logoServices) {
+          try {
+            const response = await fetch(serviceUrl, { method: 'HEAD' });
+            if (response.ok) { logoUrl = serviceUrl; break; }
+          } catch (e) { continue; }
+        }
+
+        if (logoUrl) {
+          await STATE.client
+            .from('organisations')
+            .update({ logo_url: logoUrl })
+            .eq('id', org.id);
+          org.logo_url = logoUrl;
+          successCount++;
+        } else {
+          failCount++;
+        }
+      } catch (e) {
+        failCount++;
+      }
+
+      utils.showLoading(`Fetching logos: ${i + 1}/${orgs.length}`);
+    }
+
+    utils.hideLoading();
+    utils.showToast(`Logos fetched: ${successCount} success, ${failCount} failed`, successCount > 0 ? 'success' : 'warning');
+    this.renderOrganisations();
   },
 
   // ============================================

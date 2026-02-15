@@ -1,77 +1,35 @@
 -- ============================================
--- EMAIL LIST MANAGEMENT SYSTEM
--- For Awards CMS - Email Marketing
+-- Migration 008: Ensure email list tables have all required columns
 -- ============================================
--- NOTE: This script is idempotent. It uses CREATE TABLE IF NOT EXISTS
--- followed by ALTER TABLE ADD COLUMN IF NOT EXISTS to handle cases
--- where tables already exist with a different schema.
+-- Problem: email_list_subscribers (and possibly email_lists) may have been
+-- created by an earlier migration or manually, missing columns that
+-- database-email-lists-setup.sql expects. Since CREATE TABLE IF NOT EXISTS
+-- skips existing tables, the columns never get added.
+--
+-- This migration adds any missing columns using ADD COLUMN IF NOT EXISTS.
 
 -- ============================================
--- EMAIL LISTS TABLE
+-- 1. FIX email_lists - add missing columns
 -- ============================================
-CREATE TABLE IF NOT EXISTS email_lists (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  list_name VARCHAR(255) NOT NULL,
-  description TEXT,
-  list_type VARCHAR(50) DEFAULT 'general',
-  award_id UUID,
-  is_active BOOLEAN DEFAULT true,
-  allow_duplicates BOOLEAN DEFAULT false,
-  auto_clean BOOLEAN DEFAULT true,
-  subscriber_count INTEGER DEFAULT 0,
-  active_subscriber_count INTEGER DEFAULT 0,
-  tags TEXT,
-  color VARCHAR(7),
-  icon VARCHAR(50),
-  created_by VARCHAR(255),
-  created_at TIMESTAMPTZ DEFAULT NOW(),
-  updated_at TIMESTAMPTZ DEFAULT NOW()
-);
-
--- Add columns that may be missing if table already existed
 ALTER TABLE email_lists ADD COLUMN IF NOT EXISTS description TEXT;
 ALTER TABLE email_lists ADD COLUMN IF NOT EXISTS list_type VARCHAR(50) DEFAULT 'general';
 ALTER TABLE email_lists ADD COLUMN IF NOT EXISTS award_id UUID;
-ALTER TABLE email_lists ADD COLUMN IF NOT EXISTS is_active BOOLEAN DEFAULT true;
+ALTER TABLE email_lists ADD COLUMN IF NOT EXISTS event_id UUID;
 ALTER TABLE email_lists ADD COLUMN IF NOT EXISTS allow_duplicates BOOLEAN DEFAULT false;
 ALTER TABLE email_lists ADD COLUMN IF NOT EXISTS auto_clean BOOLEAN DEFAULT true;
 ALTER TABLE email_lists ADD COLUMN IF NOT EXISTS subscriber_count INTEGER DEFAULT 0;
 ALTER TABLE email_lists ADD COLUMN IF NOT EXISTS active_subscriber_count INTEGER DEFAULT 0;
 ALTER TABLE email_lists ADD COLUMN IF NOT EXISTS tags TEXT;
-ALTER TABLE email_lists ADD COLUMN IF NOT EXISTS color VARCHAR(7);
 ALTER TABLE email_lists ADD COLUMN IF NOT EXISTS icon VARCHAR(50);
+ALTER TABLE email_lists ADD COLUMN IF NOT EXISTS color VARCHAR(7);
 ALTER TABLE email_lists ADD COLUMN IF NOT EXISTS created_by VARCHAR(255);
 ALTER TABLE email_lists ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT NOW();
 
 -- ============================================
--- EMAIL LIST SUBSCRIBERS TABLE
+-- 2. FIX email_list_subscribers - add missing columns
 -- ============================================
-CREATE TABLE IF NOT EXISTS email_list_subscribers (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  list_id UUID REFERENCES email_lists(id) ON DELETE CASCADE,
-  email VARCHAR(255) NOT NULL,
-  first_name VARCHAR(100),
-  last_name VARCHAR(100),
-  company_name VARCHAR(255),
-  status VARCHAR(50) DEFAULT 'active',
-  subscription_date TIMESTAMPTZ DEFAULT NOW(),
-  unsubscribe_date TIMESTAMPTZ,
-  source VARCHAR(100),
-  import_batch_id UUID,
-  custom_fields JSONB,
-  emails_received INTEGER DEFAULT 0,
-  emails_opened INTEGER DEFAULT 0,
-  emails_clicked INTEGER DEFAULT 0,
-  last_email_sent TIMESTAMPTZ,
-  last_email_opened TIMESTAMPTZ,
-  notes TEXT,
-  created_at TIMESTAMPTZ DEFAULT NOW(),
-  updated_at TIMESTAMPTZ DEFAULT NOW()
-);
-
--- Add columns that may be missing if table already existed
 ALTER TABLE email_list_subscribers ADD COLUMN IF NOT EXISTS list_id UUID REFERENCES email_lists(id) ON DELETE CASCADE;
-ALTER TABLE email_list_subscribers ADD COLUMN IF NOT EXISTS email VARCHAR(255);
+ALTER TABLE email_list_subscribers ADD COLUMN IF NOT EXISTS organisation_id UUID;
 ALTER TABLE email_list_subscribers ADD COLUMN IF NOT EXISTS first_name VARCHAR(100);
 ALTER TABLE email_list_subscribers ADD COLUMN IF NOT EXISTS last_name VARCHAR(100);
 ALTER TABLE email_list_subscribers ADD COLUMN IF NOT EXISTS company_name VARCHAR(255);
@@ -90,7 +48,7 @@ ALTER TABLE email_list_subscribers ADD COLUMN IF NOT EXISTS notes TEXT;
 ALTER TABLE email_list_subscribers ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT NOW();
 
 -- ============================================
--- EMAIL IMPORT BATCHES TABLE
+-- 3. ENSURE email_import_batches exists
 -- ============================================
 CREATE TABLE IF NOT EXISTS email_import_batches (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -108,7 +66,7 @@ CREATE TABLE IF NOT EXISTS email_import_batches (
 );
 
 -- ============================================
--- EMAIL UNSUBSCRIBES TABLE
+-- 4. ENSURE email_unsubscribes exists
 -- ============================================
 CREATE TABLE IF NOT EXISTS email_unsubscribes (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -125,7 +83,7 @@ CREATE TABLE IF NOT EXISTS email_unsubscribes (
 );
 
 -- ============================================
--- ENSURE email_campaigns EXISTS (needed for campaign_recipients FK)
+-- 5. ENSURE email_campaigns exists
 -- ============================================
 CREATE TABLE IF NOT EXISTS email_campaigns (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -146,7 +104,7 @@ CREATE TABLE IF NOT EXISTS email_campaigns (
 );
 
 -- ============================================
--- EMAIL CAMPAIGN RECIPIENTS TABLE
+-- 6. ENSURE email_campaign_recipients exists
 -- ============================================
 CREATE TABLE IF NOT EXISTS email_campaign_recipients (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -167,7 +125,7 @@ CREATE TABLE IF NOT EXISTS email_campaign_recipients (
 );
 
 -- ============================================
--- INDEXES FOR PERFORMANCE
+-- 7. INDEXES (IF NOT EXISTS is safe to re-run)
 -- ============================================
 CREATE INDEX IF NOT EXISTS idx_email_lists_type ON email_lists(list_type);
 CREATE INDEX IF NOT EXISTS idx_email_lists_active ON email_lists(is_active);
@@ -187,95 +145,8 @@ CREATE INDEX IF NOT EXISTS idx_campaign_recipients_campaign ON email_campaign_re
 CREATE INDEX IF NOT EXISTS idx_campaign_recipients_email ON email_campaign_recipients(email);
 
 -- ============================================
--- FUNCTIONS
+-- 8. RLS POLICIES
 -- ============================================
-
--- Function to update subscriber count when subscribers change
-CREATE OR REPLACE FUNCTION update_email_list_counts()
-RETURNS TRIGGER AS $$
-DECLARE
-  list_uuid UUID;
-BEGIN
-  -- Get the list_id (works for INSERT, UPDATE, DELETE)
-  IF TG_OP = 'DELETE' THEN
-    list_uuid := OLD.list_id;
-  ELSE
-    list_uuid := NEW.list_id;
-  END IF;
-
-  -- Update the list counts
-  UPDATE email_lists
-  SET
-    subscriber_count = (
-      SELECT COUNT(*)
-      FROM email_list_subscribers
-      WHERE list_id = list_uuid
-    ),
-    active_subscriber_count = (
-      SELECT COUNT(*)
-      FROM email_list_subscribers
-      WHERE list_id = list_uuid AND status = 'active'
-    ),
-    updated_at = NOW()
-  WHERE id = list_uuid;
-
-  RETURN NULL;
-END;
-$$ LANGUAGE plpgsql;
-
--- Function to prevent duplicate emails across lists (optional)
-CREATE OR REPLACE FUNCTION check_email_unsubscribe()
-RETURNS TRIGGER AS $$
-BEGIN
-  -- Check if email is in unsubscribe list
-  IF EXISTS (
-    SELECT 1 FROM email_unsubscribes
-    WHERE email = NEW.email
-    AND can_resubscribe = false
-  ) THEN
-    RAISE EXCEPTION 'Email address % has permanently unsubscribed', NEW.email;
-  END IF;
-
-  RETURN NEW;
-END;
-$$ LANGUAGE plpgsql;
-
--- ============================================
--- TRIGGERS
--- ============================================
-
--- Trigger to update list counts after subscriber changes
-DROP TRIGGER IF EXISTS trigger_update_list_counts_insert ON email_list_subscribers;
-CREATE TRIGGER trigger_update_list_counts_insert
-  AFTER INSERT ON email_list_subscribers
-  FOR EACH ROW
-  EXECUTE FUNCTION update_email_list_counts();
-
-DROP TRIGGER IF EXISTS trigger_update_list_counts_update ON email_list_subscribers;
-CREATE TRIGGER trigger_update_list_counts_update
-  AFTER UPDATE ON email_list_subscribers
-  FOR EACH ROW
-  EXECUTE FUNCTION update_email_list_counts();
-
-DROP TRIGGER IF EXISTS trigger_update_list_counts_delete ON email_list_subscribers;
-CREATE TRIGGER trigger_update_list_counts_delete
-  AFTER DELETE ON email_list_subscribers
-  FOR EACH ROW
-  EXECUTE FUNCTION update_email_list_counts();
-
--- ============================================
--- RLS POLICIES
--- ============================================
-ALTER TABLE email_lists ENABLE ROW LEVEL SECURITY;
-DROP POLICY IF EXISTS "Allow all access to email_lists" ON email_lists;
-CREATE POLICY "Allow all access to email_lists"
-  ON email_lists FOR ALL USING (true) WITH CHECK (true);
-
-ALTER TABLE email_list_subscribers ENABLE ROW LEVEL SECURITY;
-DROP POLICY IF EXISTS "Allow all access to email_list_subscribers" ON email_list_subscribers;
-CREATE POLICY "Allow all access to email_list_subscribers"
-  ON email_list_subscribers FOR ALL USING (true) WITH CHECK (true);
-
 ALTER TABLE email_import_batches ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "Allow all access to email_import_batches" ON email_import_batches;
 CREATE POLICY "Allow all access to email_import_batches"
@@ -286,18 +157,13 @@ DROP POLICY IF EXISTS "Allow all access to email_unsubscribes" ON email_unsubscr
 CREATE POLICY "Allow all access to email_unsubscribes"
   ON email_unsubscribes FOR ALL USING (true) WITH CHECK (true);
 
-ALTER TABLE email_campaigns ENABLE ROW LEVEL SECURITY;
-DROP POLICY IF EXISTS "Allow all access to email_campaigns" ON email_campaigns;
-CREATE POLICY "Allow all access to email_campaigns"
-  ON email_campaigns FOR ALL USING (true) WITH CHECK (true);
-
 ALTER TABLE email_campaign_recipients ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "Allow all access to email_campaign_recipients" ON email_campaign_recipients;
 CREATE POLICY "Allow all access to email_campaign_recipients"
   ON email_campaign_recipients FOR ALL USING (true) WITH CHECK (true);
 
 -- ============================================
--- GRANT STATEMENTS (required for PostgREST API access)
+-- 9. GRANT STATEMENTS
 -- ============================================
 GRANT ALL ON public.email_lists TO anon;
 GRANT ALL ON public.email_lists TO authenticated;
@@ -324,10 +190,8 @@ GRANT ALL ON public.email_campaign_recipients TO authenticated;
 GRANT ALL ON public.email_campaign_recipients TO service_role;
 
 -- ============================================
--- VIEWS FOR REPORTING
+-- 10. RECREATE VIEWS (use CREATE OR REPLACE)
 -- ============================================
-
--- View: Email lists with statistics
 CREATE OR REPLACE VIEW email_lists_with_stats AS
 SELECT
   el.*,
@@ -340,7 +204,51 @@ GRANT ALL ON public.email_lists_with_stats TO authenticated;
 GRANT ALL ON public.email_lists_with_stats TO service_role;
 
 -- ============================================
--- INSERT DEFAULT EMAIL LISTS
+-- 11. TRIGGER FOR SUBSCRIBER COUNT UPDATES
+-- ============================================
+CREATE OR REPLACE FUNCTION update_email_list_counts()
+RETURNS TRIGGER AS $$
+DECLARE
+  list_uuid UUID;
+BEGIN
+  IF TG_OP = 'DELETE' THEN
+    list_uuid := OLD.list_id;
+  ELSE
+    list_uuid := NEW.list_id;
+  END IF;
+
+  UPDATE email_lists
+  SET
+    subscriber_count = (
+      SELECT COUNT(*) FROM email_list_subscribers WHERE list_id = list_uuid
+    ),
+    active_subscriber_count = (
+      SELECT COUNT(*) FROM email_list_subscribers WHERE list_id = list_uuid AND status = 'active'
+    ),
+    updated_at = NOW()
+  WHERE id = list_uuid;
+
+  RETURN NULL;
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS trigger_update_list_counts_insert ON email_list_subscribers;
+CREATE TRIGGER trigger_update_list_counts_insert
+  AFTER INSERT ON email_list_subscribers
+  FOR EACH ROW EXECUTE FUNCTION update_email_list_counts();
+
+DROP TRIGGER IF EXISTS trigger_update_list_counts_update ON email_list_subscribers;
+CREATE TRIGGER trigger_update_list_counts_update
+  AFTER UPDATE ON email_list_subscribers
+  FOR EACH ROW EXECUTE FUNCTION update_email_list_counts();
+
+DROP TRIGGER IF EXISTS trigger_update_list_counts_delete ON email_list_subscribers;
+CREATE TRIGGER trigger_update_list_counts_delete
+  AFTER DELETE ON email_list_subscribers
+  FOR EACH ROW EXECUTE FUNCTION update_email_list_counts();
+
+-- ============================================
+-- 12. INSERT DEFAULT LISTS (skip if they exist)
 -- ============================================
 INSERT INTO email_lists (list_name, description, list_type, color, icon) VALUES
   ('All Winners', 'All award winners across all years', 'winners', '#28a745', 'trophy-fill'),
@@ -352,11 +260,6 @@ INSERT INTO email_lists (list_name, description, list_type, color, icon) VALUES
 ON CONFLICT DO NOTHING;
 
 -- ============================================
--- RELOAD SCHEMA CACHE
+-- 13. RELOAD SCHEMA CACHE
 -- ============================================
 NOTIFY pgrst, 'reload schema';
-
--- ============================================
--- SUCCESS MESSAGE
--- ============================================
-SELECT 'Email List Management System installed/updated successfully!' as message;

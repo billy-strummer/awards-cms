@@ -26,6 +26,10 @@ const emailBuilder = {
   // A/B Testing
   abTestEnabled: false,
   abVariantB: '',
+  // Block ID counter (avoids Date.now() collisions when adding blocks rapidly)
+  _blockIdCounter: 0,
+  // Drag-to-reorder tracking
+  _reorderDragId: null,
 
   /**
    * Initialize email builder
@@ -34,7 +38,10 @@ const emailBuilder = {
     if (this.initialized) return;
 
     this.canvas = document.getElementById('emailCanvas');
-    if (!this.canvas) return;
+    if (!this.canvas) {
+      console.warn('Email Builder: #emailCanvas not found — builder not initialised');
+      return;
+    }
 
     this.setupDragAndDrop();
     this.loadOrganisations();
@@ -58,10 +65,11 @@ const emailBuilder = {
   setupDragAndDrop() {
     const palette = document.querySelectorAll('.email-block-item');
 
-    // Make blocks draggable
+    // Make palette blocks draggable
     palette.forEach(block => {
       block.addEventListener('dragstart', (e) => {
         e.dataTransfer.setData('blockType', block.getAttribute('data-block-type'));
+        e.dataTransfer.effectAllowed = 'copy';
         block.classList.add('dragging');
       });
 
@@ -70,24 +78,96 @@ const emailBuilder = {
       });
     });
 
-    // Setup canvas drop zone
+    // Setup canvas drop zone for palette blocks AND block reordering
     this.canvas.addEventListener('dragover', (e) => {
       e.preventDefault();
-      this.canvas.classList.add('drag-over');
+      e.dataTransfer.dropEffect = this._reorderDragId ? 'move' : 'copy';
+
+      // Show drop indicator between blocks when reordering
+      if (this._reorderDragId) {
+        const afterEl = this._getDragAfterElement(e.clientY);
+        let ind = this.canvas.querySelector('.block-drop-indicator');
+        if (!ind) {
+          ind = document.createElement('div');
+          ind.className = 'block-drop-indicator';
+          this.canvas.appendChild(ind);
+        }
+        if (afterEl) {
+          this.canvas.insertBefore(ind, afterEl);
+        } else {
+          this.canvas.appendChild(ind);
+        }
+      } else {
+        this.canvas.classList.add('drag-over');
+      }
     });
 
     this.canvas.addEventListener('dragleave', (e) => {
-      this.canvas.classList.remove('drag-over');
+      // Only act when truly leaving the canvas (not moving between children)
+      if (!e.relatedTarget || !this.canvas.contains(e.relatedTarget)) {
+        this.canvas.classList.remove('drag-over');
+        this.canvas.querySelector('.block-drop-indicator')?.remove();
+      }
     });
 
     this.canvas.addEventListener('drop', (e) => {
       e.preventDefault();
       this.canvas.classList.remove('drag-over');
+      this.canvas.querySelector('.block-drop-indicator')?.remove();
 
+      // Block reorder drop
+      if (this._reorderDragId) {
+        const draggedEl = document.querySelector(`[data-block-id="${this._reorderDragId}"]`);
+        if (draggedEl) {
+          this.saveUndoState();
+          const afterEl = this._getDragAfterElement(e.clientY);
+          if (afterEl) {
+            this.canvas.insertBefore(draggedEl, afterEl);
+          } else {
+            this.canvas.appendChild(draggedEl);
+          }
+          this._syncBlocksFromDOM();
+          this.markUnsavedChanges();
+          this.updatePreview();
+        }
+        this._reorderDragId = null;
+        return;
+      }
+
+      // Palette block drop
       const blockType = e.dataTransfer.getData('blockType');
       if (blockType) {
         this.addBlock(blockType);
       }
+    });
+  },
+
+  /**
+   * Get the element after which a dragged block should be inserted
+   */
+  _getDragAfterElement(y) {
+    const blocks = [...this.canvas.querySelectorAll('.email-block-wrapper:not(.dragging-block)')];
+    let closest = { offset: Number.POSITIVE_INFINITY, element: null };
+    blocks.forEach(child => {
+      const box = child.getBoundingClientRect();
+      const offset = y - box.top - box.height / 2;
+      if (offset < 0 && offset > -closest.offset) {
+        closest = { offset: Math.abs(offset), element: child };
+      }
+    });
+    return closest.element;
+  },
+
+  /**
+   * Rebuild this.blocks array to match the current DOM order
+   */
+  _syncBlocksFromDOM() {
+    const domBlocks = this.canvas.querySelectorAll('.email-block-wrapper');
+    const blockMap = {};
+    this.blocks.forEach(b => { blockMap[b.id] = b; });
+    this.blocks = Array.from(domBlocks).map(el => {
+      const id = el.getAttribute('data-block-id');
+      return blockMap[id] || { id, type: 'unknown' };
     });
   },
 
@@ -173,7 +253,7 @@ const emailBuilder = {
       this.canvas.innerHTML = '';
     }
 
-    const blockId = 'block-' + Date.now();
+    const blockId = 'block-' + (++this._blockIdCounter) + '-' + Math.random().toString(36).slice(2, 7);
     const blockHTML = this.getBlockHTML(blockType, blockId);
 
     const blockWrapper = document.createElement('div');
@@ -209,6 +289,8 @@ const emailBuilder = {
       'award-list': this.getAwardListBlock(),
       'button': this.getButtonBlock(),
       'image': this.getImageBlock(),
+      'video': this.getVideoBlock(),
+      'countdown': this.getCountdownBlock(),
       'divider': this.getDividerBlock(),
       'social-links': this.getSocialLinksBlock(),
       'richtext': this.getRichTextBlock(blockId),
@@ -225,10 +307,10 @@ const emailBuilder = {
   getHeaderBlock() {
     const logo = this.currentOrg?.logo_url || `data:image/svg+xml,${encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="250" height="100"><rect width="250" height="100" fill="#e9ecef" rx="8"/><text x="125" y="55" text-anchor="middle" font-family="Arial,sans-serif" font-size="16" fill="#6c757d">Your Logo</text></svg>')}`;
     return `
-      <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color: #ffffff; padding: 20px;">
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color: #ffffff;">
         <tr>
-          <td align="center">
-            <img src="${logo}" alt="Logo" style="max-width: 250px; height: auto;">
+          <td align="center" class="mob-pad" style="padding: 20px;">
+            <img src="${logo}" alt="Logo" style="max-width: 250px; height: auto;" class="mob-full-img">
           </td>
         </tr>
       </table>
@@ -238,18 +320,18 @@ const emailBuilder = {
   getHeroBlock() {
     const heroImage = `data:image/svg+xml,${encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="600" height="300"><rect width="600" height="300" fill="#dee2e6" rx="8"/><text x="300" y="155" text-anchor="middle" font-family="Arial,sans-serif" font-size="20" fill="#6c757d">Hero Image</text></svg>')}`;
     return `
-      <table width="100%" cellpadding="0" cellspacing="0" border="0">
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
         <tr>
           <td style="padding: 0;">
-            <img src="${heroImage}" alt="Hero" style="width: 100%; height: auto; display: block;">
+            <img src="${heroImage}" alt="Hero" style="width: 100%; height: auto; display: block;" class="mob-full-img">
           </td>
         </tr>
         <tr>
-          <td style="padding: 30px 40px; text-align: center; background-color: #f8f9fa;">
-            <h1 style="margin: 0 0 15px 0; font-family: Arial, sans-serif; font-size: 32px; color: #212529;">
+          <td class="mob-pad" style="padding: 30px 40px; text-align: center; background-color: #f8f9fa;">
+            <h1 class="mob-hero-heading" style="margin: 0 0 15px 0; font-family: Arial, sans-serif; font-size: 32px; line-height: 38px; color: #212529;">
               ${this.currentOrg?.company_name || 'Congratulations {{company_name}}!'}
             </h1>
-            <p style="margin: 0; font-family: Arial, sans-serif; font-size: 16px; color: #6c757d;">
+            <p class="mob-text-md" style="margin: 0; font-family: Arial, sans-serif; font-size: 16px; line-height: 24px; color: #6c757d;">
               Winner of the British Trade Awards ${new Date().getFullYear()}
             </p>
           </td>
@@ -260,16 +342,16 @@ const emailBuilder = {
 
   getTextBlock() {
     return `
-      <table width="100%" cellpadding="0" cellspacing="0" border="0">
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
         <tr>
-          <td style="padding: 30px 40px;">
-            <p contenteditable="true" style="margin: 0 0 15px 0; font-family: Arial, sans-serif; font-size: 16px; line-height: 1.6; color: #212529;">
+          <td class="mob-pad" style="padding: 30px 40px;">
+            <p contenteditable="true" class="mob-text-md" style="margin: 0 0 15px 0; font-family: Arial, sans-serif; font-size: 16px; line-height: 1.6; color: #212529;">
               Dear {{contact_name}},
             </p>
-            <p contenteditable="true" style="margin: 0 0 15px 0; font-family: Arial, sans-serif; font-size: 16px; line-height: 1.6; color: #495057;">
+            <p contenteditable="true" class="mob-text-md" style="margin: 0 0 15px 0; font-family: Arial, sans-serif; font-size: 16px; line-height: 1.6; color: #495057;">
               We are delighted to announce that {{company_name}} has been recognized as a winner at the British Trade Awards ${new Date().getFullYear()}.
             </p>
-            <p contenteditable="true" style="margin: 0; font-family: Arial, sans-serif; font-size: 16px; line-height: 1.6; color: #495057;">
+            <p contenteditable="true" class="mob-text-md" style="margin: 0; font-family: Arial, sans-serif; font-size: 16px; line-height: 1.6; color: #495057;">
               This achievement reflects your outstanding contribution to British trade and excellence in your industry.
             </p>
           </td>
@@ -281,9 +363,9 @@ const emailBuilder = {
   getCompanyProfileBlock() {
     if (!this.currentOrg) {
       return `
-        <table width="100%" cellpadding="0" cellspacing="0" border="0">
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
           <tr>
-            <td style="padding: 30px 40px; background-color: #f8f9fa;">
+            <td class="mob-pad" style="padding: 30px 40px; background-color: #f8f9fa;">
               <p style="margin: 0; font-family: Arial, sans-serif; color: #dc3545; font-size: 14px;">
                 ⚠️ Select an organisation first to auto-populate this block
               </p>
@@ -294,30 +376,30 @@ const emailBuilder = {
     }
 
     return `
-      <table width="100%" cellpadding="0" cellspacing="0" border="0">
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
         <tr>
-          <td style="padding: 30px 40px; background-color: #f8f9fa;">
-            <table width="100%" cellpadding="0" cellspacing="0" border="0">
+          <td class="mob-pad" style="padding: 30px 40px; background-color: #f8f9fa;">
+            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
               <tr>
-                <td width="100" valign="top">
+                <td class="mob-profile-img" width="100" valign="top">
                   ${this.currentOrg.logo_url ?
                     `<img src="${this.currentOrg.logo_url}" alt="${utils.escapeHtml(this.currentOrg.company_name)}" style="width: 80px; height: 80px; object-fit: contain;">` :
                     `<div style="width: 80px; height: 80px; background: #dee2e6; border-radius: 4px;"></div>`
                   }
                 </td>
-                <td style="padding-left: 20px;">
-                  <h3 style="margin: 0 0 10px 0; font-family: Arial, sans-serif; font-size: 20px; color: #212529;">
+                <td class="mob-profile-text" style="padding-left: 20px;">
+                  <h3 class="mob-text-lg" style="margin: 0 0 10px 0; font-family: Arial, sans-serif; font-size: 20px; line-height: 26px; color: #212529;">
                     ${utils.escapeHtml(this.currentOrg.company_name)}
                   </h3>
                   ${this.currentOrg.website ?
-                    `<p style="margin: 0 0 5px 0; font-family: Arial, sans-serif; font-size: 14px; color: #0d6efd;">
+                    `<p class="mob-text-sm" style="margin: 0 0 5px 0; font-family: Arial, sans-serif; font-size: 14px; color: #0d6efd;">
                       <a href="${this.currentOrg.website}" style="color: #0d6efd; text-decoration: none;">
                         ${utils.escapeHtml(this.currentOrg.website)}
                       </a>
                     </p>` : ''
                   }
                   ${this.currentOrg.region ?
-                    `<p style="margin: 0; font-family: Arial, sans-serif; font-size: 14px; color: #6c757d;">
+                    `<p class="mob-text-sm" style="margin: 0; font-family: Arial, sans-serif; font-size: 14px; color: #6c757d;">
                       📍 ${utils.escapeHtml(this.currentOrg.region)}
                     </p>` : ''
                   }
@@ -333,13 +415,13 @@ const emailBuilder = {
   getAwardListBlock() {
     if (!this.currentOrg || !this.currentOrg.awards || this.currentOrg.awards.length === 0) {
       return `
-        <table width="100%" cellpadding="0" cellspacing="0" border="0">
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
           <tr>
-            <td style="padding: 30px 40px;">
-              <h3 style="margin: 0 0 20px 0; font-family: Arial, sans-serif; font-size: 24px; color: #212529;">
+            <td class="mob-pad" style="padding: 30px 40px;">
+              <h3 class="mob-text-lg" style="margin: 0 0 20px 0; font-family: Arial, sans-serif; font-size: 24px; line-height: 30px; color: #212529;">
                 Award History
               </h3>
-              <p style="margin: 0; font-family: Arial, sans-serif; color: #6c757d;">
+              <p class="mob-text-md" style="margin: 0; font-family: Arial, sans-serif; color: #6c757d;">
                 Select an organisation to view award history
               </p>
             </td>
@@ -350,8 +432,8 @@ const emailBuilder = {
 
     const awardsHTML = this.currentOrg.awards.map(award => `
       <tr>
-        <td style="padding: 15px; border-bottom: 1px solid #e9ecef;">
-          <table width="100%" cellpadding="0" cellspacing="0">
+        <td class="mob-pad-sm" style="padding: 15px; border-bottom: 1px solid #e9ecef;">
+          <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
             <tr>
               <td width="60">
                 <span style="display: inline-block; background: #0d6efd; color: white; padding: 5px 10px; border-radius: 4px; font-family: Arial, sans-serif; font-size: 14px; font-weight: bold;">
@@ -359,11 +441,11 @@ const emailBuilder = {
                 </span>
               </td>
               <td style="padding-left: 15px;">
-                <p style="margin: 0 0 5px 0; font-family: Arial, sans-serif; font-size: 16px; font-weight: bold; color: #212529;">
+                <p class="mob-text-md" style="margin: 0 0 5px 0; font-family: Arial, sans-serif; font-size: 16px; font-weight: bold; color: #212529;">
                   ${utils.escapeHtml(award.award_category)}
                 </p>
                 ${award.sector ?
-                  `<p style="margin: 0; font-family: Arial, sans-serif; font-size: 14px; color: #6c757d;">
+                  `<p class="mob-text-sm" style="margin: 0; font-family: Arial, sans-serif; font-size: 14px; color: #6c757d;">
                     ${utils.escapeHtml(award.sector)}
                   </p>` : ''
                 }
@@ -375,13 +457,13 @@ const emailBuilder = {
     `).join('');
 
     return `
-      <table width="100%" cellpadding="0" cellspacing="0" border="0">
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
         <tr>
-          <td style="padding: 30px 40px;">
-            <h3 style="margin: 0 0 20px 0; font-family: Arial, sans-serif; font-size: 24px; color: #212529;">
+          <td class="mob-pad" style="padding: 30px 40px;">
+            <h3 class="mob-text-lg" style="margin: 0 0 20px 0; font-family: Arial, sans-serif; font-size: 24px; line-height: 30px; color: #212529;">
               🏆 Award History
             </h3>
-            <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background: #f8f9fa; border-radius: 8px;">
+            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background: #f8f9fa; border-radius: 8px;">
               ${awardsHTML}
             </table>
           </td>
@@ -390,11 +472,166 @@ const emailBuilder = {
     `;
   },
 
+  getVideoBlock() {
+    const blockId = 'vid-' + (++this._blockIdCounter) + '-' + Math.random().toString(36).slice(2, 7);
+    return `
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+        <tr>
+          <td class="mob-pad" style="padding: 20px 40px;">
+            <div class="email-video-controls" style="margin-bottom: 8px;">
+              <div class="input-group input-group-sm">
+                <span class="input-group-text"><i class="bi bi-youtube"></i></span>
+                <input type="text" class="form-control form-control-sm" placeholder="Paste YouTube or Vimeo URL..." data-video-id="${blockId}" onchange="emailBuilder.updateVideoThumbnail(this)">
+              </div>
+            </div>
+            <a href="#" data-video-link="${blockId}" style="display: block; position: relative; text-decoration: none;">
+              <img src="data:image/svg+xml,${encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="520" height="293"><rect width="520" height="293" fill="#1a1a2e" rx="8"/><polygon points="235,120 295,147 235,174" fill="#fff" opacity="0.9"/><circle cx="260" cy="147" r="40" fill="none" stroke="#fff" stroke-width="3" opacity="0.7"/><text x="260" y="220" text-anchor="middle" font-family="Arial,sans-serif" font-size="14" fill="#888">Paste a YouTube or Vimeo URL above</text></svg>')}" alt="Video thumbnail" data-video-thumb="${blockId}" style="width: 100%; max-width: 520px; height: auto; display: block; border-radius: 8px;">
+              <div data-video-play="${blockId}" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 72px; height: 72px; background: rgba(255,0,0,0.85); border-radius: 50%; display: none; align-items: center; justify-content: center;">
+                <div style="width: 0; height: 0; border-style: solid; border-width: 14px 0 14px 26px; border-color: transparent transparent transparent #fff; margin-left: 5px;"></div>
+              </div>
+            </a>
+          </td>
+        </tr>
+      </table>
+    `;
+  },
+
+  /**
+   * Update video thumbnail from YouTube/Vimeo URL
+   */
+  updateVideoThumbnail(input) {
+    const url = input.value.trim();
+    if (!url) return;
+    const videoId = input.getAttribute('data-video-id');
+    const thumb = document.querySelector(`img[data-video-thumb="${videoId}"]`);
+    const link = document.querySelector(`a[data-video-link="${videoId}"]`);
+    const playBtn = document.querySelector(`div[data-video-play="${videoId}"]`);
+
+    // Extract YouTube ID (supports www. prefix and multiple URL formats)
+    let ytId = null;
+    const ytMatch = url.match(/(?:(?:www\.)?youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([\w-]{11})/);
+    if (ytMatch) ytId = ytMatch[1];
+
+    // Extract Vimeo ID (supports www. prefix)
+    let vimeoId = null;
+    const vimeoMatch = url.match(/(?:www\.)?vimeo\.com\/(\d+)/);
+    if (vimeoMatch) vimeoId = vimeoMatch[1];
+
+    if (ytId) {
+      if (thumb) thumb.src = `https://img.youtube.com/vi/${ytId}/maxresdefault.jpg`;
+      if (link) link.href = `https://www.youtube.com/watch?v=${ytId}`;
+      if (playBtn) playBtn.style.display = 'flex';
+      this.markUnsavedChanges();
+      this.updatePreview();
+    } else if (vimeoId) {
+      // Fetch Vimeo thumbnail via oEmbed API
+      if (link) link.href = `https://vimeo.com/${vimeoId}`;
+      if (playBtn) playBtn.style.display = 'flex';
+      fetch(`https://vimeo.com/api/oembed.json?url=https://vimeo.com/${vimeoId}`)
+        .then(r => r.json())
+        .then(data => {
+          if (thumb && data.thumbnail_url) {
+            thumb.src = data.thumbnail_url.replace(/_\d+x\d+/, '_640x360');
+          }
+        })
+        .catch(() => {
+          // Fallback: use a generic video placeholder
+          if (thumb) thumb.alt = 'Vimeo Video';
+        });
+      this.markUnsavedChanges();
+      this.updatePreview();
+    } else {
+      utils.showToast('Please enter a valid YouTube or Vimeo URL', 'warning');
+    }
+  },
+
+  getCountdownBlock() {
+    const blockId = 'cd-' + (++this._blockIdCounter) + '-' + Math.random().toString(36).slice(2, 7);
+    // Default to 30 days from now
+    const defaultDate = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+    return `
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+        <tr>
+          <td class="mob-pad" style="padding: 30px 40px; text-align: center; background-color: #1a1a2e;">
+            <div class="email-countdown-controls" style="margin-bottom: 12px;">
+              <div class="row g-1 justify-content-center">
+                <div class="col-auto">
+                  <input type="date" class="form-control form-control-sm" data-cd-date="${blockId}" value="${defaultDate}" onchange="emailBuilder.updateCountdown('${blockId}')">
+                </div>
+                <div class="col-auto">
+                  <input type="text" class="form-control form-control-sm" data-cd-label="${blockId}" placeholder="Event label..." value="Event starts in" onchange="emailBuilder.updateCountdown('${blockId}')" style="width: 160px;">
+                </div>
+              </div>
+            </div>
+            <p style="margin: 0 0 8px; font-family: Arial, sans-serif; font-size: 14px; color: #adb5bd; text-transform: uppercase; letter-spacing: 2px;" data-cd-heading="${blockId}" contenteditable="true">Event starts in</p>
+            <table role="presentation" cellpadding="0" cellspacing="0" border="0" align="center" data-cd-display="${blockId}">
+              <tr>
+                <td style="padding: 0 10px; text-align: center;">
+                  <div style="font-family: 'Courier New', monospace; font-size: 48px; font-weight: bold; color: #ffffff; line-height: 1;" class="mob-text-lg" data-cd-days="${blockId}">30</div>
+                  <div style="font-family: Arial, sans-serif; font-size: 11px; color: #adb5bd; text-transform: uppercase; letter-spacing: 1px; margin-top: 4px;">Days</div>
+                </td>
+                <td style="font-family: 'Courier New', monospace; font-size: 36px; color: #ffffff; padding: 0 4px;">:</td>
+                <td style="padding: 0 10px; text-align: center;">
+                  <div style="font-family: 'Courier New', monospace; font-size: 48px; font-weight: bold; color: #ffffff; line-height: 1;" class="mob-text-lg" data-cd-hours="${blockId}">00</div>
+                  <div style="font-family: Arial, sans-serif; font-size: 11px; color: #adb5bd; text-transform: uppercase; letter-spacing: 1px; margin-top: 4px;">Hours</div>
+                </td>
+                <td style="font-family: 'Courier New', monospace; font-size: 36px; color: #ffffff; padding: 0 4px;">:</td>
+                <td style="padding: 0 10px; text-align: center;">
+                  <div style="font-family: 'Courier New', monospace; font-size: 48px; font-weight: bold; color: #ffffff; line-height: 1;" class="mob-text-lg" data-cd-mins="${blockId}">00</div>
+                  <div style="font-family: Arial, sans-serif; font-size: 11px; color: #adb5bd; text-transform: uppercase; letter-spacing: 1px; margin-top: 4px;">Mins</div>
+                </td>
+                <td style="font-family: 'Courier New', monospace; font-size: 36px; color: #ffffff; padding: 0 4px;">:</td>
+                <td style="padding: 0 10px; text-align: center;">
+                  <div style="font-family: 'Courier New', monospace; font-size: 48px; font-weight: bold; color: #ffffff; line-height: 1;" class="mob-text-lg" data-cd-secs="${blockId}">00</div>
+                  <div style="font-family: Arial, sans-serif; font-size: 11px; color: #adb5bd; text-transform: uppercase; letter-spacing: 1px; margin-top: 4px;">Secs</div>
+                </td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+      </table>
+    `;
+  },
+
+  /**
+   * Update countdown display from date input
+   */
+  updateCountdown(blockId) {
+    const dateInput = document.querySelector(`[data-cd-date="${blockId}"]`);
+    const labelInput = document.querySelector(`[data-cd-label="${blockId}"]`);
+    const heading = document.querySelector(`[data-cd-heading="${blockId}"]`);
+    const daysEl = document.querySelector(`[data-cd-days="${blockId}"]`);
+
+    if (dateInput && daysEl) {
+      const target = new Date(dateInput.value + 'T00:00:00');
+      const now = new Date();
+      const diff = Math.max(0, target - now);
+      const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+      const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+      const mins = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+      const secs = Math.floor((diff % (1000 * 60)) / 1000);
+      daysEl.textContent = String(days).padStart(2, '0');
+      const hoursEl = document.querySelector(`[data-cd-hours="${blockId}"]`);
+      const minsEl = document.querySelector(`[data-cd-mins="${blockId}"]`);
+      const secsEl = document.querySelector(`[data-cd-secs="${blockId}"]`);
+      if (hoursEl) hoursEl.textContent = String(hours).padStart(2, '0');
+      if (minsEl) minsEl.textContent = String(mins).padStart(2, '0');
+      if (secsEl) secsEl.textContent = String(secs).padStart(2, '0');
+    }
+
+    if (labelInput && heading) {
+      heading.textContent = labelInput.value || 'Event starts in';
+    }
+
+    this.markUnsavedChanges();
+    this.updatePreview();
+  },
+
   getDividerBlock() {
     return `
-      <table width="100%" cellpadding="0" cellspacing="0" border="0">
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
         <tr>
-          <td style="padding: 20px 40px;">
+          <td class="mob-pad" style="padding: 20px 40px;">
             <div style="height: 1px; background-color: #dee2e6;"></div>
           </td>
         </tr>
@@ -404,31 +641,31 @@ const emailBuilder = {
 
   getSocialLinksBlock() {
     return `
-      <table width="100%" cellpadding="0" cellspacing="0" border="0">
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
         <tr>
-          <td style="padding: 30px 40px; text-align: center;">
-            <p style="margin: 0 0 15px 0; font-family: Arial, sans-serif; font-size: 14px; color: #6c757d;">
+          <td class="mob-pad" style="padding: 30px 40px; text-align: center;">
+            <p class="mob-text-sm" style="margin: 0 0 15px 0; font-family: Arial, sans-serif; font-size: 14px; color: #6c757d;">
               Follow us on social media
             </p>
-            <table cellpadding="0" cellspacing="0" border="0" align="center">
+            <table role="presentation" cellpadding="0" cellspacing="0" border="0" align="center">
               <tr>
                 <td style="padding: 0 10px;">
-                  <a href="#" style="text-decoration: none; color: #0d6efd; font-size: 24px;">
+                  <a href="https://facebook.com/britishtradeawards" style="text-decoration: none; color: #0d6efd; font-size: 24px;" target="_blank">
                     📘
                   </a>
                 </td>
                 <td style="padding: 0 10px;">
-                  <a href="#" style="text-decoration: none; color: #0d6efd; font-size: 24px;">
+                  <a href="https://twitter.com/BritTradeAwards" style="text-decoration: none; color: #0d6efd; font-size: 24px;" target="_blank">
                     🐦
                   </a>
                 </td>
                 <td style="padding: 0 10px;">
-                  <a href="#" style="text-decoration: none; color: #0d6efd; font-size: 24px;">
+                  <a href="https://linkedin.com/company/british-trade-awards" style="text-decoration: none; color: #0d6efd; font-size: 24px;" target="_blank">
                     💼
                   </a>
                 </td>
                 <td style="padding: 0 10px;">
-                  <a href="#" style="text-decoration: none; color: #0d6efd; font-size: 24px;">
+                  <a href="https://instagram.com/britishtradeawards" style="text-decoration: none; color: #0d6efd; font-size: 24px;" target="_blank">
                     📷
                   </a>
                 </td>
@@ -484,9 +721,9 @@ const emailBuilder = {
           </div>
         </div>
       </div>
-      <table width="100%" cellpadding="0" cellspacing="0" border="0">
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
         <tr>
-          <td style="padding: 30px 40px;">
+          <td class="mob-pad" style="padding: 30px 40px;">
             <div class="email-richtext-content" contenteditable="true" data-block="${blockId}" style="font-family: Arial, sans-serif; font-size: 16px; line-height: 1.6; color: #212529; min-height: 80px; outline: none;">
               <p>Start typing your content here...</p>
             </div>
@@ -525,12 +762,16 @@ const emailBuilder = {
     const controls = document.createElement('div');
     controls.className = 'email-block-controls';
     controls.innerHTML = `
+      <button class="block-drag-handle" title="Drag to reorder" style="cursor: grab;">
+        <i class="bi bi-grip-vertical"></i>
+      </button>
       <button onclick="emailBuilder.moveBlockUp('${blockId}')" title="Move Up">
         <i class="bi bi-arrow-up"></i>
       </button>
       <button onclick="emailBuilder.moveBlockDown('${blockId}')" title="Move Down">
         <i class="bi bi-arrow-down"></i>
       </button>
+      <input type="color" value="#ffffff" class="block-bg-picker" title="Block background colour" onchange="emailBuilder.setBlockBackground('${blockId}', this.value)" style="width:24px; height:24px; padding:0; border:1px solid #555; border-radius:3px; cursor:pointer;">
       <button onclick="emailBuilder.duplicateBlock('${blockId}')" title="Duplicate">
         <i class="bi bi-copy"></i>
       </button>
@@ -539,6 +780,28 @@ const emailBuilder = {
       </button>
     `;
     blockWrapper.prepend(controls);
+
+    // Make the block draggable via the drag handle
+    blockWrapper.setAttribute('draggable', 'false');
+    const handle = controls.querySelector('.block-drag-handle');
+    handle.addEventListener('mousedown', () => {
+      blockWrapper.setAttribute('draggable', 'true');
+    });
+    blockWrapper.addEventListener('dragstart', (e) => {
+      if (!blockWrapper.getAttribute('draggable') || blockWrapper.getAttribute('draggable') === 'false') {
+        e.preventDefault();
+        return;
+      }
+      this._reorderDragId = blockId;
+      blockWrapper.classList.add('dragging-block');
+      e.dataTransfer.effectAllowed = 'move';
+    });
+    blockWrapper.addEventListener('dragend', () => {
+      blockWrapper.classList.remove('dragging-block');
+      blockWrapper.setAttribute('draggable', 'false');
+      this._reorderDragId = null;
+      this.canvas.querySelector('.block-drop-indicator')?.remove();
+    });
   },
 
   /**
@@ -549,6 +812,7 @@ const emailBuilder = {
     const wrapper = document.querySelector(`[data-block-id="${blockId}"]`);
     if (wrapper && wrapper.previousElementSibling) {
       this.canvas.insertBefore(wrapper, wrapper.previousElementSibling);
+      this._syncBlocksFromDOM();
       this.markUnsavedChanges();
       this.updatePreview();
     }
@@ -562,6 +826,7 @@ const emailBuilder = {
     const wrapper = document.querySelector(`[data-block-id="${blockId}"]`);
     if (wrapper && wrapper.nextElementSibling) {
       this.canvas.insertBefore(wrapper.nextElementSibling, wrapper);
+      this._syncBlocksFromDOM();
       this.markUnsavedChanges();
       this.updatePreview();
     }
@@ -583,6 +848,24 @@ const emailBuilder = {
         this.showEmptyState();
       }
     }
+  },
+
+  /**
+   * Set block background colour
+   */
+  setBlockBackground(blockId, colour) {
+    const wrapper = document.querySelector(`[data-block-id="${blockId}"]`);
+    if (!wrapper) return;
+    // Apply to the first <td> or <table> inside the block content (skip controls)
+    const table = wrapper.querySelector('table[role="presentation"]');
+    if (table) {
+      const td = table.querySelector('td');
+      if (td) td.style.backgroundColor = colour;
+      // Also set on the table itself for full-row backgrounds
+      table.style.backgroundColor = colour;
+    }
+    this.markUnsavedChanges();
+    this.updatePreview();
   },
 
   /**
@@ -668,39 +951,70 @@ const emailBuilder = {
     </td>
   </tr>
 </table>`,
-    'two-column': `<table width="100%" cellpadding="0" cellspacing="0" border="0">
-  <tr>
-    <td width="50%" style="padding: 20px; vertical-align: top; font-family: Arial, sans-serif; font-size: 14px; color: #333333;">
-      Left column
-    </td>
-    <td width="50%" style="padding: 20px; vertical-align: top; font-family: Arial, sans-serif; font-size: 14px; color: #333333;">
-      Right column
-    </td>
-  </tr>
-</table>`,
-    'three-column': `<table width="100%" cellpadding="0" cellspacing="0" border="0">
-  <tr>
-    <td width="33%" style="padding: 15px; vertical-align: top; font-family: Arial, sans-serif; font-size: 14px; color: #333333;">
-      Column 1
-    </td>
-    <td width="34%" style="padding: 15px; vertical-align: top; font-family: Arial, sans-serif; font-size: 14px; color: #333333;">
-      Column 2
-    </td>
-    <td width="33%" style="padding: 15px; vertical-align: top; font-family: Arial, sans-serif; font-size: 14px; color: #333333;">
-      Column 3
-    </td>
-  </tr>
-</table>`,
-    'full-width-wrapper': `<table width="100%" cellpadding="0" cellspacing="0" border="0">
+    'two-column': `<!--[if mso]><table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr><td width="50%" valign="top"><![endif]-->
+<div class="mob-stack" style="display: inline-block; width: 50%; vertical-align: top;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+    <tr>
+      <td class="mob-pad" style="padding: 20px; font-family: Arial, sans-serif; font-size: 14px; line-height: 1.5; color: #333333;">
+        Left column
+      </td>
+    </tr>
+  </table>
+</div>
+<!--[if mso]></td><td width="50%" valign="top"><![endif]-->
+<div class="mob-stack" style="display: inline-block; width: 50%; vertical-align: top;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+    <tr>
+      <td class="mob-pad" style="padding: 20px; font-family: Arial, sans-serif; font-size: 14px; line-height: 1.5; color: #333333;">
+        Right column
+      </td>
+    </tr>
+  </table>
+</div>
+<!--[if mso]></td></tr></table><![endif]-->`,
+    'three-column': `<!--[if mso]><table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr><td width="33%" valign="top"><![endif]-->
+<div class="mob-stack" style="display: inline-block; width: 33.33%; vertical-align: top;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+    <tr>
+      <td class="mob-pad" style="padding: 15px; font-family: Arial, sans-serif; font-size: 14px; line-height: 1.5; color: #333333;">
+        Column 1
+      </td>
+    </tr>
+  </table>
+</div>
+<!--[if mso]></td><td width="34%" valign="top"><![endif]-->
+<div class="mob-stack" style="display: inline-block; width: 33.33%; vertical-align: top;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+    <tr>
+      <td class="mob-pad" style="padding: 15px; font-family: Arial, sans-serif; font-size: 14px; line-height: 1.5; color: #333333;">
+        Column 2
+      </td>
+    </tr>
+  </table>
+</div>
+<!--[if mso]></td><td width="33%" valign="top"><![endif]-->
+<div class="mob-stack" style="display: inline-block; width: 33.33%; vertical-align: top;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+    <tr>
+      <td class="mob-pad" style="padding: 15px; font-family: Arial, sans-serif; font-size: 14px; line-height: 1.5; color: #333333;">
+        Column 3
+      </td>
+    </tr>
+  </table>
+</div>
+<!--[if mso]></td></tr></table><![endif]-->`,
+    'full-width-wrapper': `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
   <tr>
     <td align="center">
-      <table width="600" cellpadding="0" cellspacing="0" border="0" style="max-width: 600px; width: 100%;">
+      <!--[if mso]><table role="presentation" cellpadding="0" cellspacing="0" border="0" width="600" align="center"><tr><td><![endif]-->
+      <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="max-width: 600px; width: 100%;">
         <tr>
-          <td style="padding: 30px 40px; font-family: Arial, sans-serif;">
+          <td class="mob-pad" style="padding: 30px 40px; font-family: Arial, sans-serif;">
             Content inside 600px container...
           </td>
         </tr>
       </table>
+      <!--[if mso]></td></tr></table><![endif]-->
     </td>
   </tr>
 </table>`,
@@ -745,15 +1059,21 @@ const emailBuilder = {
     </td>
   </tr>
 </table>`,
-    'button': `<table width="100%" cellpadding="0" cellspacing="0" border="0">
+    'button': `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
   <tr>
-    <td align="center" style="padding: 20px 40px;">
-      <!--[if mso]><v:roundrect xmlns:v="urn:schemas-microsoft-com:vml" href="https://example.com" style="height:48px;v-text-anchor:middle;width:220px;" arcsize="10%" strokecolor="#1a1a2e" fillcolor="#1a1a2e"><center style="color:#ffffff;font-family:Arial,sans-serif;font-size:16px;font-weight:bold;">Button Text</center></v:roundrect><![endif]-->
-      <!--[if !mso]><!-->
-      <a href="https://example.com" target="_blank" style="background-color: #1a1a2e; color: #ffffff; font-family: Arial, sans-serif; font-size: 16px; font-weight: bold; text-decoration: none; padding: 14px 40px; border-radius: 5px; display: inline-block;">
-        Button Text
-      </a>
-      <!--<![endif]-->
+    <td align="center" class="mob-pad" style="padding: 20px 40px;">
+      <table role="presentation" cellpadding="0" cellspacing="0" border="0" class="mob-btn-full">
+        <tr>
+          <td style="background-color: #1a1a2e; border-radius: 5px; padding: 14px 40px;" align="center">
+            <!--[if mso]><v:roundrect xmlns:v="urn:schemas-microsoft-com:vml" href="https://example.com" style="height:48px;v-text-anchor:middle;width:220px;" arcsize="10%" strokecolor="#1a1a2e" fillcolor="#1a1a2e"><center style="color:#ffffff;font-family:Arial,sans-serif;font-size:16px;font-weight:bold;">Button Text</center></v:roundrect><![endif]-->
+            <!--[if !mso]><!-->
+            <a href="https://example.com" target="_blank" style="color: #ffffff; font-family: Arial, sans-serif; font-size: 16px; font-weight: bold; text-decoration: none; display: inline-block;">
+              Button Text
+            </a>
+            <!--<![endif]-->
+          </td>
+        </tr>
+      </table>
     </td>
   </tr>
 </table>`,
@@ -891,7 +1211,7 @@ ${content}
   },
 
   /**
-   * Generate full HTML email
+   * Generate full HTML email — production-ready with responsive @media queries
    */
   generateFullHTML() {
     const blocks = Array.from(this.canvas.querySelectorAll('.email-block-wrapper'))
@@ -904,38 +1224,75 @@ ${content}
         // Rich text block: extract only the content div, wrap in table
         const richContent = wrapper.querySelector('.email-richtext-content');
         if (richContent) {
-          return `<table width="100%" cellpadding="0" cellspacing="0" border="0"><tr><td style="padding: 30px 40px; font-family: Arial, sans-serif; font-size: 16px; line-height: 1.6; color: #212529;">${richContent.innerHTML}</td></tr></table>`;
+          return `<table width="100%" cellpadding="0" cellspacing="0" border="0"><tr><td class="mob-pad" style="padding: 30px 40px; font-family: Arial, sans-serif; font-size: 16px; line-height: 1.6; color: #212529;">${richContent.innerHTML}</td></tr></table>`;
         }
-        // Standard blocks: strip controls
-        return wrapper.innerHTML.replace(/<div class="email-block-controls">[\s\S]*?<\/div>/, '');
+        // Standard blocks: strip editor-only controls by cloning and removing
+        const clone = wrapper.cloneNode(true);
+        // Remove block controls (move/delete/duplicate buttons)
+        clone.querySelectorAll('.email-block-controls').forEach(el => el.remove());
+        // Remove image URL/alt input controls
+        clone.querySelectorAll('.email-image-controls').forEach(el => el.remove());
+        // Remove video URL controls
+        clone.querySelectorAll('.email-video-controls').forEach(el => el.remove());
+        // Remove countdown editing controls
+        clone.querySelectorAll('.email-countdown-controls').forEach(el => el.remove());
+        // Remove button editing controls (text/url/color inputs) and their wrapping <tr>
+        clone.querySelectorAll('.email-button-controls').forEach(el => {
+          const tr = el.closest('tr');
+          if (tr) tr.remove(); else el.remove();
+        });
+        // Strip contenteditable attributes (not valid in sent emails)
+        clone.querySelectorAll('[contenteditable]').forEach(el => {
+          el.removeAttribute('contenteditable');
+        });
+        // Strip data- attributes used only for editor targeting
+        clone.querySelectorAll('[data-img-target], [data-img-id], [data-alt-id], [data-btn-target], [data-btn-text], [data-btn-url], [data-btn-color], [data-video-link], [data-video-thumb], [data-video-play], [data-video-id], [data-cd-date], [data-cd-label], [data-cd-heading], [data-cd-display], [data-cd-days], [data-cd-hours], [data-cd-mins], [data-cd-secs]').forEach(el => {
+          [...el.attributes].forEach(attr => {
+            if (attr.name.startsWith('data-')) el.removeAttribute(attr.name);
+          });
+        });
+        return clone.innerHTML;
       })
       .join('');
 
     const preheader = document.getElementById('builderPreheader')?.value || '';
 
-    return `
-      <!DOCTYPE html>
-      <html lang="en">
-      <head>
-        <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <meta http-equiv="X-UA-Compatible" content="IE=edge">
-        <title>${document.getElementById('builderCampaignName')?.value || 'Email Campaign'}</title>
-      </head>
-      <body style="margin: 0; padding: 0; font-family: Arial, sans-serif;">
-        ${preheader ? `<div style="display:none;font-size:1px;color:#f8f9fa;line-height:1px;max-height:0px;max-width:0px;opacity:0;overflow:hidden;">${preheader}</div>` : ''}
-        <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color: #f8f9fa;">
-          <tr>
-            <td align="center" style="padding: 40px 20px;">
-              <table class="email-container" cellpadding="0" cellspacing="0" border="0" style="max-width: 600px; width: 100%; background-color: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
-                ${blocks}
-              </table>
-            </td>
-          </tr>
+    return `<!DOCTYPE html>
+<html lang="en" xmlns="http://www.w3.org/1999/xhtml" xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="x-apple-disable-message-reformatting">
+  <meta name="format-detection" content="telephone=no,address=no,email=no,date=no,url=no">
+  <title>${document.getElementById('builderCampaignName')?.value || 'Email Campaign'}</title>
+  <!--[if mso]>
+  <noscript>
+    <xml>
+      <o:OfficeDocumentSettings>
+        <o:AllowPNG/>
+        <o:PixelsPerInch>96</o:PixelsPerInch>
+      </o:OfficeDocumentSettings>
+    </xml>
+  </noscript>
+  <![endif]-->
+  ${this.getResponsiveEmailCSS()}
+</head>
+<body style="margin: 0; padding: 0; font-family: Arial, sans-serif; background-color: #f8f9fa; -webkit-text-size-adjust: 100%; -ms-text-size-adjust: 100%;">
+  ${preheader ? `<div style="display:none;font-size:1px;color:#f8f9fa;line-height:1px;max-height:0px;max-width:0px;opacity:0;overflow:hidden;">${preheader}&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;</div>` : ''}
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color: #f8f9fa;">
+    <tr>
+      <td align="center" style="padding: 40px 20px;" class="mob-pad-sm">
+        <!--[if mso]><table role="presentation" cellpadding="0" cellspacing="0" border="0" width="600" align="center"><tr><td><![endif]-->
+        <table class="email-container" role="presentation" cellpadding="0" cellspacing="0" border="0" style="max-width: 600px; width: 100%; background-color: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
+          ${blocks}
         </table>
-      </body>
-      </html>
-    `;
+        <!--[if mso]></td></tr></table><![endif]-->
+      </td>
+    </tr>
+  </table>
+</body>
+</html>`;
   },
 
   /**
@@ -954,6 +1311,92 @@ ${content}
     URL.revokeObjectURL(url);
 
     utils.showToast('HTML exported successfully!', 'success');
+  },
+
+  /**
+   * Copy HTML to clipboard
+   */
+  async copyHTMLToClipboard() {
+    const html = this.generateFullHTML();
+    try {
+      await navigator.clipboard.writeText(html);
+      utils.showToast('HTML copied to clipboard!', 'success');
+    } catch (err) {
+      // Fallback for older browsers
+      try {
+        const textarea = document.createElement('textarea');
+        textarea.value = html;
+        textarea.style.cssText = 'position:fixed;opacity:0';
+        document.body.appendChild(textarea);
+        textarea.select();
+        const ok = document.execCommand('copy');
+        document.body.removeChild(textarea);
+        utils.showToast(ok ? 'HTML copied to clipboard!' : 'Copy failed — please copy manually', ok ? 'success' : 'error');
+      } catch (fallbackErr) {
+        utils.showToast('Copy failed — please use Export HTML instead', 'error');
+      }
+    }
+  },
+
+  /**
+   * Export plain text version of the email
+   */
+  exportPlainText() {
+    const html = this.generateFullHTML();
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(html, 'text/html');
+
+    // Remove hidden preheader
+    doc.querySelectorAll('div[style*="display:none"], div[style*="display: none"]').forEach(el => el.remove());
+
+    // Convert links to text with URL
+    doc.querySelectorAll('a').forEach(link => {
+      const href = (link.getAttribute('href') || '').trim();
+      const text = link.textContent.trim();
+      if (href && text && href !== text && !href.startsWith('#') && !href.startsWith('{{')) {
+        link.textContent = `${text} (${href})`;
+      }
+    });
+
+    // Convert images to alt text
+    doc.querySelectorAll('img').forEach(img => {
+      const alt = img.getAttribute('alt');
+      if (alt && alt !== 'Image') {
+        const textNode = doc.createTextNode(`[Image: ${alt}]`);
+        img.parentNode.replaceChild(textNode, img);
+      } else {
+        img.remove();
+      }
+    });
+
+    // Get text content with some formatting
+    let text = '';
+    doc.querySelectorAll('h1, h2, h3, h4, h5, h6').forEach(h => {
+      h.textContent = h.textContent.toUpperCase();
+    });
+    doc.querySelectorAll('hr, div[style*="height: 1px"]').forEach(el => {
+      el.textContent = '\n' + '-'.repeat(50) + '\n';
+    });
+
+    text = doc.body.textContent || doc.body.innerText || '';
+
+    // Clean up whitespace
+    text = text
+      .replace(/[ \t]+/g, ' ')
+      .replace(/\n{3,}/g, '\n\n')
+      .trim();
+
+    const blob = new Blob([text], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `email-campaign-${Date.now()}.txt`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+
+    utils.showToast('Plain text version exported!', 'success');
   },
 
   /**
@@ -1004,10 +1447,10 @@ ${content}
   /**
    * Load predefined template
    */
-  loadTemplate(templateType) {
-    // Show block palette for Blank Canvas and Paste HTML, hide for pre-built templates
+  async loadTemplate(templateType) {
+    // Show block palette for all modes except client-promotion (which uses content library)
     const palette = document.getElementById('blockPaletteSection');
-    if (palette) palette.style.display = (!templateType || templateType === 'paste-html') ? 'block' : 'none';
+    if (palette) palette.style.display = (templateType === 'client-promotion') ? 'none' : 'block';
     // Show HTML toolkit only for "I Have HTML" mode
     const toolkit = document.getElementById('htmlToolkitSection');
     if (toolkit) toolkit.style.display = (templateType === 'paste-html') ? 'block' : 'none';
@@ -1017,9 +1460,13 @@ ${content}
       this.blocks = [];
       this.canvas.innerHTML = '';
       this.showEmptyState();
-      document.getElementById('builderCampaignName').value = '';
-      document.getElementById('builderSubject').value = '';
-      document.getElementById('builderPreheader').value = '';
+      const nameEl = document.getElementById('builderCampaignName');
+      const subjEl = document.getElementById('builderSubject');
+      const prehEl = document.getElementById('builderPreheader');
+      if (nameEl) nameEl.value = '';
+      if (subjEl) subjEl.value = '';
+      if (prehEl) prehEl.value = '';
+      this.updateSubjectCounter();
       this.updatePreview();
       utils.showToast('Canvas cleared', 'info');
       return;
@@ -1076,7 +1523,7 @@ ${content}
 
     // Handle client promotion template differently
     if (templateType === 'client-promotion') {
-      this.loadClientPromotionTemplate();
+      await this.loadClientPromotionTemplate();
       return;
     }
 
@@ -1198,60 +1645,110 @@ ${content}
   },
 
   /**
-   * Set view mode (desktop/mobile)
+   * Set view mode (desktop/mobile) for the inline canvas
    */
-  setViewMode(mode) {
+  setViewMode(mode, btn) {
     this.viewMode = mode;
     if (mode === 'mobile') {
       this.canvas.style.maxWidth = '375px';
+      this.canvas.style.margin = '0 auto';
     } else {
       this.canvas.style.maxWidth = '600px';
+      this.canvas.style.margin = '';
     }
+    this.updatePreview();
 
     // Update button states
-    const buttons = document.querySelectorAll('.email-canvas').parentElement.querySelectorAll('.btn-group button');
-    buttons.forEach(btn => btn.classList.remove('active'));
-    event.target.classList.add('active');
+    if (btn) {
+      const group = btn.closest('.btn-group');
+      if (group) {
+        group.querySelectorAll('button').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+      }
+    }
   },
 
   /**
-   * Responsive CSS injected into preview iframe to make email content fit
+   * Responsive email CSS — included in both the generated HTML AND the preview iframe.
+   * Uses @media queries that real email clients (iOS Mail, Gmail app, etc.) honour.
    */
-  previewResponsiveCSS: `<style>
-    /* Preserve 600px container width */
-    .email-container { max-width: 600px !important; width: 100% !important; }
-    /* Force inner tables to respect container */
-    .email-container table { max-width: 100% !important; }
-    img { max-width: 100% !important; height: auto !important; }
-    td, th { word-wrap: break-word !important; overflow-wrap: break-word !important; }
-    body { margin: 0 !important; padding: 0 !important; width: 100% !important; overflow-x: hidden !important; }
-    /* Override fixed-width table attributes inside container */
-    .email-container table[width] { width: 100% !important; }
-  </style>`,
+  getResponsiveEmailCSS() {
+    return `
+    <style type="text/css">
+      /* === BASE RESETS === */
+      body { margin: 0 !important; padding: 0 !important; width: 100% !important; -webkit-text-size-adjust: 100% !important; -ms-text-size-adjust: 100% !important; }
+      table { border-spacing: 0 !important; border-collapse: collapse !important; mso-table-lspace: 0pt !important; mso-table-rspace: 0pt !important; }
+      img { border: 0; outline: none; text-decoration: none; -ms-interpolation-mode: bicubic; }
+      /* Container */
+      .email-container { max-width: 600px !important; width: 100% !important; }
+      .email-container table { max-width: 100% !important; }
+      .email-container table[width] { width: 100% !important; }
+      img { max-width: 100% !important; height: auto !important; }
+      td, th { word-wrap: break-word !important; overflow-wrap: break-word !important; }
+
+      /* === MOBILE RESPONSIVE — max-width: 480px === */
+      @media only screen and (max-width: 480px) {
+        /* Force full-width wrapper */
+        .email-container { width: 100% !important; min-width: 100% !important; }
+
+        /* Stack columns vertically */
+        .mob-stack { display: block !important; width: 100% !important; max-width: 100% !important; }
+
+        /* Full-width images */
+        .mob-full-img { width: 100% !important; max-width: 100% !important; height: auto !important; }
+
+        /* Mobile padding — reduce side gutters */
+        .mob-pad { padding-left: 16px !important; padding-right: 16px !important; }
+        .mob-pad-sm { padding-left: 12px !important; padding-right: 12px !important; }
+
+        /* Mobile typography */
+        .mob-text-lg { font-size: 22px !important; line-height: 28px !important; }
+        .mob-text-md { font-size: 16px !important; line-height: 24px !important; }
+        .mob-text-sm { font-size: 14px !important; line-height: 20px !important; }
+
+        /* Mobile hero heading */
+        .mob-hero-heading { font-size: 24px !important; line-height: 30px !important; }
+
+        /* Mobile buttons — full width */
+        .mob-btn-full { display: block !important; width: 100% !important; text-align: center !important; }
+        .mob-btn-full a { display: block !important; padding: 16px 20px !important; font-size: 18px !important; }
+        .mob-btn-full td { width: 100% !important; }
+
+        /* Mobile centre text */
+        .mob-center { text-align: center !important; }
+
+        /* Hide on mobile */
+        .mob-hide { display: none !important; mso-hide: all !important; }
+
+        /* Show on mobile */
+        .mob-show { display: block !important; max-height: none !important; overflow: visible !important; }
+
+        /* Mobile footer */
+        .mob-footer-pad { padding: 24px 16px !important; }
+
+        /* Company profile — stack logo and text */
+        .mob-profile-img { display: block !important; width: 100% !important; text-align: center !important; padding-bottom: 12px !important; }
+        .mob-profile-text { display: block !important; width: 100% !important; padding-left: 0 !important; text-align: center !important; }
+      }
+    </style>`;
+  },
 
   /** Current preview mode */
   previewDeviceMode: 'desktop',
 
   /**
-   * Write HTML into the preview iframe with responsive overrides
+   * Write HTML into the preview iframe.
+   * The responsive CSS is already baked into generateFullHTML(), so no extra
+   * injection is needed.  We only add a preview-specific viewport meta if
+   * mobile mode is active so the iframe respects the narrow width.
    */
   writePreviewIframe(html) {
     const iframe = document.getElementById('emailPreviewFrame');
     if (!iframe) return;
 
-    // Inject responsive CSS just before </head> or at start of <body>
-    let enhanced = html;
-    if (enhanced.includes('</head>')) {
-      enhanced = enhanced.replace('</head>', this.previewResponsiveCSS + '</head>');
-    } else if (enhanced.includes('<body')) {
-      enhanced = enhanced.replace('<body', this.previewResponsiveCSS + '<body');
-    } else {
-      enhanced = this.previewResponsiveCSS + enhanced;
-    }
-
     const doc = iframe.contentDocument || iframe.contentWindow.document;
     doc.open();
-    doc.write(enhanced);
+    doc.write(html);
     doc.close();
   },
 
@@ -1265,7 +1762,17 @@ ${content}
     if (!modal) return;
 
     const iframe = document.getElementById('emailPreviewFrame');
-    if (iframe) iframe.style.width = '100%';
+    if (iframe) {
+      iframe.style.width = '';
+      iframe.style.margin = '';
+      iframe.style.borderRadius = '';
+      iframe.style.boxShadow = '';
+    }
+
+    // Reset toggle buttons to desktop active
+    modal.querySelectorAll('.btn-group button').forEach((btn, i) => {
+      btn.classList.toggle('active', i === 0);
+    });
 
     this.writePreviewIframe(html);
 
@@ -1274,16 +1781,54 @@ ${content}
   },
 
   /**
-   * Switch preview device in modal (desktop/mobile)
+   * Switch preview device in modal (desktop/mobile).
+   * Mobile mode constrains the iframe to 375px AND injects an extra <style>
+   * that forces the @media rules to apply (some iframes don't honour their
+   * own width for media-query evaluation).
    */
   setPreviewDevice(mode, btn) {
     this.previewDeviceMode = mode;
     const iframe = document.getElementById('emailPreviewFrame');
     if (iframe) {
-      iframe.style.width = mode === 'mobile' ? '375px' : '100%';
+      if (mode === 'mobile') {
+        iframe.style.width = '375px';
+        iframe.style.margin = '0 auto';
+        iframe.style.borderRadius = '20px';
+        iframe.style.boxShadow = '0 0 0 8px #1a1a2e, 0 0 0 10px #333';
+      } else {
+        iframe.style.width = '';
+        iframe.style.margin = '';
+        iframe.style.borderRadius = '';
+        iframe.style.boxShadow = '';
+      }
     }
-    // Re-render content so responsive CSS applies at correct width
-    const html = this.generateFullHTML();
+    // Re-render content; for mobile, inject a force-override so the media
+    // queries apply even if the iframe doesn't report a narrow viewport.
+    let html = this.generateFullHTML();
+    if (mode === 'mobile') {
+      const mobileForceCSS = `<style type="text/css">
+        /* PREVIEW ONLY: Force mobile styles in narrow iframe */
+        .email-container { width: 100% !important; min-width: 100% !important; }
+        .mob-stack { display: block !important; width: 100% !important; max-width: 100% !important; }
+        .mob-full-img { width: 100% !important; max-width: 100% !important; height: auto !important; }
+        .mob-pad { padding-left: 16px !important; padding-right: 16px !important; }
+        .mob-pad-sm { padding-left: 12px !important; padding-right: 12px !important; }
+        .mob-text-lg { font-size: 22px !important; line-height: 28px !important; }
+        .mob-text-md { font-size: 16px !important; line-height: 24px !important; }
+        .mob-text-sm { font-size: 14px !important; line-height: 20px !important; }
+        .mob-hero-heading { font-size: 24px !important; line-height: 30px !important; }
+        .mob-btn-full { display: block !important; width: 100% !important; text-align: center !important; }
+        .mob-btn-full a { display: block !important; padding: 16px 20px !important; font-size: 18px !important; }
+        .mob-btn-full td { width: 100% !important; }
+        .mob-center { text-align: center !important; }
+        .mob-hide { display: none !important; }
+        .mob-show { display: block !important; max-height: none !important; overflow: visible !important; }
+        .mob-footer-pad { padding: 24px 16px !important; }
+        .mob-profile-img { display: block !important; width: 100% !important; text-align: center !important; padding-bottom: 12px !important; }
+        .mob-profile-text { display: block !important; width: 100% !important; padding-left: 0 !important; text-align: center !important; }
+      </style>`;
+      html = html.replace('</head>', mobileForceCSS + '</head>');
+    }
     this.writePreviewIframe(html);
     // Update button states
     if (btn) {
@@ -1315,7 +1860,7 @@ ${content}
    * Load "I Have HTML" template — a single large HTML code editor
    */
   loadPasteHtmlTemplate() {
-    const blockId = 'block-' + Date.now();
+    const blockId = 'block-' + (++this._blockIdCounter) + '-' + Math.random().toString(36).slice(2, 7);
 
     const blockWrapper = document.createElement('div');
     blockWrapper.className = 'email-block-wrapper';
@@ -1362,11 +1907,13 @@ ${content}
     console.log('Loading Client Promotion template...');
 
     // Update campaign settings
-    document.getElementById('builderCampaignName').value = 'Client Promotion';
-    document.getElementById('builderSubject').value = 'Vote for {{company_name}} at the British Trade Awards';
+    const nameEl = document.getElementById('builderCampaignName');
+    const subjEl = document.getElementById('builderSubject');
+    if (nameEl) nameEl.value = 'Client Promotion';
+    if (subjEl) subjEl.value = 'Vote for {{company_name}} at the British Trade Awards';
 
     // Show content library panel
-    this.showContentLibrary();
+    await this.showContentLibrary();
 
     // Load the HTML template
     const htmlTemplate = this.getClientPromotionHTML();
@@ -1504,7 +2051,7 @@ ${content}
     let panel = document.getElementById('contentLibraryPanel');
     if (!panel) {
       // Create panel if it doesn't exist
-      const builderContainer = document.querySelector('.email-builder-content');
+      const builderContainer = document.getElementById('email-builder-content');
       if (!builderContainer) return;
 
       panel = document.createElement('div');
@@ -1658,12 +2205,14 @@ ${content}
 
       // Load company images from media gallery
       const { data: images, error: imgError } = await STATE.client
-        .from('media_items')
+        .from('media_gallery')
         .select('*')
         .eq('organisation_id', orgId)
-        .eq('media_type', 'image')
-        .order('created_at', { ascending: false });
+        .in('file_type', ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/svg+xml'])
+        .eq('published', true)
+        .order('uploaded_at', { ascending: false });
 
+      if (imgError) console.warn('Failed to load company images:', imgError);
       const companyImages = images || [];
 
       // Display draggable content items
@@ -1743,19 +2292,16 @@ ${content}
     document.querySelectorAll('.drop-zone').forEach(zone => {
       zone.addEventListener('dragover', (e) => {
         e.preventDefault();
-        zone.style.borderColor = '#0d6efd';
-        zone.style.backgroundColor = '#e7f1ff';
+        zone.classList.add('drag-over');
       });
 
       zone.addEventListener('dragleave', (e) => {
-        zone.style.borderColor = '#ccc';
-        zone.style.backgroundColor = 'transparent';
+        zone.classList.remove('drag-over');
       });
 
       zone.addEventListener('drop', (e) => {
         e.preventDefault();
-        zone.style.borderColor = '#ccc';
-        zone.style.backgroundColor = 'transparent';
+        zone.classList.remove('drag-over');
 
         const contentType = e.dataTransfer.getData('contentType');
         const contentValue = e.dataTransfer.getData('contentValue');
@@ -1787,7 +2333,7 @@ ${content}
 
       case 'image':
         if (contentValue) {
-          zone.innerHTML = `<img src="${contentValue}" style="width: 680px; height: auto; display: block; border: none;">`;
+          zone.innerHTML = `<img src="${contentValue}" style="width: 100%; max-width: 600px; height: auto; display: block; border: none;">`;
         }
         break;
 
@@ -1819,6 +2365,7 @@ ${content}
         break;
     }
 
+    zone.classList.add('filled');
     utils.showToast('Content added successfully', 'success');
     this.updatePreview();
   },
@@ -1844,22 +2391,26 @@ ${content}
             return `<option value="${list.id}">${utils.escapeHtml(list.list_name)}${typeLabel}</option>`;
           }).join('');
 
-        select.addEventListener('change', async (e) => {
-          const countEl = document.getElementById('builderListCount');
-          if (e.target.value && countEl) {
-            const { count, error: countErr } = await STATE.client
-              .from('email_list_subscribers')
-              .select('id', { count: 'exact', head: true })
-              .eq('list_id', e.target.value)
-              .eq('status', 'active');
+        // Only attach the change listener once
+        if (!select._listenerAttached) {
+          select._listenerAttached = true;
+          select.addEventListener('change', async (e) => {
+            const countEl = document.getElementById('builderListCount');
+            if (e.target.value && countEl) {
+              const { count, error: countErr } = await STATE.client
+                .from('email_list_subscribers')
+                .select('id', { count: 'exact', head: true })
+                .eq('list_id', e.target.value)
+                .eq('status', 'active');
 
-            if (!countErr) {
-              countEl.textContent = `${count || 0} active subscribers`;
+              if (!countErr) {
+                countEl.textContent = `${count || 0} active subscribers`;
+              }
+            } else if (countEl) {
+              countEl.textContent = '';
             }
-          } else if (countEl) {
-            countEl.textContent = '';
-          }
-        });
+          });
+        }
       }
     } catch (error) {
       console.error('Error loading email lists:', error);
@@ -1976,14 +2527,14 @@ ${content}
           status: 'Sent',
           sent_date: new Date().toISOString(),
           total_recipients: count || 0,
-          recipients: listId,
           notes: JSON.stringify({
             html,
             from_name: fromName,
             from_email: fromEmail,
             reply_to: replyTo,
             list_id: listId,
-            list_name: listName
+            list_name: listName,
+            preheader: document.getElementById('builderPreheader')?.value || ''
           })
         });
       } catch (logErr) {
@@ -2113,14 +2664,14 @@ ${content}
           status: 'Scheduled',
           scheduled_date: scheduledAt.toISOString(),
           total_recipients: count || 0,
-          recipients: listId,
           notes: JSON.stringify({
             html,
             from_name: fromName,
             from_email: fromEmail,
             reply_to: replyTo,
             list_id: listId,
-            list_name: listName
+            list_name: listName,
+            preheader: document.getElementById('builderPreheader')?.value || ''
           })
         })
         .select()
@@ -2201,6 +2752,7 @@ ${content}
 
       if (nameInput) nameInput.value = (campaign.campaign_name || '') + ' (Copy)';
       if (subjectInput) subjectInput.value = campaign.subject || '';
+      if (preheaderInput && notes.preheader) preheaderInput.value = notes.preheader;
       if (fromNameInput && notes.from_name) fromNameInput.value = notes.from_name;
       if (fromEmailInput && notes.from_email) fromEmailInput.value = notes.from_email;
       if (replyToInput && notes.reply_to) replyToInput.value = notes.reply_to;
@@ -2224,7 +2776,7 @@ ${content}
         const innerTable = doc.querySelector('table table');
         const bodyContent = innerTable ? innerTable.innerHTML : doc.body.innerHTML;
 
-        const blockId = 'block_' + Date.now();
+        const blockId = 'block-' + (++this._blockIdCounter) + '-' + Math.random().toString(36).slice(2, 7);
         const blockWrapper = document.createElement('div');
         blockWrapper.className = 'email-block-wrapper';
         blockWrapper.setAttribute('data-block-id', blockId);
@@ -2241,6 +2793,10 @@ ${content}
         this.addBlockControls(blockWrapper, blockId);
         this.updatePreview();
       }
+
+      // Ensure block palette is visible so user can edit the clone
+      const palette = document.getElementById('blockPaletteSection');
+      if (palette) palette.style.display = 'block';
 
       // Switch to Send Now mode
       const sendNowRadio = document.getElementById('sendModeNow');
@@ -2281,9 +2837,9 @@ ${content}
         .limit(100);
 
       const statusBadge = this.getStatusBadge(campaign.status);
-      const created = campaign.created_at ? new Date(campaign.created_at).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '-';
-      const sent = campaign.sent_date ? new Date(campaign.sent_date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '-';
-      const scheduled = campaign.scheduled_date ? new Date(campaign.scheduled_date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '-';
+      const created = campaign.created_at ? new Date(campaign.created_at).toLocaleString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '-';
+      const sent = campaign.sent_date ? new Date(campaign.sent_date).toLocaleString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '-';
+      const scheduled = campaign.scheduled_date ? new Date(campaign.scheduled_date).toLocaleString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '-';
 
       let recipientRows = '';
       if (logs && logs.length > 0) {
@@ -2433,7 +2989,7 @@ ${content}
     const wrapper = document.querySelector(`[data-block-id="${blockId}"]`);
     if (!wrapper) return;
 
-    const newBlockId = 'block-' + Date.now();
+    const newBlockId = 'block-' + (++this._blockIdCounter) + '-' + Math.random().toString(36).slice(2, 7);
     const clone = wrapper.cloneNode(true);
     clone.setAttribute('data-block-id', newBlockId);
 
@@ -2478,18 +3034,26 @@ ${content}
    * Get image block with URL input
    */
   getImageBlock() {
-    const blockId = 'img-' + Date.now();
+    const blockId = 'img-' + (++this._blockIdCounter) + '-' + Math.random().toString(36).slice(2, 7);
     return `
-      <table width="100%" cellpadding="0" cellspacing="0" border="0">
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
         <tr>
-          <td style="padding: 20px 40px;">
+          <td class="mob-pad" style="padding: 20px 40px;">
             <div class="email-image-controls" style="margin-bottom: 8px;">
-              <div class="input-group input-group-sm">
+              <div class="input-group input-group-sm mb-1">
                 <span class="input-group-text"><i class="bi bi-link-45deg"></i></span>
                 <input type="text" class="form-control form-control-sm email-image-url" placeholder="Paste image URL..." data-img-id="${blockId}" onchange="emailBuilder.updateImageFromUrl(this)">
+                <button class="btn btn-outline-primary btn-sm" type="button" onclick="document.getElementById('imgUpload-${blockId}').click()" title="Upload image">
+                  <i class="bi bi-upload"></i> Upload
+                </button>
               </div>
+              <div class="input-group input-group-sm">
+                <span class="input-group-text"><i class="bi bi-fonts"></i></span>
+                <input type="text" class="form-control form-control-sm" placeholder="Alt text (accessibility)..." data-alt-id="${blockId}" onchange="emailBuilder.updateImageAlt(this)">
+              </div>
+              <input type="file" id="imgUpload-${blockId}" accept="image/*" style="display:none" onchange="emailBuilder.uploadImageForBlock(this, '${blockId}')">
             </div>
-            <img src="data:image/svg+xml,${encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="520" height="300"><rect width="520" height="300" fill="#dee2e6" rx="8"/><text x="260" y="145" text-anchor="middle" font-family="Arial,sans-serif" font-size="18" fill="#6c757d">Paste an image URL above</text><text x="260" y="170" text-anchor="middle" font-family="Arial,sans-serif" font-size="14" fill="#adb5bd">or drag an image from your media gallery</text></svg>')}" alt="Image" data-img-target="${blockId}" style="width: 100%; max-width: 520px; height: auto; display: block; border-radius: 8px;">
+            <img src="data:image/svg+xml,${encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="520" height="300"><rect width="520" height="300" fill="#dee2e6" rx="8"/><text x="260" y="145" text-anchor="middle" font-family="Arial,sans-serif" font-size="18" fill="#6c757d">Paste an image URL or click Upload</text><text x="260" y="170" text-anchor="middle" font-family="Arial,sans-serif" font-size="14" fill="#adb5bd">or drag an image from your media gallery</text></svg>')}" alt="Image" data-img-target="${blockId}" style="width: 100%; max-width: 520px; height: auto; display: block; border-radius: 8px;" class="mob-full-img">
           </td>
         </tr>
       </table>
@@ -2511,6 +3075,98 @@ ${content}
     }
   },
 
+  /**
+   * Update image alt text
+   */
+  updateImageAlt(input) {
+    const altText = input.value.trim();
+    const imgId = input.getAttribute('data-alt-id');
+    const img = document.querySelector(`img[data-img-target="${imgId}"]`);
+    if (img) {
+      img.alt = altText || 'Image';
+      this.markUnsavedChanges();
+      this.updatePreview();
+    }
+  },
+
+  /**
+   * Upload image file directly from the Image block
+   */
+  async uploadImageForBlock(input, blockId) {
+    const file = input.files[0];
+    if (!file) return;
+
+    // Validate file type
+    const validTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/svg+xml'];
+    if (!validTypes.includes(file.type)) {
+      utils.showToast('Please select a valid image file (JPEG, PNG, GIF, WebP, SVG)', 'error');
+      input.value = '';
+      return;
+    }
+
+    // Validate file size (5MB max)
+    const maxSize = 5 * 1024 * 1024;
+    if (file.size > maxSize) {
+      utils.showToast('Image must be under 5MB', 'error');
+      input.value = '';
+      return;
+    }
+
+    const img = document.querySelector(`img[data-img-target="${blockId}"]`);
+    const urlInput = document.querySelector(`input[data-img-id="${blockId}"]`);
+
+    try {
+      // Show uploading state
+      if (img) {
+        img.style.opacity = '0.5';
+      }
+      utils.showToast('Uploading image...', 'info');
+
+      // Build unique file path
+      const timestamp = Date.now();
+      const randomSuffix = Math.random().toString(36).substring(2, 8);
+      const safeFileName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
+      const filePath = `email-builder/${timestamp}_${randomSuffix}_${safeFileName}`;
+
+      // Upload to Supabase storage (media-gallery bucket)
+      const { error: uploadError } = await STATE.client.storage
+        .from('media-gallery')
+        .upload(filePath, file, { cacheControl: '3600' });
+
+      if (uploadError) throw uploadError;
+
+      // Get public URL
+      const { data: urlData } = STATE.client.storage
+        .from('media-gallery')
+        .getPublicUrl(filePath);
+
+      const publicUrl = urlData.publicUrl;
+
+      // Update the image element and URL input
+      if (img) {
+        img.src = publicUrl;
+        img.style.opacity = '1';
+      }
+      if (urlInput) {
+        urlInput.value = publicUrl;
+      }
+
+      this.markUnsavedChanges();
+      this.updatePreview();
+      utils.showToast('Image uploaded successfully', 'success');
+
+    } catch (error) {
+      console.error('Image upload failed:', error);
+      if (img) {
+        img.style.opacity = '1';
+      }
+      utils.showToast('Image upload failed: ' + (error.message || 'Unknown error'), 'error');
+    }
+
+    // Reset file input
+    input.value = '';
+  },
+
   // ==================================================
   // BUTTON URL/TEXT EDITING
   // ==================================================
@@ -2519,9 +3175,9 @@ ${content}
    * Get button block with editable URL and text
    */
   getButtonBlock() {
-    const blockId = 'btn-' + Date.now();
+    const blockId = 'btn-' + (++this._blockIdCounter) + '-' + Math.random().toString(36).slice(2, 7);
     return `
-      <table width="100%" cellpadding="0" cellspacing="0" border="0">
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
         <tr>
           <td style="padding: 10px 40px 0;">
             <div class="email-button-controls" style="margin-bottom: 8px;">
@@ -2540,8 +3196,8 @@ ${content}
           </td>
         </tr>
         <tr>
-          <td style="padding: 10px 40px 30px;" align="center">
-            <table cellpadding="0" cellspacing="0" border="0">
+          <td class="mob-pad" style="padding: 10px 40px 30px;" align="center">
+            <table role="presentation" cellpadding="0" cellspacing="0" border="0" class="mob-btn-full">
               <tr>
                 <td data-btn-target="${blockId}" style="background-color: #0d6efd; border-radius: 6px; padding: 15px 40px;">
                   <a href="{{website}}" style="color: #ffffff; font-family: Arial, sans-serif; font-size: 16px; font-weight: bold; text-decoration: none; display: inline-block;">
@@ -2655,11 +3311,16 @@ ${content}
    * Rewire event listeners after undo/redo restore
    */
   rewireCanvasEvents() {
+    // Clone-replace elements to remove any stale listeners before re-attaching
     this.canvas.querySelectorAll('.email-richtext-content').forEach(el => {
-      el.addEventListener('input', () => this.updatePreview());
+      const fresh = el.cloneNode(true);
+      el.parentNode.replaceChild(fresh, el);
+      fresh.addEventListener('input', () => this.updatePreview());
     });
     this.canvas.querySelectorAll('[contenteditable="true"]').forEach(el => {
-      el.addEventListener('input', () => {
+      const fresh = el.cloneNode(true);
+      el.parentNode.replaceChild(fresh, el);
+      fresh.addEventListener('input', () => {
         this.markUnsavedChanges();
         this.updatePreview();
       });
@@ -2775,7 +3436,7 @@ ${content}
       }
 
       // Restore canvas - prefer stored canvas HTML for block-level fidelity
-      if (notes.canvas_html && notes.blocks) {
+      if (notes.canvas_html && Array.isArray(notes.blocks)) {
         this.blocks = notes.blocks;
         this.canvas.innerHTML = notes.canvas_html;
         this.rewireCanvasEvents();
@@ -2783,7 +3444,7 @@ ${content}
         // Fallback: load as single HTML code block (same as clone)
         this.blocks = [];
         this.canvas.innerHTML = '';
-        const blockId = 'block_' + Date.now();
+        const blockId = 'block-' + (++this._blockIdCounter) + '-' + Math.random().toString(36).slice(2, 7);
         const blockWrapper = document.createElement('div');
         blockWrapper.className = 'email-block-wrapper';
         blockWrapper.setAttribute('data-block-id', blockId);
@@ -2798,6 +3459,10 @@ ${content}
         this.blocks.push({ id: blockId, type: 'html-code' });
         this.addBlockControls(blockWrapper, blockId);
       }
+
+      // Ensure block palette is visible so user can add more blocks
+      const palette = document.getElementById('blockPaletteSection');
+      if (palette) palette.style.display = 'block';
 
       // Update subject counter
       this.updateSubjectCounter();
@@ -3027,14 +3692,23 @@ ${content}
     if (!subjectB) { utils.showToast('Please enter Subject B (variant)', 'warning'); return; }
     if (this.blocks.length === 0) { utils.showToast('Please add content first', 'warning'); return; }
 
-    const { count } = await STATE.client
+    const { count, error: countError } = await STATE.client
       .from('email_list_subscribers')
       .select('id', { count: 'exact', head: true })
       .eq('list_id', listId)
       .eq('status', 'active');
 
-    const countA = Math.round((count || 0) * splitPercent / 100);
-    const countB = (count || 0) - countA;
+    if (countError) {
+      utils.showToast('Failed to get subscriber count: ' + countError.message, 'error');
+      return;
+    }
+    if (!count || count === 0) {
+      utils.showToast('No active subscribers in this list', 'warning');
+      return;
+    }
+
+    const countA = Math.round(count * splitPercent / 100);
+    const countB = count - countA;
     const listName = document.getElementById('builderEmailList')?.selectedOptions[0]?.text || 'selected list';
 
     if (!confirm(`A/B Test Campaign:\n\nVariant A (${splitPercent}%): "${subjectA}" -> ${countA} recipients\nVariant B (${100 - splitPercent}%): "${subjectB}" -> ${countB} recipients\n\nTotal: ${count} in "${listName}"\n\nProceed?`)) {
@@ -3067,7 +3741,8 @@ ${content}
         p_from_email: fromEmail,
         p_reply_to: replyTo,
         p_campaign_name: (campaignName || subjectB) + ' [B]',
-        p_offset: countA
+        p_offset: countA,
+        p_limit: countB
       });
 
       if (errorA) throw errorA;
@@ -3081,8 +3756,7 @@ ${content}
           status: 'Sent',
           sent_date: new Date().toISOString(),
           total_recipients: countA,
-          recipients: listId,
-          notes: JSON.stringify({ html, from_name: fromName, from_email: fromEmail, reply_to: replyTo, ab_test: true, variant: 'A', split: splitPercent })
+          notes: JSON.stringify({ html, from_name: fromName, from_email: fromEmail, reply_to: replyTo, list_id: listId, ab_test: true, variant: 'A', split: splitPercent })
         },
         {
           campaign_name: (campaignName || subjectB) + ' [A/B Test - B]',
@@ -3090,8 +3764,7 @@ ${content}
           status: 'Sent',
           sent_date: new Date().toISOString(),
           total_recipients: countB,
-          recipients: listId,
-          notes: JSON.stringify({ html, from_name: fromName, from_email: fromEmail, reply_to: replyTo, ab_test: true, variant: 'B', split: 100 - splitPercent })
+          notes: JSON.stringify({ html, from_name: fromName, from_email: fromEmail, reply_to: replyTo, list_id: listId, ab_test: true, variant: 'B', split: 100 - splitPercent })
         }
       ]);
 
@@ -3112,16 +3785,16 @@ ${content}
    */
   getFooterBlock() {
     return `
-      <table width="100%" cellpadding="0" cellspacing="0" border="0">
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
         <tr>
-          <td style="padding: 40px; background-color: #212529; text-align: center;">
-            <p style="margin: 0 0 10px 0; font-family: Arial, sans-serif; font-size: 14px; color: #ffffff;">
+          <td class="mob-footer-pad" style="padding: 40px; background-color: #212529; text-align: center;">
+            <p class="mob-text-sm" style="margin: 0 0 10px 0; font-family: Arial, sans-serif; font-size: 14px; line-height: 20px; color: #ffffff;">
               &copy; ${new Date().getFullYear()} British Trade Awards. All rights reserved.
             </p>
-            <p style="margin: 0 0 10px 0; font-family: Arial, sans-serif; font-size: 12px; color: #adb5bd;">
+            <p class="mob-text-sm" style="margin: 0 0 10px 0; font-family: Arial, sans-serif; font-size: 12px; line-height: 18px; color: #adb5bd;">
               You received this email because you are a registered participant in the British Trade Awards.
             </p>
-            <p style="margin: 0; font-family: Arial, sans-serif; font-size: 12px;">
+            <p class="mob-text-sm" style="margin: 0; font-family: Arial, sans-serif; font-size: 12px; line-height: 18px;">
               <a href="{{unsubscribe_url}}" style="color: #0d6efd; text-decoration: none;">Unsubscribe</a> |
               <a href="{{view_in_browser_url}}" style="color: #0d6efd; text-decoration: none;">View in Browser</a>
             </p>
@@ -3186,8 +3859,8 @@ ${content}
 
       tbody.innerHTML = campaigns.map(c => {
         const statusBadge = this.getStatusBadge(c.status);
-        const sentDate = c.sent_date ? new Date(c.sent_date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '';
-        const scheduledDate = c.scheduled_date ? new Date(c.scheduled_date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '';
+        const sentDate = c.sent_date ? new Date(c.sent_date).toLocaleString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '';
+        const scheduledDate = c.scheduled_date ? new Date(c.scheduled_date).toLocaleString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '';
         const displayDate = sentDate || scheduledDate || '-';
         const openRate = c.total_recipients > 0 ? Math.round((c.opened_count || 0) / c.total_recipients * 100) : 0;
         const clickRate = c.total_recipients > 0 ? Math.round((c.clicked_count || 0) / c.total_recipients * 100) : 0;
@@ -3372,9 +4045,12 @@ ${content}
 
       const state = JSON.parse(saved);
 
-      if (state.campaignName) document.getElementById('builderCampaignName').value = state.campaignName;
-      if (state.subject) document.getElementById('builderSubject').value = state.subject;
-      if (state.preheader) document.getElementById('builderPreheader').value = state.preheader;
+      const nameEl = document.getElementById('builderCampaignName');
+      const subjectEl = document.getElementById('builderSubject');
+      const preheaderEl = document.getElementById('builderPreheader');
+      if (state.campaignName && nameEl) nameEl.value = state.campaignName;
+      if (state.subject && subjectEl) subjectEl.value = state.subject;
+      if (state.preheader && preheaderEl) preheaderEl.value = state.preheader;
 
       if (state.canvasHTML && state.blocks) {
         this.blocks = state.blocks;

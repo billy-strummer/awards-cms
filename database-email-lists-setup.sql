@@ -16,8 +16,8 @@ CREATE TABLE IF NOT EXISTS email_lists (
   -- Categorization
   list_type VARCHAR(50) DEFAULT 'general', -- 'general', 'winners', 'nominees', 'sponsors', 'vip', 'event', 'custom'
 
-  -- Related Records
-  award_id UUID REFERENCES awards(id) ON DELETE SET NULL,
+  -- Related Records (awards is a VIEW so no FK constraint, just store the UUID)
+  award_id UUID,
   event_id UUID REFERENCES events(id) ON DELETE SET NULL,
 
   -- List Settings

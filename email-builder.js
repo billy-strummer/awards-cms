@@ -28,6 +28,8 @@ const emailBuilder = {
   abVariantB: '',
   // Block ID counter (avoids Date.now() collisions when adding blocks rapidly)
   _blockIdCounter: 0,
+  // Drag-to-reorder tracking
+  _reorderDragId: null,
 
   /**
    * Initialize email builder
@@ -63,10 +65,11 @@ const emailBuilder = {
   setupDragAndDrop() {
     const palette = document.querySelectorAll('.email-block-item');
 
-    // Make blocks draggable
+    // Make palette blocks draggable
     palette.forEach(block => {
       block.addEventListener('dragstart', (e) => {
         e.dataTransfer.setData('blockType', block.getAttribute('data-block-type'));
+        e.dataTransfer.effectAllowed = 'copy';
         block.classList.add('dragging');
       });
 
@@ -75,25 +78,81 @@ const emailBuilder = {
       });
     });
 
-    // Setup canvas drop zone
+    // Setup canvas drop zone for palette blocks AND block reordering
     this.canvas.addEventListener('dragover', (e) => {
       e.preventDefault();
-      this.canvas.classList.add('drag-over');
+      e.dataTransfer.dropEffect = this._reorderDragId ? 'move' : 'copy';
+
+      // Show drop indicator between blocks when reordering
+      if (this._reorderDragId) {
+        const afterEl = this._getDragAfterElement(e.clientY);
+        const indicator = this.canvas.querySelector('.block-drop-indicator');
+        if (!indicator) {
+          const ind = document.createElement('div');
+          ind.className = 'block-drop-indicator';
+          this.canvas.appendChild(ind);
+        }
+        const ind = this.canvas.querySelector('.block-drop-indicator');
+        if (afterEl) {
+          this.canvas.insertBefore(ind, afterEl);
+        } else {
+          this.canvas.appendChild(ind);
+        }
+      } else {
+        this.canvas.classList.add('drag-over');
+      }
     });
 
     this.canvas.addEventListener('dragleave', (e) => {
       this.canvas.classList.remove('drag-over');
+      this.canvas.querySelector('.block-drop-indicator')?.remove();
     });
 
     this.canvas.addEventListener('drop', (e) => {
       e.preventDefault();
       this.canvas.classList.remove('drag-over');
+      this.canvas.querySelector('.block-drop-indicator')?.remove();
 
+      // Block reorder drop
+      if (this._reorderDragId) {
+        const draggedEl = document.querySelector(`[data-block-id="${this._reorderDragId}"]`);
+        if (draggedEl) {
+          this.saveUndoState();
+          const afterEl = this._getDragAfterElement(e.clientY);
+          if (afterEl) {
+            this.canvas.insertBefore(draggedEl, afterEl);
+          } else {
+            this.canvas.appendChild(draggedEl);
+          }
+          this.markUnsavedChanges();
+          this.updatePreview();
+        }
+        this._reorderDragId = null;
+        return;
+      }
+
+      // Palette block drop
       const blockType = e.dataTransfer.getData('blockType');
       if (blockType) {
         this.addBlock(blockType);
       }
     });
+  },
+
+  /**
+   * Get the element after which a dragged block should be inserted
+   */
+  _getDragAfterElement(y) {
+    const blocks = [...this.canvas.querySelectorAll('.email-block-wrapper:not(.dragging-block)')];
+    let closest = { offset: Number.POSITIVE_INFINITY, element: null };
+    blocks.forEach(child => {
+      const box = child.getBoundingClientRect();
+      const offset = y - box.top - box.height / 2;
+      if (offset < 0 && offset > -closest.offset) {
+        closest = { offset: Math.abs(offset), element: child };
+      }
+    });
+    return closest.element;
   },
 
   /**
@@ -214,6 +273,8 @@ const emailBuilder = {
       'award-list': this.getAwardListBlock(),
       'button': this.getButtonBlock(),
       'image': this.getImageBlock(),
+      'video': this.getVideoBlock(),
+      'countdown': this.getCountdownBlock(),
       'divider': this.getDividerBlock(),
       'social-links': this.getSocialLinksBlock(),
       'richtext': this.getRichTextBlock(blockId),
@@ -395,6 +456,150 @@ const emailBuilder = {
     `;
   },
 
+  getVideoBlock() {
+    const blockId = 'vid-' + (++this._blockIdCounter) + '-' + Math.random().toString(36).slice(2, 7);
+    return `
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+        <tr>
+          <td class="mob-pad" style="padding: 20px 40px;">
+            <div class="email-video-controls" style="margin-bottom: 8px;">
+              <div class="input-group input-group-sm">
+                <span class="input-group-text"><i class="bi bi-youtube"></i></span>
+                <input type="text" class="form-control form-control-sm" placeholder="Paste YouTube or Vimeo URL..." data-video-id="${blockId}" onchange="emailBuilder.updateVideoThumbnail(this)">
+              </div>
+            </div>
+            <a href="#" data-video-link="${blockId}" style="display: block; position: relative; text-decoration: none;">
+              <img src="data:image/svg+xml,${encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="520" height="293"><rect width="520" height="293" fill="#1a1a2e" rx="8"/><polygon points="235,120 295,147 235,174" fill="#fff" opacity="0.9"/><circle cx="260" cy="147" r="40" fill="none" stroke="#fff" stroke-width="3" opacity="0.7"/><text x="260" y="220" text-anchor="middle" font-family="Arial,sans-serif" font-size="14" fill="#888">Paste a YouTube or Vimeo URL above</text></svg>')}" alt="Video thumbnail" data-video-thumb="${blockId}" style="width: 100%; max-width: 520px; height: auto; display: block; border-radius: 8px;">
+              <div data-video-play="${blockId}" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 72px; height: 72px; background: rgba(255,0,0,0.85); border-radius: 50%; display: none; align-items: center; justify-content: center;">
+                <div style="width: 0; height: 0; border-style: solid; border-width: 14px 0 14px 26px; border-color: transparent transparent transparent #fff; margin-left: 5px;"></div>
+              </div>
+            </a>
+          </td>
+        </tr>
+      </table>
+    `;
+  },
+
+  /**
+   * Update video thumbnail from YouTube/Vimeo URL
+   */
+  updateVideoThumbnail(input) {
+    const url = input.value.trim();
+    if (!url) return;
+    const videoId = input.getAttribute('data-video-id');
+    const thumb = document.querySelector(`img[data-video-thumb="${videoId}"]`);
+    const link = document.querySelector(`a[data-video-link="${videoId}"]`);
+    const playBtn = document.querySelector(`div[data-video-play="${videoId}"]`);
+
+    // Extract YouTube ID
+    let ytId = null;
+    const ytMatch = url.match(/(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([\w-]{11})/);
+    if (ytMatch) ytId = ytMatch[1];
+
+    // Extract Vimeo ID
+    let vimeoId = null;
+    const vimeoMatch = url.match(/vimeo\.com\/(\d+)/);
+    if (vimeoMatch) vimeoId = vimeoMatch[1];
+
+    if (ytId) {
+      if (thumb) thumb.src = `https://img.youtube.com/vi/${ytId}/maxresdefault.jpg`;
+      if (link) link.href = `https://www.youtube.com/watch?v=${ytId}`;
+      if (playBtn) playBtn.style.display = 'flex';
+      this.markUnsavedChanges();
+      this.updatePreview();
+    } else if (vimeoId) {
+      if (thumb) thumb.src = `https://vumbnail.com/${vimeoId}.jpg`;
+      if (link) link.href = `https://vimeo.com/${vimeoId}`;
+      if (playBtn) playBtn.style.display = 'flex';
+      this.markUnsavedChanges();
+      this.updatePreview();
+    } else {
+      utils.showToast('Please enter a valid YouTube or Vimeo URL', 'warning');
+    }
+  },
+
+  getCountdownBlock() {
+    const blockId = 'cd-' + (++this._blockIdCounter) + '-' + Math.random().toString(36).slice(2, 7);
+    // Default to 30 days from now
+    const defaultDate = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+    return `
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+        <tr>
+          <td class="mob-pad" style="padding: 30px 40px; text-align: center; background-color: #1a1a2e;">
+            <div class="email-countdown-controls" style="margin-bottom: 12px;">
+              <div class="row g-1 justify-content-center">
+                <div class="col-auto">
+                  <input type="date" class="form-control form-control-sm" data-cd-date="${blockId}" value="${defaultDate}" onchange="emailBuilder.updateCountdown('${blockId}')">
+                </div>
+                <div class="col-auto">
+                  <input type="text" class="form-control form-control-sm" data-cd-label="${blockId}" placeholder="Event label..." value="Event starts in" onchange="emailBuilder.updateCountdown('${blockId}')" style="width: 160px;">
+                </div>
+              </div>
+            </div>
+            <p style="margin: 0 0 8px; font-family: Arial, sans-serif; font-size: 14px; color: #adb5bd; text-transform: uppercase; letter-spacing: 2px;" data-cd-heading="${blockId}" contenteditable="true">Event starts in</p>
+            <table role="presentation" cellpadding="0" cellspacing="0" border="0" align="center" data-cd-display="${blockId}">
+              <tr>
+                <td style="padding: 0 10px; text-align: center;">
+                  <div style="font-family: 'Courier New', monospace; font-size: 48px; font-weight: bold; color: #ffffff; line-height: 1;" class="mob-text-lg" data-cd-days="${blockId}">30</div>
+                  <div style="font-family: Arial, sans-serif; font-size: 11px; color: #adb5bd; text-transform: uppercase; letter-spacing: 1px; margin-top: 4px;">Days</div>
+                </td>
+                <td style="font-family: 'Courier New', monospace; font-size: 36px; color: #ffffff; padding: 0 4px;">:</td>
+                <td style="padding: 0 10px; text-align: center;">
+                  <div style="font-family: 'Courier New', monospace; font-size: 48px; font-weight: bold; color: #ffffff; line-height: 1;" class="mob-text-lg" data-cd-hours="${blockId}">00</div>
+                  <div style="font-family: Arial, sans-serif; font-size: 11px; color: #adb5bd; text-transform: uppercase; letter-spacing: 1px; margin-top: 4px;">Hours</div>
+                </td>
+                <td style="font-family: 'Courier New', monospace; font-size: 36px; color: #ffffff; padding: 0 4px;">:</td>
+                <td style="padding: 0 10px; text-align: center;">
+                  <div style="font-family: 'Courier New', monospace; font-size: 48px; font-weight: bold; color: #ffffff; line-height: 1;" class="mob-text-lg" data-cd-mins="${blockId}">00</div>
+                  <div style="font-family: Arial, sans-serif; font-size: 11px; color: #adb5bd; text-transform: uppercase; letter-spacing: 1px; margin-top: 4px;">Mins</div>
+                </td>
+                <td style="font-family: 'Courier New', monospace; font-size: 36px; color: #ffffff; padding: 0 4px;">:</td>
+                <td style="padding: 0 10px; text-align: center;">
+                  <div style="font-family: 'Courier New', monospace; font-size: 48px; font-weight: bold; color: #ffffff; line-height: 1;" class="mob-text-lg" data-cd-secs="${blockId}">00</div>
+                  <div style="font-family: Arial, sans-serif; font-size: 11px; color: #adb5bd; text-transform: uppercase; letter-spacing: 1px; margin-top: 4px;">Secs</div>
+                </td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+      </table>
+    `;
+  },
+
+  /**
+   * Update countdown display from date input
+   */
+  updateCountdown(blockId) {
+    const dateInput = document.querySelector(`[data-cd-date="${blockId}"]`);
+    const labelInput = document.querySelector(`[data-cd-label="${blockId}"]`);
+    const heading = document.querySelector(`[data-cd-heading="${blockId}"]`);
+    const daysEl = document.querySelector(`[data-cd-days="${blockId}"]`);
+
+    if (dateInput && daysEl) {
+      const target = new Date(dateInput.value + 'T00:00:00');
+      const now = new Date();
+      const diff = Math.max(0, target - now);
+      const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+      const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+      const mins = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+      const secs = Math.floor((diff % (1000 * 60)) / 1000);
+      daysEl.textContent = String(days).padStart(2, '0');
+      const hoursEl = document.querySelector(`[data-cd-hours="${blockId}"]`);
+      const minsEl = document.querySelector(`[data-cd-mins="${blockId}"]`);
+      const secsEl = document.querySelector(`[data-cd-secs="${blockId}"]`);
+      if (hoursEl) hoursEl.textContent = String(hours).padStart(2, '0');
+      if (minsEl) minsEl.textContent = String(mins).padStart(2, '0');
+      if (secsEl) secsEl.textContent = String(secs).padStart(2, '0');
+    }
+
+    if (labelInput && heading) {
+      heading.textContent = labelInput.value || 'Event starts in';
+    }
+
+    this.markUnsavedChanges();
+    this.updatePreview();
+  },
+
   getDividerBlock() {
     return `
       <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
@@ -530,12 +735,16 @@ const emailBuilder = {
     const controls = document.createElement('div');
     controls.className = 'email-block-controls';
     controls.innerHTML = `
+      <button class="block-drag-handle" title="Drag to reorder" style="cursor: grab;">
+        <i class="bi bi-grip-vertical"></i>
+      </button>
       <button onclick="emailBuilder.moveBlockUp('${blockId}')" title="Move Up">
         <i class="bi bi-arrow-up"></i>
       </button>
       <button onclick="emailBuilder.moveBlockDown('${blockId}')" title="Move Down">
         <i class="bi bi-arrow-down"></i>
       </button>
+      <input type="color" value="#ffffff" class="block-bg-picker" title="Block background colour" onchange="emailBuilder.setBlockBackground('${blockId}', this.value)" style="width:24px; height:24px; padding:0; border:1px solid #555; border-radius:3px; cursor:pointer;">
       <button onclick="emailBuilder.duplicateBlock('${blockId}')" title="Duplicate">
         <i class="bi bi-copy"></i>
       </button>
@@ -544,6 +753,28 @@ const emailBuilder = {
       </button>
     `;
     blockWrapper.prepend(controls);
+
+    // Make the block draggable via the drag handle
+    blockWrapper.setAttribute('draggable', 'false');
+    const handle = controls.querySelector('.block-drag-handle');
+    handle.addEventListener('mousedown', () => {
+      blockWrapper.setAttribute('draggable', 'true');
+    });
+    blockWrapper.addEventListener('dragstart', (e) => {
+      if (!blockWrapper.getAttribute('draggable') || blockWrapper.getAttribute('draggable') === 'false') {
+        e.preventDefault();
+        return;
+      }
+      this._reorderDragId = blockId;
+      blockWrapper.classList.add('dragging-block');
+      e.dataTransfer.effectAllowed = 'move';
+    });
+    blockWrapper.addEventListener('dragend', () => {
+      blockWrapper.classList.remove('dragging-block');
+      blockWrapper.setAttribute('draggable', 'false');
+      this._reorderDragId = null;
+      this.canvas.querySelector('.block-drop-indicator')?.remove();
+    });
   },
 
   /**
@@ -588,6 +819,24 @@ const emailBuilder = {
         this.showEmptyState();
       }
     }
+  },
+
+  /**
+   * Set block background colour
+   */
+  setBlockBackground(blockId, colour) {
+    const wrapper = document.querySelector(`[data-block-id="${blockId}"]`);
+    if (!wrapper) return;
+    // Apply to the first <td> or <table> inside the block content (skip controls)
+    const table = wrapper.querySelector('table[role="presentation"]');
+    if (table) {
+      const td = table.querySelector('td');
+      if (td) td.style.backgroundColor = colour;
+      // Also set on the table itself for full-row backgrounds
+      table.style.backgroundColor = colour;
+    }
+    this.markUnsavedChanges();
+    this.updatePreview();
   },
 
   /**
@@ -952,8 +1201,12 @@ ${content}
         const clone = wrapper.cloneNode(true);
         // Remove block controls (move/delete/duplicate buttons)
         clone.querySelectorAll('.email-block-controls').forEach(el => el.remove());
-        // Remove image URL input controls
+        // Remove image URL/alt input controls
         clone.querySelectorAll('.email-image-controls').forEach(el => el.remove());
+        // Remove video URL controls
+        clone.querySelectorAll('.email-video-controls').forEach(el => el.remove());
+        // Remove countdown editing controls
+        clone.querySelectorAll('.email-countdown-controls').forEach(el => el.remove());
         // Remove button editing controls (text/url/color inputs) and their wrapping <tr>
         clone.querySelectorAll('.email-button-controls').forEach(el => {
           const tr = el.closest('tr');
@@ -1019,6 +1272,87 @@ ${content}
     URL.revokeObjectURL(url);
 
     utils.showToast('HTML exported successfully!', 'success');
+  },
+
+  /**
+   * Copy HTML to clipboard
+   */
+  async copyHTMLToClipboard() {
+    const html = this.generateFullHTML();
+    try {
+      await navigator.clipboard.writeText(html);
+      utils.showToast('HTML copied to clipboard!', 'success');
+    } catch (err) {
+      // Fallback for older browsers
+      const textarea = document.createElement('textarea');
+      textarea.value = html;
+      textarea.style.cssText = 'position:fixed;opacity:0';
+      document.body.appendChild(textarea);
+      textarea.select();
+      document.execCommand('copy');
+      document.body.removeChild(textarea);
+      utils.showToast('HTML copied to clipboard!', 'success');
+    }
+  },
+
+  /**
+   * Export plain text version of the email
+   */
+  exportPlainText() {
+    const html = this.generateFullHTML();
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(html, 'text/html');
+
+    // Remove hidden preheader
+    doc.querySelectorAll('div[style*="display:none"], div[style*="display: none"]').forEach(el => el.remove());
+
+    // Convert links to text with URL
+    doc.querySelectorAll('a').forEach(link => {
+      const href = link.getAttribute('href') || '';
+      const text = link.textContent.trim();
+      if (href && text && href !== text && !href.startsWith('#') && !href.startsWith('{{')) {
+        link.textContent = `${text} (${href})`;
+      }
+    });
+
+    // Convert images to alt text
+    doc.querySelectorAll('img').forEach(img => {
+      const alt = img.getAttribute('alt');
+      if (alt && alt !== 'Image') {
+        img.replaceWith(document.createTextNode(`[Image: ${alt}]`));
+      } else {
+        img.remove();
+      }
+    });
+
+    // Get text content with some formatting
+    let text = '';
+    doc.querySelectorAll('h1, h2, h3, h4, h5, h6').forEach(h => {
+      h.textContent = h.textContent.toUpperCase();
+    });
+    doc.querySelectorAll('hr, div[style*="height: 1px"]').forEach(el => {
+      el.textContent = '\n' + '-'.repeat(50) + '\n';
+    });
+
+    text = doc.body.textContent || doc.body.innerText || '';
+
+    // Clean up whitespace
+    text = text
+      .replace(/[ \t]+/g, ' ')
+      .replace(/\n{3,}/g, '\n\n')
+      .trim();
+
+    const blob = new Blob([text], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `email-campaign-${Date.now()}.txt`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+
+    utils.showToast('Plain text version exported!', 'success');
   },
 
   /**
@@ -2662,12 +2996,16 @@ ${content}
         <tr>
           <td class="mob-pad" style="padding: 20px 40px;">
             <div class="email-image-controls" style="margin-bottom: 8px;">
-              <div class="input-group input-group-sm">
+              <div class="input-group input-group-sm mb-1">
                 <span class="input-group-text"><i class="bi bi-link-45deg"></i></span>
                 <input type="text" class="form-control form-control-sm email-image-url" placeholder="Paste image URL..." data-img-id="${blockId}" onchange="emailBuilder.updateImageFromUrl(this)">
                 <button class="btn btn-outline-primary btn-sm" type="button" onclick="document.getElementById('imgUpload-${blockId}').click()" title="Upload image">
                   <i class="bi bi-upload"></i> Upload
                 </button>
+              </div>
+              <div class="input-group input-group-sm">
+                <span class="input-group-text"><i class="bi bi-fonts"></i></span>
+                <input type="text" class="form-control form-control-sm" placeholder="Alt text (accessibility)..." data-alt-id="${blockId}" onchange="emailBuilder.updateImageAlt(this)">
               </div>
               <input type="file" id="imgUpload-${blockId}" accept="image/*" style="display:none" onchange="emailBuilder.uploadImageForBlock(this, '${blockId}')">
             </div>
@@ -2688,6 +3026,20 @@ ${content}
     const img = document.querySelector(`img[data-img-target="${imgId}"]`);
     if (img) {
       img.src = url;
+      this.markUnsavedChanges();
+      this.updatePreview();
+    }
+  },
+
+  /**
+   * Update image alt text
+   */
+  updateImageAlt(input) {
+    const altText = input.value.trim();
+    const imgId = input.getAttribute('data-alt-id');
+    const img = document.querySelector(`img[data-img-target="${imgId}"]`);
+    if (img) {
+      img.alt = altText || 'Image';
       this.markUnsavedChanges();
       this.updatePreview();
     }

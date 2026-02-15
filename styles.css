@@ -2124,16 +2124,47 @@ body.dark-mode .html-toolkit-label {
   color: #ff6b7a;
 }
 
-/* Image & Button Block Controls */
+/* Image, Button, Video & Countdown Block Controls */
 .email-image-controls,
-.email-button-controls {
+.email-button-controls,
+.email-video-controls,
+.email-countdown-controls {
   border-bottom: 1px solid #dee2e6;
   padding-bottom: 6px;
 }
 
 .email-image-controls .form-control,
-.email-button-controls .form-control {
+.email-button-controls .form-control,
+.email-video-controls .form-control,
+.email-countdown-controls .form-control {
   font-size: 12px;
+}
+
+/* Block Drag Reorder */
+.email-block-wrapper.dragging-block {
+  opacity: 0.4;
+  border: 2px dashed #0d6efd !important;
+}
+
+.block-drop-indicator {
+  height: 4px;
+  background: #0d6efd;
+  border-radius: 2px;
+  margin: 2px 0;
+  transition: opacity 0.15s;
+}
+
+.block-drag-handle {
+  cursor: grab !important;
+}
+
+.block-drag-handle:active {
+  cursor: grabbing !important;
+}
+
+/* Block background colour picker in controls */
+.block-bg-picker {
+  vertical-align: middle;
 }
 
 /* Content Library Drop Zones */

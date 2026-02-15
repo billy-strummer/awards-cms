@@ -3409,6 +3409,12 @@
                         <div class="email-block-item" draggable="true" data-block-type="image">
                           <i class="bi bi-image-fill"></i> Image
                         </div>
+                        <div class="email-block-item" draggable="true" data-block-type="video">
+                          <i class="bi bi-play-btn"></i> Video
+                        </div>
+                        <div class="email-block-item" draggable="true" data-block-type="countdown">
+                          <i class="bi bi-hourglass-split"></i> Countdown
+                        </div>
                         <div class="email-block-item" draggable="true" data-block-type="divider">
                           <i class="bi bi-dash-lg"></i> Divider
                         </div>
@@ -3652,6 +3658,12 @@
                       </button>
                       <button class="btn btn-outline-secondary btn-sm" onclick="emailBuilder.exportHTML()">
                         <i class="bi bi-download me-1"></i>Export HTML
+                      </button>
+                      <button class="btn btn-outline-secondary btn-sm" onclick="emailBuilder.copyHTMLToClipboard()">
+                        <i class="bi bi-clipboard me-1"></i>Copy HTML
+                      </button>
+                      <button class="btn btn-outline-secondary btn-sm" onclick="emailBuilder.exportPlainText()">
+                        <i class="bi bi-file-text me-1"></i>Plain Text
                       </button>
                       <button class="btn btn-primary btn-sm" onclick="emailBuilder.saveTemplate()">
                         <i class="bi bi-save me-1"></i>Save Template

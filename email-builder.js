@@ -225,10 +225,10 @@ const emailBuilder = {
   getHeaderBlock() {
     const logo = this.currentOrg?.logo_url || `data:image/svg+xml,${encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="250" height="100"><rect width="250" height="100" fill="#e9ecef" rx="8"/><text x="125" y="55" text-anchor="middle" font-family="Arial,sans-serif" font-size="16" fill="#6c757d">Your Logo</text></svg>')}`;
     return `
-      <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color: #ffffff; padding: 20px;">
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color: #ffffff;">
         <tr>
-          <td align="center">
-            <img src="${logo}" alt="Logo" style="max-width: 250px; height: auto;">
+          <td align="center" class="mob-pad" style="padding: 20px;">
+            <img src="${logo}" alt="Logo" style="max-width: 250px; height: auto;" class="mob-full-img">
           </td>
         </tr>
       </table>
@@ -238,18 +238,18 @@ const emailBuilder = {
   getHeroBlock() {
     const heroImage = `data:image/svg+xml,${encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="600" height="300"><rect width="600" height="300" fill="#dee2e6" rx="8"/><text x="300" y="155" text-anchor="middle" font-family="Arial,sans-serif" font-size="20" fill="#6c757d">Hero Image</text></svg>')}`;
     return `
-      <table width="100%" cellpadding="0" cellspacing="0" border="0">
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
         <tr>
           <td style="padding: 0;">
-            <img src="${heroImage}" alt="Hero" style="width: 100%; height: auto; display: block;">
+            <img src="${heroImage}" alt="Hero" style="width: 100%; height: auto; display: block;" class="mob-full-img">
           </td>
         </tr>
         <tr>
-          <td style="padding: 30px 40px; text-align: center; background-color: #f8f9fa;">
-            <h1 style="margin: 0 0 15px 0; font-family: Arial, sans-serif; font-size: 32px; color: #212529;">
+          <td class="mob-pad" style="padding: 30px 40px; text-align: center; background-color: #f8f9fa;">
+            <h1 class="mob-hero-heading" style="margin: 0 0 15px 0; font-family: Arial, sans-serif; font-size: 32px; line-height: 38px; color: #212529;">
               ${this.currentOrg?.company_name || 'Congratulations {{company_name}}!'}
             </h1>
-            <p style="margin: 0; font-family: Arial, sans-serif; font-size: 16px; color: #6c757d;">
+            <p class="mob-text-md" style="margin: 0; font-family: Arial, sans-serif; font-size: 16px; line-height: 24px; color: #6c757d;">
               Winner of the British Trade Awards ${new Date().getFullYear()}
             </p>
           </td>
@@ -260,16 +260,16 @@ const emailBuilder = {
 
   getTextBlock() {
     return `
-      <table width="100%" cellpadding="0" cellspacing="0" border="0">
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
         <tr>
-          <td style="padding: 30px 40px;">
-            <p contenteditable="true" style="margin: 0 0 15px 0; font-family: Arial, sans-serif; font-size: 16px; line-height: 1.6; color: #212529;">
+          <td class="mob-pad" style="padding: 30px 40px;">
+            <p contenteditable="true" class="mob-text-md" style="margin: 0 0 15px 0; font-family: Arial, sans-serif; font-size: 16px; line-height: 1.6; color: #212529;">
               Dear {{contact_name}},
             </p>
-            <p contenteditable="true" style="margin: 0 0 15px 0; font-family: Arial, sans-serif; font-size: 16px; line-height: 1.6; color: #495057;">
+            <p contenteditable="true" class="mob-text-md" style="margin: 0 0 15px 0; font-family: Arial, sans-serif; font-size: 16px; line-height: 1.6; color: #495057;">
               We are delighted to announce that {{company_name}} has been recognized as a winner at the British Trade Awards ${new Date().getFullYear()}.
             </p>
-            <p contenteditable="true" style="margin: 0; font-family: Arial, sans-serif; font-size: 16px; line-height: 1.6; color: #495057;">
+            <p contenteditable="true" class="mob-text-md" style="margin: 0; font-family: Arial, sans-serif; font-size: 16px; line-height: 1.6; color: #495057;">
               This achievement reflects your outstanding contribution to British trade and excellence in your industry.
             </p>
           </td>
@@ -281,9 +281,9 @@ const emailBuilder = {
   getCompanyProfileBlock() {
     if (!this.currentOrg) {
       return `
-        <table width="100%" cellpadding="0" cellspacing="0" border="0">
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
           <tr>
-            <td style="padding: 30px 40px; background-color: #f8f9fa;">
+            <td class="mob-pad" style="padding: 30px 40px; background-color: #f8f9fa;">
               <p style="margin: 0; font-family: Arial, sans-serif; color: #dc3545; font-size: 14px;">
                 ⚠️ Select an organisation first to auto-populate this block
               </p>
@@ -294,30 +294,30 @@ const emailBuilder = {
     }
 
     return `
-      <table width="100%" cellpadding="0" cellspacing="0" border="0">
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
         <tr>
-          <td style="padding: 30px 40px; background-color: #f8f9fa;">
-            <table width="100%" cellpadding="0" cellspacing="0" border="0">
+          <td class="mob-pad" style="padding: 30px 40px; background-color: #f8f9fa;">
+            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
               <tr>
-                <td width="100" valign="top">
+                <td class="mob-profile-img" width="100" valign="top">
                   ${this.currentOrg.logo_url ?
                     `<img src="${this.currentOrg.logo_url}" alt="${utils.escapeHtml(this.currentOrg.company_name)}" style="width: 80px; height: 80px; object-fit: contain;">` :
                     `<div style="width: 80px; height: 80px; background: #dee2e6; border-radius: 4px;"></div>`
                   }
                 </td>
-                <td style="padding-left: 20px;">
-                  <h3 style="margin: 0 0 10px 0; font-family: Arial, sans-serif; font-size: 20px; color: #212529;">
+                <td class="mob-profile-text" style="padding-left: 20px;">
+                  <h3 class="mob-text-lg" style="margin: 0 0 10px 0; font-family: Arial, sans-serif; font-size: 20px; line-height: 26px; color: #212529;">
                     ${utils.escapeHtml(this.currentOrg.company_name)}
                   </h3>
                   ${this.currentOrg.website ?
-                    `<p style="margin: 0 0 5px 0; font-family: Arial, sans-serif; font-size: 14px; color: #0d6efd;">
+                    `<p class="mob-text-sm" style="margin: 0 0 5px 0; font-family: Arial, sans-serif; font-size: 14px; color: #0d6efd;">
                       <a href="${this.currentOrg.website}" style="color: #0d6efd; text-decoration: none;">
                         ${utils.escapeHtml(this.currentOrg.website)}
                       </a>
                     </p>` : ''
                   }
                   ${this.currentOrg.region ?
-                    `<p style="margin: 0; font-family: Arial, sans-serif; font-size: 14px; color: #6c757d;">
+                    `<p class="mob-text-sm" style="margin: 0; font-family: Arial, sans-serif; font-size: 14px; color: #6c757d;">
                       📍 ${utils.escapeHtml(this.currentOrg.region)}
                     </p>` : ''
                   }
@@ -333,13 +333,13 @@ const emailBuilder = {
   getAwardListBlock() {
     if (!this.currentOrg || !this.currentOrg.awards || this.currentOrg.awards.length === 0) {
       return `
-        <table width="100%" cellpadding="0" cellspacing="0" border="0">
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
           <tr>
-            <td style="padding: 30px 40px;">
-              <h3 style="margin: 0 0 20px 0; font-family: Arial, sans-serif; font-size: 24px; color: #212529;">
+            <td class="mob-pad" style="padding: 30px 40px;">
+              <h3 class="mob-text-lg" style="margin: 0 0 20px 0; font-family: Arial, sans-serif; font-size: 24px; line-height: 30px; color: #212529;">
                 Award History
               </h3>
-              <p style="margin: 0; font-family: Arial, sans-serif; color: #6c757d;">
+              <p class="mob-text-md" style="margin: 0; font-family: Arial, sans-serif; color: #6c757d;">
                 Select an organisation to view award history
               </p>
             </td>
@@ -350,8 +350,8 @@ const emailBuilder = {
 
     const awardsHTML = this.currentOrg.awards.map(award => `
       <tr>
-        <td style="padding: 15px; border-bottom: 1px solid #e9ecef;">
-          <table width="100%" cellpadding="0" cellspacing="0">
+        <td class="mob-pad-sm" style="padding: 15px; border-bottom: 1px solid #e9ecef;">
+          <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
             <tr>
               <td width="60">
                 <span style="display: inline-block; background: #0d6efd; color: white; padding: 5px 10px; border-radius: 4px; font-family: Arial, sans-serif; font-size: 14px; font-weight: bold;">
@@ -359,11 +359,11 @@ const emailBuilder = {
                 </span>
               </td>
               <td style="padding-left: 15px;">
-                <p style="margin: 0 0 5px 0; font-family: Arial, sans-serif; font-size: 16px; font-weight: bold; color: #212529;">
+                <p class="mob-text-md" style="margin: 0 0 5px 0; font-family: Arial, sans-serif; font-size: 16px; font-weight: bold; color: #212529;">
                   ${utils.escapeHtml(award.award_category)}
                 </p>
                 ${award.sector ?
-                  `<p style="margin: 0; font-family: Arial, sans-serif; font-size: 14px; color: #6c757d;">
+                  `<p class="mob-text-sm" style="margin: 0; font-family: Arial, sans-serif; font-size: 14px; color: #6c757d;">
                     ${utils.escapeHtml(award.sector)}
                   </p>` : ''
                 }
@@ -375,13 +375,13 @@ const emailBuilder = {
     `).join('');
 
     return `
-      <table width="100%" cellpadding="0" cellspacing="0" border="0">
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
         <tr>
-          <td style="padding: 30px 40px;">
-            <h3 style="margin: 0 0 20px 0; font-family: Arial, sans-serif; font-size: 24px; color: #212529;">
+          <td class="mob-pad" style="padding: 30px 40px;">
+            <h3 class="mob-text-lg" style="margin: 0 0 20px 0; font-family: Arial, sans-serif; font-size: 24px; line-height: 30px; color: #212529;">
               🏆 Award History
             </h3>
-            <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background: #f8f9fa; border-radius: 8px;">
+            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background: #f8f9fa; border-radius: 8px;">
               ${awardsHTML}
             </table>
           </td>
@@ -392,9 +392,9 @@ const emailBuilder = {
 
   getDividerBlock() {
     return `
-      <table width="100%" cellpadding="0" cellspacing="0" border="0">
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
         <tr>
-          <td style="padding: 20px 40px;">
+          <td class="mob-pad" style="padding: 20px 40px;">
             <div style="height: 1px; background-color: #dee2e6;"></div>
           </td>
         </tr>
@@ -404,13 +404,13 @@ const emailBuilder = {
 
   getSocialLinksBlock() {
     return `
-      <table width="100%" cellpadding="0" cellspacing="0" border="0">
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
         <tr>
-          <td style="padding: 30px 40px; text-align: center;">
-            <p style="margin: 0 0 15px 0; font-family: Arial, sans-serif; font-size: 14px; color: #6c757d;">
+          <td class="mob-pad" style="padding: 30px 40px; text-align: center;">
+            <p class="mob-text-sm" style="margin: 0 0 15px 0; font-family: Arial, sans-serif; font-size: 14px; color: #6c757d;">
               Follow us on social media
             </p>
-            <table cellpadding="0" cellspacing="0" border="0" align="center">
+            <table role="presentation" cellpadding="0" cellspacing="0" border="0" align="center">
               <tr>
                 <td style="padding: 0 10px;">
                   <a href="#" style="text-decoration: none; color: #0d6efd; font-size: 24px;">
@@ -484,9 +484,9 @@ const emailBuilder = {
           </div>
         </div>
       </div>
-      <table width="100%" cellpadding="0" cellspacing="0" border="0">
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
         <tr>
-          <td style="padding: 30px 40px;">
+          <td class="mob-pad" style="padding: 30px 40px;">
             <div class="email-richtext-content" contenteditable="true" data-block="${blockId}" style="font-family: Arial, sans-serif; font-size: 16px; line-height: 1.6; color: #212529; min-height: 80px; outline: none;">
               <p>Start typing your content here...</p>
             </div>
@@ -668,39 +668,70 @@ const emailBuilder = {
     </td>
   </tr>
 </table>`,
-    'two-column': `<table width="100%" cellpadding="0" cellspacing="0" border="0">
-  <tr>
-    <td width="50%" style="padding: 20px; vertical-align: top; font-family: Arial, sans-serif; font-size: 14px; color: #333333;">
-      Left column
-    </td>
-    <td width="50%" style="padding: 20px; vertical-align: top; font-family: Arial, sans-serif; font-size: 14px; color: #333333;">
-      Right column
-    </td>
-  </tr>
-</table>`,
-    'three-column': `<table width="100%" cellpadding="0" cellspacing="0" border="0">
-  <tr>
-    <td width="33%" style="padding: 15px; vertical-align: top; font-family: Arial, sans-serif; font-size: 14px; color: #333333;">
-      Column 1
-    </td>
-    <td width="34%" style="padding: 15px; vertical-align: top; font-family: Arial, sans-serif; font-size: 14px; color: #333333;">
-      Column 2
-    </td>
-    <td width="33%" style="padding: 15px; vertical-align: top; font-family: Arial, sans-serif; font-size: 14px; color: #333333;">
-      Column 3
-    </td>
-  </tr>
-</table>`,
-    'full-width-wrapper': `<table width="100%" cellpadding="0" cellspacing="0" border="0">
+    'two-column': `<!--[if mso]><table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr><td width="50%" valign="top"><![endif]-->
+<div class="mob-stack" style="display: inline-block; width: 50%; vertical-align: top;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+    <tr>
+      <td class="mob-pad" style="padding: 20px; font-family: Arial, sans-serif; font-size: 14px; line-height: 1.5; color: #333333;">
+        Left column
+      </td>
+    </tr>
+  </table>
+</div>
+<!--[if mso]></td><td width="50%" valign="top"><![endif]-->
+<div class="mob-stack" style="display: inline-block; width: 50%; vertical-align: top;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+    <tr>
+      <td class="mob-pad" style="padding: 20px; font-family: Arial, sans-serif; font-size: 14px; line-height: 1.5; color: #333333;">
+        Right column
+      </td>
+    </tr>
+  </table>
+</div>
+<!--[if mso]></td></tr></table><![endif]-->`,
+    'three-column': `<!--[if mso]><table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr><td width="33%" valign="top"><![endif]-->
+<div class="mob-stack" style="display: inline-block; width: 33.33%; vertical-align: top;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+    <tr>
+      <td class="mob-pad" style="padding: 15px; font-family: Arial, sans-serif; font-size: 14px; line-height: 1.5; color: #333333;">
+        Column 1
+      </td>
+    </tr>
+  </table>
+</div>
+<!--[if mso]></td><td width="34%" valign="top"><![endif]-->
+<div class="mob-stack" style="display: inline-block; width: 33.33%; vertical-align: top;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+    <tr>
+      <td class="mob-pad" style="padding: 15px; font-family: Arial, sans-serif; font-size: 14px; line-height: 1.5; color: #333333;">
+        Column 2
+      </td>
+    </tr>
+  </table>
+</div>
+<!--[if mso]></td><td width="33%" valign="top"><![endif]-->
+<div class="mob-stack" style="display: inline-block; width: 33.33%; vertical-align: top;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+    <tr>
+      <td class="mob-pad" style="padding: 15px; font-family: Arial, sans-serif; font-size: 14px; line-height: 1.5; color: #333333;">
+        Column 3
+      </td>
+    </tr>
+  </table>
+</div>
+<!--[if mso]></td></tr></table><![endif]-->`,
+    'full-width-wrapper': `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
   <tr>
     <td align="center">
-      <table width="600" cellpadding="0" cellspacing="0" border="0" style="max-width: 600px; width: 100%;">
+      <!--[if mso]><table role="presentation" cellpadding="0" cellspacing="0" border="0" width="600" align="center"><tr><td><![endif]-->
+      <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="max-width: 600px; width: 100%;">
         <tr>
-          <td style="padding: 30px 40px; font-family: Arial, sans-serif;">
+          <td class="mob-pad" style="padding: 30px 40px; font-family: Arial, sans-serif;">
             Content inside 600px container...
           </td>
         </tr>
       </table>
+      <!--[if mso]></td></tr></table><![endif]-->
     </td>
   </tr>
 </table>`,
@@ -745,15 +776,21 @@ const emailBuilder = {
     </td>
   </tr>
 </table>`,
-    'button': `<table width="100%" cellpadding="0" cellspacing="0" border="0">
+    'button': `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
   <tr>
-    <td align="center" style="padding: 20px 40px;">
-      <!--[if mso]><v:roundrect xmlns:v="urn:schemas-microsoft-com:vml" href="https://example.com" style="height:48px;v-text-anchor:middle;width:220px;" arcsize="10%" strokecolor="#1a1a2e" fillcolor="#1a1a2e"><center style="color:#ffffff;font-family:Arial,sans-serif;font-size:16px;font-weight:bold;">Button Text</center></v:roundrect><![endif]-->
-      <!--[if !mso]><!-->
-      <a href="https://example.com" target="_blank" style="background-color: #1a1a2e; color: #ffffff; font-family: Arial, sans-serif; font-size: 16px; font-weight: bold; text-decoration: none; padding: 14px 40px; border-radius: 5px; display: inline-block;">
-        Button Text
-      </a>
-      <!--<![endif]-->
+    <td align="center" class="mob-pad" style="padding: 20px 40px;">
+      <table role="presentation" cellpadding="0" cellspacing="0" border="0" class="mob-btn-full">
+        <tr>
+          <td style="background-color: #1a1a2e; border-radius: 5px; padding: 14px 40px;" align="center">
+            <!--[if mso]><v:roundrect xmlns:v="urn:schemas-microsoft-com:vml" href="https://example.com" style="height:48px;v-text-anchor:middle;width:220px;" arcsize="10%" strokecolor="#1a1a2e" fillcolor="#1a1a2e"><center style="color:#ffffff;font-family:Arial,sans-serif;font-size:16px;font-weight:bold;">Button Text</center></v:roundrect><![endif]-->
+            <!--[if !mso]><!-->
+            <a href="https://example.com" target="_blank" style="color: #ffffff; font-family: Arial, sans-serif; font-size: 16px; font-weight: bold; text-decoration: none; display: inline-block;">
+              Button Text
+            </a>
+            <!--<![endif]-->
+          </td>
+        </tr>
+      </table>
     </td>
   </tr>
 </table>`,
@@ -891,7 +928,7 @@ ${content}
   },
 
   /**
-   * Generate full HTML email
+   * Generate full HTML email — production-ready with responsive @media queries
    */
   generateFullHTML() {
     const blocks = Array.from(this.canvas.querySelectorAll('.email-block-wrapper'))
@@ -904,38 +941,61 @@ ${content}
         // Rich text block: extract only the content div, wrap in table
         const richContent = wrapper.querySelector('.email-richtext-content');
         if (richContent) {
-          return `<table width="100%" cellpadding="0" cellspacing="0" border="0"><tr><td style="padding: 30px 40px; font-family: Arial, sans-serif; font-size: 16px; line-height: 1.6; color: #212529;">${richContent.innerHTML}</td></tr></table>`;
+          return `<table width="100%" cellpadding="0" cellspacing="0" border="0"><tr><td class="mob-pad" style="padding: 30px 40px; font-family: Arial, sans-serif; font-size: 16px; line-height: 1.6; color: #212529;">${richContent.innerHTML}</td></tr></table>`;
         }
-        // Standard blocks: strip controls
-        return wrapper.innerHTML.replace(/<div class="email-block-controls">[\s\S]*?<\/div>/, '');
+        // Standard blocks: strip editor-only controls by cloning and removing
+        const clone = wrapper.cloneNode(true);
+        // Remove block controls (move/delete/duplicate buttons)
+        clone.querySelectorAll('.email-block-controls').forEach(el => el.remove());
+        // Remove image URL input controls
+        clone.querySelectorAll('.email-image-controls').forEach(el => el.remove());
+        // Remove button editing controls (text/url/color inputs) and their wrapping <tr>
+        clone.querySelectorAll('.email-button-controls').forEach(el => {
+          const tr = el.closest('tr');
+          if (tr) tr.remove(); else el.remove();
+        });
+        return clone.innerHTML;
       })
       .join('');
 
     const preheader = document.getElementById('builderPreheader')?.value || '';
 
-    return `
-      <!DOCTYPE html>
-      <html lang="en">
-      <head>
-        <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <meta http-equiv="X-UA-Compatible" content="IE=edge">
-        <title>${document.getElementById('builderCampaignName')?.value || 'Email Campaign'}</title>
-      </head>
-      <body style="margin: 0; padding: 0; font-family: Arial, sans-serif;">
-        ${preheader ? `<div style="display:none;font-size:1px;color:#f8f9fa;line-height:1px;max-height:0px;max-width:0px;opacity:0;overflow:hidden;">${preheader}</div>` : ''}
-        <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color: #f8f9fa;">
-          <tr>
-            <td align="center" style="padding: 40px 20px;">
-              <table class="email-container" cellpadding="0" cellspacing="0" border="0" style="max-width: 600px; width: 100%; background-color: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
-                ${blocks}
-              </table>
-            </td>
-          </tr>
+    return `<!DOCTYPE html>
+<html lang="en" xmlns="http://www.w3.org/1999/xhtml" xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="x-apple-disable-message-reformatting">
+  <meta name="format-detection" content="telephone=no,address=no,email=no,date=no,url=no">
+  <title>${document.getElementById('builderCampaignName')?.value || 'Email Campaign'}</title>
+  <!--[if mso]>
+  <noscript>
+    <xml>
+      <o:OfficeDocumentSettings>
+        <o:AllowPNG/>
+        <o:PixelsPerInch>96</o:PixelsPerInch>
+      </o:OfficeDocumentSettings>
+    </xml>
+  </noscript>
+  <![endif]-->
+  ${this.getResponsiveEmailCSS()}
+</head>
+<body style="margin: 0; padding: 0; font-family: Arial, sans-serif; background-color: #f8f9fa; -webkit-text-size-adjust: 100%; -ms-text-size-adjust: 100%;">
+  ${preheader ? `<div style="display:none;font-size:1px;color:#f8f9fa;line-height:1px;max-height:0px;max-width:0px;opacity:0;overflow:hidden;">${preheader}&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;</div>` : ''}
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color: #f8f9fa;">
+    <tr>
+      <td align="center" style="padding: 40px 20px;" class="mob-pad-sm">
+        <!--[if mso]><table role="presentation" cellpadding="0" cellspacing="0" border="0" width="600" align="center"><tr><td><![endif]-->
+        <table class="email-container" role="presentation" cellpadding="0" cellspacing="0" border="0" style="max-width: 600px; width: 100%; background-color: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
+          ${blocks}
         </table>
-      </body>
-      </html>
-    `;
+        <!--[if mso]></td></tr></table><![endif]-->
+      </td>
+    </tr>
+  </table>
+</body>
+</html>`;
   },
 
   /**
@@ -1198,60 +1258,110 @@ ${content}
   },
 
   /**
-   * Set view mode (desktop/mobile)
+   * Set view mode (desktop/mobile) for the inline canvas
    */
-  setViewMode(mode) {
+  setViewMode(mode, btn) {
     this.viewMode = mode;
     if (mode === 'mobile') {
       this.canvas.style.maxWidth = '375px';
+      this.canvas.style.margin = '0 auto';
     } else {
       this.canvas.style.maxWidth = '600px';
+      this.canvas.style.margin = '';
     }
+    this.updatePreview();
 
     // Update button states
-    const buttons = document.querySelectorAll('.email-canvas').parentElement.querySelectorAll('.btn-group button');
-    buttons.forEach(btn => btn.classList.remove('active'));
-    event.target.classList.add('active');
+    if (btn) {
+      const group = btn.closest('.btn-group');
+      if (group) {
+        group.querySelectorAll('button').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+      }
+    }
   },
 
   /**
-   * Responsive CSS injected into preview iframe to make email content fit
+   * Responsive email CSS — included in both the generated HTML AND the preview iframe.
+   * Uses @media queries that real email clients (iOS Mail, Gmail app, etc.) honour.
    */
-  previewResponsiveCSS: `<style>
-    /* Preserve 600px container width */
-    .email-container { max-width: 600px !important; width: 100% !important; }
-    /* Force inner tables to respect container */
-    .email-container table { max-width: 100% !important; }
-    img { max-width: 100% !important; height: auto !important; }
-    td, th { word-wrap: break-word !important; overflow-wrap: break-word !important; }
-    body { margin: 0 !important; padding: 0 !important; width: 100% !important; overflow-x: hidden !important; }
-    /* Override fixed-width table attributes inside container */
-    .email-container table[width] { width: 100% !important; }
-  </style>`,
+  getResponsiveEmailCSS() {
+    return `
+    <style type="text/css">
+      /* === BASE RESETS === */
+      body { margin: 0 !important; padding: 0 !important; width: 100% !important; -webkit-text-size-adjust: 100% !important; -ms-text-size-adjust: 100% !important; }
+      table { border-spacing: 0 !important; border-collapse: collapse !important; mso-table-lspace: 0pt !important; mso-table-rspace: 0pt !important; }
+      img { border: 0; outline: none; text-decoration: none; -ms-interpolation-mode: bicubic; }
+      /* Container */
+      .email-container { max-width: 600px !important; width: 100% !important; }
+      .email-container table { max-width: 100% !important; }
+      .email-container table[width] { width: 100% !important; }
+      img { max-width: 100% !important; height: auto !important; }
+      td, th { word-wrap: break-word !important; overflow-wrap: break-word !important; }
+
+      /* === MOBILE RESPONSIVE — max-width: 480px === */
+      @media only screen and (max-width: 480px) {
+        /* Force full-width wrapper */
+        .email-container { width: 100% !important; min-width: 100% !important; }
+
+        /* Stack columns vertically */
+        .mob-stack { display: block !important; width: 100% !important; max-width: 100% !important; }
+
+        /* Full-width images */
+        .mob-full-img { width: 100% !important; max-width: 100% !important; height: auto !important; }
+
+        /* Mobile padding — reduce side gutters */
+        .mob-pad { padding-left: 16px !important; padding-right: 16px !important; }
+        .mob-pad-sm { padding-left: 12px !important; padding-right: 12px !important; }
+
+        /* Mobile typography */
+        .mob-text-lg { font-size: 22px !important; line-height: 28px !important; }
+        .mob-text-md { font-size: 16px !important; line-height: 24px !important; }
+        .mob-text-sm { font-size: 14px !important; line-height: 20px !important; }
+
+        /* Mobile hero heading */
+        .mob-hero-heading { font-size: 24px !important; line-height: 30px !important; }
+
+        /* Mobile buttons — full width */
+        .mob-btn-full { display: block !important; width: 100% !important; text-align: center !important; }
+        .mob-btn-full a { display: block !important; padding: 16px 20px !important; font-size: 18px !important; }
+        .mob-btn-full td { width: 100% !important; }
+
+        /* Mobile centre text */
+        .mob-center { text-align: center !important; }
+
+        /* Hide on mobile */
+        .mob-hide { display: none !important; mso-hide: all !important; }
+
+        /* Show on mobile */
+        .mob-show { display: block !important; max-height: none !important; overflow: visible !important; }
+
+        /* Mobile footer */
+        .mob-footer-pad { padding: 24px 16px !important; }
+
+        /* Company profile — stack logo and text */
+        .mob-profile-img { display: block !important; width: 100% !important; text-align: center !important; padding-bottom: 12px !important; }
+        .mob-profile-text { display: block !important; width: 100% !important; padding-left: 0 !important; text-align: center !important; }
+      }
+    </style>`;
+  },
 
   /** Current preview mode */
   previewDeviceMode: 'desktop',
 
   /**
-   * Write HTML into the preview iframe with responsive overrides
+   * Write HTML into the preview iframe.
+   * The responsive CSS is already baked into generateFullHTML(), so no extra
+   * injection is needed.  We only add a preview-specific viewport meta if
+   * mobile mode is active so the iframe respects the narrow width.
    */
   writePreviewIframe(html) {
     const iframe = document.getElementById('emailPreviewFrame');
     if (!iframe) return;
 
-    // Inject responsive CSS just before </head> or at start of <body>
-    let enhanced = html;
-    if (enhanced.includes('</head>')) {
-      enhanced = enhanced.replace('</head>', this.previewResponsiveCSS + '</head>');
-    } else if (enhanced.includes('<body')) {
-      enhanced = enhanced.replace('<body', this.previewResponsiveCSS + '<body');
-    } else {
-      enhanced = this.previewResponsiveCSS + enhanced;
-    }
-
     const doc = iframe.contentDocument || iframe.contentWindow.document;
     doc.open();
-    doc.write(enhanced);
+    doc.write(html);
     doc.close();
   },
 
@@ -1265,7 +1375,17 @@ ${content}
     if (!modal) return;
 
     const iframe = document.getElementById('emailPreviewFrame');
-    if (iframe) iframe.style.width = '';
+    if (iframe) {
+      iframe.style.width = '';
+      iframe.style.margin = '';
+      iframe.style.borderRadius = '';
+      iframe.style.boxShadow = '';
+    }
+
+    // Reset toggle buttons to desktop active
+    modal.querySelectorAll('.btn-group button').forEach((btn, i) => {
+      btn.classList.toggle('active', i === 0);
+    });
 
     this.writePreviewIframe(html);
 
@@ -1274,16 +1394,54 @@ ${content}
   },
 
   /**
-   * Switch preview device in modal (desktop/mobile)
+   * Switch preview device in modal (desktop/mobile).
+   * Mobile mode constrains the iframe to 375px AND injects an extra <style>
+   * that forces the @media rules to apply (some iframes don't honour their
+   * own width for media-query evaluation).
    */
   setPreviewDevice(mode, btn) {
     this.previewDeviceMode = mode;
     const iframe = document.getElementById('emailPreviewFrame');
     if (iframe) {
-      iframe.style.width = mode === 'mobile' ? '375px' : '';
+      if (mode === 'mobile') {
+        iframe.style.width = '375px';
+        iframe.style.margin = '0 auto';
+        iframe.style.borderRadius = '20px';
+        iframe.style.boxShadow = '0 0 0 8px #1a1a2e, 0 0 0 10px #333';
+      } else {
+        iframe.style.width = '';
+        iframe.style.margin = '';
+        iframe.style.borderRadius = '';
+        iframe.style.boxShadow = '';
+      }
     }
-    // Re-render content so responsive CSS applies at correct width
-    const html = this.generateFullHTML();
+    // Re-render content; for mobile, inject a force-override so the media
+    // queries apply even if the iframe doesn't report a narrow viewport.
+    let html = this.generateFullHTML();
+    if (mode === 'mobile') {
+      const mobileForceCSS = `<style type="text/css">
+        /* PREVIEW ONLY: Force mobile styles in narrow iframe */
+        .email-container { width: 100% !important; min-width: 100% !important; }
+        .mob-stack { display: block !important; width: 100% !important; max-width: 100% !important; }
+        .mob-full-img { width: 100% !important; max-width: 100% !important; height: auto !important; }
+        .mob-pad { padding-left: 16px !important; padding-right: 16px !important; }
+        .mob-pad-sm { padding-left: 12px !important; padding-right: 12px !important; }
+        .mob-text-lg { font-size: 22px !important; line-height: 28px !important; }
+        .mob-text-md { font-size: 16px !important; line-height: 24px !important; }
+        .mob-text-sm { font-size: 14px !important; line-height: 20px !important; }
+        .mob-hero-heading { font-size: 24px !important; line-height: 30px !important; }
+        .mob-btn-full { display: block !important; width: 100% !important; text-align: center !important; }
+        .mob-btn-full a { display: block !important; padding: 16px 20px !important; font-size: 18px !important; }
+        .mob-btn-full td { width: 100% !important; }
+        .mob-center { text-align: center !important; }
+        .mob-hide { display: none !important; }
+        .mob-show { display: block !important; max-height: none !important; overflow: visible !important; }
+        .mob-footer-pad { padding: 24px 16px !important; }
+        .mob-profile-img { display: block !important; width: 100% !important; text-align: center !important; padding-bottom: 12px !important; }
+        .mob-profile-text { display: block !important; width: 100% !important; padding-left: 0 !important; text-align: center !important; }
+      </style>`;
+      html = html.replace('</head>', mobileForceCSS + '</head>');
+    }
     this.writePreviewIframe(html);
     // Update button states
     if (btn) {
@@ -2480,16 +2638,16 @@ ${content}
   getImageBlock() {
     const blockId = 'img-' + Date.now();
     return `
-      <table width="100%" cellpadding="0" cellspacing="0" border="0">
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
         <tr>
-          <td style="padding: 20px 40px;">
+          <td class="mob-pad" style="padding: 20px 40px;">
             <div class="email-image-controls" style="margin-bottom: 8px;">
               <div class="input-group input-group-sm">
                 <span class="input-group-text"><i class="bi bi-link-45deg"></i></span>
                 <input type="text" class="form-control form-control-sm email-image-url" placeholder="Paste image URL..." data-img-id="${blockId}" onchange="emailBuilder.updateImageFromUrl(this)">
               </div>
             </div>
-            <img src="data:image/svg+xml,${encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="520" height="300"><rect width="520" height="300" fill="#dee2e6" rx="8"/><text x="260" y="145" text-anchor="middle" font-family="Arial,sans-serif" font-size="18" fill="#6c757d">Paste an image URL above</text><text x="260" y="170" text-anchor="middle" font-family="Arial,sans-serif" font-size="14" fill="#adb5bd">or drag an image from your media gallery</text></svg>')}" alt="Image" data-img-target="${blockId}" style="width: 100%; max-width: 520px; height: auto; display: block; border-radius: 8px;">
+            <img src="data:image/svg+xml,${encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="520" height="300"><rect width="520" height="300" fill="#dee2e6" rx="8"/><text x="260" y="145" text-anchor="middle" font-family="Arial,sans-serif" font-size="18" fill="#6c757d">Paste an image URL above</text><text x="260" y="170" text-anchor="middle" font-family="Arial,sans-serif" font-size="14" fill="#adb5bd">or drag an image from your media gallery</text></svg>')}" alt="Image" data-img-target="${blockId}" style="width: 100%; max-width: 520px; height: auto; display: block; border-radius: 8px;" class="mob-full-img">
           </td>
         </tr>
       </table>
@@ -2521,7 +2679,7 @@ ${content}
   getButtonBlock() {
     const blockId = 'btn-' + Date.now();
     return `
-      <table width="100%" cellpadding="0" cellspacing="0" border="0">
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
         <tr>
           <td style="padding: 10px 40px 0;">
             <div class="email-button-controls" style="margin-bottom: 8px;">
@@ -2540,8 +2698,8 @@ ${content}
           </td>
         </tr>
         <tr>
-          <td style="padding: 10px 40px 30px;" align="center">
-            <table cellpadding="0" cellspacing="0" border="0">
+          <td class="mob-pad" style="padding: 10px 40px 30px;" align="center">
+            <table role="presentation" cellpadding="0" cellspacing="0" border="0" class="mob-btn-full">
               <tr>
                 <td data-btn-target="${blockId}" style="background-color: #0d6efd; border-radius: 6px; padding: 15px 40px;">
                   <a href="{{website}}" style="color: #ffffff; font-family: Arial, sans-serif; font-size: 16px; font-weight: bold; text-decoration: none; display: inline-block;">
@@ -3112,16 +3270,16 @@ ${content}
    */
   getFooterBlock() {
     return `
-      <table width="100%" cellpadding="0" cellspacing="0" border="0">
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
         <tr>
-          <td style="padding: 40px; background-color: #212529; text-align: center;">
-            <p style="margin: 0 0 10px 0; font-family: Arial, sans-serif; font-size: 14px; color: #ffffff;">
+          <td class="mob-footer-pad" style="padding: 40px; background-color: #212529; text-align: center;">
+            <p class="mob-text-sm" style="margin: 0 0 10px 0; font-family: Arial, sans-serif; font-size: 14px; line-height: 20px; color: #ffffff;">
               &copy; ${new Date().getFullYear()} British Trade Awards. All rights reserved.
             </p>
-            <p style="margin: 0 0 10px 0; font-family: Arial, sans-serif; font-size: 12px; color: #adb5bd;">
+            <p class="mob-text-sm" style="margin: 0 0 10px 0; font-family: Arial, sans-serif; font-size: 12px; line-height: 18px; color: #adb5bd;">
               You received this email because you are a registered participant in the British Trade Awards.
             </p>
-            <p style="margin: 0; font-family: Arial, sans-serif; font-size: 12px;">
+            <p class="mob-text-sm" style="margin: 0; font-family: Arial, sans-serif; font-size: 12px; line-height: 18px;">
               <a href="{{unsubscribe_url}}" style="color: #0d6efd; text-decoration: none;">Unsubscribe</a> |
               <a href="{{view_in_browser_url}}" style="color: #0d6efd; text-decoration: none;">View in Browser</a>
             </p>

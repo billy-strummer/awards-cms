@@ -28,7 +28,7 @@ const MEDIA_TYPES = {
 const INACTIVITY_TIMEOUT = 30 * 60 * 1000; // 30 minutes
 
 // Filter Options
-const YEARS = ['2025', '2024', '2023', '2022', '2021'];
+const YEARS = ['2026', '2025', '2024', '2023', '2022', '2021'];
 
 const SECTORS = [
   'BUILDING & CONSTRUCTION',

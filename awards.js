@@ -12,7 +12,7 @@ const awardsModule = {
   async loadAwards() {
     try {
       utils.showLoading();
-      utils.showTableLoading('awardsTableBody', 7);
+      utils.showTableLoading('awardsTableBody', 10);
 
       let allData = [];
       let page = 0;
@@ -73,7 +73,7 @@ const awardsModule = {
     } catch (error) {
       console.error('Error loading awards:', error);
       utils.showToast('Failed to load awards: ' + error.message, 'error');
-      utils.showEmptyState('awardsTableBody', 7, 'Failed to load awards', 'bi-exclamation-triangle');
+      utils.showEmptyState('awardsTableBody', 10, 'Failed to load awards', 'bi-exclamation-triangle');
     } finally {
       utils.hideLoading();
     }
@@ -489,7 +489,7 @@ const awardsModule = {
                 </li>
                 <li><hr class="dropdown-divider"></li>
                 <li>
-                  <a class="dropdown-item text-danger" href="javascript:void(0);" onclick="if(confirm('Are you sure you want to delete this award?')) awardsModule.deleteAward('${award.id}')">
+                  <a class="dropdown-item text-danger" href="javascript:void(0);" onclick="awardsModule.deleteAward('${award.id}')">
                     <i class="bi bi-trash me-2"></i>Delete
                   </a>
                 </li>
@@ -1248,11 +1248,11 @@ const awardsModule = {
     try {
       utils.showLoading();
 
-      // Get existing award names for target year to avoid duplicates
-      const existingNames = new Set(existingTarget.map(a => a.award_name));
+      // Get existing award name+county combos for target year to avoid duplicates
+      const existingKeys = new Set(existingTarget.map(a => `${a.award_name}|||${a.county}`));
 
-      // Filter out awards that already exist in the target year
-      const awardsToRoll = sourceAwards.filter(a => !existingNames.has(a.award_name));
+      // Filter out awards that already exist in the target year (same name + county)
+      const awardsToRoll = sourceAwards.filter(a => !existingKeys.has(`${a.award_name}|||${a.county}`));
 
       if (awardsToRoll.length === 0) {
         utils.showToast(`All ${sourceYear} awards already exist in ${targetYear}`, 'info');

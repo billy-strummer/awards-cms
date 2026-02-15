@@ -119,9 +119,14 @@ document.addEventListener('DOMContentLoaded', function() {
   });
   
   document.getElementById('awardsRegionFilterSelect').addEventListener('change', () => {
+    awardsModule.updateCountyFilterByRegion();
     awardsModule.filterAwards();
   });
-  
+
+  document.getElementById('awardsCountyFilterSelect').addEventListener('change', () => {
+    awardsModule.filterAwards();
+  });
+
   document.getElementById('awardsSearchBox').addEventListener('input', () => {
     debouncedAwardsFilter();
   });

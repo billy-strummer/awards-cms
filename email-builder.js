@@ -1265,7 +1265,7 @@ ${content}
     if (!modal) return;
 
     const iframe = document.getElementById('emailPreviewFrame');
-    if (iframe) iframe.style.width = '100%';
+    if (iframe) iframe.style.width = '700px';
 
     this.writePreviewIframe(html);
 
@@ -1280,7 +1280,7 @@ ${content}
     this.previewDeviceMode = mode;
     const iframe = document.getElementById('emailPreviewFrame');
     if (iframe) {
-      iframe.style.width = mode === 'mobile' ? '375px' : '100%';
+      iframe.style.width = mode === 'mobile' ? '375px' : '700px';
     }
     // Re-render content so responsive CSS applies at correct width
     const html = this.generateFullHTML();

@@ -86,13 +86,12 @@ const emailBuilder = {
       // Show drop indicator between blocks when reordering
       if (this._reorderDragId) {
         const afterEl = this._getDragAfterElement(e.clientY);
-        const indicator = this.canvas.querySelector('.block-drop-indicator');
-        if (!indicator) {
-          const ind = document.createElement('div');
+        let ind = this.canvas.querySelector('.block-drop-indicator');
+        if (!ind) {
+          ind = document.createElement('div');
           ind.className = 'block-drop-indicator';
           this.canvas.appendChild(ind);
         }
-        const ind = this.canvas.querySelector('.block-drop-indicator');
         if (afterEl) {
           this.canvas.insertBefore(ind, afterEl);
         } else {
@@ -104,8 +103,11 @@ const emailBuilder = {
     });
 
     this.canvas.addEventListener('dragleave', (e) => {
-      this.canvas.classList.remove('drag-over');
-      this.canvas.querySelector('.block-drop-indicator')?.remove();
+      // Only act when truly leaving the canvas (not moving between children)
+      if (!e.relatedTarget || !this.canvas.contains(e.relatedTarget)) {
+        this.canvas.classList.remove('drag-over');
+        this.canvas.querySelector('.block-drop-indicator')?.remove();
+      }
     });
 
     this.canvas.addEventListener('drop', (e) => {
@@ -124,6 +126,7 @@ const emailBuilder = {
           } else {
             this.canvas.appendChild(draggedEl);
           }
+          this._syncBlocksFromDOM();
           this.markUnsavedChanges();
           this.updatePreview();
         }
@@ -153,6 +156,19 @@ const emailBuilder = {
       }
     });
     return closest.element;
+  },
+
+  /**
+   * Rebuild this.blocks array to match the current DOM order
+   */
+  _syncBlocksFromDOM() {
+    const domBlocks = this.canvas.querySelectorAll('.email-block-wrapper');
+    const blockMap = {};
+    this.blocks.forEach(b => { blockMap[b.id] = b; });
+    this.blocks = Array.from(domBlocks).map(el => {
+      const id = el.getAttribute('data-block-id');
+      return blockMap[id] || { id, type: 'unknown' };
+    });
   },
 
   /**
@@ -491,14 +507,14 @@ const emailBuilder = {
     const link = document.querySelector(`a[data-video-link="${videoId}"]`);
     const playBtn = document.querySelector(`div[data-video-play="${videoId}"]`);
 
-    // Extract YouTube ID
+    // Extract YouTube ID (supports www. prefix and multiple URL formats)
     let ytId = null;
-    const ytMatch = url.match(/(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([\w-]{11})/);
+    const ytMatch = url.match(/(?:(?:www\.)?youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([\w-]{11})/);
     if (ytMatch) ytId = ytMatch[1];
 
-    // Extract Vimeo ID
+    // Extract Vimeo ID (supports www. prefix)
     let vimeoId = null;
-    const vimeoMatch = url.match(/vimeo\.com\/(\d+)/);
+    const vimeoMatch = url.match(/(?:www\.)?vimeo\.com\/(\d+)/);
     if (vimeoMatch) vimeoId = vimeoMatch[1];
 
     if (ytId) {
@@ -508,9 +524,20 @@ const emailBuilder = {
       this.markUnsavedChanges();
       this.updatePreview();
     } else if (vimeoId) {
-      if (thumb) thumb.src = `https://vumbnail.com/${vimeoId}.jpg`;
+      // Fetch Vimeo thumbnail via oEmbed API
       if (link) link.href = `https://vimeo.com/${vimeoId}`;
       if (playBtn) playBtn.style.display = 'flex';
+      fetch(`https://vimeo.com/api/oembed.json?url=https://vimeo.com/${vimeoId}`)
+        .then(r => r.json())
+        .then(data => {
+          if (thumb && data.thumbnail_url) {
+            thumb.src = data.thumbnail_url.replace(/_\d+x\d+/, '_640x360');
+          }
+        })
+        .catch(() => {
+          // Fallback: use a generic video placeholder
+          if (thumb) thumb.alt = 'Vimeo Video';
+        });
       this.markUnsavedChanges();
       this.updatePreview();
     } else {
@@ -785,6 +812,7 @@ const emailBuilder = {
     const wrapper = document.querySelector(`[data-block-id="${blockId}"]`);
     if (wrapper && wrapper.previousElementSibling) {
       this.canvas.insertBefore(wrapper, wrapper.previousElementSibling);
+      this._syncBlocksFromDOM();
       this.markUnsavedChanges();
       this.updatePreview();
     }
@@ -798,6 +826,7 @@ const emailBuilder = {
     const wrapper = document.querySelector(`[data-block-id="${blockId}"]`);
     if (wrapper && wrapper.nextElementSibling) {
       this.canvas.insertBefore(wrapper.nextElementSibling, wrapper);
+      this._syncBlocksFromDOM();
       this.markUnsavedChanges();
       this.updatePreview();
     }
@@ -1212,6 +1241,16 @@ ${content}
           const tr = el.closest('tr');
           if (tr) tr.remove(); else el.remove();
         });
+        // Strip contenteditable attributes (not valid in sent emails)
+        clone.querySelectorAll('[contenteditable]').forEach(el => {
+          el.removeAttribute('contenteditable');
+        });
+        // Strip data- attributes used only for editor targeting
+        clone.querySelectorAll('[data-img-target], [data-img-id], [data-alt-id], [data-btn-target], [data-btn-text], [data-btn-url], [data-btn-color], [data-video-link], [data-video-thumb], [data-video-play], [data-video-id], [data-cd-date], [data-cd-label], [data-cd-heading], [data-cd-display], [data-cd-days], [data-cd-hours], [data-cd-mins], [data-cd-secs]').forEach(el => {
+          [...el.attributes].forEach(attr => {
+            if (attr.name.startsWith('data-')) el.removeAttribute(attr.name);
+          });
+        });
         return clone.innerHTML;
       })
       .join('');
@@ -1284,14 +1323,18 @@ ${content}
       utils.showToast('HTML copied to clipboard!', 'success');
     } catch (err) {
       // Fallback for older browsers
-      const textarea = document.createElement('textarea');
-      textarea.value = html;
-      textarea.style.cssText = 'position:fixed;opacity:0';
-      document.body.appendChild(textarea);
-      textarea.select();
-      document.execCommand('copy');
-      document.body.removeChild(textarea);
-      utils.showToast('HTML copied to clipboard!', 'success');
+      try {
+        const textarea = document.createElement('textarea');
+        textarea.value = html;
+        textarea.style.cssText = 'position:fixed;opacity:0';
+        document.body.appendChild(textarea);
+        textarea.select();
+        const ok = document.execCommand('copy');
+        document.body.removeChild(textarea);
+        utils.showToast(ok ? 'HTML copied to clipboard!' : 'Copy failed — please copy manually', ok ? 'success' : 'error');
+      } catch (fallbackErr) {
+        utils.showToast('Copy failed — please use Export HTML instead', 'error');
+      }
     }
   },
 
@@ -1308,7 +1351,7 @@ ${content}
 
     // Convert links to text with URL
     doc.querySelectorAll('a').forEach(link => {
-      const href = link.getAttribute('href') || '';
+      const href = (link.getAttribute('href') || '').trim();
       const text = link.textContent.trim();
       if (href && text && href !== text && !href.startsWith('#') && !href.startsWith('{{')) {
         link.textContent = `${text} (${href})`;
@@ -1319,7 +1362,8 @@ ${content}
     doc.querySelectorAll('img').forEach(img => {
       const alt = img.getAttribute('alt');
       if (alt && alt !== 'Image') {
-        img.replaceWith(document.createTextNode(`[Image: ${alt}]`));
+        const textNode = doc.createTextNode(`[Image: ${alt}]`);
+        img.parentNode.replaceChild(textNode, img);
       } else {
         img.remove();
       }

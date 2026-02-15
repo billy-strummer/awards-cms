@@ -157,20 +157,44 @@ async loadOrganisations() {
 },
       
   // ============================================
-  // Calculate dashboard statistics
+  // State for advanced filters
+  // ============================================
+  _filterMissingField: null,
+
+  // ============================================
+  // Calculate dashboard statistics (Enhanced)
   // ============================================
   async calculateDashboardStats() {
     try {
       const totalCount = STATE.allOrganisations.length;
-      
+
       // Count unique organisations with award assignments
       const { data: assignments } = await STATE.client
         .from('award_assignments')
         .select('organisation_id');
-      
+
       const uniqueOrgIds = new Set(assignments?.map(a => a.organisation_id) || []);
       const activeNominees = uniqueOrgIds.size;
-      
+
+      // New this month
+      const now = new Date();
+      const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+      const newThisMonth = STATE.allOrganisations.filter(org => {
+        const created = new Date(org.created_at);
+        return created >= monthStart;
+      }).length;
+
+      // Missing data indicators
+      const missingEmail = STATE.allOrganisations.filter(o => !o.email).length;
+      const missingLogo = STATE.allOrganisations.filter(o => !o.logo_url).length;
+
+      // Pipeline counts (exclude archived)
+      const statusCounts = { prospect: 0, entrant: 0, nominee: 0, shortlisted: 0, winner: 0, sponsor: 0, past_winner: 0 };
+      STATE.allOrganisations.forEach(org => {
+        const s = org.status || 'prospect';
+        if (statusCounts[s] !== undefined) statusCounts[s]++;
+      });
+
       // Find top sector
       const sectorCounts = {};
       STATE.allOrganisations.forEach(org => {
@@ -178,30 +202,35 @@ async loadOrganisations() {
           sectorCounts[org.sector] = (sectorCounts[org.sector] || 0) + 1;
         }
       });
-      
+
       const topSectorEntry = Object.entries(sectorCounts)
         .sort((a, b) => b[1] - a[1])[0];
       const topSector = topSectorEntry ? topSectorEntry[0] : '-';
-      const topSectorCount = topSectorEntry ? topSectorEntry[1] : 0;
-      
+
       // Update dashboard UI
-      const totalEl = document.getElementById('orgsTotalCount');
-      const activeEl = document.getElementById('orgsWithAwards');
-      const topSectorEl = document.getElementById('orgsTopSector');
-      const lastUpdatedEl = document.getElementById('orgsLastUpdated');
-      
-      if (totalEl) totalEl.textContent = totalCount;
-      if (activeEl) activeEl.textContent = activeNominees;
-      if (topSectorEl) topSectorEl.textContent = topSector;
-      if (lastUpdatedEl) lastUpdatedEl.textContent = new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
-      
+      const set = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
+      set('orgsTotalCount', totalCount);
+      set('orgsWithAwards', activeNominees);
+      set('orgsNewThisMonth', newThisMonth);
+      set('orgsTopSector', topSector);
+      set('orgsMissingEmail', missingEmail);
+      set('orgsMissingLogo', missingLogo);
+      set('orgsLastUpdated', new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }));
+
+      // Pipeline badges
+      set('orgsPipelineProspect', statusCounts.prospect + ' Prospects');
+      set('orgsPipelineEntrant', statusCounts.entrant + ' Entrants');
+      set('orgsPipelineNominee', statusCounts.nominee + ' Nominees');
+      set('orgsPipelineShortlisted', statusCounts.shortlisted + ' Shortlisted');
+      set('orgsPipelineWinner', statusCounts.winner + ' Winners');
+
     } catch (error) {
       console.error('Error calculating dashboard stats:', error);
     }
   },
 
 /**
- * Populate filter dropdowns with unique values
+ * Populate filter dropdowns with unique values (Enhanced)
  */
 populateFilters() {
   // Populate sector filter
@@ -209,13 +238,13 @@ populateFilters() {
     .map(o => o.sector)
     .filter(s => s)
   )].sort();
-  
+
   const sectorSelect = document.getElementById('orgsSectorFilter');
   if (sectorSelect) {
     sectorSelect.innerHTML = '<option value="">All</option>' +
       sectors.map(s => `<option value="${s}">${utils.escapeHtml(s)}</option>`).join('');
   }
-  
+
   // Populate county filter
   const counties = [...new Set(STATE.allOrganisations
     .map(o => o.county)
@@ -227,18 +256,34 @@ populateFilters() {
     countySelect.innerHTML = '<option value="">All</option>' +
       counties.map(c => `<option value="${c}">${utils.escapeHtml(c)}</option>`).join('');
   }
-  
+
   // Populate region filter
   const regions = [...new Set(STATE.allOrganisations
     .map(o => o.region)
     .filter(r => r)
   )].sort();
-  
+
   const regionSelect = document.getElementById('orgsRegionFilter');
   if (regionSelect) {
     regionSelect.innerHTML = '<option value="">All Regions</option>' +
       regions.map(r => `<option value="${r}">${utils.escapeHtml(r)}</option>`).join('');
   }
+
+  // Populate tag filter
+  const allTags = new Set();
+  STATE.allOrganisations.forEach(o => {
+    if (o.tags && Array.isArray(o.tags)) {
+      o.tags.forEach(t => allTags.add(t));
+    }
+  });
+  const tagSelect = document.getElementById('orgsTagFilter');
+  if (tagSelect) {
+    tagSelect.innerHTML = '<option value="">All Tags</option>' +
+      [...allTags].sort().map(t => `<option value="${utils.escapeHtml(t)}">${utils.escapeHtml(t)}</option>`).join('');
+  }
+
+  // Populate saved filter presets
+  this._populateFilterPresets();
 },
 
 /**
@@ -310,7 +355,7 @@ updateCountyFilterByRegion() {
 },
 
   /**
-   * Filter organisations based on sector, region, and search
+   * Filter organisations based on all filters (Enhanced)
    */
   filterOrganisations() {
   const year = document.getElementById('orgsYearFilter')?.value || '';
@@ -319,14 +364,29 @@ updateCountyFilterByRegion() {
   const region = document.getElementById('orgsRegionFilter')?.value || '';
   const status = document.getElementById('orgsStatusFilter')?.value || '';
   const search = document.getElementById('orgsSearchBox')?.value.toLowerCase().trim() || '';
+  const tier = document.getElementById('orgsTierFilter')?.value || '';
+  const tag = document.getElementById('orgsTagFilter')?.value || '';
+  const logoFilter = document.getElementById('orgsLogoFilter')?.value || '';
+  const dateFilter = document.getElementById('orgsDateFilter')?.value || '';
+  const missingField = this._filterMissingField || '';
 
   // Save filters to localStorage
   try {
-    localStorage.setItem('orgsFilters', JSON.stringify({ year, sector, county, region, status, search }));
+    localStorage.setItem('orgsFilters', JSON.stringify({ year, sector, county, region, status, search, tier, tag, logoFilter, dateFilter }));
   } catch (e) { /* ignore */ }
 
   // Hide archived by default unless status filter is 'archived' or 'all'
   const showArchived = status === 'archived' || status === 'all';
+
+  // Date range calculation
+  let dateThreshold = null;
+  let isStaleFilter = false;
+  if (dateFilter === 'stale') {
+    isStaleFilter = true;
+    dateThreshold = new Date(Date.now() - 180 * 24 * 60 * 60 * 1000);
+  } else if (dateFilter) {
+    dateThreshold = new Date(Date.now() - parseInt(dateFilter) * 24 * 60 * 60 * 1000);
+  }
 
   STATE.filteredOrganisations = STATE.allOrganisations.filter(org => {
     const orgStatus = org.status || 'prospect';
@@ -349,12 +409,39 @@ updateCountyFilterByRegion() {
     // Region filter
     if (region && org.region !== region) return false;
 
-    // Search filter - searches ALL fields including county, sector, status
+    // Tier filter
+    if (tier && (org.tier || '') !== tier) return false;
+
+    // Tag filter
+    if (tag && !(org.tags && org.tags.includes(tag))) return false;
+
+    // Logo filter
+    if (logoFilter === 'has' && !org.logo_url) return false;
+    if (logoFilter === 'missing' && org.logo_url) return false;
+
+    // Date filter
+    if (dateThreshold) {
+      const orgDate = new Date(org.updated_at || org.created_at || 0);
+      if (isStaleFilter) {
+        if (orgDate > dateThreshold) return false; // stale = NOT updated recently
+      } else {
+        if (orgDate < dateThreshold) return false; // recent = updated after threshold
+      }
+    }
+
+    // Missing field filter (from dashboard click)
+    if (missingField) {
+      if (org[missingField]) return false; // only show orgs missing this field
+    }
+
+    // Search filter - searches ALL fields including county, sector, status, tags
     if (search) {
+      const tagStr = (org.tags || []).join(' ');
       const searchFields = [
         org.company_name, org.contact_name, org.email, org.website,
         org.notes, org.county, org.sector, org.region,
-        org.catchment_area, org.address, orgStatus
+        org.catchment_area, org.address, orgStatus, org.tier, tagStr,
+        org.contact_phone
       ].map(f => (f || '').toLowerCase());
 
       if (!searchFields.some(f => f.includes(search))) {
@@ -364,6 +451,9 @@ updateCountyFilterByRegion() {
 
     return true;
   });
+
+  // Clear the missing field filter after applying it once
+  this._filterMissingField = null;
 
   this.renderOrganisations();
 },
@@ -408,7 +498,7 @@ updateCountyFilterByRegion() {
 
     tbody.innerHTML = `
       <tr>
-        <td colspan="11" class="text-center py-5">
+        <td colspan="13" class="text-center py-5">
           <i class="bi bi-inbox display-4 text-muted opacity-25"></i>
           <p class="text-muted mt-3 mb-0">No organisations found</p>
           ${filterSummary}
@@ -422,6 +512,9 @@ updateCountyFilterByRegion() {
     const isSelected = this.selectedOrgs.has(org.id);
     const awardsCount = org.awards_count || 0;
     const escapedName = utils.escapeHtml(org.company_name || '').replace(/'/g, "\\'");
+    const tierColors = { 'Bronze': '#CD7F32', 'Silver': '#C0C0C0', 'Gold': '#FFD700', 'Platinum': '#E5E4E2' };
+    const tierColor = tierColors[org.tier] || '';
+    const updatedDate = org.updated_at || org.created_at;
 
     return `
       <tr class="fade-in ${isSelected ? 'table-active' : ''}">
@@ -463,17 +556,22 @@ updateCountyFilterByRegion() {
         <td class="small" style="cursor: pointer;" ondblclick="orgsModule.startInlineEdit('${org.id}', 'email', '${utils.escapeHtml(org.email || '').replace(/'/g, "\\'")}', this)" title="Double-click to edit">
           ${org.email ?
             `<a href="mailto:${org.email}" class="text-decoration-none" title="${utils.escapeHtml(org.email)}">
-              ${org.email.length > 25 ? utils.escapeHtml(org.email.substring(0, 25)) + '...' : utils.escapeHtml(org.email)}
+              ${org.email.length > 22 ? utils.escapeHtml(org.email.substring(0, 22)) + '...' : utils.escapeHtml(org.email)}
             </a>` : '-'
           }
         </td>
-        <td class="small">
-          ${org.website ?
-            `<a href="${org.website.startsWith('http') ? org.website : 'https://' + org.website}"
-                target="_blank" class="text-decoration-none" title="${utils.escapeHtml(org.website)}">
-              ${(() => { const clean = org.website.replace(/https?:\/\/(www\.)?/, ''); return clean.length > 20 ? utils.escapeHtml(clean.substring(0, 20)) + '...' : utils.escapeHtml(clean); })()}
-              <i class="bi bi-box-arrow-up-right ms-1" style="font-size: 0.7rem;"></i>
-            </a>` : '-'
+        <td class="text-center">
+          ${org.tier ?
+            `<span class="badge" style="background: ${tierColor}; color: ${org.tier === 'Gold' || org.tier === 'Silver' || org.tier === 'Platinum' ? '#000' : '#fff'}; font-size: 0.7rem;">
+              ${utils.escapeHtml(org.tier)}
+            </span>` : '<span class="text-muted small">-</span>'
+          }
+        </td>
+        <td>
+          ${org.tags && org.tags.length > 0 ?
+            org.tags.slice(0, 3).map(t => `<span class="badge bg-secondary me-1" style="font-size: 0.65rem;">${utils.escapeHtml(t)}</span>`).join('') +
+            (org.tags.length > 3 ? `<span class="text-muted" style="font-size: 0.65rem;">+${org.tags.length - 3}</span>` : '')
+            : '<span class="text-muted small">-</span>'
           }
         </td>
         <td>
@@ -496,6 +594,9 @@ updateCountyFilterByRegion() {
             `<span class="badge bg-warning text-dark">${awardsCount}</span>` :
             `<span class="text-muted">-</span>`
           }
+        </td>
+        <td class="text-center small text-muted" title="${updatedDate ? new Date(updatedDate).toLocaleDateString('en-GB') : 'N/A'}">
+          ${updatedDate ? this._timeAgo(new Date(updatedDate)) : '-'}
         </td>
         <td class="text-center">
           <div class="btn-group btn-group-sm">
@@ -2270,6 +2371,15 @@ updateCountyFilterByRegion() {
           valA = a.awards_count || 0;
           valB = b.awards_count || 0;
           break;
+        case 'tier':
+          const tierOrder = { 'Platinum': 4, 'Gold': 3, 'Silver': 2, 'Bronze': 1 };
+          valA = tierOrder[a.tier] || 0;
+          valB = tierOrder[b.tier] || 0;
+          break;
+        case 'updated':
+          valA = new Date(a.updated_at || a.created_at || 0).getTime();
+          valB = new Date(b.updated_at || b.created_at || 0).getTime();
+          break;
         default:
           valA = (a.company_name || '').toLowerCase();
           valB = (b.company_name || '').toLowerCase();
@@ -2319,6 +2429,17 @@ updateCountyFilterByRegion() {
     document.getElementById('orgsRegionFilter').value = '';
     document.getElementById('orgsCountyFilter').value = '';
     document.getElementById('orgsStatusFilter').value = '';
+    const tierEl = document.getElementById('orgsTierFilter');
+    if (tierEl) tierEl.value = '';
+    const tagEl = document.getElementById('orgsTagFilter');
+    if (tagEl) tagEl.value = '';
+    const logoEl = document.getElementById('orgsLogoFilter');
+    if (logoEl) logoEl.value = '';
+    const dateEl = document.getElementById('orgsDateFilter');
+    if (dateEl) dateEl.value = '';
+    const presetEl = document.getElementById('orgsFilterPreset');
+    if (presetEl) presetEl.value = '';
+    this._filterMissingField = null;
     this.updateCountyFilterByRegion();
     try { localStorage.removeItem('orgsFilters'); } catch (e) { /* ignore */ }
     this.filterOrganisations();

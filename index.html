@@ -1494,27 +1494,54 @@
       <p class="section-subtitle">View and manage registered companies</p>
     </div>
 
-    <!-- Single Compact Stats Card -->
+    <!-- Enhanced Stats Card with Pipeline & Data Quality -->
     <div class="row mb-4">
       <div class="col-12">
         <div class="card border-0 shadow-sm">
           <div class="card-body py-3">
             <div class="row text-center">
-              <div class="col-md-3">
+              <div class="col">
                 <h6 class="text-muted mb-1 small">Total Companies</h6>
                 <h3 class="mb-0 fw-bold text-primary" id="orgsTotalCount">0</h3>
               </div>
-              <div class="col-md-3">
+              <div class="col">
                 <h6 class="text-muted mb-1 small">With Awards</h6>
                 <h3 class="mb-0 fw-bold text-success" id="orgsWithAwards">0</h3>
               </div>
-              <div class="col-md-3">
+              <div class="col">
+                <h6 class="text-muted mb-1 small">New This Month</h6>
+                <h3 class="mb-0 fw-bold text-info" id="orgsNewThisMonth">0</h3>
+              </div>
+              <div class="col">
                 <h6 class="text-muted mb-1 small">Top Sector</h6>
                 <h5 class="mb-0 fw-semibold text-info" id="orgsTopSector">-</h5>
               </div>
-              <div class="col-md-3">
+              <div class="col">
+                <h6 class="text-muted mb-1 small">Missing Email</h6>
+                <h3 class="mb-0 fw-bold text-warning" id="orgsMissingEmail" style="cursor:pointer" title="Click to filter" onclick="document.getElementById('orgsSearchBox').value=''; orgsModule._filterMissingField='email'; orgsModule.filterOrganisations();">0</h3>
+              </div>
+              <div class="col">
+                <h6 class="text-muted mb-1 small">Missing Logo</h6>
+                <h3 class="mb-0 fw-bold text-warning" id="orgsMissingLogo" style="cursor:pointer" title="Click to filter" onclick="document.getElementById('orgsSearchBox').value=''; orgsModule._filterMissingField='logo_url'; orgsModule.filterOrganisations();">0</h3>
+              </div>
+              <div class="col">
                 <h6 class="text-muted mb-1 small">Last Updated</h6>
                 <p class="mb-0 small" id="orgsLastUpdated">-</p>
+              </div>
+            </div>
+            <!-- Conversion Pipeline Mini -->
+            <div class="mt-3 pt-2 border-top">
+              <div class="d-flex align-items-center justify-content-center gap-2 flex-wrap small">
+                <span class="text-muted fw-semibold">Pipeline:</span>
+                <span class="badge bg-secondary" id="orgsPipelineProspect" title="Prospects">0 Prospects</span>
+                <i class="bi bi-chevron-right text-muted"></i>
+                <span class="badge bg-info" id="orgsPipelineEntrant" title="Entrants">0 Entrants</span>
+                <i class="bi bi-chevron-right text-muted"></i>
+                <span class="badge bg-primary" id="orgsPipelineNominee" title="Nominees">0 Nominees</span>
+                <i class="bi bi-chevron-right text-muted"></i>
+                <span class="badge bg-warning text-dark" id="orgsPipelineShortlisted" title="Shortlisted">0 Shortlisted</span>
+                <i class="bi bi-chevron-right text-muted"></i>
+                <span class="badge bg-success" id="orgsPipelineWinner" title="Winners">0 Winners</span>
               </div>
             </div>
           </div>
@@ -1522,27 +1549,28 @@
       </div>
     </div>
 
-    <!-- Compact Filters Row -->
+    <!-- Enhanced Filters Row -->
     <div class="card border-0 shadow-sm mb-4">
       <div class="card-body py-3">
+        <!-- Row 1: Primary Filters -->
         <div class="row g-2 align-items-end">
-          
-          <!-- Search Box (Wider) -->
-          <div class="col-md-3">
+
+          <!-- Search Box -->
+          <div class="col-md-2">
             <label for="orgsSearchBox" class="form-label small fw-semibold mb-1">
               <i class="bi bi-search me-1"></i>Search
             </label>
-            <input type="text" class="form-control form-control-sm" id="orgsSearchBox" 
-                   placeholder="Company, email, contact..." 
+            <input type="text" class="form-control form-control-sm" id="orgsSearchBox"
+                   placeholder="Company, email, contact..."
                    oninput="orgsModule.filterOrganisations()">
           </div>
-          
-          <!-- Year Filter (NEW - IMPORTANT) -->
+
+          <!-- Year Filter -->
           <div class="col-md-1">
             <label for="orgsYearFilter" class="form-label small fw-semibold mb-1">
               <i class="bi bi-calendar3 me-1"></i>Year
             </label>
-            <select class="form-select form-select-sm" id="orgsYearFilter" 
+            <select class="form-select form-select-sm" id="orgsYearFilter"
                     onchange="orgsModule.filterOrganisations()">
               <option value="">All</option>
               <option value="2026" selected>2026</option>
@@ -1551,41 +1579,40 @@
               <option value="2023">2023</option>
             </select>
           </div>
-          
+
           <!-- Sector Filter -->
           <div class="col-md-2">
             <label for="orgsSectorFilter" class="form-label small fw-semibold mb-1">
               <i class="bi bi-briefcase me-1"></i>Sector
             </label>
-            <select class="form-select form-select-sm" id="orgsSectorFilter" 
+            <select class="form-select form-select-sm" id="orgsSectorFilter"
                     onchange="orgsModule.filterOrganisations()">
               <option value="">All</option>
             </select>
           </div>
-          
+
           <!-- Region Filter -->
-<div class="col-md-2">
-  <label for="orgsRegionFilter" class="form-label small fw-semibold mb-1">
-    <i class="bi bi-geo-alt me-1"></i>Region
-  </label>
-  <select class="form-select form-select-sm" id="orgsRegionFilter" 
-          onchange="orgsModule.updateCountyFilterByRegion(); orgsModule.filterOrganisations();">
-    <option value="">All Regions</option>
-  </select>
-</div>
+          <div class="col-md-2">
+            <label for="orgsRegionFilter" class="form-label small fw-semibold mb-1">
+              <i class="bi bi-geo-alt me-1"></i>Region
+            </label>
+            <select class="form-select form-select-sm" id="orgsRegionFilter"
+                    onchange="orgsModule.updateCountyFilterByRegion(); orgsModule.filterOrganisations();">
+              <option value="">All Regions</option>
+            </select>
+          </div>
 
-<!-- County/City Filter -->
-<div class="col-md-2">
-  <label for="orgsCountyFilter" class="form-label small fw-semibold mb-1">
-    <i class="bi bi-pin-map me-1"></i>County/City
-  </label>
-  <select class="form-select form-select-sm" id="orgsCountyFilter"
-          onchange="orgsModule.filterOrganisations()">
-    <option value="">All Counties/Cities</option>
-  </select>
-</div>
+          <!-- County/City Filter -->
+          <div class="col-md-2">
+            <label for="orgsCountyFilter" class="form-label small fw-semibold mb-1">
+              <i class="bi bi-pin-map me-1"></i>County/City
+            </label>
+            <select class="form-select form-select-sm" id="orgsCountyFilter"
+                    onchange="orgsModule.filterOrganisations()">
+              <option value="">All Counties/Cities</option>
+            </select>
+          </div>
 
-          
           <!-- Status Filter -->
           <div class="col-md-1">
             <label for="orgsStatusFilter" class="form-label small fw-semibold mb-1">
@@ -1606,11 +1633,88 @@
             </select>
           </div>
 
-          <!-- Reset Filters -->
+          <!-- Tier Filter -->
+          <div class="col-md-1">
+            <label for="orgsTierFilter" class="form-label small fw-semibold mb-1">
+              <i class="bi bi-award me-1"></i>Tier
+            </label>
+            <select class="form-select form-select-sm" id="orgsTierFilter"
+                    onchange="orgsModule.filterOrganisations()">
+              <option value="">All</option>
+              <option value="Bronze">Bronze</option>
+              <option value="Silver">Silver</option>
+              <option value="Gold">Gold</option>
+              <option value="Platinum">Platinum</option>
+            </select>
+          </div>
+
+          <!-- Reset + Actions -->
           <div class="col-auto d-flex align-items-end">
             <button class="btn btn-outline-secondary btn-sm" onclick="orgsModule.resetFilters()" title="Reset all filters">
               <i class="bi bi-x-circle"></i>
             </button>
+          </div>
+        </div>
+
+        <!-- Row 2: Advanced Filters & Actions -->
+        <div class="row g-2 align-items-end mt-1">
+          <!-- Tag Filter -->
+          <div class="col-md-2">
+            <label for="orgsTagFilter" class="form-label small fw-semibold mb-1">
+              <i class="bi bi-tags me-1"></i>Tag
+            </label>
+            <select class="form-select form-select-sm" id="orgsTagFilter"
+                    onchange="orgsModule.filterOrganisations()">
+              <option value="">All Tags</option>
+            </select>
+          </div>
+
+          <!-- Has Logo Toggle -->
+          <div class="col-md-1">
+            <label for="orgsLogoFilter" class="form-label small fw-semibold mb-1">
+              <i class="bi bi-image me-1"></i>Logo
+            </label>
+            <select class="form-select form-select-sm" id="orgsLogoFilter"
+                    onchange="orgsModule.filterOrganisations()">
+              <option value="">All</option>
+              <option value="has">Has Logo</option>
+              <option value="missing">No Logo</option>
+            </select>
+          </div>
+
+          <!-- Date Range Filter -->
+          <div class="col-md-2">
+            <label for="orgsDateFilter" class="form-label small fw-semibold mb-1">
+              <i class="bi bi-clock-history me-1"></i>Added
+            </label>
+            <select class="form-select form-select-sm" id="orgsDateFilter"
+                    onchange="orgsModule.filterOrganisations()">
+              <option value="">Any Time</option>
+              <option value="7">Last 7 Days</option>
+              <option value="30">Last 30 Days</option>
+              <option value="90">Last 90 Days</option>
+              <option value="180">Last 6 Months</option>
+              <option value="stale">Stale (6+ months)</option>
+            </select>
+          </div>
+
+          <!-- Saved Filter Presets -->
+          <div class="col-md-3">
+            <label class="form-label small fw-semibold mb-1">
+              <i class="bi bi-bookmark me-1"></i>Presets
+            </label>
+            <div class="input-group input-group-sm">
+              <select class="form-select form-select-sm" id="orgsFilterPreset"
+                      onchange="orgsModule.loadFilterPreset(this.value)">
+                <option value="">-- Saved Presets --</option>
+              </select>
+              <button class="btn btn-outline-primary btn-sm" onclick="orgsModule.saveFilterPreset()" title="Save current filters as preset">
+                <i class="bi bi-bookmark-plus"></i>
+              </button>
+              <button class="btn btn-outline-danger btn-sm" onclick="orgsModule.deleteFilterPreset()" title="Delete selected preset">
+                <i class="bi bi-trash"></i>
+              </button>
+            </div>
           </div>
 
           <!-- Buttons (Right Aligned) -->
@@ -1623,11 +1727,26 @@
               <button class="btn btn-sm btn-outline-success" data-bs-toggle="modal" data-bs-target="#csvImportModal" title="Import CSV">
                 <i class="bi bi-upload me-1"></i>Import
               </button>
-              <button class="btn btn-sm btn-outline-secondary" onclick="orgsModule.exportToCSV()" title="Export CSV">
-                <i class="bi bi-download me-1"></i>Export
-              </button>
+              <div class="dropdown d-inline-block">
+                <button class="btn btn-sm btn-outline-secondary dropdown-toggle" data-bs-toggle="dropdown" title="Export">
+                  <i class="bi bi-download me-1"></i>Export
+                </button>
+                <ul class="dropdown-menu">
+                  <li><a class="dropdown-item" href="#" onclick="orgsModule.exportToCSV()"><i class="bi bi-filetype-csv me-2"></i>Export CSV</a></li>
+                  <li><a class="dropdown-item" href="#" onclick="orgsModule.exportToExcel()"><i class="bi bi-file-earmark-spreadsheet me-2"></i>Export Excel (.xlsx)</a></li>
+                </ul>
+              </div>
               <button class="btn btn-sm btn-outline-warning" onclick="orgsModule.showDuplicateCheck()" title="Check Duplicates">
                 <i class="bi bi-files"></i>
+              </button>
+              <button class="btn btn-sm btn-outline-info" onclick="orgsModule.showAnalyticsDashboard()" title="Analytics & Reports">
+                <i class="bi bi-bar-chart"></i>
+              </button>
+              <button class="btn btn-sm btn-outline-danger" onclick="orgsModule.showDataQualityWizard()" title="Data Quality">
+                <i class="bi bi-shield-check"></i>
+              </button>
+              <button class="btn btn-sm btn-outline-dark" onclick="orgsModule.showGlobalAuditLog()" title="Audit Log">
+                <i class="bi bi-journal-text"></i>
               </button>
             </div>
           </div>
@@ -1653,40 +1772,46 @@
           <table class="table table-hover table-sm mb-0 align-middle">
             <thead class="table-light">
               <tr>
-                <th style="width: 3%;" class="text-center">
+                <th style="width: 2%;" class="text-center">
                   <input type="checkbox" class="form-check-input" id="selectAllOrgs"
                          onchange="orgsModule.toggleSelectAll()">
                 </th>
-                <th style="width: 18%; cursor: pointer;" class="fw-semibold" onclick="orgsModule.sortBy('company')">
+                <th style="width: 14%; cursor: pointer;" class="fw-semibold" onclick="orgsModule.sortBy('company')">
                   Company Name
                   <i class="bi bi-arrow-down-up text-muted ms-1 small" data-sort-icon="company"></i>
                 </th>
-                <th style="width: 10%; cursor: pointer;" onclick="orgsModule.sortBy('sector')">
+                <th style="width: 8%; cursor: pointer;" onclick="orgsModule.sortBy('sector')">
                   Sector <i class="bi bi-arrow-down-up text-muted ms-1 small" data-sort-icon="sector"></i>
                 </th>
-                <th style="width: 10%; cursor: pointer;" onclick="orgsModule.sortBy('county')">
+                <th style="width: 8%; cursor: pointer;" onclick="orgsModule.sortBy('county')">
                   County <i class="bi bi-arrow-down-up text-muted ms-1 small" data-sort-icon="county"></i>
                 </th>
-                <th style="width: 9%; cursor: pointer;" onclick="orgsModule.sortBy('contact')">
+                <th style="width: 8%; cursor: pointer;" onclick="orgsModule.sortBy('contact')">
                   Contact <i class="bi bi-arrow-down-up text-muted ms-1 small" data-sort-icon="contact"></i>
                 </th>
-                <th style="width: 13%;">Email</th>
-                <th style="width: 10%;">Website</th>
-                <th style="width: 8%; cursor: pointer;" onclick="orgsModule.sortBy('region')">
+                <th style="width: 10%;">Email</th>
+                <th style="width: 5%; cursor: pointer;" onclick="orgsModule.sortBy('tier')">
+                  Tier <i class="bi bi-arrow-down-up text-muted ms-1 small" data-sort-icon="tier"></i>
+                </th>
+                <th style="width: 10%;">Tags</th>
+                <th style="width: 7%; cursor: pointer;" onclick="orgsModule.sortBy('region')">
                   Region <i class="bi bi-arrow-down-up text-muted ms-1 small" data-sort-icon="region"></i>
                 </th>
-                <th style="width: 7%; cursor: pointer;" onclick="orgsModule.sortBy('status')">
+                <th style="width: 6%; cursor: pointer;" onclick="orgsModule.sortBy('status')">
                   Status <i class="bi bi-arrow-down-up text-muted ms-1 small" data-sort-icon="status"></i>
                 </th>
-                <th style="width: 5%; cursor: pointer; text-align: center;" onclick="orgsModule.sortBy('awards')">
-                  Awards <i class="bi bi-arrow-down-up text-muted ms-1 small" data-sort-icon="awards"></i>
+                <th style="width: 4%; cursor: pointer; text-align: center;" onclick="orgsModule.sortBy('awards')">
+                  <i class="bi bi-trophy" title="Awards Count"></i> <i class="bi bi-arrow-down-up text-muted ms-1 small" data-sort-icon="awards"></i>
                 </th>
-                <th style="width: 7%;" class="text-center">Actions</th>
+                <th style="width: 7%; cursor: pointer; text-align: center;" onclick="orgsModule.sortBy('updated')">
+                  Updated <i class="bi bi-arrow-down-up text-muted ms-1 small" data-sort-icon="updated"></i>
+                </th>
+                <th style="width: 5%;" class="text-center">Actions</th>
               </tr>
             </thead>
             <tbody id="orgsTableBody">
               <tr>
-                <td colspan="11" class="text-center py-5">
+                <td colspan="13" class="text-center py-5">
                   <div class="text-muted">
                     <div class="spinner-border spinner-border-sm mb-2" role="status"></div>
                     <p class="mb-0 small">Loading organisations...</p>
@@ -1994,11 +2119,20 @@
           <button class="btn btn-sm btn-success" onclick="orgsModule.bulkFetchLogos()" title="Fetch logos for selected orgs with websites but no logo">
             <i class="bi bi-image me-1"></i>Logos
           </button>
+          <button class="btn btn-sm btn-secondary" onclick="orgsModule.showBulkTagModal()" title="Add/remove tags for selected">
+            <i class="bi bi-tags me-1"></i>Tags
+          </button>
+          <button class="btn btn-sm btn-info" onclick="orgsModule.showBulkAssignAwardModal()" title="Assign selected to an award">
+            <i class="bi bi-trophy me-1"></i>Assign Award
+          </button>
           <button class="btn btn-sm btn-primary" onclick="orgsModule.bulkEmail()">
             <i class="bi bi-envelope me-1"></i>Email
           </button>
           <button class="btn btn-sm btn-outline-secondary" onclick="orgsModule.bulkExport()">
             <i class="bi bi-download me-1"></i>Export
+          </button>
+          <button class="btn btn-sm btn-outline-warning" onclick="orgsModule.showMergeDuplicatesModal()" title="Merge selected organisations">
+            <i class="bi bi-intersect me-1"></i>Merge
           </button>
           <button class="btn btn-sm btn-danger" onclick="orgsModule.bulkDelete()">
             <i class="bi bi-archive me-1"></i>Archive

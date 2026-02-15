@@ -1387,6 +1387,11 @@
       </label>
       <input type="text" class="form-control" id="awardsSearchBox" placeholder="Search awards...">
     </div>
+    <div class="col-md-1 d-flex align-items-end">
+      <button class="btn btn-outline-secondary btn-sm w-100" onclick="awardsModule.resetFilters()" title="Reset all filters">
+        <i class="bi bi-x-circle"></i>
+      </button>
+    </div>
   </div>
 </div>
           <!-- Awards Table -->
@@ -1429,6 +1434,12 @@
                     <i class="bi bi-file-earmark me-1"></i>Set Draft
                   </button>
                 </div>
+                <div class="dropdown d-inline-block">
+                  <button class="btn btn-info btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                    <i class="bi bi-calendar-event me-1"></i>Apply Season
+                  </button>
+                  <ul class="dropdown-menu" id="bulkSeasonDropdown"></ul>
+                </div>
                 <button class="btn btn-danger btn-sm" onclick="awardsModule.bulkDelete()">
                   <i class="bi bi-trash me-1"></i>Delete Selected
                 </button>
@@ -1443,14 +1454,14 @@
                 <thead>
                   <tr>
                     <th style="width: 3%;"><input type="checkbox" class="form-check-input" id="awardsSelectAll" onchange="awardsModule.toggleSelectAll(this.checked)"></th>
-                    <th style="width: 5%; cursor: pointer;" onclick="awardsModule.sortBy('year')">Year <i class="bi bi-arrow-down-up text-muted ms-1 small"></i></th>
-                    <th style="width: 22%; cursor: pointer;" onclick="awardsModule.sortBy('award_name')">Award Name <i class="bi bi-arrow-down-up text-muted ms-1 small"></i></th>
-                    <th style="width: 12%; cursor: pointer;" onclick="awardsModule.sortBy('county')">County/City <i class="bi bi-arrow-down-up text-muted ms-1 small"></i></th>
-                    <th style="width: 10%; cursor: pointer;" onclick="awardsModule.sortBy('sector')">Sector <i class="bi bi-arrow-down-up text-muted ms-1 small"></i></th>
-                    <th style="width: 7%; cursor: pointer;" onclick="awardsModule.sortBy('status')">Status <i class="bi bi-arrow-down-up text-muted ms-1 small"></i></th>
-                    <th style="width: 6%; cursor: pointer;" class="text-center" onclick="awardsModule.sortBy('nominees')">Nominees <i class="bi bi-arrow-down-up text-muted ms-1 small"></i></th>
+                    <th style="width: 5%; cursor: pointer;" onclick="awardsModule.sortBy('year')">Year <i class="bi bi-arrow-down-up text-muted ms-1 small" data-sort-icon="year"></i></th>
+                    <th style="width: 22%; cursor: pointer;" onclick="awardsModule.sortBy('award_name')">Award Name <i class="bi bi-arrow-down-up text-muted ms-1 small" data-sort-icon="award_name"></i></th>
+                    <th style="width: 12%; cursor: pointer;" onclick="awardsModule.sortBy('county')">County/City <i class="bi bi-arrow-down-up text-muted ms-1 small" data-sort-icon="county"></i></th>
+                    <th style="width: 10%; cursor: pointer;" onclick="awardsModule.sortBy('sector')">Sector <i class="bi bi-arrow-down-up text-muted ms-1 small" data-sort-icon="sector"></i></th>
+                    <th style="width: 7%; cursor: pointer;" onclick="awardsModule.sortBy('status')">Status <i class="bi bi-arrow-down-up text-muted ms-1 small" data-sort-icon="status"></i></th>
+                    <th style="width: 6%; cursor: pointer;" class="text-center" onclick="awardsModule.sortBy('nominees')">Nominees <i class="bi bi-arrow-down-up text-muted ms-1 small" data-sort-icon="nominees"></i></th>
                     <th style="width: 7%;" class="text-center">Phase</th>
-                    <th style="width: 14%; cursor: pointer;" onclick="awardsModule.sortBy('winner')">Winner <i class="bi bi-arrow-down-up text-muted ms-1 small"></i></th>
+                    <th style="width: 14%; cursor: pointer;" onclick="awardsModule.sortBy('winner')">Winner <i class="bi bi-arrow-down-up text-muted ms-1 small" data-sort-icon="winner"></i></th>
                     <th style="width: 6%;" class="text-center">Actions</th>
                   </tr>
                 </thead>

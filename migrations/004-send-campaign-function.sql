@@ -39,12 +39,14 @@ CREATE OR REPLACE FUNCTION send_single_email(
   p_to TEXT,
   p_subject TEXT,
   p_html TEXT,
-  p_from TEXT DEFAULT NULL
+  p_from TEXT DEFAULT NULL,
+  p_reply_to TEXT DEFAULT NULL
 )
 RETURNS JSONB AS $$
 DECLARE
   v_api_key TEXT;
   v_from TEXT;
+  v_body JSONB;
   v_request_id BIGINT;
 BEGIN
   -- Get API key from config
@@ -61,6 +63,19 @@ BEGIN
     v_from := COALESCE(v_from, 'British Trade Awards <awards@britishtradeawards.com>');
   END IF;
 
+  -- Build the request body
+  v_body := jsonb_build_object(
+    'from', v_from,
+    'to', jsonb_build_array(p_to),
+    'subject', p_subject,
+    'html', p_html
+  );
+
+  -- Add reply_to if provided
+  IF p_reply_to IS NOT NULL AND p_reply_to != '' THEN
+    v_body := v_body || jsonb_build_object('reply_to', p_reply_to);
+  END IF;
+
   -- Send via Resend API using pg_net
   SELECT net.http_post(
     url := 'https://api.resend.com/emails',
@@ -68,12 +83,7 @@ BEGIN
       'Content-Type', 'application/json',
       'Authorization', 'Bearer ' || v_api_key
     ),
-    body := jsonb_build_object(
-      'from', v_from,
-      'to', jsonb_build_array(p_to),
-      'subject', p_subject,
-      'html', p_html
-    )
+    body := v_body
   ) INTO v_request_id;
 
   RETURN jsonb_build_object('success', true, 'request_id', v_request_id);
@@ -87,17 +97,24 @@ CREATE OR REPLACE FUNCTION send_test_email(
   p_to TEXT,
   p_subject TEXT,
   p_html TEXT,
-  p_from_name TEXT DEFAULT 'British Trade Awards'
+  p_from_name TEXT DEFAULT 'British Trade Awards',
+  p_from_email TEXT DEFAULT NULL,
+  p_reply_to TEXT DEFAULT NULL
 )
 RETURNS JSONB AS $$
 DECLARE
   v_from TEXT;
   v_result JSONB;
 BEGIN
-  SELECT value INTO v_from FROM cms_config WHERE key = 'from_email';
-  v_from := COALESCE(v_from, p_from_name || ' <awards@britishtradeawards.com>');
+  -- Build from address: "Name <email>"
+  IF p_from_email IS NOT NULL AND p_from_email != '' THEN
+    v_from := p_from_name || ' <' || p_from_email || '>';
+  ELSE
+    SELECT value INTO v_from FROM cms_config WHERE key = 'from_email';
+    v_from := COALESCE(v_from, p_from_name || ' <awards@britishtradeawards.com>');
+  END IF;
 
-  v_result := send_single_email(p_to, '[TEST] ' || p_subject, p_html, v_from);
+  v_result := send_single_email(p_to, '[TEST] ' || p_subject, p_html, v_from, p_reply_to);
 
   -- Log the test send
   INSERT INTO email_logs (recipient_email, subject, status, sent_at)
@@ -115,7 +132,11 @@ CREATE OR REPLACE FUNCTION send_campaign_emails(
   p_subject TEXT,
   p_html TEXT,
   p_from_name TEXT DEFAULT 'British Trade Awards',
-  p_campaign_name TEXT DEFAULT NULL
+  p_from_email TEXT DEFAULT NULL,
+  p_reply_to TEXT DEFAULT NULL,
+  p_campaign_name TEXT DEFAULT NULL,
+  p_limit INTEGER DEFAULT NULL,
+  p_offset INTEGER DEFAULT 0
 )
 RETURNS JSONB AS $$
 DECLARE
@@ -128,9 +149,13 @@ DECLARE
   v_contact_name TEXT;
   v_result JSONB;
 BEGIN
-  -- Get from address
-  SELECT value INTO v_from FROM cms_config WHERE key = 'from_email';
-  v_from := COALESCE(v_from, p_from_name || ' <awards@britishtradeawards.com>');
+  -- Build from address
+  IF p_from_email IS NOT NULL AND p_from_email != '' THEN
+    v_from := p_from_name || ' <' || p_from_email || '>';
+  ELSE
+    SELECT value INTO v_from FROM cms_config WHERE key = 'from_email';
+    v_from := COALESCE(v_from, p_from_name || ' <awards@britishtradeawards.com>');
+  END IF;
 
   -- Count total subscribers
   SELECT COUNT(*) INTO v_total
@@ -141,11 +166,14 @@ BEGIN
     RETURN jsonb_build_object('success', false, 'error', 'No active subscribers on this list', 'sent', 0, 'total', 0);
   END IF;
 
-  -- Loop through active subscribers and send
+  -- Loop through active subscribers and send (with optional limit/offset for A/B testing)
   FOR v_subscriber IN
     SELECT email, first_name, last_name, company_name
     FROM email_list_subscribers
     WHERE list_id = p_list_id AND status = 'active'
+    ORDER BY created_at ASC
+    OFFSET p_offset
+    LIMIT p_limit
   LOOP
     -- Build contact name
     v_contact_name := TRIM(COALESCE(v_subscriber.first_name, '') || ' ' || COALESCE(v_subscriber.last_name, ''));
@@ -168,7 +196,7 @@ BEGIN
     v_personalised_subject := REPLACE(v_personalised_subject, '{{company_name}}', COALESCE(v_subscriber.company_name, ''));
 
     -- Send the email
-    v_result := send_single_email(v_subscriber.email, v_personalised_subject, v_personalised_html, v_from);
+    v_result := send_single_email(v_subscriber.email, v_personalised_subject, v_personalised_html, v_from, p_reply_to);
 
     -- Update subscriber stats
     UPDATE email_list_subscribers
@@ -181,7 +209,7 @@ BEGIN
   -- Log the campaign
   INSERT INTO email_logs (recipient_email, subject, status, sent_at)
   VALUES (
-    'campaign:' || p_list_id || ' (' || v_total || ' subscribers)',
+    'campaign:' || p_list_id || ' (' || v_count || ' subscribers)',
     COALESCE(p_campaign_name, p_subject),
     'sent',
     NOW()
@@ -196,19 +224,46 @@ END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
 -- ============================================
--- 5. GRANT EXECUTE TO AUTHENTICATED USERS
+-- 5. CHECK API KEY FUNCTION (for pre-send validation)
 -- ============================================
-GRANT EXECUTE ON FUNCTION send_single_email(TEXT, TEXT, TEXT, TEXT) TO authenticated;
-GRANT EXECUTE ON FUNCTION send_test_email(TEXT, TEXT, TEXT, TEXT) TO authenticated;
-GRANT EXECUTE ON FUNCTION send_campaign_emails(UUID, TEXT, TEXT, TEXT, TEXT) TO authenticated;
+CREATE OR REPLACE FUNCTION check_email_config()
+RETURNS JSONB AS $$
+DECLARE
+  v_api_key TEXT;
+  v_from TEXT;
+BEGIN
+  SELECT value INTO v_api_key FROM cms_config WHERE key = 'resend_api_key';
+  SELECT value INTO v_from FROM cms_config WHERE key = 'from_email';
+
+  RETURN jsonb_build_object(
+    'has_api_key', v_api_key IS NOT NULL AND v_api_key != '',
+    'has_from_email', v_from IS NOT NULL AND v_from != '',
+    'from_email', COALESCE(v_from, 'Not configured')
+  );
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
 
 -- ============================================
--- 6. COMMENTS
+-- 6. GRANT EXECUTE TO AUTHENTICATED USERS
+-- ============================================
+-- Drop old function signatures first to avoid conflicts
+DROP FUNCTION IF EXISTS send_single_email(TEXT, TEXT, TEXT, TEXT);
+DROP FUNCTION IF EXISTS send_test_email(TEXT, TEXT, TEXT, TEXT);
+DROP FUNCTION IF EXISTS send_campaign_emails(UUID, TEXT, TEXT, TEXT, TEXT);
+
+GRANT EXECUTE ON FUNCTION send_single_email(TEXT, TEXT, TEXT, TEXT, TEXT) TO authenticated;
+GRANT EXECUTE ON FUNCTION send_test_email(TEXT, TEXT, TEXT, TEXT, TEXT, TEXT) TO authenticated;
+GRANT EXECUTE ON FUNCTION send_campaign_emails(UUID, TEXT, TEXT, TEXT, TEXT, TEXT, TEXT, INTEGER, INTEGER) TO authenticated;
+GRANT EXECUTE ON FUNCTION check_email_config() TO authenticated;
+
+-- ============================================
+-- 7. COMMENTS
 -- ============================================
 COMMENT ON TABLE cms_config IS 'Stores CMS configuration like API keys. Only readable by authenticated users.';
-COMMENT ON FUNCTION send_single_email IS 'Send a single email via Resend API using pg_net';
-COMMENT ON FUNCTION send_test_email IS 'Send a test email (prefixed with [TEST])';
-COMMENT ON FUNCTION send_campaign_emails IS 'Send an email campaign to all active subscribers on a list';
+COMMENT ON FUNCTION send_single_email IS 'Send a single email via Resend API using pg_net. Supports reply_to.';
+COMMENT ON FUNCTION send_test_email IS 'Send a test email (prefixed with [TEST]). Accepts from_name, from_email, reply_to.';
+COMMENT ON FUNCTION send_campaign_emails IS 'Send an email campaign to active subscribers on a list. Supports A/B testing via limit/offset.';
+COMMENT ON FUNCTION check_email_config IS 'Check if email sending is properly configured (API key, from address).';
 
 -- ============================================
 -- AFTER RUNNING THIS MIGRATION:

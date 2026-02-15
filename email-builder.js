@@ -2420,6 +2420,28 @@ ${content}
   /**
    * Send test email to a single address
    */
+  /**
+   * Check if email sending is configured (API key exists)
+   */
+  async checkEmailConfig() {
+    try {
+      const { data, error } = await STATE.client.rpc('check_email_config');
+      if (error) {
+        // If the function doesn't exist yet, warn but don't block
+        console.warn('check_email_config RPC not available:', error.message);
+        return true;
+      }
+      if (!data?.has_api_key) {
+        utils.showToast('Email sending is not configured. Please add your Resend API key to the cms_config table.', 'error');
+        return false;
+      }
+      return true;
+    } catch (e) {
+      console.warn('Config check failed:', e);
+      return true; // Don't block if check itself fails
+    }
+  },
+
   async sendTestEmail() {
     const subject = document.getElementById('builderSubject')?.value;
     if (!subject) {
@@ -2431,6 +2453,10 @@ ${content}
       utils.showToast('Please add some content to your email first', 'warning');
       return;
     }
+
+    // Pre-check email config
+    const configOk = await this.checkEmailConfig();
+    if (!configOk) return;
 
     const email = prompt('Enter email address to send a test to:');
     if (!email || !email.includes('@')) return;
@@ -2486,6 +2512,10 @@ ${content}
       return;
     }
 
+    // Pre-check email config
+    const configOk = await this.checkEmailConfig();
+    if (!configOk) return;
+
     // Get subscriber count for confirmation
     const { count } = await STATE.client
       .from('email_list_subscribers')
@@ -2524,9 +2554,10 @@ ${content}
         await STATE.client.from('email_campaigns').insert({
           campaign_name: campaignName || subject,
           subject: subject,
+          recipients: listName,
           status: 'Sent',
           sent_date: new Date().toISOString(),
-          total_recipients: count || 0,
+          total_recipients: data?.sent || count || 0,
           notes: JSON.stringify({
             html,
             from_name: fromName,
@@ -2547,6 +2578,21 @@ ${content}
     } catch (error) {
       console.error('Error sending campaign:', error);
       utils.showToast('Failed to send campaign: ' + error.message, 'error');
+
+      // Log the failed campaign so it appears in the log
+      try {
+        await STATE.client.from('email_campaigns').insert({
+          campaign_name: campaignName || subject,
+          subject: subject,
+          recipients: listName,
+          status: 'Failed',
+          total_recipients: count || 0,
+          notes: JSON.stringify({ error: error.message, list_id: listId })
+        });
+        this.loadCampaignLog();
+      } catch (logErr) {
+        console.warn('Failed to log failed campaign:', logErr);
+      }
     }
   },
 
@@ -2661,6 +2707,7 @@ ${content}
         .insert({
           campaign_name: campaignName || subject,
           subject: subject,
+          recipients: listName,
           status: 'Scheduled',
           scheduled_date: scheduledAt.toISOString(),
           total_recipients: count || 0,
@@ -3355,6 +3402,7 @@ ${content}
       const draftData = {
         campaign_name: campaignName || 'Untitled Draft',
         subject: subject || '',
+        recipients: 'Draft',
         status: 'Draft',
         total_recipients: 0,
         notes: JSON.stringify({
@@ -3692,6 +3740,10 @@ ${content}
     if (!subjectB) { utils.showToast('Please enter Subject B (variant)', 'warning'); return; }
     if (this.blocks.length === 0) { utils.showToast('Please add content first', 'warning'); return; }
 
+    // Pre-check email config
+    const configOk = await this.checkEmailConfig();
+    if (!configOk) return;
+
     const { count, error: countError } = await STATE.client
       .from('email_list_subscribers')
       .select('id', { count: 'exact', head: true })
@@ -3753,6 +3805,7 @@ ${content}
         {
           campaign_name: (campaignName || subjectA) + ' [A/B Test - A]',
           subject: subjectA,
+          recipients: listName,
           status: 'Sent',
           sent_date: new Date().toISOString(),
           total_recipients: countA,
@@ -3761,6 +3814,7 @@ ${content}
         {
           campaign_name: (campaignName || subjectB) + ' [A/B Test - B]',
           subject: subjectB,
+          recipients: listName,
           status: 'Sent',
           sent_date: new Date().toISOString(),
           total_recipients: countB,

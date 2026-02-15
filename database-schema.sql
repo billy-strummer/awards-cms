@@ -202,32 +202,26 @@ CREATE INDEX IF NOT EXISTS idx_templates_category ON email_templates(category);
 -- Email Campaigns
 CREATE TABLE IF NOT EXISTS email_campaigns (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  
-  name VARCHAR(255) NOT NULL,
-  subject VARCHAR(500) NOT NULL,
-  body TEXT NOT NULL,
+  campaign_name VARCHAR(255) NOT NULL,
   template_id UUID,
-  
-  status VARCHAR(50) DEFAULT 'draft',
-  send_at TIMESTAMP,
-  sent_at TIMESTAMP,
-  
-  recipient_type VARCHAR(50),
-  recipient_count INTEGER DEFAULT 0,
-  
-  emails_sent INTEGER DEFAULT 0,
-  emails_delivered INTEGER DEFAULT 0,
-  emails_opened INTEGER DEFAULT 0,
-  emails_clicked INTEGER DEFAULT 0,
-  emails_bounced INTEGER DEFAULT 0,
-  
-  created_by VARCHAR(255),
-  created_at TIMESTAMP DEFAULT NOW(),
-  updated_at TIMESTAMP DEFAULT NOW()
+  subject VARCHAR(500) NOT NULL,
+  recipients TEXT NOT NULL DEFAULT '',
+  scheduled_date TIMESTAMPTZ,
+  sent_date TIMESTAMPTZ,
+  status VARCHAR(50) DEFAULT 'Draft',
+  total_recipients INTEGER DEFAULT 0,
+  opened_count INTEGER DEFAULT 0,
+  clicked_count INTEGER DEFAULT 0,
+  bounced_count INTEGER DEFAULT 0,
+  award_id UUID,
+  event_id UUID,
+  notes TEXT,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
 CREATE INDEX IF NOT EXISTS idx_campaigns_status ON email_campaigns(status);
-CREATE INDEX IF NOT EXISTS idx_campaigns_send_at ON email_campaigns(send_at);
+CREATE INDEX IF NOT EXISTS idx_campaigns_scheduled ON email_campaigns(scheduled_date);
 
 -- Add foreign key for template_id
 DO $$

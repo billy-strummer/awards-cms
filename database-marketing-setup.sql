@@ -111,7 +111,7 @@ CREATE TABLE IF NOT EXISTS email_campaigns (
   campaign_name VARCHAR(255) NOT NULL,
   template_id UUID REFERENCES email_templates(id) ON DELETE SET NULL,
   subject VARCHAR(500) NOT NULL,
-  recipients TEXT NOT NULL, -- JSON array or comma-separated emails
+  recipients TEXT NOT NULL DEFAULT '', -- List name, JSON array, or comma-separated emails
   scheduled_date TIMESTAMPTZ,
   sent_date TIMESTAMPTZ,
   status VARCHAR(50) DEFAULT 'Draft', -- 'Draft', 'Scheduled', 'Sent', 'Cancelled'

@@ -368,7 +368,7 @@ const emailTemplatesModule = {
 
       const { data, error } = await STATE.client.rpc('send_test_email', {
         p_to: email,
-        p_subject: '[TEST] ' + testSubject,
+        p_subject: testSubject,
         p_html: testBody,
         p_from_name: 'British Trade Awards',
         p_from_email: 'awards@britishtradeawards.com',

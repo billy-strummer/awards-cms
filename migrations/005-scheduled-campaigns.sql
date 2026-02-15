@@ -34,23 +34,36 @@ BEGIN
         p_list_id := (campaign_notes->>'list_id')::uuid,
         p_subject := campaign.subject,
         p_html := campaign_notes->>'html',
-        p_from_name := campaign_notes->>'from_name',
+        p_from_name := COALESCE(campaign_notes->>'from_name', 'British Trade Awards'),
         p_from_email := campaign_notes->>'from_email',
         p_reply_to := campaign_notes->>'reply_to',
         p_campaign_name := campaign.campaign_name
       ) INTO send_result;
 
       -- Update campaign as sent
-      UPDATE email_campaigns
-      SET status = 'Sent',
-          sent_date = NOW(),
-          updated_at = NOW()
-      WHERE id = campaign.id;
+      IF (send_result->>'success')::boolean THEN
+        UPDATE email_campaigns
+        SET status = 'Sent',
+            sent_date = NOW(),
+            total_recipients = COALESCE((send_result->>'sent')::integer, 0),
+            updated_at = NOW()
+        WHERE id = campaign.id;
+      ELSE
+        UPDATE email_campaigns
+        SET status = 'Failed',
+            notes = jsonb_set(
+              COALESCE(campaign.notes::jsonb, '{}'::jsonb),
+              '{error}',
+              to_jsonb(COALESCE(send_result->>'error', 'Unknown error'))
+            )::text,
+            updated_at = NOW()
+        WHERE id = campaign.id;
+      END IF;
 
       result := result || jsonb_build_object(
         'campaign_id', campaign.id,
         'campaign_name', campaign.campaign_name,
-        'status', 'sent'
+        'status', CASE WHEN (send_result->>'success')::boolean THEN 'sent' ELSE 'failed' END
       );
 
     EXCEPTION WHEN OTHERS THEN
@@ -84,4 +97,6 @@ GRANT EXECUTE ON FUNCTION process_scheduled_campaigns() TO service_role;
 
 -- Optional: Create a pg_cron job to check for scheduled campaigns every minute
 -- (Requires pg_cron extension to be enabled in Supabase dashboard)
--- SELECT cron.schedule('process-scheduled-emails', '* * * * *', 'SELECT process_scheduled_campaigns()');
+-- To enable: Go to Supabase Dashboard > Database > Extensions > Enable pg_cron
+-- Then run:
+--   SELECT cron.schedule('process-scheduled-emails', '* * * * *', 'SELECT process_scheduled_campaigns()');

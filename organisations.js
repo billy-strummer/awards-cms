@@ -114,13 +114,35 @@ async loadOrganisations() {
     
     STATE.allOrganisations = allData;
     STATE.filteredOrganisations = STATE.allOrganisations;
-    
+
     // NEW: Calculate and display dashboard stats
     await this.calculateDashboardStats();
-    
-    // Populate filter dropdowns and restore saved filters
+
+    // Save current filter state in-memory before repopulating dropdowns
+    const savedFilters = {
+      year: document.getElementById('orgsYearFilter')?.value || '',
+      sector: document.getElementById('orgsSectorFilter')?.value || '',
+      region: document.getElementById('orgsRegionFilter')?.value || '',
+      county: document.getElementById('orgsCountyFilter')?.value || '',
+      status: document.getElementById('orgsStatusFilter')?.value || '',
+      search: document.getElementById('orgsSearchBox')?.value || ''
+    };
+
+    // Populate filter dropdowns (resets selections)
     this.populateFilters();
-    this.restoreFilters();
+
+    // Restore filter state: prefer in-memory values, fall back to localStorage
+    const lsFilters = (() => { try { return JSON.parse(localStorage.getItem('orgsFilters') || '{}'); } catch (e) { return {}; } })();
+    document.getElementById('orgsYearFilter').value = savedFilters.year || lsFilters.year || '';
+    document.getElementById('orgsSectorFilter').value = savedFilters.sector || lsFilters.sector || '';
+    if (savedFilters.region || lsFilters.region) {
+      document.getElementById('orgsRegionFilter').value = savedFilters.region || lsFilters.region || '';
+      this.updateCountyFilterByRegion();
+    }
+    document.getElementById('orgsCountyFilter').value = savedFilters.county || lsFilters.county || '';
+    document.getElementById('orgsStatusFilter').value = savedFilters.status || lsFilters.status || '';
+    document.getElementById('orgsSearchBox').value = savedFilters.search || lsFilters.search || '';
+
     this.filterOrganisations();
     
     console.log(`✅ Loaded ${STATE.allOrganisations.length} organisations (across ${page} pages)`);
@@ -484,6 +506,8 @@ updateCountyFilterByRegion() {
       </tr>
     `;
   }).join('');
+
+    this.updateSortIndicators();
 },
   /**
    * Open company profile modal
@@ -2126,6 +2150,37 @@ updateCountyFilterByRegion() {
     });
 
     this.renderOrganisations();
+  },
+
+  /**
+   * Update sort direction indicators in column headers
+   */
+  updateSortIndicators() {
+    document.querySelectorAll('#organisations [data-sort-icon]').forEach(icon => {
+      icon.className = 'bi bi-arrow-down-up text-muted ms-1 small';
+    });
+    if (this.sortField) {
+      const activeIcon = document.querySelector(`#organisations [data-sort-icon="${this.sortField}"]`);
+      if (activeIcon) {
+        const iconClass = this.sortDirection === 'asc' ? 'bi-arrow-up' : 'bi-arrow-down';
+        activeIcon.className = `bi ${iconClass} text-primary ms-1 small`;
+      }
+    }
+  },
+
+  /**
+   * Reset all filters to default
+   */
+  resetFilters() {
+    document.getElementById('orgsSearchBox').value = '';
+    document.getElementById('orgsYearFilter').value = '';
+    document.getElementById('orgsSectorFilter').value = '';
+    document.getElementById('orgsRegionFilter').value = '';
+    document.getElementById('orgsCountyFilter').value = '';
+    document.getElementById('orgsStatusFilter').value = '';
+    this.updateCountyFilterByRegion();
+    try { localStorage.removeItem('orgsFilters'); } catch (e) { /* ignore */ }
+    this.filterOrganisations();
   },
 
   // ============================================

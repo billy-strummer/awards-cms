@@ -1606,8 +1606,15 @@
             </select>
           </div>
 
+          <!-- Reset Filters -->
+          <div class="col-auto d-flex align-items-end">
+            <button class="btn btn-outline-secondary btn-sm" onclick="orgsModule.resetFilters()" title="Reset all filters">
+              <i class="bi bi-x-circle"></i>
+            </button>
+          </div>
+
           <!-- Buttons (Right Aligned) -->
-          <div class="col-md-2 text-end">
+          <div class="col text-end">
             <label class="form-label small mb-1">&nbsp;</label>
             <div class="d-flex gap-1 justify-content-end flex-wrap">
               <button class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#addNewOrgModal" title="Add Company">
@@ -1652,27 +1659,27 @@
                 </th>
                 <th style="width: 18%; cursor: pointer;" class="fw-semibold" onclick="orgsModule.sortBy('company')">
                   Company Name
-                  <i class="bi bi-arrow-down-up text-muted ms-1 small"></i>
+                  <i class="bi bi-arrow-down-up text-muted ms-1 small" data-sort-icon="company"></i>
                 </th>
                 <th style="width: 10%; cursor: pointer;" onclick="orgsModule.sortBy('sector')">
-                  Sector <i class="bi bi-arrow-down-up text-muted ms-1 small"></i>
+                  Sector <i class="bi bi-arrow-down-up text-muted ms-1 small" data-sort-icon="sector"></i>
                 </th>
                 <th style="width: 10%; cursor: pointer;" onclick="orgsModule.sortBy('county')">
-                  County <i class="bi bi-arrow-down-up text-muted ms-1 small"></i>
+                  County <i class="bi bi-arrow-down-up text-muted ms-1 small" data-sort-icon="county"></i>
                 </th>
                 <th style="width: 9%; cursor: pointer;" onclick="orgsModule.sortBy('contact')">
-                  Contact <i class="bi bi-arrow-down-up text-muted ms-1 small"></i>
+                  Contact <i class="bi bi-arrow-down-up text-muted ms-1 small" data-sort-icon="contact"></i>
                 </th>
                 <th style="width: 13%;">Email</th>
                 <th style="width: 10%;">Website</th>
                 <th style="width: 8%; cursor: pointer;" onclick="orgsModule.sortBy('region')">
-                  Region <i class="bi bi-arrow-down-up text-muted ms-1 small"></i>
+                  Region <i class="bi bi-arrow-down-up text-muted ms-1 small" data-sort-icon="region"></i>
                 </th>
                 <th style="width: 7%; cursor: pointer;" onclick="orgsModule.sortBy('status')">
-                  Status <i class="bi bi-arrow-down-up text-muted ms-1 small"></i>
+                  Status <i class="bi bi-arrow-down-up text-muted ms-1 small" data-sort-icon="status"></i>
                 </th>
                 <th style="width: 5%; cursor: pointer; text-align: center;" onclick="orgsModule.sortBy('awards')">
-                  Awards <i class="bi bi-arrow-down-up text-muted ms-1 small"></i>
+                  Awards <i class="bi bi-arrow-down-up text-muted ms-1 small" data-sort-icon="awards"></i>
                 </th>
                 <th style="width: 7%;" class="text-center">Actions</th>
               </tr>

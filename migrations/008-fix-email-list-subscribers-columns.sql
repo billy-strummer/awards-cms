@@ -6,11 +6,33 @@
 -- database-email-lists-setup.sql expects. Since CREATE TABLE IF NOT EXISTS
 -- skips existing tables, the columns never get added.
 --
--- This migration adds any missing columns using ADD COLUMN IF NOT EXISTS.
+-- This migration first ensures base tables exist, then adds any missing
+-- columns using ADD COLUMN IF NOT EXISTS.
 
 -- ============================================
--- 1. FIX email_lists - add missing columns
+-- 1. ENSURE email_lists table exists
 -- ============================================
+CREATE TABLE IF NOT EXISTS email_lists (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  list_name VARCHAR(255) NOT NULL,
+  description TEXT,
+  list_type VARCHAR(50) DEFAULT 'general',
+  is_active BOOLEAN DEFAULT true,
+  award_id UUID,
+  event_id UUID,
+  allow_duplicates BOOLEAN DEFAULT false,
+  auto_clean BOOLEAN DEFAULT true,
+  subscriber_count INTEGER DEFAULT 0,
+  active_subscriber_count INTEGER DEFAULT 0,
+  tags TEXT,
+  icon VARCHAR(50),
+  color VARCHAR(7),
+  created_by VARCHAR(255),
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Add any missing columns to email_lists (for cases where it was created with fewer columns)
 ALTER TABLE email_lists ADD COLUMN IF NOT EXISTS description TEXT;
 ALTER TABLE email_lists ADD COLUMN IF NOT EXISTS list_type VARCHAR(50) DEFAULT 'general';
 ALTER TABLE email_lists ADD COLUMN IF NOT EXISTS award_id UUID;
@@ -25,10 +47,42 @@ ALTER TABLE email_lists ADD COLUMN IF NOT EXISTS color VARCHAR(7);
 ALTER TABLE email_lists ADD COLUMN IF NOT EXISTS created_by VARCHAR(255);
 ALTER TABLE email_lists ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT NOW();
 
+ALTER TABLE email_lists ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Allow all access to email_lists" ON email_lists;
+CREATE POLICY "Allow all access to email_lists"
+  ON email_lists FOR ALL USING (true) WITH CHECK (true);
+
 -- ============================================
--- 2. FIX email_list_subscribers - add missing columns
+-- 2. ENSURE email_list_subscribers table exists
 -- ============================================
-ALTER TABLE email_list_subscribers ADD COLUMN IF NOT EXISTS list_id UUID REFERENCES email_lists(id) ON DELETE CASCADE;
+CREATE TABLE IF NOT EXISTS email_list_subscribers (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  list_id UUID REFERENCES email_lists(id) ON DELETE CASCADE,
+  email VARCHAR(255) NOT NULL,
+  organisation_id UUID,
+  first_name VARCHAR(100),
+  last_name VARCHAR(100),
+  company_name VARCHAR(255),
+  status VARCHAR(50) DEFAULT 'active',
+  subscription_date TIMESTAMPTZ DEFAULT NOW(),
+  unsubscribe_date TIMESTAMPTZ,
+  source VARCHAR(100),
+  import_batch_id UUID,
+  custom_fields JSONB,
+  emails_received INTEGER DEFAULT 0,
+  emails_opened INTEGER DEFAULT 0,
+  emails_clicked INTEGER DEFAULT 0,
+  last_email_sent TIMESTAMPTZ,
+  last_email_opened TIMESTAMPTZ,
+  notes TEXT,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Add any missing columns (for cases where table was created with fewer columns)
+-- Note: list_id added WITHOUT FK first to guarantee the column exists,
+-- then FK constraint added separately below
+ALTER TABLE email_list_subscribers ADD COLUMN IF NOT EXISTS list_id UUID;
 ALTER TABLE email_list_subscribers ADD COLUMN IF NOT EXISTS organisation_id UUID;
 ALTER TABLE email_list_subscribers ADD COLUMN IF NOT EXISTS first_name VARCHAR(100);
 ALTER TABLE email_list_subscribers ADD COLUMN IF NOT EXISTS last_name VARCHAR(100);
@@ -46,6 +100,26 @@ ALTER TABLE email_list_subscribers ADD COLUMN IF NOT EXISTS last_email_sent TIME
 ALTER TABLE email_list_subscribers ADD COLUMN IF NOT EXISTS last_email_opened TIMESTAMPTZ;
 ALTER TABLE email_list_subscribers ADD COLUMN IF NOT EXISTS notes TEXT;
 ALTER TABLE email_list_subscribers ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT NOW();
+
+-- Add FK constraint on list_id if it doesn't already exist
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.table_constraints
+    WHERE constraint_type = 'FOREIGN KEY'
+      AND table_name = 'email_list_subscribers'
+      AND constraint_name = 'email_list_subscribers_list_id_fkey'
+  ) THEN
+    ALTER TABLE email_list_subscribers
+      ADD CONSTRAINT email_list_subscribers_list_id_fkey
+      FOREIGN KEY (list_id) REFERENCES email_lists(id) ON DELETE CASCADE;
+  END IF;
+END $$;
+
+ALTER TABLE email_list_subscribers ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Allow all access to email_list_subscribers" ON email_list_subscribers;
+CREATE POLICY "Allow all access to email_list_subscribers"
+  ON email_list_subscribers FOR ALL USING (true) WITH CHECK (true);
 
 -- ============================================
 -- 3. ENSURE email_import_batches exists

@@ -827,9 +827,237 @@ const entriesModule = {
   /**
    * Edit entry
    */
-  editEntry(entryId) {
-    utils.showToast('Edit entry functionality - Coming soon', 'info');
-    // TODO: Open edit modal or navigate to edit page
+  async editEntry(entryId) {
+    try {
+      const { data: entry, error } = await STATE.client
+        .from('entries')
+        .select(`
+          *,
+          organisations(id, company_name),
+          award_years(id, award_name)
+        `)
+        .eq('id', entryId)
+        .single();
+
+      if (error) throw error;
+
+      // Load awards for dropdown
+      const { data: awards } = await STATE.client
+        .from('awards')
+        .select('id, award_name')
+        .order('award_name');
+
+      // Load organisations for dropdown
+      const { data: orgs } = await STATE.client
+        .from('organisations')
+        .select('id, company_name')
+        .order('company_name');
+
+      const modalHtml = `
+        <div class="modal fade" id="editEntryModal" tabindex="-1" data-bs-backdrop="static">
+          <div class="modal-dialog modal-xl modal-dialog-scrollable">
+            <div class="modal-content">
+              <div class="modal-header bg-secondary text-white">
+                <div>
+                  <h5 class="modal-title mb-1">
+                    <i class="bi bi-pencil me-2"></i>Edit Entry: ${entry.entry_number}
+                  </h5>
+                  <small>${entry.organisations?.company_name || 'Unknown Company'}</small>
+                </div>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+              </div>
+              <div class="modal-body">
+                <form id="editEntryForm">
+                  <!-- Basic Info -->
+                  <div class="card mb-3">
+                    <div class="card-header"><h6 class="mb-0"><i class="bi bi-info-circle me-2"></i>Basic Information</h6></div>
+                    <div class="card-body">
+                      <div class="row">
+                        <div class="col-md-6 mb-3">
+                          <label class="form-label">Entry Title <span class="text-danger">*</span></label>
+                          <input type="text" class="form-control" id="editEntryTitle" required value="${entry.entry_title || ''}">
+                        </div>
+                        <div class="col-md-6 mb-3">
+                          <label class="form-label">Entry Number</label>
+                          <input type="text" class="form-control" id="editEntryNumber" value="${entry.entry_number || ''}" readonly>
+                        </div>
+                      </div>
+                      <div class="row">
+                        <div class="col-md-6 mb-3">
+                          <label class="form-label">Award</label>
+                          <select class="form-select" id="editEntryAward">
+                            <option value="">Select award...</option>
+                            ${(awards || []).map(a => `<option value="${a.id}" ${a.id === entry.award_id ? 'selected' : ''}>${a.award_name}</option>`).join('')}
+                          </select>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                          <label class="form-label">Organisation</label>
+                          <select class="form-select" id="editEntryOrg">
+                            <option value="">Select organisation...</option>
+                            ${(orgs || []).map(o => `<option value="${o.id}" ${o.id === entry.organisation_id ? 'selected' : ''}>${o.company_name}</option>`).join('')}
+                          </select>
+                        </div>
+                      </div>
+                      <div class="row">
+                        <div class="col-md-4 mb-3">
+                          <label class="form-label">Status</label>
+                          <select class="form-select" id="editEntryStatus">
+                            <option value="draft" ${entry.status === 'draft' ? 'selected' : ''}>Draft</option>
+                            <option value="submitted" ${entry.status === 'submitted' ? 'selected' : ''}>Submitted</option>
+                            <option value="under_review" ${entry.status === 'under_review' ? 'selected' : ''}>Under Review</option>
+                            <option value="shortlisted" ${entry.status === 'shortlisted' ? 'selected' : ''}>Shortlisted</option>
+                            <option value="winner" ${entry.status === 'winner' ? 'selected' : ''}>Winner</option>
+                            <option value="rejected" ${entry.status === 'rejected' ? 'selected' : ''}>Rejected</option>
+                          </select>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                          <label class="form-label">Payment Status</label>
+                          <select class="form-select" id="editEntryPaymentStatus">
+                            <option value="pending" ${entry.payment_status === 'pending' ? 'selected' : ''}>Pending</option>
+                            <option value="paid" ${entry.payment_status === 'paid' ? 'selected' : ''}>Paid</option>
+                            <option value="refunded" ${entry.payment_status === 'refunded' ? 'selected' : ''}>Refunded</option>
+                            <option value="waived" ${entry.payment_status === 'waived' ? 'selected' : ''}>Waived</option>
+                          </select>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                          <label class="form-label">Year</label>
+                          <input type="number" class="form-control" id="editEntryYear" value="${entry.year || new Date().getFullYear()}">
+                        </div>
+                      </div>
+                      <div class="form-check mb-3">
+                        <input class="form-check-input" type="checkbox" id="editEntrySelfNom" ${entry.is_self_nomination ? 'checked' : ''}>
+                        <label class="form-check-label" for="editEntrySelfNom">Self-Nomination</label>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Contact Info -->
+                  <div class="card mb-3">
+                    <div class="card-header"><h6 class="mb-0"><i class="bi bi-person me-2"></i>Contact Information</h6></div>
+                    <div class="card-body">
+                      <div class="row">
+                        <div class="col-md-6 mb-3">
+                          <label class="form-label">Contact Name</label>
+                          <input type="text" class="form-control" id="editEntryContactName" value="${entry.contact_name || ''}">
+                        </div>
+                        <div class="col-md-6 mb-3">
+                          <label class="form-label">Contact Email</label>
+                          <input type="email" class="form-control" id="editEntryContactEmail" value="${entry.contact_email || ''}">
+                        </div>
+                      </div>
+                      <div class="row">
+                        <div class="col-md-6 mb-3">
+                          <label class="form-label">Contact Phone</label>
+                          <input type="text" class="form-control" id="editEntryContactPhone" value="${entry.contact_phone || ''}">
+                        </div>
+                        <div class="col-md-6 mb-3">
+                          <label class="form-label">Contact Position</label>
+                          <input type="text" class="form-control" id="editEntryContactPosition" value="${entry.contact_position || ''}">
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Entry Content -->
+                  <div class="card mb-3">
+                    <div class="card-header"><h6 class="mb-0"><i class="bi bi-file-text me-2"></i>Entry Content</h6></div>
+                    <div class="card-body">
+                      <div class="mb-3">
+                        <label class="form-label">Description</label>
+                        <textarea class="form-control" id="editEntryDescription" rows="3">${entry.entry_description || ''}</textarea>
+                      </div>
+                      <div class="mb-3">
+                        <label class="form-label">Why Should They Win?</label>
+                        <textarea class="form-control" id="editEntryWhyWin" rows="5">${entry.why_should_win || ''}</textarea>
+                      </div>
+                      <div class="mb-3">
+                        <label class="form-label">Supporting Information</label>
+                        <textarea class="form-control" id="editEntrySupportingInfo" rows="3">${entry.supporting_information || ''}</textarea>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Admin Notes -->
+                  <div class="card">
+                    <div class="card-header"><h6 class="mb-0"><i class="bi bi-sticky me-2"></i>Admin Notes</h6></div>
+                    <div class="card-body">
+                      <textarea class="form-control" id="editEntryAdminNotes" rows="3">${entry.admin_notes || ''}</textarea>
+                    </div>
+                  </div>
+                </form>
+              </div>
+              <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" onclick="entriesModule.saveEntryEdit('${entry.id}')">
+                  <i class="bi bi-save me-2"></i>Save Changes
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      `;
+
+      const existingModal = document.getElementById('editEntryModal');
+      if (existingModal) existingModal.remove();
+      document.body.insertAdjacentHTML('beforeend', modalHtml);
+      const modal = new bootstrap.Modal(document.getElementById('editEntryModal'));
+      modal.show();
+      document.getElementById('editEntryModal').addEventListener('hidden.bs.modal', function() { this.remove(); });
+
+    } catch (error) {
+      console.error('Error loading entry for edit:', error);
+      utils.showToast('Failed to load entry: ' + error.message, 'error');
+    }
+  },
+
+  async saveEntryEdit(entryId) {
+    const form = document.getElementById('editEntryForm');
+    if (!form.checkValidity()) {
+      form.reportValidity();
+      return;
+    }
+
+    const newStatus = document.getElementById('editEntryStatus').value;
+    const updateData = {
+      entry_title: document.getElementById('editEntryTitle').value,
+      award_id: document.getElementById('editEntryAward').value || null,
+      organisation_id: document.getElementById('editEntryOrg').value || null,
+      status: newStatus,
+      payment_status: document.getElementById('editEntryPaymentStatus').value,
+      year: parseInt(document.getElementById('editEntryYear').value) || null,
+      is_self_nomination: document.getElementById('editEntrySelfNom').checked,
+      contact_name: document.getElementById('editEntryContactName').value || null,
+      contact_email: document.getElementById('editEntryContactEmail').value || null,
+      contact_phone: document.getElementById('editEntryContactPhone').value || null,
+      contact_position: document.getElementById('editEntryContactPosition').value || null,
+      entry_description: document.getElementById('editEntryDescription').value || null,
+      why_should_win: document.getElementById('editEntryWhyWin').value || null,
+      supporting_information: document.getElementById('editEntrySupportingInfo').value || null,
+      admin_notes: document.getElementById('editEntryAdminNotes').value || null
+    };
+
+    // If status changed to shortlisted, set the shortlisted fields
+    if (newStatus === 'shortlisted') {
+      updateData.is_shortlisted = true;
+      updateData.shortlisted_date = new Date().toISOString();
+    }
+
+    try {
+      const { error } = await STATE.client
+        .from('entries')
+        .update(updateData)
+        .eq('id', entryId);
+
+      if (error) throw error;
+
+      utils.showToast('Entry updated successfully', 'success');
+      bootstrap.Modal.getInstance(document.getElementById('editEntryModal')).hide();
+      await this.loadEntries();
+      await this.loadStats();
+    } catch (error) {
+      console.error('Error updating entry:', error);
+      utils.showToast('Failed to update entry: ' + error.message, 'error');
+    }
   },
 
   /**
@@ -960,13 +1188,141 @@ const entriesModule = {
       return;
     }
 
-    utils.showToast(`Bulk actions for ${this.selectedEntryIds.size} entries - Coming soon`, 'info');
-    // TODO: Show modal with bulk action options:
-    // - Change status
-    // - Send emails
-    // - Assign to judges
-    // - Mark as shortlisted
-    // - etc.
+    const count = this.selectedEntryIds.size;
+
+    const modalHtml = `
+      <div class="modal fade" id="bulkActionsModal" tabindex="-1">
+        <div class="modal-dialog">
+          <div class="modal-content">
+            <div class="modal-header bg-info text-white">
+              <h5 class="modal-title"><i class="bi bi-collection me-2"></i>Bulk Actions (${count} entries)</h5>
+              <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+              <p class="text-muted mb-3">Select an action to apply to <strong>${count}</strong> selected entr${count === 1 ? 'y' : 'ies'}:</p>
+
+              <div class="list-group">
+                <button class="list-group-item list-group-item-action d-flex align-items-center" onclick="entriesModule.executeBulkAction('status', 'submitted')">
+                  <span class="badge bg-info me-3">Status</span>
+                  <span>Mark as Submitted</span>
+                </button>
+                <button class="list-group-item list-group-item-action d-flex align-items-center" onclick="entriesModule.executeBulkAction('status', 'under_review')">
+                  <span class="badge bg-warning me-3">Status</span>
+                  <span>Move to Under Review</span>
+                </button>
+                <button class="list-group-item list-group-item-action d-flex align-items-center" onclick="entriesModule.executeBulkAction('status', 'shortlisted')">
+                  <span class="badge bg-primary me-3">Status</span>
+                  <span>Mark as Shortlisted</span>
+                </button>
+                <button class="list-group-item list-group-item-action d-flex align-items-center" onclick="entriesModule.executeBulkAction('status', 'winner')">
+                  <span class="badge bg-success me-3">Status</span>
+                  <span>Mark as Winner</span>
+                </button>
+                <button class="list-group-item list-group-item-action d-flex align-items-center" onclick="entriesModule.executeBulkAction('status', 'rejected')">
+                  <span class="badge bg-danger me-3">Status</span>
+                  <span>Reject Entries</span>
+                </button>
+                <hr class="my-2">
+                <button class="list-group-item list-group-item-action d-flex align-items-center" onclick="entriesModule.executeBulkAction('payment', 'paid')">
+                  <span class="badge bg-success me-3">Payment</span>
+                  <span>Mark as Paid</span>
+                </button>
+                <button class="list-group-item list-group-item-action d-flex align-items-center" onclick="entriesModule.executeBulkAction('payment', 'waived')">
+                  <span class="badge bg-info me-3">Payment</span>
+                  <span>Waive Payment</span>
+                </button>
+                <hr class="my-2">
+                <button class="list-group-item list-group-item-action d-flex align-items-center text-danger" onclick="entriesModule.executeBulkAction('delete')">
+                  <span class="badge bg-danger me-3">Delete</span>
+                  <span>Delete Selected Entries</span>
+                </button>
+              </div>
+            </div>
+            <div class="modal-footer">
+              <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+
+    const existingModal = document.getElementById('bulkActionsModal');
+    if (existingModal) existingModal.remove();
+    document.body.insertAdjacentHTML('beforeend', modalHtml);
+    const modal = new bootstrap.Modal(document.getElementById('bulkActionsModal'));
+    modal.show();
+    document.getElementById('bulkActionsModal').addEventListener('hidden.bs.modal', function() { this.remove(); });
+  },
+
+  async executeBulkAction(actionType, value) {
+    const count = this.selectedEntryIds.size;
+    const ids = Array.from(this.selectedEntryIds);
+
+    if (actionType === 'delete') {
+      if (!confirm(`Are you sure you want to DELETE ${count} entries? This cannot be undone.`)) return;
+
+      try {
+        const { error } = await STATE.client
+          .from('entries')
+          .delete()
+          .in('id', ids);
+
+        if (error) throw error;
+
+        utils.showToast(`${count} entries deleted`, 'success');
+      } catch (error) {
+        console.error('Error bulk deleting:', error);
+        utils.showToast('Failed to delete entries: ' + error.message, 'error');
+        return;
+      }
+    } else if (actionType === 'status') {
+      if (!confirm(`Change status to "${value}" for ${count} entries?`)) return;
+
+      try {
+        const updateData = { status: value };
+        if (value === 'shortlisted') {
+          updateData.is_shortlisted = true;
+          updateData.shortlisted_date = new Date().toISOString();
+        }
+
+        const { error } = await STATE.client
+          .from('entries')
+          .update(updateData)
+          .in('id', ids);
+
+        if (error) throw error;
+
+        utils.showToast(`${count} entries updated to ${value}`, 'success');
+      } catch (error) {
+        console.error('Error bulk status update:', error);
+        utils.showToast('Failed to update entries: ' + error.message, 'error');
+        return;
+      }
+    } else if (actionType === 'payment') {
+      if (!confirm(`Change payment status to "${value}" for ${count} entries?`)) return;
+
+      try {
+        const { error } = await STATE.client
+          .from('entries')
+          .update({ payment_status: value })
+          .in('id', ids);
+
+        if (error) throw error;
+
+        utils.showToast(`${count} entries payment status updated to ${value}`, 'success');
+      } catch (error) {
+        console.error('Error bulk payment update:', error);
+        utils.showToast('Failed to update entries: ' + error.message, 'error');
+        return;
+      }
+    }
+
+    // Close modal and reload
+    const modal = bootstrap.Modal.getInstance(document.getElementById('bulkActionsModal'));
+    if (modal) modal.hide();
+    this.selectedEntryIds.clear();
+    await this.loadEntries();
+    await this.loadStats();
   },
 
   /**

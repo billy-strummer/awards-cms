@@ -788,17 +788,386 @@ const crmModule = {
 
   async createDeal(organisationId = null) {
     console.log('Create deal for:', organisationId);
-    showNotification('Deal creation modal coming soon', 'info');
+
+    try {
+    const modalHtml = `
+      <div class="modal fade" id="createDealModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+          <div class="modal-content">
+            <div class="modal-header bg-success text-white">
+              <h5 class="modal-title"><i class="bi bi-cash-coin me-2"></i>Create New Deal</h5>
+              <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+              <form id="createDealForm">
+                <div class="row">
+                  <div class="col-md-6 mb-3">
+                    <label class="form-label">Deal Name <span class="text-danger">*</span></label>
+                    <input type="text" class="form-control" id="dealName" required placeholder="e.g. Gold Sponsorship 2026">
+                  </div>
+                  <div class="col-md-6 mb-3">
+                    <label class="form-label">Company <span class="text-danger">*</span></label>
+                    <select class="form-select" id="dealOrganisation" required>
+                      <option value="">Select company...</option>
+                    </select>
+                  </div>
+                </div>
+                <div class="row">
+                  <div class="col-md-4 mb-3">
+                    <label class="form-label">Deal Type <span class="text-danger">*</span></label>
+                    <select class="form-select" id="dealType" required>
+                      <option value="sponsorship">Sponsorship</option>
+                      <option value="award_fee">Award Fee</option>
+                      <option value="event_tickets">Event Tickets</option>
+                      <option value="partnership">Partnership</option>
+                      <option value="package_upgrade">Package Upgrade</option>
+                      <option value="other">Other</option>
+                    </select>
+                  </div>
+                  <div class="col-md-4 mb-3">
+                    <label class="form-label">Deal Value (£) <span class="text-danger">*</span></label>
+                    <input type="number" class="form-control" id="dealValue" required min="0" step="0.01" placeholder="0.00">
+                  </div>
+                  <div class="col-md-4 mb-3">
+                    <label class="form-label">Probability (%)</label>
+                    <input type="number" class="form-control" id="dealProbability" min="0" max="100" value="50">
+                  </div>
+                </div>
+                <div class="row">
+                  <div class="col-md-4 mb-3">
+                    <label class="form-label">Stage</label>
+                    <select class="form-select" id="dealStage">
+                      <option value="lead">Lead</option>
+                      <option value="contacted">Contacted</option>
+                      <option value="qualified">Qualified</option>
+                      <option value="proposal">Proposal</option>
+                      <option value="negotiation">Negotiation</option>
+                    </select>
+                  </div>
+                  <div class="col-md-4 mb-3">
+                    <label class="form-label">Expected Close Date</label>
+                    <input type="date" class="form-control" id="dealExpectedClose">
+                  </div>
+                  <div class="col-md-4 mb-3">
+                    <label class="form-label">Contact</label>
+                    <select class="form-select" id="dealContact">
+                      <option value="">Select contact (optional)...</option>
+                    </select>
+                  </div>
+                </div>
+                <div class="mb-3">
+                  <label class="form-label">Description</label>
+                  <textarea class="form-control" id="dealDescription" rows="3" placeholder="Deal details..."></textarea>
+                </div>
+              </form>
+            </div>
+            <div class="modal-footer">
+              <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+              <button type="button" class="btn btn-success" onclick="crmModule.saveDeal()">
+                <i class="bi bi-save me-2"></i>Create Deal
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+
+    const existingModal = document.getElementById('createDealModal');
+    if (existingModal) existingModal.remove();
+
+    document.body.insertAdjacentHTML('beforeend', modalHtml);
+
+    // Load organisations for dropdown
+    const { data: orgs } = await STATE.client
+      .from('organisations')
+      .select('id, company_name')
+      .order('company_name');
+
+    const orgSelect = document.getElementById('dealOrganisation');
+    orgSelect.innerHTML = '<option value="">Select company...</option>' +
+      (orgs || []).map(org => `<option value="${org.id}" ${org.id === organisationId ? 'selected' : ''}>${org.company_name}</option>`).join('');
+
+    // If org is preselected, load contacts
+    if (organisationId) {
+      const { data: contacts } = await STATE.client
+        .from('organisation_contacts')
+        .select('id, first_name, last_name')
+        .eq('organisation_id', organisationId)
+        .order('first_name');
+
+      const contactSelect = document.getElementById('dealContact');
+      contactSelect.innerHTML = '<option value="">Select contact (optional)...</option>' +
+        (contacts || []).map(c => `<option value="${c.id}">${c.first_name} ${c.last_name}</option>`).join('');
+    }
+
+    const modal = new bootstrap.Modal(document.getElementById('createDealModal'));
+    modal.show();
+
+    document.getElementById('createDealModal').addEventListener('hidden.bs.modal', function() {
+      this.remove();
+    });
+
+    } catch (error) {
+      console.error('Error opening create deal modal:', error);
+      showNotification('Error loading deal form: ' + error.message, 'error');
+    }
+  },
+
+  async saveDeal() {
+    const form = document.getElementById('createDealForm');
+    if (!form.checkValidity()) {
+      form.reportValidity();
+      return;
+    }
+
+    const dealData = {
+      deal_name: document.getElementById('dealName').value,
+      organisation_id: document.getElementById('dealOrganisation').value,
+      deal_type: document.getElementById('dealType').value,
+      deal_value: parseFloat(document.getElementById('dealValue').value),
+      probability: parseInt(document.getElementById('dealProbability').value) || 50,
+      stage: document.getElementById('dealStage').value,
+      expected_close_date: document.getElementById('dealExpectedClose').value || null,
+      contact_id: document.getElementById('dealContact').value || null,
+      description: document.getElementById('dealDescription').value,
+      status: 'active'
+    };
+
+    try {
+      const { error } = await STATE.client
+        .from('deals')
+        .insert([dealData]);
+
+      if (error) throw error;
+
+      showNotification('Deal created successfully', 'success');
+      bootstrap.Modal.getInstance(document.getElementById('createDealModal')).hide();
+      this.loadDeals();
+    } catch (error) {
+      console.error('Error creating deal:', error);
+      showNotification('Error creating deal: ' + error.message, 'error');
+    }
   },
 
   async viewCommunication(commId) {
     console.log('View communication:', commId);
-    showNotification('Communication detail view coming soon', 'info');
+
+    try {
+      const { data: comm, error } = await STATE.client
+        .from('communications')
+        .select(`
+          *,
+          organisation:organisations(company_name),
+          contact:organisation_contacts(first_name, last_name, email)
+        `)
+        .eq('id', commId)
+        .single();
+
+      if (error) throw error;
+
+      const date = new Date(comm.communication_date).toLocaleString();
+      const companyName = comm.organisation?.company_name || 'Unknown';
+      const contactName = comm.contact ? `${comm.contact.first_name} ${comm.contact.last_name}` : 'N/A';
+      const contactEmail = comm.contact?.email || '';
+
+      const modalHtml = `
+        <div class="modal fade" id="viewCommunicationModal" tabindex="-1">
+          <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+              <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title"><i class="bi bi-chat-dots me-2"></i>Communication Details</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+              </div>
+              <div class="modal-body">
+                <div class="row mb-3">
+                  <div class="col-md-6">
+                    <table class="table table-sm table-borderless">
+                      <tr><td class="text-muted">Date:</td><td><strong>${date}</strong></td></tr>
+                      <tr><td class="text-muted">Type:</td><td>${this.getTypeBadge(comm.type)}</td></tr>
+                      <tr><td class="text-muted">Direction:</td><td>${comm.direction === 'inbound' ? '<span class="badge bg-info">Inbound</span>' : '<span class="badge bg-primary">Outbound</span>'}</td></tr>
+                      <tr><td class="text-muted">Regarding:</td><td>${this.formatRegarding(comm.regarding)}</td></tr>
+                    </table>
+                  </div>
+                  <div class="col-md-6">
+                    <table class="table table-sm table-borderless">
+                      <tr><td class="text-muted">Company:</td><td><strong>${companyName}</strong></td></tr>
+                      <tr><td class="text-muted">Contact:</td><td>${contactName}</td></tr>
+                      ${contactEmail ? `<tr><td class="text-muted">Email:</td><td><a href="mailto:${contactEmail}">${contactEmail}</a></td></tr>` : ''}
+                      <tr><td class="text-muted">Follow-up:</td><td>${comm.follow_up_required
+                        ? `<span class="badge bg-warning text-dark"><i class="bi bi-calendar-check me-1"></i>${comm.follow_up_date ? new Date(comm.follow_up_date).toLocaleDateString() : 'ASAP'}</span>`
+                        : '<span class="text-muted">None</span>'}</td></tr>
+                    </table>
+                  </div>
+                </div>
+                ${comm.subject ? `<div class="mb-3"><h6 class="text-muted">Subject</h6><p class="fw-bold mb-0">${comm.subject}</p></div>` : ''}
+                <div class="mb-0">
+                  <h6 class="text-muted">Message</h6>
+                  <div class="p-3 bg-light rounded" style="white-space: pre-wrap;">${comm.message}</div>
+                </div>
+              </div>
+              <div class="modal-footer">
+                <button type="button" class="btn btn-outline-success" onclick="bootstrap.Modal.getInstance(document.getElementById('viewCommunicationModal')).hide(); crmModule.editCommunication('${comm.id}')">
+                  <i class="bi bi-pencil me-2"></i>Edit
+                </button>
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      `;
+
+      const existingModal = document.getElementById('viewCommunicationModal');
+      if (existingModal) existingModal.remove();
+      document.body.insertAdjacentHTML('beforeend', modalHtml);
+      const modal = new bootstrap.Modal(document.getElementById('viewCommunicationModal'));
+      modal.show();
+      document.getElementById('viewCommunicationModal').addEventListener('hidden.bs.modal', function() { this.remove(); });
+    } catch (error) {
+      console.error('Error loading communication:', error);
+      showNotification('Error loading communication details', 'error');
+    }
   },
 
   async editCommunication(commId) {
     console.log('Edit communication:', commId);
-    showNotification('Communication editing coming soon', 'info');
+
+    try {
+      const { data: comm, error } = await STATE.client
+        .from('communications')
+        .select('*')
+        .eq('id', commId)
+        .single();
+
+      if (error) throw error;
+
+      const modalHtml = `
+        <div class="modal fade" id="editCommunicationModal" tabindex="-1">
+          <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+              <div class="modal-header bg-success text-white">
+                <h5 class="modal-title"><i class="bi bi-pencil me-2"></i>Edit Communication</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+              </div>
+              <div class="modal-body">
+                <form id="editCommunicationForm">
+                  <div class="row">
+                    <div class="col-md-6 mb-3">
+                      <label class="form-label">Type <span class="text-danger">*</span></label>
+                      <select class="form-select" id="editCommType" required>
+                        <option value="email" ${comm.type === 'email' ? 'selected' : ''}>Email</option>
+                        <option value="phone" ${comm.type === 'phone' ? 'selected' : ''}>Phone</option>
+                        <option value="meeting" ${comm.type === 'meeting' ? 'selected' : ''}>Meeting</option>
+                        <option value="note" ${comm.type === 'note' ? 'selected' : ''}>Note</option>
+                        <option value="text" ${comm.type === 'text' ? 'selected' : ''}>Text</option>
+                        <option value="linkedin" ${comm.type === 'linkedin' ? 'selected' : ''}>LinkedIn</option>
+                      </select>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                      <label class="form-label">Direction <span class="text-danger">*</span></label>
+                      <select class="form-select" id="editCommDirection" required>
+                        <option value="outbound" ${comm.direction === 'outbound' ? 'selected' : ''}>Outbound</option>
+                        <option value="inbound" ${comm.direction === 'inbound' ? 'selected' : ''}>Inbound</option>
+                      </select>
+                    </div>
+                  </div>
+                  <div class="mb-3">
+                    <label class="form-label">Regarding</label>
+                    <select class="form-select" id="editCommRegarding">
+                      <option value="general" ${comm.regarding === 'general' ? 'selected' : ''}>General</option>
+                      <option value="sponsorship" ${comm.regarding === 'sponsorship' ? 'selected' : ''}>Sponsorship</option>
+                      <option value="award_application" ${comm.regarding === 'award_application' ? 'selected' : ''}>Award Application</option>
+                      <option value="event_ticket" ${comm.regarding === 'event_ticket' ? 'selected' : ''}>Event Ticket</option>
+                      <option value="follow_up" ${comm.regarding === 'follow_up' ? 'selected' : ''}>Follow Up</option>
+                      <option value="renewal" ${comm.regarding === 'renewal' ? 'selected' : ''}>Renewal</option>
+                    </select>
+                  </div>
+                  <div class="mb-3">
+                    <label class="form-label">Subject</label>
+                    <input type="text" class="form-control" id="editCommSubject" value="${comm.subject || ''}">
+                  </div>
+                  <div class="mb-3">
+                    <label class="form-label">Message <span class="text-danger">*</span></label>
+                    <textarea class="form-control" id="editCommMessage" rows="4" required>${comm.message || ''}</textarea>
+                  </div>
+                  <div class="row">
+                    <div class="col-md-6 mb-3">
+                      <label class="form-label">Communication Date</label>
+                      <input type="date" class="form-control" id="editCommDate" value="${comm.communication_date ? comm.communication_date.split('T')[0] : ''}">
+                    </div>
+                    <div class="col-md-6 mb-3">
+                      <div class="form-check mt-4">
+                        <input class="form-check-input" type="checkbox" id="editCommFollowUp" ${comm.follow_up_required ? 'checked' : ''}>
+                        <label class="form-check-label" for="editCommFollowUp">Follow-up Required</label>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="mb-3" id="editFollowUpDateContainer" style="display: ${comm.follow_up_required ? 'block' : 'none'};">
+                    <label class="form-label">Follow-up Date</label>
+                    <input type="date" class="form-control" id="editCommFollowUpDate" value="${comm.follow_up_date ? comm.follow_up_date.split('T')[0] : ''}">
+                  </div>
+                </form>
+              </div>
+              <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-success" onclick="crmModule.updateCommunication('${comm.id}')">
+                  <i class="bi bi-save me-2"></i>Save Changes
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      `;
+
+      const existingModal = document.getElementById('editCommunicationModal');
+      if (existingModal) existingModal.remove();
+      document.body.insertAdjacentHTML('beforeend', modalHtml);
+
+      document.getElementById('editCommFollowUp').addEventListener('change', function() {
+        document.getElementById('editFollowUpDateContainer').style.display = this.checked ? 'block' : 'none';
+      });
+
+      const modal = new bootstrap.Modal(document.getElementById('editCommunicationModal'));
+      modal.show();
+      document.getElementById('editCommunicationModal').addEventListener('hidden.bs.modal', function() { this.remove(); });
+    } catch (error) {
+      console.error('Error loading communication for edit:', error);
+      showNotification('Error loading communication', 'error');
+    }
+  },
+
+  async updateCommunication(commId) {
+    const form = document.getElementById('editCommunicationForm');
+    if (!form.checkValidity()) {
+      form.reportValidity();
+      return;
+    }
+
+    const updateData = {
+      type: document.getElementById('editCommType').value,
+      direction: document.getElementById('editCommDirection').value,
+      regarding: document.getElementById('editCommRegarding').value,
+      subject: document.getElementById('editCommSubject').value,
+      message: document.getElementById('editCommMessage').value,
+      communication_date: document.getElementById('editCommDate').value,
+      follow_up_required: document.getElementById('editCommFollowUp').checked,
+      follow_up_date: document.getElementById('editCommFollowUp').checked ? document.getElementById('editCommFollowUpDate').value : null
+    };
+
+    try {
+      const { error } = await STATE.client
+        .from('communications')
+        .update(updateData)
+        .eq('id', commId);
+
+      if (error) throw error;
+
+      showNotification('Communication updated successfully', 'success');
+      bootstrap.Modal.getInstance(document.getElementById('editCommunicationModal')).hide();
+      this.loadCommunications();
+    } catch (error) {
+      console.error('Error updating communication:', error);
+      showNotification('Error updating communication: ' + error.message, 'error');
+    }
   },
 
   async deleteCommunication(commId) {
@@ -824,12 +1193,257 @@ const crmModule = {
 
   async viewDeal(dealId) {
     console.log('View deal:', dealId);
-    showNotification('Deal detail view coming soon', 'info');
+
+    try {
+      const { data: deal, error } = await STATE.client
+        .from('deals')
+        .select(`
+          *,
+          organisation:organisations(company_name),
+          contact:organisation_contacts(first_name, last_name, email)
+        `)
+        .eq('id', dealId)
+        .single();
+
+      if (error) throw error;
+
+      const companyName = deal.organisation?.company_name || 'Unknown';
+      const contactName = deal.contact ? `${deal.contact.first_name} ${deal.contact.last_name}` : 'N/A';
+      const value = `£${parseFloat(deal.deal_value).toLocaleString('en-GB', { minimumFractionDigits: 2 })}`;
+      const createdDate = new Date(deal.created_at).toLocaleDateString();
+
+      const modalHtml = `
+        <div class="modal fade" id="viewDealModal" tabindex="-1">
+          <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+              <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title"><i class="bi bi-cash-coin me-2"></i>Deal Details</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+              </div>
+              <div class="modal-body">
+                <div class="row mb-3">
+                  <div class="col-md-6">
+                    <table class="table table-sm table-borderless">
+                      <tr><td class="text-muted">Deal Name:</td><td><strong>${deal.deal_name}</strong></td></tr>
+                      <tr><td class="text-muted">Company:</td><td>${companyName}</td></tr>
+                      <tr><td class="text-muted">Contact:</td><td>${contactName}</td></tr>
+                      <tr><td class="text-muted">Created:</td><td>${createdDate}</td></tr>
+                    </table>
+                  </div>
+                  <div class="col-md-6">
+                    <table class="table table-sm table-borderless">
+                      <tr><td class="text-muted">Type:</td><td>${this.getDealTypeBadge(deal.deal_type)}</td></tr>
+                      <tr><td class="text-muted">Stage:</td><td>${this.getStageBadge(deal.stage)}</td></tr>
+                      <tr><td class="text-muted">Status:</td><td>${this.getStatusBadge(deal.status)}</td></tr>
+                      <tr><td class="text-muted">Value:</td><td><strong class="text-success">${value}</strong></td></tr>
+                    </table>
+                  </div>
+                </div>
+                <div class="row mb-3">
+                  <div class="col-md-6">
+                    <div class="card">
+                      <div class="card-body text-center">
+                        <h6 class="text-muted mb-1">Probability</h6>
+                        <div class="progress mb-2" style="height: 24px;">
+                          <div class="progress-bar" role="progressbar" style="width: ${deal.probability}%;">${deal.probability}%</div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="col-md-6">
+                    <div class="card">
+                      <div class="card-body text-center">
+                        <h6 class="text-muted mb-1">Expected Close</h6>
+                        <h5 class="mb-0">${deal.expected_close_date ? new Date(deal.expected_close_date).toLocaleDateString() : 'TBD'}</h5>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                ${deal.description ? `
+                  <div class="mb-0">
+                    <h6 class="text-muted">Description</h6>
+                    <div class="p-3 bg-light rounded" style="white-space: pre-wrap;">${deal.description}</div>
+                  </div>
+                ` : ''}
+                ${deal.notes ? `
+                  <div class="mt-3">
+                    <h6 class="text-muted">Notes</h6>
+                    <div class="p-3 bg-light rounded" style="white-space: pre-wrap;">${deal.notes}</div>
+                  </div>
+                ` : ''}
+              </div>
+              <div class="modal-footer">
+                <button type="button" class="btn btn-outline-success" onclick="bootstrap.Modal.getInstance(document.getElementById('viewDealModal')).hide(); crmModule.editDeal('${deal.id}')">
+                  <i class="bi bi-pencil me-2"></i>Edit
+                </button>
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      `;
+
+      const existingModal = document.getElementById('viewDealModal');
+      if (existingModal) existingModal.remove();
+      document.body.insertAdjacentHTML('beforeend', modalHtml);
+      const modal = new bootstrap.Modal(document.getElementById('viewDealModal'));
+      modal.show();
+      document.getElementById('viewDealModal').addEventListener('hidden.bs.modal', function() { this.remove(); });
+    } catch (error) {
+      console.error('Error loading deal:', error);
+      showNotification('Error loading deal details', 'error');
+    }
   },
 
   async editDeal(dealId) {
     console.log('Edit deal:', dealId);
-    showNotification('Deal editing coming soon', 'info');
+
+    try {
+      const { data: deal, error } = await STATE.client
+        .from('deals')
+        .select('*')
+        .eq('id', dealId)
+        .single();
+
+      if (error) throw error;
+
+      const modalHtml = `
+        <div class="modal fade" id="editDealModal" tabindex="-1">
+          <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+              <div class="modal-header bg-success text-white">
+                <h5 class="modal-title"><i class="bi bi-pencil me-2"></i>Edit Deal</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+              </div>
+              <div class="modal-body">
+                <form id="editDealForm">
+                  <div class="row">
+                    <div class="col-md-6 mb-3">
+                      <label class="form-label">Deal Name <span class="text-danger">*</span></label>
+                      <input type="text" class="form-control" id="editDealName" required value="${deal.deal_name || ''}">
+                    </div>
+                    <div class="col-md-6 mb-3">
+                      <label class="form-label">Deal Type</label>
+                      <select class="form-select" id="editDealType">
+                        <option value="sponsorship" ${deal.deal_type === 'sponsorship' ? 'selected' : ''}>Sponsorship</option>
+                        <option value="award_fee" ${deal.deal_type === 'award_fee' ? 'selected' : ''}>Award Fee</option>
+                        <option value="event_tickets" ${deal.deal_type === 'event_tickets' ? 'selected' : ''}>Event Tickets</option>
+                        <option value="partnership" ${deal.deal_type === 'partnership' ? 'selected' : ''}>Partnership</option>
+                        <option value="package_upgrade" ${deal.deal_type === 'package_upgrade' ? 'selected' : ''}>Package Upgrade</option>
+                        <option value="other" ${deal.deal_type === 'other' ? 'selected' : ''}>Other</option>
+                      </select>
+                    </div>
+                  </div>
+                  <div class="row">
+                    <div class="col-md-4 mb-3">
+                      <label class="form-label">Deal Value (£) <span class="text-danger">*</span></label>
+                      <input type="number" class="form-control" id="editDealValue" required min="0" step="0.01" value="${deal.deal_value || 0}">
+                    </div>
+                    <div class="col-md-4 mb-3">
+                      <label class="form-label">Probability (%)</label>
+                      <input type="number" class="form-control" id="editDealProbability" min="0" max="100" value="${deal.probability || 50}">
+                    </div>
+                    <div class="col-md-4 mb-3">
+                      <label class="form-label">Stage</label>
+                      <select class="form-select" id="editDealStage">
+                        <option value="lead" ${deal.stage === 'lead' ? 'selected' : ''}>Lead</option>
+                        <option value="contacted" ${deal.stage === 'contacted' ? 'selected' : ''}>Contacted</option>
+                        <option value="qualified" ${deal.stage === 'qualified' ? 'selected' : ''}>Qualified</option>
+                        <option value="proposal" ${deal.stage === 'proposal' ? 'selected' : ''}>Proposal</option>
+                        <option value="negotiation" ${deal.stage === 'negotiation' ? 'selected' : ''}>Negotiation</option>
+                        <option value="closed_won" ${deal.stage === 'closed_won' ? 'selected' : ''}>Closed Won</option>
+                        <option value="closed_lost" ${deal.stage === 'closed_lost' ? 'selected' : ''}>Closed Lost</option>
+                      </select>
+                    </div>
+                  </div>
+                  <div class="row">
+                    <div class="col-md-4 mb-3">
+                      <label class="form-label">Status</label>
+                      <select class="form-select" id="editDealStatus">
+                        <option value="active" ${deal.status === 'active' ? 'selected' : ''}>Active</option>
+                        <option value="won" ${deal.status === 'won' ? 'selected' : ''}>Won</option>
+                        <option value="lost" ${deal.status === 'lost' ? 'selected' : ''}>Lost</option>
+                        <option value="on_hold" ${deal.status === 'on_hold' ? 'selected' : ''}>On Hold</option>
+                        <option value="cancelled" ${deal.status === 'cancelled' ? 'selected' : ''}>Cancelled</option>
+                      </select>
+                    </div>
+                    <div class="col-md-4 mb-3">
+                      <label class="form-label">Expected Close Date</label>
+                      <input type="date" class="form-control" id="editDealExpectedClose" value="${deal.expected_close_date ? deal.expected_close_date.split('T')[0] : ''}">
+                    </div>
+                    <div class="col-md-4 mb-3">
+                      <label class="form-label">Actual Close Date</label>
+                      <input type="date" class="form-control" id="editDealActualClose" value="${deal.actual_close_date ? deal.actual_close_date.split('T')[0] : ''}">
+                    </div>
+                  </div>
+                  <div class="mb-3">
+                    <label class="form-label">Description</label>
+                    <textarea class="form-control" id="editDealDescription" rows="3">${deal.description || ''}</textarea>
+                  </div>
+                  <div class="mb-3">
+                    <label class="form-label">Notes</label>
+                    <textarea class="form-control" id="editDealNotes" rows="2">${deal.notes || ''}</textarea>
+                  </div>
+                </form>
+              </div>
+              <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-success" onclick="crmModule.updateDeal('${deal.id}')">
+                  <i class="bi bi-save me-2"></i>Save Changes
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      `;
+
+      const existingModal = document.getElementById('editDealModal');
+      if (existingModal) existingModal.remove();
+      document.body.insertAdjacentHTML('beforeend', modalHtml);
+      const modal = new bootstrap.Modal(document.getElementById('editDealModal'));
+      modal.show();
+      document.getElementById('editDealModal').addEventListener('hidden.bs.modal', function() { this.remove(); });
+    } catch (error) {
+      console.error('Error loading deal for edit:', error);
+      showNotification('Error loading deal', 'error');
+    }
+  },
+
+  async updateDeal(dealId) {
+    const form = document.getElementById('editDealForm');
+    if (!form.checkValidity()) {
+      form.reportValidity();
+      return;
+    }
+
+    const updateData = {
+      deal_name: document.getElementById('editDealName').value,
+      deal_type: document.getElementById('editDealType').value,
+      deal_value: parseFloat(document.getElementById('editDealValue').value),
+      probability: parseInt(document.getElementById('editDealProbability').value) || 50,
+      stage: document.getElementById('editDealStage').value,
+      status: document.getElementById('editDealStatus').value,
+      expected_close_date: document.getElementById('editDealExpectedClose').value || null,
+      actual_close_date: document.getElementById('editDealActualClose').value || null,
+      description: document.getElementById('editDealDescription').value,
+      notes: document.getElementById('editDealNotes').value
+    };
+
+    try {
+      const { error } = await STATE.client
+        .from('deals')
+        .update(updateData)
+        .eq('id', dealId);
+
+      if (error) throw error;
+
+      showNotification('Deal updated successfully', 'success');
+      bootstrap.Modal.getInstance(document.getElementById('editDealModal')).hide();
+      this.loadDeals();
+    } catch (error) {
+      console.error('Error updating deal:', error);
+      showNotification('Error updating deal: ' + error.message, 'error');
+    }
   },
 
   async deleteDeal(dealId) {
@@ -855,12 +1469,255 @@ const crmModule = {
 
   async viewMeeting(meetingId) {
     console.log('View meeting:', meetingId);
-    showNotification('Meeting detail view coming soon', 'info');
+
+    try {
+      const { data: meeting, error } = await STATE.client
+        .from('meeting_notes')
+        .select(`
+          *,
+          organisation:organisations(company_name),
+          deal:deals(deal_name)
+        `)
+        .eq('id', meetingId)
+        .single();
+
+      if (error) throw error;
+
+      const date = new Date(meeting.meeting_date).toLocaleDateString();
+      const time = new Date(meeting.meeting_date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      const companyName = meeting.organisation?.company_name || 'N/A';
+      const dealName = meeting.deal?.deal_name || 'N/A';
+      let attendeesList = [];
+      try { attendeesList = JSON.parse(meeting.attendees || '[]'); } catch (e) {}
+
+      const modalHtml = `
+        <div class="modal fade" id="viewMeetingModal" tabindex="-1">
+          <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+              <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title"><i class="bi bi-calendar-event me-2"></i>Meeting Details</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+              </div>
+              <div class="modal-body">
+                <div class="row mb-3">
+                  <div class="col-md-6">
+                    <table class="table table-sm table-borderless">
+                      <tr><td class="text-muted">Title:</td><td><strong>${meeting.meeting_title}</strong></td></tr>
+                      <tr><td class="text-muted">Date:</td><td>${date} at ${time}</td></tr>
+                      <tr><td class="text-muted">Type:</td><td>${this.getMeetingTypeBadge(meeting.meeting_type)}</td></tr>
+                      <tr><td class="text-muted">Duration:</td><td>${meeting.duration_minutes ? meeting.duration_minutes + ' minutes' : 'N/A'}</td></tr>
+                    </table>
+                  </div>
+                  <div class="col-md-6">
+                    <table class="table table-sm table-borderless">
+                      <tr><td class="text-muted">Company:</td><td>${companyName}</td></tr>
+                      <tr><td class="text-muted">Related Deal:</td><td>${dealName}</td></tr>
+                      <tr><td class="text-muted">Location:</td><td>${meeting.location || 'N/A'}</td></tr>
+                      <tr><td class="text-muted">Follow-up:</td><td>${meeting.follow_up_required
+                        ? `<span class="badge bg-warning text-dark"><i class="bi bi-calendar-check me-1"></i>${meeting.follow_up_date ? new Date(meeting.follow_up_date).toLocaleDateString() : 'ASAP'}</span>`
+                        : '<span class="text-muted">None</span>'}</td></tr>
+                    </table>
+                  </div>
+                </div>
+                ${attendeesList.length > 0 ? `
+                  <div class="mb-3">
+                    <h6 class="text-muted">Attendees</h6>
+                    <div class="d-flex flex-wrap gap-2">
+                      ${attendeesList.map(a => `<span class="badge bg-light text-dark border"><i class="bi bi-person me-1"></i>${a}</span>`).join('')}
+                    </div>
+                  </div>
+                ` : ''}
+                ${meeting.notes ? `
+                  <div class="mb-3">
+                    <h6 class="text-muted">Meeting Notes</h6>
+                    <div class="p-3 bg-light rounded" style="white-space: pre-wrap;">${meeting.notes}</div>
+                  </div>
+                ` : ''}
+                ${meeting.action_items ? `
+                  <div class="mb-0">
+                    <h6 class="text-muted">Action Items</h6>
+                    <div class="p-3 bg-light rounded" style="white-space: pre-wrap;">${meeting.action_items}</div>
+                  </div>
+                ` : ''}
+              </div>
+              <div class="modal-footer">
+                <button type="button" class="btn btn-outline-success" onclick="bootstrap.Modal.getInstance(document.getElementById('viewMeetingModal')).hide(); crmModule.editMeeting('${meeting.id}')">
+                  <i class="bi bi-pencil me-2"></i>Edit
+                </button>
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      `;
+
+      const existingModal = document.getElementById('viewMeetingModal');
+      if (existingModal) existingModal.remove();
+      document.body.insertAdjacentHTML('beforeend', modalHtml);
+      const modal = new bootstrap.Modal(document.getElementById('viewMeetingModal'));
+      modal.show();
+      document.getElementById('viewMeetingModal').addEventListener('hidden.bs.modal', function() { this.remove(); });
+    } catch (error) {
+      console.error('Error loading meeting:', error);
+      showNotification('Error loading meeting details', 'error');
+    }
   },
 
   async editMeeting(meetingId) {
     console.log('Edit meeting:', meetingId);
-    showNotification('Meeting editing coming soon', 'info');
+
+    try {
+      const { data: meeting, error } = await STATE.client
+        .from('meeting_notes')
+        .select('*')
+        .eq('id', meetingId)
+        .single();
+
+      if (error) throw error;
+
+      let attendeesList = [];
+      try { attendeesList = JSON.parse(meeting.attendees || '[]'); } catch (e) {}
+      const meetingDateTime = meeting.meeting_date ? meeting.meeting_date.split('T') : ['', ''];
+
+      const modalHtml = `
+        <div class="modal fade" id="editMeetingModal" tabindex="-1">
+          <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+              <div class="modal-header bg-success text-white">
+                <h5 class="modal-title"><i class="bi bi-pencil me-2"></i>Edit Meeting</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+              </div>
+              <div class="modal-body">
+                <form id="editMeetingForm">
+                  <div class="row">
+                    <div class="col-md-6 mb-3">
+                      <label class="form-label">Meeting Title <span class="text-danger">*</span></label>
+                      <input type="text" class="form-control" id="editMeetingTitle" required value="${meeting.meeting_title || ''}">
+                    </div>
+                    <div class="col-md-6 mb-3">
+                      <label class="form-label">Meeting Type</label>
+                      <select class="form-select" id="editMeetingType">
+                        <option value="in_person" ${meeting.meeting_type === 'in_person' ? 'selected' : ''}>In Person</option>
+                        <option value="video_call" ${meeting.meeting_type === 'video_call' ? 'selected' : ''}>Video Call</option>
+                        <option value="phone" ${meeting.meeting_type === 'phone' ? 'selected' : ''}>Phone</option>
+                        <option value="conference" ${meeting.meeting_type === 'conference' ? 'selected' : ''}>Conference</option>
+                      </select>
+                    </div>
+                  </div>
+                  <div class="row">
+                    <div class="col-md-4 mb-3">
+                      <label class="form-label">Date</label>
+                      <input type="date" class="form-control" id="editMeetingDate" value="${meetingDateTime[0]}">
+                    </div>
+                    <div class="col-md-4 mb-3">
+                      <label class="form-label">Time</label>
+                      <input type="time" class="form-control" id="editMeetingTime" value="${meetingDateTime[1] ? meetingDateTime[1].substring(0, 5) : ''}">
+                    </div>
+                    <div class="col-md-4 mb-3">
+                      <label class="form-label">Duration (minutes)</label>
+                      <input type="number" class="form-control" id="editMeetingDuration" min="0" value="${meeting.duration_minutes || ''}">
+                    </div>
+                  </div>
+                  <div class="mb-3">
+                    <label class="form-label">Location</label>
+                    <input type="text" class="form-control" id="editMeetingLocation" value="${meeting.location || ''}" placeholder="e.g. Office, Zoom, Teams">
+                  </div>
+                  <div class="mb-3">
+                    <label class="form-label">Attendees (comma-separated)</label>
+                    <input type="text" class="form-control" id="editMeetingAttendees" value="${attendeesList.join(', ')}" placeholder="John Smith, Jane Doe">
+                  </div>
+                  <div class="mb-3">
+                    <label class="form-label">Meeting Notes</label>
+                    <textarea class="form-control" id="editMeetingNotes" rows="4">${meeting.notes || ''}</textarea>
+                  </div>
+                  <div class="mb-3">
+                    <label class="form-label">Action Items</label>
+                    <textarea class="form-control" id="editMeetingActions" rows="3">${meeting.action_items || ''}</textarea>
+                  </div>
+                  <div class="row">
+                    <div class="col-md-6 mb-3">
+                      <div class="form-check">
+                        <input class="form-check-input" type="checkbox" id="editMeetingFollowUp" ${meeting.follow_up_required ? 'checked' : ''}>
+                        <label class="form-check-label" for="editMeetingFollowUp">Follow-up Required</label>
+                      </div>
+                    </div>
+                    <div class="col-md-6 mb-3" id="editMeetingFollowUpDateContainer" style="display: ${meeting.follow_up_required ? 'block' : 'none'};">
+                      <label class="form-label">Follow-up Date</label>
+                      <input type="date" class="form-control" id="editMeetingFollowUpDate" value="${meeting.follow_up_date ? meeting.follow_up_date.split('T')[0] : ''}">
+                    </div>
+                  </div>
+                </form>
+              </div>
+              <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-success" onclick="crmModule.updateMeeting('${meeting.id}')">
+                  <i class="bi bi-save me-2"></i>Save Changes
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      `;
+
+      const existingModal = document.getElementById('editMeetingModal');
+      if (existingModal) existingModal.remove();
+      document.body.insertAdjacentHTML('beforeend', modalHtml);
+
+      document.getElementById('editMeetingFollowUp').addEventListener('change', function() {
+        document.getElementById('editMeetingFollowUpDateContainer').style.display = this.checked ? 'block' : 'none';
+      });
+
+      const modal = new bootstrap.Modal(document.getElementById('editMeetingModal'));
+      modal.show();
+      document.getElementById('editMeetingModal').addEventListener('hidden.bs.modal', function() { this.remove(); });
+    } catch (error) {
+      console.error('Error loading meeting for edit:', error);
+      showNotification('Error loading meeting', 'error');
+    }
+  },
+
+  async updateMeeting(meetingId) {
+    const form = document.getElementById('editMeetingForm');
+    if (!form.checkValidity()) {
+      form.reportValidity();
+      return;
+    }
+
+    const dateVal = document.getElementById('editMeetingDate').value;
+    const timeVal = document.getElementById('editMeetingTime').value;
+    const meetingDate = dateVal && timeVal ? `${dateVal}T${timeVal}:00` : dateVal || null;
+
+    const attendeesRaw = document.getElementById('editMeetingAttendees').value;
+    const attendeesArray = attendeesRaw ? attendeesRaw.split(',').map(a => a.trim()).filter(a => a) : [];
+
+    const updateData = {
+      meeting_title: document.getElementById('editMeetingTitle').value,
+      meeting_type: document.getElementById('editMeetingType').value,
+      meeting_date: meetingDate,
+      duration_minutes: parseInt(document.getElementById('editMeetingDuration').value) || null,
+      location: document.getElementById('editMeetingLocation').value || null,
+      attendees: JSON.stringify(attendeesArray),
+      notes: document.getElementById('editMeetingNotes').value,
+      action_items: document.getElementById('editMeetingActions').value,
+      follow_up_required: document.getElementById('editMeetingFollowUp').checked,
+      follow_up_date: document.getElementById('editMeetingFollowUp').checked ? document.getElementById('editMeetingFollowUpDate').value : null
+    };
+
+    try {
+      const { error } = await STATE.client
+        .from('meeting_notes')
+        .update(updateData)
+        .eq('id', meetingId);
+
+      if (error) throw error;
+
+      showNotification('Meeting updated successfully', 'success');
+      bootstrap.Modal.getInstance(document.getElementById('editMeetingModal')).hide();
+      this.loadMeetings();
+    } catch (error) {
+      console.error('Error updating meeting:', error);
+      showNotification('Error updating meeting: ' + error.message, 'error');
+    }
   },
 
   async deleteMeeting(meetingId) {
@@ -886,12 +1743,226 @@ const crmModule = {
 
   async viewSegmentCompanies(segmentId, segmentName) {
     console.log('View companies in segment:', segmentName);
-    showNotification(`Viewing companies in ${segmentName} - coming soon`, 'info');
+
+    try {
+      // Load companies in this segment
+      const { data: assignments, error } = await STATE.client
+        .from('organisation_segments')
+        .select(`
+          *,
+          organisation:organisations(id, company_name, industry, email, phone)
+        `)
+        .eq('segment_id', segmentId)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+
+      const companies = (assignments || []).filter(a => a.organisation);
+
+      const modalHtml = `
+        <div class="modal fade" id="viewSegmentCompaniesModal" tabindex="-1">
+          <div class="modal-dialog modal-lg modal-dialog-scrollable">
+            <div class="modal-content">
+              <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title"><i class="bi bi-people me-2"></i>Companies in "${segmentName}"</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+              </div>
+              <div class="modal-body">
+                ${companies.length === 0 ? `
+                  <div class="text-center py-4">
+                    <i class="bi bi-inbox display-4 d-block mb-2 opacity-25"></i>
+                    <p class="text-muted">No companies in this segment</p>
+                  </div>
+                ` : `
+                  <p class="text-muted mb-3">${companies.length} compan${companies.length === 1 ? 'y' : 'ies'} in this segment</p>
+                  <div class="table-responsive">
+                    <table class="table table-hover">
+                      <thead>
+                        <tr>
+                          <th>Company</th>
+                          <th>Industry</th>
+                          <th>Email</th>
+                          <th>Phone</th>
+                          <th>Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        ${companies.map(a => `
+                          <tr>
+                            <td><strong>${a.organisation.company_name}</strong></td>
+                            <td>${a.organisation.industry || '<span class="text-muted">N/A</span>'}</td>
+                            <td>${a.organisation.email ? `<a href="mailto:${a.organisation.email}">${a.organisation.email}</a>` : '<span class="text-muted">N/A</span>'}</td>
+                            <td>${a.organisation.phone || '<span class="text-muted">N/A</span>'}</td>
+                            <td>
+                              <div class="btn-group btn-group-sm">
+                                <button class="btn btn-outline-primary" onclick="crmModule.viewCompanyProfile('${a.organisation.id}')" title="View Profile">
+                                  <i class="bi bi-eye"></i>
+                                </button>
+                                <button class="btn btn-outline-danger" onclick="crmModule.removeFromSegment('${a.id}', '${segmentId}', '${segmentName}')" title="Remove from Segment">
+                                  <i class="bi bi-x-circle"></i>
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        `).join('')}
+                      </tbody>
+                    </table>
+                  </div>
+                `}
+              </div>
+              <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      `;
+
+      const existingModal = document.getElementById('viewSegmentCompaniesModal');
+      if (existingModal) existingModal.remove();
+      document.body.insertAdjacentHTML('beforeend', modalHtml);
+      const modal = new bootstrap.Modal(document.getElementById('viewSegmentCompaniesModal'));
+      modal.show();
+      document.getElementById('viewSegmentCompaniesModal').addEventListener('hidden.bs.modal', function() { this.remove(); });
+    } catch (error) {
+      console.error('Error loading segment companies:', error);
+      showNotification('Error loading segment companies', 'error');
+    }
+  },
+
+  async removeFromSegment(assignmentId, segmentId, segmentName) {
+    if (!confirm('Remove this company from the segment?')) return;
+
+    try {
+      const { error } = await STATE.client
+        .from('organisation_segments')
+        .delete()
+        .eq('id', assignmentId);
+
+      if (error) throw error;
+
+      showNotification('Company removed from segment', 'success');
+      // Refresh the segment companies view
+      bootstrap.Modal.getInstance(document.getElementById('viewSegmentCompaniesModal')).hide();
+      this.viewSegmentCompanies(segmentId, segmentName);
+      this.loadSegments();
+    } catch (error) {
+      console.error('Error removing from segment:', error);
+      showNotification('Error removing company from segment', 'error');
+    }
   },
 
   async editSegment(segmentId) {
     console.log('Edit segment:', segmentId);
-    showNotification('Segment editing coming soon', 'info');
+
+    try {
+      const { data: segment, error } = await STATE.client
+        .from('contact_segments')
+        .select('*')
+        .eq('id', segmentId)
+        .single();
+
+      if (error) throw error;
+
+      const colors = ['#0d6efd', '#198754', '#dc3545', '#ffc107', '#0dcaf0', '#6f42c1', '#fd7e14', '#20c997', '#d63384', '#6610f2'];
+      const icons = ['tag', 'trophy', 'star', 'people', 'building', 'award', 'cash', 'calendar-event', 'graph-up', 'megaphone'];
+
+      const modalHtml = `
+        <div class="modal fade" id="editSegmentModal" tabindex="-1">
+          <div class="modal-dialog">
+            <div class="modal-content">
+              <div class="modal-header bg-success text-white">
+                <h5 class="modal-title"><i class="bi bi-pencil me-2"></i>Edit Segment</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+              </div>
+              <div class="modal-body">
+                <form id="editSegmentForm">
+                  <div class="mb-3">
+                    <label class="form-label">Segment Name <span class="text-danger">*</span></label>
+                    <input type="text" class="form-control" id="editSegmentName" required value="${segment.segment_name || ''}">
+                  </div>
+                  <div class="mb-3">
+                    <label class="form-label">Description</label>
+                    <textarea class="form-control" id="editSegmentDescription" rows="2">${segment.description || ''}</textarea>
+                  </div>
+                  <div class="mb-3">
+                    <label class="form-label">Color</label>
+                    <div class="d-flex flex-wrap gap-2" id="segmentColorPicker">
+                      ${colors.map(c => `
+                        <div class="rounded-circle border ${segment.color === c ? 'border-dark border-3' : ''}"
+                             style="width: 32px; height: 32px; background: ${c}; cursor: pointer;"
+                             onclick="document.getElementById('editSegmentColor').value = '${c}'; document.querySelectorAll('#segmentColorPicker > div').forEach(d => d.classList.remove('border-dark','border-3')); this.classList.add('border-dark','border-3');">
+                        </div>
+                      `).join('')}
+                    </div>
+                    <input type="hidden" id="editSegmentColor" value="${segment.color || '#0d6efd'}">
+                  </div>
+                  <div class="mb-3">
+                    <label class="form-label">Icon</label>
+                    <div class="d-flex flex-wrap gap-2" id="segmentIconPicker">
+                      ${icons.map(ic => `
+                        <button type="button" class="btn btn-sm ${segment.icon === ic ? 'btn-primary' : 'btn-outline-secondary'}"
+                                onclick="document.getElementById('editSegmentIcon').value = '${ic}'; document.querySelectorAll('#segmentIconPicker > button').forEach(b => { b.classList.remove('btn-primary'); b.classList.add('btn-outline-secondary'); }); this.classList.remove('btn-outline-secondary'); this.classList.add('btn-primary');">
+                          <i class="bi bi-${ic}"></i>
+                        </button>
+                      `).join('')}
+                    </div>
+                    <input type="hidden" id="editSegmentIcon" value="${segment.icon || 'tag'}">
+                  </div>
+                </form>
+              </div>
+              <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-success" onclick="crmModule.updateSegment('${segment.id}')">
+                  <i class="bi bi-save me-2"></i>Save Changes
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      `;
+
+      const existingModal = document.getElementById('editSegmentModal');
+      if (existingModal) existingModal.remove();
+      document.body.insertAdjacentHTML('beforeend', modalHtml);
+      const modal = new bootstrap.Modal(document.getElementById('editSegmentModal'));
+      modal.show();
+      document.getElementById('editSegmentModal').addEventListener('hidden.bs.modal', function() { this.remove(); });
+    } catch (error) {
+      console.error('Error loading segment for edit:', error);
+      showNotification('Error loading segment', 'error');
+    }
+  },
+
+  async updateSegment(segmentId) {
+    const form = document.getElementById('editSegmentForm');
+    if (!form.checkValidity()) {
+      form.reportValidity();
+      return;
+    }
+
+    const updateData = {
+      segment_name: document.getElementById('editSegmentName').value,
+      description: document.getElementById('editSegmentDescription').value,
+      color: document.getElementById('editSegmentColor').value,
+      icon: document.getElementById('editSegmentIcon').value
+    };
+
+    try {
+      const { error } = await STATE.client
+        .from('contact_segments')
+        .update(updateData)
+        .eq('id', segmentId);
+
+      if (error) throw error;
+
+      showNotification('Segment updated successfully', 'success');
+      bootstrap.Modal.getInstance(document.getElementById('editSegmentModal')).hide();
+      this.loadSegments();
+    } catch (error) {
+      console.error('Error updating segment:', error);
+      showNotification('Error updating segment: ' + error.message, 'error');
+    }
   }
 };
 

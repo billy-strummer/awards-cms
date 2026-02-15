@@ -141,8 +141,143 @@ const marketingModule = {
   /**
    * Open add banner modal
    */
-  openAddBannerModal() {
-    utils.showToast('Banner creation coming soon! Database tables are ready.', 'info');
+  openAddBannerModal(existingBanner = null) {
+    const isEdit = !!existingBanner;
+    const title = isEdit ? 'Edit Banner' : 'Add New Banner';
+    const btnText = isEdit ? 'Save Changes' : 'Create Banner';
+
+    const modalHtml = `
+      <div class="modal fade" id="bannerFormModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+          <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+              <h5 class="modal-title"><i class="bi bi-image me-2"></i>${title}</h5>
+              <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+              <form id="bannerForm">
+                <div class="row">
+                  <div class="col-md-6 mb-3">
+                    <label class="form-label">Title <span class="text-danger">*</span></label>
+                    <input type="text" class="form-control" id="bannerTitle" required value="${isEdit ? utils.escapeHtml(existingBanner.title) : ''}" placeholder="Banner title">
+                  </div>
+                  <div class="col-md-6 mb-3">
+                    <label class="form-label">Position</label>
+                    <select class="form-select" id="bannerPosition">
+                      <option value="header" ${isEdit && existingBanner.position === 'header' ? 'selected' : ''}>Header</option>
+                      <option value="sidebar" ${isEdit && existingBanner.position === 'sidebar' ? 'selected' : ''}>Sidebar</option>
+                      <option value="footer" ${isEdit && existingBanner.position === 'footer' ? 'selected' : ''}>Footer</option>
+                      <option value="inline" ${isEdit && existingBanner.position === 'inline' ? 'selected' : ''}>Inline</option>
+                      <option value="popup" ${isEdit && existingBanner.position === 'popup' ? 'selected' : ''}>Popup</option>
+                    </select>
+                  </div>
+                </div>
+                <div class="mb-3">
+                  <label class="form-label">Image URL <span class="text-danger">*</span></label>
+                  <input type="url" class="form-control" id="bannerImageUrl" required value="${isEdit ? (existingBanner.image_url || '') : ''}" placeholder="https://example.com/banner.jpg">
+                </div>
+                <div class="mb-3">
+                  <label class="form-label">Link URL</label>
+                  <input type="url" class="form-control" id="bannerLinkUrl" value="${isEdit ? (existingBanner.link_url || '') : ''}" placeholder="https://example.com/landing-page">
+                </div>
+                <div class="row">
+                  <div class="col-md-3 mb-3">
+                    <label class="form-label">Width (px)</label>
+                    <input type="number" class="form-control" id="bannerWidth" min="0" value="${isEdit ? (existingBanner.width || '') : ''}">
+                  </div>
+                  <div class="col-md-3 mb-3">
+                    <label class="form-label">Height (px)</label>
+                    <input type="number" class="form-control" id="bannerHeight" min="0" value="${isEdit ? (existingBanner.height || '') : ''}">
+                  </div>
+                  <div class="col-md-3 mb-3">
+                    <label class="form-label">Start Date</label>
+                    <input type="date" class="form-control" id="bannerStartDate" value="${isEdit && existingBanner.start_date ? existingBanner.start_date.split('T')[0] : ''}">
+                  </div>
+                  <div class="col-md-3 mb-3">
+                    <label class="form-label">End Date</label>
+                    <input type="date" class="form-control" id="bannerEndDate" value="${isEdit && existingBanner.end_date ? existingBanner.end_date.split('T')[0] : ''}">
+                  </div>
+                </div>
+                <div class="row">
+                  <div class="col-md-6 mb-3">
+                    <label class="form-label">Display Order</label>
+                    <input type="number" class="form-control" id="bannerDisplayOrder" min="0" value="${isEdit ? (existingBanner.display_order || 0) : this.currentBanners.length + 1}">
+                  </div>
+                  <div class="col-md-6 mb-3">
+                    <div class="form-check mt-4">
+                      <input class="form-check-input" type="checkbox" id="bannerIsActive" ${isEdit ? (existingBanner.is_active ? 'checked' : '') : 'checked'}>
+                      <label class="form-check-label" for="bannerIsActive">Active</label>
+                    </div>
+                  </div>
+                </div>
+              </form>
+            </div>
+            <div class="modal-footer">
+              <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+              <button type="button" class="btn btn-primary" onclick="marketingModule.saveBanner(${isEdit ? `'${existingBanner.id}'` : 'null'})">
+                <i class="bi bi-save me-2"></i>${btnText}
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+
+    const existingModal = document.getElementById('bannerFormModal');
+    if (existingModal) existingModal.remove();
+    document.body.insertAdjacentHTML('beforeend', modalHtml);
+    const modal = new bootstrap.Modal(document.getElementById('bannerFormModal'));
+    modal.show();
+    document.getElementById('bannerFormModal').addEventListener('hidden.bs.modal', function() { this.remove(); });
+  },
+
+  async saveBanner(bannerId) {
+    const form = document.getElementById('bannerForm');
+    if (!form.checkValidity()) {
+      form.reportValidity();
+      return;
+    }
+
+    const bannerData = {
+      title: document.getElementById('bannerTitle').value,
+      position: document.getElementById('bannerPosition').value,
+      image_url: document.getElementById('bannerImageUrl').value,
+      link_url: document.getElementById('bannerLinkUrl').value || null,
+      width: parseInt(document.getElementById('bannerWidth').value) || null,
+      height: parseInt(document.getElementById('bannerHeight').value) || null,
+      start_date: document.getElementById('bannerStartDate').value || null,
+      end_date: document.getElementById('bannerEndDate').value || null,
+      display_order: parseInt(document.getElementById('bannerDisplayOrder').value) || 0,
+      is_active: document.getElementById('bannerIsActive').checked
+    };
+
+    try {
+      let error;
+      if (bannerId) {
+        bannerData.updated_at = new Date().toISOString();
+        ({ error } = await STATE.client.from('banners').update(bannerData).eq('id', bannerId));
+      } else {
+        ({ error } = await STATE.client.from('banners').insert([bannerData]));
+      }
+
+      if (error) throw error;
+
+      utils.showToast(bannerId ? 'Banner updated successfully' : 'Banner created successfully', 'success');
+      bootstrap.Modal.getInstance(document.getElementById('bannerFormModal')).hide();
+      await this.loadBanners();
+    } catch (error) {
+      console.error('Error saving banner:', error);
+      utils.showToast('Failed to save banner: ' + error.message, 'error');
+    }
+  },
+
+  editBanner(bannerId) {
+    const banner = this.currentBanners.find(b => b.id === bannerId);
+    if (!banner) {
+      utils.showToast('Banner not found', 'error');
+      return;
+    }
+    this.openAddBannerModal(banner);
   },
 
   /**
@@ -323,8 +458,150 @@ const marketingModule = {
   /**
    * Open add sponsor modal
    */
-  openAddSponsorModal() {
-    utils.showToast('Sponsor creation coming soon! Database tables are ready.', 'info');
+  openAddSponsorModal(existingSponsor = null) {
+    const isEdit = !!existingSponsor;
+    const title = isEdit ? 'Edit Sponsor' : 'Add New Sponsor';
+    const btnText = isEdit ? 'Save Changes' : 'Create Sponsor';
+
+    const modalHtml = `
+      <div class="modal fade" id="sponsorFormModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+          <div class="modal-content">
+            <div class="modal-header bg-warning text-dark">
+              <h5 class="modal-title"><i class="bi bi-award me-2"></i>${title}</h5>
+              <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+              <form id="sponsorForm">
+                <div class="row">
+                  <div class="col-md-6 mb-3">
+                    <label class="form-label">Company Name <span class="text-danger">*</span></label>
+                    <input type="text" class="form-control" id="sponsorCompanyName" required value="${isEdit ? utils.escapeHtml(existingSponsor.company_name) : ''}" placeholder="Sponsor company name">
+                  </div>
+                  <div class="col-md-6 mb-3">
+                    <label class="form-label">Tier <span class="text-danger">*</span></label>
+                    <select class="form-select" id="sponsorTier" required>
+                      <option value="Platinum" ${isEdit && existingSponsor.tier === 'Platinum' ? 'selected' : ''}>Platinum</option>
+                      <option value="Gold" ${isEdit && existingSponsor.tier === 'Gold' ? 'selected' : ''}>Gold</option>
+                      <option value="Silver" ${isEdit && existingSponsor.tier === 'Silver' ? 'selected' : ''}>Silver</option>
+                      <option value="Bronze" ${isEdit && existingSponsor.tier === 'Bronze' ? 'selected' : ''}>Bronze</option>
+                      <option value="Partner" ${isEdit && existingSponsor.tier === 'Partner' ? 'selected' : ''}>Partner</option>
+                    </select>
+                  </div>
+                </div>
+                <div class="row">
+                  <div class="col-md-6 mb-3">
+                    <label class="form-label">Contact Name</label>
+                    <input type="text" class="form-control" id="sponsorContactName" value="${isEdit ? (existingSponsor.contact_name || '') : ''}" placeholder="Primary contact">
+                  </div>
+                  <div class="col-md-6 mb-3">
+                    <label class="form-label">Email</label>
+                    <input type="email" class="form-control" id="sponsorEmail" value="${isEdit ? (existingSponsor.email || '') : ''}" placeholder="contact@company.com">
+                  </div>
+                </div>
+                <div class="row">
+                  <div class="col-md-6 mb-3">
+                    <label class="form-label">Phone</label>
+                    <input type="text" class="form-control" id="sponsorPhone" value="${isEdit ? (existingSponsor.phone || '') : ''}" placeholder="Phone number">
+                  </div>
+                  <div class="col-md-6 mb-3">
+                    <label class="form-label">Website</label>
+                    <input type="url" class="form-control" id="sponsorWebsite" value="${isEdit ? (existingSponsor.website || '') : ''}" placeholder="https://company.com">
+                  </div>
+                </div>
+                <div class="mb-3">
+                  <label class="form-label">Logo URL</label>
+                  <input type="url" class="form-control" id="sponsorLogoUrl" value="${isEdit ? (existingSponsor.logo_url || '') : ''}" placeholder="https://company.com/logo.png">
+                </div>
+                <div class="mb-3">
+                  <label class="form-label">Description</label>
+                  <textarea class="form-control" id="sponsorDescription" rows="2">${isEdit ? (existingSponsor.description || '') : ''}</textarea>
+                </div>
+                <div class="row">
+                  <div class="col-md-4 mb-3">
+                    <label class="form-label">Sponsorship Amount (£)</label>
+                    <input type="number" class="form-control" id="sponsorAmount" min="0" step="0.01" value="${isEdit ? (existingSponsor.sponsorship_amount || '') : ''}">
+                  </div>
+                  <div class="col-md-4 mb-3">
+                    <label class="form-label">Display Order</label>
+                    <input type="number" class="form-control" id="sponsorDisplayOrder" min="0" value="${isEdit ? (existingSponsor.display_order || 0) : this.currentSponsors.length + 1}">
+                  </div>
+                  <div class="col-md-4 mb-3">
+                    <div class="form-check mt-4">
+                      <input class="form-check-input" type="checkbox" id="sponsorIsActive" ${isEdit ? (existingSponsor.is_active ? 'checked' : '') : 'checked'}>
+                      <label class="form-check-label" for="sponsorIsActive">Active</label>
+                    </div>
+                  </div>
+                </div>
+              </form>
+            </div>
+            <div class="modal-footer">
+              <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+              <button type="button" class="btn btn-warning" onclick="marketingModule.saveSponsor(${isEdit ? `'${existingSponsor.id}'` : 'null'})">
+                <i class="bi bi-save me-2"></i>${btnText}
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+
+    const existingModal = document.getElementById('sponsorFormModal');
+    if (existingModal) existingModal.remove();
+    document.body.insertAdjacentHTML('beforeend', modalHtml);
+    const modal = new bootstrap.Modal(document.getElementById('sponsorFormModal'));
+    modal.show();
+    document.getElementById('sponsorFormModal').addEventListener('hidden.bs.modal', function() { this.remove(); });
+  },
+
+  async saveSponsor(sponsorId) {
+    const form = document.getElementById('sponsorForm');
+    if (!form.checkValidity()) {
+      form.reportValidity();
+      return;
+    }
+
+    const sponsorData = {
+      company_name: document.getElementById('sponsorCompanyName').value,
+      tier: document.getElementById('sponsorTier').value,
+      contact_name: document.getElementById('sponsorContactName').value || null,
+      email: document.getElementById('sponsorEmail').value || null,
+      phone: document.getElementById('sponsorPhone').value || null,
+      website: document.getElementById('sponsorWebsite').value || null,
+      logo_url: document.getElementById('sponsorLogoUrl').value || null,
+      description: document.getElementById('sponsorDescription').value || null,
+      sponsorship_amount: parseFloat(document.getElementById('sponsorAmount').value) || null,
+      display_order: parseInt(document.getElementById('sponsorDisplayOrder').value) || 0,
+      is_active: document.getElementById('sponsorIsActive').checked
+    };
+
+    try {
+      let error;
+      if (sponsorId) {
+        sponsorData.updated_at = new Date().toISOString();
+        ({ error } = await STATE.client.from('sponsors').update(sponsorData).eq('id', sponsorId));
+      } else {
+        ({ error } = await STATE.client.from('sponsors').insert([sponsorData]));
+      }
+
+      if (error) throw error;
+
+      utils.showToast(sponsorId ? 'Sponsor updated successfully' : 'Sponsor created successfully', 'success');
+      bootstrap.Modal.getInstance(document.getElementById('sponsorFormModal')).hide();
+      await this.loadSponsors();
+    } catch (error) {
+      console.error('Error saving sponsor:', error);
+      utils.showToast('Failed to save sponsor: ' + error.message, 'error');
+    }
+  },
+
+  editSponsor(sponsorId) {
+    const sponsor = this.currentSponsors.find(s => s.id === sponsorId);
+    if (!sponsor) {
+      utils.showToast('Sponsor not found', 'error');
+      return;
+    }
+    this.openAddSponsorModal(sponsor);
   },
 
   /* ==================================================== */

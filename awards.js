@@ -12,7 +12,7 @@ const awardsModule = {
   async loadAwards() {
     try {
       utils.showLoading();
-      utils.showTableLoading('awardsTableBody', 7);
+      utils.showTableLoading('awardsTableBody', 10);
 
       let allData = [];
       let page = 0;
@@ -64,16 +64,38 @@ const awardsModule = {
 
       await this.loadAssignmentCounts();
 
+      // Save current filter state before repopulating dropdowns
+      const savedFilters = {
+        year: document.getElementById('awardsYearFilterSelect')?.value || '',
+        status: document.getElementById('awardsStatusFilterSelect')?.value || '',
+        sector: document.getElementById('awardsSectorFilterSelect')?.value || '',
+        region: document.getElementById('awardsRegionFilterSelect')?.value || '',
+        county: document.getElementById('awardsCountyFilterSelect')?.value || '',
+        search: document.getElementById('awardsSearchBox')?.value || ''
+      };
+
       STATE.filteredAwards = STATE.allAwards;
 
       this.populateFilters();
+
+      // Restore filter state after repopulating
+      document.getElementById('awardsYearFilterSelect').value = savedFilters.year;
+      document.getElementById('awardsStatusFilterSelect').value = savedFilters.status;
+      document.getElementById('awardsSectorFilterSelect').value = savedFilters.sector;
+      if (savedFilters.region) {
+        document.getElementById('awardsRegionFilterSelect').value = savedFilters.region;
+        this.updateCountyFilterByRegion();
+      }
+      document.getElementById('awardsCountyFilterSelect').value = savedFilters.county;
+      document.getElementById('awardsSearchBox').value = savedFilters.search;
+
       this.updateStats();
-      this.renderAwards();
+      this.filterAwards();
 
     } catch (error) {
       console.error('Error loading awards:', error);
       utils.showToast('Failed to load awards: ' + error.message, 'error');
-      utils.showEmptyState('awardsTableBody', 7, 'Failed to load awards', 'bi-exclamation-triangle');
+      utils.showEmptyState('awardsTableBody', 10, 'Failed to load awards', 'bi-exclamation-triangle');
     } finally {
       utils.hideLoading();
     }
@@ -489,7 +511,7 @@ const awardsModule = {
                 </li>
                 <li><hr class="dropdown-divider"></li>
                 <li>
-                  <a class="dropdown-item text-danger" href="javascript:void(0);" onclick="if(confirm('Are you sure you want to delete this award?')) awardsModule.deleteAward('${award.id}')">
+                  <a class="dropdown-item text-danger" href="javascript:void(0);" onclick="awardsModule.deleteAward('${award.id}')">
                     <i class="bi bi-trash me-2"></i>Delete
                   </a>
                 </li>
@@ -499,6 +521,8 @@ const awardsModule = {
         </tr>
       `;
     }).join('');
+
+    this.updateSortIndicators();
   },
 
   /**
@@ -962,15 +986,17 @@ const awardsModule = {
     try {
       utils.showLoading();
 
-      // Duplicate prevention: check for same award_name + county + year (on create only)
-      if (!id) {
-        const { data: existing } = await STATE.client
+      // Duplicate prevention: check for same award_name + county + year
+      {
+        let query = STATE.client
           .from('awards')
           .select('id')
           .eq('award_name', awardData.award_name)
           .eq('county', awardData.county)
-          .eq('year', awardData.year)
-          .limit(1);
+          .eq('year', awardData.year);
+        if (id) query = query.neq('id', id);
+
+        const { data: existing } = await query.limit(1);
 
         if (existing && existing.length > 0) {
           utils.hideLoading();
@@ -1062,6 +1088,7 @@ const awardsModule = {
       toolbar.style.setProperty('display', count > 0 ? 'flex' : 'none', 'important');
     }
     if (countEl) countEl.textContent = count;
+    if (count > 0) this.populateBulkSeasonDropdown();
   },
 
   /**
@@ -1248,11 +1275,11 @@ const awardsModule = {
     try {
       utils.showLoading();
 
-      // Get existing award names for target year to avoid duplicates
-      const existingNames = new Set(existingTarget.map(a => a.award_name));
+      // Get existing award name+county combos for target year to avoid duplicates
+      const existingKeys = new Set(existingTarget.map(a => `${a.award_name}|||${a.county}`));
 
-      // Filter out awards that already exist in the target year
-      const awardsToRoll = sourceAwards.filter(a => !existingNames.has(a.award_name));
+      // Filter out awards that already exist in the target year (same name + county)
+      const awardsToRoll = sourceAwards.filter(a => !existingKeys.has(`${a.award_name}|||${a.county}`));
 
       if (awardsToRoll.length === 0) {
         utils.showToast(`All ${sourceYear} awards already exist in ${targetYear}`, 'info');
@@ -1314,6 +1341,101 @@ const awardsModule = {
     } catch (error) {
       console.error('Error rolling over awards:', error);
       utils.showToast('Failed to roll over awards: ' + error.message, 'error');
+    } finally {
+      utils.hideLoading();
+    }
+  },
+
+  /**
+   * Reset all filters to default
+   */
+  resetFilters() {
+    document.getElementById('awardsYearFilterSelect').value = '';
+    document.getElementById('awardsStatusFilterSelect').value = '';
+    document.getElementById('awardsSectorFilterSelect').value = '';
+    document.getElementById('awardsRegionFilterSelect').value = '';
+    document.getElementById('awardsCountyFilterSelect').value = '';
+    document.getElementById('awardsSearchBox').value = '';
+    this.updateCountyFilterByRegion();
+    this.filterAwards();
+  },
+
+  /**
+   * Update sort direction indicators in column headers
+   */
+  updateSortIndicators() {
+    document.querySelectorAll('[data-sort-icon]').forEach(icon => {
+      icon.className = 'bi bi-arrow-down-up text-muted ms-1 small';
+    });
+    const activeIcon = document.querySelector(`[data-sort-icon="${this.currentSort.column}"]`);
+    if (activeIcon) {
+      const iconClass = this.currentSort.direction === 'asc' ? 'bi-arrow-up' : 'bi-arrow-down';
+      activeIcon.className = `bi ${iconClass} text-primary ms-1 small`;
+    }
+  },
+
+  /**
+   * Populate the bulk season dropdown with available seasons
+   */
+  populateBulkSeasonDropdown() {
+    const dropdown = document.getElementById('bulkSeasonDropdown');
+    if (!dropdown) return;
+
+    const seasons = (typeof settingsModule !== 'undefined' && settingsModule?.allSeasons) || [];
+    if (seasons.length === 0) {
+      dropdown.innerHTML = '<li><span class="dropdown-item text-muted">No seasons configured</span></li>';
+      return;
+    }
+
+    dropdown.innerHTML = seasons.map(s =>
+      `<li><a class="dropdown-item" href="javascript:void(0);" onclick="awardsModule.bulkApplySeasonDates('${s.id}')">
+        <i class="bi bi-calendar-event me-2"></i>${utils.escapeHtml(s.name)} (${s.year})
+      </a></li>`
+    ).join('');
+  },
+
+  /**
+   * Bulk apply season dates to all selected awards
+   */
+  async bulkApplySeasonDates(seasonId) {
+    const count = this.selectedAwards.size;
+    if (count === 0) return;
+
+    const seasons = (typeof settingsModule !== 'undefined' && settingsModule?.allSeasons) || [];
+    const season = seasons.find(s => s.id === seasonId);
+    if (!season) return;
+
+    if (!confirm(`Apply "${season.name} (${season.year})" dates to ${count} selected awards?`)) return;
+
+    try {
+      utils.showLoading();
+
+      const ids = [...this.selectedAwards];
+      const dateUpdate = {
+        entry_open_date: season.entry_open_date || null,
+        entry_close_date: season.entry_close_date || null,
+        nominees_announcement_date: season.nominees_announcement_date || null,
+        judging_open_date: season.judging_open_date || null,
+        judging_close_date: season.judging_close_date || null,
+        voting_open_date: season.voting_open_date || null,
+        voting_close_date: season.voting_close_date || null,
+        winners_announcement_date: season.winners_announcement_date || null
+      };
+
+      const { error } = await STATE.client
+        .from('awards')
+        .update(dateUpdate)
+        .in('id', ids);
+
+      if (error) throw error;
+
+      utils.showToast(`Season dates applied to ${count} awards`, 'success');
+      this.selectedAwards.clear();
+      await this.loadAwards();
+
+    } catch (error) {
+      console.error('Error applying season dates:', error);
+      utils.showToast('Failed to apply season dates: ' + error.message, 'error');
     } finally {
       utils.hideLoading();
     }

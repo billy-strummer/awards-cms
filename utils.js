@@ -147,6 +147,8 @@ const utils = {
       'Pending': 'warning',
       'Approved': 'success',
       'Published': 'primary',
+      'Active': 'success',
+      'Archived': 'dark',
       'Rejected': 'danger'
     };
     const badgeClass = statusMap[status] || 'secondary';

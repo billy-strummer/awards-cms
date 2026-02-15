@@ -1646,14 +1646,204 @@ const eventsModule = {
    * Add Manual Entry (placeholder for future implementation)
    */
   addManualEntry() {
-    utils.showToast('Manual entry feature - Coming soon', 'info');
+    const eventId = this.currentEventIdRunningOrder;
+    if (!eventId) {
+      utils.showToast('No event selected', 'warning');
+      return;
+    }
+
+    const nextOrder = this.runningOrderItems.length + 1;
+    const nextAwardNum = this.runningOrderItems.length > 0
+      ? Math.max(...this.runningOrderItems.map(i => parseInt(i.award_number) || 0)) + 1
+      : 1;
+
+    const modalHtml = `
+      <div class="modal fade" id="addManualEntryModal" tabindex="-1">
+        <div class="modal-dialog">
+          <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+              <h5 class="modal-title"><i class="bi bi-plus-circle me-2"></i>Add Manual Entry</h5>
+              <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+              <form id="addManualEntryForm">
+                <div class="row">
+                  <div class="col-md-6 mb-3">
+                    <label class="form-label">Award Number</label>
+                    <input type="number" class="form-control" id="manualAwardNumber" value="${nextAwardNum}" min="1">
+                  </div>
+                  <div class="col-md-6 mb-3">
+                    <label class="form-label">Display Order</label>
+                    <input type="number" class="form-control" id="manualDisplayOrder" value="${nextOrder}" min="1">
+                  </div>
+                </div>
+                <div class="mb-3">
+                  <label class="form-label">Award Name <span class="text-danger">*</span></label>
+                  <input type="text" class="form-control" id="manualAwardName" required placeholder="e.g. Best New Business Award">
+                </div>
+                <div class="mb-3">
+                  <label class="form-label">Winner/Display Name <span class="text-danger">*</span></label>
+                  <input type="text" class="form-control" id="manualDisplayName" required placeholder="e.g. Smith & Sons Ltd">
+                </div>
+                <div class="mb-3">
+                  <label class="form-label">Recipient Collecting</label>
+                  <input type="text" class="form-control" id="manualRecipient" placeholder="e.g. John Smith">
+                </div>
+                <div class="mb-3">
+                  <label class="form-label">Notes</label>
+                  <textarea class="form-control" id="manualNotes" rows="2" placeholder="Any additional notes..."></textarea>
+                </div>
+              </form>
+            </div>
+            <div class="modal-footer">
+              <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+              <button type="button" class="btn btn-primary" onclick="eventsModule.saveManualEntry()">
+                <i class="bi bi-save me-2"></i>Add to Running Order
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+
+    const existingModal = document.getElementById('addManualEntryModal');
+    if (existingModal) existingModal.remove();
+    document.body.insertAdjacentHTML('beforeend', modalHtml);
+    const modal = new bootstrap.Modal(document.getElementById('addManualEntryModal'));
+    modal.show();
+    document.getElementById('addManualEntryModal').addEventListener('hidden.bs.modal', function() { this.remove(); });
+  },
+
+  async saveManualEntry() {
+    const form = document.getElementById('addManualEntryForm');
+    if (!form.checkValidity()) {
+      form.reportValidity();
+      return;
+    }
+
+    const entryData = {
+      event_id: this.currentEventIdRunningOrder,
+      award_number: parseInt(document.getElementById('manualAwardNumber').value) || 1,
+      display_order: parseInt(document.getElementById('manualDisplayOrder').value) || 1,
+      award_name: document.getElementById('manualAwardName').value,
+      display_name: document.getElementById('manualDisplayName').value,
+      recipient_collecting: document.getElementById('manualRecipient').value || null,
+      notes: document.getElementById('manualNotes').value || null
+    };
+
+    try {
+      const { error } = await STATE.client
+        .from('running_order')
+        .insert([entryData]);
+
+      if (error) throw error;
+
+      utils.showToast('Entry added to running order', 'success');
+      bootstrap.Modal.getInstance(document.getElementById('addManualEntryModal')).hide();
+
+      // Reload running order
+      await this.loadRunningOrder();
+      this.renderRunningOrderItems();
+    } catch (error) {
+      console.error('Error adding manual entry:', error);
+      utils.showToast('Failed to add entry: ' + error.message, 'error');
+    }
   },
 
   /**
-   * Edit Running Order Item (placeholder for future implementation)
+   * Edit Running Order Item
    */
-  editRunningOrderItem(itemId) {
-    utils.showToast('Edit feature - Coming soon', 'info');
+  async editRunningOrderItem(itemId) {
+    const item = this.runningOrderItems.find(i => i.id === itemId);
+    if (!item) {
+      utils.showToast('Item not found', 'error');
+      return;
+    }
+
+    const modalHtml = `
+      <div class="modal fade" id="editRunningOrderModal" tabindex="-1">
+        <div class="modal-dialog">
+          <div class="modal-content">
+            <div class="modal-header bg-success text-white">
+              <h5 class="modal-title"><i class="bi bi-pencil me-2"></i>Edit Running Order Item</h5>
+              <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+              <form id="editRunningOrderForm">
+                <div class="row">
+                  <div class="col-md-6 mb-3">
+                    <label class="form-label">Award Number</label>
+                    <input type="number" class="form-control" id="editROAwardNumber" value="${item.award_number || ''}" min="1">
+                  </div>
+                  <div class="col-md-6 mb-3">
+                    <label class="form-label">Display Order</label>
+                    <input type="number" class="form-control" id="editRODisplayOrder" value="${item.display_order || ''}" min="1">
+                  </div>
+                </div>
+                <div class="mb-3">
+                  <label class="form-label">Award Name</label>
+                  <input type="text" class="form-control" id="editROAwardName" value="${utils.escapeHtml(item.award_name || '')}">
+                </div>
+                <div class="mb-3">
+                  <label class="form-label">Winner/Display Name</label>
+                  <input type="text" class="form-control" id="editRODisplayName" value="${utils.escapeHtml(item.display_name || '')}">
+                </div>
+                <div class="mb-3">
+                  <label class="form-label">Recipient Collecting</label>
+                  <input type="text" class="form-control" id="editRORecipient" value="${utils.escapeHtml(item.recipient_collecting || '')}">
+                </div>
+                <div class="mb-3">
+                  <label class="form-label">Notes</label>
+                  <textarea class="form-control" id="editRONotes" rows="2">${utils.escapeHtml(item.notes || '')}</textarea>
+                </div>
+              </form>
+            </div>
+            <div class="modal-footer">
+              <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+              <button type="button" class="btn btn-success" onclick="eventsModule.updateRunningOrderItem('${itemId}')">
+                <i class="bi bi-save me-2"></i>Save Changes
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+
+    const existingModal = document.getElementById('editRunningOrderModal');
+    if (existingModal) existingModal.remove();
+    document.body.insertAdjacentHTML('beforeend', modalHtml);
+    const modal = new bootstrap.Modal(document.getElementById('editRunningOrderModal'));
+    modal.show();
+    document.getElementById('editRunningOrderModal').addEventListener('hidden.bs.modal', function() { this.remove(); });
+  },
+
+  async updateRunningOrderItem(itemId) {
+    const updateData = {
+      award_number: parseInt(document.getElementById('editROAwardNumber').value) || null,
+      display_order: parseInt(document.getElementById('editRODisplayOrder').value) || null,
+      award_name: document.getElementById('editROAwardName').value || null,
+      display_name: document.getElementById('editRODisplayName').value || null,
+      recipient_collecting: document.getElementById('editRORecipient').value || null,
+      notes: document.getElementById('editRONotes').value || null
+    };
+
+    try {
+      const { error } = await STATE.client
+        .from('running_order')
+        .update(updateData)
+        .eq('id', itemId);
+
+      if (error) throw error;
+
+      utils.showToast('Running order item updated', 'success');
+      bootstrap.Modal.getInstance(document.getElementById('editRunningOrderModal')).hide();
+
+      await this.loadRunningOrder();
+      this.renderRunningOrderItems();
+    } catch (error) {
+      console.error('Error updating running order item:', error);
+      utils.showToast('Failed to update item: ' + error.message, 'error');
+    }
   },
 
   // ========================================
@@ -2198,8 +2388,91 @@ const eventsModule = {
   /**
    * Auto Assign Guests (placeholder)
    */
-  autoAssignGuests() {
-    utils.showToast('Auto assign feature - Coming soon', 'info');
+  async autoAssignGuests() {
+    if (this.unassignedGuests.length === 0) {
+      utils.showToast('No unassigned guests to assign', 'info');
+      return;
+    }
+
+    if (this.tables.length === 0) {
+      utils.showToast('No tables available. Add tables first.', 'warning');
+      return;
+    }
+
+    // Calculate available seats per table
+    const tablesWithSpace = this.tables
+      .map(table => ({
+        ...table,
+        assignedCount: table.assignments ? table.assignments.length : 0,
+        availableSeats: table.total_seats - (table.assignments ? table.assignments.length : 0)
+      }))
+      .filter(t => t.availableSeats > 0)
+      .sort((a, b) => b.availableSeats - a.availableSeats);
+
+    const totalAvailable = tablesWithSpace.reduce((sum, t) => sum + t.availableSeats, 0);
+
+    if (totalAvailable === 0) {
+      utils.showToast('All tables are full. Add more tables or increase seats.', 'warning');
+      return;
+    }
+
+    const guestsToAssign = Math.min(this.unassignedGuests.length, totalAvailable);
+    if (!confirm(`Auto-assign ${guestsToAssign} guest(s) across ${tablesWithSpace.length} table(s)?\n\nGuests will be distributed evenly across tables with available seats.`)) {
+      return;
+    }
+
+    try {
+      utils.showLoading();
+      let assigned = 0;
+      let tableIndex = 0;
+
+      // Round-robin assignment to distribute evenly
+      for (const guest of this.unassignedGuests) {
+        if (assigned >= guestsToAssign) break;
+
+        // Find next table with space
+        let attempts = 0;
+        while (attempts < tablesWithSpace.length) {
+          const table = tablesWithSpace[tableIndex % tablesWithSpace.length];
+          if (table.availableSeats > 0) {
+            const { error } = await STATE.client
+              .from('table_assignments')
+              .insert([{
+                event_id: this.currentEventIdTablePlan,
+                table_id: table.id,
+                guest_id: guest.guest_id || guest.id,
+                guest_name: guest.guest_name,
+                organisation_id: guest.organisation_id || null,
+                company_name: guest.company_name || null
+              }]);
+
+            if (error) {
+              console.error('Error assigning guest:', error);
+            } else {
+              table.availableSeats--;
+              assigned++;
+            }
+            tableIndex++;
+            break;
+          }
+          tableIndex++;
+          attempts++;
+        }
+      }
+
+      utils.showToast(`Successfully assigned ${assigned} guest(s) to tables`, 'success');
+
+      // Reload data
+      await this.loadTablePlan();
+      this.renderUnassignedGuests();
+      this.renderTables();
+
+    } catch (error) {
+      console.error('Error auto-assigning guests:', error);
+      utils.showToast('Failed to auto-assign guests: ' + error.message, 'error');
+    } finally {
+      utils.hideLoading();
+    }
   },
 
   /**

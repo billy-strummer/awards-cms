@@ -26,6 +26,8 @@ const emailBuilder = {
   // A/B Testing
   abTestEnabled: false,
   abVariantB: '',
+  // Block ID counter (avoids Date.now() collisions when adding blocks rapidly)
+  _blockIdCounter: 0,
 
   /**
    * Initialize email builder
@@ -34,7 +36,10 @@ const emailBuilder = {
     if (this.initialized) return;
 
     this.canvas = document.getElementById('emailCanvas');
-    if (!this.canvas) return;
+    if (!this.canvas) {
+      console.warn('Email Builder: #emailCanvas not found — builder not initialised');
+      return;
+    }
 
     this.setupDragAndDrop();
     this.loadOrganisations();
@@ -173,7 +178,7 @@ const emailBuilder = {
       this.canvas.innerHTML = '';
     }
 
-    const blockId = 'block-' + Date.now();
+    const blockId = 'block-' + (++this._blockIdCounter) + '-' + Math.random().toString(36).slice(2, 7);
     const blockHTML = this.getBlockHTML(blockType, blockId);
 
     const blockWrapper = document.createElement('div');
@@ -413,22 +418,22 @@ const emailBuilder = {
             <table role="presentation" cellpadding="0" cellspacing="0" border="0" align="center">
               <tr>
                 <td style="padding: 0 10px;">
-                  <a href="#" style="text-decoration: none; color: #0d6efd; font-size: 24px;">
+                  <a href="https://facebook.com/britishtradeawards" style="text-decoration: none; color: #0d6efd; font-size: 24px;" target="_blank">
                     📘
                   </a>
                 </td>
                 <td style="padding: 0 10px;">
-                  <a href="#" style="text-decoration: none; color: #0d6efd; font-size: 24px;">
+                  <a href="https://twitter.com/BritTradeAwards" style="text-decoration: none; color: #0d6efd; font-size: 24px;" target="_blank">
                     🐦
                   </a>
                 </td>
                 <td style="padding: 0 10px;">
-                  <a href="#" style="text-decoration: none; color: #0d6efd; font-size: 24px;">
+                  <a href="https://linkedin.com/company/british-trade-awards" style="text-decoration: none; color: #0d6efd; font-size: 24px;" target="_blank">
                     💼
                   </a>
                 </td>
                 <td style="padding: 0 10px;">
-                  <a href="#" style="text-decoration: none; color: #0d6efd; font-size: 24px;">
+                  <a href="https://instagram.com/britishtradeawards" style="text-decoration: none; color: #0d6efd; font-size: 24px;" target="_blank">
                     📷
                   </a>
                 </td>
@@ -1065,9 +1070,9 @@ ${content}
    * Load predefined template
    */
   loadTemplate(templateType) {
-    // Show block palette for Blank Canvas and Paste HTML, hide for pre-built templates
+    // Show block palette for all modes except client-promotion (which uses content library)
     const palette = document.getElementById('blockPaletteSection');
-    if (palette) palette.style.display = (!templateType || templateType === 'paste-html') ? 'block' : 'none';
+    if (palette) palette.style.display = (templateType === 'client-promotion') ? 'none' : 'block';
     // Show HTML toolkit only for "I Have HTML" mode
     const toolkit = document.getElementById('htmlToolkitSection');
     if (toolkit) toolkit.style.display = (templateType === 'paste-html') ? 'block' : 'none';
@@ -1077,9 +1082,13 @@ ${content}
       this.blocks = [];
       this.canvas.innerHTML = '';
       this.showEmptyState();
-      document.getElementById('builderCampaignName').value = '';
-      document.getElementById('builderSubject').value = '';
-      document.getElementById('builderPreheader').value = '';
+      const nameEl = document.getElementById('builderCampaignName');
+      const subjEl = document.getElementById('builderSubject');
+      const prehEl = document.getElementById('builderPreheader');
+      if (nameEl) nameEl.value = '';
+      if (subjEl) subjEl.value = '';
+      if (prehEl) prehEl.value = '';
+      this.updateSubjectCounter();
       this.updatePreview();
       utils.showToast('Canvas cleared', 'info');
       return;
@@ -1473,7 +1482,7 @@ ${content}
    * Load "I Have HTML" template — a single large HTML code editor
    */
   loadPasteHtmlTemplate() {
-    const blockId = 'block-' + Date.now();
+    const blockId = 'block-' + (++this._blockIdCounter) + '-' + Math.random().toString(36).slice(2, 7);
 
     const blockWrapper = document.createElement('div');
     blockWrapper.className = 'email-block-wrapper';
@@ -1520,11 +1529,13 @@ ${content}
     console.log('Loading Client Promotion template...');
 
     // Update campaign settings
-    document.getElementById('builderCampaignName').value = 'Client Promotion';
-    document.getElementById('builderSubject').value = 'Vote for {{company_name}} at the British Trade Awards';
+    const nameEl = document.getElementById('builderCampaignName');
+    const subjEl = document.getElementById('builderSubject');
+    if (nameEl) nameEl.value = 'Client Promotion';
+    if (subjEl) subjEl.value = 'Vote for {{company_name}} at the British Trade Awards';
 
     // Show content library panel
-    this.showContentLibrary();
+    await this.showContentLibrary();
 
     // Load the HTML template
     const htmlTemplate = this.getClientPromotionHTML();
@@ -1822,6 +1833,7 @@ ${content}
         .eq('media_type', 'image')
         .order('created_at', { ascending: false });
 
+      if (imgError) console.warn('Failed to load company images:', imgError);
       const companyImages = images || [];
 
       // Display draggable content items
@@ -1945,7 +1957,7 @@ ${content}
 
       case 'image':
         if (contentValue) {
-          zone.innerHTML = `<img src="${contentValue}" style="width: 680px; height: auto; display: block; border: none;">`;
+          zone.innerHTML = `<img src="${contentValue}" style="width: 100%; max-width: 600px; height: auto; display: block; border: none;">`;
         }
         break;
 
@@ -2382,7 +2394,7 @@ ${content}
         const innerTable = doc.querySelector('table table');
         const bodyContent = innerTable ? innerTable.innerHTML : doc.body.innerHTML;
 
-        const blockId = 'block_' + Date.now();
+        const blockId = 'block-' + (++this._blockIdCounter) + '-' + Math.random().toString(36).slice(2, 7);
         const blockWrapper = document.createElement('div');
         blockWrapper.className = 'email-block-wrapper';
         blockWrapper.setAttribute('data-block-id', blockId);
@@ -2399,6 +2411,10 @@ ${content}
         this.addBlockControls(blockWrapper, blockId);
         this.updatePreview();
       }
+
+      // Ensure block palette is visible so user can edit the clone
+      const palette = document.getElementById('blockPaletteSection');
+      if (palette) palette.style.display = 'block';
 
       // Switch to Send Now mode
       const sendNowRadio = document.getElementById('sendModeNow');
@@ -2591,7 +2607,7 @@ ${content}
     const wrapper = document.querySelector(`[data-block-id="${blockId}"]`);
     if (!wrapper) return;
 
-    const newBlockId = 'block-' + Date.now();
+    const newBlockId = 'block-' + (++this._blockIdCounter) + '-' + Math.random().toString(36).slice(2, 7);
     const clone = wrapper.cloneNode(true);
     clone.setAttribute('data-block-id', newBlockId);
 
@@ -2636,7 +2652,7 @@ ${content}
    * Get image block with URL input
    */
   getImageBlock() {
-    const blockId = 'img-' + Date.now();
+    const blockId = 'img-' + (++this._blockIdCounter) + '-' + Math.random().toString(36).slice(2, 7);
     return `
       <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
         <tr>
@@ -2677,7 +2693,7 @@ ${content}
    * Get button block with editable URL and text
    */
   getButtonBlock() {
-    const blockId = 'btn-' + Date.now();
+    const blockId = 'btn-' + (++this._blockIdCounter) + '-' + Math.random().toString(36).slice(2, 7);
     return `
       <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
         <tr>
@@ -2933,7 +2949,7 @@ ${content}
       }
 
       // Restore canvas - prefer stored canvas HTML for block-level fidelity
-      if (notes.canvas_html && notes.blocks) {
+      if (notes.canvas_html && Array.isArray(notes.blocks)) {
         this.blocks = notes.blocks;
         this.canvas.innerHTML = notes.canvas_html;
         this.rewireCanvasEvents();
@@ -2941,7 +2957,7 @@ ${content}
         // Fallback: load as single HTML code block (same as clone)
         this.blocks = [];
         this.canvas.innerHTML = '';
-        const blockId = 'block_' + Date.now();
+        const blockId = 'block-' + (++this._blockIdCounter) + '-' + Math.random().toString(36).slice(2, 7);
         const blockWrapper = document.createElement('div');
         blockWrapper.className = 'email-block-wrapper';
         blockWrapper.setAttribute('data-block-id', blockId);
@@ -2956,6 +2972,10 @@ ${content}
         this.blocks.push({ id: blockId, type: 'html-code' });
         this.addBlockControls(blockWrapper, blockId);
       }
+
+      // Ensure block palette is visible so user can add more blocks
+      const palette = document.getElementById('blockPaletteSection');
+      if (palette) palette.style.display = 'block';
 
       // Update subject counter
       this.updateSubjectCounter();
@@ -3530,9 +3550,12 @@ ${content}
 
       const state = JSON.parse(saved);
 
-      if (state.campaignName) document.getElementById('builderCampaignName').value = state.campaignName;
-      if (state.subject) document.getElementById('builderSubject').value = state.subject;
-      if (state.preheader) document.getElementById('builderPreheader').value = state.preheader;
+      const nameEl = document.getElementById('builderCampaignName');
+      const subjectEl = document.getElementById('builderSubject');
+      const preheaderEl = document.getElementById('builderPreheader');
+      if (state.campaignName && nameEl) nameEl.value = state.campaignName;
+      if (state.subject && subjectEl) subjectEl.value = state.subject;
+      if (state.preheader && preheaderEl) preheaderEl.value = state.preheader;
 
       if (state.canvasHTML && state.blocks) {
         this.blocks = state.blocks;

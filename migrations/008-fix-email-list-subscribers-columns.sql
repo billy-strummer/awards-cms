@@ -317,7 +317,10 @@ GRANT ALL ON public.email_campaign_recipients TO service_role;
 -- ============================================
 -- 10. VIEW
 -- ============================================
-CREATE OR REPLACE VIEW email_lists_with_stats AS
+-- Must DROP first: CREATE OR REPLACE VIEW cannot change column names/order,
+-- and adding columns to email_lists changes what el.* expands to.
+DROP VIEW IF EXISTS email_lists_with_stats;
+CREATE VIEW email_lists_with_stats AS
 SELECT
   el.*,
   (SELECT COUNT(*) FROM email_list_subscribers els WHERE els.list_id = el.id) AS total_subscribers,

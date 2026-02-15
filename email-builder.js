@@ -1827,11 +1827,12 @@ ${content}
 
       // Load company images from media gallery
       const { data: images, error: imgError } = await STATE.client
-        .from('media_items')
+        .from('media_gallery')
         .select('*')
         .eq('organisation_id', orgId)
-        .eq('media_type', 'image')
-        .order('created_at', { ascending: false });
+        .in('file_type', ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/svg+xml'])
+        .eq('published', true)
+        .order('uploaded_at', { ascending: false });
 
       if (imgError) console.warn('Failed to load company images:', imgError);
       const companyImages = images || [];
@@ -2661,9 +2662,13 @@ ${content}
               <div class="input-group input-group-sm">
                 <span class="input-group-text"><i class="bi bi-link-45deg"></i></span>
                 <input type="text" class="form-control form-control-sm email-image-url" placeholder="Paste image URL..." data-img-id="${blockId}" onchange="emailBuilder.updateImageFromUrl(this)">
+                <button class="btn btn-outline-primary btn-sm" type="button" onclick="document.getElementById('imgUpload-${blockId}').click()" title="Upload image">
+                  <i class="bi bi-upload"></i> Upload
+                </button>
               </div>
+              <input type="file" id="imgUpload-${blockId}" accept="image/*" style="display:none" onchange="emailBuilder.uploadImageForBlock(this, '${blockId}')">
             </div>
-            <img src="data:image/svg+xml,${encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="520" height="300"><rect width="520" height="300" fill="#dee2e6" rx="8"/><text x="260" y="145" text-anchor="middle" font-family="Arial,sans-serif" font-size="18" fill="#6c757d">Paste an image URL above</text><text x="260" y="170" text-anchor="middle" font-family="Arial,sans-serif" font-size="14" fill="#adb5bd">or drag an image from your media gallery</text></svg>')}" alt="Image" data-img-target="${blockId}" style="width: 100%; max-width: 520px; height: auto; display: block; border-radius: 8px;" class="mob-full-img">
+            <img src="data:image/svg+xml,${encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="520" height="300"><rect width="520" height="300" fill="#dee2e6" rx="8"/><text x="260" y="145" text-anchor="middle" font-family="Arial,sans-serif" font-size="18" fill="#6c757d">Paste an image URL or click Upload</text><text x="260" y="170" text-anchor="middle" font-family="Arial,sans-serif" font-size="14" fill="#adb5bd">or drag an image from your media gallery</text></svg>')}" alt="Image" data-img-target="${blockId}" style="width: 100%; max-width: 520px; height: auto; display: block; border-radius: 8px;" class="mob-full-img">
           </td>
         </tr>
       </table>
@@ -2683,6 +2688,84 @@ ${content}
       this.markUnsavedChanges();
       this.updatePreview();
     }
+  },
+
+  /**
+   * Upload image file directly from the Image block
+   */
+  async uploadImageForBlock(input, blockId) {
+    const file = input.files[0];
+    if (!file) return;
+
+    // Validate file type
+    const validTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/svg+xml'];
+    if (!validTypes.includes(file.type)) {
+      utils.showToast('Please select a valid image file (JPEG, PNG, GIF, WebP, SVG)', 'error');
+      input.value = '';
+      return;
+    }
+
+    // Validate file size (5MB max)
+    const maxSize = 5 * 1024 * 1024;
+    if (file.size > maxSize) {
+      utils.showToast('Image must be under 5MB', 'error');
+      input.value = '';
+      return;
+    }
+
+    const img = document.querySelector(`img[data-img-target="${blockId}"]`);
+    const urlInput = document.querySelector(`input[data-img-id="${blockId}"]`);
+
+    try {
+      // Show uploading state
+      if (img) {
+        img.style.opacity = '0.5';
+      }
+      utils.showToast('Uploading image...', 'info');
+
+      // Build unique file path
+      const timestamp = Date.now();
+      const randomSuffix = Math.random().toString(36).substring(2, 8);
+      const safeFileName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
+      const filePath = `email-builder/${timestamp}_${randomSuffix}_${safeFileName}`;
+
+      // Upload to Supabase storage (media-gallery bucket)
+      const { error: uploadError } = await STATE.client.storage
+        .from('media-gallery')
+        .upload(filePath, file, { cacheControl: '3600' });
+
+      if (uploadError) throw uploadError;
+
+      // Get public URL
+      const { data: urlData } = STATE.client.storage
+        .from('media-gallery')
+        .getPublicUrl(filePath);
+
+      const publicUrl = urlData.publicUrl;
+
+      // Update the image element and URL input
+      if (img) {
+        img.src = publicUrl;
+        img.style.opacity = '1';
+      }
+      if (urlInput) {
+        urlInput.value = publicUrl;
+      }
+
+      this.markUnsavedChanges();
+      this.updatePreview();
+      utils.showToast('Image uploaded successfully', 'success');
+
+    } catch (error) {
+      console.error('Image upload failed:', error);
+      if (img) {
+        img.style.opacity = '1';
+      }
+      utils.showToast('Image upload failed: ' + (error.message || 'Unknown error'), 'error');
+    }
+
+    // Reset file input
+    input.value = '';
   },
 
   // ==================================================

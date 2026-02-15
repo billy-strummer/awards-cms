@@ -655,8 +655,8 @@ const emailBuilder = {
                   </a>
                 </td>
                 <td style="padding: 0 10px;">
-                  <a href="https://twitter.com/BritTradeAwards" style="text-decoration: none; color: #0d6efd; font-size: 24px;" target="_blank">
-                    🐦
+                  <a href="https://x.com/BritTradeAwards" style="text-decoration: none; color: #0d6efd; font-size: 24px;" target="_blank">
+                    &#120143;
                   </a>
                 </td>
                 <td style="padding: 0 10px;">

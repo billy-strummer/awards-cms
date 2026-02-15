@@ -1069,7 +1069,7 @@ ${content}
   /**
    * Load predefined template
    */
-  loadTemplate(templateType) {
+  async loadTemplate(templateType) {
     // Show block palette for all modes except client-promotion (which uses content library)
     const palette = document.getElementById('blockPaletteSection');
     if (palette) palette.style.display = (templateType === 'client-promotion') ? 'none' : 'block';
@@ -1145,7 +1145,7 @@ ${content}
 
     // Handle client promotion template differently
     if (templateType === 'client-promotion') {
-      this.loadClientPromotionTemplate();
+      await this.loadClientPromotionTemplate();
       return;
     }
 
@@ -1673,7 +1673,7 @@ ${content}
     let panel = document.getElementById('contentLibraryPanel');
     if (!panel) {
       // Create panel if it doesn't exist
-      const builderContainer = document.querySelector('.email-builder-content');
+      const builderContainer = document.getElementById('email-builder-content');
       if (!builderContainer) return;
 
       panel = document.createElement('div');
@@ -1914,19 +1914,16 @@ ${content}
     document.querySelectorAll('.drop-zone').forEach(zone => {
       zone.addEventListener('dragover', (e) => {
         e.preventDefault();
-        zone.style.borderColor = '#0d6efd';
-        zone.style.backgroundColor = '#e7f1ff';
+        zone.classList.add('drag-over');
       });
 
       zone.addEventListener('dragleave', (e) => {
-        zone.style.borderColor = '#ccc';
-        zone.style.backgroundColor = 'transparent';
+        zone.classList.remove('drag-over');
       });
 
       zone.addEventListener('drop', (e) => {
         e.preventDefault();
-        zone.style.borderColor = '#ccc';
-        zone.style.backgroundColor = 'transparent';
+        zone.classList.remove('drag-over');
 
         const contentType = e.dataTransfer.getData('contentType');
         const contentValue = e.dataTransfer.getData('contentValue');
@@ -1990,6 +1987,7 @@ ${content}
         break;
     }
 
+    zone.classList.add('filled');
     utils.showToast('Content added successfully', 'success');
     this.updatePreview();
   },
@@ -2015,22 +2013,26 @@ ${content}
             return `<option value="${list.id}">${utils.escapeHtml(list.list_name)}${typeLabel}</option>`;
           }).join('');
 
-        select.addEventListener('change', async (e) => {
-          const countEl = document.getElementById('builderListCount');
-          if (e.target.value && countEl) {
-            const { count, error: countErr } = await STATE.client
-              .from('email_list_subscribers')
-              .select('id', { count: 'exact', head: true })
-              .eq('list_id', e.target.value)
-              .eq('status', 'active');
+        // Only attach the change listener once
+        if (!select._listenerAttached) {
+          select._listenerAttached = true;
+          select.addEventListener('change', async (e) => {
+            const countEl = document.getElementById('builderListCount');
+            if (e.target.value && countEl) {
+              const { count, error: countErr } = await STATE.client
+                .from('email_list_subscribers')
+                .select('id', { count: 'exact', head: true })
+                .eq('list_id', e.target.value)
+                .eq('status', 'active');
 
-            if (!countErr) {
-              countEl.textContent = `${count || 0} active subscribers`;
+              if (!countErr) {
+                countEl.textContent = `${count || 0} active subscribers`;
+              }
+            } else if (countEl) {
+              countEl.textContent = '';
             }
-          } else if (countEl) {
-            countEl.textContent = '';
-          }
-        });
+          });
+        }
       }
     } catch (error) {
       console.error('Error loading email lists:', error);
@@ -2147,14 +2149,14 @@ ${content}
           status: 'Sent',
           sent_date: new Date().toISOString(),
           total_recipients: count || 0,
-          recipients: listId,
           notes: JSON.stringify({
             html,
             from_name: fromName,
             from_email: fromEmail,
             reply_to: replyTo,
             list_id: listId,
-            list_name: listName
+            list_name: listName,
+            preheader: document.getElementById('builderPreheader')?.value || ''
           })
         });
       } catch (logErr) {
@@ -2284,14 +2286,14 @@ ${content}
           status: 'Scheduled',
           scheduled_date: scheduledAt.toISOString(),
           total_recipients: count || 0,
-          recipients: listId,
           notes: JSON.stringify({
             html,
             from_name: fromName,
             from_email: fromEmail,
             reply_to: replyTo,
             list_id: listId,
-            list_name: listName
+            list_name: listName,
+            preheader: document.getElementById('builderPreheader')?.value || ''
           })
         })
         .select()
@@ -2372,6 +2374,7 @@ ${content}
 
       if (nameInput) nameInput.value = (campaign.campaign_name || '') + ' (Copy)';
       if (subjectInput) subjectInput.value = campaign.subject || '';
+      if (preheaderInput && notes.preheader) preheaderInput.value = notes.preheader;
       if (fromNameInput && notes.from_name) fromNameInput.value = notes.from_name;
       if (fromEmailInput && notes.from_email) fromEmailInput.value = notes.from_email;
       if (replyToInput && notes.reply_to) replyToInput.value = notes.reply_to;
@@ -2456,9 +2459,9 @@ ${content}
         .limit(100);
 
       const statusBadge = this.getStatusBadge(campaign.status);
-      const created = campaign.created_at ? new Date(campaign.created_at).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '-';
-      const sent = campaign.sent_date ? new Date(campaign.sent_date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '-';
-      const scheduled = campaign.scheduled_date ? new Date(campaign.scheduled_date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '-';
+      const created = campaign.created_at ? new Date(campaign.created_at).toLocaleString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '-';
+      const sent = campaign.sent_date ? new Date(campaign.sent_date).toLocaleString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '-';
+      const scheduled = campaign.scheduled_date ? new Date(campaign.scheduled_date).toLocaleString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '-';
 
       let recipientRows = '';
       if (logs && logs.length > 0) {
@@ -2912,11 +2915,16 @@ ${content}
    * Rewire event listeners after undo/redo restore
    */
   rewireCanvasEvents() {
+    // Clone-replace elements to remove any stale listeners before re-attaching
     this.canvas.querySelectorAll('.email-richtext-content').forEach(el => {
-      el.addEventListener('input', () => this.updatePreview());
+      const fresh = el.cloneNode(true);
+      el.parentNode.replaceChild(fresh, el);
+      fresh.addEventListener('input', () => this.updatePreview());
     });
     this.canvas.querySelectorAll('[contenteditable="true"]').forEach(el => {
-      el.addEventListener('input', () => {
+      const fresh = el.cloneNode(true);
+      el.parentNode.replaceChild(fresh, el);
+      fresh.addEventListener('input', () => {
         this.markUnsavedChanges();
         this.updatePreview();
       });
@@ -3288,14 +3296,23 @@ ${content}
     if (!subjectB) { utils.showToast('Please enter Subject B (variant)', 'warning'); return; }
     if (this.blocks.length === 0) { utils.showToast('Please add content first', 'warning'); return; }
 
-    const { count } = await STATE.client
+    const { count, error: countError } = await STATE.client
       .from('email_list_subscribers')
       .select('id', { count: 'exact', head: true })
       .eq('list_id', listId)
       .eq('status', 'active');
 
-    const countA = Math.round((count || 0) * splitPercent / 100);
-    const countB = (count || 0) - countA;
+    if (countError) {
+      utils.showToast('Failed to get subscriber count: ' + countError.message, 'error');
+      return;
+    }
+    if (!count || count === 0) {
+      utils.showToast('No active subscribers in this list', 'warning');
+      return;
+    }
+
+    const countA = Math.round(count * splitPercent / 100);
+    const countB = count - countA;
     const listName = document.getElementById('builderEmailList')?.selectedOptions[0]?.text || 'selected list';
 
     if (!confirm(`A/B Test Campaign:\n\nVariant A (${splitPercent}%): "${subjectA}" -> ${countA} recipients\nVariant B (${100 - splitPercent}%): "${subjectB}" -> ${countB} recipients\n\nTotal: ${count} in "${listName}"\n\nProceed?`)) {
@@ -3328,7 +3345,8 @@ ${content}
         p_from_email: fromEmail,
         p_reply_to: replyTo,
         p_campaign_name: (campaignName || subjectB) + ' [B]',
-        p_offset: countA
+        p_offset: countA,
+        p_limit: countB
       });
 
       if (errorA) throw errorA;
@@ -3342,8 +3360,7 @@ ${content}
           status: 'Sent',
           sent_date: new Date().toISOString(),
           total_recipients: countA,
-          recipients: listId,
-          notes: JSON.stringify({ html, from_name: fromName, from_email: fromEmail, reply_to: replyTo, ab_test: true, variant: 'A', split: splitPercent })
+          notes: JSON.stringify({ html, from_name: fromName, from_email: fromEmail, reply_to: replyTo, list_id: listId, ab_test: true, variant: 'A', split: splitPercent })
         },
         {
           campaign_name: (campaignName || subjectB) + ' [A/B Test - B]',
@@ -3351,8 +3368,7 @@ ${content}
           status: 'Sent',
           sent_date: new Date().toISOString(),
           total_recipients: countB,
-          recipients: listId,
-          notes: JSON.stringify({ html, from_name: fromName, from_email: fromEmail, reply_to: replyTo, ab_test: true, variant: 'B', split: 100 - splitPercent })
+          notes: JSON.stringify({ html, from_name: fromName, from_email: fromEmail, reply_to: replyTo, list_id: listId, ab_test: true, variant: 'B', split: 100 - splitPercent })
         }
       ]);
 
@@ -3447,8 +3463,8 @@ ${content}
 
       tbody.innerHTML = campaigns.map(c => {
         const statusBadge = this.getStatusBadge(c.status);
-        const sentDate = c.sent_date ? new Date(c.sent_date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '';
-        const scheduledDate = c.scheduled_date ? new Date(c.scheduled_date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '';
+        const sentDate = c.sent_date ? new Date(c.sent_date).toLocaleString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '';
+        const scheduledDate = c.scheduled_date ? new Date(c.scheduled_date).toLocaleString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '';
         const displayDate = sentDate || scheduledDate || '-';
         const openRate = c.total_recipients > 0 ? Math.round((c.opened_count || 0) / c.total_recipients * 100) : 0;
         const clickRate = c.total_recipients > 0 ? Math.round((c.clicked_count || 0) / c.total_recipients * 100) : 0;

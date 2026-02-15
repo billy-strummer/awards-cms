@@ -2136,6 +2136,76 @@ body.dark-mode .html-toolkit-label {
   font-size: 12px;
 }
 
+/* Content Library Drop Zones */
+.drop-zone {
+  border: 2px dashed #dee2e6;
+  border-radius: 6px;
+  padding: 15px;
+  min-height: 60px;
+  cursor: pointer;
+  transition: border-color 0.2s, background-color 0.2s, box-shadow 0.2s;
+  text-align: center;
+  color: #6c757d;
+}
+
+.drop-zone:hover {
+  border-color: #adb5bd;
+  background-color: #f8f9fa;
+}
+
+.drop-zone.drag-over {
+  border-color: #0d6efd;
+  background-color: rgba(13, 110, 253, 0.05);
+  box-shadow: 0 0 0 3px rgba(13, 110, 253, 0.15);
+}
+
+.drop-zone.filled {
+  border-style: solid;
+  border-color: #dee2e6;
+  padding: 5px;
+}
+
+/* Content Library Panel */
+.content-library-panel {
+  background: #f8f9fa;
+  border-left: 1px solid #dee2e6;
+  padding: 15px;
+}
+
+.content-item {
+  transition: transform 0.15s, box-shadow 0.15s;
+}
+
+.content-item:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+}
+
+.content-item:active {
+  transform: translateY(0);
+  opacity: 0.8;
+}
+
+body.dark-mode .drop-zone {
+  border-color: #495057;
+  color: #adb5bd;
+}
+
+body.dark-mode .drop-zone:hover {
+  border-color: #6c757d;
+  background-color: rgba(255, 255, 255, 0.05);
+}
+
+body.dark-mode .drop-zone.drag-over {
+  border-color: #0d6efd;
+  background-color: rgba(13, 110, 253, 0.1);
+}
+
+body.dark-mode .content-library-panel {
+  background: #1a1d21;
+  border-left-color: #343a40;
+}
+
 /* Autosave Recovery Banner */
 #autosaveRecoveryBanner {
   border-left: 4px solid #0d6efd;

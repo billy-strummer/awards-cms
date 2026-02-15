@@ -362,12 +362,12 @@ const nomineeVoting = {
   },
 
   /**
-   * Share on Twitter
+   * Share on X
    */
   shareTwitter() {
     const text = `I just voted for ${this.entry.organisations?.company_name} in the British Trade Awards! Cast your vote too:`;
     const url = window.location.href;
-    window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(url)}`, '_blank');
+    window.open(`https://x.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(url)}`, '_blank');
   },
 
   /**

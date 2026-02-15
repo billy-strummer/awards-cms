@@ -56,7 +56,7 @@ Vote now: {{website}}
 
   // Recommended image dimensions per platform
   platformImageSizes: {
-    twitter: { width: 1200, height: 675, label: 'Twitter (1200x675)' },
+    twitter: { width: 1200, height: 675, label: 'X (1200x675)' },
     facebook: { width: 1200, height: 630, label: 'Facebook (1200x630)' },
     instagram: { width: 1080, height: 1080, label: 'Instagram (1080x1080)' },
     linkedin: { width: 1200, height: 627, label: 'LinkedIn (1200x627)' }
@@ -688,7 +688,7 @@ Vote now: {{website}}
 
       const platformBadges = (post.platforms || []).map(platform => {
         const icons = {
-          twitter: '<i class="bi bi-twitter text-info"></i>',
+          twitter: '<i class="bi bi-twitter-x text-info"></i>',
           facebook: '<i class="bi bi-facebook text-primary"></i>',
           instagram: '<i class="bi bi-instagram text-danger"></i>',
           linkedin: '<i class="bi bi-linkedin text-info"></i>'
@@ -969,7 +969,7 @@ Vote now: {{website}}
   },
 
   openPlatformSettings() {
-    utils.showToast('Platform connection settings require OAuth API keys for Twitter, Facebook, Instagram and LinkedIn. Configure these in your .env file.', 'info');
+    utils.showToast('Platform connection settings require OAuth API keys for X, Facebook, Instagram and LinkedIn. Configure these in your .env file.', 'info');
   },
 
   /* ==================================================== */
@@ -1023,7 +1023,7 @@ Vote now: {{website}}
 
       const platformBadges = (post.platforms || []).map(platform => {
         const icons = {
-          twitter: '<i class="bi bi-twitter text-info"></i>',
+          twitter: '<i class="bi bi-twitter-x text-info"></i>',
           facebook: '<i class="bi bi-facebook text-primary"></i>',
           instagram: '<i class="bi bi-instagram text-danger"></i>',
           linkedin: '<i class="bi bi-linkedin text-info"></i>'
@@ -1457,7 +1457,7 @@ Vote now: {{website}}
               <div class="card-body">
                 <h6 class="card-title"><i class="bi bi-share me-2"></i>Posts by Platform</h6>
                 <div class="d-flex justify-content-between py-2 border-bottom">
-                  <span><i class="bi bi-twitter text-info me-2"></i>Twitter/X</span>
+                  <span><i class="bi bi-twitter-x text-info me-2"></i>X</span>
                   <strong>${platformCounts.twitter}</strong>
                 </div>
                 <div class="d-flex justify-content-between py-2 border-bottom">

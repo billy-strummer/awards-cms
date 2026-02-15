@@ -1,18 +1,37 @@
 -- ============================================
--- Migration 008: Ensure email list tables have all required columns
+-- Migration 008: Ensure ALL email list tables have required columns
 -- ============================================
--- Problem: email_list_subscribers (and possibly email_lists) may have been
--- created by an earlier migration or manually, missing columns that
--- database-email-lists-setup.sql expects. Since CREATE TABLE IF NOT EXISTS
--- skips existing tables, the columns never get added.
---
--- This migration adds any missing columns using ADD COLUMN IF NOT EXISTS.
+-- Root cause: migration 000 created email_import_batches WITHOUT list_id.
+-- Later CREATE TABLE IF NOT EXISTS silently skips existing tables, so the
+-- column never appears. This migration ensures EVERY table that needs
+-- list_id (and other columns) actually has them.
 
 -- ============================================
--- 1. FIX email_lists - add missing columns
+-- 1. ENSURE email_lists table exists + patch columns
 -- ============================================
+CREATE TABLE IF NOT EXISTS email_lists (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  list_name VARCHAR(255) NOT NULL,
+  description TEXT,
+  list_type VARCHAR(50) DEFAULT 'general',
+  is_active BOOLEAN DEFAULT true,
+  award_id UUID,
+  event_id UUID,
+  allow_duplicates BOOLEAN DEFAULT false,
+  auto_clean BOOLEAN DEFAULT true,
+  subscriber_count INTEGER DEFAULT 0,
+  active_subscriber_count INTEGER DEFAULT 0,
+  tags TEXT,
+  icon VARCHAR(50),
+  color VARCHAR(7),
+  created_by VARCHAR(255),
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
 ALTER TABLE email_lists ADD COLUMN IF NOT EXISTS description TEXT;
 ALTER TABLE email_lists ADD COLUMN IF NOT EXISTS list_type VARCHAR(50) DEFAULT 'general';
+ALTER TABLE email_lists ADD COLUMN IF NOT EXISTS is_active BOOLEAN DEFAULT true;
 ALTER TABLE email_lists ADD COLUMN IF NOT EXISTS award_id UUID;
 ALTER TABLE email_lists ADD COLUMN IF NOT EXISTS event_id UUID;
 ALTER TABLE email_lists ADD COLUMN IF NOT EXISTS allow_duplicates BOOLEAN DEFAULT false;
@@ -25,10 +44,40 @@ ALTER TABLE email_lists ADD COLUMN IF NOT EXISTS color VARCHAR(7);
 ALTER TABLE email_lists ADD COLUMN IF NOT EXISTS created_by VARCHAR(255);
 ALTER TABLE email_lists ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT NOW();
 
+ALTER TABLE email_lists ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Allow all access to email_lists" ON email_lists;
+CREATE POLICY "Allow all access to email_lists"
+  ON email_lists FOR ALL USING (true) WITH CHECK (true);
+
 -- ============================================
--- 2. FIX email_list_subscribers - add missing columns
+-- 2. ENSURE email_list_subscribers + patch columns
 -- ============================================
-ALTER TABLE email_list_subscribers ADD COLUMN IF NOT EXISTS list_id UUID REFERENCES email_lists(id) ON DELETE CASCADE;
+CREATE TABLE IF NOT EXISTS email_list_subscribers (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  list_id UUID,
+  email VARCHAR(255) NOT NULL,
+  organisation_id UUID,
+  first_name VARCHAR(100),
+  last_name VARCHAR(100),
+  company_name VARCHAR(255),
+  status VARCHAR(50) DEFAULT 'active',
+  subscription_date TIMESTAMPTZ DEFAULT NOW(),
+  unsubscribe_date TIMESTAMPTZ,
+  source VARCHAR(100),
+  import_batch_id UUID,
+  custom_fields JSONB,
+  emails_received INTEGER DEFAULT 0,
+  emails_opened INTEGER DEFAULT 0,
+  emails_clicked INTEGER DEFAULT 0,
+  last_email_sent TIMESTAMPTZ,
+  last_email_opened TIMESTAMPTZ,
+  notes TEXT,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+ALTER TABLE email_list_subscribers ADD COLUMN IF NOT EXISTS list_id UUID;
+ALTER TABLE email_list_subscribers ADD COLUMN IF NOT EXISTS email VARCHAR(255);
 ALTER TABLE email_list_subscribers ADD COLUMN IF NOT EXISTS organisation_id UUID;
 ALTER TABLE email_list_subscribers ADD COLUMN IF NOT EXISTS first_name VARCHAR(100);
 ALTER TABLE email_list_subscribers ADD COLUMN IF NOT EXISTS last_name VARCHAR(100);
@@ -47,14 +96,22 @@ ALTER TABLE email_list_subscribers ADD COLUMN IF NOT EXISTS last_email_opened TI
 ALTER TABLE email_list_subscribers ADD COLUMN IF NOT EXISTS notes TEXT;
 ALTER TABLE email_list_subscribers ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT NOW();
 
+ALTER TABLE email_list_subscribers ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Allow all access to email_list_subscribers" ON email_list_subscribers;
+CREATE POLICY "Allow all access to email_list_subscribers"
+  ON email_list_subscribers FOR ALL USING (true) WITH CHECK (true);
+
 -- ============================================
--- 3. ENSURE email_import_batches exists
+-- 3. ENSURE email_import_batches + patch columns
 -- ============================================
+-- NOTE: migration 000 created this table WITHOUT list_id, import_type,
+-- and other columns. CREATE TABLE IF NOT EXISTS skips it, so we must
+-- ALTER TABLE to add missing columns.
 CREATE TABLE IF NOT EXISTS email_import_batches (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  list_id UUID NOT NULL REFERENCES email_lists(id) ON DELETE CASCADE,
+  list_id UUID,
   file_name VARCHAR(255),
-  import_type VARCHAR(50) NOT NULL,
+  import_type VARCHAR(50) DEFAULT 'manual',
   total_rows INTEGER DEFAULT 0,
   successful_imports INTEGER DEFAULT 0,
   failed_imports INTEGER DEFAULT 0,
@@ -65,16 +122,31 @@ CREATE TABLE IF NOT EXISTS email_import_batches (
   imported_at TIMESTAMPTZ DEFAULT NOW()
 );
 
+ALTER TABLE email_import_batches ADD COLUMN IF NOT EXISTS list_id UUID;
+ALTER TABLE email_import_batches ADD COLUMN IF NOT EXISTS import_type VARCHAR(50) DEFAULT 'manual';
+ALTER TABLE email_import_batches ADD COLUMN IF NOT EXISTS total_rows INTEGER DEFAULT 0;
+ALTER TABLE email_import_batches ADD COLUMN IF NOT EXISTS successful_imports INTEGER DEFAULT 0;
+ALTER TABLE email_import_batches ADD COLUMN IF NOT EXISTS failed_imports INTEGER DEFAULT 0;
+ALTER TABLE email_import_batches ADD COLUMN IF NOT EXISTS duplicate_count INTEGER DEFAULT 0;
+ALTER TABLE email_import_batches ADD COLUMN IF NOT EXISTS error_log TEXT;
+ALTER TABLE email_import_batches ADD COLUMN IF NOT EXISTS imported_by VARCHAR(255);
+ALTER TABLE email_import_batches ADD COLUMN IF NOT EXISTS imported_at TIMESTAMPTZ DEFAULT NOW();
+
+ALTER TABLE email_import_batches ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Allow all access to email_import_batches" ON email_import_batches;
+CREATE POLICY "Allow all access to email_import_batches"
+  ON email_import_batches FOR ALL USING (true) WITH CHECK (true);
+
 -- ============================================
--- 4. ENSURE email_unsubscribes exists
+-- 4. ENSURE email_unsubscribes + patch columns
 -- ============================================
 CREATE TABLE IF NOT EXISTS email_unsubscribes (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   email VARCHAR(255) NOT NULL,
   reason VARCHAR(100),
   reason_details TEXT,
-  subscriber_id UUID REFERENCES email_list_subscribers(id) ON DELETE SET NULL,
-  list_id UUID REFERENCES email_lists(id) ON DELETE SET NULL,
+  subscriber_id UUID,
+  list_id UUID,
   unsubscribed_at TIMESTAMPTZ DEFAULT NOW(),
   ip_address VARCHAR(45),
   user_agent TEXT,
@@ -82,8 +154,22 @@ CREATE TABLE IF NOT EXISTS email_unsubscribes (
   resubscribed_at TIMESTAMPTZ
 );
 
+ALTER TABLE email_unsubscribes ADD COLUMN IF NOT EXISTS list_id UUID;
+ALTER TABLE email_unsubscribes ADD COLUMN IF NOT EXISTS reason VARCHAR(100);
+ALTER TABLE email_unsubscribes ADD COLUMN IF NOT EXISTS reason_details TEXT;
+ALTER TABLE email_unsubscribes ADD COLUMN IF NOT EXISTS subscriber_id UUID;
+ALTER TABLE email_unsubscribes ADD COLUMN IF NOT EXISTS ip_address VARCHAR(45);
+ALTER TABLE email_unsubscribes ADD COLUMN IF NOT EXISTS user_agent TEXT;
+ALTER TABLE email_unsubscribes ADD COLUMN IF NOT EXISTS can_resubscribe BOOLEAN DEFAULT true;
+ALTER TABLE email_unsubscribes ADD COLUMN IF NOT EXISTS resubscribed_at TIMESTAMPTZ;
+
+ALTER TABLE email_unsubscribes ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Allow all access to email_unsubscribes" ON email_unsubscribes;
+CREATE POLICY "Allow all access to email_unsubscribes"
+  ON email_unsubscribes FOR ALL USING (true) WITH CHECK (true);
+
 -- ============================================
--- 5. ENSURE email_campaigns exists
+-- 5. ENSURE email_campaigns + patch columns
 -- ============================================
 CREATE TABLE IF NOT EXISTS email_campaigns (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -103,13 +189,21 @@ CREATE TABLE IF NOT EXISTS email_campaigns (
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
+ALTER TABLE email_campaigns ADD COLUMN IF NOT EXISTS notes TEXT;
+ALTER TABLE email_campaigns ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT NOW();
+
+ALTER TABLE email_campaigns ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Allow all access to email_campaigns" ON email_campaigns;
+CREATE POLICY "Allow all access to email_campaigns"
+  ON email_campaigns FOR ALL USING (true) WITH CHECK (true);
+
 -- ============================================
--- 6. ENSURE email_campaign_recipients exists
+-- 6. ENSURE email_campaign_recipients + patch columns
 -- ============================================
 CREATE TABLE IF NOT EXISTS email_campaign_recipients (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  campaign_id UUID NOT NULL REFERENCES email_campaigns(id) ON DELETE CASCADE,
-  subscriber_id UUID REFERENCES email_list_subscribers(id) ON DELETE SET NULL,
+  campaign_id UUID,
+  subscriber_id UUID,
   email VARCHAR(255) NOT NULL,
   status VARCHAR(50) DEFAULT 'pending',
   sent_at TIMESTAMPTZ,
@@ -124,8 +218,57 @@ CREATE TABLE IF NOT EXISTS email_campaign_recipients (
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
+ALTER TABLE email_campaign_recipients ADD COLUMN IF NOT EXISTS open_count INTEGER DEFAULT 0;
+ALTER TABLE email_campaign_recipients ADD COLUMN IF NOT EXISTS click_count INTEGER DEFAULT 0;
+ALTER TABLE email_campaign_recipients ADD COLUMN IF NOT EXISTS bounce_type VARCHAR(50);
+ALTER TABLE email_campaign_recipients ADD COLUMN IF NOT EXISTS bounce_reason TEXT;
+
+ALTER TABLE email_campaign_recipients ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Allow all access to email_campaign_recipients" ON email_campaign_recipients;
+CREATE POLICY "Allow all access to email_campaign_recipients"
+  ON email_campaign_recipients FOR ALL USING (true) WITH CHECK (true);
+
 -- ============================================
--- 7. INDEXES (IF NOT EXISTS is safe to re-run)
+-- 7. FK CONSTRAINTS (add only if missing)
+-- ============================================
+DO $$
+BEGIN
+  -- email_list_subscribers.list_id -> email_lists
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.table_constraints
+    WHERE table_name = 'email_list_subscribers'
+      AND constraint_name = 'email_list_subscribers_list_id_fkey'
+  ) THEN
+    ALTER TABLE email_list_subscribers
+      ADD CONSTRAINT email_list_subscribers_list_id_fkey
+      FOREIGN KEY (list_id) REFERENCES email_lists(id) ON DELETE CASCADE;
+  END IF;
+
+  -- email_import_batches.list_id -> email_lists
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.table_constraints
+    WHERE table_name = 'email_import_batches'
+      AND constraint_name = 'email_import_batches_list_id_fkey'
+  ) THEN
+    ALTER TABLE email_import_batches
+      ADD CONSTRAINT email_import_batches_list_id_fkey
+      FOREIGN KEY (list_id) REFERENCES email_lists(id) ON DELETE CASCADE;
+  END IF;
+
+  -- email_unsubscribes.list_id -> email_lists
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.table_constraints
+    WHERE table_name = 'email_unsubscribes'
+      AND constraint_name = 'email_unsubscribes_list_id_fkey'
+  ) THEN
+    ALTER TABLE email_unsubscribes
+      ADD CONSTRAINT email_unsubscribes_list_id_fkey
+      FOREIGN KEY (list_id) REFERENCES email_lists(id) ON DELETE SET NULL;
+  END IF;
+END $$;
+
+-- ============================================
+-- 8. INDEXES
 -- ============================================
 CREATE INDEX IF NOT EXISTS idx_email_lists_type ON email_lists(list_type);
 CREATE INDEX IF NOT EXISTS idx_email_lists_active ON email_lists(is_active);
@@ -143,24 +286,6 @@ CREATE INDEX IF NOT EXISTS idx_unsubscribes_list ON email_unsubscribes(list_id);
 
 CREATE INDEX IF NOT EXISTS idx_campaign_recipients_campaign ON email_campaign_recipients(campaign_id);
 CREATE INDEX IF NOT EXISTS idx_campaign_recipients_email ON email_campaign_recipients(email);
-
--- ============================================
--- 8. RLS POLICIES
--- ============================================
-ALTER TABLE email_import_batches ENABLE ROW LEVEL SECURITY;
-DROP POLICY IF EXISTS "Allow all access to email_import_batches" ON email_import_batches;
-CREATE POLICY "Allow all access to email_import_batches"
-  ON email_import_batches FOR ALL USING (true) WITH CHECK (true);
-
-ALTER TABLE email_unsubscribes ENABLE ROW LEVEL SECURITY;
-DROP POLICY IF EXISTS "Allow all access to email_unsubscribes" ON email_unsubscribes;
-CREATE POLICY "Allow all access to email_unsubscribes"
-  ON email_unsubscribes FOR ALL USING (true) WITH CHECK (true);
-
-ALTER TABLE email_campaign_recipients ENABLE ROW LEVEL SECURITY;
-DROP POLICY IF EXISTS "Allow all access to email_campaign_recipients" ON email_campaign_recipients;
-CREATE POLICY "Allow all access to email_campaign_recipients"
-  ON email_campaign_recipients FOR ALL USING (true) WITH CHECK (true);
 
 -- ============================================
 -- 9. GRANT STATEMENTS
@@ -190,7 +315,7 @@ GRANT ALL ON public.email_campaign_recipients TO authenticated;
 GRANT ALL ON public.email_campaign_recipients TO service_role;
 
 -- ============================================
--- 10. RECREATE VIEWS (use CREATE OR REPLACE)
+-- 10. VIEW
 -- ============================================
 CREATE OR REPLACE VIEW email_lists_with_stats AS
 SELECT

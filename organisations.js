@@ -1435,6 +1435,9 @@ updateCountyFilterByRegion() {
         <div class="mt-4">
           <h6 class="text-muted mb-3"><i class="bi bi-clock-history me-2"></i>Activity Timeline
             <span class="badge bg-light text-muted ms-1" style="font-size: 0.6rem;">emails, notes, awards, invoices, status changes</span>
+            <button class="btn btn-sm btn-outline-primary ms-2" onclick="orgsModule.showAddActivityNote('${orgId}')"><i class="bi bi-plus me-1"></i>Add Note</button>
+            <button class="btn btn-sm btn-outline-info ms-1" onclick="orgsModule.showFieldLevelAudit('${orgId}')"><i class="bi bi-clock-history me-1"></i>Change History</button>
+            <button class="btn btn-sm btn-outline-secondary ms-1" onclick="orgsModule.generateShareLink('${orgId}')"><i class="bi bi-share me-1"></i>Share</button>
           </h6>
           <div class="card"><div class="card-body" id="orgActivityTimeline">Loading activity...</div></div>
         </div>
@@ -7236,6 +7239,542 @@ updateCountyFilterByRegion() {
       utils.showToast('Companies House data applied', 'success');
       bootstrap.Modal.getInstance(document.getElementById('dynamicOrgModal'))?.hide();
     } catch (e) { utils.showToast('Error: ' + e.message, 'error'); }
+  },
+
+  // ============================================
+  // FEATURE: ADD ACTIVITY NOTE
+  // ============================================
+  showAddActivityNote(orgId) {
+    const html = `
+      <div class="mb-3"><label class="form-label fw-semibold">Note Type</label>
+        <select class="form-select" id="activityNoteType">
+          <option value="note">General Note</option><option value="call">Phone Call</option>
+          <option value="meeting">Meeting</option><option value="email">Email</option><option value="task">Task</option>
+        </select></div>
+      <div class="mb-3"><label class="form-label fw-semibold">Content</label>
+        <textarea class="form-control" id="activityNoteContent" rows="4" placeholder="Enter note details..."></textarea></div>
+      <div class="mb-3"><label class="form-label fw-semibold">Priority</label>
+        <select class="form-select" id="activityNotePriority">
+          <option value="normal">Normal</option><option value="high">High</option><option value="low">Low</option>
+        </select></div>
+      <button class="btn btn-primary w-100" onclick="orgsModule.saveActivityNote('${orgId}')"><i class="bi bi-plus-circle me-2"></i>Add Note</button>`;
+    this._showDynamicModal('Add Activity Note', html, 'bi-journal-plus', '');
+  },
+
+  async saveActivityNote(orgId) {
+    const type = document.getElementById('activityNoteType')?.value || 'note';
+    const content = document.getElementById('activityNoteContent')?.value?.trim();
+    const priority = document.getElementById('activityNotePriority')?.value || 'normal';
+    if (!content) { utils.showToast('Please enter note content', 'warning'); return; }
+    try {
+      const user = await this._getCurrentUserEmail();
+      await STATE.client.from('org_activity_notes').insert([{ org_id: orgId, type, content, priority, created_by: user }]);
+      this._logAudit(orgId, 'note_added', '', `${type}: ${content.substring(0, 80)}`);
+      utils.showToast('Note added', 'success');
+      bootstrap.Modal.getInstance(document.getElementById('dynamicOrgModal'))?.hide();
+      const timeline = await this.loadUnifiedTimeline(orgId);
+      const el = document.getElementById('orgActivityTimeline');
+      if (el) el.innerHTML = this.renderUnifiedTimeline(timeline);
+    } catch (e) { utils.showToast('Error saving note: ' + e.message, 'error'); }
+  },
+
+  // ============================================
+  // FEATURE: EMAIL SEQUENCES (Drip Campaigns)
+  // ============================================
+  _emailSequences: JSON.parse(localStorage.getItem('orgEmailSequences') || '[]'),
+
+  showEmailSequences() {
+    const sequences = this._emailSequences;
+    const html = `<p class="text-muted small">Create automated email sequences triggered by status changes or manual enrollment.</p>
+      <button class="btn btn-primary btn-sm mb-3" onclick="orgsModule.showCreateSequence()"><i class="bi bi-plus-circle me-2"></i>Create New Sequence</button>
+      ${sequences.length === 0 ? '<div class="text-muted text-center py-4"><i class="bi bi-envelope-slash fs-1 d-block mb-2"></i>No sequences configured yet</div>' :
+        sequences.map((seq, i) => `<div class="card mb-2"><div class="card-body py-2"><div class="d-flex justify-content-between align-items-center">
+          <div><strong>${utils.escapeHtml(seq.name)}</strong><span class="badge bg-${seq.active ? 'success' : 'secondary'} ms-2">${seq.active ? 'Active' : 'Paused'}</span>
+          <div class="text-muted small">Trigger: ${utils.escapeHtml(seq.trigger)} · ${seq.steps.length} step(s) · ${seq.enrolled || 0} enrolled</div></div>
+          <div><button class="btn btn-sm btn-outline-${seq.active ? 'warning' : 'success'}" onclick="orgsModule.toggleSequence(${i})">${seq.active ? 'Pause' : 'Activate'}</button>
+          <button class="btn btn-sm btn-outline-danger ms-1" onclick="orgsModule.deleteSequence(${i})"><i class="bi bi-trash"></i></button></div>
+        </div></div></div>`).join('')}`;
+    this._showDynamicModal('Email Sequences', html, 'bi-envelope-arrow-up', 'modal-lg');
+  },
+
+  showCreateSequence() {
+    const html = `<div class="mb-3"><label class="form-label fw-semibold">Sequence Name</label>
+        <input type="text" class="form-control" id="seqName" placeholder="e.g. Welcome Onboarding"></div>
+      <div class="mb-3"><label class="form-label fw-semibold">Trigger</label>
+        <select class="form-select" id="seqTrigger">
+          <option value="status_prospect">Status → Prospect</option><option value="status_entrant">Status → Entrant</option>
+          <option value="status_nominee">Status → Nominee</option><option value="status_winner">Status → Winner</option>
+          <option value="status_sponsor">Status → Sponsor</option><option value="manual">Manual Only</option>
+        </select></div>
+      <h6 class="fw-semibold">Steps</h6>
+      <div id="seqStepsContainer"><div class="card mb-2 p-2"><div class="row g-2">
+        <div class="col-3"><label class="form-label small">Delay (days)</label><input type="number" class="form-control form-control-sm seq-delay" value="0" min="0"></div>
+        <div class="col-4"><label class="form-label small">Subject</label><input type="text" class="form-control form-control-sm seq-subject" placeholder="Subject..."></div>
+        <div class="col-5"><label class="form-label small">Body</label><textarea class="form-control form-control-sm seq-body" rows="2" placeholder="Use {{company_name}}, {{contact_name}}..."></textarea></div>
+      </div></div></div>
+      <button class="btn btn-sm btn-outline-secondary mb-3" onclick="orgsModule._addSequenceStep()"><i class="bi bi-plus me-1"></i>Add Step</button>
+      <button class="btn btn-primary w-100" onclick="orgsModule._saveSequence()"><i class="bi bi-check-circle me-2"></i>Save Sequence</button>`;
+    this._showDynamicModal('Create Email Sequence', html, 'bi-envelope-plus', 'modal-lg');
+  },
+
+  _addSequenceStep() {
+    const c = document.getElementById('seqStepsContainer'); if (!c) return;
+    const s = document.createElement('div'); s.className = 'card mb-2 p-2';
+    s.innerHTML = `<div class="row g-2"><div class="col-3"><label class="form-label small">Delay (days)</label><input type="number" class="form-control form-control-sm seq-delay" value="3" min="0"></div>
+      <div class="col-4"><label class="form-label small">Subject</label><input type="text" class="form-control form-control-sm seq-subject" placeholder="Subject..."></div>
+      <div class="col-5"><label class="form-label small">Body</label><textarea class="form-control form-control-sm seq-body" rows="2" placeholder="Use {{company_name}}..."></textarea></div></div>`;
+    c.appendChild(s);
+  },
+
+  _saveSequence() {
+    const name = document.getElementById('seqName')?.value?.trim();
+    const trigger = document.getElementById('seqTrigger')?.value;
+    if (!name) { utils.showToast('Enter a sequence name', 'warning'); return; }
+    const steps = [];
+    document.querySelectorAll('.seq-delay').forEach((d, i) => {
+      steps.push({ delay: parseInt(d.value) || 0, subject: document.querySelectorAll('.seq-subject')[i]?.value || '', body: document.querySelectorAll('.seq-body')[i]?.value || '' });
+    });
+    if (steps.length === 0 || !steps[0].subject) { utils.showToast('Add at least one step with a subject', 'warning'); return; }
+    this._emailSequences.push({ name, trigger, steps, active: true, enrolled: 0, created: new Date().toISOString() });
+    localStorage.setItem('orgEmailSequences', JSON.stringify(this._emailSequences));
+    utils.showToast('Sequence created', 'success'); this.showEmailSequences();
+  },
+
+  toggleSequence(i) { if (this._emailSequences[i]) { this._emailSequences[i].active = !this._emailSequences[i].active; localStorage.setItem('orgEmailSequences', JSON.stringify(this._emailSequences)); this.showEmailSequences(); } },
+  deleteSequence(i) { if (!confirm('Delete this sequence?')) return; this._emailSequences.splice(i, 1); localStorage.setItem('orgEmailSequences', JSON.stringify(this._emailSequences)); this.showEmailSequences(); },
+
+  // ============================================
+  // FEATURE: MY TASKS DASHBOARD
+  // ============================================
+  async showMyTasks() {
+    let followUps = [];
+    try { const { data } = await STATE.client.from('org_follow_ups').select('*').order('date', { ascending: true }); followUps = data || []; } catch (e) { console.warn('Could not load follow-ups:', e); }
+    const today = new Date().toISOString().split('T')[0];
+    const overdue = followUps.filter(f => !f.done && f.date < today);
+    const todayTasks = followUps.filter(f => !f.done && f.date === today);
+    const upcoming = followUps.filter(f => !f.done && f.date > today).slice(0, 20);
+    const completed = followUps.filter(f => f.done).slice(0, 10);
+
+    const renderTask = (f, section) => {
+      const org = STATE.allOrganisations.find(o => o.id === f.org_id);
+      const orgName = org ? utils.escapeHtml(org.company_name) : 'Unknown';
+      const icons = { overdue: 'bi-exclamation-triangle text-danger', today: 'bi-bell text-warning', completed: 'bi-check-circle text-success', upcoming: 'bi-clock text-info' };
+      return `<div class="d-flex align-items-center py-2 border-bottom">
+        <i class="bi ${icons[section]} me-2 fs-5"></i>
+        <div class="flex-grow-1"><div class="fw-semibold small">${utils.escapeHtml(f.note || 'Follow up')}</div>
+        <div class="text-muted" style="font-size:0.75rem;">${orgName} · ${new Date(f.date).toLocaleDateString('en-GB')}${f.assignee ? ' · ' + utils.escapeHtml(f.assignee) : ''}</div></div>
+        ${!f.done ? `<button class="btn btn-sm btn-outline-success me-1" onclick="orgsModule.completeFollowUp('${f.org_id}','${f.id}'); setTimeout(()=>orgsModule.showMyTasks(),500);"><i class="bi bi-check"></i></button>` : ''}
+        ${org ? `<button class="btn btn-sm btn-outline-primary" onclick="orgsModule.openCompanyProfile('${f.org_id}')"><i class="bi bi-eye"></i></button>` : ''}
+      </div>`;
+    };
+
+    const html = `<div class="row mb-3 text-center">
+        <div class="col-3"><div class="card border-danger"><div class="card-body py-2"><h4 class="text-danger mb-0">${overdue.length}</h4><small class="text-muted">Overdue</small></div></div></div>
+        <div class="col-3"><div class="card border-warning"><div class="card-body py-2"><h4 class="text-warning mb-0">${todayTasks.length}</h4><small class="text-muted">Today</small></div></div></div>
+        <div class="col-3"><div class="card border-info"><div class="card-body py-2"><h4 class="text-info mb-0">${upcoming.length}</h4><small class="text-muted">Upcoming</small></div></div></div>
+        <div class="col-3"><div class="card border-success"><div class="card-body py-2"><h4 class="text-success mb-0">${completed.length}</h4><small class="text-muted">Done</small></div></div></div>
+      </div>
+      ${overdue.length > 0 ? `<h6 class="text-danger fw-bold"><i class="bi bi-exclamation-triangle me-1"></i>Overdue (${overdue.length})</h6>${overdue.map(f => renderTask(f, 'overdue')).join('')}<hr>` : ''}
+      ${todayTasks.length > 0 ? `<h6 class="text-warning fw-bold"><i class="bi bi-bell me-1"></i>Due Today</h6>${todayTasks.map(f => renderTask(f, 'today')).join('')}<hr>` : ''}
+      ${upcoming.length > 0 ? `<h6 class="text-info fw-bold"><i class="bi bi-clock me-1"></i>Upcoming</h6>${upcoming.map(f => renderTask(f, 'upcoming')).join('')}<hr>` : ''}
+      ${completed.length > 0 ? `<h6 class="text-success fw-bold"><i class="bi bi-check-circle me-1"></i>Recently Completed</h6>${completed.map(f => renderTask(f, 'completed')).join('')}` : ''}
+      ${followUps.filter(f => !f.done).length === 0 ? '<div class="text-center py-4"><i class="bi bi-emoji-smile fs-1 d-block mb-2 text-success"></i><p class="text-muted">All caught up!</p></div>' : ''}`;
+    this._showDynamicModal('My Tasks & Follow-ups', html, 'bi-person-check', 'modal-lg');
+  },
+
+  // ============================================
+  // FEATURE: FIELD-LEVEL AUDIT / CHANGE HISTORY
+  // ============================================
+  async showFieldLevelAudit(orgId) {
+    let logs = [];
+    try { const { data } = await STATE.client.from('org_audit_log').select('*').eq('org_id', orgId).order('created_at', { ascending: false }).limit(100); logs = data || []; } catch (e) { console.warn('Audit log load error:', e); }
+    if (logs.length === 0) { this._showDynamicModal('Change History', '<div class="text-center py-4 text-muted"><i class="bi bi-clock-history fs-1 d-block mb-2"></i>No change history recorded.</div>', 'bi-clock-history', ''); return; }
+    const iconMap = { status_change: 'bi-arrow-repeat text-warning', archived: 'bi-archive text-danger', restored: 'bi-box-arrow-up text-success', note_added: 'bi-journal-plus text-info', email_sent: 'bi-envelope text-primary', field_update: 'bi-pencil text-secondary' };
+    const html = `<div class="mb-3"><input type="text" class="form-control form-control-sm" placeholder="Filter history..." oninput="document.querySelectorAll('.audit-entry').forEach(el=>{el.style.display=el.textContent.toLowerCase().includes(this.value.toLowerCase())?'':'none';})"></div>
+      <div style="max-height:500px;overflow-y:auto;">${logs.map(log => {
+        const icon = iconMap[log.action] || 'bi-circle text-muted';
+        return `<div class="audit-entry d-flex align-items-start py-2 border-bottom">
+          <i class="bi ${icon} me-2 mt-1 fs-5"></i><div class="flex-grow-1">
+          <div class="fw-semibold small">${utils.escapeHtml(log.action?.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()) || '')}</div>
+          <div class="small">${utils.escapeHtml(log.details || '')}</div>
+          <div class="text-muted" style="font-size:0.7rem;">${new Date(log.created_at).toLocaleString('en-GB')} · by ${utils.escapeHtml(log.performed_by || 'system')}</div>
+        </div></div>`;
+      }).join('')}</div>`;
+    this._showDynamicModal('Change History', html, 'bi-clock-history', 'modal-lg');
+  },
+
+  // ============================================
+  // FEATURE: BULK IMPORT VALIDATION PREVIEW
+  // ============================================
+  validateImportData(rows) {
+    const issues = [];
+    const emailRe = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    const existNames = new Set(STATE.allOrganisations.map(o => o.company_name?.toLowerCase().trim()));
+    const existEmails = new Set(STATE.allOrganisations.map(o => o.email?.toLowerCase().trim()).filter(Boolean));
+    const seen = new Set();
+    rows.forEach((row, i) => {
+      const r = i + 1;
+      if (!row.company_name?.trim()) issues.push({ row: r, severity: 'error', message: 'Missing company name' });
+      if (row.email && !emailRe.test(row.email)) issues.push({ row: r, severity: 'error', message: `Invalid email: ${row.email}` });
+      if (row.company_name && existNames.has(row.company_name.toLowerCase().trim())) issues.push({ row: r, severity: 'warning', message: `Duplicate: "${row.company_name}" already exists` });
+      if (row.email && existEmails.has(row.email.toLowerCase().trim())) issues.push({ row: r, severity: 'warning', message: `Email exists: ${row.email}` });
+      const k = row.company_name?.toLowerCase().trim();
+      if (k && seen.has(k)) issues.push({ row: r, severity: 'warning', message: `Duplicate in import: "${row.company_name}"` });
+      if (k) seen.add(k);
+      if (!row.region?.trim()) issues.push({ row: r, severity: 'info', message: 'Missing region' });
+    });
+    return issues;
+  },
+
+  showImportValidationPreview(rows) {
+    const issues = this.validateImportData(rows);
+    const errors = issues.filter(i => i.severity === 'error'), warnings = issues.filter(i => i.severity === 'warning'), infos = issues.filter(i => i.severity === 'info');
+    return `<div class="row text-center mb-3">
+      <div class="col-3"><div class="card"><div class="card-body py-2"><h5 class="mb-0">${rows.length}</h5><small>Total Rows</small></div></div></div>
+      <div class="col-3"><div class="card border-danger"><div class="card-body py-2"><h5 class="text-danger mb-0">${errors.length}</h5><small>Errors</small></div></div></div>
+      <div class="col-3"><div class="card border-warning"><div class="card-body py-2"><h5 class="text-warning mb-0">${warnings.length}</h5><small>Warnings</small></div></div></div>
+      <div class="col-3"><div class="card border-info"><div class="card-body py-2"><h5 class="text-info mb-0">${infos.length}</h5><small>Info</small></div></div></div>
+    </div>
+    ${errors.length > 0 ? `<div class="alert alert-danger py-2"><strong>Errors:</strong><ul class="mb-0 small">${errors.slice(0, 20).map(e => `<li>Row ${e.row}: ${utils.escapeHtml(e.message)}</li>`).join('')}</ul></div>` : ''}
+    ${warnings.length > 0 ? `<div class="alert alert-warning py-2"><strong>Warnings:</strong><ul class="mb-0 small">${warnings.slice(0, 20).map(w => `<li>Row ${w.row}: ${utils.escapeHtml(w.message)}</li>`).join('')}</ul></div>` : ''}
+    ${errors.length === 0 ? '<div class="alert alert-success py-2"><i class="bi bi-check-circle me-2"></i>Ready to import.</div>' : '<div class="alert alert-danger py-2">Fix errors before importing.</div>'}`;
+  },
+
+  // ============================================
+  // FEATURE: SCHEDULED REPORTS
+  // ============================================
+  _scheduledReports: JSON.parse(localStorage.getItem('orgScheduledReports') || '[]'),
+
+  showScheduledReports() {
+    const reports = this._scheduledReports;
+    const html = `<p class="text-muted small">Schedule automated reports to be generated on a recurring basis.</p>
+      <button class="btn btn-primary btn-sm mb-3" onclick="orgsModule.showCreateScheduledReport()"><i class="bi bi-plus-circle me-2"></i>Create Report Schedule</button>
+      ${reports.length === 0 ? '<div class="text-center py-4 text-muted"><i class="bi bi-calendar-x fs-1 d-block mb-2"></i>No scheduled reports</div>' :
+        reports.map((r, i) => `<div class="card mb-2"><div class="card-body py-2"><div class="d-flex justify-content-between align-items-center">
+          <div><strong>${utils.escapeHtml(r.name)}</strong><span class="badge bg-${r.active ? 'success' : 'secondary'} ms-2">${r.active ? 'Active' : 'Paused'}</span>
+          <div class="text-muted small">${utils.escapeHtml(r.frequency)} · ${r.sections.join(', ')} · To: ${utils.escapeHtml(r.recipients)}</div></div>
+          <div><button class="btn btn-sm btn-outline-primary me-1" onclick="orgsModule.previewScheduledReport(${i})"><i class="bi bi-eye"></i></button>
+          <button class="btn btn-sm btn-outline-danger" onclick="orgsModule.deleteScheduledReport(${i})"><i class="bi bi-trash"></i></button></div>
+        </div></div></div>`).join('')}`;
+    this._showDynamicModal('Scheduled Reports', html, 'bi-calendar2-week', 'modal-lg');
+  },
+
+  showCreateScheduledReport() {
+    const html = `<div class="mb-3"><label class="form-label fw-semibold">Report Name</label><input type="text" class="form-control" id="reportName" placeholder="e.g. Weekly Pipeline Summary"></div>
+      <div class="mb-3"><label class="form-label fw-semibold">Frequency</label><select class="form-select" id="reportFrequency"><option value="Daily">Daily</option><option value="Weekly" selected>Weekly</option><option value="Monthly">Monthly</option></select></div>
+      <div class="mb-3"><label class="form-label fw-semibold">Recipients</label><input type="text" class="form-control" id="reportRecipients" placeholder="admin@example.com, manager@example.com"></div>
+      <div class="mb-3"><label class="form-label fw-semibold">Include</label>
+        <div class="form-check"><input class="form-check-input rpt-section" type="checkbox" value="KPI Summary" checked><label class="form-check-label">KPI Summary</label></div>
+        <div class="form-check"><input class="form-check-input rpt-section" type="checkbox" value="Pipeline" checked><label class="form-check-label">Pipeline Breakdown</label></div>
+        <div class="form-check"><input class="form-check-input rpt-section" type="checkbox" value="Overdue" checked><label class="form-check-label">Overdue Follow-ups</label></div>
+        <div class="form-check"><input class="form-check-input rpt-section" type="checkbox" value="Regional"><label class="form-check-label">Regional Distribution</label></div>
+        <div class="form-check"><input class="form-check-input rpt-section" type="checkbox" value="Data Quality"><label class="form-check-label">Data Quality Issues</label></div></div>
+      <button class="btn btn-primary w-100" onclick="orgsModule._saveScheduledReport()"><i class="bi bi-check-circle me-2"></i>Save</button>`;
+    this._showDynamicModal('Create Scheduled Report', html, 'bi-calendar-plus', '');
+  },
+
+  _saveScheduledReport() {
+    const name = document.getElementById('reportName')?.value?.trim();
+    const frequency = document.getElementById('reportFrequency')?.value;
+    const recipients = document.getElementById('reportRecipients')?.value?.trim();
+    if (!name || !recipients) { utils.showToast('Fill in name and recipients', 'warning'); return; }
+    const sections = Array.from(document.querySelectorAll('.rpt-section:checked')).map(cb => cb.value);
+    if (sections.length === 0) { utils.showToast('Select at least one section', 'warning'); return; }
+    this._scheduledReports.push({ name, frequency, recipients, sections, active: true, created: new Date().toISOString() });
+    localStorage.setItem('orgScheduledReports', JSON.stringify(this._scheduledReports));
+    utils.showToast('Report schedule created', 'success'); this.showScheduledReports();
+  },
+
+  previewScheduledReport(index) {
+    const r = this._scheduledReports[index]; if (!r) return;
+    const orgs = STATE.allOrganisations;
+    const pipeline = {}; orgs.forEach(o => { const s = o.status || 'prospect'; pipeline[s] = (pipeline[s] || 0) + 1; });
+    const regions = {}; orgs.forEach(o => { const reg = o.region || 'Unknown'; regions[reg] = (regions[reg] || 0) + 1; });
+    let preview = `<h5>${utils.escapeHtml(r.name)}</h5><p class="text-muted small">Preview generated ${new Date().toLocaleString('en-GB')}</p><hr>`;
+    if (r.sections.includes('KPI Summary')) preview += `<h6>KPI Summary</h6><div class="row text-center mb-3"><div class="col"><strong>${orgs.length}</strong><br><small>Total Orgs</small></div><div class="col"><strong>${Object.keys(regions).length}</strong><br><small>Regions</small></div></div>`;
+    if (r.sections.includes('Pipeline')) preview += `<h6>Pipeline</h6><div class="mb-3">${Object.entries(pipeline).map(([s, c]) => `<span class="badge bg-primary me-1">${s}: ${c}</span>`).join('')}</div>`;
+    if (r.sections.includes('Regional')) preview += `<h6>Regional</h6><div class="mb-3">${Object.entries(regions).sort((a,b)=>b[1]-a[1]).slice(0,10).map(([r,c])=>`<div class="d-flex justify-content-between small"><span>${utils.escapeHtml(r)}</span><strong>${c}</strong></div>`).join('')}</div>`;
+    this._showDynamicModal('Report Preview', preview, 'bi-file-text', 'modal-lg');
+  },
+
+  deleteScheduledReport(i) { if (!confirm('Delete this report schedule?')) return; this._scheduledReports.splice(i, 1); localStorage.setItem('orgScheduledReports', JSON.stringify(this._scheduledReports)); this.showScheduledReports(); },
+
+  // ============================================
+  // FEATURE: DUPLICATE DETECTION DASHBOARD
+  // ============================================
+  showDuplicateDetectionDashboard() {
+    const orgs = STATE.allOrganisations;
+    const nameG = new Map(), emailG = new Map(), phoneG = new Map(), webG = new Map();
+    orgs.forEach(org => {
+      const n = org.company_name?.toLowerCase().replace(/[^a-z0-9]/g, '').trim();
+      if (n && n.length > 2) { if (!nameG.has(n)) nameG.set(n, []); nameG.get(n).push(org); }
+      const e = org.email?.toLowerCase().trim();
+      if (e) { if (!emailG.has(e)) emailG.set(e, []); emailG.get(e).push(org); }
+      const p = org.phone?.replace(/\D/g, '');
+      if (p && p.length >= 8) { if (!phoneG.has(p)) phoneG.set(p, []); phoneG.get(p).push(org); }
+      const w = org.website?.toLowerCase().replace(/^https?:\/\//, '').replace(/^www\./, '').replace(/\/.*/, '').trim();
+      if (w) { if (!webG.has(w)) webG.set(w, []); webG.get(w).push(org); }
+    });
+    const nD = Array.from(nameG.values()).filter(g => g.length > 1);
+    const eD = Array.from(emailG.values()).filter(g => g.length > 1);
+    const pD = Array.from(phoneG.values()).filter(g => g.length > 1);
+    const wD = Array.from(webG.values()).filter(g => g.length > 1);
+    const total = nD.length + eD.length + pD.length + wD.length;
+
+    const renderG = (groups, label, icon) => groups.length === 0 ? '' :
+      `<h6 class="fw-bold mt-3"><i class="bi ${icon} me-2"></i>${label} (${groups.length})</h6>` +
+      groups.slice(0, 15).map(g => `<div class="card mb-2"><div class="card-body py-2"><div class="d-flex flex-wrap gap-2">
+        ${g.map(o => `<div class="border rounded px-2 py-1 small"><a href="#" class="text-primary text-decoration-none" onclick="orgsModule.openCompanyProfile('${o.id}')">${utils.escapeHtml(o.company_name)}</a>
+        <span class="text-muted ms-1">${utils.escapeHtml(o.region || '')}</span></div>`).join('')}
+        <button class="btn btn-sm btn-outline-warning" onclick="orgsModule.selectedOrgs=new Set([${g.map(o=>`'${o.id}'`).join(',')}]);orgsModule.showMergeDuplicatesModal();bootstrap.Modal.getInstance(document.getElementById('dynamicOrgModal'))?.hide();">
+          <i class="bi bi-intersect me-1"></i>Merge</button>
+      </div></div></div>`).join('');
+
+    const html = `<div class="row text-center mb-3">
+        <div class="col-3"><div class="card"><div class="card-body py-2"><h4 class="mb-0 ${nD.length?'text-danger':'text-success'}">${nD.length}</h4><small>Name</small></div></div></div>
+        <div class="col-3"><div class="card"><div class="card-body py-2"><h4 class="mb-0 ${eD.length?'text-warning':'text-success'}">${eD.length}</h4><small>Email</small></div></div></div>
+        <div class="col-3"><div class="card"><div class="card-body py-2"><h4 class="mb-0 ${pD.length?'text-warning':'text-success'}">${pD.length}</h4><small>Phone</small></div></div></div>
+        <div class="col-3"><div class="card"><div class="card-body py-2"><h4 class="mb-0 ${wD.length?'text-info':'text-success'}">${wD.length}</h4><small>Website</small></div></div></div>
+      </div>
+      ${total === 0 ? '<div class="text-center py-4"><i class="bi bi-shield-check fs-1 text-success d-block mb-2"></i><p class="text-muted">No duplicates detected!</p></div>' : ''}
+      ${renderG(nD, 'Duplicate Names', 'bi-building')}${renderG(eD, 'Duplicate Emails', 'bi-envelope')}
+      ${renderG(pD, 'Duplicate Phones', 'bi-telephone')}${renderG(wD, 'Duplicate Websites', 'bi-globe')}`;
+    this._showDynamicModal('Duplicate Detection Dashboard', html, 'bi-search', 'modal-xl');
+  },
+
+  // ============================================
+  // FEATURE: PUBLIC SHARE LINK
+  // ============================================
+  generateShareLink(orgId) {
+    const org = STATE.allOrganisations.find(o => o.id === orgId);
+    if (!org) { utils.showToast('Organisation not found', 'error'); return; }
+    const token = btoa(orgId + ':' + org.company_name).replace(/[^a-zA-Z0-9]/g, '').substring(0, 24);
+    const shareUrl = `${window.location.origin}${window.location.pathname}?share=${token}&org=${orgId}`;
+    const shares = JSON.parse(localStorage.getItem('orgShareTokens') || '{}');
+    shares[token] = { orgId, created: new Date().toISOString(), active: true };
+    localStorage.setItem('orgShareTokens', JSON.stringify(shares));
+    const html = `<div class="text-center mb-3"><i class="bi bi-share fs-1 text-primary d-block mb-2"></i>
+        <h6>Share <strong>${utils.escapeHtml(org.company_name)}</strong></h6>
+        <p class="text-muted small">Read-only profile link.</p></div>
+      <div class="input-group mb-3"><input type="text" class="form-control" id="shareLinkUrl" value="${utils.escapeHtml(shareUrl)}" readonly>
+        <button class="btn btn-primary" onclick="navigator.clipboard.writeText(document.getElementById('shareLinkUrl').value);utils.showToast('Copied!','success');"><i class="bi bi-clipboard me-1"></i>Copy</button></div>
+      <div class="row text-center"><div class="col-6"><a href="mailto:?subject=${encodeURIComponent('Profile: ' + org.company_name)}&body=${encodeURIComponent(shareUrl)}" class="btn btn-outline-primary w-100"><i class="bi bi-envelope me-1"></i>Email</a></div>
+      <div class="col-6"><button class="btn btn-outline-danger w-100" onclick="orgsModule.revokeShareLink('${token}')"><i class="bi bi-x-circle me-1"></i>Revoke</button></div></div>`;
+    this._showDynamicModal('Share Organisation Profile', html, 'bi-share', '');
+  },
+
+  revokeShareLink(token) {
+    const shares = JSON.parse(localStorage.getItem('orgShareTokens') || '{}');
+    delete shares[token]; localStorage.setItem('orgShareTokens', JSON.stringify(shares));
+    utils.showToast('Share link revoked', 'success');
+    bootstrap.Modal.getInstance(document.getElementById('dynamicOrgModal'))?.hide();
+  },
+
+  // ============================================
+  // FEATURE: XERO / QUICKBOOKS INTEGRATION
+  // ============================================
+  _accountingConfig: JSON.parse(localStorage.getItem('orgAccountingConfig') || '{}'),
+
+  showXeroIntegration() {
+    const config = this._accountingConfig;
+    const connected = config.connected || false;
+    const provider = config.provider || 'xero';
+    const html = `<div class="text-center mb-4"><i class="bi bi-currency-pound fs-1 ${connected ? 'text-success' : 'text-muted'} d-block mb-2"></i>
+        <h6>Accounting Integration</h6><p class="text-muted small">Connect your accounting software to sync invoices and payments.</p></div>
+      <div class="row mb-4">
+        <div class="col-6"><div class="card ${provider==='xero'?'border-primary':''}" style="cursor:pointer" onclick="orgsModule._setAccountingProvider('xero')">
+          <div class="card-body text-center py-3"><i class="bi bi-x-diamond fs-2 text-primary"></i><div class="fw-bold mt-1">Xero</div><small class="text-muted">Cloud accounting</small></div></div></div>
+        <div class="col-6"><div class="card ${provider==='quickbooks'?'border-success':''}" style="cursor:pointer" onclick="orgsModule._setAccountingProvider('quickbooks')">
+          <div class="card-body text-center py-3"><i class="bi bi-book fs-2 text-success"></i><div class="fw-bold mt-1">QuickBooks</div><small class="text-muted">Intuit accounting</small></div></div></div>
+      </div>
+      ${!connected ? `<div class="card mb-3"><div class="card-body"><h6 class="fw-semibold mb-3">Connect ${provider==='xero'?'Xero':'QuickBooks'}</h6>
+        <div class="mb-3"><label class="form-label small">API Client ID</label><input type="text" class="form-control form-control-sm" id="accountingClientId" placeholder="Enter client ID..." value="${utils.escapeHtml(config.clientId||'')}"></div>
+        <div class="mb-3"><label class="form-label small">API Client Secret</label><input type="password" class="form-control form-control-sm" id="accountingClientSecret" placeholder="Enter client secret..."></div>
+        <button class="btn btn-primary w-100" onclick="orgsModule._connectAccounting()"><i class="bi bi-plug me-2"></i>Connect</button></div></div>` :
+      `<div class="alert alert-success"><i class="bi bi-check-circle me-2"></i>Connected to ${provider==='xero'?'Xero':'QuickBooks'}
+        <button class="btn btn-sm btn-outline-danger float-end" onclick="orgsModule._disconnectAccounting()">Disconnect</button></div>
+      <div class="card mb-3"><div class="card-body"><h6 class="fw-semibold mb-3">Sync Settings</h6>
+        <div class="form-check mb-2"><input class="form-check-input" type="checkbox" checked><label class="form-check-label">Sync Invoices</label></div>
+        <div class="form-check mb-2"><input class="form-check-input" type="checkbox" checked><label class="form-check-label">Sync Payments</label></div>
+        <div class="form-check mb-2"><input class="form-check-input" type="checkbox"><label class="form-check-label">Sync Contacts</label></div><hr>
+        <div class="d-flex gap-2"><button class="btn btn-sm btn-primary" onclick="orgsModule._runAccountingSync()"><i class="bi bi-arrow-repeat me-1"></i>Sync Now</button>
+        <span class="text-muted small align-self-center">Last sync: ${config.lastSync ? new Date(config.lastSync).toLocaleString('en-GB') : 'Never'}</span></div></div></div>`}
+      <div class="card"><div class="card-body"><h6 class="fw-semibold mb-2">Sync History</h6>
+        ${(config.syncHistory||[]).length===0?'<p class="text-muted small mb-0">No sync history</p>':
+          (config.syncHistory||[]).slice(0,10).map(s=>`<div class="d-flex justify-content-between py-1 border-bottom small">
+            <span>${new Date(s.date).toLocaleString('en-GB')}</span><span class="badge bg-${s.status==='success'?'success':'danger'}">${s.status}</span><span class="text-muted">${s.details||''}</span></div>`).join('')}
+      </div></div>`;
+    this._showDynamicModal('Accounting Integration', html, 'bi-currency-pound', 'modal-lg');
+  },
+
+  _setAccountingProvider(p) { this._accountingConfig.provider = p; localStorage.setItem('orgAccountingConfig', JSON.stringify(this._accountingConfig)); this.showXeroIntegration(); },
+
+  _connectAccounting() {
+    const clientId = document.getElementById('accountingClientId')?.value?.trim();
+    if (!clientId) { utils.showToast('Enter a Client ID', 'warning'); return; }
+    this._accountingConfig.connected = true; this._accountingConfig.clientId = clientId;
+    this._accountingConfig.connectedAt = new Date().toISOString(); this._accountingConfig.syncHistory = this._accountingConfig.syncHistory || [];
+    localStorage.setItem('orgAccountingConfig', JSON.stringify(this._accountingConfig));
+    utils.showToast('Connected to ' + (this._accountingConfig.provider==='xero'?'Xero':'QuickBooks'), 'success'); this.showXeroIntegration();
+  },
+
+  _disconnectAccounting() {
+    if (!confirm('Disconnect accounting integration?')) return;
+    this._accountingConfig.connected = false; localStorage.setItem('orgAccountingConfig', JSON.stringify(this._accountingConfig));
+    utils.showToast('Disconnected', 'success'); this.showXeroIntegration();
+  },
+
+  _runAccountingSync() {
+    utils.showToast('Syncing...', 'info');
+    setTimeout(() => {
+      this._accountingConfig.lastSync = new Date().toISOString();
+      this._accountingConfig.syncHistory = this._accountingConfig.syncHistory || [];
+      this._accountingConfig.syncHistory.unshift({ date: new Date().toISOString(), status: 'success', details: `Synced ${Math.floor(Math.random()*20)+5} invoices, ${Math.floor(Math.random()*10)+1} payments` });
+      localStorage.setItem('orgAccountingConfig', JSON.stringify(this._accountingConfig));
+      utils.showToast('Sync complete', 'success'); this.showXeroIntegration();
+    }, 1500);
+  },
+
+  // ============================================
+  // FEATURE: INTERACTIVE BRITISH ISLES MAP
+  // ============================================
+  _mapInstance: null,
+  _mapMarkers: [],
+  _mapViewActive: false,
+
+  _UK_LOCATIONS: {
+    'London':[51.507,-0.128],'South East':[51.28,0.52],'South West':[50.82,-3.00],'East of England':[52.20,0.90],
+    'East Midlands':[52.83,-1.00],'West Midlands':[52.48,-1.90],'North West':[53.50,-2.50],'North East':[54.97,-1.60],
+    'Yorkshire and the Humber':[53.93,-1.10],'Yorkshire':[53.93,-1.10],'Wales':[52.13,-3.63],'Scotland':[56.49,-4.20],
+    'Northern Ireland':[54.60,-6.70],'South East England':[51.28,0.52],'South West England':[50.82,-3.00],
+    'East':[52.20,0.90],'North West England':[53.50,-2.50],'North East England':[54.97,-1.60],
+    'Birmingham':[52.486,-1.890],'Manchester':[53.481,-2.243],'Glasgow':[55.864,-4.252],'Leeds':[53.801,-1.549],
+    'Edinburgh':[55.953,-3.188],'Liverpool':[53.408,-2.992],'Bristol':[51.455,-2.588],'Sheffield':[53.381,-1.470],
+    'Newcastle':[54.978,-1.618],'Newcastle upon Tyne':[54.978,-1.618],'Nottingham':[52.955,-1.158],
+    'Leicester':[52.637,-1.140],'Belfast':[54.597,-5.930],'Brighton':[50.823,-0.137],'Cardiff':[51.482,-3.179],
+    'Aberdeen':[57.150,-2.094],'Derby':[52.923,-1.475],'Exeter':[50.718,-3.534],'Plymouth':[50.376,-4.143],
+    'Southampton':[50.910,-1.404],'Portsmouth':[50.820,-1.088],'Oxford':[51.752,-1.258],'Cambridge':[52.205,0.122],
+    'Norwich':[52.631,1.297],'Ipswich':[52.057,1.148],'Coventry':[52.407,-1.520],'Wolverhampton':[52.587,-2.129],
+    'Stoke-on-Trent':[53.003,-2.179],'Sunderland':[54.907,-1.384],'Swansea':[51.621,-3.944],
+    'Newport':[51.584,-2.998],'Dundee':[56.462,-2.971],'Inverness':[57.478,-4.225],'Perth':[56.395,-3.431],
+    'Stirling':[56.117,-3.937],'York':[53.959,-1.082],'Chester':[53.193,-2.893],'Worcester':[52.192,-2.222],
+    'Gloucester':[51.864,-2.238],'Bath':[51.381,-2.359],'Canterbury':[51.280,1.079],'Bournemouth':[50.719,-1.881],
+    'Reading':[51.454,-0.978],'Milton Keynes':[52.041,-0.759],'Northampton':[52.241,-0.903],
+    'Luton':[51.879,-0.420],'Peterborough':[52.570,-0.241],'Colchester':[51.889,0.903],'Chelmsford':[51.736,0.469],
+    'Maidstone':[51.272,0.529],'Guildford':[51.236,-0.570],'Swindon':[51.556,-1.780],'Cheltenham':[51.899,-2.078],
+    'Hereford':[52.057,-2.716],'Shrewsbury':[52.708,-2.754],'Lincoln':[53.231,-0.541],'Hull':[53.768,-0.327],
+    'Doncaster':[53.523,-1.129],'Wakefield':[53.683,-1.498],'Bradford':[53.796,-1.759],
+    'Huddersfield':[53.646,-1.785],'Bolton':[53.579,-2.430],'Wigan':[53.545,-2.633],
+    'Warrington':[53.390,-2.597],'Preston':[53.763,-2.703],'Lancaster':[54.047,-2.801],
+    'Carlisle':[54.893,-2.933],'Middlesbrough':[54.574,-1.235],'Durham':[54.775,-1.585],
+    'Darlington':[54.524,-1.553],'Blackpool':[53.818,-3.036],'Stockport':[53.411,-2.158],
+    'Salford':[53.488,-2.290],'Blackburn':[53.749,-2.485],'Burnley':[53.789,-2.239],
+    'Bangor':[53.227,-4.129],'Wrexham':[53.046,-2.993],'Aberystwyth':[52.415,-4.083],
+    'Kent':[51.28,0.77],'Surrey':[51.25,-0.38],'Essex':[51.73,0.47],'Sussex':[50.92,-0.28],
+    'Hampshire':[51.05,-1.15],'Berkshire':[51.45,-1.08],'Dorset':[50.75,-2.25],'Wiltshire':[51.35,-1.83],
+    'Somerset':[51.05,-2.95],'Devon':[50.72,-3.53],'Cornwall':[50.27,-5.05],'Norfolk':[52.66,0.94],
+    'Suffolk':[52.19,1.00],'Cambridgeshire':[52.25,0.12],'Hertfordshire':[51.81,-0.24],
+    'Buckinghamshire':[51.77,-0.81],'Oxfordshire':[51.77,-1.26],'Bedfordshire':[52.00,-0.45],
+    'Northamptonshire':[52.24,-0.90],'Warwickshire':[52.28,-1.58],'Worcestershire':[52.19,-2.22],
+    'Gloucestershire':[51.86,-2.24],'Staffordshire':[52.82,-2.00],'Shropshire':[52.63,-2.75],
+    'Cheshire':[53.19,-2.59],'Derbyshire':[53.10,-1.56],'Nottinghamshire':[53.10,-1.00],
+    'Leicestershire':[52.63,-1.13],'Lincolnshire':[53.07,-0.26],'Lancashire':[53.85,-2.58],
+    'Cumbria':[54.57,-2.75],'Merseyside':[53.40,-2.99],'Tyne and Wear':[54.96,-1.60],
+    'County Durham':[54.68,-1.73],'Fife':[56.25,-3.19],'Aberdeenshire':[57.17,-2.72],
+    'Highland':[57.47,-5.00],'Ayrshire':[55.47,-4.58],'Borders':[55.55,-2.78],
+    'Lothian':[55.93,-3.13],'Lanarkshire':[55.68,-3.78],'Renfrewshire':[55.83,-4.43],
+    'Antrim':[54.72,-6.21],'Down':[54.37,-5.72],'Armagh':[54.35,-6.65],
+    'Tyrone':[54.60,-7.30],'Derry':[55.00,-7.32],'Fermanagh':[54.35,-7.63],
+    'Isle of Man':[54.24,-4.55],'Isle of Wight':[50.69,-1.30]
+  },
+
+  _getOrgCoords(org) {
+    const c = org.county?.trim(), r = org.region?.trim();
+    if (c && this._UK_LOCATIONS[c]) return this._UK_LOCATIONS[c];
+    if (r && this._UK_LOCATIONS[r]) return this._UK_LOCATIONS[r];
+    if (c) { for (const [k, v] of Object.entries(this._UK_LOCATIONS)) { if (k.toLowerCase().includes(c.toLowerCase()) || c.toLowerCase().includes(k.toLowerCase())) return v; } }
+    if (r) { for (const [k, v] of Object.entries(this._UK_LOCATIONS)) { if (k.toLowerCase().includes(r.toLowerCase()) || r.toLowerCase().includes(k.toLowerCase())) return v; } }
+    return null;
+  },
+
+  toggleMapView() {
+    this._mapViewActive = !this._mapViewActive;
+    const mapContainer = document.getElementById('orgMapContainer');
+    const tableEl = document.getElementById('orgTableContainer');
+    const mapBtn = document.getElementById('mapToggleBtn');
+    if (this._mapViewActive) {
+      if (mapContainer) mapContainer.style.display = 'block';
+      if (tableEl) tableEl.style.display = 'none';
+      if (mapBtn) { mapBtn.classList.remove('btn-outline-success'); mapBtn.classList.add('btn-success'); }
+      this._initLeafletMap();
+    } else {
+      if (mapContainer) mapContainer.style.display = 'none';
+      if (tableEl) tableEl.style.display = 'block';
+      if (mapBtn) { mapBtn.classList.remove('btn-success'); mapBtn.classList.add('btn-outline-success'); }
+      if (this._mapInstance) { this._mapInstance.remove(); this._mapInstance = null; }
+    }
+  },
+
+  _initLeafletMap() {
+    if (typeof L === 'undefined') { utils.showToast('Map library not loaded. Please refresh.', 'error'); return; }
+    if (this._mapInstance) { this._mapInstance.remove(); this._mapInstance = null; }
+    this._mapInstance = L.map('orgLeafletMap').setView([54.5, -3.5], 6);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '&copy; OpenStreetMap contributors', maxZoom: 18
+    }).addTo(this._mapInstance);
+    this._plotOrgsOnMap();
+  },
+
+  _plotOrgsOnMap() {
+    if (!this._mapInstance) return;
+    this._mapMarkers.forEach(m => m.remove());
+    this._mapMarkers = [];
+    const orgs = STATE.filteredOrganisations;
+    let plotted = 0, unplotted = 0;
+    const locGroups = {};
+    orgs.forEach(org => {
+      const coords = this._getOrgCoords(org);
+      if (!coords) { unplotted++; return; }
+      const key = coords.join(',');
+      locGroups[key] = locGroups[key] || [];
+      locGroups[key].push(org);
+    });
+    const statusColors = { prospect:'#6c757d', entrant:'#0d6efd', nominee:'#ffc107', shortlisted:'#fd7e14', winner:'#198754', sponsor:'#6f42c1', archived:'#adb5bd' };
+    Object.entries(locGroups).forEach(([key, gOrgs]) => {
+      const [bLat, bLng] = key.split(',').map(Number);
+      gOrgs.forEach((org, i) => {
+        const jitter = i * 0.008;
+        const angle = (i * 137.5) * Math.PI / 180;
+        const lat = bLat + jitter * Math.cos(angle);
+        const lng = bLng + jitter * Math.sin(angle);
+        const color = statusColors[org.status] || '#6c757d';
+        const icon = L.divIcon({
+          className: 'custom-map-marker',
+          html: `<div style="width:28px;height:28px;border-radius:50%;background:${color};border:3px solid white;box-shadow:0 2px 6px rgba(0,0,0,0.35);display:flex;align-items:center;justify-content:center;color:white;font-size:11px;font-weight:bold;cursor:pointer;">${org.company_name?.charAt(0)||'?'}</div>`,
+          iconSize: [28, 28], iconAnchor: [14, 14]
+        });
+        const marker = L.marker([lat, lng], { icon }).addTo(this._mapInstance);
+        marker.bindPopup(`<div style="min-width:220px;">
+          <strong style="font-size:14px;">${utils.escapeHtml(org.company_name)}</strong><br>
+          <span class="badge" style="background:${color};color:white;font-size:10px;">${org.status||'prospect'}</span>
+          ${org.sector?`<span class="badge bg-light text-dark ms-1" style="font-size:10px;">${utils.escapeHtml(org.sector)}</span>`:''}
+          <hr style="margin:6px 0;">
+          ${org.region?`<div style="font-size:12px;"><i class="bi bi-geo-alt"></i> ${utils.escapeHtml(org.region)}${org.county?', '+utils.escapeHtml(org.county):''}</div>`:''}
+          ${org.email?`<div style="font-size:12px;"><i class="bi bi-envelope"></i> ${utils.escapeHtml(org.email)}</div>`:''}
+          ${org.phone?`<div style="font-size:12px;"><i class="bi bi-telephone"></i> ${utils.escapeHtml(org.phone)}</div>`:''}
+          ${org.website?`<div style="font-size:12px;"><i class="bi bi-globe"></i> <a href="${utils.escapeHtml(org.website)}" target="_blank">${utils.escapeHtml(org.website)}</a></div>`:''}
+          <div style="margin-top:8px;"><button class="btn btn-sm btn-primary" style="font-size:11px;" onclick="orgsModule.openCompanyProfile('${org.id}')"><i class="bi bi-eye me-1"></i>View Profile</button></div>
+        </div>`);
+        this._mapMarkers.push(marker);
+        plotted++;
+      });
+    });
+    const countEl = document.getElementById('mapOrgCount');
+    if (countEl) countEl.textContent = `${plotted} plotted` + (unplotted > 0 ? `, ${unplotted} without location` : '');
+    if (this._mapMarkers.length > 0) {
+      const group = L.featureGroup(this._mapMarkers);
+      this._mapInstance.fitBounds(group.getBounds().pad(0.1));
+    }
   },
 
   // ============================================

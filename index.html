@@ -1803,6 +1803,18 @@
               <button class="btn btn-sm btn-outline-secondary" onclick="orgsModule.showImportHistory()" title="Import History">
                 <i class="bi bi-clock-history"></i>
               </button>
+              <button class="btn btn-sm btn-outline-secondary" onclick="orgsModule.showTagFilterModal()" title="Multi-Tag Filter">
+                <i class="bi bi-tags"></i>
+              </button>
+              <button class="btn btn-sm btn-outline-secondary" onclick="orgsModule.showSegmentsBuilder()" title="Smart Segments">
+                <i class="bi bi-funnel"></i>
+              </button>
+              <button class="btn btn-sm btn-outline-secondary" onclick="orgsModule.saveView()" title="Save Current View">
+                <i class="bi bi-bookmark-plus"></i>
+              </button>
+              <button class="btn btn-sm btn-outline-secondary" onclick="orgsModule.showSavedViews()" title="Load Saved View">
+                <i class="bi bi-bookmarks"></i>
+              </button>
             </div>
           </div>
         </div>
@@ -1917,7 +1929,9 @@
             <form id="addCompanyForm">
               <div class="mb-3">
                 <label for="newCompanyName" class="form-label">Company Name *</label>
-                <input type="text" class="form-control" id="newCompanyName" required>
+                <input type="text" class="form-control" id="newCompanyName" required
+                       oninput="orgsModule._liveCheckDuplicate(this.value)">
+                <div id="duplicateWarning" class="small text-warning mt-1" style="display:none;"></div>
               </div>
               <div class="row mb-3">
                 <div class="col-md-6">
@@ -2201,8 +2215,20 @@
           <button class="btn btn-sm btn-primary" onclick="orgsModule.bulkEmail()">
             <i class="bi bi-envelope me-1"></i>Email
           </button>
-          <button class="btn btn-sm btn-outline-secondary" onclick="orgsModule.bulkExport()">
-            <i class="bi bi-download me-1"></i>Export
+          <div class="dropdown d-inline-block">
+            <button class="btn btn-sm btn-outline-secondary dropdown-toggle" data-bs-toggle="dropdown">
+              <i class="bi bi-download me-1"></i>Export
+            </button>
+            <ul class="dropdown-menu">
+              <li><a class="dropdown-item small" href="#" onclick="orgsModule.bulkExport('csv')"><i class="bi bi-filetype-csv me-2"></i>Export CSV</a></li>
+              <li><a class="dropdown-item small" href="#" onclick="orgsModule.bulkExport('excel')"><i class="bi bi-file-earmark-spreadsheet me-2"></i>Export Excel</a></li>
+            </ul>
+          </div>
+          <button class="btn btn-sm btn-outline-info" onclick="orgsModule.showOrgComparison()" title="Compare selected (2-4)">
+            <i class="bi bi-layout-split me-1"></i>Compare
+          </button>
+          <button class="btn btn-sm btn-outline-secondary" onclick="orgsModule.showBulkCustomFieldModal()" title="Bulk edit custom field">
+            <i class="bi bi-input-cursor-text me-1"></i>Custom Field
           </button>
           <button class="btn btn-sm btn-outline-warning" onclick="orgsModule.showMergeDuplicatesModal()" title="Merge selected organisations">
             <i class="bi bi-intersect me-1"></i>Merge

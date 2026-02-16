@@ -138,6 +138,9 @@ async loadOrganisations() {
     // NEW: Calculate and display dashboard stats
     await this.calculateDashboardStats();
 
+    // Show overdue follow-up alert on page load
+    this._showFollowUpAlert();
+
     // Save current filter state in-memory before repopulating dropdowns
     const savedFilters = {
       year: document.getElementById('orgsYearFilter')?.value || '',
@@ -469,8 +472,13 @@ updateCountyFilterByRegion() {
     // Tier filter
     if (tier && (org.tier || '') !== tier) return false;
 
-    // Tag filter
+    // Tag filter (single dropdown)
     if (tag && !(org.tags && org.tags.includes(tag))) return false;
+
+    // Multi-tag filter (AND logic)
+    if (this._selectedTagFilters && this._selectedTagFilters.length > 0) {
+      if (!this._selectedTagFilters.every(t => org.tags && org.tags.includes(t))) return false;
+    }
 
     // Logo filter
     if (logoFilter === 'has' && !org.logo_url) return false;
@@ -957,6 +965,10 @@ updateCountyFilterByRegion() {
                   <textarea class="form-control form-control-sm edit-mode" id="editCatchmentArea"
                     rows="3" style="display: none;" placeholder="e.g., London, Southeast England, National">${utils.escapeHtml(org.catchment_area || '')}</textarea>
                 </div>
+                <hr class="my-2">
+                <button class="btn btn-sm btn-outline-info w-100" onclick="orgsModule.companiesHouseLookup('${org.id}')">
+                  <i class="bi bi-bank me-1"></i>Companies House Lookup
+                </button>
               </div>
             </div>
           </div>
@@ -1440,8 +1452,9 @@ updateCountyFilterByRegion() {
                 <div id="orgFollowUpsList"></div>
                 <hr class="my-2">
                 <div class="row g-2">
-                  <div class="col-5"><input type="date" class="form-control form-control-sm" id="followUpDate" min="${new Date().toISOString().split('T')[0]}"></div>
-                  <div class="col-5"><input type="text" class="form-control form-control-sm" id="followUpNote" placeholder="Reminder note..."></div>
+                  <div class="col-4"><input type="date" class="form-control form-control-sm" id="followUpDate" min="${new Date().toISOString().split('T')[0]}"></div>
+                  <div class="col-3"><input type="text" class="form-control form-control-sm" id="followUpNote" placeholder="Reminder note..."></div>
+                  <div class="col-3"><input type="email" class="form-control form-control-sm" id="followUpAssignee" placeholder="Assign to (email)"></div>
                   <div class="col-2"><button class="btn btn-sm btn-primary w-100" onclick="orgsModule.addFollowUp('${orgId}')"><i class="bi bi-plus"></i></button></div>
                 </div>
               </div></div>
@@ -1502,6 +1515,8 @@ updateCountyFilterByRegion() {
                   <option value="co_sponsor">Co-Sponsor</option>
                   <option value="partner">Partner</option>
                   <option value="franchise">Franchise</option>
+                  <option value="competitor">Competitor</option>
+                  <option value="supplier">Supplier</option>
                 </select>
               </div>
               <div class="col-md-4"><button class="btn btn-sm btn-primary" onclick="orgsModule.addRelationship('${orgId}')"><i class="bi bi-link me-1"></i>Link</button></div>
@@ -2807,6 +2822,7 @@ updateCountyFilterByRegion() {
       return 0;
     });
 
+    this._currentPage = 1;
     this.renderOrganisations();
   },
 
@@ -2916,15 +2932,27 @@ updateCountyFilterByRegion() {
   // ============================================
   // BULK EMAIL CAMPAIGN
   // ============================================
-  bulkEmail() {
+  async bulkEmail() {
     if (this.selectedOrgs.size === 0) {
       utils.showToast('No organisations selected', 'warning');
       return;
     }
 
     const selectedData = STATE.allOrganisations.filter(org => this.selectedOrgs.has(org.id));
-    const withEmail = selectedData.filter(o => o.email);
-    const withoutEmail = selectedData.filter(o => !o.email);
+
+    // Fetch contact-level emails for all selected orgs
+    const contactEmails = await this._getContactEmails(Array.from(this.selectedOrgs));
+    const contactsByOrg = {};
+    contactEmails.forEach(c => {
+      if (!c.email) return;
+      if (!contactsByOrg[c.organisation_id]) contactsByOrg[c.organisation_id] = [];
+      contactsByOrg[c.organisation_id].push(c);
+    });
+
+    const withEmail = selectedData.filter(o => o.email || contactsByOrg[o.id]?.length > 0);
+    const withoutEmail = selectedData.filter(o => !o.email && !contactsByOrg[o.id]?.length);
+    const totalContactEmails = Object.values(contactsByOrg).reduce((sum, arr) => sum + arr.length, 0);
+    this._bulkEmailContacts = contactsByOrg;
 
     const templates = this._emailTemplates;
 
@@ -2932,8 +2960,13 @@ updateCountyFilterByRegion() {
       <div class="row g-3">
         <div class="col-12">
           <div class="alert alert-info small py-2 mb-2">
-            <i class="bi bi-people me-1"></i><strong>${withEmail.length}</strong> recipient(s) with email
-            ${withoutEmail.length > 0 ? ` &middot; <span class="text-warning">${withoutEmail.length} without email (skipped)</span>` : ''}
+            <i class="bi bi-people me-1"></i><strong>${withEmail.length}</strong> org(s) with email
+            ${totalContactEmails > 0 ? ` &middot; <span class="text-success">${totalContactEmails} additional contact email(s)</span>` : ''}
+            ${withoutEmail.length > 0 ? ` &middot; <span class="text-warning">${withoutEmail.length} without any email (skipped)</span>` : ''}
+          </div>
+          <div class="form-check form-switch mb-2">
+            <input class="form-check-input" type="checkbox" id="includeContactEmails" checked>
+            <label class="form-check-label small" for="includeContactEmails">Include contact-level emails</label>
           </div>
         </div>
         <div class="col-12">
@@ -3016,13 +3049,24 @@ updateCountyFilterByRegion() {
     if (!subject || !body) { utils.showToast('Enter subject and body', 'warning'); return; }
 
     const selectedData = STATE.allOrganisations.filter(org => this.selectedOrgs.has(org.id) && org.email);
-    if (selectedData.length === 0) { utils.showToast('No recipients with email addresses', 'warning'); return; }
+    const includeContacts = document.getElementById('includeContactEmails')?.checked;
+    const contactsByOrg = this._bulkEmailContacts || {};
 
-    if (!confirm(`Send email to ${selectedData.length} organisation(s) via ${method === 'bcc' ? 'BCC' : 'individual emails'}?`)) return;
+    // Build full email list
+    let allEmails = selectedData.map(o => o.email);
+    if (includeContacts) {
+      Object.values(contactsByOrg).forEach(contacts => {
+        contacts.forEach(c => { if (c.email && !allEmails.includes(c.email)) allEmails.push(c.email); });
+      });
+    }
+
+    if (allEmails.length === 0) { utils.showToast('No recipients with email addresses', 'warning'); return; }
+
+    if (!confirm(`Send email to ${allEmails.length} recipient(s) via ${method === 'bcc' ? 'BCC' : 'individual emails'}?`)) return;
 
     if (method === 'bcc') {
       // BCC mode: single mailto with all addresses in BCC
-      const emails = selectedData.map(o => o.email).join(',');
+      const emails = allEmails.join(',');
       const bccSubject = subject.replace(/{company_name}/g, '').replace(/{contact_name}/g, '');
       const bccBody = body.replace(/{company_name}/g, '').replace(/{contact_name}/g, '');
       window.open(`mailto:?bcc=${encodeURIComponent(emails)}&subject=${encodeURIComponent(bccSubject)}&body=${encodeURIComponent(bccBody)}`);
@@ -3067,7 +3111,7 @@ updateCountyFilterByRegion() {
   // ============================================
   // BULK EXPORT
   // ============================================
-  bulkExport() {
+  bulkExport(format) {
     if (this.selectedOrgs.size === 0) {
       utils.showToast('No organisations selected', 'warning');
       return;
@@ -3075,7 +3119,11 @@ updateCountyFilterByRegion() {
 
     const originalFiltered = STATE.filteredOrganisations;
     STATE.filteredOrganisations = STATE.allOrganisations.filter(org => this.selectedOrgs.has(org.id));
-    this.exportToCSV();
+    if (format === 'excel') {
+      this.exportToExcel();
+    } else {
+      this.exportToCSV();
+    }
     STATE.filteredOrganisations = originalFiltered;
   },
 
@@ -4761,16 +4809,19 @@ updateCountyFilterByRegion() {
   async addFollowUp(orgId) {
     const date = document.getElementById('followUpDate')?.value;
     const note = document.getElementById('followUpNote')?.value.trim();
+    const assignee = document.getElementById('followUpAssignee')?.value.trim() || null;
     if (!date) { utils.showToast('Select a date', 'warning'); return; }
 
     const org = STATE.allOrganisations.find(o => o.id === orgId);
     try {
-      const { error } = await STATE.client.from('organisation_follow_ups').insert([{
+      const insertData = {
         organisation_id: orgId, company_name: org?.company_name || '',
         follow_up_date: date, note: note || null
-      }]);
+      };
+      if (assignee) insertData.assigned_to = assignee;
+      const { error } = await STATE.client.from('organisation_follow_ups').insert([insertData]);
       if (error) throw error;
-      utils.showToast('Follow-up scheduled', 'success');
+      utils.showToast('Follow-up scheduled' + (assignee ? ` (assigned to ${assignee})` : ''), 'success');
       if (org) this.openCompanyProfile(orgId, org.company_name);
     } catch (e) { utils.showToast('Error: ' + e.message, 'error'); }
   },
@@ -5385,6 +5436,53 @@ updateCountyFilterByRegion() {
             </tbody></table></div>` : '<p class="text-muted small">No winners data to show win rates</p>'}
           </div></div>
         </div>
+
+        <!-- Engagement Distribution -->
+        <div class="col-md-6">
+          <h6 class="fw-semibold mb-3"><i class="bi bi-speedometer2 me-2"></i>Engagement Distribution</h6>
+          <div class="card"><div class="card-body">
+            ${(() => {
+              const buckets = { '0-20': 0, '21-40': 0, '41-60': 0, '61-80': 0, '81-100': 0 };
+              orgs.forEach(o => {
+                const s = this.calculateEngagementScore(o);
+                if (s <= 20) buckets['0-20']++;
+                else if (s <= 40) buckets['21-40']++;
+                else if (s <= 60) buckets['41-60']++;
+                else if (s <= 80) buckets['61-80']++;
+                else buckets['81-100']++;
+              });
+              const maxB = Math.max(...Object.values(buckets)) || 1;
+              const colors = { '0-20': '#dc3545', '21-40': '#fd7e14', '41-60': '#ffc107', '61-80': '#20c997', '81-100': '#198754' };
+              return Object.entries(buckets).map(([range, count]) => `
+                <div class="d-flex align-items-center mb-2">
+                  <span class="small fw-semibold me-2" style="width: 55px;">${range}</span>
+                  <div class="flex-grow-1"><div class="progress" style="height: 20px;">
+                    <div class="progress-bar" style="width: ${(count / maxB) * 100}%; background-color: ${colors[range]}">${count}</div>
+                  </div></div>
+                </div>`).join('');
+            })()}
+          </div></div>
+        </div>
+
+        <!-- Tier Distribution -->
+        <div class="col-md-6">
+          <h6 class="fw-semibold mb-3"><i class="bi bi-gem me-2"></i>Tier Distribution</h6>
+          <div class="card"><div class="card-body">
+            ${(() => {
+              const tierCounts = { 'Platinum': 0, 'Gold': 0, 'Silver': 0, 'Bronze': 0, 'None': 0 };
+              orgs.forEach(o => { tierCounts[o.tier || 'None']++; });
+              const maxT = Math.max(...Object.values(tierCounts)) || 1;
+              const tierColors = { 'Platinum': '#E5E4E2', 'Gold': '#FFD700', 'Silver': '#C0C0C0', 'Bronze': '#CD7F32', 'None': '#dee2e6' };
+              return Object.entries(tierCounts).map(([tier, count]) => `
+                <div class="d-flex align-items-center mb-2">
+                  <span class="small fw-semibold me-2" style="width: 65px;">${tier}</span>
+                  <div class="flex-grow-1"><div class="progress" style="height: 20px;">
+                    <div class="progress-bar" style="width: ${(count / maxT) * 100}%; background-color: ${tierColors[tier]}; color: #333;">${count}</div>
+                  </div></div>
+                </div>`).join('');
+            })()}
+          </div></div>
+        </div>
       </div>`;
 
     this._showDynamicModal('Analytics & Reporting', html, 'bi-bar-chart', 'modal-xl');
@@ -5605,7 +5703,7 @@ updateCountyFilterByRegion() {
       ...relationships.outgoing.map(r => ({ id: r.id, type: r.relationship_type, org: r.related, direction: 'outgoing' })),
       ...relationships.incoming.map(r => ({ id: r.id, type: r.relationship_type, org: r.source, direction: 'incoming' }))
     ];
-    const typeLabels = { parent: 'Parent Company', subsidiary: 'Subsidiary', co_sponsor: 'Co-Sponsor', partner: 'Partner', franchise: 'Franchise', related: 'Related' };
+    const typeLabels = { parent: 'Parent Company', subsidiary: 'Subsidiary', co_sponsor: 'Co-Sponsor', partner: 'Partner', franchise: 'Franchise', related: 'Related', competitor: 'Competitor', supplier: 'Supplier' };
 
     if (all.length === 0) return '<p class="text-muted small mb-0">No linked organisations</p>';
     return `<div class="list-group list-group-flush">
@@ -5769,17 +5867,31 @@ updateCountyFilterByRegion() {
   calculateEngagementScore(org) {
     let score = 0;
     const daysSinceUpdate = org.updated_at ? Math.floor((Date.now() - new Date(org.updated_at).getTime()) / 86400000) : 999;
+    // Activity recency (time decay: exponential falloff)
     if (daysSinceUpdate < 7) score += 40;
     else if (daysSinceUpdate < 30) score += 25;
     else if (daysSinceUpdate < 90) score += 10;
+    else if (daysSinceUpdate < 180) score += 3;
+    // else 0 — stale orgs get no recency points
 
-    if (org.email) score += 10;
-    if (org.contact_name) score += 10;
-    if (org.logo_url) score += 10;
+    // Last contacted decay
+    const lastContacted = this.getLastContacted(org.id);
+    if (lastContacted) {
+      const daysSinceContact = Math.floor((Date.now() - new Date(lastContacted).getTime()) / 86400000);
+      if (daysSinceContact < 14) score += 15;
+      else if (daysSinceContact < 30) score += 10;
+      else if (daysSinceContact < 90) score += 5;
+    }
+
+    if (org.email) score += 8;
+    if (org.contact_name) score += 7;
+    if (org.logo_url) score += 5;
     if (org.website) score += 5;
     if (org.description) score += 5;
-    if (org.awards_count > 0) score += 20;
-    if (org.tier) score += 10;
+    if (org.awards_count > 0) score += 15;
+    if (org.tier) score += 5;
+    if (org.contact_phone) score += 3;
+    if ((org.tags || []).length > 0) score += 2;
     return Math.min(score, 100);
   },
 
@@ -6060,6 +6172,12 @@ updateCountyFilterByRegion() {
         const row = rows[this._selectedRowIndex];
         const link = row?.querySelector('a.text-primary');
         if (link) link.click();
+      } else if (e.key === ' ' && this._selectedRowIndex >= 0) {
+        // Space = toggle checkbox selection on highlighted row
+        e.preventDefault();
+        const row = rows[this._selectedRowIndex];
+        const cb = row?.querySelector('input[type="checkbox"]');
+        if (cb) { cb.checked = !cb.checked; cb.dispatchEvent(new Event('change')); }
       } else if (e.key === 'Escape') {
         // Close any open modal
         const openModal = document.querySelector('.modal.show');
@@ -6072,6 +6190,18 @@ updateCountyFilterByRegion() {
       } else if (e.key === '/' && !e.ctrlKey && !e.metaKey) {
         e.preventDefault();
         document.getElementById('orgsSearchBox')?.focus();
+      } else if (e.key === 'n' && (e.ctrlKey || e.metaKey)) {
+        // Ctrl+N = Add new org
+        e.preventDefault();
+        new bootstrap.Modal(document.getElementById('addNewOrgModal'))?.show();
+      } else if (e.key === 'ArrowRight' && e.ctrlKey) {
+        // Ctrl+Right = next page
+        e.preventDefault();
+        this.goToPage(this._currentPage + 1);
+      } else if (e.key === 'ArrowLeft' && e.ctrlKey) {
+        // Ctrl+Left = prev page
+        e.preventDefault();
+        this.goToPage(this._currentPage - 1);
       }
     });
   },
@@ -6480,6 +6610,627 @@ updateCountyFilterByRegion() {
     }
 
     utils.showToast(`${toPromote.length} org(s) auto-promoted to "nominee"`, 'info');
+  },
+
+  // ============================================
+  // FEATURE: LIVE DUPLICATE CHECK ON ADD FORM
+  // ============================================
+  _liveCheckDuplicate(name) {
+    const warningEl = document.getElementById('duplicateWarning');
+    if (!warningEl) return;
+    if (!name || name.length < 3) { warningEl.style.display = 'none'; return; }
+    const dupes = this.checkDuplicateOnEntry(name);
+    if (dupes && dupes.length > 0) {
+      warningEl.style.display = '';
+      warningEl.innerHTML = `<i class="bi bi-exclamation-triangle me-1"></i>Possible duplicates: <strong>${dupes.map(d => utils.escapeHtml(d)).join(', ')}</strong>`;
+    } else {
+      warningEl.style.display = 'none';
+    }
+  },
+
+  // ============================================
+  // FEATURE: FOLLOW-UP AUTO-ALERT ON PAGE LOAD
+  // ============================================
+  _showFollowUpAlert() {
+    const overdue = this._overdueFollowUps || [];
+    if (overdue.length === 0) return;
+    // Only show once per session
+    if (this._followUpAlertShown) return;
+    this._followUpAlertShown = true;
+
+    const alertHtml = `<div id="followUpAlert" class="alert alert-danger alert-dismissible fade show d-flex align-items-center gap-2 mb-3" role="alert" style="animation: fadeIn 0.3s;">
+      <i class="bi bi-bell-fill"></i>
+      <div>You have <strong>${overdue.length}</strong> overdue follow-up${overdue.length > 1 ? 's' : ''} —
+        <a href="#" class="alert-link" onclick="event.preventDefault(); orgsModule.showOverdueFollowUps();">View all</a>
+      </div>
+      <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>`;
+
+    const container = document.getElementById('orgTableContainer');
+    if (container) container.insertAdjacentHTML('beforebegin', alertHtml);
+  },
+
+  // ============================================
+  // FEATURE: CONTACT-LEVEL EMAIL IN BULK CAMPAIGNS
+  // ============================================
+  async _getContactEmails(orgIds) {
+    try {
+      const { data } = await STATE.client.from('organisation_contacts')
+        .select('organisation_id, first_name, last_name, email')
+        .in('organisation_id', orgIds);
+      return data || [];
+    } catch (e) { return []; }
+  },
+
+  // ============================================
+  // FEATURE: BULK EDIT CUSTOM FIELDS
+  // ============================================
+  async showBulkCustomFieldModal() {
+    if (this.selectedOrgs.size === 0) { utils.showToast('No organisations selected', 'warning'); return; }
+
+    const html = `
+      <p class="small text-muted">Set a custom field value on <strong>${this.selectedOrgs.size}</strong> selected organisations.</p>
+      <div class="mb-3">
+        <label class="form-label fw-semibold small">Field Name</label>
+        <input type="text" class="form-control form-control-sm" id="bulkCustomFieldName" placeholder="e.g. Priority, Account Manager, Category">
+      </div>
+      <div class="mb-3">
+        <label class="form-label fw-semibold small">Field Value</label>
+        <input type="text" class="form-control form-control-sm" id="bulkCustomFieldValue" placeholder="Enter value (leave empty to delete field)">
+      </div>
+      <button class="btn btn-primary btn-sm" onclick="orgsModule.executeBulkCustomField()">
+        <i class="bi bi-pencil-square me-1"></i>Apply to ${this.selectedOrgs.size} org(s)
+      </button>`;
+
+    this._showDynamicModal('Bulk Edit Custom Field', html, 'bi-input-cursor-text');
+  },
+
+  async executeBulkCustomField() {
+    const fieldName = document.getElementById('bulkCustomFieldName')?.value.trim();
+    const fieldValue = document.getElementById('bulkCustomFieldValue')?.value.trim();
+    if (!fieldName) { utils.showToast('Enter a field name', 'warning'); return; }
+
+    try {
+      utils.showLoading();
+      const orgIds = Array.from(this.selectedOrgs);
+      for (const orgId of orgIds) {
+        await this.saveCustomField(orgId, fieldName, fieldValue);
+      }
+      utils.showToast(`Custom field "${fieldName}" updated on ${orgIds.length} org(s)`, 'success');
+      bootstrap.Modal.getInstance(document.getElementById('dynamicOrgModal'))?.hide();
+    } catch (e) { utils.showToast('Error: ' + e.message, 'error'); }
+    finally { utils.hideLoading(); }
+  },
+
+  // ============================================
+  // FEATURE: FOLLOW-UP ASSIGNMENT TO USER
+  // ============================================
+  async addFollowUpWithAssignee(orgId) {
+    const date = document.getElementById('followUpDate')?.value;
+    const note = document.getElementById('followUpNote')?.value.trim();
+    const assignee = document.getElementById('followUpAssignee')?.value.trim() || null;
+    if (!date) { utils.showToast('Select a date', 'warning'); return; }
+
+    const org = STATE.allOrganisations.find(o => o.id === orgId);
+    try {
+      const { error } = await STATE.client.from('organisation_follow_ups').insert([{
+        organisation_id: orgId, company_name: org?.company_name || '',
+        follow_up_date: date, note: note || null, assigned_to: assignee
+      }]);
+      if (error) throw error;
+      utils.showToast('Follow-up scheduled' + (assignee ? ` (assigned to ${assignee})` : ''), 'success');
+      if (org) this.openCompanyProfile(orgId, org.company_name);
+    } catch (e) { utils.showToast('Error: ' + e.message, 'error'); }
+  },
+
+  // ============================================
+  // FEATURE: DASHBOARD CHART VISUALISATIONS
+  // ============================================
+  _renderBarChart(data, maxVal, colorClass) {
+    return data.map(([label, count]) => {
+      const pct = Math.round((count / maxVal) * 100);
+      return `<div class="d-flex align-items-center gap-2 mb-1">
+        <span class="small text-end" style="width: 120px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${utils.escapeHtml(label)}">${utils.escapeHtml(label)}</span>
+        <div class="flex-grow-1" style="height: 20px; background: #f0f0f0; border-radius: 3px;">
+          <div style="width: ${pct}%; height: 100%; background: ${colorClass}; border-radius: 3px; transition: width 0.3s;"></div>
+        </div>
+        <span class="small fw-semibold" style="width: 35px;">${count}</span>
+      </div>`;
+    }).join('');
+  },
+
+  // ============================================
+  // FEATURE: MULTI-SELECT TAG FILTER
+  // ============================================
+  _selectedTagFilters: [],
+
+  toggleTagFilter(tag) {
+    const idx = this._selectedTagFilters.indexOf(tag);
+    if (idx >= 0) {
+      this._selectedTagFilters.splice(idx, 1);
+    } else {
+      this._selectedTagFilters.push(tag);
+    }
+    this.filterOrganisations();
+  },
+
+  showTagFilterModal() {
+    const allTags = [...new Set(STATE.allOrganisations.flatMap(o => o.tags || []))].sort();
+    if (allTags.length === 0) { utils.showToast('No tags found', 'info'); return; }
+
+    const html = `
+      <p class="small text-muted mb-2">Select multiple tags to filter by (AND logic).</p>
+      <div class="d-flex flex-wrap gap-2 mb-3">
+        ${allTags.map(t => {
+          const active = this._selectedTagFilters.includes(t);
+          return `<button class="btn btn-sm ${active ? 'btn-primary' : 'btn-outline-secondary'}" onclick="orgsModule.toggleTagFilter('${utils.escapeHtml(t).replace(/'/g, "\\'")}'); document.getElementById('dynamicOrgModal')?.querySelector('.btn-close')?.click(); setTimeout(() => orgsModule.showTagFilterModal(), 200);">
+            ${utils.escapeHtml(t)}
+          </button>`;
+        }).join('')}
+      </div>
+      <div class="d-flex gap-2">
+        <button class="btn btn-sm btn-outline-danger" onclick="orgsModule._selectedTagFilters = []; orgsModule.filterOrganisations(); document.getElementById('dynamicOrgModal')?.querySelector('.btn-close')?.click();">
+          <i class="bi bi-x-circle me-1"></i>Clear All Tags
+        </button>
+      </div>
+      ${this._selectedTagFilters.length > 0 ? `<div class="mt-2 small text-muted">Active: <strong>${this._selectedTagFilters.map(t => utils.escapeHtml(t)).join(' + ')}</strong></div>` : ''}`;
+
+    this._showDynamicModal('Multi-Tag Filter', html, 'bi-tags');
+  },
+
+  // ============================================
+  // FEATURE: DRAG-AND-DROP ROW REORDERING
+  // ============================================
+  _draggedOrgId: null,
+  _customOrgOrder: (() => {
+    try { return JSON.parse(localStorage.getItem('orgsCustomOrder') || '[]'); } catch (e) { return []; }
+  })(),
+
+  enableDragDrop() {
+    this._dragDropEnabled = !this._dragDropEnabled;
+    const btn = document.getElementById('dragDropToggleBtn');
+    if (btn) btn.classList.toggle('active', this._dragDropEnabled);
+    this.renderOrganisations();
+    utils.showToast(this._dragDropEnabled ? 'Drag & drop enabled — drag rows to reorder' : 'Drag & drop disabled', 'info');
+  },
+
+  _handleDragStart(orgId, e) {
+    this._draggedOrgId = orgId;
+    e.dataTransfer.effectAllowed = 'move';
+    e.target.closest('tr').style.opacity = '0.4';
+  },
+
+  _handleDragOver(e) {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    const tr = e.target.closest('tr');
+    if (tr) tr.style.borderTop = '2px solid #0d6efd';
+  },
+
+  _handleDragLeave(e) {
+    const tr = e.target.closest('tr');
+    if (tr) tr.style.borderTop = '';
+  },
+
+  _handleDrop(targetOrgId, e) {
+    e.preventDefault();
+    const tr = e.target.closest('tr');
+    if (tr) tr.style.borderTop = '';
+
+    if (!this._draggedOrgId || this._draggedOrgId === targetOrgId) return;
+
+    // Reorder in filtered array
+    const arr = STATE.filteredOrganisations;
+    const fromIdx = arr.findIndex(o => o.id === this._draggedOrgId);
+    const toIdx = arr.findIndex(o => o.id === targetOrgId);
+    if (fromIdx < 0 || toIdx < 0) return;
+
+    const [moved] = arr.splice(fromIdx, 1);
+    arr.splice(toIdx, 0, moved);
+
+    // Save custom order
+    this._customOrgOrder = arr.map(o => o.id);
+    try { localStorage.setItem('orgsCustomOrder', JSON.stringify(this._customOrgOrder)); } catch (e) {}
+
+    this._draggedOrgId = null;
+    this.renderOrganisations();
+  },
+
+  _handleDragEnd(e) {
+    e.target.closest('tr').style.opacity = '';
+    this._draggedOrgId = null;
+  },
+
+  // ============================================
+  // FEATURE: SAVED VIEWS (filter + sort + columns)
+  // ============================================
+  saveView() {
+    const name = prompt('Name this view:');
+    if (!name || !name.trim()) return;
+    try {
+      const views = JSON.parse(localStorage.getItem('orgsSavedViews') || '{}');
+      views[name.trim()] = {
+        filters: {
+          year: document.getElementById('orgsYearFilter')?.value || '',
+          sector: document.getElementById('orgsSectorFilter')?.value || '',
+          region: document.getElementById('orgsRegionFilter')?.value || '',
+          county: document.getElementById('orgsCountyFilter')?.value || '',
+          status: document.getElementById('orgsStatusFilter')?.value || '',
+          search: document.getElementById('orgsSearchBox')?.value || '',
+          tier: document.getElementById('orgsTierFilter')?.value || '',
+          tag: document.getElementById('orgsTagFilter')?.value || '',
+          logoFilter: document.getElementById('orgsLogoFilter')?.value || '',
+          dateFilter: document.getElementById('orgsDateFilter')?.value || ''
+        },
+        sort: { field: this.sortField, direction: this.sortDirection },
+        columns: { ...this._columnVisibility },
+        pageSize: this._pageSize,
+        tagFilters: [...this._selectedTagFilters]
+      };
+      localStorage.setItem('orgsSavedViews', JSON.stringify(views));
+      utils.showToast(`View "${name.trim()}" saved`, 'success');
+    } catch (e) { utils.showToast('Error saving view', 'error'); }
+  },
+
+  showSavedViews() {
+    const views = (() => { try { return JSON.parse(localStorage.getItem('orgsSavedViews') || '{}'); } catch (e) { return {}; } })();
+    const names = Object.keys(views);
+
+    if (names.length === 0) {
+      utils.showToast('No saved views yet. Use the Save View button to create one.', 'info');
+      return;
+    }
+
+    const html = `
+      <p class="small text-muted mb-3">Load a saved view to restore filters, sort, columns, and page size.</p>
+      <div class="list-group">
+        ${names.map(n => `<div class="list-group-item d-flex justify-content-between align-items-center">
+          <div>
+            <strong>${utils.escapeHtml(n)}</strong>
+            <div class="small text-muted">${Object.entries(views[n].filters).filter(([k,v]) => v).map(([k,v]) => `${k}: ${utils.escapeHtml(v)}`).join(', ') || 'No filters'}</div>
+          </div>
+          <div class="d-flex gap-1">
+            <button class="btn btn-sm btn-primary" onclick="orgsModule.loadView('${utils.escapeHtml(n).replace(/'/g, "\\'")}')"><i class="bi bi-box-arrow-in-right"></i></button>
+            <button class="btn btn-sm btn-outline-danger" onclick="orgsModule.deleteView('${utils.escapeHtml(n).replace(/'/g, "\\'")}')"><i class="bi bi-trash"></i></button>
+          </div>
+        </div>`).join('')}
+      </div>`;
+
+    this._showDynamicModal('Saved Views', html, 'bi-bookmark');
+  },
+
+  loadView(name) {
+    try {
+      const views = JSON.parse(localStorage.getItem('orgsSavedViews') || '{}');
+      const view = views[name];
+      if (!view) return;
+
+      // Restore filters
+      const f = view.filters;
+      document.getElementById('orgsYearFilter').value = f.year || '';
+      document.getElementById('orgsSectorFilter').value = f.sector || '';
+      document.getElementById('orgsRegionFilter').value = f.region || '';
+      if (f.region) this.updateCountyFilterByRegion();
+      document.getElementById('orgsCountyFilter').value = f.county || '';
+      document.getElementById('orgsStatusFilter').value = f.status || '';
+      document.getElementById('orgsSearchBox').value = f.search || '';
+      const tierEl = document.getElementById('orgsTierFilter');
+      if (tierEl) tierEl.value = f.tier || '';
+      const tagEl = document.getElementById('orgsTagFilter');
+      if (tagEl) tagEl.value = f.tag || '';
+      const logoEl = document.getElementById('orgsLogoFilter');
+      if (logoEl) logoEl.value = f.logoFilter || '';
+      const dateEl = document.getElementById('orgsDateFilter');
+      if (dateEl) dateEl.value = f.dateFilter || '';
+
+      // Restore sort
+      if (view.sort?.field) {
+        this.sortField = view.sort.field;
+        this.sortDirection = view.sort.direction || 'asc';
+      }
+
+      // Restore column visibility
+      if (view.columns) {
+        this._columnVisibility = { ...view.columns };
+        try { localStorage.setItem('orgsColumnVisibility', JSON.stringify(this._columnVisibility)); } catch (e) {}
+      }
+
+      // Restore page size
+      if (view.pageSize) this._pageSize = view.pageSize;
+
+      // Restore tag filters
+      if (view.tagFilters) this._selectedTagFilters = [...view.tagFilters];
+
+      this.filterOrganisations();
+      bootstrap.Modal.getInstance(document.getElementById('dynamicOrgModal'))?.hide();
+      utils.showToast(`View "${name}" loaded`, 'success');
+    } catch (e) { utils.showToast('Error loading view', 'error'); }
+  },
+
+  deleteView(name) {
+    if (!confirm(`Delete view "${name}"?`)) return;
+    try {
+      const views = JSON.parse(localStorage.getItem('orgsSavedViews') || '{}');
+      delete views[name];
+      localStorage.setItem('orgsSavedViews', JSON.stringify(views));
+      utils.showToast(`View "${name}" deleted`, 'success');
+      this.showSavedViews();
+    } catch (e) {}
+  },
+
+  // ============================================
+  // FEATURE: ORGANISATION SEGMENTS / SMART LISTS
+  // ============================================
+  showSegmentsBuilder() {
+    const html = `
+      <p class="small text-muted mb-3">Build dynamic segments based on rules. Matching orgs update in real-time.</p>
+      <div id="segmentRules">
+        <div class="segment-rule d-flex gap-2 align-items-center mb-2">
+          <select class="form-select form-select-sm" style="width:auto;" id="segField0">
+            <option value="tier">Tier</option><option value="status">Status</option><option value="region">Region</option>
+            <option value="sector">Sector</option><option value="awards_count">Awards Count</option><option value="engagement">Engagement Score</option>
+          </select>
+          <select class="form-select form-select-sm" style="width:auto;" id="segOp0">
+            <option value="eq">equals</option><option value="neq">not equals</option>
+            <option value="gt">greater than</option><option value="lt">less than</option>
+            <option value="contains">contains</option>
+          </select>
+          <input type="text" class="form-control form-control-sm" style="width:150px;" id="segVal0" placeholder="Value...">
+        </div>
+      </div>
+      <button class="btn btn-sm btn-outline-secondary mb-3" onclick="orgsModule._addSegmentRule()"><i class="bi bi-plus me-1"></i>Add Rule</button>
+      <div class="d-flex gap-2">
+        <button class="btn btn-sm btn-primary" onclick="orgsModule._applySegment()"><i class="bi bi-funnel me-1"></i>Apply Segment</button>
+        <button class="btn btn-sm btn-outline-success" onclick="orgsModule._saveSegment()"><i class="bi bi-save me-1"></i>Save Segment</button>
+        <button class="btn btn-sm btn-outline-secondary" onclick="orgsModule._loadSegments()"><i class="bi bi-folder-open me-1"></i>Load Saved</button>
+      </div>
+      <div id="segmentResult" class="mt-3"></div>`;
+
+    this._showDynamicModal('Organisation Segments', html, 'bi-funnel', 'modal-lg');
+    this._segmentRuleCount = 1;
+  },
+
+  _segmentRuleCount: 1,
+
+  _addSegmentRule() {
+    const i = this._segmentRuleCount++;
+    const ruleHtml = `<div class="segment-rule d-flex gap-2 align-items-center mb-2">
+      <select class="form-select form-select-sm" style="width:auto;" id="segField${i}">
+        <option value="tier">Tier</option><option value="status">Status</option><option value="region">Region</option>
+        <option value="sector">Sector</option><option value="awards_count">Awards Count</option><option value="engagement">Engagement Score</option>
+      </select>
+      <select class="form-select form-select-sm" style="width:auto;" id="segOp${i}">
+        <option value="eq">equals</option><option value="neq">not equals</option>
+        <option value="gt">greater than</option><option value="lt">less than</option>
+        <option value="contains">contains</option>
+      </select>
+      <input type="text" class="form-control form-control-sm" style="width:150px;" id="segVal${i}" placeholder="Value...">
+      <button class="btn btn-sm btn-outline-danger" onclick="this.parentElement.remove()"><i class="bi bi-x"></i></button>
+    </div>`;
+    document.getElementById('segmentRules')?.insertAdjacentHTML('beforeend', ruleHtml);
+  },
+
+  _getSegmentRules() {
+    const rules = [];
+    document.querySelectorAll('.segment-rule').forEach((el, i) => {
+      const field = el.querySelector('[id^="segField"]')?.value;
+      const op = el.querySelector('[id^="segOp"]')?.value;
+      const val = el.querySelector('[id^="segVal"]')?.value.trim();
+      if (field && val) rules.push({ field, op, val });
+    });
+    return rules;
+  },
+
+  _matchesSegmentRules(org, rules) {
+    return rules.every(r => {
+      let orgVal;
+      if (r.field === 'engagement') orgVal = this.calculateEngagementScore(org);
+      else if (r.field === 'awards_count') orgVal = org.awards_count || 0;
+      else orgVal = org[r.field] || '';
+
+      const testVal = r.val;
+      switch (r.op) {
+        case 'eq': return String(orgVal).toLowerCase() === testVal.toLowerCase();
+        case 'neq': return String(orgVal).toLowerCase() !== testVal.toLowerCase();
+        case 'gt': return Number(orgVal) > Number(testVal);
+        case 'lt': return Number(orgVal) < Number(testVal);
+        case 'contains': return String(orgVal).toLowerCase().includes(testVal.toLowerCase());
+        default: return false;
+      }
+    });
+  },
+
+  _applySegment() {
+    const rules = this._getSegmentRules();
+    if (rules.length === 0) { utils.showToast('Add at least one rule', 'warning'); return; }
+
+    const matching = STATE.allOrganisations.filter(o => this._matchesSegmentRules(o, rules));
+    const resultEl = document.getElementById('segmentResult');
+    if (resultEl) {
+      resultEl.innerHTML = `<div class="alert alert-info small py-2">
+        <strong>${matching.length}</strong> organisations match this segment.
+        <button class="btn btn-sm btn-outline-primary ms-2" onclick="orgsModule._applySegmentAsFilter()">Apply as Filter</button>
+      </div>`;
+    }
+    this._lastSegmentMatches = matching;
+  },
+
+  _applySegmentAsFilter() {
+    if (!this._lastSegmentMatches) return;
+    STATE.filteredOrganisations = this._lastSegmentMatches;
+    this._currentPage = 1;
+    this.renderOrganisations();
+    bootstrap.Modal.getInstance(document.getElementById('dynamicOrgModal'))?.hide();
+    utils.showToast(`Showing ${this._lastSegmentMatches.length} segment matches`, 'success');
+  },
+
+  _saveSegment() {
+    const rules = this._getSegmentRules();
+    if (rules.length === 0) { utils.showToast('Add at least one rule', 'warning'); return; }
+    const name = prompt('Name this segment:');
+    if (!name || !name.trim()) return;
+    try {
+      const segments = JSON.parse(localStorage.getItem('orgsSegments') || '{}');
+      segments[name.trim()] = rules;
+      localStorage.setItem('orgsSegments', JSON.stringify(segments));
+      utils.showToast(`Segment "${name.trim()}" saved`, 'success');
+    } catch (e) {}
+  },
+
+  _loadSegments() {
+    const segments = (() => { try { return JSON.parse(localStorage.getItem('orgsSegments') || '{}'); } catch (e) { return {}; } })();
+    const names = Object.keys(segments);
+    if (names.length === 0) { utils.showToast('No saved segments', 'info'); return; }
+
+    const resultEl = document.getElementById('segmentResult');
+    if (resultEl) {
+      resultEl.innerHTML = `<div class="list-group">${names.map(n => {
+        const rules = segments[n];
+        return `<a href="#" class="list-group-item list-group-item-action small" onclick="event.preventDefault(); orgsModule._loadAndApplySegment('${utils.escapeHtml(n).replace(/'/g, "\\'")}')">
+          <strong>${utils.escapeHtml(n)}</strong> — ${rules.map(r => `${r.field} ${r.op} "${r.val}"`).join(' AND ')}
+        </a>`;
+      }).join('')}</div>`;
+    }
+  },
+
+  _loadAndApplySegment(name) {
+    try {
+      const segments = JSON.parse(localStorage.getItem('orgsSegments') || '{}');
+      const rules = segments[name];
+      if (!rules) return;
+      const matching = STATE.allOrganisations.filter(o => this._matchesSegmentRules(o, rules));
+      STATE.filteredOrganisations = matching;
+      this._currentPage = 1;
+      this.renderOrganisations();
+      bootstrap.Modal.getInstance(document.getElementById('dynamicOrgModal'))?.hide();
+      utils.showToast(`Segment "${name}": ${matching.length} matches`, 'success');
+    } catch (e) {}
+  },
+
+  // ============================================
+  // FEATURE: ORG COMPARISON SIDE-BY-SIDE
+  // ============================================
+  showOrgComparison() {
+    if (this.selectedOrgs.size < 2 || this.selectedOrgs.size > 4) {
+      utils.showToast('Select 2-4 organisations to compare', 'warning');
+      return;
+    }
+
+    const orgs = Array.from(this.selectedOrgs).map(id => STATE.allOrganisations.find(o => o.id === id)).filter(Boolean);
+    const fields = [
+      { key: 'status', label: 'Status' },
+      { key: 'tier', label: 'Tier' },
+      { key: 'sector', label: 'Sector' },
+      { key: 'region', label: 'Region' },
+      { key: 'county', label: 'County' },
+      { key: 'contact_name', label: 'Contact' },
+      { key: 'email', label: 'Email' },
+      { key: 'website', label: 'Website' },
+      { key: 'contact_phone', label: 'Phone' },
+      { key: 'awards_count', label: 'Awards' },
+      { key: '_engagement', label: 'Engagement Score' },
+      { key: '_health', label: 'Health' },
+      { key: '_lastContacted', label: 'Last Contacted' }
+    ];
+
+    const html = `
+      <div class="table-responsive">
+        <table class="table table-sm table-bordered">
+          <thead><tr>
+            <th style="width: 120px;"></th>
+            ${orgs.map(o => `<th class="small fw-semibold">${o.logo_url ? `<img src="${o.logo_url}" style="width:30px; height:20px; object-fit:contain;" class="me-1">` : ''}${utils.escapeHtml(o.company_name)}</th>`).join('')}
+          </tr></thead>
+          <tbody>
+            ${fields.map(f => `<tr>
+              <td class="small fw-semibold text-muted">${f.label}</td>
+              ${orgs.map(o => {
+                let val;
+                if (f.key === '_engagement') val = this.calculateEngagementScore(o) + '/100';
+                else if (f.key === '_health') val = this.getOrgHealthIndicator(o).label;
+                else if (f.key === '_lastContacted') { const lc = this.getLastContacted(o.id); val = lc ? new Date(lc).toLocaleDateString('en-GB') : 'Never'; }
+                else val = o[f.key] || '-';
+                return `<td class="small">${utils.escapeHtml(String(val))}</td>`;
+              }).join('')}
+            </tr>`).join('')}
+          </tbody>
+        </table>
+      </div>`;
+
+    this._showDynamicModal(`Compare ${orgs.length} Organisations`, html, 'bi-layout-split', 'modal-xl');
+  },
+
+  // ============================================
+  // FEATURE: COMPANIES HOUSE LOOKUP (UK)
+  // ============================================
+  async companiesHouseLookup(orgId) {
+    const org = STATE.allOrganisations.find(o => o.id === orgId);
+    if (!org) { utils.showToast('Organisation not found', 'error'); return; }
+
+    const searchName = org.company_name.replace(/\s*(Ltd|Limited|PLC|LLP|Inc)\s*\.?$/i, '').trim();
+    utils.showToast('Searching Companies House...', 'info');
+
+    try {
+      // Use the free Companies House search API (no API key required for basic search)
+      const response = await fetch(`https://api.company-information.service.gov.uk/search/companies?q=${encodeURIComponent(searchName)}&items_per_page=5`, {
+        headers: { 'Accept': 'application/json' }
+      });
+
+      if (!response.ok) {
+        // Fallback: open Companies House website search
+        window.open(`https://find-and-update.company-information.service.gov.uk/search?q=${encodeURIComponent(searchName)}`, '_blank');
+        utils.showToast('Opened Companies House search in new tab (API requires auth key)', 'info');
+        return;
+      }
+
+      const data = await response.json();
+      const items = data.items || [];
+
+      if (items.length === 0) {
+        utils.showToast('No results found on Companies House', 'warning');
+        return;
+      }
+
+      const html = `
+        <p class="small text-muted mb-3">Results for "<strong>${utils.escapeHtml(searchName)}</strong>" from Companies House</p>
+        <div class="list-group">
+          ${items.map(c => `<div class="list-group-item">
+            <div class="d-flex justify-content-between">
+              <div>
+                <strong>${utils.escapeHtml(c.title)}</strong>
+                <div class="small text-muted">${utils.escapeHtml(c.company_number || '')} &middot; ${utils.escapeHtml(c.company_status || '')} &middot; ${utils.escapeHtml(c.date_of_creation || '')}</div>
+                ${c.address_snippet ? `<div class="small text-muted">${utils.escapeHtml(c.address_snippet)}</div>` : ''}
+              </div>
+              <button class="btn btn-sm btn-outline-primary" onclick="orgsModule._applyCompaniesHouseData('${orgId}', ${JSON.stringify({ address: c.address_snippet || '', company_number: c.company_number || '' }).replace(/'/g, "\\'")})">
+                <i class="bi bi-arrow-down-circle me-1"></i>Apply
+              </button>
+            </div>
+          </div>`).join('')}
+        </div>`;
+
+      this._showDynamicModal('Companies House Results', html, 'bi-bank', 'modal-lg');
+    } catch (e) {
+      // Fallback to website search
+      window.open(`https://find-and-update.company-information.service.gov.uk/search?q=${encodeURIComponent(searchName)}`, '_blank');
+      utils.showToast('Opened Companies House search in new tab', 'info');
+    }
+  },
+
+  async _applyCompaniesHouseData(orgId, data) {
+    try {
+      const updates = {};
+      if (data.address) updates.address = data.address;
+      if (data.company_number) updates.company_number = data.company_number;
+      updates.updated_at = new Date().toISOString();
+
+      const { error } = await STATE.client.from('organisations').update(updates).eq('id', orgId);
+      if (error) throw error;
+
+      const org = STATE.allOrganisations.find(o => o.id === orgId);
+      if (org) Object.assign(org, updates);
+
+      utils.showToast('Companies House data applied', 'success');
+      bootstrap.Modal.getInstance(document.getElementById('dynamicOrgModal'))?.hide();
+    } catch (e) { utils.showToast('Error: ' + e.message, 'error'); }
   },
 
   // ============================================

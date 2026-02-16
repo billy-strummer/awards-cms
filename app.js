@@ -264,7 +264,7 @@ document.addEventListener('DOMContentLoaded', function() {
         if (tabId === 'awards-tab') {
           document.getElementById('awardsSearchBox').focus();
         } else if (tabId === 'organisations-tab') {
-          document.getElementById('orgSearchBox').focus();
+          document.getElementById('orgsSearchBox').focus();
         } else if (tabId === 'winners-tab') {
           document.getElementById('winnerSearchBox').focus();
         }

@@ -378,6 +378,11 @@ const mediaGalleryModule = {
     await this.loadPhotosProduction();
   },
 
+  // Store event photos for filtering
+  currentEventPhotos: [],
+  eventPhotosFilter: 'all',
+  eventPhotosSearch: '',
+
   /**
    * Load Photos Production Content
    */
@@ -385,27 +390,472 @@ const mediaGalleryModule = {
     const container = document.getElementById('photosProductionContent');
 
     try {
-      // This will use existing photo gallery functionality
-      // For now, show a message that this will be implemented
-      container.innerHTML = `
-        <div class="alert alert-info">
-          <i class="bi bi-info-circle me-2"></i>
-          <strong>Photos Production:</strong> This will load all photos from the event using the existing gallery system.
-          The full photo management interface from the original gallery will be integrated here.
-        </div>
-        <div class="text-center py-4">
-          <i class="bi bi-camera-fill display-1 text-muted opacity-25"></i>
-          <p class="mt-3">Photos production interface coming soon</p>
-        </div>
-      `;
+      const { data: photos, error } = await STATE.client
+        .from('media_items')
+        .select('*')
+        .eq('event_id', this.currentEventId)
+        .eq('media_type', 'image')
+        .order('display_order', { ascending: true });
+
+      if (error) throw error;
+
+      this.currentEventPhotos = photos || [];
+      this.eventPhotosFilter = 'all';
+      this.eventPhotosSearch = '';
+
+      // Reset search input
+      const searchInput = document.getElementById('photosProductionSearch');
+      if (searchInput) searchInput.value = '';
+
+      // Reset filter buttons
+      const filterBtns = document.querySelectorAll('#photosProductionView .btn-group [data-filter]');
+      filterBtns.forEach(btn => btn.classList.remove('active'));
+      const allBtn = document.querySelector('#photosProductionView [data-filter="all"]');
+      if (allBtn) allBtn.classList.add('active');
+
+      this.renderEventPhotosGrid();
 
     } catch (error) {
       console.error('Error loading photos:', error);
       container.innerHTML = `
         <div class="alert alert-danger">
-          <i class="bi bi-exclamation-triangle me-2"></i>Error loading photos
+          <i class="bi bi-exclamation-triangle me-2"></i>Error loading photos: ${utils.escapeHtml(error.message)}
         </div>
       `;
+    }
+  },
+
+  /**
+   * Render event photos grid with current filters
+   */
+  renderEventPhotosGrid() {
+    const container = document.getElementById('photosProductionContent');
+    let photos = [...this.currentEventPhotos];
+
+    // Apply status filter
+    if (this.eventPhotosFilter === 'published') {
+      photos = photos.filter(p => p.published === true);
+    } else if (this.eventPhotosFilter === 'unpublished') {
+      photos = photos.filter(p => p.published !== true);
+    }
+
+    // Apply search filter
+    if (this.eventPhotosSearch) {
+      const term = this.eventPhotosSearch.toLowerCase();
+      photos = photos.filter(p => {
+        const title = (p.title || '').toLowerCase();
+        const desc = (p.description || '').toLowerCase();
+        return title.includes(term) || desc.includes(term);
+      });
+    }
+
+    // Update count badge
+    const countEl = document.getElementById('photosProductionCount');
+    if (countEl) countEl.textContent = `${photos.length} photo${photos.length !== 1 ? 's' : ''}`;
+
+    if (!photos || photos.length === 0) {
+      const msg = this.currentEventPhotos.length === 0
+        ? 'No photos yet. Click "Upload Photos" to get started.'
+        : 'No photos match the current filters.';
+      container.innerHTML = `
+        <div class="text-center py-5">
+          <i class="bi bi-camera display-4 d-block mb-3 opacity-25"></i>
+          <p class="text-muted">${msg}</p>
+        </div>
+      `;
+      return;
+    }
+
+    container.innerHTML = `
+      <div class="row g-3">
+        ${photos.map(photo => this.renderEventPhotoCard(photo)).join('')}
+      </div>
+    `;
+  },
+
+  /**
+   * Render a single event photo card
+   */
+  renderEventPhotoCard(photo) {
+    const isPublished = photo.published === true;
+    return `
+      <div class="col-md-3 col-sm-6">
+        <div class="card h-100 ${!isPublished ? 'border-secondary' : ''}">
+          <div class="position-relative">
+            <img src="${photo.file_url}" class="card-img-top ${!isPublished ? 'opacity-50' : ''}"
+              alt="${utils.escapeHtml(photo.title || 'Photo')}"
+              style="height: 200px; object-fit: cover; cursor: pointer;"
+              onclick="mediaGalleryModule.viewEventPhotoFull('${photo.id}')">
+            ${!isPublished ? '<span class="position-absolute top-0 end-0 m-2"><span class="badge bg-secondary">Unpublished</span></span>' : ''}
+          </div>
+          <div class="card-body p-2">
+            <p class="small mb-1 fw-semibold text-truncate" title="${utils.escapeHtml(photo.title || 'Untitled')}">
+              ${utils.escapeHtml(photo.title || 'Untitled')}
+            </p>
+            ${photo.description ? `<p class="small text-muted mb-1 text-truncate">${utils.escapeHtml(photo.description)}</p>` : ''}
+            <div class="btn-group btn-group-sm w-100 mt-1">
+              <button class="btn btn-outline-primary" onclick="mediaGalleryModule.viewEventPhotoFull('${photo.id}')" title="View">
+                <i class="bi bi-eye"></i>
+              </button>
+              <button class="btn btn-outline-secondary" onclick="mediaGalleryModule.editEventPhoto('${photo.id}')" title="Edit">
+                <i class="bi bi-pencil"></i>
+              </button>
+              <button class="btn ${isPublished ? 'btn-outline-warning' : 'btn-outline-success'}"
+                onclick="mediaGalleryModule.toggleEventPhotoPublish('${photo.id}', ${!isPublished})" title="${isPublished ? 'Unpublish' : 'Publish'}">
+                <i class="bi bi-${isPublished ? 'eye-slash' : 'eye'}"></i>
+              </button>
+              <button class="btn btn-outline-info" onclick="mediaGalleryModule.downloadPhoto('${photo.file_url}', '${utils.escapeHtml(photo.title || 'photo').replace(/'/g, "\\'")}')" title="Download">
+                <i class="bi bi-download"></i>
+              </button>
+              <button class="btn btn-outline-danger" onclick="mediaGalleryModule.deleteEventPhoto('${photo.id}')" title="Delete">
+                <i class="bi bi-trash"></i>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+  },
+
+  /**
+   * Filter event photos by search text
+   */
+  filterEventPhotos(searchTerm) {
+    this.eventPhotosSearch = searchTerm;
+    this.renderEventPhotosGrid();
+  },
+
+  /**
+   * Filter event photos by status
+   */
+  filterEventPhotosByStatus(status, btn) {
+    this.eventPhotosFilter = status;
+    // Update active button state
+    const filterBtns = document.querySelectorAll('#photosProductionView .btn-group [data-filter]');
+    filterBtns.forEach(b => b.classList.remove('active'));
+    if (btn) btn.classList.add('active');
+    this.renderEventPhotosGrid();
+  },
+
+  /**
+   * View event photo full screen
+   */
+  async viewEventPhotoFull(photoId) {
+    try {
+      const photo = this.currentEventPhotos.find(p => p.id === photoId);
+      if (!photo) return;
+
+      const modalHTML = `
+        <div class="modal fade" id="viewEventPhotoModal" tabindex="-1">
+          <div class="modal-dialog modal-lg modal-dialog-centered">
+            <div class="modal-content">
+              <div class="modal-header">
+                <h5 class="modal-title">${utils.escapeHtml(photo.title || 'Photo')}</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+              </div>
+              <div class="modal-body text-center p-0">
+                <img src="${photo.file_url}" class="img-fluid" alt="${utils.escapeHtml(photo.title || 'Photo')}" style="max-height: 80vh;">
+              </div>
+              <div class="modal-footer justify-content-between">
+                <div>
+                  ${photo.description ? `<small class="text-muted">${utils.escapeHtml(photo.description)}</small>` : ''}
+                </div>
+                <div class="d-flex gap-2">
+                  <button class="btn btn-sm btn-outline-info" onclick="mediaGalleryModule.downloadPhoto('${photo.file_url}', '${utils.escapeHtml(photo.title || 'photo').replace(/'/g, "\\'")}')">
+                    <i class="bi bi-download me-1"></i>Download
+                  </button>
+                  <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">Close</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>`;
+
+      const oldModal = document.getElementById('viewEventPhotoModal');
+      if (oldModal) oldModal.remove();
+
+      document.body.insertAdjacentHTML('beforeend', modalHTML);
+      const modal = new bootstrap.Modal(document.getElementById('viewEventPhotoModal'));
+      modal.show();
+
+      document.getElementById('viewEventPhotoModal').addEventListener('hidden.bs.modal', () => {
+        document.getElementById('viewEventPhotoModal')?.remove();
+      });
+
+    } catch (error) {
+      console.error('Error viewing photo:', error);
+      utils.showToast('Failed to load photo', 'error');
+    }
+  },
+
+  /**
+   * Edit event photo (title/description)
+   */
+  async editEventPhoto(photoId) {
+    try {
+      const photo = this.currentEventPhotos.find(p => p.id === photoId);
+      if (!photo) return;
+
+      const modalHTML = `
+        <div class="modal fade" id="editEventPhotoModal" tabindex="-1">
+          <div class="modal-dialog">
+            <div class="modal-content">
+              <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title"><i class="bi bi-pencil me-2"></i>Edit Photo</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+              </div>
+              <div class="modal-body">
+                <div class="text-center mb-3">
+                  <img src="${photo.file_url}" class="img-fluid rounded" style="max-height: 200px;" alt="Preview">
+                </div>
+                <div class="mb-3">
+                  <label class="form-label">Title</label>
+                  <input type="text" class="form-control" id="editEventPhotoTitle" value="${utils.escapeHtml(photo.title || '')}">
+                </div>
+                <div class="mb-3">
+                  <label class="form-label">Description</label>
+                  <textarea class="form-control" id="editEventPhotoDesc" rows="3">${utils.escapeHtml(photo.description || '')}</textarea>
+                </div>
+              </div>
+              <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" onclick="mediaGalleryModule.saveEventPhotoEdit('${photoId}')">
+                  <i class="bi bi-check-circle me-1"></i>Save Changes
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>`;
+
+      const oldModal = document.getElementById('editEventPhotoModal');
+      if (oldModal) oldModal.remove();
+
+      document.body.insertAdjacentHTML('beforeend', modalHTML);
+      const modal = new bootstrap.Modal(document.getElementById('editEventPhotoModal'));
+      modal.show();
+
+      document.getElementById('editEventPhotoModal').addEventListener('hidden.bs.modal', () => {
+        document.getElementById('editEventPhotoModal')?.remove();
+      });
+
+    } catch (error) {
+      console.error('Error editing photo:', error);
+      utils.showToast('Failed to load photo for editing', 'error');
+    }
+  },
+
+  /**
+   * Save event photo edit
+   */
+  async saveEventPhotoEdit(photoId) {
+    try {
+      const title = document.getElementById('editEventPhotoTitle').value.trim();
+      const description = document.getElementById('editEventPhotoDesc').value.trim();
+
+      if (!title) {
+        utils.showToast('Title is required', 'warning');
+        return;
+      }
+
+      const { error } = await STATE.client
+        .from('media_items')
+        .update({ title, description })
+        .eq('id', photoId);
+
+      if (error) throw error;
+
+      bootstrap.Modal.getInstance(document.getElementById('editEventPhotoModal')).hide();
+      utils.showToast('Photo updated successfully', 'success');
+      await this.loadPhotosProduction();
+
+    } catch (error) {
+      console.error('Error saving photo edit:', error);
+      utils.showToast('Failed to update photo: ' + error.message, 'error');
+    }
+  },
+
+  /**
+   * Toggle event photo publish status
+   */
+  async toggleEventPhotoPublish(photoId, newStatus) {
+    try {
+      const { error } = await STATE.client
+        .from('media_items')
+        .update({ published: newStatus })
+        .eq('id', photoId);
+
+      if (error) throw error;
+
+      utils.showToast(`Photo ${newStatus ? 'published' : 'unpublished'} successfully`, 'success');
+      await this.loadPhotosProduction();
+
+    } catch (error) {
+      console.error('Error toggling publish:', error);
+      utils.showToast('Failed to update photo status', 'error');
+    }
+  },
+
+  /**
+   * Delete event photo
+   */
+  async deleteEventPhoto(photoId) {
+    if (!confirm('Are you sure you want to delete this photo?')) return;
+
+    try {
+      const { error } = await STATE.client
+        .from('media_items')
+        .delete()
+        .eq('id', photoId);
+
+      if (error) throw error;
+
+      utils.showToast('Photo deleted successfully', 'success');
+      await this.loadPhotosProduction();
+
+    } catch (error) {
+      console.error('Error deleting photo:', error);
+      utils.showToast('Error deleting photo', 'error');
+    }
+  },
+
+  /**
+   * Open upload event photos modal
+   */
+  openUploadEventPhotosModal() {
+    const modalHTML = `
+      <div class="modal fade" id="uploadEventPhotosModal" tabindex="-1">
+        <div class="modal-dialog">
+          <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+              <h5 class="modal-title"><i class="bi bi-upload me-2"></i>Upload Photos</h5>
+              <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+              <div class="mb-3">
+                <label class="form-label">Select Photos</label>
+                <input type="file" class="form-control" id="eventPhotosFileInput" multiple accept="image/jpeg,image/png,image/gif,image/webp">
+                <div class="form-text">Max 4.5MB per file. Supported: JPG, PNG, GIF, WebP</div>
+              </div>
+              <div class="mb-3">
+                <label class="form-label">Title (applied to all)</label>
+                <input type="text" class="form-control" id="eventPhotosTitle" placeholder="Optional - defaults to filename">
+              </div>
+              <div class="form-check mb-3">
+                <input class="form-check-input" type="checkbox" id="eventPhotosPublished" checked>
+                <label class="form-check-label" for="eventPhotosPublished">Publish immediately</label>
+              </div>
+            </div>
+            <div class="modal-footer">
+              <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+              <button type="button" class="btn btn-primary" onclick="mediaGalleryModule.uploadEventPhotos()">
+                <i class="bi bi-upload me-1"></i>Upload
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>`;
+
+    const oldModal = document.getElementById('uploadEventPhotosModal');
+    if (oldModal) oldModal.remove();
+
+    document.body.insertAdjacentHTML('beforeend', modalHTML);
+    const modal = new bootstrap.Modal(document.getElementById('uploadEventPhotosModal'));
+    modal.show();
+
+    document.getElementById('uploadEventPhotosModal').addEventListener('hidden.bs.modal', () => {
+      document.getElementById('uploadEventPhotosModal')?.remove();
+    });
+  },
+
+  /**
+   * Upload event photos
+   */
+  async uploadEventPhotos() {
+    const fileInput = document.getElementById('eventPhotosFileInput');
+    const title = document.getElementById('eventPhotosTitle').value.trim();
+    const published = document.getElementById('eventPhotosPublished').checked;
+
+    if (!fileInput.files || fileInput.files.length === 0) {
+      utils.showToast('Please select at least one photo', 'warning');
+      return;
+    }
+
+    const files = Array.from(fileInput.files);
+    const validTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
+    const maxSizeBytes = 4.5 * 1024 * 1024;
+
+    const validFiles = files.filter(f => {
+      if (!validTypes.includes(f.type)) return false;
+      if (f.size > maxSizeBytes) {
+        utils.showToast(`Skipping ${f.name} - exceeds 4.5MB limit`, 'warning');
+        return false;
+      }
+      return true;
+    });
+
+    if (validFiles.length === 0) {
+      utils.showToast('No valid image files to upload', 'error');
+      return;
+    }
+
+    try {
+      utils.showLoading();
+      let successCount = 0;
+
+      for (const file of validFiles) {
+        const timestamp = Date.now();
+        const randomSuffix = Math.random().toString(36).substring(7);
+        const fileName = `event-photos/${this.currentEventId}/${timestamp}_${randomSuffix}_${file.name}`;
+
+        const { error: uploadError } = await STATE.client.storage
+          .from('media-gallery')
+          .upload(fileName, file);
+
+        if (uploadError) {
+          console.error('Upload error for', file.name, uploadError);
+          continue;
+        }
+
+        const { data: urlData } = STATE.client.storage
+          .from('media-gallery')
+          .getPublicUrl(fileName);
+
+        const { error: dbError } = await STATE.client
+          .from('media_items')
+          .insert([{
+            media_type: 'image',
+            title: title || file.name.replace(/\.[^/.]+$/, ''),
+            file_url: urlData.publicUrl,
+            event_id: this.currentEventId,
+            published: published,
+            display_order: this.currentEventPhotos.length + successCount,
+            uploaded_at: new Date().toISOString()
+          }]);
+
+        if (dbError) {
+          console.error('DB error for', file.name, dbError);
+          continue;
+        }
+
+        successCount++;
+      }
+
+      if (successCount > 0) {
+        utils.showToast(`${successCount} photo${successCount > 1 ? 's' : ''} uploaded successfully!`, 'success');
+      }
+
+      bootstrap.Modal.getInstance(document.getElementById('uploadEventPhotosModal'))?.hide();
+      await this.loadPhotosProduction();
+
+      // Update event photos count on the event contents card
+      const countEl = document.getElementById('eventPhotosCount');
+      if (countEl) countEl.textContent = this.currentEventPhotos.length;
+
+    } catch (error) {
+      console.error('Error uploading photos:', error);
+      utils.showToast('Error uploading photos: ' + error.message, 'error');
+    } finally {
+      utils.hideLoading();
     }
   },
 

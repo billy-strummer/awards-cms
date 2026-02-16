@@ -1488,6 +1488,7 @@ Vote now: {{website}}
     }
   }
 };
+window.socialMediaModule = socialMediaModule;
 
 // Initialize when social media sub-tab is shown within Marketing
 document.addEventListener('DOMContentLoaded', () => {

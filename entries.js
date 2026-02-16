@@ -1528,6 +1528,7 @@ const entriesModule = {
     }
   }
 };
+window.entriesModule = entriesModule;
 
 // Initialize when entries tab is shown
 document.addEventListener('DOMContentLoaded', () => {

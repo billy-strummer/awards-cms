@@ -39,7 +39,7 @@ const crmModule = {
       }
     } catch (error) {
       console.error('Error loading CRM data:', error);
-      showNotification('Error loading CRM data', 'error');
+      utils.showToast('Error loading CRM data', 'error');
     }
   },
 
@@ -82,7 +82,7 @@ const crmModule = {
 
     } catch (error) {
       console.error('Error loading companies:', error);
-      showNotification('Error loading companies data', 'error');
+      utils.showToast('Error loading companies data', 'error');
     }
   },
 
@@ -175,7 +175,7 @@ const crmModule = {
 
     } catch (error) {
       console.error('Error loading communications:', error);
-      showNotification('Error loading communications', 'error');
+      utils.showToast('Error loading communications', 'error');
     }
   },
 
@@ -313,7 +313,7 @@ const crmModule = {
 
     } catch (error) {
       console.error('Error loading deals:', error);
-      showNotification('Error loading deals', 'error');
+      utils.showToast('Error loading deals', 'error');
     }
   },
 
@@ -439,7 +439,7 @@ const crmModule = {
 
     } catch (error) {
       console.error('Error loading meetings:', error);
-      showNotification('Error loading meetings', 'error');
+      utils.showToast('Error loading meetings', 'error');
     }
   },
 
@@ -550,7 +550,7 @@ const crmModule = {
 
     } catch (error) {
       console.error('Error loading segments:', error);
-      showNotification('Error loading segments', 'error');
+      utils.showToast('Error loading segments', 'error');
     }
   },
 
@@ -622,7 +622,7 @@ const crmModule = {
     if (typeof organisationsModule !== 'undefined' && organisationsModule.showCompanyModal) {
       organisationsModule.showCompanyModal(companyId);
     } else {
-      showNotification('Company profile view not available', 'warning');
+      utils.showToast('Company profile view not available', 'warning');
     }
   },
 
@@ -777,12 +777,12 @@ const crmModule = {
 
       if (error) throw error;
 
-      showNotification('Communication logged successfully', 'success');
+      utils.showToast('Communication logged successfully', 'success');
       bootstrap.Modal.getInstance(document.getElementById('logCommunicationModal')).hide();
       this.loadCommunications();
     } catch (error) {
       console.error('Error saving communication:', error);
-      showNotification('Error logging communication', 'error');
+      utils.showToast('Error logging communication', 'error');
     }
   },
 
@@ -909,7 +909,7 @@ const crmModule = {
 
     } catch (error) {
       console.error('Error opening create deal modal:', error);
-      showNotification('Error loading deal form: ' + error.message, 'error');
+      utils.showToast('Error loading deal form: ' + error.message, 'error');
     }
   },
 
@@ -940,12 +940,12 @@ const crmModule = {
 
       if (error) throw error;
 
-      showNotification('Deal created successfully', 'success');
+      utils.showToast('Deal created successfully', 'success');
       bootstrap.Modal.getInstance(document.getElementById('createDealModal')).hide();
       this.loadDeals();
     } catch (error) {
       console.error('Error creating deal:', error);
-      showNotification('Error creating deal: ' + error.message, 'error');
+      utils.showToast('Error creating deal: ' + error.message, 'error');
     }
   },
 
@@ -1024,7 +1024,7 @@ const crmModule = {
       document.getElementById('viewCommunicationModal').addEventListener('hidden.bs.modal', function() { this.remove(); });
     } catch (error) {
       console.error('Error loading communication:', error);
-      showNotification('Error loading communication details', 'error');
+      utils.showToast('Error loading communication details', 'error');
     }
   },
 
@@ -1131,7 +1131,7 @@ const crmModule = {
       document.getElementById('editCommunicationModal').addEventListener('hidden.bs.modal', function() { this.remove(); });
     } catch (error) {
       console.error('Error loading communication for edit:', error);
-      showNotification('Error loading communication', 'error');
+      utils.showToast('Error loading communication', 'error');
     }
   },
 
@@ -1161,12 +1161,12 @@ const crmModule = {
 
       if (error) throw error;
 
-      showNotification('Communication updated successfully', 'success');
+      utils.showToast('Communication updated successfully', 'success');
       bootstrap.Modal.getInstance(document.getElementById('editCommunicationModal')).hide();
       this.loadCommunications();
     } catch (error) {
       console.error('Error updating communication:', error);
-      showNotification('Error updating communication: ' + error.message, 'error');
+      utils.showToast('Error updating communication: ' + error.message, 'error');
     }
   },
 
@@ -1183,11 +1183,11 @@ const crmModule = {
 
       if (error) throw error;
 
-      showNotification('Communication deleted successfully', 'success');
+      utils.showToast('Communication deleted successfully', 'success');
       this.loadCommunications();
     } catch (error) {
       console.error('Error deleting communication:', error);
-      showNotification('Error deleting communication', 'error');
+      utils.showToast('Error deleting communication', 'error');
     }
   },
 
@@ -1291,7 +1291,7 @@ const crmModule = {
       document.getElementById('viewDealModal').addEventListener('hidden.bs.modal', function() { this.remove(); });
     } catch (error) {
       console.error('Error loading deal:', error);
-      showNotification('Error loading deal details', 'error');
+      utils.showToast('Error loading deal details', 'error');
     }
   },
 
@@ -1405,7 +1405,7 @@ const crmModule = {
       document.getElementById('editDealModal').addEventListener('hidden.bs.modal', function() { this.remove(); });
     } catch (error) {
       console.error('Error loading deal for edit:', error);
-      showNotification('Error loading deal', 'error');
+      utils.showToast('Error loading deal', 'error');
     }
   },
 
@@ -1437,12 +1437,12 @@ const crmModule = {
 
       if (error) throw error;
 
-      showNotification('Deal updated successfully', 'success');
+      utils.showToast('Deal updated successfully', 'success');
       bootstrap.Modal.getInstance(document.getElementById('editDealModal')).hide();
       this.loadDeals();
     } catch (error) {
       console.error('Error updating deal:', error);
-      showNotification('Error updating deal: ' + error.message, 'error');
+      utils.showToast('Error updating deal: ' + error.message, 'error');
     }
   },
 
@@ -1459,11 +1459,11 @@ const crmModule = {
 
       if (error) throw error;
 
-      showNotification('Deal deleted successfully', 'success');
+      utils.showToast('Deal deleted successfully', 'success');
       this.loadDeals();
     } catch (error) {
       console.error('Error deleting deal:', error);
-      showNotification('Error deleting deal', 'error');
+      utils.showToast('Error deleting deal', 'error');
     }
   },
 
@@ -1559,7 +1559,7 @@ const crmModule = {
       document.getElementById('viewMeetingModal').addEventListener('hidden.bs.modal', function() { this.remove(); });
     } catch (error) {
       console.error('Error loading meeting:', error);
-      showNotification('Error loading meeting details', 'error');
+      utils.showToast('Error loading meeting details', 'error');
     }
   },
 
@@ -1672,7 +1672,7 @@ const crmModule = {
       document.getElementById('editMeetingModal').addEventListener('hidden.bs.modal', function() { this.remove(); });
     } catch (error) {
       console.error('Error loading meeting for edit:', error);
-      showNotification('Error loading meeting', 'error');
+      utils.showToast('Error loading meeting', 'error');
     }
   },
 
@@ -1711,12 +1711,12 @@ const crmModule = {
 
       if (error) throw error;
 
-      showNotification('Meeting updated successfully', 'success');
+      utils.showToast('Meeting updated successfully', 'success');
       bootstrap.Modal.getInstance(document.getElementById('editMeetingModal')).hide();
       this.loadMeetings();
     } catch (error) {
       console.error('Error updating meeting:', error);
-      showNotification('Error updating meeting: ' + error.message, 'error');
+      utils.showToast('Error updating meeting: ' + error.message, 'error');
     }
   },
 
@@ -1733,11 +1733,11 @@ const crmModule = {
 
       if (error) throw error;
 
-      showNotification('Meeting note deleted successfully', 'success');
+      utils.showToast('Meeting note deleted successfully', 'success');
       this.loadMeetings();
     } catch (error) {
       console.error('Error deleting meeting:', error);
-      showNotification('Error deleting meeting note', 'error');
+      utils.showToast('Error deleting meeting note', 'error');
     }
   },
 
@@ -1826,7 +1826,7 @@ const crmModule = {
       document.getElementById('viewSegmentCompaniesModal').addEventListener('hidden.bs.modal', function() { this.remove(); });
     } catch (error) {
       console.error('Error loading segment companies:', error);
-      showNotification('Error loading segment companies', 'error');
+      utils.showToast('Error loading segment companies', 'error');
     }
   },
 
@@ -1841,14 +1841,14 @@ const crmModule = {
 
       if (error) throw error;
 
-      showNotification('Company removed from segment', 'success');
+      utils.showToast('Company removed from segment', 'success');
       // Refresh the segment companies view
       bootstrap.Modal.getInstance(document.getElementById('viewSegmentCompaniesModal')).hide();
       this.viewSegmentCompanies(segmentId, segmentName);
       this.loadSegments();
     } catch (error) {
       console.error('Error removing from segment:', error);
-      showNotification('Error removing company from segment', 'error');
+      utils.showToast('Error removing company from segment', 'error');
     }
   },
 
@@ -1930,7 +1930,7 @@ const crmModule = {
       document.getElementById('editSegmentModal').addEventListener('hidden.bs.modal', function() { this.remove(); });
     } catch (error) {
       console.error('Error loading segment for edit:', error);
-      showNotification('Error loading segment', 'error');
+      utils.showToast('Error loading segment', 'error');
     }
   },
 
@@ -1956,15 +1956,16 @@ const crmModule = {
 
       if (error) throw error;
 
-      showNotification('Segment updated successfully', 'success');
+      utils.showToast('Segment updated successfully', 'success');
       bootstrap.Modal.getInstance(document.getElementById('editSegmentModal')).hide();
       this.loadSegments();
     } catch (error) {
       console.error('Error updating segment:', error);
-      showNotification('Error updating segment: ' + error.message, 'error');
+      utils.showToast('Error updating segment: ' + error.message, 'error');
     }
   }
 };
+window.crmModule = crmModule;
 
 // ============================================
 // INITIALIZATION

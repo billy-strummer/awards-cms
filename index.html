@@ -2540,7 +2540,7 @@
                         <span class="badge bg-primary fs-5" id="eventPhotosCount">0</span>
                         <small class="text-muted d-block mt-1">photos</small>
                       </div>
-                      <button class="btn btn-primary mt-3">
+                      <button class="btn btn-primary mt-3" onclick="event.stopPropagation(); mediaGalleryModule.openPhotosProduction()">
                         <i class="bi bi-images me-2"></i>Open Photos
                       </button>
                     </div>
@@ -2558,7 +2558,7 @@
                         <span class="badge bg-danger fs-5" id="eventVideosCount">0</span>
                         <small class="text-muted d-block mt-1">videos</small>
                       </div>
-                      <button class="btn btn-danger mt-3">
+                      <button class="btn btn-danger mt-3" onclick="event.stopPropagation(); mediaGalleryModule.openVideosProduction()">
                         <i class="bi bi-play-circle me-2"></i>Open Videos
                       </button>
                     </div>
@@ -2577,6 +2577,23 @@
                   <i class="bi bi-camera-fill me-2"></i>Photos Production
                   <small class="text-muted" id="photosEventName"></small>
                 </h3>
+              </div>
+
+              <!-- Photos Toolbar -->
+              <div class="mb-4 d-flex gap-2 flex-wrap align-items-center">
+                <button class="btn btn-primary" onclick="mediaGalleryModule.openUploadEventPhotosModal()">
+                  <i class="bi bi-upload me-2"></i>Upload Photos
+                </button>
+                <div class="input-group" style="max-width: 300px;">
+                  <span class="input-group-text"><i class="bi bi-search"></i></span>
+                  <input type="text" class="form-control" id="photosProductionSearch" placeholder="Search photos..." oninput="mediaGalleryModule.filterEventPhotos(this.value)">
+                </div>
+                <div class="btn-group">
+                  <button class="btn btn-outline-secondary btn-sm active" onclick="mediaGalleryModule.filterEventPhotosByStatus('all', this)" data-filter="all">All</button>
+                  <button class="btn btn-outline-secondary btn-sm" onclick="mediaGalleryModule.filterEventPhotosByStatus('published', this)" data-filter="published">Published</button>
+                  <button class="btn btn-outline-secondary btn-sm" onclick="mediaGalleryModule.filterEventPhotosByStatus('unpublished', this)" data-filter="unpublished">Unpublished</button>
+                </div>
+                <span class="badge bg-info ms-auto" id="photosProductionCount">0 photos</span>
               </div>
 
               <!-- Photos will be loaded here by JS -->
@@ -2855,13 +2872,13 @@
             <p class="text-muted mb-4">Download reports in various formats</p>
             
             <div class="d-flex gap-2 flex-wrap">
-              <button class="btn btn-sm btn-outline-secondary">
+              <button class="btn btn-sm btn-outline-secondary" onclick="dashboardModule.exportAwardsCSV()">
                 <i class="bi bi-download me-1"></i>Export Awards (CSV)
               </button>
-              <button class="btn btn-sm btn-outline-secondary">
+              <button class="btn btn-sm btn-outline-secondary" onclick="dashboardModule.exportOrganisationsCSV()">
                 <i class="bi bi-download me-1"></i>Export Organisations (CSV)
               </button>
-              <button class="btn btn-sm btn-outline-secondary">
+              <button class="btn btn-sm btn-outline-secondary" onclick="dashboardModule.exportWinnersCSV()">
                 <i class="bi bi-download me-1"></i>Export Winners (CSV)
               </button>
             </div>

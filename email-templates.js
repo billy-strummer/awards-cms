@@ -554,6 +554,7 @@ const emailTemplatesModule = {
     }
   }
 };
+window.emailTemplatesModule = emailTemplatesModule;
 
 // Initialize when email templates sub-tab is shown within Marketing
 document.addEventListener('DOMContentLoaded', () => {

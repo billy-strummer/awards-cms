@@ -15,6 +15,17 @@ const orgsModule = {
   currentOrgIdForLogo: null,
   currentOrgIdForImages: null,
 
+  // Pagination state
+  _currentPage: 1,
+  _pageSize: 50,
+
+  // Column visibility state (persistent via localStorage)
+  _columnVisibility: (() => {
+    try {
+      return JSON.parse(localStorage.getItem('orgsColumnVisibility') || '{}');
+    } catch (e) { return {}; }
+  })(),
+
   /**
  * Load all organisations from database
  * ENHANCED: Now calculates dashboard stats
@@ -120,6 +131,9 @@ async loadOrganisations() {
 
     // Initialize keyboard shortcuts
     this.initKeyboardShortcuts();
+
+    // Subscribe to realtime changes
+    this._subscribeToRealtimeChanges();
 
     // NEW: Calculate and display dashboard stats
     await this.calculateDashboardStats();
@@ -263,6 +277,9 @@ async loadOrganisations() {
       });
       const topTier = Object.entries(tierRevenue).sort((a, b) => b[1] - a[1])[0];
       set('orgsTopTier', topTier ? `${topTier[0]} (${topTier[1]})` : '-');
+
+      // Load overdue follow-ups for the dashboard widget
+      await this.loadOverdueFollowUps();
 
     } catch (error) {
       console.error('Error calculating dashboard stats:', error);
@@ -495,6 +512,9 @@ updateCountyFilterByRegion() {
   // Clear the missing field filter after applying it once
   this._filterMissingField = null;
 
+  // Reset to page 1 when filters change
+  this._currentPage = 1;
+
   this.renderOrganisations();
 },
 
@@ -508,17 +528,44 @@ updateCountyFilterByRegion() {
   const total = document.getElementById('orgsTotal');
   const lastRefresh = document.getElementById('orgsLastRefresh');
 
-  if (count) count.textContent = STATE.filteredOrganisations.length;
-  if (showing) showing.textContent = STATE.filteredOrganisations.length;
+  // Pagination calculations
+  const totalFiltered = STATE.filteredOrganisations.length;
+  const totalPages = Math.max(1, Math.ceil(totalFiltered / this._pageSize));
+  if (this._currentPage > totalPages) this._currentPage = totalPages;
+  if (this._currentPage < 1) this._currentPage = 1;
+  const startIdx = (this._currentPage - 1) * this._pageSize;
+  const endIdx = Math.min(startIdx + this._pageSize, totalFiltered);
+  const pageOrgs = STATE.filteredOrganisations.slice(startIdx, endIdx);
+
+  if (count) count.textContent = totalFiltered;
+  if (showing) showing.textContent = pageOrgs.length > 0 ? `${startIdx + 1}-${endIdx}` : '0';
   if (total) total.textContent = STATE.allOrganisations.length;
   if (lastRefresh) lastRefresh.textContent = new Date().toLocaleTimeString('en-GB');
+
+  // Column visibility helper
+  const isColVisible = (col) => this._columnVisibility[col] !== false;
 
   // Dynamic phone column header
   const phoneHeaderEl = document.getElementById('phoneColHeader');
   if (phoneHeaderEl) phoneHeaderEl.style.display = this._showPhoneColumn ? '' : 'none';
-  const colSpan = this._showPhoneColumn ? 16 : 15;
 
-  if (STATE.filteredOrganisations.length === 0) {
+  // Apply column visibility to table headers
+  const colVisMap = {
+    'sector': 2, 'county': 3, 'contact': 4, 'email': 5, 'tier': 6,
+    'tags': 7, 'region': 8, 'status': 9, 'awards': 10, 'updated': 11,
+    'lastContacted': 12, 'health': 13
+  };
+  const thead = tbody.closest('table')?.querySelector('thead tr');
+  if (thead) {
+    const ths = thead.querySelectorAll('th');
+    Object.entries(colVisMap).forEach(([col, idx]) => {
+      if (ths[idx]) ths[idx].style.display = isColVisible(col) ? '' : 'none';
+    });
+  }
+
+  const visibleColCount = 2 + Object.keys(colVisMap).filter(c => isColVisible(c)).length + (this._showPhoneColumn ? 1 : 0) + 1;
+
+  if (totalFiltered === 0) {
     // Build active filters summary
     const activeFilters = [];
     const year = document.getElementById('orgsYearFilter')?.value;
@@ -543,17 +590,20 @@ updateCountyFilterByRegion() {
 
     tbody.innerHTML = `
       <tr>
-        <td colspan="${colSpan}" class="text-center py-5">
+        <td colspan="${visibleColCount}" class="text-center py-5">
           <i class="bi bi-inbox display-4 text-muted opacity-25"></i>
           <p class="text-muted mt-3 mb-0">No organisations found</p>
           ${filterSummary}
         </td>
       </tr>
     `;
+    this._renderPaginationControls(0, 1);
     return;
   }
 
-  tbody.innerHTML = STATE.filteredOrganisations.map(org => {
+  const cv = (col) => isColVisible(col) ? '' : 'display:none;';
+
+  tbody.innerHTML = pageOrgs.map(org => {
     const isSelected = this.selectedOrgs.has(org.id);
     const awardsCount = org.awards_count || 0;
     const escapedName = utils.escapeHtml(org.company_name || '').replace(/'/g, "\\'");
@@ -585,46 +635,46 @@ updateCountyFilterByRegion() {
             </a>
           </div>
         </td>
-        <td style="cursor: pointer;" ondblclick="orgsModule.startInlineEdit('${org.id}', 'sector', '${utils.escapeHtml(org.sector || '').replace(/'/g, "\\'")}', this)" title="Double-click to edit">
+        <td style="${cv('sector')}cursor: pointer;" ondblclick="orgsModule.startInlineEdit('${org.id}', 'sector', '${utils.escapeHtml(org.sector || '').replace(/'/g, "\\'")}', this)" title="Double-click to edit">
           <span class="badge bg-info-subtle text-info small">
             ${utils.escapeHtml(org.sector || '-')}
           </span>
         </td>
-        <td>
+        <td style="${cv('county')}">
           <span class="badge bg-primary-subtle text-primary small">
             ${utils.escapeHtml(org.county || '-')}
           </span>
         </td>
-        <td class="small" style="cursor: pointer;" ondblclick="orgsModule.startInlineEdit('${org.id}', 'contact', '${utils.escapeHtml(org.contact_name || '').replace(/'/g, "\\'")}', this)" title="Double-click to edit">
+        <td class="small" style="${cv('contact')}cursor: pointer;" ondblclick="orgsModule.startInlineEdit('${org.id}', 'contact', '${utils.escapeHtml(org.contact_name || '').replace(/'/g, "\\'")}', this)" title="Double-click to edit">
           ${utils.escapeHtml(org.contact_name ? (org.contact_name.length > 18 ? org.contact_name.substring(0, 18) + '...' : org.contact_name) : '-')}
         </td>
-        <td class="small" style="cursor: pointer;" ondblclick="orgsModule.startInlineEdit('${org.id}', 'email', '${utils.escapeHtml(org.email || '').replace(/'/g, "\\'")}', this)" title="Double-click to edit">
+        <td class="small" style="${cv('email')}cursor: pointer;" ondblclick="orgsModule.startInlineEdit('${org.id}', 'email', '${utils.escapeHtml(org.email || '').replace(/'/g, "\\'")}', this)" title="Double-click to edit">
           ${org.email ?
             `<a href="mailto:${org.email}" class="text-decoration-none" title="${utils.escapeHtml(org.email)}">
               ${org.email.length > 22 ? utils.escapeHtml(org.email.substring(0, 22)) + '...' : utils.escapeHtml(org.email)}
             </a>` : '-'
           }
         </td>
-        <td class="text-center">
+        <td class="text-center" style="${cv('tier')}">
           ${org.tier ?
             `<span class="badge" style="background: ${tierColor}; color: ${org.tier === 'Gold' || org.tier === 'Silver' || org.tier === 'Platinum' ? '#000' : '#fff'}; font-size: 0.7rem;">
               ${utils.escapeHtml(org.tier)}
             </span>` : '<span class="text-muted small">-</span>'
           }
         </td>
-        <td>
+        <td style="${cv('tags')}">
           ${org.tags && org.tags.length > 0 ?
             org.tags.slice(0, 3).map(t => `<span class="badge bg-secondary me-1" style="font-size: 0.65rem;">${utils.escapeHtml(t)}</span>`).join('') +
             (org.tags.length > 3 ? `<span class="text-muted" style="font-size: 0.65rem;">+${org.tags.length - 3}</span>` : '')
             : '<span class="text-muted small">-</span>'
           }
         </td>
-        <td>
+        <td style="${cv('region')}">
           <span class="badge bg-success-subtle text-success small">
             ${utils.escapeHtml(org.region || '-')}
           </span>
         </td>
-        <td class="text-center">
+        <td class="text-center" style="${cv('status')}">
           <select class="form-select form-select-sm border-0 p-0 text-center"
                   style="font-size: 0.75rem; background-position: right 0.25rem center; padding-right: 1.2rem !important; cursor: pointer;"
                   onchange="orgsModule.quickUpdateStatus('${org.id}', this.value)"
@@ -635,22 +685,22 @@ updateCountyFilterByRegion() {
           </select>
         </td>
         ${this._showPhoneColumn ? `<td class="small">${utils.escapeHtml(org.contact_phone || '-')}</td>` : ''}
-        <td class="text-center">
+        <td class="text-center" style="${cv('awards')}">
           ${awardsCount > 0 ?
             `<span class="badge bg-warning text-dark">${awardsCount}</span>` :
             `<span class="text-muted">-</span>`
           }
         </td>
-        <td class="text-center small text-muted" title="${updatedDate ? new Date(updatedDate).toLocaleDateString('en-GB') : 'N/A'}">
+        <td class="text-center small text-muted" style="${cv('updated')}" title="${updatedDate ? new Date(updatedDate).toLocaleDateString('en-GB') : 'N/A'}">
           ${updatedDate ? this._timeAgo(new Date(updatedDate)) : '-'}
         </td>
-        <td class="text-center small text-muted" title="Last contacted">
+        <td class="text-center small text-muted" style="${cv('lastContacted')}" title="Last contacted">
           ${(() => {
             const lc = this.getLastContacted(org.id);
             return lc ? this._timeAgo(new Date(lc)) : '<span class="text-muted">-</span>';
           })()}
         </td>
-        <td class="text-center">
+        <td class="text-center" style="${cv('health')}">
           ${(() => {
             const h = this.getOrgHealthIndicator(org);
             return `<i class="bi ${h.icon} text-${h.color}" title="${h.label}" style="font-size: 0.85rem;"></i>`;
@@ -678,6 +728,7 @@ updateCountyFilterByRegion() {
   }).join('');
 
     this.updateSortIndicators();
+    this._renderPaginationControls(totalFiltered, totalPages);
 },
   /**
    * Open company profile modal
@@ -697,6 +748,13 @@ updateCountyFilterByRegion() {
     editBtn.style.display = 'none';
     saveBtn.style.display = 'none';
     cancelBtn.style.display = 'none';
+
+    // Show print button
+    const printBtn = document.getElementById('printProfileBtn');
+    if (printBtn) {
+      printBtn.style.display = '';
+      printBtn.onclick = () => this.printCompanyProfile(orgId);
+    }
 
     titleEl.innerHTML = `<i class="bi bi-building me-2"></i>${utils.escapeHtml(companyName)}`;
     contentDiv.innerHTML = `
@@ -1552,7 +1610,7 @@ updateCountyFilterByRegion() {
       contentDiv.innerHTML = `
         <div class="alert alert-danger">
           <i class="bi bi-exclamation-triangle me-2"></i>
-          Failed to load company profile: ${error.message}
+          Failed to load company profile: ${utils.escapeHtml(error.message)}
         </div>
       `;
     }
@@ -1931,23 +1989,26 @@ updateCountyFilterByRegion() {
         </div>
       `;
 
-      // Add hover effect
-      const style = document.createElement('style');
-      style.textContent = `
-        .logo-option:hover {
-          transform: scale(1.05);
-          box-shadow: 0 4px 8px rgba(0,0,0,0.2);
-          transition: all 0.2s;
-        }
-      `;
-      document.head.appendChild(style);
+      // Add hover effect (reuse existing style tag to prevent leaks)
+      if (!document.getElementById('logo-option-hover-style')) {
+        const style = document.createElement('style');
+        style.id = 'logo-option-hover-style';
+        style.textContent = `
+          .logo-option:hover {
+            transform: scale(1.05);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+            transition: all 0.2s;
+          }
+        `;
+        document.head.appendChild(style);
+      }
 
     } catch (error) {
       console.error('Error loading media gallery:', error);
       contentDiv.innerHTML = `
         <div class="alert alert-danger">
           <i class="bi bi-exclamation-triangle me-2"></i>
-          Error loading media gallery: ${error.message}
+          Error loading media gallery: ${utils.escapeHtml(error.message)}
         </div>
       `;
     }
@@ -2729,6 +2790,10 @@ updateCountyFilterByRegion() {
           valA = tierOrder[a.tier] || 0;
           valB = tierOrder[b.tier] || 0;
           break;
+        case 'phone':
+          valA = (a.contact_phone || '').toLowerCase();
+          valB = (b.contact_phone || '').toLowerCase();
+          break;
         case 'updated':
           valA = new Date(a.updated_at || a.created_at || 0).getTime();
           valB = new Date(b.updated_at || b.created_at || 0).getTime();
@@ -2809,9 +2874,12 @@ updateCountyFilterByRegion() {
     }
 
     const csv = [
-      'Company Name,Sector,County,Region,Contact Name,Email,Phone,Website,Status,Awards Count,Address,Catchment Area',
-      ...data.map(org =>
-        [
+      'Company Name,Sector,County,Region,Contact Name,Email,Phone,Website,Status,Tier,Tags,Awards Count,Address,Catchment Area,Description,Engagement Score,Health Status,Last Contacted',
+      ...data.map(org => {
+        const engagement = this.calculateEngagementScore(org);
+        const health = this.getOrgHealthIndicator(org);
+        const lastContacted = this.getLastContacted(org.id);
+        return [
           `"${(org.company_name || '').replace(/"/g, '""')}"`,
           `"${(org.sector || '').replace(/"/g, '""')}"`,
           `"${(org.county || '').replace(/"/g, '""')}"`,
@@ -2821,11 +2889,17 @@ updateCountyFilterByRegion() {
           `"${(org.contact_phone || '').replace(/"/g, '""')}"`,
           `"${(org.website || '').replace(/"/g, '""')}"`,
           `"${(org.status || 'prospect').replace(/"/g, '""')}"`,
+          `"${(org.tier || '').replace(/"/g, '""')}"`,
+          `"${(org.tags || []).join('; ').replace(/"/g, '""')}"`,
           `"${org.awards_count || 0}"`,
           `"${(org.address || '').replace(/"/g, '""')}"`,
-          `"${(org.catchment_area || '').replace(/"/g, '""')}"`
-        ].join(',')
-      )
+          `"${(org.catchment_area || '').replace(/"/g, '""')}"`,
+          `"${(org.description || '').replace(/"/g, '""')}"`,
+          `"${engagement}"`,
+          `"${health.label}"`,
+          `"${lastContacted ? new Date(lastContacted).toLocaleDateString('en-GB') : 'Never'}"`
+        ].join(',');
+      })
     ].join('\n');
 
     const blob = new Blob([csv], { type: 'text/csv' });
@@ -2840,7 +2914,7 @@ updateCountyFilterByRegion() {
   },
 
   // ============================================
-  // BULK EMAIL
+  // BULK EMAIL CAMPAIGN
   // ============================================
   bulkEmail() {
     if (this.selectedOrgs.size === 0) {
@@ -2849,17 +2923,145 @@ updateCountyFilterByRegion() {
     }
 
     const selectedData = STATE.allOrganisations.filter(org => this.selectedOrgs.has(org.id));
-    const emails = selectedData
-      .map(org => org.email)
-      .filter(e => e)
-      .join(',');
+    const withEmail = selectedData.filter(o => o.email);
+    const withoutEmail = selectedData.filter(o => !o.email);
 
-    if (emails) {
-      window.location.href = `mailto:${emails}`;
-      utils.showToast(`Opening email for ${selectedData.length} companies`, 'success');
-    } else {
-      utils.showToast('No email addresses found for selected companies', 'warning');
+    const templates = this._emailTemplates;
+
+    const html = `
+      <div class="row g-3">
+        <div class="col-12">
+          <div class="alert alert-info small py-2 mb-2">
+            <i class="bi bi-people me-1"></i><strong>${withEmail.length}</strong> recipient(s) with email
+            ${withoutEmail.length > 0 ? ` &middot; <span class="text-warning">${withoutEmail.length} without email (skipped)</span>` : ''}
+          </div>
+        </div>
+        <div class="col-12">
+          <label class="form-label small fw-semibold">Send Method</label>
+          <div class="btn-group w-100" role="group">
+            <input type="radio" class="btn-check" name="emailMethod" id="emailMethodBCC" value="bcc" checked>
+            <label class="btn btn-outline-primary btn-sm" for="emailMethodBCC"><i class="bi bi-envelope me-1"></i>BCC (private)</label>
+            <input type="radio" class="btn-check" name="emailMethod" id="emailMethodIndividual" value="individual">
+            <label class="btn btn-outline-primary btn-sm" for="emailMethodIndividual"><i class="bi bi-person me-1"></i>Individual (personalised)</label>
+          </div>
+        </div>
+        <div class="col-12">
+          <label class="form-label small fw-semibold">Template</label>
+          <select class="form-select form-select-sm" id="bulkEmailTemplate" onchange="orgsModule._populateBulkEmailFromTemplate()">
+            <option value="">-- Custom email --</option>
+            ${templates.map(t => `<option value="${t.id}">${utils.escapeHtml(t.name)}</option>`).join('')}
+          </select>
+        </div>
+        <div class="col-12">
+          <label class="form-label small fw-semibold">Subject</label>
+          <input type="text" class="form-control form-control-sm" id="bulkEmailSubject" placeholder="Enter subject...">
+        </div>
+        <div class="col-12">
+          <label class="form-label small fw-semibold">Body <small class="text-muted">(use {contact_name}, {company_name} for personalisation)</small></label>
+          <textarea class="form-control form-control-sm" id="bulkEmailBody" rows="6" placeholder="Enter message..."></textarea>
+        </div>
+        <div class="col-12">
+          <div class="d-flex gap-2">
+            <button class="btn btn-sm btn-outline-info" onclick="orgsModule._previewBulkEmail()"><i class="bi bi-eye me-1"></i>Preview</button>
+            <button class="btn btn-sm btn-primary ms-auto" onclick="orgsModule._sendBulkEmail()"><i class="bi bi-send me-1"></i>Send Campaign</button>
+          </div>
+        </div>
+        <div class="col-12" id="bulkEmailPreview" style="display:none;"></div>
+      </div>`;
+
+    this._showDynamicModal(`Email Campaign (${withEmail.length} recipients)`, html, 'bi-megaphone', 'modal-lg');
+  },
+
+  _populateBulkEmailFromTemplate() {
+    const templateId = document.getElementById('bulkEmailTemplate')?.value;
+    if (!templateId) return;
+    const template = this._emailTemplates.find(t => t.id === templateId);
+    if (template) {
+      document.getElementById('bulkEmailSubject').value = template.subject;
+      document.getElementById('bulkEmailBody').value = template.body;
     }
+  },
+
+  _previewBulkEmail() {
+    const subject = document.getElementById('bulkEmailSubject')?.value.trim();
+    const body = document.getElementById('bulkEmailBody')?.value.trim();
+    if (!subject || !body) { utils.showToast('Enter subject and body first', 'warning'); return; }
+
+    const selectedData = STATE.allOrganisations.filter(org => this.selectedOrgs.has(org.id) && org.email);
+    const sample = selectedData[0];
+    if (!sample) return;
+
+    const previewSubject = subject.replace(/{company_name}/g, sample.company_name || '').replace(/{contact_name}/g, sample.contact_name || 'Sir/Madam');
+    const previewBody = body.replace(/{company_name}/g, sample.company_name || '').replace(/{contact_name}/g, sample.contact_name || 'Sir/Madam');
+
+    const previewEl = document.getElementById('bulkEmailPreview');
+    previewEl.style.display = 'block';
+    previewEl.innerHTML = `
+      <div class="card bg-light">
+        <div class="card-header py-2 small fw-semibold"><i class="bi bi-eye me-1"></i>Preview (for ${utils.escapeHtml(sample.company_name || 'first recipient')})</div>
+        <div class="card-body py-2">
+          <div class="small"><strong>To:</strong> ${utils.escapeHtml(sample.email)}</div>
+          <div class="small"><strong>Subject:</strong> ${utils.escapeHtml(previewSubject)}</div>
+          <hr class="my-2">
+          <div class="small" style="white-space:pre-wrap;">${utils.escapeHtml(previewBody)}</div>
+        </div>
+      </div>`;
+  },
+
+  async _sendBulkEmail() {
+    const subject = document.getElementById('bulkEmailSubject')?.value.trim();
+    const body = document.getElementById('bulkEmailBody')?.value.trim();
+    const method = document.querySelector('input[name="emailMethod"]:checked')?.value || 'bcc';
+
+    if (!subject || !body) { utils.showToast('Enter subject and body', 'warning'); return; }
+
+    const selectedData = STATE.allOrganisations.filter(org => this.selectedOrgs.has(org.id) && org.email);
+    if (selectedData.length === 0) { utils.showToast('No recipients with email addresses', 'warning'); return; }
+
+    if (!confirm(`Send email to ${selectedData.length} organisation(s) via ${method === 'bcc' ? 'BCC' : 'individual emails'}?`)) return;
+
+    if (method === 'bcc') {
+      // BCC mode: single mailto with all addresses in BCC
+      const emails = selectedData.map(o => o.email).join(',');
+      const bccSubject = subject.replace(/{company_name}/g, '').replace(/{contact_name}/g, '');
+      const bccBody = body.replace(/{company_name}/g, '').replace(/{contact_name}/g, '');
+      window.open(`mailto:?bcc=${encodeURIComponent(emails)}&subject=${encodeURIComponent(bccSubject)}&body=${encodeURIComponent(bccBody)}`);
+    } else {
+      // Individual mode: open first mailto, log all
+      const first = selectedData[0];
+      const personalSubject = subject.replace(/{company_name}/g, first.company_name || '').replace(/{contact_name}/g, first.contact_name || 'Sir/Madam');
+      const personalBody = body.replace(/{company_name}/g, first.company_name || '').replace(/{contact_name}/g, first.contact_name || 'Sir/Madam');
+      window.open(`mailto:${encodeURIComponent(first.email)}?subject=${encodeURIComponent(personalSubject)}&body=${encodeURIComponent(personalBody)}`);
+      if (selectedData.length > 1) {
+        utils.showToast(`Opened email for ${first.company_name}. ${selectedData.length - 1} more will be logged.`, 'info');
+      }
+    }
+
+    // Log all communications to Supabase
+    try {
+      const templateId = document.getElementById('bulkEmailTemplate')?.value || 'custom';
+      const performedBy = await this._getCurrentUserEmail();
+      const commsRecords = selectedData.map(org => ({
+        organisation_id: org.id,
+        template_id: templateId,
+        template_name: `Campaign: ${subject.substring(0, 50)}`,
+        subject,
+        channel: 'email',
+        direction: 'outbound'
+      }));
+      // Insert in batches of 50
+      for (let i = 0; i < commsRecords.length; i += 50) {
+        await STATE.client.from('organisation_comms_log').insert(commsRecords.slice(i, i + 50));
+      }
+      // Log audit
+      this._logAudit(null, 'bulk_email', '', `Bulk email campaign to ${selectedData.length} orgs: ${subject}`);
+    } catch (e) {
+      console.warn('Failed to log bulk email:', e.message);
+    }
+
+    // Close modal
+    bootstrap.Modal.getInstance(document.getElementById('dynamicOrgModal'))?.hide();
+    utils.showToast(`Email campaign sent to ${selectedData.length} organisations`, 'success');
   },
 
   // ============================================
@@ -2878,32 +3080,7 @@ updateCountyFilterByRegion() {
   },
 
   // ============================================
-  // SAVE NOTES
-  // ============================================
-  async saveOrgNotes(orgId) {
-    const notes = document.getElementById('editOrgNotes')?.value?.trim() || '';
-    try {
-      const { error } = await STATE.client
-        .from('organisations')
-        .update({ notes: notes || null })
-        .eq('id', orgId);
-
-      if (error) throw error;
-
-      // Update local state
-      const org = STATE.allOrganisations.find(o => o.id === orgId);
-      if (org) org.notes = notes;
-
-      utils.showToast('Notes saved', 'success');
-    } catch (error) {
-      console.error('Error saving notes:', error);
-      utils.showToast('Error saving notes: ' + error.message, 'error');
-    }
-  },
-
-  // ============================================
   // UPDATE COMPANY STATUS
-  // ============================================
   // ============================================
   // QUICK INLINE STATUS UPDATE
   // ============================================
@@ -3161,23 +3338,30 @@ updateCountyFilterByRegion() {
   },
 
   // ============================================
-  // AUDIT TRAIL (Supabase-backed, localStorage fallback)
+  // AUDIT TRAIL (Supabase-backed)
   // ============================================
   async _logAudit(orgId, action, companyName, details) {
     try {
+      const performedBy = await this._getCurrentUserEmail();
       await STATE.client
         .from('org_audit_log')
-        .insert([{ org_id: orgId, company_name: companyName, action, details }]);
+        .insert([{ org_id: orgId, company_name: companyName, action, details, performed_by: performedBy }]);
     } catch (e) {
-      // Fallback to localStorage if table doesn't exist yet
-      try {
-        const key = 'orgAuditLog';
-        const log = JSON.parse(localStorage.getItem(key) || '[]');
-        log.unshift({ orgId, companyName, action, details, timestamp: new Date().toISOString() });
-        if (log.length > 500) log.length = 500;
-        localStorage.setItem(key, JSON.stringify(log));
-      } catch (e2) { /* ignore */ }
+      console.warn('Failed to write audit log to Supabase:', e.message);
     }
+  },
+
+  // Cache current user email to avoid repeated auth calls
+  _cachedUserEmail: null,
+  async _getCurrentUserEmail() {
+    if (this._cachedUserEmail) return this._cachedUserEmail;
+    try {
+      const { data } = await STATE.client.auth.getUser();
+      this._cachedUserEmail = data?.user?.email || 'admin';
+    } catch (e) {
+      this._cachedUserEmail = 'admin';
+    }
+    return this._cachedUserEmail;
   },
 
   async getAuditLog(orgId) {
@@ -3192,12 +3376,8 @@ updateCountyFilterByRegion() {
       if (error) throw error;
       return (data || []).map(e => ({ ...e, timestamp: e.created_at }));
     } catch (e) {
-      // Fallback to localStorage
-      try {
-        const log = JSON.parse(localStorage.getItem('orgAuditLog') || '[]');
-        if (orgId) return log.filter(e => e.orgId === orgId);
-        return log;
-      } catch (e2) { return []; }
+      console.warn('Failed to read audit log from Supabase:', e.message);
+      return [];
     }
   },
 
@@ -3326,22 +3506,7 @@ updateCountyFilterByRegion() {
       </div></div>`;
     });
 
-    // Show in a modal
-    const modalHtml = `<div class="modal fade" id="duplicateCheckModal" tabindex="-1">
-      <div class="modal-dialog modal-lg"><div class="modal-content">
-        <div class="modal-header">
-          <h5 class="modal-title"><i class="bi bi-files me-2"></i>Duplicate Detection</h5>
-          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-        </div>
-        <div class="modal-body" style="max-height: 500px; overflow-y: auto;">${html}</div>
-        <div class="modal-footer"><button class="btn btn-secondary" data-bs-dismiss="modal">Close</button></div>
-      </div></div>
-    </div>`;
-
-    // Remove existing and create new
-    document.getElementById('duplicateCheckModal')?.remove();
-    document.body.insertAdjacentHTML('beforeend', modalHtml);
-    new bootstrap.Modal(document.getElementById('duplicateCheckModal')).show();
+    this._showDynamicModal('Duplicate Detection', html, 'bi-files', 'modal-lg');
   },
 
   // ============================================
@@ -3402,20 +3567,7 @@ updateCountyFilterByRegion() {
       }).join('')}
     </div>`;
 
-    document.getElementById('duplicateCheckModal')?.remove();
-    const modalHtml = `<div class="modal fade" id="duplicateCheckModal" tabindex="-1">
-      <div class="modal-dialog"><div class="modal-content">
-        <div class="modal-header">
-          <h5 class="modal-title"><i class="bi bi-envelope me-2"></i>Email ${utils.escapeHtml(org.company_name || '')}</h5>
-          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-        </div>
-        <div class="modal-body">${html}</div>
-        <div class="modal-footer"><button class="btn btn-secondary" data-bs-dismiss="modal">Close</button></div>
-      </div></div>
-    </div>`;
-
-    document.body.insertAdjacentHTML('beforeend', modalHtml);
-    new bootstrap.Modal(document.getElementById('duplicateCheckModal')).show();
+    this._showDynamicModal(`Email ${utils.escapeHtml(org.company_name || '')}`, html, 'bi-envelope');
   },
 
   // ============================================
@@ -3434,15 +3586,7 @@ updateCountyFilterByRegion() {
 
       this._logAudit(orgId, 'email_sent', companyName, `Email sent: ${template?.name || templateId}`);
     } catch (e) {
-      // Fallback to localStorage
-      try {
-        const key = 'orgCommsLog';
-        const log = JSON.parse(localStorage.getItem(key) || '[]');
-        const template = this._emailTemplates.find(t => t.id === templateId);
-        log.unshift({ orgId, companyName, templateId, templateName: template?.name || templateId, timestamp: new Date().toISOString() });
-        if (log.length > 1000) log.length = 1000;
-        localStorage.setItem(key, JSON.stringify(log));
-      } catch (e2) { /* ignore */ }
+      console.warn('Failed to write comms log to Supabase:', e.message);
     }
   },
 
@@ -3458,12 +3602,8 @@ updateCountyFilterByRegion() {
       if (error) throw error;
       return (data || []).map(e => ({ ...e, timestamp: e.created_at, templateName: e.template_name }));
     } catch (e) {
-      // Fallback to localStorage
-      try {
-        const log = JSON.parse(localStorage.getItem('orgCommsLog') || '[]');
-        if (orgId) return log.filter(e => e.orgId === orgId);
-        return log;
-      } catch (e2) { return []; }
+      console.warn('Failed to read comms history from Supabase:', e.message);
+      return [];
     }
   },
 
@@ -3574,6 +3714,9 @@ updateCountyFilterByRegion() {
     td.querySelector('input').focus();
   },
 
+  // Last inline edit for undo support
+  _lastInlineEdit: null,
+
   async saveInlineEdit(orgId, field) {
     const input = document.getElementById(`inlineEdit_${field}`);
     if (!input) return;
@@ -3584,6 +3727,10 @@ updateCountyFilterByRegion() {
     const fieldMap = { 'contact': 'contact_name', 'email': 'email', 'sector': 'sector' };
     const dbField = fieldMap[field] || field;
 
+    // Capture old value for undo
+    const org = STATE.allOrganisations.find(o => o.id === orgId);
+    const oldValue = org ? (org[dbField] || '') : '';
+
     try {
       const { error } = await STATE.client
         .from('organisations')
@@ -3593,16 +3740,63 @@ updateCountyFilterByRegion() {
       if (error) throw error;
 
       // Update local state
-      const org = STATE.allOrganisations.find(o => o.id === orgId);
       if (org) org[dbField] = newValue || null;
       const fOrg = STATE.filteredOrganisations.find(o => o.id === orgId);
       if (fOrg) fOrg[dbField] = newValue || null;
 
+      // Store for undo
+      this._lastInlineEdit = { orgId, dbField, oldValue, newValue };
+
+      // Log the diff to audit trail
+      this._logAuditWithDiff(orgId, 'field_changed', org?.company_name || '', dbField, oldValue, newValue);
+
       this.renderOrganisations();
-      utils.showToast(`${field} updated`, 'success');
+      this._showUndoToast(field);
     } catch (error) {
       console.error('Error saving inline edit:', error);
       utils.showToast('Error: ' + error.message, 'error');
+    }
+  },
+
+  _showUndoToast(field) {
+    // Remove existing undo toast
+    document.getElementById('undoToast')?.remove();
+    const toastHtml = `<div id="undoToast" class="toast show position-fixed bottom-0 end-0 m-3" style="z-index:9999;" role="alert">
+      <div class="toast-body d-flex align-items-center gap-2 bg-dark text-white rounded shadow">
+        <i class="bi bi-pencil-square"></i>
+        <span class="small">${utils.escapeHtml(field)} updated</span>
+        <button class="btn btn-sm btn-warning ms-2 py-0 px-2" onclick="orgsModule.undoLastInlineEdit()"><i class="bi bi-arrow-counterclockwise me-1"></i>Undo</button>
+        <button type="button" class="btn-close btn-close-white ms-1" onclick="this.closest('.toast').remove()"></button>
+      </div>
+    </div>`;
+    document.body.insertAdjacentHTML('beforeend', toastHtml);
+    // Auto-dismiss after 8 seconds
+    setTimeout(() => document.getElementById('undoToast')?.remove(), 8000);
+  },
+
+  async undoLastInlineEdit() {
+    const edit = this._lastInlineEdit;
+    if (!edit) { utils.showToast('Nothing to undo', 'warning'); return; }
+
+    try {
+      const { error } = await STATE.client
+        .from('organisations')
+        .update({ [edit.dbField]: edit.oldValue || null })
+        .eq('id', edit.orgId);
+
+      if (error) throw error;
+
+      const org = STATE.allOrganisations.find(o => o.id === edit.orgId);
+      if (org) org[edit.dbField] = edit.oldValue || null;
+      const fOrg = STATE.filteredOrganisations.find(o => o.id === edit.orgId);
+      if (fOrg) fOrg[edit.dbField] = edit.oldValue || null;
+
+      this._lastInlineEdit = null;
+      document.getElementById('undoToast')?.remove();
+      this.renderOrganisations();
+      utils.showToast('Edit undone', 'success');
+    } catch (e) {
+      utils.showToast('Undo failed: ' + e.message, 'error');
     }
   },
 
@@ -3756,6 +3950,8 @@ updateCountyFilterByRegion() {
       }
 
       utils.showLoading(`Fetching logos: ${i + 1}/${orgs.length}`);
+      // Small delay between orgs to avoid rate limiting from logo services
+      if (i < orgs.length - 1) await new Promise(r => setTimeout(r, 300));
     }
 
     utils.hideLoading();
@@ -3782,10 +3978,16 @@ updateCountyFilterByRegion() {
     'phone': 'contact_phone', 'contact_phone': 'contact_phone', 'telephone': 'contact_phone', 'tel': 'contact_phone',
     'website': 'website', 'url': 'website', 'web': 'website', 'site': 'website',
     'address': 'address', 'postal address': 'address',
-    'catchment_area': 'catchment_area', 'catchment area': 'catchment_area', 'catchment': 'catchment_area'
+    'catchment_area': 'catchment_area', 'catchment area': 'catchment_area', 'catchment': 'catchment_area',
+    // Contact-specific fields for multi-contact import
+    'first name': 'contact_first_name', 'first_name': 'contact_first_name', 'firstname': 'contact_first_name',
+    'last name': 'contact_last_name', 'last_name': 'contact_last_name', 'lastname': 'contact_last_name', 'surname': 'contact_last_name',
+    'job title': 'contact_job_title', 'job_title': 'contact_job_title', 'title': 'contact_job_title', 'role': 'contact_job_title', 'position': 'contact_job_title',
+    'mobile': 'contact_mobile', 'mobile phone': 'contact_mobile', 'mobile_phone': 'contact_mobile', 'cell': 'contact_mobile'
   },
 
   _dbFields: ['company_name', 'sector', 'region', 'contact_name', 'email', 'contact_phone', 'website', 'address', 'catchment_area'],
+  _contactFields: ['contact_first_name', 'contact_last_name', 'contact_job_title', 'contact_mobile'],
 
   _getSelectedCounty() {
     const val = document.getElementById('csvCountySelect')?.value || '';
@@ -3918,7 +4120,12 @@ updateCountyFilterByRegion() {
           </label>
           <select class="form-select form-select-sm" onchange="orgsModule._updateColumnMap(${idx}, this.value)">
             <option value="">-- Skip --</option>
-            ${this._dbFields.map(f => `<option value="${f}" ${mapped === f ? 'selected' : ''}>${f.replace(/_/g, ' ')}</option>`).join('')}
+            <optgroup label="Organisation Fields">
+              ${this._dbFields.map(f => `<option value="${f}" ${mapped === f ? 'selected' : ''}>${f.replace(/_/g, ' ')}</option>`).join('')}
+            </optgroup>
+            <optgroup label="Contact Fields">
+              ${this._contactFields.map(f => `<option value="${f}" ${mapped === f ? 'selected' : ''}>${f.replace(/^contact_/, '').replace(/_/g, ' ')}</option>`).join('')}
+            </optgroup>
           </select>
         </div>
       `;
@@ -4110,6 +4317,51 @@ updateCountyFilterByRegion() {
         }
       }
 
+      // Import contacts from contact-specific CSV columns
+      const hasContactFields = Object.values(this._csvColumnMap).some(f => this._contactFields.includes(f));
+      let contactCount = 0;
+      if (hasContactFields) {
+        // Reload orgs to get the new IDs
+        const { data: freshOrgs } = await STATE.client.from('organisations').select('id, company_name');
+        const orgNameMap = {};
+        (freshOrgs || []).forEach(o => { orgNameMap[(o.company_name || '').toLowerCase()] = o.id; });
+
+        const contactRecords = [];
+        for (const item of rowsToImport) {
+          const companyName = (item.record.company_name || '').toLowerCase();
+          const orgId = orgNameMap[companyName];
+          if (!orgId) continue;
+
+          const firstName = item.record.contact_first_name?.trim();
+          const lastName = item.record.contact_last_name?.trim();
+          const jobTitle = item.record.contact_job_title?.trim();
+          const mobile = item.record.contact_mobile?.trim();
+
+          if (firstName || lastName) {
+            contactRecords.push({
+              organisation_id: orgId,
+              first_name: firstName || null,
+              last_name: lastName || null,
+              job_title: jobTitle || null,
+              email: item.record.email?.trim() || null,
+              phone: item.record.contact_phone?.trim() || null,
+              mobile: mobile || null,
+              is_primary: true,
+              receive_emails: true
+            });
+          }
+        }
+
+        if (contactRecords.length > 0) {
+          for (let i = 0; i < contactRecords.length; i += 50) {
+            try {
+              await STATE.client.from('organisation_contacts').insert(contactRecords.slice(i, i + 50));
+              contactCount += contactRecords.slice(i, i + 50).length;
+            } catch (e) { console.warn('Contact import batch error:', e.message); }
+          }
+        }
+      }
+
       // Track imported counties in localStorage for dashboard
       try {
         const imported = JSON.parse(localStorage.getItem('csvImportedCounties') || '{}');
@@ -4129,7 +4381,8 @@ updateCountyFilterByRegion() {
       bootstrap.Modal.getInstance(document.getElementById('csvImportModal')).hide();
 
       if (errorCount === 0) {
-        utils.showToast(`Successfully imported ${successCount} organisations for ${selectedCounty}!`, 'success');
+        const contactMsg = contactCount > 0 ? ` + ${contactCount} contacts` : '';
+        utils.showToast(`Successfully imported ${successCount} organisations${contactMsg} for ${selectedCounty}!`, 'success');
       } else {
         utils.showToast(`${successCount} imported, ${errorCount} failed. Check console for details.`, 'warning');
       }
@@ -4326,7 +4579,7 @@ updateCountyFilterByRegion() {
     const email = document.getElementById('newContactEmailAddr')?.value.trim();
     const phone = document.getElementById('newContactPhoneNum')?.value.trim();
     const isPrimary = document.getElementById('newContactIsPrimary')?.checked || false;
-    const receiveEmails = document.getElementById('newContactReceiveEmails')?.checked || true;
+    const receiveEmails = document.getElementById('newContactReceiveEmails')?.checked ?? true;
 
     if (!firstName && !lastName) { utils.showToast('Please enter a name', 'warning'); return; }
 
@@ -4400,11 +4653,8 @@ updateCountyFilterByRegion() {
       (data || []).forEach(f => { result[f.field_name] = f.field_value; });
       return result;
     } catch (e) {
-      // Fallback to localStorage for migration
-      try {
-        const all = JSON.parse(localStorage.getItem('orgCustomFields') || '{}');
-        return all[orgId] || {};
-      } catch (e2) { return {}; }
+      console.warn('Failed to read custom fields from Supabase:', e.message);
+      return {};
     }
   },
 
@@ -4464,11 +4714,7 @@ updateCountyFilterByRegion() {
         }]);
         if (error) throw error;
       } catch (dbErr) {
-        // Fallback: store in localStorage
-        const docs = JSON.parse(localStorage.getItem('orgDocuments') || '{}');
-        if (!docs[orgId]) docs[orgId] = [];
-        docs[orgId].push({ url: urlData.publicUrl, title: docTitle || file.name, type: file.type, size: file.size, date: new Date().toISOString() });
-        localStorage.setItem('orgDocuments', JSON.stringify(docs));
+        console.warn('Failed to save document to Supabase:', dbErr.message);
       }
 
       utils.showToast('Document uploaded', 'success');
@@ -4487,11 +4733,8 @@ updateCountyFilterByRegion() {
       if (error) throw error;
       return data || [];
     } catch (e) {
-      // Fallback to localStorage
-      try {
-        const docs = JSON.parse(localStorage.getItem('orgDocuments') || '{}');
-        return (docs[orgId] || []).map(d => ({ file_url: d.url, title: d.title, file_type: d.type, file_size: d.size, created_at: d.date }));
-      } catch (e2) { return []; }
+      console.warn('Failed to read documents from Supabase:', e.message);
+      return [];
     }
   },
 
@@ -4510,11 +4753,8 @@ updateCountyFilterByRegion() {
         date: f.follow_up_date, note: f.note, done: f.completed, created: f.created_at
       }));
     } catch (e) {
-      try {
-        const all = JSON.parse(localStorage.getItem('orgFollowUps') || '[]');
-        if (orgId) return all.filter(f => f.orgId === orgId);
-        return all;
-      } catch (e2) { return []; }
+      console.warn('Failed to read follow-ups from Supabase:', e.message);
+      return [];
     }
   },
 
@@ -4663,7 +4903,7 @@ updateCountyFilterByRegion() {
       'note_added': 'bi-sticky text-secondary',
       'csv_import': 'bi-file-earmark-arrow-up text-primary'
     };
-    return `<table class="table table-sm table-hover"><thead><tr><th>Time</th><th>Company</th><th>Action</th><th>Details</th></tr></thead><tbody>
+    return `<table class="table table-sm table-hover"><thead><tr><th>Time</th><th>User</th><th>Company</th><th>Action</th><th>Details</th></tr></thead><tbody>
       ${entries.map(e => {
         const date = new Date(e.timestamp || e.created_at);
         const icon = icons[e.action] || 'bi-clock-history text-muted';
@@ -4673,8 +4913,10 @@ updateCountyFilterByRegion() {
         if (diffMatch) {
           detailsHtml = `${utils.escapeHtml(diffMatch[1])}: <span class="text-danger text-decoration-line-through">${utils.escapeHtml(diffMatch[2])}</span> → <span class="text-success fw-semibold">${utils.escapeHtml(diffMatch[3])}</span>`;
         }
+        const user = e.performed_by || '';
         return `<tr>
           <td class="small text-muted text-nowrap">${date.toLocaleDateString('en-GB')} ${date.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}</td>
+          <td class="small text-muted">${user ? `<i class="bi bi-person me-1"></i>${utils.escapeHtml(user)}` : ''}</td>
           <td class="small fw-semibold">${utils.escapeHtml(e.company_name || e.companyName || '-')}</td>
           <td><span class="badge bg-light text-dark"><i class="bi ${icon} me-1"></i>${utils.escapeHtml(e.action)}</span></td>
           <td class="small">${detailsHtml}</td>
@@ -4725,18 +4967,25 @@ updateCountyFilterByRegion() {
     try {
       utils.showLoading();
       const orgIds = Array.from(this.selectedOrgs);
-      let count = 0;
+      // Build updates for orgs that need the tag
+      const updates = [];
       for (const id of orgIds) {
         const org = STATE.allOrganisations.find(o => o.id === id);
         const currentTags = org?.tags || [];
         if (!currentTags.includes(tag)) {
           const newTags = [...currentTags, tag];
-          await STATE.client.from('organisations').update({ tags: newTags }).eq('id', id);
-          if (org) org.tags = newTags;
-          count++;
+          updates.push({ id, org, newTags });
         }
       }
-      utils.showToast(`Tag "${tag}" added to ${count} org(s)`, 'success');
+      // Execute in parallel batches of 5
+      for (let i = 0; i < updates.length; i += 5) {
+        const batch = updates.slice(i, i + 5);
+        await Promise.all(batch.map(({ id, org, newTags }) => {
+          if (org) org.tags = newTags;
+          return STATE.client.from('organisations').update({ tags: newTags }).eq('id', id);
+        }));
+      }
+      utils.showToast(`Tag "${tag}" added to ${updates.length} org(s)`, 'success');
       this.renderOrganisations();
     } catch (e) { utils.showToast('Error: ' + e.message, 'error'); }
     finally { utils.hideLoading(); }
@@ -4749,18 +4998,25 @@ updateCountyFilterByRegion() {
     try {
       utils.showLoading();
       const orgIds = Array.from(this.selectedOrgs);
-      let count = 0;
+      // Build updates for orgs that have the tag
+      const updates = [];
       for (const id of orgIds) {
         const org = STATE.allOrganisations.find(o => o.id === id);
         const currentTags = org?.tags || [];
         if (currentTags.includes(tag)) {
           const newTags = currentTags.filter(t => t !== tag);
-          await STATE.client.from('organisations').update({ tags: newTags }).eq('id', id);
-          if (org) org.tags = newTags;
-          count++;
+          updates.push({ id, org, newTags });
         }
       }
-      utils.showToast(`Tag "${tag}" removed from ${count} org(s)`, 'success');
+      // Execute in parallel batches of 5
+      for (let i = 0; i < updates.length; i += 5) {
+        const batch = updates.slice(i, i + 5);
+        await Promise.all(batch.map(({ id, org, newTags }) => {
+          if (org) org.tags = newTags;
+          return STATE.client.from('organisations').update({ tags: newTags }).eq('id', id);
+        }));
+      }
+      utils.showToast(`Tag "${tag}" removed from ${updates.length} org(s)`, 'success');
       this.renderOrganisations();
     } catch (e) { utils.showToast('Error: ' + e.message, 'error'); }
     finally { utils.hideLoading(); }
@@ -4807,6 +5063,8 @@ updateCountyFilterByRegion() {
       const records = orgIds.map(orgId => ({ award_id: awardId, organisation_id: orgId, status }));
       const { error } = await STATE.client.from('award_assignments').upsert(records, { onConflict: 'award_id,organisation_id' });
       if (error) throw error;
+      // Auto-promote prospects/entrants to nominee
+      await this._autoPromoteStatus(orgIds);
       utils.showToast(`${orgIds.length} org(s) assigned to award`, 'success');
       await this.loadOrganisations();
     } catch (e) { utils.showToast('Error: ' + e.message, 'error'); }
@@ -5141,15 +5399,20 @@ updateCountyFilterByRegion() {
     if (data.length === 0) { utils.showToast('No organisations to export', 'warning'); return; }
 
     // Build XML Spreadsheet (compatible with Excel without external libs)
-    const headers = ['Company Name', 'Sector', 'County', 'Region', 'Contact Name', 'Email', 'Phone', 'Website', 'Status', 'Tier', 'Tags', 'Awards Count', 'Address', 'Catchment Area', 'Description', 'Year Founded', 'Employees'];
+    const headers = ['Company Name', 'Sector', 'County', 'Region', 'Contact Name', 'Email', 'Phone', 'Website', 'Status', 'Tier', 'Tags', 'Awards Count', 'Address', 'Catchment Area', 'Description', 'Year Founded', 'Employees', 'Engagement Score', 'Health Status', 'Last Contacted'];
     const xmlHeader = '<?xml version="1.0"?><?mso-application progid="Excel.Sheet"?><Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet" xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet"><Worksheet ss:Name="Organisations"><Table>';
     const headerRow = '<Row>' + headers.map(h => `<Cell><Data ss:Type="String">${this._xmlEscape(h)}</Data></Cell>`).join('') + '</Row>';
     const dataRows = data.map(org => {
+      const engagement = this.calculateEngagementScore(org);
+      const health = this.getOrgHealthIndicator(org);
+      const lastContacted = this.getLastContacted(org.id);
       const vals = [
         org.company_name, org.sector, org.county, org.region, org.contact_name,
         org.email, org.contact_phone, org.website, org.status || 'prospect',
         org.tier, (org.tags || []).join(', '), String(org.awards_count || 0),
-        org.address, org.catchment_area, org.description, org.year_founded ? String(org.year_founded) : '', org.employee_count ? String(org.employee_count) : ''
+        org.address, org.catchment_area, org.description, org.year_founded ? String(org.year_founded) : '', org.employee_count ? String(org.employee_count) : '',
+        String(engagement), health.label,
+        lastContacted ? new Date(lastContacted).toLocaleDateString('en-GB') : 'Never'
       ];
       return '<Row>' + vals.map(v => `<Cell><Data ss:Type="String">${this._xmlEscape(v || '')}</Data></Cell>`).join('') + '</Row>';
     }).join('');
@@ -5391,6 +5654,7 @@ updateCountyFilterByRegion() {
   // FEATURE 5: KANBAN PIPELINE BOARD VIEW
   // ============================================
   _kanbanViewActive: false,
+  _kanbanExpandedColumns: new Set(),
 
   toggleKanbanView() {
     this._kanbanViewActive = !this._kanbanViewActive;
@@ -5444,8 +5708,13 @@ updateCountyFilterByRegion() {
                   </div>
                 </div>
                 <div class="card-body p-2" style="max-height: 450px; overflow-y: auto;">
-                  ${stageOrgs.length === 0 ? '<p class="text-muted small text-center py-3">No organisations</p>' :
-                    stageOrgs.slice(0, 30).map(org => `
+                  ${(() => {
+                    if (stageOrgs.length === 0) return '<p class="text-muted small text-center py-3">No organisations</p>';
+                    const isExpanded = this._kanbanExpandedColumns.has(stage.key);
+                    const limit = isExpanded ? stageOrgs.length : 30;
+                    const visible = stageOrgs.slice(0, limit);
+                    const remaining = stageOrgs.length - limit;
+                    return visible.map(org => `
                       <div class="card mb-2 kanban-card" draggable="true"
                         ondragstart="event.dataTransfer.setData('text/plain', '${org.id}')"
                         style="cursor: grab; border-left: 3px solid ${stage.color};">
@@ -5460,8 +5729,12 @@ updateCountyFilterByRegion() {
                           ${org.tier ? `<span class="badge" style="font-size:0.55rem;background:${{'Bronze':'#CD7F32','Silver':'#C0C0C0','Gold':'#FFD700','Platinum':'#E5E4E2'}[org.tier] || '#ccc'}">${org.tier}</span>` : ''}
                         </div>
                       </div>
-                    `).join('')}
-                  ${stageOrgs.length > 30 ? `<p class="text-muted small text-center">+${stageOrgs.length - 30} more</p>` : ''}
+                    `).join('') + (remaining > 0
+                      ? `<button class="btn btn-sm btn-outline-secondary w-100 mt-1" onclick="orgsModule.expandKanbanColumn('${stage.key}')"><i class="bi bi-chevron-down me-1"></i>Show ${remaining} more</button>`
+                      : (isExpanded && stageOrgs.length > 30
+                        ? `<button class="btn btn-sm btn-outline-secondary w-100 mt-1" onclick="orgsModule.collapseKanbanColumn('${stage.key}')"><i class="bi bi-chevron-up me-1"></i>Show less</button>`
+                        : ''));
+                  })()}
                 </div>
               </div>
             </div>
@@ -5478,6 +5751,16 @@ updateCountyFilterByRegion() {
     await this.quickUpdateStatus(orgId, newStatus);
     this.renderKanbanBoard();
     await this.calculateDashboardStats();
+  },
+
+  expandKanbanColumn(status) {
+    this._kanbanExpandedColumns.add(status);
+    this.renderKanbanBoard();
+  },
+
+  collapseKanbanColumn(status) {
+    this._kanbanExpandedColumns.delete(status);
+    this.renderKanbanBoard();
   },
 
   // ============================================
@@ -5837,6 +6120,366 @@ updateCountyFilterByRegion() {
 
   getLastContacted(orgId) {
     return this._lastContactedMap[orgId] || null;
+  },
+
+  // ============================================
+  // SUPABASE REALTIME SUBSCRIPTIONS
+  // ============================================
+  _realtimeChannel: null,
+  _realtimeDebounce: null,
+
+  _subscribeToRealtimeChanges() {
+    // Unsubscribe from any existing channel
+    if (this._realtimeChannel) {
+      STATE.client.removeChannel(this._realtimeChannel);
+    }
+
+    try {
+      this._realtimeChannel = STATE.client
+        .channel('orgs-realtime')
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'organisations' }, (payload) => {
+          this._handleRealtimeEvent(payload);
+        })
+        .subscribe((status) => {
+          if (status === 'SUBSCRIBED') {
+            console.log('Organisations realtime: subscribed');
+          }
+        });
+    } catch (e) {
+      console.warn('Realtime subscription failed:', e.message);
+    }
+  },
+
+  _handleRealtimeEvent(payload) {
+    const { eventType, new: newRow, old: oldRow } = payload;
+
+    if (eventType === 'INSERT' && newRow) {
+      // Check if we already have this org (from our own insert)
+      const exists = STATE.allOrganisations.find(o => o.id === newRow.id);
+      if (!exists) {
+        STATE.allOrganisations.push({ ...newRow, awards_count: 0 });
+        this._debouncedRealtimeRefresh('New organisation added by another user');
+      }
+    } else if (eventType === 'UPDATE' && newRow) {
+      const org = STATE.allOrganisations.find(o => o.id === newRow.id);
+      if (org) {
+        // Only trigger toast if this wasn't our own update (compare updated_at)
+        const wasExternal = org.updated_at && newRow.updated_at && org.updated_at !== newRow.updated_at;
+        Object.assign(org, newRow);
+        const fOrg = STATE.filteredOrganisations.find(o => o.id === newRow.id);
+        if (fOrg) Object.assign(fOrg, newRow);
+        if (wasExternal) {
+          this._debouncedRealtimeRefresh(`${newRow.company_name || 'Organisation'} updated`);
+        }
+      }
+    } else if (eventType === 'DELETE' && oldRow) {
+      STATE.allOrganisations = STATE.allOrganisations.filter(o => o.id !== oldRow.id);
+      STATE.filteredOrganisations = STATE.filteredOrganisations.filter(o => o.id !== oldRow.id);
+      this._debouncedRealtimeRefresh('Organisation removed');
+    }
+  },
+
+  _debouncedRealtimeRefresh(message) {
+    // Debounce to avoid hammering the UI during bulk operations
+    clearTimeout(this._realtimeDebounce);
+    this._realtimeDebounce = setTimeout(() => {
+      this.renderOrganisations();
+      this.calculateDashboardStats();
+      // Show a subtle notification
+      this._showRealtimeNotification(message);
+    }, 1000);
+  },
+
+  _showRealtimeNotification(message) {
+    document.getElementById('realtimeNotif')?.remove();
+    const notifHtml = `<div id="realtimeNotif" class="position-fixed top-0 end-0 m-3 p-2 bg-info text-white rounded shadow-sm small d-flex align-items-center gap-2" style="z-index:9999; animation: fadeIn 0.3s;">
+      <i class="bi bi-broadcast"></i>${utils.escapeHtml(message)}
+    </div>`;
+    document.body.insertAdjacentHTML('beforeend', notifHtml);
+    setTimeout(() => document.getElementById('realtimeNotif')?.remove(), 4000);
+  },
+
+  // ============================================
+  // FEATURE: TABLE PAGINATION
+  // ============================================
+  _renderPaginationControls(totalFiltered, totalPages) {
+    const footer = document.querySelector('#orgTableContainer .card-footer');
+    if (!footer) return;
+
+    const pageSizes = [25, 50, 100, 250];
+    const page = this._currentPage;
+
+    footer.innerHTML = `
+      <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+        <div class="d-flex align-items-center gap-2">
+          <small class="text-muted">
+            Showing ${totalFiltered > 0 ? ((page - 1) * this._pageSize + 1) + '-' + Math.min(page * this._pageSize, totalFiltered) : '0'}
+            of ${STATE.allOrganisations.length}
+            (${totalFiltered} filtered)
+          </small>
+          <select class="form-select form-select-sm" style="width: auto; font-size: 0.75rem;"
+                  onchange="orgsModule.changePageSize(parseInt(this.value))">
+            ${pageSizes.map(s => `<option value="${s}" ${s === this._pageSize ? 'selected' : ''}>${s} per page</option>`).join('')}
+          </select>
+        </div>
+        <div class="d-flex align-items-center gap-1">
+          <button class="btn btn-sm btn-outline-secondary" ${page <= 1 ? 'disabled' : ''}
+                  onclick="orgsModule.goToPage(1)" title="First"><i class="bi bi-chevron-double-left"></i></button>
+          <button class="btn btn-sm btn-outline-secondary" ${page <= 1 ? 'disabled' : ''}
+                  onclick="orgsModule.goToPage(${page - 1})" title="Previous"><i class="bi bi-chevron-left"></i></button>
+          <span class="small text-muted mx-1">Page ${page} of ${totalPages}</span>
+          <button class="btn btn-sm btn-outline-secondary" ${page >= totalPages ? 'disabled' : ''}
+                  onclick="orgsModule.goToPage(${page + 1})" title="Next"><i class="bi bi-chevron-right"></i></button>
+          <button class="btn btn-sm btn-outline-secondary" ${page >= totalPages ? 'disabled' : ''}
+                  onclick="orgsModule.goToPage(${totalPages})" title="Last"><i class="bi bi-chevron-double-right"></i></button>
+        </div>
+        <small class="text-muted">
+          <i class="bi bi-clock me-1"></i>Last refreshed: ${new Date().toLocaleTimeString('en-GB')}
+        </small>
+      </div>`;
+  },
+
+  goToPage(page) {
+    this._currentPage = page;
+    this.renderOrganisations();
+    document.getElementById('orgTableContainer')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  },
+
+  changePageSize(size) {
+    this._pageSize = size;
+    this._currentPage = 1;
+    this.renderOrganisations();
+  },
+
+  // ============================================
+  // FEATURE: OVERDUE FOLLOW-UPS WIDGET
+  // ============================================
+  async loadOverdueFollowUps() {
+    try {
+      const allFollowUps = await this.getFollowUps();
+      const today = new Date().toISOString().split('T')[0];
+      const threeDays = new Date(Date.now() + 3 * 86400000).toISOString().split('T')[0];
+      const overdue = allFollowUps.filter(f => !f.done && f.date && f.date < today);
+      const dueSoon = allFollowUps.filter(f => !f.done && f.date && f.date >= today && f.date <= threeDays);
+
+      const overdueEl = document.getElementById('orgsOverdueCount');
+      const dueSoonEl = document.getElementById('orgsDueSoonCount');
+      if (overdueEl) overdueEl.textContent = overdue.length;
+      if (dueSoonEl) dueSoonEl.textContent = dueSoon.length;
+
+      this._overdueFollowUps = overdue;
+      this._dueSoonFollowUps = dueSoon;
+    } catch (e) {
+      console.warn('Failed to load overdue follow-ups:', e.message);
+    }
+  },
+
+  showOverdueFollowUps() {
+    const overdue = this._overdueFollowUps || [];
+    const dueSoon = this._dueSoonFollowUps || [];
+    const all = [...overdue, ...dueSoon].sort((a, b) => (a.date || '').localeCompare(b.date || ''));
+
+    if (all.length === 0) {
+      utils.showToast('No overdue or upcoming follow-ups', 'info');
+      return;
+    }
+
+    const today = new Date().toISOString().split('T')[0];
+    const html = `
+      <div class="table-responsive">
+        <table class="table table-sm table-hover">
+          <thead><tr>
+            <th>Company</th><th>Due Date</th><th>Note</th><th>Status</th><th>Action</th>
+          </tr></thead>
+          <tbody>
+            ${all.map(f => {
+              const isOverdue = f.date < today;
+              const safeName = utils.escapeHtml((f.companyName || '').replace(/'/g, "\\'"));
+              return `<tr class="${isOverdue ? 'table-danger' : 'table-warning'}">
+                <td><a href="#" class="text-decoration-none" onclick="event.preventDefault(); document.getElementById('dynamicOrgModal')?.querySelector('.btn-close')?.click(); setTimeout(() => orgsModule.openCompanyProfile('${f.orgId}', '${safeName}'), 300);">${utils.escapeHtml(f.companyName || 'Unknown')}</a></td>
+                <td class="small">${f.date || '-'}</td>
+                <td class="small">${utils.escapeHtml(f.note || '-')}</td>
+                <td><span class="badge ${isOverdue ? 'bg-danger' : 'bg-warning text-dark'}">${isOverdue ? 'Overdue' : 'Due Soon'}</span></td>
+                <td><button class="btn btn-sm btn-outline-success" onclick="orgsModule.completeFollowUp('${f.orgId}', '${f.id}')"><i class="bi bi-check"></i></button></td>
+              </tr>`;
+            }).join('')}
+          </tbody>
+        </table>
+      </div>`;
+
+    this._showDynamicModal(`Follow-ups (${overdue.length} overdue, ${dueSoon.length} due soon)`, html, 'bi-bell', 'modal-lg');
+  },
+
+  // ============================================
+  // FEATURE: COLUMN VISIBILITY SETTINGS
+  // ============================================
+  showColumnSettings() {
+    const columns = [
+      { key: 'sector', label: 'Sector' },
+      { key: 'county', label: 'County' },
+      { key: 'contact', label: 'Contact' },
+      { key: 'email', label: 'Email' },
+      { key: 'tier', label: 'Tier' },
+      { key: 'tags', label: 'Tags' },
+      { key: 'region', label: 'Region' },
+      { key: 'status', label: 'Status' },
+      { key: 'awards', label: 'Awards' },
+      { key: 'updated', label: 'Updated' },
+      { key: 'lastContacted', label: 'Last Contacted' },
+      { key: 'health', label: 'Health' }
+    ];
+
+    const html = `
+      <p class="small text-muted mb-3">Toggle columns on/off. Settings persist across sessions.</p>
+      <div class="row g-2">
+        ${columns.map(c => {
+          const checked = this._columnVisibility[c.key] !== false ? 'checked' : '';
+          return `<div class="col-6">
+            <div class="form-check form-switch">
+              <input class="form-check-input" type="checkbox" id="colVis_${c.key}" ${checked}
+                     onchange="orgsModule.toggleColumnVisibility('${c.key}', this.checked)">
+              <label class="form-check-label small" for="colVis_${c.key}">${c.label}</label>
+            </div>
+          </div>`;
+        }).join('')}
+      </div>
+      <hr>
+      <div class="d-flex gap-2">
+        <button class="btn btn-sm btn-outline-primary" onclick="orgsModule.resetColumnVisibility()">
+          <i class="bi bi-arrow-counterclockwise me-1"></i>Show All
+        </button>
+        <button class="btn btn-sm btn-outline-secondary" onclick="orgsModule.hideAllColumns()">
+          <i class="bi bi-eye-slash me-1"></i>Hide All Optional
+        </button>
+      </div>`;
+
+    this._showDynamicModal('Column Visibility', html, 'bi-layout-three-columns');
+  },
+
+  toggleColumnVisibility(col, visible) {
+    this._columnVisibility[col] = visible;
+    try { localStorage.setItem('orgsColumnVisibility', JSON.stringify(this._columnVisibility)); } catch (e) {}
+    this.renderOrganisations();
+  },
+
+  resetColumnVisibility() {
+    this._columnVisibility = {};
+    try { localStorage.setItem('orgsColumnVisibility', JSON.stringify(this._columnVisibility)); } catch (e) {}
+    document.querySelectorAll('[id^="colVis_"]').forEach(cb => cb.checked = true);
+    this.renderOrganisations();
+  },
+
+  hideAllColumns() {
+    const cols = ['sector','county','contact','email','tier','tags','region','status','awards','updated','lastContacted','health'];
+    cols.forEach(c => this._columnVisibility[c] = false);
+    try { localStorage.setItem('orgsColumnVisibility', JSON.stringify(this._columnVisibility)); } catch (e) {}
+    document.querySelectorAll('[id^="colVis_"]').forEach(cb => cb.checked = false);
+    this.renderOrganisations();
+  },
+
+  // ============================================
+  // FEATURE: PRINT/PDF COMPANY PROFILE
+  // ============================================
+  printCompanyProfile(orgId) {
+    const org = STATE.allOrganisations.find(o => o.id === orgId);
+    if (!org) { utils.showToast('Organisation not found', 'error'); return; }
+
+    const engagement = this.calculateEngagementScore(org);
+    const health = this.getOrgHealthIndicator(org);
+    const lastContacted = this.getLastContacted(orgId);
+
+    const printHtml = `<!DOCTYPE html>
+<html><head>
+<title>${utils.escapeHtml(org.company_name)} - Company Profile</title>
+<style>
+  body { font-family: Arial, sans-serif; max-width: 800px; margin: 0 auto; padding: 20px; color: #333; }
+  h1 { color: #0d6efd; border-bottom: 2px solid #0d6efd; padding-bottom: 8px; }
+  h2 { color: #495057; margin-top: 24px; font-size: 1.1rem; border-bottom: 1px solid #dee2e6; padding-bottom: 4px; }
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 24px; }
+  .field { margin-bottom: 4px; }
+  .label { font-weight: bold; color: #6c757d; font-size: 0.85rem; }
+  .value { margin-top: 2px; }
+  .badge { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 0.8rem; }
+  .logo { max-width: 200px; max-height: 120px; object-fit: contain; border: 1px solid #dee2e6; }
+  .footer { margin-top: 40px; padding-top: 12px; border-top: 1px solid #dee2e6; font-size: 0.8rem; color: #6c757d; text-align: center; }
+  @media print { body { padding: 0; } }
+</style>
+</head><body>
+  ${org.logo_url ? `<img src="${org.logo_url}" class="logo" alt="">` : ''}
+  <h1>${utils.escapeHtml(org.company_name)}</h1>
+  <h2>Contact Information</h2>
+  <div class="grid">
+    <div class="field"><span class="label">Contact Name:</span><div class="value">${utils.escapeHtml(org.contact_name || 'N/A')}</div></div>
+    <div class="field"><span class="label">Email:</span><div class="value">${utils.escapeHtml(org.email || 'N/A')}</div></div>
+    <div class="field"><span class="label">Phone:</span><div class="value">${utils.escapeHtml(org.contact_phone || 'N/A')}</div></div>
+    <div class="field"><span class="label">Website:</span><div class="value">${utils.escapeHtml(org.website || 'N/A')}</div></div>
+  </div>
+  <h2>Organisation Details</h2>
+  <div class="grid">
+    <div class="field"><span class="label">Status:</span><div class="value"><span class="badge" style="background:#e9ecef;">${utils.escapeHtml(org.status || 'prospect')}</span></div></div>
+    <div class="field"><span class="label">Tier:</span><div class="value"><span class="badge" style="background:#fff3cd;">${utils.escapeHtml(org.tier || 'N/A')}</span></div></div>
+    <div class="field"><span class="label">Sector:</span><div class="value">${utils.escapeHtml(org.sector || 'N/A')}</div></div>
+    <div class="field"><span class="label">Region:</span><div class="value">${utils.escapeHtml(org.region || 'N/A')}</div></div>
+    <div class="field"><span class="label">County:</span><div class="value">${utils.escapeHtml(org.county || 'N/A')}</div></div>
+    <div class="field"><span class="label">Address:</span><div class="value">${utils.escapeHtml(org.address || 'N/A')}</div></div>
+    <div class="field"><span class="label">Tags:</span><div class="value">${(org.tags || []).map(t => utils.escapeHtml(t)).join(', ') || 'None'}</div></div>
+    <div class="field"><span class="label">Awards Count:</span><div class="value">${org.awards_count || 0}</div></div>
+  </div>
+  <h2>Engagement &amp; Health</h2>
+  <div class="grid">
+    <div class="field"><span class="label">Engagement Score:</span><div class="value">${engagement}/100</div></div>
+    <div class="field"><span class="label">Health:</span><div class="value">${health.label}</div></div>
+    <div class="field"><span class="label">Last Contacted:</span><div class="value">${lastContacted ? new Date(lastContacted).toLocaleDateString('en-GB') : 'Never'}</div></div>
+    <div class="field"><span class="label">Last Updated:</span><div class="value">${org.updated_at ? new Date(org.updated_at).toLocaleDateString('en-GB') : 'N/A'}</div></div>
+  </div>
+  ${org.notes ? `<h2>Notes</h2><p>${utils.escapeHtml(org.notes)}</p>` : ''}
+  <div class="footer">Generated on ${new Date().toLocaleDateString('en-GB')} at ${new Date().toLocaleTimeString('en-GB')} — British Trade Awards CMS</div>
+</body></html>`;
+
+    const printWindow = window.open('', '_blank', 'width=800,height=600');
+    if (printWindow) {
+      printWindow.document.write(printHtml);
+      printWindow.document.close();
+      setTimeout(() => printWindow.print(), 500);
+    } else {
+      utils.showToast('Pop-up blocked. Please allow pop-ups for this site.', 'warning');
+    }
+  },
+
+  // ============================================
+  // FEATURE: AUTO-STATUS PROMOTION ON AWARD ASSIGN
+  // ============================================
+  async _autoPromoteStatus(orgIds) {
+    const promotable = ['prospect', 'entrant'];
+    const toPromote = orgIds.filter(id => {
+      const org = STATE.allOrganisations.find(o => o.id === id);
+      return org && promotable.includes(org.status || 'prospect');
+    });
+
+    if (toPromote.length === 0) return;
+
+    const batches = [];
+    for (let i = 0; i < toPromote.length; i += 5) {
+      batches.push(toPromote.slice(i, i + 5));
+    }
+    for (const batch of batches) {
+      await Promise.all(batch.map(id =>
+        STATE.client.from('organisations').update({ status: 'nominee', updated_at: new Date().toISOString() }).eq('id', id)
+      ));
+    }
+
+    toPromote.forEach(id => {
+      const org = STATE.allOrganisations.find(o => o.id === id);
+      if (org) org.status = 'nominee';
+      const fOrg = STATE.filteredOrganisations.find(o => o.id === id);
+      if (fOrg) fOrg.status = 'nominee';
+    });
+
+    for (const id of toPromote) {
+      await this._logAudit(id, 'auto_status_promotion', { from: 'prospect/entrant', to: 'nominee', reason: 'Assigned to award' });
+    }
+
+    utils.showToast(`${toPromote.length} org(s) auto-promoted to "nominee"`, 'info');
   },
 
   // ============================================

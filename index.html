@@ -1553,6 +1553,14 @@
                 <h6 class="mb-0 fw-semibold text-warning" id="orgsTopTier">-</h6>
               </div>
               <div class="col">
+                <h6 class="text-muted mb-1 small">Overdue</h6>
+                <h3 class="mb-0 fw-bold text-danger" id="orgsOverdueCount" style="cursor:pointer" title="Click to view overdue follow-ups" onclick="orgsModule.showOverdueFollowUps();">0</h3>
+              </div>
+              <div class="col">
+                <h6 class="text-muted mb-1 small">Due Soon</h6>
+                <h3 class="mb-0 fw-bold text-warning" id="orgsDueSoonCount" style="cursor:pointer" title="Click to view upcoming follow-ups" onclick="orgsModule.showOverdueFollowUps();">0</h3>
+              </div>
+              <div class="col">
                 <h6 class="text-muted mb-1 small">Last Updated</h6>
                 <p class="mb-0 small" id="orgsLastUpdated">-</p>
               </div>
@@ -1770,6 +1778,9 @@
               </div>
               <button class="btn btn-sm btn-outline-secondary" id="togglePhoneColBtn" onclick="orgsModule.togglePhoneColumn()" title="Toggle Phone Column">
                 <i class="bi bi-telephone"></i>
+              </button>
+              <button class="btn btn-sm btn-outline-secondary" onclick="orgsModule.showColumnSettings()" title="Column Visibility Settings">
+                <i class="bi bi-layout-three-columns"></i>
               </button>
               <button class="btn btn-sm btn-outline-warning" onclick="orgsModule.showDuplicateCheck()" title="Check Duplicates">
                 <i class="bi bi-files"></i>
@@ -5268,29 +5279,29 @@ Available placeholders:
         </div>
       </div>
 
-    </div>
-  </div>
+      <!-- ==================================================== -->
+      <!-- BITCOIN TAB -->
+      <!-- ==================================================== -->
+      <div class="tab-pane fade" id="bitcoin" role="tabpanel">
+        <div class="container-fluid">
 
-  <!-- ==================================================== -->
-  <!-- BITCOIN TAB -->
-  <!-- ==================================================== -->
-  <div class="tab-pane fade" id="bitcoin" role="tabpanel">
-    <div class="container-fluid">
-
-      <!-- Page Header -->
-      <div class="section-header">
-        <h1 class="section-title">
-          <i class="bi bi-currency-bitcoin me-2"></i>Bitcoin Price Chart
-        </h1>
-        <p class="section-subtitle">Live BTC/USD trading view with technical analysis tools</p>
-      </div>
-
-      <!-- TradingView Widget Container -->
-      <div class="card border-0 shadow-sm">
-        <div class="card-body p-0">
-          <div class="tradingview-widget-container" style="height: 800px; width: 100%;">
-            <div id="tradingview_chart" style="height: 100%; width: 100%;"></div>
+          <!-- Page Header -->
+          <div class="section-header">
+            <h1 class="section-title">
+              <i class="bi bi-currency-bitcoin me-2"></i>Bitcoin Price Chart
+            </h1>
+            <p class="section-subtitle">Live BTC/USD trading view with technical analysis tools</p>
           </div>
+
+          <!-- TradingView Widget Container -->
+          <div class="card border-0 shadow-sm">
+            <div class="card-body p-0">
+              <div class="tradingview-widget-container" style="height: 800px; width: 100%;">
+                <div id="tradingview_chart" style="height: 100%; width: 100%;"></div>
+              </div>
+            </div>
+          </div>
+
         </div>
       </div>
 
@@ -5310,6 +5321,9 @@ Available placeholders:
             <i class="bi bi-building me-2"></i>Company Profile
           </h5>
           <div class="d-flex gap-2">
+            <button type="button" class="btn btn-outline-secondary btn-sm" id="printProfileBtn" title="Print / PDF Profile">
+              <i class="bi bi-printer me-1"></i>Print
+            </button>
             <button type="button" class="btn btn-primary btn-sm" id="editOrgBtn" style="display: none;">
               <i class="bi bi-pencil me-1"></i>Edit
             </button>
@@ -5918,7 +5932,7 @@ Available placeholders:
   </div>
 
   <!-- View Media Modal -->
-  <div class="modal fade" id="viewMediaModal" tabindex="-1" aria-labelledby="viewMediaModalLabel" aria-hidden="true">
+  <div class="modal fade" id="viewMediaModal" tabindex="-1" aria-labelledby="viewMediaTitle" aria-hidden="true">
     <div class="modal-dialog modal-xl">
       <div class="modal-content">
         <div class="modal-header">
@@ -5926,7 +5940,7 @@ Available placeholders:
           <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
         </div>
         <div class="modal-body">
-          <div class="row g-3" id="mediaGalleryContent">
+          <div class="row g-3" id="viewMediaGalleryContent">
             <!-- Media items will be loaded here -->
           </div>
         </div>
@@ -5935,7 +5949,7 @@ Available placeholders:
   </div>
 
   <!-- Assignments Modal -->
-<div class="modal fade" id="assignmentsModal" tabindex="-1" aria-labelledby="assignmentsModalLabel" aria-hidden="true">
+<div class="modal fade" id="assignmentsModal" tabindex="-1" aria-labelledby="assignmentsModalTitle" aria-hidden="true">
   <div class="modal-dialog modal-xl" style="max-width: 90vw;">
     <div class="modal-content">
       <div class="modal-header bg-primary text-white">
@@ -6023,7 +6037,7 @@ Available placeholders:
       <div class="modal-footer">
         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
         <button type="button" class="btn btn-primary" onclick="assignmentsModule.addSelectedCompanies()">
-          <i class="bi bi-plus-lg me-2"></i>Add Selected (<span id="selectedCount">0</span>)
+          <i class="bi bi-plus-lg me-2"></i>Add Selected (<span id="assignSelectedCount">0</span>)
         </button>
       </div>
     </div>
@@ -6201,7 +6215,7 @@ Available placeholders:
   </div>
 
   <!-- Event Modal (Add/Edit) -->
-  <div class="modal fade" id="eventModal" tabindex="-1" aria-labelledby="eventModalLabel" aria-hidden="true">
+  <div class="modal fade" id="eventModal" tabindex="-1" aria-labelledby="eventModalTitle" aria-hidden="true">
     <div class="modal-dialog">
       <div class="modal-content">
         <div class="modal-header">
@@ -6477,7 +6491,7 @@ Available placeholders:
   </div>
 
   <!-- View Image Full Modal -->
-  <div class="modal fade" id="viewImageFullModal" tabindex="-1" aria-labelledby="viewImageFullModalLabel" aria-hidden="true">
+  <div class="modal fade" id="viewImageFullModal" tabindex="-1" aria-labelledby="viewImageFullTitle" aria-hidden="true">
     <div class="modal-dialog modal-xl">
       <div class="modal-content">
         <div class="modal-header">
@@ -6496,7 +6510,7 @@ Available placeholders:
   </div>
 
   <!-- Gallery Section Modal (Add/Edit) -->
-  <div class="modal fade" id="gallerySectionModal" tabindex="-1" aria-labelledby="gallerySectionModalLabel" aria-hidden="true">
+  <div class="modal fade" id="gallerySectionModal" tabindex="-1" aria-labelledby="gallerySectionModalTitle" aria-hidden="true">
     <div class="modal-dialog">
       <div class="modal-content">
         <div class="modal-header">
@@ -7144,7 +7158,7 @@ in recognition of excellence
               </button>
             </div>
             <div class="card-body">
-              <div id="templatesList">
+              <div id="eventTemplatesList">
                 <!-- Populated by JavaScript -->
                 <div class="text-center py-5 text-muted">
                   <i class="bi bi-hourglass-split display-4 d-block mb-2 opacity-25"></i>
@@ -7393,11 +7407,11 @@ in recognition of excellence
               <div class="card-body">
                 <div class="mb-3">
                   <label class="form-label">Subject Line:</label>
-                  <input type="text" class="form-control" id="emailSubject" placeholder="Email subject">
+                  <input type="text" class="form-control" id="autoEmailSubject" placeholder="Email subject">
                 </div>
                 <div class="mb-3">
                   <label class="form-label">Email Template:</label>
-                  <select class="form-select" id="emailTemplateSelect">
+                  <select class="form-select" id="autoEmailTemplateSelect">
                     <option value="">Select template...</option>
                     <!-- Populated by JavaScript -->
                   </select>
@@ -7497,8 +7511,8 @@ in recognition of excellence
                 </div>
                 <div class="col-md-6">
                   <div class="form-check mb-2">
-                    <input class="form-check-input" type="checkbox" id="includePhotos" checked>
-                    <label class="form-check-label" for="includePhotos">
+                    <input class="form-check-input" type="checkbox" id="mediaPackIncludePhotos" checked>
+                    <label class="form-check-label" for="mediaPackIncludePhotos">
                       <i class="bi bi-images me-1"></i><strong>Photo Assets</strong>
                       <small class="d-block text-muted">High-resolution event and ceremony photos</small>
                     </label>

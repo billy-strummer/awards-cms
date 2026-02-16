@@ -123,6 +123,47 @@ CREATE TABLE IF NOT EXISTS organisation_comms_log (
 );
 CREATE INDEX IF NOT EXISTS idx_org_comms_log_org ON organisation_comms_log(organisation_id);
 
+-- Row Level Security policies
+ALTER TABLE organisation_custom_fields ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Allow all access to organisation_custom_fields" ON organisation_custom_fields;
+CREATE POLICY "Allow all access to organisation_custom_fields"
+  ON organisation_custom_fields FOR ALL USING (true) WITH CHECK (true);
+
+ALTER TABLE organisation_follow_ups ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Allow all access to organisation_follow_ups" ON organisation_follow_ups;
+CREATE POLICY "Allow all access to organisation_follow_ups"
+  ON organisation_follow_ups FOR ALL USING (true) WITH CHECK (true);
+
+ALTER TABLE organisation_documents ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Allow all access to organisation_documents" ON organisation_documents;
+CREATE POLICY "Allow all access to organisation_documents"
+  ON organisation_documents FOR ALL USING (true) WITH CHECK (true);
+
+ALTER TABLE org_audit_log ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Allow all access to org_audit_log" ON org_audit_log;
+CREATE POLICY "Allow all access to org_audit_log"
+  ON org_audit_log FOR ALL USING (true) WITH CHECK (true);
+
+ALTER TABLE organisation_notes ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Allow all access to organisation_notes" ON organisation_notes;
+CREATE POLICY "Allow all access to organisation_notes"
+  ON organisation_notes FOR ALL USING (true) WITH CHECK (true);
+
+ALTER TABLE organisation_relationships ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Allow all access to organisation_relationships" ON organisation_relationships;
+CREATE POLICY "Allow all access to organisation_relationships"
+  ON organisation_relationships FOR ALL USING (true) WITH CHECK (true);
+
+ALTER TABLE sponsorship_packages ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Allow all access to sponsorship_packages" ON sponsorship_packages;
+CREATE POLICY "Allow all access to sponsorship_packages"
+  ON sponsorship_packages FOR ALL USING (true) WITH CHECK (true);
+
+ALTER TABLE organisation_comms_log ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Allow all access to organisation_comms_log" ON organisation_comms_log;
+CREATE POLICY "Allow all access to organisation_comms_log"
+  ON organisation_comms_log FOR ALL USING (true) WITH CHECK (true);
+
 -- PostgREST permissions
 GRANT ALL ON public.organisation_custom_fields TO anon;
 GRANT ALL ON public.organisation_custom_fields TO authenticated;

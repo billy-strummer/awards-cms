@@ -52,7 +52,7 @@ const eventsModule = {
       return `
         <tr class="fade-in">
           <td class="fw-semibold">${utils.escapeHtml(event.event_name)}</td>
-          <td><span class="badge bg-primary">${event.year || '-'}</span></td>
+          <td><span class="badge bg-primary">${utils.escapeHtml(String(event.year || '-'))}</span></td>
           <td>${eventDate}</td>
           <td>${utils.escapeHtml(event.venue || '-')}</td>
           <td>
@@ -460,7 +460,7 @@ const eventsModule = {
               </p>
               ${template.gallerySections && template.gallerySections.length > 0 ? `
                 <div class="small">
-                  <strong>Gallery Sections:</strong> ${template.gallerySections.join(', ')}
+                  <strong>Gallery Sections:</strong> ${template.gallerySections.map(s => utils.escapeHtml(s)).join(', ')}
                 </div>
               ` : ''}
             </div>
@@ -1324,65 +1324,6 @@ const eventsModule = {
   },
 
   /**
-   * Export Running Order to CSV
-   */
-  exportRunningOrder() {
-    if (this.runningOrderItems.length === 0) {
-      utils.showToast('No items to export', 'warning');
-      return;
-    }
-
-    try {
-      // Prepare CSV data
-      const headers = ['Award Number', 'Award Name', 'Winner', 'Collecting', 'Notes'];
-      const rows = this.runningOrderItems.map(item => {
-        const awardName = item.award_name || (item.awards ? item.awards.award_name : 'N/A');
-        const companyName = item.display_name ||
-                           (item.organisations ? item.organisations.company_name : 'N/A');
-        const recipient = item.recipient_collecting ||
-                        (item.event_guests ? item.event_guests.guest_name : '');
-        const notes = item.notes || item.special_requirements || '';
-
-        return [
-          item.award_number,
-          awardName,
-          companyName,
-          recipient,
-          notes
-        ].map(field => `"${String(field).replace(/"/g, '""')}"`);
-      });
-
-      // Create CSV content
-      const csvContent = [
-        headers.map(h => `"${h}"`).join(','),
-        ...rows.map(row => row.join(','))
-      ].join('\n');
-
-      // Create and download file
-      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-      const link = document.createElement('a');
-      const url = URL.createObjectURL(blob);
-
-      const eventNameSlug = this.currentEventName.replace(/[^a-z0-9]/gi, '_').toLowerCase();
-      const timestamp = new Date().toISOString().split('T')[0];
-      const filename = `running_order_${eventNameSlug}_${timestamp}.csv`;
-
-      link.setAttribute('href', url);
-      link.setAttribute('download', filename);
-      link.style.visibility = 'hidden';
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-
-      utils.showToast('Running order exported successfully', 'success');
-
-    } catch (error) {
-      console.error('Error exporting running order:', error);
-      utils.showToast('Failed to export running order', 'error');
-    }
-  },
-
-  /**
    * Print Running Order
    */
   printRunningOrder() {
@@ -1725,10 +1666,10 @@ const eventsModule = {
       event_id: this.currentEventIdRunningOrder,
       award_number: parseInt(document.getElementById('manualAwardNumber').value) || 1,
       display_order: parseInt(document.getElementById('manualDisplayOrder').value) || 1,
-      award_name: document.getElementById('manualAwardName').value,
-      display_name: document.getElementById('manualDisplayName').value,
-      recipient_collecting: document.getElementById('manualRecipient').value || null,
-      notes: document.getElementById('manualNotes').value || null
+      award_name: document.getElementById('manualAwardName').value.trim(),
+      display_name: document.getElementById('manualDisplayName').value.trim(),
+      recipient_collecting: document.getElementById('manualRecipient').value.trim() || null,
+      notes: document.getElementById('manualNotes').value.trim() || null
     };
 
     try {

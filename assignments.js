@@ -118,6 +118,7 @@ const assignmentsModule = {
     try {
       // Load current assignments
       const assignments = await this.getAwardAssignments(this.currentAwardId);
+      this._cachedAssignments = assignments; // Cache for email feature
 
       console.log('Loaded', assignments.length, 'assignments for award', this.currentAwardId);
 
@@ -639,6 +640,14 @@ const assignmentsModule = {
         'rejected': 'Rejected'
       };
 
+      // Audit trail for status changes
+      const assignment = this._cachedAssignments?.find(a => a.id === assignmentId);
+      const companyName = assignment?.organisations?.company_name || '';
+      if (typeof awardsModule !== 'undefined' && awardsModule._logAwardAudit) {
+        awardsModule._logAwardAudit(this.currentAwardId, newStatus === 'winner' ? 'winner_set' : 'status_change',
+          this.currentAwardName || '', `${companyName} → ${statusLabels[newStatus]}`);
+      }
+
       utils.showToast(`Status changed to ${statusLabels[newStatus]}`, 'success');
       await this.refreshAssignments();
 
@@ -715,10 +724,85 @@ const assignmentsModule = {
   },
 
   /**
-   * Email all assigned companies (placeholder for Feature 3)
+   * Email all assigned companies for current award
    */
   emailAllAssigned() {
-    utils.showToast('Email feature will be available in Feature 3: Email Campaign Manager', 'info');
+    if (!this.currentAwardId) { utils.showToast('No award selected', 'warning'); return; }
+
+    const assignments = this._cachedAssignments || [];
+    if (assignments.length === 0) { utils.showToast('No nominees to email', 'warning'); return; }
+
+    // Collect all email addresses from assigned organisations
+    const emails = assignments
+      .map(a => a.organisations?.email)
+      .filter(Boolean);
+
+    if (emails.length === 0) {
+      utils.showToast('No email addresses found for nominees', 'warning');
+      return;
+    }
+
+    const uniqueEmails = [...new Set(emails)];
+    const awardName = this.currentAwardName || 'Award';
+
+    // Show options modal
+    const html = `
+      <div class="mb-3">
+        <div class="alert alert-info">
+          <i class="bi bi-info-circle me-2"></i>
+          <strong>${uniqueEmails.length}</strong> email addresses found from <strong>${assignments.length}</strong> nominees for "${utils.escapeHtml(awardName)}"
+        </div>
+      </div>
+      <div class="mb-3">
+        <h6 class="fw-semibold">Filter by status:</h6>
+        <div class="btn-group btn-group-sm mb-2">
+          <button class="btn btn-outline-secondary active" onclick="assignmentsModule._filterEmailList('all', this)">All (${assignments.length})</button>
+          <button class="btn btn-outline-warning" onclick="assignmentsModule._filterEmailList('shortlisted', this)">Shortlisted (${assignments.filter(a => a.status === 'shortlisted').length})</button>
+          <button class="btn btn-outline-success" onclick="assignmentsModule._filterEmailList('winner', this)">Winners (${assignments.filter(a => a.status === 'winner').length})</button>
+          <button class="btn btn-outline-primary" onclick="assignmentsModule._filterEmailList('nominated', this)">Nominated (${assignments.filter(a => a.status === 'nominated').length})</button>
+        </div>
+      </div>
+      <div id="emailListPreview">
+        <textarea class="form-control form-control-sm" rows="4" id="nomineeEmailList" readonly>${uniqueEmails.join('; ')}</textarea>
+      </div>
+      <div class="mt-3 d-flex gap-2">
+        <button class="btn btn-primary btn-sm" onclick="navigator.clipboard.writeText(document.getElementById('nomineeEmailList').value); utils.showToast('Emails copied to clipboard!', 'success');">
+          <i class="bi bi-clipboard me-1"></i>Copy All Emails
+        </button>
+        <button class="btn btn-success btn-sm" onclick="window.open('mailto:?bcc=' + encodeURIComponent(document.getElementById('nomineeEmailList').value.replace(/;\\s*/g, ',')))">
+          <i class="bi bi-envelope me-1"></i>Open Email Client (BCC)
+        </button>
+      </div>
+    `;
+
+    // Use dynamic modal
+    document.getElementById('dynamicAssignModal')?.remove();
+    const modalHtml = `<div class="modal fade" id="dynamicAssignModal" tabindex="-1">
+      <div class="modal-dialog"><div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title"><i class="bi bi-envelope me-2"></i>Email Nominees</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">${html}</div>
+        <div class="modal-footer"><button class="btn btn-secondary" data-bs-dismiss="modal">Close</button></div>
+      </div></div>
+    </div>`;
+    document.body.insertAdjacentHTML('beforeend', modalHtml);
+    new bootstrap.Modal(document.getElementById('dynamicAssignModal')).show();
+  },
+
+  _cachedAssignments: [],
+
+  _filterEmailList(status, btn) {
+    // Update button states
+    btn.closest('.btn-group').querySelectorAll('.btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+
+    const assignments = this._cachedAssignments || [];
+    const filtered = status === 'all' ? assignments : assignments.filter(a => a.status === status);
+    const emails = [...new Set(filtered.map(a => a.organisations?.email).filter(Boolean))];
+    const textarea = document.getElementById('nomineeEmailList');
+    if (textarea) textarea.value = emails.join('; ');
   },
 
   /**

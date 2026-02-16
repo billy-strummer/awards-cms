@@ -1408,7 +1408,16 @@
                   <i class="bi bi-download me-1"></i>Export CSV
                 </button>
                 <button class="btn btn-outline-info btn-sm" onclick="awardsModule.rolloverToNextYear()">
-                  <i class="bi bi-arrow-repeat me-1"></i>Roll Over to Next Year
+                  <i class="bi bi-arrow-repeat me-1"></i>Roll Over
+                </button>
+                <button class="btn btn-outline-success btn-sm" onclick="awardsModule.showVisualTimeline()" title="Timeline Overview">
+                  <i class="bi bi-calendar-range me-1"></i>Timeline
+                </button>
+                <button class="btn btn-outline-danger btn-sm" onclick="awardsModule.showDataQualityDashboard()" title="Data Quality">
+                  <i class="bi bi-shield-check me-1"></i>Quality
+                </button>
+                <button class="btn btn-outline-warning btn-sm" onclick="awardsModule.showDuplicateDetection()" title="Find Duplicates">
+                  <i class="bi bi-files me-1"></i>Duplicates
                 </button>
                 <div class="badge bg-primary-subtle text-primary fs-6">
                   <span id="awardsCount">0</span> awards
@@ -1440,6 +1449,9 @@
                   </button>
                   <ul class="dropdown-menu" id="bulkSeasonDropdown"></ul>
                 </div>
+                <button class="btn btn-purple btn-sm" style="background:#6f42c1;color:#fff;border-color:#6f42c1;" onclick="awardsModule.bulkCloneSelected()">
+                  <i class="bi bi-copy me-1"></i>Clone Selected
+                </button>
                 <button class="btn btn-danger btn-sm" onclick="awardsModule.bulkDelete()">
                   <i class="bi bi-trash me-1"></i>Delete Selected
                 </button>

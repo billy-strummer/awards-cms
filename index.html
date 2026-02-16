@@ -1553,6 +1553,14 @@
                 <h6 class="mb-0 fw-semibold text-warning" id="orgsTopTier">-</h6>
               </div>
               <div class="col">
+                <h6 class="text-muted mb-1 small">Overdue</h6>
+                <h3 class="mb-0 fw-bold text-danger" id="orgsOverdueCount" style="cursor:pointer" title="Click to view overdue follow-ups" onclick="orgsModule.showOverdueFollowUps();">0</h3>
+              </div>
+              <div class="col">
+                <h6 class="text-muted mb-1 small">Due Soon</h6>
+                <h3 class="mb-0 fw-bold text-warning" id="orgsDueSoonCount" style="cursor:pointer" title="Click to view upcoming follow-ups" onclick="orgsModule.showOverdueFollowUps();">0</h3>
+              </div>
+              <div class="col">
                 <h6 class="text-muted mb-1 small">Last Updated</h6>
                 <p class="mb-0 small" id="orgsLastUpdated">-</p>
               </div>
@@ -1770,6 +1778,9 @@
               </div>
               <button class="btn btn-sm btn-outline-secondary" id="togglePhoneColBtn" onclick="orgsModule.togglePhoneColumn()" title="Toggle Phone Column">
                 <i class="bi bi-telephone"></i>
+              </button>
+              <button class="btn btn-sm btn-outline-secondary" onclick="orgsModule.showColumnSettings()" title="Column Visibility Settings">
+                <i class="bi bi-layout-three-columns"></i>
               </button>
               <button class="btn btn-sm btn-outline-warning" onclick="orgsModule.showDuplicateCheck()" title="Check Duplicates">
                 <i class="bi bi-files"></i>
@@ -5310,6 +5321,9 @@ Available placeholders:
             <i class="bi bi-building me-2"></i>Company Profile
           </h5>
           <div class="d-flex gap-2">
+            <button type="button" class="btn btn-outline-secondary btn-sm" id="printProfileBtn" title="Print / PDF Profile">
+              <i class="bi bi-printer me-1"></i>Print
+            </button>
             <button type="button" class="btn btn-primary btn-sm" id="editOrgBtn" style="display: none;">
               <i class="bi bi-pencil me-1"></i>Edit
             </button>

@@ -15,6 +15,17 @@ const orgsModule = {
   currentOrgIdForLogo: null,
   currentOrgIdForImages: null,
 
+  // Pagination state
+  _currentPage: 1,
+  _pageSize: 50,
+
+  // Column visibility state (persistent via localStorage)
+  _columnVisibility: (() => {
+    try {
+      return JSON.parse(localStorage.getItem('orgsColumnVisibility') || '{}');
+    } catch (e) { return {}; }
+  })(),
+
   /**
  * Load all organisations from database
  * ENHANCED: Now calculates dashboard stats
@@ -267,6 +278,9 @@ async loadOrganisations() {
       const topTier = Object.entries(tierRevenue).sort((a, b) => b[1] - a[1])[0];
       set('orgsTopTier', topTier ? `${topTier[0]} (${topTier[1]})` : '-');
 
+      // Load overdue follow-ups for the dashboard widget
+      await this.loadOverdueFollowUps();
+
     } catch (error) {
       console.error('Error calculating dashboard stats:', error);
     }
@@ -498,6 +512,9 @@ updateCountyFilterByRegion() {
   // Clear the missing field filter after applying it once
   this._filterMissingField = null;
 
+  // Reset to page 1 when filters change
+  this._currentPage = 1;
+
   this.renderOrganisations();
 },
 
@@ -511,17 +528,44 @@ updateCountyFilterByRegion() {
   const total = document.getElementById('orgsTotal');
   const lastRefresh = document.getElementById('orgsLastRefresh');
 
-  if (count) count.textContent = STATE.filteredOrganisations.length;
-  if (showing) showing.textContent = STATE.filteredOrganisations.length;
+  // Pagination calculations
+  const totalFiltered = STATE.filteredOrganisations.length;
+  const totalPages = Math.max(1, Math.ceil(totalFiltered / this._pageSize));
+  if (this._currentPage > totalPages) this._currentPage = totalPages;
+  if (this._currentPage < 1) this._currentPage = 1;
+  const startIdx = (this._currentPage - 1) * this._pageSize;
+  const endIdx = Math.min(startIdx + this._pageSize, totalFiltered);
+  const pageOrgs = STATE.filteredOrganisations.slice(startIdx, endIdx);
+
+  if (count) count.textContent = totalFiltered;
+  if (showing) showing.textContent = pageOrgs.length > 0 ? `${startIdx + 1}-${endIdx}` : '0';
   if (total) total.textContent = STATE.allOrganisations.length;
   if (lastRefresh) lastRefresh.textContent = new Date().toLocaleTimeString('en-GB');
+
+  // Column visibility helper
+  const isColVisible = (col) => this._columnVisibility[col] !== false;
 
   // Dynamic phone column header
   const phoneHeaderEl = document.getElementById('phoneColHeader');
   if (phoneHeaderEl) phoneHeaderEl.style.display = this._showPhoneColumn ? '' : 'none';
-  const colSpan = this._showPhoneColumn ? 16 : 15;
 
-  if (STATE.filteredOrganisations.length === 0) {
+  // Apply column visibility to table headers
+  const colVisMap = {
+    'sector': 2, 'county': 3, 'contact': 4, 'email': 5, 'tier': 6,
+    'tags': 7, 'region': 8, 'status': 9, 'awards': 10, 'updated': 11,
+    'lastContacted': 12, 'health': 13
+  };
+  const thead = tbody.closest('table')?.querySelector('thead tr');
+  if (thead) {
+    const ths = thead.querySelectorAll('th');
+    Object.entries(colVisMap).forEach(([col, idx]) => {
+      if (ths[idx]) ths[idx].style.display = isColVisible(col) ? '' : 'none';
+    });
+  }
+
+  const visibleColCount = 2 + Object.keys(colVisMap).filter(c => isColVisible(c)).length + (this._showPhoneColumn ? 1 : 0) + 1;
+
+  if (totalFiltered === 0) {
     // Build active filters summary
     const activeFilters = [];
     const year = document.getElementById('orgsYearFilter')?.value;
@@ -546,17 +590,20 @@ updateCountyFilterByRegion() {
 
     tbody.innerHTML = `
       <tr>
-        <td colspan="${colSpan}" class="text-center py-5">
+        <td colspan="${visibleColCount}" class="text-center py-5">
           <i class="bi bi-inbox display-4 text-muted opacity-25"></i>
           <p class="text-muted mt-3 mb-0">No organisations found</p>
           ${filterSummary}
         </td>
       </tr>
     `;
+    this._renderPaginationControls(0, 1);
     return;
   }
 
-  tbody.innerHTML = STATE.filteredOrganisations.map(org => {
+  const cv = (col) => isColVisible(col) ? '' : 'display:none;';
+
+  tbody.innerHTML = pageOrgs.map(org => {
     const isSelected = this.selectedOrgs.has(org.id);
     const awardsCount = org.awards_count || 0;
     const escapedName = utils.escapeHtml(org.company_name || '').replace(/'/g, "\\'");
@@ -588,46 +635,46 @@ updateCountyFilterByRegion() {
             </a>
           </div>
         </td>
-        <td style="cursor: pointer;" ondblclick="orgsModule.startInlineEdit('${org.id}', 'sector', '${utils.escapeHtml(org.sector || '').replace(/'/g, "\\'")}', this)" title="Double-click to edit">
+        <td style="${cv('sector')}cursor: pointer;" ondblclick="orgsModule.startInlineEdit('${org.id}', 'sector', '${utils.escapeHtml(org.sector || '').replace(/'/g, "\\'")}', this)" title="Double-click to edit">
           <span class="badge bg-info-subtle text-info small">
             ${utils.escapeHtml(org.sector || '-')}
           </span>
         </td>
-        <td>
+        <td style="${cv('county')}">
           <span class="badge bg-primary-subtle text-primary small">
             ${utils.escapeHtml(org.county || '-')}
           </span>
         </td>
-        <td class="small" style="cursor: pointer;" ondblclick="orgsModule.startInlineEdit('${org.id}', 'contact', '${utils.escapeHtml(org.contact_name || '').replace(/'/g, "\\'")}', this)" title="Double-click to edit">
+        <td class="small" style="${cv('contact')}cursor: pointer;" ondblclick="orgsModule.startInlineEdit('${org.id}', 'contact', '${utils.escapeHtml(org.contact_name || '').replace(/'/g, "\\'")}', this)" title="Double-click to edit">
           ${utils.escapeHtml(org.contact_name ? (org.contact_name.length > 18 ? org.contact_name.substring(0, 18) + '...' : org.contact_name) : '-')}
         </td>
-        <td class="small" style="cursor: pointer;" ondblclick="orgsModule.startInlineEdit('${org.id}', 'email', '${utils.escapeHtml(org.email || '').replace(/'/g, "\\'")}', this)" title="Double-click to edit">
+        <td class="small" style="${cv('email')}cursor: pointer;" ondblclick="orgsModule.startInlineEdit('${org.id}', 'email', '${utils.escapeHtml(org.email || '').replace(/'/g, "\\'")}', this)" title="Double-click to edit">
           ${org.email ?
             `<a href="mailto:${org.email}" class="text-decoration-none" title="${utils.escapeHtml(org.email)}">
               ${org.email.length > 22 ? utils.escapeHtml(org.email.substring(0, 22)) + '...' : utils.escapeHtml(org.email)}
             </a>` : '-'
           }
         </td>
-        <td class="text-center">
+        <td class="text-center" style="${cv('tier')}">
           ${org.tier ?
             `<span class="badge" style="background: ${tierColor}; color: ${org.tier === 'Gold' || org.tier === 'Silver' || org.tier === 'Platinum' ? '#000' : '#fff'}; font-size: 0.7rem;">
               ${utils.escapeHtml(org.tier)}
             </span>` : '<span class="text-muted small">-</span>'
           }
         </td>
-        <td>
+        <td style="${cv('tags')}">
           ${org.tags && org.tags.length > 0 ?
             org.tags.slice(0, 3).map(t => `<span class="badge bg-secondary me-1" style="font-size: 0.65rem;">${utils.escapeHtml(t)}</span>`).join('') +
             (org.tags.length > 3 ? `<span class="text-muted" style="font-size: 0.65rem;">+${org.tags.length - 3}</span>` : '')
             : '<span class="text-muted small">-</span>'
           }
         </td>
-        <td>
+        <td style="${cv('region')}">
           <span class="badge bg-success-subtle text-success small">
             ${utils.escapeHtml(org.region || '-')}
           </span>
         </td>
-        <td class="text-center">
+        <td class="text-center" style="${cv('status')}">
           <select class="form-select form-select-sm border-0 p-0 text-center"
                   style="font-size: 0.75rem; background-position: right 0.25rem center; padding-right: 1.2rem !important; cursor: pointer;"
                   onchange="orgsModule.quickUpdateStatus('${org.id}', this.value)"
@@ -638,22 +685,22 @@ updateCountyFilterByRegion() {
           </select>
         </td>
         ${this._showPhoneColumn ? `<td class="small">${utils.escapeHtml(org.contact_phone || '-')}</td>` : ''}
-        <td class="text-center">
+        <td class="text-center" style="${cv('awards')}">
           ${awardsCount > 0 ?
             `<span class="badge bg-warning text-dark">${awardsCount}</span>` :
             `<span class="text-muted">-</span>`
           }
         </td>
-        <td class="text-center small text-muted" title="${updatedDate ? new Date(updatedDate).toLocaleDateString('en-GB') : 'N/A'}">
+        <td class="text-center small text-muted" style="${cv('updated')}" title="${updatedDate ? new Date(updatedDate).toLocaleDateString('en-GB') : 'N/A'}">
           ${updatedDate ? this._timeAgo(new Date(updatedDate)) : '-'}
         </td>
-        <td class="text-center small text-muted" title="Last contacted">
+        <td class="text-center small text-muted" style="${cv('lastContacted')}" title="Last contacted">
           ${(() => {
             const lc = this.getLastContacted(org.id);
             return lc ? this._timeAgo(new Date(lc)) : '<span class="text-muted">-</span>';
           })()}
         </td>
-        <td class="text-center">
+        <td class="text-center" style="${cv('health')}">
           ${(() => {
             const h = this.getOrgHealthIndicator(org);
             return `<i class="bi ${h.icon} text-${h.color}" title="${h.label}" style="font-size: 0.85rem;"></i>`;
@@ -681,6 +728,7 @@ updateCountyFilterByRegion() {
   }).join('');
 
     this.updateSortIndicators();
+    this._renderPaginationControls(totalFiltered, totalPages);
 },
   /**
    * Open company profile modal
@@ -700,6 +748,13 @@ updateCountyFilterByRegion() {
     editBtn.style.display = 'none';
     saveBtn.style.display = 'none';
     cancelBtn.style.display = 'none';
+
+    // Show print button
+    const printBtn = document.getElementById('printProfileBtn');
+    if (printBtn) {
+      printBtn.style.display = '';
+      printBtn.onclick = () => this.printCompanyProfile(orgId);
+    }
 
     titleEl.innerHTML = `<i class="bi bi-building me-2"></i>${utils.escapeHtml(companyName)}`;
     contentDiv.innerHTML = `
@@ -5008,6 +5063,8 @@ updateCountyFilterByRegion() {
       const records = orgIds.map(orgId => ({ award_id: awardId, organisation_id: orgId, status }));
       const { error } = await STATE.client.from('award_assignments').upsert(records, { onConflict: 'award_id,organisation_id' });
       if (error) throw error;
+      // Auto-promote prospects/entrants to nominee
+      await this._autoPromoteStatus(orgIds);
       utils.showToast(`${orgIds.length} org(s) assigned to award`, 'success');
       await this.loadOrganisations();
     } catch (e) { utils.showToast('Error: ' + e.message, 'error'); }
@@ -6066,9 +6123,6 @@ updateCountyFilterByRegion() {
   },
 
   // ============================================
-  // SHARED DYNAMIC MODAL HELPER
-  // ============================================
-  // ============================================
   // SUPABASE REALTIME SUBSCRIPTIONS
   // ============================================
   _realtimeChannel: null,
@@ -6143,6 +6197,289 @@ updateCountyFilterByRegion() {
     </div>`;
     document.body.insertAdjacentHTML('beforeend', notifHtml);
     setTimeout(() => document.getElementById('realtimeNotif')?.remove(), 4000);
+  },
+
+  // ============================================
+  // FEATURE: TABLE PAGINATION
+  // ============================================
+  _renderPaginationControls(totalFiltered, totalPages) {
+    const footer = document.querySelector('#orgTableContainer .card-footer');
+    if (!footer) return;
+
+    const pageSizes = [25, 50, 100, 250];
+    const page = this._currentPage;
+
+    footer.innerHTML = `
+      <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+        <div class="d-flex align-items-center gap-2">
+          <small class="text-muted">
+            Showing ${totalFiltered > 0 ? ((page - 1) * this._pageSize + 1) + '-' + Math.min(page * this._pageSize, totalFiltered) : '0'}
+            of ${STATE.allOrganisations.length}
+            (${totalFiltered} filtered)
+          </small>
+          <select class="form-select form-select-sm" style="width: auto; font-size: 0.75rem;"
+                  onchange="orgsModule.changePageSize(parseInt(this.value))">
+            ${pageSizes.map(s => `<option value="${s}" ${s === this._pageSize ? 'selected' : ''}>${s} per page</option>`).join('')}
+          </select>
+        </div>
+        <div class="d-flex align-items-center gap-1">
+          <button class="btn btn-sm btn-outline-secondary" ${page <= 1 ? 'disabled' : ''}
+                  onclick="orgsModule.goToPage(1)" title="First"><i class="bi bi-chevron-double-left"></i></button>
+          <button class="btn btn-sm btn-outline-secondary" ${page <= 1 ? 'disabled' : ''}
+                  onclick="orgsModule.goToPage(${page - 1})" title="Previous"><i class="bi bi-chevron-left"></i></button>
+          <span class="small text-muted mx-1">Page ${page} of ${totalPages}</span>
+          <button class="btn btn-sm btn-outline-secondary" ${page >= totalPages ? 'disabled' : ''}
+                  onclick="orgsModule.goToPage(${page + 1})" title="Next"><i class="bi bi-chevron-right"></i></button>
+          <button class="btn btn-sm btn-outline-secondary" ${page >= totalPages ? 'disabled' : ''}
+                  onclick="orgsModule.goToPage(${totalPages})" title="Last"><i class="bi bi-chevron-double-right"></i></button>
+        </div>
+        <small class="text-muted">
+          <i class="bi bi-clock me-1"></i>Last refreshed: ${new Date().toLocaleTimeString('en-GB')}
+        </small>
+      </div>`;
+  },
+
+  goToPage(page) {
+    this._currentPage = page;
+    this.renderOrganisations();
+    document.getElementById('orgTableContainer')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  },
+
+  changePageSize(size) {
+    this._pageSize = size;
+    this._currentPage = 1;
+    this.renderOrganisations();
+  },
+
+  // ============================================
+  // FEATURE: OVERDUE FOLLOW-UPS WIDGET
+  // ============================================
+  async loadOverdueFollowUps() {
+    try {
+      const allFollowUps = await this.getFollowUps();
+      const today = new Date().toISOString().split('T')[0];
+      const threeDays = new Date(Date.now() + 3 * 86400000).toISOString().split('T')[0];
+      const overdue = allFollowUps.filter(f => !f.done && f.date && f.date < today);
+      const dueSoon = allFollowUps.filter(f => !f.done && f.date && f.date >= today && f.date <= threeDays);
+
+      const overdueEl = document.getElementById('orgsOverdueCount');
+      const dueSoonEl = document.getElementById('orgsDueSoonCount');
+      if (overdueEl) overdueEl.textContent = overdue.length;
+      if (dueSoonEl) dueSoonEl.textContent = dueSoon.length;
+
+      this._overdueFollowUps = overdue;
+      this._dueSoonFollowUps = dueSoon;
+    } catch (e) {
+      console.warn('Failed to load overdue follow-ups:', e.message);
+    }
+  },
+
+  showOverdueFollowUps() {
+    const overdue = this._overdueFollowUps || [];
+    const dueSoon = this._dueSoonFollowUps || [];
+    const all = [...overdue, ...dueSoon].sort((a, b) => (a.date || '').localeCompare(b.date || ''));
+
+    if (all.length === 0) {
+      utils.showToast('No overdue or upcoming follow-ups', 'info');
+      return;
+    }
+
+    const today = new Date().toISOString().split('T')[0];
+    const html = `
+      <div class="table-responsive">
+        <table class="table table-sm table-hover">
+          <thead><tr>
+            <th>Company</th><th>Due Date</th><th>Note</th><th>Status</th><th>Action</th>
+          </tr></thead>
+          <tbody>
+            ${all.map(f => {
+              const isOverdue = f.date < today;
+              const safeName = utils.escapeHtml((f.companyName || '').replace(/'/g, "\\'"));
+              return `<tr class="${isOverdue ? 'table-danger' : 'table-warning'}">
+                <td><a href="#" class="text-decoration-none" onclick="event.preventDefault(); document.getElementById('dynamicOrgModal')?.querySelector('.btn-close')?.click(); setTimeout(() => orgsModule.openCompanyProfile('${f.orgId}', '${safeName}'), 300);">${utils.escapeHtml(f.companyName || 'Unknown')}</a></td>
+                <td class="small">${f.date || '-'}</td>
+                <td class="small">${utils.escapeHtml(f.note || '-')}</td>
+                <td><span class="badge ${isOverdue ? 'bg-danger' : 'bg-warning text-dark'}">${isOverdue ? 'Overdue' : 'Due Soon'}</span></td>
+                <td><button class="btn btn-sm btn-outline-success" onclick="orgsModule.completeFollowUp('${f.orgId}', '${f.id}')"><i class="bi bi-check"></i></button></td>
+              </tr>`;
+            }).join('')}
+          </tbody>
+        </table>
+      </div>`;
+
+    this._showDynamicModal(`Follow-ups (${overdue.length} overdue, ${dueSoon.length} due soon)`, html, 'bi-bell', 'modal-lg');
+  },
+
+  // ============================================
+  // FEATURE: COLUMN VISIBILITY SETTINGS
+  // ============================================
+  showColumnSettings() {
+    const columns = [
+      { key: 'sector', label: 'Sector' },
+      { key: 'county', label: 'County' },
+      { key: 'contact', label: 'Contact' },
+      { key: 'email', label: 'Email' },
+      { key: 'tier', label: 'Tier' },
+      { key: 'tags', label: 'Tags' },
+      { key: 'region', label: 'Region' },
+      { key: 'status', label: 'Status' },
+      { key: 'awards', label: 'Awards' },
+      { key: 'updated', label: 'Updated' },
+      { key: 'lastContacted', label: 'Last Contacted' },
+      { key: 'health', label: 'Health' }
+    ];
+
+    const html = `
+      <p class="small text-muted mb-3">Toggle columns on/off. Settings persist across sessions.</p>
+      <div class="row g-2">
+        ${columns.map(c => {
+          const checked = this._columnVisibility[c.key] !== false ? 'checked' : '';
+          return `<div class="col-6">
+            <div class="form-check form-switch">
+              <input class="form-check-input" type="checkbox" id="colVis_${c.key}" ${checked}
+                     onchange="orgsModule.toggleColumnVisibility('${c.key}', this.checked)">
+              <label class="form-check-label small" for="colVis_${c.key}">${c.label}</label>
+            </div>
+          </div>`;
+        }).join('')}
+      </div>
+      <hr>
+      <div class="d-flex gap-2">
+        <button class="btn btn-sm btn-outline-primary" onclick="orgsModule.resetColumnVisibility()">
+          <i class="bi bi-arrow-counterclockwise me-1"></i>Show All
+        </button>
+        <button class="btn btn-sm btn-outline-secondary" onclick="orgsModule.hideAllColumns()">
+          <i class="bi bi-eye-slash me-1"></i>Hide All Optional
+        </button>
+      </div>`;
+
+    this._showDynamicModal('Column Visibility', html, 'bi-layout-three-columns');
+  },
+
+  toggleColumnVisibility(col, visible) {
+    this._columnVisibility[col] = visible;
+    try { localStorage.setItem('orgsColumnVisibility', JSON.stringify(this._columnVisibility)); } catch (e) {}
+    this.renderOrganisations();
+  },
+
+  resetColumnVisibility() {
+    this._columnVisibility = {};
+    try { localStorage.setItem('orgsColumnVisibility', JSON.stringify(this._columnVisibility)); } catch (e) {}
+    document.querySelectorAll('[id^="colVis_"]').forEach(cb => cb.checked = true);
+    this.renderOrganisations();
+  },
+
+  hideAllColumns() {
+    const cols = ['sector','county','contact','email','tier','tags','region','status','awards','updated','lastContacted','health'];
+    cols.forEach(c => this._columnVisibility[c] = false);
+    try { localStorage.setItem('orgsColumnVisibility', JSON.stringify(this._columnVisibility)); } catch (e) {}
+    document.querySelectorAll('[id^="colVis_"]').forEach(cb => cb.checked = false);
+    this.renderOrganisations();
+  },
+
+  // ============================================
+  // FEATURE: PRINT/PDF COMPANY PROFILE
+  // ============================================
+  printCompanyProfile(orgId) {
+    const org = STATE.allOrganisations.find(o => o.id === orgId);
+    if (!org) { utils.showToast('Organisation not found', 'error'); return; }
+
+    const engagement = this.calculateEngagementScore(org);
+    const health = this.getOrgHealthIndicator(org);
+    const lastContacted = this.getLastContacted(orgId);
+
+    const printHtml = `<!DOCTYPE html>
+<html><head>
+<title>${utils.escapeHtml(org.company_name)} - Company Profile</title>
+<style>
+  body { font-family: Arial, sans-serif; max-width: 800px; margin: 0 auto; padding: 20px; color: #333; }
+  h1 { color: #0d6efd; border-bottom: 2px solid #0d6efd; padding-bottom: 8px; }
+  h2 { color: #495057; margin-top: 24px; font-size: 1.1rem; border-bottom: 1px solid #dee2e6; padding-bottom: 4px; }
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 24px; }
+  .field { margin-bottom: 4px; }
+  .label { font-weight: bold; color: #6c757d; font-size: 0.85rem; }
+  .value { margin-top: 2px; }
+  .badge { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 0.8rem; }
+  .logo { max-width: 200px; max-height: 120px; object-fit: contain; border: 1px solid #dee2e6; }
+  .footer { margin-top: 40px; padding-top: 12px; border-top: 1px solid #dee2e6; font-size: 0.8rem; color: #6c757d; text-align: center; }
+  @media print { body { padding: 0; } }
+</style>
+</head><body>
+  ${org.logo_url ? `<img src="${org.logo_url}" class="logo" alt="">` : ''}
+  <h1>${utils.escapeHtml(org.company_name)}</h1>
+  <h2>Contact Information</h2>
+  <div class="grid">
+    <div class="field"><span class="label">Contact Name:</span><div class="value">${utils.escapeHtml(org.contact_name || 'N/A')}</div></div>
+    <div class="field"><span class="label">Email:</span><div class="value">${utils.escapeHtml(org.email || 'N/A')}</div></div>
+    <div class="field"><span class="label">Phone:</span><div class="value">${utils.escapeHtml(org.contact_phone || 'N/A')}</div></div>
+    <div class="field"><span class="label">Website:</span><div class="value">${utils.escapeHtml(org.website || 'N/A')}</div></div>
+  </div>
+  <h2>Organisation Details</h2>
+  <div class="grid">
+    <div class="field"><span class="label">Status:</span><div class="value"><span class="badge" style="background:#e9ecef;">${utils.escapeHtml(org.status || 'prospect')}</span></div></div>
+    <div class="field"><span class="label">Tier:</span><div class="value"><span class="badge" style="background:#fff3cd;">${utils.escapeHtml(org.tier || 'N/A')}</span></div></div>
+    <div class="field"><span class="label">Sector:</span><div class="value">${utils.escapeHtml(org.sector || 'N/A')}</div></div>
+    <div class="field"><span class="label">Region:</span><div class="value">${utils.escapeHtml(org.region || 'N/A')}</div></div>
+    <div class="field"><span class="label">County:</span><div class="value">${utils.escapeHtml(org.county || 'N/A')}</div></div>
+    <div class="field"><span class="label">Address:</span><div class="value">${utils.escapeHtml(org.address || 'N/A')}</div></div>
+    <div class="field"><span class="label">Tags:</span><div class="value">${(org.tags || []).map(t => utils.escapeHtml(t)).join(', ') || 'None'}</div></div>
+    <div class="field"><span class="label">Awards Count:</span><div class="value">${org.awards_count || 0}</div></div>
+  </div>
+  <h2>Engagement &amp; Health</h2>
+  <div class="grid">
+    <div class="field"><span class="label">Engagement Score:</span><div class="value">${engagement}/100</div></div>
+    <div class="field"><span class="label">Health:</span><div class="value">${health.label}</div></div>
+    <div class="field"><span class="label">Last Contacted:</span><div class="value">${lastContacted ? new Date(lastContacted).toLocaleDateString('en-GB') : 'Never'}</div></div>
+    <div class="field"><span class="label">Last Updated:</span><div class="value">${org.updated_at ? new Date(org.updated_at).toLocaleDateString('en-GB') : 'N/A'}</div></div>
+  </div>
+  ${org.notes ? `<h2>Notes</h2><p>${utils.escapeHtml(org.notes)}</p>` : ''}
+  <div class="footer">Generated on ${new Date().toLocaleDateString('en-GB')} at ${new Date().toLocaleTimeString('en-GB')} — British Trade Awards CMS</div>
+</body></html>`;
+
+    const printWindow = window.open('', '_blank', 'width=800,height=600');
+    if (printWindow) {
+      printWindow.document.write(printHtml);
+      printWindow.document.close();
+      setTimeout(() => printWindow.print(), 500);
+    } else {
+      utils.showToast('Pop-up blocked. Please allow pop-ups for this site.', 'warning');
+    }
+  },
+
+  // ============================================
+  // FEATURE: AUTO-STATUS PROMOTION ON AWARD ASSIGN
+  // ============================================
+  async _autoPromoteStatus(orgIds) {
+    const promotable = ['prospect', 'entrant'];
+    const toPromote = orgIds.filter(id => {
+      const org = STATE.allOrganisations.find(o => o.id === id);
+      return org && promotable.includes(org.status || 'prospect');
+    });
+
+    if (toPromote.length === 0) return;
+
+    const batches = [];
+    for (let i = 0; i < toPromote.length; i += 5) {
+      batches.push(toPromote.slice(i, i + 5));
+    }
+    for (const batch of batches) {
+      await Promise.all(batch.map(id =>
+        STATE.client.from('organisations').update({ status: 'nominee', updated_at: new Date().toISOString() }).eq('id', id)
+      ));
+    }
+
+    toPromote.forEach(id => {
+      const org = STATE.allOrganisations.find(o => o.id === id);
+      if (org) org.status = 'nominee';
+      const fOrg = STATE.filteredOrganisations.find(o => o.id === id);
+      if (fOrg) fOrg.status = 'nominee';
+    });
+
+    for (const id of toPromote) {
+      await this._logAudit(id, 'auto_status_promotion', { from: 'prospect/entrant', to: 'nominee', reason: 'Assigned to award' });
+    }
+
+    utils.showToast(`${toPromote.length} org(s) auto-promoted to "nominee"`, 'info');
   },
 
   // ============================================

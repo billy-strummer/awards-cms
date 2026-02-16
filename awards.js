@@ -509,6 +509,21 @@ const awardsModule = {
                     <i class="bi bi-eye text-info me-2"></i>View Details
                   </a>
                 </li>
+                <li>
+                  <a class="dropdown-item" href="javascript:void(0);" onclick="awardsModule.showVisualTimeline('${award.id}')">
+                    <i class="bi bi-calendar-range text-success me-2"></i>Timeline
+                  </a>
+                </li>
+                <li>
+                  <a class="dropdown-item" href="javascript:void(0);" onclick="awardsModule.cloneAward('${award.id}')">
+                    <i class="bi bi-copy text-purple me-2" style="color:#6f42c1;"></i>Clone to Year
+                  </a>
+                </li>
+                <li>
+                  <a class="dropdown-item" href="javascript:void(0);" onclick="awardsModule.showAwardAuditLog('${award.id}', '${utils.escapeHtml(fullName).replace(/'/g, "\\'")}')">
+                    <i class="bi bi-journal-text text-secondary me-2"></i>Audit Log
+                  </a>
+                </li>
                 <li><hr class="dropdown-divider"></li>
                 <li>
                   <a class="dropdown-item text-danger" href="javascript:void(0);" onclick="awardsModule.deleteAward('${award.id}')">
@@ -1025,6 +1040,11 @@ const awardsModule = {
       const modal = bootstrap.Modal.getInstance(document.getElementById('awardFormModal'));
       if (modal) modal.hide();
 
+      // Audit trail
+      this._logAwardAudit(id || 'new', id ? 'updated' : 'created', awardData.award_name,
+        id ? `Award updated: ${awardData.award_name} (${awardData.county}, ${awardData.year})` :
+        `Award created: ${awardData.award_name} (${awardData.county}, ${awardData.year})`);
+
       utils.showToast(id ? 'Award updated successfully!' : 'Award created successfully!', 'success');
       await this.loadAwards();
 
@@ -1218,13 +1238,16 @@ const awardsModule = {
     try {
       utils.showLoading();
       
+      const award = STATE.allAwards.find(a => a.id === awardId);
       const { error } = await STATE.client
         .from('awards')
         .delete()
         .eq('id', awardId);
-      
+
       if (error) throw error;
-      
+
+      this._logAwardAudit(awardId, 'deleted', award?.award_name || '', `Award deleted: ${award?.award_name || 'Unknown'}`);
+
       await this.loadAwards();
       utils.showToast('Award deleted successfully', 'success');
       
@@ -1439,6 +1462,519 @@ const awardsModule = {
     } finally {
       utils.hideLoading();
     }
+  },
+
+  // ============================================
+  // FEATURE 1: AWARD DATA QUALITY DASHBOARD
+  // ============================================
+  showDataQualityDashboard() {
+    const awards = STATE.allAwards;
+    const active = awards.filter(a => (a.status || 'Draft').toLowerCase() !== 'archived');
+
+    // Calculate quality metrics
+    const missingDates = active.filter(a => !a.entry_open_date || !a.entry_close_date || !a.winners_announcement_date);
+    const noNominees = active.filter(a => (a._assignmentCounts?.total || 0) === 0);
+    const noWinner = active.filter(a => {
+      const phase = this.getAwardPhase(a);
+      return phase.label === 'Complete' && (a._assignmentCounts?.winner || 0) === 0;
+    });
+    const missingJudgingDates = active.filter(a => !a.judging_open_date || !a.judging_close_date);
+    const missingVotingDates = active.filter(a => !a.voting_open_date || !a.voting_close_date);
+    const draftOnly = active.filter(a => (a.status || 'Draft') === 'Draft');
+    const noPrevWinner = active.filter(a => a.year > 2024 && !a.prev_year_winner);
+    const noDescription = active.filter(a => !a.description);
+
+    // Overall score
+    const totalChecks = active.length * 6; // 6 quality dimensions
+    const issues = missingDates.length + noNominees.length + noWinner.length +
+      missingJudgingDates.length + missingVotingDates.length + noDescription.length;
+    const qualityScore = totalChecks > 0 ? Math.round(((totalChecks - issues) / totalChecks) * 100) : 100;
+    const scoreColor = qualityScore >= 80 ? 'success' : qualityScore >= 50 ? 'warning' : 'danger';
+
+    const renderList = (items, limit = 10) => {
+      if (items.length === 0) return '<span class="text-success small"><i class="bi bi-check-circle me-1"></i>All clear</span>';
+      return `<div style="max-height: 150px; overflow-y: auto;">
+        ${items.slice(0, limit).map(a => `<div class="small py-1 border-bottom">
+          <a href="javascript:void(0);" class="text-primary text-decoration-none" onclick="awardsModule.openEditModal('${a.id}')">${utils.escapeHtml(utils.formatAwardName(a))}</a>
+          <span class="text-muted ms-1">(${a.year})</span>
+        </div>`).join('')}
+        ${items.length > limit ? `<div class="small text-muted mt-1">+${items.length - limit} more</div>` : ''}
+      </div>`;
+    };
+
+    const html = `
+      <div class="text-center mb-4">
+        <div class="d-inline-block position-relative" style="width: 120px; height: 120px;">
+          <svg viewBox="0 0 36 36" style="width: 120px; height: 120px; transform: rotate(-90deg);">
+            <circle cx="18" cy="18" r="15.9" fill="none" stroke="#e9ecef" stroke-width="3"/>
+            <circle cx="18" cy="18" r="15.9" fill="none" stroke="var(--bs-${scoreColor})" stroke-width="3"
+              stroke-dasharray="${qualityScore} ${100 - qualityScore}" stroke-linecap="round"/>
+          </svg>
+          <div class="position-absolute top-50 start-50 translate-middle">
+            <div class="fw-bold fs-4 text-${scoreColor}">${qualityScore}%</div>
+            <div class="text-muted" style="font-size: 0.6rem;">Quality Score</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="row g-3">
+        <div class="col-md-6">
+          <div class="card border-${missingDates.length > 0 ? 'danger' : 'success'}">
+            <div class="card-body p-3">
+              <h6 class="card-title small fw-bold"><i class="bi bi-calendar-x text-danger me-2"></i>Missing Key Dates <span class="badge bg-danger">${missingDates.length}</span></h6>
+              <p class="text-muted small mb-2">Awards without entry open, entry close, or winners announcement dates</p>
+              ${renderList(missingDates)}
+            </div>
+          </div>
+        </div>
+        <div class="col-md-6">
+          <div class="card border-${noNominees.length > 0 ? 'warning' : 'success'}">
+            <div class="card-body p-3">
+              <h6 class="card-title small fw-bold"><i class="bi bi-people text-warning me-2"></i>No Nominees <span class="badge bg-warning text-dark">${noNominees.length}</span></h6>
+              <p class="text-muted small mb-2">Active awards with zero nominees assigned</p>
+              ${renderList(noNominees)}
+            </div>
+          </div>
+        </div>
+        <div class="col-md-6">
+          <div class="card border-${noWinner.length > 0 ? 'danger' : 'success'}">
+            <div class="card-body p-3">
+              <h6 class="card-title small fw-bold"><i class="bi bi-trophy text-danger me-2"></i>Complete But No Winner <span class="badge bg-danger">${noWinner.length}</span></h6>
+              <p class="text-muted small mb-2">Awards past announcement date with no winner selected</p>
+              ${renderList(noWinner)}
+            </div>
+          </div>
+        </div>
+        <div class="col-md-6">
+          <div class="card border-${missingVotingDates.length > 0 ? 'info' : 'success'}">
+            <div class="card-body p-3">
+              <h6 class="card-title small fw-bold"><i class="bi bi-hand-thumbs-up text-info me-2"></i>Missing Voting Dates <span class="badge bg-info">${missingVotingDates.length}</span></h6>
+              <p class="text-muted small mb-2">Awards without voting open/close dates</p>
+              ${renderList(missingVotingDates)}
+            </div>
+          </div>
+        </div>
+        <div class="col-md-6">
+          <div class="card border-${draftOnly.length > 0 ? 'secondary' : 'success'}">
+            <div class="card-body p-3">
+              <h6 class="card-title small fw-bold"><i class="bi bi-file-earmark text-secondary me-2"></i>Still in Draft <span class="badge bg-secondary">${draftOnly.length}</span></h6>
+              <p class="text-muted small mb-2">Awards not yet activated</p>
+              ${renderList(draftOnly)}
+            </div>
+          </div>
+        </div>
+        <div class="col-md-6">
+          <div class="card border-${noDescription.length > 0 ? 'secondary' : 'success'}">
+            <div class="card-body p-3">
+              <h6 class="card-title small fw-bold"><i class="bi bi-text-paragraph text-secondary me-2"></i>No Description <span class="badge bg-secondary">${noDescription.length}</span></h6>
+              <p class="text-muted small mb-2">Awards missing a description</p>
+              ${renderList(noDescription)}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="mt-3 pt-3 border-top">
+        <div class="row text-center">
+          <div class="col"><div class="fw-bold text-primary fs-5">${active.length}</div><div class="text-muted small">Active Awards</div></div>
+          <div class="col"><div class="fw-bold text-danger fs-5">${issues}</div><div class="text-muted small">Total Issues</div></div>
+          <div class="col"><div class="fw-bold text-success fs-5">${active.length - noNominees.length}</div><div class="text-muted small">With Nominees</div></div>
+          <div class="col"><div class="fw-bold text-warning fs-5">${noPrevWinner.length}</div><div class="text-muted small">No Prev Winner</div></div>
+        </div>
+      </div>
+    `;
+
+    this._showDynamicModal('Award Data Quality Dashboard', html, 'bi-shield-check', 'modal-lg');
+  },
+
+  // ============================================
+  // FEATURE 2: AWARD AUDIT TRAIL
+  // ============================================
+  async _logAwardAudit(awardId, action, awardName, details) {
+    try {
+      await STATE.client.from('org_audit_log').insert([{
+        org_id: awardId,
+        company_name: awardName,
+        action: 'award_' + action,
+        details: details
+      }]);
+    } catch (e) { /* silent - audit is non-critical */ }
+  },
+
+  async getAwardAuditLog(awardId) {
+    try {
+      const { data, error } = await STATE.client.from('org_audit_log')
+        .select('*')
+        .eq('org_id', awardId)
+        .ilike('action', 'award_%')
+        .order('created_at', { ascending: false })
+        .limit(50);
+      if (error) throw error;
+      return data || [];
+    } catch (e) { return []; }
+  },
+
+  async showAwardAuditLog(awardId, awardName) {
+    const log = await this.getAwardAuditLog(awardId);
+
+    let html;
+    if (log.length === 0) {
+      html = '<div class="alert alert-info"><i class="bi bi-info-circle me-2"></i>No audit history recorded yet for this award.</div>';
+    } else {
+      html = `<div class="list-group list-group-flush" style="max-height: 400px; overflow-y: auto;">
+        ${log.map(entry => {
+          const date = new Date(entry.created_at);
+          const icons = {
+            'award_created': 'bi-plus-circle text-success',
+            'award_updated': 'bi-pencil text-primary',
+            'award_status_change': 'bi-arrow-repeat text-info',
+            'award_deleted': 'bi-trash text-danger',
+            'award_cloned': 'bi-copy text-purple',
+            'award_nominee_added': 'bi-person-plus text-success',
+            'award_nominee_removed': 'bi-person-dash text-danger',
+            'award_winner_set': 'bi-trophy text-warning'
+          };
+          const icon = icons[entry.action] || 'bi-clock-history text-muted';
+          const timeAgo = this._timeAgo(date);
+          return `<div class="list-group-item px-0 py-2 border-0">
+            <div class="d-flex align-items-start">
+              <i class="bi ${icon} me-2 mt-1"></i>
+              <div class="flex-grow-1">
+                <div class="small fw-semibold">${utils.escapeHtml(entry.details || entry.action)}</div>
+                <div class="text-muted" style="font-size: 0.7rem;">${timeAgo} &middot; ${date.toLocaleDateString('en-GB')} ${date.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}</div>
+              </div>
+            </div>
+          </div>`;
+        }).join('')}
+      </div>`;
+    }
+
+    this._showDynamicModal(`Audit Log: ${awardName || 'Award'}`, html, 'bi-journal-text');
+  },
+
+  _timeAgo(date) {
+    const seconds = Math.floor((Date.now() - date.getTime()) / 1000);
+    if (seconds < 60) return 'just now';
+    if (seconds < 3600) return Math.floor(seconds / 60) + 'm ago';
+    if (seconds < 86400) return Math.floor(seconds / 3600) + 'h ago';
+    if (seconds < 604800) return Math.floor(seconds / 86400) + 'd ago';
+    return date.toLocaleDateString('en-GB');
+  },
+
+  // ============================================
+  // FEATURE 3: CLONE / TEMPLATE AWARDS
+  // ============================================
+  async cloneAward(awardId) {
+    const award = STATE.allAwards.find(a => a.id === awardId);
+    if (!award) { utils.showToast('Award not found', 'error'); return; }
+
+    const targetYear = parseInt(prompt(`Clone "${utils.formatAwardName(award)}" to which year?`, new Date().getFullYear()));
+    if (!targetYear || isNaN(targetYear)) return;
+
+    try {
+      utils.showLoading();
+
+      // Check for duplicate
+      const { data: existing } = await STATE.client.from('awards')
+        .select('id').eq('award_name', award.award_name)
+        .eq('county', award.county).eq('year', targetYear).limit(1);
+
+      if (existing && existing.length > 0) {
+        utils.hideLoading();
+        utils.showToast(`"${award.award_name}" already exists for ${award.county} in ${targetYear}`, 'error');
+        return;
+      }
+
+      const cloneData = {
+        award_name: award.award_name,
+        county: award.county,
+        sector: award.sector,
+        year: targetYear,
+        status: 'Draft',
+        description: award.description,
+        // Carry previous year winner info
+        prev_year_winner: award._winnerName || award.prev_year_winner || null,
+        prev_year_2nd: award._runnerUpName || award.prev_year_2nd || null,
+        prev_year_3rd: award.prev_year_3rd || null,
+        // Clear dates (will be set from season)
+        entry_open_date: null, entry_close_date: null,
+        nominees_announcement_date: null, judging_open_date: null,
+        judging_close_date: null, voting_open_date: null,
+        voting_close_date: null, winners_announcement_date: null
+      };
+
+      const { error } = await STATE.client.from('awards').insert([cloneData]);
+      if (error) throw error;
+
+      this._logAwardAudit(awardId, 'cloned', award.award_name, `Cloned to year ${targetYear}`);
+      utils.showToast(`Award cloned to ${targetYear} as Draft`, 'success');
+      await this.loadAwards();
+    } catch (error) {
+      console.error('Error cloning award:', error);
+      utils.showToast('Error: ' + error.message, 'error');
+    } finally {
+      utils.hideLoading();
+    }
+  },
+
+  async bulkCloneSelected() {
+    const count = this.selectedAwards.size;
+    if (count === 0) { utils.showToast('No awards selected', 'warning'); return; }
+
+    const targetYear = parseInt(prompt(`Clone ${count} selected awards to which year?`, new Date().getFullYear()));
+    if (!targetYear || isNaN(targetYear)) return;
+
+    if (!confirm(`Clone ${count} awards to ${targetYear}? Existing duplicates will be skipped.`)) return;
+
+    try {
+      utils.showLoading();
+      let cloned = 0, skipped = 0;
+
+      for (const awardId of this.selectedAwards) {
+        const award = STATE.allAwards.find(a => a.id === awardId);
+        if (!award) continue;
+
+        const { data: existing } = await STATE.client.from('awards')
+          .select('id').eq('award_name', award.award_name)
+          .eq('county', award.county).eq('year', targetYear).limit(1);
+
+        if (existing && existing.length > 0) { skipped++; continue; }
+
+        const { error } = await STATE.client.from('awards').insert([{
+          award_name: award.award_name, county: award.county, sector: award.sector,
+          year: targetYear, status: 'Draft', description: award.description,
+          prev_year_winner: award._winnerName || award.prev_year_winner || null,
+          prev_year_2nd: award._runnerUpName || award.prev_year_2nd || null,
+          prev_year_3rd: award.prev_year_3rd || null
+        }]);
+        if (!error) cloned++;
+      }
+
+      this.selectedAwards.clear();
+      utils.showToast(`Cloned ${cloned} awards to ${targetYear}${skipped > 0 ? ` (${skipped} skipped as duplicates)` : ''}`, 'success');
+      await this.loadAwards();
+    } catch (error) {
+      utils.showToast('Error: ' + error.message, 'error');
+    } finally {
+      utils.hideLoading();
+    }
+  },
+
+  // ============================================
+  // FEATURE 5: VISUAL TIMELINE FOR AWARD DATES
+  // ============================================
+  showVisualTimeline(awardId) {
+    const award = awardId ? STATE.allAwards.find(a => a.id === awardId) : null;
+    const awards = award ? [award] : STATE.filteredAwards.filter(a => (a.status || 'Draft').toLowerCase() !== 'archived').slice(0, 30);
+
+    const dateFields = [
+      { key: 'entry_open_date', label: 'Entries Open', color: '#0d6efd', icon: 'bi-pencil-square' },
+      { key: 'entry_close_date', label: 'Entries Close', color: '#6610f2', icon: 'bi-lock' },
+      { key: 'nominees_announcement_date', label: 'Nominees', color: '#6f42c1', icon: 'bi-megaphone' },
+      { key: 'judging_open_date', label: 'Judging Open', color: '#ffc107', icon: 'bi-clipboard-check' },
+      { key: 'judging_close_date', label: 'Judging Close', color: '#fd7e14', icon: 'bi-clipboard-x' },
+      { key: 'voting_open_date', label: 'Voting Open', color: '#0dcaf0', icon: 'bi-hand-thumbs-up' },
+      { key: 'voting_close_date', label: 'Voting Close', color: '#20c997', icon: 'bi-stopwatch' },
+      { key: 'winners_announcement_date', label: 'Winners', color: '#198754', icon: 'bi-trophy' }
+    ];
+
+    // Single award timeline
+    if (award) {
+      const now = new Date();
+      const allDates = dateFields.filter(df => award[df.key]).map(df => ({
+        ...df, date: new Date(award[df.key]), raw: award[df.key]
+      })).sort((a, b) => a.date - b.date);
+
+      const html = `
+        <div class="mb-3">
+          <h6 class="fw-bold">${utils.escapeHtml(utils.formatAwardName(award))} <span class="badge bg-light text-dark">${award.year}</span></h6>
+        </div>
+        ${allDates.length === 0 ? '<div class="alert alert-warning"><i class="bi bi-exclamation-triangle me-2"></i>No dates set for this award</div>' :
+          `<div class="position-relative" style="padding-left: 30px;">
+            <div class="position-absolute" style="left: 14px; top: 0; bottom: 0; width: 2px; background: #e9ecef;"></div>
+            ${allDates.map(d => {
+              const isPast = now > d.date;
+              const isToday = d.date.toDateString() === now.toDateString();
+              const daysFromNow = Math.ceil((d.date - now) / 86400000);
+              const daysLabel = isToday ? 'Today' : isPast ? `${Math.abs(daysFromNow)}d ago` : `In ${daysFromNow}d`;
+              return `<div class="d-flex align-items-center mb-3">
+                <div class="position-absolute" style="left: 6px; width: 18px; height: 18px; border-radius: 50%; background: ${isPast ? d.color : '#fff'}; border: 3px solid ${d.color}; z-index: 1;"></div>
+                <div class="flex-grow-1 ms-3">
+                  <div class="card ${isToday ? 'border-primary shadow-sm' : isPast ? 'bg-light' : ''}">
+                    <div class="card-body p-2">
+                      <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                          <i class="bi ${d.icon} me-1" style="color: ${d.color};"></i>
+                          <span class="small fw-semibold">${d.label}</span>
+                        </div>
+                        <div class="text-end">
+                          <span class="small fw-bold">${d.date.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
+                          <span class="badge ${isPast ? 'bg-success-subtle text-success' : isToday ? 'bg-primary' : 'bg-light text-dark'} ms-1" style="font-size: 0.6rem;">${daysLabel}</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>`;
+            }).join('')}
+          </div>`}
+      `;
+
+      this._showDynamicModal('Award Timeline', html, 'bi-calendar-range');
+      return;
+    }
+
+    // Multi-award overview
+    const html = `
+      <div class="mb-3">
+        <div class="d-flex gap-2 flex-wrap mb-3">
+          ${dateFields.map(df => `<span class="badge" style="background: ${df.color}; font-size: 0.65rem;"><i class="bi ${df.icon} me-1"></i>${df.label}</span>`).join('')}
+        </div>
+      </div>
+      <div style="max-height: 500px; overflow-y: auto;">
+        <table class="table table-sm table-hover">
+          <thead class="table-light"><tr>
+            <th style="width: 25%;">Award</th>
+            ${dateFields.map(df => `<th class="text-center" style="width: 9.375%; font-size: 0.65rem;" title="${df.label}"><i class="bi ${df.icon}" style="color: ${df.color};"></i></th>`).join('')}
+          </tr></thead>
+          <tbody>
+            ${awards.map(a => `<tr>
+              <td class="small fw-semibold text-truncate" style="max-width: 200px;" title="${utils.escapeHtml(utils.formatAwardName(a))}">${utils.escapeHtml(a.award_name || 'N/A')}<br><span class="text-muted" style="font-size:0.6rem;">${utils.escapeHtml(a.county || '-')}</span></td>
+              ${dateFields.map(df => {
+                const d = a[df.key];
+                const now = new Date();
+                const isPast = d && new Date(d) < now;
+                return `<td class="text-center small ${isPast ? 'text-muted' : ''}" title="${df.label}: ${d || 'Not set'}">
+                  ${d ? new Date(d).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }) : '<span class="text-danger">-</span>'}
+                </td>`;
+              }).join('')}
+            </tr>`).join('')}
+          </tbody>
+        </table>
+      </div>
+    `;
+
+    this._showDynamicModal('Awards Timeline Overview', html, 'bi-calendar-range', 'modal-xl');
+  },
+
+  // ============================================
+  // FEATURE 6: AWARD DUPLICATE DETECTION
+  // ============================================
+  showDuplicateDetection() {
+    const dupeMap = new Map();
+
+    STATE.allAwards.forEach(award => {
+      const key = `${(award.award_name || '').toLowerCase().trim()}|${(award.county || '').toLowerCase().trim()}|${award.year}`;
+      if (!dupeMap.has(key)) dupeMap.set(key, []);
+      dupeMap.get(key).push(award);
+    });
+
+    const exactDupes = Array.from(dupeMap.values()).filter(g => g.length > 1);
+
+    // Fuzzy name matching (same county+year, similar names)
+    const fuzzyDupes = [];
+    const checked = new Set();
+    const awards = STATE.allAwards;
+
+    for (let i = 0; i < awards.length; i++) {
+      for (let j = i + 1; j < awards.length; j++) {
+        const a = awards[i], b = awards[j];
+        if (a.year !== b.year) continue;
+        if ((a.county || '').toLowerCase() !== (b.county || '').toLowerCase()) continue;
+        const key = `${a.id}|${b.id}`;
+        if (checked.has(key)) continue;
+
+        const nameA = (a.award_name || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+        const nameB = (b.award_name || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+        if (nameA === nameB) continue; // Already caught by exact
+
+        const similar = nameA.includes(nameB) || nameB.includes(nameA) ||
+          (nameA.length < 30 && nameB.length < 30 && this._levenshtein(nameA, nameB) <= 3);
+
+        if (similar) {
+          checked.add(key);
+          fuzzyDupes.push([a, b]);
+        }
+      }
+    }
+
+    if (exactDupes.length === 0 && fuzzyDupes.length === 0) {
+      utils.showToast('No duplicates found!', 'success');
+      return;
+    }
+
+    let html = '';
+    if (exactDupes.length > 0) {
+      html += `<div class="alert alert-danger mb-3"><i class="bi bi-exclamation-triangle me-2"></i>${exactDupes.length} exact duplicate group(s) found</div>`;
+      exactDupes.forEach((group, idx) => {
+        html += `<div class="card mb-2"><div class="card-body py-2">
+          <h6 class="mb-2 small fw-bold">Exact Group ${idx + 1}: "${utils.escapeHtml(group[0].award_name)}" - ${group[0].county} (${group[0].year})</h6>
+          <div class="table-responsive"><table class="table table-sm mb-0">
+            <thead><tr><th>Name</th><th>County</th><th>Year</th><th>Status</th><th>Nominees</th><th>Action</th></tr></thead>
+            <tbody>${group.map(a => `<tr>
+              <td class="small">${utils.escapeHtml(a.award_name)}</td>
+              <td class="small">${utils.escapeHtml(a.county || '-')}</td>
+              <td>${a.year}</td>
+              <td>${utils.getStatusBadge(a.status || 'Draft')}</td>
+              <td class="text-center">${a._assignmentCounts?.total || 0}</td>
+              <td><button class="btn btn-sm btn-outline-danger" onclick="awardsModule.deleteAward('${a.id}')"><i class="bi bi-trash"></i></button></td>
+            </tr>`).join('')}</tbody>
+          </table></div>
+        </div></div>`;
+      });
+    }
+
+    if (fuzzyDupes.length > 0) {
+      html += `<div class="alert alert-warning mt-3 mb-3"><i class="bi bi-exclamation-circle me-2"></i>${fuzzyDupes.length} similar name pair(s) found</div>`;
+      fuzzyDupes.slice(0, 20).forEach(([a, b]) => {
+        html += `<div class="card mb-2"><div class="card-body py-2">
+          <div class="d-flex justify-content-between align-items-center">
+            <div class="small">
+              <strong>${utils.escapeHtml(a.award_name)}</strong> vs <strong>${utils.escapeHtml(b.award_name)}</strong>
+              <span class="text-muted ms-1">(${a.county}, ${a.year})</span>
+            </div>
+            <div class="btn-group btn-group-sm">
+              <button class="btn btn-outline-primary" onclick="awardsModule.openEditModal('${a.id}')" title="Edit first"><i class="bi bi-pencil"></i></button>
+              <button class="btn btn-outline-danger" onclick="awardsModule.deleteAward('${b.id}')" title="Delete second"><i class="bi bi-trash"></i></button>
+            </div>
+          </div>
+        </div></div>`;
+      });
+    }
+
+    this._showDynamicModal('Award Duplicate Detection', html, 'bi-files', 'modal-lg');
+  },
+
+  _levenshtein(a, b) {
+    const m = a.length, n = b.length;
+    const dp = Array.from({ length: m + 1 }, () => Array(n + 1).fill(0));
+    for (let i = 0; i <= m; i++) dp[i][0] = i;
+    for (let j = 0; j <= n; j++) dp[0][j] = j;
+    for (let i = 1; i <= m; i++) {
+      for (let j = 1; j <= n; j++) {
+        dp[i][j] = a[i - 1] === b[j - 1] ? dp[i - 1][j - 1] : 1 + Math.min(dp[i - 1][j], dp[i][j - 1], dp[i - 1][j - 1]);
+      }
+    }
+    return dp[m][n];
+  },
+
+  // ============================================
+  // SHARED DYNAMIC MODAL HELPER
+  // ============================================
+  _showDynamicModal(title, bodyHtml, icon, sizeClass) {
+    document.getElementById('dynamicAwardModal')?.remove();
+    const modalHtml = `<div class="modal fade" id="dynamicAwardModal" tabindex="-1">
+      <div class="modal-dialog ${sizeClass || ''}"><div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title"><i class="bi ${icon || 'bi-info-circle'} me-2"></i>${title}</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body" style="max-height: 70vh; overflow-y: auto;">${bodyHtml}</div>
+        <div class="modal-footer"><button class="btn btn-secondary" data-bs-dismiss="modal">Close</button></div>
+      </div></div>
+    </div>`;
+    document.body.insertAdjacentHTML('beforeend', modalHtml);
+    new bootstrap.Modal(document.getElementById('dynamicAwardModal')).show();
   }
 };
 

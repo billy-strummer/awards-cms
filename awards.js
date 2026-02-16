@@ -1593,10 +1593,11 @@ const awardsModule = {
   async _logAwardAudit(awardId, action, awardName, details) {
     try {
       await STATE.client.from('org_audit_log').insert([{
-        org_id: awardId,
+        org_id: null,
         company_name: awardName,
         action: 'award_' + action,
-        details: details
+        details: details,
+        new_value: awardId
       }]);
     } catch (e) { /* silent - audit is non-critical */ }
   },
@@ -1605,7 +1606,7 @@ const awardsModule = {
     try {
       const { data, error } = await STATE.client.from('org_audit_log')
         .select('*')
-        .eq('org_id', awardId)
+        .eq('new_value', awardId)
         .ilike('action', 'award_%')
         .order('created_at', { ascending: false })
         .limit(50);
@@ -1839,7 +1840,7 @@ const awardsModule = {
           </tr></thead>
           <tbody>
             ${awards.map(a => `<tr>
-              <td class="small fw-semibold text-truncate" style="max-width: 200px;" title="${utils.escapeHtml(utils.formatAwardName(a))}">${utils.escapeHtml(a.award_name || 'N/A')}<br><span class="text-muted" style="font-size:0.6rem;">${utils.escapeHtml(a.county || '-')}</span></td>
+              <td class="small fw-semibold text-truncate" style="max-width: 200px;" title="${utils.escapeHtml(utils.formatAwardName(a))}">${utils.escapeHtml(utils.formatAwardName(a))}<br><span class="text-muted" style="font-size:0.6rem;">${utils.escapeHtml(a.county || '-')}</span></td>
               ${dateFields.map(df => {
                 const d = a[df.key];
                 const now = new Date();
@@ -1886,6 +1887,7 @@ const awardsModule = {
 
         const nameA = (a.award_name || '').toLowerCase().replace(/[^a-z0-9]/g, '');
         const nameB = (b.award_name || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+        if (!nameA || !nameB) continue; // Skip empty names
         if (nameA === nameB) continue; // Already caught by exact
 
         const similar = nameA.includes(nameB) || nameB.includes(nameA) ||

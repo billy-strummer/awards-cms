@@ -788,7 +788,15 @@ const assignmentsModule = {
       </div></div>
     </div>`;
     document.body.insertAdjacentHTML('beforeend', modalHtml);
-    new bootstrap.Modal(document.getElementById('dynamicAssignModal')).show();
+    const emailModal = document.getElementById('dynamicAssignModal');
+    emailModal.style.zIndex = '1062';
+    emailModal.addEventListener('shown.bs.modal', () => {
+      const backdrop = emailModal.nextElementSibling;
+      if (backdrop && backdrop.classList.contains('modal-backdrop')) {
+        backdrop.style.zIndex = '1061';
+      }
+    });
+    new bootstrap.Modal(emailModal).show();
   },
 
   _cachedAssignments: [],

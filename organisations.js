@@ -1552,7 +1552,7 @@ updateCountyFilterByRegion() {
       contentDiv.innerHTML = `
         <div class="alert alert-danger">
           <i class="bi bi-exclamation-triangle me-2"></i>
-          Failed to load company profile: ${error.message}
+          Failed to load company profile: ${utils.escapeHtml(error.message)}
         </div>
       `;
     }
@@ -1931,23 +1931,26 @@ updateCountyFilterByRegion() {
         </div>
       `;
 
-      // Add hover effect
-      const style = document.createElement('style');
-      style.textContent = `
-        .logo-option:hover {
-          transform: scale(1.05);
-          box-shadow: 0 4px 8px rgba(0,0,0,0.2);
-          transition: all 0.2s;
-        }
-      `;
-      document.head.appendChild(style);
+      // Add hover effect (reuse existing style tag to prevent leaks)
+      if (!document.getElementById('logo-option-hover-style')) {
+        const style = document.createElement('style');
+        style.id = 'logo-option-hover-style';
+        style.textContent = `
+          .logo-option:hover {
+            transform: scale(1.05);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+            transition: all 0.2s;
+          }
+        `;
+        document.head.appendChild(style);
+      }
 
     } catch (error) {
       console.error('Error loading media gallery:', error);
       contentDiv.innerHTML = `
         <div class="alert alert-danger">
           <i class="bi bi-exclamation-triangle me-2"></i>
-          Error loading media gallery: ${error.message}
+          Error loading media gallery: ${utils.escapeHtml(error.message)}
         </div>
       `;
     }
@@ -3161,7 +3164,7 @@ updateCountyFilterByRegion() {
   },
 
   // ============================================
-  // AUDIT TRAIL (Supabase-backed, localStorage fallback)
+  // AUDIT TRAIL (Supabase-backed)
   // ============================================
   async _logAudit(orgId, action, companyName, details) {
     try {
@@ -3169,14 +3172,7 @@ updateCountyFilterByRegion() {
         .from('org_audit_log')
         .insert([{ org_id: orgId, company_name: companyName, action, details }]);
     } catch (e) {
-      // Fallback to localStorage if table doesn't exist yet
-      try {
-        const key = 'orgAuditLog';
-        const log = JSON.parse(localStorage.getItem(key) || '[]');
-        log.unshift({ orgId, companyName, action, details, timestamp: new Date().toISOString() });
-        if (log.length > 500) log.length = 500;
-        localStorage.setItem(key, JSON.stringify(log));
-      } catch (e2) { /* ignore */ }
+      console.warn('Failed to write audit log to Supabase:', e.message);
     }
   },
 
@@ -3192,12 +3188,8 @@ updateCountyFilterByRegion() {
       if (error) throw error;
       return (data || []).map(e => ({ ...e, timestamp: e.created_at }));
     } catch (e) {
-      // Fallback to localStorage
-      try {
-        const log = JSON.parse(localStorage.getItem('orgAuditLog') || '[]');
-        if (orgId) return log.filter(e => e.orgId === orgId);
-        return log;
-      } catch (e2) { return []; }
+      console.warn('Failed to read audit log from Supabase:', e.message);
+      return [];
     }
   },
 
@@ -3434,15 +3426,7 @@ updateCountyFilterByRegion() {
 
       this._logAudit(orgId, 'email_sent', companyName, `Email sent: ${template?.name || templateId}`);
     } catch (e) {
-      // Fallback to localStorage
-      try {
-        const key = 'orgCommsLog';
-        const log = JSON.parse(localStorage.getItem(key) || '[]');
-        const template = this._emailTemplates.find(t => t.id === templateId);
-        log.unshift({ orgId, companyName, templateId, templateName: template?.name || templateId, timestamp: new Date().toISOString() });
-        if (log.length > 1000) log.length = 1000;
-        localStorage.setItem(key, JSON.stringify(log));
-      } catch (e2) { /* ignore */ }
+      console.warn('Failed to write comms log to Supabase:', e.message);
     }
   },
 
@@ -3458,12 +3442,8 @@ updateCountyFilterByRegion() {
       if (error) throw error;
       return (data || []).map(e => ({ ...e, timestamp: e.created_at, templateName: e.template_name }));
     } catch (e) {
-      // Fallback to localStorage
-      try {
-        const log = JSON.parse(localStorage.getItem('orgCommsLog') || '[]');
-        if (orgId) return log.filter(e => e.orgId === orgId);
-        return log;
-      } catch (e2) { return []; }
+      console.warn('Failed to read comms history from Supabase:', e.message);
+      return [];
     }
   },
 
@@ -4326,7 +4306,7 @@ updateCountyFilterByRegion() {
     const email = document.getElementById('newContactEmailAddr')?.value.trim();
     const phone = document.getElementById('newContactPhoneNum')?.value.trim();
     const isPrimary = document.getElementById('newContactIsPrimary')?.checked || false;
-    const receiveEmails = document.getElementById('newContactReceiveEmails')?.checked || true;
+    const receiveEmails = document.getElementById('newContactReceiveEmails')?.checked ?? true;
 
     if (!firstName && !lastName) { utils.showToast('Please enter a name', 'warning'); return; }
 
@@ -4400,11 +4380,8 @@ updateCountyFilterByRegion() {
       (data || []).forEach(f => { result[f.field_name] = f.field_value; });
       return result;
     } catch (e) {
-      // Fallback to localStorage for migration
-      try {
-        const all = JSON.parse(localStorage.getItem('orgCustomFields') || '{}');
-        return all[orgId] || {};
-      } catch (e2) { return {}; }
+      console.warn('Failed to read custom fields from Supabase:', e.message);
+      return {};
     }
   },
 
@@ -4464,11 +4441,7 @@ updateCountyFilterByRegion() {
         }]);
         if (error) throw error;
       } catch (dbErr) {
-        // Fallback: store in localStorage
-        const docs = JSON.parse(localStorage.getItem('orgDocuments') || '{}');
-        if (!docs[orgId]) docs[orgId] = [];
-        docs[orgId].push({ url: urlData.publicUrl, title: docTitle || file.name, type: file.type, size: file.size, date: new Date().toISOString() });
-        localStorage.setItem('orgDocuments', JSON.stringify(docs));
+        console.warn('Failed to save document to Supabase:', dbErr.message);
       }
 
       utils.showToast('Document uploaded', 'success');
@@ -4487,11 +4460,8 @@ updateCountyFilterByRegion() {
       if (error) throw error;
       return data || [];
     } catch (e) {
-      // Fallback to localStorage
-      try {
-        const docs = JSON.parse(localStorage.getItem('orgDocuments') || '{}');
-        return (docs[orgId] || []).map(d => ({ file_url: d.url, title: d.title, file_type: d.type, file_size: d.size, created_at: d.date }));
-      } catch (e2) { return []; }
+      console.warn('Failed to read documents from Supabase:', e.message);
+      return [];
     }
   },
 
@@ -4510,11 +4480,8 @@ updateCountyFilterByRegion() {
         date: f.follow_up_date, note: f.note, done: f.completed, created: f.created_at
       }));
     } catch (e) {
-      try {
-        const all = JSON.parse(localStorage.getItem('orgFollowUps') || '[]');
-        if (orgId) return all.filter(f => f.orgId === orgId);
-        return all;
-      } catch (e2) { return []; }
+      console.warn('Failed to read follow-ups from Supabase:', e.message);
+      return [];
     }
   },
 

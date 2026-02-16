@@ -2910,3 +2910,34 @@ body.dark-mode #schedulePreview {
 #orgsTableBody tr[style*="outline"] {
   background-color: rgba(13, 110, 253, 0.05) !important;
 }
+
+/* Drag and drop states */
+.dragover {
+  border: 2px dashed var(--primary-color) !important;
+  background-color: rgba(13, 110, 253, 0.05) !important;
+}
+
+.uploading {
+  opacity: 0.6;
+  pointer-events: none;
+}
+
+.uploaded {
+  border-left: 3px solid var(--success-color);
+}
+
+.dragging {
+  opacity: 0.5;
+  cursor: grabbing;
+}
+
+.drag-over {
+  border: 2px dashed var(--primary-color) !important;
+  background-color: rgba(13, 110, 253, 0.05) !important;
+}
+
+/* Inline editing active state */
+.inline-edit-active {
+  background-color: rgba(255, 193, 7, 0.1) !important;
+  outline: 2px solid var(--warning-color);
+}

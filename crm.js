@@ -39,7 +39,7 @@ const crmModule = {
       }
     } catch (error) {
       console.error('Error loading CRM data:', error);
-      showNotification('Error loading CRM data', 'error');
+      utils.showToast('Error loading CRM data', 'error');
     }
   },
 
@@ -71,18 +71,22 @@ const crmModule = {
         pendingFollowUps: companies.reduce((sum, c) => sum + (c.pending_follow_ups || 0), 0)
       };
 
-      // Update stats display
-      document.getElementById('crm-total-companies').textContent = stats.totalCompanies;
-      document.getElementById('crm-active-deals').textContent = stats.activeDeals;
-      document.getElementById('crm-recent-comms').textContent = stats.recentCommunications;
-      document.getElementById('crm-pending-followups').textContent = stats.pendingFollowUps;
+      // Update stats display (elements may not exist in all views)
+      const el1 = document.getElementById('crm-total-companies');
+      const el2 = document.getElementById('crm-active-deals');
+      const el3 = document.getElementById('crm-recent-comms');
+      const el4 = document.getElementById('crm-pending-followups');
+      if (el1) el1.textContent = stats.totalCompanies;
+      if (el2) el2.textContent = stats.activeDeals;
+      if (el3) el3.textContent = stats.recentCommunications;
+      if (el4) el4.textContent = stats.pendingFollowUps;
 
       // Render companies table
       this.renderCompaniesTable(companies);
 
     } catch (error) {
       console.error('Error loading companies:', error);
-      showNotification('Error loading companies data', 'error');
+      utils.showToast('Error loading companies data', 'error');
     }
   },
 
@@ -104,13 +108,13 @@ const crmModule = {
         ? `£${parseFloat(company.pipeline_value).toLocaleString('en-GB', { minimumFractionDigits: 2 })}`
         : '£0.00';
 
-      const segments = company.segments || '<span class="text-muted">None</span>';
+      const segments = company.segments ? utils.escapeHtml(company.segments) : '<span class="text-muted">None</span>';
 
       return `
         <tr>
           <td>
-            <strong>${company.company_name || 'Unknown'}</strong><br>
-            <small class="text-muted">${company.industry || 'N/A'}</small>
+            <strong>${utils.escapeHtml(company.company_name || 'Unknown')}</strong><br>
+            <small class="text-muted">${utils.escapeHtml(company.industry || 'N/A')}</small>
           </td>
           <td>${segments}</td>
           <td class="text-center">${company.communication_count || 0}</td>
@@ -175,7 +179,7 @@ const crmModule = {
 
     } catch (error) {
       console.error('Error loading communications:', error);
-      showNotification('Error loading communications', 'error');
+      utils.showToast('Error loading communications', 'error');
     }
   },
 
@@ -211,12 +215,12 @@ const crmModule = {
           <td>${date}<br><small>${directionBadge}</small></td>
           <td>${typeBadge}</td>
           <td>
-            <strong>${companyName}</strong><br>
-            <small class="text-muted">${contactName}</small>
+            <strong>${utils.escapeHtml(companyName)}</strong><br>
+            <small class="text-muted">${utils.escapeHtml(contactName)}</small>
           </td>
           <td>
-            <strong>${comm.subject || 'No subject'}</strong><br>
-            <small class="text-muted">${comm.message.substring(0, 50)}${comm.message.length > 50 ? '...' : ''}</small>
+            <strong>${utils.escapeHtml(comm.subject || 'No subject')}</strong><br>
+            <small class="text-muted">${utils.escapeHtml((comm.message || '').substring(0, 50))}${(comm.message || '').length > 50 ? '...' : ''}</small>
           </td>
           <td>${this.formatRegarding(comm.regarding)}</td>
           <td>${followUpBadge}</td>
@@ -302,18 +306,21 @@ const crmModule = {
           : 0
       };
 
-      // Update stats display
-      document.getElementById('deals-active-count').textContent = stats.activeCount;
-      document.getElementById('deals-pipeline-value').textContent =
-        `£${stats.pipelineValue.toLocaleString('en-GB', { minimumFractionDigits: 2 })}`;
-      document.getElementById('deals-won-month').textContent = stats.wonThisMonth;
-      document.getElementById('deals-win-rate').textContent = `${stats.winRate}%`;
+      // Update stats display (elements may not exist in all views)
+      const dEl1 = document.getElementById('deals-active-count');
+      const dEl2 = document.getElementById('deals-pipeline-value');
+      const dEl3 = document.getElementById('deals-won-month');
+      const dEl4 = document.getElementById('deals-win-rate');
+      if (dEl1) dEl1.textContent = stats.activeCount;
+      if (dEl2) dEl2.textContent = `£${stats.pipelineValue.toLocaleString('en-GB', { minimumFractionDigits: 2 })}`;
+      if (dEl3) dEl3.textContent = stats.wonThisMonth;
+      if (dEl4) dEl4.textContent = `${stats.winRate}%`;
 
       this.renderDealsTable(deals);
 
     } catch (error) {
       console.error('Error loading deals:', error);
-      showNotification('Error loading deals', 'error');
+      utils.showToast('Error loading deals', 'error');
     }
   },
 
@@ -339,10 +346,10 @@ const crmModule = {
       return `
         <tr>
           <td>
-            <strong>${deal.deal_name}</strong><br>
-            <small class="text-muted">${deal.description ? deal.description.substring(0, 40) + '...' : ''}</small>
+            <strong>${utils.escapeHtml(deal.deal_name)}</strong><br>
+            <small class="text-muted">${deal.description ? utils.escapeHtml(deal.description.substring(0, 40)) + (deal.description.length > 40 ? '...' : '') : ''}</small>
           </td>
-          <td>${companyName}</td>
+          <td>${utils.escapeHtml(companyName)}</td>
           <td>${typeBadge}</td>
           <td>${stageBadge}</td>
           <td class="text-end">${value}</td>
@@ -439,7 +446,7 @@ const crmModule = {
 
     } catch (error) {
       console.error('Error loading meetings:', error);
-      showNotification('Error loading meetings', 'error');
+      utils.showToast('Error loading meetings', 'error');
     }
   },
 
@@ -478,8 +485,8 @@ const crmModule = {
             <small class="text-muted">${time}</small>
           </td>
           <td>
-            <strong>${meeting.meeting_title}</strong><br>
-            <small class="text-muted">${companyName}</small>
+            <strong>${utils.escapeHtml(meeting.meeting_title)}</strong><br>
+            <small class="text-muted">${utils.escapeHtml(companyName)}</small>
           </td>
           <td>${typeBadge}</td>
           <td>${duration}</td>
@@ -550,7 +557,7 @@ const crmModule = {
 
     } catch (error) {
       console.error('Error loading segments:', error);
-      showNotification('Error loading segments', 'error');
+      utils.showToast('Error loading segments', 'error');
     }
   },
 
@@ -571,16 +578,16 @@ const crmModule = {
               <div>
                 <h5 class="card-title mb-1">
                   <i class="bi bi-${segment.icon || 'tag'} me-2" style="color: ${segment.color}"></i>
-                  ${segment.segment_name}
+                  ${utils.escapeHtml(segment.segment_name)}
                 </h5>
-                <p class="card-text text-muted small mb-0">${segment.description || ''}</p>
+                <p class="card-text text-muted small mb-0">${utils.escapeHtml(segment.description || '')}</p>
               </div>
               <span class="badge rounded-pill" style="background-color: ${segment.color}; font-size: 1.2em;">
                 ${segment.count}
               </span>
             </div>
             <div class="d-flex gap-2">
-              <button class="btn btn-sm btn-outline-primary flex-grow-1" onclick="crmModule.viewSegmentCompanies('${segment.id}', '${segment.segment_name}')">
+              <button class="btn btn-sm btn-outline-primary flex-grow-1" onclick="crmModule.viewSegmentCompanies('${segment.id}', '${utils.escapeHtml(segment.segment_name).replace(/'/g, "\\'")}')">
                 <i class="bi bi-eye me-1"></i>View Companies
               </button>
               <button class="btn btn-sm btn-outline-secondary" onclick="crmModule.editSegment('${segment.id}')" title="Edit Segment">
@@ -617,12 +624,12 @@ const crmModule = {
   // MODAL & ACTION FUNCTIONS
   // ============================================
   viewCompanyProfile(companyId) {
-    console.log('View company profile:', companyId);
-    // This would open the organisation modal from organisations.js
-    if (typeof organisationsModule !== 'undefined' && organisationsModule.showCompanyModal) {
-      organisationsModule.showCompanyModal(companyId);
+    // Open the organisation profile modal from organisations.js
+    if (typeof orgsModule !== 'undefined' && orgsModule.openCompanyProfile) {
+      const org = (STATE.allOrganisations || []).find(o => o.id === companyId);
+      orgsModule.openCompanyProfile(companyId, org?.company_name || '');
     } else {
-      showNotification('Company profile view not available', 'warning');
+      utils.showToast('Company profile view not available', 'warning');
     }
   },
 
@@ -737,7 +744,7 @@ const crmModule = {
 
     const orgSelect = document.getElementById('commOrganisation');
     orgSelect.innerHTML = '<option value="">Select company...</option>' +
-      orgs.map(org => `<option value="${org.id}" ${org.id === organisationId ? 'selected' : ''}>${org.company_name}</option>`).join('');
+      (orgs || []).map(org => `<option value="${org.id}" ${org.id === organisationId ? 'selected' : ''}>${utils.escapeHtml(org.company_name)}</option>`).join('');
 
     // Show/hide follow-up date field
     document.getElementById('commFollowUp').addEventListener('change', function() {
@@ -767,7 +774,7 @@ const crmModule = {
       communication_date: document.getElementById('commDate').value,
       follow_up_required: document.getElementById('commFollowUp').checked,
       follow_up_date: document.getElementById('commFollowUp').checked ? document.getElementById('commFollowUpDate').value : null,
-      user_id: currentUser?.id || 'system'
+      user_id: STATE.currentUser?.id || 'system'
     };
 
     try {
@@ -777,12 +784,12 @@ const crmModule = {
 
       if (error) throw error;
 
-      showNotification('Communication logged successfully', 'success');
+      utils.showToast('Communication logged successfully', 'success');
       bootstrap.Modal.getInstance(document.getElementById('logCommunicationModal')).hide();
       this.loadCommunications();
     } catch (error) {
       console.error('Error saving communication:', error);
-      showNotification('Error logging communication', 'error');
+      utils.showToast('Error logging communication', 'error');
     }
   },
 
@@ -885,7 +892,7 @@ const crmModule = {
 
     const orgSelect = document.getElementById('dealOrganisation');
     orgSelect.innerHTML = '<option value="">Select company...</option>' +
-      (orgs || []).map(org => `<option value="${org.id}" ${org.id === organisationId ? 'selected' : ''}>${org.company_name}</option>`).join('');
+      (orgs || []).map(org => `<option value="${org.id}" ${org.id === organisationId ? 'selected' : ''}>${utils.escapeHtml(org.company_name)}</option>`).join('');
 
     // If org is preselected, load contacts
     if (organisationId) {
@@ -897,7 +904,7 @@ const crmModule = {
 
       const contactSelect = document.getElementById('dealContact');
       contactSelect.innerHTML = '<option value="">Select contact (optional)...</option>' +
-        (contacts || []).map(c => `<option value="${c.id}">${c.first_name} ${c.last_name}</option>`).join('');
+        (contacts || []).map(c => `<option value="${c.id}">${utils.escapeHtml(c.first_name + ' ' + c.last_name)}</option>`).join('');
     }
 
     const modal = new bootstrap.Modal(document.getElementById('createDealModal'));
@@ -909,7 +916,7 @@ const crmModule = {
 
     } catch (error) {
       console.error('Error opening create deal modal:', error);
-      showNotification('Error loading deal form: ' + error.message, 'error');
+      utils.showToast('Error loading deal form: ' + error.message, 'error');
     }
   },
 
@@ -940,12 +947,12 @@ const crmModule = {
 
       if (error) throw error;
 
-      showNotification('Deal created successfully', 'success');
+      utils.showToast('Deal created successfully', 'success');
       bootstrap.Modal.getInstance(document.getElementById('createDealModal')).hide();
       this.loadDeals();
     } catch (error) {
       console.error('Error creating deal:', error);
-      showNotification('Error creating deal: ' + error.message, 'error');
+      utils.showToast('Error creating deal: ' + error.message, 'error');
     }
   },
 
@@ -1024,7 +1031,7 @@ const crmModule = {
       document.getElementById('viewCommunicationModal').addEventListener('hidden.bs.modal', function() { this.remove(); });
     } catch (error) {
       console.error('Error loading communication:', error);
-      showNotification('Error loading communication details', 'error');
+      utils.showToast('Error loading communication details', 'error');
     }
   },
 
@@ -1083,11 +1090,11 @@ const crmModule = {
                   </div>
                   <div class="mb-3">
                     <label class="form-label">Subject</label>
-                    <input type="text" class="form-control" id="editCommSubject" value="${comm.subject || ''}">
+                    <input type="text" class="form-control" id="editCommSubject" value="${utils.escapeHtml(comm.subject || '')}">
                   </div>
                   <div class="mb-3">
                     <label class="form-label">Message <span class="text-danger">*</span></label>
-                    <textarea class="form-control" id="editCommMessage" rows="4" required>${comm.message || ''}</textarea>
+                    <textarea class="form-control" id="editCommMessage" rows="4" required>${utils.escapeHtml(comm.message || '')}</textarea>
                   </div>
                   <div class="row">
                     <div class="col-md-6 mb-3">
@@ -1131,7 +1138,7 @@ const crmModule = {
       document.getElementById('editCommunicationModal').addEventListener('hidden.bs.modal', function() { this.remove(); });
     } catch (error) {
       console.error('Error loading communication for edit:', error);
-      showNotification('Error loading communication', 'error');
+      utils.showToast('Error loading communication', 'error');
     }
   },
 
@@ -1161,12 +1168,12 @@ const crmModule = {
 
       if (error) throw error;
 
-      showNotification('Communication updated successfully', 'success');
+      utils.showToast('Communication updated successfully', 'success');
       bootstrap.Modal.getInstance(document.getElementById('editCommunicationModal')).hide();
       this.loadCommunications();
     } catch (error) {
       console.error('Error updating communication:', error);
-      showNotification('Error updating communication: ' + error.message, 'error');
+      utils.showToast('Error updating communication: ' + error.message, 'error');
     }
   },
 
@@ -1183,11 +1190,11 @@ const crmModule = {
 
       if (error) throw error;
 
-      showNotification('Communication deleted successfully', 'success');
+      utils.showToast('Communication deleted successfully', 'success');
       this.loadCommunications();
     } catch (error) {
       console.error('Error deleting communication:', error);
-      showNotification('Error deleting communication', 'error');
+      utils.showToast('Error deleting communication', 'error');
     }
   },
 
@@ -1291,7 +1298,7 @@ const crmModule = {
       document.getElementById('viewDealModal').addEventListener('hidden.bs.modal', function() { this.remove(); });
     } catch (error) {
       console.error('Error loading deal:', error);
-      showNotification('Error loading deal details', 'error');
+      utils.showToast('Error loading deal details', 'error');
     }
   },
 
@@ -1320,7 +1327,7 @@ const crmModule = {
                   <div class="row">
                     <div class="col-md-6 mb-3">
                       <label class="form-label">Deal Name <span class="text-danger">*</span></label>
-                      <input type="text" class="form-control" id="editDealName" required value="${deal.deal_name || ''}">
+                      <input type="text" class="form-control" id="editDealName" required value="${utils.escapeHtml(deal.deal_name || '')}">
                     </div>
                     <div class="col-md-6 mb-3">
                       <label class="form-label">Deal Type</label>
@@ -1378,11 +1385,11 @@ const crmModule = {
                   </div>
                   <div class="mb-3">
                     <label class="form-label">Description</label>
-                    <textarea class="form-control" id="editDealDescription" rows="3">${deal.description || ''}</textarea>
+                    <textarea class="form-control" id="editDealDescription" rows="3">${utils.escapeHtml(deal.description || '')}</textarea>
                   </div>
                   <div class="mb-3">
                     <label class="form-label">Notes</label>
-                    <textarea class="form-control" id="editDealNotes" rows="2">${deal.notes || ''}</textarea>
+                    <textarea class="form-control" id="editDealNotes" rows="2">${utils.escapeHtml(deal.notes || '')}</textarea>
                   </div>
                 </form>
               </div>
@@ -1405,7 +1412,7 @@ const crmModule = {
       document.getElementById('editDealModal').addEventListener('hidden.bs.modal', function() { this.remove(); });
     } catch (error) {
       console.error('Error loading deal for edit:', error);
-      showNotification('Error loading deal', 'error');
+      utils.showToast('Error loading deal', 'error');
     }
   },
 
@@ -1437,12 +1444,12 @@ const crmModule = {
 
       if (error) throw error;
 
-      showNotification('Deal updated successfully', 'success');
+      utils.showToast('Deal updated successfully', 'success');
       bootstrap.Modal.getInstance(document.getElementById('editDealModal')).hide();
       this.loadDeals();
     } catch (error) {
       console.error('Error updating deal:', error);
-      showNotification('Error updating deal: ' + error.message, 'error');
+      utils.showToast('Error updating deal: ' + error.message, 'error');
     }
   },
 
@@ -1459,11 +1466,11 @@ const crmModule = {
 
       if (error) throw error;
 
-      showNotification('Deal deleted successfully', 'success');
+      utils.showToast('Deal deleted successfully', 'success');
       this.loadDeals();
     } catch (error) {
       console.error('Error deleting deal:', error);
-      showNotification('Error deleting deal', 'error');
+      utils.showToast('Error deleting deal', 'error');
     }
   },
 
@@ -1559,7 +1566,7 @@ const crmModule = {
       document.getElementById('viewMeetingModal').addEventListener('hidden.bs.modal', function() { this.remove(); });
     } catch (error) {
       console.error('Error loading meeting:', error);
-      showNotification('Error loading meeting details', 'error');
+      utils.showToast('Error loading meeting details', 'error');
     }
   },
 
@@ -1592,7 +1599,7 @@ const crmModule = {
                   <div class="row">
                     <div class="col-md-6 mb-3">
                       <label class="form-label">Meeting Title <span class="text-danger">*</span></label>
-                      <input type="text" class="form-control" id="editMeetingTitle" required value="${meeting.meeting_title || ''}">
+                      <input type="text" class="form-control" id="editMeetingTitle" required value="${utils.escapeHtml(meeting.meeting_title || '')}">
                     </div>
                     <div class="col-md-6 mb-3">
                       <label class="form-label">Meeting Type</label>
@@ -1620,19 +1627,19 @@ const crmModule = {
                   </div>
                   <div class="mb-3">
                     <label class="form-label">Location</label>
-                    <input type="text" class="form-control" id="editMeetingLocation" value="${meeting.location || ''}" placeholder="e.g. Office, Zoom, Teams">
+                    <input type="text" class="form-control" id="editMeetingLocation" value="${utils.escapeHtml(meeting.location || '')}" placeholder="e.g. Office, Zoom, Teams">
                   </div>
                   <div class="mb-3">
                     <label class="form-label">Attendees (comma-separated)</label>
-                    <input type="text" class="form-control" id="editMeetingAttendees" value="${attendeesList.join(', ')}" placeholder="John Smith, Jane Doe">
+                    <input type="text" class="form-control" id="editMeetingAttendees" value="${utils.escapeHtml(attendeesList.join(', '))}" placeholder="John Smith, Jane Doe">
                   </div>
                   <div class="mb-3">
                     <label class="form-label">Meeting Notes</label>
-                    <textarea class="form-control" id="editMeetingNotes" rows="4">${meeting.notes || ''}</textarea>
+                    <textarea class="form-control" id="editMeetingNotes" rows="4">${utils.escapeHtml(meeting.notes || '')}</textarea>
                   </div>
                   <div class="mb-3">
                     <label class="form-label">Action Items</label>
-                    <textarea class="form-control" id="editMeetingActions" rows="3">${meeting.action_items || ''}</textarea>
+                    <textarea class="form-control" id="editMeetingActions" rows="3">${utils.escapeHtml(meeting.action_items || '')}</textarea>
                   </div>
                   <div class="row">
                     <div class="col-md-6 mb-3">
@@ -1672,7 +1679,7 @@ const crmModule = {
       document.getElementById('editMeetingModal').addEventListener('hidden.bs.modal', function() { this.remove(); });
     } catch (error) {
       console.error('Error loading meeting for edit:', error);
-      showNotification('Error loading meeting', 'error');
+      utils.showToast('Error loading meeting', 'error');
     }
   },
 
@@ -1711,12 +1718,12 @@ const crmModule = {
 
       if (error) throw error;
 
-      showNotification('Meeting updated successfully', 'success');
+      utils.showToast('Meeting updated successfully', 'success');
       bootstrap.Modal.getInstance(document.getElementById('editMeetingModal')).hide();
       this.loadMeetings();
     } catch (error) {
       console.error('Error updating meeting:', error);
-      showNotification('Error updating meeting: ' + error.message, 'error');
+      utils.showToast('Error updating meeting: ' + error.message, 'error');
     }
   },
 
@@ -1733,11 +1740,11 @@ const crmModule = {
 
       if (error) throw error;
 
-      showNotification('Meeting note deleted successfully', 'success');
+      utils.showToast('Meeting note deleted successfully', 'success');
       this.loadMeetings();
     } catch (error) {
       console.error('Error deleting meeting:', error);
-      showNotification('Error deleting meeting note', 'error');
+      utils.showToast('Error deleting meeting note', 'error');
     }
   },
 
@@ -1789,16 +1796,16 @@ const crmModule = {
                       <tbody>
                         ${companies.map(a => `
                           <tr>
-                            <td><strong>${a.organisation.company_name}</strong></td>
-                            <td>${a.organisation.industry || '<span class="text-muted">N/A</span>'}</td>
-                            <td>${a.organisation.email ? `<a href="mailto:${a.organisation.email}">${a.organisation.email}</a>` : '<span class="text-muted">N/A</span>'}</td>
-                            <td>${a.organisation.phone || '<span class="text-muted">N/A</span>'}</td>
+                            <td><strong>${utils.escapeHtml(a.organisation.company_name)}</strong></td>
+                            <td>${a.organisation.industry ? utils.escapeHtml(a.organisation.industry) : '<span class="text-muted">N/A</span>'}</td>
+                            <td>${a.organisation.email ? `<a href="mailto:${encodeURIComponent(a.organisation.email)}">${utils.escapeHtml(a.organisation.email)}</a>` : '<span class="text-muted">N/A</span>'}</td>
+                            <td>${a.organisation.phone ? utils.escapeHtml(a.organisation.phone) : '<span class="text-muted">N/A</span>'}</td>
                             <td>
                               <div class="btn-group btn-group-sm">
                                 <button class="btn btn-outline-primary" onclick="crmModule.viewCompanyProfile('${a.organisation.id}')" title="View Profile">
                                   <i class="bi bi-eye"></i>
                                 </button>
-                                <button class="btn btn-outline-danger" onclick="crmModule.removeFromSegment('${a.id}', '${segmentId}', '${segmentName}')" title="Remove from Segment">
+                                <button class="btn btn-outline-danger" onclick="crmModule.removeFromSegment('${a.id}', '${segmentId}', '${utils.escapeHtml(segmentName).replace(/'/g, "\\'")}')" title="Remove from Segment">
                                   <i class="bi bi-x-circle"></i>
                                 </button>
                               </div>
@@ -1826,7 +1833,7 @@ const crmModule = {
       document.getElementById('viewSegmentCompaniesModal').addEventListener('hidden.bs.modal', function() { this.remove(); });
     } catch (error) {
       console.error('Error loading segment companies:', error);
-      showNotification('Error loading segment companies', 'error');
+      utils.showToast('Error loading segment companies', 'error');
     }
   },
 
@@ -1841,14 +1848,14 @@ const crmModule = {
 
       if (error) throw error;
 
-      showNotification('Company removed from segment', 'success');
+      utils.showToast('Company removed from segment', 'success');
       // Refresh the segment companies view
       bootstrap.Modal.getInstance(document.getElementById('viewSegmentCompaniesModal')).hide();
       this.viewSegmentCompanies(segmentId, segmentName);
       this.loadSegments();
     } catch (error) {
       console.error('Error removing from segment:', error);
-      showNotification('Error removing company from segment', 'error');
+      utils.showToast('Error removing company from segment', 'error');
     }
   },
 
@@ -1879,11 +1886,11 @@ const crmModule = {
                 <form id="editSegmentForm">
                   <div class="mb-3">
                     <label class="form-label">Segment Name <span class="text-danger">*</span></label>
-                    <input type="text" class="form-control" id="editSegmentName" required value="${segment.segment_name || ''}">
+                    <input type="text" class="form-control" id="editSegmentName" required value="${utils.escapeHtml(segment.segment_name || '')}">
                   </div>
                   <div class="mb-3">
                     <label class="form-label">Description</label>
-                    <textarea class="form-control" id="editSegmentDescription" rows="2">${segment.description || ''}</textarea>
+                    <textarea class="form-control" id="editSegmentDescription" rows="2">${utils.escapeHtml(segment.description || '')}</textarea>
                   </div>
                   <div class="mb-3">
                     <label class="form-label">Color</label>
@@ -1930,7 +1937,7 @@ const crmModule = {
       document.getElementById('editSegmentModal').addEventListener('hidden.bs.modal', function() { this.remove(); });
     } catch (error) {
       console.error('Error loading segment for edit:', error);
-      showNotification('Error loading segment', 'error');
+      utils.showToast('Error loading segment', 'error');
     }
   },
 
@@ -1956,12 +1963,12 @@ const crmModule = {
 
       if (error) throw error;
 
-      showNotification('Segment updated successfully', 'success');
+      utils.showToast('Segment updated successfully', 'success');
       bootstrap.Modal.getInstance(document.getElementById('editSegmentModal')).hide();
       this.loadSegments();
     } catch (error) {
       console.error('Error updating segment:', error);
-      showNotification('Error updating segment: ' + error.message, 'error');
+      utils.showToast('Error updating segment: ' + error.message, 'error');
     }
   }
 };

@@ -10,7 +10,8 @@ const entriesModule = {
     status: '',
     award: '',
     year: '',
-    search: ''
+    search: '',
+    selfNom: ''
   },
 
   /**
@@ -51,7 +52,7 @@ const entriesModule = {
     const awardFilter = document.getElementById('entriesAwardFilter');
     if (awards && awards.length > 0) {
       awardFilter.innerHTML = '<option value="">All Awards</option>' +
-        awards.map(award => `<option value="${award.id}">${award.award_name}</option>`).join('');
+        awards.map(award => `<option value="${award.id}">${utils.escapeHtml(award.award_name)}</option>`).join('');
     }
 
     // Load years for filter
@@ -176,12 +177,12 @@ const entriesModule = {
                    onchange="entriesModule.toggleSelectEntry('${entry.id}')"
                    ${this.selectedEntryIds.has(entry.id) ? 'checked' : ''}>
           </td>
-          <td><strong>${entry.entry_number}</strong></td>
-          <td>${companyName}</td>
-          <td>${awardName}</td>
+          <td><strong>${utils.escapeHtml(entry.entry_number)}</strong></td>
+          <td>${utils.escapeHtml(companyName)}</td>
+          <td>${utils.escapeHtml(awardName)}</td>
           <td>
-            <div class="text-truncate" style="max-width: 250px;" title="${entry.entry_title}">
-              ${entry.entry_title}
+            <div class="text-truncate" style="max-width: 250px;" title="${utils.escapeHtml(entry.entry_title)}">
+              ${utils.escapeHtml(entry.entry_title)}
               ${selfNomBadge}
             </div>
           </td>
@@ -383,9 +384,9 @@ const entriesModule = {
             <div class="modal-header bg-primary text-white">
               <div>
                 <h5 class="modal-title mb-1">
-                  <i class="bi bi-file-earmark-text me-2"></i>${entry.entry_title}
+                  <i class="bi bi-file-earmark-text me-2"></i>${utils.escapeHtml(entry.entry_title)}
                 </h5>
-                <small>${entry.organisations?.company_name || 'Unknown Company'} | ${entry.entry_number}</small>
+                <small>${utils.escapeHtml(entry.organisations?.company_name || 'Unknown Company')} | ${utils.escapeHtml(entry.entry_number)}</small>
               </div>
               <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
@@ -439,15 +440,15 @@ const entriesModule = {
                       <table class="table table-sm table-borderless mb-0">
                         <tr>
                           <td class="text-muted">Award:</td>
-                          <td><strong>${entry.award_years?.award_name || 'N/A'}</strong></td>
+                          <td><strong>${utils.escapeHtml(entry.award_years?.award_name || 'N/A')}</strong></td>
                         </tr>
                         <tr>
                           <td class="text-muted">Sector:</td>
-                          <td>${entry.award_years?.sector || 'N/A'}</td>
+                          <td>${utils.escapeHtml(entry.award_years?.sector || 'N/A')}</td>
                         </tr>
                         <tr>
                           <td class="text-muted">County/City:</td>
-                          <td>${entry.award_years?.county || 'N/A'}</td>
+                          <td>${utils.escapeHtml(entry.award_years?.county || 'N/A')}</td>
                         </tr>
                         <tr>
                           <td class="text-muted">Entry Type:</td>
@@ -455,7 +456,7 @@ const entriesModule = {
                         </tr>
                         <tr>
                           <td class="text-muted">Year:</td>
-                          <td>${entry.year || 'N/A'}</td>
+                          <td>${utils.escapeHtml(String(entry.year || 'N/A'))}</td>
                         </tr>
                       </table>
                     </div>
@@ -470,19 +471,19 @@ const entriesModule = {
                       <table class="table table-sm table-borderless mb-0">
                         <tr>
                           <td class="text-muted">Name:</td>
-                          <td><strong>${entry.contact_name || 'N/A'}</strong></td>
+                          <td><strong>${utils.escapeHtml(entry.contact_name || 'N/A')}</strong></td>
                         </tr>
                         <tr>
                           <td class="text-muted">Email:</td>
-                          <td><a href="mailto:${entry.contact_email}">${entry.contact_email || 'N/A'}</a></td>
+                          <td>${entry.contact_email ? `<a href="mailto:${encodeURIComponent(entry.contact_email)}">${utils.escapeHtml(entry.contact_email)}</a>` : 'N/A'}</td>
                         </tr>
                         <tr>
                           <td class="text-muted">Phone:</td>
-                          <td>${entry.contact_phone || 'N/A'}</td>
+                          <td>${utils.escapeHtml(entry.contact_phone || 'N/A')}</td>
                         </tr>
                         <tr>
                           <td class="text-muted">Position:</td>
-                          <td>${entry.contact_position || 'N/A'}</td>
+                          <td>${utils.escapeHtml(entry.contact_position || 'N/A')}</td>
                         </tr>
                         <tr>
                           <td class="text-muted">Submitted:</td>
@@ -503,21 +504,21 @@ const entriesModule = {
                   ${entry.entry_description ? `
                     <div class="mb-3">
                       <h6 class="text-muted">Description</h6>
-                      <p class="mb-0">${entry.entry_description}</p>
+                      <p class="mb-0">${utils.escapeHtml(entry.entry_description)}</p>
                     </div>
                   ` : ''}
 
                   ${entry.why_should_win ? `
                     <div class="mb-3">
                       <h6 class="text-muted">Why Should They Win?</h6>
-                      <div class="p-3 bg-light rounded" style="max-height: 400px; overflow-y: auto; white-space: pre-wrap;">${entry.why_should_win}</div>
+                      <div class="p-3 bg-light rounded" style="max-height: 400px; overflow-y: auto; white-space: pre-wrap;">${utils.escapeHtml(entry.why_should_win)}</div>
                     </div>
                   ` : ''}
 
                   ${entry.supporting_information ? `
                     <div class="mb-3">
                       <h6 class="text-muted">Supporting Information</h6>
-                      <div class="p-3 bg-light rounded" style="max-height: 300px; overflow-y: auto; white-space: pre-wrap;">${entry.supporting_information}</div>
+                      <div class="p-3 bg-light rounded" style="max-height: 300px; overflow-y: auto; white-space: pre-wrap;">${utils.escapeHtml(entry.supporting_information)}</div>
                     </div>
                   ` : ''}
                 </div>
@@ -535,10 +536,10 @@ const entriesModule = {
                         <div class="list-group-item d-flex justify-content-between align-items-center">
                           <div>
                             <i class="bi bi-file-earmark-pdf me-2 text-danger"></i>
-                            <strong>${file.file_name}</strong>
+                            <strong>${utils.escapeHtml(file.file_name)}</strong>
                             <small class="text-muted ms-2">${(file.file_size / 1024).toFixed(1)} KB</small>
                           </div>
-                          <a href="${file.file_url}" target="_blank" class="btn btn-sm btn-outline-primary">
+                          <a href="${utils.escapeHtml(file.file_url)}" target="_blank" class="btn btn-sm btn-outline-primary">
                             <i class="bi bi-download"></i> View
                           </a>
                         </div>
@@ -555,7 +556,7 @@ const entriesModule = {
                     <h6 class="mb-0"><i class="bi bi-sticky me-2"></i>Admin Notes</h6>
                   </div>
                   <div class="card-body">
-                    <p class="mb-0">${entry.admin_notes}</p>
+                    <p class="mb-0">${utils.escapeHtml(entry.admin_notes)}</p>
                   </div>
                 </div>
               ` : ''}
@@ -860,9 +861,9 @@ const entriesModule = {
               <div class="modal-header bg-secondary text-white">
                 <div>
                   <h5 class="modal-title mb-1">
-                    <i class="bi bi-pencil me-2"></i>Edit Entry: ${entry.entry_number}
+                    <i class="bi bi-pencil me-2"></i>Edit Entry: ${utils.escapeHtml(entry.entry_number)}
                   </h5>
-                  <small>${entry.organisations?.company_name || 'Unknown Company'}</small>
+                  <small>${utils.escapeHtml(entry.organisations?.company_name || 'Unknown Company')}</small>
                 </div>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
               </div>
@@ -875,11 +876,11 @@ const entriesModule = {
                       <div class="row">
                         <div class="col-md-6 mb-3">
                           <label class="form-label">Entry Title <span class="text-danger">*</span></label>
-                          <input type="text" class="form-control" id="editEntryTitle" required value="${entry.entry_title || ''}">
+                          <input type="text" class="form-control" id="editEntryTitle" required value="${utils.escapeHtml(entry.entry_title || '')}">
                         </div>
                         <div class="col-md-6 mb-3">
                           <label class="form-label">Entry Number</label>
-                          <input type="text" class="form-control" id="editEntryNumber" value="${entry.entry_number || ''}" readonly>
+                          <input type="text" class="form-control" id="editEntryNumber" value="${utils.escapeHtml(entry.entry_number || '')}" readonly>
                         </div>
                       </div>
                       <div class="row">
@@ -938,21 +939,21 @@ const entriesModule = {
                       <div class="row">
                         <div class="col-md-6 mb-3">
                           <label class="form-label">Contact Name</label>
-                          <input type="text" class="form-control" id="editEntryContactName" value="${entry.contact_name || ''}">
+                          <input type="text" class="form-control" id="editEntryContactName" value="${utils.escapeHtml(entry.contact_name || '')}">
                         </div>
                         <div class="col-md-6 mb-3">
                           <label class="form-label">Contact Email</label>
-                          <input type="email" class="form-control" id="editEntryContactEmail" value="${entry.contact_email || ''}">
+                          <input type="email" class="form-control" id="editEntryContactEmail" value="${utils.escapeHtml(entry.contact_email || '')}">
                         </div>
                       </div>
                       <div class="row">
                         <div class="col-md-6 mb-3">
                           <label class="form-label">Contact Phone</label>
-                          <input type="text" class="form-control" id="editEntryContactPhone" value="${entry.contact_phone || ''}">
+                          <input type="text" class="form-control" id="editEntryContactPhone" value="${utils.escapeHtml(entry.contact_phone || '')}">
                         </div>
                         <div class="col-md-6 mb-3">
                           <label class="form-label">Contact Position</label>
-                          <input type="text" class="form-control" id="editEntryContactPosition" value="${entry.contact_position || ''}">
+                          <input type="text" class="form-control" id="editEntryContactPosition" value="${utils.escapeHtml(entry.contact_position || '')}">
                         </div>
                       </div>
                     </div>
@@ -964,15 +965,15 @@ const entriesModule = {
                     <div class="card-body">
                       <div class="mb-3">
                         <label class="form-label">Description</label>
-                        <textarea class="form-control" id="editEntryDescription" rows="3">${entry.entry_description || ''}</textarea>
+                        <textarea class="form-control" id="editEntryDescription" rows="3">${utils.escapeHtml(entry.entry_description || '')}</textarea>
                       </div>
                       <div class="mb-3">
                         <label class="form-label">Why Should They Win?</label>
-                        <textarea class="form-control" id="editEntryWhyWin" rows="5">${entry.why_should_win || ''}</textarea>
+                        <textarea class="form-control" id="editEntryWhyWin" rows="5">${utils.escapeHtml(entry.why_should_win || '')}</textarea>
                       </div>
                       <div class="mb-3">
                         <label class="form-label">Supporting Information</label>
-                        <textarea class="form-control" id="editEntrySupportingInfo" rows="3">${entry.supporting_information || ''}</textarea>
+                        <textarea class="form-control" id="editEntrySupportingInfo" rows="3">${utils.escapeHtml(entry.supporting_information || '')}</textarea>
                       </div>
                     </div>
                   </div>
@@ -981,7 +982,7 @@ const entriesModule = {
                   <div class="card">
                     <div class="card-header"><h6 class="mb-0"><i class="bi bi-sticky me-2"></i>Admin Notes</h6></div>
                     <div class="card-body">
-                      <textarea class="form-control" id="editEntryAdminNotes" rows="3">${entry.admin_notes || ''}</textarea>
+                      <textarea class="form-control" id="editEntryAdminNotes" rows="3">${utils.escapeHtml(entry.admin_notes || '')}</textarea>
                     </div>
                   </div>
                 </form>
@@ -1157,7 +1158,7 @@ const entriesModule = {
       ]);
 
       const csv = [headers, ...rows]
-        .map(row => row.map(cell => `"${cell}"`).join(','))
+        .map(row => row.map(cell => `"${String(cell ?? '').replace(/"/g, '""')}"`).join(','))
         .join('\n');
 
       // Download CSV

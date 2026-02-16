@@ -52,7 +52,7 @@ const marketingModule = {
       document.getElementById('bannersGrid').innerHTML = `
         <div class="alert alert-danger">
           <i class="bi bi-exclamation-triangle me-2"></i>
-          Failed to load banners: ${error.message}
+          Failed to load banners: ${utils.escapeHtml(error.message)}
         </div>
       `;
     }
@@ -95,22 +95,22 @@ const marketingModule = {
     return `
       <div class="col-md-6 col-lg-4">
         <div class="card h-100">
-          <img src="${banner.image_url}" class="card-img-top" alt="${utils.escapeHtml(banner.title)}"
+          <img src="${utils.escapeHtml(banner.image_url)}" class="card-img-top" alt="${utils.escapeHtml(banner.title)}"
             style="height: 200px; object-fit: cover; cursor: pointer;"
-            onclick="marketingModule.viewBannerFull('${banner.image_url}', '${utils.escapeHtml(banner.title)}')">
+            onclick="marketingModule.viewBannerFull('${utils.escapeHtml(banner.image_url).replace(/'/g, "\\'")}', '${utils.escapeHtml(banner.title).replace(/'/g, "\\'")}')">
           <div class="card-body">
             <div class="d-flex justify-content-between align-items-start mb-2">
               <h6 class="card-title mb-0">${utils.escapeHtml(banner.title)}</h6>
               ${statusBadge}
             </div>
             <p class="card-text small text-muted mb-2">
-              <span class="badge bg-primary-subtle text-primary">${banner.position}</span>
+              <span class="badge bg-primary-subtle text-primary">${utils.escapeHtml(banner.position)}</span>
               ${banner.width && banner.height ? `<span class="ms-2">${banner.width}x${banner.height}px</span>` : ''}
             </p>
             ${banner.link_url ? `
               <p class="card-text small mb-2">
                 <i class="bi bi-link-45deg"></i>
-                <a href="${banner.link_url}" target="_blank" class="text-truncate d-inline-block" style="max-width: 200px;">
+                <a href="${utils.escapeHtml(banner.link_url)}" target="_blank" class="text-truncate d-inline-block" style="max-width: 200px;">
                   ${utils.escapeHtml(banner.link_url)}
                 </a>
               </p>
@@ -174,11 +174,11 @@ const marketingModule = {
                 </div>
                 <div class="mb-3">
                   <label class="form-label">Image URL <span class="text-danger">*</span></label>
-                  <input type="url" class="form-control" id="bannerImageUrl" required value="${isEdit ? (existingBanner.image_url || '') : ''}" placeholder="https://example.com/banner.jpg">
+                  <input type="url" class="form-control" id="bannerImageUrl" required value="${isEdit ? utils.escapeHtml(existingBanner.image_url || '') : ''}" placeholder="https://example.com/banner.jpg">
                 </div>
                 <div class="mb-3">
                   <label class="form-label">Link URL</label>
-                  <input type="url" class="form-control" id="bannerLinkUrl" value="${isEdit ? (existingBanner.link_url || '') : ''}" placeholder="https://example.com/landing-page">
+                  <input type="url" class="form-control" id="bannerLinkUrl" value="${isEdit ? utils.escapeHtml(existingBanner.link_url || '') : ''}" placeholder="https://example.com/landing-page">
                 </div>
                 <div class="row">
                   <div class="col-md-3 mb-3">
@@ -346,7 +346,7 @@ const marketingModule = {
       document.getElementById('sponsorsGrid').innerHTML = `
         <div class="alert alert-danger">
           <i class="bi bi-exclamation-triangle me-2"></i>
-          Failed to load sponsors: ${error.message}
+          Failed to load sponsors: ${utils.escapeHtml(error.message)}
         </div>
       `;
     }
@@ -420,18 +420,18 @@ const marketingModule = {
         <div class="card h-100">
           <div class="card-body text-center">
             ${sponsor.logo_url ?
-              `<img src="${sponsor.logo_url}" alt="${utils.escapeHtml(sponsor.company_name)}"
+              `<img src="${utils.escapeHtml(sponsor.logo_url)}" alt="${utils.escapeHtml(sponsor.company_name)}"
                 class="mb-3" style="max-width: 100%; height: 100px; object-fit: contain;">` :
               `<div class="mb-3" style="height: 100px; display: flex; align-items: center; justify-content: center; background: #f8f9fa; border-radius: 4px;">
                 <i class="bi bi-building" style="font-size: 3rem; color: #dee2e6;"></i>
               </div>`
             }
             <h6 class="card-title">${utils.escapeHtml(sponsor.company_name)}</h6>
-            <span class="badge bg-${this.getTierColor(sponsor.tier)} mb-2">${sponsor.tier}</span>
+            <span class="badge bg-${this.getTierColor(sponsor.tier)} mb-2">${utils.escapeHtml(sponsor.tier)}</span>
             ${!isActive ? '<span class="badge bg-secondary mb-2">Inactive</span>' : ''}
             ${sponsor.website ?
               `<p class="card-text small mb-2">
-                <a href="${sponsor.website}" target="_blank" class="text-decoration-none">
+                <a href="${utils.escapeHtml(sponsor.website)}" target="_blank" class="text-decoration-none">
                   <i class="bi bi-globe"></i> Visit Website
                 </a>
               </p>` : ''}
@@ -492,30 +492,30 @@ const marketingModule = {
                 <div class="row">
                   <div class="col-md-6 mb-3">
                     <label class="form-label">Contact Name</label>
-                    <input type="text" class="form-control" id="sponsorContactName" value="${isEdit ? (existingSponsor.contact_name || '') : ''}" placeholder="Primary contact">
+                    <input type="text" class="form-control" id="sponsorContactName" value="${isEdit ? utils.escapeHtml(existingSponsor.contact_name || '') : ''}" placeholder="Primary contact">
                   </div>
                   <div class="col-md-6 mb-3">
                     <label class="form-label">Email</label>
-                    <input type="email" class="form-control" id="sponsorEmail" value="${isEdit ? (existingSponsor.email || '') : ''}" placeholder="contact@company.com">
+                    <input type="email" class="form-control" id="sponsorEmail" value="${isEdit ? utils.escapeHtml(existingSponsor.email || '') : ''}" placeholder="contact@company.com">
                   </div>
                 </div>
                 <div class="row">
                   <div class="col-md-6 mb-3">
                     <label class="form-label">Phone</label>
-                    <input type="text" class="form-control" id="sponsorPhone" value="${isEdit ? (existingSponsor.phone || '') : ''}" placeholder="Phone number">
+                    <input type="text" class="form-control" id="sponsorPhone" value="${isEdit ? utils.escapeHtml(existingSponsor.phone || '') : ''}" placeholder="Phone number">
                   </div>
                   <div class="col-md-6 mb-3">
                     <label class="form-label">Website</label>
-                    <input type="url" class="form-control" id="sponsorWebsite" value="${isEdit ? (existingSponsor.website || '') : ''}" placeholder="https://company.com">
+                    <input type="url" class="form-control" id="sponsorWebsite" value="${isEdit ? utils.escapeHtml(existingSponsor.website || '') : ''}" placeholder="https://company.com">
                   </div>
                 </div>
                 <div class="mb-3">
                   <label class="form-label">Logo URL</label>
-                  <input type="url" class="form-control" id="sponsorLogoUrl" value="${isEdit ? (existingSponsor.logo_url || '') : ''}" placeholder="https://company.com/logo.png">
+                  <input type="url" class="form-control" id="sponsorLogoUrl" value="${isEdit ? utils.escapeHtml(existingSponsor.logo_url || '') : ''}" placeholder="https://company.com/logo.png">
                 </div>
                 <div class="mb-3">
                   <label class="form-label">Description</label>
-                  <textarea class="form-control" id="sponsorDescription" rows="2">${isEdit ? (existingSponsor.description || '') : ''}</textarea>
+                  <textarea class="form-control" id="sponsorDescription" rows="2">${isEdit ? utils.escapeHtml(existingSponsor.description || '') : ''}</textarea>
                 </div>
                 <div class="row">
                   <div class="col-md-4 mb-3">
@@ -604,6 +604,19 @@ const marketingModule = {
     this.openAddSponsorModal(sponsor);
   },
 
+  async deleteSponsor(sponsorId) {
+    if (!confirm('Are you sure you want to delete this sponsor?')) return;
+    try {
+      const { error } = await STATE.client.from('sponsors').delete().eq('id', sponsorId);
+      if (error) throw error;
+      utils.showToast('Sponsor deleted successfully', 'success');
+      await this.loadSponsors();
+    } catch (error) {
+      console.error('Error deleting sponsor:', error);
+      utils.showToast('Failed to delete sponsor: ' + error.message, 'error');
+    }
+  },
+
   /* ==================================================== */
   /* ==================================================== */
   /* UTILITY FUNCTIONS */
@@ -616,7 +629,7 @@ const marketingModule = {
     const modal = new bootstrap.Modal(document.getElementById('viewImageFullModal'));
     document.getElementById('viewImageFullTitle').textContent = title;
     document.getElementById('viewImageFullContent').innerHTML = `
-      <img src="${imageUrl}" alt="${utils.escapeHtml(title)}" class="img-fluid" style="max-height: 70vh;">
+      <img src="${utils.escapeHtml(imageUrl)}" alt="${utils.escapeHtml(title)}" class="img-fluid" style="max-height: 70vh;">
     `;
     modal.show();
   }

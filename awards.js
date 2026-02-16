@@ -443,7 +443,7 @@ const awardsModule = {
       // Simplified winner display
       let winnerHtml = '<span class="text-muted small">-</span>';
       if (award._winnerName) {
-        const prevTitle = award.prev_year_winner ? `\nPrev: ${award.prev_year_winner}` : '';
+        const prevTitle = award.prev_year_winner ? `\nPrev: ${utils.escapeHtml(award.prev_year_winner)}` : '';
         winnerHtml = `
           <span class="small fw-semibold" title="${utils.escapeHtml(award._winnerName)}${award._runnerUpName ? '\n2nd: ' + utils.escapeHtml(award._runnerUpName) : ''}${prevTitle}">
             <i class="bi bi-trophy-fill text-success me-1"></i>${utils.escapeHtml(award._winnerName)}
@@ -1264,14 +1264,14 @@ const awardsModule = {
    */
   async rolloverToNextYear() {
     // Determine source year from current filter or most common year
-    const years = [...new Set((STATE.allAwards || []).map(a => a.year))].sort((a, b) => b - a);
+    const years = [...new Set((STATE.allAwards || []).map(a => parseInt(a.year)))].filter(y => !isNaN(y)).sort((a, b) => b - a);
 
     if (years.length === 0) {
       utils.showToast('No awards to roll over', 'warning');
       return;
     }
 
-    const sourceYear = parseInt(years[0]);
+    const sourceYear = years[0];
     const targetYear = sourceYear + 1;
 
     // Get awards for the source year

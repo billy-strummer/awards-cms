@@ -118,7 +118,7 @@ const assignmentsModule = {
     try {
       // Load current assignments
       const assignments = await this.getAwardAssignments(this.currentAwardId);
-      this._cachedAssignments = assignments; // Cache for email feature
+      this._cachedAssignments = []; // Will be set after filtering
 
       console.log('Loaded', assignments.length, 'assignments for award', this.currentAwardId);
 
@@ -151,6 +151,7 @@ const assignmentsModule = {
 
       // Store all assignments for filtering
       this.allAssignments = validAssignments;
+      this._cachedAssignments = validAssignments; // Cache for email feature
       this.currentFilter = 'all';
       this.currentSortColumn = 'company';
       this.currentSortDirection = 'asc';
@@ -210,10 +211,15 @@ const assignmentsModule = {
 
           <div class="col-12 mt-4">
             <hr class="mb-4">
-            <h5 class="mb-3">
-              <i class="bi bi-plus-circle me-2 text-primary"></i>
-              Add Companies
-            </h5>
+            <div class="d-flex justify-content-between align-items-center mb-3">
+              <h5 class="mb-0">
+                <i class="bi bi-plus-circle me-2 text-primary"></i>
+                Add Companies
+              </h5>
+              <button class="btn btn-sm btn-outline-primary" onclick="assignmentsModule.openBulkAddModal()">
+                <i class="bi bi-list-check me-1"></i>Bulk Add
+              </button>
+            </div>
 
             <div class="mb-3">
               <input
@@ -766,7 +772,7 @@ const assignmentsModule = {
         <textarea class="form-control form-control-sm" rows="4" id="nomineeEmailList" readonly>${uniqueEmails.join('; ')}</textarea>
       </div>
       <div class="mt-3 d-flex gap-2">
-        <button class="btn btn-primary btn-sm" onclick="navigator.clipboard.writeText(document.getElementById('nomineeEmailList').value); utils.showToast('Emails copied to clipboard!', 'success');">
+        <button class="btn btn-primary btn-sm" onclick="navigator.clipboard.writeText(document.getElementById('nomineeEmailList').value).then(() => utils.showToast('Emails copied to clipboard!', 'success')).catch(() => utils.showToast('Failed to copy - please copy manually', 'warning'));">
           <i class="bi bi-clipboard me-1"></i>Copy All Emails
         </button>
         <button class="btn btn-success btn-sm" onclick="window.open('mailto:?bcc=' + encodeURIComponent(document.getElementById('nomineeEmailList').value.replace(/;\\s*/g, ',')))">
@@ -811,6 +817,95 @@ const assignmentsModule = {
     const emails = [...new Set(filtered.map(a => a.organisations?.email).filter(Boolean))];
     const textarea = document.getElementById('nomineeEmailList');
     if (textarea) textarea.value = emails.join('; ');
+  },
+
+  /**
+   * Bulk assign companies
+   */
+  /**
+   * Open the bulk add companies modal and populate it
+   */
+  async openBulkAddModal() {
+    if (!this.currentAwardId) { utils.showToast('No award selected', 'warning'); return; }
+
+    const listEl = document.getElementById('bulkAddCompanyList');
+    const searchBox = document.getElementById('bulkAddSearchBox');
+    const countEl = document.getElementById('selectedCount');
+    if (!listEl) return;
+
+    listEl.innerHTML = '<div class="text-center py-3"><div class="spinner-border spinner-border-sm"></div> Loading...</div>';
+    if (searchBox) searchBox.value = '';
+    if (countEl) countEl.textContent = '0';
+
+    // Show modal
+    new bootstrap.Modal(document.getElementById('addCompanyModal')).show();
+
+    // Get already assigned org IDs
+    const assignedIds = (this.allAssignments || []).map(a => a.organisations?.id).filter(Boolean);
+
+    // Fetch all organisations
+    const { data: allOrgs, error } = await STATE.client
+      .from('organisations')
+      .select('id, company_name, email, logo_url')
+      .order('company_name', { ascending: true });
+
+    if (error) { listEl.innerHTML = '<div class="alert alert-danger">Failed to load companies</div>'; return; }
+
+    const available = (allOrgs || []).filter(o => !assignedIds.includes(o.id));
+    if (available.length === 0) { listEl.innerHTML = '<div class="alert alert-info">All companies are already assigned to this award</div>'; return; }
+
+    listEl.innerHTML = available.map(org => `
+      <div class="card mb-1 bulk-add-company-card" data-company-name="${utils.escapeHtml(org.company_name).toLowerCase()}">
+        <div class="card-body p-2">
+          <div class="form-check d-flex align-items-center">
+            <input class="form-check-input me-2" type="checkbox" value="${org.id}" id="bulk_${org.id}"
+              onchange="document.getElementById('selectedCount').textContent = document.querySelectorAll('#bulkAddCompanyList input:checked').length">
+            <label class="form-check-label flex-grow-1 d-flex align-items-center" for="bulk_${org.id}">
+              ${org.logo_url ? `<img src="${org.logo_url}" style="width:24px;height:24px;object-fit:contain;margin-right:8px;">` :
+                `<div class="company-initial-avatar-sm me-2" style="width:24px;height:24px;font-size:0.7rem;line-height:24px;">${org.company_name.charAt(0)}</div>`}
+              <div>
+                <span class="fw-semibold small">${utils.escapeHtml(org.company_name)}</span>
+                <span class="text-muted ms-2" style="font-size:0.7rem;">${utils.escapeHtml(org.email || '')}</span>
+              </div>
+            </label>
+          </div>
+        </div>
+      </div>
+    `).join('');
+  },
+
+  /**
+   * Filter companies in the bulk add modal
+   */
+  filterBulkAdd() {
+    const searchBox = document.getElementById('bulkAddSearchBox');
+    if (!searchBox) return;
+    const query = searchBox.value.toLowerCase().trim();
+    const cards = document.querySelectorAll('#bulkAddCompanyList .bulk-add-company-card');
+    cards.forEach(card => {
+      const name = card.getAttribute('data-company-name') || '';
+      card.style.display = name.includes(query) ? '' : 'none';
+    });
+  },
+
+  /**
+   * Add selected companies from the bulk add modal
+   */
+  async addSelectedCompanies() {
+    const checkboxes = document.querySelectorAll('#bulkAddCompanyList input[type="checkbox"]:checked');
+    const orgIds = Array.from(checkboxes).map(cb => cb.value);
+
+    if (orgIds.length === 0) {
+      utils.showToast('No companies selected', 'warning');
+      return;
+    }
+
+    await this.bulkAssignCompanies(this.currentAwardId, orgIds);
+
+    // Close the bulk add modal and refresh
+    const modal = bootstrap.Modal.getInstance(document.getElementById('addCompanyModal'));
+    if (modal) modal.hide();
+    await this.refreshAssignments();
   },
 
   /**

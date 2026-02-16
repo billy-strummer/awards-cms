@@ -635,6 +635,7 @@ const crmModule = {
 
   async logCommunication(organisationId = null) {
     console.log('Log communication for:', organisationId);
+    try {
 
     // Create modal
     const modalHtml = `
@@ -751,9 +752,17 @@ const crmModule = {
       document.getElementById('followUpDateContainer').style.display = this.checked ? 'block' : 'none';
     });
 
+    // Cleanup on close
+    document.getElementById('logCommunicationModal').addEventListener('hidden.bs.modal', function() { this.remove(); });
+
     // Show modal
     const modal = new bootstrap.Modal(document.getElementById('logCommunicationModal'));
     modal.show();
+
+    } catch (error) {
+      console.error('Error opening communication modal:', error);
+      utils.showToast('Failed to open communication form', 'error');
+    }
   },
 
   async saveCommunication() {

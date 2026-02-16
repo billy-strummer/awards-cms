@@ -121,6 +121,9 @@ async loadOrganisations() {
     // Initialize keyboard shortcuts
     this.initKeyboardShortcuts();
 
+    // Subscribe to realtime changes
+    this._subscribeToRealtimeChanges();
+
     // NEW: Calculate and display dashboard stats
     await this.calculateDashboardStats();
 
@@ -2816,9 +2819,12 @@ updateCountyFilterByRegion() {
     }
 
     const csv = [
-      'Company Name,Sector,County,Region,Contact Name,Email,Phone,Website,Status,Awards Count,Address,Catchment Area',
-      ...data.map(org =>
-        [
+      'Company Name,Sector,County,Region,Contact Name,Email,Phone,Website,Status,Tier,Tags,Awards Count,Address,Catchment Area,Description,Engagement Score,Health Status,Last Contacted',
+      ...data.map(org => {
+        const engagement = this.calculateEngagementScore(org);
+        const health = this.getOrgHealthIndicator(org);
+        const lastContacted = this.getLastContacted(org.id);
+        return [
           `"${(org.company_name || '').replace(/"/g, '""')}"`,
           `"${(org.sector || '').replace(/"/g, '""')}"`,
           `"${(org.county || '').replace(/"/g, '""')}"`,
@@ -2828,11 +2834,17 @@ updateCountyFilterByRegion() {
           `"${(org.contact_phone || '').replace(/"/g, '""')}"`,
           `"${(org.website || '').replace(/"/g, '""')}"`,
           `"${(org.status || 'prospect').replace(/"/g, '""')}"`,
+          `"${(org.tier || '').replace(/"/g, '""')}"`,
+          `"${(org.tags || []).join('; ').replace(/"/g, '""')}"`,
           `"${org.awards_count || 0}"`,
           `"${(org.address || '').replace(/"/g, '""')}"`,
-          `"${(org.catchment_area || '').replace(/"/g, '""')}"`
-        ].join(',')
-      )
+          `"${(org.catchment_area || '').replace(/"/g, '""')}"`,
+          `"${(org.description || '').replace(/"/g, '""')}"`,
+          `"${engagement}"`,
+          `"${health.label}"`,
+          `"${lastContacted ? new Date(lastContacted).toLocaleDateString('en-GB') : 'Never'}"`
+        ].join(',');
+      })
     ].join('\n');
 
     const blob = new Blob([csv], { type: 'text/csv' });
@@ -2847,7 +2859,7 @@ updateCountyFilterByRegion() {
   },
 
   // ============================================
-  // BULK EMAIL
+  // BULK EMAIL CAMPAIGN
   // ============================================
   bulkEmail() {
     if (this.selectedOrgs.size === 0) {
@@ -2856,17 +2868,145 @@ updateCountyFilterByRegion() {
     }
 
     const selectedData = STATE.allOrganisations.filter(org => this.selectedOrgs.has(org.id));
-    const emails = selectedData
-      .map(org => org.email)
-      .filter(e => e)
-      .join(',');
+    const withEmail = selectedData.filter(o => o.email);
+    const withoutEmail = selectedData.filter(o => !o.email);
 
-    if (emails) {
-      window.location.href = `mailto:${emails}`;
-      utils.showToast(`Opening email for ${selectedData.length} companies`, 'success');
-    } else {
-      utils.showToast('No email addresses found for selected companies', 'warning');
+    const templates = this._emailTemplates;
+
+    const html = `
+      <div class="row g-3">
+        <div class="col-12">
+          <div class="alert alert-info small py-2 mb-2">
+            <i class="bi bi-people me-1"></i><strong>${withEmail.length}</strong> recipient(s) with email
+            ${withoutEmail.length > 0 ? ` &middot; <span class="text-warning">${withoutEmail.length} without email (skipped)</span>` : ''}
+          </div>
+        </div>
+        <div class="col-12">
+          <label class="form-label small fw-semibold">Send Method</label>
+          <div class="btn-group w-100" role="group">
+            <input type="radio" class="btn-check" name="emailMethod" id="emailMethodBCC" value="bcc" checked>
+            <label class="btn btn-outline-primary btn-sm" for="emailMethodBCC"><i class="bi bi-envelope me-1"></i>BCC (private)</label>
+            <input type="radio" class="btn-check" name="emailMethod" id="emailMethodIndividual" value="individual">
+            <label class="btn btn-outline-primary btn-sm" for="emailMethodIndividual"><i class="bi bi-person me-1"></i>Individual (personalised)</label>
+          </div>
+        </div>
+        <div class="col-12">
+          <label class="form-label small fw-semibold">Template</label>
+          <select class="form-select form-select-sm" id="bulkEmailTemplate" onchange="orgsModule._populateBulkEmailFromTemplate()">
+            <option value="">-- Custom email --</option>
+            ${templates.map(t => `<option value="${t.id}">${utils.escapeHtml(t.name)}</option>`).join('')}
+          </select>
+        </div>
+        <div class="col-12">
+          <label class="form-label small fw-semibold">Subject</label>
+          <input type="text" class="form-control form-control-sm" id="bulkEmailSubject" placeholder="Enter subject...">
+        </div>
+        <div class="col-12">
+          <label class="form-label small fw-semibold">Body <small class="text-muted">(use {contact_name}, {company_name} for personalisation)</small></label>
+          <textarea class="form-control form-control-sm" id="bulkEmailBody" rows="6" placeholder="Enter message..."></textarea>
+        </div>
+        <div class="col-12">
+          <div class="d-flex gap-2">
+            <button class="btn btn-sm btn-outline-info" onclick="orgsModule._previewBulkEmail()"><i class="bi bi-eye me-1"></i>Preview</button>
+            <button class="btn btn-sm btn-primary ms-auto" onclick="orgsModule._sendBulkEmail()"><i class="bi bi-send me-1"></i>Send Campaign</button>
+          </div>
+        </div>
+        <div class="col-12" id="bulkEmailPreview" style="display:none;"></div>
+      </div>`;
+
+    this._showDynamicModal(`Email Campaign (${withEmail.length} recipients)`, html, 'bi-megaphone', 'modal-lg');
+  },
+
+  _populateBulkEmailFromTemplate() {
+    const templateId = document.getElementById('bulkEmailTemplate')?.value;
+    if (!templateId) return;
+    const template = this._emailTemplates.find(t => t.id === templateId);
+    if (template) {
+      document.getElementById('bulkEmailSubject').value = template.subject;
+      document.getElementById('bulkEmailBody').value = template.body;
     }
+  },
+
+  _previewBulkEmail() {
+    const subject = document.getElementById('bulkEmailSubject')?.value.trim();
+    const body = document.getElementById('bulkEmailBody')?.value.trim();
+    if (!subject || !body) { utils.showToast('Enter subject and body first', 'warning'); return; }
+
+    const selectedData = STATE.allOrganisations.filter(org => this.selectedOrgs.has(org.id) && org.email);
+    const sample = selectedData[0];
+    if (!sample) return;
+
+    const previewSubject = subject.replace(/{company_name}/g, sample.company_name || '').replace(/{contact_name}/g, sample.contact_name || 'Sir/Madam');
+    const previewBody = body.replace(/{company_name}/g, sample.company_name || '').replace(/{contact_name}/g, sample.contact_name || 'Sir/Madam');
+
+    const previewEl = document.getElementById('bulkEmailPreview');
+    previewEl.style.display = 'block';
+    previewEl.innerHTML = `
+      <div class="card bg-light">
+        <div class="card-header py-2 small fw-semibold"><i class="bi bi-eye me-1"></i>Preview (for ${utils.escapeHtml(sample.company_name || 'first recipient')})</div>
+        <div class="card-body py-2">
+          <div class="small"><strong>To:</strong> ${utils.escapeHtml(sample.email)}</div>
+          <div class="small"><strong>Subject:</strong> ${utils.escapeHtml(previewSubject)}</div>
+          <hr class="my-2">
+          <div class="small" style="white-space:pre-wrap;">${utils.escapeHtml(previewBody)}</div>
+        </div>
+      </div>`;
+  },
+
+  async _sendBulkEmail() {
+    const subject = document.getElementById('bulkEmailSubject')?.value.trim();
+    const body = document.getElementById('bulkEmailBody')?.value.trim();
+    const method = document.querySelector('input[name="emailMethod"]:checked')?.value || 'bcc';
+
+    if (!subject || !body) { utils.showToast('Enter subject and body', 'warning'); return; }
+
+    const selectedData = STATE.allOrganisations.filter(org => this.selectedOrgs.has(org.id) && org.email);
+    if (selectedData.length === 0) { utils.showToast('No recipients with email addresses', 'warning'); return; }
+
+    if (!confirm(`Send email to ${selectedData.length} organisation(s) via ${method === 'bcc' ? 'BCC' : 'individual emails'}?`)) return;
+
+    if (method === 'bcc') {
+      // BCC mode: single mailto with all addresses in BCC
+      const emails = selectedData.map(o => o.email).join(',');
+      const bccSubject = subject.replace(/{company_name}/g, '').replace(/{contact_name}/g, '');
+      const bccBody = body.replace(/{company_name}/g, '').replace(/{contact_name}/g, '');
+      window.open(`mailto:?bcc=${encodeURIComponent(emails)}&subject=${encodeURIComponent(bccSubject)}&body=${encodeURIComponent(bccBody)}`);
+    } else {
+      // Individual mode: open first mailto, log all
+      const first = selectedData[0];
+      const personalSubject = subject.replace(/{company_name}/g, first.company_name || '').replace(/{contact_name}/g, first.contact_name || 'Sir/Madam');
+      const personalBody = body.replace(/{company_name}/g, first.company_name || '').replace(/{contact_name}/g, first.contact_name || 'Sir/Madam');
+      window.open(`mailto:${encodeURIComponent(first.email)}?subject=${encodeURIComponent(personalSubject)}&body=${encodeURIComponent(personalBody)}`);
+      if (selectedData.length > 1) {
+        utils.showToast(`Opened email for ${first.company_name}. ${selectedData.length - 1} more will be logged.`, 'info');
+      }
+    }
+
+    // Log all communications to Supabase
+    try {
+      const templateId = document.getElementById('bulkEmailTemplate')?.value || 'custom';
+      const performedBy = await this._getCurrentUserEmail();
+      const commsRecords = selectedData.map(org => ({
+        organisation_id: org.id,
+        template_id: templateId,
+        template_name: `Campaign: ${subject.substring(0, 50)}`,
+        subject,
+        channel: 'email',
+        direction: 'outbound'
+      }));
+      // Insert in batches of 50
+      for (let i = 0; i < commsRecords.length; i += 50) {
+        await STATE.client.from('organisation_comms_log').insert(commsRecords.slice(i, i + 50));
+      }
+      // Log audit
+      this._logAudit(null, 'bulk_email', '', `Bulk email campaign to ${selectedData.length} orgs: ${subject}`);
+    } catch (e) {
+      console.warn('Failed to log bulk email:', e.message);
+    }
+
+    // Close modal
+    bootstrap.Modal.getInstance(document.getElementById('dynamicOrgModal'))?.hide();
+    utils.showToast(`Email campaign sent to ${selectedData.length} organisations`, 'success');
   },
 
   // ============================================
@@ -3147,12 +3287,26 @@ updateCountyFilterByRegion() {
   // ============================================
   async _logAudit(orgId, action, companyName, details) {
     try {
+      const performedBy = await this._getCurrentUserEmail();
       await STATE.client
         .from('org_audit_log')
-        .insert([{ org_id: orgId, company_name: companyName, action, details }]);
+        .insert([{ org_id: orgId, company_name: companyName, action, details, performed_by: performedBy }]);
     } catch (e) {
       console.warn('Failed to write audit log to Supabase:', e.message);
     }
+  },
+
+  // Cache current user email to avoid repeated auth calls
+  _cachedUserEmail: null,
+  async _getCurrentUserEmail() {
+    if (this._cachedUserEmail) return this._cachedUserEmail;
+    try {
+      const { data } = await STATE.client.auth.getUser();
+      this._cachedUserEmail = data?.user?.email || 'admin';
+    } catch (e) {
+      this._cachedUserEmail = 'admin';
+    }
+    return this._cachedUserEmail;
   },
 
   async getAuditLog(orgId) {
@@ -3505,6 +3659,9 @@ updateCountyFilterByRegion() {
     td.querySelector('input').focus();
   },
 
+  // Last inline edit for undo support
+  _lastInlineEdit: null,
+
   async saveInlineEdit(orgId, field) {
     const input = document.getElementById(`inlineEdit_${field}`);
     if (!input) return;
@@ -3515,6 +3672,10 @@ updateCountyFilterByRegion() {
     const fieldMap = { 'contact': 'contact_name', 'email': 'email', 'sector': 'sector' };
     const dbField = fieldMap[field] || field;
 
+    // Capture old value for undo
+    const org = STATE.allOrganisations.find(o => o.id === orgId);
+    const oldValue = org ? (org[dbField] || '') : '';
+
     try {
       const { error } = await STATE.client
         .from('organisations')
@@ -3524,16 +3685,63 @@ updateCountyFilterByRegion() {
       if (error) throw error;
 
       // Update local state
-      const org = STATE.allOrganisations.find(o => o.id === orgId);
       if (org) org[dbField] = newValue || null;
       const fOrg = STATE.filteredOrganisations.find(o => o.id === orgId);
       if (fOrg) fOrg[dbField] = newValue || null;
 
+      // Store for undo
+      this._lastInlineEdit = { orgId, dbField, oldValue, newValue };
+
+      // Log the diff to audit trail
+      this._logAuditWithDiff(orgId, 'field_changed', org?.company_name || '', dbField, oldValue, newValue);
+
       this.renderOrganisations();
-      utils.showToast(`${field} updated`, 'success');
+      this._showUndoToast(field);
     } catch (error) {
       console.error('Error saving inline edit:', error);
       utils.showToast('Error: ' + error.message, 'error');
+    }
+  },
+
+  _showUndoToast(field) {
+    // Remove existing undo toast
+    document.getElementById('undoToast')?.remove();
+    const toastHtml = `<div id="undoToast" class="toast show position-fixed bottom-0 end-0 m-3" style="z-index:9999;" role="alert">
+      <div class="toast-body d-flex align-items-center gap-2 bg-dark text-white rounded shadow">
+        <i class="bi bi-pencil-square"></i>
+        <span class="small">${utils.escapeHtml(field)} updated</span>
+        <button class="btn btn-sm btn-warning ms-2 py-0 px-2" onclick="orgsModule.undoLastInlineEdit()"><i class="bi bi-arrow-counterclockwise me-1"></i>Undo</button>
+        <button type="button" class="btn-close btn-close-white ms-1" onclick="this.closest('.toast').remove()"></button>
+      </div>
+    </div>`;
+    document.body.insertAdjacentHTML('beforeend', toastHtml);
+    // Auto-dismiss after 8 seconds
+    setTimeout(() => document.getElementById('undoToast')?.remove(), 8000);
+  },
+
+  async undoLastInlineEdit() {
+    const edit = this._lastInlineEdit;
+    if (!edit) { utils.showToast('Nothing to undo', 'warning'); return; }
+
+    try {
+      const { error } = await STATE.client
+        .from('organisations')
+        .update({ [edit.dbField]: edit.oldValue || null })
+        .eq('id', edit.orgId);
+
+      if (error) throw error;
+
+      const org = STATE.allOrganisations.find(o => o.id === edit.orgId);
+      if (org) org[edit.dbField] = edit.oldValue || null;
+      const fOrg = STATE.filteredOrganisations.find(o => o.id === edit.orgId);
+      if (fOrg) fOrg[edit.dbField] = edit.oldValue || null;
+
+      this._lastInlineEdit = null;
+      document.getElementById('undoToast')?.remove();
+      this.renderOrganisations();
+      utils.showToast('Edit undone', 'success');
+    } catch (e) {
+      utils.showToast('Undo failed: ' + e.message, 'error');
     }
   },
 
@@ -3715,10 +3923,16 @@ updateCountyFilterByRegion() {
     'phone': 'contact_phone', 'contact_phone': 'contact_phone', 'telephone': 'contact_phone', 'tel': 'contact_phone',
     'website': 'website', 'url': 'website', 'web': 'website', 'site': 'website',
     'address': 'address', 'postal address': 'address',
-    'catchment_area': 'catchment_area', 'catchment area': 'catchment_area', 'catchment': 'catchment_area'
+    'catchment_area': 'catchment_area', 'catchment area': 'catchment_area', 'catchment': 'catchment_area',
+    // Contact-specific fields for multi-contact import
+    'first name': 'contact_first_name', 'first_name': 'contact_first_name', 'firstname': 'contact_first_name',
+    'last name': 'contact_last_name', 'last_name': 'contact_last_name', 'lastname': 'contact_last_name', 'surname': 'contact_last_name',
+    'job title': 'contact_job_title', 'job_title': 'contact_job_title', 'title': 'contact_job_title', 'role': 'contact_job_title', 'position': 'contact_job_title',
+    'mobile': 'contact_mobile', 'mobile phone': 'contact_mobile', 'mobile_phone': 'contact_mobile', 'cell': 'contact_mobile'
   },
 
   _dbFields: ['company_name', 'sector', 'region', 'contact_name', 'email', 'contact_phone', 'website', 'address', 'catchment_area'],
+  _contactFields: ['contact_first_name', 'contact_last_name', 'contact_job_title', 'contact_mobile'],
 
   _getSelectedCounty() {
     const val = document.getElementById('csvCountySelect')?.value || '';
@@ -3851,7 +4065,12 @@ updateCountyFilterByRegion() {
           </label>
           <select class="form-select form-select-sm" onchange="orgsModule._updateColumnMap(${idx}, this.value)">
             <option value="">-- Skip --</option>
-            ${this._dbFields.map(f => `<option value="${f}" ${mapped === f ? 'selected' : ''}>${f.replace(/_/g, ' ')}</option>`).join('')}
+            <optgroup label="Organisation Fields">
+              ${this._dbFields.map(f => `<option value="${f}" ${mapped === f ? 'selected' : ''}>${f.replace(/_/g, ' ')}</option>`).join('')}
+            </optgroup>
+            <optgroup label="Contact Fields">
+              ${this._contactFields.map(f => `<option value="${f}" ${mapped === f ? 'selected' : ''}>${f.replace(/^contact_/, '').replace(/_/g, ' ')}</option>`).join('')}
+            </optgroup>
           </select>
         </div>
       `;
@@ -4043,6 +4262,51 @@ updateCountyFilterByRegion() {
         }
       }
 
+      // Import contacts from contact-specific CSV columns
+      const hasContactFields = Object.values(this._csvColumnMap).some(f => this._contactFields.includes(f));
+      let contactCount = 0;
+      if (hasContactFields) {
+        // Reload orgs to get the new IDs
+        const { data: freshOrgs } = await STATE.client.from('organisations').select('id, company_name');
+        const orgNameMap = {};
+        (freshOrgs || []).forEach(o => { orgNameMap[(o.company_name || '').toLowerCase()] = o.id; });
+
+        const contactRecords = [];
+        for (const item of rowsToImport) {
+          const companyName = (item.record.company_name || '').toLowerCase();
+          const orgId = orgNameMap[companyName];
+          if (!orgId) continue;
+
+          const firstName = item.record.contact_first_name?.trim();
+          const lastName = item.record.contact_last_name?.trim();
+          const jobTitle = item.record.contact_job_title?.trim();
+          const mobile = item.record.contact_mobile?.trim();
+
+          if (firstName || lastName) {
+            contactRecords.push({
+              organisation_id: orgId,
+              first_name: firstName || null,
+              last_name: lastName || null,
+              job_title: jobTitle || null,
+              email: item.record.email?.trim() || null,
+              phone: item.record.contact_phone?.trim() || null,
+              mobile: mobile || null,
+              is_primary: true,
+              receive_emails: true
+            });
+          }
+        }
+
+        if (contactRecords.length > 0) {
+          for (let i = 0; i < contactRecords.length; i += 50) {
+            try {
+              await STATE.client.from('organisation_contacts').insert(contactRecords.slice(i, i + 50));
+              contactCount += contactRecords.slice(i, i + 50).length;
+            } catch (e) { console.warn('Contact import batch error:', e.message); }
+          }
+        }
+      }
+
       // Track imported counties in localStorage for dashboard
       try {
         const imported = JSON.parse(localStorage.getItem('csvImportedCounties') || '{}');
@@ -4062,7 +4326,8 @@ updateCountyFilterByRegion() {
       bootstrap.Modal.getInstance(document.getElementById('csvImportModal')).hide();
 
       if (errorCount === 0) {
-        utils.showToast(`Successfully imported ${successCount} organisations for ${selectedCounty}!`, 'success');
+        const contactMsg = contactCount > 0 ? ` + ${contactCount} contacts` : '';
+        utils.showToast(`Successfully imported ${successCount} organisations${contactMsg} for ${selectedCounty}!`, 'success');
       } else {
         utils.showToast(`${successCount} imported, ${errorCount} failed. Check console for details.`, 'warning');
       }
@@ -4583,7 +4848,7 @@ updateCountyFilterByRegion() {
       'note_added': 'bi-sticky text-secondary',
       'csv_import': 'bi-file-earmark-arrow-up text-primary'
     };
-    return `<table class="table table-sm table-hover"><thead><tr><th>Time</th><th>Company</th><th>Action</th><th>Details</th></tr></thead><tbody>
+    return `<table class="table table-sm table-hover"><thead><tr><th>Time</th><th>User</th><th>Company</th><th>Action</th><th>Details</th></tr></thead><tbody>
       ${entries.map(e => {
         const date = new Date(e.timestamp || e.created_at);
         const icon = icons[e.action] || 'bi-clock-history text-muted';
@@ -4593,8 +4858,10 @@ updateCountyFilterByRegion() {
         if (diffMatch) {
           detailsHtml = `${utils.escapeHtml(diffMatch[1])}: <span class="text-danger text-decoration-line-through">${utils.escapeHtml(diffMatch[2])}</span> → <span class="text-success fw-semibold">${utils.escapeHtml(diffMatch[3])}</span>`;
         }
+        const user = e.performed_by || '';
         return `<tr>
           <td class="small text-muted text-nowrap">${date.toLocaleDateString('en-GB')} ${date.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}</td>
+          <td class="small text-muted">${user ? `<i class="bi bi-person me-1"></i>${utils.escapeHtml(user)}` : ''}</td>
           <td class="small fw-semibold">${utils.escapeHtml(e.company_name || e.companyName || '-')}</td>
           <td><span class="badge bg-light text-dark"><i class="bi ${icon} me-1"></i>${utils.escapeHtml(e.action)}</span></td>
           <td class="small">${detailsHtml}</td>
@@ -5075,15 +5342,20 @@ updateCountyFilterByRegion() {
     if (data.length === 0) { utils.showToast('No organisations to export', 'warning'); return; }
 
     // Build XML Spreadsheet (compatible with Excel without external libs)
-    const headers = ['Company Name', 'Sector', 'County', 'Region', 'Contact Name', 'Email', 'Phone', 'Website', 'Status', 'Tier', 'Tags', 'Awards Count', 'Address', 'Catchment Area', 'Description', 'Year Founded', 'Employees'];
+    const headers = ['Company Name', 'Sector', 'County', 'Region', 'Contact Name', 'Email', 'Phone', 'Website', 'Status', 'Tier', 'Tags', 'Awards Count', 'Address', 'Catchment Area', 'Description', 'Year Founded', 'Employees', 'Engagement Score', 'Health Status', 'Last Contacted'];
     const xmlHeader = '<?xml version="1.0"?><?mso-application progid="Excel.Sheet"?><Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet" xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet"><Worksheet ss:Name="Organisations"><Table>';
     const headerRow = '<Row>' + headers.map(h => `<Cell><Data ss:Type="String">${this._xmlEscape(h)}</Data></Cell>`).join('') + '</Row>';
     const dataRows = data.map(org => {
+      const engagement = this.calculateEngagementScore(org);
+      const health = this.getOrgHealthIndicator(org);
+      const lastContacted = this.getLastContacted(org.id);
       const vals = [
         org.company_name, org.sector, org.county, org.region, org.contact_name,
         org.email, org.contact_phone, org.website, org.status || 'prospect',
         org.tier, (org.tags || []).join(', '), String(org.awards_count || 0),
-        org.address, org.catchment_area, org.description, org.year_founded ? String(org.year_founded) : '', org.employee_count ? String(org.employee_count) : ''
+        org.address, org.catchment_area, org.description, org.year_founded ? String(org.year_founded) : '', org.employee_count ? String(org.employee_count) : '',
+        String(engagement), health.label,
+        lastContacted ? new Date(lastContacted).toLocaleDateString('en-GB') : 'Never'
       ];
       return '<Row>' + vals.map(v => `<Cell><Data ss:Type="String">${this._xmlEscape(v || '')}</Data></Cell>`).join('') + '</Row>';
     }).join('');
@@ -5325,6 +5597,7 @@ updateCountyFilterByRegion() {
   // FEATURE 5: KANBAN PIPELINE BOARD VIEW
   // ============================================
   _kanbanViewActive: false,
+  _kanbanExpandedColumns: new Set(),
 
   toggleKanbanView() {
     this._kanbanViewActive = !this._kanbanViewActive;
@@ -5378,8 +5651,13 @@ updateCountyFilterByRegion() {
                   </div>
                 </div>
                 <div class="card-body p-2" style="max-height: 450px; overflow-y: auto;">
-                  ${stageOrgs.length === 0 ? '<p class="text-muted small text-center py-3">No organisations</p>' :
-                    stageOrgs.slice(0, 30).map(org => `
+                  ${(() => {
+                    if (stageOrgs.length === 0) return '<p class="text-muted small text-center py-3">No organisations</p>';
+                    const isExpanded = this._kanbanExpandedColumns.has(stage.key);
+                    const limit = isExpanded ? stageOrgs.length : 30;
+                    const visible = stageOrgs.slice(0, limit);
+                    const remaining = stageOrgs.length - limit;
+                    return visible.map(org => `
                       <div class="card mb-2 kanban-card" draggable="true"
                         ondragstart="event.dataTransfer.setData('text/plain', '${org.id}')"
                         style="cursor: grab; border-left: 3px solid ${stage.color};">
@@ -5394,8 +5672,12 @@ updateCountyFilterByRegion() {
                           ${org.tier ? `<span class="badge" style="font-size:0.55rem;background:${{'Bronze':'#CD7F32','Silver':'#C0C0C0','Gold':'#FFD700','Platinum':'#E5E4E2'}[org.tier] || '#ccc'}">${org.tier}</span>` : ''}
                         </div>
                       </div>
-                    `).join('')}
-                  ${stageOrgs.length > 30 ? `<p class="text-muted small text-center">+${stageOrgs.length - 30} more</p>` : ''}
+                    `).join('') + (remaining > 0
+                      ? `<button class="btn btn-sm btn-outline-secondary w-100 mt-1" onclick="orgsModule.expandKanbanColumn('${stage.key}')"><i class="bi bi-chevron-down me-1"></i>Show ${remaining} more</button>`
+                      : (isExpanded && stageOrgs.length > 30
+                        ? `<button class="btn btn-sm btn-outline-secondary w-100 mt-1" onclick="orgsModule.collapseKanbanColumn('${stage.key}')"><i class="bi bi-chevron-up me-1"></i>Show less</button>`
+                        : ''));
+                  })()}
                 </div>
               </div>
             </div>
@@ -5412,6 +5694,16 @@ updateCountyFilterByRegion() {
     await this.quickUpdateStatus(orgId, newStatus);
     this.renderKanbanBoard();
     await this.calculateDashboardStats();
+  },
+
+  expandKanbanColumn(status) {
+    this._kanbanExpandedColumns.add(status);
+    this.renderKanbanBoard();
+  },
+
+  collapseKanbanColumn(status) {
+    this._kanbanExpandedColumns.delete(status);
+    this.renderKanbanBoard();
   },
 
   // ============================================
@@ -5771,6 +6063,86 @@ updateCountyFilterByRegion() {
 
   getLastContacted(orgId) {
     return this._lastContactedMap[orgId] || null;
+  },
+
+  // ============================================
+  // SHARED DYNAMIC MODAL HELPER
+  // ============================================
+  // ============================================
+  // SUPABASE REALTIME SUBSCRIPTIONS
+  // ============================================
+  _realtimeChannel: null,
+  _realtimeDebounce: null,
+
+  _subscribeToRealtimeChanges() {
+    // Unsubscribe from any existing channel
+    if (this._realtimeChannel) {
+      STATE.client.removeChannel(this._realtimeChannel);
+    }
+
+    try {
+      this._realtimeChannel = STATE.client
+        .channel('orgs-realtime')
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'organisations' }, (payload) => {
+          this._handleRealtimeEvent(payload);
+        })
+        .subscribe((status) => {
+          if (status === 'SUBSCRIBED') {
+            console.log('Organisations realtime: subscribed');
+          }
+        });
+    } catch (e) {
+      console.warn('Realtime subscription failed:', e.message);
+    }
+  },
+
+  _handleRealtimeEvent(payload) {
+    const { eventType, new: newRow, old: oldRow } = payload;
+
+    if (eventType === 'INSERT' && newRow) {
+      // Check if we already have this org (from our own insert)
+      const exists = STATE.allOrganisations.find(o => o.id === newRow.id);
+      if (!exists) {
+        STATE.allOrganisations.push({ ...newRow, awards_count: 0 });
+        this._debouncedRealtimeRefresh('New organisation added by another user');
+      }
+    } else if (eventType === 'UPDATE' && newRow) {
+      const org = STATE.allOrganisations.find(o => o.id === newRow.id);
+      if (org) {
+        // Only trigger toast if this wasn't our own update (compare updated_at)
+        const wasExternal = org.updated_at && newRow.updated_at && org.updated_at !== newRow.updated_at;
+        Object.assign(org, newRow);
+        const fOrg = STATE.filteredOrganisations.find(o => o.id === newRow.id);
+        if (fOrg) Object.assign(fOrg, newRow);
+        if (wasExternal) {
+          this._debouncedRealtimeRefresh(`${newRow.company_name || 'Organisation'} updated`);
+        }
+      }
+    } else if (eventType === 'DELETE' && oldRow) {
+      STATE.allOrganisations = STATE.allOrganisations.filter(o => o.id !== oldRow.id);
+      STATE.filteredOrganisations = STATE.filteredOrganisations.filter(o => o.id !== oldRow.id);
+      this._debouncedRealtimeRefresh('Organisation removed');
+    }
+  },
+
+  _debouncedRealtimeRefresh(message) {
+    // Debounce to avoid hammering the UI during bulk operations
+    clearTimeout(this._realtimeDebounce);
+    this._realtimeDebounce = setTimeout(() => {
+      this.renderOrganisations();
+      this.calculateDashboardStats();
+      // Show a subtle notification
+      this._showRealtimeNotification(message);
+    }, 1000);
+  },
+
+  _showRealtimeNotification(message) {
+    document.getElementById('realtimeNotif')?.remove();
+    const notifHtml = `<div id="realtimeNotif" class="position-fixed top-0 end-0 m-3 p-2 bg-info text-white rounded shadow-sm small d-flex align-items-center gap-2" style="z-index:9999; animation: fadeIn 0.3s;">
+      <i class="bi bi-broadcast"></i>${utils.escapeHtml(message)}
+    </div>`;
+    document.body.insertAdjacentHTML('beforeend', notifHtml);
+    setTimeout(() => document.getElementById('realtimeNotif')?.remove(), 4000);
   },
 
   // ============================================

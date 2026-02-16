@@ -115,6 +115,12 @@ async loadOrganisations() {
     STATE.allOrganisations = allData;
     STATE.filteredOrganisations = STATE.allOrganisations;
 
+    // Load last contacted dates for the table column
+    await this.loadLastContactedDates();
+
+    // Initialize keyboard shortcuts
+    this.initKeyboardShortcuts();
+
     // NEW: Calculate and display dashboard stats
     await this.calculateDashboardStats();
 
@@ -231,6 +237,32 @@ async loadOrganisations() {
       setConv('orgsConvEntrantNominee', convRates.entrant_to_nominee || 0);
       setConv('orgsConvNomineeShortlisted', convRates.nominee_to_shortlisted || 0);
       setConv('orgsConvShortlistedWinner', convRates.shortlisted_to_winner || 0);
+
+      // Enhanced KPI calculations (Feature 6)
+      const sponsorCount = statusCounts.sponsor || 0;
+      set('orgsSponsorCount', sponsorCount);
+
+      // At-risk: stale (180+ days) with no recent activity
+      const atRisk = STATE.allOrganisations.filter(o => {
+        const days = o.updated_at ? Math.floor((Date.now() - new Date(o.updated_at).getTime()) / 86400000) : 999;
+        return days > 180 && (o.status || 'prospect') !== 'archived';
+      }).length;
+      set('orgsAtRiskCount', atRisk);
+
+      // Average engagement score
+      const scores = STATE.allOrganisations
+        .filter(o => (o.status || 'prospect') !== 'archived')
+        .map(o => this.calculateEngagementScore(o));
+      const avgEngagement = scores.length > 0 ? Math.round(scores.reduce((a, b) => a + b, 0) / scores.length) : 0;
+      set('orgsAvgEngagement', avgEngagement + '%');
+
+      // Revenue by tier
+      const tierRevenue = {};
+      STATE.allOrganisations.forEach(org => {
+        if (org.tier) tierRevenue[org.tier] = (tierRevenue[org.tier] || 0) + 1;
+      });
+      const topTier = Object.entries(tierRevenue).sort((a, b) => b[1] - a[1])[0];
+      set('orgsTopTier', topTier ? `${topTier[0]} (${topTier[1]})` : '-');
 
     } catch (error) {
       console.error('Error calculating dashboard stats:', error);
@@ -484,7 +516,7 @@ updateCountyFilterByRegion() {
   // Dynamic phone column header
   const phoneHeaderEl = document.getElementById('phoneColHeader');
   if (phoneHeaderEl) phoneHeaderEl.style.display = this._showPhoneColumn ? '' : 'none';
-  const colSpan = this._showPhoneColumn ? 14 : 13;
+  const colSpan = this._showPhoneColumn ? 16 : 15;
 
   if (STATE.filteredOrganisations.length === 0) {
     // Build active filters summary
@@ -611,6 +643,18 @@ updateCountyFilterByRegion() {
         </td>
         <td class="text-center small text-muted" title="${updatedDate ? new Date(updatedDate).toLocaleDateString('en-GB') : 'N/A'}">
           ${updatedDate ? this._timeAgo(new Date(updatedDate)) : '-'}
+        </td>
+        <td class="text-center small text-muted" title="Last contacted">
+          ${(() => {
+            const lc = this.getLastContacted(org.id);
+            return lc ? this._timeAgo(new Date(lc)) : '<span class="text-muted">-</span>';
+          })()}
+        </td>
+        <td class="text-center">
+          ${(() => {
+            const h = this.getOrgHealthIndicator(org);
+            return `<i class="bi ${h.icon} text-${h.color}" title="${h.label}" style="font-size: 0.85rem;"></i>`;
+          })()}
         </td>
         <td class="text-center">
           <div class="btn-group btn-group-sm">
@@ -878,14 +922,16 @@ updateCountyFilterByRegion() {
             </div>
           </div>
           <div class="col-md-6 mb-3">
-            <h6 class="text-muted mb-2"><i class="bi bi-journal-text me-2"></i>Internal Notes</h6>
+            <h6 class="text-muted mb-2"><i class="bi bi-chat-left-text me-2"></i>Notes & Comments</h6>
             <div class="card">
               <div class="card-body">
-                <textarea class="form-control mb-2" id="editOrgNotes" rows="3"
-                  placeholder="Add internal notes about this company...">${utils.escapeHtml(org.notes || '')}</textarea>
-                <button class="btn btn-sm btn-primary" onclick="orgsModule.saveOrgNotes('${org.id}')">
-                  <i class="bi bi-save me-1"></i>Save Notes
-                </button>
+                <div id="orgThreadedNotes">Loading notes...</div>
+                <hr class="my-2">
+                <div class="input-group input-group-sm">
+                  <input type="text" class="form-control" id="newNoteContent" placeholder="Add a note..."
+                    onkeydown="if(event.key==='Enter'){event.preventDefault();orgsModule.addThreadedNote('${org.id}');}">
+                  <button class="btn btn-primary" onclick="orgsModule.addThreadedNote('${org.id}')"><i class="bi bi-send"></i></button>
+                </div>
               </div>
             </div>
           </div>
@@ -1315,9 +1361,11 @@ updateCountyFilterByRegion() {
           </div></div>
         </div>
 
-        <!-- Activity Timeline Section (Area 5) -->
+        <!-- Unified Activity Timeline (Feature 2) -->
         <div class="mt-4">
-          <h6 class="text-muted mb-3"><i class="bi bi-clock-history me-2"></i>Activity Timeline</h6>
+          <h6 class="text-muted mb-3"><i class="bi bi-clock-history me-2"></i>Activity Timeline
+            <span class="badge bg-light text-muted ms-1" style="font-size: 0.6rem;">emails, notes, awards, invoices, status changes</span>
+          </h6>
           <div class="card"><div class="card-body" id="orgActivityTimeline">Loading activity...</div></div>
         </div>
 
@@ -1361,7 +1409,7 @@ updateCountyFilterByRegion() {
           </div></div>
         </div>
 
-        <!-- Custom Fields Section (Area 5) -->
+        <!-- Custom Fields Section (Database-backed) -->
         <div class="mt-4">
           <h6 class="text-muted mb-3"><i class="bi bi-sliders me-2"></i>Custom Fields</h6>
           <div class="card"><div class="card-body">
@@ -1372,6 +1420,98 @@ updateCountyFilterByRegion() {
               <div class="col-md-4"><input type="text" class="form-control form-control-sm" id="customFieldValue" placeholder="Value..."></div>
               <div class="col-md-4"><button class="btn btn-sm btn-primary" onclick="orgsModule.addCustomField('${orgId}')"><i class="bi bi-plus me-1"></i>Add Field</button></div>
             </div>
+          </div></div>
+        </div>
+
+        <!-- Linked Organisations / Relationships (Feature 3) -->
+        <div class="mt-4">
+          <h6 class="text-muted mb-3"><i class="bi bi-diagram-3 me-2"></i>Linked Organisations</h6>
+          <div class="card"><div class="card-body">
+            <div id="orgRelationshipsList">Loading relationships...</div>
+            <hr class="my-2">
+            <div class="row g-2 align-items-end">
+              <div class="col-md-4">
+                <input type="text" class="form-control form-control-sm" id="relatedOrgSearch" placeholder="Search organisation..." list="orgNameSuggestions">
+                <datalist id="orgNameSuggestions">
+                  ${STATE.allOrganisations.filter(o => o.id !== orgId).slice(0, 100).map(o => `<option value="${utils.escapeHtml(o.company_name)}">`).join('')}
+                </datalist>
+              </div>
+              <div class="col-md-4">
+                <select class="form-select form-select-sm" id="relationshipType">
+                  <option value="related">Related</option>
+                  <option value="parent">Parent Company</option>
+                  <option value="subsidiary">Subsidiary</option>
+                  <option value="co_sponsor">Co-Sponsor</option>
+                  <option value="partner">Partner</option>
+                  <option value="franchise">Franchise</option>
+                </select>
+              </div>
+              <div class="col-md-4"><button class="btn btn-sm btn-primary" onclick="orgsModule.addRelationship('${orgId}')"><i class="bi bi-link me-1"></i>Link</button></div>
+            </div>
+          </div></div>
+        </div>
+
+        <!-- Email Integration (Feature 4) -->
+        <div class="mt-4">
+          <h6 class="text-muted mb-3"><i class="bi bi-envelope-at me-2"></i>Compose Email</h6>
+          <div class="card"><div class="card-body">
+            <div class="mb-2">
+              <strong>To:</strong> ${org.email ? `<a href="mailto:${org.email}">${utils.escapeHtml(org.email)}</a>` : '<span class="text-danger">No email address</span>'}
+            </div>
+            <div class="mb-2">
+              <input type="text" class="form-control form-control-sm" id="profileEmailSubject" placeholder="Subject...">
+            </div>
+            <div class="mb-2">
+              <textarea class="form-control form-control-sm" id="profileEmailBody" rows="3" placeholder="Message..."></textarea>
+            </div>
+            <button class="btn btn-sm btn-primary" onclick="orgsModule.composeEmailFromProfile('${orgId}')" ${!org.email ? 'disabled' : ''}>
+              <i class="bi bi-send me-1"></i>Open Email Client
+            </button>
+          </div></div>
+        </div>
+
+        <!-- Sponsorship Packages (Feature 9) -->
+        <div class="mt-4">
+          <h6 class="text-muted mb-3"><i class="bi bi-cash-stack me-2"></i>Sponsorship Packages</h6>
+          <div class="card"><div class="card-body">
+            <div id="orgSponsorshipPackages">Loading packages...</div>
+            <hr class="my-2">
+            <details>
+              <summary class="small fw-semibold text-primary cursor-pointer">Add New Package</summary>
+              <div class="mt-2">
+                <div class="row g-2">
+                  <div class="col-md-4"><input type="text" class="form-control form-control-sm" id="spkgName" placeholder="Package name..."></div>
+                  <div class="col-md-4">
+                    <select class="form-select form-select-sm" id="spkgTier">
+                      <option value="">Tier</option>
+                      <option value="Bronze">Bronze</option>
+                      <option value="Silver">Silver</option>
+                      <option value="Gold">Gold</option>
+                      <option value="Platinum">Platinum</option>
+                      <option value="Custom">Custom</option>
+                    </select>
+                  </div>
+                  <div class="col-md-4"><input type="number" class="form-control form-control-sm" id="spkgAmount" placeholder="Amount (£)" min="0" step="100"></div>
+                </div>
+                <div class="row g-2 mt-1">
+                  <div class="col-md-3"><input type="date" class="form-control form-control-sm" id="spkgStartDate" title="Start Date"></div>
+                  <div class="col-md-3"><input type="date" class="form-control form-control-sm" id="spkgEndDate" title="End Date"></div>
+                  <div class="col-md-3"><input type="date" class="form-control form-control-sm" id="spkgRenewalDate" title="Renewal Date"></div>
+                  <div class="col-md-3">
+                    <select class="form-select form-select-sm" id="spkgSchedule">
+                      <option value="one_time">One-time</option>
+                      <option value="monthly">Monthly</option>
+                      <option value="quarterly">Quarterly</option>
+                      <option value="annual">Annual</option>
+                    </select>
+                  </div>
+                </div>
+                <div class="mt-1">
+                  <textarea class="form-control form-control-sm" id="spkgBenefits" rows="2" placeholder="Benefits (one per line)..."></textarea>
+                </div>
+                <button class="btn btn-sm btn-primary mt-2" onclick="orgsModule.addSponsorshipPackage('${orgId}')"><i class="bi bi-plus me-1"></i>Add Package</button>
+              </div>
+            </details>
           </div></div>
         </div>
 
@@ -1427,71 +1567,51 @@ updateCountyFilterByRegion() {
     const contactsEl = document.getElementById('orgContactsList');
     if (contactsEl) contactsEl.innerHTML = this.renderContactsSection(orgId, contacts);
 
-    // Load activity timeline (merge audit + comms)
-    const [auditLog, commsLog] = await Promise.all([
-      this.getAuditLog(orgId),
-      this.getCommsHistory(orgId)
-    ]);
-    const timeline = [
-      ...auditLog.map(e => ({ ...e, type: 'audit', sortDate: new Date(e.timestamp || e.created_at) })),
-      ...commsLog.map(e => ({ ...e, type: 'comms', sortDate: new Date(e.timestamp || e.created_at) }))
-    ].sort((a, b) => b.sortDate - a.sortDate).slice(0, 30);
-
+    // Load unified activity timeline (Feature 2)
+    const timeline = await this.loadUnifiedTimeline(orgId);
     const timelineEl = document.getElementById('orgActivityTimeline');
     if (timelineEl) {
-      if (timeline.length === 0) {
-        timelineEl.innerHTML = '<p class="text-muted small">No activity recorded yet</p>';
-      } else {
-        timelineEl.innerHTML = `<div class="list-group list-group-flush" style="max-height: 300px; overflow-y: auto;">
-          ${timeline.map(e => {
-            const date = e.sortDate;
-            const timeAgo = this._timeAgo(date);
-            const isComms = e.type === 'comms';
-            const icon = isComms ? 'bi-envelope-check text-success' : ({
-              'status_change': 'bi-arrow-repeat text-primary', 'archived': 'bi-archive text-warning',
-              'restored': 'bi-arrow-counterclockwise text-success', 'created': 'bi-plus-circle text-success',
-              'email_sent': 'bi-envelope text-info', 'note_added': 'bi-sticky text-secondary',
-              'csv_import': 'bi-file-earmark-arrow-up text-primary'
-            }[e.action] || 'bi-clock-history text-muted');
-            const label = isComms
-              ? `Email sent: ${utils.escapeHtml(e.templateName || e.template_name || 'Unknown')}`
-              : utils.escapeHtml(e.details || e.action);
-            return `<div class="list-group-item px-0 py-2 border-0">
-              <div class="d-flex align-items-start">
-                <i class="bi ${icon} me-2 mt-1"></i>
-                <div class="flex-grow-1">
-                  <div class="small fw-semibold">${label}</div>
-                  <div class="text-muted" style="font-size: 0.7rem;">${timeAgo} &middot; ${date.toLocaleDateString('en-GB')} ${date.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}</div>
-                </div>
-              </div>
-            </div>`;
-          }).join('')}
-        </div>`;
-      }
+      timelineEl.innerHTML = this.renderUnifiedTimeline(timeline);
     }
+
+    // Load threaded notes (Feature 8)
+    const notes = await this.getThreadedNotes(orgId);
+    const notesEl = document.getElementById('orgThreadedNotes');
+    if (notesEl) notesEl.innerHTML = this.renderThreadedNotes(notes, orgId);
+
+    // Load relationships (Feature 3)
+    const relationships = await this.getRelationships(orgId);
+    const relsEl = document.getElementById('orgRelationshipsList');
+    if (relsEl) relsEl.innerHTML = this.renderRelationships(relationships, orgId);
+
+    // Load sponsorship packages (Feature 9)
+    const packages = await this.getSponsorshipPackages(orgId);
+    const pkgsEl = document.getElementById('orgSponsorshipPackages');
+    if (pkgsEl) pkgsEl.innerHTML = this.renderSponsorshipPackages(packages, orgId);
 
     // Load comms history
     const commsEl = document.getElementById('orgCommsHistory');
     if (commsEl) commsEl.innerHTML = await this.renderCommsHistory(orgId);
 
-    // Load follow-ups
-    const followUps = this.getFollowUps(orgId);
+    // Load follow-ups (now async/database-backed)
+    const followUps = await this.getFollowUps(orgId);
     const followUpsEl = document.getElementById('orgFollowUpsList');
     if (followUpsEl) {
       if (followUps.length === 0) {
         followUpsEl.innerHTML = '<p class="text-muted small mb-0">No scheduled follow-ups</p>';
       } else {
         followUpsEl.innerHTML = `<div class="list-group list-group-flush">
-          ${followUps.map((f, i) => {
+          ${followUps.map(f => {
             const isOverdue = !f.done && new Date(f.date) < new Date();
+            const fId = f.id || f.orgId;
             return `<div class="list-group-item px-0 py-2 border-0 d-flex align-items-center ${f.done ? 'text-muted' : ''}">
               <i class="bi ${f.done ? 'bi-check-circle text-success' : isOverdue ? 'bi-exclamation-circle text-danger' : 'bi-clock text-warning'} me-2"></i>
               <div class="flex-grow-1">
                 <div class="small ${f.done ? 'text-decoration-line-through' : 'fw-semibold'}">${utils.escapeHtml(f.note || 'Follow up')}</div>
                 <div class="text-muted" style="font-size: 0.7rem;">${new Date(f.date).toLocaleDateString('en-GB')} ${isOverdue && !f.done ? '<span class="text-danger">OVERDUE</span>' : ''}</div>
               </div>
-              ${!f.done ? `<button class="btn btn-sm btn-outline-success me-1" onclick="orgsModule.completeFollowUp('${orgId}',${i})"><i class="bi bi-check"></i></button>` : ''}
-              <button class="btn btn-sm btn-outline-danger" onclick="orgsModule.deleteFollowUp('${orgId}',${i})"><i class="bi bi-x"></i></button>
+              ${!f.done ? `<button class="btn btn-sm btn-outline-success me-1" onclick="orgsModule.completeFollowUp('${orgId}','${fId}')"><i class="bi bi-check"></i></button>` : ''}
+              <button class="btn btn-sm btn-outline-danger" onclick="orgsModule.deleteFollowUp('${orgId}','${fId}')"><i class="bi bi-x"></i></button>
             </div>`;
           }).join('')}
         </div>`;
@@ -1518,8 +1638,8 @@ updateCountyFilterByRegion() {
       }
     }
 
-    // Load custom fields
-    const customFields = this.getCustomFields(orgId);
+    // Load custom fields (now async/database-backed)
+    const customFields = await this.getCustomFields(orgId);
     const cfEl = document.getElementById('orgCustomFieldsList');
     if (cfEl) {
       const entries = Object.entries(customFields);
@@ -2465,12 +2585,11 @@ updateCountyFilterByRegion() {
       website = 'https://' + website;
     }
 
-    // Check for duplicate company name
-    const duplicate = STATE.allOrganisations.find(
-      o => o.company_name?.toLowerCase() === companyName.toLowerCase()
-    );
-    if (duplicate) {
-      if (!confirm(`A company named "${duplicate.company_name}" already exists. Add anyway?`)) {
+    // Enhanced duplicate detection on entry (Quick Win)
+    const fuzzyDupes = this.checkDuplicateOnEntry(companyName);
+    if (fuzzyDupes && fuzzyDupes.length > 0) {
+      const dupeList = fuzzyDupes.join(', ');
+      if (!confirm(`Potential duplicates found:\n${dupeList}\n\nAdd "${companyName}" anyway?`)) {
         return;
       }
     }
@@ -3306,10 +3425,9 @@ updateCountyFilterByRegion() {
     try {
       const template = this._emailTemplates.find(t => t.id === templateId);
       await STATE.client
-        .from('org_comms_log')
+        .from('organisation_comms_log')
         .insert([{
-          org_id: orgId,
-          company_name: companyName,
+          organisation_id: orgId,
           template_id: templateId,
           template_name: template?.name || templateId
         }]);
@@ -3331,11 +3449,11 @@ updateCountyFilterByRegion() {
   async getCommsHistory(orgId) {
     try {
       let query = STATE.client
-        .from('org_comms_log')
+        .from('organisation_comms_log')
         .select('*')
         .order('created_at', { ascending: false })
         .limit(50);
-      if (orgId) query = query.eq('org_id', orgId);
+      if (orgId) query = query.eq('organisation_id', orgId);
       const { data, error } = await query;
       if (error) throw error;
       return (data || []).map(e => ({ ...e, timestamp: e.created_at, templateName: e.template_name }));
@@ -4268,42 +4386,55 @@ updateCountyFilterByRegion() {
   },
 
   // ============================================
-  // AREA 5: CUSTOM FIELDS
+  // AREA 5: CUSTOM FIELDS (Database-backed)
   // ============================================
-  _customFieldsKey: 'orgCustomFields',
-
-  getCustomFields(orgId) {
+  async getCustomFields(orgId) {
     try {
-      const all = JSON.parse(localStorage.getItem(this._customFieldsKey) || '{}');
-      return all[orgId] || {};
-    } catch (e) { return {}; }
+      const { data, error } = await STATE.client
+        .from('organisation_custom_fields')
+        .select('*')
+        .eq('organisation_id', orgId)
+        .order('field_name');
+      if (error) throw error;
+      const result = {};
+      (data || []).forEach(f => { result[f.field_name] = f.field_value; });
+      return result;
+    } catch (e) {
+      // Fallback to localStorage for migration
+      try {
+        const all = JSON.parse(localStorage.getItem('orgCustomFields') || '{}');
+        return all[orgId] || {};
+      } catch (e2) { return {}; }
+    }
   },
 
-  saveCustomField(orgId, fieldName, fieldValue) {
+  async saveCustomField(orgId, fieldName, fieldValue) {
     try {
-      const all = JSON.parse(localStorage.getItem(this._customFieldsKey) || '{}');
-      if (!all[orgId]) all[orgId] = {};
       if (fieldValue) {
-        all[orgId][fieldName] = fieldValue;
+        await STATE.client.from('organisation_custom_fields').upsert({
+          organisation_id: orgId, field_name: fieldName, field_value: fieldValue, updated_at: new Date().toISOString()
+        }, { onConflict: 'organisation_id,field_name' });
       } else {
-        delete all[orgId][fieldName];
+        await STATE.client.from('organisation_custom_fields').delete()
+          .eq('organisation_id', orgId).eq('field_name', fieldName);
       }
-      localStorage.setItem(this._customFieldsKey, JSON.stringify(all));
       utils.showToast('Custom field saved', 'success');
-    } catch (e) { utils.showToast('Error saving custom field', 'error'); }
+    } catch (e) {
+      utils.showToast('Error saving custom field: ' + e.message, 'error');
+    }
   },
 
-  addCustomField(orgId) {
+  async addCustomField(orgId) {
     const name = document.getElementById('customFieldName')?.value.trim();
     const value = document.getElementById('customFieldValue')?.value.trim();
     if (!name) { utils.showToast('Enter a field name', 'warning'); return; }
-    this.saveCustomField(orgId, name, value);
+    await this.saveCustomField(orgId, name, value);
     const org = STATE.allOrganisations.find(o => o.id === orgId);
     if (org) this.openCompanyProfile(orgId, org.company_name);
   },
 
-  removeCustomField(orgId, fieldName) {
-    this.saveCustomField(orgId, fieldName, null);
+  async removeCustomField(orgId, fieldName) {
+    await this.saveCustomField(orgId, fieldName, null);
     const org = STATE.allOrganisations.find(o => o.id === orgId);
     if (org) this.openCompanyProfile(orgId, org.company_name);
   },
@@ -4365,57 +4496,66 @@ updateCountyFilterByRegion() {
   },
 
   // ============================================
-  // AREA 6: SCHEDULED FOLLOW-UPS
+  // AREA 6: SCHEDULED FOLLOW-UPS (Database-backed)
   // ============================================
-  _followUpsKey: 'orgFollowUps',
-
-  getFollowUps(orgId) {
+  async getFollowUps(orgId) {
     try {
-      const all = JSON.parse(localStorage.getItem(this._followUpsKey) || '[]');
-      if (orgId) return all.filter(f => f.orgId === orgId);
-      return all;
-    } catch (e) { return []; }
+      let query = STATE.client.from('organisation_follow_ups').select('*')
+        .order('follow_up_date', { ascending: true });
+      if (orgId) query = query.eq('organisation_id', orgId);
+      const { data, error } = await query;
+      if (error) throw error;
+      return (data || []).map(f => ({
+        id: f.id, orgId: f.organisation_id, companyName: f.company_name,
+        date: f.follow_up_date, note: f.note, done: f.completed, created: f.created_at
+      }));
+    } catch (e) {
+      try {
+        const all = JSON.parse(localStorage.getItem('orgFollowUps') || '[]');
+        if (orgId) return all.filter(f => f.orgId === orgId);
+        return all;
+      } catch (e2) { return []; }
+    }
   },
 
-  addFollowUp(orgId) {
+  async addFollowUp(orgId) {
     const date = document.getElementById('followUpDate')?.value;
     const note = document.getElementById('followUpNote')?.value.trim();
     if (!date) { utils.showToast('Select a date', 'warning'); return; }
 
     const org = STATE.allOrganisations.find(o => o.id === orgId);
     try {
-      const all = JSON.parse(localStorage.getItem(this._followUpsKey) || '[]');
-      all.push({ orgId, companyName: org?.company_name || '', date, note, done: false, created: new Date().toISOString() });
-      localStorage.setItem(this._followUpsKey, JSON.stringify(all));
+      const { error } = await STATE.client.from('organisation_follow_ups').insert([{
+        organisation_id: orgId, company_name: org?.company_name || '',
+        follow_up_date: date, note: note || null
+      }]);
+      if (error) throw error;
       utils.showToast('Follow-up scheduled', 'success');
       if (org) this.openCompanyProfile(orgId, org.company_name);
-    } catch (e) { utils.showToast('Error', 'error'); }
+    } catch (e) { utils.showToast('Error: ' + e.message, 'error'); }
   },
 
-  completeFollowUp(orgId, index) {
+  async completeFollowUp(orgId, followUpId) {
     try {
-      const all = JSON.parse(localStorage.getItem(this._followUpsKey) || '[]');
-      const orgFollowUps = all.filter(f => f.orgId === orgId);
-      if (orgFollowUps[index]) orgFollowUps[index].done = true;
-      const others = all.filter(f => f.orgId !== orgId);
-      localStorage.setItem(this._followUpsKey, JSON.stringify([...others, ...orgFollowUps]));
+      const { error } = await STATE.client.from('organisation_follow_ups')
+        .update({ completed: true, completed_at: new Date().toISOString() })
+        .eq('id', followUpId);
+      if (error) throw error;
       utils.showToast('Follow-up completed', 'success');
       const org = STATE.allOrganisations.find(o => o.id === orgId);
       if (org) this.openCompanyProfile(orgId, org.company_name);
-    } catch (e) { /* ignore */ }
+    } catch (e) { utils.showToast('Error: ' + e.message, 'error'); }
   },
 
-  deleteFollowUp(orgId, index) {
+  async deleteFollowUp(orgId, followUpId) {
     try {
-      const all = JSON.parse(localStorage.getItem(this._followUpsKey) || '[]');
-      const orgFollowUps = all.filter(f => f.orgId === orgId);
-      orgFollowUps.splice(index, 1);
-      const others = all.filter(f => f.orgId !== orgId);
-      localStorage.setItem(this._followUpsKey, JSON.stringify([...others, ...orgFollowUps]));
+      const { error } = await STATE.client.from('organisation_follow_ups')
+        .delete().eq('id', followUpId);
+      if (error) throw error;
       utils.showToast('Follow-up deleted', 'success');
       const org = STATE.allOrganisations.find(o => o.id === orgId);
       if (org) this.openCompanyProfile(orgId, org.company_name);
-    } catch (e) { /* ignore */ }
+    } catch (e) { utils.showToast('Error: ' + e.message, 'error'); }
   },
 
   // ============================================
@@ -5081,6 +5221,622 @@ updateCountyFilterByRegion() {
         ? '<i class="bi bi-arrow-repeat me-1"></i>Merge Mode: ON'
         : '<i class="bi bi-arrow-repeat me-1"></i>Merge Mode: OFF';
     }
+  },
+
+  // ============================================
+  // FEATURE 2: UNIFIED ACTIVITY TIMELINE
+  // ============================================
+  async loadUnifiedTimeline(orgId) {
+    try {
+      const [auditLog, commsLog, notes, followUps] = await Promise.all([
+        this.getAuditLog(orgId),
+        this.getCommsHistory(orgId),
+        this.getThreadedNotes(orgId),
+        this.getFollowUps(orgId)
+      ]);
+
+      // Also load award assignments for this org
+      let assignments = [];
+      try {
+        const { data } = await STATE.client.from('award_assignments')
+          .select('*, awards!award_assignments_award_id_fkey(award_name, year)')
+          .eq('organisation_id', orgId);
+        assignments = data || [];
+      } catch (e) { /* ignore */ }
+
+      // Also load invoices
+      let invoices = [];
+      try {
+        const { data } = await STATE.client.from('invoices')
+          .select('id, invoice_number, total_amount, status, created_at')
+          .eq('organisation_id', orgId);
+        invoices = data || [];
+      } catch (e) { /* ignore */ }
+
+      const timeline = [
+        ...auditLog.map(e => ({ ...e, _type: 'audit', _date: new Date(e.timestamp || e.created_at), _icon: 'bi-clock-history text-muted', _label: e.details || e.action })),
+        ...commsLog.map(e => ({ ...e, _type: 'comms', _date: new Date(e.timestamp || e.created_at), _icon: 'bi-envelope-check text-success', _label: `Email: ${e.templateName || e.template_name || 'Unknown'}` })),
+        ...notes.map(e => ({ ...e, _type: 'note', _date: new Date(e.created_at), _icon: 'bi-chat-left-text text-info', _label: `Note by ${e.author || 'Unknown'}: ${(e.content || '').substring(0, 80)}` })),
+        ...followUps.filter(f => f.done).map(f => ({ ...f, _type: 'followup', _date: new Date(f.created), _icon: 'bi-check-circle text-success', _label: `Follow-up completed: ${f.note || 'N/A'}` })),
+        ...assignments.map(a => ({ ...a, _type: 'assignment', _date: new Date(a.created_at), _icon: 'bi-trophy text-warning', _label: `Award assignment: ${a.awards?.award_name || 'Unknown'} (${a.status})` })),
+        ...invoices.map(inv => ({ ...inv, _type: 'invoice', _date: new Date(inv.created_at), _icon: 'bi-receipt text-primary', _label: `Invoice #${inv.invoice_number || 'N/A'}: £${parseFloat(inv.total_amount || 0).toFixed(2)} (${inv.status})` }))
+      ].sort((a, b) => b._date - a._date).slice(0, 50);
+
+      return timeline;
+    } catch (e) { return []; }
+  },
+
+  renderUnifiedTimeline(timeline) {
+    if (!timeline || timeline.length === 0) return '<p class="text-muted small">No activity recorded yet</p>';
+    const iconMap = {
+      'status_change': 'bi-arrow-repeat text-primary', 'archived': 'bi-archive text-warning',
+      'restored': 'bi-arrow-counterclockwise text-success', 'created': 'bi-plus-circle text-success',
+      'email_sent': 'bi-envelope text-info', 'note_added': 'bi-sticky text-secondary',
+      'csv_import': 'bi-file-earmark-arrow-up text-primary', 'field_changed': 'bi-pencil text-info'
+    };
+
+    return `<div class="list-group list-group-flush" style="max-height: 400px; overflow-y: auto;">
+      ${timeline.map(e => {
+        const icon = e._type === 'audit' ? (iconMap[e.action] || e._icon) : e._icon;
+        return `<div class="list-group-item px-0 py-2 border-0">
+          <div class="d-flex align-items-start">
+            <i class="bi ${icon} me-2 mt-1"></i>
+            <div class="flex-grow-1">
+              <div class="small fw-semibold">${utils.escapeHtml(e._label)}</div>
+              <div class="text-muted" style="font-size: 0.7rem;">${this._timeAgo(e._date)} &middot; ${e._date.toLocaleDateString('en-GB')} ${e._date.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}</div>
+            </div>
+            <span class="badge bg-light text-muted" style="font-size: 0.6rem;">${e._type}</span>
+          </div>
+        </div>`;
+      }).join('')}
+    </div>`;
+  },
+
+  // ============================================
+  // FEATURE 3: RELATIONSHIP MAPPING
+  // ============================================
+  async getRelationships(orgId) {
+    try {
+      const { data: outgoing } = await STATE.client.from('organisation_relationships')
+        .select('*, related:related_organisation_id(id, company_name, logo_url, status)')
+        .eq('organisation_id', orgId);
+      const { data: incoming } = await STATE.client.from('organisation_relationships')
+        .select('*, source:organisation_id(id, company_name, logo_url, status)')
+        .eq('related_organisation_id', orgId);
+      return { outgoing: outgoing || [], incoming: incoming || [] };
+    } catch (e) { return { outgoing: [], incoming: [] }; }
+  },
+
+  async addRelationship(orgId) {
+    const relatedName = document.getElementById('relatedOrgSearch')?.value.trim();
+    const relType = document.getElementById('relationshipType')?.value || 'related';
+    if (!relatedName) { utils.showToast('Search for an organisation', 'warning'); return; }
+
+    const related = STATE.allOrganisations.find(o =>
+      o.company_name?.toLowerCase() === relatedName.toLowerCase() && o.id !== orgId
+    );
+    if (!related) { utils.showToast('Organisation not found', 'error'); return; }
+
+    try {
+      const { error } = await STATE.client.from('organisation_relationships').insert([{
+        organisation_id: orgId, related_organisation_id: related.id, relationship_type: relType
+      }]);
+      if (error) throw error;
+      utils.showToast('Relationship added', 'success');
+      const org = STATE.allOrganisations.find(o => o.id === orgId);
+      if (org) this.openCompanyProfile(orgId, org.company_name);
+    } catch (e) { utils.showToast('Error: ' + e.message, 'error'); }
+  },
+
+  async removeRelationship(relId, orgId) {
+    try {
+      await STATE.client.from('organisation_relationships').delete().eq('id', relId);
+      utils.showToast('Relationship removed', 'success');
+      const org = STATE.allOrganisations.find(o => o.id === orgId);
+      if (org) this.openCompanyProfile(orgId, org.company_name);
+    } catch (e) { utils.showToast('Error: ' + e.message, 'error'); }
+  },
+
+  renderRelationships(relationships, orgId) {
+    const all = [
+      ...relationships.outgoing.map(r => ({ id: r.id, type: r.relationship_type, org: r.related, direction: 'outgoing' })),
+      ...relationships.incoming.map(r => ({ id: r.id, type: r.relationship_type, org: r.source, direction: 'incoming' }))
+    ];
+    const typeLabels = { parent: 'Parent Company', subsidiary: 'Subsidiary', co_sponsor: 'Co-Sponsor', partner: 'Partner', franchise: 'Franchise', related: 'Related' };
+
+    if (all.length === 0) return '<p class="text-muted small mb-0">No linked organisations</p>';
+    return `<div class="list-group list-group-flush">
+      ${all.map(r => `<div class="list-group-item px-0 py-2 border-0 d-flex align-items-center">
+        ${r.org?.logo_url ? `<img src="${r.org.logo_url}" class="me-2 rounded" style="width:30px;height:21px;object-fit:contain;border:1px solid #e0e0e0;">` :
+          `<div class="me-2 d-flex align-items-center justify-content-center rounded" style="width:30px;height:21px;background:#f5f5f5;border:1px solid #e0e0e0;"><i class="bi bi-building text-muted" style="font-size:0.6rem;"></i></div>`}
+        <div class="flex-grow-1">
+          <a href="javascript:void(0);" class="small fw-semibold text-primary text-decoration-none"
+            onclick="orgsModule.openCompanyProfile('${r.org?.id}', '${utils.escapeHtml(r.org?.company_name || '').replace(/'/g, "\\'")}')">${utils.escapeHtml(r.org?.company_name || 'Unknown')}</a>
+          <span class="badge bg-light text-muted ms-1" style="font-size:0.6rem;">${typeLabels[r.type] || r.type}${r.direction === 'incoming' ? ' (of this)' : ''}</span>
+        </div>
+        <button class="btn btn-sm btn-outline-danger py-0" onclick="orgsModule.removeRelationship('${r.id}','${orgId}')"><i class="bi bi-x"></i></button>
+      </div>`).join('')}
+    </div>`;
+  },
+
+  // ============================================
+  // FEATURE 4: EMAIL INTEGRATION IN PROFILE
+  // ============================================
+  async composeEmailFromProfile(orgId) {
+    const org = STATE.allOrganisations.find(o => o.id === orgId);
+    if (!org) return;
+    const to = org.email || '';
+    const subject = document.getElementById('profileEmailSubject')?.value.trim() || '';
+    const body = document.getElementById('profileEmailBody')?.value.trim() || '';
+    if (!to) { utils.showToast('No email address for this company', 'warning'); return; }
+    if (!subject) { utils.showToast('Enter a subject', 'warning'); return; }
+
+    // Log the communication
+    try {
+      await STATE.client.from('organisation_comms_log').insert([{
+        organisation_id: orgId, template_name: subject, subject, message: body, channel: 'email', direction: 'outbound'
+      }]);
+    } catch (e) { /* ignore */ }
+    this._logAudit(orgId, 'email_sent', org.company_name, `Email composed: ${subject}`);
+
+    // Open mailto link
+    const mailtoUrl = `mailto:${encodeURIComponent(to)}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+    window.open(mailtoUrl);
+    utils.showToast('Email client opened', 'success');
+    document.getElementById('profileEmailSubject').value = '';
+    document.getElementById('profileEmailBody').value = '';
+  },
+
+  // ============================================
+  // FEATURE 5: KANBAN PIPELINE BOARD VIEW
+  // ============================================
+  _kanbanViewActive: false,
+
+  toggleKanbanView() {
+    this._kanbanViewActive = !this._kanbanViewActive;
+    const kanbanEl = document.getElementById('orgKanbanBoard');
+    const tableEl = document.getElementById('orgTableContainer');
+    const toggleBtn = document.getElementById('kanbanToggleBtn');
+
+    if (this._kanbanViewActive) {
+      if (kanbanEl) kanbanEl.style.display = 'block';
+      if (tableEl) tableEl.style.display = 'none';
+      if (toggleBtn) { toggleBtn.classList.remove('btn-outline-info'); toggleBtn.classList.add('btn-info'); }
+      this.renderKanbanBoard();
+    } else {
+      if (kanbanEl) kanbanEl.style.display = 'none';
+      if (tableEl) tableEl.style.display = 'block';
+      if (toggleBtn) { toggleBtn.classList.remove('btn-info'); toggleBtn.classList.add('btn-outline-info'); }
+    }
+  },
+
+  renderKanbanBoard() {
+    const kanbanEl = document.getElementById('orgKanbanBoard');
+    if (!kanbanEl) return;
+
+    const stages = [
+      { key: 'prospect', label: 'Prospect', color: '#6c757d', icon: 'bi-funnel' },
+      { key: 'entrant', label: 'Entrant', color: '#0dcaf0', icon: 'bi-box-arrow-in-right' },
+      { key: 'nominee', label: 'Nominee', color: '#0d6efd', icon: 'bi-star' },
+      { key: 'shortlisted', label: 'Shortlisted', color: '#ffc107', icon: 'bi-list-check' },
+      { key: 'winner', label: 'Winner', color: '#198754', icon: 'bi-trophy' },
+      { key: 'sponsor', label: 'Sponsor', color: '#6f42c1', icon: 'bi-cash-stack' },
+      { key: 'past_winner', label: 'Past Winner', color: '#fd7e14', icon: 'bi-award' }
+    ];
+
+    const orgs = STATE.filteredOrganisations.filter(o => (o.status || 'prospect') !== 'archived');
+
+    kanbanEl.innerHTML = `
+      <div class="d-flex gap-2 overflow-auto pb-3" style="min-height: 500px;">
+        ${stages.map(stage => {
+          const stageOrgs = orgs.filter(o => (o.status || 'prospect') === stage.key);
+          return `
+            <div class="kanban-column flex-shrink-0" style="width: 220px; min-width: 220px;"
+              data-status="${stage.key}"
+              ondragover="event.preventDefault(); this.classList.add('kanban-drag-over')"
+              ondragleave="this.classList.remove('kanban-drag-over')"
+              ondrop="orgsModule.handleKanbanDrop(event, '${stage.key}'); this.classList.remove('kanban-drag-over')">
+              <div class="card h-100 border-0 shadow-sm">
+                <div class="card-header py-2 text-white" style="background: ${stage.color};">
+                  <div class="d-flex justify-content-between align-items-center">
+                    <span class="fw-semibold small"><i class="bi ${stage.icon} me-1"></i>${stage.label}</span>
+                    <span class="badge bg-white text-dark">${stageOrgs.length}</span>
+                  </div>
+                </div>
+                <div class="card-body p-2" style="max-height: 450px; overflow-y: auto;">
+                  ${stageOrgs.length === 0 ? '<p class="text-muted small text-center py-3">No organisations</p>' :
+                    stageOrgs.slice(0, 30).map(org => `
+                      <div class="card mb-2 kanban-card" draggable="true"
+                        ondragstart="event.dataTransfer.setData('text/plain', '${org.id}')"
+                        style="cursor: grab; border-left: 3px solid ${stage.color};">
+                        <div class="card-body p-2">
+                          <div class="d-flex align-items-center mb-1">
+                            ${org.logo_url ? `<img src="${org.logo_url}" class="me-1 rounded" style="width:24px;height:17px;object-fit:contain;">` : ''}
+                            <a href="javascript:void(0);" class="small fw-semibold text-primary text-decoration-none text-truncate"
+                              onclick="orgsModule.openCompanyProfile('${org.id}', '${utils.escapeHtml(org.company_name || '').replace(/'/g, "\\'")}')"
+                              style="max-width: 150px;">${utils.escapeHtml(org.company_name || 'N/A')}</a>
+                          </div>
+                          <div class="text-muted" style="font-size: 0.65rem;">${utils.escapeHtml(org.sector || '-')} &middot; ${utils.escapeHtml(org.county || '-')}</div>
+                          ${org.tier ? `<span class="badge" style="font-size:0.55rem;background:${{'Bronze':'#CD7F32','Silver':'#C0C0C0','Gold':'#FFD700','Platinum':'#E5E4E2'}[org.tier] || '#ccc'}">${org.tier}</span>` : ''}
+                        </div>
+                      </div>
+                    `).join('')}
+                  ${stageOrgs.length > 30 ? `<p class="text-muted small text-center">+${stageOrgs.length - 30} more</p>` : ''}
+                </div>
+              </div>
+            </div>
+          `;
+        }).join('')}
+      </div>
+    `;
+  },
+
+  async handleKanbanDrop(event, newStatus) {
+    event.preventDefault();
+    const orgId = event.dataTransfer.getData('text/plain');
+    if (!orgId) return;
+    await this.quickUpdateStatus(orgId, newStatus);
+    this.renderKanbanBoard();
+    await this.calculateDashboardStats();
+  },
+
+  // ============================================
+  // FEATURE 6: DASHBOARD KPIs & CONVERSION FUNNEL (enhanced)
+  // ============================================
+  calculateEngagementScore(org) {
+    let score = 0;
+    const daysSinceUpdate = org.updated_at ? Math.floor((Date.now() - new Date(org.updated_at).getTime()) / 86400000) : 999;
+    if (daysSinceUpdate < 7) score += 40;
+    else if (daysSinceUpdate < 30) score += 25;
+    else if (daysSinceUpdate < 90) score += 10;
+
+    if (org.email) score += 10;
+    if (org.contact_name) score += 10;
+    if (org.logo_url) score += 10;
+    if (org.website) score += 5;
+    if (org.description) score += 5;
+    if (org.awards_count > 0) score += 20;
+    if (org.tier) score += 10;
+    return Math.min(score, 100);
+  },
+
+  getOrgHealthIndicator(org) {
+    const daysSinceUpdate = org.updated_at ? Math.floor((Date.now() - new Date(org.updated_at).getTime()) / 86400000) : 999;
+    const hasEmail = !!org.email;
+    const hasContact = !!org.contact_name;
+    const engagement = this.calculateEngagementScore(org);
+
+    if (daysSinceUpdate > 180 || (!hasEmail && !hasContact)) return { color: 'danger', label: 'At Risk', icon: 'bi-exclamation-triangle-fill' };
+    if (daysSinceUpdate > 90 || engagement < 30) return { color: 'warning', label: 'Needs Attention', icon: 'bi-exclamation-circle' };
+    return { color: 'success', label: 'Healthy', icon: 'bi-check-circle-fill' };
+  },
+
+  // ============================================
+  // FEATURE 8: THREADED NOTES / COMMENTS
+  // ============================================
+  async getThreadedNotes(orgId) {
+    try {
+      const { data, error } = await STATE.client.from('organisation_notes')
+        .select('*').eq('organisation_id', orgId)
+        .order('pinned', { ascending: false })
+        .order('created_at', { ascending: false });
+      if (error) throw error;
+      return data || [];
+    } catch (e) { return []; }
+  },
+
+  async addThreadedNote(orgId) {
+    const content = document.getElementById('newNoteContent')?.value.trim();
+    if (!content) { utils.showToast('Enter a note', 'warning'); return; }
+    try {
+      const userEmail = STATE.client?.auth?.getUser ? (await STATE.client.auth.getUser())?.data?.user?.email : 'admin';
+      const { error } = await STATE.client.from('organisation_notes').insert([{
+        organisation_id: orgId, content, author: userEmail || 'admin'
+      }]);
+      if (error) throw error;
+      this._logAudit(orgId, 'note_added', '', `Note added: ${content.substring(0, 50)}`);
+      utils.showToast('Note added', 'success');
+      const org = STATE.allOrganisations.find(o => o.id === orgId);
+      if (org) this.openCompanyProfile(orgId, org.company_name);
+    } catch (e) { utils.showToast('Error: ' + e.message, 'error'); }
+  },
+
+  async deleteThreadedNote(noteId, orgId) {
+    if (!confirm('Delete this note?')) return;
+    try {
+      await STATE.client.from('organisation_notes').delete().eq('id', noteId);
+      utils.showToast('Note deleted', 'success');
+      const org = STATE.allOrganisations.find(o => o.id === orgId);
+      if (org) this.openCompanyProfile(orgId, org.company_name);
+    } catch (e) { utils.showToast('Error: ' + e.message, 'error'); }
+  },
+
+  async togglePinNote(noteId, pinned, orgId) {
+    try {
+      await STATE.client.from('organisation_notes').update({ pinned: !pinned }).eq('id', noteId);
+      const org = STATE.allOrganisations.find(o => o.id === orgId);
+      if (org) this.openCompanyProfile(orgId, org.company_name);
+    } catch (e) { utils.showToast('Error: ' + e.message, 'error'); }
+  },
+
+  renderThreadedNotes(notes, orgId) {
+    if (notes.length === 0) return '<p class="text-muted small mb-0">No notes yet. Add one below.</p>';
+    return `<div class="list-group list-group-flush" style="max-height: 300px; overflow-y: auto;">
+      ${notes.map(n => `<div class="list-group-item px-0 py-2 border-0 ${n.pinned ? 'bg-warning-subtle' : ''}">
+        <div class="d-flex align-items-start">
+          ${n.pinned ? '<i class="bi bi-pin-fill text-warning me-2 mt-1"></i>' : '<i class="bi bi-chat-left-text text-muted me-2 mt-1"></i>'}
+          <div class="flex-grow-1">
+            <div class="small">${utils.escapeHtml(n.content)}</div>
+            <div class="text-muted" style="font-size: 0.7rem;">
+              <i class="bi bi-person me-1"></i>${utils.escapeHtml(n.author || 'Unknown')}
+              &middot; ${this._timeAgo(new Date(n.created_at))}
+            </div>
+          </div>
+          <div class="btn-group btn-group-sm">
+            <button class="btn btn-sm btn-outline-warning py-0" onclick="orgsModule.togglePinNote('${n.id}', ${n.pinned}, '${orgId}')" title="${n.pinned ? 'Unpin' : 'Pin'}"><i class="bi bi-pin"></i></button>
+            <button class="btn btn-sm btn-outline-danger py-0" onclick="orgsModule.deleteThreadedNote('${n.id}', '${orgId}')"><i class="bi bi-trash"></i></button>
+          </div>
+        </div>
+      </div>`).join('')}
+    </div>`;
+  },
+
+  // ============================================
+  // FEATURE 9: SPONSORSHIP PACKAGE MANAGEMENT
+  // ============================================
+  async getSponsorshipPackages(orgId) {
+    try {
+      const { data, error } = await STATE.client.from('sponsorship_packages')
+        .select('*').eq('organisation_id', orgId)
+        .order('created_at', { ascending: false });
+      if (error) throw error;
+      return data || [];
+    } catch (e) { return []; }
+  },
+
+  async addSponsorshipPackage(orgId) {
+    const pkgName = document.getElementById('spkgName')?.value.trim();
+    const tier = document.getElementById('spkgTier')?.value;
+    const amount = parseFloat(document.getElementById('spkgAmount')?.value) || 0;
+    const startDate = document.getElementById('spkgStartDate')?.value || null;
+    const endDate = document.getElementById('spkgEndDate')?.value || null;
+    const renewalDate = document.getElementById('spkgRenewalDate')?.value || null;
+    const schedule = document.getElementById('spkgSchedule')?.value || 'one_time';
+    const benefitsRaw = document.getElementById('spkgBenefits')?.value.trim() || '';
+    const benefits = benefitsRaw ? benefitsRaw.split('\n').filter(b => b.trim()) : [];
+
+    if (!pkgName) { utils.showToast('Enter package name', 'warning'); return; }
+    try {
+      const { error } = await STATE.client.from('sponsorship_packages').insert([{
+        organisation_id: orgId, package_name: pkgName, tier, amount,
+        start_date: startDate, end_date: endDate, renewal_date: renewalDate,
+        payment_schedule: schedule, benefits: JSON.stringify(benefits), status: 'active'
+      }]);
+      if (error) throw error;
+      utils.showToast('Package added', 'success');
+      const org = STATE.allOrganisations.find(o => o.id === orgId);
+      if (org) this.openCompanyProfile(orgId, org.company_name);
+    } catch (e) { utils.showToast('Error: ' + e.message, 'error'); }
+  },
+
+  async deleteSponsorshipPackage(pkgId, orgId) {
+    if (!confirm('Delete this sponsorship package?')) return;
+    try {
+      await STATE.client.from('sponsorship_packages').delete().eq('id', pkgId);
+      utils.showToast('Package deleted', 'success');
+      const org = STATE.allOrganisations.find(o => o.id === orgId);
+      if (org) this.openCompanyProfile(orgId, org.company_name);
+    } catch (e) { utils.showToast('Error: ' + e.message, 'error'); }
+  },
+
+  renderSponsorshipPackages(packages, orgId) {
+    if (packages.length === 0) return '<p class="text-muted small mb-0">No sponsorship packages</p>';
+    const statusColors = { active: 'success', expired: 'danger', pending: 'warning', cancelled: 'secondary' };
+    return packages.map(pkg => {
+      let benefits = [];
+      try { benefits = typeof pkg.benefits === 'string' ? JSON.parse(pkg.benefits) : (pkg.benefits || []); } catch (e) { benefits = []; }
+      const isExpiring = pkg.renewal_date && new Date(pkg.renewal_date) < new Date(Date.now() + 30 * 86400000);
+      return `<div class="card mb-2 ${isExpiring ? 'border-warning' : ''}">
+        <div class="card-body p-2">
+          <div class="d-flex justify-content-between align-items-start">
+            <div>
+              <h6 class="mb-1 small fw-bold">${utils.escapeHtml(pkg.package_name)}
+                ${pkg.tier ? `<span class="badge bg-warning-subtle text-warning ms-1">${utils.escapeHtml(pkg.tier)}</span>` : ''}
+                <span class="badge bg-${statusColors[pkg.status] || 'secondary'} ms-1">${pkg.status}</span>
+              </h6>
+              <div class="small text-muted">
+                £${parseFloat(pkg.amount || 0).toLocaleString()} &middot; ${pkg.payment_schedule || 'one-time'}
+                ${pkg.start_date ? ` &middot; ${new Date(pkg.start_date).toLocaleDateString('en-GB')}` : ''}
+                ${pkg.end_date ? ` - ${new Date(pkg.end_date).toLocaleDateString('en-GB')}` : ''}
+              </div>
+              ${isExpiring ? `<div class="text-warning small fw-semibold mt-1"><i class="bi bi-exclamation-triangle me-1"></i>Renewal: ${new Date(pkg.renewal_date).toLocaleDateString('en-GB')}</div>` : ''}
+              ${benefits.length > 0 ? `<div class="mt-1">${benefits.map(b => `<span class="badge bg-light text-dark me-1 mb-1" style="font-size:0.65rem;">${utils.escapeHtml(b)}</span>`).join('')}</div>` : ''}
+            </div>
+            <button class="btn btn-sm btn-outline-danger py-0" onclick="orgsModule.deleteSponsorshipPackage('${pkg.id}','${orgId}')"><i class="bi bi-trash"></i></button>
+          </div>
+        </div>
+      </div>`;
+    }).join('');
+  },
+
+  // ============================================
+  // FEATURE 10: MAP VIEW FOR REGIONAL ANALYSIS
+  // ============================================
+  showMapView() {
+    const regions = {};
+    const counties = {};
+    STATE.filteredOrganisations.forEach(org => {
+      const r = org.region || 'Unknown';
+      const c = org.county || 'Unknown';
+      regions[r] = (regions[r] || 0) + 1;
+      counties[c] = (counties[c] || 0) + 1;
+    });
+
+    const maxRegionCount = Math.max(...Object.values(regions), 1);
+    const sortedRegions = Object.entries(regions).sort((a, b) => b[1] - a[1]);
+    const sortedCounties = Object.entries(counties).sort((a, b) => b[1] - a[1]).slice(0, 25);
+
+    const getHeatColor = (count) => {
+      const intensity = Math.floor((count / maxRegionCount) * 255);
+      return `rgb(${255 - intensity}, ${Math.floor(intensity * 0.6)}, ${Math.floor(intensity * 0.3)})`;
+    };
+
+    const html = `
+      <div class="row">
+        <div class="col-md-6">
+          <h6 class="fw-semibold mb-3"><i class="bi bi-geo-alt me-2"></i>Regional Distribution</h6>
+          <div style="max-height: 400px; overflow-y: auto;">
+            ${sortedRegions.map(([region, count]) => {
+              const pct = ((count / STATE.filteredOrganisations.length) * 100).toFixed(1);
+              return `<div class="d-flex align-items-center mb-2 cursor-pointer" onclick="document.getElementById('orgsRegionFilter').value='${utils.escapeHtml(region)}'; orgsModule.filterOrganisations(); bootstrap.Modal.getInstance(document.getElementById('dynamicOrgModal'))?.hide();" style="cursor:pointer;">
+                <div class="me-2" style="width: 20px; height: 20px; border-radius: 4px; background: ${getHeatColor(count)};"></div>
+                <div class="flex-grow-1 small fw-semibold">${utils.escapeHtml(region)}</div>
+                <div class="text-end">
+                  <span class="badge bg-primary">${count}</span>
+                  <span class="text-muted small ms-1">(${pct}%)</span>
+                </div>
+              </div>`;
+            }).join('')}
+          </div>
+        </div>
+        <div class="col-md-6">
+          <h6 class="fw-semibold mb-3"><i class="bi bi-pin-map me-2"></i>Top Counties/Cities</h6>
+          <div style="max-height: 400px; overflow-y: auto;">
+            ${sortedCounties.map(([county, count]) => {
+              const pct = ((count / STATE.filteredOrganisations.length) * 100).toFixed(1);
+              const barWidth = (count / sortedCounties[0][1]) * 100;
+              return `<div class="mb-2">
+                <div class="d-flex justify-content-between small">
+                  <span class="fw-semibold">${utils.escapeHtml(county)}</span>
+                  <span>${count} (${pct}%)</span>
+                </div>
+                <div class="progress" style="height: 6px;">
+                  <div class="progress-bar bg-info" style="width: ${barWidth}%"></div>
+                </div>
+              </div>`;
+            }).join('')}
+          </div>
+        </div>
+      </div>
+      <div class="mt-3 pt-3 border-top">
+        <h6 class="fw-semibold mb-2"><i class="bi bi-bar-chart me-2"></i>Coverage Summary</h6>
+        <div class="row text-center">
+          <div class="col-3">
+            <div class="fw-bold text-primary fs-5">${sortedRegions.length}</div>
+            <div class="text-muted small">Regions</div>
+          </div>
+          <div class="col-3">
+            <div class="fw-bold text-info fs-5">${sortedCounties.length}</div>
+            <div class="text-muted small">Counties</div>
+          </div>
+          <div class="col-3">
+            <div class="fw-bold text-success fs-5">${sortedRegions[0] ? sortedRegions[0][0] : '-'}</div>
+            <div class="text-muted small">Top Region</div>
+          </div>
+          <div class="col-3">
+            <div class="fw-bold text-warning fs-5">${sortedRegions.length > 0 ? sortedRegions[sortedRegions.length - 1][0] : '-'}</div>
+            <div class="text-muted small">Least Covered</div>
+          </div>
+        </div>
+      </div>
+    `;
+
+    this._showDynamicModal('Map View - Regional Analysis', html, 'bi-map', 'modal-lg');
+  },
+
+  // ============================================
+  // QUICK WIN: KEYBOARD SHORTCUTS
+  // ============================================
+  _keyboardShortcutsEnabled: false,
+  _selectedRowIndex: -1,
+
+  initKeyboardShortcuts() {
+    if (this._keyboardShortcutsEnabled) return;
+    this._keyboardShortcutsEnabled = true;
+
+    document.addEventListener('keydown', (e) => {
+      // Only active when organisations tab is visible
+      const orgsTab = document.getElementById('organisations');
+      if (!orgsTab || !orgsTab.classList.contains('active')) return;
+      // Don't intercept when typing in inputs
+      if (['INPUT', 'TEXTAREA', 'SELECT'].includes(e.target.tagName)) return;
+
+      const rows = document.querySelectorAll('#orgsTableBody tr');
+      if (rows.length === 0) return;
+
+      if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        this._selectedRowIndex = Math.min(this._selectedRowIndex + 1, rows.length - 1);
+        this._highlightRow(rows);
+      } else if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        this._selectedRowIndex = Math.max(this._selectedRowIndex - 1, 0);
+        this._highlightRow(rows);
+      } else if (e.key === 'Enter' && this._selectedRowIndex >= 0) {
+        e.preventDefault();
+        const row = rows[this._selectedRowIndex];
+        const link = row?.querySelector('a.text-primary');
+        if (link) link.click();
+      } else if (e.key === 'Escape') {
+        // Close any open modal
+        const openModal = document.querySelector('.modal.show');
+        if (openModal) {
+          bootstrap.Modal.getInstance(openModal)?.hide();
+        } else {
+          this._selectedRowIndex = -1;
+          this._highlightRow(rows);
+        }
+      } else if (e.key === '/' && !e.ctrlKey && !e.metaKey) {
+        e.preventDefault();
+        document.getElementById('orgsSearchBox')?.focus();
+      }
+    });
+  },
+
+  _highlightRow(rows) {
+    rows.forEach((row, i) => {
+      row.style.outline = i === this._selectedRowIndex ? '2px solid #0d6efd' : '';
+      row.style.outlineOffset = i === this._selectedRowIndex ? '-2px' : '';
+      if (i === this._selectedRowIndex) row.scrollIntoView({ block: 'nearest' });
+    });
+  },
+
+  // ============================================
+  // QUICK WIN: DUPLICATE DETECTION ON ADD/IMPORT
+  // ============================================
+  checkDuplicateOnEntry(companyName) {
+    if (!companyName || companyName.length < 3) return null;
+    const dupes = this.findDuplicates(companyName);
+    if (dupes.length > 0) {
+      return dupes.map(d => d.company_name).slice(0, 5);
+    }
+    return null;
+  },
+
+  // ============================================
+  // QUICK WIN: LAST CONTACTED COLUMN HELPER
+  // ============================================
+  async loadLastContactedDates() {
+    try {
+      const { data } = await STATE.client.from('organisation_comms_log')
+        .select('organisation_id, created_at')
+        .order('created_at', { ascending: false });
+      const lastContacted = {};
+      (data || []).forEach(r => {
+        if (!lastContacted[r.organisation_id]) {
+          lastContacted[r.organisation_id] = r.created_at;
+        }
+      });
+      this._lastContactedMap = lastContacted;
+    } catch (e) {
+      this._lastContactedMap = {};
+    }
+  },
+
+  _lastContactedMap: {},
+
+  getLastContacted(orgId) {
+    return this._lastContactedMap[orgId] || null;
   },
 
   // ============================================

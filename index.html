@@ -1525,6 +1525,22 @@
                 <h3 class="mb-0 fw-bold text-warning" id="orgsMissingLogo" style="cursor:pointer" title="Click to filter" onclick="document.getElementById('orgsSearchBox').value=''; orgsModule._filterMissingField='logo_url'; orgsModule.filterOrganisations();">0</h3>
               </div>
               <div class="col">
+                <h6 class="text-muted mb-1 small">Sponsors</h6>
+                <h3 class="mb-0 fw-bold text-purple" id="orgsSponsorCount" style="color:#6f42c1;">0</h3>
+              </div>
+              <div class="col">
+                <h6 class="text-muted mb-1 small">At Risk</h6>
+                <h3 class="mb-0 fw-bold text-danger" id="orgsAtRiskCount" style="cursor:pointer" title="Click to filter stale" onclick="document.getElementById('orgsDateFilter').value='stale'; orgsModule.filterOrganisations();">0</h3>
+              </div>
+              <div class="col">
+                <h6 class="text-muted mb-1 small">Avg Engagement</h6>
+                <h5 class="mb-0 fw-semibold text-success" id="orgsAvgEngagement">0%</h5>
+              </div>
+              <div class="col">
+                <h6 class="text-muted mb-1 small">Top Tier</h6>
+                <h6 class="mb-0 fw-semibold text-warning" id="orgsTopTier">-</h6>
+              </div>
+              <div class="col">
                 <h6 class="text-muted mb-1 small">Last Updated</h6>
                 <p class="mb-0 small" id="orgsLastUpdated">-</p>
               </div>
@@ -1746,6 +1762,12 @@
               <button class="btn btn-sm btn-outline-warning" onclick="orgsModule.showDuplicateCheck()" title="Check Duplicates">
                 <i class="bi bi-files"></i>
               </button>
+              <button class="btn btn-sm btn-outline-info" id="kanbanToggleBtn" onclick="orgsModule.toggleKanbanView()" title="Kanban Pipeline View">
+                <i class="bi bi-kanban"></i>
+              </button>
+              <button class="btn btn-sm btn-outline-success" onclick="orgsModule.showMapView()" title="Map View">
+                <i class="bi bi-map"></i>
+              </button>
               <button class="btn btn-sm btn-outline-info" onclick="orgsModule.showAnalyticsDashboard()" title="Analytics & Reports">
                 <i class="bi bi-bar-chart"></i>
               </button>
@@ -1764,8 +1786,11 @@
       </div>
     </div>
 
+    <!-- Kanban Pipeline Board (Feature 5) -->
+    <div id="orgKanbanBoard" style="display: none;" class="mb-4"></div>
+
     <!-- Clean Table with Narrow Contact Column -->
-    <div class="card border-0 shadow-sm">
+    <div class="card border-0 shadow-sm" id="orgTableContainer">
       <div class="card-header bg-white border-0 py-2">
         <div class="d-flex justify-content-between align-items-center">
           <h6 class="mb-0 fw-semibold">
@@ -1816,15 +1841,21 @@
                 <th style="width: 6%; display: none;" id="phoneColHeader" onclick="orgsModule.sortBy('phone')" class="cursor-pointer">
                   Phone <i class="bi bi-arrow-down-up text-muted ms-1 small" data-sort-icon="phone"></i>
                 </th>
-                <th style="width: 7%; cursor: pointer; text-align: center;" onclick="orgsModule.sortBy('updated')">
+                <th style="width: 6%; cursor: pointer; text-align: center;" onclick="orgsModule.sortBy('updated')">
                   Updated <i class="bi bi-arrow-down-up text-muted ms-1 small" data-sort-icon="updated"></i>
+                </th>
+                <th style="width: 6%; text-align: center;" title="Last Contacted">
+                  <i class="bi bi-envelope-check" title="Last Contacted"></i>
+                </th>
+                <th style="width: 3%; text-align: center;" title="Health Status">
+                  <i class="bi bi-heart-pulse" title="Health"></i>
                 </th>
                 <th style="width: 5%;" class="text-center">Actions</th>
               </tr>
             </thead>
             <tbody id="orgsTableBody">
               <tr>
-                <td colspan="14" class="text-center py-5">
+                <td colspan="16" class="text-center py-5">
                   <div class="text-muted">
                     <div class="spinner-border spinner-border-sm mb-2" role="status"></div>
                     <p class="mb-0 small">Loading organisations...</p>

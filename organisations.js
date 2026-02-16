@@ -2732,6 +2732,10 @@ updateCountyFilterByRegion() {
           valA = tierOrder[a.tier] || 0;
           valB = tierOrder[b.tier] || 0;
           break;
+        case 'phone':
+          valA = (a.contact_phone || '').toLowerCase();
+          valB = (b.contact_phone || '').toLowerCase();
+          break;
         case 'updated':
           valA = new Date(a.updated_at || a.created_at || 0).getTime();
           valB = new Date(b.updated_at || b.created_at || 0).getTime();
@@ -2881,32 +2885,7 @@ updateCountyFilterByRegion() {
   },
 
   // ============================================
-  // SAVE NOTES
-  // ============================================
-  async saveOrgNotes(orgId) {
-    const notes = document.getElementById('editOrgNotes')?.value?.trim() || '';
-    try {
-      const { error } = await STATE.client
-        .from('organisations')
-        .update({ notes: notes || null })
-        .eq('id', orgId);
-
-      if (error) throw error;
-
-      // Update local state
-      const org = STATE.allOrganisations.find(o => o.id === orgId);
-      if (org) org.notes = notes;
-
-      utils.showToast('Notes saved', 'success');
-    } catch (error) {
-      console.error('Error saving notes:', error);
-      utils.showToast('Error saving notes: ' + error.message, 'error');
-    }
-  },
-
-  // ============================================
   // UPDATE COMPANY STATUS
-  // ============================================
   // ============================================
   // QUICK INLINE STATUS UPDATE
   // ============================================
@@ -3318,22 +3297,7 @@ updateCountyFilterByRegion() {
       </div></div>`;
     });
 
-    // Show in a modal
-    const modalHtml = `<div class="modal fade" id="duplicateCheckModal" tabindex="-1">
-      <div class="modal-dialog modal-lg"><div class="modal-content">
-        <div class="modal-header">
-          <h5 class="modal-title"><i class="bi bi-files me-2"></i>Duplicate Detection</h5>
-          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-        </div>
-        <div class="modal-body" style="max-height: 500px; overflow-y: auto;">${html}</div>
-        <div class="modal-footer"><button class="btn btn-secondary" data-bs-dismiss="modal">Close</button></div>
-      </div></div>
-    </div>`;
-
-    // Remove existing and create new
-    document.getElementById('duplicateCheckModal')?.remove();
-    document.body.insertAdjacentHTML('beforeend', modalHtml);
-    new bootstrap.Modal(document.getElementById('duplicateCheckModal')).show();
+    this._showDynamicModal('Duplicate Detection', html, 'bi-files', 'modal-lg');
   },
 
   // ============================================
@@ -3394,20 +3358,7 @@ updateCountyFilterByRegion() {
       }).join('')}
     </div>`;
 
-    document.getElementById('duplicateCheckModal')?.remove();
-    const modalHtml = `<div class="modal fade" id="duplicateCheckModal" tabindex="-1">
-      <div class="modal-dialog"><div class="modal-content">
-        <div class="modal-header">
-          <h5 class="modal-title"><i class="bi bi-envelope me-2"></i>Email ${utils.escapeHtml(org.company_name || '')}</h5>
-          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-        </div>
-        <div class="modal-body">${html}</div>
-        <div class="modal-footer"><button class="btn btn-secondary" data-bs-dismiss="modal">Close</button></div>
-      </div></div>
-    </div>`;
-
-    document.body.insertAdjacentHTML('beforeend', modalHtml);
-    new bootstrap.Modal(document.getElementById('duplicateCheckModal')).show();
+    this._showDynamicModal(`Email ${utils.escapeHtml(org.company_name || '')}`, html, 'bi-envelope');
   },
 
   // ============================================
@@ -3736,6 +3687,8 @@ updateCountyFilterByRegion() {
       }
 
       utils.showLoading(`Fetching logos: ${i + 1}/${orgs.length}`);
+      // Small delay between orgs to avoid rate limiting from logo services
+      if (i < orgs.length - 1) await new Promise(r => setTimeout(r, 300));
     }
 
     utils.hideLoading();
@@ -4692,18 +4645,25 @@ updateCountyFilterByRegion() {
     try {
       utils.showLoading();
       const orgIds = Array.from(this.selectedOrgs);
-      let count = 0;
+      // Build updates for orgs that need the tag
+      const updates = [];
       for (const id of orgIds) {
         const org = STATE.allOrganisations.find(o => o.id === id);
         const currentTags = org?.tags || [];
         if (!currentTags.includes(tag)) {
           const newTags = [...currentTags, tag];
-          await STATE.client.from('organisations').update({ tags: newTags }).eq('id', id);
-          if (org) org.tags = newTags;
-          count++;
+          updates.push({ id, org, newTags });
         }
       }
-      utils.showToast(`Tag "${tag}" added to ${count} org(s)`, 'success');
+      // Execute in parallel batches of 5
+      for (let i = 0; i < updates.length; i += 5) {
+        const batch = updates.slice(i, i + 5);
+        await Promise.all(batch.map(({ id, org, newTags }) => {
+          if (org) org.tags = newTags;
+          return STATE.client.from('organisations').update({ tags: newTags }).eq('id', id);
+        }));
+      }
+      utils.showToast(`Tag "${tag}" added to ${updates.length} org(s)`, 'success');
       this.renderOrganisations();
     } catch (e) { utils.showToast('Error: ' + e.message, 'error'); }
     finally { utils.hideLoading(); }
@@ -4716,18 +4676,25 @@ updateCountyFilterByRegion() {
     try {
       utils.showLoading();
       const orgIds = Array.from(this.selectedOrgs);
-      let count = 0;
+      // Build updates for orgs that have the tag
+      const updates = [];
       for (const id of orgIds) {
         const org = STATE.allOrganisations.find(o => o.id === id);
         const currentTags = org?.tags || [];
         if (currentTags.includes(tag)) {
           const newTags = currentTags.filter(t => t !== tag);
-          await STATE.client.from('organisations').update({ tags: newTags }).eq('id', id);
-          if (org) org.tags = newTags;
-          count++;
+          updates.push({ id, org, newTags });
         }
       }
-      utils.showToast(`Tag "${tag}" removed from ${count} org(s)`, 'success');
+      // Execute in parallel batches of 5
+      for (let i = 0; i < updates.length; i += 5) {
+        const batch = updates.slice(i, i + 5);
+        await Promise.all(batch.map(({ id, org, newTags }) => {
+          if (org) org.tags = newTags;
+          return STATE.client.from('organisations').update({ tags: newTags }).eq('id', id);
+        }));
+      }
+      utils.showToast(`Tag "${tag}" removed from ${updates.length} org(s)`, 'success');
       this.renderOrganisations();
     } catch (e) { utils.showToast('Error: ' + e.message, 'error'); }
     finally { utils.hideLoading(); }

@@ -24,8 +24,19 @@ CREATE TABLE IF NOT EXISTS org_audit_log (
   company_name TEXT,
   action TEXT NOT NULL,
   details TEXT,
+  user_email VARCHAR(255),
+  old_value TEXT,
+  new_value TEXT,
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
+
+-- Patch columns if table already existed without them
+ALTER TABLE org_audit_log ADD COLUMN IF NOT EXISTS user_email VARCHAR(255);
+ALTER TABLE org_audit_log ADD COLUMN IF NOT EXISTS old_value TEXT;
+ALTER TABLE org_audit_log ADD COLUMN IF NOT EXISTS new_value TEXT;
+
+CREATE INDEX IF NOT EXISTS idx_org_audit_log_org ON org_audit_log(org_id);
+CREATE INDEX IF NOT EXISTS idx_org_audit_log_created ON org_audit_log(created_at DESC);
 
 ALTER TABLE org_audit_log ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "Allow all access to org_audit_log" ON org_audit_log;

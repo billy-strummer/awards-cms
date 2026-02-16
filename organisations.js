@@ -1592,15 +1592,16 @@ updateCountyFilterByRegion() {
         <div class="mt-4">
           <h6 class="text-muted mb-3"><i class="bi bi-speedometer2 me-2"></i>Data Completeness</h6>
           <div class="card"><div class="card-body">
+            ${(() => { const _cs = this.calculateCompletenessScore(org); return `
             <div class="d-flex align-items-center gap-3">
               <div class="progress flex-grow-1" style="height: 24px;">
-                <div class="progress-bar ${this.calculateCompletenessScore(org) >= 70 ? 'bg-success' : this.calculateCompletenessScore(org) >= 40 ? 'bg-warning' : 'bg-danger'}" style="width: ${this.calculateCompletenessScore(org)}%">
-                  ${this.calculateCompletenessScore(org)}%
+                <div class="progress-bar ${_cs >= 70 ? 'bg-success' : _cs >= 40 ? 'bg-warning' : 'bg-danger'}" style="width: ${_cs}%">
+                  ${_cs}%
                 </div>
               </div>
-              <span class="fw-bold">${this.calculateCompletenessScore(org)}%</span>
+              <span class="fw-bold">${_cs}%</span>
             </div>
-            <small class="text-muted mt-1 d-block">Based on: name, email, contact, phone, website, logo, sector, region, address, description</small>
+            <small class="text-muted mt-1 d-block">Based on: name, email, contact, phone, website, logo, sector, region, address, description</small>`; })()}
           </div></div>
         </div>
       `;
@@ -1861,9 +1862,9 @@ updateCountyFilterByRegion() {
    * @param {string} orgId - Organisation ID
    */
   async saveWinnerProfile(orgId) {
-    const intro = document.getElementById('winnerIntro').value.trim();
-    const videoId = document.getElementById('winnerVideoId').value.trim();
-    const voteUrl = document.getElementById('winnerVoteUrl').value.trim();
+    const intro = document.getElementById('winnerIntro')?.value?.trim() || '';
+    const videoId = document.getElementById('winnerVideoId')?.value?.trim() || '';
+    const voteUrl = document.getElementById('winnerVoteUrl')?.value?.trim() || '';
 
     try {
       utils.showLoading();
@@ -2246,7 +2247,7 @@ updateCountyFilterByRegion() {
       }
 
       // Close modal
-      bootstrap.Modal.getInstance(document.getElementById('uploadCompanyImagesModal')).hide();
+      bootstrap.Modal.getInstance(document.getElementById('uploadCompanyImagesModal'))?.hide();
 
       if (errorCount === 0) {
         utils.showToast(`${successCount} image(s) uploaded successfully!`, 'success');
@@ -2695,7 +2696,7 @@ updateCountyFilterByRegion() {
       if (error) throw error;
 
       utils.showToast('Company added successfully!', 'success');
-      bootstrap.Modal.getInstance(document.getElementById('addNewOrgModal')).hide();
+      bootstrap.Modal.getInstance(document.getElementById('addNewOrgModal'))?.hide();
       form.reset();
       await this.loadOrganisations();
 
@@ -3703,7 +3704,7 @@ updateCountyFilterByRegion() {
       if (org) org.tags = newTags;
       input.value = '';
       utils.showToast(`Tag "${tag}" added`, 'success');
-      await this.openCompanyProfile(orgId, org.company_name);
+      await this.openCompanyProfile(orgId, org?.company_name || '');
     } catch (error) {
       console.error('Error adding tag:', error);
       utils.showToast('Error adding tag: ' + error.message, 'error');
@@ -3724,7 +3725,7 @@ updateCountyFilterByRegion() {
 
       if (org) org.tags = newTags;
       utils.showToast(`Tag "${tag}" removed`, 'success');
-      await this.openCompanyProfile(orgId, org.company_name);
+      await this.openCompanyProfile(orgId, org?.company_name || '');
     } catch (error) {
       console.error('Error removing tag:', error);
       utils.showToast('Error removing tag: ' + error.message, 'error');
@@ -3931,7 +3932,7 @@ updateCountyFilterByRegion() {
               <button class="btn btn-primary btn-sm" onclick="
                 const val = document.getElementById('bulkFieldValue').value;
                 if (!val) { utils.showToast('Please select a value', 'warning'); return; }
-                bootstrap.Modal.getInstance(document.getElementById('bulkFieldModal')).hide();
+                bootstrap.Modal.getInstance(document.getElementById('bulkFieldModal'))?.hide();
                 orgsModule.bulkUpdateField('${field}', val);
               ">Apply</button>
             </div>
@@ -4426,7 +4427,7 @@ updateCountyFilterByRegion() {
       this._logImportHistory(filename, successCount, selectedCounty);
 
       // Close modal
-      bootstrap.Modal.getInstance(document.getElementById('csvImportModal')).hide();
+      bootstrap.Modal.getInstance(document.getElementById('csvImportModal'))?.hide();
 
       if (errorCount === 0) {
         const contactMsg = contactCount > 0 ? ` + ${contactCount} contacts` : '';
@@ -5160,6 +5161,7 @@ updateCountyFilterByRegion() {
 
     const org1 = STATE.allOrganisations.find(o => o.id === id1);
     const org2 = STATE.allOrganisations.find(o => o.id === id2);
+    if (!org1 || !org2) { utils.showToast('Could not find both organisations', 'error'); return; }
     const fields = ['company_name', 'contact_name', 'email', 'contact_phone', 'website', 'sector', 'region', 'address', 'catchment_area', 'description', 'tier', 'status', 'logo_url'];
 
     const merged = {};
@@ -7193,14 +7195,17 @@ updateCountyFilterByRegion() {
       const html = `
         <p class="small text-muted mb-3">Results for "<strong>${utils.escapeHtml(searchName)}</strong>" from Companies House</p>
         <div class="list-group">
-          ${items.map(c => `<div class="list-group-item">
+          ${items.map((c, idx) => `<div class="list-group-item">
             <div class="d-flex justify-content-between">
               <div>
                 <strong>${utils.escapeHtml(c.title)}</strong>
                 <div class="small text-muted">${utils.escapeHtml(c.company_number || '')} &middot; ${utils.escapeHtml(c.company_status || '')} &middot; ${utils.escapeHtml(c.date_of_creation || '')}</div>
                 ${c.address_snippet ? `<div class="small text-muted">${utils.escapeHtml(c.address_snippet)}</div>` : ''}
               </div>
-              <button class="btn btn-sm btn-outline-primary" onclick="orgsModule._applyCompaniesHouseData('${orgId}', ${JSON.stringify({ address: c.address_snippet || '', company_number: c.company_number || '' }).replace(/'/g, "\\'")})">
+              <button class="btn btn-sm btn-outline-primary"
+                data-ch-address="${utils.escapeHtml(c.address_snippet || '')}"
+                data-ch-number="${utils.escapeHtml(c.company_number || '')}"
+                onclick="orgsModule._applyCompaniesHouseData('${orgId}', { address: this.dataset.chAddress, company_number: this.dataset.chNumber })">
                 <i class="bi bi-arrow-down-circle me-1"></i>Apply
               </button>
             </div>

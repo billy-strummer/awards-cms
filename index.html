@@ -12,6 +12,13 @@
   <!-- Custom Styles -->
   <link rel="stylesheet" href="styles.css">
   <link rel="stylesheet" href="modern-theme.css">
+  <style>
+    /* Inline edit visual cue - pencil icon on hover */
+    .editable-cell { position: relative; cursor: pointer; }
+    .editable-cell .edit-hint { display: none; position: absolute; right: 2px; top: 50%; transform: translateY(-50%); color: #6c757d; font-size: 0.7rem; opacity: 0.6; }
+    .editable-cell:hover .edit-hint { display: inline-block; }
+    .editable-cell:hover { background-color: rgba(13,110,253,0.04); }
+  </style>
 </head>
 <body>
 
@@ -1511,48 +1518,52 @@
       <div class="col-12">
         <div class="card border-0 shadow-sm">
           <div class="card-body py-3">
-            <div class="row text-center">
-              <div class="col">
+            <!-- Row 1: Core Counts -->
+            <div class="row text-center g-2 mb-2">
+              <div class="col-xl col-md-2 col-4">
                 <h6 class="text-muted mb-1 small">Total Companies</h6>
                 <h3 class="mb-0 fw-bold text-primary" id="orgsTotalCount">0</h3>
               </div>
-              <div class="col">
+              <div class="col-xl col-md-2 col-4">
                 <h6 class="text-muted mb-1 small">With Awards</h6>
                 <h3 class="mb-0 fw-bold text-success" id="orgsWithAwards">0</h3>
               </div>
-              <div class="col">
+              <div class="col-xl col-md-2 col-4">
                 <h6 class="text-muted mb-1 small">New This Month</h6>
                 <h3 class="mb-0 fw-bold text-info" id="orgsNewThisMonth">0</h3>
               </div>
-              <div class="col">
-                <h6 class="text-muted mb-1 small">Top Sector</h6>
-                <h5 class="mb-0 fw-semibold text-info" id="orgsTopSector">-</h5>
+              <div class="col-xl col-md-2 col-4">
+                <h6 class="text-muted mb-1 small">Sponsors</h6>
+                <h3 class="mb-0 fw-bold" id="orgsSponsorCount" style="color:#6f42c1;">0</h3>
               </div>
-              <div class="col">
+              <div class="col-xl col-md-2 col-4">
                 <h6 class="text-muted mb-1 small">Missing Email</h6>
                 <h3 class="mb-0 fw-bold text-warning" id="orgsMissingEmail" style="cursor:pointer" title="Click to filter" onclick="document.getElementById('orgsSearchBox').value=''; orgsModule._filterMissingField='email'; orgsModule.filterOrganisations();">0</h3>
               </div>
-              <div class="col">
+              <div class="col-xl col-md-2 col-4">
                 <h6 class="text-muted mb-1 small">Missing Logo</h6>
                 <h3 class="mb-0 fw-bold text-warning" id="orgsMissingLogo" style="cursor:pointer" title="Click to filter" onclick="document.getElementById('orgsSearchBox').value=''; orgsModule._filterMissingField='logo_url'; orgsModule.filterOrganisations();">0</h3>
               </div>
-              <div class="col">
-                <h6 class="text-muted mb-1 small">Sponsors</h6>
-                <h3 class="mb-0 fw-bold text-purple" id="orgsSponsorCount" style="color:#6f42c1;">0</h3>
-              </div>
-              <div class="col">
+            </div>
+            <!-- Row 2: Quality Metrics -->
+            <div class="row text-center g-2">
+              <div class="col-xl col-md-2 col-4">
                 <h6 class="text-muted mb-1 small">At Risk</h6>
                 <h3 class="mb-0 fw-bold text-danger" id="orgsAtRiskCount" style="cursor:pointer" title="Click to filter stale" onclick="document.getElementById('orgsDateFilter').value='stale'; orgsModule.filterOrganisations();">0</h3>
               </div>
-              <div class="col">
+              <div class="col-xl col-md-2 col-4">
                 <h6 class="text-muted mb-1 small">Avg Engagement</h6>
                 <h5 class="mb-0 fw-semibold text-success" id="orgsAvgEngagement">0%</h5>
               </div>
-              <div class="col">
+              <div class="col-xl col-md-2 col-4">
+                <h6 class="text-muted mb-1 small">Top Sector</h6>
+                <h5 class="mb-0 fw-semibold text-info text-truncate" id="orgsTopSector" title="">-</h5>
+              </div>
+              <div class="col-xl col-md-2 col-4">
                 <h6 class="text-muted mb-1 small">Top Tier</h6>
                 <h6 class="mb-0 fw-semibold text-warning" id="orgsTopTier">-</h6>
               </div>
-              <div class="col">
+              <div class="col-xl col-md-2 col-4">
                 <h6 class="text-muted mb-1 small">Last Updated</h6>
                 <p class="mb-0 small" id="orgsLastUpdated">-</p>
               </div>
@@ -1562,17 +1573,13 @@
               <div class="d-flex align-items-center justify-content-center gap-1 flex-wrap small">
                 <span class="text-muted fw-semibold">Pipeline:</span>
                 <span class="badge bg-secondary" id="orgsPipelineProspect" title="Prospects">0 Prospects</span>
-                <span class="text-muted" style="font-size: 0.65rem;" id="orgsConvProspectEntrant" title="Conversion rate">0%</span>
-                <i class="bi bi-chevron-right text-muted"></i>
+                <span class="badge bg-light text-dark border" style="font-size: 0.7rem;" id="orgsConvProspectEntrant" title="Conversion rate"><i class="bi bi-arrow-right me-1"></i>0%</span>
                 <span class="badge bg-info" id="orgsPipelineEntrant" title="Entrants">0 Entrants</span>
-                <span class="text-muted" style="font-size: 0.65rem;" id="orgsConvEntrantNominee" title="Conversion rate">0%</span>
-                <i class="bi bi-chevron-right text-muted"></i>
+                <span class="badge bg-light text-dark border" style="font-size: 0.7rem;" id="orgsConvEntrantNominee" title="Conversion rate"><i class="bi bi-arrow-right me-1"></i>0%</span>
                 <span class="badge bg-primary" id="orgsPipelineNominee" title="Nominees">0 Nominees</span>
-                <span class="text-muted" style="font-size: 0.65rem;" id="orgsConvNomineeShortlisted" title="Conversion rate">0%</span>
-                <i class="bi bi-chevron-right text-muted"></i>
+                <span class="badge bg-light text-dark border" style="font-size: 0.7rem;" id="orgsConvNomineeShortlisted" title="Conversion rate"><i class="bi bi-arrow-right me-1"></i>0%</span>
                 <span class="badge bg-warning text-dark" id="orgsPipelineShortlisted" title="Shortlisted">0 Shortlisted</span>
-                <span class="text-muted" style="font-size: 0.65rem;" id="orgsConvShortlistedWinner" title="Conversion rate">0%</span>
-                <i class="bi bi-chevron-right text-muted"></i>
+                <span class="badge bg-light text-dark border" style="font-size: 0.7rem;" id="orgsConvShortlistedWinner" title="Conversion rate"><i class="bi bi-arrow-right me-1"></i>0%</span>
                 <span class="badge bg-success" id="orgsPipelineWinner" title="Winners">0 Winners</span>
               </div>
             </div>
@@ -1605,10 +1612,6 @@
             <select class="form-select form-select-sm" id="orgsYearFilter"
                     onchange="orgsModule.filterOrganisations()">
               <option value="">All</option>
-              <option value="2026" selected>2026</option>
-              <option value="2025">2025</option>
-              <option value="2024">2024</option>
-              <option value="2023">2023</option>
             </select>
           </div>
 
@@ -1652,7 +1655,7 @@
             </label>
             <select class="form-select form-select-sm" id="orgsStatusFilter"
                     onchange="orgsModule.filterOrganisations()">
-              <option value="">Active</option>
+              <option value="">All (excl. Archived)</option>
               <option value="prospect">Prospect</option>
               <option value="entrant">Entrant</option>
               <option value="nominee">Nominee</option>
@@ -1765,33 +1768,30 @@
                 </button>
                 <ul class="dropdown-menu">
                   <li><a class="dropdown-item" href="#" onclick="orgsModule.exportToCSV()"><i class="bi bi-filetype-csv me-2"></i>Export CSV</a></li>
-                  <li><a class="dropdown-item" href="#" onclick="orgsModule.exportToExcel()"><i class="bi bi-file-earmark-spreadsheet me-2"></i>Export Excel (.xlsx)</a></li>
+                  <li><a class="dropdown-item" href="#" onclick="orgsModule.exportToExcel()"><i class="bi bi-file-earmark-spreadsheet me-2"></i>Export Excel (.xls)</a></li>
                 </ul>
               </div>
-              <button class="btn btn-sm btn-outline-secondary" id="togglePhoneColBtn" onclick="orgsModule.togglePhoneColumn()" title="Toggle Phone Column">
-                <i class="bi bi-telephone"></i>
-              </button>
-              <button class="btn btn-sm btn-outline-warning" onclick="orgsModule.showDuplicateCheck()" title="Check Duplicates">
-                <i class="bi bi-files"></i>
-              </button>
               <button class="btn btn-sm btn-outline-info" id="kanbanToggleBtn" onclick="orgsModule.toggleKanbanView()" title="Kanban Pipeline View">
-                <i class="bi bi-kanban"></i>
-              </button>
-              <button class="btn btn-sm btn-outline-success" onclick="orgsModule.showMapView()" title="Map View">
-                <i class="bi bi-map"></i>
+                <i class="bi bi-kanban me-1"></i><span class="d-none d-xl-inline">Kanban</span>
               </button>
               <button class="btn btn-sm btn-outline-info" onclick="orgsModule.showAnalyticsDashboard()" title="Analytics & Reports">
-                <i class="bi bi-bar-chart"></i>
+                <i class="bi bi-bar-chart me-1"></i><span class="d-none d-xl-inline">Analytics</span>
               </button>
               <button class="btn btn-sm btn-outline-danger" onclick="orgsModule.showDataQualityWizard()" title="Data Quality">
-                <i class="bi bi-shield-check"></i>
+                <i class="bi bi-shield-check me-1"></i><span class="d-none d-xl-inline">Quality</span>
               </button>
-              <button class="btn btn-sm btn-outline-dark" onclick="orgsModule.showGlobalAuditLog()" title="Audit Log">
-                <i class="bi bi-journal-text"></i>
-              </button>
-              <button class="btn btn-sm btn-outline-secondary" onclick="orgsModule.showImportHistory()" title="Import History">
-                <i class="bi bi-clock-history"></i>
-              </button>
+              <div class="dropdown d-inline-block">
+                <button class="btn btn-sm btn-outline-secondary dropdown-toggle" data-bs-toggle="dropdown" title="More Tools">
+                  <i class="bi bi-three-dots me-1"></i><span class="d-none d-xl-inline">More</span>
+                </button>
+                <ul class="dropdown-menu">
+                  <li><a class="dropdown-item" href="#" onclick="orgsModule.togglePhoneColumn()"><i class="bi bi-telephone me-2"></i>Toggle Phone Column</a></li>
+                  <li><a class="dropdown-item" href="#" onclick="orgsModule.showDuplicateCheck()"><i class="bi bi-files me-2"></i>Check Duplicates</a></li>
+                  <li><a class="dropdown-item" href="#" onclick="orgsModule.showMapView()"><i class="bi bi-map me-2"></i>Map View</a></li>
+                  <li><a class="dropdown-item" href="#" onclick="orgsModule.showGlobalAuditLog()"><i class="bi bi-journal-text me-2"></i>Audit Log</a></li>
+                  <li><a class="dropdown-item" href="#" onclick="orgsModule.showImportHistory()"><i class="bi bi-clock-history me-2"></i>Import History</a></li>
+                </ul>
+              </div>
             </div>
           </div>
         </div>
@@ -1879,9 +1879,9 @@
         </div>
       </div>
       
-      <!-- Pagination Footer (Optional) -->
+      <!-- Pagination Footer -->
       <div class="card-footer bg-white border-0 py-2">
-        <div class="d-flex justify-content-between align-items-center">
+        <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
           <small class="text-muted">
             Showing <span id="orgsShowing">0</span> of <span id="orgsTotal">0</span>
           </small>
@@ -1916,7 +1916,7 @@
                 </div>
                 <div class="col-md-6">
                   <label for="newCompanyCounty" class="form-label">County / City</label>
-                  <select class="form-select" id="newCompanyCounty">
+                  <select class="form-select" id="newCompanyCounty" onchange="orgsModule.autoPopulateRegionFromCounty()">
                     <option value="">-- Select --</option>
                     <optgroup label="England Counties">
                       <option>Bedfordshire</option><option>Berkshire</option><option>Buckinghamshire</option>
@@ -1960,9 +1960,31 @@
                 </div>
               </div>
               <div class="row mb-3">
-                <div class="col-md-6">
+                <div class="col-md-4">
                   <label for="newCompanyRegion" class="form-label">Region</label>
                   <input type="text" class="form-control" id="newCompanyRegion" placeholder="e.g. North West">
+                </div>
+                <div class="col-md-4">
+                  <label for="newCompanyStatus" class="form-label">Status</label>
+                  <select class="form-select" id="newCompanyStatus">
+                    <option value="prospect" selected>Prospect</option>
+                    <option value="entrant">Entrant</option>
+                    <option value="nominee">Nominee</option>
+                    <option value="shortlisted">Shortlisted</option>
+                    <option value="winner">Winner</option>
+                    <option value="sponsor">Sponsor</option>
+                    <option value="past_winner">Past Winner</option>
+                  </select>
+                </div>
+                <div class="col-md-4">
+                  <label for="newCompanyTier" class="form-label">Tier</label>
+                  <select class="form-select" id="newCompanyTier">
+                    <option value="">None</option>
+                    <option value="Bronze">Bronze</option>
+                    <option value="Silver">Silver</option>
+                    <option value="Gold">Gold</option>
+                    <option value="Platinum">Platinum</option>
+                  </select>
                 </div>
               </div>
               <div class="row mb-3">

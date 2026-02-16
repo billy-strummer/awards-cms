@@ -14,6 +14,9 @@ const orgsModule = {
   originalOrgData: null,
   currentOrgIdForLogo: null,
   currentOrgIdForImages: null,
+  // Pagination state
+  _currentPage: 1,
+  _pageSize: 50,
 
   /**
  * Load all organisations from database
@@ -231,8 +234,8 @@ async loadOrganisations() {
       set('orgsPipelineShortlisted', statusCounts.shortlisted + ' Shortlisted');
       set('orgsPipelineWinner', statusCounts.winner + ' Winners');
 
-      // Set conversion rate badges
-      const setConv = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val + '%'; };
+      // Set conversion rate badges (arrow + percentage)
+      const setConv = (id, val) => { const el = document.getElementById(id); if (el) el.innerHTML = `<i class="bi bi-arrow-right me-1"></i>${val}%`; };
       setConv('orgsConvProspectEntrant', convRates.prospect_to_entrant || 0);
       setConv('orgsConvEntrantNominee', convRates.entrant_to_nominee || 0);
       setConv('orgsConvNomineeShortlisted', convRates.nominee_to_shortlisted || 0);
@@ -273,6 +276,22 @@ async loadOrganisations() {
  * Populate filter dropdowns with unique values (Enhanced)
  */
 populateFilters() {
+  // Populate year filter dynamically
+  const years = [...new Set(STATE.allOrganisations
+    .map(o => o.year)
+    .filter(y => y)
+  )].sort((a, b) => b - a); // descending
+  const currentYear = new Date().getFullYear();
+  // Ensure current year is always included even if no data for it yet
+  if (!years.includes(currentYear)) years.unshift(currentYear);
+  const yearSelect = document.getElementById('orgsYearFilter');
+  if (yearSelect) {
+    yearSelect.innerHTML = '<option value="">All</option>' +
+      years.map(y => `<option value="${y}">${y}</option>`).join('');
+    // Default to current year
+    yearSelect.value = String(currentYear);
+  }
+
   // Populate sector filter
   const sectors = [...new Set(STATE.allOrganisations
     .map(o => o.sector)
@@ -495,6 +514,8 @@ updateCountyFilterByRegion() {
   // Clear the missing field filter after applying it once
   this._filterMissingField = null;
 
+  // Reset to page 1 when filters change
+  this._currentPage = 1;
   this.renderOrganisations();
 },
 
@@ -553,7 +574,18 @@ updateCountyFilterByRegion() {
     return;
   }
 
-  tbody.innerHTML = STATE.filteredOrganisations.map(org => {
+  // Pagination
+  const totalItems = STATE.filteredOrganisations.length;
+  const totalPages = Math.max(1, Math.ceil(totalItems / this._pageSize));
+  if (this._currentPage > totalPages) this._currentPage = totalPages;
+  const startIdx = (this._currentPage - 1) * this._pageSize;
+  const endIdx = Math.min(startIdx + this._pageSize, totalItems);
+  const pageOrgs = STATE.filteredOrganisations.slice(startIdx, endIdx);
+
+  // Update pagination footer
+  this._renderPaginationControls(totalItems, totalPages, startIdx, endIdx);
+
+  tbody.innerHTML = pageOrgs.map(org => {
     const isSelected = this.selectedOrgs.has(org.id);
     const awardsCount = org.awards_count || 0;
     const escapedName = utils.escapeHtml(org.company_name || '').replace(/'/g, "\\'");
@@ -585,25 +617,28 @@ updateCountyFilterByRegion() {
             </a>
           </div>
         </td>
-        <td style="cursor: pointer;" ondblclick="orgsModule.startInlineEdit('${org.id}', 'sector', '${utils.escapeHtml(org.sector || '').replace(/'/g, "\\'")}', this)" title="Double-click to edit">
+        <td class="editable-cell" ondblclick="orgsModule.startInlineEdit('${org.id}', 'sector', '${utils.escapeHtml(org.sector || '').replace(/'/g, "\\'")}', this)" title="Double-click to edit">
           <span class="badge bg-info-subtle text-info small">
             ${utils.escapeHtml(org.sector || '-')}
           </span>
+          <i class="bi bi-pencil edit-hint"></i>
         </td>
         <td>
           <span class="badge bg-primary-subtle text-primary small">
             ${utils.escapeHtml(org.county || '-')}
           </span>
         </td>
-        <td class="small" style="cursor: pointer;" ondblclick="orgsModule.startInlineEdit('${org.id}', 'contact', '${utils.escapeHtml(org.contact_name || '').replace(/'/g, "\\'")}', this)" title="Double-click to edit">
+        <td class="small editable-cell" ondblclick="orgsModule.startInlineEdit('${org.id}', 'contact', '${utils.escapeHtml(org.contact_name || '').replace(/'/g, "\\'")}', this)" title="Double-click to edit">
           ${utils.escapeHtml(org.contact_name ? (org.contact_name.length > 18 ? org.contact_name.substring(0, 18) + '...' : org.contact_name) : '-')}
+          <i class="bi bi-pencil edit-hint"></i>
         </td>
-        <td class="small" style="cursor: pointer;" ondblclick="orgsModule.startInlineEdit('${org.id}', 'email', '${utils.escapeHtml(org.email || '').replace(/'/g, "\\'")}', this)" title="Double-click to edit">
+        <td class="small editable-cell" ondblclick="orgsModule.startInlineEdit('${org.id}', 'email', '${utils.escapeHtml(org.email || '').replace(/'/g, "\\'")}', this)" title="Double-click to edit">
           ${org.email ?
             `<a href="mailto:${org.email}" class="text-decoration-none" title="${utils.escapeHtml(org.email)}">
               ${org.email.length > 22 ? utils.escapeHtml(org.email.substring(0, 22)) + '...' : utils.escapeHtml(org.email)}
             </a>` : '-'
           }
+          <i class="bi bi-pencil edit-hint"></i>
         </td>
         <td class="text-center">
           ${org.tier ?
@@ -679,6 +714,83 @@ updateCountyFilterByRegion() {
 
     this.updateSortIndicators();
 },
+
+  // ============================================
+  // Pagination controls
+  // ============================================
+  _renderPaginationControls(totalItems, totalPages, startIdx, endIdx) {
+    const footer = document.querySelector('#orgTableContainer .card-footer');
+    if (!footer) return;
+
+    footer.innerHTML = `
+      <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+        <div class="d-flex align-items-center gap-2">
+          <small class="text-muted">
+            Showing ${totalItems === 0 ? 0 : startIdx + 1}-${endIdx} of ${totalItems}
+          </small>
+          <select class="form-select form-select-sm" style="width: auto;" onchange="orgsModule._changePageSize(parseInt(this.value))">
+            <option value="50" ${this._pageSize === 50 ? 'selected' : ''}>50 / page</option>
+            <option value="100" ${this._pageSize === 100 ? 'selected' : ''}>100 / page</option>
+            <option value="200" ${this._pageSize === 200 ? 'selected' : ''}>200 / page</option>
+            <option value="${totalItems}" ${this._pageSize >= 500 && this._pageSize === totalItems ? 'selected' : ''}>All</option>
+          </select>
+        </div>
+        <nav aria-label="Organisation pagination">
+          <ul class="pagination pagination-sm mb-0">
+            <li class="page-item ${this._currentPage <= 1 ? 'disabled' : ''}">
+              <a class="page-link" href="javascript:void(0);" onclick="orgsModule._goToPage(1)" title="First"><i class="bi bi-chevron-double-left"></i></a>
+            </li>
+            <li class="page-item ${this._currentPage <= 1 ? 'disabled' : ''}">
+              <a class="page-link" href="javascript:void(0);" onclick="orgsModule._goToPage(${this._currentPage - 1})" title="Previous"><i class="bi bi-chevron-left"></i></a>
+            </li>
+            ${this._getPaginationPages(this._currentPage, totalPages).map(p =>
+              p === '...'
+                ? `<li class="page-item disabled"><span class="page-link">...</span></li>`
+                : `<li class="page-item ${p === this._currentPage ? 'active' : ''}"><a class="page-link" href="javascript:void(0);" onclick="orgsModule._goToPage(${p})">${p}</a></li>`
+            ).join('')}
+            <li class="page-item ${this._currentPage >= totalPages ? 'disabled' : ''}">
+              <a class="page-link" href="javascript:void(0);" onclick="orgsModule._goToPage(${this._currentPage + 1})" title="Next"><i class="bi bi-chevron-right"></i></a>
+            </li>
+            <li class="page-item ${this._currentPage >= totalPages ? 'disabled' : ''}">
+              <a class="page-link" href="javascript:void(0);" onclick="orgsModule._goToPage(${totalPages})" title="Last"><i class="bi bi-chevron-double-right"></i></a>
+            </li>
+          </ul>
+        </nav>
+        <small class="text-muted">
+          <i class="bi bi-clock me-1"></i>Last refreshed: <span id="orgsLastRefresh">${new Date().toLocaleTimeString('en-GB')}</span>
+        </small>
+      </div>
+    `;
+  },
+
+  _getPaginationPages(current, total) {
+    if (total <= 7) return Array.from({ length: total }, (_, i) => i + 1);
+    const pages = [];
+    pages.push(1);
+    if (current > 3) pages.push('...');
+    for (let i = Math.max(2, current - 1); i <= Math.min(total - 1, current + 1); i++) {
+      pages.push(i);
+    }
+    if (current < total - 2) pages.push('...');
+    pages.push(total);
+    return pages;
+  },
+
+  _goToPage(page) {
+    const totalPages = Math.max(1, Math.ceil(STATE.filteredOrganisations.length / this._pageSize));
+    if (page < 1 || page > totalPages) return;
+    this._currentPage = page;
+    this.renderOrganisations();
+    // Scroll to table top
+    document.getElementById('orgTableContainer')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  },
+
+  _changePageSize(size) {
+    this._pageSize = size;
+    this._currentPage = 1;
+    this.renderOrganisations();
+  },
+
   /**
    * Open company profile modal
    * @param {string} orgId - Organisation ID
@@ -803,8 +915,47 @@ updateCountyFilterByRegion() {
 
       if (entriesError) console.error('Error loading voting entries:', entriesError);
 
-      // Render profile
+      // Render profile with tabbed interface
       contentDiv.innerHTML = `
+        <!-- Profile Tabs Navigation -->
+        <ul class="nav nav-tabs mb-3" id="profileTabs" role="tablist">
+          <li class="nav-item" role="presentation">
+            <button class="nav-link active" id="tab-overview" data-bs-toggle="tab" data-bs-target="#pane-overview" type="button" role="tab">
+              <i class="bi bi-building me-1"></i>Overview
+            </button>
+          </li>
+          <li class="nav-item" role="presentation">
+            <button class="nav-link" id="tab-details" data-bs-toggle="tab" data-bs-target="#pane-details" type="button" role="tab">
+              <i class="bi bi-info-circle me-1"></i>Details
+            </button>
+          </li>
+          <li class="nav-item" role="presentation">
+            <button class="nav-link" id="tab-awards" data-bs-toggle="tab" data-bs-target="#pane-awards" type="button" role="tab">
+              <i class="bi bi-trophy me-1"></i>Awards${awards.length > 0 ? ` (${awards.length})` : ''}
+            </button>
+          </li>
+          <li class="nav-item" role="presentation">
+            <button class="nav-link" id="tab-media" data-bs-toggle="tab" data-bs-target="#pane-media" type="button" role="tab">
+              <i class="bi bi-images me-1"></i>Media
+            </button>
+          </li>
+          <li class="nav-item" role="presentation">
+            <button class="nav-link" id="tab-comms" data-bs-toggle="tab" data-bs-target="#pane-comms" type="button" role="tab">
+              <i class="bi bi-envelope me-1"></i>Comms
+            </button>
+          </li>
+          <li class="nav-item" role="presentation">
+            <button class="nav-link" id="tab-advanced" data-bs-toggle="tab" data-bs-target="#pane-advanced" type="button" role="tab">
+              <i class="bi bi-gear me-1"></i>More
+            </button>
+          </li>
+        </ul>
+
+        <!-- Tab Content -->
+        <div class="tab-content" id="profileTabContent">
+
+        <!-- ===== OVERVIEW TAB ===== -->
+        <div class="tab-pane fade show active" id="pane-overview" role="tabpanel">
         <div class="row">
           <div class="col-md-4 mb-3">
             <h6 class="text-muted mb-2"><i class="bi bi-image me-2"></i>Company Logo</h6>
@@ -829,7 +980,7 @@ updateCountyFilterByRegion() {
                     <i class="bi bi-globe me-1"></i>Fetch from Website
                   </button>` : ''
                 }
-                <small class="text-muted">Required: 250x170 px</small>
+                <small class="text-muted">Recommended: 250x170 px (auto-resized)</small>
               </div>
             </div>
           </div>
@@ -937,6 +1088,10 @@ updateCountyFilterByRegion() {
           </div>
         </div>
 
+        </div><!-- end pane-overview -->
+
+        <!-- ===== DETAILS TAB ===== -->
+        <div class="tab-pane fade" id="pane-details" role="tabpanel">
         <!-- Company Details Section -->
         <div class="row mt-3">
           <div class="col-md-6 mb-3">
@@ -1082,7 +1237,11 @@ updateCountyFilterByRegion() {
           </div>` : ''
         }
 
-        <div class="mt-4">
+        </div><!-- end pane-details -->
+
+        <!-- ===== AWARDS TAB ===== -->
+        <div class="tab-pane fade" id="pane-awards" role="tabpanel">
+        <div class="mt-2">
           <h6 class="text-muted mb-3"><i class="bi bi-trophy me-2"></i>Award History (${awards.length})</h6>
           ${awards.length === 0 ?
             '<div class="alert alert-info">No awards found for this organisation.</div>' :
@@ -1195,8 +1354,12 @@ updateCountyFilterByRegion() {
           </div>` : ''
         }
 
+        </div><!-- end pane-awards -->
+
+        <!-- ===== MEDIA TAB ===== -->
+        <div class="tab-pane fade" id="pane-media" role="tabpanel">
         <!-- Enhanced Winner Profile Section -->
-        <div class="mt-4">
+        <div class="mt-2">
           <div class="d-flex justify-content-between align-items-center mb-3">
             <h6 class="text-muted mb-0"><i class="bi bi-star-fill me-2"></i>Enhanced Winner Profile</h6>
             <div class="btn-group btn-group-sm" role="group">
@@ -1339,6 +1502,10 @@ updateCountyFilterByRegion() {
           }
         </div>
 
+        </div><!-- end pane-media -->
+
+        <!-- ===== COMMS TAB ===== -->
+        <div class="tab-pane fade" id="pane-comms" role="tabpanel">
         <!-- Organisation Contacts Section (Area 4) -->
         <div class="mt-4">
           <h6 class="text-muted mb-3"><i class="bi bi-people me-2"></i>Organisation Contacts</h6>
@@ -1470,6 +1637,10 @@ updateCountyFilterByRegion() {
           </div></div>
         </div>
 
+        </div><!-- end pane-comms -->
+
+        <!-- ===== ADVANCED TAB ===== -->
+        <div class="tab-pane fade" id="pane-advanced" role="tabpanel">
         <!-- Sponsorship Packages (Feature 9) -->
         <div class="mt-4">
           <h6 class="text-muted mb-3"><i class="bi bi-cash-stack me-2"></i>Sponsorship Packages</h6>
@@ -1530,6 +1701,8 @@ updateCountyFilterByRegion() {
             <small class="text-muted mt-1 d-block">Based on: name, email, contact, phone, website, logo, sector, region, address, description</small>
           </div></div>
         </div>
+        </div><!-- end pane-advanced -->
+        </div><!-- end tab-content -->
       `;
 
       // Load async sections after render
@@ -1679,26 +1852,48 @@ updateCountyFilterByRegion() {
 
     reader.onload = (e) => {
       img.onload = async () => {
-        // Validate dimensions (exactly 250x170 px)
-        if (img.width !== 250 || img.height !== 170) {
-          utils.showToast(`Image must be exactly 250x170 px. Your image is ${img.width}x${img.height} px`, 'error');
+        // Accept images at or above minimum size (100x68) and auto-resize to 250x170
+        if (img.width < 100 || img.height < 68) {
+          utils.showToast(`Image too small (minimum 100x68 px). Your image is ${img.width}x${img.height} px`, 'error');
           inputElement.value = '';
           return;
         }
 
-        // Dimensions are correct, proceed with upload
+        // Auto-resize to 250x170 using canvas
+        let uploadFile = file;
+        if (img.width !== 250 || img.height !== 170) {
+          const canvas = document.createElement('canvas');
+          canvas.width = 250;
+          canvas.height = 170;
+          const ctx = canvas.getContext('2d');
+          // Fill with white background for transparent images
+          ctx.fillStyle = '#ffffff';
+          ctx.fillRect(0, 0, 250, 170);
+          // Scale to fit while maintaining aspect ratio
+          const scale = Math.min(250 / img.width, 170 / img.height);
+          const scaledW = img.width * scale;
+          const scaledH = img.height * scale;
+          const offsetX = (250 - scaledW) / 2;
+          const offsetY = (170 - scaledH) / 2;
+          ctx.drawImage(img, offsetX, offsetY, scaledW, scaledH);
+          const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
+          uploadFile = new File([blob], file.name.replace(/\.[^.]+$/, '.png'), { type: 'image/png' });
+          utils.showToast(`Image auto-resized from ${img.width}x${img.height} to 250x170 px`, 'info');
+        }
+
+        // Proceed with upload
         try {
           utils.showLoading();
 
           // Generate unique filename
           const timestamp = Date.now();
-          const fileExt = file.name.split('.').pop();
+          const fileExt = uploadFile.name.split('.').pop();
           const fileName = `logos/${orgId}/${timestamp}.${fileExt}`;
 
           // Upload to Supabase Storage
           const { data: uploadData, error: uploadError } = await STATE.client.storage
             .from('organisation-logos')
-            .upload(fileName, file, {
+            .upload(fileName, uploadFile, {
               cacheControl: '3600',
               upsert: false
             });
@@ -1876,41 +2071,8 @@ updateCountyFilterByRegion() {
         return;
       }
 
-      // Check dimensions of each image
-      const validLogos = [];
-      let checkedCount = 0;
-
-      for (const media of imageMedia) {
-        // Load image to check dimensions
-        const img = new Image();
-        img.crossOrigin = 'anonymous';
-
-        await new Promise((resolve) => {
-          img.onload = () => {
-            if (img.width === 250 && img.height === 170) {
-              validLogos.push(media);
-            }
-            checkedCount++;
-            resolve();
-          };
-          img.onerror = () => {
-            checkedCount++;
-            resolve();
-          };
-          img.src = media.file_url;
-        });
-      }
-
-      // Display valid logos
-      if (validLogos.length === 0) {
-        contentDiv.innerHTML = `
-          <div class="alert alert-warning">
-            <i class="bi bi-exclamation-triangle me-2"></i>
-            No images with 250x170 px dimensions found. Please upload images with the correct size to Media Gallery.
-          </div>
-        `;
-        return;
-      }
+      // Accept all images (will be auto-resized when selected)
+      const validLogos = imageMedia;
 
       contentDiv.innerHTML = `
         <div class="row g-3">
@@ -1923,7 +2085,7 @@ updateCountyFilterByRegion() {
                      style="height: 170px; object-fit: contain; background: #f8f9fa;">
                 <div class="card-body p-2">
                   <p class="card-text small mb-0 text-center">${utils.escapeHtml(media.title || 'Untitled')}</p>
-                  <p class="card-text small text-muted text-center mb-0">250 x 170 px</p>
+                  <p class="card-text small text-muted text-center mb-0">Auto-resized to 250x170</p>
                 </div>
               </div>
             </div>
@@ -2534,6 +2696,18 @@ updateCountyFilterByRegion() {
    * @param {string} packageType - Package type (bronze/silver/gold/non-attendee)
    * @returns {string} HTML badge
    */
+  // Auto-populate region field in Add Company modal from county selection
+  autoPopulateRegionFromCounty() {
+    const county = document.getElementById('newCompanyCounty')?.value || '';
+    const regionInput = document.getElementById('newCompanyRegion');
+    if (!county || !regionInput) return;
+    // Use the countyToRegion data from loaded organisations
+    const match = STATE.allOrganisations.find(o => o.county === county && o.region);
+    if (match) {
+      regionInput.value = match.region;
+    }
+  },
+
   getPackageBadge(packageType) {
     const packages = {
       'gold': '<span class="badge" style="background: linear-gradient(135deg, #FFD700 0%, #FFA500 100%); color: #000;"><i class="bi bi-award-fill me-1"></i>Gold</span>',
@@ -2606,7 +2780,8 @@ updateCountyFilterByRegion() {
       region: document.getElementById('newCompanyRegion').value,
       address: document.getElementById('newCompanyAddress').value.trim() || null,
       catchment_area: selectedCounty || document.getElementById('newCompanyCatchment').value.trim() || null,
-      status: 'prospect'
+      status: document.getElementById('newCompanyStatus')?.value || 'prospect',
+      tier: document.getElementById('newCompanyTier')?.value || null
     };
 
     try {
@@ -2851,12 +3026,11 @@ updateCountyFilterByRegion() {
     const selectedData = STATE.allOrganisations.filter(org => this.selectedOrgs.has(org.id));
     const emails = selectedData
       .map(org => org.email)
-      .filter(e => e)
-      .join(',');
+      .filter(e => e);
 
-    if (emails) {
-      window.location.href = `mailto:${emails}`;
-      utils.showToast(`Opening email for ${selectedData.length} companies`, 'success');
+    if (emails.length > 0) {
+      window.location.href = `mailto:?bcc=${emails.join(',')}`;
+      utils.showToast(`Opening email for ${emails.length} companies (BCC)`, 'success');
     } else {
       utils.showToast('No email addresses found for selected companies', 'warning');
     }
@@ -5461,7 +5635,7 @@ updateCountyFilterByRegion() {
                         </div>
                       </div>
                     `).join('')}
-                  ${stageOrgs.length > 30 ? `<p class="text-muted small text-center">+${stageOrgs.length - 30} more</p>` : ''}
+                  ${stageOrgs.length > 30 ? `<p class="text-muted small text-center"><a href="javascript:void(0);" class="text-decoration-none" onclick="orgsModule.kanbanShowAllForStatus('${stage.key}')">+${stageOrgs.length - 30} more <i class="bi bi-box-arrow-up-right"></i></a></p>` : ''}
                 </div>
               </div>
             </div>
@@ -5469,6 +5643,22 @@ updateCountyFilterByRegion() {
         }).join('')}
       </div>
     `;
+  },
+
+  // Switch from Kanban to table view filtered to a specific status
+  kanbanShowAllForStatus(status) {
+    // Close kanban view
+    this._kanbanViewActive = false;
+    const kanbanEl = document.getElementById('orgKanbanBoard');
+    const tableEl = document.getElementById('orgTableContainer');
+    const toggleBtn = document.getElementById('kanbanToggleBtn');
+    if (kanbanEl) kanbanEl.style.display = 'none';
+    if (tableEl) tableEl.style.display = 'block';
+    if (toggleBtn) { toggleBtn.classList.remove('btn-info'); toggleBtn.classList.add('btn-outline-info'); }
+    // Set the status filter and apply
+    const statusFilter = document.getElementById('orgsStatusFilter');
+    if (statusFilter) statusFilter.value = status;
+    this.filterOrganisations();
   },
 
   async handleKanbanDrop(event, newStatus) {

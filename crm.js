@@ -36,6 +36,12 @@ const crmModule = {
         case 'segments':
           await this.loadSegments();
           break;
+        case 'smart-segments':
+          // Smart segments are client-side only, no data to load
+          break;
+        case 'my-tasks':
+          await this.loadMyTasks();
+          break;
       }
     } catch (error) {
       console.error('Error loading CRM data:', error);
@@ -1979,6 +1985,201 @@ const crmModule = {
       console.error('Error updating segment:', error);
       utils.showToast('Error updating segment: ' + error.message, 'error');
     }
+  }
+  // ============================================
+  // SMART SEGMENTS (moved from Organisations)
+  // ============================================
+  _segmentRuleCount: 1,
+
+  addSegmentRule() {
+    const i = this._segmentRuleCount++;
+    const ruleHtml = `<div class="segment-rule d-flex gap-2 align-items-center mb-2">
+      <select class="form-select form-select-sm" style="width:auto;" id="segField${i}">
+        <option value="tier">Tier</option><option value="status">Status</option><option value="region">Region</option>
+        <option value="sector">Sector</option><option value="awards_count">Awards Count</option><option value="engagement">Engagement Score</option>
+      </select>
+      <select class="form-select form-select-sm" style="width:auto;" id="segOp${i}">
+        <option value="eq">equals</option><option value="neq">not equals</option>
+        <option value="gt">greater than</option><option value="lt">less than</option>
+        <option value="contains">contains</option>
+      </select>
+      <input type="text" class="form-control form-control-sm" style="width:150px;" id="segVal${i}" placeholder="Value...">
+      <button class="btn btn-sm btn-outline-danger" onclick="this.parentElement.remove()"><i class="bi bi-x"></i></button>
+    </div>`;
+    document.getElementById('smartSegmentRules')?.insertAdjacentHTML('beforeend', ruleHtml);
+  },
+
+  _getSegmentRules() {
+    const rules = [];
+    document.querySelectorAll('#smart-segments-content .segment-rule').forEach((el) => {
+      const field = el.querySelector('[id^="segField"]')?.value;
+      const op = el.querySelector('[id^="segOp"]')?.value;
+      const val = el.querySelector('[id^="segVal"]')?.value.trim();
+      if (field && val) rules.push({ field, op, val });
+    });
+    return rules;
+  },
+
+  _matchesSegmentRules(org, rules) {
+    return rules.every(r => {
+      let orgVal;
+      if (r.field === 'engagement' && typeof orgsModule !== 'undefined') orgVal = orgsModule.calculateEngagementScore(org);
+      else if (r.field === 'awards_count') orgVal = org.awards_count || 0;
+      else orgVal = org[r.field] || '';
+
+      const testVal = r.val;
+      switch (r.op) {
+        case 'eq': return String(orgVal).toLowerCase() === testVal.toLowerCase();
+        case 'neq': return String(orgVal).toLowerCase() !== testVal.toLowerCase();
+        case 'gt': return Number(orgVal) > Number(testVal);
+        case 'lt': return Number(orgVal) < Number(testVal);
+        case 'contains': return String(orgVal).toLowerCase().includes(testVal.toLowerCase());
+        default: return false;
+      }
+    });
+  },
+
+  applySmartSegment() {
+    const rules = this._getSegmentRules();
+    if (rules.length === 0) { utils.showToast('Add at least one rule', 'warning'); return; }
+    const orgs = (typeof STATE !== 'undefined' && STATE.allOrganisations) ? STATE.allOrganisations : [];
+    const matching = orgs.filter(o => this._matchesSegmentRules(o, rules));
+    this._lastSegmentMatches = matching;
+    const resultEl = document.getElementById('smartSegmentResult');
+    if (resultEl) {
+      resultEl.innerHTML = `<div class="alert alert-info small py-2">
+        <strong>${matching.length}</strong> organisations match this segment.
+        <button class="btn btn-sm btn-outline-primary ms-2" onclick="crmModule.applySegmentAsFilter()">View in Organisations Tab</button>
+      </div>
+      ${matching.length > 0 ? `<div class="table-responsive mt-2"><table class="table table-sm table-hover"><thead><tr><th>Company</th><th>Status</th><th>Sector</th><th>Region</th></tr></thead><tbody>
+        ${matching.slice(0, 50).map(o => `<tr><td>${utils.escapeHtml(o.company_name || '')}</td><td><span class="badge bg-primary">${utils.escapeHtml(o.status || '')}</span></td><td>${utils.escapeHtml(o.sector || '-')}</td><td>${utils.escapeHtml(o.region || '-')}</td></tr>`).join('')}
+        ${matching.length > 50 ? `<tr><td colspan="4" class="text-muted text-center">... and ${matching.length - 50} more</td></tr>` : ''}
+      </tbody></table></div>` : ''}`;
+    }
+  },
+
+  applySegmentAsFilter() {
+    if (!this._lastSegmentMatches) return;
+    if (typeof STATE !== 'undefined') {
+      STATE.filteredOrganisations = this._lastSegmentMatches;
+      if (typeof orgsModule !== 'undefined') {
+        orgsModule._currentPage = 1;
+        orgsModule.renderOrganisations();
+      }
+    }
+    // Navigate to organisations tab
+    const orgsTab = document.getElementById('organisations-tab');
+    if (orgsTab) { new bootstrap.Tab(orgsTab).show(); }
+    utils.showToast(`Showing ${this._lastSegmentMatches.length} segment matches`, 'success');
+  },
+
+  saveSmartSegment() {
+    const rules = this._getSegmentRules();
+    if (rules.length === 0) { utils.showToast('Add at least one rule', 'warning'); return; }
+    const name = prompt('Name this segment:');
+    if (!name || !name.trim()) return;
+    try {
+      const segments = JSON.parse(localStorage.getItem('orgsSegments') || '{}');
+      segments[name.trim()] = rules;
+      localStorage.setItem('orgsSegments', JSON.stringify(segments));
+      utils.showToast(`Segment "${name.trim()}" saved`, 'success');
+    } catch (e) {}
+  },
+
+  loadSmartSegments() {
+    const segments = (() => { try { return JSON.parse(localStorage.getItem('orgsSegments') || '{}'); } catch (e) { return {}; } })();
+    const names = Object.keys(segments);
+    if (names.length === 0) { utils.showToast('No saved segments', 'info'); return; }
+
+    const resultEl = document.getElementById('smartSegmentResult');
+    if (resultEl) {
+      resultEl.innerHTML = `<h6 class="fw-semibold mb-2">Saved Segments</h6><div class="list-group">${names.map(n => {
+        const rules = segments[n];
+        return `<a href="#" class="list-group-item list-group-item-action small" onclick="event.preventDefault(); crmModule._loadAndApplySegment('${utils.escapeHtml(n).replace(/'/g, "\\'")}')">
+          <strong>${utils.escapeHtml(n)}</strong> &mdash; ${rules.map(r => `${r.field} ${r.op} "${r.val}"`).join(' AND ')}
+        </a>`;
+      }).join('')}</div>`;
+    }
+  },
+
+  _loadAndApplySegment(name) {
+    try {
+      const segments = JSON.parse(localStorage.getItem('orgsSegments') || '{}');
+      const rules = segments[name];
+      if (!rules) return;
+      const orgs = (typeof STATE !== 'undefined' && STATE.allOrganisations) ? STATE.allOrganisations : [];
+      const matching = orgs.filter(o => this._matchesSegmentRules(o, rules));
+      this._lastSegmentMatches = matching;
+      const resultEl = document.getElementById('smartSegmentResult');
+      if (resultEl) {
+        resultEl.innerHTML = `<div class="alert alert-success small py-2">
+          <strong>"${utils.escapeHtml(name)}"</strong>: ${matching.length} organisations match.
+          <button class="btn btn-sm btn-outline-primary ms-2" onclick="crmModule.applySegmentAsFilter()">View in Organisations Tab</button>
+        </div>`;
+      }
+    } catch (e) {}
+  },
+
+  // ============================================
+  // MY TASKS & FOLLOW-UPS (moved from Organisations)
+  // ============================================
+  async loadMyTasks() {
+    const container = document.getElementById('myTasksContainer');
+    if (!container) return;
+
+    let followUps = [];
+    try {
+      const { data } = await STATE.client.from('org_follow_ups').select('*').order('date', { ascending: true });
+      followUps = data || [];
+    } catch (e) { console.warn('Could not load follow-ups:', e); }
+
+    const today = new Date().toISOString().split('T')[0];
+    const overdue = followUps.filter(f => !f.done && f.date < today);
+    const todayTasks = followUps.filter(f => !f.done && f.date === today);
+    const upcoming = followUps.filter(f => !f.done && f.date > today).slice(0, 20);
+    const completed = followUps.filter(f => f.done).slice(0, 10);
+    const orgs = (typeof STATE !== 'undefined' && STATE.allOrganisations) ? STATE.allOrganisations : [];
+
+    const renderTask = (f, section) => {
+      const org = orgs.find(o => o.id === f.org_id);
+      const orgName = org ? utils.escapeHtml(org.company_name) : 'Unknown';
+      const icons = { overdue: 'bi-exclamation-triangle text-danger', today: 'bi-bell text-warning', completed: 'bi-check-circle text-success', upcoming: 'bi-clock text-info' };
+      return `<div class="d-flex align-items-center py-2 border-bottom">
+        <i class="bi ${icons[section]} me-2 fs-5"></i>
+        <div class="flex-grow-1"><div class="fw-semibold small">${utils.escapeHtml(f.note || 'Follow up')}</div>
+        <div class="text-muted" style="font-size:0.75rem;">${orgName} &middot; ${new Date(f.date).toLocaleDateString('en-GB')}${f.assignee ? ' &middot; ' + utils.escapeHtml(f.assignee) : ''}</div></div>
+        ${!f.done ? `<button class="btn btn-sm btn-outline-success me-1" onclick="crmModule.completeTask('${f.org_id}','${f.id}')"><i class="bi bi-check"></i></button>` : ''}
+        ${org ? `<button class="btn btn-sm btn-outline-primary" onclick="orgsModule.openCompanyProfile('${f.org_id}','${utils.escapeHtml(orgName).replace(/'/g, "\\'")}')"><i class="bi bi-eye"></i></button>` : ''}
+      </div>`;
+    };
+
+    container.innerHTML = `
+      <div class="row mb-3 text-center">
+        <div class="col-3"><div class="card border-danger"><div class="card-body py-2"><h4 class="text-danger mb-0">${overdue.length}</h4><small class="text-muted">Overdue</small></div></div></div>
+        <div class="col-3"><div class="card border-warning"><div class="card-body py-2"><h4 class="text-warning mb-0">${todayTasks.length}</h4><small class="text-muted">Today</small></div></div></div>
+        <div class="col-3"><div class="card border-info"><div class="card-body py-2"><h4 class="text-info mb-0">${upcoming.length}</h4><small class="text-muted">Upcoming</small></div></div></div>
+        <div class="col-3"><div class="card border-success"><div class="card-body py-2"><h4 class="text-success mb-0">${completed.length}</h4><small class="text-muted">Done</small></div></div></div>
+      </div>
+      ${overdue.length > 0 ? `<h6 class="text-danger fw-bold"><i class="bi bi-exclamation-triangle me-1"></i>Overdue (${overdue.length})</h6>${overdue.map(f => renderTask(f, 'overdue')).join('')}<hr>` : ''}
+      ${todayTasks.length > 0 ? `<h6 class="text-warning fw-bold"><i class="bi bi-bell me-1"></i>Due Today</h6>${todayTasks.map(f => renderTask(f, 'today')).join('')}<hr>` : ''}
+      ${upcoming.length > 0 ? `<h6 class="text-info fw-bold"><i class="bi bi-clock me-1"></i>Upcoming</h6>${upcoming.map(f => renderTask(f, 'upcoming')).join('')}<hr>` : ''}
+      ${completed.length > 0 ? `<h6 class="text-success fw-bold"><i class="bi bi-check-circle me-1"></i>Recently Completed</h6>${completed.map(f => renderTask(f, 'completed')).join('')}` : ''}
+      ${followUps.filter(f => !f.done).length === 0 ? '<div class="text-center py-4"><i class="bi bi-emoji-smile fs-1 d-block mb-2 text-success"></i><p class="text-muted">All caught up!</p></div>' : ''}`;
+  },
+
+  async completeTask(orgId, followUpId) {
+    try {
+      await STATE.client.from('org_follow_ups').update({ done: true }).eq('id', followUpId);
+      utils.showToast('Task completed', 'success');
+      this.loadMyTasks();
+    } catch (e) {
+      utils.showToast('Error completing task', 'error');
+    }
+  },
+
+  async refreshMyTasks() {
+    await this.loadMyTasks();
+    utils.showToast('Tasks refreshed', 'success');
   }
 };
 

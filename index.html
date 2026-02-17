@@ -385,6 +385,13 @@
             </div>
           </div>
 
+          <!-- Media Dashboard Widget -->
+          <div class="row mb-5">
+            <div class="col-md-6">
+              <div id="mediaDashboardWidget"></div>
+            </div>
+          </div>
+
           <!-- Awards Year-over-Year Summary Table -->
           <div class="content-card mb-5">
             <div class="d-flex justify-content-between align-items-center mb-4">
@@ -1745,17 +1752,17 @@
           <!-- Saved Filter Presets -->
           <div class="col-md-3">
             <label class="form-label small fw-semibold mb-1">
-              <i class="bi bi-bookmark me-1"></i>Presets
+              <i class="bi bi-bookmark me-1"></i>Saved Views
             </label>
             <div class="input-group input-group-sm">
               <select class="form-select form-select-sm" id="orgsFilterPreset"
                       onchange="orgsModule.loadFilterPreset(this.value)">
-                <option value="">-- Saved Presets --</option>
+                <option value="">-- Saved Views --</option>
               </select>
-              <button class="btn btn-outline-primary btn-sm" onclick="orgsModule.saveFilterPreset()" title="Save current filters as preset">
+              <button class="btn btn-outline-primary btn-sm" onclick="orgsModule.saveFilterPreset()" title="Save current view (filters, sort, columns)">
                 <i class="bi bi-bookmark-plus"></i>
               </button>
-              <button class="btn btn-outline-danger btn-sm" onclick="orgsModule.deleteFilterPreset()" title="Delete selected preset">
+              <button class="btn btn-outline-danger btn-sm" onclick="orgsModule.deleteFilterPreset()" title="Delete selected view">
                 <i class="bi bi-trash"></i>
               </button>
             </div>
@@ -1810,30 +1817,9 @@
               <button class="btn btn-sm btn-outline-secondary" onclick="orgsModule.showTagFilterModal()" title="Multi-Tag Filter">
                 <i class="bi bi-tags"></i>
               </button>
-              <button class="btn btn-sm btn-outline-secondary" onclick="orgsModule.showSegmentsBuilder()" title="Smart Segments">
-                <i class="bi bi-funnel"></i>
-              </button>
-              <button class="btn btn-sm btn-outline-secondary" onclick="orgsModule.saveView()" title="Save Current View">
-                <i class="bi bi-bookmark-plus"></i>
-              </button>
-              <button class="btn btn-sm btn-outline-secondary" onclick="orgsModule.showSavedViews()" title="Load Saved View">
-                <i class="bi bi-bookmarks"></i>
-              </button>
               <div class="vr mx-1"></div>
-              <button class="btn btn-sm btn-outline-primary" onclick="orgsModule.showMyTasks()" title="My Tasks & Follow-ups">
-                <i class="bi bi-person-check"></i>
-              </button>
               <button class="btn btn-sm btn-outline-info" onclick="orgsModule.showDuplicateDetectionDashboard()" title="Duplicate Detection Scan">
                 <i class="bi bi-search"></i>
-              </button>
-              <button class="btn btn-sm btn-outline-warning" onclick="orgsModule.showScheduledReports()" title="Scheduled Reports">
-                <i class="bi bi-calendar2-week"></i>
-              </button>
-              <button class="btn btn-sm btn-outline-secondary" onclick="orgsModule.showEmailSequences()" title="Email Sequences">
-                <i class="bi bi-envelope-arrow-up"></i>
-              </button>
-              <button class="btn btn-sm btn-outline-secondary" onclick="orgsModule.showXeroIntegration()" title="Accounting Integration">
-                <i class="bi bi-currency-pound"></i>
               </button>
             </div>
           </div>
@@ -2307,6 +2293,7 @@
                 </label>
                 <select class="form-select" id="winnerYearFilterSelect">
                   <option value="">All Years</option>
+                  <option value="2026" selected>2026</option>
                   <option value="2025">2025</option>
                   <option value="2024">2024</option>
                   <option value="2023">2023</option>
@@ -2574,11 +2561,21 @@
         <div class="container-fluid">
 
           <!-- Page Header -->
-          <div class="section-header">
-            <h1 class="section-title">
-              <i class="bi bi-images me-2"></i>Media Gallery
-            </h1>
-            <p class="section-subtitle">Manage event photos and videos</p>
+          <div class="section-header d-flex justify-content-between align-items-start">
+            <div>
+              <h1 class="section-title">
+                <i class="bi bi-images me-2"></i>Media Gallery
+              </h1>
+              <p class="section-subtitle">Manage event photos and videos</p>
+            </div>
+            <div class="d-flex gap-2 align-items-center">
+              <div class="input-group input-group-sm" style="width:280px;">
+                <span class="input-group-text"><i class="bi bi-building"></i></span>
+                <select class="form-select form-select-sm" id="mediaOrgFilter" onchange="mediaGalleryModule.viewOrgMedia(this.value)">
+                  <option value="">View all media for org...</option>
+                </select>
+              </div>
+            </div>
           </div>
 
           <!-- Media Gallery Content -->
@@ -2654,6 +2651,20 @@
                 </h3>
               </div>
 
+              <!-- Photo Tools -->
+              <div class="mb-3 d-flex flex-wrap gap-2">
+                <div class="btn-group">
+                  <button class="btn btn-outline-secondary btn-sm dropdown-toggle" data-bs-toggle="dropdown">
+                    <i class="bi bi-tools me-1"></i>Photo Tools
+                  </button>
+                  <ul class="dropdown-menu">
+                    <li><a class="dropdown-item" href="#" onclick="mediaGalleryModule.openWatermarkModal()"><i class="bi bi-droplet me-2"></i>Watermark Photos</a></li>
+                    <li><a class="dropdown-item" href="#" onclick="mediaGalleryModule.openExportModal()"><i class="bi bi-box-arrow-up me-2"></i>Export for Social</a></li>
+                    <li><a class="dropdown-item" href="#" onclick="mediaGalleryModule.openComparisonModal()"><i class="bi bi-layout-split me-2"></i>Event Comparison</a></li>
+                  </ul>
+                </div>
+              </div>
+
               <!-- Photos will be loaded here by JS -->
               <div id="photosProductionContent">
                 <div class="text-center py-5">
@@ -2675,11 +2686,30 @@
                 </h3>
               </div>
 
-              <!-- Add Video Button -->
-              <div class="mb-4">
+              <!-- Video Action Buttons -->
+              <div class="mb-4 d-flex flex-wrap gap-2">
                 <button class="btn btn-primary" onclick="mediaGalleryModule.openAddVideoModal()">
                   <i class="bi bi-plus-circle me-2"></i>Add Video / YouTube Link
                 </button>
+                <button class="btn btn-outline-danger" onclick="mediaGalleryModule.openBulkYouTubeModal()">
+                  <i class="bi bi-youtube me-2"></i>Bulk YouTube Import
+                </button>
+                <button class="btn btn-outline-info" onclick="mediaGalleryModule.openPlaylistSyncModal()">
+                  <i class="bi bi-collection-play me-2"></i>Playlist Import
+                </button>
+                <div class="btn-group">
+                  <button class="btn btn-outline-secondary dropdown-toggle" data-bs-toggle="dropdown">
+                    <i class="bi bi-tools me-1"></i>Tools
+                  </button>
+                  <ul class="dropdown-menu">
+                    <li><a class="dropdown-item" href="#" onclick="mediaGalleryModule.openYouTubeHealthCheck()"><i class="bi bi-heart-pulse me-2"></i>YouTube Link Checker</a></li>
+                    <li><a class="dropdown-item" href="#" onclick="mediaGalleryModule.openComparisonModal()"><i class="bi bi-layout-split me-2"></i>Event Comparison</a></li>
+                    <li><a class="dropdown-item" href="#" onclick="mediaGalleryModule.openExportModal()"><i class="bi bi-box-arrow-up me-2"></i>Export for Social</a></li>
+                    <li><a class="dropdown-item" href="#" onclick="mediaGalleryModule.openWatermarkModal()"><i class="bi bi-droplet me-2"></i>Watermark Photos</a></li>
+                    <li><hr class="dropdown-divider"></li>
+                    <li><a class="dropdown-item" href="#" onclick="mediaGalleryModule.toggleVideoReorderMode()"><i class="bi bi-sort-numeric-down me-2"></i>Reorder Videos</a></li>
+                  </ul>
+                </div>
               </div>
 
               <!-- Videos will be loaded here by JS -->
@@ -2746,10 +2776,11 @@
                     YouTube URL or Video ID <span class="text-danger">*</span>
                     <small class="text-muted d-block">Paste full URL or just the video ID</small>
                   </label>
-                  <input type="text" class="form-control" id="videoYouTubeId" placeholder="https://www.youtube.com/watch?v=dQw4w9WgXcQ or dQw4w9WgXcQ">
+                  <input type="text" class="form-control" id="videoYouTubeId" placeholder="https://www.youtube.com/watch?v=dQw4w9WgXcQ or dQw4w9WgXcQ" oninput="mediaGalleryModule.previewYouTubeThumbnail()">
                   <div class="form-text">
                     <i class="bi bi-info-circle me-1"></i>We'll automatically extract the video ID
                   </div>
+                  <div id="youtubePreviewContainer"></div>
                 </div>
 
                 <!-- File Upload Field (hidden by default) -->
@@ -2834,22 +2865,397 @@
         </div>
       </div>
 
+      <!-- Bulk YouTube Import Modal -->
+      <div class="modal fade" id="bulkYouTubeModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+          <div class="modal-content">
+            <div class="modal-header bg-danger text-white">
+              <h5 class="modal-title"><i class="bi bi-youtube me-2"></i>Bulk YouTube Import</h5>
+              <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+              <div class="alert alert-info mb-3">
+                <i class="bi bi-info-circle me-2"></i>
+                <strong>Event:</strong> <span id="bulkYouTubeEventName"></span>
+                <br><small>Paste YouTube URLs or IDs (one per line). Shared tags will be applied to all videos.</small>
+              </div>
+              <div class="mb-3">
+                <label class="form-label">YouTube URLs / IDs (one per line)</label>
+                <textarea class="form-control" id="bulkYouTubeUrls" rows="8" placeholder="https://www.youtube.com/watch?v=VIDEO_ID_1&#10;https://www.youtube.com/watch?v=VIDEO_ID_2&#10;dQw4w9WgXcQ&#10;..." oninput="mediaGalleryModule.previewBulkYouTube()"></textarea>
+              </div>
+              <div id="bulkYouTubePreview" class="mb-3"></div>
+              <hr>
+              <p class="text-muted small mb-2">Shared tags (applied to all videos):</p>
+              <div class="row">
+                <div class="col-md-6 mb-2">
+                  <label class="form-label small">Company</label>
+                  <div class="input-group input-group-sm">
+                    <select class="form-select" id="bulkVideoTagInput">
+                      <option value="">Select company...</option>
+                    </select>
+                    <button class="btn btn-outline-secondary" type="button" onclick="mediaGalleryModule.addVideoTag('bulk')"><i class="bi bi-plus"></i></button>
+                  </div>
+                  <div id="bulkVideoTagsContainer" class="d-flex flex-wrap gap-1 mt-1"></div>
+                </div>
+                <div class="col-md-6 mb-2">
+                  <label class="form-label small">Award</label>
+                  <div class="input-group input-group-sm">
+                    <select class="form-select" id="bulkVideoAwardTagInput">
+                      <option value="">Select award...</option>
+                    </select>
+                    <button class="btn btn-outline-secondary" type="button" onclick="mediaGalleryModule.addVideoAwardTag('bulk')"><i class="bi bi-plus"></i></button>
+                  </div>
+                  <div id="bulkVideoAwardTagsContainer" class="d-flex flex-wrap gap-1 mt-1"></div>
+                </div>
+              </div>
+            </div>
+            <div class="modal-footer">
+              <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+              <button type="button" class="btn btn-danger" onclick="mediaGalleryModule.saveBulkYouTube()">
+                <i class="bi bi-cloud-upload me-2"></i>Import All Videos
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Playlist Sync Modal -->
+      <div class="modal fade" id="playlistSyncModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+          <div class="modal-content">
+            <div class="modal-header bg-info text-white">
+              <h5 class="modal-title"><i class="bi bi-collection-play me-2"></i>YouTube Playlist Import</h5>
+              <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+              <div class="alert alert-info mb-3">
+                <i class="bi bi-info-circle me-2"></i>
+                <strong>Event:</strong> <span id="playlistEventName"></span>
+              </div>
+              <div class="mb-3">
+                <label class="form-label">YouTube Playlist URL</label>
+                <div class="input-group">
+                  <input type="text" class="form-control" id="playlistUrl" placeholder="https://www.youtube.com/playlist?list=PLxxxxxxxx">
+                  <button class="btn btn-info text-white" onclick="mediaGalleryModule.fetchPlaylistVideos()">
+                    <i class="bi bi-search me-1"></i>Fetch
+                  </button>
+                </div>
+              </div>
+              <div id="playlistStatus"></div>
+              <div id="playlistPreview"></div>
+            </div>
+            <div class="modal-footer">
+              <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+              <button type="button" class="btn btn-info text-white" onclick="mediaGalleryModule.importPlaylistVideos()">
+                <i class="bi bi-cloud-upload me-2"></i>Import Videos
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Watermark Modal -->
+      <div class="modal fade" id="watermarkModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+          <div class="modal-content">
+            <div class="modal-header bg-dark text-white">
+              <h5 class="modal-title"><i class="bi bi-droplet me-2"></i>Photo Watermarking</h5>
+              <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+              <div class="alert alert-info">
+                <i class="bi bi-info-circle me-2"></i>Add a watermark logo to event photos. Originals are NOT modified - watermarked copies are downloaded separately.
+              </div>
+              <div class="row">
+                <div class="col-md-6">
+                  <div class="mb-3">
+                    <label class="form-label">Watermark Image (logo)</label>
+                    <input type="file" class="form-control" id="watermarkLogo" accept="image/png,image/svg+xml,image/jpeg">
+                    <small class="text-muted">PNG with transparency works best</small>
+                  </div>
+                  <div class="mb-3">
+                    <label class="form-label">Gallery Section</label>
+                    <select class="form-select" id="watermarkSection">
+                      <option value="all">All Sections</option>
+                    </select>
+                  </div>
+                  <div class="mb-3">
+                    <label class="form-label">Position</label>
+                    <select class="form-select" id="watermarkPosition">
+                      <option value="bottom-right">Bottom Right (Recommended)</option>
+                      <option value="bottom-left">Bottom Left</option>
+                      <option value="top-right">Top Right</option>
+                      <option value="top-left">Top Left</option>
+                      <option value="center">Center</option>
+                    </select>
+                  </div>
+                  <div class="mb-3">
+                    <label class="form-label">Opacity: <span id="watermarkOpacityValue">30%</span></label>
+                    <input type="range" class="form-range" id="watermarkOpacity" min="5" max="80" value="30" oninput="document.getElementById('watermarkOpacityValue').textContent = this.value + '%'">
+                  </div>
+                  <button class="btn btn-outline-primary me-2" onclick="mediaGalleryModule.previewWatermark()">
+                    <i class="bi bi-eye me-1"></i>Preview
+                  </button>
+                  <button class="btn btn-primary" onclick="mediaGalleryModule.applyWatermarks()">
+                    <i class="bi bi-droplet me-1"></i>Apply & Download
+                  </button>
+                </div>
+                <div class="col-md-6">
+                  <div id="watermarkPreviewResult">
+                    <div class="text-center text-muted py-5">
+                      <i class="bi bi-image display-4 d-block mb-2 opacity-25"></i>
+                      <p>Upload a logo and click Preview</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Export for Social Modal -->
+      <div class="modal fade" id="exportModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+          <div class="modal-content">
+            <div class="modal-header bg-success text-white">
+              <h5 class="modal-title"><i class="bi bi-box-arrow-up me-2"></i>Export Media for Social</h5>
+              <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+              <div class="alert alert-info">
+                <i class="bi bi-info-circle me-2"></i>Download all photos and video links for a specific company - ready for social media or PR packages.
+              </div>
+              <div class="mb-3">
+                <label class="form-label">Select Company</label>
+                <div class="input-group">
+                  <select class="form-select" id="exportOrgSelect">
+                    <option value="">Select a company...</option>
+                  </select>
+                  <button class="btn btn-outline-primary" onclick="mediaGalleryModule.previewExport()">
+                    <i class="bi bi-search me-1"></i>Preview
+                  </button>
+                </div>
+              </div>
+              <div id="exportPreview"></div>
+              <div id="exportStatus"></div>
+            </div>
+            <div class="modal-footer">
+              <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+              <button type="button" class="btn btn-success" onclick="mediaGalleryModule.downloadExportPackage()">
+                <i class="bi bi-download me-2"></i>Download Package
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Event Comparison Modal -->
+      <div class="modal fade" id="comparisonModal" tabindex="-1">
+        <div class="modal-dialog modal-xl">
+          <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+              <h5 class="modal-title"><i class="bi bi-layout-split me-2"></i>Event Media Comparison</h5>
+              <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+              <div class="row mb-3">
+                <div class="col-md-4">
+                  <label class="form-label">Event 1 (Previous)</label>
+                  <select class="form-select" id="comparisonEvent1">
+                    <option value="">Select event...</option>
+                  </select>
+                </div>
+                <div class="col-md-4">
+                  <label class="form-label">Event 2 (Current)</label>
+                  <select class="form-select" id="comparisonEvent2">
+                    <option value="">Select event...</option>
+                  </select>
+                </div>
+                <div class="col-md-3">
+                  <label class="form-label">Filter by Company</label>
+                  <select class="form-select" id="comparisonOrg">
+                    <option value="">All companies</option>
+                  </select>
+                </div>
+                <div class="col-md-1 d-flex align-items-end">
+                  <button class="btn btn-primary w-100" onclick="mediaGalleryModule.runComparison()">
+                    <i class="bi bi-arrow-left-right"></i>
+                  </button>
+                </div>
+              </div>
+              <div id="comparisonResult"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- YouTube Health Check Modal -->
+      <div class="modal fade" id="youtubeHealthModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+          <div class="modal-content">
+            <div class="modal-header bg-warning text-dark">
+              <h5 class="modal-title"><i class="bi bi-heart-pulse me-2"></i>YouTube Link Health Check</h5>
+              <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+              <div class="alert alert-info">
+                <i class="bi bi-info-circle me-2"></i>Checks all YouTube video links in the system to verify they're still accessible. Detects deleted, private, or restricted videos.
+              </div>
+              <div class="text-center mb-3">
+                <button class="btn btn-warning btn-lg" onclick="mediaGalleryModule.runYouTubeHealthCheck()">
+                  <i class="bi bi-play-circle me-2"></i>Run Health Check
+                </button>
+              </div>
+              <div id="youtubeHealthStatus"></div>
+              <div id="youtubeHealthResult"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <!-- ==================================================== -->
       <!-- EVENTS TAB -->
       <!-- ==================================================== -->
       <div class="tab-pane fade" id="events" role="tabpanel">
         <div class="container-fluid">
 
-          <div class="d-flex justify-content-between align-items-center mb-4">
-            <h2><i class="bi bi-calendar-event me-3"></i>Events Management</h2>
-            <div class="d-flex gap-2">
-              <button class="btn btn-outline-secondary" onclick="eventsModule.openTemplatesManager()">
-                <i class="bi bi-layout-text-sidebar me-2"></i>Templates
-              </button>
-              <button class="btn btn-primary" onclick="eventsModule.openAddModal()">
-                <i class="bi bi-plus-circle me-2"></i>Add Event
-              </button>
+          <!-- Page Header -->
+          <div class="section-header">
+            <h1 class="section-title">
+              <i class="bi bi-calendar-event me-2"></i>Events Management
+            </h1>
+            <p class="section-subtitle">Plan, manage, and track award ceremonies and events</p>
+          </div>
+
+          <!-- Quick Stats -->
+          <div class="row g-3 mb-4">
+            <div class="col-6 col-md-3 col-lg">
+              <div class="stat-card">
+                <i class="bi bi-calendar-event stat-card-icon text-primary"></i>
+                <h6>Total Events</h6>
+                <div class="stat-value" id="eventsTotalCount">0</div>
+              </div>
             </div>
+            <div class="col-6 col-md-3 col-lg">
+              <div class="stat-card">
+                <i class="bi bi-calendar-plus stat-card-icon text-success"></i>
+                <h6>Upcoming</h6>
+                <div class="stat-value text-success" id="eventsUpcomingCount">0</div>
+              </div>
+            </div>
+            <div class="col-6 col-md-3 col-lg">
+              <div class="stat-card">
+                <i class="bi bi-calendar-check stat-card-icon text-info"></i>
+                <h6>This Year</h6>
+                <div class="stat-value text-info" id="eventsThisYearCount">0</div>
+              </div>
+            </div>
+            <div class="col-6 col-md-3 col-lg">
+              <div class="stat-card">
+                <i class="bi bi-clock-history stat-card-icon text-secondary"></i>
+                <h6>Past Events</h6>
+                <div class="stat-value text-secondary" id="eventsPastCount">0</div>
+              </div>
+            </div>
+            <div class="col-6 col-md-3 col-lg">
+              <div class="stat-card" style="cursor:pointer" onclick="eventsModule.filterDataIssues();" title="Click to view events with missing data">
+                <i class="bi bi-exclamation-triangle stat-card-icon text-warning"></i>
+                <h6>Data Issues</h6>
+                <div class="stat-value text-warning" id="eventsDataIssuesCount">0</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Data Quality Warnings -->
+          <div id="eventsDataQualityBar" class="alert alert-warning py-2 mb-3" style="display:none;">
+            <i class="bi bi-exclamation-triangle me-2"></i>
+            <strong>Data quality:</strong>
+            <span id="eventsDataQualityText"></span>
+          </div>
+
+          <!-- Filters & Actions Bar -->
+          <div class="content-card mb-4">
+            <div class="row g-3 align-items-end">
+              <div class="col-md-2">
+                <label class="form-label small fw-semibold mb-1">
+                  <i class="bi bi-search me-1"></i>Search
+                </label>
+                <input type="text" class="form-control form-control-sm" id="eventsSearchBox"
+                       placeholder="Search events..."
+                       oninput="eventsModule.filterEvents()">
+              </div>
+              <div class="col-md-2">
+                <label class="form-label small fw-semibold mb-1">
+                  <i class="bi bi-calendar3 me-1"></i>Year
+                </label>
+                <select class="form-select form-select-sm" id="eventsYearFilter" onchange="eventsModule.filterEvents()">
+                  <option value="">All Years</option>
+                  <option value="2026">2026</option>
+                  <option value="2025">2025</option>
+                  <option value="2024">2024</option>
+                  <option value="2023">2023</option>
+                </select>
+              </div>
+              <div class="col-md-2">
+                <label class="form-label small fw-semibold mb-1">
+                  <i class="bi bi-funnel me-1"></i>Time
+                </label>
+                <select class="form-select form-select-sm" id="eventsStatusFilter" onchange="eventsModule.filterEvents()">
+                  <option value="">All Events</option>
+                  <option value="upcoming">Upcoming</option>
+                  <option value="past">Past</option>
+                  <option value="this-month">This Month</option>
+                </select>
+              </div>
+              <div class="col-md-2">
+                <label class="form-label small fw-semibold mb-1">
+                  <i class="bi bi-flag me-1"></i>Event Status
+                </label>
+                <select class="form-select form-select-sm" id="eventsEventStatusFilter" onchange="eventsModule.filterEvents()">
+                  <option value="">All Statuses</option>
+                  <option value="draft">Draft</option>
+                  <option value="confirmed">Confirmed</option>
+                  <option value="cancelled">Cancelled</option>
+                  <option value="complete">Complete</option>
+                </select>
+              </div>
+              <div class="col-md-4 text-end">
+                <div class="d-flex gap-2 justify-content-end flex-wrap">
+                  <button class="btn btn-outline-secondary btn-sm" onclick="eventsModule.resetEventFilters()" title="Reset Filters">
+                    <i class="bi bi-x-circle me-1"></i>Reset
+                  </button>
+                  <div class="vr mx-1"></div>
+                  <button class="btn btn-outline-info btn-sm" onclick="eventsModule.showEventsCalendar()" title="Calendar View">
+                    <i class="bi bi-calendar-week"></i>
+                  </button>
+                  <button class="btn btn-outline-secondary btn-sm" onclick="eventsModule.openTemplatesManager()" title="Event Templates">
+                    <i class="bi bi-layout-text-sidebar"></i>
+                  </button>
+                  <button class="btn btn-outline-secondary btn-sm" onclick="eventsModule.showImportAttendeesModal()" title="Import Attendees CSV">
+                    <i class="bi bi-upload"></i>
+                  </button>
+                  <button class="btn btn-primary btn-sm" onclick="eventsModule.openAddModal()">
+                    <i class="bi bi-plus-circle me-1"></i>Add Event
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Calendar View (hidden by default) -->
+          <div id="eventsCalendarView" style="display: none;" class="content-card mb-4">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+              <h5 class="mb-0"><i class="bi bi-calendar-week me-2"></i>Events Calendar</h5>
+              <div class="d-flex gap-2 align-items-center">
+                <button class="btn btn-sm btn-outline-secondary" onclick="eventsModule.calendarPrev()"><i class="bi bi-chevron-left"></i></button>
+                <span class="fw-semibold" id="eventsCalendarTitle">February 2026</span>
+                <button class="btn btn-sm btn-outline-secondary" onclick="eventsModule.calendarNext()"><i class="bi bi-chevron-right"></i></button>
+                <div class="vr mx-1"></div>
+                <button class="btn btn-sm btn-outline-secondary" onclick="eventsModule.hideEventsCalendar()"><i class="bi bi-x-lg"></i> Close</button>
+              </div>
+            </div>
+            <div id="eventsCalendarGrid" class="row g-1"></div>
           </div>
 
           <!-- Events Table -->
@@ -2858,26 +3264,69 @@
               <h5 class="mb-0">
                 All Events (<span id="eventsCount">0</span>)
               </h5>
+              <div class="d-flex gap-2">
+                <button class="btn btn-sm btn-outline-secondary" onclick="eventsModule.exportEventsCSV()" title="Export CSV">
+                  <i class="bi bi-download me-1"></i>Export
+                </button>
+              </div>
             </div>
             <div class="table-responsive">
               <table class="table table-hover">
                 <thead>
                   <tr>
-                    <th>Event Name</th>
-                    <th style="width: 100px;">Year</th>
-                    <th style="width: 120px;">Date</th>
+                    <th style="width:35px"><input type="checkbox" class="form-check-input" id="selectAllEvents" onchange="eventsModule.toggleSelectAll(this.checked)"></th>
+                    <th style="cursor:pointer" onclick="eventsModule.sortEvents('event_name')">Event Name <i class="bi bi-arrow-down-up text-muted small"></i></th>
+                    <th style="width: 80px; cursor:pointer" onclick="eventsModule.sortEvents('year')">Year <i class="bi bi-arrow-down-up text-muted small"></i></th>
+                    <th style="width: 110px; cursor:pointer" onclick="eventsModule.sortEvents('event_date')">Date <i class="bi bi-arrow-down-up text-muted small"></i></th>
                     <th>Venue</th>
-                    <th>Description</th>
-                    <th style="width: 100px;" class="text-center">Actions</th>
+                    <th style="width: 85px;" class="text-center">Attendees</th>
+                    <th style="width: 95px;" class="text-center">Status</th>
+                    <th style="width: 200px;" class="text-center">Actions</th>
                   </tr>
                 </thead>
                 <tbody id="eventsTableBody">
-                  <!-- Populated by JS -->
+                  <tr>
+                    <td colspan="8" class="text-center py-4">
+                      <div class="spinner-border spinner-border-sm text-primary me-2" role="status"></div>
+                      Loading events...
+                    </td>
+                  </tr>
                 </tbody>
               </table>
             </div>
+            <div class="card-footer d-flex justify-content-between align-items-center small text-muted">
+              <span id="eventsLastRefreshed">Last refreshed: --</span>
+              <span id="eventsFilterSummary"></span>
+            </div>
           </div>
 
+          <!-- Bulk Actions Bar (hidden by default) -->
+          <div id="eventsBulkActionsBar" class="position-fixed start-50 translate-middle-x bg-dark text-white rounded-pill px-4 py-2 shadow-lg d-flex align-items-center gap-3" style="display:none !important; bottom:30px; z-index:1050;">
+            <span><strong id="eventsSelectedCount">0</strong> selected</span>
+            <div class="vr bg-light mx-1"></div>
+            <button class="btn btn-sm btn-outline-light" onclick="eventsModule.bulkClone()"><i class="bi bi-files me-1"></i>Clone</button>
+            <div class="btn-group btn-group-sm">
+              <button class="btn btn-outline-light dropdown-toggle" data-bs-toggle="dropdown">
+                <i class="bi bi-flag me-1"></i>Set Status
+              </button>
+              <ul class="dropdown-menu">
+                <li><a class="dropdown-item" href="#" onclick="event.preventDefault(); eventsModule.bulkSetStatus('draft')">Draft</a></li>
+                <li><a class="dropdown-item" href="#" onclick="event.preventDefault(); eventsModule.bulkSetStatus('confirmed')">Confirmed</a></li>
+                <li><a class="dropdown-item" href="#" onclick="event.preventDefault(); eventsModule.bulkSetStatus('cancelled')">Cancelled</a></li>
+                <li><a class="dropdown-item" href="#" onclick="event.preventDefault(); eventsModule.bulkSetStatus('complete')">Complete</a></li>
+              </ul>
+            </div>
+            <button class="btn btn-sm btn-outline-danger" onclick="eventsModule.bulkDelete()"><i class="bi bi-trash me-1"></i>Delete</button>
+            <button class="btn btn-sm btn-outline-light" onclick="eventsModule.clearEventSelection()"><i class="bi bi-x-lg"></i></button>
+          </div>
+
+        </div>
+
+        <!-- Floating Action Button -->
+        <div class="position-fixed" style="bottom:80px; right:30px; z-index:1040;">
+          <button class="btn btn-primary btn-lg rounded-circle shadow-lg" onclick="eventsModule.openAddModal()" title="Add Event" style="width:56px; height:56px;">
+            <i class="bi bi-plus-lg"></i>
+          </button>
         </div>
       </div>
 
@@ -2886,59 +3335,197 @@
       <!-- ==================================================== -->
       <div class="tab-pane fade" id="reports" role="tabpanel">
         <div class="container-fluid">
-          
+
           <!-- Page Header -->
           <div class="section-header">
             <h1 class="section-title">
               <i class="bi bi-graph-up me-2"></i>Reports & Analytics
             </h1>
-            <p class="section-subtitle">View comprehensive statistics and insights</p>
+            <p class="section-subtitle">View comprehensive statistics, charts, and insights</p>
+          </div>
+
+          <!-- Toolbar: Year Filter + Print + Freshness -->
+          <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+            <div class="d-flex gap-2 align-items-center">
+              <label class="form-label mb-0 small fw-semibold text-muted">Year:</label>
+              <select id="reportsYearFilter" class="form-select form-select-sm" style="width:120px;" onchange="reportsAnalytics.filterByYear(this.value)">
+                <option value="all">All Years</option>
+              </select>
+              <button class="btn btn-sm btn-outline-primary" onclick="reportsAnalytics.printSummaryReport()">
+                <i class="bi bi-printer me-1"></i>Print Report
+              </button>
+            </div>
+            <div id="reportsDataFreshness" class="d-flex align-items-center gap-2 small text-muted">
+              <i class="bi bi-clock-history"></i>
+              <span>Data loaded: --</span>
+            </div>
           </div>
 
           <!-- Summary Stats -->
-          <div class="row g-4 mb-4">
-            <div class="col-md-4">
+          <div class="row g-3 mb-4">
+            <div class="col-md-3">
               <div class="stat-card">
                 <i class="bi bi-trophy stat-card-icon text-primary"></i>
                 <h6>Total Awards</h6>
                 <div class="stat-value" id="reportsTotal">0</div>
               </div>
             </div>
-            
-            <div class="col-md-4">
+            <div class="col-md-3">
               <div class="stat-card">
                 <i class="bi bi-building stat-card-icon text-success"></i>
                 <h6>Total Organisations</h6>
                 <div class="stat-value text-success" id="reportsTotalOrgs">0</div>
               </div>
             </div>
-            
-            <div class="col-md-4">
+            <div class="col-md-3">
               <div class="stat-card">
                 <i class="bi bi-award stat-card-icon text-info"></i>
                 <h6>Total Winners</h6>
                 <div class="stat-value text-info" id="reportsTotalWinners">0</div>
               </div>
             </div>
+            <div class="col-md-3">
+              <div class="stat-card">
+                <i class="bi bi-file-earmark-text stat-card-icon text-warning"></i>
+                <h6>Total Entries</h6>
+                <div class="stat-value text-warning" id="reportsTotalEntries">0</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Analytics Charts -->
+          <div class="row g-4 mb-4">
+            <div class="col-md-6">
+              <div class="content-card">
+                <h6 class="fw-semibold mb-3"><i class="bi bi-pie-chart me-2"></i>Organisations by Status</h6>
+                <div style="height:280px; position:relative;">
+                  <canvas id="reportsPipelineChart"></canvas>
+                </div>
+              </div>
+            </div>
+            <div class="col-md-6">
+              <div class="content-card">
+                <h6 class="fw-semibold mb-3"><i class="bi bi-bar-chart me-2"></i>Organisations by Sector</h6>
+                <div style="height:280px; position:relative;">
+                  <canvas id="reportsSectorChart"></canvas>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="row g-4 mb-4">
+            <div class="col-md-6">
+              <div class="content-card">
+                <h6 class="fw-semibold mb-3"><i class="bi bi-geo-alt me-2"></i>Regional Distribution</h6>
+                <div style="height:280px; position:relative;">
+                  <canvas id="reportsRegionChart"></canvas>
+                </div>
+              </div>
+            </div>
+            <div class="col-md-6">
+              <div class="content-card">
+                <h6 class="fw-semibold mb-3"><i class="bi bi-layers me-2"></i>Organisation Tier Breakdown</h6>
+                <div style="height:280px; position:relative;">
+                  <canvas id="reportsTierChart"></canvas>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Year-over-Year Comparison -->
+          <div class="row g-4 mb-4">
+            <div class="col-12">
+              <div class="content-card">
+                <h6 class="fw-semibold mb-3"><i class="bi bi-graph-up-arrow me-2"></i>Year-over-Year Comparison</h6>
+                <div style="height:320px; position:relative;">
+                  <canvas id="reportsYoYChart"></canvas>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Awards by Category + Entry Conversion Funnel -->
+          <div class="row g-4 mb-4">
+            <div class="col-md-6">
+              <div class="content-card">
+                <h6 class="fw-semibold mb-3"><i class="bi bi-grid me-2"></i>Awards by Category</h6>
+                <div style="height:300px; position:relative;">
+                  <canvas id="reportsCategoryChart"></canvas>
+                </div>
+              </div>
+            </div>
+            <div class="col-md-6">
+              <div class="content-card">
+                <h6 class="fw-semibold mb-3"><i class="bi bi-funnel me-2"></i>Entry Conversion Funnel</h6>
+                <div style="height:300px; position:relative;">
+                  <canvas id="reportsFunnelChart"></canvas>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Pipeline Summary Table -->
+          <div class="content-card mb-4">
+            <h5 class="mb-3"><i class="bi bi-clipboard-data me-2"></i>Pipeline Summary</h5>
+            <div class="table-responsive">
+              <table class="table table-sm table-hover">
+                <thead>
+                  <tr>
+                    <th>Status</th>
+                    <th class="text-center">Count</th>
+                    <th>Percentage</th>
+                    <th>Visual</th>
+                  </tr>
+                </thead>
+                <tbody id="reportsPipelineTable">
+                  <tr><td colspan="4" class="text-center text-muted py-3">Loading...</td></tr>
+                </tbody>
+              </table>
+            </div>
           </div>
 
           <!-- Export Section -->
-          <div class="content-card">
+          <div class="content-card mb-4">
             <h5 class="mb-3">
               <i class="bi bi-download me-2"></i>Export Data
             </h5>
-            <p class="text-muted mb-4">Download reports in various formats</p>
-            
+            <p class="text-muted mb-3">Download reports in various formats</p>
+
             <div class="d-flex gap-2 flex-wrap">
-              <button class="btn btn-sm btn-outline-secondary">
+              <button class="btn btn-sm btn-outline-secondary" onclick="dashboardModule.exportAwardsCSV()">
                 <i class="bi bi-download me-1"></i>Export Awards (CSV)
               </button>
-              <button class="btn btn-sm btn-outline-secondary">
+              <button class="btn btn-sm btn-outline-secondary" onclick="dashboardModule.exportOrganisationsCSV()">
                 <i class="bi bi-download me-1"></i>Export Organisations (CSV)
               </button>
-              <button class="btn btn-sm btn-outline-secondary">
+              <button class="btn btn-sm btn-outline-secondary" onclick="dashboardModule.exportWinnersCSV()">
                 <i class="bi bi-download me-1"></i>Export Winners (CSV)
               </button>
+              <button class="btn btn-sm btn-outline-secondary" onclick="settingsModule.exportEventsCSV()">
+                <i class="bi bi-download me-1"></i>Export Events (CSV)
+              </button>
+              <button class="btn btn-sm btn-outline-secondary" onclick="settingsModule.exportFullBackup()">
+                <i class="bi bi-download me-1"></i>Full Backup (JSON)
+              </button>
+            </div>
+          </div>
+
+          <!-- Scheduled Reports Section -->
+          <div class="content-card">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+              <h5 class="mb-0">
+                <i class="bi bi-calendar2-week me-2"></i>Scheduled Reports
+              </h5>
+              <button class="btn btn-primary btn-sm" onclick="reportsScheduler.showCreateReport()">
+                <i class="bi bi-plus-circle me-2"></i>Create Report Schedule
+              </button>
+            </div>
+            <p class="text-muted small mb-3">Schedule automated reports to be generated on a recurring basis.</p>
+            <div id="scheduledReportsGrid">
+              <div class="text-center py-4 text-muted">
+                <i class="bi bi-calendar-x display-4 d-block mb-2 opacity-25"></i>
+                No scheduled reports configured yet
+              </div>
             </div>
           </div>
 
@@ -2989,6 +3576,11 @@
             <li class="nav-item" role="presentation">
               <button class="nav-link" id="email-lists-subtab" data-bs-toggle="pill" data-bs-target="#email-lists-content" type="button" role="tab">
                 <i class="bi bi-list-ul me-2"></i>Email Lists
+              </button>
+            </li>
+            <li class="nav-item" role="presentation">
+              <button class="nav-link" id="email-sequences-subtab" data-bs-toggle="pill" data-bs-target="#email-sequences-content" type="button" role="tab">
+                <i class="bi bi-envelope-arrow-up me-2"></i>Email Sequences
               </button>
             </li>
           </ul>
@@ -4182,6 +4774,23 @@
 
             </div>
 
+            <!-- Email Sequences Sub-Tab -->
+            <div class="tab-pane fade" id="email-sequences-content" role="tabpanel">
+              <div class="d-flex justify-content-between align-items-center mb-4">
+                <h4><i class="bi bi-envelope-arrow-up me-2"></i>Email Sequences</h4>
+                <button class="btn btn-primary btn-sm" onclick="marketingModule.showCreateSequence()">
+                  <i class="bi bi-plus-circle me-2"></i>Create New Sequence
+                </button>
+              </div>
+              <p class="text-muted small">Create automated email sequences triggered by status changes or manual enrollment.</p>
+              <div id="emailSequencesGrid">
+                <div class="text-center py-5 text-muted">
+                  <i class="bi bi-envelope-slash display-4 d-block mb-2 opacity-25"></i>
+                  No sequences configured yet
+                </div>
+              </div>
+            </div>
+
           </div>
 
         </div>
@@ -4216,6 +4825,11 @@
             <li class="nav-item" role="presentation">
               <button class="nav-link" id="financial-reports-subtab" data-bs-toggle="pill" data-bs-target="#financial-reports-content" type="button" role="tab">
                 <i class="bi bi-graph-up me-2"></i>Financial Reports
+              </button>
+            </li>
+            <li class="nav-item" role="presentation">
+              <button class="nav-link" id="accounting-subtab" data-bs-toggle="pill" data-bs-target="#accounting-content" type="button" role="tab">
+                <i class="bi bi-currency-pound me-2"></i>Accounting
               </button>
             </li>
           </ul>
@@ -4466,6 +5080,20 @@
 
             </div>
 
+            <!-- Accounting Integration Sub-Tab -->
+            <div class="tab-pane fade" id="accounting-content" role="tabpanel">
+              <div class="d-flex justify-content-between align-items-center mb-4">
+                <h4><i class="bi bi-currency-pound me-2"></i>Accounting Integration</h4>
+              </div>
+              <p class="text-muted small mb-3">Connect your accounting software to sync invoices and payments.</p>
+              <div id="accountingIntegrationContainer">
+                <div class="text-center py-5 text-muted">
+                  <i class="bi bi-currency-pound display-4 d-block mb-2 opacity-25"></i>
+                  Loading accounting settings...
+                </div>
+              </div>
+            </div>
+
           </div>
 
         </div>
@@ -4510,6 +5138,16 @@
             <li class="nav-item" role="presentation">
               <button class="nav-link" id="segments-subtab" data-bs-toggle="pill" data-bs-target="#segments-content" type="button" role="tab">
                 <i class="bi bi-tags me-2"></i>Segments
+              </button>
+            </li>
+            <li class="nav-item" role="presentation">
+              <button class="nav-link" id="smart-segments-subtab" data-bs-toggle="pill" data-bs-target="#smart-segments-content" type="button" role="tab">
+                <i class="bi bi-funnel me-2"></i>Smart Segments
+              </button>
+            </li>
+            <li class="nav-item" role="presentation">
+              <button class="nav-link" id="my-tasks-subtab" data-bs-toggle="pill" data-bs-target="#my-tasks-content" type="button" role="tab">
+                <i class="bi bi-person-check me-2"></i>My Tasks
               </button>
             </li>
           </ul>
@@ -4938,6 +5576,49 @@
 
             </div>
 
+            <!-- Smart Segments Sub-Tab -->
+            <div class="tab-pane fade" id="smart-segments-content" role="tabpanel">
+              <div class="d-flex justify-content-between align-items-center mb-4">
+                <h4><i class="bi bi-funnel me-2"></i>Smart Segments</h4>
+              </div>
+              <p class="small text-muted mb-3">Build dynamic segments based on rules. Matching organisations update in real-time.</p>
+              <div id="smartSegmentRules">
+                <div class="segment-rule d-flex gap-2 align-items-center mb-2">
+                  <select class="form-select form-select-sm" style="width:auto;" id="segField0">
+                    <option value="tier">Tier</option><option value="status">Status</option><option value="region">Region</option>
+                    <option value="sector">Sector</option><option value="awards_count">Awards Count</option><option value="engagement">Engagement Score</option>
+                  </select>
+                  <select class="form-select form-select-sm" style="width:auto;" id="segOp0">
+                    <option value="eq">equals</option><option value="neq">not equals</option>
+                    <option value="gt">greater than</option><option value="lt">less than</option>
+                    <option value="contains">contains</option>
+                  </select>
+                  <input type="text" class="form-control form-control-sm" style="width:150px;" id="segVal0" placeholder="Value...">
+                </div>
+              </div>
+              <button class="btn btn-sm btn-outline-secondary mb-3" onclick="crmModule.addSegmentRule()"><i class="bi bi-plus me-1"></i>Add Rule</button>
+              <div class="d-flex gap-2 mb-3">
+                <button class="btn btn-sm btn-primary" onclick="crmModule.applySmartSegment()"><i class="bi bi-funnel me-1"></i>Apply Segment</button>
+                <button class="btn btn-sm btn-outline-success" onclick="crmModule.saveSmartSegment()"><i class="bi bi-save me-1"></i>Save Segment</button>
+                <button class="btn btn-sm btn-outline-secondary" onclick="crmModule.loadSmartSegments()"><i class="bi bi-folder-open me-1"></i>Load Saved</button>
+              </div>
+              <div id="smartSegmentResult"></div>
+            </div>
+
+            <!-- My Tasks Sub-Tab -->
+            <div class="tab-pane fade" id="my-tasks-content" role="tabpanel">
+              <div class="d-flex justify-content-between align-items-center mb-4">
+                <h4><i class="bi bi-person-check me-2"></i>My Tasks & Follow-ups</h4>
+                <button class="btn btn-sm btn-outline-primary" onclick="crmModule.refreshMyTasks()"><i class="bi bi-arrow-clockwise me-1"></i>Refresh</button>
+              </div>
+              <div id="myTasksContainer">
+                <div class="text-center py-5 text-muted">
+                  <i class="bi bi-hourglass-split display-4 d-block mb-2 opacity-25"></i>
+                  Loading tasks...
+                </div>
+              </div>
+            </div>
+
           </div>
 
         </div>
@@ -5352,16 +6033,96 @@ Available placeholders:
           <!-- Page Header -->
           <div class="section-header">
             <h1 class="section-title">
-              <i class="bi bi-currency-bitcoin me-2"></i>Bitcoin Price Chart
+              <i class="bi bi-currency-bitcoin me-2"></i>Crypto & Markets
             </h1>
-            <p class="section-subtitle">Live BTC/USD trading view with technical analysis tools</p>
+            <p class="section-subtitle">Live charts with technical analysis tools — powered by TradingView</p>
           </div>
 
-          <!-- TradingView Widget Container -->
-          <div class="card border-0 shadow-sm">
-            <div class="card-body p-0">
-              <div class="tradingview-widget-container" style="height: 800px; width: 100%;">
-                <div id="tradingview_chart" style="height: 100%; width: 100%;"></div>
+          <!-- Quick Symbol Buttons -->
+          <div class="content-card mb-3">
+            <div class="d-flex flex-wrap gap-2 align-items-center">
+              <span class="fw-semibold small me-2"><i class="bi bi-lightning-charge me-1"></i>Quick Switch:</span>
+              <button class="btn btn-sm btn-outline-warning btc-symbol-btn active" onclick="btcModule.switchSymbol('COINBASE:BTCUSD', this)">
+                <i class="bi bi-currency-bitcoin me-1"></i>BTC/USD
+              </button>
+              <button class="btn btn-sm btn-outline-primary btc-symbol-btn" onclick="btcModule.switchSymbol('COINBASE:ETHUSD', this)">
+                <i class="bi bi-diamond me-1"></i>ETH/USD
+              </button>
+              <button class="btn btn-sm btn-outline-success btc-symbol-btn" onclick="btcModule.switchSymbol('FX:GBPUSD', this)">
+                <i class="bi bi-currency-pound me-1"></i>GBP/USD
+              </button>
+              <button class="btn btn-sm btn-outline-info btc-symbol-btn" onclick="btcModule.switchSymbol('FX:EURUSD', this)">
+                <i class="bi bi-currency-euro me-1"></i>EUR/USD
+              </button>
+              <button class="btn btn-sm btn-outline-secondary btc-symbol-btn" onclick="btcModule.switchSymbol('TVC:GOLD', this)">
+                <i class="bi bi-gem me-1"></i>Gold
+              </button>
+              <button class="btn btn-sm btn-outline-secondary btc-symbol-btn" onclick="btcModule.switchSymbol('SP:SPX', this)">
+                <i class="bi bi-graph-up me-1"></i>S&P 500
+              </button>
+              <div class="vr mx-2"></div>
+              <span class="fw-semibold small me-1">Interval:</span>
+              <div class="btn-group btn-group-sm">
+                <button class="btn btn-outline-secondary btc-interval-btn" onclick="btcModule.switchInterval('1', this)">1m</button>
+                <button class="btn btn-outline-secondary btc-interval-btn" onclick="btcModule.switchInterval('5', this)">5m</button>
+                <button class="btn btn-outline-secondary btc-interval-btn" onclick="btcModule.switchInterval('15', this)">15m</button>
+                <button class="btn btn-outline-secondary btc-interval-btn" onclick="btcModule.switchInterval('60', this)">1H</button>
+                <button class="btn btn-outline-secondary btc-interval-btn" onclick="btcModule.switchInterval('240', this)">4H</button>
+                <button class="btn btn-outline-secondary btc-interval-btn active" onclick="btcModule.switchInterval('D', this)">1D</button>
+                <button class="btn btn-outline-secondary btc-interval-btn" onclick="btcModule.switchInterval('W', this)">1W</button>
+              </div>
+              <div class="vr mx-2"></div>
+              <span class="fw-semibold small me-1">Style:</span>
+              <div class="btn-group btn-group-sm">
+                <button class="btn btn-outline-secondary btc-style-btn active" onclick="btcModule.switchStyle('1', this)" title="Candles"><i class="bi bi-bar-chart"></i></button>
+                <button class="btn btn-outline-secondary btc-style-btn" onclick="btcModule.switchStyle('2', this)" title="Line"><i class="bi bi-graph-up"></i></button>
+                <button class="btn btn-outline-secondary btc-style-btn" onclick="btcModule.switchStyle('3', this)" title="Area"><i class="bi bi-graph-down"></i></button>
+                <button class="btn btn-outline-secondary btc-style-btn" onclick="btcModule.switchStyle('0', this)" title="Bars"><i class="bi bi-bar-chart-steps"></i></button>
+              </div>
+              <div class="vr mx-2"></div>
+              <span class="fw-semibold small me-1">Theme:</span>
+              <div class="btn-group btn-group-sm">
+                <button class="btn btn-outline-dark btc-theme-btn active" onclick="btcModule.switchTheme('dark', this)"><i class="bi bi-moon-fill"></i></button>
+                <button class="btn btn-outline-light border btc-theme-btn" onclick="btcModule.switchTheme('light', this)"><i class="bi bi-sun-fill"></i></button>
+              </div>
+            </div>
+          </div>
+
+          <div class="row g-3">
+            <!-- Main Chart -->
+            <div class="col-lg-9">
+              <div class="card border-0 shadow-sm">
+                <div class="card-body p-0">
+                  <div class="tradingview-widget-container" style="height: 700px; width: 100%;">
+                    <div id="tradingview_chart" style="height: 100%; width: 100%;"></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Watchlist Sidebar -->
+            <div class="col-lg-3">
+              <div class="card border-0 shadow-sm">
+                <div class="card-header bg-dark text-white py-2">
+                  <h6 class="mb-0"><i class="bi bi-star me-2"></i>Watchlist</h6>
+                </div>
+                <div class="card-body p-0">
+                  <div id="btcWatchlist" style="max-height: 340px; overflow-y: auto;">
+                    <div class="text-center py-3 text-muted small">Loading watchlist...</div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Market Overview Widget -->
+              <div class="card border-0 shadow-sm mt-3">
+                <div class="card-header bg-dark text-white py-2">
+                  <h6 class="mb-0"><i class="bi bi-globe me-2"></i>Market Overview</h6>
+                </div>
+                <div class="card-body p-2" style="max-height: 340px; overflow-y: auto;">
+                  <div id="btcMarketOverview">
+                    <div class="text-center py-3 text-muted small">Loading market data...</div>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
@@ -6310,6 +7071,23 @@ Available placeholders:
               <input type="text" class="form-control" id="eventVenue" placeholder="e.g., Grand Hotel Ballroom">
             </div>
             <div class="mb-3">
+              <label for="eventCapacity" class="form-label">Venue Capacity</label>
+              <div class="input-group">
+                <input type="number" class="form-control" id="eventCapacity" min="1" max="10000" placeholder="e.g., 300">
+                <span class="input-group-text"><i class="bi bi-people"></i> guests</span>
+              </div>
+              <div class="form-text">Maximum number of guests the venue can hold</div>
+            </div>
+            <div class="mb-3">
+              <label for="eventStatus" class="form-label">Event Status</label>
+              <select class="form-select" id="eventStatus">
+                <option value="draft">Draft</option>
+                <option value="confirmed">Confirmed</option>
+                <option value="cancelled">Cancelled</option>
+                <option value="complete">Complete</option>
+              </select>
+            </div>
+            <div class="mb-3">
               <label for="eventDescription" class="form-label">Description</label>
               <textarea class="form-control" id="eventDescription" rows="3" placeholder="Brief description of the event"></textarea>
             </div>
@@ -6414,9 +7192,23 @@ Available placeholders:
                 <span class="ms-3"><i class="bi bi-geo-alt me-1"></i><span id="attendeesEventVenue"></span></span>
               </p>
             </div>
-            <div class="d-flex gap-2">
-              <button class="btn btn-outline-secondary btn-sm" onclick="eventsModule.exportAttendees()">
-                <i class="bi bi-download me-1"></i>Export List
+            <div class="d-flex gap-2 flex-wrap">
+              <div class="dropdown">
+                <button class="btn btn-outline-secondary btn-sm dropdown-toggle" data-bs-toggle="dropdown">
+                  <i class="bi bi-download me-1"></i>Export
+                </button>
+                <ul class="dropdown-menu dropdown-menu-end">
+                  <li><a class="dropdown-item" href="#" onclick="eventsModule.exportAttendees()"><i class="bi bi-file-earmark-spreadsheet me-2"></i>Export Attendees CSV</a></li>
+                  <li><a class="dropdown-item" href="#" onclick="eventsModule.exportDietarySummary()"><i class="bi bi-egg-fried me-2"></i>Export Dietary Report</a></li>
+                  <li><hr class="dropdown-divider"></li>
+                  <li><a class="dropdown-item" href="#" onclick="eventsModule.generateNameBadges()"><i class="bi bi-person-badge me-2"></i>Name Badges PDF</a></li>
+                  <li><a class="dropdown-item" href="#" onclick="eventsModule.generatePlaceCards()"><i class="bi bi-card-text me-2"></i>Place Cards PDF</a></li>
+                  <li><hr class="dropdown-divider"></li>
+                  <li><a class="dropdown-item" href="#" onclick="eventsModule.openShareableSeatingChart()"><i class="bi bi-share me-2"></i>Shareable Seating Chart</a></li>
+                </ul>
+              </div>
+              <button class="btn btn-outline-info btn-sm" onclick="eventsModule.sendBulkInvites()" title="Send invitation email to all guests">
+                <i class="bi bi-envelope me-1"></i>Send Invites
               </button>
               <button class="btn btn-primary btn-sm" onclick="eventsModule.openAddAttendeeForm()">
                 <i class="bi bi-person-plus me-1"></i>Add Attendee
@@ -6460,49 +7252,477 @@ Available placeholders:
             </div>
           </div>
 
-          <!-- Add Attendee Form (Initially Hidden) -->
-          <div id="addAttendeeForm" class="card mb-3" style="display: none;">
-            <div class="card-body">
-              <h6 class="card-title">Add New Attendee</h6>
-              <div class="row g-3">
-                <div class="col-md-4">
-                  <input type="text" class="form-control form-control-sm" id="attendeeName" placeholder="Name *" required>
+          <!-- Venue Capacity Tracker -->
+          <div id="venueCapacityTracker" class="mb-4" style="display: none;">
+            <div class="card border-0" style="background: linear-gradient(135deg, #f8f9fa, #e9ecef);">
+              <div class="card-body py-3">
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                  <div>
+                    <i class="bi bi-building me-2 text-muted"></i>
+                    <strong>Venue Capacity</strong>
+                  </div>
+                  <div class="text-end">
+                    <span class="fw-bold fs-5" id="capacityAttendingNum">0</span>
+                    <span class="text-muted">/ <span id="capacityTotalNum">0</span></span>
+                    <span class="badge ms-2" id="capacityPctBadge">0%</span>
+                  </div>
                 </div>
-                <div class="col-md-3">
-                  <input type="email" class="form-control form-control-sm" id="attendeeEmail" placeholder="Email">
+                <div class="progress" style="height: 12px; border-radius: 6px;">
+                  <div class="progress-bar" id="capacityProgressBar" role="progressbar" style="width: 0%; transition: width 0.5s ease;"></div>
                 </div>
-                <div class="col-md-3">
-                  <select class="form-select form-select-sm" id="attendeeStatus">
-                    <option value="attending">Attending</option>
-                    <option value="not_attending">Not Attending</option>
-                    <option value="maybe">Maybe</option>
-                  </select>
-                </div>
-                <div class="col-md-2">
-                  <button class="btn btn-sm btn-success w-100" onclick="eventsModule.addAttendee()">
-                    <i class="bi bi-plus-circle me-1"></i>Add
-                  </button>
+                <div class="d-flex justify-content-between mt-1">
+                  <small class="text-muted" id="capacityRemainingText">-</small>
+                  <small class="text-muted" id="capacityWarningText"></small>
                 </div>
               </div>
             </div>
           </div>
 
-          <!-- Attendees Table -->
-          <div class="table-responsive">
-            <table class="table table-sm table-hover">
-              <thead>
-                <tr>
-                  <th>Name</th>
-                  <th>Email</th>
-                  <th>RSVP Status</th>
-                  <th>Added</th>
-                  <th width="100" class="text-center">Actions</th>
-                </tr>
-              </thead>
-              <tbody id="attendeesTableBody">
-                <!-- Populated by JS -->
-              </tbody>
-            </table>
+          <!-- Dietary Summary (shown when dietary data exists) -->
+          <div id="dietarySummaryCard" class="mb-3" style="display: none;">
+            <div class="card border-0 bg-light">
+              <div class="card-body py-2">
+                <div class="d-flex justify-content-between align-items-center mb-1">
+                  <small class="fw-bold text-muted"><i class="bi bi-egg-fried me-1"></i>DIETARY SUMMARY (for caterers)</small>
+                  <button class="btn btn-sm btn-outline-secondary py-0" onclick="eventsModule.exportDietarySummary()" title="Export dietary report">
+                    <i class="bi bi-download me-1"></i><small>Export</small>
+                  </button>
+                </div>
+                <div id="dietarySummaryContent" class="d-flex flex-wrap gap-2">
+                  <!-- Populated by JS -->
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Tabs -->
+          <ul class="nav nav-tabs mb-3 flex-nowrap" role="tablist" style="overflow-x:auto;">
+            <li class="nav-item"><a class="nav-link active" data-bs-toggle="tab" href="#attendeesTab">
+              <i class="bi bi-people me-1"></i>Attendees</a></li>
+            <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#checkInTab">
+              <i class="bi bi-qr-code me-1"></i>Check-In <span class="badge bg-success ms-1" id="checkedInBadge" style="display:none;">0</span></a></li>
+            <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#ticketsTab">
+              <i class="bi bi-ticket-perforated me-1"></i>Tickets</a></li>
+            <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#waitlistTab">
+              <i class="bi bi-hourglass me-1"></i>Waitlist <span class="badge bg-warning ms-1" id="waitlistBadge" style="display:none;">0</span></a></li>
+            <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#budgetTab">
+              <i class="bi bi-wallet2 me-1"></i>Budget</a></li>
+            <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#vendorsTab">
+              <i class="bi bi-truck me-1"></i>Vendors <span class="badge bg-secondary ms-1" id="vendorBadge" style="display:none;">0</span></a></li>
+            <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#specialReqsTab">
+              <i class="bi bi-shield-check me-1"></i>Requirements</a></li>
+            <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#postEventTab">
+              <i class="bi bi-clipboard-data me-1"></i>Post-Event</a></li>
+          </ul>
+
+          <div class="tab-content">
+            <!-- Attendees Tab -->
+            <div class="tab-pane fade show active" id="attendeesTab">
+              <!-- Add Attendee Form (Initially Hidden) -->
+              <div id="addAttendeeForm" class="card mb-3" style="display: none;">
+                <div class="card-body">
+                  <h6 class="card-title">Add New Attendee</h6>
+                  <div class="row g-2 mb-2">
+                    <div class="col-md-4">
+                      <input type="text" class="form-control form-control-sm" id="attendeeName" placeholder="Name *" required>
+                    </div>
+                    <div class="col-md-3">
+                      <input type="email" class="form-control form-control-sm" id="attendeeEmail" placeholder="Email">
+                    </div>
+                    <div class="col-md-2">
+                      <select class="form-select form-select-sm" id="attendeeStatus">
+                        <option value="attending">Attending</option>
+                        <option value="not_attending">Not Attending</option>
+                        <option value="maybe">Maybe</option>
+                      </select>
+                    </div>
+                    <div class="col-md-2">
+                      <select class="form-select form-select-sm" id="attendeeType">
+                        <option value="guest">Guest</option>
+                        <option value="vip">VIP</option>
+                        <option value="speaker">Speaker</option>
+                        <option value="sponsor">Sponsor</option>
+                        <option value="media">Media</option>
+                        <option value="staff">Staff</option>
+                      </select>
+                    </div>
+                    <div class="col-md-1">
+                      <input type="number" class="form-control form-control-sm" id="attendeePlusOnes" placeholder="+1s" min="0" max="10" value="0" title="Plus ones">
+                    </div>
+                  </div>
+                  <div class="row g-2">
+                    <div class="col-md-4">
+                      <input type="text" class="form-control form-control-sm" id="attendeeDietary" placeholder="Dietary requirements (e.g. Vegetarian, Nut Allergy)">
+                    </div>
+                    <div class="col-md-6">
+                      <input type="text" class="form-control form-control-sm" id="attendeeNotes" placeholder="Notes (e.g. wheelchair access, sponsor contact)">
+                    </div>
+                    <div class="col-md-2">
+                      <button class="btn btn-sm btn-success w-100" onclick="eventsModule.addAttendee()">
+                        <i class="bi bi-plus-circle me-1"></i>Add
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Attendee Filters -->
+              <div class="d-flex gap-2 mb-2 align-items-center">
+                <input type="text" class="form-control form-control-sm" id="attendeeSearchFilter" placeholder="Search name or company..." style="max-width:200px;" oninput="eventsModule.filterAttendeesList()">
+                <select class="form-select form-select-sm" id="attendeeStatusFilter" style="max-width:140px;" onchange="eventsModule.filterAttendeesList()">
+                  <option value="">All Statuses</option>
+                  <option value="attending">Attending</option>
+                  <option value="not_attending">Not Attending</option>
+                  <option value="maybe">Maybe</option>
+                </select>
+                <select class="form-select form-select-sm" id="attendeeTypeFilter" style="max-width:120px;" onchange="eventsModule.filterAttendeesList()">
+                  <option value="">All Types</option>
+                  <option value="vip">VIP</option>
+                  <option value="speaker">Speaker</option>
+                  <option value="sponsor">Sponsor</option>
+                  <option value="media">Media</option>
+                  <option value="staff">Staff</option>
+                  <option value="guest">Guest</option>
+                </select>
+              </div>
+
+              <!-- Attendees Table -->
+              <div class="table-responsive">
+                <table class="table table-sm table-hover">
+                  <thead>
+                    <tr>
+                      <th>Name</th>
+                      <th>Email</th>
+                      <th>Type</th>
+                      <th>RSVP</th>
+                      <th>+1s</th>
+                      <th>Dietary</th>
+                      <th>Notes</th>
+                      <th width="120" class="text-center">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody id="attendeesTableBody">
+                    <!-- Populated by JS -->
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <!-- Check-In Tab -->
+            <div class="tab-pane fade" id="checkInTab">
+              <div class="row g-3 mb-3">
+                <div class="col-md-4">
+                  <div class="card text-center border-success">
+                    <div class="card-body py-2">
+                      <h3 class="mb-0 text-success" id="checkInCheckedCount">0</h3>
+                      <small class="text-muted">Checked In</small>
+                    </div>
+                  </div>
+                </div>
+                <div class="col-md-4">
+                  <div class="card text-center">
+                    <div class="card-body py-2">
+                      <h3 class="mb-0 text-warning" id="checkInPendingCount">0</h3>
+                      <small class="text-muted">Awaiting</small>
+                    </div>
+                  </div>
+                </div>
+                <div class="col-md-4">
+                  <div class="card text-center">
+                    <div class="card-body py-2">
+                      <div class="progress mt-1" style="height:16px;">
+                        <div class="progress-bar bg-success" id="checkInProgressBar" style="width:0%;">0%</div>
+                      </div>
+                      <small class="text-muted mt-1 d-block">Check-In Rate</small>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="d-flex gap-2 mb-3">
+                <div class="input-group flex-grow-1">
+                  <span class="input-group-text"><i class="bi bi-search"></i></span>
+                  <input type="text" class="form-control" id="checkInSearch" placeholder="Search guest name to check in..." oninput="eventsModule.filterCheckInList()">
+                  <button class="btn btn-outline-success" onclick="eventsModule.checkInAll()" title="Check in all attending guests">
+                    <i class="bi bi-check-all me-1"></i>Check In All
+                  </button>
+                </div>
+                <button class="btn btn-primary" onclick="eventsModule.launchCheckInScanner()" title="Open QR scanner on phone/tablet">
+                  <i class="bi bi-qr-code-scan me-1"></i>Launch Scanner
+                </button>
+              </div>
+
+              <div class="table-responsive">
+                <table class="table table-sm">
+                  <thead>
+                    <tr>
+                      <th>Guest</th>
+                      <th>Type</th>
+                      <th>Status</th>
+                      <th>Check-In Time</th>
+                      <th class="text-center" width="120">Action</th>
+                    </tr>
+                  </thead>
+                  <tbody id="checkInTableBody">
+                    <!-- Populated by JS -->
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <!-- Tickets Tab -->
+            <div class="tab-pane fade" id="ticketsTab">
+              <div class="row g-3 mb-3">
+                <div class="col-md-3">
+                  <div class="card text-center">
+                    <div class="card-body py-2">
+                      <h3 class="mb-0 text-primary" id="ticketPriceDisplay">-</h3>
+                      <small class="text-muted">Ticket Price</small>
+                    </div>
+                  </div>
+                </div>
+                <div class="col-md-3">
+                  <div class="card text-center">
+                    <div class="card-body py-2">
+                      <h3 class="mb-0 text-success" id="ticketsSoldCount">0</h3>
+                      <small class="text-muted">Tickets Sold</small>
+                    </div>
+                  </div>
+                </div>
+                <div class="col-md-3">
+                  <div class="card text-center">
+                    <div class="card-body py-2">
+                      <h3 class="mb-0 text-info" id="ticketRevenueDisplay">-</h3>
+                      <small class="text-muted">Revenue</small>
+                    </div>
+                  </div>
+                </div>
+                <div class="col-md-3">
+                  <div class="card text-center">
+                    <div class="card-body py-2">
+                      <h3 class="mb-0" id="ticketsRemainingCount">-</h3>
+                      <small class="text-muted">Remaining</small>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="card mb-3">
+                <div class="card-body">
+                  <h6 class="card-title"><i class="bi bi-gear me-2"></i>Ticket Settings</h6>
+                  <div class="row g-3">
+                    <div class="col-md-3">
+                      <label class="form-label small">Ticket Price</label>
+                      <div class="input-group input-group-sm">
+                        <span class="input-group-text">&pound;</span>
+                        <input type="number" class="form-control" id="ticketPriceInput" step="0.01" min="0" placeholder="0.00">
+                      </div>
+                    </div>
+                    <div class="col-md-5">
+                      <label class="form-label small">Ticket Purchase URL</label>
+                      <input type="url" class="form-control form-control-sm" id="ticketUrlInput" placeholder="https://eventbrite.com/...">
+                    </div>
+                    <div class="col-md-2">
+                      <label class="form-label small">&nbsp;</label>
+                      <button class="btn btn-sm btn-primary w-100" onclick="eventsModule.saveTicketSettings()">
+                        <i class="bi bi-save me-1"></i>Save
+                      </button>
+                    </div>
+                    <div class="col-md-2">
+                      <label class="form-label small">&nbsp;</label>
+                      <button class="btn btn-sm btn-outline-secondary w-100" id="ticketUrlCopyBtn" onclick="eventsModule.copyTicketUrl()" style="display:none;">
+                        <i class="bi bi-link-45deg me-1"></i>Copy Link
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Stripe Integration -->
+              <div class="card mb-3">
+                <div class="card-body">
+                  <h6 class="card-title"><i class="bi bi-stripe me-2"></i>Stripe Payment Integration</h6>
+                  <div class="row g-3">
+                    <div class="col-md-8">
+                      <label class="form-label small">Stripe Publishable Key</label>
+                      <input type="text" class="form-control form-control-sm" id="stripePublicKeyInput" placeholder="pk_live_..." value="">
+                      <small class="text-muted">Enter your Stripe publishable key to enable online payments on the registration page</small>
+                    </div>
+                    <div class="col-md-4">
+                      <label class="form-label small">&nbsp;</label>
+                      <button class="btn btn-sm btn-primary w-100" onclick="eventsModule.saveStripeKey()">
+                        <i class="bi bi-save me-1"></i>Save Key
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="card">
+                <div class="card-body">
+                  <h6 class="card-title"><i class="bi bi-link-45deg me-2"></i>Registration & Check-In Links</h6>
+                  <div class="row g-3">
+                    <div class="col-md-6">
+                      <label class="form-label small">Public Registration Page</label>
+                      <div class="input-group input-group-sm">
+                        <input type="text" class="form-control" id="registrationLinkDisplay" readonly>
+                        <button class="btn btn-outline-primary" onclick="eventsModule.copyRegistrationLink()">
+                          <i class="bi bi-clipboard me-1"></i>Copy
+                        </button>
+                      </div>
+                      <small class="text-muted">Share this link on your website for guests to register and purchase tickets</small>
+                    </div>
+                    <div class="col-md-6">
+                      <label class="form-label small">Check-In Scanner Page</label>
+                      <div class="input-group input-group-sm">
+                        <input type="text" class="form-control" id="checkInLinkDisplay" readonly>
+                        <button class="btn btn-outline-primary" onclick="eventsModule.copyCheckInLink()">
+                          <i class="bi bi-clipboard me-1"></i>Copy
+                        </button>
+                      </div>
+                      <small class="text-muted">Share with door staff - opens QR scanner on any phone</small>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Waitlist Tab -->
+            <div class="tab-pane fade" id="waitlistTab">
+              <div class="d-flex justify-content-between align-items-center mb-3">
+                <div>
+                  <h6 class="mb-0"><i class="bi bi-hourglass me-2"></i>Waitlist
+                    <span class="badge bg-warning ms-2" id="waitlistCount">0</span> waiting</h6>
+                  <small class="text-muted">When at capacity, add guests here. Promote to attendee list when space opens up.</small>
+                </div>
+                <button class="btn btn-sm btn-primary" onclick="eventsModule.addToWaitlist()">
+                  <i class="bi bi-plus-circle me-1"></i>Add to Waitlist
+                </button>
+              </div>
+              <div class="table-responsive">
+                <table class="table table-sm table-hover">
+                  <thead>
+                    <tr><th>Name</th><th>Email</th><th>Phone</th><th>Added</th><th>Status</th><th width="120" class="text-center">Actions</th></tr>
+                  </thead>
+                  <tbody id="waitlistTableBody">
+                    <!-- Populated by JS -->
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <!-- Budget Tab -->
+            <div class="tab-pane fade" id="budgetTab">
+              <div class="d-flex justify-content-between align-items-center mb-3">
+                <h6 class="mb-0"><i class="bi bi-wallet2 me-2"></i>Event Budget</h6>
+                <div class="d-flex gap-2">
+                  <button class="btn btn-sm btn-outline-secondary" onclick="eventsModule.exportBudget()">
+                    <i class="bi bi-download me-1"></i>Export
+                  </button>
+                  <button class="btn btn-sm btn-primary" onclick="eventsModule.addBudgetItem()">
+                    <i class="bi bi-plus-circle me-1"></i>Add Item
+                  </button>
+                </div>
+              </div>
+
+              <!-- Budget Summary -->
+              <div class="row g-3 mb-3">
+                <div class="col-md-3">
+                  <div class="card text-center">
+                    <div class="card-body py-2">
+                      <label class="form-label small mb-1">Total Budget</label>
+                      <div class="input-group input-group-sm">
+                        <span class="input-group-text">&pound;</span>
+                        <input type="number" class="form-control text-center fw-bold" id="budgetTotalInput" step="0.01" min="0" placeholder="0.00" onchange="eventsModule.saveBudgetTotal()">
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <div class="col-md-3">
+                  <div class="card text-center">
+                    <div class="card-body py-2">
+                      <small class="text-muted">Estimated</small>
+                      <p class="mb-0 fw-bold" id="budgetEstimatedDisplay">&pound;0.00</p>
+                    </div>
+                  </div>
+                </div>
+                <div class="col-md-3">
+                  <div class="card text-center">
+                    <div class="card-body py-2">
+                      <small class="text-muted">Spent</small>
+                      <p class="mb-0 fw-bold" id="budgetSpentDisplay">&pound;0.00</p>
+                    </div>
+                  </div>
+                </div>
+                <div class="col-md-3">
+                  <div class="card text-center">
+                    <div class="card-body py-2">
+                      <small class="text-muted">Remaining</small>
+                      <p class="mb-0 text-success fw-bold" id="budgetRemainingDisplay">-</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="progress mb-3" style="height: 8px;">
+                <div class="progress-bar bg-success" id="budgetProgressBar" role="progressbar" style="width: 0%;">0%</div>
+              </div>
+
+              <div class="table-responsive">
+                <table class="table table-sm table-hover">
+                  <thead>
+                    <tr><th>Item</th><th>Category</th><th>Estimated</th><th>Actual</th><th>Variance</th><th>Status</th><th width="100" class="text-center">Actions</th></tr>
+                  </thead>
+                  <tbody id="budgetTableBody">
+                    <!-- Populated by JS -->
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <!-- Vendors Tab -->
+            <div class="tab-pane fade" id="vendorsTab">
+              <div class="d-flex justify-content-between align-items-center mb-3">
+                <div>
+                  <h6 class="mb-0"><i class="bi bi-truck me-2"></i>Vendors & Suppliers
+                    <span class="badge bg-secondary ms-2" id="vendorCount">0</span></h6>
+                  <small class="text-muted">Track all suppliers, contractors and service providers for this event</small>
+                </div>
+                <div class="d-flex gap-2">
+                  <button class="btn btn-sm btn-outline-secondary" onclick="eventsModule.exportVendors()">
+                    <i class="bi bi-download me-1"></i>Export
+                  </button>
+                  <button class="btn btn-sm btn-primary" onclick="eventsModule.addVendor()">
+                    <i class="bi bi-plus-circle me-1"></i>Add Vendor
+                  </button>
+                </div>
+              </div>
+              <div class="table-responsive">
+                <table class="table table-sm table-hover">
+                  <thead>
+                    <tr><th>Contact</th><th>Category</th><th>Email</th><th>Phone</th><th>Cost</th><th>Status</th><th width="100" class="text-center">Actions</th></tr>
+                  </thead>
+                  <tbody id="vendorsTableBody">
+                    <!-- Populated by JS -->
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <!-- Special Requirements Tab -->
+            <div class="tab-pane fade" id="specialReqsTab">
+              <div id="specialReqsContent">
+                <!-- Populated by JS: accessibility, parking, photo consent, emergency, dress code -->
+              </div>
+            </div>
+
+            <!-- Post-Event Tab -->
+            <div class="tab-pane fade" id="postEventTab">
+              <div id="postEventContent">
+                <!-- Populated by JS: survey, attendance report, winner highlights, sponsor ROI, debrief -->
+              </div>
+            </div>
+
           </div>
         </div>
         <div class="modal-footer">
@@ -6622,9 +7842,12 @@ Available placeholders:
           <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
         </div>
         <div class="modal-body">
-          <div class="alert alert-info">
+          <div class="alert alert-info mb-2">
             <i class="bi bi-info-circle me-2"></i>
             Upload photos/videos to this gallery section. You can tag them to organisations and awards later.
+          </div>
+          <div class="alert alert-warning py-2 mb-3">
+            <i class="bi bi-lightning me-2"></i><strong>Auto-Tag Tip:</strong> Name files with the <strong>running order number prefix</strong> (e.g., <code>1-01_winner.jpg</code>, <code>2-05_celebrating.jpg</code>) then use <strong>"Auto-Tag from Running Order"</strong> to bulk-tag all photos automatically.
           </div>
           <form id="uploadSectionPhotosForm">
             <div class="mb-3">
@@ -6740,37 +7963,93 @@ Available placeholders:
 
   <!-- Tag Photo Modal (for Gallery Sections) -->
   <div class="modal fade" id="tagPhotoModal" tabindex="-1" aria-labelledby="tagPhotoModalLabel" aria-hidden="true">
-    <div class="modal-dialog">
+    <div class="modal-dialog modal-lg">
       <div class="modal-content">
         <div class="modal-header">
           <h5 class="modal-title" id="tagPhotoModalLabel">
-            <i class="bi bi-tag me-2"></i>Tag Photo
+            <i class="bi bi-tag me-2"></i>Tag & Edit Photo
           </h5>
           <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
         </div>
         <div class="modal-body">
           <form id="tagPhotoForm">
             <input type="hidden" id="tagPhotoId">
-            <div class="mb-3">
-              <label for="tagPhotoOrgSelect" class="form-label">Organisation</label>
-              <select class="form-select" id="tagPhotoOrgSelect">
-                <option value="">None</option>
-              </select>
-              <small class="text-muted">Which company is featured in this photo?</small>
+
+            <!-- Tags Row -->
+            <div class="row g-3 mb-3">
+              <div class="col-md-6">
+                <label for="tagPhotoOrgSelect" class="form-label"><i class="bi bi-building me-1"></i>Organisation</label>
+                <select class="form-select" id="tagPhotoOrgSelect">
+                  <option value="">None</option>
+                </select>
+                <small class="text-muted">Which company is featured in this photo?</small>
+              </div>
+              <div class="col-md-6">
+                <label for="tagPhotoAwardSelect" class="form-label"><i class="bi bi-trophy me-1"></i>Award</label>
+                <select class="form-select" id="tagPhotoAwardSelect">
+                  <option value="">None</option>
+                </select>
+                <small class="text-muted">Which award category is this related to?</small>
+              </div>
             </div>
+
+            <!-- Caption & Alt Text -->
+            <div class="row g-3 mb-3">
+              <div class="col-md-6">
+                <label for="tagPhotoCaption" class="form-label"><i class="bi bi-chat-left-text me-1"></i>Caption</label>
+                <textarea class="form-control form-control-sm" id="tagPhotoCaption" rows="2" placeholder="Photo caption for website display..."></textarea>
+              </div>
+              <div class="col-md-6">
+                <label for="tagPhotoAltText" class="form-label"><i class="bi bi-universal-access me-1"></i>Alt Text (Accessibility)</label>
+                <textarea class="form-control form-control-sm" id="tagPhotoAltText" rows="2" placeholder="Describe the image for screen readers..."></textarea>
+              </div>
+            </div>
+
+            <!-- Photographer -->
             <div class="mb-3">
-              <label for="tagPhotoAwardSelect" class="form-label">Award</label>
-              <select class="form-select" id="tagPhotoAwardSelect">
-                <option value="">None</option>
-              </select>
-              <small class="text-muted">Which award category is this related to?</small>
+              <label for="tagPhotoPhotographer" class="form-label"><i class="bi bi-camera me-1"></i>Photographer Credit</label>
+              <input type="text" class="form-control form-control-sm" id="tagPhotoPhotographer" placeholder="Photographer name...">
+            </div>
+
+            <!-- Where to Display -->
+            <div class="card bg-light mb-2">
+              <div class="card-body py-2">
+                <label class="form-label mb-2 fw-bold"><i class="bi bi-globe me-1"></i>Display On Website</label>
+                <div class="row g-2">
+                  <div class="col-md-4">
+                    <div class="form-check form-switch">
+                      <input class="form-check-input" type="checkbox" id="tagPhotoShowGallery" checked>
+                      <label class="form-check-label" for="tagPhotoShowGallery">
+                        <i class="bi bi-images me-1"></i>Public Gallery
+                      </label>
+                    </div>
+                  </div>
+                  <div class="col-md-4">
+                    <div class="form-check form-switch">
+                      <input class="form-check-input" type="checkbox" id="tagPhotoShowWinner" checked>
+                      <label class="form-check-label" for="tagPhotoShowWinner">
+                        <i class="bi bi-trophy me-1"></i>Winner Profile Page
+                      </label>
+                    </div>
+                  </div>
+                  <div class="col-md-4">
+                    <div class="form-check form-switch">
+                      <input class="form-check-input" type="checkbox" id="tagPhotoShowCompany" checked>
+                      <label class="form-check-label" for="tagPhotoShowCompany">
+                        <i class="bi bi-building me-1"></i>Company Profile Page
+                      </label>
+                    </div>
+                  </div>
+                </div>
+                <small class="text-muted mt-1 d-block">Controls where this photo appears on the public website</small>
+              </div>
             </div>
           </form>
         </div>
         <div class="modal-footer">
           <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
           <button type="button" class="btn btn-primary" onclick="mediaGalleryModule.savePhotoTags()">
-            <i class="bi bi-save me-2"></i>Save Tags
+            <i class="bi bi-save me-2"></i>Save
           </button>
         </div>
       </div>
@@ -6803,6 +8082,7 @@ Available placeholders:
           </div>
           <div class="mt-3">
             <small class="text-muted">Files will be uploaded with titles based on their filenames.</small>
+            <div class="mt-2"><small class="text-warning"><i class="bi bi-lightning me-1"></i><strong>Tip:</strong> Prefix filenames with running order numbers (e.g., <code>1-01_winner.jpg</code>) to enable bulk auto-tagging.</small></div>
           </div>
           <div id="dragDropProgress" class="progress d-none mt-3">
             <div class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar" style="width: 100%"></div>
@@ -6834,6 +8114,9 @@ Available placeholders:
           </div>
         </div>
         <div class="modal-footer">
+          <button type="button" class="btn btn-outline-info" id="cropRotateFromViewBtn" onclick="mediaGalleryModule.openCropRotate()">
+            <i class="bi bi-crop me-2"></i>Crop / Rotate
+          </button>
           <button type="button" class="btn btn-primary" id="tagPhotoFromViewBtn" onclick="mediaGalleryModule.tagPhotoFromView()">
             <i class="bi bi-tag me-2"></i>Tag Photo
           </button>
@@ -8580,34 +9863,137 @@ in recognition of excellence
   <!-- TradingView Widget Script -->
   <script type="text/javascript" src="https://s3.tradingview.com/tv.js"></script>
   <script type="text/javascript">
-    document.getElementById('bitcoin-tab').addEventListener('shown.bs.tab', function () {
-      if (!window.tradingViewInitialized) {
+    const btcModule = {
+      _symbol: 'COINBASE:BTCUSD',
+      _interval: 'D',
+      _style: '1',
+      _theme: 'dark',
+
+      _watchlistSymbols: [
+        { symbol: 'COINBASE:BTCUSD', name: 'Bitcoin', icon: 'bi-currency-bitcoin', color: 'text-warning' },
+        { symbol: 'COINBASE:ETHUSD', name: 'Ethereum', icon: 'bi-diamond', color: 'text-primary' },
+        { symbol: 'COINBASE:SOLUSD', name: 'Solana', icon: 'bi-circle', color: 'text-info' },
+        { symbol: 'COINBASE:XRPUSD', name: 'XRP', icon: 'bi-circle', color: 'text-secondary' },
+        { symbol: 'FX:GBPUSD', name: 'GBP/USD', icon: 'bi-currency-pound', color: 'text-success' },
+        { symbol: 'FX:EURUSD', name: 'EUR/USD', icon: 'bi-currency-euro', color: 'text-info' },
+        { symbol: 'TVC:GOLD', name: 'Gold', icon: 'bi-gem', color: 'text-warning' },
+        { symbol: 'SP:SPX', name: 'S&P 500', icon: 'bi-graph-up', color: 'text-success' },
+        { symbol: 'TVC:DXY', name: 'US Dollar Index', icon: 'bi-currency-dollar', color: 'text-primary' },
+        { symbol: 'NASDAQ:AAPL', name: 'Apple', icon: 'bi-apple', color: 'text-secondary' }
+      ],
+
+      _marketData: [
+        { label: 'Crypto Total Market', key: 'CRYPTOCAP:TOTAL', color: 'warning' },
+        { label: 'BTC Dominance', key: 'CRYPTOCAP:BTC.D', color: 'primary' },
+        { label: 'FTSE 100', key: 'TVC:UKX', color: 'info' },
+        { label: 'Dow Jones', key: 'DJ:DJI', color: 'success' },
+        { label: 'Nasdaq', key: 'NASDAQ:NDX', color: 'danger' },
+        { label: 'Crude Oil', key: 'TVC:USOIL', color: 'dark' }
+      ],
+
+      init() {
+        this.createChart();
+        this.renderWatchlist();
+        this.renderMarketOverview();
+      },
+
+      createChart() {
+        const container = document.getElementById('tradingview_chart');
+        if (!container || typeof TradingView === 'undefined') return;
+        container.innerHTML = '';
+
         new TradingView.widget({
           "autosize": true,
-          "symbol": "COINBASE:BTCUSD",
-          "interval": "D",
-          "timezone": "Etc/UTC",
-          "theme": "dark",
-          "style": "1",
+          "symbol": this._symbol,
+          "interval": this._interval,
+          "timezone": "Europe/London",
+          "theme": this._theme,
+          "style": this._style,
           "locale": "en",
-          "toolbar_bg": "#1e222d",
+          "toolbar_bg": this._theme === 'dark' ? "#1e222d" : "#f8f9fa",
           "enable_publishing": false,
           "allow_symbol_change": true,
           "container_id": "tradingview_chart",
-          "studies": [
-            "STD;SMA",
-            "STD;RSI",
-            "STD;MACD"
-          ],
+          "studies": ["STD;SMA", "STD;RSI", "STD;MACD"],
           "hide_side_toolbar": false,
-          "withdateranges": true,
           "hide_top_toolbar": false,
           "save_image": true,
           "details": true,
-          "calendar": true
+          "calendar": true,
+          "show_popup_button": true,
+          "popup_width": "1200",
+          "popup_height": "800"
         });
-        window.tradingViewInitialized = true;
+      },
+
+      switchSymbol(symbol, btn) {
+        this._symbol = symbol;
+        document.querySelectorAll('.btc-symbol-btn').forEach(b => {
+          b.classList.remove('active');
+          // Auto-match quick switch buttons by symbol in onclick attribute
+          if (!btn && b.getAttribute('onclick') && b.getAttribute('onclick').includes("'" + symbol + "'")) {
+            b.classList.add('active');
+          }
+        });
+        if (btn) btn.classList.add('active');
+        this.createChart();
+      },
+
+      switchInterval(interval, btn) {
+        this._interval = interval;
+        document.querySelectorAll('.btc-interval-btn').forEach(b => b.classList.remove('active'));
+        if (btn) btn.classList.add('active');
+        this.createChart();
+      },
+
+      switchStyle(style, btn) {
+        this._style = style;
+        document.querySelectorAll('.btc-style-btn').forEach(b => b.classList.remove('active'));
+        if (btn) btn.classList.add('active');
+        this.createChart();
+      },
+
+      switchTheme(theme, btn) {
+        this._theme = theme;
+        document.querySelectorAll('.btc-theme-btn').forEach(b => b.classList.remove('active'));
+        if (btn) btn.classList.add('active');
+        this.createChart();
+      },
+
+      renderWatchlist() {
+        const el = document.getElementById('btcWatchlist');
+        if (!el) return;
+        el.innerHTML = this._watchlistSymbols.map(s => {
+          const isActive = s.symbol === this._symbol;
+          return `<div class="d-flex align-items-center px-3 py-2 border-bottom ${isActive ? 'bg-primary bg-opacity-10' : ''}"
+                       style="cursor:pointer;" onclick="btcModule.switchSymbol('${s.symbol}', null); btcModule.renderWatchlist();"
+                       onmouseenter="this.style.backgroundColor='var(--bs-light)'" onmouseleave="this.style.backgroundColor='${isActive ? 'var(--bs-primary-bg-subtle)' : ''}'">
+            <i class="bi ${s.icon} ${s.color} me-2"></i>
+            <div class="flex-grow-1">
+              <div class="fw-semibold small">${s.name}</div>
+              <div class="text-muted" style="font-size:0.7rem">${s.symbol}</div>
+            </div>
+            ${isActive ? '<i class="bi bi-caret-right-fill text-primary"></i>' : ''}
+          </div>`;
+        }).join('');
+      },
+
+      renderMarketOverview() {
+        const el = document.getElementById('btcMarketOverview');
+        if (!el) return;
+        el.innerHTML = this._marketData.map(m => `
+          <div class="d-flex justify-content-between align-items-center py-2 px-1 border-bottom small"
+               style="cursor:pointer" onclick="btcModule.switchSymbol('${m.key}', null); btcModule.renderWatchlist();">
+            <span class="fw-semibold">${m.label}</span>
+            <span class="badge bg-${m.color} bg-opacity-25 text-${m.color}">${m.key.split(':')[1]}</span>
+          </div>
+        `).join('');
       }
+    };
+    window.btcModule = btcModule;
+
+    document.getElementById('bitcoin-tab').addEventListener('shown.bs.tab', function () {
+      btcModule.init();
     });
   </script>
 

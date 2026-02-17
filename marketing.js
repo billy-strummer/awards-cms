@@ -632,6 +632,117 @@ const marketingModule = {
       <img src="${utils.escapeHtml(imageUrl)}" alt="${utils.escapeHtml(title)}" class="img-fluid" style="max-height: 70vh;">
     `;
     modal.show();
+  },
+
+  // ============================================
+  // EMAIL SEQUENCES (moved from Organisations)
+  // ============================================
+  _emailSequences: JSON.parse(localStorage.getItem('orgEmailSequences') || '[]'),
+
+  loadEmailSequences() {
+    const container = document.getElementById('emailSequencesGrid');
+    if (!container) return;
+    const sequences = this._emailSequences;
+    if (sequences.length === 0) {
+      container.innerHTML = `<div class="text-center py-5 text-muted">
+        <i class="bi bi-envelope-slash display-4 d-block mb-2 opacity-25"></i>
+        No sequences configured yet
+      </div>`;
+      return;
+    }
+    container.innerHTML = sequences.map((seq, i) => `
+      <div class="card mb-2">
+        <div class="card-body py-2">
+          <div class="d-flex justify-content-between align-items-center">
+            <div>
+              <strong>${utils.escapeHtml(seq.name)}</strong>
+              <span class="badge bg-${seq.active ? 'success' : 'secondary'} ms-2">${seq.active ? 'Active' : 'Paused'}</span>
+              <div class="text-muted small">Trigger: ${utils.escapeHtml(seq.trigger)} &middot; ${seq.steps.length} step(s) &middot; ${seq.enrolled || 0} enrolled</div>
+            </div>
+            <div>
+              <button class="btn btn-sm btn-outline-${seq.active ? 'warning' : 'success'}" onclick="marketingModule.toggleSequence(${i})">${seq.active ? 'Pause' : 'Activate'}</button>
+              <button class="btn btn-sm btn-outline-danger ms-1" onclick="marketingModule.deleteSequence(${i})"><i class="bi bi-trash"></i></button>
+            </div>
+          </div>
+        </div>
+      </div>`).join('');
+  },
+
+  showCreateSequence() {
+    const existingModal = document.getElementById('createSequenceModal');
+    if (existingModal) existingModal.remove();
+
+    const modalHtml = `<div class="modal fade" id="createSequenceModal" tabindex="-1">
+      <div class="modal-dialog modal-lg"><div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title"><i class="bi bi-envelope-plus me-2"></i>Create Email Sequence</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <div class="mb-3"><label class="form-label fw-semibold">Sequence Name</label>
+            <input type="text" class="form-control" id="seqName" placeholder="e.g. Welcome Onboarding"></div>
+          <div class="mb-3"><label class="form-label fw-semibold">Trigger</label>
+            <select class="form-select" id="seqTrigger">
+              <option value="status_prospect">Status &rarr; Prospect</option><option value="status_entrant">Status &rarr; Entrant</option>
+              <option value="status_nominee">Status &rarr; Nominee</option><option value="status_winner">Status &rarr; Winner</option>
+              <option value="status_sponsor">Status &rarr; Sponsor</option><option value="manual">Manual Only</option>
+            </select></div>
+          <h6 class="fw-semibold">Steps</h6>
+          <div id="seqStepsContainer"><div class="card mb-2 p-2"><div class="row g-2">
+            <div class="col-3"><label class="form-label small">Delay (days)</label><input type="number" class="form-control form-control-sm seq-delay" value="0" min="0"></div>
+            <div class="col-4"><label class="form-label small">Subject</label><input type="text" class="form-control form-control-sm seq-subject" placeholder="Subject..."></div>
+            <div class="col-5"><label class="form-label small">Body</label><textarea class="form-control form-control-sm seq-body" rows="2" placeholder="Use {{company_name}}, {{contact_name}}..."></textarea></div>
+          </div></div></div>
+          <button class="btn btn-sm btn-outline-secondary mb-3" onclick="marketingModule._addSequenceStep()"><i class="bi bi-plus me-1"></i>Add Step</button>
+        </div>
+        <div class="modal-footer">
+          <button class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button class="btn btn-primary" onclick="marketingModule._saveSequence()"><i class="bi bi-check-circle me-2"></i>Save Sequence</button>
+        </div>
+      </div></div>
+    </div>`;
+    document.body.insertAdjacentHTML('beforeend', modalHtml);
+    new bootstrap.Modal(document.getElementById('createSequenceModal')).show();
+  },
+
+  _addSequenceStep() {
+    const c = document.getElementById('seqStepsContainer'); if (!c) return;
+    const s = document.createElement('div'); s.className = 'card mb-2 p-2';
+    s.innerHTML = `<div class="row g-2"><div class="col-3"><label class="form-label small">Delay (days)</label><input type="number" class="form-control form-control-sm seq-delay" value="3" min="0"></div>
+      <div class="col-4"><label class="form-label small">Subject</label><input type="text" class="form-control form-control-sm seq-subject" placeholder="Subject..."></div>
+      <div class="col-5"><label class="form-label small">Body</label><textarea class="form-control form-control-sm seq-body" rows="2" placeholder="Use {{company_name}}..."></textarea></div></div>`;
+    c.appendChild(s);
+  },
+
+  _saveSequence() {
+    const name = document.getElementById('seqName')?.value?.trim();
+    const trigger = document.getElementById('seqTrigger')?.value;
+    if (!name) { utils.showToast('Enter a sequence name', 'warning'); return; }
+    const steps = [];
+    document.querySelectorAll('.seq-delay').forEach((d, i) => {
+      steps.push({ delay: parseInt(d.value) || 0, subject: document.querySelectorAll('.seq-subject')[i]?.value || '', body: document.querySelectorAll('.seq-body')[i]?.value || '' });
+    });
+    if (steps.length === 0 || !steps[0].subject) { utils.showToast('Add at least one step with a subject', 'warning'); return; }
+    this._emailSequences.push({ name, trigger, steps, active: true, enrolled: 0, created: new Date().toISOString() });
+    localStorage.setItem('orgEmailSequences', JSON.stringify(this._emailSequences));
+    utils.showToast('Sequence created', 'success');
+    bootstrap.Modal.getInstance(document.getElementById('createSequenceModal'))?.hide();
+    this.loadEmailSequences();
+  },
+
+  toggleSequence(i) {
+    if (this._emailSequences[i]) {
+      this._emailSequences[i].active = !this._emailSequences[i].active;
+      localStorage.setItem('orgEmailSequences', JSON.stringify(this._emailSequences));
+      this.loadEmailSequences();
+    }
+  },
+
+  deleteSequence(i) {
+    if (!confirm('Delete this sequence?')) return;
+    this._emailSequences.splice(i, 1);
+    localStorage.setItem('orgEmailSequences', JSON.stringify(this._emailSequences));
+    this.loadEmailSequences();
   }
 };
 

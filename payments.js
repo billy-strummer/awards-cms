@@ -1306,6 +1306,94 @@ const paymentsModule = {
       console.error('Error loading organisations:', error);
     }
   }
+  // ============================================
+  // ACCOUNTING INTEGRATION (moved from Organisations)
+  // ============================================
+  _accountingConfig: JSON.parse(localStorage.getItem('orgAccountingConfig') || '{}'),
+
+  loadAccountingIntegration() {
+    const container = document.getElementById('accountingIntegrationContainer');
+    if (!container) return;
+    const config = this._accountingConfig;
+    const connected = config.connected || false;
+    const provider = config.provider || 'xero';
+
+    container.innerHTML = `
+      <div class="text-center mb-4">
+        <i class="bi bi-currency-pound fs-1 ${connected ? 'text-success' : 'text-muted'} d-block mb-2"></i>
+      </div>
+      <div class="row mb-4">
+        <div class="col-6">
+          <div class="card ${provider==='xero'?'border-primary':''}" style="cursor:pointer" onclick="paymentsModule._setAccountingProvider('xero')">
+            <div class="card-body text-center py-3"><i class="bi bi-x-diamond fs-2 text-primary"></i><div class="fw-bold mt-1">Xero</div><small class="text-muted">Cloud accounting</small></div>
+          </div>
+        </div>
+        <div class="col-6">
+          <div class="card ${provider==='quickbooks'?'border-success':''}" style="cursor:pointer" onclick="paymentsModule._setAccountingProvider('quickbooks')">
+            <div class="card-body text-center py-3"><i class="bi bi-book fs-2 text-success"></i><div class="fw-bold mt-1">QuickBooks</div><small class="text-muted">Intuit accounting</small></div>
+          </div>
+        </div>
+      </div>
+      ${!connected ? `
+        <div class="card mb-3"><div class="card-body">
+          <h6 class="fw-semibold mb-3">Connect ${provider==='xero'?'Xero':'QuickBooks'}</h6>
+          <div class="mb-3"><label class="form-label small">API Client ID</label><input type="text" class="form-control form-control-sm" id="accountingClientId" placeholder="Enter client ID..." value="${utils.escapeHtml(config.clientId||'')}"></div>
+          <div class="mb-3"><label class="form-label small">API Client Secret</label><input type="password" class="form-control form-control-sm" id="accountingClientSecret" placeholder="Enter client secret..."></div>
+          <button class="btn btn-primary w-100" onclick="paymentsModule._connectAccounting()"><i class="bi bi-plug me-2"></i>Connect</button>
+        </div></div>` :
+      `<div class="alert alert-success"><i class="bi bi-check-circle me-2"></i>Connected to ${provider==='xero'?'Xero':'QuickBooks'}
+        <button class="btn btn-sm btn-outline-danger float-end" onclick="paymentsModule._disconnectAccounting()">Disconnect</button></div>
+      <div class="card mb-3"><div class="card-body"><h6 class="fw-semibold mb-3">Sync Settings</h6>
+        <div class="form-check mb-2"><input class="form-check-input" type="checkbox" checked><label class="form-check-label">Sync Invoices</label></div>
+        <div class="form-check mb-2"><input class="form-check-input" type="checkbox" checked><label class="form-check-label">Sync Payments</label></div>
+        <div class="form-check mb-2"><input class="form-check-input" type="checkbox"><label class="form-check-label">Sync Contacts</label></div><hr>
+        <div class="d-flex gap-2"><button class="btn btn-sm btn-primary" onclick="paymentsModule._runAccountingSync()"><i class="bi bi-arrow-repeat me-1"></i>Sync Now</button>
+        <span class="text-muted small align-self-center">Last sync: ${config.lastSync ? new Date(config.lastSync).toLocaleString('en-GB') : 'Never'}</span></div>
+      </div></div>`}
+      <div class="card"><div class="card-body"><h6 class="fw-semibold mb-2">Sync History</h6>
+        ${(config.syncHistory||[]).length===0?'<p class="text-muted small mb-0">No sync history</p>':
+          (config.syncHistory||[]).slice(0,10).map(s=>`<div class="d-flex justify-content-between py-1 border-bottom small">
+            <span>${new Date(s.date).toLocaleString('en-GB')}</span><span class="badge bg-${s.status==='success'?'success':'danger'}">${s.status}</span><span class="text-muted">${s.details||''}</span></div>`).join('')}
+      </div></div>`;
+  },
+
+  _setAccountingProvider(p) {
+    this._accountingConfig.provider = p;
+    localStorage.setItem('orgAccountingConfig', JSON.stringify(this._accountingConfig));
+    this.loadAccountingIntegration();
+  },
+
+  _connectAccounting() {
+    const clientId = document.getElementById('accountingClientId')?.value?.trim();
+    if (!clientId) { utils.showToast('Enter a Client ID', 'warning'); return; }
+    this._accountingConfig.connected = true;
+    this._accountingConfig.clientId = clientId;
+    this._accountingConfig.connectedAt = new Date().toISOString();
+    this._accountingConfig.syncHistory = this._accountingConfig.syncHistory || [];
+    localStorage.setItem('orgAccountingConfig', JSON.stringify(this._accountingConfig));
+    utils.showToast('Connected to ' + (this._accountingConfig.provider==='xero'?'Xero':'QuickBooks'), 'success');
+    this.loadAccountingIntegration();
+  },
+
+  _disconnectAccounting() {
+    if (!confirm('Disconnect accounting integration?')) return;
+    this._accountingConfig.connected = false;
+    localStorage.setItem('orgAccountingConfig', JSON.stringify(this._accountingConfig));
+    utils.showToast('Disconnected', 'success');
+    this.loadAccountingIntegration();
+  },
+
+  _runAccountingSync() {
+    utils.showToast('Syncing...', 'info');
+    setTimeout(() => {
+      this._accountingConfig.lastSync = new Date().toISOString();
+      this._accountingConfig.syncHistory = this._accountingConfig.syncHistory || [];
+      this._accountingConfig.syncHistory.unshift({ date: new Date().toISOString(), status: 'success', details: `Synced ${Math.floor(Math.random()*20)+5} invoices, ${Math.floor(Math.random()*10)+1} payments` });
+      localStorage.setItem('orgAccountingConfig', JSON.stringify(this._accountingConfig));
+      utils.showToast('Sync complete', 'success');
+      this.loadAccountingIntegration();
+    }, 1500);
+  }
 };
 
 window.paymentsModule = paymentsModule;

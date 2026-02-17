@@ -80,7 +80,9 @@ const STATE = {
   filteredWinners: [],
   allMedia: [],
   filteredMedia: [],
-  allEvents: []
+  allEvents: [],
+  allEntries: [],
+  filteredEntries: []
 };
 
 // Export to window for global access

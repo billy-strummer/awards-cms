@@ -4483,13 +4483,13 @@ updateCountyFilterByRegion() {
     if (!presetSelect) return;
     try {
       const presets = JSON.parse(localStorage.getItem('orgsFilterPresets') || '{}');
-      presetSelect.innerHTML = '<option value="">-- Saved Presets --</option>' +
+      presetSelect.innerHTML = '<option value="">-- Saved Views --</option>' +
         Object.keys(presets).map(name => `<option value="${utils.escapeHtml(name)}">${utils.escapeHtml(name)}</option>`).join('');
     } catch (e) { /* ignore */ }
   },
 
   saveFilterPreset() {
-    const name = prompt('Name this filter preset:');
+    const name = prompt('Name this view preset:');
     if (!name || !name.trim()) return;
     try {
       const presets = JSON.parse(localStorage.getItem('orgsFilterPresets') || '{}');
@@ -4503,12 +4503,20 @@ updateCountyFilterByRegion() {
         tier: document.getElementById('orgsTierFilter')?.value || '',
         tag: document.getElementById('orgsTagFilter')?.value || '',
         logoFilter: document.getElementById('orgsLogoFilter')?.value || '',
-        dateFilter: document.getElementById('orgsDateFilter')?.value || ''
+        dateFilter: document.getElementById('orgsDateFilter')?.value || '',
+        sort: { field: this.sortField, direction: this.sortDirection },
+        columns: { ...this._columnVisibility },
+        pageSize: this._pageSize,
+        tagFilters: [...(this._selectedTagFilters || [])]
       };
       localStorage.setItem('orgsFilterPresets', JSON.stringify(presets));
+      // Also keep saved views in sync
+      localStorage.setItem('orgsSavedViews', JSON.stringify(
+        Object.fromEntries(Object.entries(presets).map(([k, v]) => [k, { filters: v, sort: v.sort, columns: v.columns, pageSize: v.pageSize, tagFilters: v.tagFilters }]))
+      ));
       this._populateFilterPresets();
       document.getElementById('orgsFilterPreset').value = name.trim();
-      utils.showToast(`Preset "${name.trim()}" saved`, 'success');
+      utils.showToast(`View "${name.trim()}" saved`, 'success');
     } catch (e) { utils.showToast('Error saving preset', 'error'); }
   },
 
@@ -4533,8 +4541,22 @@ updateCountyFilterByRegion() {
       if (logoEl) logoEl.value = preset.logoFilter || '';
       const dateEl = document.getElementById('orgsDateFilter');
       if (dateEl) dateEl.value = preset.dateFilter || '';
+      // Restore sort if saved
+      if (preset.sort?.field) {
+        this.sortField = preset.sort.field;
+        this.sortDirection = preset.sort.direction || 'asc';
+      }
+      // Restore column visibility if saved
+      if (preset.columns) {
+        this._columnVisibility = { ...preset.columns };
+        try { localStorage.setItem('orgsColumnVisibility', JSON.stringify(this._columnVisibility)); } catch (e) {}
+      }
+      // Restore page size if saved
+      if (preset.pageSize) this._pageSize = preset.pageSize;
+      // Restore tag filters if saved
+      if (preset.tagFilters) this._selectedTagFilters = [...preset.tagFilters];
       this.filterOrganisations();
-      utils.showToast(`Preset "${name}" loaded`, 'success');
+      utils.showToast(`View "${name}" loaded`, 'success');
     } catch (e) { /* ignore */ }
   },
 

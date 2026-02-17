@@ -144,9 +144,10 @@ const settingsModule = {
       const exportData = events.map(event => ({
         'Event Name': event.event_name || '',
         'Event Date': event.event_date || '',
+        'Year': event.year || '',
         'Venue': event.venue || '',
         'Description': event.description || '',
-        'Status': event.status || '',
+        'Status': event.event_status || '',
         'Created At': utils.formatDate(event.created_at)
       }));
 

@@ -813,6 +813,9 @@ const eventsModule = {
   _roAutoSave: true,
   _roTouchStartY: 0,
   _roTouchItem: null,
+  _roCeremonyStartTime: null,
+  _roAutoSchedule: false,
+  _roBackstageInterval: null,
 
   /**
    * Open Running Order Modal
@@ -822,6 +825,8 @@ const eventsModule = {
     this.currentEventName = eventName;
     this._roUndoStack = [];
     this._roSearchTerm = '';
+    this._roCeremonyStartTime = null;
+    this._roAutoSchedule = false;
 
     try {
       utils.showLoading();
@@ -879,12 +884,39 @@ const eventsModule = {
                   </button>
                 </div>
 
-                <!-- Stats Row -->
-                <div class="d-flex gap-3 mb-2 small">
+                <!-- Stats Row with Schedule Tracking -->
+                <div class="d-flex gap-3 mb-2 small align-items-center">
                   <span class="badge bg-secondary">${itemCount} items</span>
                   <span class="badge bg-info">${totalDuration} min total</span>
                   ${completedCount > 0 ? `<span class="badge bg-success">${completedCount} completed</span>` : ''}
                   ${announcedCount > 0 ? `<span class="badge bg-warning text-dark">${announcedCount} announced</span>` : ''}
+                  <span id="roScheduleIndicator"></span>
+                </div>
+
+                <!-- Auto-Schedule Row -->
+                <div class="d-flex gap-2 align-items-center mb-2 p-2 bg-light rounded border">
+                  <label class="form-label mb-0 small fw-semibold text-nowrap">Start Time:</label>
+                  <input type="time" class="form-control form-control-sm" id="roCeremonyStartTime"
+                         value="${this._roCeremonyStartTime || ''}"
+                         onchange="eventsModule.setCeremonyStartTime(this.value)"
+                         style="width:100px;" ${this.isPublished ? 'disabled' : ''}>
+                  <div class="form-check form-switch ms-2 mb-0">
+                    <input class="form-check-input" type="checkbox" id="roAutoScheduleToggle"
+                           ${this._roAutoSchedule ? 'checked' : ''}
+                           onchange="eventsModule.toggleAutoSchedule(this.checked)"
+                           ${this.isPublished ? 'disabled' : ''}>
+                    <label class="form-check-label small" for="roAutoScheduleToggle">Auto-schedule</label>
+                  </div>
+                  ${this._roAutoSchedule && this._roCeremonyStartTime ? `
+                    <button class="btn btn-sm btn-outline-info ms-1" onclick="eventsModule.recalcAutoSchedule()" title="Recalculate all times">
+                      <i class="bi bi-calculator me-1"></i>Recalc
+                    </button>
+                  ` : ''}
+                  <div class="ms-auto">
+                    <button class="btn btn-sm btn-dark" onclick="eventsModule.openBackstageView()" title="Open backstage/stage manager view">
+                      <i class="bi bi-display me-1"></i>Backstage View
+                    </button>
+                  </div>
                 </div>
 
                 <!-- Actions Bar -->
@@ -894,6 +926,9 @@ const eventsModule = {
                   </button>
                   <button class="btn btn-sm btn-outline-secondary" onclick="eventsModule.addManualEntry()" ${this.isPublished ? 'disabled' : ''}>
                     <i class="bi bi-plus-circle me-1"></i>Add Entry
+                  </button>
+                  <button class="btn btn-sm btn-outline-dark" onclick="eventsModule.addSectionBreak()" ${this.isPublished ? 'disabled' : ''}>
+                    <i class="bi bi-dash-lg me-1"></i>Add Break
                   </button>
                   <button class="btn btn-sm btn-outline-secondary" onclick="eventsModule.exportRunningOrder()">
                     <i class="bi bi-download me-1"></i>Export
@@ -920,9 +955,10 @@ const eventsModule = {
                 <div style="width:50px; text-align:center;">#</div>
                 <div style="width:70px; text-align:center;">Time</div>
                 <div class="flex-grow-1">Award / Winner</div>
-                <div style="width:140px;">Collecting</div>
+                <div style="width:110px;">Sponsor</div>
+                <div style="width:120px;">Collecting</div>
                 <div style="width:90px; text-align:center;">Status</div>
-                <div style="width:120px; text-align:center;">Actions</div>
+                <div style="width:140px; text-align:center;">Actions</div>
               </div>
 
               <!-- Running Order List -->
@@ -1044,6 +1080,24 @@ const eventsModule = {
           margin-bottom: 6px;
         }
         .ro-grouped-item + .ro-item:not(.ro-grouped-item) { border-radius: 8px; margin-top: 6px; }
+
+        /* Section break / non-award items */
+        .ro-item.ro-break-item {
+          background: linear-gradient(135deg, #e3f2fd 0%, #f3e5f5 100%);
+          border: 2px dashed #7e57c2;
+          border-radius: 8px;
+        }
+        .ro-item.ro-break-item:hover { border-color: #5e35b1; box-shadow: 0 2px 8px rgba(126,87,194,0.2); }
+        .ro-break-label { font-weight: 700; color: #5e35b1; font-size: 0.9rem; }
+
+        /* Sponsor column */
+        .ro-sponsor { width: 110px; flex-shrink: 0; font-size: 0.75rem; overflow: hidden; }
+        .ro-sponsor span { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: #6c757d; font-style: italic; }
+
+        /* Schedule tracking */
+        .schedule-ahead { color: #198754; font-weight: 600; }
+        .schedule-behind { color: #dc3545; font-weight: 600; }
+        .schedule-on-time { color: #6c757d; }
       </style>
     `;
 
@@ -1094,6 +1148,8 @@ const eventsModule = {
         console.error('Error loading settings:', settingsError);
       }
       this.isPublished = settings?.is_published || false;
+      this._roCeremonyStartTime = settings?.ceremony_start_time || null;
+      this._roAutoSchedule = settings?.auto_schedule || false;
     } catch (error) {
       console.error('Error loading running order:', error);
       throw error;
@@ -1101,7 +1157,7 @@ const eventsModule = {
   },
 
   /**
-   * Render Running Order Items - With grouping, numbered column, drag handles, status, time
+   * Render Running Order Items - With grouping, section breaks, sponsor, schedule tracking
    */
   renderRunningOrderItems() {
     const container = document.getElementById('runningOrderList');
@@ -1109,8 +1165,8 @@ const eventsModule = {
 
     let cumulativeMin = 0;
     const search = this._roSearchTerm.toLowerCase();
-    const renderedGroups = new Set(); // Track which group headers we've already rendered
-    let presentationNumber = 0; // Separate counter for presentation numbers
+    const renderedGroups = new Set();
+    let presentationNumber = 0;
 
     let html = '';
 
@@ -1126,13 +1182,97 @@ const eventsModule = {
       const status = item.status || 'pending';
       const isFirst = index === 0;
       const isLast = index === this.runningOrderItems.length - 1;
+      const itemType = item.item_type || 'award';
+      const isBreak = itemType !== 'award';
+      const sponsor = item.sponsor || '';
 
       // Search filtering
-      const matchesSearch = !search || `${awardName} ${winnerName} ${recipientName} ${notes}`.toLowerCase().includes(search);
+      const matchesSearch = !search || `${awardName} ${winnerName} ${recipientName} ${notes} ${sponsor}`.toLowerCase().includes(search);
 
       const statusOpts = ['pending', 'announced', 'completed'].map(s =>
         `<option value="${s}"${s === status ? ' selected' : ''}>${s.charAt(0).toUpperCase() + s.slice(1)}</option>`
       ).join('');
+
+      // Schedule tracking - compare actual vs scheduled
+      const scheduleIndicator = this._roGetItemScheduleIndicator(item);
+
+      // Section break / non-award item rendering
+      if (isBreak) {
+        presentationNumber++;
+        const breakIcons = {
+          'break': 'bi-cup-hot',
+          'speech': 'bi-mic',
+          'entertainment': 'bi-music-note-beamed',
+          'interval': 'bi-pause-circle',
+          'other': 'bi-bookmark'
+        };
+        const breakIcon = breakIcons[itemType] || 'bi-bookmark';
+        const breakLabels = {
+          'break': 'BREAK',
+          'speech': 'SPEECH',
+          'entertainment': 'ENTERTAINMENT',
+          'interval': 'INTERVAL',
+          'other': 'OTHER'
+        };
+
+        html += `
+        <div class="ro-item ro-break-item ${this.isPublished ? 'published' : ''} ${status !== 'pending' ? 'status-' + status : ''} ${matchesSearch ? '' : 'search-hidden'}"
+             draggable="${!this.isPublished}"
+             data-id="${item.id}"
+             data-index="${index}"
+             ondragstart="eventsModule.handleDragStart(event)"
+             ondragover="eventsModule.handleDragOver(event)"
+             ondragleave="eventsModule.handleDragLeave(event)"
+             ondrop="eventsModule.handleDrop(event)"
+             ondragend="eventsModule.handleDragEnd(event)"
+             ontouchstart="eventsModule.handleTouchStart(event)"
+             ontouchmove="eventsModule.handleTouchMove(event)"
+             ontouchend="eventsModule.handleTouchEnd(event)">
+          <div class="d-flex align-items-center gap-2 py-2 px-2">
+            ${!this.isPublished ? `<div class="ro-drag-handle" title="Drag to reorder"><i class="bi bi-grip-vertical"></i></div>` : '<div style="width:32px;"></div>'}
+            <div class="ro-number" style="color:#7e57c2;">
+              <i class="${breakIcon}" style="font-size:1.2rem;"></i>
+              <span class="sub">${breakLabels[itemType] || 'BREAK'}</span>
+            </div>
+            <div class="ro-time">
+              <input type="time" value="${scheduledTime}"
+                     onchange="eventsModule.setROItemTime('${item.id}', this.value)"
+                     ${this.isPublished ? 'disabled' : ''}>
+              <div class="duration">${duration}m</div>
+            </div>
+            <div class="ro-details">
+              <div class="ro-break-label">
+                <i class="${breakIcon} me-1"></i>${utils.escapeHtml(awardName)}
+              </div>
+              ${notes ? `<div class="ro-notes-preview" title="${utils.escapeHtml(notes)}"><i class="bi bi-sticky me-1"></i>${utils.escapeHtml(notes)}</div>` : ''}
+            </div>
+            <div class="ro-sponsor"></div>
+            <div class="ro-recipient" style="width:120px;"></div>
+            <div class="ro-status">
+              <select onchange="eventsModule.setROItemStatus('${item.id}', this.value)" ${this.isPublished ? 'disabled' : ''}>
+                ${statusOpts}
+              </select>
+            </div>
+            <div class="ro-actions" style="width:140px;">
+              ${!this.isPublished ? `
+                <button class="btn btn-sm btn-outline-secondary" onclick="eventsModule.moveROItem('${item.id}', -1)" title="Move up" ${isFirst ? 'disabled' : ''}>
+                  <i class="bi bi-arrow-up"></i>
+                </button>
+                <button class="btn btn-sm btn-outline-secondary" onclick="eventsModule.moveROItem('${item.id}', 1)" title="Move down" ${isLast ? 'disabled' : ''}>
+                  <i class="bi bi-arrow-down"></i>
+                </button>
+                <button class="btn btn-sm btn-outline-primary" onclick="eventsModule.editRunningOrderItem('${item.id}')" title="Edit">
+                  <i class="bi bi-pencil"></i>
+                </button>
+                <button class="btn btn-sm btn-outline-danger" onclick="eventsModule.deleteRunningOrderItem('${item.id}')" title="Delete">
+                  <i class="bi bi-trash"></i>
+                </button>
+              ` : `<span class="badge bg-success"><i class="bi bi-check-circle me-1"></i>Locked</span>`}
+            </div>
+          </div>
+        </div>`;
+        return;
+      }
 
       // Determine grouping state
       const isGrouped = item.presentation_group && this.runningOrderItems.filter(
@@ -1179,7 +1319,10 @@ const eventsModule = {
                 ${groupMembers.map(m => utils.escapeHtml(m.award_name || 'Award')).join(' &bull; ')}
               </div>
             </div>
-            <div class="ro-recipient">
+            <div class="ro-sponsor">
+              ${sponsor ? `<span title="${utils.escapeHtml(sponsor)}"><i class="bi bi-star-fill me-1" style="color:#ffc107; font-size:0.6rem;"></i>${utils.escapeHtml(sponsor)}</span>` : ''}
+            </div>
+            <div class="ro-recipient" style="width:120px;">
               <small class="text-muted" style="font-size:0.65rem;">Collecting:</small>
               <strong>${utils.escapeHtml(recipientName)}</strong>
             </div>
@@ -1188,7 +1331,7 @@ const eventsModule = {
                 ${statusOpts}
               </select>
             </div>
-            <div class="ro-actions">
+            <div class="ro-actions" style="width:140px;">
               ${!this.isPublished ? `
                 <button class="btn btn-sm btn-outline-secondary" onclick="eventsModule.moveROItem('${item.id}', -1)" title="Move group up" ${isFirst ? 'disabled' : ''}>
                   <i class="bi bi-arrow-up"></i>
@@ -1222,9 +1365,10 @@ const eventsModule = {
               </div>
               ${notes ? `<div class="ro-notes-preview" title="${utils.escapeHtml(notes)}"><i class="bi bi-sticky me-1"></i>${utils.escapeHtml(notes)}</div>` : ''}
             </div>
-            <div class="ro-recipient"></div>
+            <div class="ro-sponsor"></div>
+            <div class="ro-recipient" style="width:120px;"></div>
             <div class="ro-status"></div>
-            <div class="ro-actions">
+            <div class="ro-actions" style="width:140px;">
               ${!this.isPublished ? `
                 <button class="btn btn-sm btn-outline-primary" onclick="eventsModule.editRunningOrderItem('${item.id}')" title="Edit">
                   <i class="bi bi-pencil"></i>
@@ -1242,7 +1386,7 @@ const eventsModule = {
         return; // Don't render as a normal row
       }
 
-      // Non-grouped item (standalone)
+      // Non-grouped award item (standalone)
       presentationNumber++;
       html += `
       <div class="ro-item ${this.isPublished ? 'published' : ''} ${status !== 'pending' ? 'status-' + status : ''} ${matchesSearch ? '' : 'search-hidden'}"
@@ -1268,14 +1412,17 @@ const eventsModule = {
                    onchange="eventsModule.setROItemTime('${item.id}', this.value)"
                    ${this.isPublished ? 'disabled' : ''}
                    title="Scheduled time">
-            <div class="duration" title="Cumulative: ${cumTime} min">${duration}m</div>
+            <div class="duration" title="Cumulative: ${cumTime} min">${duration}m ${scheduleIndicator}</div>
           </div>
           <div class="ro-details">
             <div class="ro-award-name" title="${utils.escapeHtml(awardName)}">${utils.escapeHtml(awardName)}</div>
             <div class="ro-winner-name" title="${utils.escapeHtml(winnerName)}">${utils.escapeHtml(winnerName)}</div>
             ${notes ? `<div class="ro-notes-preview" title="${utils.escapeHtml(notes)}"><i class="bi bi-sticky me-1"></i>${utils.escapeHtml(notes)}</div>` : ''}
           </div>
-          <div class="ro-recipient">
+          <div class="ro-sponsor">
+            ${sponsor ? `<span title="${utils.escapeHtml(sponsor)}"><i class="bi bi-star-fill me-1" style="color:#ffc107; font-size:0.6rem;"></i>${utils.escapeHtml(sponsor)}</span>` : ''}
+          </div>
+          <div class="ro-recipient" style="width:120px;">
             <small class="text-muted" style="font-size:0.65rem;">Collecting:</small>
             <strong title="${utils.escapeHtml(recipientName)}">${utils.escapeHtml(recipientName)}</strong>
           </div>
@@ -1284,7 +1431,7 @@ const eventsModule = {
               ${statusOpts}
             </select>
           </div>
-          <div class="ro-actions">
+          <div class="ro-actions" style="width:140px;">
             ${!this.isPublished ? `
               <button class="btn btn-sm btn-outline-secondary" onclick="eventsModule.moveROItem('${item.id}', -1)" title="Move up" ${isFirst ? 'disabled' : ''}>
                 <i class="bi bi-arrow-up"></i>
@@ -1294,6 +1441,9 @@ const eventsModule = {
               </button>
               <button class="btn btn-sm btn-outline-primary" onclick="eventsModule.editRunningOrderItem('${item.id}')" title="Edit">
                 <i class="bi bi-pencil"></i>
+              </button>
+              <button class="btn btn-sm btn-outline-secondary" onclick="eventsModule.duplicateROItem('${item.id}')" title="Duplicate">
+                <i class="bi bi-copy"></i>
               </button>
               ${orgAwardCount > 1 && !isGrouped ? `
               <button class="btn btn-sm btn-outline-info" onclick="eventsModule.groupPresentation('${item.id}')" title="Group all awards for this org into one presentation">
@@ -1317,6 +1467,9 @@ const eventsModule = {
     // Update undo button state
     const undoBtn = document.getElementById('roUndoBtn');
     if (undoBtn) undoBtn.disabled = this._roUndoStack.length === 0;
+
+    // Update overall schedule indicator
+    this._roUpdateOverallSchedule();
   },
 
   // ============================================
@@ -1562,6 +1715,596 @@ const eventsModule = {
   },
 
   // ============================================
+  // SECTION BREAKS & NON-AWARD ITEMS
+  // ============================================
+
+  /**
+   * Add a section break / non-award item
+   */
+  addSectionBreak() {
+    const eventId = this.currentEventIdRunningOrder;
+    if (!eventId) { utils.showToast('No event selected', 'warning'); return; }
+
+    const modalHtml = `
+      <div class="modal fade" id="addSectionBreakModal" tabindex="-1">
+        <div class="modal-dialog">
+          <div class="modal-content">
+            <div class="modal-header" style="background: linear-gradient(135deg, #7e57c2, #5e35b1); color: white;">
+              <h5 class="modal-title"><i class="bi bi-dash-lg me-2"></i>Add Section Break</h5>
+              <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+              <form id="addSectionBreakForm">
+                <div class="row">
+                  <div class="col-md-4 mb-3">
+                    <label class="form-label">Type</label>
+                    <select class="form-select" id="breakType">
+                      <option value="break">Break / Pause</option>
+                      <option value="speech">Speech</option>
+                      <option value="entertainment">Entertainment</option>
+                      <option value="interval">Interval / Dinner</option>
+                      <option value="other">Other</option>
+                    </select>
+                  </div>
+                  <div class="col-md-4 mb-3">
+                    <label class="form-label">Scheduled Time</label>
+                    <input type="time" class="form-control" id="breakScheduledTime">
+                  </div>
+                  <div class="col-md-4 mb-3">
+                    <label class="form-label">Duration (min)</label>
+                    <input type="number" class="form-control" id="breakDuration" value="15" min="1" max="120">
+                  </div>
+                </div>
+                <div class="mb-3">
+                  <label class="form-label">Title <span class="text-danger">*</span></label>
+                  <input type="text" class="form-control" id="breakTitle" required placeholder="e.g. Dinner Service, Guest Speaker, Interval">
+                </div>
+                <div class="mb-3">
+                  <label class="form-label">Notes</label>
+                  <textarea class="form-control" id="breakNotes" rows="2" placeholder="Details, instructions..."></textarea>
+                </div>
+              </form>
+            </div>
+            <div class="modal-footer">
+              <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+              <button type="button" class="btn text-white" style="background:#7e57c2;" onclick="eventsModule.saveSectionBreak()">
+                <i class="bi bi-plus-circle me-2"></i>Add to Running Order
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>`;
+
+    const existingModal = document.getElementById('addSectionBreakModal');
+    if (existingModal) existingModal.remove();
+    document.body.insertAdjacentHTML('beforeend', modalHtml);
+    const modal = new bootstrap.Modal(document.getElementById('addSectionBreakModal'));
+    modal.show();
+    document.getElementById('addSectionBreakModal').addEventListener('hidden.bs.modal', function() { this.remove(); });
+  },
+
+  /**
+   * Save section break to database
+   */
+  async saveSectionBreak() {
+    const title = document.getElementById('breakTitle').value.trim();
+    if (!title) {
+      utils.showToast('Please enter a title', 'warning');
+      return;
+    }
+
+    const nextOrder = this.runningOrderItems.length + 1;
+    const section = this.runningOrderItems.length > 0
+      ? (this.runningOrderItems[this.runningOrderItems.length - 1].section || 1)
+      : 1;
+
+    const entryData = {
+      event_id: this.currentEventIdRunningOrder,
+      award_number: `${section}-${String(nextOrder).padStart(2, '0')}`,
+      display_order: nextOrder,
+      section: section,
+      award_name: title,
+      display_name: title,
+      item_type: document.getElementById('breakType').value || 'break',
+      scheduled_time: document.getElementById('breakScheduledTime').value || null,
+      duration_minutes: parseInt(document.getElementById('breakDuration').value) || 15,
+      notes: document.getElementById('breakNotes').value.trim() || null,
+      status: 'pending'
+    };
+
+    try {
+      const { error } = await STATE.client.from('running_order').insert([entryData]);
+      if (error) throw error;
+      utils.showToast('Section break added', 'success');
+      bootstrap.Modal.getInstance(document.getElementById('addSectionBreakModal')).hide();
+      await this.loadRunningOrder();
+      this.renderRunningOrderItems();
+    } catch (error) {
+      console.error('Error adding section break:', error);
+      utils.showToast('Failed to add section break: ' + error.message, 'error');
+    }
+  },
+
+  // ============================================
+  // AUTO-SCHEDULE TIMES
+  // ============================================
+
+  /**
+   * Set ceremony start time
+   */
+  async setCeremonyStartTime(time) {
+    this._roCeremonyStartTime = time || null;
+    try {
+      await STATE.client
+        .from('running_order_settings')
+        .upsert({
+          event_id: this.currentEventIdRunningOrder,
+          ceremony_start_time: time || null,
+          auto_schedule: this._roAutoSchedule
+        }, { onConflict: 'event_id' });
+    } catch (error) {
+      console.error('Error saving ceremony start time:', error);
+    }
+    if (this._roAutoSchedule && time) {
+      this.recalcAutoSchedule();
+    }
+  },
+
+  /**
+   * Toggle auto-schedule mode
+   */
+  async toggleAutoSchedule(enabled) {
+    this._roAutoSchedule = enabled;
+    try {
+      await STATE.client
+        .from('running_order_settings')
+        .upsert({
+          event_id: this.currentEventIdRunningOrder,
+          ceremony_start_time: this._roCeremonyStartTime,
+          auto_schedule: enabled
+        }, { onConflict: 'event_id' });
+    } catch (error) {
+      console.error('Error saving auto-schedule setting:', error);
+    }
+    if (enabled && this._roCeremonyStartTime) {
+      this.recalcAutoSchedule();
+    } else {
+      // Refresh modal to show/hide recalc button
+      document.getElementById('runningOrderModal').remove();
+      this.createRunningOrderModal();
+    }
+  },
+
+  /**
+   * Recalculate all scheduled times based on ceremony start time and durations
+   */
+  async recalcAutoSchedule() {
+    if (!this._roCeremonyStartTime) {
+      utils.showToast('Set a ceremony start time first', 'warning');
+      return;
+    }
+
+    // Parse start time
+    const [startH, startM] = this._roCeremonyStartTime.split(':').map(Number);
+    let currentMinutes = startH * 60 + startM;
+
+    // Walk through items and assign times
+    for (const item of this.runningOrderItems) {
+      const hours = Math.floor(currentMinutes / 60) % 24;
+      const mins = currentMinutes % 60;
+      item.scheduled_time = `${String(hours).padStart(2, '0')}:${String(mins).padStart(2, '0')}`;
+      currentMinutes += (item.duration_minutes || 3);
+    }
+
+    // Save to DB
+    try {
+      for (const item of this.runningOrderItems) {
+        await STATE.client.from('running_order')
+          .update({ scheduled_time: item.scheduled_time })
+          .eq('id', item.id);
+      }
+      utils.showToast('Times auto-scheduled from ' + this._roCeremonyStartTime, 'success');
+    } catch (error) {
+      console.error('Error auto-scheduling:', error);
+      utils.showToast('Failed to auto-schedule: ' + error.message, 'error');
+    }
+
+    this.renderRunningOrderItems();
+  },
+
+  // ============================================
+  // DUPLICATE ITEM
+  // ============================================
+
+  /**
+   * Duplicate a running order item
+   */
+  async duplicateROItem(itemId) {
+    const item = this.runningOrderItems.find(i => i.id === itemId);
+    if (!item) return;
+
+    const nextOrder = this.runningOrderItems.length + 1;
+    const section = item.section || 1;
+
+    const newEntry = {
+      event_id: this.currentEventIdRunningOrder,
+      award_number: `${section}-${String(nextOrder).padStart(2, '0')}`,
+      display_order: item.display_order + 1, // Insert after current item
+      award_name: item.award_name ? item.award_name + ' (copy)' : null,
+      display_name: item.display_name || null,
+      recipient_collecting: item.recipient_collecting || null,
+      scheduled_time: null,
+      duration_minutes: item.duration_minutes || 3,
+      item_type: item.item_type || 'award',
+      sponsor: item.sponsor || null,
+      notes: item.notes || null,
+      special_requirements: item.special_requirements || null,
+      status: 'pending',
+      section: section
+    };
+
+    try {
+      const { error } = await STATE.client.from('running_order').insert([newEntry]);
+      if (error) throw error;
+      utils.showToast('Item duplicated', 'success');
+      await this.loadRunningOrder();
+      this._roRecalcNumbers();
+      await this.saveRunningOrder();
+      this.renderRunningOrderItems();
+      if (this._roAutoSchedule && this._roCeremonyStartTime) {
+        this.recalcAutoSchedule();
+      }
+    } catch (error) {
+      console.error('Error duplicating item:', error);
+      utils.showToast('Failed to duplicate: ' + error.message, 'error');
+    }
+  },
+
+  // ============================================
+  // BEHIND/AHEAD SCHEDULE TRACKING
+  // ============================================
+
+  /**
+   * Get schedule indicator for a single item (comparing actual_time vs scheduled_time)
+   */
+  _roGetItemScheduleIndicator(item) {
+    if (!item.actual_time || !item.scheduled_time) return '';
+    const scheduled = this._roTimeToMinutes(item.scheduled_time);
+    const actual = this._roTimeToMinutes(item.actual_time);
+    if (scheduled === null || actual === null) return '';
+
+    const diff = actual - scheduled;
+    if (Math.abs(diff) <= 1) return '<span class="schedule-on-time" title="On time">&#10003;</span>';
+    if (diff > 0) return `<span class="schedule-behind" title="${diff} min behind">+${diff}m</span>`;
+    return `<span class="schedule-ahead" title="${Math.abs(diff)} min ahead">${diff}m</span>`;
+  },
+
+  /**
+   * Parse time string "HH:MM" to total minutes
+   */
+  _roTimeToMinutes(timeStr) {
+    if (!timeStr || typeof timeStr !== 'string') return null;
+    const parts = timeStr.split(':');
+    if (parts.length < 2) return null;
+    const h = parseInt(parts[0]);
+    const m = parseInt(parts[1]);
+    if (isNaN(h) || isNaN(m)) return null;
+    return h * 60 + m;
+  },
+
+  /**
+   * Update the overall schedule indicator in the stats bar
+   */
+  _roUpdateOverallSchedule() {
+    const indicator = document.getElementById('roScheduleIndicator');
+    if (!indicator) return;
+
+    // Find the most recently completed item that has both times
+    const completedWithTimes = this.runningOrderItems.filter(
+      i => (i.status === 'completed' || i.status === 'announced') && i.actual_time && i.scheduled_time
+    );
+
+    if (completedWithTimes.length === 0) {
+      indicator.innerHTML = '';
+      return;
+    }
+
+    const lastCompleted = completedWithTimes[completedWithTimes.length - 1];
+    const scheduled = this._roTimeToMinutes(lastCompleted.scheduled_time);
+    const actual = this._roTimeToMinutes(lastCompleted.actual_time);
+
+    if (scheduled === null || actual === null) {
+      indicator.innerHTML = '';
+      return;
+    }
+
+    const diff = actual - scheduled;
+    if (Math.abs(diff) <= 1) {
+      indicator.innerHTML = '<span class="badge bg-success"><i class="bi bi-clock me-1"></i>On Schedule</span>';
+    } else if (diff > 0) {
+      indicator.innerHTML = `<span class="badge bg-danger"><i class="bi bi-clock me-1"></i>${diff} min behind</span>`;
+    } else {
+      indicator.innerHTML = `<span class="badge bg-info"><i class="bi bi-clock me-1"></i>${Math.abs(diff)} min ahead</span>`;
+    }
+  },
+
+  // ============================================
+  // BACKSTAGE / STAGE MANAGER VIEW
+  // ============================================
+
+  /**
+   * Open full-screen backstage view for production team
+   */
+  openBackstageView() {
+    const items = this.runningOrderItems;
+    if (items.length === 0) {
+      utils.showToast('No items in running order', 'warning');
+      return;
+    }
+
+    // Find current item (first non-completed item)
+    let currentIdx = items.findIndex(i => i.status !== 'completed');
+    if (currentIdx === -1) currentIdx = items.length - 1;
+
+    const backstageHtml = this._buildBackstageHtml(currentIdx);
+
+    const existingModal = document.getElementById('backstageViewModal');
+    if (existingModal) existingModal.remove();
+    document.body.insertAdjacentHTML('beforeend', backstageHtml);
+
+    const modal = new bootstrap.Modal(document.getElementById('backstageViewModal'));
+    modal.show();
+
+    // Store current index for navigation
+    this._backstageCurrentIdx = currentIdx;
+
+    // Start auto-refresh
+    this._roBackstageInterval = setInterval(() => this._refreshBackstageView(), 5000);
+
+    document.getElementById('backstageViewModal').addEventListener('hidden.bs.modal', () => {
+      clearInterval(this._roBackstageInterval);
+      document.getElementById('backstageViewModal').remove();
+    });
+
+    // Keyboard shortcuts
+    document.getElementById('backstageViewModal').addEventListener('keydown', (e) => {
+      if (e.key === 'ArrowRight' || e.key === ' ') { e.preventDefault(); this.backstageNext(); }
+      if (e.key === 'ArrowLeft') { e.preventDefault(); this.backstagePrev(); }
+    });
+  },
+
+  _backstageCurrentIdx: 0,
+
+  /**
+   * Build backstage view HTML
+   */
+  _buildBackstageHtml(currentIdx) {
+    const items = this.runningOrderItems;
+    const current = items[currentIdx];
+    const next = items[currentIdx + 1] || null;
+    const prev = items[currentIdx - 1] || null;
+
+    const completedCount = items.filter(i => i.status === 'completed').length;
+    const totalCount = items.length;
+    const progressPct = totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0;
+
+    // Schedule tracking
+    let scheduleStatus = '';
+    const completedWithTimes = items.filter(i => (i.status === 'completed' || i.status === 'announced') && i.actual_time && i.scheduled_time);
+    if (completedWithTimes.length > 0) {
+      const last = completedWithTimes[completedWithTimes.length - 1];
+      const scheduled = this._roTimeToMinutes(last.scheduled_time);
+      const actual = this._roTimeToMinutes(last.actual_time);
+      if (scheduled !== null && actual !== null) {
+        const diff = actual - scheduled;
+        if (Math.abs(diff) <= 1) {
+          scheduleStatus = '<span style="color:#4caf50; font-size:1.2rem;">ON SCHEDULE</span>';
+        } else if (diff > 0) {
+          scheduleStatus = `<span style="color:#f44336; font-size:1.2rem;">${diff} MIN BEHIND</span>`;
+        } else {
+          scheduleStatus = `<span style="color:#2196f3; font-size:1.2rem;">${Math.abs(diff)} MIN AHEAD</span>`;
+        }
+      }
+    }
+
+    const currentItemType = current?.item_type || 'award';
+    const currentIsBreak = currentItemType !== 'award';
+    const currentIcon = currentIsBreak ? this._getBreakIcon(currentItemType) : 'bi-trophy-fill';
+
+    const nextItemType = next?.item_type || 'award';
+    const nextIsBreak = nextItemType !== 'award';
+    const nextIcon = nextIsBreak ? this._getBreakIcon(nextItemType) : 'bi-trophy';
+
+    return `
+      <div class="modal fade" id="backstageViewModal" tabindex="-1" data-bs-backdrop="static">
+        <div class="modal-dialog modal-fullscreen">
+          <div class="modal-content" style="background:#1a1a2e; color:#eee;">
+            <!-- Top Bar -->
+            <div class="d-flex justify-content-between align-items-center px-4 py-2" style="background:#16213e; border-bottom:2px solid #0f3460;">
+              <div>
+                <h5 class="mb-0" style="color:#e94560;">
+                  <i class="bi bi-display me-2"></i>BACKSTAGE - ${utils.escapeHtml(this.currentEventName)}
+                </h5>
+              </div>
+              <div class="d-flex align-items-center gap-4">
+                ${scheduleStatus}
+                <span style="color:#aaa; font-size:1rem;">
+                  <i class="bi bi-clock me-1"></i>
+                  <span id="backstageClock">${new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}</span>
+                </span>
+                <div style="color:#aaa;">
+                  ${completedCount}/${totalCount} complete (${progressPct}%)
+                </div>
+                <button type="button" class="btn btn-outline-light btn-sm" data-bs-dismiss="modal">
+                  <i class="bi bi-x-lg me-1"></i>Exit
+                </button>
+              </div>
+            </div>
+
+            <!-- Progress Bar -->
+            <div style="height:4px; background:#0f3460;">
+              <div style="height:100%; width:${progressPct}%; background: linear-gradient(90deg, #e94560, #0f3460); transition: width 0.5s;"></div>
+            </div>
+
+            <!-- Main Content -->
+            <div class="d-flex flex-column justify-content-center align-items-center flex-grow-1 px-4" style="min-height:0;">
+
+              <!-- Current Item - Large -->
+              <div class="text-center mb-4" style="max-width:900px; width:100%;">
+                <div class="mb-2" style="color:#e94560; text-transform:uppercase; letter-spacing:3px; font-size:0.85rem;">
+                  ${current?.status === 'announced' ? '<i class="bi bi-broadcast me-1"></i>NOW PRESENTING' : '<i class="bi bi-arrow-right-circle me-1"></i>CURRENT'}
+                </div>
+                <div class="p-4 rounded-3" style="background:#16213e; border:2px solid #0f3460;">
+                  <div style="font-size:1rem; color:#aaa; margin-bottom:8px;">
+                    <i class="bi ${currentIcon} me-1"></i>
+                    #${currentIdx + 1} ${current?.scheduled_time ? `| ${current.scheduled_time}` : ''} ${current?.sponsor ? `| Sponsored by ${utils.escapeHtml(current.sponsor)}` : ''}
+                  </div>
+                  <div style="font-size:2.5rem; font-weight:700; color:#fff; line-height:1.2; margin-bottom:12px;">
+                    ${utils.escapeHtml(current?.award_name || 'N/A')}
+                  </div>
+                  ${!currentIsBreak ? `
+                    <div style="font-size:1.6rem; color:#4fc3f7; margin-bottom:8px;">
+                      ${utils.escapeHtml(current?.display_name || '')}
+                    </div>
+                    ${current?.recipient_collecting ? `
+                      <div style="font-size:1.1rem; color:#aaa;">
+                        <i class="bi bi-person me-1"></i>Collecting: <strong style="color:#fff;">${utils.escapeHtml(current.recipient_collecting)}</strong>
+                      </div>
+                    ` : ''}
+                  ` : ''}
+                  ${current?.notes ? `
+                    <div style="font-size:0.9rem; color:#888; margin-top:10px; padding-top:10px; border-top:1px solid #0f3460;">
+                      <i class="bi bi-sticky me-1"></i>${utils.escapeHtml(current.notes)}
+                    </div>
+                  ` : ''}
+                </div>
+              </div>
+
+              <!-- Next Item Preview -->
+              ${next ? `
+              <div class="text-center" style="max-width:700px; width:100%; opacity:0.7;">
+                <div class="mb-1" style="color:#aaa; text-transform:uppercase; letter-spacing:2px; font-size:0.75rem;">
+                  <i class="bi bi-skip-forward me-1"></i>UP NEXT
+                </div>
+                <div class="p-3 rounded-3" style="background:#16213e50; border:1px solid #0f346050;">
+                  <div style="font-size:0.85rem; color:#666; margin-bottom:4px;">
+                    <i class="bi ${nextIcon} me-1"></i>
+                    #${currentIdx + 2} ${next.scheduled_time ? `| ${next.scheduled_time}` : ''} ${next.sponsor ? `| Sponsored by ${utils.escapeHtml(next.sponsor)}` : ''}
+                  </div>
+                  <div style="font-size:1.4rem; font-weight:600; color:#ccc;">
+                    ${utils.escapeHtml(next.award_name || 'N/A')}
+                  </div>
+                  ${!nextIsBreak ? `
+                    <div style="font-size:1rem; color:#4fc3f7aa;">
+                      ${utils.escapeHtml(next.display_name || '')}
+                      ${next.recipient_collecting ? ` - Collecting: ${utils.escapeHtml(next.recipient_collecting)}` : ''}
+                    </div>
+                  ` : ''}
+                </div>
+              </div>
+              ` : '<div style="color:#666; font-size:1.2rem;">This is the last item</div>'}
+            </div>
+
+            <!-- Bottom Navigation -->
+            <div class="d-flex justify-content-between align-items-center px-4 py-3" style="background:#16213e; border-top:2px solid #0f3460;">
+              <button class="btn btn-outline-light btn-lg" onclick="eventsModule.backstagePrev()" ${currentIdx === 0 ? 'disabled' : ''}>
+                <i class="bi bi-arrow-left me-2"></i>Previous
+              </button>
+              <div class="text-center">
+                <small style="color:#666;">Use <kbd style="background:#333; padding:2px 8px; border-radius:3px;">&larr;</kbd> <kbd style="background:#333; padding:2px 8px; border-radius:3px;">&rarr;</kbd> arrow keys or <kbd style="background:#333; padding:2px 8px; border-radius:3px;">Space</kbd> to navigate</small>
+              </div>
+              <div class="d-flex gap-2">
+                <button class="btn btn-warning btn-lg" onclick="eventsModule.backstageMarkStatus('announced')"
+                        ${current?.status === 'announced' || current?.status === 'completed' ? 'disabled' : ''}>
+                  <i class="bi bi-broadcast me-1"></i>Mark Announced
+                </button>
+                <button class="btn btn-success btn-lg" onclick="eventsModule.backstageMarkStatus('completed')"
+                        ${current?.status === 'completed' ? 'disabled' : ''}>
+                  <i class="bi bi-check-circle me-1"></i>Mark Complete
+                </button>
+                <button class="btn btn-primary btn-lg" onclick="eventsModule.backstageNext()" ${currentIdx >= items.length - 1 ? 'disabled' : ''}>
+                  Next<i class="bi bi-arrow-right ms-2"></i>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>`;
+  },
+
+  /**
+   * Get break icon for item type
+   */
+  _getBreakIcon(itemType) {
+    const icons = {
+      'break': 'bi-cup-hot',
+      'speech': 'bi-mic',
+      'entertainment': 'bi-music-note-beamed',
+      'interval': 'bi-pause-circle',
+      'other': 'bi-bookmark'
+    };
+    return icons[itemType] || 'bi-bookmark';
+  },
+
+  /**
+   * Navigate backstage view to next item
+   */
+  backstageNext() {
+    if (this._backstageCurrentIdx >= this.runningOrderItems.length - 1) return;
+    this._backstageCurrentIdx++;
+    this._refreshBackstageContent();
+  },
+
+  /**
+   * Navigate backstage view to previous item
+   */
+  backstagePrev() {
+    if (this._backstageCurrentIdx <= 0) return;
+    this._backstageCurrentIdx--;
+    this._refreshBackstageContent();
+  },
+
+  /**
+   * Mark current backstage item with a status
+   */
+  async backstageMarkStatus(newStatus) {
+    const item = this.runningOrderItems[this._backstageCurrentIdx];
+    if (!item) return;
+    await this.setROItemStatus(item.id, newStatus);
+    this._refreshBackstageContent();
+  },
+
+  /**
+   * Refresh backstage content (rebuild the inner HTML)
+   */
+  _refreshBackstageContent() {
+    const modal = document.getElementById('backstageViewModal');
+    if (!modal) return;
+
+    const newHtml = this._buildBackstageHtml(this._backstageCurrentIdx);
+    // Extract just the modal-content from the new HTML
+    const temp = document.createElement('div');
+    temp.innerHTML = newHtml;
+    const newContent = temp.querySelector('.modal-content');
+    if (newContent) {
+      modal.querySelector('.modal-content').innerHTML = newContent.innerHTML;
+    }
+
+    // Re-attach keyboard shortcuts
+    modal.focus();
+  },
+
+  /**
+   * Auto-refresh backstage view (update clock, check for status changes)
+   */
+  _refreshBackstageView() {
+    const clockEl = document.getElementById('backstageClock');
+    if (clockEl) {
+      clockEl.textContent = new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+    }
+  },
+
+  // ============================================
   // GROUP / SPLIT PRESENTATIONS
   // ============================================
 
@@ -1783,7 +2526,12 @@ const eventsModule = {
       for (const item of this.runningOrderItems) {
         const { error } = await STATE.client
           .from('running_order')
-          .update({ display_order: item.display_order, award_number: item.award_number, presentation_group: item.presentation_group || null })
+          .update({
+            display_order: item.display_order,
+            award_number: item.award_number,
+            presentation_group: item.presentation_group || null,
+            scheduled_time: item.scheduled_time || null
+          })
           .eq('id', item.id);
         if (error) throw error;
       }
@@ -1820,6 +2568,24 @@ const eventsModule = {
       cumMin += duration;
       const status = item.status || 'pending';
       const statusLabel = status.charAt(0).toUpperCase() + status.slice(1);
+      const itemType = item.item_type || 'award';
+      const isBreak = itemType !== 'award';
+      const sponsor = item.sponsor || '';
+      const sponsorHtml = sponsor ? `<br><small style="color:#666; font-style:italic;">Sponsored by ${utils.escapeHtml(sponsor)}</small>` : '';
+
+      // Section break rendering
+      if (isBreak) {
+        presNum++;
+        const breakLabels = { 'break': 'BREAK', 'speech': 'SPEECH', 'entertainment': 'ENTERTAINMENT', 'interval': 'INTERVAL', 'other': 'OTHER' };
+        rows += `<tr style="background:#e3f2fd; font-style:italic;">
+          <td class="award-number" style="color:#5e35b1;">${presNum}</td>
+          <td class="time-col">${utils.escapeHtml(time)}</td>
+          <td class="award-name" colspan="3"><strong>${utils.escapeHtml(awardName)}</strong> <span style="color:#7e57c2; font-size:8pt;">[${breakLabels[itemType] || 'BREAK'}]</span></td>
+          <td class="status-col">${statusLabel}</td>
+        </tr>`;
+        if (notes) rows += `<tr style="background:#e3f2fd;"><td colspan="6" class="notes"><strong>Notes:</strong> ${utils.escapeHtml(notes)}</td></tr>`;
+        return;
+      }
 
       const isGrouped = item.presentation_group && this.runningOrderItems.filter(
         i => i.presentation_group === item.presentation_group
@@ -1834,7 +2600,7 @@ const eventsModule = {
           rows += `<tr style="background:#fffde7;">
             <td class="award-number" rowspan="${groupMembers.length}" style="vertical-align:middle; font-size:14pt;">${presNum}</td>
             <td class="time-col">${utils.escapeHtml(time)}</td>
-            <td class="award-name">${utils.escapeHtml(awardName)}</td>
+            <td class="award-name">${utils.escapeHtml(awardName)}${sponsorHtml}</td>
             <td class="winner-name" rowspan="${groupMembers.length}" style="vertical-align:middle;"><strong>${utils.escapeHtml(companyName)}</strong><br><small style="color:#666;">Combined presentation</small></td>
             <td class="recipient" rowspan="${groupMembers.length}" style="vertical-align:middle;">${utils.escapeHtml(recipient)}</td>
             <td class="status-col">${statusLabel}</td>
@@ -1843,7 +2609,7 @@ const eventsModule = {
         } else {
           rows += `<tr style="background:#fffde7;">
             <td class="time-col">${utils.escapeHtml(time)}</td>
-            <td class="award-name">${utils.escapeHtml(awardName)}</td>
+            <td class="award-name">${utils.escapeHtml(awardName)}${sponsorHtml}</td>
             <td class="status-col">${statusLabel}</td>
           </tr>`;
           if (notes) rows += `<tr style="background:#fffde7;"><td colspan="3" class="notes"><strong>Notes:</strong> ${utils.escapeHtml(notes)}</td></tr>`;
@@ -1853,7 +2619,7 @@ const eventsModule = {
         rows += `<tr>
           <td class="award-number">${presNum}</td>
           <td class="time-col">${utils.escapeHtml(time)}</td>
-          <td class="award-name">${utils.escapeHtml(awardName)}</td>
+          <td class="award-name">${utils.escapeHtml(awardName)}${sponsorHtml}</td>
           <td class="winner-name">${utils.escapeHtml(companyName)}</td>
           <td class="recipient">${utils.escapeHtml(recipient)}</td>
           <td class="status-col">${statusLabel}</td>
@@ -1937,10 +2703,13 @@ const eventsModule = {
       return {
         'Order': item.display_order,
         'Award Number': item.award_number,
+        'Type': item.item_type || 'award',
         'Award Name': item.award_name || 'TBC',
         'Winner': item.display_name || 'TBC',
         'Recipient Collecting': item.recipient_collecting || item.event_guests?.guest_name || 'TBC',
+        'Sponsor': item.sponsor || '',
         'Scheduled Time': item.scheduled_time || '',
+        'Actual Time': item.actual_time || '',
         'Duration (min)': item.duration_minutes || 3,
         'Status': item.status || 'pending',
         'Presentation': isGrouped ? 'Grouped' : 'Individual',
@@ -2002,6 +2771,10 @@ const eventsModule = {
                   <input type="text" class="form-control" id="manualRecipient" placeholder="e.g. John Smith">
                 </div>
                 <div class="mb-3">
+                  <label class="form-label">Sponsor / Presented By</label>
+                  <input type="text" class="form-control" id="manualSponsor" placeholder="e.g. Sponsored by HSBC">
+                </div>
+                <div class="mb-3">
                   <label class="form-label">Notes</label>
                   <textarea class="form-control" id="manualNotes" rows="2" placeholder="Special requirements, notes..."></textarea>
                 </div>
@@ -2029,15 +2802,20 @@ const eventsModule = {
     const form = document.getElementById('addManualEntryForm');
     if (!form.checkValidity()) { form.reportValidity(); return; }
 
+    const section = this.runningOrderItems.length > 0
+      ? (this.runningOrderItems[this.runningOrderItems.length - 1].section || 1)
+      : 1;
     const entryData = {
       event_id: this.currentEventIdRunningOrder,
       award_number: document.getElementById('manualAwardNumber').value.trim() || '1',
       display_order: this.runningOrderItems.length + 1,
+      section: section,
       award_name: document.getElementById('manualAwardName').value.trim(),
       display_name: document.getElementById('manualDisplayName').value.trim(),
       recipient_collecting: document.getElementById('manualRecipient').value.trim() || null,
       scheduled_time: document.getElementById('manualScheduledTime').value || null,
       duration_minutes: parseInt(document.getElementById('manualDuration').value) || 3,
+      sponsor: document.getElementById('manualSponsor').value.trim() || null,
       notes: document.getElementById('manualNotes').value.trim() || null,
       status: 'pending'
     };
@@ -2073,17 +2851,28 @@ const eventsModule = {
             <div class="modal-body">
               <form id="editRunningOrderForm">
                 <div class="row">
-                  <div class="col-md-4 mb-3">
+                  <div class="col-md-3 mb-3">
                     <label class="form-label">Award Number</label>
                     <input type="text" class="form-control" id="editROAwardNumber" value="${utils.escapeHtml(String(item.award_number || ''))}">
                   </div>
-                  <div class="col-md-4 mb-3">
+                  <div class="col-md-3 mb-3">
                     <label class="form-label">Scheduled Time</label>
                     <input type="time" class="form-control" id="editROScheduledTime" value="${item.scheduled_time || ''}">
                   </div>
-                  <div class="col-md-4 mb-3">
+                  <div class="col-md-3 mb-3">
                     <label class="form-label">Duration (min)</label>
                     <input type="number" class="form-control" id="editRODuration" value="${item.duration_minutes || 3}" min="1" max="120">
+                  </div>
+                  <div class="col-md-3 mb-3">
+                    <label class="form-label">Item Type</label>
+                    <select class="form-select" id="editROItemType">
+                      <option value="award" ${(item.item_type || 'award') === 'award' ? 'selected' : ''}>Award</option>
+                      <option value="break" ${item.item_type === 'break' ? 'selected' : ''}>Break</option>
+                      <option value="speech" ${item.item_type === 'speech' ? 'selected' : ''}>Speech</option>
+                      <option value="entertainment" ${item.item_type === 'entertainment' ? 'selected' : ''}>Entertainment</option>
+                      <option value="interval" ${item.item_type === 'interval' ? 'selected' : ''}>Interval</option>
+                      <option value="other" ${item.item_type === 'other' ? 'selected' : ''}>Other</option>
+                    </select>
                   </div>
                 </div>
                 <div class="mb-3">
@@ -2097,6 +2886,10 @@ const eventsModule = {
                 <div class="mb-3">
                   <label class="form-label">Recipient Collecting</label>
                   <input type="text" class="form-control" id="editRORecipient" value="${utils.escapeHtml(item.recipient_collecting || '')}">
+                </div>
+                <div class="mb-3">
+                  <label class="form-label">Sponsor / Presented By</label>
+                  <input type="text" class="form-control" id="editROSponsor" value="${utils.escapeHtml(item.sponsor || '')}">
                 </div>
                 <div class="mb-3">
                   <label class="form-label">Notes</label>
@@ -2134,6 +2927,8 @@ const eventsModule = {
       recipient_collecting: document.getElementById('editRORecipient').value || null,
       scheduled_time: document.getElementById('editROScheduledTime').value || null,
       duration_minutes: parseInt(document.getElementById('editRODuration').value) || 3,
+      item_type: document.getElementById('editROItemType').value || 'award',
+      sponsor: document.getElementById('editROSponsor').value || null,
       notes: document.getElementById('editRONotes').value || null,
       special_requirements: document.getElementById('editROSpecialReqs').value || null
     };

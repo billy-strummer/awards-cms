@@ -385,13 +385,6 @@
             </div>
           </div>
 
-          <!-- Media Dashboard Widget -->
-          <div class="row mb-5">
-            <div class="col-md-6">
-              <div id="mediaDashboardWidget"></div>
-            </div>
-          </div>
-
           <!-- Awards Year-over-Year Summary Table -->
           <div class="content-card mb-5">
             <div class="d-flex justify-content-between align-items-center mb-4">
@@ -3191,10 +3184,7 @@
                 </label>
                 <select class="form-select form-select-sm" id="eventsYearFilter" onchange="eventsModule.filterEvents()">
                   <option value="">All Years</option>
-                  <option value="2026">2026</option>
-                  <option value="2025">2025</option>
-                  <option value="2024">2024</option>
-                  <option value="2023">2023</option>
+                  <!-- Dynamically populated by eventsModule.populateYearFilter() -->
                 </select>
               </div>
               <div class="col-md-2">
@@ -3226,7 +3216,7 @@
                     <i class="bi bi-x-circle me-1"></i>Reset
                   </button>
                   <div class="vr mx-1"></div>
-                  <button class="btn btn-outline-info btn-sm" onclick="eventsModule.showEventsCalendar()" title="Calendar View">
+                  <button class="btn btn-outline-info btn-sm" onclick="eventsModule.toggleEventsCalendar()" title="Calendar View">
                     <i class="bi bi-calendar-week"></i>
                   </button>
                   <button class="btn btn-outline-secondary btn-sm" onclick="eventsModule.openTemplatesManager()" title="Event Templates">
@@ -3276,17 +3266,20 @@
                   <tr>
                     <th style="width:35px"><input type="checkbox" class="form-check-input" id="selectAllEvents" onchange="eventsModule.toggleSelectAll(this.checked)"></th>
                     <th style="cursor:pointer" onclick="eventsModule.sortEvents('event_name')">Event Name <i class="bi bi-arrow-down-up text-muted small"></i></th>
-                    <th style="width: 80px; cursor:pointer" onclick="eventsModule.sortEvents('year')">Year <i class="bi bi-arrow-down-up text-muted small"></i></th>
-                    <th style="width: 110px; cursor:pointer" onclick="eventsModule.sortEvents('event_date')">Date <i class="bi bi-arrow-down-up text-muted small"></i></th>
-                    <th>Venue</th>
-                    <th style="width: 85px;" class="text-center">Attendees</th>
-                    <th style="width: 95px;" class="text-center">Status</th>
-                    <th style="width: 200px;" class="text-center">Actions</th>
+                    <th style="width:70px;cursor:pointer" onclick="eventsModule.sortEvents('year')">Year <i class="bi bi-arrow-down-up text-muted small"></i></th>
+                    <th style="width:100px;cursor:pointer" onclick="eventsModule.sortEvents('event_date')">Date <i class="bi bi-arrow-down-up text-muted small"></i></th>
+                    <th style="cursor:pointer" onclick="eventsModule.sortEvents('venue')">Venue <i class="bi bi-arrow-down-up text-muted small"></i></th>
+                    <th style="width:70px" class="text-center" title="Attendees"><i class="bi bi-people me-1"></i>Att.</th>
+                    <th style="width:55px" class="text-center" title="VIP Guests"><i class="bi bi-star me-1"></i>VIP</th>
+                    <th style="width:70px" class="text-center" title="Award Presentations Confirmed"><i class="bi bi-trophy me-1"></i>Awards</th>
+                    <th style="width:65px" class="text-center" title="Winners Confirmed"><i class="bi bi-award me-1"></i>Won</th>
+                    <th style="width:85px" class="text-center">Status</th>
+                    <th style="width:200px" class="text-center">Actions</th>
                   </tr>
                 </thead>
                 <tbody id="eventsTableBody">
                   <tr>
-                    <td colspan="8" class="text-center py-4">
+                    <td colspan="11" class="text-center py-4">
                       <div class="spinner-border spinner-border-sm text-primary me-2" role="status"></div>
                       Loading events...
                     </td>
@@ -7054,7 +7047,7 @@ Available placeholders:
             <input type="hidden" id="eventId">
             <div class="mb-3">
               <label for="eventName" class="form-label">Event Name *</label>
-              <input type="text" class="form-control" id="eventName" required placeholder="e.g., 2024 Awards Ceremony">
+              <input type="text" class="form-control" id="eventName" required placeholder="e.g., Awards Ceremony 2026">
             </div>
             <div class="row">
               <div class="col-md-6 mb-3">
@@ -7063,7 +7056,7 @@ Available placeholders:
               </div>
               <div class="col-md-6 mb-3">
                 <label for="eventYear" class="form-label">Year</label>
-                <input type="number" class="form-control" id="eventYear" min="2000" max="2100" placeholder="2024">
+                <input type="number" class="form-control" id="eventYear" min="2000" max="2100" placeholder="2026">
               </div>
             </div>
             <div class="mb-3">

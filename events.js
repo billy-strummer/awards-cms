@@ -9,7 +9,7 @@ const eventsModule = {
   async loadEvents() {
     try {
       utils.showLoading();
-      utils.showTableLoading('eventsTableBody', 8);
+      utils.showTableLoading('eventsTableBody', 11);
 
       const { data, error } = await STATE.client
         .from('events')
@@ -19,6 +19,8 @@ const eventsModule = {
       if (error) throw error;
 
       STATE.allEvents = data || [];
+      this.populateYearFilter();
+      this._eventAwardCounts = {}; // Clear cache on reload
       this.renderEvents();
 
       console.log(`✅ Loaded ${STATE.allEvents.length} events`);
@@ -257,14 +259,16 @@ const eventsModule = {
     try {
       utils.showLoading();
 
-      // Step 1: Create new event
+      // Step 1: Create new event (fetch source for capacity)
+      const { data: srcEvt } = await STATE.client.from('events').select('capacity').eq('id', sourceEventId).single();
       const newEventData = {
         event_name: newEventName,
         event_date: newEventDate || null,
         year: parseInt(newEventYear),
         venue: newEventVenue || null,
         description: newEventDescription || null,
-        event_status: 'draft'
+        event_status: 'draft',
+        capacity: srcEvt?.capacity || null
       };
 
       const { data: newEvent, error: eventError } = await STATE.client
@@ -1337,7 +1341,7 @@ const eventsModule = {
       checkInTime: null,
       addedAt: new Date().toISOString()
     });
-    localStorage.setItem(`bta_attendees_${eventId}`, JSON.stringify(attendees));
+    this.saveAttendees(eventId, attendees);
 
     // Mark promoted on waitlist
     person.promoted = true;
@@ -3523,21 +3527,39 @@ const eventsModule = {
         .eq('event_id', this.currentEventIdRunningOrder)
         .order('display_order', { ascending: true });
 
-      if (itemsError) throw itemsError;
+      if (itemsError) {
+        // Table may not exist
+        if (itemsError.code === '42P01' || itemsError.message?.includes('does not exist')) {
+          this.runningOrderItems = [];
+          this.isPublished = false;
+          this._roCeremonyStartTime = null;
+          this._roAutoSchedule = false;
+          return;
+        }
+        throw itemsError;
+      }
       this.runningOrderItems = items || [];
 
-      const { data: settings, error: settingsError } = await STATE.client
-        .from('running_order_settings')
-        .select('*')
-        .eq('event_id', this.currentEventIdRunningOrder)
-        .single();
+      // Load settings (table may not exist)
+      try {
+        const { data: settings, error: settingsError } = await STATE.client
+          .from('running_order_settings')
+          .select('*')
+          .eq('event_id', this.currentEventIdRunningOrder)
+          .single();
 
-      if (settingsError && settingsError.code !== 'PGRST116') {
-        console.error('Error loading settings:', settingsError);
+        if (settingsError && settingsError.code !== 'PGRST116') {
+          console.warn('Error loading RO settings:', settingsError);
+        }
+        this.isPublished = settings?.is_published || false;
+        this._roCeremonyStartTime = settings?.ceremony_start_time || null;
+        this._roAutoSchedule = settings?.auto_schedule || false;
+      } catch (settingsErr) {
+        console.warn('Running order settings not available:', settingsErr);
+        this.isPublished = false;
+        this._roCeremonyStartTime = null;
+        this._roAutoSchedule = false;
       }
-      this.isPublished = settings?.is_published || false;
-      this._roCeremonyStartTime = settings?.ceremony_start_time || null;
-      this._roAutoSchedule = settings?.auto_schedule || false;
     } catch (error) {
       console.error('Error loading running order:', error);
       throw error;
@@ -6312,7 +6334,15 @@ const eventsModule = {
         .eq('is_active', true)
         .order('table_number', { ascending: true });
 
-      if (tablesError) throw tablesError;
+      if (tablesError) {
+        // Table may not exist in database yet
+        if (tablesError.code === '42P01' || tablesError.message?.includes('does not exist')) {
+          this.tables = [];
+          this.unassignedGuests = [];
+          return;
+        }
+        throw tablesError;
+      }
       this.tables = tables || [];
 
       // Load assignments for each table
@@ -6321,15 +6351,20 @@ const eventsModule = {
           .from('table_assignments')
           .select('*')
           .eq('table_id', table.id);
-        if (assignError) throw assignError;
+        if (assignError && assignError.code !== '42P01') throw assignError;
         table.assignments = assignments || [];
       }
 
-      // Load unassigned guests
-      const { data: unassigned, error: unassignedError } = await STATE.client
-        .rpc('get_unassigned_guests', { p_event_id: this.currentEventIdTablePlan });
-      if (unassignedError) throw unassignedError;
-      this.unassignedGuests = unassigned || [];
+      // Load unassigned guests (RPC may not exist)
+      try {
+        const { data: unassigned, error: unassignedError } = await STATE.client
+          .rpc('get_unassigned_guests', { p_event_id: this.currentEventIdTablePlan });
+        if (!unassignedError) this.unassignedGuests = unassigned || [];
+        else this.unassignedGuests = [];
+      } catch (rpcErr) {
+        console.warn('get_unassigned_guests RPC not available:', rpcErr);
+        this.unassignedGuests = [];
+      }
 
     } catch (error) {
       console.error('Error loading table plan:', error);
@@ -7571,43 +7606,73 @@ const eventsModule = {
     }
 
     if (events.length === 0) {
-      tbody.innerHTML = '<tr><td colspan="8" class="text-center py-4 text-muted"><i class="bi bi-calendar-x fs-1 d-block mb-2 opacity-25"></i>No events match your filters</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="11" class="text-center py-4 text-muted"><i class="bi bi-calendar-x fs-1 d-block mb-2 opacity-25"></i>No events match your filters</td></tr>';
       return;
     }
 
-    const today = new Date().toISOString().split('T')[0];
     const statusColors = { draft: 'secondary', confirmed: 'success', cancelled: 'danger', complete: 'info' };
     const statusIcons = { draft: 'bi-pencil', confirmed: 'bi-check-circle', cancelled: 'bi-x-circle', complete: 'bi-flag' };
+    const statusOptions = ['draft', 'confirmed', 'cancelled', 'complete'];
+
+    // Pre-load award counts for all events (batch)
+    this._loadEventAwardCounts(events.map(e => e.id));
 
     tbody.innerHTML = events.map(event => {
-      const eventDate = event.event_date ? new Date(event.event_date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : '<span class="text-danger small">No date</span>';
+      // Fix date display to avoid timezone shift
+      let eventDate;
+      if (event.event_date) {
+        const parts = event.event_date.split('T')[0].split('-');
+        const d = new Date(parts[0], parts[1] - 1, parts[2]);
+        eventDate = d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+      } else {
+        eventDate = '<span class="text-danger small">No date</span>';
+      }
+
       const evtStatus = event.event_status || 'draft';
       const color = statusColors[evtStatus] || 'secondary';
       const icon = statusIcons[evtStatus] || 'bi-circle';
-      const statusBadge = `<span class="badge bg-${color}"><i class="bi ${icon} me-1"></i>${evtStatus.charAt(0).toUpperCase() + evtStatus.slice(1)}</span>`;
+
+      // Clickable status dropdown
+      const statusDropdown = `
+        <div class="dropdown d-inline-block">
+          <span class="badge bg-${color}" role="button" data-bs-toggle="dropdown" style="cursor:pointer;" title="Click to change status">
+            <i class="bi ${icon} me-1"></i>${evtStatus.charAt(0).toUpperCase() + evtStatus.slice(1)} <i class="bi bi-chevron-down" style="font-size:0.6rem;"></i>
+          </span>
+          <ul class="dropdown-menu dropdown-menu-end">
+            ${statusOptions.map(s => `
+              <li><a class="dropdown-item ${s === evtStatus ? 'active' : ''}" href="#" onclick="event.preventDefault(); eventsModule.quickSetStatus('${event.id}', '${s}')">
+                <i class="bi ${statusIcons[s]} me-2"></i>${s.charAt(0).toUpperCase() + s.slice(1)}
+              </a></li>
+            `).join('')}
+          </ul>
+        </div>`;
+
+      // Attendees data
       const attendees = this.getAttendees(event.id);
       const attendeeCount = attendees ? attendees.length : 0;
       const attending = attendees ? attendees.filter(a => a.status === 'attending').length : 0;
+      const vipCount = attendees ? attendees.filter(a => a.vip || a.isVip || a.ticket_type === 'vip').length : 0;
       const capacity = event.capacity || 0;
       const capacityPct = capacity > 0 ? Math.round(attending / capacity * 100) : 0;
       const capBarColor = capacityPct >= 95 ? 'bg-danger' : capacityPct >= 80 ? 'bg-warning' : capacityPct >= 50 ? 'bg-info' : 'bg-success';
       const checked = this._selectedEvents.has(event.id) ? 'checked' : '';
       const eName = utils.escapeHtml(event.event_name).replace(/'/g, "\\'");
 
-      // Build capacity cell
+      // Award counts (from cache or placeholder)
+      const awardData = this._eventAwardCounts?.[event.id] || { total: 0, confirmed: 0, winners: 0 };
+
+      // Build compact capacity cell
       let capacityCell;
       if (capacity > 0 && attendeeCount > 0) {
         capacityCell = `
-          <div class="text-center" style="min-width:90px;">
-            <div class="fw-semibold" style="font-size:0.82rem;">${attending}<span class="text-muted">/${capacity}</span></div>
-            <div class="progress mt-1" style="height:5px;">
+          <div class="text-center" style="min-width:60px;">
+            <div class="fw-semibold" style="font-size:0.8rem;">${attending}<span class="text-muted">/${capacity}</span></div>
+            <div class="progress mt-1" style="height:4px;">
               <div class="progress-bar ${capBarColor}" style="width:${Math.min(capacityPct, 100)}%"></div>
             </div>
-            <small class="text-muted" style="font-size:0.65rem;">${capacityPct}% full</small>
-            ${capacityPct >= 95 ? '<br><span class="badge bg-danger" style="font-size:0.55rem;">NEAR CAPACITY</span>' : ''}
           </div>`;
       } else if (attendeeCount > 0) {
-        capacityCell = `<span class="badge bg-info">${attending}/${attendeeCount}</span>`;
+        capacityCell = `<span class="badge bg-info">${attending}</span>`;
       } else {
         capacityCell = '<span class="text-muted small">-</span>';
       }
@@ -7620,7 +7685,10 @@ const eventsModule = {
           <td>${eventDate}</td>
           <td>${utils.escapeHtml(event.venue || '-')}</td>
           <td class="text-center">${capacityCell}</td>
-          <td class="text-center">${statusBadge}</td>
+          <td class="text-center">${vipCount > 0 ? `<span class="badge bg-warning text-dark">${vipCount}</span>` : '<span class="text-muted small">-</span>'}</td>
+          <td class="text-center" id="awardCount_${event.id}">${awardData.total > 0 ? `<span class="badge bg-success" title="${awardData.confirmed} confirmed">${awardData.confirmed}/${awardData.total}</span>` : '<span class="text-muted small">-</span>'}</td>
+          <td class="text-center" id="winnerCount_${event.id}">${awardData.winners > 0 ? `<span class="badge bg-info">${awardData.winners}</span>` : '<span class="text-muted small">-</span>'}</td>
+          <td class="text-center">${statusDropdown}</td>
           <td class="text-center">
             <div class="btn-group btn-group-sm" role="group">
               <button class="btn btn-outline-warning btn-icon" onclick="eventsModule.openRunningOrderModal('${event.id}', '${eName}')" title="Running Order"><i class="bi bi-list-ol"></i></button>
@@ -7633,6 +7701,103 @@ const eventsModule = {
           </td>
         </tr>`;
     }).join('');
+  },
+
+  /**
+   * Quick inline status change from table row dropdown
+   */
+  async quickSetStatus(eventId, newStatus) {
+    try {
+      const { error } = await STATE.client
+        .from('events')
+        .update({ event_status: newStatus })
+        .eq('id', eventId);
+
+      if (error) throw error;
+
+      // Update local state
+      const evt = STATE.allEvents.find(e => e.id === eventId);
+      if (evt) evt.event_status = newStatus;
+
+      utils.showToast(`Event ${newStatus === 'confirmed' ? 'confirmed' : 'set to ' + newStatus}`, 'success');
+      this.filterEvents();
+    } catch (err) {
+      console.error('Error updating status:', err);
+      utils.showToast('Error updating status: ' + err.message, 'error');
+    }
+  },
+
+  /**
+   * Load award/winner counts for events (batch, cached)
+   */
+  _eventAwardCounts: {},
+
+  async _loadEventAwardCounts(eventIds) {
+    if (!eventIds || eventIds.length === 0) return;
+
+    // Only fetch for events we haven't cached yet
+    const uncached = eventIds.filter(id => !this._eventAwardCounts[id]);
+    if (uncached.length === 0) return;
+
+    try {
+      for (const eventId of uncached) {
+        // Get award counts for this event
+        const { data: awards, error } = await STATE.client
+          .from('awards')
+          .select('id, winner_confirmed')
+          .eq('event_id', eventId);
+
+        if (error) continue;
+
+        const total = awards ? awards.length : 0;
+        const confirmed = awards ? awards.filter(a => a.winner_confirmed === true).length : 0;
+        const winners = confirmed; // winners = confirmed presentations
+
+        this._eventAwardCounts[eventId] = { total, confirmed, winners };
+
+        // Update DOM if cells exist
+        const awardCell = document.getElementById(`awardCount_${eventId}`);
+        if (awardCell && total > 0) {
+          awardCell.innerHTML = `<span class="badge bg-success" title="${confirmed} confirmed">${confirmed}/${total}</span>`;
+        }
+        const winnerCell = document.getElementById(`winnerCount_${eventId}`);
+        if (winnerCell && winners > 0) {
+          winnerCell.innerHTML = `<span class="badge bg-info">${winners}</span>`;
+        }
+      }
+    } catch (err) {
+      console.warn('Error loading award counts:', err);
+    }
+  },
+
+  /**
+   * Populate year filter dropdown dynamically from event data
+   */
+  populateYearFilter() {
+    const select = document.getElementById('eventsYearFilter');
+    if (!select) return;
+
+    const currentYear = new Date().getFullYear();
+    const years = new Set();
+
+    // Add years from events data
+    (STATE.allEvents || []).forEach(e => {
+      if (e.year) years.add(e.year);
+      if (e.event_date) {
+        const y = parseInt(e.event_date.split('-')[0]);
+        if (y) years.add(y);
+      }
+    });
+
+    // Always include current and next year
+    years.add(currentYear);
+    years.add(currentYear + 1);
+
+    const sortedYears = [...years].sort((a, b) => b - a);
+
+    const currentValue = select.value;
+    select.innerHTML = '<option value="">All Years</option>' +
+      sortedYears.map(y => `<option value="${y}" ${String(y) === currentValue ? 'selected' : ''}>${y}</option>`).join('');
   },
 
   // ============================================
@@ -7704,6 +7869,7 @@ const eventsModule = {
           year: src.year,
           venue: src.venue,
           description: src.description,
+          capacity: src.capacity || null,
           event_status: 'draft'
         }]);
       }
@@ -7833,6 +7999,16 @@ const eventsModule = {
   // ============================================
   // CALENDAR VIEW
   // ============================================
+  toggleEventsCalendar() {
+    const cal = document.getElementById('eventsCalendarView');
+    if (cal.style.display === 'none' || !cal.style.display) {
+      cal.style.display = 'block';
+      this.renderCalendar();
+    } else {
+      cal.style.display = 'none';
+    }
+  },
+
   showEventsCalendar() {
     document.getElementById('eventsCalendarView').style.display = 'block';
     this.renderCalendar();

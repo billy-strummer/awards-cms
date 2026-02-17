@@ -3745,7 +3745,7 @@ const eventsModule = {
   },
 
   // ========================================
-  // TABLE PLAN MANAGEMENT
+  // TABLE PLAN MANAGEMENT - INTERACTIVE CANVAS
   // ========================================
 
   currentEventIdTablePlan: null,
@@ -3754,6 +3754,12 @@ const eventsModule = {
   unassignedGuests: [],
   draggedGuestId: null,
   draggedGuestData: null,
+  draggedGuestIsCompany: false,
+  draggedCompanyGuests: [],
+  _tableDrag: null, // {tableId, startX, startY, offsetX, offsetY}
+  _selectedTableId: null,
+  _canvasZoom: 1,
+  _guestSearchTerm: '',
 
   /**
    * Open Table Plan Modal
@@ -3761,16 +3767,14 @@ const eventsModule = {
   async openTablePlanModal(eventId, eventName) {
     this.currentEventIdTablePlan = eventId;
     this.currentEventNameTablePlan = eventName;
+    this._selectedTableId = null;
+    this._canvasZoom = 1;
+    this._guestSearchTerm = '';
 
     try {
       utils.showLoading();
-
-      // Load table plan data
       await this.loadTablePlan();
-
-      // Create and show modal
       this.createTablePlanModal();
-
     } catch (error) {
       console.error('Error opening table plan:', error);
       utils.showToast('Failed to load table plan: ' + error.message, 'error');
@@ -3780,173 +3784,190 @@ const eventsModule = {
   },
 
   /**
-   * Create Table Plan Modal
+   * Create Table Plan Modal - Interactive Canvas Floor Plan
    */
   createTablePlanModal() {
     const existingModal = document.getElementById('tablePlanModal');
     if (existingModal) existingModal.remove();
 
+    const totalGuests = this.unassignedGuests.length;
+    const totalSeated = this.tables.reduce((sum, t) => sum + (t.assignments?.length || 0), 0);
+
     const modalHtml = `
       <div class="modal fade" id="tablePlanModal" tabindex="-1" data-bs-backdrop="static">
         <div class="modal-dialog modal-fullscreen">
           <div class="modal-content">
-            <div class="modal-header bg-secondary text-white">
-              <div>
-                <h5 class="modal-title">
-                  <i class="bi bi-table me-2"></i>Table Plan - ${utils.escapeHtml(this.currentEventNameTablePlan)}
+            <!-- Header -->
+            <div class="modal-header py-2" style="background: #1a1a2e; color: white;">
+              <div class="d-flex align-items-center gap-3">
+                <h5 class="modal-title mb-0">
+                  <i class="bi bi-grid-3x3-gap me-2"></i>Table Plan - ${utils.escapeHtml(this.currentEventNameTablePlan)}
                 </h5>
-                <small class="d-block">Drag and drop guests to assign tables</small>
+                <span class="badge bg-info">${totalSeated} seated</span>
+                <span class="badge bg-warning text-dark">${totalGuests} unassigned</span>
               </div>
-              <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+              <div class="d-flex align-items-center gap-2">
+                <button class="btn btn-sm btn-outline-light" onclick="eventsModule.autoAssignGuests()" title="Auto Assign">
+                  <i class="bi bi-magic me-1"></i>Auto Assign
+                </button>
+                <button class="btn btn-sm btn-outline-light" onclick="eventsModule.exportTablePlan()" title="Export CSV">
+                  <i class="bi bi-download me-1"></i>Export
+                </button>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+              </div>
             </div>
+
             <div class="modal-body p-0">
-              <div class="row g-0" style="height: calc(100vh - 120px);">
+              <div class="d-flex" style="height: calc(100vh - 56px);">
 
-                <!-- Left Sidebar: Unassigned Guests -->
-                <div class="col-md-3 border-end bg-light">
-                  <div class="p-3">
-                    <h6 class="mb-3">
-                      <i class="bi bi-people me-2"></i>Unassigned Guests
-                      <span class="badge bg-primary ms-2">${this.unassignedGuests.length}</span>
-                    </h6>
+                <!-- Left Sidebar: Guests grouped by company -->
+                <div class="tp-sidebar border-end bg-light" style="width: 300px; min-width: 300px; display: flex; flex-direction: column;">
+                  <div class="p-2 border-bottom">
+                    <div class="input-group input-group-sm">
+                      <span class="input-group-text"><i class="bi bi-search"></i></span>
+                      <input type="text" class="form-control" id="tpGuestSearch" placeholder="Search guests or companies..." oninput="eventsModule.filterGuests(this.value)">
+                    </div>
+                  </div>
+                  <div class="p-2 border-bottom d-flex justify-content-between align-items-center">
+                    <small class="fw-bold text-muted">UNASSIGNED GUESTS</small>
+                    <span class="badge bg-primary" id="tpUnassignedCount">${totalGuests}</span>
+                  </div>
+                  <div id="unassignedGuestsList" class="flex-grow-1 overflow-auto p-2">
+                    <!-- Guests grouped by company rendered here -->
+                  </div>
+                </div>
 
-                    <div id="unassignedGuestsList" class="guest-list">
-                      <!-- Guests will be rendered here -->
+                <!-- Main Canvas Area -->
+                <div class="flex-grow-1 d-flex flex-column">
+                  <!-- Canvas Toolbar -->
+                  <div class="d-flex align-items-center gap-2 p-2 border-bottom bg-white">
+                    <button class="btn btn-sm btn-primary" onclick="eventsModule.addNewTable()">
+                      <i class="bi bi-plus-circle me-1"></i>Add Table
+                    </button>
+                    <div class="vr"></div>
+                    <button class="btn btn-sm btn-outline-secondary" onclick="eventsModule.canvasZoom(0.1)" title="Zoom In">
+                      <i class="bi bi-zoom-in"></i>
+                    </button>
+                    <button class="btn btn-sm btn-outline-secondary" onclick="eventsModule.canvasZoom(-0.1)" title="Zoom Out">
+                      <i class="bi bi-zoom-out"></i>
+                    </button>
+                    <button class="btn btn-sm btn-outline-secondary" onclick="eventsModule.canvasZoom(0, true)" title="Reset Zoom">
+                      <i class="bi bi-arrows-fullscreen"></i>
+                    </button>
+                    <small class="text-muted" id="tpZoomLevel">100%</small>
+                    <div class="vr"></div>
+                    <small class="text-muted"><i class="bi bi-arrows-move me-1"></i>Drag tables to position. Drop guests onto tables to assign.</small>
+                  </div>
+
+                  <!-- Canvas (the room) -->
+                  <div id="tpCanvasWrapper" class="flex-grow-1 overflow-auto position-relative" style="background: #f0f2f5; background-image: radial-gradient(circle, #d0d0d0 1px, transparent 1px); background-size: 30px 30px;"
+                       ondragover="eventsModule.handleCanvasDragOver(event)"
+                       ondrop="eventsModule.handleCanvasDrop(event)">
+                    <div id="tpCanvas" class="position-relative" style="width: 2400px; height: 1600px; transform-origin: 0 0;">
+                      <!-- Tables rendered here as absolutely positioned elements -->
                     </div>
                   </div>
                 </div>
 
-                <!-- Main Area: Table Layout -->
-                <div class="col-md-9">
-                  <div class="p-3">
-                    <div class="d-flex justify-content-between align-items-center mb-3">
-                      <h6 class="mb-0">
-                        <i class="bi bi-grid-3x3 me-2"></i>Table Layout
-                        <span class="badge bg-secondary ms-2">${this.tables.length} tables</span>
-                      </h6>
-                      <div class="btn-group">
-                        <button class="btn btn-sm btn-primary" onclick="eventsModule.addNewTable()">
-                          <i class="bi bi-plus-circle me-1"></i>Add Table
-                        </button>
-                        <button class="btn btn-sm btn-outline-secondary" onclick="eventsModule.autoAssignGuests()">
-                          <i class="bi bi-magic me-1"></i>Auto Assign
-                        </button>
-                        <button class="btn btn-sm btn-outline-secondary" onclick="eventsModule.exportTablePlan()">
-                          <i class="bi bi-download me-1"></i>Export
-                        </button>
-                      </div>
-                    </div>
-
-                    <div id="tablesGrid" class="tables-grid">
-                      <!-- Tables will be rendered here -->
-                    </div>
+                <!-- Right Panel: Table Detail (shown when a table is selected) -->
+                <div id="tpDetailPanel" class="border-start bg-white" style="width: 320px; min-width: 320px; display: none; flex-direction: column;">
+                  <div id="tpDetailContent">
+                    <!-- Filled when a table is clicked -->
                   </div>
                 </div>
 
               </div>
-            </div>
-            <div class="modal-footer">
-              <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-              <button type="button" class="btn btn-primary" onclick="eventsModule.saveTablePlan()">
-                <i class="bi bi-save me-2"></i>Save Changes
-              </button>
             </div>
           </div>
         </div>
       </div>
 
       <style>
-        .guest-list {
-          max-height: calc(100vh - 250px);
-          overflow-y: auto;
+        /* Sidebar guest styles */
+        .tp-sidebar .company-group { margin-bottom: 4px; }
+        .tp-sidebar .company-header {
+          display: flex; align-items: center; justify-content: space-between;
+          padding: 6px 10px; background: #e9ecef; border-radius: 6px; cursor: pointer;
+          font-size: 0.8rem; font-weight: 600; user-select: none; transition: background 0.15s;
         }
-        .guest-item {
-          background: white;
-          border: 2px solid #dee2e6;
-          border-radius: 8px;
-          padding: 12px;
-          margin-bottom: 8px;
-          cursor: grab;
-          transition: all 0.2s;
+        .tp-sidebar .company-header:hover { background: #dee2e6; }
+        .tp-sidebar .company-header.draggable-company { cursor: grab; }
+        .tp-sidebar .company-header.draggable-company:active { cursor: grabbing; }
+        .tp-sidebar .company-guests { padding: 2px 0 2px 8px; }
+        .tp-sidebar .guest-chip {
+          display: flex; align-items: center; gap: 6px;
+          padding: 5px 8px; margin: 2px 0; background: white; border: 1.5px solid #dee2e6;
+          border-radius: 6px; font-size: 0.78rem; cursor: grab; transition: all 0.15s;
         }
-        .guest-item:hover {
-          border-color: #0d6efd;
-          box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        .tp-sidebar .guest-chip:hover { border-color: #0d6efd; background: #f0f6ff; }
+        .tp-sidebar .guest-chip.dragging { opacity: 0.4; }
+        .tp-sidebar .guest-chip .guest-name { font-weight: 500; }
+        .tp-sidebar .no-company-label { font-style: italic; color: #6c757d; }
+
+        /* Canvas table elements */
+        .tp-table-el {
+          position: absolute; cursor: grab; user-select: none;
+          transition: box-shadow 0.2s, transform 0.1s;
         }
-        .guest-item.dragging {
-          opacity: 0.5;
-          cursor: grabbing;
+        .tp-table-el:hover { z-index: 10; }
+        .tp-table-el.dragging-table { opacity: 0.7; cursor: grabbing; z-index: 100; }
+        .tp-table-el.selected { z-index: 20; }
+        .tp-table-el.drag-over-table .tp-table-shape { filter: brightness(1.15); box-shadow: 0 0 0 4px #0d6efd, 0 0 20px rgba(13,110,253,0.4); }
+
+        .tp-table-shape {
+          display: flex; flex-direction: column; align-items: center; justify-content: center;
+          transition: all 0.2s; border: 3px solid #495057; background: white; position: relative;
         }
-        .guest-item strong {
-          display: block;
-          margin-bottom: 4px;
+        .tp-table-shape.round { border-radius: 50%; }
+        .tp-table-shape.rectangular { border-radius: 10px; }
+        .tp-table-shape.oval { border-radius: 50%; }
+
+        .tp-table-shape .table-label {
+          font-weight: 700; font-size: 0.95rem; color: #1a1a2e; line-height: 1.1; text-align: center;
+          pointer-events: none;
         }
-        .guest-item small {
-          color: #6c757d;
+        .tp-table-shape .table-sublabel {
+          font-size: 0.7rem; color: #6c757d; pointer-events: none;
+        }
+        .tp-table-shape .seat-badge {
+          position: absolute; bottom: -8px; left: 50%; transform: translateX(-50%);
+          background: #495057; color: white; font-size: 0.65rem; font-weight: 600;
+          padding: 1px 8px; border-radius: 10px; white-space: nowrap; pointer-events: none;
         }
 
-        .tables-grid {
-          display: grid;
-          grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
-          gap: 20px;
-          max-height: calc(100vh - 250px);
-          overflow-y: auto;
-          padding: 10px;
+        /* Seat dots around table */
+        .seat-dot {
+          position: absolute; width: 18px; height: 18px; border-radius: 50%;
+          background: #e9ecef; border: 2px solid #adb5bd;
+          display: flex; align-items: center; justify-content: center;
+          font-size: 0.5rem; font-weight: 700; color: #495057; pointer-events: none;
         }
-        .table-card {
-          background: white;
-          border: 3px solid #0d6efd;
-          border-radius: 12px;
-          padding: 15px;
-          min-height: 200px;
-          position: relative;
-          transition: all 0.2s;
+        .seat-dot.occupied { background: #0d6efd; border-color: #0a58ca; color: white; }
+
+        /* Capacity colours on table border */
+        .tp-table-shape.cap-empty { border-color: #6c757d; }
+        .tp-table-shape.cap-partial { border-color: #0d6efd; }
+        .tp-table-shape.cap-nearly { border-color: #fd7e14; }
+        .tp-table-shape.cap-full { border-color: #dc3545; }
+
+        .tp-table-el.selected .tp-table-shape {
+          box-shadow: 0 0 0 3px rgba(13,110,253,0.5), 0 4px 15px rgba(0,0,0,0.2);
         }
-        .table-card:hover {
-          box-shadow: 0 4px 12px rgba(13, 110, 253, 0.3);
+
+        /* Detail panel */
+        #tpDetailPanel .detail-header {
+          padding: 12px 16px; background: #1a1a2e; color: white;
+          display: flex; justify-content: space-between; align-items: center;
         }
-        .table-card.drag-over {
-          background: #e7f3ff;
-          border-color: #0056b3;
+        #tpDetailPanel .detail-body { padding: 16px; overflow-y: auto; flex: 1; }
+        #tpDetailPanel .seated-guest {
+          display: flex; align-items: center; justify-content: space-between;
+          padding: 8px 10px; margin-bottom: 4px; background: #f8f9fa; border-radius: 6px;
+          font-size: 0.82rem; border: 1px solid #e9ecef;
         }
-        .table-header {
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-          margin-bottom: 15px;
-          padding-bottom: 10px;
-          border-bottom: 2px solid #e9ecef;
-        }
-        .table-number {
-          font-size: 1.5rem;
-          font-weight: bold;
-          color: #0d6efd;
-        }
-        .table-seats {
-          font-size: 0.875rem;
-          color: #6c757d;
-        }
-        .table-guests {
-          min-height: 100px;
-        }
-        .assigned-guest {
-          background: #e7f3ff;
-          border: 1px solid #0d6efd;
-          border-radius: 6px;
-          padding: 8px;
-          margin-bottom: 6px;
-          font-size: 0.875rem;
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-        }
-        .assigned-guest .remove-btn {
-          cursor: pointer;
-          color: #dc3545;
-        }
-        .assigned-guest .remove-btn:hover {
-          color: #bd2130;
-        }
+        #tpDetailPanel .seated-guest:hover { background: #e9ecef; }
+        #tpDetailPanel .seated-guest .remove-x { cursor: pointer; color: #dc3545; font-size: 1rem; }
+        #tpDetailPanel .seated-guest .remove-x:hover { color: #a71d2a; }
       </style>
     `;
 
@@ -3955,11 +3976,11 @@ const eventsModule = {
     const modal = new bootstrap.Modal(document.getElementById('tablePlanModal'));
     modal.show();
 
-    // Render content after modal is shown
+    // Render after modal shows
     this.renderUnassignedGuests();
-    this.renderTables();
+    this.renderCanvasTables();
 
-    // Clean up on close
+    // Clean up
     document.getElementById('tablePlanModal').addEventListener('hidden.bs.modal', () => {
       document.getElementById('tablePlanModal').remove();
     });
@@ -3970,7 +3991,6 @@ const eventsModule = {
    */
   async loadTablePlan() {
     try {
-      // Load tables
       const { data: tables, error: tablesError } = await STATE.client
         .from('event_tables')
         .select('*')
@@ -3979,29 +3999,22 @@ const eventsModule = {
         .order('table_number', { ascending: true });
 
       if (tablesError) throw tablesError;
-
       this.tables = tables || [];
 
-      // Load table assignments for each table
+      // Load assignments for each table
       for (const table of this.tables) {
         const { data: assignments, error: assignError } = await STATE.client
           .from('table_assignments')
           .select('*')
           .eq('table_id', table.id);
-
         if (assignError) throw assignError;
-
         table.assignments = assignments || [];
       }
 
-      // Load unassigned guests using the function
+      // Load unassigned guests
       const { data: unassigned, error: unassignedError } = await STATE.client
-        .rpc('get_unassigned_guests', {
-          p_event_id: this.currentEventIdTablePlan
-        });
-
+        .rpc('get_unassigned_guests', { p_event_id: this.currentEventIdTablePlan });
       if (unassignedError) throw unassignedError;
-
       this.unassignedGuests = unassigned || [];
 
     } catch (error) {
@@ -4010,213 +4023,548 @@ const eventsModule = {
     }
   },
 
-  /**
-   * Render Unassigned Guests
-   */
+  // ---- SIDEBAR: Guests grouped by company ----
+
+  filterGuests(term) {
+    this._guestSearchTerm = (term || '').toLowerCase();
+    this.renderUnassignedGuests();
+  },
+
+  _groupGuestsByCompany(guests) {
+    const groups = {};
+    for (const g of guests) {
+      const key = g.company_name || '__none__';
+      if (!groups[key]) groups[key] = { company_name: g.company_name || null, organisation_id: g.organisation_id || null, guests: [] };
+      groups[key].guests.push(g);
+    }
+    // Sort: companies with names first, then "No Company"
+    return Object.values(groups).sort((a, b) => {
+      if (!a.company_name && b.company_name) return 1;
+      if (a.company_name && !b.company_name) return -1;
+      return (a.company_name || '').localeCompare(b.company_name || '');
+    });
+  },
+
   renderUnassignedGuests() {
     const container = document.getElementById('unassignedGuestsList');
     if (!container) return;
+
+    // Update count badge
+    const countBadge = document.getElementById('tpUnassignedCount');
+    if (countBadge) countBadge.textContent = this.unassignedGuests.length;
 
     if (this.unassignedGuests.length === 0) {
       container.innerHTML = `
         <div class="text-center py-4 text-muted">
           <i class="bi bi-check-circle display-4 d-block mb-2"></i>
           <p class="small">All guests assigned!</p>
-        </div>
-      `;
+        </div>`;
       return;
     }
 
-    container.innerHTML = this.unassignedGuests.map(guest => `
-      <div class="guest-item"
-           draggable="true"
-           data-guest-id="${guest.guest_id}"
-           data-guest-name="${utils.escapeHtml(guest.guest_name)}"
-           data-company-name="${utils.escapeHtml(guest.company_name || '')}"
-           data-organisation-id="${guest.organisation_id || ''}"
-           ondragstart="eventsModule.handleGuestDragStart(event)"
-           ondragend="eventsModule.handleGuestDragEnd(event)">
-        <strong>${utils.escapeHtml(guest.guest_name)}</strong>
-        ${guest.company_name ? `<small><i class="bi bi-building me-1"></i>${utils.escapeHtml(guest.company_name)}</small>` : ''}
-        ${guest.plus_ones > 0 ? `<small class="d-block"><i class="bi bi-plus-circle me-1"></i>+${guest.plus_ones} guests</small>` : ''}
-      </div>
-    `).join('');
-  },
-
-  /**
-   * Render Tables
-   */
-  renderTables() {
-    const container = document.getElementById('tablesGrid');
-    if (!container) return;
-
-    if (this.tables.length === 0) {
-      container.innerHTML = `
-        <div class="text-center py-5">
-          <i class="bi bi-table display-4 d-block mb-3 opacity-25"></i>
-          <p class="text-muted">No tables yet. Click "Add Table" to create one.</p>
-        </div>
-      `;
-      return;
+    // Filter
+    let filtered = this.unassignedGuests;
+    if (this._guestSearchTerm) {
+      filtered = filtered.filter(g =>
+        (g.guest_name || '').toLowerCase().includes(this._guestSearchTerm) ||
+        (g.company_name || '').toLowerCase().includes(this._guestSearchTerm)
+      );
     }
 
-    container.innerHTML = this.tables.map(table => {
-      const assignedCount = table.assignments?.length || 0;
-      const availableSeats = table.total_seats - assignedCount;
+    const groups = this._groupGuestsByCompany(filtered);
+
+    container.innerHTML = groups.map(group => {
+      const companyLabel = group.company_name
+        ? utils.escapeHtml(group.company_name)
+        : '<span class="no-company-label">No Company</span>';
 
       return `
-        <div class="table-card"
-             data-table-id="${table.id}"
-             ondragover="eventsModule.handleTableDragOver(event)"
-             ondrop="eventsModule.handleTableDrop(event, '${table.id}')"
-             ondragleave="eventsModule.handleTableDragLeave(event)">
-          <div class="table-header">
-            <div>
-              <div class="table-number">Table ${table.table_number}</div>
-              ${table.table_name ? `<small class="text-muted">${utils.escapeHtml(table.table_name)}</small>` : ''}
-            </div>
-            <div class="text-end">
-              <div class="table-seats">
-                <i class="bi bi-people-fill me-1"></i>${assignedCount}/${table.total_seats}
-              </div>
-              <button class="btn btn-sm btn-outline-danger mt-1"
-                      onclick="eventsModule.deleteTable('${table.id}')"
-                      title="Delete Table">
-                <i class="bi bi-trash"></i>
-              </button>
-            </div>
+        <div class="company-group">
+          <div class="company-header draggable-company"
+               draggable="true"
+               data-company-name="${utils.escapeHtml(group.company_name || '')}"
+               data-organisation-id="${group.organisation_id || ''}"
+               ondragstart="eventsModule.handleCompanyDragStart(event)"
+               ondragend="eventsModule.handleGuestDragEnd(event)"
+               onclick="this.nextElementSibling.classList.toggle('d-none')">
+            <span>${companyLabel}</span>
+            <span class="badge bg-secondary">${group.guests.length}</span>
           </div>
-          <div class="table-guests">
-            ${table.assignments && table.assignments.length > 0 ? table.assignments.map(assignment => `
-              <div class="assigned-guest">
-                <div>
-                  <strong>${utils.escapeHtml(assignment.guest_name)}</strong>
-                  ${assignment.company_name ? `<br><small class="text-muted">${utils.escapeHtml(assignment.company_name)}</small>` : ''}
-                </div>
-                <span class="remove-btn" onclick="eventsModule.removeGuestFromTable('${assignment.id}')" title="Remove">
-                  <i class="bi bi-x-circle"></i>
-                </span>
+          <div class="company-guests">
+            ${group.guests.map(guest => `
+              <div class="guest-chip"
+                   draggable="true"
+                   data-guest-id="${guest.guest_id}"
+                   data-guest-name="${utils.escapeHtml(guest.guest_name)}"
+                   data-company-name="${utils.escapeHtml(guest.company_name || '')}"
+                   data-organisation-id="${guest.organisation_id || ''}"
+                   ondragstart="eventsModule.handleGuestDragStart(event)"
+                   ondragend="eventsModule.handleGuestDragEnd(event)">
+                <i class="bi bi-person-fill text-muted" style="font-size:0.75rem;"></i>
+                <span class="guest-name">${utils.escapeHtml(guest.guest_name)}</span>
+                ${guest.plus_ones > 0 ? `<span class="badge bg-info ms-auto" style="font-size:0.6rem;">+${guest.plus_ones}</span>` : ''}
               </div>
-            `).join('') : '<p class="text-muted small text-center mt-3">Drag guests here</p>'}
+            `).join('')}
           </div>
-          ${availableSeats === 0 ? '<div class="text-center mt-2"><span class="badge bg-warning">Full</span></div>' : ''}
-        </div>
-      `;
+        </div>`;
     }).join('');
   },
 
-  /**
-   * Guest Drag Handlers
-   */
-  handleGuestDragStart(event) {
-    const guestItem = event.currentTarget;
-    this.draggedGuestId = guestItem.dataset.guestId;
-    this.draggedGuestData = {
-      guest_id: guestItem.dataset.guestId,
-      guest_name: guestItem.dataset.guestName,
-      company_name: guestItem.dataset.companyName,
-      organisation_id: guestItem.dataset.organisationId
+  // ---- CANVAS: Render tables as positioned shapes ----
+
+  _getTableSize(table) {
+    const seats = table.total_seats || 8;
+    if (table.shape === 'rectangular') {
+      const w = Math.max(120, 50 + seats * 12);
+      return { w, h: 80 };
+    }
+    // round or oval
+    const diam = Math.max(100, 50 + seats * 8);
+    return table.shape === 'oval' ? { w: diam * 1.3, h: diam * 0.85 } : { w: diam, h: diam };
+  },
+
+  _getCapacityClass(assigned, total) {
+    if (assigned === 0) return 'cap-empty';
+    if (assigned >= total) return 'cap-full';
+    if (assigned >= total * 0.75) return 'cap-nearly';
+    return 'cap-partial';
+  },
+
+  _seatDotPositions(seats, shape, w, h) {
+    const dots = [];
+    const dotSize = 18;
+    if (shape === 'rectangular') {
+      // Place seats along the perimeter of rectangle
+      const perimeter = 2 * (w + h);
+      for (let i = 0; i < seats; i++) {
+        const t = (i + 0.5) / seats * perimeter;
+        let x, y;
+        if (t < w) { x = t; y = -dotSize / 2 - 4; }
+        else if (t < w + h) { x = w + dotSize / 2 - 4; y = t - w; }
+        else if (t < 2 * w + h) { x = w - (t - w - h); y = h + dotSize / 2 - 4; }
+        else { x = -dotSize / 2 - 4; y = h - (t - 2 * w - h); }
+        dots.push({ x: x - dotSize / 2, y: y - dotSize / 2 });
+      }
+    } else {
+      // round / oval - place around the circumference
+      const rx = w / 2 + 14;
+      const ry = h / 2 + 14;
+      const cx = w / 2;
+      const cy = h / 2;
+      for (let i = 0; i < seats; i++) {
+        const angle = (2 * Math.PI * i) / seats - Math.PI / 2;
+        dots.push({
+          x: cx + rx * Math.cos(angle) - dotSize / 2,
+          y: cy + ry * Math.sin(angle) - dotSize / 2
+        });
+      }
+    }
+    return dots;
+  },
+
+  renderCanvasTables() {
+    const canvas = document.getElementById('tpCanvas');
+    if (!canvas) return;
+
+    canvas.style.transform = `scale(${this._canvasZoom})`;
+    const zoomLabel = document.getElementById('tpZoomLevel');
+    if (zoomLabel) zoomLabel.textContent = Math.round(this._canvasZoom * 100) + '%';
+
+    if (this.tables.length === 0) {
+      canvas.innerHTML = `
+        <div class="position-absolute d-flex align-items-center justify-content-center" style="inset:0;">
+          <div class="text-center text-muted">
+            <i class="bi bi-grid-3x3-gap display-3 d-block mb-3 opacity-25"></i>
+            <p>Click <strong>Add Table</strong> to start building your floor plan</p>
+          </div>
+        </div>`;
+      return;
+    }
+
+    canvas.innerHTML = this.tables.map(table => {
+      const sz = this._getTableSize(table);
+      const assignedCount = table.assignments?.length || 0;
+      const capClass = this._getCapacityClass(assignedCount, table.total_seats);
+      const shapeClass = table.shape || 'round';
+      const selected = table.id === this._selectedTableId ? 'selected' : '';
+
+      // Default positions if not set - spread tables across canvas
+      const idx = this.tables.indexOf(table);
+      const px = table.position_x || 80 + (idx % 6) * 200;
+      const py = table.position_y || 80 + Math.floor(idx / 6) * 200;
+
+      // Padding around the table shape for seat dots
+      const pad = 30;
+      const totalW = sz.w + pad * 2;
+      const totalH = sz.h + pad * 2;
+
+      // Seat dots
+      const dots = this._seatDotPositions(table.total_seats, shapeClass, sz.w, sz.h);
+      const dotsHtml = dots.map((d, i) => {
+        const occupied = i < assignedCount;
+        return `<div class="seat-dot ${occupied ? 'occupied' : ''}" style="left:${d.x + pad}px; top:${d.y + pad}px;">${occupied ? '' : ''}</div>`;
+      }).join('');
+
+      return `
+        <div class="tp-table-el ${selected}"
+             data-table-id="${table.id}"
+             style="left:${px}px; top:${py}px; width:${totalW}px; height:${totalH}px;"
+             onmousedown="eventsModule.startTableDrag(event, '${table.id}')"
+             onclick="eventsModule.selectTable(event, '${table.id}')"
+             ondragover="eventsModule.handleTableDragOver(event)"
+             ondrop="eventsModule.handleTableDrop(event, '${table.id}')"
+             ondragleave="eventsModule.handleTableDragLeave(event)">
+          ${dotsHtml}
+          <div class="tp-table-shape ${shapeClass} ${capClass}"
+               style="width:${sz.w}px; height:${sz.h}px; margin:${pad}px;">
+            <div class="table-label">${table.table_name ? utils.escapeHtml(table.table_name) : 'Table ' + table.table_number}</div>
+            <div class="table-sublabel">${assignedCount}/${table.total_seats}</div>
+            <div class="seat-badge">${assignedCount}/${table.total_seats} seats</div>
+          </div>
+        </div>`;
+    }).join('');
+  },
+
+  canvasZoom(delta, reset) {
+    if (reset) {
+      this._canvasZoom = 1;
+    } else {
+      this._canvasZoom = Math.min(2, Math.max(0.3, this._canvasZoom + delta));
+    }
+    this.renderCanvasTables();
+  },
+
+  // ---- TABLE DRAGGING (repositioning on canvas) ----
+
+  startTableDrag(event, tableId) {
+    // Don't start table drag if it was a click on something else
+    if (event.button !== 0) return;
+
+    const el = event.currentTarget;
+    this._tableDrag = {
+      tableId,
+      el,
+      startX: event.clientX,
+      startY: event.clientY,
+      origLeft: parseInt(el.style.left) || 0,
+      origTop: parseInt(el.style.top) || 0,
+      moved: false
     };
-    guestItem.classList.add('dragging');
+
+    el.classList.add('dragging-table');
+
+    const onMove = (e) => {
+      if (!this._tableDrag) return;
+      const dx = (e.clientX - this._tableDrag.startX) / this._canvasZoom;
+      const dy = (e.clientY - this._tableDrag.startY) / this._canvasZoom;
+      if (Math.abs(dx) > 3 || Math.abs(dy) > 3) this._tableDrag.moved = true;
+      const newX = Math.max(0, this._tableDrag.origLeft + dx);
+      const newY = Math.max(0, this._tableDrag.origTop + dy);
+      this._tableDrag.el.style.left = newX + 'px';
+      this._tableDrag.el.style.top = newY + 'px';
+    };
+
+    const onUp = async (e) => {
+      document.removeEventListener('mousemove', onMove);
+      document.removeEventListener('mouseup', onUp);
+      if (!this._tableDrag) return;
+
+      this._tableDrag.el.classList.remove('dragging-table');
+
+      if (this._tableDrag.moved) {
+        // Save new position
+        const newX = Math.max(0, Math.round(parseInt(this._tableDrag.el.style.left)));
+        const newY = Math.max(0, Math.round(parseInt(this._tableDrag.el.style.top)));
+        try {
+          await STATE.client
+            .from('event_tables')
+            .update({ position_x: newX, position_y: newY })
+            .eq('id', tableId);
+          // Update local data
+          const t = this.tables.find(t => t.id === tableId);
+          if (t) { t.position_x = newX; t.position_y = newY; }
+        } catch (err) {
+          console.error('Error saving table position:', err);
+        }
+      }
+      this._tableDrag = null;
+    };
+
+    document.addEventListener('mousemove', onMove);
+    document.addEventListener('mouseup', onUp);
+    event.preventDefault();
+  },
+
+  // ---- TABLE SELECTION & DETAIL PANEL ----
+
+  selectTable(event, tableId) {
+    // Don't select if we just dragged
+    if (this._tableDrag && this._tableDrag.moved) return;
+
+    this._selectedTableId = tableId;
+    this.renderCanvasTables();
+    this.showTableDetail(tableId);
+  },
+
+  showTableDetail(tableId) {
+    const panel = document.getElementById('tpDetailPanel');
+    const content = document.getElementById('tpDetailContent');
+    if (!panel || !content) return;
+
+    const table = this.tables.find(t => t.id === tableId);
+    if (!table) { panel.style.display = 'none'; return; }
+
+    const assignedCount = table.assignments?.length || 0;
+
+    content.innerHTML = `
+      <div class="detail-header">
+        <h6 class="mb-0">${table.table_name ? utils.escapeHtml(table.table_name) : 'Table ' + table.table_number}</h6>
+        <button class="btn btn-sm btn-outline-light" onclick="eventsModule.closeTableDetail()">
+          <i class="bi bi-x-lg"></i>
+        </button>
+      </div>
+      <div class="detail-body d-flex flex-column">
+        <!-- Edit fields -->
+        <div class="mb-3">
+          <label class="form-label small fw-bold">Table Name</label>
+          <input type="text" class="form-control form-control-sm" id="tpEditName" value="${utils.escapeHtml(table.table_name || '')}" placeholder="e.g. VIP Table, Sponsor Table">
+        </div>
+        <div class="row mb-3">
+          <div class="col-6">
+            <label class="form-label small fw-bold">Seats</label>
+            <input type="number" class="form-control form-control-sm" id="tpEditSeats" value="${table.total_seats}" min="1" max="20">
+          </div>
+          <div class="col-6">
+            <label class="form-label small fw-bold">Shape</label>
+            <select class="form-select form-select-sm" id="tpEditShape">
+              <option value="round" ${table.shape === 'round' ? 'selected' : ''}>Round</option>
+              <option value="rectangular" ${table.shape === 'rectangular' ? 'selected' : ''}>Rectangular</option>
+              <option value="oval" ${table.shape === 'oval' ? 'selected' : ''}>Oval</option>
+            </select>
+          </div>
+        </div>
+        <button class="btn btn-sm btn-primary mb-3" onclick="eventsModule.saveTableProperties('${table.id}')">
+          <i class="bi bi-check-lg me-1"></i>Save Changes
+        </button>
+        <hr>
+        <div class="d-flex justify-content-between align-items-center mb-2">
+          <small class="fw-bold text-muted">SEATED GUESTS (${assignedCount}/${table.total_seats})</small>
+        </div>
+        <div class="flex-grow-1 overflow-auto">
+          ${table.assignments && table.assignments.length > 0 ? table.assignments.map(a => `
+            <div class="seated-guest">
+              <div>
+                <div class="fw-medium">${utils.escapeHtml(a.guest_name)}</div>
+                ${a.company_name ? `<small class="text-muted">${utils.escapeHtml(a.company_name)}</small>` : ''}
+              </div>
+              <span class="remove-x" onclick="eventsModule.removeGuestFromTable('${a.id}')" title="Remove">
+                <i class="bi bi-x-circle-fill"></i>
+              </span>
+            </div>
+          `).join('') : '<p class="text-muted small text-center mt-3">Drop guests onto this table to assign them</p>'}
+        </div>
+        <hr>
+        <button class="btn btn-sm btn-outline-danger w-100" onclick="eventsModule.deleteTable('${table.id}')">
+          <i class="bi bi-trash me-1"></i>Delete Table
+        </button>
+      </div>
+    `;
+
+    panel.style.display = 'flex';
+  },
+
+  closeTableDetail() {
+    this._selectedTableId = null;
+    const panel = document.getElementById('tpDetailPanel');
+    if (panel) panel.style.display = 'none';
+    this.renderCanvasTables();
+  },
+
+  async saveTableProperties(tableId) {
+    const name = document.getElementById('tpEditName')?.value?.trim() || null;
+    const seats = parseInt(document.getElementById('tpEditSeats')?.value) || 8;
+    const shape = document.getElementById('tpEditShape')?.value || 'round';
+
+    try {
+      const { error } = await STATE.client
+        .from('event_tables')
+        .update({ table_name: name, total_seats: seats, shape })
+        .eq('id', tableId);
+
+      if (error) throw error;
+
+      // Update local
+      const t = this.tables.find(t => t.id === tableId);
+      if (t) { t.table_name = name; t.total_seats = seats; t.shape = shape; }
+
+      utils.showToast('Table updated', 'success');
+      this.renderCanvasTables();
+      this.showTableDetail(tableId);
+
+    } catch (error) {
+      console.error('Error updating table:', error);
+      utils.showToast('Failed to update table', 'error');
+    }
+  },
+
+  // ---- GUEST DRAG HANDLERS ----
+
+  handleGuestDragStart(event) {
+    const el = event.currentTarget;
+    this.draggedGuestIsCompany = false;
+    this.draggedCompanyGuests = [];
+    this.draggedGuestData = {
+      guest_id: el.dataset.guestId,
+      guest_name: el.dataset.guestName,
+      company_name: el.dataset.companyName,
+      organisation_id: el.dataset.organisationId
+    };
+    el.classList.add('dragging');
+    event.dataTransfer.setData('text/plain', 'guest');
+    event.dataTransfer.effectAllowed = 'move';
+  },
+
+  handleCompanyDragStart(event) {
+    const el = event.currentTarget;
+    const companyName = el.dataset.companyName;
+    this.draggedGuestIsCompany = true;
+    this.draggedCompanyGuests = this.unassignedGuests.filter(g =>
+      (g.company_name || '') === (companyName || '')
+    );
+    this.draggedGuestData = null;
+    el.classList.add('dragging');
+    event.dataTransfer.setData('text/plain', 'company');
+    event.dataTransfer.effectAllowed = 'move';
   },
 
   handleGuestDragEnd(event) {
     event.currentTarget.classList.remove('dragging');
   },
 
-  /**
-   * Table Drag Handlers
-   */
   handleTableDragOver(event) {
     event.preventDefault();
-    event.currentTarget.classList.add('drag-over');
+    event.stopPropagation();
+    event.currentTarget.classList.add('drag-over-table');
   },
 
   handleTableDragLeave(event) {
-    event.currentTarget.classList.remove('drag-over');
+    event.currentTarget.classList.remove('drag-over-table');
+  },
+
+  handleCanvasDragOver(event) {
+    event.preventDefault();
+  },
+
+  handleCanvasDrop(event) {
+    // Only handle drops that didn't land on a table (do nothing)
+    event.preventDefault();
   },
 
   async handleTableDrop(event, tableId) {
     event.preventDefault();
-    event.currentTarget.classList.remove('drag-over');
+    event.stopPropagation();
+    event.currentTarget.classList.remove('drag-over-table');
 
-    if (!this.draggedGuestData) return;
+    const table = this.tables.find(t => t.id === tableId);
+    if (!table) return;
 
-    try {
-      // Find the table
-      const table = this.tables.find(t => t.id === tableId);
-      if (!table) return;
+    const assignedCount = table.assignments?.length || 0;
 
-      // Check if table has available seats
-      const assignedCount = table.assignments?.length || 0;
+    if (this.draggedGuestIsCompany && this.draggedCompanyGuests.length > 0) {
+      // Bulk assign all company guests
+      const availableSeats = table.total_seats - assignedCount;
+      const toAssign = this.draggedCompanyGuests.slice(0, availableSeats);
+      if (toAssign.length === 0) {
+        utils.showToast('Table is full!', 'warning');
+        return;
+      }
+      try {
+        const rows = toAssign.map(g => ({
+          event_id: this.currentEventIdTablePlan,
+          table_id: tableId,
+          guest_id: g.guest_id || g.id,
+          guest_name: g.guest_name,
+          organisation_id: g.organisation_id || null,
+          company_name: g.company_name || null
+        }));
+        const { error } = await STATE.client.from('table_assignments').insert(rows);
+        if (error) throw error;
+        utils.showToast(`${toAssign.length} guest(s) assigned to table`, 'success');
+        if (toAssign.length < this.draggedCompanyGuests.length) {
+          utils.showToast(`${this.draggedCompanyGuests.length - toAssign.length} guest(s) didn't fit - table full`, 'warning');
+        }
+        await this.loadTablePlan();
+        this.renderUnassignedGuests();
+        this.renderCanvasTables();
+        if (this._selectedTableId === tableId) this.showTableDetail(tableId);
+      } catch (error) {
+        console.error('Error assigning company guests:', error);
+        utils.showToast('Failed to assign guests', 'error');
+      }
+    } else if (this.draggedGuestData) {
+      // Single guest assign
       if (assignedCount >= table.total_seats) {
         utils.showToast('Table is full!', 'warning');
         return;
       }
-
-      // Create assignment
-      const { error } = await STATE.client
-        .from('table_assignments')
-        .insert([{
-          event_id: this.currentEventIdTablePlan,
-          table_id: tableId,
-          guest_id: this.draggedGuestData.guest_id,
-          guest_name: this.draggedGuestData.guest_name,
-          organisation_id: this.draggedGuestData.organisation_id || null,
-          company_name: this.draggedGuestData.company_name || null
-        }]);
-
-      if (error) throw error;
-
-      utils.showToast('Guest assigned to table', 'success');
-
-      // Reload data
-      await this.loadTablePlan();
-      this.renderUnassignedGuests();
-      this.renderTables();
-
-    } catch (error) {
-      console.error('Error assigning guest:', error);
-      utils.showToast('Failed to assign guest', 'error');
-    } finally {
-      this.draggedGuestData = null;
-      this.draggedGuestId = null;
+      try {
+        const { error } = await STATE.client
+          .from('table_assignments')
+          .insert([{
+            event_id: this.currentEventIdTablePlan,
+            table_id: tableId,
+            guest_id: this.draggedGuestData.guest_id,
+            guest_name: this.draggedGuestData.guest_name,
+            organisation_id: this.draggedGuestData.organisation_id || null,
+            company_name: this.draggedGuestData.company_name || null
+          }]);
+        if (error) throw error;
+        utils.showToast('Guest assigned to table', 'success');
+        await this.loadTablePlan();
+        this.renderUnassignedGuests();
+        this.renderCanvasTables();
+        if (this._selectedTableId === tableId) this.showTableDetail(tableId);
+      } catch (error) {
+        console.error('Error assigning guest:', error);
+        utils.showToast('Failed to assign guest', 'error');
+      }
     }
+
+    this.draggedGuestData = null;
+    this.draggedGuestIsCompany = false;
+    this.draggedCompanyGuests = [];
   },
 
-  /**
-   * Add New Table
-   */
+  // ---- ADD / DELETE / REMOVE ----
+
   async addNewTable() {
-    const seats = prompt('How many seats for this table?', '8');
-    if (!seats || isNaN(seats) || seats < 1) return;
-
     try {
-      // Get next table number
       const { data: nextNumber, error: numberError } = await STATE.client
-        .rpc('get_next_table_number', {
-          p_event_id: this.currentEventIdTablePlan
-        });
-
+        .rpc('get_next_table_number', { p_event_id: this.currentEventIdTablePlan });
       if (numberError) throw numberError;
 
-      // Create table
+      // Place new table in a visible spot on the canvas
+      const canvas = document.getElementById('tpCanvasWrapper');
+      const scrollLeft = canvas ? canvas.scrollLeft : 0;
+      const scrollTop = canvas ? canvas.scrollTop : 0;
+      const cx = Math.round((scrollLeft + 300) / this._canvasZoom);
+      const cy = Math.round((scrollTop + 200) / this._canvasZoom);
+
       const { error } = await STATE.client
         .from('event_tables')
         .insert([{
           event_id: this.currentEventIdTablePlan,
           table_number: nextNumber,
-          total_seats: parseInt(seats),
-          shape: 'round'
+          total_seats: 8,
+          shape: 'round',
+          position_x: cx + (this.tables.length % 4) * 180,
+          position_y: cy + Math.floor(this.tables.length % 12 / 4) * 180
         }]);
-
       if (error) throw error;
 
-      utils.showToast('Table added successfully', 'success');
-
-      // Reload
+      utils.showToast('Table added', 'success');
       await this.loadTablePlan();
-      this.renderTables();
+      this.renderCanvasTables();
 
     } catch (error) {
       console.error('Error adding table:', error);
@@ -4224,80 +4572,62 @@ const eventsModule = {
     }
   },
 
-  /**
-   * Delete Table
-   */
   async deleteTable(tableId) {
-    if (!confirm('Delete this table? Guests will be unassigned.')) return;
+    if (!confirm('Delete this table? All seated guests will be unassigned.')) return;
 
     try {
       const { error } = await STATE.client
         .from('event_tables')
         .delete()
         .eq('id', tableId);
-
       if (error) throw error;
 
+      if (this._selectedTableId === tableId) this.closeTableDetail();
       utils.showToast('Table deleted', 'success');
-
-      // Reload
       await this.loadTablePlan();
       this.renderUnassignedGuests();
-      this.renderTables();
-
+      this.renderCanvasTables();
     } catch (error) {
       console.error('Error deleting table:', error);
       utils.showToast('Failed to delete table', 'error');
     }
   },
 
-  /**
-   * Remove Guest from Table
-   */
   async removeGuestFromTable(assignmentId) {
     try {
       const { error } = await STATE.client
         .from('table_assignments')
         .delete()
         .eq('id', assignmentId);
-
       if (error) throw error;
 
       utils.showToast('Guest removed from table', 'success');
-
-      // Reload
       await this.loadTablePlan();
       this.renderUnassignedGuests();
-      this.renderTables();
-
+      this.renderCanvasTables();
+      if (this._selectedTableId) this.showTableDetail(this._selectedTableId);
     } catch (error) {
       console.error('Error removing guest:', error);
       utils.showToast('Failed to remove guest', 'error');
     }
   },
 
-  /**
-   * Save Table Plan (currently auto-saves on each action)
-   */
   saveTablePlan() {
-    utils.showToast('Table plan saved successfully', 'success');
+    utils.showToast('Table plan saved (auto-saves on each action)', 'success');
   },
 
-  /**
-   * Auto Assign Guests (placeholder)
-   */
+  // ---- AUTO ASSIGN ----
+
   async autoAssignGuests() {
     if (this.unassignedGuests.length === 0) {
       utils.showToast('No unassigned guests to assign', 'info');
       return;
     }
-
     if (this.tables.length === 0) {
       utils.showToast('No tables available. Add tables first.', 'warning');
       return;
     }
 
-    // Calculate available seats per table
     const tablesWithSpace = this.tables
       .map(table => ({
         ...table,
@@ -4308,62 +4638,61 @@ const eventsModule = {
       .sort((a, b) => b.availableSeats - a.availableSeats);
 
     const totalAvailable = tablesWithSpace.reduce((sum, t) => sum + t.availableSeats, 0);
-
     if (totalAvailable === 0) {
       utils.showToast('All tables are full. Add more tables or increase seats.', 'warning');
       return;
     }
 
+    // Group unassigned guests by company for smarter auto-assign
+    const groups = this._groupGuestsByCompany(this.unassignedGuests);
     const guestsToAssign = Math.min(this.unassignedGuests.length, totalAvailable);
-    if (!confirm(`Auto-assign ${guestsToAssign} guest(s) across ${tablesWithSpace.length} table(s)?\n\nGuests will be distributed evenly across tables with available seats.`)) {
+
+    if (!confirm(`Auto-assign ${guestsToAssign} guest(s) across ${tablesWithSpace.length} table(s)?\n\nGuests from the same company will be kept together where possible.`)) {
       return;
     }
 
     try {
       utils.showLoading();
       let assigned = 0;
-      let tableIndex = 0;
 
-      // Round-robin assignment to distribute evenly
-      for (const guest of this.unassignedGuests) {
+      // Try to seat each company group together
+      for (const group of groups) {
         if (assigned >= guestsToAssign) break;
 
-        // Find next table with space
-        let attempts = 0;
-        while (attempts < tablesWithSpace.length) {
-          const table = tablesWithSpace[tableIndex % tablesWithSpace.length];
-          if (table.availableSeats > 0) {
-            const { error } = await STATE.client
-              .from('table_assignments')
-              .insert([{
-                event_id: this.currentEventIdTablePlan,
-                table_id: table.id,
-                guest_id: guest.guest_id || guest.id,
-                guest_name: guest.guest_name,
-                organisation_id: guest.organisation_id || null,
-                company_name: guest.company_name || null
-              }]);
+        // Find a table that can fit the whole company
+        let bestTable = tablesWithSpace.find(t => t.availableSeats >= group.guests.length);
+        if (!bestTable) bestTable = tablesWithSpace.find(t => t.availableSeats > 0);
+        if (!bestTable) break;
 
-            if (error) {
-              console.error('Error assigning guest:', error);
-            } else {
-              table.availableSeats--;
-              assigned++;
-            }
-            tableIndex++;
-            break;
+        for (const guest of group.guests) {
+          if (assigned >= guestsToAssign) break;
+          // Find table with space (prefer current bestTable)
+          let targetTable = bestTable.availableSeats > 0 ? bestTable : tablesWithSpace.find(t => t.availableSeats > 0);
+          if (!targetTable) break;
+
+          const { error } = await STATE.client
+            .from('table_assignments')
+            .insert([{
+              event_id: this.currentEventIdTablePlan,
+              table_id: targetTable.id,
+              guest_id: guest.guest_id || guest.id,
+              guest_name: guest.guest_name,
+              organisation_id: guest.organisation_id || null,
+              company_name: guest.company_name || null
+            }]);
+
+          if (!error) {
+            targetTable.availableSeats--;
+            assigned++;
           }
-          tableIndex++;
-          attempts++;
         }
       }
 
       utils.showToast(`Successfully assigned ${assigned} guest(s) to tables`, 'success');
-
-      // Reload data
       await this.loadTablePlan();
       this.renderUnassignedGuests();
-      this.renderTables();
+      this.renderCanvasTables();
+      if (this._selectedTableId) this.showTableDetail(this._selectedTableId);
 
     } catch (error) {
       console.error('Error auto-assigning guests:', error);
@@ -4373,9 +4702,8 @@ const eventsModule = {
     }
   },
 
-  /**
-   * Export Table Plan
-   */
+  // ---- EXPORT ----
+
   exportTablePlan() {
     if (this.tables.length === 0) {
       utils.showToast('No tables to export', 'warning');
@@ -4389,16 +4717,22 @@ const eventsModule = {
           exportData.push({
             'Table Number': table.table_number,
             'Table Name': table.table_name || '',
+            'Total Seats': table.total_seats,
             'Guest Name': assignment.guest_name,
-            'Company': assignment.company_name || ''
+            'Company': assignment.company_name || '',
+            'VIP': assignment.is_vip ? 'Yes' : 'No',
+            'Dietary': assignment.dietary_requirements || ''
           });
         });
       } else {
         exportData.push({
           'Table Number': table.table_number,
           'Table Name': table.table_name || '',
+          'Total Seats': table.total_seats,
           'Guest Name': '(Empty)',
-          'Company': ''
+          'Company': '',
+          'VIP': '',
+          'Dietary': ''
         });
       }
     });

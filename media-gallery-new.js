@@ -199,11 +199,89 @@ const mediaGalleryModule = {
   },
 
   /**
-   * Edit Photo Tags
+   * Edit Photo Tags (from untagged view)
    */
   async editPhotoTags(photoId) {
-    utils.showToast('Tag editing feature - to be implemented', 'info');
-    // This can be implemented later to open a modal for tagging
+    // Load full photo details
+    try {
+      const { data: photo, error } = await STATE.client
+        .from('media_items')
+        .select('*, organisations(company_name), awards(award_name)')
+        .eq('id', photoId)
+        .single();
+      if (error) throw error;
+
+      // Load orgs and awards for dropdowns
+      const { data: orgs } = await STATE.client.from('organisations').select('id, company_name').order('company_name');
+      const { data: awards } = await STATE.client.from('awards').select('id, award_name').order('award_name');
+
+      const html = `
+        <div class="modal fade" id="editPhotoTagsModal" tabindex="-1">
+          <div class="modal-dialog">
+            <div class="modal-content">
+              <div class="modal-header">
+                <h5 class="modal-title"><i class="bi bi-tags me-2"></i>Edit Photo Tags</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+              </div>
+              <div class="modal-body">
+                ${photo.file_url ? `<img src="${photo.file_url}" class="img-fluid rounded mb-3" style="max-height:200px;width:100%;object-fit:cover;">` : ''}
+                <div class="mb-3">
+                  <label class="form-label">Title</label>
+                  <input type="text" class="form-control" id="editTagPhotoTitle" value="${utils.escapeHtml(photo.title || '')}">
+                </div>
+                <div class="mb-3">
+                  <label class="form-label">Organisation</label>
+                  <select class="form-select" id="editTagPhotoOrg">
+                    <option value="">-- None --</option>
+                    ${(orgs || []).map(o => `<option value="${o.id}" ${photo.organisation_id === o.id ? 'selected' : ''}>${utils.escapeHtml(o.company_name)}</option>`).join('')}
+                  </select>
+                </div>
+                <div class="mb-3">
+                  <label class="form-label">Award</label>
+                  <select class="form-select" id="editTagPhotoAward">
+                    <option value="">-- None --</option>
+                    ${(awards || []).map(a => `<option value="${a.id}" ${photo.award_id === a.id ? 'selected' : ''}>${utils.escapeHtml(a.award_name)}</option>`).join('')}
+                  </select>
+                </div>
+              </div>
+              <div class="modal-footer">
+                <button class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button class="btn btn-primary" onclick="mediaGalleryModule._saveEditPhotoTags('${photoId}')"><i class="bi bi-save me-1"></i>Save</button>
+              </div>
+            </div>
+          </div>
+        </div>`;
+
+      const old = document.getElementById('editPhotoTagsModal');
+      if (old) old.remove();
+      document.body.insertAdjacentHTML('beforeend', html);
+      new bootstrap.Modal(document.getElementById('editPhotoTagsModal')).show();
+    } catch (err) {
+      console.error('Error loading photo for tag edit:', err);
+      utils.showToast('Failed to load photo details', 'error');
+    }
+  },
+
+  async _saveEditPhotoTags(photoId) {
+    const title = document.getElementById('editTagPhotoTitle')?.value?.trim() || null;
+    const orgId = document.getElementById('editTagPhotoOrg')?.value || null;
+    const awardId = document.getElementById('editTagPhotoAward')?.value || null;
+
+    try {
+      const { error } = await STATE.client
+        .from('media_items')
+        .update({ title, organisation_id: orgId, award_id: awardId })
+        .eq('id', photoId);
+      if (error) throw error;
+
+      bootstrap.Modal.getInstance(document.getElementById('editPhotoTagsModal')).hide();
+      utils.showToast('Photo tags updated', 'success');
+      // Refresh if in untagged view
+      if (this.currentView === 'untagged-photos') await this.showUntaggedPhotos();
+    } catch (err) {
+      console.error('Error saving photo tags:', err);
+      utils.showToast('Failed to save tags', 'error');
+    }
   },
 
   /**
@@ -379,33 +457,239 @@ const mediaGalleryModule = {
   },
 
   /**
-   * Load Photos Production Content
+   * Load Photos Production Content - Full gallery sections with photos
    */
   async loadPhotosProduction() {
     const container = document.getElementById('photosProductionContent');
 
     try {
-      // This will use existing photo gallery functionality
-      // For now, show a message that this will be implemented
+      // Load all gallery sections for this event
+      const { data: sections, error: secError } = await STATE.client
+        .from('event_galleries')
+        .select('*')
+        .eq('event_id', this.currentEventId)
+        .order('display_order');
+      if (secError) throw secError;
+
+      // Load all photos across all sections for stats
+      const sectionIds = (sections || []).map(s => s.id);
+      let allPhotos = [];
+      if (sectionIds.length > 0) {
+        const { data: photos, error: pError } = await STATE.client
+          .from('media_gallery')
+          .select('*, organisations!media_gallery_organisation_id_fkey(*), awards!media_gallery_award_id_fkey(*)')
+          .in('gallery_section_id', sectionIds)
+          .order('display_order');
+        if (pError) throw pError;
+        allPhotos = photos || [];
+      }
+
+      const published = allPhotos.filter(p => p.published !== false).length;
+      const drafts = allPhotos.filter(p => p.published === false).length;
+      const featured = allPhotos.filter(p => p.featured).length;
+      const untagged = allPhotos.filter(p => !p.organisation_id && !p.award_id).length;
+      const photographers = [...new Set(allPhotos.filter(p => p.photographer).map(p => p.photographer))];
+
+      // Group photos by section
+      const photosBySection = {};
+      allPhotos.forEach(p => {
+        if (!photosBySection[p.gallery_section_id]) photosBySection[p.gallery_section_id] = [];
+        photosBySection[p.gallery_section_id].push(p);
+      });
+
       container.innerHTML = `
-        <div class="alert alert-info">
-          <i class="bi bi-info-circle me-2"></i>
-          <strong>Photos Production:</strong> This will load all photos from the event using the existing gallery system.
-          The full photo management interface from the original gallery will be integrated here.
+        <!-- Stats Bar -->
+        <div class="row g-3 mb-4">
+          <div class="col"><div class="card text-center bg-light"><div class="card-body py-2">
+            <h4 class="mb-0">${allPhotos.length}</h4><small class="text-muted">Total Photos</small>
+          </div></div></div>
+          <div class="col"><div class="card text-center bg-light"><div class="card-body py-2">
+            <h4 class="mb-0 text-success">${published}</h4><small class="text-muted">Published</small>
+          </div></div></div>
+          <div class="col"><div class="card text-center bg-light"><div class="card-body py-2">
+            <h4 class="mb-0 text-secondary">${drafts}</h4><small class="text-muted">Drafts</small>
+          </div></div></div>
+          <div class="col"><div class="card text-center bg-light"><div class="card-body py-2">
+            <h4 class="mb-0 text-warning">${featured}</h4><small class="text-muted">Featured</small>
+          </div></div></div>
+          <div class="col"><div class="card text-center bg-light"><div class="card-body py-2">
+            <h4 class="mb-0 text-danger">${untagged}</h4><small class="text-muted">Untagged</small>
+          </div></div></div>
         </div>
-        <div class="text-center py-4">
-          <i class="bi bi-camera-fill display-1 text-muted opacity-25"></i>
-          <p class="mt-3">Photos production interface coming soon</p>
+
+        ${photographers.length > 0 ? `
+        <div class="mb-3">
+          <small class="text-muted"><i class="bi bi-camera me-1"></i>Photographers: ${photographers.map(p => `<span class="badge bg-light text-dark me-1">${utils.escapeHtml(p)}</span>`).join('')}</small>
+        </div>` : ''}
+
+        <!-- Quick Actions -->
+        <div class="d-flex gap-2 mb-4 flex-wrap">
+          <button class="btn btn-primary btn-sm" onclick="mediaGalleryModule.openAddSectionModal()"><i class="bi bi-folder-plus me-1"></i>Add Section</button>
+          <button class="btn btn-outline-success btn-sm" onclick="mediaGalleryModule._bulkPublishAll()"><i class="bi bi-check-all me-1"></i>Publish All</button>
+          <button class="btn btn-outline-secondary btn-sm" onclick="mediaGalleryModule.downloadAllEventPhotos()"><i class="bi bi-download me-1"></i>Download All</button>
+          <button class="btn btn-outline-info btn-sm" onclick="mediaGalleryModule.openPublicGalleryPreview()"><i class="bi bi-eye me-1"></i>Public Gallery Preview</button>
+          <button class="btn btn-outline-warning btn-sm" onclick="mediaGalleryModule._setPhotographer()"><i class="bi bi-person-badge me-1"></i>Set Photographer</button>
         </div>
-      `;
+
+        <!-- Sections with Photo Thumbnails -->
+        ${(sections || []).length === 0 ? `
+          <div class="alert alert-info"><i class="bi bi-info-circle me-2"></i>No gallery sections yet. Click "Add Section" to create sections like "Drinks Reception", "Award Winners", etc.</div>
+        ` : (sections || []).map(section => {
+          const sectionPhotos = photosBySection[section.id] || [];
+          const sectionPublished = sectionPhotos.filter(p => p.published !== false).length;
+          return `
+          <div class="card mb-3">
+            <div class="card-header d-flex justify-content-between align-items-center" style="cursor:pointer;" onclick="mediaGalleryModule.viewSectionPhotos('${section.id}', '${utils.escapeHtml(section.gallery_name)}')">
+              <div>
+                <h6 class="mb-0"><i class="bi bi-folder me-2"></i>${utils.escapeHtml(section.gallery_name)}
+                  <span class="badge bg-primary ms-2">${sectionPhotos.length}</span>
+                  ${sectionPublished < sectionPhotos.length ? `<span class="badge bg-secondary ms-1">${sectionPhotos.length - sectionPublished} drafts</span>` : ''}
+                </h6>
+                ${section.gallery_description ? `<small class="text-muted">${utils.escapeHtml(section.gallery_description)}</small>` : ''}
+              </div>
+              <div class="d-flex gap-2">
+                <button class="btn btn-sm btn-outline-primary" onclick="event.stopPropagation(); mediaGalleryModule.viewSectionPhotos('${section.id}', '${utils.escapeHtml(section.gallery_name)}')"><i class="bi bi-images me-1"></i>Open</button>
+                <button class="btn btn-sm btn-outline-secondary" onclick="event.stopPropagation(); mediaGalleryModule.editSection('${section.id}')"><i class="bi bi-pencil"></i></button>
+              </div>
+            </div>
+            ${sectionPhotos.length > 0 ? `
+            <div class="card-body py-2">
+              <div class="d-flex gap-2 overflow-auto pb-2" style="scrollbar-width:thin;">
+                ${sectionPhotos.slice(0, 12).map(p => {
+                  const isYT = p.file_type === 'video/youtube';
+                  const thumb = isYT ? `https://img.youtube.com/vi/${p.file_url}/mqdefault.jpg` : p.thumbnail_url || p.file_url;
+                  return `<div style="min-width:80px;width:80px;height:60px;border-radius:6px;overflow:hidden;flex-shrink:0;cursor:pointer;position:relative;${!p.published ? 'opacity:0.5;' : ''}"
+                    onclick="mediaGalleryModule.viewPhotoFull('${p.id}', '${p.file_url}', '${utils.escapeHtml(p.title || '')}', '${isYT ? 'youtube' : 'image'}')">
+                    <img src="${thumb}" style="width:100%;height:100%;object-fit:cover;">
+                    ${p.featured ? '<div style="position:absolute;top:2px;right:2px;"><i class="bi bi-star-fill text-warning" style="font-size:0.7rem;filter:drop-shadow(0 0 2px black);"></i></div>' : ''}
+                  </div>`;
+                }).join('')}
+                ${sectionPhotos.length > 12 ? `<div style="min-width:80px;display:flex;align-items:center;justify-content:center;background:#f0f2f5;border-radius:6px;flex-shrink:0;font-weight:bold;color:#6c757d;">+${sectionPhotos.length - 12}</div>` : ''}
+              </div>
+            </div>` : ''}
+          </div>`;
+        }).join('')}`;
 
     } catch (error) {
-      console.error('Error loading photos:', error);
-      container.innerHTML = `
-        <div class="alert alert-danger">
-          <i class="bi bi-exclamation-triangle me-2"></i>Error loading photos
+      console.error('Error loading photos production:', error);
+      container.innerHTML = `<div class="alert alert-danger"><i class="bi bi-exclamation-triangle me-2"></i>Error loading photos: ${error.message}</div>`;
+    }
+  },
+
+  async _bulkPublishAll() {
+    if (!confirm('Publish all draft photos across all sections?')) return;
+    try {
+      const { data: sections } = await STATE.client.from('event_galleries').select('id').eq('event_id', this.currentEventId);
+      const sectionIds = (sections || []).map(s => s.id);
+      if (sectionIds.length > 0) {
+        await STATE.client.from('media_gallery').update({ published: true }).in('gallery_section_id', sectionIds).eq('published', false);
+      }
+      utils.showToast('All photos published', 'success');
+      await this.loadPhotosProduction();
+    } catch (err) {
+      utils.showToast('Failed to publish: ' + err.message, 'error');
+    }
+  },
+
+  async downloadAllEventPhotos() {
+    utils.showToast('Starting download of all event photos...', 'info');
+    const { data: sections } = await STATE.client.from('event_galleries').select('id, gallery_name').eq('event_id', this.currentEventId);
+    for (const section of (sections || [])) {
+      const { data: photos } = await STATE.client.from('media_gallery').select('file_url, title').eq('gallery_section_id', section.id);
+      (photos || []).forEach((p, i) => {
+        if (p.file_url && !p.file_url.includes('youtube')) {
+          setTimeout(() => {
+            const a = document.createElement('a');
+            a.href = p.file_url;
+            a.download = p.title || `photo_${i + 1}`;
+            a.target = '_blank';
+            a.click();
+          }, i * 200);
+        }
+      });
+    }
+  },
+
+  async openPublicGalleryPreview() {
+    const win = window.open('', '_blank', 'width=1200,height=800');
+    if (!win) { utils.showToast('Please allow popups', 'warning'); return; }
+
+    try {
+      const { data: sections } = await STATE.client.from('event_galleries').select('*').eq('event_id', this.currentEventId).order('display_order');
+      const sectionIds = (sections || []).map(s => s.id);
+      let allPhotos = [];
+      if (sectionIds.length > 0) {
+        const { data } = await STATE.client.from('media_gallery').select('*, organisations!media_gallery_organisation_id_fkey(company_name)').in('gallery_section_id', sectionIds).eq('published', true).order('display_order');
+        allPhotos = data || [];
+      }
+
+      const event = this.currentEvent;
+      const photosBySection = {};
+      allPhotos.forEach(p => {
+        if (!photosBySection[p.gallery_section_id]) photosBySection[p.gallery_section_id] = [];
+        photosBySection[p.gallery_section_id].push(p);
+      });
+
+      const sectionsHtml = (sections || []).map(s => {
+        const photos = photosBySection[s.id] || [];
+        if (photos.length === 0) return '';
+        return `
+          <div style="margin-bottom:40px;">
+            <h2 style="text-align:center;font-size:1.5rem;color:#333;margin-bottom:20px;">${s.gallery_name}</h2>
+            ${s.gallery_description ? `<p style="text-align:center;color:#6c757d;margin-bottom:20px;">${s.gallery_description}</p>` : ''}
+            <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:12px;">
+              ${photos.map(p => {
+                const isYT = p.file_type === 'video/youtube';
+                const src = isYT ? `https://img.youtube.com/vi/${p.file_url}/hqdefault.jpg` : p.file_url;
+                return `<div style="border-radius:8px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.1);background:white;">
+                  <img src="${src}" style="width:100%;height:200px;object-fit:cover;display:block;">
+                  <div style="padding:10px;">
+                    <div style="font-weight:600;font-size:0.9rem;">${p.title || ''}</div>
+                    ${p.organisations?.company_name ? `<div style="font-size:0.8rem;color:#6c757d;">${p.organisations.company_name}</div>` : ''}
+                    ${p.photographer ? `<div style="font-size:0.75rem;color:#adb5bd;"><i>\u{1F4F7}</i> ${p.photographer}</div>` : ''}
+                  </div>
+                </div>`;
+              }).join('')}
+            </div>
+          </div>`;
+      }).join('');
+
+      win.document.write(`<!DOCTYPE html><html><head><title>${event?.event_name || 'Gallery'} - Photo Gallery</title>
+        <style>
+          body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; margin: 0; background: #fafafa; }
+          .header { background: linear-gradient(135deg, #1a1a2e, #16213e); color: white; padding: 40px; text-align: center; }
+          .header h1 { margin: 0; font-weight: 800; }
+          .header p { margin: 8px 0 0; opacity: 0.7; }
+          .container { max-width: 1200px; margin: 0 auto; padding: 30px 20px; }
+          @media print { .no-print { display: none; } }
+        </style></head><body>
+        <div class="header">
+          <h1>${event?.event_name || 'Photo Gallery'}</h1>
+          <p>${event?.event_date ? new Date(event.event_date).toLocaleDateString('en-GB', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }) : ''} ${event?.venue ? '| ' + event.venue : ''}</p>
         </div>
-      `;
+        <div class="container">${sectionsHtml || '<p style="text-align:center;color:#adb5bd;">No published photos yet.</p>'}</div>
+        <div style="text-align:center;padding:20px;color:#adb5bd;font-size:0.8rem;">British Trade Awards Photo Gallery | ${new Date().getFullYear()}</div>
+      </body></html>`);
+      win.document.close();
+    } catch (err) {
+      win.document.write('<h2>Error loading gallery</h2>');
+      win.document.close();
+    }
+  },
+
+  async _setPhotographer() {
+    const name = prompt('Photographer name (will be applied to all photos without a photographer credit):');
+    if (!name || !name.trim()) return;
+    try {
+      const { data: sections } = await STATE.client.from('event_galleries').select('id').eq('event_id', this.currentEventId);
+      const sectionIds = (sections || []).map(s => s.id);
+      if (sectionIds.length > 0) {
+        await STATE.client.from('media_gallery').update({ photographer: name.trim() }).in('gallery_section_id', sectionIds).is('photographer', null);
+      }
+      utils.showToast(`Photographer "${name.trim()}" set for uncredited photos`, 'success');
+      await this.loadPhotosProduction();
+    } catch (err) {
+      utils.showToast('Failed to set photographer: ' + err.message, 'error');
     }
   },
 
@@ -1914,6 +2198,7 @@ const mediaGalleryModule = {
           </div>
           ${isSelected ? '<div class="position-absolute top-0 end-0 m-2"><div class="badge bg-primary"><i class="bi bi-check-circle-fill"></i> Selected</div></div>' : ''}
           ${!isPublished && !isSelected ? '<div class="position-absolute top-0 end-0 m-2 badge bg-secondary">Draft</div>' : ''}
+          ${photo.featured && !isSelected ? '<div class="position-absolute top-0 end-0 m-2 badge bg-warning text-dark"><i class="bi bi-star-fill me-1"></i>Featured</div>' : ''}
           ${videoTypeLabel && !isSelected && isPublished ? `<div class="position-absolute top-0 end-0 m-2 badge bg-danger"><i class="bi bi-camera-video me-1"></i>${videoTypeLabel}</div>` : ''}
           ${isImage ?
             `<img src="${photo.file_url}" class="card-img-top ${!isPublished ? 'opacity-50' : ''}" alt="${utils.escapeHtml(photo.title || 'Photo')}"
@@ -1959,9 +2244,14 @@ const mediaGalleryModule = {
               </span>
             </div>
 
+            ${photo.photographer ? `<div class="small text-muted mb-1"><i class="bi bi-camera me-1"></i>${utils.escapeHtml(photo.photographer)}</div>` : ''}
+
             <div class="btn-group btn-group-sm w-100 mt-2">
               <button class="btn btn-outline-primary" onclick="mediaGalleryModule.tagPhoto('${photo.id}')" title="Tag">
                 <i class="bi bi-tag"></i>
+              </button>
+              <button class="btn ${photo.featured ? 'btn-warning' : 'btn-outline-warning'}" onclick="mediaGalleryModule.toggleFeatured('${photo.id}', ${!photo.featured})" title="${photo.featured ? 'Unfeature' : 'Feature'}">
+                <i class="bi bi-star${photo.featured ? '-fill' : ''}"></i>
               </button>
               ${!isYouTube ? `
                 <button class="btn btn-outline-secondary" onclick="mediaGalleryModule.downloadPhoto('${photo.file_url}', '${utils.escapeHtml(photo.title || 'photo').replace(/'/g, "\\'")}'); event.stopPropagation();" title="Download">
@@ -2918,6 +3208,31 @@ const mediaGalleryModule = {
       utils.showToast('Error updating publish status: ' + error.message, 'error');
     } finally {
       utils.hideLoading();
+    }
+  },
+
+  /**
+   * Toggle featured status
+   */
+  async toggleFeatured(photoId, newState) {
+    try {
+      const { error } = await STATE.client
+        .from('media_gallery')
+        .update({ featured: newState })
+        .eq('id', photoId);
+      if (error) throw error;
+
+      utils.showToast(newState ? 'Photo featured!' : 'Photo unfeatured', 'success');
+
+      const { data: section } = await STATE.client
+        .from('event_galleries')
+        .select('gallery_name')
+        .eq('id', this.currentSectionId)
+        .single();
+      await this.viewSectionPhotos(this.currentSectionId, section.gallery_name);
+    } catch (error) {
+      console.error('Error toggling featured:', error);
+      utils.showToast('Error: ' + error.message, 'error');
     }
   },
 

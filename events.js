@@ -638,6 +638,7 @@ const eventsModule = {
     this.renderBudgetTab(eventId);
     this.renderVendorsTab(eventId);
     this.renderSpecialReqsTab(eventId);
+    this.renderPostEventTab(eventId);
 
     const modal = new bootstrap.Modal(document.getElementById('attendeesModal'));
     modal.show();
@@ -2208,7 +2209,6 @@ const eventsModule = {
   _stripePublicKey: null,
 
   getStripePublicKey() {
-    // Check settings or config for Stripe publishable key
     return localStorage.getItem('bta_stripe_pk') || '';
   },
 
@@ -2218,6 +2218,888 @@ const eventsModule = {
       localStorage.setItem('bta_stripe_pk', key);
       utils.showToast('Stripe key saved', 'success');
     }
+  },
+
+  // ========================================
+  // POST-EVENT: MASTER RENDER
+  // ========================================
+
+  renderPostEventTab(eventId) {
+    const container = document.getElementById('postEventContent');
+    if (!container) return;
+    const event = STATE.allEvents.find(e => e.id === eventId);
+    if (!event) return;
+
+    const isComplete = event.event_status === 'complete';
+    const isPast = event.event_date && new Date(event.event_date) < new Date();
+
+    container.innerHTML = `
+      ${!isComplete && !isPast ? `<div class="alert alert-info mb-3"><i class="bi bi-info-circle me-2"></i>This event hasn't happened yet. Post-event features are available after the event date or when status is set to "Complete".</div>` : ''}
+
+      <!-- Quick Actions -->
+      <div class="d-flex gap-2 mb-4 flex-wrap">
+        <button class="btn btn-primary btn-sm" onclick="eventsModule.sendThankYouEmails()"><i class="bi bi-envelope-heart me-1"></i>Send Thank You Emails</button>
+        <button class="btn btn-outline-primary btn-sm" onclick="eventsModule.generateAttendanceReport()"><i class="bi bi-bar-chart me-1"></i>Attendance Report</button>
+        <button class="btn btn-outline-success btn-sm" onclick="eventsModule.generateWinnerPackage()"><i class="bi bi-stars me-1"></i>Winner Highlights</button>
+        <button class="btn btn-outline-info btn-sm" onclick="eventsModule.generateSponsorReport()"><i class="bi bi-graph-up me-1"></i>Sponsor ROI Report</button>
+        <button class="btn btn-outline-secondary btn-sm" onclick="eventsModule.exportPostEventPack()"><i class="bi bi-file-earmark-zip me-1"></i>Export Full Pack</button>
+      </div>
+
+      <!-- Survey / Feedback -->
+      <div class="card mb-3">
+        <div class="card-body">
+          <div class="d-flex justify-content-between align-items-center mb-3">
+            <h6 class="card-title mb-0"><i class="bi bi-chat-square-text me-2"></i>Post-Event Survey & Feedback</h6>
+            <button class="btn btn-sm btn-primary" onclick="eventsModule.sendSurveyEmails()"><i class="bi bi-send me-1"></i>Send Survey</button>
+          </div>
+          <div id="surveyConfig">
+            <div class="row g-3 mb-3">
+              <div class="col-md-8">
+                <label class="form-label small">Survey Link (Google Forms, Typeform, etc.)</label>
+                <input type="text" class="form-control form-control-sm" id="postEventSurveyUrl" placeholder="https://forms.google.com/..." value="${utils.escapeHtml(this._getPostEventData(eventId).surveyUrl || '')}">
+              </div>
+              <div class="col-md-4">
+                <label class="form-label small">&nbsp;</label>
+                <button class="btn btn-sm btn-outline-primary w-100" onclick="eventsModule.savePostEventData()"><i class="bi bi-save me-1"></i>Save</button>
+              </div>
+            </div>
+            <div class="row g-3" id="surveyResponseStats">
+              ${this._renderSurveyStats(eventId)}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Attendance Report -->
+      <div class="card mb-3">
+        <div class="card-body">
+          <h6 class="card-title"><i class="bi bi-bar-chart-line me-2"></i>Attendance Report</h6>
+          <div id="attendanceReportContent">
+            ${this._renderAttendanceReport(eventId)}
+          </div>
+        </div>
+      </div>
+
+      <!-- Winner Highlights -->
+      <div class="card mb-3">
+        <div class="card-body">
+          <div class="d-flex justify-content-between align-items-center mb-3">
+            <h6 class="card-title mb-0"><i class="bi bi-stars me-2"></i>Winner Highlights & Social Assets</h6>
+            <div class="d-flex gap-2">
+              <button class="btn btn-sm btn-outline-primary" onclick="eventsModule.generatePressRelease()"><i class="bi bi-newspaper me-1"></i>Press Release</button>
+              <button class="btn btn-sm btn-outline-success" onclick="eventsModule.generateSocialCards()"><i class="bi bi-share me-1"></i>Social Cards</button>
+            </div>
+          </div>
+          <div id="winnerHighlightsContent">
+            ${this._renderWinnerHighlights(eventId)}
+          </div>
+        </div>
+      </div>
+
+      <!-- Sponsor ROI Report -->
+      <div class="card mb-3">
+        <div class="card-body">
+          <h6 class="card-title"><i class="bi bi-graph-up me-2"></i>Sponsor ROI Report</h6>
+          <div id="sponsorROIContent">
+            ${this._renderSponsorReport(eventId)}
+          </div>
+        </div>
+      </div>
+
+      <!-- Event Debrief -->
+      <div class="card">
+        <div class="card-body">
+          <h6 class="card-title"><i class="bi bi-journal-text me-2"></i>Event Debrief & Lessons Learned</h6>
+          <div id="debriefContent">
+            ${this._renderDebrief(eventId)}
+          </div>
+        </div>
+      </div>`;
+  },
+
+  // ========================================
+  // POST-EVENT: DATA STORAGE
+  // ========================================
+
+  _postEventKey(eventId) {
+    return `bta_post_event_${eventId}`;
+  },
+
+  _getPostEventData(eventId) {
+    const stored = localStorage.getItem(this._postEventKey(eventId));
+    return stored ? JSON.parse(stored) : {};
+  },
+
+  _savePostEventDataStore(eventId, data) {
+    localStorage.setItem(this._postEventKey(eventId), JSON.stringify(data));
+  },
+
+  savePostEventData() {
+    const eventId = document.getElementById('attendeesEventId').value;
+    const data = this._getPostEventData(eventId);
+    data.surveyUrl = document.getElementById('postEventSurveyUrl')?.value || '';
+    data.surveyResponses = parseInt(document.getElementById('surveyResponseCount')?.value) || data.surveyResponses || 0;
+    this._savePostEventDataStore(eventId, data);
+    utils.showToast('Post-event data saved', 'success');
+  },
+
+  // ========================================
+  // POST-EVENT: SURVEY & FEEDBACK
+  // ========================================
+
+  _renderSurveyStats(eventId) {
+    const data = this._getPostEventData(eventId);
+    const attendees = this.getAttendees(eventId);
+    const attending = attendees.filter(a => a.status === 'attending').length;
+    const responses = data.surveyResponses || 0;
+    const rate = attending > 0 ? Math.round(responses / attending * 100) : 0;
+
+    return `
+      <div class="col-md-3"><div class="card text-center"><div class="card-body py-2">
+        <h4 class="mb-0">${attending}</h4><small class="text-muted">Attended</small>
+      </div></div></div>
+      <div class="col-md-3"><div class="card text-center"><div class="card-body py-2">
+        <div class="input-group input-group-sm">
+          <input type="number" class="form-control text-center fw-bold" id="surveyResponseCount" value="${responses}" min="0" onchange="eventsModule.savePostEventData()">
+        </div>
+        <small class="text-muted">Responses</small>
+      </div></div></div>
+      <div class="col-md-3"><div class="card text-center"><div class="card-body py-2">
+        <h4 class="mb-0 ${rate >= 50 ? 'text-success' : rate >= 25 ? 'text-warning' : 'text-danger'}">${rate}%</h4><small class="text-muted">Response Rate</small>
+      </div></div></div>
+      <div class="col-md-3"><div class="card text-center"><div class="card-body py-2">
+        <div class="input-group input-group-sm">
+          <input type="number" class="form-control text-center fw-bold" id="surveyAvgRating" value="${data.avgRating || ''}" min="1" max="10" step="0.1" placeholder="-" onchange="eventsModule.savePostEventData()">
+          <span class="input-group-text">/10</span>
+        </div>
+        <small class="text-muted">Avg Rating</small>
+      </div></div></div>`;
+  },
+
+  sendSurveyEmails() {
+    const eventId = document.getElementById('attendeesEventId').value;
+    const event = STATE.allEvents.find(e => e.id === eventId);
+    const data = this._getPostEventData(eventId);
+    if (!data.surveyUrl) {
+      utils.showToast('Please add a survey URL first', 'warning');
+      return;
+    }
+
+    const attendees = this.getAttendees(eventId).filter(a => a.status === 'attending' && a.email);
+    if (attendees.length === 0) {
+      utils.showToast('No attendees with email addresses', 'warning');
+      return;
+    }
+
+    const subject = `How was ${event.event_name}? We'd love your feedback`;
+    const body = `Dear Guest,\n\nThank you for attending ${event.event_name}. We hope you had a wonderful evening.\n\nWe would greatly appreciate your feedback to help us improve future events. It only takes 2 minutes:\n\n${data.surveyUrl}\n\nYour responses are anonymous and will directly shape our upcoming events.\n\nThank you,\nBritish Trade Awards`;
+
+    this._showEmailPreview(subject, body, attendees.map(a => a.email), eventId);
+  },
+
+  sendThankYouEmails() {
+    const eventId = document.getElementById('attendeesEventId').value;
+    const event = STATE.allEvents.find(e => e.id === eventId);
+    const attendees = this.getAttendees(eventId).filter(a => a.status === 'attending' && a.email);
+
+    if (attendees.length === 0) {
+      utils.showToast('No attendees with email addresses', 'warning');
+      return;
+    }
+
+    const subject = `Thank You for Attending ${event.event_name}`;
+    const body = `Dear Guest,\n\nThank you for joining us at ${event.event_name}. It was a fantastic evening and we were delighted to have you with us.\n\nPhotos from the event will be available soon in our gallery.\n\nWe look forward to welcoming you to future British Trade Awards events.\n\nWith best wishes,\nBritish Trade Awards Team`;
+
+    this._showEmailPreview(subject, body, attendees.map(a => a.email), eventId);
+  },
+
+  // ========================================
+  // POST-EVENT: ATTENDANCE REPORT
+  // ========================================
+
+  _renderAttendanceReport(eventId) {
+    const attendees = this.getAttendees(eventId);
+    const event = STATE.allEvents.find(e => e.id === eventId);
+    const attending = attendees.filter(a => a.status === 'attending');
+    const checkedIn = attendees.filter(a => a.checkedIn);
+    const noShows = attending.filter(a => !a.checkedIn);
+    const capacity = event?.capacity || 0;
+
+    // Check-in time distribution
+    const checkInTimes = checkedIn
+      .filter(a => a.checkInTime)
+      .map(a => new Date(a.checkInTime))
+      .sort((a, b) => a - b);
+
+    let timeDistribution = '';
+    if (checkInTimes.length > 0) {
+      const first = checkInTimes[0];
+      const last = checkInTimes[checkInTimes.length - 1];
+      const peak = this._findPeakCheckInHour(checkInTimes);
+      timeDistribution = `
+        <div class="col-md-4"><small class="text-muted d-block">First Check-In</small><strong>${first.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}</strong></div>
+        <div class="col-md-4"><small class="text-muted d-block">Peak Hour</small><strong>${peak}</strong></div>
+        <div class="col-md-4"><small class="text-muted d-block">Last Check-In</small><strong>${last.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}</strong></div>`;
+    }
+
+    // Type breakdown
+    const typeBreakdown = {};
+    attending.forEach(a => {
+      const type = (a.guestType || 'guest').toUpperCase();
+      typeBreakdown[type] = (typeBreakdown[type] || 0) + 1;
+    });
+
+    const totalPlusOnes = attending.reduce((s, a) => s + (a.plusOnes || 0), 0);
+
+    return `
+      <div class="row g-3 mb-3">
+        <div class="col-md-2"><div class="card text-center bg-light"><div class="card-body py-2">
+          <h4 class="mb-0">${attendees.length}</h4><small class="text-muted">Total Invited</small>
+        </div></div></div>
+        <div class="col-md-2"><div class="card text-center bg-light"><div class="card-body py-2">
+          <h4 class="mb-0 text-success">${attending.length}</h4><small class="text-muted">RSVP Yes</small>
+        </div></div></div>
+        <div class="col-md-2"><div class="card text-center bg-light"><div class="card-body py-2">
+          <h4 class="mb-0 text-primary">${checkedIn.length}</h4><small class="text-muted">Checked In</small>
+        </div></div></div>
+        <div class="col-md-2"><div class="card text-center bg-light"><div class="card-body py-2">
+          <h4 class="mb-0 text-danger">${noShows.length}</h4><small class="text-muted">No-Shows</small>
+        </div></div></div>
+        <div class="col-md-2"><div class="card text-center bg-light"><div class="card-body py-2">
+          <h4 class="mb-0 text-info">${totalPlusOnes}</h4><small class="text-muted">Plus-Ones</small>
+        </div></div></div>
+        <div class="col-md-2"><div class="card text-center bg-light"><div class="card-body py-2">
+          <h4 class="mb-0">${attending.length > 0 ? Math.round(checkedIn.length / attending.length * 100) : 0}%</h4><small class="text-muted">Show Rate</small>
+        </div></div></div>
+      </div>
+
+      ${capacity > 0 ? `
+      <div class="mb-3">
+        <div class="d-flex justify-content-between mb-1">
+          <small>Venue Utilisation</small>
+          <small>${checkedIn.length + totalPlusOnes} / ${capacity} (${Math.round((checkedIn.length + totalPlusOnes) / capacity * 100)}%)</small>
+        </div>
+        <div class="progress" style="height:8px;">
+          <div class="progress-bar bg-success" style="width:${Math.min(100, Math.round((checkedIn.length + totalPlusOnes) / capacity * 100))}%"></div>
+        </div>
+      </div>` : ''}
+
+      ${timeDistribution ? `<div class="card bg-light mb-3"><div class="card-body py-2"><h6 class="mb-2"><i class="bi bi-clock me-2"></i>Check-In Timeline</h6><div class="row">${timeDistribution}</div></div></div>` : ''}
+
+      <div class="card bg-light mb-3"><div class="card-body py-2">
+        <h6 class="mb-2"><i class="bi bi-people me-2"></i>Guest Type Breakdown</h6>
+        <div class="d-flex gap-3 flex-wrap">
+          ${Object.entries(typeBreakdown).map(([type, count]) => {
+            const colors = { VIP: 'warning', SPEAKER: 'primary', SPONSOR: 'success', MEDIA: 'purple', STAFF: 'secondary', GUEST: 'info' };
+            return `<span class="badge bg-${colors[type] || 'secondary'}" ${type === 'MEDIA' ? 'style="background:#6f42c1!important;"' : ''}>${type}: ${count}</span>`;
+          }).join('')}
+        </div>
+      </div></div>
+
+      ${noShows.length > 0 ? `
+      <details class="mb-2">
+        <summary class="text-danger" style="cursor:pointer;"><strong>${noShows.length} No-Shows</strong> (click to expand)</summary>
+        <div class="table-responsive mt-2"><table class="table table-sm"><thead><tr><th>Name</th><th>Email</th><th>Type</th></tr></thead>
+        <tbody>${noShows.map(a => `<tr><td>${utils.escapeHtml(a.name)}</td><td>${a.email || '-'}</td><td>${(a.guestType || 'guest').toUpperCase()}</td></tr>`).join('')}</tbody></table></div>
+      </details>` : ''}`;
+  },
+
+  _findPeakCheckInHour(times) {
+    const hourCounts = {};
+    times.forEach(t => {
+      const h = t.getHours();
+      hourCounts[h] = (hourCounts[h] || 0) + 1;
+    });
+    const peak = Object.entries(hourCounts).sort((a, b) => b[1] - a[1])[0];
+    return peak ? `${String(peak[0]).padStart(2, '0')}:00 - ${String(parseInt(peak[0]) + 1).padStart(2, '0')}:00` : '-';
+  },
+
+  generateAttendanceReport() {
+    const eventId = document.getElementById('attendeesEventId').value;
+    const event = STATE.allEvents.find(e => e.id === eventId);
+    const attendees = this.getAttendees(eventId);
+
+    const rows = attendees.map(a => ({
+      'Name': a.name,
+      'Email': a.email || '',
+      'Type': (a.guestType || 'guest').toUpperCase(),
+      'RSVP': a.status || '',
+      'Plus Ones': a.plusOnes || 0,
+      'Checked In': a.checkedIn ? 'Yes' : 'No',
+      'Check-In Time': a.checkInTime ? new Date(a.checkInTime).toLocaleString() : '',
+      'Dietary': a.dietary || '',
+      'No Show': a.status === 'attending' && !a.checkedIn ? 'YES' : ''
+    }));
+
+    utils.exportToCSV(rows, `${event ? event.event_name.replace(/[^a-z0-9]/gi, '_') : 'event'}_attendance_report.csv`);
+    utils.showToast('Attendance report exported', 'success');
+  },
+
+  // ========================================
+  // POST-EVENT: WINNER HIGHLIGHTS
+  // ========================================
+
+  _renderWinnerHighlights(eventId) {
+    const event = STATE.allEvents.find(e => e.id === eventId);
+    if (!event) return '<p class="text-muted">No event data</p>';
+
+    return `
+      <p class="text-muted mb-3">Generate shareable assets to celebrate your winners and promote the awards.</p>
+      <div class="row g-3">
+        <div class="col-md-4">
+          <div class="card text-center h-100" style="cursor:pointer;" onclick="eventsModule.generatePressRelease()">
+            <div class="card-body py-3">
+              <i class="bi bi-newspaper display-4 text-primary mb-2 d-block"></i>
+              <h6>Press Release</h6>
+              <small class="text-muted">Ready-to-send press release template with all winners listed</small>
+            </div>
+          </div>
+        </div>
+        <div class="col-md-4">
+          <div class="card text-center h-100" style="cursor:pointer;" onclick="eventsModule.generateSocialCards()">
+            <div class="card-body py-3">
+              <i class="bi bi-share display-4 text-success mb-2 d-block"></i>
+              <h6>Social Media Cards</h6>
+              <small class="text-muted">Generate winner announcement cards for Twitter, LinkedIn, Instagram</small>
+            </div>
+          </div>
+        </div>
+        <div class="col-md-4">
+          <div class="card text-center h-100" style="cursor:pointer;" onclick="eventsModule.generateWinnersCertificates()">
+            <div class="card-body py-3">
+              <i class="bi bi-award display-4 text-warning mb-2 d-block"></i>
+              <h6>Winner Certificates</h6>
+              <small class="text-muted">PDF certificates for each winner to download and display</small>
+            </div>
+          </div>
+        </div>
+      </div>`;
+  },
+
+  async generatePressRelease() {
+    const eventId = document.getElementById('attendeesEventId').value;
+    const event = STATE.allEvents.find(e => e.id === eventId);
+    if (!event) return;
+
+    // Load winners for this event's year
+    let winners = [];
+    try {
+      const { data } = await STATE.client
+        .from('award_assignments')
+        .select('*, awards(award_name), organisations(company_name)')
+        .eq('year', event.year)
+        .eq('assignment_type', 'winner');
+      winners = data || [];
+    } catch (e) { console.error(e); }
+
+    const dateStr = event.event_date ? new Date(event.event_date).toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }) : '[DATE]';
+
+    let pressRelease = `PRESS RELEASE\nFOR IMMEDIATE RELEASE\n\n`;
+    pressRelease += `BRITISH TRADE AWARDS ${event.year || ''} WINNERS ANNOUNCED\n\n`;
+    pressRelease += `${event.venue || '[VENUE]'}, ${dateStr}\n\n`;
+    pressRelease += `The British Trade Awards are delighted to announce the winners of the ${event.event_name}.\n\n`;
+    pressRelease += `The ceremony, held at ${event.venue || '[VENUE]'} on ${dateStr}, brought together the best in British trade to celebrate outstanding achievement and excellence across the industry.\n\n`;
+
+    if (winners.length > 0) {
+      pressRelease += `THE WINNERS:\n\n`;
+      winners.forEach(w => {
+        pressRelease += `${w.awards?.award_name || 'Award'}: ${w.organisations?.company_name || 'Winner'}\n`;
+      });
+      pressRelease += `\n`;
+    }
+
+    pressRelease += `For more information, high-resolution photos, or interview requests, please contact:\n`;
+    pressRelease += `[Contact Name]\n[Email]\n[Phone]\n\n`;
+    pressRelease += `--- ENDS ---\n\nNotes to Editors:\n`;
+    pressRelease += `The British Trade Awards celebrate excellence in British trade and commerce.\n`;
+    pressRelease += `For more information visit: [website]\n`;
+
+    // Show in a modal for copying
+    const html = `
+      <div class="modal fade" id="pressReleaseModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+          <div class="modal-content">
+            <div class="modal-header"><h5 class="modal-title"><i class="bi bi-newspaper me-2"></i>Press Release</h5>
+              <button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+            <div class="modal-body">
+              <textarea class="form-control" id="pressReleaseText" rows="25" style="font-family:monospace;font-size:0.85rem;">${utils.escapeHtml(pressRelease)}</textarea>
+            </div>
+            <div class="modal-footer">
+              <button class="btn btn-outline-secondary" onclick="navigator.clipboard.writeText(document.getElementById('pressReleaseText').value); utils.showToast('Copied to clipboard','success')"><i class="bi bi-clipboard me-1"></i>Copy</button>
+              <button class="btn btn-primary" onclick="const b=new Blob([document.getElementById('pressReleaseText').value],{type:'text/plain'}); const a=document.createElement('a'); a.href=URL.createObjectURL(b); a.download='press_release_${event.event_name.replace(/[^a-z0-9]/gi, '_')}.txt'; a.click()"><i class="bi bi-download me-1"></i>Download .txt</button>
+            </div>
+          </div>
+        </div>
+      </div>`;
+    const old = document.getElementById('pressReleaseModal');
+    if (old) old.remove();
+    document.body.insertAdjacentHTML('beforeend', html);
+    new bootstrap.Modal(document.getElementById('pressReleaseModal')).show();
+  },
+
+  async generateSocialCards() {
+    const eventId = document.getElementById('attendeesEventId').value;
+    const event = STATE.allEvents.find(e => e.id === eventId);
+    if (!event) return;
+
+    let winners = [];
+    try {
+      const { data } = await STATE.client
+        .from('award_assignments')
+        .select('*, awards(award_name), organisations(company_name)')
+        .eq('year', event.year)
+        .eq('assignment_type', 'winner');
+      winners = data || [];
+    } catch (e) { console.error(e); }
+
+    if (winners.length === 0) {
+      utils.showToast('No winners found for this event year', 'warning');
+      return;
+    }
+
+    // Generate social card images using Canvas
+    const cards = winners.map(w => ({
+      award: w.awards?.award_name || 'Award',
+      winner: w.organisations?.company_name || 'Winner',
+      event: event.event_name,
+      year: event.year
+    }));
+
+    // Build preview modal
+    const cardsHtml = cards.map((card, idx) => `
+      <div class="col-md-6 mb-3">
+        <canvas id="socialCard${idx}" width="1200" height="630" style="width:100%;border-radius:8px;box-shadow:0 2px 8px rgba(0,0,0,0.1);"></canvas>
+        <div class="text-center mt-1">
+          <button class="btn btn-sm btn-outline-primary" onclick="eventsModule._downloadSocialCard(${idx})"><i class="bi bi-download me-1"></i>Download</button>
+        </div>
+      </div>`).join('');
+
+    const html = `
+      <div class="modal fade" id="socialCardsModal" tabindex="-1">
+        <div class="modal-dialog modal-xl">
+          <div class="modal-content">
+            <div class="modal-header"><h5 class="modal-title"><i class="bi bi-share me-2"></i>Social Media Cards (${cards.length})</h5>
+              <button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+            <div class="modal-body">
+              <div class="alert alert-info mb-3"><i class="bi bi-info-circle me-2"></i>Cards are 1200x630px (optimal for LinkedIn/Twitter). Download individually or all at once.</div>
+              <div class="row">${cardsHtml}</div>
+            </div>
+            <div class="modal-footer">
+              <button class="btn btn-primary" onclick="eventsModule._downloadAllSocialCards(${cards.length})"><i class="bi bi-download me-1"></i>Download All</button>
+            </div>
+          </div>
+        </div>
+      </div>`;
+    const old = document.getElementById('socialCardsModal');
+    if (old) old.remove();
+    document.body.insertAdjacentHTML('beforeend', html);
+    new bootstrap.Modal(document.getElementById('socialCardsModal')).show();
+
+    // Render each card on canvas after modal shown
+    setTimeout(() => {
+      cards.forEach((card, idx) => {
+        this._renderSocialCard(idx, card);
+      });
+    }, 300);
+  },
+
+  _renderSocialCard(idx, card) {
+    const canvas = document.getElementById(`socialCard${idx}`);
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+
+    // Background gradient
+    const grad = ctx.createLinearGradient(0, 0, 1200, 630);
+    grad.addColorStop(0, '#1a1a2e');
+    grad.addColorStop(0.5, '#16213e');
+    grad.addColorStop(1, '#0f3460');
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, 1200, 630);
+
+    // Gold accent bar
+    ctx.fillStyle = '#d4a843';
+    ctx.fillRect(0, 0, 1200, 6);
+    ctx.fillRect(0, 624, 1200, 6);
+
+    // Trophy icon (simple)
+    ctx.fillStyle = '#d4a843';
+    ctx.font = '60px serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('\u{1F3C6}', 600, 140);
+
+    // Award name
+    ctx.fillStyle = '#d4a843';
+    ctx.font = 'bold 36px -apple-system, BlinkMacSystemFont, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText(card.award.toUpperCase(), 600, 220);
+
+    // Winner text
+    ctx.fillStyle = '#ffffff';
+    ctx.font = '28px -apple-system, BlinkMacSystemFont, sans-serif';
+    ctx.fillText('WINNER', 600, 290);
+
+    // Winner name
+    ctx.font = 'bold 52px -apple-system, BlinkMacSystemFont, sans-serif';
+    ctx.fillText(card.winner, 600, 370);
+
+    // Divider
+    ctx.strokeStyle = '#d4a843';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(400, 410);
+    ctx.lineTo(800, 410);
+    ctx.stroke();
+
+    // Event name
+    ctx.fillStyle = 'rgba(255,255,255,0.7)';
+    ctx.font = '24px -apple-system, BlinkMacSystemFont, sans-serif';
+    ctx.fillText(card.event, 600, 470);
+
+    // Year
+    ctx.fillStyle = '#d4a843';
+    ctx.font = 'bold 48px -apple-system, BlinkMacSystemFont, sans-serif';
+    ctx.fillText(card.year || '', 600, 540);
+
+    // Branding
+    ctx.fillStyle = 'rgba(255,255,255,0.4)';
+    ctx.font = '16px -apple-system, BlinkMacSystemFont, sans-serif';
+    ctx.fillText('British Trade Awards', 600, 590);
+  },
+
+  _downloadSocialCard(idx) {
+    const canvas = document.getElementById(`socialCard${idx}`);
+    if (!canvas) return;
+    const link = document.createElement('a');
+    link.download = `social_card_${idx + 1}.png`;
+    link.href = canvas.toDataURL('image/png');
+    link.click();
+  },
+
+  _downloadAllSocialCards(count) {
+    for (let i = 0; i < count; i++) {
+      setTimeout(() => this._downloadSocialCard(i), i * 200);
+    }
+    utils.showToast(`Downloading ${count} social cards...`, 'success');
+  },
+
+  async generateWinnersCertificates() {
+    const eventId = document.getElementById('attendeesEventId').value;
+    const event = STATE.allEvents.find(e => e.id === eventId);
+    if (!event) return;
+
+    let winners = [];
+    try {
+      const { data } = await STATE.client
+        .from('award_assignments')
+        .select('*, awards(award_name), organisations(company_name)')
+        .eq('year', event.year)
+        .eq('assignment_type', 'winner');
+      winners = data || [];
+    } catch (e) { console.error(e); }
+
+    if (winners.length === 0) {
+      utils.showToast('No winners found', 'warning');
+      return;
+    }
+
+    // Load jsPDF if not present
+    if (typeof window.jspdf === 'undefined') {
+      const script = document.createElement('script');
+      script.src = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.2/jspdf.umd.min.js';
+      script.onload = () => this._buildCertificatesPDF(event, winners);
+      document.head.appendChild(script);
+      return;
+    }
+    this._buildCertificatesPDF(event, winners);
+  },
+
+  _buildCertificatesPDF(event, winners) {
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF('l', 'mm', 'a4'); // Landscape
+
+    winners.forEach((w, idx) => {
+      if (idx > 0) doc.addPage();
+
+      // Border
+      doc.setDrawColor(212, 168, 67);
+      doc.setLineWidth(3);
+      doc.rect(10, 10, 277, 190);
+      doc.setLineWidth(1);
+      doc.rect(14, 14, 269, 182);
+
+      // Header
+      doc.setFontSize(14);
+      doc.setTextColor(100);
+      doc.text('BRITISH TRADE AWARDS', 148.5, 40, { align: 'center' });
+
+      // Certificate title
+      doc.setFontSize(36);
+      doc.setTextColor(212, 168, 67);
+      doc.setFont(undefined, 'bold');
+      doc.text('Certificate of Excellence', 148.5, 65, { align: 'center' });
+
+      // Awarded to
+      doc.setFontSize(14);
+      doc.setTextColor(80);
+      doc.setFont(undefined, 'normal');
+      doc.text('This certificate is proudly awarded to', 148.5, 85, { align: 'center' });
+
+      // Winner name
+      doc.setFontSize(28);
+      doc.setTextColor(26, 26, 46);
+      doc.setFont(undefined, 'bold');
+      doc.text(w.organisations?.company_name || 'Winner', 148.5, 105, { align: 'center' });
+
+      // Award category
+      doc.setFontSize(16);
+      doc.setTextColor(80);
+      doc.setFont(undefined, 'normal');
+      doc.text('In recognition of outstanding achievement in', 148.5, 122, { align: 'center' });
+
+      doc.setFontSize(22);
+      doc.setTextColor(212, 168, 67);
+      doc.setFont(undefined, 'bold');
+      doc.text(w.awards?.award_name || 'Award', 148.5, 138, { align: 'center' });
+
+      // Event details
+      doc.setFontSize(12);
+      doc.setTextColor(120);
+      doc.setFont(undefined, 'normal');
+      const dateStr = event.event_date ? new Date(event.event_date).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }) : '';
+      doc.text(`${event.event_name} | ${dateStr}`, 148.5, 160, { align: 'center' });
+      if (event.venue) doc.text(event.venue, 148.5, 168, { align: 'center' });
+
+      // Signature line
+      doc.setDrawColor(180);
+      doc.setLineWidth(0.5);
+      doc.line(95, 185, 202, 185);
+      doc.setFontSize(10);
+      doc.text('Authorised Signature', 148.5, 192, { align: 'center' });
+    });
+
+    doc.save(`${event.event_name.replace(/[^a-z0-9]/gi, '_')}_certificates.pdf`);
+    utils.showToast(`Generated ${winners.length} certificates`, 'success');
+  },
+
+  async generateWinnerPackage() {
+    // Quick access: opens the post-event tab and scrolls to winner highlights
+    const tab = document.querySelector('a[href="#postEventTab"]');
+    if (tab) new bootstrap.Tab(tab).show();
+  },
+
+  // ========================================
+  // POST-EVENT: SPONSOR ROI REPORT
+  // ========================================
+
+  _renderSponsorReport(eventId) {
+    const event = STATE.allEvents.find(e => e.id === eventId);
+    const attendees = this.getAttendees(eventId);
+    const attending = attendees.filter(a => a.status === 'attending');
+    const sponsors = attendees.filter(a => a.guestType === 'sponsor');
+    const budget = this.getBudget(eventId);
+    const vendors = this.getVendors(eventId);
+    const data = this._getPostEventData(eventId);
+
+    const totalRevenue = (event?.ticket_price || 0) * attending.length;
+    const totalSpent = budget.items ? budget.items.reduce((s, i) => s + (parseFloat(i.actual) || 0), 0) : 0;
+    const sponsorVendors = vendors.filter(v => v.category === 'Sponsorship' || (v.notes || '').toLowerCase().includes('sponsor'));
+
+    return `
+      <div class="row g-3 mb-3">
+        <div class="col-md-3"><div class="card text-center bg-light"><div class="card-body py-2">
+          <h4 class="mb-0">${attending.length}</h4><small class="text-muted">Total Attendees</small>
+        </div></div></div>
+        <div class="col-md-3"><div class="card text-center bg-light"><div class="card-body py-2">
+          <h4 class="mb-0 text-success">\u00A3${totalRevenue.toFixed(0)}</h4><small class="text-muted">Ticket Revenue</small>
+        </div></div></div>
+        <div class="col-md-3"><div class="card text-center bg-light"><div class="card-body py-2">
+          <h4 class="mb-0 text-danger">\u00A3${totalSpent.toFixed(0)}</h4><small class="text-muted">Total Costs</small>
+        </div></div></div>
+        <div class="col-md-3"><div class="card text-center bg-light"><div class="card-body py-2">
+          <h4 class="mb-0 ${totalRevenue - totalSpent >= 0 ? 'text-success' : 'text-danger'}">\u00A3${(totalRevenue - totalSpent).toFixed(0)}</h4><small class="text-muted">Net P&L</small>
+        </div></div></div>
+      </div>
+
+      <div class="row g-3 mb-3">
+        <div class="col-md-6">
+          <div class="card"><div class="card-body py-2">
+            <h6 class="mb-2"><i class="bi bi-people me-2"></i>Audience Demographics</h6>
+            <div class="d-flex gap-3 flex-wrap">
+              <span class="badge bg-warning text-dark">VIPs: ${attendees.filter(a => a.guestType === 'vip').length}</span>
+              <span class="badge bg-success">Sponsors: ${sponsors.length}</span>
+              <span class="badge bg-primary">Speakers: ${attendees.filter(a => a.guestType === 'speaker').length}</span>
+              <span class="badge bg-info">Media: ${attendees.filter(a => a.guestType === 'media').length}</span>
+              <span class="badge bg-secondary">Staff: ${attendees.filter(a => a.guestType === 'staff').length}</span>
+            </div>
+          </div></div>
+        </div>
+        <div class="col-md-6">
+          <div class="card"><div class="card-body py-2">
+            <h6 class="mb-2"><i class="bi bi-clipboard-data me-2"></i>Sponsor Engagement</h6>
+            <div class="row g-2">
+              <div class="col-4">
+                <label class="form-label small mb-0">Social Reach</label>
+                <input type="text" class="form-control form-control-sm" id="sponsorSocialReach" value="${utils.escapeHtml(data.socialReach || '')}" placeholder="e.g., 50K" onchange="eventsModule.savePostEventData()">
+              </div>
+              <div class="col-4">
+                <label class="form-label small mb-0">Press Mentions</label>
+                <input type="number" class="form-control form-control-sm" id="sponsorPressMentions" value="${data.pressMentions || ''}" min="0" onchange="eventsModule.savePostEventData()">
+              </div>
+              <div class="col-4">
+                <label class="form-label small mb-0">Media Value</label>
+                <div class="input-group input-group-sm">
+                  <span class="input-group-text">\u00A3</span>
+                  <input type="number" class="form-control" id="sponsorMediaValue" value="${data.mediaValue || ''}" min="0" onchange="eventsModule.savePostEventData()">
+                </div>
+              </div>
+            </div>
+          </div></div>
+        </div>
+      </div>
+
+      <div class="text-end">
+        <button class="btn btn-sm btn-outline-primary" onclick="eventsModule.exportSponsorReport()"><i class="bi bi-download me-1"></i>Export Sponsor Report CSV</button>
+      </div>`;
+  },
+
+  generateSponsorReport() {
+    const tab = document.querySelector('a[href="#postEventTab"]');
+    if (tab) new bootstrap.Tab(tab).show();
+  },
+
+  exportSponsorReport() {
+    const eventId = document.getElementById('attendeesEventId').value;
+    const event = STATE.allEvents.find(e => e.id === eventId);
+    const attendees = this.getAttendees(eventId);
+    const budget = this.getBudget(eventId);
+    const data = this._getPostEventData(eventId);
+
+    const attending = attendees.filter(a => a.status === 'attending');
+    const totalRevenue = (event?.ticket_price || 0) * attending.length;
+    const totalSpent = budget.items ? budget.items.reduce((s, i) => s + (parseFloat(i.actual) || 0), 0) : 0;
+
+    const rows = [{
+      'Event': event?.event_name || '',
+      'Date': event?.event_date || '',
+      'Venue': event?.venue || '',
+      'Total Attendees': attending.length,
+      'VIPs': attendees.filter(a => a.guestType === 'vip').length,
+      'Sponsors': attendees.filter(a => a.guestType === 'sponsor').length,
+      'Media': attendees.filter(a => a.guestType === 'media').length,
+      'Ticket Revenue': totalRevenue,
+      'Total Costs': totalSpent,
+      'Net P&L': totalRevenue - totalSpent,
+      'Social Reach': data.socialReach || '',
+      'Press Mentions': data.pressMentions || '',
+      'Estimated Media Value': data.mediaValue || '',
+      'Survey Response Rate': data.surveyResponses ? `${Math.round(data.surveyResponses / attending.length * 100)}%` : '',
+      'Average Rating': data.avgRating || ''
+    }];
+
+    utils.exportToCSV(rows, `${event ? event.event_name.replace(/[^a-z0-9]/gi, '_') : 'event'}_sponsor_roi.csv`);
+    utils.showToast('Sponsor report exported', 'success');
+  },
+
+  // ========================================
+  // POST-EVENT: EVENT DEBRIEF
+  // ========================================
+
+  _renderDebrief(eventId) {
+    const data = this._getPostEventData(eventId);
+    const debrief = data.debrief || {};
+
+    return `
+      <div class="row g-3">
+        <div class="col-md-6">
+          <label class="form-label small fw-bold text-success"><i class="bi bi-hand-thumbs-up me-1"></i>What Went Well</label>
+          <textarea class="form-control form-control-sm" id="debriefWentWell" rows="4" placeholder="e.g., Registration process was smooth, entertainment was excellent, catering received great feedback...">${utils.escapeHtml(debrief.wentWell || '')}</textarea>
+        </div>
+        <div class="col-md-6">
+          <label class="form-label small fw-bold text-danger"><i class="bi bi-hand-thumbs-down me-1"></i>What Could Be Improved</label>
+          <textarea class="form-control form-control-sm" id="debriefImprove" rows="4" placeholder="e.g., Audio issues during speeches, check-in queue too long, parking signage unclear...">${utils.escapeHtml(debrief.improve || '')}</textarea>
+        </div>
+        <div class="col-md-6">
+          <label class="form-label small fw-bold text-primary"><i class="bi bi-lightbulb me-1"></i>Ideas for Next Year</label>
+          <textarea class="form-control form-control-sm" id="debriefIdeas" rows="4" placeholder="e.g., Add live streaming, introduce networking app, try a new venue, longer drinks reception...">${utils.escapeHtml(debrief.ideas || '')}</textarea>
+        </div>
+        <div class="col-md-6">
+          <label class="form-label small fw-bold text-warning"><i class="bi bi-exclamation-triangle me-1"></i>Key Decisions / Action Items</label>
+          <textarea class="form-control form-control-sm" id="debriefActions" rows="4" placeholder="e.g., Book same venue for next year by March, hire additional AV crew, increase catering budget by 15%...">${utils.escapeHtml(debrief.actions || '')}</textarea>
+        </div>
+        <div class="col-12">
+          <label class="form-label small fw-bold"><i class="bi bi-chat-dots me-1"></i>Additional Notes</label>
+          <textarea class="form-control form-control-sm" id="debriefNotes" rows="3" placeholder="Any other observations, feedback from team members, or notes for the record...">${utils.escapeHtml(debrief.notes || '')}</textarea>
+        </div>
+        <div class="col-12 text-end">
+          <button class="btn btn-sm btn-outline-secondary me-2" onclick="eventsModule.exportDebrief()"><i class="bi bi-download me-1"></i>Export Debrief</button>
+          <button class="btn btn-sm btn-primary" onclick="eventsModule.saveDebrief()"><i class="bi bi-save me-1"></i>Save Debrief</button>
+        </div>
+      </div>`;
+  },
+
+  saveDebrief() {
+    const eventId = document.getElementById('attendeesEventId').value;
+    const data = this._getPostEventData(eventId);
+    data.debrief = {
+      wentWell: document.getElementById('debriefWentWell')?.value || '',
+      improve: document.getElementById('debriefImprove')?.value || '',
+      ideas: document.getElementById('debriefIdeas')?.value || '',
+      actions: document.getElementById('debriefActions')?.value || '',
+      notes: document.getElementById('debriefNotes')?.value || ''
+    };
+
+    // Also save sponsor engagement fields if they exist
+    data.socialReach = document.getElementById('sponsorSocialReach')?.value || data.socialReach || '';
+    data.pressMentions = parseInt(document.getElementById('sponsorPressMentions')?.value) || data.pressMentions || 0;
+    data.mediaValue = parseFloat(document.getElementById('sponsorMediaValue')?.value) || data.mediaValue || 0;
+    data.avgRating = parseFloat(document.getElementById('surveyAvgRating')?.value) || data.avgRating || '';
+
+    this._savePostEventDataStore(eventId, data);
+    utils.showToast('Debrief saved', 'success');
+  },
+
+  exportDebrief() {
+    const eventId = document.getElementById('attendeesEventId').value;
+    const event = STATE.allEvents.find(e => e.id === eventId);
+    const data = this._getPostEventData(eventId);
+    const debrief = data.debrief || {};
+
+    let text = `EVENT DEBRIEF\n${'='.repeat(50)}\n\n`;
+    text += `Event: ${event?.event_name || ''}\n`;
+    text += `Date: ${event?.event_date || ''}\n`;
+    text += `Venue: ${event?.venue || ''}\n\n`;
+    text += `WHAT WENT WELL\n${'-'.repeat(30)}\n${debrief.wentWell || 'N/A'}\n\n`;
+    text += `WHAT COULD BE IMPROVED\n${'-'.repeat(30)}\n${debrief.improve || 'N/A'}\n\n`;
+    text += `IDEAS FOR NEXT YEAR\n${'-'.repeat(30)}\n${debrief.ideas || 'N/A'}\n\n`;
+    text += `KEY DECISIONS / ACTION ITEMS\n${'-'.repeat(30)}\n${debrief.actions || 'N/A'}\n\n`;
+    text += `ADDITIONAL NOTES\n${'-'.repeat(30)}\n${debrief.notes || 'N/A'}\n`;
+
+    const blob = new Blob([text], { type: 'text/plain' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `${event ? event.event_name.replace(/[^a-z0-9]/gi, '_') : 'event'}_debrief.txt`;
+    a.click();
+    utils.showToast('Debrief exported', 'success');
+  },
+
+  // ========================================
+  // POST-EVENT: FULL EXPORT PACK
+  // ========================================
+
+  async exportPostEventPack() {
+    const eventId = document.getElementById('attendeesEventId').value;
+    utils.showToast('Generating exports... check your downloads', 'info');
+
+    // Export attendance report
+    this.generateAttendanceReport();
+    // Export budget
+    setTimeout(() => this.exportBudget(), 300);
+    // Export vendors
+    setTimeout(() => this.exportVendors(), 600);
+    // Export debrief
+    setTimeout(() => this.exportDebrief(), 900);
+    // Export sponsor report
+    setTimeout(() => this.exportSponsorReport(), 1200);
   },
 
   // ========================================

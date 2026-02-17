@@ -634,6 +634,10 @@ const eventsModule = {
     this.renderAttendees(eventId);
     this.renderCheckInTab(eventId);
     this.renderTicketsTab(eventId);
+    this.renderWaitlistTab(eventId);
+    this.renderBudgetTab(eventId);
+    this.renderVendorsTab(eventId);
+    this.renderSpecialReqsTab(eventId);
 
     const modal = new bootstrap.Modal(document.getElementById('attendeesModal'));
     modal.show();
@@ -729,6 +733,9 @@ const eventsModule = {
         <td><small class="text-muted">${a.notes ? utils.escapeHtml(a.notes) : '-'}</small></td>
         <td class="text-center">
           <div class="btn-group btn-group-sm">
+            ${a.email ? `<button class="btn btn-outline-info btn-sm"
+              onclick="eventsModule.sendInviteEmail('${a.id}')"
+              title="Send invite"><i class="bi bi-envelope"></i></button>` : ''}
             <button class="btn btn-outline-primary btn-sm"
               onclick="eventsModule.updateAttendeeStatus('${a.id}', '${a.status === 'attending' ? 'not_attending' : 'attending'}')"
               title="Toggle RSVP"><i class="bi bi-arrow-repeat"></i></button>
@@ -1122,6 +1129,1095 @@ const eventsModule = {
 
     const filename = `${eventName.replace(/[^a-z0-9]/gi, '_')}_attendees_${new Date().toISOString().split('T')[0]}.csv`;
     utils.exportToCSV(exportData, filename);
+  },
+
+  // ========================================
+  // RSVP INVITATION EMAILS
+  // ========================================
+
+  async sendInviteEmail(attendeeId) {
+    const eventId = document.getElementById('attendeesEventId').value;
+    const attendees = this.getAttendees(eventId);
+    const attendee = attendees.find(a => a.id === attendeeId);
+    const event = STATE.allEvents.find(e => e.id === eventId);
+    if (!attendee || !event) return;
+    if (!attendee.email) {
+      utils.showToast('No email address for this attendee', 'warning');
+      return;
+    }
+
+    const regLink = `${this._getBaseUrl()}/register.html?event=${eventId}`;
+
+    // Build email content preview
+    const subject = `You're Invited: ${event.event_name}`;
+    const body = `Dear ${attendee.name},\n\nYou are cordially invited to ${event.event_name}.\n\n` +
+      `Date: ${event.event_date ? new Date(event.event_date).toLocaleDateString('en-GB', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }) : 'TBC'}\n` +
+      `Venue: ${event.venue || 'TBC'}\n\n` +
+      `Please confirm your attendance by registering here:\n${regLink}\n\n` +
+      `We look forward to seeing you there.\n\nBest regards,\nBritish Trade Awards`;
+
+    // Open compose modal
+    this._showEmailPreview(subject, body, [attendee.email], eventId);
+  },
+
+  async sendBulkInvites() {
+    const eventId = document.getElementById('attendeesEventId').value;
+    const event = STATE.allEvents.find(e => e.id === eventId);
+    if (!event) return;
+
+    const attendees = this.getAttendees(eventId);
+    const uninvited = attendees.filter(a => a.email && !a._inviteSent);
+    if (uninvited.length === 0) {
+      utils.showToast('No attendees with email addresses to invite', 'warning');
+      return;
+    }
+
+    const regLink = `${this._getBaseUrl()}/register.html?event=${eventId}`;
+    const subject = `You're Invited: ${event.event_name}`;
+    const body = `Dear Guest,\n\nYou are cordially invited to ${event.event_name}.\n\n` +
+      `Date: ${event.event_date ? new Date(event.event_date).toLocaleDateString('en-GB', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }) : 'TBC'}\n` +
+      `Venue: ${event.venue || 'TBC'}\n\n` +
+      `Please confirm your attendance by registering here:\n${regLink}\n\n` +
+      `We look forward to seeing you there.\n\nBest regards,\nBritish Trade Awards`;
+
+    const emails = uninvited.map(a => a.email);
+    this._showEmailPreview(subject, body, emails, eventId);
+  },
+
+  _showEmailPreview(subject, body, recipients, eventId) {
+    const recipientStr = recipients.length > 3 ? `${recipients.slice(0, 3).join(', ')} + ${recipients.length - 3} more` : recipients.join(', ');
+    const html = `
+      <div class="modal fade" id="emailPreviewModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+          <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+              <h5 class="modal-title"><i class="bi bi-envelope me-2"></i>Send Invitation Email</h5>
+              <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+              <div class="mb-3">
+                <label class="form-label fw-bold">To:</label>
+                <div class="form-control bg-light" style="min-height:38px;">${utils.escapeHtml(recipientStr)}</div>
+                <small class="text-muted">${recipients.length} recipient${recipients.length > 1 ? 's' : ''}</small>
+              </div>
+              <div class="mb-3">
+                <label class="form-label fw-bold">Subject:</label>
+                <input type="text" class="form-control" id="emailSubjectInput" value="${utils.escapeHtml(subject)}">
+              </div>
+              <div class="mb-3">
+                <label class="form-label fw-bold">Message:</label>
+                <textarea class="form-control" id="emailBodyInput" rows="12">${utils.escapeHtml(body)}</textarea>
+              </div>
+              <div class="alert alert-info mb-0">
+                <i class="bi bi-info-circle me-2"></i>
+                <strong>Send via:</strong> This will open your default email client with the composed message.
+                For bulk sends, use the <code>mailto:</code> link or copy content for your email marketing tool.
+              </div>
+            </div>
+            <div class="modal-footer">
+              <button class="btn btn-outline-secondary" onclick="eventsModule._copyEmailContent()"><i class="bi bi-clipboard me-1"></i>Copy Content</button>
+              <button class="btn btn-outline-primary" onclick="eventsModule._downloadMailMerge('${eventId}')"><i class="bi bi-download me-1"></i>Download CSV for Mail Merge</button>
+              <button class="btn btn-primary" onclick="eventsModule._openMailto()"><i class="bi bi-send me-1"></i>Open in Email Client</button>
+            </div>
+          </div>
+        </div>
+      </div>`;
+
+    // Remove old modal if exists
+    const old = document.getElementById('emailPreviewModal');
+    if (old) old.remove();
+    document.body.insertAdjacentHTML('beforeend', html);
+    this._emailRecipients = recipients;
+    const modal = new bootstrap.Modal(document.getElementById('emailPreviewModal'));
+    modal.show();
+  },
+
+  _emailRecipients: [],
+
+  _openMailto() {
+    const subject = encodeURIComponent(document.getElementById('emailSubjectInput').value);
+    const body = encodeURIComponent(document.getElementById('emailBodyInput').value);
+    const emails = this._emailRecipients.join(',');
+    window.open(`mailto:${emails}?subject=${subject}&body=${body}`, '_self');
+    utils.showToast('Email client opened', 'success');
+  },
+
+  _copyEmailContent() {
+    const subject = document.getElementById('emailSubjectInput').value;
+    const body = document.getElementById('emailBodyInput').value;
+    navigator.clipboard.writeText(`Subject: ${subject}\n\n${body}`);
+    utils.showToast('Email content copied to clipboard', 'success');
+  },
+
+  _downloadMailMerge(eventId) {
+    const attendees = this.getAttendees(eventId);
+    const event = STATE.allEvents.find(e => e.id === eventId);
+    const regLink = `${this._getBaseUrl()}/register.html?event=${eventId}`;
+    const rows = attendees.filter(a => a.email).map(a => ({
+      'Name': a.name,
+      'Email': a.email,
+      'Type': a.guestType || 'guest',
+      'Event': event ? event.event_name : '',
+      'Date': event ? event.event_date : '',
+      'Venue': event ? event.venue : '',
+      'Registration Link': regLink
+    }));
+    utils.exportToCSV(rows, `mail_merge_${event ? event.event_name.replace(/[^a-z0-9]/gi, '_') : 'event'}.csv`);
+    utils.showToast('Mail merge CSV downloaded', 'success');
+  },
+
+  // ========================================
+  // WAITLIST MANAGEMENT
+  // ========================================
+
+  _waitlistKey(eventId) {
+    return `bta_waitlist_${eventId}`;
+  },
+
+  getWaitlist(eventId) {
+    const stored = localStorage.getItem(this._waitlistKey(eventId));
+    return stored ? JSON.parse(stored) : [];
+  },
+
+  _saveWaitlist(eventId, waitlist) {
+    localStorage.setItem(this._waitlistKey(eventId), JSON.stringify(waitlist));
+  },
+
+  addToWaitlist() {
+    const eventId = document.getElementById('attendeesEventId').value;
+    const name = prompt('Guest name:');
+    if (!name || !name.trim()) return;
+    const email = prompt('Email address:');
+    const phone = prompt('Phone number (optional):');
+
+    const waitlist = this.getWaitlist(eventId);
+    waitlist.push({
+      id: 'wl_' + Date.now(),
+      name: name.trim(),
+      email: (email || '').trim(),
+      phone: (phone || '').trim(),
+      addedAt: new Date().toISOString(),
+      notified: false,
+      promoted: false
+    });
+    this._saveWaitlist(eventId, waitlist);
+    this.renderWaitlistTab(eventId);
+    utils.showToast(`${name.trim()} added to waitlist`, 'success');
+  },
+
+  removeFromWaitlist(wlId) {
+    const eventId = document.getElementById('attendeesEventId').value;
+    if (!confirm('Remove from waitlist?')) return;
+    let waitlist = this.getWaitlist(eventId);
+    waitlist = waitlist.filter(w => w.id !== wlId);
+    this._saveWaitlist(eventId, waitlist);
+    this.renderWaitlistTab(eventId);
+    utils.showToast('Removed from waitlist', 'success');
+  },
+
+  promoteFromWaitlist(wlId) {
+    const eventId = document.getElementById('attendeesEventId').value;
+    const waitlist = this.getWaitlist(eventId);
+    const person = waitlist.find(w => w.id === wlId);
+    if (!person) return;
+
+    // Add as attendee
+    const attendees = this.getAttendees(eventId);
+    attendees.push({
+      id: Date.now().toString(),
+      name: person.name,
+      email: person.email,
+      status: 'attending',
+      guestType: 'guest',
+      plusOnes: 0,
+      dietary: '',
+      notes: `Promoted from waitlist on ${new Date().toLocaleDateString()}`,
+      checkedIn: false,
+      checkInTime: null,
+      addedAt: new Date().toISOString()
+    });
+    localStorage.setItem(`bta_attendees_${eventId}`, JSON.stringify(attendees));
+
+    // Mark promoted on waitlist
+    person.promoted = true;
+    person.promotedAt = new Date().toISOString();
+    this._saveWaitlist(eventId, waitlist);
+
+    this.renderWaitlistTab(eventId);
+    this.renderAttendees(eventId);
+    utils.showToast(`${person.name} promoted to attendee list`, 'success');
+  },
+
+  renderWaitlistTab(eventId) {
+    const container = document.getElementById('waitlistTableBody');
+    if (!container) return;
+    const waitlist = this.getWaitlist(eventId);
+    const countEl = document.getElementById('waitlistCount');
+    if (countEl) countEl.textContent = waitlist.filter(w => !w.promoted).length;
+
+    if (waitlist.length === 0) {
+      container.innerHTML = '<tr><td colspan="6" class="text-center text-muted py-3">No one on the waitlist</td></tr>';
+      return;
+    }
+
+    container.innerHTML = waitlist.map(w => `
+      <tr class="${w.promoted ? 'table-success' : ''}">
+        <td><strong>${utils.escapeHtml(w.name)}</strong></td>
+        <td>${utils.escapeHtml(w.email || '-')}</td>
+        <td>${utils.escapeHtml(w.phone || '-')}</td>
+        <td>${new Date(w.addedAt).toLocaleDateString()}</td>
+        <td>${w.promoted ? '<span class="badge bg-success">Promoted</span>' : '<span class="badge bg-warning">Waiting</span>'}</td>
+        <td class="text-center">
+          ${w.promoted ? '' : `
+            <button class="btn btn-sm btn-success me-1" onclick="eventsModule.promoteFromWaitlist('${w.id}')" title="Promote to attendee">
+              <i class="bi bi-person-plus"></i>
+            </button>`}
+          <button class="btn btn-sm btn-outline-danger" onclick="eventsModule.removeFromWaitlist('${w.id}')" title="Remove">
+            <i class="bi bi-trash"></i>
+          </button>
+        </td>
+      </tr>`).join('');
+  },
+
+  // ========================================
+  // NAME BADGES & PLACE CARDS (PDF)
+  // ========================================
+
+  generateNameBadges() {
+    const eventId = document.getElementById('attendeesEventId').value;
+    const event = STATE.allEvents.find(e => e.id === eventId);
+    const attendees = this.getAttendees(eventId).filter(a => a.status === 'attending');
+
+    if (attendees.length === 0) {
+      utils.showToast('No attending guests to generate badges for', 'warning');
+      return;
+    }
+
+    if (typeof jspdf === 'undefined' && typeof window.jspdf === 'undefined') {
+      utils.showToast('Loading PDF library...', 'info');
+      const script = document.createElement('script');
+      script.src = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.2/jspdf.umd.min.js';
+      script.onload = () => this._buildBadgesPDF(event, attendees);
+      document.head.appendChild(script);
+      return;
+    }
+    this._buildBadgesPDF(event, attendees);
+  },
+
+  _buildBadgesPDF(event, attendees) {
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF('p', 'mm', 'a4');
+
+    // Badge layout: 2 columns × 4 rows per page = 8 badges per page
+    const badgeW = 90, badgeH = 60;
+    const marginX = 15, marginY = 15;
+    const gapX = 5, gapY = 8;
+    const cols = 2, rows = 4;
+    const badgesPerPage = cols * rows;
+
+    attendees.forEach((att, idx) => {
+      if (idx > 0 && idx % badgesPerPage === 0) doc.addPage();
+      const pageIdx = idx % badgesPerPage;
+      const col = pageIdx % cols;
+      const row = Math.floor(pageIdx / cols);
+      const x = marginX + col * (badgeW + gapX);
+      const y = marginY + row * (badgeH + gapY);
+
+      // Badge border
+      doc.setDrawColor(200);
+      doc.setLineWidth(0.5);
+      doc.roundedRect(x, y, badgeW, badgeH, 3, 3);
+
+      // Event name (top)
+      doc.setFontSize(8);
+      doc.setTextColor(100);
+      doc.text(event ? event.event_name : 'Event', x + badgeW / 2, y + 8, { align: 'center' });
+
+      // Guest name (center, large)
+      doc.setFontSize(16);
+      doc.setTextColor(30);
+      doc.setFont(undefined, 'bold');
+      doc.text(att.name, x + badgeW / 2, y + 28, { align: 'center', maxWidth: badgeW - 10 });
+
+      // Guest type badge
+      doc.setFont(undefined, 'normal');
+      doc.setFontSize(10);
+      const typeStr = (att.guestType || 'guest').toUpperCase();
+      const typeColors = { VIP: [220, 53, 69], SPEAKER: [13, 110, 253], SPONSOR: [25, 135, 84], MEDIA: [111, 66, 193], STAFF: [108, 117, 125], GUEST: [13, 202, 240] };
+      const tc = typeColors[typeStr] || typeColors.GUEST;
+      doc.setTextColor(tc[0], tc[1], tc[2]);
+      doc.text(typeStr, x + badgeW / 2, y + 38, { align: 'center' });
+
+      // Company/org (if in notes or dietary)
+      doc.setFontSize(8);
+      doc.setTextColor(120);
+      if (att.notes) {
+        doc.text(att.notes.substring(0, 40), x + badgeW / 2, y + 46, { align: 'center' });
+      }
+
+      // Dietary flag
+      if (att.dietary) {
+        doc.setFontSize(7);
+        doc.setTextColor(220, 53, 69);
+        doc.text(`Dietary: ${att.dietary}`, x + badgeW / 2, y + 53, { align: 'center', maxWidth: badgeW - 10 });
+      }
+    });
+
+    doc.save(`${event ? event.event_name.replace(/[^a-z0-9]/gi, '_') : 'event'}_name_badges.pdf`);
+    utils.showToast(`Generated ${attendees.length} name badges`, 'success');
+  },
+
+  generatePlaceCards() {
+    const eventId = document.getElementById('attendeesEventId').value;
+    const event = STATE.allEvents.find(e => e.id === eventId);
+    const attendees = this.getAttendees(eventId).filter(a => a.status === 'attending');
+
+    if (attendees.length === 0) {
+      utils.showToast('No attending guests to generate place cards for', 'warning');
+      return;
+    }
+
+    if (typeof jspdf === 'undefined' && typeof window.jspdf === 'undefined') {
+      const script = document.createElement('script');
+      script.src = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.2/jspdf.umd.min.js';
+      script.onload = () => this._buildPlaceCardsPDF(event, attendees);
+      document.head.appendChild(script);
+      return;
+    }
+    this._buildPlaceCardsPDF(event, attendees);
+  },
+
+  _buildPlaceCardsPDF(event, attendees) {
+    const { jsPDF } = window.jspdf;
+    // Landscape A4 folded = place card. 2 per row, 3 per page = 6 per page
+    const doc = new jsPDF('l', 'mm', 'a4');
+    const cardW = 130, cardH = 80;
+    const marginX = 15, marginY = 12;
+    const gapX = 7, gapY = 7;
+    const cols = 2, rows = 2;
+    const perPage = cols * rows;
+
+    attendees.forEach((att, idx) => {
+      if (idx > 0 && idx % perPage === 0) doc.addPage();
+      const pageIdx = idx % perPage;
+      const col = pageIdx % cols;
+      const row = Math.floor(pageIdx / cols);
+      const x = marginX + col * (cardW + gapX);
+      const y = marginY + row * (cardH + gapY);
+
+      // Card outline with fold line
+      doc.setDrawColor(180);
+      doc.setLineWidth(0.3);
+      doc.rect(x, y, cardW, cardH);
+      doc.setLineDashPattern([2, 2], 0);
+      doc.line(x, y + cardH / 2, x + cardW, y + cardH / 2);
+      doc.setLineDashPattern([], 0);
+
+      // Top half (visible when folded - guest facing)
+      doc.setFontSize(18);
+      doc.setTextColor(30);
+      doc.setFont(undefined, 'bold');
+      doc.text(att.name, x + cardW / 2, y + 20, { align: 'center', maxWidth: cardW - 16 });
+
+      doc.setFont(undefined, 'normal');
+      doc.setFontSize(9);
+      doc.setTextColor(100);
+      if (att.notes) doc.text(att.notes.substring(0, 50), x + cardW / 2, y + 28, { align: 'center' });
+
+      // Dietary icon
+      if (att.dietary) {
+        doc.setFontSize(8);
+        doc.setTextColor(220, 53, 69);
+        doc.text(`[${att.dietary}]`, x + cardW / 2, y + 35, { align: 'center' });
+      }
+
+      // Bottom half (back - event info for staff)
+      doc.setFontSize(10);
+      doc.setTextColor(80);
+      doc.text(att.name, x + cardW / 2, y + cardH / 2 + 12, { align: 'center' });
+      doc.setFontSize(7);
+      doc.setTextColor(140);
+      const typeStr = (att.guestType || 'guest').toUpperCase();
+      doc.text(`${typeStr} | ${event ? event.event_name : ''}`, x + cardW / 2, y + cardH / 2 + 18, { align: 'center' });
+      if (att.dietary) {
+        doc.text(`Dietary: ${att.dietary}`, x + cardW / 2, y + cardH / 2 + 24, { align: 'center' });
+      }
+    });
+
+    doc.save(`${event ? event.event_name.replace(/[^a-z0-9]/gi, '_') : 'event'}_place_cards.pdf`);
+    utils.showToast(`Generated ${attendees.length} place cards`, 'success');
+  },
+
+  // ========================================
+  // SHAREABLE SEATING CHART
+  // ========================================
+
+  openShareableSeatingChart() {
+    const eventId = document.getElementById('attendeesEventId')?.value ||
+      this.currentEventIdRunningOrder;
+    if (!eventId) {
+      utils.showToast('No event selected', 'warning');
+      return;
+    }
+
+    const event = STATE.allEvents.find(e => e.id === eventId);
+    if (!event) return;
+
+    // Build a standalone HTML window with the seating chart
+    const win = window.open('', '_blank', 'width=1200,height=800');
+    if (!win) {
+      utils.showToast('Please allow popups to view the seating chart', 'warning');
+      return;
+    }
+
+    this._buildSeatingChartPage(win, event, eventId);
+  },
+
+  async _buildSeatingChartPage(win, event, eventId) {
+    try {
+      const { data: tables } = await STATE.client
+        .from('event_tables')
+        .select('*')
+        .eq('event_id', eventId)
+        .eq('is_active', true)
+        .order('table_number');
+
+      const { data: assignments } = await STATE.client
+        .from('table_assignments')
+        .select('*')
+        .eq('event_id', eventId);
+
+      const tableList = tables || [];
+      const assignList = assignments || [];
+
+      const tableCards = tableList.map(t => {
+        const seated = assignList.filter(a => a.table_id === t.id);
+        const pct = t.total_seats > 0 ? Math.round(seated.length / t.total_seats * 100) : 0;
+        const guestListHtml = seated.map(s =>
+          `<div style="padding:3px 0;border-bottom:1px solid #eee;font-size:0.85rem;">
+            ${s.guest_name || 'Guest'}${s.company_name ? ` <span style="color:#6c757d;">- ${s.company_name}</span>` : ''}
+            ${s.is_vip ? ' <span style="background:#dc3545;color:white;padding:1px 6px;border-radius:3px;font-size:0.7rem;">VIP</span>' : ''}
+            ${s.dietary_requirements ? ` <span style="color:#fd7e14;font-size:0.75rem;">[${s.dietary_requirements}]</span>` : ''}
+          </div>`
+        ).join('');
+
+        return `<div style="background:white;border-radius:12px;padding:20px;box-shadow:0 2px 12px rgba(0,0,0,0.08);break-inside:avoid;">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+            <h3 style="margin:0;font-size:1.1rem;">${t.table_name || 'Table ' + t.table_number}</h3>
+            <span style="background:${pct >= 100 ? '#dc3545' : pct >= 75 ? '#fd7e14' : '#198754'};color:white;padding:2px 10px;border-radius:12px;font-size:0.8rem;">
+              ${seated.length}/${t.total_seats} (${pct}%)
+            </span>
+          </div>
+          <div>${guestListHtml || '<div style="color:#6c757d;font-style:italic;">No guests assigned</div>'}</div>
+        </div>`;
+      }).join('');
+
+      const totalSeated = assignList.length;
+      const totalSeats = tableList.reduce((s, t) => s + t.total_seats, 0);
+
+      win.document.write(`<!DOCTYPE html><html><head><title>Seating Chart - ${event.event_name}</title>
+        <style>
+          body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; margin: 0; background: #f0f2f5; }
+          .header { background: linear-gradient(135deg, #1a1a2e, #16213e); color: white; padding: 30px; text-align: center; }
+          .header h1 { margin: 0; font-weight: 800; }
+          .header p { margin: 5px 0 0; opacity: 0.7; }
+          .stats { display: flex; justify-content: center; gap: 30px; padding: 20px; background: white; border-bottom: 1px solid #eee; }
+          .stat { text-align: center; }
+          .stat-val { font-size: 1.5rem; font-weight: 700; }
+          .grid { columns: 3; column-gap: 20px; padding: 20px; max-width: 1200px; margin: 0 auto; }
+          .grid > div { margin-bottom: 20px; }
+          @media print { .no-print { display: none; } body { background: white; } .header { background: #1a1a2e !important; -webkit-print-color-adjust: exact; } }
+          @media (max-width: 768px) { .grid { columns: 1; } }
+        </style></head><body>
+        <div class="header">
+          <h1>${event.event_name}</h1>
+          <p>${event.event_date ? new Date(event.event_date).toLocaleDateString('en-GB', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }) : ''} ${event.venue ? '| ' + event.venue : ''}</p>
+        </div>
+        <div class="stats">
+          <div class="stat"><div class="stat-val">${tableList.length}</div><div>Tables</div></div>
+          <div class="stat"><div class="stat-val">${totalSeated}</div><div>Seated</div></div>
+          <div class="stat"><div class="stat-val">${totalSeats}</div><div>Total Seats</div></div>
+          <div class="stat"><div class="stat-val">${totalSeats > 0 ? Math.round(totalSeated / totalSeats * 100) : 0}%</div><div>Occupancy</div></div>
+        </div>
+        <div style="text-align:center;padding:12px;" class="no-print">
+          <button onclick="window.print()" style="padding:8px 24px;background:#0d6efd;color:white;border:none;border-radius:6px;cursor:pointer;font-size:0.9rem;">Print Seating Chart</button>
+        </div>
+        <div class="grid">${tableCards}</div>
+        <div style="text-align:center;padding:20px;color:#adb5bd;font-size:0.8rem;">Generated ${new Date().toLocaleString()} | British Trade Awards</div>
+      </body></html>`);
+      win.document.close();
+    } catch (err) {
+      console.error('Error building seating chart:', err);
+      win.document.write('<h2>Error loading seating chart</h2>');
+      win.document.close();
+    }
+  },
+
+  // ========================================
+  // BUDGET TRACKING
+  // ========================================
+
+  _budgetKey(eventId) {
+    return `bta_budget_${eventId}`;
+  },
+
+  getBudget(eventId) {
+    const stored = localStorage.getItem(this._budgetKey(eventId));
+    return stored ? JSON.parse(stored) : { totalBudget: 0, items: [] };
+  },
+
+  _saveBudget(eventId, budget) {
+    localStorage.setItem(this._budgetKey(eventId), JSON.stringify(budget));
+  },
+
+  renderBudgetTab(eventId) {
+    const container = document.getElementById('budgetTableBody');
+    if (!container) return;
+    const budget = this.getBudget(eventId);
+    const items = budget.items || [];
+
+    const totalBudgetEl = document.getElementById('budgetTotalInput');
+    if (totalBudgetEl) totalBudgetEl.value = budget.totalBudget || '';
+
+    const totalSpent = items.reduce((s, i) => s + (parseFloat(i.actual) || 0), 0);
+    const totalEstimated = items.reduce((s, i) => s + (parseFloat(i.estimated) || 0), 0);
+    const totalBudget = parseFloat(budget.totalBudget) || 0;
+    const remaining = totalBudget - totalSpent;
+
+    const spentEl = document.getElementById('budgetSpentDisplay');
+    const estEl = document.getElementById('budgetEstimatedDisplay');
+    const remEl = document.getElementById('budgetRemainingDisplay');
+    if (spentEl) spentEl.textContent = `\u00A3${totalSpent.toFixed(2)}`;
+    if (estEl) estEl.textContent = `\u00A3${totalEstimated.toFixed(2)}`;
+    if (remEl) {
+      remEl.textContent = totalBudget > 0 ? `\u00A3${remaining.toFixed(2)}` : '-';
+      remEl.className = remaining < 0 ? 'mb-0 text-danger fw-bold' : 'mb-0 text-success fw-bold';
+    }
+
+    // Progress bar
+    const bar = document.getElementById('budgetProgressBar');
+    if (bar && totalBudget > 0) {
+      const pct = Math.min(100, Math.round(totalSpent / totalBudget * 100));
+      bar.style.width = pct + '%';
+      bar.textContent = pct + '%';
+      bar.className = `progress-bar ${pct >= 100 ? 'bg-danger' : pct >= 80 ? 'bg-warning' : 'bg-success'}`;
+    }
+
+    const categories = ['Venue', 'Catering', 'AV/Production', 'Entertainment', 'Trophies/Awards', 'Print/Stationery', 'Transport', 'Staffing', 'Marketing', 'Gifts/Swag', 'Other'];
+
+    if (items.length === 0) {
+      container.innerHTML = '<tr><td colspan="7" class="text-center text-muted py-3">No budget items. Click "Add Item" to start tracking.</td></tr>';
+      return;
+    }
+
+    container.innerHTML = items.map((item, idx) => {
+      const diff = (parseFloat(item.actual) || 0) - (parseFloat(item.estimated) || 0);
+      const diffClass = diff > 0 ? 'text-danger' : diff < 0 ? 'text-success' : '';
+      return `<tr>
+        <td><strong>${utils.escapeHtml(item.name)}</strong></td>
+        <td><span class="badge bg-secondary">${utils.escapeHtml(item.category || 'Other')}</span></td>
+        <td>\u00A3${parseFloat(item.estimated || 0).toFixed(2)}</td>
+        <td>\u00A3${parseFloat(item.actual || 0).toFixed(2)}</td>
+        <td class="${diffClass}">${diff !== 0 ? (diff > 0 ? '+' : '') + '\u00A3' + diff.toFixed(2) : '-'}</td>
+        <td>${utils.escapeHtml(item.status || 'Pending')}</td>
+        <td class="text-center">
+          <button class="btn btn-sm btn-outline-primary me-1" onclick="eventsModule.editBudgetItem(${idx})" title="Edit"><i class="bi bi-pencil"></i></button>
+          <button class="btn btn-sm btn-outline-danger" onclick="eventsModule.deleteBudgetItem(${idx})" title="Delete"><i class="bi bi-trash"></i></button>
+        </td>
+      </tr>`;
+    }).join('');
+  },
+
+  saveBudgetTotal() {
+    const eventId = document.getElementById('attendeesEventId').value;
+    const budget = this.getBudget(eventId);
+    budget.totalBudget = parseFloat(document.getElementById('budgetTotalInput').value) || 0;
+    this._saveBudget(eventId, budget);
+    this.renderBudgetTab(eventId);
+    utils.showToast('Budget total saved', 'success');
+  },
+
+  addBudgetItem() {
+    const eventId = document.getElementById('attendeesEventId').value;
+    const categories = ['Venue', 'Catering', 'AV/Production', 'Entertainment', 'Trophies/Awards', 'Print/Stationery', 'Transport', 'Staffing', 'Marketing', 'Gifts/Swag', 'Other'];
+    const html = `
+      <div class="modal fade" id="budgetItemModal" tabindex="-1">
+        <div class="modal-dialog">
+          <div class="modal-content">
+            <div class="modal-header"><h5 class="modal-title"><i class="bi bi-plus-circle me-2"></i>Add Budget Item</h5>
+              <button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+            <div class="modal-body">
+              <div class="mb-3"><label class="form-label">Item Name *</label><input type="text" class="form-control" id="budgetItemName" placeholder="e.g., Venue hire"></div>
+              <div class="mb-3"><label class="form-label">Category</label><select class="form-select" id="budgetItemCategory">
+                ${categories.map(c => `<option value="${c}">${c}</option>`).join('')}</select></div>
+              <div class="row g-3 mb-3">
+                <div class="col-6"><label class="form-label">Estimated Cost</label><div class="input-group"><span class="input-group-text">\u00A3</span>
+                  <input type="number" class="form-control" id="budgetItemEstimated" step="0.01" min="0" placeholder="0.00"></div></div>
+                <div class="col-6"><label class="form-label">Actual Cost</label><div class="input-group"><span class="input-group-text">\u00A3</span>
+                  <input type="number" class="form-control" id="budgetItemActual" step="0.01" min="0" placeholder="0.00"></div></div>
+              </div>
+              <div class="mb-3"><label class="form-label">Status</label><select class="form-select" id="budgetItemStatus">
+                <option>Pending</option><option>Quoted</option><option>Booked</option><option>Paid</option><option>Cancelled</option></select></div>
+              <div class="mb-3"><label class="form-label">Notes</label><input type="text" class="form-control" id="budgetItemNotes" placeholder="Optional notes"></div>
+            </div>
+            <div class="modal-footer">
+              <button class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+              <button class="btn btn-primary" onclick="eventsModule._saveBudgetItem()"><i class="bi bi-save me-1"></i>Save</button>
+            </div>
+          </div>
+        </div>
+      </div>`;
+    const old = document.getElementById('budgetItemModal');
+    if (old) old.remove();
+    document.body.insertAdjacentHTML('beforeend', html);
+    this._editBudgetIdx = null;
+    const modal = new bootstrap.Modal(document.getElementById('budgetItemModal'));
+    modal.show();
+  },
+
+  _editBudgetIdx: null,
+
+  editBudgetItem(idx) {
+    const eventId = document.getElementById('attendeesEventId').value;
+    const budget = this.getBudget(eventId);
+    const item = budget.items[idx];
+    if (!item) return;
+
+    this.addBudgetItem();
+    // Populate fields after modal is shown
+    setTimeout(() => {
+      document.getElementById('budgetItemName').value = item.name || '';
+      document.getElementById('budgetItemCategory').value = item.category || 'Other';
+      document.getElementById('budgetItemEstimated').value = item.estimated || '';
+      document.getElementById('budgetItemActual').value = item.actual || '';
+      document.getElementById('budgetItemStatus').value = item.status || 'Pending';
+      document.getElementById('budgetItemNotes').value = item.notes || '';
+      this._editBudgetIdx = idx;
+    }, 200);
+  },
+
+  _saveBudgetItem() {
+    const eventId = document.getElementById('attendeesEventId').value;
+    const name = document.getElementById('budgetItemName').value.trim();
+    if (!name) { utils.showToast('Please enter an item name', 'warning'); return; }
+
+    const budget = this.getBudget(eventId);
+    const item = {
+      name,
+      category: document.getElementById('budgetItemCategory').value,
+      estimated: parseFloat(document.getElementById('budgetItemEstimated').value) || 0,
+      actual: parseFloat(document.getElementById('budgetItemActual').value) || 0,
+      status: document.getElementById('budgetItemStatus').value,
+      notes: document.getElementById('budgetItemNotes').value.trim()
+    };
+
+    if (this._editBudgetIdx !== null) {
+      budget.items[this._editBudgetIdx] = item;
+    } else {
+      budget.items.push(item);
+    }
+    this._saveBudget(eventId, budget);
+    bootstrap.Modal.getInstance(document.getElementById('budgetItemModal')).hide();
+    this.renderBudgetTab(eventId);
+    utils.showToast(this._editBudgetIdx !== null ? 'Budget item updated' : 'Budget item added', 'success');
+    this._editBudgetIdx = null;
+  },
+
+  deleteBudgetItem(idx) {
+    if (!confirm('Delete this budget item?')) return;
+    const eventId = document.getElementById('attendeesEventId').value;
+    const budget = this.getBudget(eventId);
+    budget.items.splice(idx, 1);
+    this._saveBudget(eventId, budget);
+    this.renderBudgetTab(eventId);
+    utils.showToast('Budget item deleted', 'success');
+  },
+
+  exportBudget() {
+    const eventId = document.getElementById('attendeesEventId').value;
+    const event = STATE.allEvents.find(e => e.id === eventId);
+    const budget = this.getBudget(eventId);
+    if (budget.items.length === 0) { utils.showToast('No budget items to export', 'warning'); return; }
+
+    const rows = budget.items.map(i => ({
+      'Item': i.name,
+      'Category': i.category || 'Other',
+      'Estimated': i.estimated || 0,
+      'Actual': i.actual || 0,
+      'Variance': ((parseFloat(i.actual) || 0) - (parseFloat(i.estimated) || 0)).toFixed(2),
+      'Status': i.status || 'Pending',
+      'Notes': i.notes || ''
+    }));
+    utils.exportToCSV(rows, `${event ? event.event_name.replace(/[^a-z0-9]/gi, '_') : 'event'}_budget.csv`);
+  },
+
+  // ========================================
+  // VENDOR / SUPPLIER MANAGEMENT
+  // ========================================
+
+  _vendorsKey(eventId) {
+    return `bta_vendors_${eventId}`;
+  },
+
+  getVendors(eventId) {
+    const stored = localStorage.getItem(this._vendorsKey(eventId));
+    return stored ? JSON.parse(stored) : [];
+  },
+
+  _saveVendors(eventId, vendors) {
+    localStorage.setItem(this._vendorsKey(eventId), JSON.stringify(vendors));
+  },
+
+  renderVendorsTab(eventId) {
+    const container = document.getElementById('vendorsTableBody');
+    if (!container) return;
+    const vendors = this.getVendors(eventId);
+    const countEl = document.getElementById('vendorCount');
+    if (countEl) countEl.textContent = vendors.length;
+
+    if (vendors.length === 0) {
+      container.innerHTML = '<tr><td colspan="7" class="text-center text-muted py-3">No vendors/suppliers added yet</td></tr>';
+      return;
+    }
+
+    const statusColors = { confirmed: 'success', pending: 'warning', cancelled: 'danger', enquired: 'info' };
+    container.innerHTML = vendors.map((v, idx) => `
+      <tr>
+        <td><strong>${utils.escapeHtml(v.name)}</strong>${v.company ? `<br><small class="text-muted">${utils.escapeHtml(v.company)}</small>` : ''}</td>
+        <td><span class="badge bg-secondary">${utils.escapeHtml(v.category || 'Other')}</span></td>
+        <td>${v.email ? `<a href="mailto:${utils.escapeHtml(v.email)}">${utils.escapeHtml(v.email)}</a>` : '-'}</td>
+        <td>${utils.escapeHtml(v.phone || '-')}</td>
+        <td>${v.cost ? '\u00A3' + parseFloat(v.cost).toFixed(2) : '-'}</td>
+        <td><span class="badge bg-${statusColors[v.status] || 'secondary'}">${utils.escapeHtml((v.status || 'pending').charAt(0).toUpperCase() + (v.status || 'pending').slice(1))}</span></td>
+        <td class="text-center">
+          <button class="btn btn-sm btn-outline-primary me-1" onclick="eventsModule.editVendor(${idx})" title="Edit"><i class="bi bi-pencil"></i></button>
+          <button class="btn btn-sm btn-outline-danger" onclick="eventsModule.deleteVendor(${idx})" title="Delete"><i class="bi bi-trash"></i></button>
+        </td>
+      </tr>`).join('');
+  },
+
+  addVendor() {
+    const categories = ['Venue', 'Catering', 'AV/Production', 'Entertainment', 'Photography', 'Floristry', 'Transport', 'Printing', 'Trophies/Engraving', 'Security', 'Staffing', 'Other'];
+    const html = `
+      <div class="modal fade" id="vendorModal" tabindex="-1">
+        <div class="modal-dialog">
+          <div class="modal-content">
+            <div class="modal-header"><h5 class="modal-title"><i class="bi bi-building me-2"></i>Add Vendor/Supplier</h5>
+              <button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+            <div class="modal-body">
+              <div class="row g-3 mb-3">
+                <div class="col-6"><label class="form-label">Contact Name *</label><input type="text" class="form-control" id="vendorName" placeholder="John Smith"></div>
+                <div class="col-6"><label class="form-label">Company</label><input type="text" class="form-control" id="vendorCompany" placeholder="ABC Catering Ltd"></div>
+              </div>
+              <div class="mb-3"><label class="form-label">Category</label><select class="form-select" id="vendorCategory">
+                ${categories.map(c => `<option value="${c}">${c}</option>`).join('')}</select></div>
+              <div class="row g-3 mb-3">
+                <div class="col-6"><label class="form-label">Email</label><input type="email" class="form-control" id="vendorEmail" placeholder="john@example.com"></div>
+                <div class="col-6"><label class="form-label">Phone</label><input type="tel" class="form-control" id="vendorPhone" placeholder="07xxx xxxxxx"></div>
+              </div>
+              <div class="row g-3 mb-3">
+                <div class="col-6"><label class="form-label">Cost</label><div class="input-group"><span class="input-group-text">\u00A3</span>
+                  <input type="number" class="form-control" id="vendorCost" step="0.01" min="0" placeholder="0.00"></div></div>
+                <div class="col-6"><label class="form-label">Status</label><select class="form-select" id="vendorStatus">
+                  <option value="enquired">Enquired</option><option value="pending">Pending</option><option value="confirmed">Confirmed</option><option value="cancelled">Cancelled</option></select></div>
+              </div>
+              <div class="mb-3"><label class="form-label">Notes</label><textarea class="form-control" id="vendorNotes" rows="2" placeholder="Services provided, contract details, etc."></textarea></div>
+            </div>
+            <div class="modal-footer">
+              <button class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+              <button class="btn btn-primary" onclick="eventsModule._saveVendor()"><i class="bi bi-save me-1"></i>Save</button>
+            </div>
+          </div>
+        </div>
+      </div>`;
+    const old = document.getElementById('vendorModal');
+    if (old) old.remove();
+    document.body.insertAdjacentHTML('beforeend', html);
+    this._editVendorIdx = null;
+    const modal = new bootstrap.Modal(document.getElementById('vendorModal'));
+    modal.show();
+  },
+
+  _editVendorIdx: null,
+
+  editVendor(idx) {
+    const eventId = document.getElementById('attendeesEventId').value;
+    const vendors = this.getVendors(eventId);
+    const v = vendors[idx];
+    if (!v) return;
+
+    this.addVendor();
+    setTimeout(() => {
+      document.getElementById('vendorName').value = v.name || '';
+      document.getElementById('vendorCompany').value = v.company || '';
+      document.getElementById('vendorCategory').value = v.category || 'Other';
+      document.getElementById('vendorEmail').value = v.email || '';
+      document.getElementById('vendorPhone').value = v.phone || '';
+      document.getElementById('vendorCost').value = v.cost || '';
+      document.getElementById('vendorStatus').value = v.status || 'pending';
+      document.getElementById('vendorNotes').value = v.notes || '';
+      this._editVendorIdx = idx;
+    }, 200);
+  },
+
+  _saveVendor() {
+    const eventId = document.getElementById('attendeesEventId').value;
+    const name = document.getElementById('vendorName').value.trim();
+    if (!name) { utils.showToast('Please enter a contact name', 'warning'); return; }
+
+    const vendors = this.getVendors(eventId);
+    const vendor = {
+      name,
+      company: document.getElementById('vendorCompany').value.trim(),
+      category: document.getElementById('vendorCategory').value,
+      email: document.getElementById('vendorEmail').value.trim(),
+      phone: document.getElementById('vendorPhone').value.trim(),
+      cost: parseFloat(document.getElementById('vendorCost').value) || 0,
+      status: document.getElementById('vendorStatus').value,
+      notes: document.getElementById('vendorNotes').value.trim()
+    };
+
+    if (this._editVendorIdx !== null) {
+      vendors[this._editVendorIdx] = vendor;
+    } else {
+      vendors.push(vendor);
+    }
+    this._saveVendors(eventId, vendors);
+    bootstrap.Modal.getInstance(document.getElementById('vendorModal')).hide();
+    this.renderVendorsTab(eventId);
+    utils.showToast(this._editVendorIdx !== null ? 'Vendor updated' : 'Vendor added', 'success');
+    this._editVendorIdx = null;
+  },
+
+  deleteVendor(idx) {
+    if (!confirm('Remove this vendor?')) return;
+    const eventId = document.getElementById('attendeesEventId').value;
+    const vendors = this.getVendors(eventId);
+    vendors.splice(idx, 1);
+    this._saveVendors(eventId, vendors);
+    this.renderVendorsTab(eventId);
+    utils.showToast('Vendor removed', 'success');
+  },
+
+  exportVendors() {
+    const eventId = document.getElementById('attendeesEventId').value;
+    const event = STATE.allEvents.find(e => e.id === eventId);
+    const vendors = this.getVendors(eventId);
+    if (vendors.length === 0) { utils.showToast('No vendors to export', 'warning'); return; }
+    const rows = vendors.map(v => ({
+      'Name': v.name, 'Company': v.company || '', 'Category': v.category || '',
+      'Email': v.email || '', 'Phone': v.phone || '', 'Cost': v.cost || 0,
+      'Status': v.status || '', 'Notes': v.notes || ''
+    }));
+    utils.exportToCSV(rows, `${event ? event.event_name.replace(/[^a-z0-9]/gi, '_') : 'event'}_vendors.csv`);
+  },
+
+  // ========================================
+  // GUEST SPECIAL REQUIREMENTS
+  // ========================================
+
+  renderSpecialReqsTab(eventId) {
+    const container = document.getElementById('specialReqsContent');
+    if (!container) return;
+    const attendees = this.getAttendees(eventId).filter(a => a.status === 'attending');
+    const event = STATE.allEvents.find(e => e.id === eventId);
+    const reqs = this._getSpecialReqs(eventId);
+
+    // Accessibility summary
+    const accessNeeds = attendees.filter(a => {
+      const notes = (a.notes || '').toLowerCase();
+      return notes.includes('wheelchair') || notes.includes('accessibility') ||
+             notes.includes('disabled') || notes.includes('mobility') || notes.includes('hearing') ||
+             notes.includes('visual') || notes.includes('step-free');
+    });
+
+    const reqsSummary = reqs || { parking: 0, photoConsent: { yes: 0, no: 0, notAsked: 0 }, emergencyContact: '' };
+
+    container.innerHTML = `
+      <!-- Accessibility Requirements -->
+      <div class="card mb-3">
+        <div class="card-body">
+          <h6 class="card-title"><i class="bi bi-universal-access me-2"></i>Accessibility Requirements
+            <span class="badge bg-info ms-2">${accessNeeds.length} guest${accessNeeds.length !== 1 ? 's' : ''}</span></h6>
+          ${accessNeeds.length > 0 ? `
+            <div class="table-responsive"><table class="table table-sm">
+              <thead><tr><th>Guest</th><th>Type</th><th>Requirement</th></tr></thead>
+              <tbody>${accessNeeds.map(a => `<tr>
+                <td>${utils.escapeHtml(a.name)}</td>
+                <td><span class="badge bg-secondary">${(a.guestType || 'guest').toUpperCase()}</span></td>
+                <td>${utils.escapeHtml(a.notes)}</td>
+              </tr>`).join('')}</tbody>
+            </table></div>
+            <div class="alert alert-warning mb-0"><i class="bi bi-exclamation-triangle me-2"></i>Ensure venue provides: step-free access, accessible toilets, hearing loop, reserved seating near exits.</div>
+          ` : '<p class="text-muted mb-0">No accessibility requirements flagged. Requirements are detected from guest notes (wheelchair, mobility, hearing, etc.)</p>'}
+        </div>
+      </div>
+
+      <!-- Parking Passes -->
+      <div class="card mb-3">
+        <div class="card-body">
+          <h6 class="card-title"><i class="bi bi-car-front me-2"></i>Parking Passes</h6>
+          <div class="row g-3 align-items-end">
+            <div class="col-md-3">
+              <label class="form-label small">Passes Available</label>
+              <input type="number" class="form-control form-control-sm" id="parkingPassesTotal" value="${reqsSummary.parkingTotal || ''}" min="0" placeholder="0">
+            </div>
+            <div class="col-md-3">
+              <label class="form-label small">Passes Allocated</label>
+              <input type="number" class="form-control form-control-sm" id="parkingPassesAllocated" value="${reqsSummary.parkingAllocated || 0}" min="0" placeholder="0">
+            </div>
+            <div class="col-md-3">
+              <label class="form-label small">Remaining</label>
+              <div class="form-control form-control-sm bg-light" id="parkingPassesRemaining">${(reqsSummary.parkingTotal || 0) - (reqsSummary.parkingAllocated || 0)}</div>
+            </div>
+            <div class="col-md-3">
+              <button class="btn btn-sm btn-primary w-100" onclick="eventsModule.saveSpecialReqs()"><i class="bi bi-save me-1"></i>Save</button>
+            </div>
+          </div>
+          <div class="mt-2"><small class="text-muted">
+            <label class="form-label small">Parking Instructions</label>
+            <textarea class="form-control form-control-sm" id="parkingInstructions" rows="2" placeholder="e.g., Valet parking available at main entrance, overflow car park on Oak Street...">${utils.escapeHtml(reqsSummary.parkingInstructions || '')}</textarea>
+          </small></div>
+        </div>
+      </div>
+
+      <!-- Photo Consent -->
+      <div class="card mb-3">
+        <div class="card-body">
+          <h6 class="card-title"><i class="bi bi-camera me-2"></i>Photo/Media Consent Tracking</h6>
+          <div class="row g-3 mb-3">
+            <div class="col-md-4 text-center">
+              <div class="card border-success"><div class="card-body py-2">
+                <h4 class="mb-0 text-success" id="photoConsentYes">${reqsSummary.photoConsent?.yes || 0}</h4>
+                <small>Consent Given</small>
+              </div></div>
+            </div>
+            <div class="col-md-4 text-center">
+              <div class="card border-danger"><div class="card-body py-2">
+                <h4 class="mb-0 text-danger" id="photoConsentNo">${reqsSummary.photoConsent?.no || 0}</h4>
+                <small>Declined</small>
+              </div></div>
+            </div>
+            <div class="col-md-4 text-center">
+              <div class="card border-warning"><div class="card-body py-2">
+                <h4 class="mb-0 text-warning" id="photoConsentPending">${attendees.length - (reqsSummary.photoConsent?.yes || 0) - (reqsSummary.photoConsent?.no || 0)}</h4>
+                <small>Not Yet Asked</small>
+              </div></div>
+            </div>
+          </div>
+          <small class="text-muted">Track consent via the registration form or check-in process. Guests who decline should be flagged to photographers.</small>
+        </div>
+      </div>
+
+      <!-- Emergency Contacts -->
+      <div class="card mb-3">
+        <div class="card-body">
+          <h6 class="card-title"><i class="bi bi-hospital me-2"></i>Emergency Information</h6>
+          <div class="row g-3">
+            <div class="col-md-6">
+              <label class="form-label small">Emergency Contact Name</label>
+              <input type="text" class="form-control form-control-sm" id="emergencyContactName" value="${utils.escapeHtml(reqsSummary.emergencyName || '')}" placeholder="e.g., Event Manager">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label small">Emergency Contact Phone</label>
+              <input type="tel" class="form-control form-control-sm" id="emergencyContactPhone" value="${utils.escapeHtml(reqsSummary.emergencyPhone || '')}" placeholder="07xxx xxxxxx">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label small">Nearest Hospital / A&E</label>
+              <input type="text" class="form-control form-control-sm" id="nearestHospital" value="${utils.escapeHtml(reqsSummary.nearestHospital || '')}" placeholder="e.g., Royal London Hospital, 10 min drive">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label small">First Aider on Site</label>
+              <input type="text" class="form-control form-control-sm" id="firstAider" value="${utils.escapeHtml(reqsSummary.firstAider || '')}" placeholder="Name and location">
+            </div>
+          </div>
+          <div class="mt-2 text-end">
+            <button class="btn btn-sm btn-primary" onclick="eventsModule.saveSpecialReqs()"><i class="bi bi-save me-1"></i>Save Emergency Info</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Dress Code -->
+      <div class="card">
+        <div class="card-body">
+          <h6 class="card-title"><i class="bi bi-suit-heart me-2"></i>Dress Code & Event Info</h6>
+          <div class="row g-3">
+            <div class="col-md-4">
+              <label class="form-label small">Dress Code</label>
+              <select class="form-select form-select-sm" id="dressCode">
+                <option value="">Not specified</option>
+                <option value="Black Tie" ${reqsSummary.dressCode === 'Black Tie' ? 'selected' : ''}>Black Tie</option>
+                <option value="Formal" ${reqsSummary.dressCode === 'Formal' ? 'selected' : ''}>Formal</option>
+                <option value="Smart Casual" ${reqsSummary.dressCode === 'Smart Casual' ? 'selected' : ''}>Smart Casual</option>
+                <option value="Business" ${reqsSummary.dressCode === 'Business' ? 'selected' : ''}>Business</option>
+                <option value="Casual" ${reqsSummary.dressCode === 'Casual' ? 'selected' : ''}>Casual</option>
+                <option value="Theme" ${reqsSummary.dressCode === 'Theme' ? 'selected' : ''}>Theme/Costume</option>
+              </select>
+            </div>
+            <div class="col-md-4">
+              <label class="form-label small">Arrival Time</label>
+              <input type="time" class="form-control form-control-sm" id="arrivalTime" value="${reqsSummary.arrivalTime || ''}">
+            </div>
+            <div class="col-md-4">
+              <label class="form-label small">Ceremony Starts</label>
+              <input type="time" class="form-control form-control-sm" id="ceremonyTime" value="${reqsSummary.ceremonyTime || ''}">
+            </div>
+          </div>
+          <div class="mt-2 text-end">
+            <button class="btn btn-sm btn-primary" onclick="eventsModule.saveSpecialReqs()"><i class="bi bi-save me-1"></i>Save</button>
+          </div>
+        </div>
+      </div>`;
+  },
+
+  _specialReqsKey(eventId) {
+    return `bta_special_reqs_${eventId}`;
+  },
+
+  _getSpecialReqs(eventId) {
+    const stored = localStorage.getItem(this._specialReqsKey(eventId));
+    return stored ? JSON.parse(stored) : {};
+  },
+
+  saveSpecialReqs() {
+    const eventId = document.getElementById('attendeesEventId').value;
+    const reqs = {
+      parkingTotal: parseInt(document.getElementById('parkingPassesTotal')?.value) || 0,
+      parkingAllocated: parseInt(document.getElementById('parkingPassesAllocated')?.value) || 0,
+      parkingInstructions: document.getElementById('parkingInstructions')?.value || '',
+      photoConsent: {
+        yes: parseInt(document.getElementById('photoConsentYes')?.textContent) || 0,
+        no: parseInt(document.getElementById('photoConsentNo')?.textContent) || 0
+      },
+      emergencyName: document.getElementById('emergencyContactName')?.value || '',
+      emergencyPhone: document.getElementById('emergencyContactPhone')?.value || '',
+      nearestHospital: document.getElementById('nearestHospital')?.value || '',
+      firstAider: document.getElementById('firstAider')?.value || '',
+      dressCode: document.getElementById('dressCode')?.value || '',
+      arrivalTime: document.getElementById('arrivalTime')?.value || '',
+      ceremonyTime: document.getElementById('ceremonyTime')?.value || ''
+    };
+    localStorage.setItem(this._specialReqsKey(eventId), JSON.stringify(reqs));
+    utils.showToast('Special requirements saved', 'success');
+  },
+
+  // ========================================
+  // STRIPE INTEGRATION FOR REGISTRATION
+  // ========================================
+
+  _stripePublicKey: null,
+
+  getStripePublicKey() {
+    // Check settings or config for Stripe publishable key
+    return localStorage.getItem('bta_stripe_pk') || '';
+  },
+
+  saveStripeKey() {
+    const key = document.getElementById('stripePublicKeyInput')?.value?.trim();
+    if (key) {
+      localStorage.setItem('bta_stripe_pk', key);
+      utils.showToast('Stripe key saved', 'success');
+    }
   },
 
   // ========================================

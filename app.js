@@ -114,6 +114,137 @@ const reportsScheduler = {
 };
 window.reportsScheduler = reportsScheduler;
 
+// ============================================
+// REPORTS ANALYTICS MODULE
+// ============================================
+const reportsAnalytics = {
+  _charts: {},
+
+  loadAnalytics() {
+    const orgs = (typeof STATE !== 'undefined' && STATE.allOrganisations) ? STATE.allOrganisations : [];
+    const awards = (typeof STATE !== 'undefined' && STATE.allAwards) ? STATE.allAwards : [];
+    const winners = (typeof STATE !== 'undefined' && STATE.allWinners) ? STATE.allWinners : [];
+    const entries = (typeof STATE !== 'undefined' && STATE.allEntries) ? STATE.allEntries : [];
+
+    // Update stat counters
+    const el = (id, val) => { const e = document.getElementById(id); if (e) e.textContent = val; };
+    el('reportsTotal', awards.length);
+    el('reportsTotalOrgs', orgs.length);
+    el('reportsTotalWinners', winners.length);
+    el('reportsTotalEntries', entries.length);
+
+    this.renderPipelineChart(orgs);
+    this.renderSectorChart(orgs);
+    this.renderRegionChart(orgs);
+    this.renderTierChart(orgs);
+    this.renderPipelineTable(orgs);
+    reportsScheduler.loadReports();
+  },
+
+  _destroyChart(key) {
+    if (this._charts[key]) { this._charts[key].destroy(); delete this._charts[key]; }
+  },
+
+  renderPipelineChart(orgs) {
+    this._destroyChart('pipeline');
+    const canvas = document.getElementById('reportsPipelineChart');
+    if (!canvas || typeof Chart === 'undefined') return;
+
+    const counts = {};
+    orgs.forEach(o => { const s = o.status || 'unknown'; counts[s] = (counts[s] || 0) + 1; });
+    const labels = Object.keys(counts);
+    const data = Object.values(counts);
+    const colors = ['#0d6efd', '#198754', '#ffc107', '#dc3545', '#6f42c1', '#20c997', '#fd7e14', '#0dcaf0', '#6c757d', '#d63384'];
+
+    this._charts.pipeline = new Chart(canvas.getContext('2d'), {
+      type: 'doughnut',
+      data: { labels: labels.map(l => l.charAt(0).toUpperCase() + l.slice(1)), datasets: [{ data, backgroundColor: colors.slice(0, labels.length), borderWidth: 2 }] },
+      options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'right', labels: { boxWidth: 12, font: { size: 11 } } } } }
+    });
+  },
+
+  renderSectorChart(orgs) {
+    this._destroyChart('sector');
+    const canvas = document.getElementById('reportsSectorChart');
+    if (!canvas || typeof Chart === 'undefined') return;
+
+    const counts = {};
+    orgs.forEach(o => { const s = o.sector || 'Unknown'; counts[s] = (counts[s] || 0) + 1; });
+    const sorted = Object.entries(counts).sort((a, b) => b[1] - a[1]).slice(0, 12);
+    const labels = sorted.map(([k]) => k.length > 20 ? k.slice(0, 18) + '...' : k);
+    const data = sorted.map(([, v]) => v);
+
+    this._charts.sector = new Chart(canvas.getContext('2d'), {
+      type: 'bar',
+      data: { labels, datasets: [{ label: 'Organisations', data, backgroundColor: '#0d6efd', borderRadius: 4 }] },
+      options: { responsive: true, maintainAspectRatio: false, indexAxis: 'y', plugins: { legend: { display: false } }, scales: { x: { beginAtZero: true, ticks: { precision: 0 } } } }
+    });
+  },
+
+  renderRegionChart(orgs) {
+    this._destroyChart('region');
+    const canvas = document.getElementById('reportsRegionChart');
+    if (!canvas || typeof Chart === 'undefined') return;
+
+    const counts = {};
+    orgs.forEach(o => { const r = o.region || 'Unknown'; counts[r] = (counts[r] || 0) + 1; });
+    const sorted = Object.entries(counts).sort((a, b) => b[1] - a[1]).slice(0, 15);
+    const labels = sorted.map(([k]) => k);
+    const data = sorted.map(([, v]) => v);
+
+    this._charts.region = new Chart(canvas.getContext('2d'), {
+      type: 'bar',
+      data: { labels, datasets: [{ label: 'Organisations', data, backgroundColor: '#198754', borderRadius: 4 }] },
+      options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, ticks: { precision: 0 } } } }
+    });
+  },
+
+  renderTierChart(orgs) {
+    this._destroyChart('tier');
+    const canvas = document.getElementById('reportsTierChart');
+    if (!canvas || typeof Chart === 'undefined') return;
+
+    const counts = { 'Bronze': 0, 'Silver': 0, 'Gold': 0, 'Platinum': 0, 'None': 0 };
+    orgs.forEach(o => {
+      const t = o.tier || 'None';
+      if (counts.hasOwnProperty(t)) counts[t]++;
+      else counts['None']++;
+    });
+    const labels = Object.keys(counts);
+    const data = Object.values(counts);
+    const colors = ['#cd7f32', '#c0c0c0', '#ffd700', '#e5e4e2', '#6c757d'];
+
+    this._charts.tier = new Chart(canvas.getContext('2d'), {
+      type: 'polarArea',
+      data: { labels, datasets: [{ data, backgroundColor: colors.map(c => c + '99'), borderColor: colors, borderWidth: 2 }] },
+      options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'right', labels: { boxWidth: 12, font: { size: 11 } } } } }
+    });
+  },
+
+  renderPipelineTable(orgs) {
+    const tbody = document.getElementById('reportsPipelineTable');
+    if (!tbody) return;
+
+    const counts = {};
+    orgs.forEach(o => { const s = o.status || 'unknown'; counts[s] = (counts[s] || 0) + 1; });
+    const total = orgs.length || 1;
+    const sorted = Object.entries(counts).sort((a, b) => b[1] - a[1]);
+    const colors = { prospect: 'primary', entrant: 'info', nominee: 'warning', shortlisted: 'secondary', winner: 'success', sponsor: 'dark', 'past winner': 'secondary', archived: 'danger' };
+
+    tbody.innerHTML = sorted.map(([status, count]) => {
+      const pct = ((count / total) * 100).toFixed(1);
+      const color = colors[status] || 'secondary';
+      return `<tr>
+        <td><span class="badge bg-${color}">${status.charAt(0).toUpperCase() + status.slice(1)}</span></td>
+        <td class="text-center fw-semibold">${count}</td>
+        <td>${pct}%</td>
+        <td><div class="progress" style="height:8px;"><div class="progress-bar bg-${color}" style="width:${pct}%"></div></div></td>
+      </tr>`;
+    }).join('');
+  }
+};
+window.reportsAnalytics = reportsAnalytics;
+
 // Wait for DOM to be fully loaded before initializing
 document.addEventListener('DOMContentLoaded', function() {
   console.log('🚀 Initializing British Trade Awards Admin...');
@@ -318,27 +449,12 @@ document.addEventListener('DOMContentLoaded', function() {
     }
   });
   
-  // --- Export Buttons (Reports Tab) ---
-  // Note: We'll add these buttons to the HTML if they don't exist
-  const setupExportButtons = () => {
-    const exportSection = document.querySelector('#reports .content-card .d-flex');
-    if (exportSection) {
-      const buttons = exportSection.querySelectorAll('button');
-      buttons[0]?.addEventListener('click', () => dashboardModule.exportAwardsCSV());
-      buttons[1]?.addEventListener('click', () => dashboardModule.exportOrganisationsCSV());
-      buttons[2]?.addEventListener('click', () => dashboardModule.exportWinnersCSV());
-    }
-  };
-  
-  // Setup export buttons after a short delay to ensure DOM is ready
-  setTimeout(setupExportButtons, 100);
-
-  // Load scheduled reports when Reports tab is opened
+  // Load Reports analytics + scheduled reports when Reports tab is opened
   const reportsTab = document.getElementById('reports-tab');
   if (reportsTab) {
     reportsTab.addEventListener('shown.bs.tab', () => {
-      if (typeof reportsScheduler !== 'undefined') {
-        reportsScheduler.loadReports();
+      if (typeof reportsAnalytics !== 'undefined') {
+        reportsAnalytics.loadAnalytics();
       }
     });
   }

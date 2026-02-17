@@ -36,65 +36,17 @@ const eventsModule = {
    * Render events table
    */
   renderEvents() {
-    const tbody = document.getElementById('eventsTableBody');
+    this.updateEventStats();
+    const events = STATE.allEvents || [];
     const count = document.getElementById('eventsCount');
+    if (count) count.textContent = events.length;
 
-    count.textContent = STATE.allEvents.length;
-
-    if (STATE.allEvents.length === 0) {
-      utils.showEmptyState('eventsTableBody', 6, 'No events found. Click "Add Event" to create one.');
+    if (events.length === 0) {
+      utils.showEmptyState('eventsTableBody', 7, 'No events found. Click "Add Event" to create one.');
       return;
     }
 
-    tbody.innerHTML = STATE.allEvents.map(event => {
-      const eventDate = event.event_date ? new Date(event.event_date).toLocaleDateString() : '-';
-
-      return `
-        <tr class="fade-in">
-          <td class="fw-semibold">${utils.escapeHtml(event.event_name)}</td>
-          <td><span class="badge bg-primary">${utils.escapeHtml(String(event.year || '-'))}</span></td>
-          <td>${eventDate}</td>
-          <td>${utils.escapeHtml(event.venue || '-')}</td>
-          <td>
-            <small class="text-muted">${utils.escapeHtml(event.description || 'No description')}</small>
-          </td>
-          <td class="text-center">
-            <div class="btn-group btn-group-sm" role="group">
-              <button class="btn btn-outline-warning btn-icon"
-                onclick="eventsModule.openRunningOrderModal('${event.id}', '${utils.escapeHtml(event.event_name).replace(/'/g, "\\'")}')"
-                title="Running Order">
-                <i class="bi bi-list-ol"></i>
-              </button>
-              <button class="btn btn-outline-secondary btn-icon"
-                onclick="eventsModule.openTablePlanModal('${event.id}', '${utils.escapeHtml(event.event_name).replace(/'/g, "\\'")}')"
-                title="Table Plan">
-                <i class="bi bi-table"></i>
-              </button>
-              <button class="btn btn-outline-info btn-icon"
-                onclick="eventsModule.openAttendeesModal('${event.id}')"
-                title="Manage Attendees">
-                <i class="bi bi-people"></i>
-              </button>
-              <button class="btn btn-outline-primary btn-icon"
-                onclick="eventsModule.openEditModal('${event.id}')"
-                title="Edit">
-                <i class="bi bi-pencil"></i>
-              </button>
-              <button class="btn btn-outline-success btn-icon"
-                onclick="eventsModule.openCloneModal('${event.id}')"
-                title="Clone Event">
-                <i class="bi bi-files"></i>
-              </button>
-              <button class="btn btn-outline-danger btn-icon"
-                onclick="eventsModule.deleteEvent('${event.id}', '${utils.escapeHtml(event.event_name).replace(/'/g, "\\'")}')"
-                title="Delete">
-                <i class="bi bi-trash"></i>
-              </button>
-            </div>
-          </td>
-        </tr>
-      `;
-    }).join('');
+    this.renderFilteredEvents(events);
   },
 
   /**
@@ -2448,6 +2400,252 @@ const eventsModule = {
 
     const filename = `${this.currentEventNameTablePlan.replace(/[^a-z0-9]/gi, '_')}_table_plan_${new Date().toISOString().split('T')[0]}.csv`;
     utils.exportToCSV(exportData, filename);
+  },
+
+  // ============================================
+  // ENHANCED: STATS, FILTERS, SORT, CALENDAR
+  // ============================================
+  _sortField: 'event_date',
+  _sortDir: 'desc',
+  _calendarMonth: new Date().getMonth(),
+  _calendarYear: new Date().getFullYear(),
+
+  updateEventStats() {
+    const events = STATE.allEvents || [];
+    const today = new Date().toISOString().split('T')[0];
+    const thisYear = new Date().getFullYear();
+
+    const total = events.length;
+    const upcoming = events.filter(e => e.event_date && e.event_date >= today).length;
+    const thisYearCount = events.filter(e => e.year === thisYear || (e.event_date && e.event_date.startsWith(String(thisYear)))).length;
+    const past = events.filter(e => e.event_date && e.event_date < today).length;
+
+    const el = (id, val) => { const e = document.getElementById(id); if (e) e.textContent = val; };
+    el('eventsTotalCount', total);
+    el('eventsUpcomingCount', upcoming);
+    el('eventsThisYearCount', thisYearCount);
+    el('eventsPastCount', past);
+  },
+
+  filterEvents() {
+    const search = (document.getElementById('eventsSearchBox')?.value || '').toLowerCase().trim();
+    const year = document.getElementById('eventsYearFilter')?.value || '';
+    const status = document.getElementById('eventsStatusFilter')?.value || '';
+    const today = new Date().toISOString().split('T')[0];
+    const now = new Date();
+    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];
+    const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().split('T')[0];
+
+    let filtered = (STATE.allEvents || []).filter(e => {
+      if (search) {
+        const haystack = `${e.event_name || ''} ${e.venue || ''} ${e.description || ''}`.toLowerCase();
+        if (!haystack.includes(search)) return false;
+      }
+      if (year && String(e.year) !== year) return false;
+      if (status === 'upcoming' && (!e.event_date || e.event_date < today)) return false;
+      if (status === 'past' && (!e.event_date || e.event_date >= today)) return false;
+      if (status === 'this-month' && (!e.event_date || e.event_date < monthStart || e.event_date > monthEnd)) return false;
+      return true;
+    });
+
+    // Sort
+    filtered.sort((a, b) => {
+      let aVal = a[this._sortField] || '';
+      let bVal = b[this._sortField] || '';
+      if (this._sortField === 'year') { aVal = Number(aVal) || 0; bVal = Number(bVal) || 0; }
+      if (aVal < bVal) return this._sortDir === 'asc' ? -1 : 1;
+      if (aVal > bVal) return this._sortDir === 'asc' ? 1 : -1;
+      return 0;
+    });
+
+    this.renderFilteredEvents(filtered);
+  },
+
+  sortEvents(field) {
+    if (this._sortField === field) {
+      this._sortDir = this._sortDir === 'asc' ? 'desc' : 'asc';
+    } else {
+      this._sortField = field;
+      this._sortDir = 'asc';
+    }
+    this.filterEvents();
+  },
+
+  resetEventFilters() {
+    const el = id => { const e = document.getElementById(id); if (e) e.value = ''; };
+    el('eventsSearchBox');
+    el('eventsYearFilter');
+    el('eventsStatusFilter');
+    this._sortField = 'event_date';
+    this._sortDir = 'desc';
+    this.renderEvents();
+  },
+
+  renderFilteredEvents(events) {
+    const tbody = document.getElementById('eventsTableBody');
+    const count = document.getElementById('eventsCount');
+    if (!tbody) return;
+    count.textContent = events.length;
+
+    if (events.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="7" class="text-center py-4 text-muted"><i class="bi bi-calendar-x fs-1 d-block mb-2 opacity-25"></i>No events match your filters</td></tr>';
+      return;
+    }
+
+    const today = new Date().toISOString().split('T')[0];
+    tbody.innerHTML = events.map(event => {
+      const eventDate = event.event_date ? new Date(event.event_date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : '-';
+      const isUpcoming = event.event_date && event.event_date >= today;
+      const isPast = event.event_date && event.event_date < today;
+      const statusBadge = isUpcoming ? '<span class="badge bg-success">Upcoming</span>'
+                        : isPast ? '<span class="badge bg-secondary">Past</span>'
+                        : '<span class="badge bg-warning">No Date</span>';
+      const attendees = this.getAttendees(event.id);
+      const attendeeCount = attendees ? attendees.length : 0;
+      const attending = attendees ? attendees.filter(a => a.status === 'attending').length : 0;
+
+      return `
+        <tr class="fade-in">
+          <td class="fw-semibold">${utils.escapeHtml(event.event_name)}</td>
+          <td><span class="badge bg-primary">${utils.escapeHtml(String(event.year || '-'))}</span></td>
+          <td>${eventDate}</td>
+          <td>${utils.escapeHtml(event.venue || '-')}</td>
+          <td class="text-center">
+            ${attendeeCount > 0 ? `<span class="badge bg-info">${attending}/${attendeeCount}</span>` : '<span class="text-muted small">-</span>'}
+          </td>
+          <td class="text-center">${statusBadge}</td>
+          <td class="text-center">
+            <div class="btn-group btn-group-sm" role="group">
+              <button class="btn btn-outline-warning btn-icon"
+                onclick="eventsModule.openRunningOrderModal('${event.id}', '${utils.escapeHtml(event.event_name).replace(/'/g, "\\'")}')"
+                title="Running Order">
+                <i class="bi bi-list-ol"></i>
+              </button>
+              <button class="btn btn-outline-secondary btn-icon"
+                onclick="eventsModule.openTablePlanModal('${event.id}', '${utils.escapeHtml(event.event_name).replace(/'/g, "\\'")}')"
+                title="Table Plan">
+                <i class="bi bi-table"></i>
+              </button>
+              <button class="btn btn-outline-info btn-icon"
+                onclick="eventsModule.openAttendeesModal('${event.id}')"
+                title="Manage Attendees">
+                <i class="bi bi-people"></i>
+              </button>
+              <button class="btn btn-outline-primary btn-icon"
+                onclick="eventsModule.openEditModal('${event.id}')"
+                title="Edit">
+                <i class="bi bi-pencil"></i>
+              </button>
+              <button class="btn btn-outline-success btn-icon"
+                onclick="eventsModule.openCloneModal('${event.id}')"
+                title="Clone Event">
+                <i class="bi bi-files"></i>
+              </button>
+              <button class="btn btn-outline-danger btn-icon"
+                onclick="eventsModule.deleteEvent('${event.id}', '${utils.escapeHtml(event.event_name).replace(/'/g, "\\'")}')"
+                title="Delete">
+                <i class="bi bi-trash"></i>
+              </button>
+            </div>
+          </td>
+        </tr>
+      `;
+    }).join('');
+  },
+
+  exportEventsCSV() {
+    const events = STATE.allEvents || [];
+    if (events.length === 0) { utils.showToast('No events to export', 'warning'); return; }
+    const rows = [['Event Name', 'Year', 'Date', 'Venue', 'Description', 'Attendees']];
+    events.forEach(e => {
+      const attendees = this.getAttendees(e.id);
+      rows.push([e.event_name || '', e.year || '', e.event_date || '', e.venue || '', e.description || '', attendees ? attendees.length : 0]);
+    });
+    const csv = rows.map(r => r.map(c => `"${String(c).replace(/"/g, '""')}"`).join(',')).join('\n');
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+    a.download = `events_export_${new Date().toISOString().split('T')[0]}.csv`;
+    a.click(); URL.revokeObjectURL(a.href);
+    utils.showToast('Events exported', 'success');
+  },
+
+  // ============================================
+  // CALENDAR VIEW
+  // ============================================
+  showEventsCalendar() {
+    document.getElementById('eventsCalendarView').style.display = 'block';
+    this.renderCalendar();
+  },
+
+  hideEventsCalendar() {
+    document.getElementById('eventsCalendarView').style.display = 'none';
+  },
+
+  calendarPrev() {
+    this._calendarMonth--;
+    if (this._calendarMonth < 0) { this._calendarMonth = 11; this._calendarYear--; }
+    this.renderCalendar();
+  },
+
+  calendarNext() {
+    this._calendarMonth++;
+    if (this._calendarMonth > 11) { this._calendarMonth = 0; this._calendarYear++; }
+    this.renderCalendar();
+  },
+
+  renderCalendar() {
+    const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+    const titleEl = document.getElementById('eventsCalendarTitle');
+    const gridEl = document.getElementById('eventsCalendarGrid');
+    if (!titleEl || !gridEl) return;
+
+    titleEl.textContent = `${monthNames[this._calendarMonth]} ${this._calendarYear}`;
+
+    const firstDay = new Date(this._calendarYear, this._calendarMonth, 1).getDay();
+    const daysInMonth = new Date(this._calendarYear, this._calendarMonth + 1, 0).getDate();
+    const today = new Date();
+    const todayStr = today.toISOString().split('T')[0];
+
+    // Get events for this month
+    const monthStr = `${this._calendarYear}-${String(this._calendarMonth + 1).padStart(2, '0')}`;
+    const monthEvents = (STATE.allEvents || []).filter(e => e.event_date && e.event_date.startsWith(monthStr));
+    const eventsByDay = {};
+    monthEvents.forEach(e => {
+      const day = parseInt(e.event_date.split('-')[2]);
+      if (!eventsByDay[day]) eventsByDay[day] = [];
+      eventsByDay[day].push(e);
+    });
+
+    const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+    let html = dayNames.map(d => `<div class="col text-center small fw-semibold text-muted py-1">${d}</div>`).join('');
+
+    // Blank days before first of month
+    const startDay = firstDay === 0 ? 0 : firstDay;
+    for (let i = 0; i < startDay; i++) {
+      html += '<div class="col text-center p-1"><div class="rounded p-2" style="min-height:70px;"></div></div>';
+    }
+
+    for (let day = 1; day <= daysInMonth; day++) {
+      const dateStr = `${this._calendarYear}-${String(this._calendarMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+      const isToday = dateStr === todayStr;
+      const dayEvents = eventsByDay[day] || [];
+      const bgClass = isToday ? 'bg-primary bg-opacity-10 border border-primary' : dayEvents.length > 0 ? 'bg-success bg-opacity-10 border border-success' : 'bg-light';
+
+      html += `<div class="col text-center p-1">
+        <div class="rounded p-2 ${bgClass}" style="min-height:70px;">
+          <div class="small ${isToday ? 'fw-bold text-primary' : ''}">${day}</div>
+          ${dayEvents.map(e => `<div class="badge bg-primary d-block mt-1 text-truncate" style="font-size:0.65rem; max-width:100%; cursor:pointer;"
+            title="${utils.escapeHtml(e.event_name)}" onclick="eventsModule.openEditModal('${e.id}')">${utils.escapeHtml(e.event_name)}</div>`).join('')}
+        </div>
+      </div>`;
+
+      // New row after Saturday
+      if ((startDay + day) % 7 === 0 && day < daysInMonth) {
+        html += '<div class="w-100"></div>';
+      }
+    }
+
+    gridEl.innerHTML = html;
   }
 };
 

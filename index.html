@@ -2286,6 +2286,7 @@
                 </label>
                 <select class="form-select" id="winnerYearFilterSelect">
                   <option value="">All Years</option>
+                  <option value="2026" selected>2026</option>
                   <option value="2025">2025</option>
                   <option value="2024">2024</option>
                   <option value="2023">2023</option>
@@ -2819,16 +2820,113 @@
       <div class="tab-pane fade" id="events" role="tabpanel">
         <div class="container-fluid">
 
-          <div class="d-flex justify-content-between align-items-center mb-4">
-            <h2><i class="bi bi-calendar-event me-3"></i>Events Management</h2>
-            <div class="d-flex gap-2">
-              <button class="btn btn-outline-secondary" onclick="eventsModule.openTemplatesManager()">
-                <i class="bi bi-layout-text-sidebar me-2"></i>Templates
-              </button>
-              <button class="btn btn-primary" onclick="eventsModule.openAddModal()">
-                <i class="bi bi-plus-circle me-2"></i>Add Event
-              </button>
+          <!-- Page Header -->
+          <div class="section-header">
+            <h1 class="section-title">
+              <i class="bi bi-calendar-event me-2"></i>Events Management
+            </h1>
+            <p class="section-subtitle">Plan, manage, and track award ceremonies and events</p>
+          </div>
+
+          <!-- Quick Stats -->
+          <div class="row g-3 mb-4">
+            <div class="col-md-3">
+              <div class="stat-card">
+                <i class="bi bi-calendar-event stat-card-icon text-primary"></i>
+                <h6>Total Events</h6>
+                <div class="stat-value" id="eventsTotalCount">0</div>
+              </div>
             </div>
+            <div class="col-md-3">
+              <div class="stat-card">
+                <i class="bi bi-calendar-plus stat-card-icon text-success"></i>
+                <h6>Upcoming</h6>
+                <div class="stat-value text-success" id="eventsUpcomingCount">0</div>
+              </div>
+            </div>
+            <div class="col-md-3">
+              <div class="stat-card">
+                <i class="bi bi-calendar-check stat-card-icon text-info"></i>
+                <h6>This Year</h6>
+                <div class="stat-value text-info" id="eventsThisYearCount">0</div>
+              </div>
+            </div>
+            <div class="col-md-3">
+              <div class="stat-card">
+                <i class="bi bi-clock-history stat-card-icon text-secondary"></i>
+                <h6>Past Events</h6>
+                <div class="stat-value text-secondary" id="eventsPastCount">0</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Filters & Actions Bar -->
+          <div class="content-card mb-4">
+            <div class="row g-3 align-items-end">
+              <div class="col-md-3">
+                <label class="form-label small fw-semibold mb-1">
+                  <i class="bi bi-search me-1"></i>Search
+                </label>
+                <input type="text" class="form-control form-control-sm" id="eventsSearchBox"
+                       placeholder="Search events..."
+                       oninput="eventsModule.filterEvents()">
+              </div>
+              <div class="col-md-2">
+                <label class="form-label small fw-semibold mb-1">
+                  <i class="bi bi-calendar3 me-1"></i>Year
+                </label>
+                <select class="form-select form-select-sm" id="eventsYearFilter" onchange="eventsModule.filterEvents()">
+                  <option value="">All Years</option>
+                  <option value="2026">2026</option>
+                  <option value="2025">2025</option>
+                  <option value="2024">2024</option>
+                  <option value="2023">2023</option>
+                </select>
+              </div>
+              <div class="col-md-2">
+                <label class="form-label small fw-semibold mb-1">
+                  <i class="bi bi-funnel me-1"></i>Status
+                </label>
+                <select class="form-select form-select-sm" id="eventsStatusFilter" onchange="eventsModule.filterEvents()">
+                  <option value="">All Events</option>
+                  <option value="upcoming">Upcoming</option>
+                  <option value="past">Past</option>
+                  <option value="this-month">This Month</option>
+                </select>
+              </div>
+              <div class="col-md-5 text-end">
+                <div class="d-flex gap-2 justify-content-end flex-wrap">
+                  <button class="btn btn-outline-secondary btn-sm" onclick="eventsModule.resetEventFilters()" title="Reset Filters">
+                    <i class="bi bi-x-circle me-1"></i>Reset
+                  </button>
+                  <div class="vr mx-1"></div>
+                  <button class="btn btn-outline-info btn-sm" onclick="eventsModule.showEventsCalendar()" title="Calendar View">
+                    <i class="bi bi-calendar-week me-1"></i>Calendar
+                  </button>
+                  <button class="btn btn-outline-secondary btn-sm" onclick="eventsModule.openTemplatesManager()" title="Event Templates">
+                    <i class="bi bi-layout-text-sidebar me-1"></i>Templates
+                  </button>
+                  <button class="btn btn-primary btn-sm" onclick="eventsModule.openAddModal()">
+                    <i class="bi bi-plus-circle me-1"></i>Add Event
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Calendar View (hidden by default) -->
+          <div id="eventsCalendarView" style="display: none;" class="content-card mb-4">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+              <h5 class="mb-0"><i class="bi bi-calendar-week me-2"></i>Events Calendar</h5>
+              <div class="d-flex gap-2 align-items-center">
+                <button class="btn btn-sm btn-outline-secondary" onclick="eventsModule.calendarPrev()"><i class="bi bi-chevron-left"></i></button>
+                <span class="fw-semibold" id="eventsCalendarTitle">February 2026</span>
+                <button class="btn btn-sm btn-outline-secondary" onclick="eventsModule.calendarNext()"><i class="bi bi-chevron-right"></i></button>
+                <div class="vr mx-1"></div>
+                <button class="btn btn-sm btn-outline-secondary" onclick="eventsModule.hideEventsCalendar()"><i class="bi bi-x-lg"></i> Close</button>
+              </div>
+            </div>
+            <div id="eventsCalendarGrid" class="row g-1"></div>
           </div>
 
           <!-- Events Table -->
@@ -2837,21 +2935,32 @@
               <h5 class="mb-0">
                 All Events (<span id="eventsCount">0</span>)
               </h5>
+              <div class="d-flex gap-2">
+                <button class="btn btn-sm btn-outline-secondary" onclick="eventsModule.exportEventsCSV()" title="Export CSV">
+                  <i class="bi bi-download me-1"></i>Export
+                </button>
+              </div>
             </div>
             <div class="table-responsive">
               <table class="table table-hover">
                 <thead>
                   <tr>
-                    <th>Event Name</th>
-                    <th style="width: 100px;">Year</th>
-                    <th style="width: 120px;">Date</th>
+                    <th style="cursor:pointer" onclick="eventsModule.sortEvents('event_name')">Event Name <i class="bi bi-arrow-down-up text-muted small"></i></th>
+                    <th style="width: 80px; cursor:pointer" onclick="eventsModule.sortEvents('year')">Year <i class="bi bi-arrow-down-up text-muted small"></i></th>
+                    <th style="width: 120px; cursor:pointer" onclick="eventsModule.sortEvents('event_date')">Date <i class="bi bi-arrow-down-up text-muted small"></i></th>
                     <th>Venue</th>
-                    <th>Description</th>
-                    <th style="width: 100px;" class="text-center">Actions</th>
+                    <th style="width: 100px;" class="text-center">Attendees</th>
+                    <th style="width: 90px;" class="text-center">Status</th>
+                    <th style="width: 200px;" class="text-center">Actions</th>
                   </tr>
                 </thead>
                 <tbody id="eventsTableBody">
-                  <!-- Populated by JS -->
+                  <tr>
+                    <td colspan="7" class="text-center py-4">
+                      <div class="spinner-border spinner-border-sm text-primary me-2" role="status"></div>
+                      Loading events...
+                    </td>
+                  </tr>
                 </tbody>
               </table>
             </div>
@@ -2865,64 +2974,134 @@
       <!-- ==================================================== -->
       <div class="tab-pane fade" id="reports" role="tabpanel">
         <div class="container-fluid">
-          
+
           <!-- Page Header -->
           <div class="section-header">
             <h1 class="section-title">
               <i class="bi bi-graph-up me-2"></i>Reports & Analytics
             </h1>
-            <p class="section-subtitle">View comprehensive statistics and insights</p>
+            <p class="section-subtitle">View comprehensive statistics, charts, and insights</p>
           </div>
 
           <!-- Summary Stats -->
-          <div class="row g-4 mb-4">
-            <div class="col-md-4">
+          <div class="row g-3 mb-4">
+            <div class="col-md-3">
               <div class="stat-card">
                 <i class="bi bi-trophy stat-card-icon text-primary"></i>
                 <h6>Total Awards</h6>
                 <div class="stat-value" id="reportsTotal">0</div>
               </div>
             </div>
-            
-            <div class="col-md-4">
+            <div class="col-md-3">
               <div class="stat-card">
                 <i class="bi bi-building stat-card-icon text-success"></i>
                 <h6>Total Organisations</h6>
                 <div class="stat-value text-success" id="reportsTotalOrgs">0</div>
               </div>
             </div>
-            
-            <div class="col-md-4">
+            <div class="col-md-3">
               <div class="stat-card">
                 <i class="bi bi-award stat-card-icon text-info"></i>
                 <h6>Total Winners</h6>
                 <div class="stat-value text-info" id="reportsTotalWinners">0</div>
               </div>
             </div>
+            <div class="col-md-3">
+              <div class="stat-card">
+                <i class="bi bi-file-earmark-text stat-card-icon text-warning"></i>
+                <h6>Total Entries</h6>
+                <div class="stat-value text-warning" id="reportsTotalEntries">0</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Analytics Charts -->
+          <div class="row g-4 mb-4">
+            <div class="col-md-6">
+              <div class="content-card">
+                <h6 class="fw-semibold mb-3"><i class="bi bi-pie-chart me-2"></i>Organisations by Status</h6>
+                <div style="height:280px; position:relative;">
+                  <canvas id="reportsPipelineChart"></canvas>
+                </div>
+              </div>
+            </div>
+            <div class="col-md-6">
+              <div class="content-card">
+                <h6 class="fw-semibold mb-3"><i class="bi bi-bar-chart me-2"></i>Organisations by Sector</h6>
+                <div style="height:280px; position:relative;">
+                  <canvas id="reportsSectorChart"></canvas>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="row g-4 mb-4">
+            <div class="col-md-6">
+              <div class="content-card">
+                <h6 class="fw-semibold mb-3"><i class="bi bi-geo-alt me-2"></i>Regional Distribution</h6>
+                <div style="height:280px; position:relative;">
+                  <canvas id="reportsRegionChart"></canvas>
+                </div>
+              </div>
+            </div>
+            <div class="col-md-6">
+              <div class="content-card">
+                <h6 class="fw-semibold mb-3"><i class="bi bi-layers me-2"></i>Organisation Tier Breakdown</h6>
+                <div style="height:280px; position:relative;">
+                  <canvas id="reportsTierChart"></canvas>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Pipeline Summary Table -->
+          <div class="content-card mb-4">
+            <h5 class="mb-3"><i class="bi bi-clipboard-data me-2"></i>Pipeline Summary</h5>
+            <div class="table-responsive">
+              <table class="table table-sm table-hover">
+                <thead>
+                  <tr>
+                    <th>Status</th>
+                    <th class="text-center">Count</th>
+                    <th>Percentage</th>
+                    <th>Visual</th>
+                  </tr>
+                </thead>
+                <tbody id="reportsPipelineTable">
+                  <tr><td colspan="4" class="text-center text-muted py-3">Loading...</td></tr>
+                </tbody>
+              </table>
+            </div>
           </div>
 
           <!-- Export Section -->
-          <div class="content-card">
+          <div class="content-card mb-4">
             <h5 class="mb-3">
               <i class="bi bi-download me-2"></i>Export Data
             </h5>
-            <p class="text-muted mb-4">Download reports in various formats</p>
-            
+            <p class="text-muted mb-3">Download reports in various formats</p>
+
             <div class="d-flex gap-2 flex-wrap">
-              <button class="btn btn-sm btn-outline-secondary">
+              <button class="btn btn-sm btn-outline-secondary" onclick="dashboardModule.exportAwardsCSV()">
                 <i class="bi bi-download me-1"></i>Export Awards (CSV)
               </button>
-              <button class="btn btn-sm btn-outline-secondary">
+              <button class="btn btn-sm btn-outline-secondary" onclick="dashboardModule.exportOrganisationsCSV()">
                 <i class="bi bi-download me-1"></i>Export Organisations (CSV)
               </button>
-              <button class="btn btn-sm btn-outline-secondary">
+              <button class="btn btn-sm btn-outline-secondary" onclick="dashboardModule.exportWinnersCSV()">
                 <i class="bi bi-download me-1"></i>Export Winners (CSV)
+              </button>
+              <button class="btn btn-sm btn-outline-secondary" onclick="settingsModule.exportEventsCSV()">
+                <i class="bi bi-download me-1"></i>Export Events (CSV)
+              </button>
+              <button class="btn btn-sm btn-outline-secondary" onclick="settingsModule.exportFullBackup()">
+                <i class="bi bi-download me-1"></i>Full Backup (JSON)
               </button>
             </div>
           </div>
 
           <!-- Scheduled Reports Section -->
-          <div class="content-card mt-4">
+          <div class="content-card">
             <div class="d-flex justify-content-between align-items-center mb-3">
               <h5 class="mb-0">
                 <i class="bi bi-calendar2-week me-2"></i>Scheduled Reports
@@ -5444,16 +5623,96 @@ Available placeholders:
           <!-- Page Header -->
           <div class="section-header">
             <h1 class="section-title">
-              <i class="bi bi-currency-bitcoin me-2"></i>Bitcoin Price Chart
+              <i class="bi bi-currency-bitcoin me-2"></i>Crypto & Markets
             </h1>
-            <p class="section-subtitle">Live BTC/USD trading view with technical analysis tools</p>
+            <p class="section-subtitle">Live charts with technical analysis tools — powered by TradingView</p>
           </div>
 
-          <!-- TradingView Widget Container -->
-          <div class="card border-0 shadow-sm">
-            <div class="card-body p-0">
-              <div class="tradingview-widget-container" style="height: 800px; width: 100%;">
-                <div id="tradingview_chart" style="height: 100%; width: 100%;"></div>
+          <!-- Quick Symbol Buttons -->
+          <div class="content-card mb-3">
+            <div class="d-flex flex-wrap gap-2 align-items-center">
+              <span class="fw-semibold small me-2"><i class="bi bi-lightning-charge me-1"></i>Quick Switch:</span>
+              <button class="btn btn-sm btn-outline-warning btc-symbol-btn active" onclick="btcModule.switchSymbol('COINBASE:BTCUSD', this)">
+                <i class="bi bi-currency-bitcoin me-1"></i>BTC/USD
+              </button>
+              <button class="btn btn-sm btn-outline-primary btc-symbol-btn" onclick="btcModule.switchSymbol('COINBASE:ETHUSD', this)">
+                <i class="bi bi-diamond me-1"></i>ETH/USD
+              </button>
+              <button class="btn btn-sm btn-outline-success btc-symbol-btn" onclick="btcModule.switchSymbol('FX:GBPUSD', this)">
+                <i class="bi bi-currency-pound me-1"></i>GBP/USD
+              </button>
+              <button class="btn btn-sm btn-outline-info btc-symbol-btn" onclick="btcModule.switchSymbol('FX:EURUSD', this)">
+                <i class="bi bi-currency-euro me-1"></i>EUR/USD
+              </button>
+              <button class="btn btn-sm btn-outline-secondary btc-symbol-btn" onclick="btcModule.switchSymbol('TVC:GOLD', this)">
+                <i class="bi bi-gem me-1"></i>Gold
+              </button>
+              <button class="btn btn-sm btn-outline-secondary btc-symbol-btn" onclick="btcModule.switchSymbol('SP:SPX', this)">
+                <i class="bi bi-graph-up me-1"></i>S&P 500
+              </button>
+              <div class="vr mx-2"></div>
+              <span class="fw-semibold small me-1">Interval:</span>
+              <div class="btn-group btn-group-sm">
+                <button class="btn btn-outline-secondary btc-interval-btn" onclick="btcModule.switchInterval('1', this)">1m</button>
+                <button class="btn btn-outline-secondary btc-interval-btn" onclick="btcModule.switchInterval('5', this)">5m</button>
+                <button class="btn btn-outline-secondary btc-interval-btn" onclick="btcModule.switchInterval('15', this)">15m</button>
+                <button class="btn btn-outline-secondary btc-interval-btn" onclick="btcModule.switchInterval('60', this)">1H</button>
+                <button class="btn btn-outline-secondary btc-interval-btn" onclick="btcModule.switchInterval('240', this)">4H</button>
+                <button class="btn btn-outline-secondary btc-interval-btn active" onclick="btcModule.switchInterval('D', this)">1D</button>
+                <button class="btn btn-outline-secondary btc-interval-btn" onclick="btcModule.switchInterval('W', this)">1W</button>
+              </div>
+              <div class="vr mx-2"></div>
+              <span class="fw-semibold small me-1">Style:</span>
+              <div class="btn-group btn-group-sm">
+                <button class="btn btn-outline-secondary btc-style-btn active" onclick="btcModule.switchStyle('1', this)" title="Candles"><i class="bi bi-bar-chart"></i></button>
+                <button class="btn btn-outline-secondary btc-style-btn" onclick="btcModule.switchStyle('2', this)" title="Line"><i class="bi bi-graph-up"></i></button>
+                <button class="btn btn-outline-secondary btc-style-btn" onclick="btcModule.switchStyle('3', this)" title="Area"><i class="bi bi-graph-down"></i></button>
+                <button class="btn btn-outline-secondary btc-style-btn" onclick="btcModule.switchStyle('0', this)" title="Bars"><i class="bi bi-bar-chart-steps"></i></button>
+              </div>
+              <div class="vr mx-2"></div>
+              <span class="fw-semibold small me-1">Theme:</span>
+              <div class="btn-group btn-group-sm">
+                <button class="btn btn-outline-dark btc-theme-btn active" onclick="btcModule.switchTheme('dark', this)"><i class="bi bi-moon-fill"></i></button>
+                <button class="btn btn-outline-light border btc-theme-btn" onclick="btcModule.switchTheme('light', this)"><i class="bi bi-sun-fill"></i></button>
+              </div>
+            </div>
+          </div>
+
+          <div class="row g-3">
+            <!-- Main Chart -->
+            <div class="col-lg-9">
+              <div class="card border-0 shadow-sm">
+                <div class="card-body p-0">
+                  <div class="tradingview-widget-container" style="height: 700px; width: 100%;">
+                    <div id="tradingview_chart" style="height: 100%; width: 100%;"></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Watchlist Sidebar -->
+            <div class="col-lg-3">
+              <div class="card border-0 shadow-sm">
+                <div class="card-header bg-dark text-white py-2">
+                  <h6 class="mb-0"><i class="bi bi-star me-2"></i>Watchlist</h6>
+                </div>
+                <div class="card-body p-0">
+                  <div id="btcWatchlist" style="max-height: 340px; overflow-y: auto;">
+                    <div class="text-center py-3 text-muted small">Loading watchlist...</div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Market Overview Widget -->
+              <div class="card border-0 shadow-sm mt-3">
+                <div class="card-header bg-dark text-white py-2">
+                  <h6 class="mb-0"><i class="bi bi-globe me-2"></i>Market Overview</h6>
+                </div>
+                <div class="card-body p-2" style="max-height: 340px; overflow-y: auto;">
+                  <div id="btcMarketOverview">
+                    <div class="text-center py-3 text-muted small">Loading market data...</div>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
@@ -8672,34 +8931,132 @@ in recognition of excellence
   <!-- TradingView Widget Script -->
   <script type="text/javascript" src="https://s3.tradingview.com/tv.js"></script>
   <script type="text/javascript">
-    document.getElementById('bitcoin-tab').addEventListener('shown.bs.tab', function () {
-      if (!window.tradingViewInitialized) {
+    const btcModule = {
+      _symbol: 'COINBASE:BTCUSD',
+      _interval: 'D',
+      _style: '1',
+      _theme: 'dark',
+
+      _watchlistSymbols: [
+        { symbol: 'COINBASE:BTCUSD', name: 'Bitcoin', icon: 'bi-currency-bitcoin', color: 'text-warning' },
+        { symbol: 'COINBASE:ETHUSD', name: 'Ethereum', icon: 'bi-diamond', color: 'text-primary' },
+        { symbol: 'COINBASE:SOLUSD', name: 'Solana', icon: 'bi-circle', color: 'text-info' },
+        { symbol: 'COINBASE:XRPUSD', name: 'XRP', icon: 'bi-circle', color: 'text-secondary' },
+        { symbol: 'FX:GBPUSD', name: 'GBP/USD', icon: 'bi-currency-pound', color: 'text-success' },
+        { symbol: 'FX:EURUSD', name: 'EUR/USD', icon: 'bi-currency-euro', color: 'text-info' },
+        { symbol: 'TVC:GOLD', name: 'Gold', icon: 'bi-gem', color: 'text-warning' },
+        { symbol: 'SP:SPX', name: 'S&P 500', icon: 'bi-graph-up', color: 'text-success' },
+        { symbol: 'TVC:DXY', name: 'US Dollar Index', icon: 'bi-currency-dollar', color: 'text-primary' },
+        { symbol: 'NASDAQ:AAPL', name: 'Apple', icon: 'bi-apple', color: 'text-secondary' }
+      ],
+
+      _marketData: [
+        { label: 'Crypto Total Market', key: 'CRYPTOCAP:TOTAL', color: 'warning' },
+        { label: 'BTC Dominance', key: 'CRYPTOCAP:BTC.D', color: 'primary' },
+        { label: 'FTSE 100', key: 'TVC:UKX', color: 'info' },
+        { label: 'Dow Jones', key: 'DJ:DJI', color: 'success' },
+        { label: 'Nasdaq', key: 'NASDAQ:NDX', color: 'danger' },
+        { label: 'Crude Oil', key: 'TVC:USOIL', color: 'dark' }
+      ],
+
+      init() {
+        this.createChart();
+        this.renderWatchlist();
+        this.renderMarketOverview();
+      },
+
+      createChart() {
+        const container = document.getElementById('tradingview_chart');
+        if (!container || typeof TradingView === 'undefined') return;
+        container.innerHTML = '';
+
         new TradingView.widget({
           "autosize": true,
-          "symbol": "COINBASE:BTCUSD",
-          "interval": "D",
-          "timezone": "Etc/UTC",
-          "theme": "dark",
-          "style": "1",
+          "symbol": this._symbol,
+          "interval": this._interval,
+          "timezone": "Europe/London",
+          "theme": this._theme,
+          "style": this._style,
           "locale": "en",
-          "toolbar_bg": "#1e222d",
+          "toolbar_bg": this._theme === 'dark' ? "#1e222d" : "#f8f9fa",
           "enable_publishing": false,
           "allow_symbol_change": true,
           "container_id": "tradingview_chart",
-          "studies": [
-            "STD;SMA",
-            "STD;RSI",
-            "STD;MACD"
-          ],
+          "studies": ["STD;SMA", "STD;RSI", "STD;MACD"],
           "hide_side_toolbar": false,
           "withdateranges": true,
           "hide_top_toolbar": false,
           "save_image": true,
           "details": true,
-          "calendar": true
+          "calendar": true,
+          "show_popup_button": true,
+          "popup_width": "1200",
+          "popup_height": "800"
         });
-        window.tradingViewInitialized = true;
+      },
+
+      switchSymbol(symbol, btn) {
+        this._symbol = symbol;
+        document.querySelectorAll('.btc-symbol-btn').forEach(b => b.classList.remove('active'));
+        if (btn) btn.classList.add('active');
+        this.createChart();
+      },
+
+      switchInterval(interval, btn) {
+        this._interval = interval;
+        document.querySelectorAll('.btc-interval-btn').forEach(b => b.classList.remove('active'));
+        if (btn) btn.classList.add('active');
+        this.createChart();
+      },
+
+      switchStyle(style, btn) {
+        this._style = style;
+        document.querySelectorAll('.btc-style-btn').forEach(b => b.classList.remove('active'));
+        if (btn) btn.classList.add('active');
+        this.createChart();
+      },
+
+      switchTheme(theme, btn) {
+        this._theme = theme;
+        document.querySelectorAll('.btc-theme-btn').forEach(b => b.classList.remove('active'));
+        if (btn) btn.classList.add('active');
+        this.createChart();
+      },
+
+      renderWatchlist() {
+        const el = document.getElementById('btcWatchlist');
+        if (!el) return;
+        el.innerHTML = this._watchlistSymbols.map(s => {
+          const isActive = s.symbol === this._symbol;
+          return `<div class="d-flex align-items-center px-3 py-2 border-bottom ${isActive ? 'bg-primary bg-opacity-10' : ''}"
+                       style="cursor:pointer;" onclick="btcModule.switchSymbol('${s.symbol}', null); btcModule.renderWatchlist();"
+                       onmouseenter="this.style.backgroundColor='var(--bs-light)'" onmouseleave="this.style.backgroundColor='${isActive ? 'var(--bs-primary-bg-subtle)' : ''}'">
+            <i class="bi ${s.icon} ${s.color} me-2"></i>
+            <div class="flex-grow-1">
+              <div class="fw-semibold small">${s.name}</div>
+              <div class="text-muted" style="font-size:0.7rem">${s.symbol}</div>
+            </div>
+            ${isActive ? '<i class="bi bi-caret-right-fill text-primary"></i>' : ''}
+          </div>`;
+        }).join('');
+      },
+
+      renderMarketOverview() {
+        const el = document.getElementById('btcMarketOverview');
+        if (!el) return;
+        el.innerHTML = this._marketData.map(m => `
+          <div class="d-flex justify-content-between align-items-center py-2 px-1 border-bottom small"
+               style="cursor:pointer" onclick="btcModule.switchSymbol('${m.key}', null); btcModule.renderWatchlist();">
+            <span class="fw-semibold">${m.label}</span>
+            <span class="badge bg-${m.color} bg-opacity-25 text-${m.color}">${m.key.split(':')[1]}</span>
+          </div>
+        `).join('');
       }
+    };
+    window.btcModule = btcModule;
+
+    document.getElementById('bitcoin-tab').addEventListener('shown.bs.tab', function () {
+      btcModule.init();
     });
   </script>
 

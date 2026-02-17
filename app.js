@@ -119,6 +119,8 @@ window.reportsScheduler = reportsScheduler;
 // ============================================
 const reportsAnalytics = {
   _charts: {},
+  _selectedYear: 'all',
+  _lastLoaded: null,
 
   loadAnalytics() {
     const orgs = (typeof STATE !== 'undefined' && STATE.allOrganisations) ? STATE.allOrganisations : [];
@@ -126,19 +128,67 @@ const reportsAnalytics = {
     const winners = (typeof STATE !== 'undefined' && STATE.allWinners) ? STATE.allWinners : [];
     const entries = (typeof STATE !== 'undefined' && STATE.allEntries) ? STATE.allEntries : [];
 
+    // Populate year filter options
+    this._populateYearFilter(awards, winners, orgs, entries);
+
+    // Apply year filter
+    const year = this._selectedYear;
+    const fAwards = year === 'all' ? awards : awards.filter(a => this._getYear(a) === year);
+    const fWinners = year === 'all' ? winners : winners.filter(w => this._getYear(w) === year);
+    const fOrgs = year === 'all' ? orgs : orgs.filter(o => this._getYear(o) === year);
+    const fEntries = year === 'all' ? entries : entries.filter(e => this._getYear(e) === year);
+
     // Update stat counters
     const el = (id, val) => { const e = document.getElementById(id); if (e) e.textContent = val; };
-    el('reportsTotal', awards.length);
-    el('reportsTotalOrgs', orgs.length);
-    el('reportsTotalWinners', winners.length);
-    el('reportsTotalEntries', entries.length);
+    el('reportsTotal', fAwards.length);
+    el('reportsTotalOrgs', fOrgs.length);
+    el('reportsTotalWinners', fWinners.length);
+    el('reportsTotalEntries', fEntries.length);
 
-    this.renderPipelineChart(orgs);
-    this.renderSectorChart(orgs);
-    this.renderRegionChart(orgs);
-    this.renderTierChart(orgs);
-    this.renderPipelineTable(orgs);
+    this.renderPipelineChart(fOrgs);
+    this.renderSectorChart(fOrgs);
+    this.renderRegionChart(fOrgs);
+    this.renderTierChart(fOrgs);
+    this.renderPipelineTable(fOrgs);
+    this.renderYoYChart(awards, winners, entries, orgs);
+    this.renderCategoryChart(fAwards);
+    this.renderFunnelChart(fOrgs, fEntries, fWinners);
+    this.updateFreshness();
     reportsScheduler.loadReports();
+  },
+
+  _getYear(record) {
+    if (record.year) return String(record.year);
+    if (record.award_year) return String(record.award_year);
+    if (record.created_at) return String(new Date(record.created_at).getFullYear());
+    return '';
+  },
+
+  _populateYearFilter(awards, winners, orgs, entries) {
+    const select = document.getElementById('reportsYearFilter');
+    if (!select) return;
+    const years = new Set();
+    [...awards, ...winners, ...orgs, ...entries].forEach(r => {
+      const y = this._getYear(r);
+      if (y && y.length === 4 && !isNaN(y)) years.add(y);
+    });
+    const sortedYears = [...years].sort((a, b) => b - a);
+    select.innerHTML = '<option value="all">All Years</option>' +
+      sortedYears.map(y => `<option value="${y}"${y === this._selectedYear ? ' selected' : ''}>${y}</option>`).join('');
+  },
+
+  filterByYear(year) {
+    this._selectedYear = year;
+    this.loadAnalytics();
+  },
+
+  updateFreshness() {
+    this._lastLoaded = new Date();
+    const el = document.getElementById('reportsDataFreshness');
+    if (!el) return;
+    const time = this._lastLoaded.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    const date = this._lastLoaded.toLocaleDateString([], { day: 'numeric', month: 'short' });
+    el.innerHTML = `<i class="bi bi-check-circle text-success"></i><span>Data loaded: ${date} at ${time}</span>`;
   },
 
   _destroyChart(key) {
@@ -219,6 +269,191 @@ const reportsAnalytics = {
       data: { labels, datasets: [{ data, backgroundColor: colors.map(c => c + '99'), borderColor: colors, borderWidth: 2 }] },
       options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'right', labels: { boxWidth: 12, font: { size: 11 } } } } }
     });
+  },
+
+  // ---- NEW: Year-over-Year comparison chart ----
+  renderYoYChart(awards, winners, entries, orgs) {
+    this._destroyChart('yoy');
+    const canvas = document.getElementById('reportsYoYChart');
+    if (!canvas || typeof Chart === 'undefined') return;
+
+    // Collect all years from all datasets
+    const yearSet = new Set();
+    const addYears = (arr) => arr.forEach(r => { const y = this._getYear(r); if (y && y.length === 4 && !isNaN(y)) yearSet.add(y); });
+    addYears(awards); addYears(winners); addYears(entries); addYears(orgs);
+    const years = [...yearSet].sort();
+
+    if (years.length < 1) return;
+
+    const countByYear = (arr) => {
+      const map = {};
+      arr.forEach(r => { const y = this._getYear(r); if (y) map[y] = (map[y] || 0) + 1; });
+      return years.map(y => map[y] || 0);
+    };
+
+    this._charts.yoy = new Chart(canvas.getContext('2d'), {
+      type: 'bar',
+      data: {
+        labels: years,
+        datasets: [
+          { label: 'Awards', data: countByYear(awards), backgroundColor: '#0d6efd99', borderColor: '#0d6efd', borderWidth: 2, borderRadius: 4 },
+          { label: 'Organisations', data: countByYear(orgs), backgroundColor: '#19875499', borderColor: '#198754', borderWidth: 2, borderRadius: 4 },
+          { label: 'Winners', data: countByYear(winners), backgroundColor: '#0dcaf099', borderColor: '#0dcaf0', borderWidth: 2, borderRadius: 4 },
+          { label: 'Entries', data: countByYear(entries), backgroundColor: '#ffc10799', borderColor: '#ffc107', borderWidth: 2, borderRadius: 4 }
+        ]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { position: 'top', labels: { boxWidth: 12, font: { size: 11 } } } },
+        scales: { y: { beginAtZero: true, ticks: { precision: 0 } } }
+      }
+    });
+  },
+
+  // ---- NEW: Awards by Category chart ----
+  renderCategoryChart(awards) {
+    this._destroyChart('category');
+    const canvas = document.getElementById('reportsCategoryChart');
+    if (!canvas || typeof Chart === 'undefined') return;
+
+    const counts = {};
+    awards.forEach(a => { const c = a.category || a.award_category || 'Uncategorised'; counts[c] = (counts[c] || 0) + 1; });
+    const sorted = Object.entries(counts).sort((a, b) => b[1] - a[1]).slice(0, 10);
+    const labels = sorted.map(([k]) => k.length > 22 ? k.slice(0, 20) + '...' : k);
+    const data = sorted.map(([, v]) => v);
+    const palette = ['#0d6efd', '#198754', '#ffc107', '#dc3545', '#6f42c1', '#20c997', '#fd7e14', '#0dcaf0', '#d63384', '#6c757d'];
+
+    this._charts.category = new Chart(canvas.getContext('2d'), {
+      type: 'bar',
+      data: { labels, datasets: [{ label: 'Awards', data, backgroundColor: palette.slice(0, data.length), borderRadius: 4 }] },
+      options: {
+        responsive: true, maintainAspectRatio: false, indexAxis: 'y',
+        plugins: { legend: { display: false } },
+        scales: { x: { beginAtZero: true, ticks: { precision: 0 } } }
+      }
+    });
+  },
+
+  // ---- NEW: Entry Conversion Funnel chart ----
+  renderFunnelChart(orgs, entries, winners) {
+    this._destroyChart('funnel');
+    const canvas = document.getElementById('reportsFunnelChart');
+    if (!canvas || typeof Chart === 'undefined') return;
+
+    // Build funnel stages: Total Orgs → Entrants → Nominees/Shortlisted → Winners
+    const statusCounts = {};
+    orgs.forEach(o => { const s = (o.status || 'unknown').toLowerCase(); statusCounts[s] = (statusCounts[s] || 0) + 1; });
+
+    const totalOrgs = orgs.length;
+    const totalEntries = entries.length || (statusCounts['entrant'] || 0) + (statusCounts['nominee'] || 0) + (statusCounts['shortlisted'] || 0) + (statusCounts['winner'] || 0) + (statusCounts['past_winner'] || 0);
+    const shortlisted = (statusCounts['shortlisted'] || 0) + (statusCounts['nominee'] || 0) + (statusCounts['winner'] || 0) + (statusCounts['past_winner'] || 0);
+    const totalWinners = winners.length || (statusCounts['winner'] || 0) + (statusCounts['past_winner'] || 0);
+
+    const stages = ['Organisations', 'Entries', 'Shortlisted', 'Winners'];
+    const values = [totalOrgs, totalEntries, shortlisted, totalWinners];
+    const colors = ['#0d6efd', '#ffc107', '#fd7e14', '#198754'];
+
+    this._charts.funnel = new Chart(canvas.getContext('2d'), {
+      type: 'bar',
+      data: {
+        labels: stages,
+        datasets: [{ data: values, backgroundColor: colors.map(c => c + 'cc'), borderColor: colors, borderWidth: 2, borderRadius: 6, barPercentage: 0.7 }]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false, indexAxis: 'y',
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            callbacks: {
+              label: (ctx) => {
+                const val = ctx.raw;
+                const prevVal = ctx.dataIndex > 0 ? values[ctx.dataIndex - 1] : val;
+                const rate = prevVal > 0 ? ((val / prevVal) * 100).toFixed(1) : '0';
+                return ctx.dataIndex === 0 ? `${val} total` : `${val} (${rate}% conversion)`;
+              }
+            }
+          }
+        },
+        scales: { x: { beginAtZero: true, ticks: { precision: 0 } } }
+      }
+    });
+  },
+
+  // ---- NEW: Print/PDF Summary Report ----
+  printSummaryReport() {
+    const allOrgs = (typeof STATE !== 'undefined' && STATE.allOrganisations) ? STATE.allOrganisations : [];
+    const allAwards = (typeof STATE !== 'undefined' && STATE.allAwards) ? STATE.allAwards : [];
+    const allWinners = (typeof STATE !== 'undefined' && STATE.allWinners) ? STATE.allWinners : [];
+    const allEntries = (typeof STATE !== 'undefined' && STATE.allEntries) ? STATE.allEntries : [];
+
+    // Apply year filter (same logic as loadAnalytics)
+    const year = this._selectedYear;
+    const orgs = year === 'all' ? allOrgs : allOrgs.filter(o => this._getYear(o) === year);
+    const awards = year === 'all' ? allAwards : allAwards.filter(a => this._getYear(a) === year);
+    const winners = year === 'all' ? allWinners : allWinners.filter(w => this._getYear(w) === year);
+    const entries = year === 'all' ? allEntries : allEntries.filter(e => this._getYear(e) === year);
+
+    const esc = (s) => (typeof utils !== 'undefined' && utils.escapeHtml) ? utils.escapeHtml(s) : s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+
+    // Build status breakdown
+    const statusCounts = {};
+    orgs.forEach(o => { const s = o.status || 'unknown'; statusCounts[s] = (statusCounts[s] || 0) + 1; });
+    const statusRows = Object.entries(statusCounts).sort((a, b) => b[1] - a[1])
+      .map(([s, c]) => `<tr><td style="text-transform:capitalize;">${esc(s)}</td><td style="text-align:right;">${c}</td><td style="text-align:right;">${((c / (orgs.length || 1)) * 100).toFixed(1)}%</td></tr>`).join('');
+
+    // Build sector breakdown
+    const sectorCounts = {};
+    orgs.forEach(o => { const s = o.sector || 'Unknown'; sectorCounts[s] = (sectorCounts[s] || 0) + 1; });
+    const sectorRows = Object.entries(sectorCounts).sort((a, b) => b[1] - a[1]).slice(0, 15)
+      .map(([s, c]) => `<tr><td>${esc(s)}</td><td style="text-align:right;">${c}</td></tr>`).join('');
+
+    // Build region breakdown
+    const regionCounts = {};
+    orgs.forEach(o => { const r = o.region || 'Unknown'; regionCounts[r] = (regionCounts[r] || 0) + 1; });
+    const regionRows = Object.entries(regionCounts).sort((a, b) => b[1] - a[1]).slice(0, 15)
+      .map(([r, c]) => `<tr><td>${esc(r)}</td><td style="text-align:right;">${c}</td></tr>`).join('');
+
+    const yearLabel = this._selectedYear === 'all' ? 'All Years' : this._selectedYear;
+    const now = new Date().toLocaleString();
+
+    const html = `<!DOCTYPE html><html><head><title>Reports Summary - British Trade Awards</title>
+      <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; max-width: 900px; margin: 0 auto; padding: 30px; color: #333; }
+        h1 { font-size: 22px; border-bottom: 2px solid #0d6efd; padding-bottom: 8px; margin-bottom: 4px; }
+        .meta { color: #6c757d; font-size: 12px; margin-bottom: 24px; }
+        .stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 24px; }
+        .stat-box { border: 1px solid #dee2e6; border-radius: 8px; padding: 16px; text-align: center; }
+        .stat-box .number { font-size: 28px; font-weight: 700; }
+        .stat-box .label { font-size: 12px; color: #6c757d; text-transform: uppercase; }
+        h2 { font-size: 16px; margin-top: 24px; margin-bottom: 8px; }
+        table { width: 100%; border-collapse: collapse; margin-bottom: 16px; font-size: 13px; }
+        th, td { padding: 6px 10px; border-bottom: 1px solid #dee2e6; text-align: left; }
+        th { background: #f8f9fa; font-weight: 600; }
+        .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+        @media print { body { padding: 10px; } }
+      </style></head><body>
+      <h1>British Trade Awards - Reports Summary</h1>
+      <div class="meta">Generated: ${now} | Filter: ${yearLabel}</div>
+      <div class="stats-grid">
+        <div class="stat-box"><div class="number">${awards.length}</div><div class="label">Awards</div></div>
+        <div class="stat-box"><div class="number">${orgs.length}</div><div class="label">Organisations</div></div>
+        <div class="stat-box"><div class="number">${winners.length}</div><div class="label">Winners</div></div>
+        <div class="stat-box"><div class="number">${entries.length}</div><div class="label">Entries</div></div>
+      </div>
+      <h2>Organisation Pipeline</h2>
+      <table><thead><tr><th>Status</th><th style="text-align:right;">Count</th><th style="text-align:right;">%</th></tr></thead><tbody>${statusRows}</tbody></table>
+      <div class="two-col">
+        <div><h2>Top Sectors</h2><table><thead><tr><th>Sector</th><th style="text-align:right;">Count</th></tr></thead><tbody>${sectorRows}</tbody></table></div>
+        <div><h2>Top Regions</h2><table><thead><tr><th>Region</th><th style="text-align:right;">Count</th></tr></thead><tbody>${regionRows}</tbody></table></div>
+      </div>
+    </body></html>`;
+
+    const win = window.open('', '_blank', 'width=900,height=700');
+    if (win) {
+      win.document.write(html);
+      win.document.close();
+      setTimeout(() => win.print(), 400);
+    }
   },
 
   renderPipelineTable(orgs) {

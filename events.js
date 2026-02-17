@@ -9,7 +9,7 @@ const eventsModule = {
   async loadEvents() {
     try {
       utils.showLoading();
-      utils.showTableLoading('eventsTableBody', 7);
+      utils.showTableLoading('eventsTableBody', 8);
 
       const { data, error } = await STATE.client
         .from('events')
@@ -26,7 +26,7 @@ const eventsModule = {
     } catch (error) {
       console.error('Error loading events:', error);
       utils.showToast('Failed to load events: ' + error.message, 'error');
-      utils.showEmptyState('eventsTableBody', 7, 'Failed to load events', 'bi-exclamation-triangle');
+      utils.showEmptyState('eventsTableBody', 8, 'Failed to load events', 'bi-exclamation-triangle');
     } finally {
       utils.hideLoading();
     }
@@ -42,7 +42,7 @@ const eventsModule = {
     if (count) count.textContent = events.length;
 
     if (events.length === 0) {
-      utils.showEmptyState('eventsTableBody', 7, 'No events found. Click "Add Event" to create one.');
+      utils.showEmptyState('eventsTableBody', 8, 'No events found. Click "Add Event" to create one.');
       return;
     }
 
@@ -60,6 +60,7 @@ const eventsModule = {
     document.getElementById('eventYear').value = '';
     document.getElementById('eventVenue').value = '';
     document.getElementById('eventDescription').value = '';
+    document.getElementById('eventStatus').value = 'draft';
     document.getElementById('saveEventBtn').textContent = 'Add Event';
 
     const modal = new bootstrap.Modal(document.getElementById('eventModal'));
@@ -80,6 +81,7 @@ const eventsModule = {
     document.getElementById('eventYear').value = event.year || '';
     document.getElementById('eventVenue').value = event.venue || '';
     document.getElementById('eventDescription').value = event.description || '';
+    document.getElementById('eventStatus').value = event.event_status || 'draft';
     document.getElementById('saveEventBtn').textContent = 'Update Event';
 
     const modal = new bootstrap.Modal(document.getElementById('eventModal'));
@@ -105,12 +107,15 @@ const eventsModule = {
     try {
       utils.showLoading();
 
+      const eventStatus = document.getElementById('eventStatus').value;
+
       const eventData = {
         event_name: eventName,
         event_date: eventDate || null,
         year: eventYear ? parseInt(eventYear) : null,
         venue: eventVenue || null,
-        description: eventDescription || null
+        description: eventDescription || null,
+        event_status: eventStatus || 'draft'
       };
 
       let error;
@@ -254,7 +259,8 @@ const eventsModule = {
         event_date: newEventDate || null,
         year: parseInt(newEventYear),
         venue: newEventVenue || null,
-        description: newEventDescription || null
+        description: newEventDescription || null,
+        event_status: 'draft'
       };
 
       const { data: newEvent, error: eventError } = await STATE.client
@@ -382,7 +388,7 @@ const eventsModule = {
    */
   renderTemplatesList() {
     const templates = this.loadTemplates();
-    const container = document.getElementById('templatesList');
+    const container = document.getElementById('eventTemplatesList');
     const countEl = document.getElementById('templatesCount');
 
     countEl.textContent = templates.length;
@@ -567,6 +573,7 @@ const eventsModule = {
     document.getElementById('eventYear').value = new Date().getFullYear();
     document.getElementById('eventVenue').value = template.venue || '';
     document.getElementById('eventDescription').value = template.description || '';
+    document.getElementById('eventStatus').value = 'draft';
     document.getElementById('saveEventBtn').textContent = 'Add Event';
 
     // Store template gallery sections for later use
@@ -2420,17 +2427,39 @@ const eventsModule = {
     const thisYearCount = events.filter(e => e.year === thisYear || (e.event_date && e.event_date.startsWith(String(thisYear)))).length;
     const past = events.filter(e => e.event_date && e.event_date < today).length;
 
+    // Data quality: missing date or venue
+    const missingDate = events.filter(e => !e.event_date).length;
+    const missingVenue = events.filter(e => !e.venue).length;
+    const dataIssues = missingDate + missingVenue;
+
     const el = (id, val) => { const e = document.getElementById(id); if (e) e.textContent = val; };
     el('eventsTotalCount', total);
     el('eventsUpcomingCount', upcoming);
     el('eventsThisYearCount', thisYearCount);
     el('eventsPastCount', past);
+    el('eventsDataIssuesCount', dataIssues);
+
+    // Data quality bar
+    const dqBar = document.getElementById('eventsDataQualityBar');
+    const dqText = document.getElementById('eventsDataQualityText');
+    if (dqBar && dqText) {
+      if (dataIssues > 0) {
+        const parts = [];
+        if (missingDate > 0) parts.push(`${missingDate} missing date${missingDate > 1 ? 's' : ''}`);
+        if (missingVenue > 0) parts.push(`${missingVenue} missing venue${missingVenue > 1 ? 's' : ''}`);
+        dqText.textContent = parts.join(', ');
+        dqBar.style.display = 'block';
+      } else {
+        dqBar.style.display = 'none';
+      }
+    }
   },
 
   filterEvents() {
     const search = (document.getElementById('eventsSearchBox')?.value || '').toLowerCase().trim();
     const year = document.getElementById('eventsYearFilter')?.value || '';
-    const status = document.getElementById('eventsStatusFilter')?.value || '';
+    const timeStatus = document.getElementById('eventsStatusFilter')?.value || '';
+    const eventStatus = document.getElementById('eventsEventStatusFilter')?.value || '';
     const today = new Date().toISOString().split('T')[0];
     const now = new Date();
     const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];
@@ -2442,9 +2471,10 @@ const eventsModule = {
         if (!haystack.includes(search)) return false;
       }
       if (year && String(e.year) !== year && !(e.event_date && e.event_date.startsWith(year))) return false;
-      if (status === 'upcoming' && (!e.event_date || e.event_date < today)) return false;
-      if (status === 'past' && (!e.event_date || e.event_date >= today)) return false;
-      if (status === 'this-month' && (!e.event_date || e.event_date < monthStart || e.event_date > monthEnd)) return false;
+      if (timeStatus === 'upcoming' && (!e.event_date || e.event_date < today)) return false;
+      if (timeStatus === 'past' && (!e.event_date || e.event_date >= today)) return false;
+      if (timeStatus === 'this-month' && (!e.event_date || e.event_date < monthStart || e.event_date > monthEnd)) return false;
+      if (eventStatus && (e.event_status || 'draft') !== eventStatus) return false;
       return true;
     });
 
@@ -2459,6 +2489,22 @@ const eventsModule = {
     });
 
     this.renderFilteredEvents(filtered);
+  },
+
+  filterDataIssues() {
+    // Reset all filters first
+    const searchBox = document.getElementById('eventsSearchBox');
+    const yearFilter = document.getElementById('eventsYearFilter');
+    const statusFilter = document.getElementById('eventsStatusFilter');
+    const eventStatusFilter = document.getElementById('eventsEventStatusFilter');
+    if (searchBox) searchBox.value = '';
+    if (yearFilter) yearFilter.value = '';
+    if (statusFilter) statusFilter.value = '';
+    if (eventStatusFilter) eventStatusFilter.value = '';
+
+    // Filter to only events missing date or venue
+    const issues = (STATE.allEvents || []).filter(e => !e.event_date || !e.venue);
+    this.renderFilteredEvents(issues);
   },
 
   sortEvents(field) {
@@ -2476,90 +2522,261 @@ const eventsModule = {
     el('eventsSearchBox');
     el('eventsYearFilter');
     el('eventsStatusFilter');
+    el('eventsEventStatusFilter');
     this._sortField = 'event_date';
     this._sortDir = 'desc';
     this.renderEvents();
   },
 
+  _selectedEvents: new Set(),
+
   renderFilteredEvents(events) {
     const tbody = document.getElementById('eventsTableBody');
     const count = document.getElementById('eventsCount');
     if (!tbody) return;
-    count.textContent = events.length;
+    if (count) count.textContent = events.length;
+
+    // Update last refreshed
+    const refreshEl = document.getElementById('eventsLastRefreshed');
+    if (refreshEl) refreshEl.textContent = `Last refreshed: ${new Date().toLocaleTimeString('en-GB')}`;
+
+    // Update filter summary
+    const summaryEl = document.getElementById('eventsFilterSummary');
+    if (summaryEl) {
+      const total = (STATE.allEvents || []).length;
+      summaryEl.textContent = events.length < total ? `Showing ${events.length} of ${total}` : `Showing all ${total}`;
+    }
 
     if (events.length === 0) {
-      tbody.innerHTML = '<tr><td colspan="7" class="text-center py-4 text-muted"><i class="bi bi-calendar-x fs-1 d-block mb-2 opacity-25"></i>No events match your filters</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="8" class="text-center py-4 text-muted"><i class="bi bi-calendar-x fs-1 d-block mb-2 opacity-25"></i>No events match your filters</td></tr>';
       return;
     }
 
     const today = new Date().toISOString().split('T')[0];
+    const statusColors = { draft: 'secondary', confirmed: 'success', cancelled: 'danger', complete: 'info' };
+    const statusIcons = { draft: 'bi-pencil', confirmed: 'bi-check-circle', cancelled: 'bi-x-circle', complete: 'bi-flag' };
+
     tbody.innerHTML = events.map(event => {
-      const eventDate = event.event_date ? new Date(event.event_date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : '-';
-      const isUpcoming = event.event_date && event.event_date >= today;
-      const isPast = event.event_date && event.event_date < today;
-      const statusBadge = isUpcoming ? '<span class="badge bg-success">Upcoming</span>'
-                        : isPast ? '<span class="badge bg-secondary">Past</span>'
-                        : '<span class="badge bg-warning">No Date</span>';
+      const eventDate = event.event_date ? new Date(event.event_date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : '<span class="text-danger small">No date</span>';
+      const evtStatus = event.event_status || 'draft';
+      const color = statusColors[evtStatus] || 'secondary';
+      const icon = statusIcons[evtStatus] || 'bi-circle';
+      const statusBadge = `<span class="badge bg-${color}"><i class="bi ${icon} me-1"></i>${evtStatus.charAt(0).toUpperCase() + evtStatus.slice(1)}</span>`;
       const attendees = this.getAttendees(event.id);
       const attendeeCount = attendees ? attendees.length : 0;
       const attending = attendees ? attendees.filter(a => a.status === 'attending').length : 0;
+      const checked = this._selectedEvents.has(event.id) ? 'checked' : '';
+      const eName = utils.escapeHtml(event.event_name).replace(/'/g, "\\'");
 
       return `
         <tr class="fade-in">
-          <td class="fw-semibold">${utils.escapeHtml(event.event_name)}</td>
+          <td><input type="checkbox" class="form-check-input event-checkbox" value="${event.id}" ${checked} onchange="eventsModule.toggleEventSelect('${event.id}', this.checked)"></td>
+          <td class="fw-semibold">${utils.escapeHtml(event.event_name)}${!event.venue ? ' <i class="bi bi-exclamation-triangle text-warning small" title="Missing venue"></i>' : ''}</td>
           <td><span class="badge bg-primary">${utils.escapeHtml(String(event.year || '-'))}</span></td>
           <td>${eventDate}</td>
           <td>${utils.escapeHtml(event.venue || '-')}</td>
-          <td class="text-center">
-            ${attendeeCount > 0 ? `<span class="badge bg-info">${attending}/${attendeeCount}</span>` : '<span class="text-muted small">-</span>'}
-          </td>
+          <td class="text-center">${attendeeCount > 0 ? `<span class="badge bg-info">${attending}/${attendeeCount}</span>` : '<span class="text-muted small">-</span>'}</td>
           <td class="text-center">${statusBadge}</td>
           <td class="text-center">
             <div class="btn-group btn-group-sm" role="group">
-              <button class="btn btn-outline-warning btn-icon"
-                onclick="eventsModule.openRunningOrderModal('${event.id}', '${utils.escapeHtml(event.event_name).replace(/'/g, "\\'")}')"
-                title="Running Order">
-                <i class="bi bi-list-ol"></i>
-              </button>
-              <button class="btn btn-outline-secondary btn-icon"
-                onclick="eventsModule.openTablePlanModal('${event.id}', '${utils.escapeHtml(event.event_name).replace(/'/g, "\\'")}')"
-                title="Table Plan">
-                <i class="bi bi-table"></i>
-              </button>
-              <button class="btn btn-outline-info btn-icon"
-                onclick="eventsModule.openAttendeesModal('${event.id}')"
-                title="Manage Attendees">
-                <i class="bi bi-people"></i>
-              </button>
-              <button class="btn btn-outline-primary btn-icon"
-                onclick="eventsModule.openEditModal('${event.id}')"
-                title="Edit">
-                <i class="bi bi-pencil"></i>
-              </button>
-              <button class="btn btn-outline-success btn-icon"
-                onclick="eventsModule.openCloneModal('${event.id}')"
-                title="Clone Event">
-                <i class="bi bi-files"></i>
-              </button>
-              <button class="btn btn-outline-danger btn-icon"
-                onclick="eventsModule.deleteEvent('${event.id}', '${utils.escapeHtml(event.event_name).replace(/'/g, "\\'")}')"
-                title="Delete">
-                <i class="bi bi-trash"></i>
-              </button>
+              <button class="btn btn-outline-warning btn-icon" onclick="eventsModule.openRunningOrderModal('${event.id}', '${eName}')" title="Running Order"><i class="bi bi-list-ol"></i></button>
+              <button class="btn btn-outline-secondary btn-icon" onclick="eventsModule.openTablePlanModal('${event.id}', '${eName}')" title="Table Plan"><i class="bi bi-table"></i></button>
+              <button class="btn btn-outline-info btn-icon" onclick="eventsModule.openAttendeesModal('${event.id}')" title="Attendees"><i class="bi bi-people"></i></button>
+              <button class="btn btn-outline-primary btn-icon" onclick="eventsModule.openEditModal('${event.id}')" title="Edit"><i class="bi bi-pencil"></i></button>
+              <button class="btn btn-outline-success btn-icon" onclick="eventsModule.openCloneModal('${event.id}')" title="Clone"><i class="bi bi-files"></i></button>
+              <button class="btn btn-outline-danger btn-icon" onclick="eventsModule.deleteEvent('${event.id}', '${eName}')" title="Delete"><i class="bi bi-trash"></i></button>
             </div>
           </td>
-        </tr>
-      `;
+        </tr>`;
     }).join('');
+  },
+
+  // ============================================
+  // BULK OPERATIONS
+  // ============================================
+  toggleEventSelect(eventId, checked) {
+    if (checked) this._selectedEvents.add(eventId);
+    else this._selectedEvents.delete(eventId);
+    this._updateBulkBar();
+  },
+
+  toggleSelectAll(checked) {
+    document.querySelectorAll('.event-checkbox').forEach(cb => {
+      cb.checked = checked;
+      if (checked) this._selectedEvents.add(cb.value);
+      else this._selectedEvents.delete(cb.value);
+    });
+    this._updateBulkBar();
+  },
+
+  clearEventSelection() {
+    this._selectedEvents.clear();
+    document.querySelectorAll('.event-checkbox').forEach(cb => cb.checked = false);
+    const selectAll = document.getElementById('selectAllEvents');
+    if (selectAll) selectAll.checked = false;
+    this._updateBulkBar();
+  },
+
+  _updateBulkBar() {
+    const bar = document.getElementById('eventsBulkActionsBar');
+    const countEl = document.getElementById('eventsSelectedCount');
+    if (!bar) return;
+    if (this._selectedEvents.size > 0) {
+      bar.style.display = 'flex';
+      bar.style.setProperty('display', 'flex', 'important');
+      if (countEl) countEl.textContent = this._selectedEvents.size;
+    } else {
+      bar.style.setProperty('display', 'none', 'important');
+    }
+  },
+
+  async bulkDelete() {
+    const ids = Array.from(this._selectedEvents);
+    if (ids.length === 0) return;
+    if (!confirm(`Delete ${ids.length} event(s)? This cannot be undone.`)) return;
+    try {
+      for (const id of ids) {
+        await STATE.client.from('events').delete().eq('id', id);
+      }
+      utils.showToast(`${ids.length} event(s) deleted`, 'success');
+      this.clearEventSelection();
+      await this.loadEvents();
+    } catch (e) {
+      utils.showToast('Error deleting events: ' + e.message, 'error');
+    }
+  },
+
+  async bulkClone() {
+    const ids = Array.from(this._selectedEvents);
+    if (ids.length === 0) return;
+    if (!confirm(`Clone ${ids.length} event(s)?`)) return;
+    try {
+      for (const id of ids) {
+        const src = STATE.allEvents.find(e => e.id === id);
+        if (!src) continue;
+        await STATE.client.from('events').insert([{
+          event_name: src.event_name + ' (Copy)',
+          event_date: src.event_date,
+          year: src.year,
+          venue: src.venue,
+          description: src.description,
+          event_status: 'draft'
+        }]);
+      }
+      utils.showToast(`${ids.length} event(s) cloned`, 'success');
+      this.clearEventSelection();
+      await this.loadEvents();
+    } catch (e) {
+      utils.showToast('Error cloning events: ' + e.message, 'error');
+    }
+  },
+
+  async bulkSetStatus(status) {
+    const ids = Array.from(this._selectedEvents);
+    if (ids.length === 0) return;
+    try {
+      for (const id of ids) {
+        await STATE.client.from('events').update({ event_status: status }).eq('id', id);
+      }
+      utils.showToast(`${ids.length} event(s) set to ${status}`, 'success');
+      this.clearEventSelection();
+      await this.loadEvents();
+    } catch (e) {
+      utils.showToast('Error updating status: ' + e.message, 'error');
+    }
+  },
+
+  // ============================================
+  // CSV IMPORT FOR ATTENDEES
+  // ============================================
+  showImportAttendeesModal() {
+    const events = STATE.allEvents || [];
+    if (events.length === 0) { utils.showToast('Create an event first', 'warning'); return; }
+    const existingModal = document.getElementById('importAttendeesModal');
+    if (existingModal) existingModal.remove();
+
+    const modalHtml = `<div class="modal fade" id="importAttendeesModal" tabindex="-1">
+      <div class="modal-dialog"><div class="modal-content">
+        <div class="modal-header"><h5 class="modal-title"><i class="bi bi-upload me-2"></i>Import Attendees CSV</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+        <div class="modal-body">
+          <div class="mb-3"><label class="form-label fw-semibold">Select Event</label>
+            <select class="form-select" id="importAttendeesEventId">
+              ${events.map(e => `<option value="${e.id}">${utils.escapeHtml(e.event_name)}</option>`).join('')}
+            </select></div>
+          <div class="mb-3"><label class="form-label fw-semibold">CSV File</label>
+            <input type="file" class="form-control" id="importAttendeesFile" accept=".csv">
+            <div class="form-text">CSV with columns: Name, Email, RSVP Status (attending/not_attending/maybe)</div></div>
+          <div class="mb-3"><label class="form-label fw-semibold">Or paste CSV text:</label>
+            <textarea class="form-control" id="importAttendeesText" rows="5" placeholder="Name,Email,Status&#10;John Doe,john@example.com,attending"></textarea></div>
+        </div>
+        <div class="modal-footer"><button class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button class="btn btn-primary" onclick="eventsModule.executeImportAttendees()"><i class="bi bi-upload me-2"></i>Import</button></div>
+      </div></div></div>`;
+    document.body.insertAdjacentHTML('beforeend', modalHtml);
+    new bootstrap.Modal(document.getElementById('importAttendeesModal')).show();
+  },
+
+  async executeImportAttendees() {
+    const eventId = document.getElementById('importAttendeesEventId')?.value;
+    if (!eventId) { utils.showToast('Select an event', 'warning'); return; }
+
+    let csvText = document.getElementById('importAttendeesText')?.value?.trim();
+    if (!csvText) {
+      const file = document.getElementById('importAttendeesFile')?.files[0];
+      if (!file) { utils.showToast('Provide CSV file or text', 'warning'); return; }
+      csvText = await file.text();
+    }
+
+    const lines = csvText.split('\n').map(l => l.trim()).filter(l => l);
+    if (lines.length < 2) { utils.showToast('CSV needs a header row and at least one data row', 'warning'); return; }
+
+    const existing = this.getAttendees(eventId) || [];
+    let imported = 0;
+    for (let i = 1; i < lines.length; i++) {
+      const cols = lines[i].split(',').map(c => c.trim().replace(/^"|"$/g, ''));
+      const name = cols[0]; const email = cols[1] || '';
+      const status = ['attending', 'not_attending', 'maybe'].includes(cols[2]) ? cols[2] : 'attending';
+      if (!name) continue;
+      existing.push({ id: 'attendee_' + Date.now() + '_' + i, name, email, status, addedAt: new Date().toISOString() });
+      imported++;
+    }
+    this.saveAttendees(eventId, existing);
+    bootstrap.Modal.getInstance(document.getElementById('importAttendeesModal'))?.hide();
+    utils.showToast(`Imported ${imported} attendee(s)`, 'success');
+    this.filterEvents();
+  },
+
+  // ============================================
+  // PRINT RUNNING ORDER
+  // ============================================
+  printRunningOrderStandalone(eventId, eventName) {
+    const items = this.runningOrderItems || [];
+    if (items.length === 0) { utils.showToast('No running order items to print', 'warning'); return; }
+    const printWin = window.open('', '_blank');
+    printWin.document.write(`<!DOCTYPE html><html><head><title>Running Order - ${utils.escapeHtml(eventName)}</title>
+      <style>body{font-family:Arial,sans-serif;margin:40px;color:#333}h1{text-align:center;margin-bottom:5px}
+      h2{text-align:center;color:#666;font-weight:normal;margin-bottom:30px}
+      table{width:100%;border-collapse:collapse;margin-top:20px}th,td{border:1px solid #ddd;padding:10px 12px;text-align:left}
+      th{background:#f5f5f5;font-weight:bold}.num{width:60px;text-align:center}
+      .time{width:80px}.footer{text-align:center;margin-top:30px;color:#999;font-size:12px}
+      @media print{body{margin:20px}}</style></head><body>
+      <h1>${utils.escapeHtml(eventName)}</h1><h2>Running Order</h2>
+      <table><thead><tr><th class="num">#</th><th>Award</th><th>Recipient</th><th class="time">Time</th><th>Notes</th></tr></thead><tbody>
+      ${items.map((item, i) => `<tr><td class="num">${item.award_number || (i + 1)}</td><td>${utils.escapeHtml(item.award_name || item.display_name || '')}</td>
+        <td>${utils.escapeHtml(item.recipient_collecting || '')}</td><td class="time">${item.scheduled_time || '-'}</td>
+        <td>${utils.escapeHtml(item.notes || '')}</td></tr>`).join('')}
+      </tbody></table><div class="footer">Printed ${new Date().toLocaleString('en-GB')}</div></body></html>`);
+    printWin.document.close();
+    printWin.print();
   },
 
   exportEventsCSV() {
     const events = STATE.allEvents || [];
     if (events.length === 0) { utils.showToast('No events to export', 'warning'); return; }
-    const rows = [['Event Name', 'Year', 'Date', 'Venue', 'Description', 'Attendees']];
+    const rows = [['Event Name', 'Year', 'Date', 'Venue', 'Status', 'Description', 'Attendees']];
     events.forEach(e => {
       const attendees = this.getAttendees(e.id);
-      rows.push([e.event_name || '', e.year || '', e.event_date || '', e.venue || '', e.description || '', attendees ? attendees.length : 0]);
+      rows.push([e.event_name || '', e.year || '', e.event_date || '', e.venue || '', e.event_status || 'draft', e.description || '', attendees ? attendees.length : 0]);
     });
     const csv = rows.map(r => r.map(c => `"${String(c).replace(/"/g, '""')}"`).join(',')).join('\n');
     const blob = new Blob([csv], { type: 'text/csv' });
@@ -2606,7 +2823,6 @@ const eventsModule = {
     const today = new Date();
     const todayStr = today.toISOString().split('T')[0];
 
-    // Get events for this month
     const monthStr = `${this._calendarYear}-${String(this._calendarMonth + 1).padStart(2, '0')}`;
     const monthEvents = (STATE.allEvents || []).filter(e => e.event_date && e.event_date.startsWith(monthStr));
     const eventsByDay = {};
@@ -2619,7 +2835,6 @@ const eventsModule = {
     const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
     let html = dayNames.map(d => `<div class="col text-center small fw-semibold text-muted py-1">${d}</div>`).join('');
 
-    // Blank days before first of month
     const startDay = firstDay === 0 ? 0 : firstDay;
     for (let i = 0; i < startDay; i++) {
       html += '<div class="col text-center p-1"><div class="rounded p-2" style="min-height:70px;"></div></div>';
@@ -2639,7 +2854,6 @@ const eventsModule = {
         </div>
       </div>`;
 
-      // New row after Saturday
       if ((startDay + day) % 7 === 0 && day < daysInMonth) {
         html += '<div class="w-100"></div>';
       }

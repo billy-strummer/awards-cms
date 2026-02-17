@@ -8984,7 +8984,6 @@ in recognition of excellence
           "container_id": "tradingview_chart",
           "studies": ["STD;SMA", "STD;RSI", "STD;MACD"],
           "hide_side_toolbar": false,
-          "withdateranges": true,
           "hide_top_toolbar": false,
           "save_image": true,
           "details": true,
@@ -8997,7 +8996,13 @@ in recognition of excellence
 
       switchSymbol(symbol, btn) {
         this._symbol = symbol;
-        document.querySelectorAll('.btc-symbol-btn').forEach(b => b.classList.remove('active'));
+        document.querySelectorAll('.btc-symbol-btn').forEach(b => {
+          b.classList.remove('active');
+          // Auto-match quick switch buttons by symbol in onclick attribute
+          if (!btn && b.getAttribute('onclick') && b.getAttribute('onclick').includes("'" + symbol + "'")) {
+            b.classList.add('active');
+          }
+        });
         if (btn) btn.classList.add('active');
         this.createChart();
       },

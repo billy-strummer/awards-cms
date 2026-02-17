@@ -9,7 +9,7 @@ const eventsModule = {
   async loadEvents() {
     try {
       utils.showLoading();
-      utils.showTableLoading('eventsTableBody', 6);
+      utils.showTableLoading('eventsTableBody', 7);
 
       const { data, error } = await STATE.client
         .from('events')
@@ -26,7 +26,7 @@ const eventsModule = {
     } catch (error) {
       console.error('Error loading events:', error);
       utils.showToast('Failed to load events: ' + error.message, 'error');
-      utils.showEmptyState('eventsTableBody', 6, 'Failed to load events', 'bi-exclamation-triangle');
+      utils.showEmptyState('eventsTableBody', 7, 'Failed to load events', 'bi-exclamation-triangle');
     } finally {
       utils.hideLoading();
     }
@@ -2441,7 +2441,7 @@ const eventsModule = {
         const haystack = `${e.event_name || ''} ${e.venue || ''} ${e.description || ''}`.toLowerCase();
         if (!haystack.includes(search)) return false;
       }
-      if (year && String(e.year) !== year) return false;
+      if (year && String(e.year) !== year && !(e.event_date && e.event_date.startsWith(year))) return false;
       if (status === 'upcoming' && (!e.event_date || e.event_date < today)) return false;
       if (status === 'past' && (!e.event_date || e.event_date >= today)) return false;
       if (status === 'this-month' && (!e.event_date || e.event_date < monthStart || e.event_date > monthEnd)) return false;

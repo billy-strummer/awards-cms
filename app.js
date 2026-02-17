@@ -229,7 +229,7 @@ const reportsAnalytics = {
     orgs.forEach(o => { const s = o.status || 'unknown'; counts[s] = (counts[s] || 0) + 1; });
     const total = orgs.length || 1;
     const sorted = Object.entries(counts).sort((a, b) => b[1] - a[1]);
-    const colors = { prospect: 'primary', entrant: 'info', nominee: 'warning', shortlisted: 'secondary', winner: 'success', sponsor: 'dark', 'past winner': 'secondary', archived: 'danger' };
+    const colors = { prospect: 'primary', entrant: 'info', nominee: 'warning', shortlisted: 'secondary', winner: 'success', sponsor: 'dark', past_winner: 'secondary', archived: 'danger', unknown: 'light' };
 
     tbody.innerHTML = sorted.map(([status, count]) => {
       const pct = ((count / total) * 100).toFixed(1);

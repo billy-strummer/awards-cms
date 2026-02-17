@@ -3810,8 +3810,19 @@ const eventsModule = {
                 <button class="btn btn-sm btn-outline-light" onclick="eventsModule.autoAssignGuests()" title="Auto Assign">
                   <i class="bi bi-magic me-1"></i>Auto Assign
                 </button>
-                <button class="btn btn-sm btn-outline-light" onclick="eventsModule.exportTablePlan()" title="Export CSV">
-                  <i class="bi bi-download me-1"></i>Export
+                <div class="dropdown">
+                  <button class="btn btn-sm btn-outline-light dropdown-toggle" data-bs-toggle="dropdown">
+                    <i class="bi bi-download me-1"></i>Export
+                  </button>
+                  <ul class="dropdown-menu dropdown-menu-end">
+                    <li><a class="dropdown-item" href="#" onclick="eventsModule.exportTablePlan(); return false;"><i class="bi bi-filetype-csv me-2"></i>Export CSV</a></li>
+                    <li><a class="dropdown-item" href="#" onclick="eventsModule.exportTablePlanPDF(); return false;"><i class="bi bi-file-pdf me-2"></i>Export PDF (Print)</a></li>
+                    <li><hr class="dropdown-divider"></li>
+                    <li><a class="dropdown-item" href="#" onclick="eventsModule.openTVDisplay(); return false;"><i class="bi bi-tv me-2"></i>TV / Projector Display</a></li>
+                  </ul>
+                </div>
+                <button class="btn btn-sm btn-outline-light" onclick="eventsModule.showTablePlanStats()" title="Stats Summary">
+                  <i class="bi bi-bar-chart"></i>
                 </button>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
               </div>
@@ -4364,6 +4375,14 @@ const eventsModule = {
           `).join('') : '<p class="text-muted small text-center mt-3">Drop guests onto this table to assign them</p>'}
         </div>
         <hr>
+        <div class="d-flex gap-2 mb-2">
+          <button class="btn btn-sm btn-outline-secondary flex-fill" onclick="eventsModule.duplicateTable('${table.id}')">
+            <i class="bi bi-copy me-1"></i>Duplicate
+          </button>
+          <button class="btn btn-sm btn-outline-warning flex-fill" onclick="eventsModule.clearTable('${table.id}')" ${assignedCount === 0 ? 'disabled' : ''}>
+            <i class="bi bi-eraser me-1"></i>Clear
+          </button>
+        </div>
         <button class="btn btn-sm btn-outline-danger w-100" onclick="eventsModule.deleteTable('${table.id}')">
           <i class="bi bi-trash me-1"></i>Delete Table
         </button>
@@ -4739,6 +4758,375 @@ const eventsModule = {
 
     const filename = `${this.currentEventNameTablePlan.replace(/[^a-z0-9]/gi, '_')}_table_plan_${new Date().toISOString().split('T')[0]}.csv`;
     utils.exportToCSV(exportData, filename);
+  },
+
+  // ---- PDF EXPORT (print-friendly) ----
+
+  exportTablePlanPDF() {
+    if (this.tables.length === 0) {
+      utils.showToast('No tables to export', 'warning');
+      return;
+    }
+
+    try {
+      const { jsPDF } = window.jspdf;
+      const doc = new jsPDF('landscape');
+      const eventName = this.currentEventNameTablePlan || 'Event';
+      const dateStr = new Date().toLocaleDateString('en-GB');
+
+      // Title page
+      doc.setFontSize(28);
+      doc.setTextColor(26, 26, 46);
+      doc.text('Table Plan', 148.5, 60, { align: 'center' });
+      doc.setFontSize(18);
+      doc.setTextColor(13, 110, 253);
+      doc.text(eventName, 148.5, 75, { align: 'center' });
+      doc.setFontSize(11);
+      doc.setTextColor(120, 120, 120);
+      doc.text(`Generated: ${dateStr}`, 148.5, 88, { align: 'center' });
+
+      // Summary stats
+      const totalSeats = this.tables.reduce((s, t) => s + t.total_seats, 0);
+      const totalSeated = this.tables.reduce((s, t) => s + (t.assignments?.length || 0), 0);
+      doc.setFontSize(12);
+      doc.setTextColor(80, 80, 80);
+      doc.text(`${this.tables.length} Tables  |  ${totalSeated}/${totalSeats} Seats Filled  |  ${this.unassignedGuests.length} Unassigned`, 148.5, 100, { align: 'center' });
+
+      // Table-by-table detail pages
+      doc.addPage('landscape');
+      doc.setFontSize(16);
+      doc.setTextColor(26, 26, 46);
+      doc.text('Seating Assignments', 14, 18);
+
+      // Build table data for autoTable
+      const tableData = [];
+      this.tables.forEach(table => {
+        const label = table.table_name ? `Table ${table.table_number} - ${table.table_name}` : `Table ${table.table_number}`;
+        const assigned = table.assignments?.length || 0;
+        if (table.assignments && table.assignments.length > 0) {
+          table.assignments.forEach((a, i) => {
+            tableData.push([
+              i === 0 ? label : '',
+              i === 0 ? `${assigned}/${table.total_seats}` : '',
+              a.guest_name,
+              a.company_name || '',
+              a.dietary_requirements || '',
+              a.is_vip ? 'VIP' : ''
+            ]);
+          });
+        } else {
+          tableData.push([label, `0/${table.total_seats}`, '(No guests)', '', '', '']);
+        }
+      });
+
+      doc.autoTable({
+        startY: 24,
+        head: [['Table', 'Capacity', 'Guest Name', 'Company', 'Dietary', 'VIP']],
+        body: tableData,
+        styles: { fontSize: 9, cellPadding: 3 },
+        headStyles: { fillColor: [26, 26, 46], textColor: 255, fontStyle: 'bold' },
+        columnStyles: {
+          0: { fontStyle: 'bold', cellWidth: 50 },
+          1: { cellWidth: 25, halign: 'center' },
+          5: { cellWidth: 18, halign: 'center' }
+        },
+        didParseCell: (data) => {
+          // Bold table name rows
+          if (data.column.index === 0 && data.cell.raw) {
+            data.cell.styles.fontStyle = 'bold';
+          }
+          // Highlight VIP
+          if (data.column.index === 5 && data.cell.raw === 'VIP') {
+            data.cell.styles.textColor = [220, 53, 69];
+            data.cell.styles.fontStyle = 'bold';
+          }
+        }
+      });
+
+      // Unassigned guests page (if any)
+      if (this.unassignedGuests.length > 0) {
+        doc.addPage('landscape');
+        doc.setFontSize(16);
+        doc.setTextColor(26, 26, 46);
+        doc.text('Unassigned Guests', 14, 18);
+
+        const unassignedData = this.unassignedGuests.map(g => [
+          g.guest_name,
+          g.company_name || '',
+          g.guest_email || ''
+        ]);
+
+        doc.autoTable({
+          startY: 24,
+          head: [['Guest Name', 'Company', 'Email']],
+          body: unassignedData,
+          styles: { fontSize: 9, cellPadding: 3 },
+          headStyles: { fillColor: [255, 193, 7], textColor: [0, 0, 0], fontStyle: 'bold' }
+        });
+      }
+
+      const safeName = eventName.replace(/[^a-z0-9]/gi, '_');
+      doc.save(`${safeName}_Table_Plan_${new Date().toISOString().split('T')[0]}.pdf`);
+      utils.showToast('PDF exported successfully', 'success');
+
+    } catch (error) {
+      console.error('Error exporting PDF:', error);
+      utils.showToast('Failed to export PDF: ' + error.message, 'error');
+    }
+  },
+
+  // ---- TV / PROJECTOR DISPLAY ----
+
+  openTVDisplay() {
+    if (this.tables.length === 0) {
+      utils.showToast('No tables to display', 'warning');
+      return;
+    }
+
+    const eventName = utils.escapeHtml(this.currentEventNameTablePlan || 'Event');
+    const totalSeats = this.tables.reduce((s, t) => s + t.total_seats, 0);
+    const totalSeated = this.tables.reduce((s, t) => s + (t.assignments?.length || 0), 0);
+
+    // Build table cards HTML
+    const tablesHtml = this.tables.map(table => {
+      const assigned = table.assignments?.length || 0;
+      const pct = table.total_seats > 0 ? Math.round(assigned / table.total_seats * 100) : 0;
+      const barColor = assigned >= table.total_seats ? '#dc3545' : assigned >= table.total_seats * 0.75 ? '#fd7e14' : '#0d6efd';
+      const shapeIcon = table.shape === 'rectangular' ? 'bi-square' : 'bi-circle';
+      const label = table.table_name ? `${table.table_name}` : `Table ${table.table_number}`;
+
+      const guestsHtml = (table.assignments || []).map(a => `
+        <div style="padding:6px 12px; border-bottom:1px solid rgba(255,255,255,0.08); display:flex; justify-content:space-between; align-items:center;">
+          <span style="font-weight:500;">${utils.escapeHtml(a.guest_name)}</span>
+          <span style="font-size:0.75em; opacity:0.6;">${a.company_name ? utils.escapeHtml(a.company_name) : ''}</span>
+        </div>
+      `).join('');
+
+      return `
+        <div style="background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.12); border-radius:12px; overflow:hidden; break-inside:avoid;">
+          <div style="padding:14px 16px; background:rgba(255,255,255,0.04); border-bottom:1px solid rgba(255,255,255,0.1); display:flex; justify-content:space-between; align-items:center;">
+            <div>
+              <div style="font-size:1.2em; font-weight:700;"><i class="bi ${shapeIcon} me-2" style="opacity:0.5;"></i>${label}</div>
+              ${table.table_name ? `<div style="font-size:0.75em; opacity:0.5;">Table ${table.table_number}</div>` : ''}
+            </div>
+            <div style="text-align:right;">
+              <div style="font-size:1.4em; font-weight:700; color:${barColor};">${assigned}<span style="font-size:0.6em; opacity:0.5;">/${table.total_seats}</span></div>
+            </div>
+          </div>
+          <div style="height:3px; background:rgba(255,255,255,0.1);"><div style="height:100%; width:${pct}%; background:${barColor}; transition:width 0.3s;"></div></div>
+          ${guestsHtml || '<div style="padding:12px; text-align:center; opacity:0.3; font-style:italic;">No guests assigned</div>'}
+        </div>
+      `;
+    }).join('');
+
+    // Open a new window with dark-themed display
+    const tvWindow = window.open('', '_blank', 'width=1920,height=1080');
+    if (!tvWindow) {
+      utils.showToast('Please allow popups to open the TV display', 'warning');
+      return;
+    }
+
+    tvWindow.document.write(`
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <title>Table Plan - ${eventName}</title>
+        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
+        <style>
+          * { margin: 0; padding: 0; box-sizing: border-box; }
+          body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #0f0c29, #302b63, #24243e);
+            color: white; min-height: 100vh; padding: 30px 40px;
+          }
+          .header { text-align: center; margin-bottom: 30px; }
+          .header h1 { font-size: 2.5em; font-weight: 800; letter-spacing: -1px; }
+          .header .subtitle { font-size: 1.1em; opacity: 0.6; margin-top: 4px; }
+          .header .stats { margin-top: 12px; display: flex; justify-content: center; gap: 30px; }
+          .header .stat { background: rgba(255,255,255,0.08); padding: 8px 20px; border-radius: 20px; font-size: 0.9em; }
+          .header .stat strong { color: #7c83ff; font-size: 1.2em; }
+          .tables-grid {
+            columns: 3; column-gap: 20px;
+          }
+          .tables-grid > div { margin-bottom: 20px; }
+          @media (max-width: 1200px) { .tables-grid { columns: 2; } }
+          @media (max-width: 768px) { .tables-grid { columns: 1; } }
+          .footer { text-align: center; margin-top: 30px; opacity: 0.3; font-size: 0.8em; }
+          /* Auto-scroll animation for tall content */
+          @keyframes scrollUp {
+            0%, 10% { transform: translateY(0); }
+            90%, 100% { transform: translateY(var(--scroll-distance)); }
+          }
+        </style>
+      </head>
+      <body>
+        <div class="header">
+          <h1><i class="bi bi-grid-3x3-gap me-2"></i>${eventName}</h1>
+          <div class="subtitle">Table Plan</div>
+          <div class="stats">
+            <div class="stat"><strong>${this.tables.length}</strong> Tables</div>
+            <div class="stat"><strong>${totalSeated}</strong>/${totalSeats} Seated</div>
+            ${this.unassignedGuests.length > 0 ? `<div class="stat"><strong>${this.unassignedGuests.length}</strong> Unassigned</div>` : ''}
+          </div>
+        </div>
+        <div class="tables-grid">
+          ${tablesHtml}
+        </div>
+        <div class="footer">Press F11 for fullscreen &bull; Press F5 to refresh</div>
+      </body>
+      </html>
+    `);
+    tvWindow.document.close();
+
+    utils.showToast('TV display opened in new window. Press F11 for fullscreen.', 'success');
+  },
+
+  // ---- STATS SUMMARY ----
+
+  showTablePlanStats() {
+    const totalTables = this.tables.length;
+    const totalSeats = this.tables.reduce((s, t) => s + t.total_seats, 0);
+    const totalSeated = this.tables.reduce((s, t) => s + (t.assignments?.length || 0), 0);
+    const totalUnassigned = this.unassignedGuests.length;
+    const emptyTables = this.tables.filter(t => (t.assignments?.length || 0) === 0).length;
+    const fullTables = this.tables.filter(t => (t.assignments?.length || 0) >= t.total_seats).length;
+    const occupancyPct = totalSeats > 0 ? Math.round(totalSeated / totalSeats * 100) : 0;
+
+    // Company breakdown
+    const companyMap = {};
+    this.tables.forEach(t => {
+      (t.assignments || []).forEach(a => {
+        const company = a.company_name || 'No Company';
+        if (!companyMap[company]) companyMap[company] = { seated: 0, tables: new Set() };
+        companyMap[company].seated++;
+        companyMap[company].tables.add(t.table_number);
+      });
+    });
+    const companySorted = Object.entries(companyMap)
+      .sort((a, b) => b[1].seated - a[1].seated)
+      .slice(0, 10);
+
+    const companyRows = companySorted.map(([name, data]) =>
+      `<tr><td>${utils.escapeHtml(name)}</td><td class="text-center">${data.seated}</td><td class="text-center">${[...data.tables].sort((a,b)=>a-b).join(', ')}</td></tr>`
+    ).join('');
+
+    // Show as a modal overlay
+    const existingStats = document.getElementById('tpStatsOverlay');
+    if (existingStats) existingStats.remove();
+
+    document.body.insertAdjacentHTML('beforeend', `
+      <div id="tpStatsOverlay" style="position:fixed; inset:0; z-index:9999; background:rgba(0,0,0,0.6); display:flex; align-items:center; justify-content:center;" onclick="if(event.target===this)this.remove();">
+        <div style="background:white; border-radius:16px; padding:30px; width:560px; max-height:80vh; overflow-y:auto; box-shadow:0 20px 60px rgba(0,0,0,0.3);">
+          <div class="d-flex justify-content-between align-items-center mb-3">
+            <h5 class="mb-0"><i class="bi bi-bar-chart me-2"></i>Table Plan Stats</h5>
+            <button class="btn btn-sm btn-outline-secondary" onclick="document.getElementById('tpStatsOverlay').remove()"><i class="bi bi-x-lg"></i></button>
+          </div>
+
+          <div class="row g-3 mb-4">
+            <div class="col-4">
+              <div class="p-3 rounded text-center" style="background:#e7f3ff;">
+                <div class="fw-bold" style="font-size:2em; color:#0d6efd;">${totalTables}</div>
+                <small class="text-muted">Tables</small>
+              </div>
+            </div>
+            <div class="col-4">
+              <div class="p-3 rounded text-center" style="background:#e8f5e9;">
+                <div class="fw-bold" style="font-size:2em; color:#198754;">${totalSeated}</div>
+                <small class="text-muted">Seated</small>
+              </div>
+            </div>
+            <div class="col-4">
+              <div class="p-3 rounded text-center" style="background:#fff3e0;">
+                <div class="fw-bold" style="font-size:2em; color:#fd7e14;">${totalUnassigned}</div>
+                <small class="text-muted">Unassigned</small>
+              </div>
+            </div>
+          </div>
+
+          <div class="mb-3">
+            <div class="d-flex justify-content-between mb-1">
+              <small class="fw-bold">Occupancy</small>
+              <small>${totalSeated}/${totalSeats} seats (${occupancyPct}%)</small>
+            </div>
+            <div class="progress" style="height:12px;">
+              <div class="progress-bar ${occupancyPct >= 90 ? 'bg-danger' : occupancyPct >= 70 ? 'bg-warning' : 'bg-primary'}" style="width:${occupancyPct}%"></div>
+            </div>
+          </div>
+
+          <div class="row g-3 mb-4">
+            <div class="col-6"><div class="p-2 border rounded text-center"><strong>${emptyTables}</strong> <small class="text-muted">Empty Tables</small></div></div>
+            <div class="col-6"><div class="p-2 border rounded text-center"><strong>${fullTables}</strong> <small class="text-muted">Full Tables</small></div></div>
+          </div>
+
+          ${companySorted.length > 0 ? `
+            <h6 class="mb-2"><i class="bi bi-building me-1"></i>Top Companies</h6>
+            <table class="table table-sm table-bordered mb-0">
+              <thead><tr><th>Company</th><th class="text-center">Guests</th><th class="text-center">Tables</th></tr></thead>
+              <tbody>${companyRows}</tbody>
+            </table>
+          ` : ''}
+        </div>
+      </div>
+    `);
+  },
+
+  // ---- DUPLICATE TABLE ----
+
+  async duplicateTable(tableId) {
+    const source = this.tables.find(t => t.id === tableId);
+    if (!source) return;
+
+    try {
+      const { data: nextNumber, error: numberError } = await STATE.client
+        .rpc('get_next_table_number', { p_event_id: this.currentEventIdTablePlan });
+      if (numberError) throw numberError;
+
+      const { error } = await STATE.client
+        .from('event_tables')
+        .insert([{
+          event_id: this.currentEventIdTablePlan,
+          table_number: nextNumber,
+          table_name: source.table_name ? source.table_name + ' (copy)' : null,
+          total_seats: source.total_seats,
+          shape: source.shape,
+          position_x: (source.position_x || 100) + 50,
+          position_y: (source.position_y || 100) + 50
+        }]);
+      if (error) throw error;
+
+      utils.showToast('Table duplicated (empty copy created)', 'success');
+      await this.loadTablePlan();
+      this.renderCanvasTables();
+    } catch (error) {
+      console.error('Error duplicating table:', error);
+      utils.showToast('Failed to duplicate table', 'error');
+    }
+  },
+
+  // ---- CLEAR TABLE (remove all guests) ----
+
+  async clearTable(tableId) {
+    const table = this.tables.find(t => t.id === tableId);
+    if (!table || !table.assignments || table.assignments.length === 0) return;
+
+    if (!confirm(`Remove all ${table.assignments.length} guest(s) from this table?`)) return;
+
+    try {
+      const { error } = await STATE.client
+        .from('table_assignments')
+        .delete()
+        .eq('table_id', tableId);
+      if (error) throw error;
+
+      utils.showToast('All guests removed from table', 'success');
+      await this.loadTablePlan();
+      this.renderUnassignedGuests();
+      this.renderCanvasTables();
+      if (this._selectedTableId === tableId) this.showTableDetail(tableId);
+    } catch (error) {
+      console.error('Error clearing table:', error);
+      utils.showToast('Failed to clear table', 'error');
+    }
   },
 
   // ============================================

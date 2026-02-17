@@ -41,6 +41,11 @@ const dashboardModule = {
         await mediaGalleryModule.loadMediaStatistics();
       }
 
+      // Load media dashboard widget
+      if (typeof mediaGalleryModule !== 'undefined' && mediaGalleryModule.renderMediaDashboardWidget) {
+        mediaGalleryModule.renderMediaDashboardWidget('mediaDashboardWidget');
+      }
+
       // Load AI vetting status
       if (typeof aiVettingModule !== 'undefined' && aiVettingModule.updateDashboardCard) {
         await aiVettingModule.updateDashboardCard();

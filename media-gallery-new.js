@@ -880,11 +880,13 @@ const mediaGalleryModule = {
 
       if (error) throw error;
 
+      const options = '<option value="">Select a company...</option>' +
+        (companies || []).map(c => `<option value="${c.id}" data-name="${utils.escapeHtml(c.company_name)}">${utils.escapeHtml(c.company_name)}</option>`).join('');
+
       const select = document.getElementById('videoTagInput');
-      select.innerHTML = '<option value="">Select a company...</option>';
-      (companies || []).forEach(company => {
-        select.innerHTML += `<option value="${company.id}" data-name="${utils.escapeHtml(company.company_name)}">${utils.escapeHtml(company.company_name)}</option>`;
-      });
+      if (select) select.innerHTML = options;
+      const bulkSelect = document.getElementById('bulkVideoTagInput');
+      if (bulkSelect) bulkSelect.innerHTML = options;
     } catch (error) {
       console.error('Error loading companies for video tags:', error);
       utils.showToast('Failed to load companies', 'error');
@@ -904,11 +906,13 @@ const mediaGalleryModule = {
 
       if (error) throw error;
 
+      const options = '<option value="">Select an award...</option>' +
+        (awards || []).map(a => `<option value="${a.id}" data-name="${utils.escapeHtml(a.award_name)}">${utils.escapeHtml(a.award_name)}</option>`).join('');
+
       const select = document.getElementById('videoAwardTagInput');
-      select.innerHTML = '<option value="">Select an award...</option>';
-      (awards || []).forEach(award => {
-        select.innerHTML += `<option value="${award.id}" data-name="${utils.escapeHtml(award.award_name)}">${utils.escapeHtml(award.award_name)}</option>`;
-      });
+      if (select) select.innerHTML = options;
+      const bulkSelect = document.getElementById('bulkVideoAwardTagInput');
+      if (bulkSelect) bulkSelect.innerHTML = options;
     } catch (error) {
       console.error('Error loading awards for video tags:', error);
       utils.showToast('Failed to load awards', 'error');
@@ -938,8 +942,9 @@ const mediaGalleryModule = {
   /**
    * Add a company tag to the video
    */
-  addVideoTag() {
-    const select = document.getElementById('videoTagInput');
+  addVideoTag(context) {
+    const prefix = context === 'bulk' ? 'bulkVideo' : 'video';
+    const select = document.getElementById(`${prefix}TagInput`);
     const id = select.value;
     const name = select.options[select.selectedIndex]?.dataset?.name || select.options[select.selectedIndex]?.text;
 
@@ -954,27 +959,31 @@ const mediaGalleryModule = {
     }
 
     this.videoTags.push({ id, name });
-    this.renderVideoTags();
+    this.renderVideoTags(context);
     select.value = '';
   },
 
-  removeVideoTag(tagId) {
+  removeVideoTag(tagId, context) {
     this.videoTags = this.videoTags.filter(t => t.id !== tagId);
-    this.renderVideoTags();
+    this.renderVideoTags(context);
   },
 
-  renderVideoTags() {
-    const container = document.getElementById('videoTagsContainer');
+  renderVideoTags(context) {
+    const prefix = context === 'bulk' ? 'bulkVideo' : 'video';
+    const container = document.getElementById(`${prefix}TagsContainer`);
+    if (!container) return;
+    const ctx = context === 'bulk' ? "'bulk'" : '';
     container.innerHTML = this.videoTags.map(tag => `
       <span class="badge bg-primary" style="font-size: 14px;">
         <i class="bi bi-building me-1"></i>${utils.escapeHtml(tag.name)}
-        <i class="bi bi-x-circle ms-1" style="cursor: pointer;" onclick="mediaGalleryModule.removeVideoTag('${tag.id}')"></i>
+        <i class="bi bi-x-circle ms-1" style="cursor: pointer;" onclick="mediaGalleryModule.removeVideoTag('${tag.id}', ${ctx})"></i>
       </span>
     `).join('');
   },
 
-  addVideoAwardTag() {
-    const select = document.getElementById('videoAwardTagInput');
+  addVideoAwardTag(context) {
+    const prefix = context === 'bulk' ? 'bulkVideo' : 'video';
+    const select = document.getElementById(`${prefix}AwardTagInput`);
     const id = select.value;
     const name = select.options[select.selectedIndex]?.dataset?.name || select.options[select.selectedIndex]?.text;
 
@@ -989,21 +998,24 @@ const mediaGalleryModule = {
     }
 
     this.videoAwardTags.push({ id, name });
-    this.renderVideoAwardTags();
+    this.renderVideoAwardTags(context);
     select.value = '';
   },
 
-  removeVideoAwardTag(tagId) {
+  removeVideoAwardTag(tagId, context) {
     this.videoAwardTags = this.videoAwardTags.filter(t => t.id !== tagId);
-    this.renderVideoAwardTags();
+    this.renderVideoAwardTags(context);
   },
 
-  renderVideoAwardTags() {
-    const container = document.getElementById('videoAwardTagsContainer');
+  renderVideoAwardTags(context) {
+    const prefix = context === 'bulk' ? 'bulkVideo' : 'video';
+    const container = document.getElementById(`${prefix}AwardTagsContainer`);
+    if (!container) return;
+    const ctx = context === 'bulk' ? "'bulk'" : '';
     container.innerHTML = this.videoAwardTags.map(tag => `
       <span class="badge bg-success" style="font-size: 14px;">
         <i class="bi bi-trophy me-1"></i>${utils.escapeHtml(tag.name)}
-        <i class="bi bi-x-circle ms-1" style="cursor: pointer;" onclick="mediaGalleryModule.removeVideoAwardTag('${tag.id}')"></i>
+        <i class="bi bi-x-circle ms-1" style="cursor: pointer;" onclick="mediaGalleryModule.removeVideoAwardTag('${tag.id}', ${ctx})"></i>
       </span>
     `).join('');
   },
@@ -4130,6 +4142,1201 @@ const mediaGalleryModule = {
       utils.showToast('Error applying tags: ' + error.message, 'error');
     } finally {
       utils.hideLoading();
+    }
+  },
+
+  /* ==================================================== */
+  /* FEATURE: Bulk YouTube Import                          */
+  /* ==================================================== */
+
+  async openBulkYouTubeModal() {
+    // Load companies and awards for shared tagging
+    await this.loadCompaniesForVideoTags();
+    await this.loadAwardsForVideoTags();
+
+    // Reset form
+    document.getElementById('bulkYouTubeUrls').value = '';
+    document.getElementById('bulkYouTubePreview').innerHTML = '';
+    this.videoTags = [];
+    this.videoAwardTags = [];
+    document.getElementById('bulkVideoTagsContainer').innerHTML = '';
+    document.getElementById('bulkVideoAwardTagsContainer').innerHTML = '';
+
+    // Set event info
+    if (this.currentEvent) {
+      document.getElementById('bulkYouTubeEventName').textContent = this.currentEvent.event_name;
+    }
+
+    const modal = new bootstrap.Modal(document.getElementById('bulkYouTubeModal'));
+    modal.show();
+  },
+
+  previewBulkYouTube() {
+    const input = document.getElementById('bulkYouTubeUrls').value.trim();
+    const lines = input.split('\n').filter(l => l.trim());
+    const container = document.getElementById('bulkYouTubePreview');
+
+    if (lines.length === 0) {
+      container.innerHTML = '<p class="text-muted">Paste YouTube URLs above to preview</p>';
+      return;
+    }
+
+    const previews = lines.map(line => {
+      const id = this.extractYouTubeId(line.trim());
+      if (!id) {
+        return `<div class="col-md-4 mb-2"><div class="card border-danger"><div class="card-body p-2"><small class="text-danger">Invalid: ${utils.escapeHtml(line.trim().substring(0, 40))}</small></div></div></div>`;
+      }
+      return `
+        <div class="col-md-4 mb-2">
+          <div class="card">
+            <img src="https://img.youtube.com/vi/${id}/mqdefault.jpg" class="card-img-top" style="height:120px; object-fit:cover;" alt="Preview">
+            <div class="card-body p-2">
+              <small class="text-muted">ID: ${id}</small>
+            </div>
+          </div>
+        </div>`;
+    });
+
+    container.innerHTML = `
+      <p class="mb-2"><strong>${lines.length}</strong> video(s) detected:</p>
+      <div class="row">${previews.join('')}</div>`;
+  },
+
+  async saveBulkYouTube() {
+    const input = document.getElementById('bulkYouTubeUrls').value.trim();
+    const lines = input.split('\n').filter(l => l.trim());
+
+    if (lines.length === 0) {
+      utils.showToast('Please paste at least one YouTube URL', 'warning');
+      return;
+    }
+
+    if (!this.currentEventId) {
+      utils.showToast('No event selected', 'error');
+      return;
+    }
+
+    const primaryOrgId = this.videoTags.length > 0 ? this.videoTags[0].id : null;
+    const primaryAwardId = this.videoAwardTags.length > 0 ? this.videoAwardTags[0].id : null;
+    const tagsObject = {
+      companies: this.videoTags.map(t => ({ id: t.id, name: t.name })),
+      awards: this.videoAwardTags.map(t => ({ id: t.id, name: t.name }))
+    };
+    const hasTags = this.videoTags.length > 0 || this.videoAwardTags.length > 0;
+
+    let successCount = 0;
+    let failCount = 0;
+    utils.showLoading();
+
+    try {
+      for (const line of lines) {
+        const youtubeId = this.extractYouTubeId(line.trim());
+        if (!youtubeId) {
+          failCount++;
+          continue;
+        }
+
+        const videoData = {
+          event_id: this.currentEventId,
+          media_type: 'video',
+          title: `Video ${youtubeId}`,
+          file_url: `https://www.youtube.com/watch?v=${youtubeId}`,
+          thumbnail_url: `https://img.youtube.com/vi/${youtubeId}/hqdefault.jpg`,
+          youtube_id: youtubeId,
+          organisation_id: primaryOrgId,
+          award_id: primaryAwardId,
+          tags: hasTags ? JSON.stringify(tagsObject) : null,
+          status: 'published',
+          created_at: new Date().toISOString()
+        };
+
+        const { error } = await STATE.client.from('media_items').insert([videoData]);
+        if (error) {
+          console.error('Error inserting video:', youtubeId, error);
+          failCount++;
+        } else {
+          successCount++;
+        }
+      }
+
+      let msg = `${successCount} video(s) imported successfully!`;
+      if (failCount > 0) msg += ` ${failCount} failed.`;
+      utils.showToast(msg, failCount > 0 ? 'warning' : 'success');
+
+      bootstrap.Modal.getInstance(document.getElementById('bulkYouTubeModal')).hide();
+      await this.loadVideosProduction();
+
+    } catch (error) {
+      console.error('Bulk YouTube import error:', error);
+      utils.showToast('Import failed: ' + error.message, 'error');
+    } finally {
+      utils.hideLoading();
+    }
+  },
+
+  /* ==================================================== */
+  /* FEATURE: Video Thumbnail Preview (live)               */
+  /* ==================================================== */
+
+  previewYouTubeThumbnail() {
+    const input = document.getElementById('videoYouTubeId').value.trim();
+    const previewContainer = document.getElementById('youtubePreviewContainer');
+
+    if (!input) {
+      previewContainer.innerHTML = '';
+      return;
+    }
+
+    const youtubeId = this.extractYouTubeId(input);
+    if (!youtubeId) {
+      previewContainer.innerHTML = '<small class="text-danger">Could not detect a valid YouTube ID</small>';
+      return;
+    }
+
+    previewContainer.innerHTML = `
+      <div class="card mt-2">
+        <div class="row g-0">
+          <div class="col-5">
+            <img src="https://img.youtube.com/vi/${youtubeId}/mqdefault.jpg" class="img-fluid rounded-start" alt="Thumbnail" style="height:100px; object-fit:cover; width:100%;">
+          </div>
+          <div class="col-7 d-flex align-items-center">
+            <div class="card-body p-2">
+              <p class="card-text mb-1"><small class="text-success"><i class="bi bi-check-circle me-1"></i>Valid YouTube ID</small></p>
+              <p class="card-text"><small class="text-muted">ID: ${youtubeId}</small></p>
+            </div>
+          </div>
+        </div>
+      </div>`;
+  },
+
+  /* ==================================================== */
+  /* FEATURE: Photo Watermarking                           */
+  /* ==================================================== */
+
+  async openWatermarkModal() {
+    if (!this.currentEventId) {
+      utils.showToast('Please select an event first', 'warning');
+      return;
+    }
+
+    // Load sections for this event
+    const { data: sections } = await STATE.client
+      .from('event_galleries')
+      .select('id, gallery_name')
+      .eq('event_id', this.currentEventId)
+      .order('display_order');
+
+    const sectionSelect = document.getElementById('watermarkSection');
+    sectionSelect.innerHTML = '<option value="all">All Sections</option>';
+    (sections || []).forEach(s => {
+      sectionSelect.innerHTML += `<option value="${s.id}">${utils.escapeHtml(s.gallery_name)}</option>`;
+    });
+
+    // Reset settings
+    document.getElementById('watermarkPosition').value = 'bottom-right';
+    document.getElementById('watermarkOpacity').value = '30';
+    document.getElementById('watermarkOpacityValue').textContent = '30%';
+    document.getElementById('watermarkPreviewResult').innerHTML = '';
+
+    const modal = new bootstrap.Modal(document.getElementById('watermarkModal'));
+    modal.show();
+  },
+
+  async previewWatermark() {
+    const fileInput = document.getElementById('watermarkLogo');
+    if (!fileInput.files[0]) {
+      utils.showToast('Please select a watermark image', 'warning');
+      return;
+    }
+
+    // Load a sample photo from the event to preview
+    const sectionVal = document.getElementById('watermarkSection').value;
+    let query = STATE.client.from('media_gallery').select('file_url').eq('event_id', this.currentEventId).limit(1);
+    if (sectionVal !== 'all') {
+      query = query.eq('gallery_section_id', sectionVal);
+    }
+    const { data: photos } = await query;
+
+    if (!photos || photos.length === 0) {
+      utils.showToast('No photos found to preview', 'warning');
+      return;
+    }
+
+    const position = document.getElementById('watermarkPosition').value;
+    const opacity = parseInt(document.getElementById('watermarkOpacity').value) / 100;
+
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d');
+
+    // Load the sample photo
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.onload = () => {
+      canvas.width = 600;
+      canvas.height = 400;
+      ctx.drawImage(img, 0, 0, 600, 400);
+
+      // Load watermark
+      const watermark = new Image();
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        watermark.onload = () => {
+          const wmWidth = Math.min(120, canvas.width * 0.2);
+          const wmHeight = (watermark.height / watermark.width) * wmWidth;
+          ctx.globalAlpha = opacity;
+
+          let x, y;
+          switch (position) {
+            case 'top-left': x = 10; y = 10; break;
+            case 'top-right': x = canvas.width - wmWidth - 10; y = 10; break;
+            case 'bottom-left': x = 10; y = canvas.height - wmHeight - 10; break;
+            case 'center': x = (canvas.width - wmWidth) / 2; y = (canvas.height - wmHeight) / 2; break;
+            default: x = canvas.width - wmWidth - 10; y = canvas.height - wmHeight - 10; break;
+          }
+
+          ctx.drawImage(watermark, x, y, wmWidth, wmHeight);
+          ctx.globalAlpha = 1;
+
+          document.getElementById('watermarkPreviewResult').innerHTML = `
+            <p class="mb-2 text-muted small">Preview (actual photos will keep original resolution):</p>
+            <img src="${canvas.toDataURL()}" class="img-fluid rounded border" alt="Watermark Preview">`;
+        };
+        watermark.src = e.target.result;
+      };
+      reader.readAsDataURL(fileInput.files[0]);
+    };
+    img.onerror = () => {
+      document.getElementById('watermarkPreviewResult').innerHTML = '<small class="text-warning">Could not load sample photo for preview (CORS). Watermark will still be applied on download.</small>';
+    };
+    img.src = photos[0].file_url;
+  },
+
+  async applyWatermarks() {
+    const fileInput = document.getElementById('watermarkLogo');
+    if (!fileInput.files[0]) {
+      utils.showToast('Please select a watermark image', 'warning');
+      return;
+    }
+
+    const sectionVal = document.getElementById('watermarkSection').value;
+    const position = document.getElementById('watermarkPosition').value;
+    const opacity = parseInt(document.getElementById('watermarkOpacity').value) / 100;
+
+    // Load all photos for the selected scope
+    let query = STATE.client.from('media_gallery').select('id, file_url, title').eq('event_id', this.currentEventId);
+    if (sectionVal !== 'all') {
+      query = query.eq('gallery_section_id', sectionVal);
+    }
+    const { data: photos, error } = await query;
+
+    if (error || !photos || photos.length === 0) {
+      utils.showToast('No photos found to watermark', 'warning');
+      return;
+    }
+
+    if (!confirm(`This will create watermarked copies of ${photos.length} photos. The originals will NOT be modified. Continue?`)) return;
+
+    utils.showLoading();
+
+    // Read watermark file
+    const wmDataUrl = await new Promise(resolve => {
+      const reader = new FileReader();
+      reader.onload = (e) => resolve(e.target.result);
+      reader.readAsDataURL(fileInput.files[0]);
+    });
+
+    let successCount = 0;
+    const zip = [];
+
+    for (const photo of photos) {
+      try {
+        const result = await this._watermarkSinglePhoto(photo.file_url, wmDataUrl, position, opacity);
+        if (result) {
+          zip.push({ name: photo.title || `photo_${photo.id}.jpg`, dataUrl: result });
+          successCount++;
+        }
+      } catch (err) {
+        console.warn('Watermark failed for:', photo.id, err);
+      }
+    }
+
+    utils.hideLoading();
+
+    if (zip.length > 0) {
+      // Download as individual files (or let user know they're ready)
+      this._watermarkedPhotos = zip;
+      utils.showToast(`${successCount} photos watermarked! Click "Download All" to save.`, 'success');
+      document.getElementById('watermarkPreviewResult').innerHTML = `
+        <div class="alert alert-success">
+          <i class="bi bi-check-circle me-2"></i>${successCount} photos watermarked successfully.
+          <button class="btn btn-sm btn-success ms-2" onclick="mediaGalleryModule.downloadWatermarked()">
+            <i class="bi bi-download me-1"></i>Download All (${successCount} files)
+          </button>
+        </div>`;
+    } else {
+      utils.showToast('Could not watermark any photos (CORS restrictions may apply)', 'warning');
+    }
+  },
+
+  _watermarkSinglePhoto(photoUrl, wmDataUrl, position, opacity) {
+    return new Promise((resolve) => {
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+      const img = new Image();
+      img.crossOrigin = 'anonymous';
+      img.onload = () => {
+        canvas.width = img.width;
+        canvas.height = img.height;
+        ctx.drawImage(img, 0, 0);
+
+        const watermark = new Image();
+        watermark.onload = () => {
+          const wmWidth = Math.min(200, canvas.width * 0.15);
+          const wmHeight = (watermark.height / watermark.width) * wmWidth;
+          ctx.globalAlpha = opacity;
+
+          let x, y;
+          switch (position) {
+            case 'top-left': x = 15; y = 15; break;
+            case 'top-right': x = canvas.width - wmWidth - 15; y = 15; break;
+            case 'bottom-left': x = 15; y = canvas.height - wmHeight - 15; break;
+            case 'center': x = (canvas.width - wmWidth) / 2; y = (canvas.height - wmHeight) / 2; break;
+            default: x = canvas.width - wmWidth - 15; y = canvas.height - wmHeight - 15; break;
+          }
+
+          ctx.drawImage(watermark, x, y, wmWidth, wmHeight);
+          ctx.globalAlpha = 1;
+          resolve(canvas.toDataURL('image/jpeg', 0.92));
+        };
+        watermark.onerror = () => resolve(null);
+        watermark.src = wmDataUrl;
+      };
+      img.onerror = () => resolve(null);
+      img.src = photoUrl;
+    });
+  },
+
+  downloadWatermarked() {
+    if (!this._watermarkedPhotos || this._watermarkedPhotos.length === 0) {
+      utils.showToast('No watermarked photos to download', 'warning');
+      return;
+    }
+
+    this._watermarkedPhotos.forEach((photo, i) => {
+      setTimeout(() => {
+        const link = document.createElement('a');
+        link.href = photo.dataUrl;
+        link.download = `watermarked_${photo.name}`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+      }, i * 300); // Stagger downloads to avoid browser blocking
+    });
+  },
+
+  /* ==================================================== */
+  /* FEATURE: Media Usage Stats on Dashboard               */
+  /* ==================================================== */
+
+  async getMediaDashboardStats() {
+    try {
+      // Photos from media_gallery
+      const { count: totalPhotos } = await STATE.client
+        .from('media_gallery')
+        .select('*', { count: 'exact', head: true });
+
+      // Videos from media_items
+      const { count: totalVideos } = await STATE.client
+        .from('media_items')
+        .select('*', { count: 'exact', head: true })
+        .eq('media_type', 'video');
+
+      // Untagged photos (no org or award)
+      const { count: untaggedPhotos } = await STATE.client
+        .from('media_gallery')
+        .select('*', { count: 'exact', head: true })
+        .is('organisation_id', null);
+
+      // YouTube videos
+      const { count: youtubeCount } = await STATE.client
+        .from('media_items')
+        .select('*', { count: 'exact', head: true })
+        .eq('media_type', 'video')
+        .not('youtube_id', 'is', null);
+
+      // Top organisations by media count
+      const { data: orgMedia } = await STATE.client
+        .from('media_gallery')
+        .select('organisation_id, organisations!media_gallery_organisation_id_fkey(company_name)')
+        .not('organisation_id', 'is', null);
+
+      const orgCounts = {};
+      (orgMedia || []).forEach(m => {
+        const name = m.organisations?.company_name || 'Unknown';
+        orgCounts[name] = (orgCounts[name] || 0) + 1;
+      });
+      const topOrgs = Object.entries(orgCounts)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 5);
+
+      return {
+        totalPhotos: totalPhotos || 0,
+        totalVideos: totalVideos || 0,
+        untaggedPhotos: untaggedPhotos || 0,
+        youtubeCount: youtubeCount || 0,
+        topOrgs
+      };
+    } catch (error) {
+      console.error('Error loading media dashboard stats:', error);
+      return { totalPhotos: 0, totalVideos: 0, untaggedPhotos: 0, youtubeCount: 0, topOrgs: [] };
+    }
+  },
+
+  renderMediaDashboardWidget(containerId) {
+    const container = document.getElementById(containerId);
+    if (!container) return;
+
+    this.getMediaDashboardStats().then(stats => {
+      const taggedPct = stats.totalPhotos > 0
+        ? Math.round(((stats.totalPhotos - stats.untaggedPhotos) / stats.totalPhotos) * 100)
+        : 0;
+
+      container.innerHTML = `
+        <div class="card">
+          <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+            <span><i class="bi bi-bar-chart me-2"></i>Media Overview</span>
+            <span class="badge bg-light text-primary">${stats.totalPhotos + stats.totalVideos} total</span>
+          </div>
+          <div class="card-body">
+            <div class="row text-center mb-3">
+              <div class="col-3">
+                <div class="fs-4 fw-bold text-primary">${stats.totalPhotos}</div>
+                <small class="text-muted">Photos</small>
+              </div>
+              <div class="col-3">
+                <div class="fs-4 fw-bold text-danger">${stats.totalVideos}</div>
+                <small class="text-muted">Videos</small>
+              </div>
+              <div class="col-3">
+                <div class="fs-4 fw-bold text-warning">${stats.untaggedPhotos}</div>
+                <small class="text-muted">Untagged</small>
+              </div>
+              <div class="col-3">
+                <div class="fs-4 fw-bold text-info">${stats.youtubeCount}</div>
+                <small class="text-muted">YouTube</small>
+              </div>
+            </div>
+            <div class="mb-3">
+              <div class="d-flex justify-content-between small mb-1">
+                <span>Tagging Progress</span>
+                <span>${taggedPct}%</span>
+              </div>
+              <div class="progress" style="height: 8px;">
+                <div class="progress-bar ${taggedPct === 100 ? 'bg-success' : 'bg-primary'}" style="width: ${taggedPct}%"></div>
+              </div>
+            </div>
+            ${stats.topOrgs.length > 0 ? `
+              <h6 class="mb-2 small text-muted">Most Photographed</h6>
+              ${stats.topOrgs.map(([name, count]) => `
+                <div class="d-flex justify-content-between align-items-center mb-1">
+                  <small>${utils.escapeHtml(name)}</small>
+                  <span class="badge bg-light text-dark">${count}</span>
+                </div>
+              `).join('')}
+            ` : ''}
+          </div>
+        </div>`;
+    });
+  },
+
+  /* ==================================================== */
+  /* FEATURE: Drag-to-Reorder Videos                       */
+  /* ==================================================== */
+
+  renderVideosGridWithReorder(videos) {
+    const container = document.getElementById('videosProductionContent');
+
+    container.innerHTML = `
+      <div class="d-flex justify-content-between align-items-center mb-3">
+        <span class="text-muted small"><i class="bi bi-grip-vertical me-1"></i>Drag videos to reorder</span>
+        <button class="btn btn-sm btn-success" onclick="mediaGalleryModule.saveVideoOrder()" id="saveVideoOrderBtn" style="display:none;">
+          <i class="bi bi-save me-1"></i>Save Order
+        </button>
+      </div>
+      <div class="row g-4" id="videosReorderGrid">
+        ${videos.map((video, index) => {
+          const isYouTube = video.youtube_id || (video.file_url && video.file_url.includes('youtube'));
+          const thumbnailUrl = isYouTube
+            ? `https://img.youtube.com/vi/${video.youtube_id || 'default'}/hqdefault.jpg`
+            : video.thumbnail_url || video.file_url;
+
+          const fkOrgName = video.organisations?.company_name;
+          const fkAwardName = video.awards?.award_name;
+
+          return `
+            <div class="col-md-6 col-lg-4" draggable="true" data-video-id="${video.id}" data-order="${index}"
+                 ondragstart="mediaGalleryModule.onVideoDragStart(event)"
+                 ondragover="mediaGalleryModule.onVideoDragOver(event)"
+                 ondrop="mediaGalleryModule.onVideoDrop(event)"
+                 ondragend="mediaGalleryModule.onVideoDragEnd(event)">
+              <div class="card h-100" style="cursor: grab;">
+                <div class="position-relative">
+                  <img src="${thumbnailUrl}" class="card-img-top" alt="${utils.escapeHtml(video.title || 'Video')}" style="height: 200px; object-fit: cover;">
+                  <span class="position-absolute top-0 start-0 m-2 badge bg-dark"><i class="bi bi-grip-vertical"></i> ${index + 1}</span>
+                  ${isYouTube ? '<span class="position-absolute top-0 end-0 m-2 badge bg-danger">YouTube</span>' : ''}
+                </div>
+                <div class="card-body p-2">
+                  <h6 class="card-title mb-1 small">${utils.escapeHtml(video.title || 'Untitled')}</h6>
+                  ${fkOrgName ? `<span class="badge bg-primary me-1 small">${utils.escapeHtml(fkOrgName)}</span>` : ''}
+                  ${fkAwardName ? `<span class="badge bg-success small">${utils.escapeHtml(fkAwardName)}</span>` : ''}
+                </div>
+                <div class="card-footer bg-transparent">
+                  <div class="btn-group btn-group-sm w-100">
+                    <button class="btn btn-outline-primary" onclick="mediaGalleryModule.viewVideo('${video.id}')" title="View"><i class="bi bi-eye"></i></button>
+                    <button class="btn btn-outline-secondary" onclick="mediaGalleryModule.editVideo('${video.id}')" title="Edit"><i class="bi bi-pencil"></i></button>
+                    <button class="btn btn-outline-danger" onclick="mediaGalleryModule.deleteVideo('${video.id}')" title="Delete"><i class="bi bi-trash"></i></button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          `;
+        }).join('')}
+      </div>
+    `;
+  },
+
+  _videoReorderMode: false,
+
+  async toggleVideoReorderMode() {
+    this._videoReorderMode = !this._videoReorderMode;
+
+    if (this._videoReorderMode) {
+      // Re-fetch and render in reorder mode
+      const { data: videos } = await STATE.client
+        .from('media_items')
+        .select('*, organisations(company_name), awards(award_name)')
+        .eq('event_id', this.currentEventId)
+        .eq('media_type', 'video')
+        .order('display_order', { ascending: true });
+
+      if (videos && videos.length > 0) {
+        this.renderVideosGridWithReorder(videos);
+        utils.showToast('Reorder mode enabled - drag videos to rearrange', 'info');
+      } else {
+        utils.showToast('No videos to reorder', 'warning');
+        this._videoReorderMode = false;
+      }
+    } else {
+      await this.loadVideosProduction();
+      utils.showToast('Reorder mode disabled', 'info');
+    }
+  },
+
+  _draggedVideoEl: null,
+
+  onVideoDragStart(e) {
+    this._draggedVideoEl = e.currentTarget;
+    e.currentTarget.style.opacity = '0.4';
+    e.dataTransfer.effectAllowed = 'move';
+  },
+
+  onVideoDragOver(e) {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    const target = e.currentTarget;
+    if (target !== this._draggedVideoEl) {
+      target.style.border = '2px dashed #0d6efd';
+    }
+  },
+
+  onVideoDrop(e) {
+    e.preventDefault();
+    const target = e.currentTarget;
+    target.style.border = '';
+
+    if (target === this._draggedVideoEl) return;
+
+    const grid = document.getElementById('videosReorderGrid');
+    const items = [...grid.children];
+    const fromIndex = items.indexOf(this._draggedVideoEl);
+    const toIndex = items.indexOf(target);
+
+    if (fromIndex < toIndex) {
+      grid.insertBefore(this._draggedVideoEl, target.nextSibling);
+    } else {
+      grid.insertBefore(this._draggedVideoEl, target);
+    }
+
+    // Update order numbers visually
+    [...grid.children].forEach((el, i) => {
+      const badge = el.querySelector('.badge.bg-dark');
+      if (badge) badge.innerHTML = `<i class="bi bi-grip-vertical"></i> ${i + 1}`;
+      el.dataset.order = i;
+    });
+
+    document.getElementById('saveVideoOrderBtn').style.display = 'inline-block';
+  },
+
+  onVideoDragEnd(e) {
+    e.currentTarget.style.opacity = '1';
+    document.querySelectorAll('#videosReorderGrid > div').forEach(el => {
+      el.style.border = '';
+    });
+  },
+
+  async saveVideoOrder() {
+    const grid = document.getElementById('videosReorderGrid');
+    if (!grid) return;
+
+    const items = [...grid.children];
+    utils.showLoading();
+
+    try {
+      for (let i = 0; i < items.length; i++) {
+        const videoId = items[i].dataset.videoId;
+        await STATE.client
+          .from('media_items')
+          .update({ display_order: i })
+          .eq('id', videoId);
+      }
+
+      utils.showToast('Video order saved!', 'success');
+      document.getElementById('saveVideoOrderBtn').style.display = 'none';
+    } catch (error) {
+      console.error('Error saving video order:', error);
+      utils.showToast('Failed to save order: ' + error.message, 'error');
+    } finally {
+      utils.hideLoading();
+    }
+  },
+
+  /* ==================================================== */
+  /* FEATURE: YouTube Playlist Sync                        */
+  /* ==================================================== */
+
+  async openPlaylistSyncModal() {
+    document.getElementById('playlistUrl').value = '';
+    document.getElementById('playlistPreview').innerHTML = '';
+    document.getElementById('playlistStatus').innerHTML = '';
+
+    // Load companies and awards for tagging
+    await this.loadCompaniesForVideoTags();
+    await this.loadAwardsForVideoTags();
+    this.videoTags = [];
+    this.videoAwardTags = [];
+    document.getElementById('videoTagsContainer').innerHTML = '';
+    document.getElementById('videoAwardTagsContainer').innerHTML = '';
+
+    if (this.currentEvent) {
+      document.getElementById('playlistEventName').textContent = this.currentEvent.event_name;
+    }
+
+    const modal = new bootstrap.Modal(document.getElementById('playlistSyncModal'));
+    modal.show();
+  },
+
+  extractPlaylistId(input) {
+    if (!input) return null;
+    const match = input.match(/[?&]list=([a-zA-Z0-9_-]+)/);
+    if (match) return match[1];
+    // Bare ID
+    if (/^[a-zA-Z0-9_-]{10,}$/.test(input.trim())) return input.trim();
+    return null;
+  },
+
+  async fetchPlaylistVideos() {
+    const input = document.getElementById('playlistUrl').value.trim();
+    const playlistId = this.extractPlaylistId(input);
+    const statusEl = document.getElementById('playlistStatus');
+    const previewEl = document.getElementById('playlistPreview');
+
+    if (!playlistId) {
+      statusEl.innerHTML = '<div class="alert alert-warning">Invalid playlist URL. Please paste a full YouTube playlist URL.</div>';
+      return;
+    }
+
+    statusEl.innerHTML = '<div class="alert alert-info"><i class="bi bi-hourglass-split me-2"></i>Fetching playlist... This uses the YouTube oEmbed API.</div>';
+
+    // Since we can't use the YouTube Data API without a key, we use a workaround:
+    // Try fetching the playlist page via noembed/YouTube oEmbed
+    try {
+      // We'll use the approach of entering video IDs manually from the playlist
+      // Since browser CORS blocks direct YouTube page scraping
+      statusEl.innerHTML = `
+        <div class="alert alert-info">
+          <i class="bi bi-info-circle me-2"></i>
+          <strong>Playlist ID detected:</strong> ${utils.escapeHtml(playlistId)}<br>
+          <small class="text-muted">Due to browser restrictions, we can't auto-fetch playlist contents.
+          Please paste the individual video URLs/IDs below (one per line).
+          <br>Tip: Open the playlist on YouTube, and copy each video URL.</small>
+        </div>
+        <div class="mb-3">
+          <label class="form-label">Paste video URLs from this playlist (one per line):</label>
+          <textarea class="form-control" id="playlistVideoUrls" rows="8" placeholder="https://www.youtube.com/watch?v=VIDEO_ID_1&#10;https://www.youtube.com/watch?v=VIDEO_ID_2&#10;..."></textarea>
+        </div>
+        <button class="btn btn-outline-primary btn-sm" onclick="mediaGalleryModule.previewPlaylistVideos()">
+          <i class="bi bi-eye me-1"></i>Preview Videos
+        </button>`;
+      previewEl.innerHTML = '';
+    } catch (error) {
+      statusEl.innerHTML = `<div class="alert alert-danger">Error: ${error.message}</div>`;
+    }
+  },
+
+  previewPlaylistVideos() {
+    const input = document.getElementById('playlistVideoUrls')?.value?.trim();
+    if (!input) return;
+
+    const lines = input.split('\n').filter(l => l.trim());
+    const previewEl = document.getElementById('playlistPreview');
+
+    const previews = lines.map(line => {
+      const id = this.extractYouTubeId(line.trim());
+      if (!id) return `<div class="col-md-3 mb-2"><div class="card border-danger p-2"><small class="text-danger">Invalid</small></div></div>`;
+      return `
+        <div class="col-md-3 mb-2">
+          <div class="card">
+            <img src="https://img.youtube.com/vi/${id}/mqdefault.jpg" class="card-img-top" style="height:80px; object-fit:cover;">
+            <div class="card-body p-1"><small class="text-muted">${id}</small></div>
+          </div>
+        </div>`;
+    });
+
+    previewEl.innerHTML = `<p class="mb-2 small text-muted">${lines.length} videos detected:</p><div class="row">${previews.join('')}</div>`;
+  },
+
+  async importPlaylistVideos() {
+    const input = document.getElementById('playlistVideoUrls')?.value?.trim();
+    if (!input) {
+      utils.showToast('No video URLs entered', 'warning');
+      return;
+    }
+
+    // Reuse bulk import logic
+    document.getElementById('bulkYouTubeUrls').value = input;
+    bootstrap.Modal.getInstance(document.getElementById('playlistSyncModal')).hide();
+    await this.saveBulkYouTube();
+  },
+
+  /* ==================================================== */
+  /* FEATURE: Media Export for Social                       */
+  /* ==================================================== */
+
+  async openExportModal() {
+    // Load organisations
+    const { data: orgs } = await STATE.client
+      .from('organisations')
+      .select('id, company_name')
+      .eq('status', 'active')
+      .order('company_name');
+
+    const select = document.getElementById('exportOrgSelect');
+    select.innerHTML = '<option value="">Select a company...</option>';
+    (orgs || []).forEach(org => {
+      select.innerHTML += `<option value="${org.id}">${utils.escapeHtml(org.company_name)}</option>`;
+    });
+
+    document.getElementById('exportPreview').innerHTML = '';
+    document.getElementById('exportStatus').innerHTML = '';
+
+    const modal = new bootstrap.Modal(document.getElementById('exportModal'));
+    modal.show();
+  },
+
+  async previewExport() {
+    const orgId = document.getElementById('exportOrgSelect').value;
+    if (!orgId) {
+      utils.showToast('Please select a company', 'warning');
+      return;
+    }
+
+    const previewEl = document.getElementById('exportPreview');
+    previewEl.innerHTML = '<div class="text-center py-3"><i class="bi bi-hourglass-split"></i> Loading...</div>';
+
+    try {
+      // Fetch photos for this org
+      const { data: photos } = await STATE.client
+        .from('media_gallery')
+        .select('id, file_url, title, caption, organisations!media_gallery_organisation_id_fkey(company_name), awards!media_gallery_award_id_fkey(award_name)')
+        .eq('organisation_id', orgId);
+
+      // Fetch videos for this org
+      const { data: videos } = await STATE.client
+        .from('media_items')
+        .select('id, title, youtube_id, file_url, thumbnail_url, organisations(company_name), awards(award_name)')
+        .eq('organisation_id', orgId)
+        .eq('media_type', 'video');
+
+      const photoCount = photos?.length || 0;
+      const videoCount = videos?.length || 0;
+
+      if (photoCount === 0 && videoCount === 0) {
+        previewEl.innerHTML = '<div class="alert alert-warning">No media found for this company.</div>';
+        return;
+      }
+
+      this._exportData = { photos: photos || [], videos: videos || [] };
+
+      previewEl.innerHTML = `
+        <div class="alert alert-info">
+          <strong>${photoCount} photos</strong> and <strong>${videoCount} videos</strong> found.
+        </div>
+        <div class="row">
+          ${(photos || []).slice(0, 6).map(p => `
+            <div class="col-md-2 mb-2">
+              <img src="${p.file_url}" class="img-fluid rounded" style="height:80px; object-fit:cover; width:100%;" alt="${utils.escapeHtml(p.title || '')}">
+            </div>
+          `).join('')}
+          ${photoCount > 6 ? `<div class="col-md-2 mb-2 d-flex align-items-center justify-content-center"><span class="text-muted">+${photoCount - 6} more</span></div>` : ''}
+        </div>
+        ${videoCount > 0 ? `
+          <h6 class="mt-3 mb-2">Videos:</h6>
+          <ul class="list-unstyled">
+            ${(videos || []).map(v => `<li><i class="bi bi-play-circle me-1"></i>${utils.escapeHtml(v.title)} ${v.youtube_id ? `<small class="text-muted">(${v.youtube_id})</small>` : ''}</li>`).join('')}
+          </ul>
+        ` : ''}`;
+    } catch (error) {
+      previewEl.innerHTML = `<div class="alert alert-danger">Error: ${error.message}</div>`;
+    }
+  },
+
+  async downloadExportPackage() {
+    if (!this._exportData) {
+      utils.showToast('Please preview first', 'warning');
+      return;
+    }
+
+    const { photos, videos } = this._exportData;
+    const statusEl = document.getElementById('exportStatus');
+
+    // Generate a text manifest
+    const orgName = document.getElementById('exportOrgSelect').options[document.getElementById('exportOrgSelect').selectedIndex].text;
+    let manifest = `MEDIA EXPORT - ${orgName}\n`;
+    manifest += `${'='.repeat(50)}\n`;
+    manifest += `Generated: ${new Date().toLocaleDateString()}\n\n`;
+    manifest += `PHOTOS (${photos.length}):\n`;
+    photos.forEach((p, i) => {
+      manifest += `  ${i + 1}. ${p.title || 'Untitled'} - ${p.file_url}\n`;
+      if (p.caption) manifest += `     Caption: ${p.caption}\n`;
+      if (p.awards?.award_name) manifest += `     Award: ${p.awards.award_name}\n`;
+    });
+    manifest += `\nVIDEOS (${videos.length}):\n`;
+    videos.forEach((v, i) => {
+      manifest += `  ${i + 1}. ${v.title || 'Untitled'}`;
+      if (v.youtube_id) manifest += ` - https://www.youtube.com/watch?v=${v.youtube_id}`;
+      manifest += '\n';
+      if (v.awards?.award_name) manifest += `     Award: ${v.awards.award_name}\n`;
+    });
+
+    // Download manifest
+    const blob = new Blob([manifest], { type: 'text/plain' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = `media-export-${orgName.replace(/[^a-zA-Z0-9]/g, '-')}.txt`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+
+    // Download photos individually
+    statusEl.innerHTML = `<div class="alert alert-info"><i class="bi bi-download me-2"></i>Downloading ${photos.length} photos...</div>`;
+
+    for (let i = 0; i < photos.length; i++) {
+      try {
+        const photoLink = document.createElement('a');
+        photoLink.href = photos[i].file_url;
+        photoLink.download = photos[i].title || `photo_${i + 1}.jpg`;
+        photoLink.target = '_blank';
+        document.body.appendChild(photoLink);
+        photoLink.click();
+        document.body.removeChild(photoLink);
+        await new Promise(r => setTimeout(r, 400));
+      } catch (err) {
+        console.warn('Download failed for photo:', photos[i].id);
+      }
+    }
+
+    statusEl.innerHTML = `<div class="alert alert-success"><i class="bi bi-check-circle me-2"></i>Export complete! Manifest + ${photos.length} photos downloaded.</div>`;
+  },
+
+  /* ==================================================== */
+  /* FEATURE: Before/After Event Comparison                */
+  /* ==================================================== */
+
+  async openComparisonModal() {
+    // Load events for selection
+    const { data: events } = await STATE.client
+      .from('events')
+      .select('id, event_name, event_date')
+      .order('event_date', { ascending: false });
+
+    const select1 = document.getElementById('comparisonEvent1');
+    const select2 = document.getElementById('comparisonEvent2');
+    const options = '<option value="">Select event...</option>' +
+      (events || []).map(e => `<option value="${e.id}">${utils.escapeHtml(e.event_name)} (${e.event_date ? new Date(e.event_date).getFullYear() : 'N/A'})</option>`).join('');
+
+    select1.innerHTML = options;
+    select2.innerHTML = options;
+
+    // Load organisations for filtering
+    const { data: orgs } = await STATE.client
+      .from('organisations')
+      .select('id, company_name')
+      .eq('status', 'active')
+      .order('company_name');
+
+    const orgSelect = document.getElementById('comparisonOrg');
+    orgSelect.innerHTML = '<option value="">All companies</option>';
+    (orgs || []).forEach(org => {
+      orgSelect.innerHTML += `<option value="${org.id}">${utils.escapeHtml(org.company_name)}</option>`;
+    });
+
+    document.getElementById('comparisonResult').innerHTML = '';
+
+    const modal = new bootstrap.Modal(document.getElementById('comparisonModal'));
+    modal.show();
+  },
+
+  async runComparison() {
+    const event1Id = document.getElementById('comparisonEvent1').value;
+    const event2Id = document.getElementById('comparisonEvent2').value;
+    const orgId = document.getElementById('comparisonOrg').value;
+    const resultEl = document.getElementById('comparisonResult');
+
+    if (!event1Id || !event2Id) {
+      utils.showToast('Please select two events to compare', 'warning');
+      return;
+    }
+
+    resultEl.innerHTML = '<div class="text-center py-3"><i class="bi bi-hourglass-split"></i> Comparing...</div>';
+
+    try {
+      // Fetch photos for event 1
+      let q1 = STATE.client.from('media_gallery').select('id, file_url, title, caption, organisation_id, organisations!media_gallery_organisation_id_fkey(company_name)').eq('event_id', event1Id);
+      let q2 = STATE.client.from('media_gallery').select('id, file_url, title, caption, organisation_id, organisations!media_gallery_organisation_id_fkey(company_name)').eq('event_id', event2Id);
+
+      if (orgId) {
+        q1 = q1.eq('organisation_id', orgId);
+        q2 = q2.eq('organisation_id', orgId);
+      }
+
+      const [{ data: photos1 }, { data: photos2 }] = await Promise.all([q1, q2]);
+
+      // Fetch videos for both events
+      let vq1 = STATE.client.from('media_items').select('id, title, youtube_id, organisation_id, organisations(company_name)').eq('event_id', event1Id).eq('media_type', 'video');
+      let vq2 = STATE.client.from('media_items').select('id, title, youtube_id, organisation_id, organisations(company_name)').eq('event_id', event2Id).eq('media_type', 'video');
+
+      if (orgId) {
+        vq1 = vq1.eq('organisation_id', orgId);
+        vq2 = vq2.eq('organisation_id', orgId);
+      }
+
+      const [{ data: videos1 }, { data: videos2 }] = await Promise.all([vq1, vq2]);
+
+      const event1Name = document.getElementById('comparisonEvent1').options[document.getElementById('comparisonEvent1').selectedIndex].text;
+      const event2Name = document.getElementById('comparisonEvent2').options[document.getElementById('comparisonEvent2').selectedIndex].text;
+
+      resultEl.innerHTML = `
+        <div class="row">
+          <div class="col-md-6">
+            <div class="card">
+              <div class="card-header bg-primary text-white">
+                <strong>${utils.escapeHtml(event1Name)}</strong>
+              </div>
+              <div class="card-body">
+                <div class="d-flex gap-3 mb-3">
+                  <span class="badge bg-primary fs-6">${(photos1 || []).length} photos</span>
+                  <span class="badge bg-danger fs-6">${(videos1 || []).length} videos</span>
+                </div>
+                <div class="row g-1">
+                  ${(photos1 || []).slice(0, 8).map(p => `
+                    <div class="col-3">
+                      <img src="${p.file_url}" class="img-fluid rounded" style="height:60px; object-fit:cover; width:100%;" alt="">
+                    </div>
+                  `).join('')}
+                  ${(photos1 || []).length > 8 ? `<div class="col-3 d-flex align-items-center justify-content-center"><small class="text-muted">+${(photos1 || []).length - 8}</small></div>` : ''}
+                </div>
+                ${(videos1 || []).length > 0 ? `
+                  <div class="mt-2">
+                    ${(videos1 || []).slice(0, 3).map(v => `<div class="small"><i class="bi bi-play-circle me-1"></i>${utils.escapeHtml(v.title || v.youtube_id || 'Video')}</div>`).join('')}
+                  </div>
+                ` : ''}
+              </div>
+            </div>
+          </div>
+          <div class="col-md-6">
+            <div class="card">
+              <div class="card-header bg-success text-white">
+                <strong>${utils.escapeHtml(event2Name)}</strong>
+              </div>
+              <div class="card-body">
+                <div class="d-flex gap-3 mb-3">
+                  <span class="badge bg-primary fs-6">${(photos2 || []).length} photos</span>
+                  <span class="badge bg-danger fs-6">${(videos2 || []).length} videos</span>
+                </div>
+                <div class="row g-1">
+                  ${(photos2 || []).slice(0, 8).map(p => `
+                    <div class="col-3">
+                      <img src="${p.file_url}" class="img-fluid rounded" style="height:60px; object-fit:cover; width:100%;" alt="">
+                    </div>
+                  `).join('')}
+                  ${(photos2 || []).length > 8 ? `<div class="col-3 d-flex align-items-center justify-content-center"><small class="text-muted">+${(photos2 || []).length - 8}</small></div>` : ''}
+                </div>
+                ${(videos2 || []).length > 0 ? `
+                  <div class="mt-2">
+                    ${(videos2 || []).slice(0, 3).map(v => `<div class="small"><i class="bi bi-play-circle me-1"></i>${utils.escapeHtml(v.title || v.youtube_id || 'Video')}</div>`).join('')}
+                  </div>
+                ` : ''}
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="mt-3">
+          <div class="card bg-light">
+            <div class="card-body">
+              <h6>Comparison Summary</h6>
+              <div class="row text-center">
+                <div class="col-md-3">
+                  <div class="fs-5 ${(photos2 || []).length >= (photos1 || []).length ? 'text-success' : 'text-danger'}">
+                    ${(photos2 || []).length >= (photos1 || []).length ? '+' : ''}${(photos2 || []).length - (photos1 || []).length}
+                  </div>
+                  <small class="text-muted">Photo change</small>
+                </div>
+                <div class="col-md-3">
+                  <div class="fs-5 ${(videos2 || []).length >= (videos1 || []).length ? 'text-success' : 'text-danger'}">
+                    ${(videos2 || []).length >= (videos1 || []).length ? '+' : ''}${(videos2 || []).length - (videos1 || []).length}
+                  </div>
+                  <small class="text-muted">Video change</small>
+                </div>
+                <div class="col-md-3">
+                  <div class="fs-5 text-primary">${(photos1 || []).length + (videos1 || []).length}</div>
+                  <small class="text-muted">Event 1 total</small>
+                </div>
+                <div class="col-md-3">
+                  <div class="fs-5 text-success">${(photos2 || []).length + (videos2 || []).length}</div>
+                  <small class="text-muted">Event 2 total</small>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>`;
+    } catch (error) {
+      resultEl.innerHTML = `<div class="alert alert-danger">Error: ${error.message}</div>`;
+    }
+  },
+
+  /* ==================================================== */
+  /* FEATURE: Expired/Missing YouTube Detection            */
+  /* ==================================================== */
+
+  async openYouTubeHealthCheck() {
+    document.getElementById('youtubeHealthResult').innerHTML = '';
+    document.getElementById('youtubeHealthStatus').innerHTML = '';
+
+    const modal = new bootstrap.Modal(document.getElementById('youtubeHealthModal'));
+    modal.show();
+  },
+
+  async runYouTubeHealthCheck() {
+    const resultEl = document.getElementById('youtubeHealthResult');
+    const statusEl = document.getElementById('youtubeHealthStatus');
+
+    statusEl.innerHTML = '<div class="alert alert-info"><i class="bi bi-hourglass-split me-2"></i>Checking YouTube videos... This may take a moment.</div>';
+
+    try {
+      // Fetch all YouTube videos
+      const { data: videos, error } = await STATE.client
+        .from('media_items')
+        .select('id, title, youtube_id, event_id, organisation_id, organisations(company_name)')
+        .eq('media_type', 'video')
+        .not('youtube_id', 'is', null);
+
+      if (error) throw error;
+
+      if (!videos || videos.length === 0) {
+        statusEl.innerHTML = '<div class="alert alert-warning">No YouTube videos found in the system.</div>';
+        return;
+      }
+
+      statusEl.innerHTML = `<div class="alert alert-info"><i class="bi bi-hourglass-split me-2"></i>Checking ${videos.length} YouTube videos...</div>`;
+
+      const results = [];
+      let checked = 0;
+
+      for (const video of videos) {
+        try {
+          // Use oEmbed endpoint to check if video exists (no API key needed)
+          const response = await fetch(`https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v=${video.youtube_id}&format=json`);
+
+          results.push({
+            ...video,
+            status: response.ok ? 'ok' : 'broken',
+            httpStatus: response.status,
+            oembedTitle: response.ok ? (await response.json()).title : null
+          });
+        } catch (err) {
+          results.push({
+            ...video,
+            status: 'error',
+            httpStatus: 0
+          });
+        }
+
+        checked++;
+        if (checked % 5 === 0) {
+          statusEl.innerHTML = `<div class="alert alert-info"><i class="bi bi-hourglass-split me-2"></i>Checked ${checked}/${videos.length} videos...</div>`;
+        }
+
+        // Rate limit to avoid being blocked
+        await new Promise(r => setTimeout(r, 300));
+      }
+
+      const okCount = results.filter(r => r.status === 'ok').length;
+      const brokenCount = results.filter(r => r.status !== 'ok').length;
+      const broken = results.filter(r => r.status !== 'ok');
+
+      statusEl.innerHTML = `
+        <div class="alert ${brokenCount > 0 ? 'alert-warning' : 'alert-success'}">
+          <i class="bi ${brokenCount > 0 ? 'bi-exclamation-triangle' : 'bi-check-circle'} me-2"></i>
+          <strong>${okCount}/${results.length}</strong> videos are accessible.
+          ${brokenCount > 0 ? `<strong class="text-danger">${brokenCount} broken link(s) found.</strong>` : 'All YouTube links are valid!'}
+        </div>`;
+
+      if (broken.length > 0) {
+        resultEl.innerHTML = `
+          <h6 class="text-danger mb-3"><i class="bi bi-exclamation-triangle me-2"></i>Broken YouTube Links</h6>
+          <div class="table-responsive">
+            <table class="table table-sm table-hover">
+              <thead><tr><th>Title</th><th>YouTube ID</th><th>Company</th><th>Status</th><th>Action</th></tr></thead>
+              <tbody>
+                ${broken.map(v => `
+                  <tr>
+                    <td>${utils.escapeHtml(v.title || 'Untitled')}</td>
+                    <td><code>${v.youtube_id}</code></td>
+                    <td>${v.organisations?.company_name ? utils.escapeHtml(v.organisations.company_name) : '<span class="text-muted">-</span>'}</td>
+                    <td><span class="badge bg-danger">${v.status === 'broken' ? `HTTP ${v.httpStatus}` : 'Network Error'}</span></td>
+                    <td>
+                      <button class="btn btn-sm btn-outline-danger" onclick="mediaGalleryModule.deleteVideo('${v.id}')" title="Delete broken video">
+                        <i class="bi bi-trash"></i>
+                      </button>
+                      <button class="btn btn-sm btn-outline-secondary" onclick="mediaGalleryModule.editVideo('${v.id}')" title="Edit/fix video">
+                        <i class="bi bi-pencil"></i>
+                      </button>
+                    </td>
+                  </tr>
+                `).join('')}
+              </tbody>
+            </table>
+          </div>`;
+      } else {
+        resultEl.innerHTML = `
+          <div class="text-center py-3">
+            <i class="bi bi-check-circle-fill text-success display-4 d-block mb-2"></i>
+            <p class="text-success">All ${results.length} YouTube videos are accessible and working.</p>
+          </div>`;
+      }
+
+    } catch (error) {
+      statusEl.innerHTML = `<div class="alert alert-danger">Error: ${error.message}</div>`;
     }
   }
 };

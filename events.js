@@ -808,6 +808,11 @@ const eventsModule = {
   runningOrderItems: [],
   isPublished: false,
   draggedItemId: null,
+  _roUndoStack: [],
+  _roSearchTerm: '',
+  _roAutoSave: true,
+  _roTouchStartY: 0,
+  _roTouchItem: null,
 
   /**
    * Open Running Order Modal
@@ -815,16 +820,13 @@ const eventsModule = {
   async openRunningOrderModal(eventId, eventName) {
     this.currentEventIdRunningOrder = eventId;
     this.currentEventName = eventName;
+    this._roUndoStack = [];
+    this._roSearchTerm = '';
 
     try {
       utils.showLoading();
-
-      // Load running order data
       await this.loadRunningOrder();
-
-      // Create and show modal
       this.createRunningOrderModal();
-
     } catch (error) {
       console.error('Error opening running order:', error);
       utils.showToast('Failed to load running order: ' + error.message, 'error');
@@ -834,165 +836,188 @@ const eventsModule = {
   },
 
   /**
-   * Create Running Order Modal
+   * Create Running Order Modal - Enhanced with drag handles, numbered column, search, undo
    */
   createRunningOrderModal() {
     const existingModal = document.getElementById('runningOrderModal');
     if (existingModal) existingModal.remove();
 
+    const itemCount = this.runningOrderItems.length;
+    const totalDuration = this.runningOrderItems.reduce((sum, i) => sum + (i.duration_minutes || 3), 0);
+    const completedCount = this.runningOrderItems.filter(i => i.status === 'completed').length;
+    const announcedCount = this.runningOrderItems.filter(i => i.status === 'announced').length;
+
     const modalHtml = `
       <div class="modal fade" id="runningOrderModal" tabindex="-1" data-bs-backdrop="static">
         <div class="modal-dialog modal-xl modal-dialog-scrollable">
           <div class="modal-content">
-            <div class="modal-header bg-warning">
+            <div class="modal-header bg-warning text-dark">
               <div>
                 <h5 class="modal-title">
                   <i class="bi bi-list-ol me-2"></i>Running Order - ${utils.escapeHtml(this.currentEventName)}
                 </h5>
-                <small class="text-muted d-block">Awards Ceremony Running Order</small>
+                <small class="text-muted d-block">Drag items to reorder, or use arrow buttons</small>
               </div>
               <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
-            <div class="modal-body">
+            <div class="modal-body p-0">
 
-              <!-- Status Bar -->
-              <div class="alert ${this.isPublished ? 'alert-success' : 'alert-info'} d-flex justify-content-between align-items-center">
-                <div>
-                  <i class="bi ${this.isPublished ? 'bi-lock-fill' : 'bi-unlock-fill'} me-2"></i>
-                  <strong>${this.isPublished ? 'PUBLISHED MODE' : 'EDIT MODE'}</strong>
-                  <span class="ms-2">
-                    ${this.isPublished ? 'Running order is locked. Unpublish to make changes.' : 'Drag and drop to reorder. Numbers will auto-update.'}
-                  </span>
+              <!-- Status + Stats Bar -->
+              <div class="px-3 pt-3">
+                <div class="alert ${this.isPublished ? 'alert-success' : 'alert-info'} py-2 d-flex justify-content-between align-items-center mb-2">
+                  <div>
+                    <i class="bi ${this.isPublished ? 'bi-lock-fill' : 'bi-unlock-fill'} me-2"></i>
+                    <strong>${this.isPublished ? 'PUBLISHED' : 'EDIT MODE'}</strong>
+                    <span class="ms-2 small">
+                      ${this.isPublished ? 'Locked. Unpublish to edit.' : 'Drag to reorder. Auto-numbered.'}
+                    </span>
+                  </div>
+                  <button class="btn btn-sm ${this.isPublished ? 'btn-outline-primary' : 'btn-success'}"
+                          onclick="eventsModule.togglePublishMode()">
+                    <i class="bi ${this.isPublished ? 'bi-unlock' : 'bi-lock'} me-1"></i>
+                    ${this.isPublished ? 'Unpublish' : 'Publish'}
+                  </button>
                 </div>
-                <button class="btn btn-sm ${this.isPublished ? 'btn-outline-primary' : 'btn-success'}"
-                        onclick="eventsModule.togglePublishMode()">
-                  <i class="bi ${this.isPublished ? 'bi-unlock' : 'bi-lock'} me-1"></i>
-                  ${this.isPublished ? 'Unpublish' : 'Publish'}
-                </button>
+
+                <!-- Stats Row -->
+                <div class="d-flex gap-3 mb-2 small">
+                  <span class="badge bg-secondary">${itemCount} items</span>
+                  <span class="badge bg-info">${totalDuration} min total</span>
+                  ${completedCount > 0 ? `<span class="badge bg-success">${completedCount} completed</span>` : ''}
+                  ${announcedCount > 0 ? `<span class="badge bg-warning text-dark">${announcedCount} announced</span>` : ''}
+                </div>
+
+                <!-- Actions Bar -->
+                <div class="d-flex gap-2 flex-wrap align-items-center mb-2">
+                  <button class="btn btn-sm btn-primary" onclick="eventsModule.syncFromRSVPs()" ${this.isPublished ? 'disabled' : ''}>
+                    <i class="bi bi-arrow-repeat me-1"></i>Sync RSVPs
+                  </button>
+                  <button class="btn btn-sm btn-outline-secondary" onclick="eventsModule.addManualEntry()" ${this.isPublished ? 'disabled' : ''}>
+                    <i class="bi bi-plus-circle me-1"></i>Add Entry
+                  </button>
+                  <button class="btn btn-sm btn-outline-secondary" onclick="eventsModule.exportRunningOrder()">
+                    <i class="bi bi-download me-1"></i>Export
+                  </button>
+                  <button class="btn btn-sm btn-outline-secondary" onclick="eventsModule.printRunningOrder()">
+                    <i class="bi bi-printer me-1"></i>Print
+                  </button>
+                  <button class="btn btn-sm btn-outline-warning" id="roUndoBtn" onclick="eventsModule.undoROReorder()" disabled title="Undo last reorder">
+                    <i class="bi bi-arrow-counterclockwise me-1"></i>Undo
+                  </button>
+                  <div class="ms-auto d-flex align-items-center gap-2">
+                    <div class="input-group input-group-sm" style="width:200px;">
+                      <span class="input-group-text"><i class="bi bi-search"></i></span>
+                      <input type="text" class="form-control" id="roSearchInput" placeholder="Search items..."
+                             oninput="eventsModule.searchRunningOrder(this.value)">
+                    </div>
+                  </div>
+                </div>
               </div>
 
-              <!-- Actions Bar -->
-              <div class="mb-3 d-flex gap-2">
-                <button class="btn btn-sm btn-primary" onclick="eventsModule.syncFromRSVPs()">
-                  <i class="bi bi-arrow-repeat me-1"></i>Sync from RSVPs
-                </button>
-                <button class="btn btn-sm btn-outline-secondary" onclick="eventsModule.addManualEntry()">
-                  <i class="bi bi-plus-circle me-1"></i>Add Manual Entry
-                </button>
-                <button class="btn btn-sm btn-outline-secondary" onclick="eventsModule.exportRunningOrder()">
-                  <i class="bi bi-download me-1"></i>Export
-                </button>
-                <button class="btn btn-sm btn-outline-secondary" onclick="eventsModule.printRunningOrder()">
-                  <i class="bi bi-printer me-1"></i>Print
-                </button>
-                <div class="ms-auto">
-                  <span class="badge bg-secondary fs-6">
-                    Total: ${this.runningOrderItems.length} awards
-                  </span>
-                </div>
+              <!-- Column Headers -->
+              <div class="ro-header-row px-3 py-2 bg-light border-top border-bottom d-flex align-items-center gap-2" style="font-size:0.75rem; text-transform:uppercase; letter-spacing:0.5px; color:#6c757d; font-weight:600;">
+                <div style="width:32px;"></div>
+                <div style="width:50px; text-align:center;">#</div>
+                <div style="width:70px; text-align:center;">Time</div>
+                <div class="flex-grow-1">Award / Winner</div>
+                <div style="width:140px;">Collecting</div>
+                <div style="width:90px; text-align:center;">Status</div>
+                <div style="width:120px; text-align:center;">Actions</div>
               </div>
 
               <!-- Running Order List -->
-              <div id="runningOrderList" class="running-order-list">
-                <!-- Items will be rendered here -->
+              <div id="runningOrderList" class="running-order-list px-3 py-2" style="max-height:520px; overflow-y:auto;">
+                <!-- Items rendered here -->
               </div>
 
-              ${this.runningOrderItems.length === 0 ? `
+              ${itemCount === 0 ? `
                 <div class="text-center py-5">
                   <i class="bi bi-inbox display-4 d-block mb-3 opacity-25"></i>
                   <p class="text-muted">No items in running order yet.</p>
                   <button class="btn btn-primary" onclick="eventsModule.syncFromRSVPs()">
                     <i class="bi bi-arrow-repeat me-2"></i>Sync from RSVPs
                   </button>
+                  <span class="mx-2 text-muted">or</span>
+                  <button class="btn btn-outline-secondary" onclick="eventsModule.addManualEntry()">
+                    <i class="bi bi-plus-circle me-2"></i>Add Manual Entry
+                  </button>
                 </div>
               ` : ''}
 
             </div>
-            <div class="modal-footer">
-              <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-              <button type="button" class="btn btn-primary" onclick="eventsModule.saveRunningOrder()">
-                <i class="bi bi-save me-2"></i>Save Changes
-              </button>
+            <div class="modal-footer d-flex justify-content-between">
+              <div class="small text-muted">
+                <i class="bi bi-info-circle me-1"></i>
+                Tip: Use <kbd>&#x2191;</kbd>/<kbd>&#x2193;</kbd> arrows or drag the grip handle to reorder
+              </div>
+              <div>
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-primary" onclick="eventsModule.saveRunningOrder()">
+                  <i class="bi bi-save me-2"></i>Save Changes
+                </button>
+              </div>
             </div>
           </div>
         </div>
       </div>
 
       <style>
-        .running-order-list {
-          max-height: 600px;
-          overflow-y: auto;
-        }
-        .running-order-item {
+        .running-order-list { padding-bottom: 10px; }
+        .ro-item {
           background: white;
-          border: 2px solid #dee2e6;
+          border: 2px solid #e9ecef;
           border-radius: 8px;
-          padding: 15px 20px;
-          margin-bottom: 10px;
-          cursor: move;
-          transition: all 0.2s;
+          margin-bottom: 6px;
+          transition: all 0.15s ease;
+          user-select: none;
         }
-        .running-order-item:hover {
-          border-color: #ffc107;
-          box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        .ro-item:hover { border-color: #ffc107; box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
+        .ro-item.dragging { opacity: 0.4; border-color: #ffc107; transform: scale(0.98); }
+        .ro-item.drag-placeholder { border: 2px dashed #ffc107; background: #fffbeb; min-height: 56px; }
+        .ro-item.published { cursor: default; background: #f8f9fa; }
+        .ro-item.status-completed { border-left: 4px solid #198754; }
+        .ro-item.status-announced { border-left: 4px solid #ffc107; }
+        .ro-item.search-hidden { display: none !important; }
+
+        .ro-drag-handle {
+          cursor: grab; color: #adb5bd; font-size: 1.1rem; padding: 4px;
+          display: flex; align-items: center; justify-content: center;
+          width: 32px; flex-shrink: 0;
         }
-        .running-order-item.dragging {
-          opacity: 0.5;
+        .ro-drag-handle:hover { color: #495057; }
+        .ro-drag-handle:active { cursor: grabbing; }
+
+        .ro-number {
+          width: 50px; flex-shrink: 0; text-align: center;
+          font-size: 1.4rem; font-weight: 700; color: #ffc107;
+          line-height: 1;
         }
-        .running-order-item.drag-over {
-          border-top: 3px solid #ffc107;
-          margin-top: 20px;
+        .ro-number .sub { font-size: 0.65rem; color: #adb5bd; font-weight: 400; display: block; }
+
+        .ro-time {
+          width: 70px; flex-shrink: 0; text-align: center;
         }
-        .running-order-item.published {
-          cursor: not-allowed;
+        .ro-time input {
+          width: 62px; font-size: 0.75rem; text-align: center;
+          border: 1px solid #dee2e6; border-radius: 4px; padding: 2px 4px;
           background: #f8f9fa;
         }
+        .ro-time input:focus { border-color: #ffc107; outline: none; background: white; }
+        .ro-time .duration { font-size: 0.65rem; color: #adb5bd; }
 
-        /* Column Layouts */
-        .award-number-col {
-          min-width: 70px;
-          text-align: center;
-        }
-        .award-number {
-          font-size: 1.5rem;
-          font-weight: bold;
-          color: #ffc107;
-        }
+        .ro-details { flex-grow: 1; min-width: 0; overflow: hidden; }
+        .ro-award-name { font-weight: 600; color: #333; font-size: 0.9rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .ro-winner-name { color: #0d6efd; font-weight: 500; font-size: 0.85rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .ro-notes-preview { font-size: 0.7rem; color: #adb5bd; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
-        .award-winner-col {
-          min-width: 300px;
-          padding: 0 15px;
-        }
-        .award-winner-text {
-          font-size: 1rem;
-          line-height: 1.4;
-        }
-        .award-name-part {
-          font-weight: 600;
-          color: #333;
-        }
-        .separator {
-          margin: 0 8px;
-          color: #666;
-        }
-        .winner-name-part {
-          color: #0d6efd;
-          font-weight: 500;
-        }
+        .ro-recipient { width: 140px; flex-shrink: 0; font-size: 0.8rem; overflow: hidden; }
+        .ro-recipient strong { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
-        .recipient-col {
-          min-width: 180px;
-          padding: 0 15px;
-          border-left: 2px solid #e9ecef;
-        }
-        .recipient-text {
-          text-align: left;
-        }
+        .ro-status { width: 90px; flex-shrink: 0; text-align: center; }
+        .ro-status select { font-size: 0.7rem; padding: 2px 4px; border-radius: 4px; border: 1px solid #dee2e6; background: #f8f9fa; }
 
-        .actions-col {
-          min-width: 100px;
-          text-align: right;
-        }
+        .ro-actions { width: 120px; flex-shrink: 0; text-align: center; white-space: nowrap; }
+        .ro-actions .btn { padding: 2px 6px; font-size: 0.75rem; }
       </style>
     `;
 
@@ -1001,10 +1026,14 @@ const eventsModule = {
     const modal = new bootstrap.Modal(document.getElementById('runningOrderModal'));
     modal.show();
 
-    // Render items after modal is shown
     this.renderRunningOrderItems();
 
-    // Clean up on close
+    // Keyboard shortcuts for modal
+    document.getElementById('runningOrderModal').addEventListener('keydown', (e) => {
+      if (e.ctrlKey && e.key === 'z') { e.preventDefault(); this.undoROReorder(); }
+      if (e.ctrlKey && e.key === 's') { e.preventDefault(); this.saveRunningOrder(); }
+    });
+
     document.getElementById('runningOrderModal').addEventListener('hidden.bs.modal', () => {
       document.getElementById('runningOrderModal').remove();
     });
@@ -1015,7 +1044,6 @@ const eventsModule = {
    */
   async loadRunningOrder() {
     try {
-      // Load running order items
       const { data: items, error: itemsError } = await STATE.client
         .from('running_order')
         .select(`
@@ -1028,10 +1056,8 @@ const eventsModule = {
         .order('display_order', { ascending: true });
 
       if (itemsError) throw itemsError;
-
       this.runningOrderItems = items || [];
 
-      // Load settings
       const { data: settings, error: settingsError } = await STATE.client
         .from('running_order_settings')
         .select('*')
@@ -1041,9 +1067,7 @@ const eventsModule = {
       if (settingsError && settingsError.code !== 'PGRST116') {
         console.error('Error loading settings:', settingsError);
       }
-
       this.isPublished = settings?.is_published || false;
-
     } catch (error) {
       console.error('Error loading running order:', error);
       throw error;
@@ -1051,95 +1075,189 @@ const eventsModule = {
   },
 
   /**
-   * Render Running Order Items
+   * Render Running Order Items - Enhanced with numbered column, drag handles, status, time
    */
   renderRunningOrderItems() {
     const container = document.getElementById('runningOrderList');
-    if (!container) return;
+    if (!container || this.runningOrderItems.length === 0) return;
 
-    if (this.runningOrderItems.length === 0) {
-      return;
-    }
+    let cumulativeMin = 0;
+    const search = this._roSearchTerm.toLowerCase();
 
     container.innerHTML = this.runningOrderItems.map((item, index) => {
       const recipientName = item.recipient_collecting || item.event_guests?.guest_name || item.display_name || 'TBC';
+      const awardName = item.award_name || (item.awards ? item.awards.award_name : 'Award TBC');
+      const winnerName = item.display_name || (item.organisations ? item.organisations.company_name : 'TBC');
+      const duration = item.duration_minutes || 3;
+      const cumTime = cumulativeMin;
+      cumulativeMin += duration;
+      const scheduledTime = item.scheduled_time || '';
+      const notes = item.notes || item.special_requirements || '';
+      const status = item.status || 'pending';
+      const isFirst = index === 0;
+      const isLast = index === this.runningOrderItems.length - 1;
+
+      // Search filtering
+      const matchesSearch = !search || `${awardName} ${winnerName} ${recipientName} ${notes}`.toLowerCase().includes(search);
+
+      const statusOpts = ['pending', 'announced', 'completed'].map(s =>
+        `<option value="${s}"${s === status ? ' selected' : ''}>${s.charAt(0).toUpperCase() + s.slice(1)}</option>`
+      ).join('');
 
       return `
-      <div class="running-order-item ${this.isPublished ? 'published' : ''}"
+      <div class="ro-item ${this.isPublished ? 'published' : ''} ${status !== 'pending' ? 'status-' + status : ''} ${matchesSearch ? '' : 'search-hidden'}"
            draggable="${!this.isPublished}"
            data-id="${item.id}"
+           data-index="${index}"
            ondragstart="eventsModule.handleDragStart(event)"
            ondragover="eventsModule.handleDragOver(event)"
+           ondragleave="eventsModule.handleDragLeave(event)"
            ondrop="eventsModule.handleDrop(event)"
-           ondragend="eventsModule.handleDragEnd(event)">
-        <div class="d-flex align-items-center gap-3">
-          <!-- Award Number -->
-          <div class="award-number-col">
-            <div class="award-number">${item.award_number}</div>
+           ondragend="eventsModule.handleDragEnd(event)"
+           ontouchstart="eventsModule.handleTouchStart(event)"
+           ontouchmove="eventsModule.handleTouchMove(event)"
+           ontouchend="eventsModule.handleTouchEnd(event)">
+        <div class="d-flex align-items-center gap-2 py-2 px-2">
+          <!-- Drag Handle -->
+          ${!this.isPublished ? `
+          <div class="ro-drag-handle" title="Drag to reorder">
+            <i class="bi bi-grip-vertical"></i>
+          </div>` : '<div style="width:32px;"></div>'}
+
+          <!-- Number -->
+          <div class="ro-number">
+            ${index + 1}
+            <span class="sub">${item.award_number || ''}</span>
           </div>
 
-          <!-- Award Name: Winner Name -->
-          <div class="award-winner-col flex-grow-1">
-            <div class="award-winner-text">
-              <span class="award-name-part">${utils.escapeHtml(item.award_name || 'Award TBC')}</span>
-              <span class="separator">:</span>
-              <span class="winner-name-part">${utils.escapeHtml(item.display_name)}</span>
-            </div>
+          <!-- Scheduled Time -->
+          <div class="ro-time">
+            <input type="time" value="${scheduledTime}"
+                   onchange="eventsModule.setROItemTime('${item.id}', this.value)"
+                   ${this.isPublished ? 'disabled' : ''}
+                   title="Scheduled time">
+            <div class="duration" title="Cumulative: ${cumTime} min">${duration}m</div>
           </div>
 
-          <!-- Recipient Collecting -->
-          <div class="recipient-col">
-            <div class="recipient-text">
-              <small class="text-muted d-block" style="font-size: 0.75rem;">Collecting:</small>
-              <strong>${utils.escapeHtml(recipientName)}</strong>
-            </div>
+          <!-- Award & Winner Details -->
+          <div class="ro-details">
+            <div class="ro-award-name" title="${utils.escapeHtml(awardName)}">${utils.escapeHtml(awardName)}</div>
+            <div class="ro-winner-name" title="${utils.escapeHtml(winnerName)}">${utils.escapeHtml(winnerName)}</div>
+            ${notes ? `<div class="ro-notes-preview" title="${utils.escapeHtml(notes)}"><i class="bi bi-sticky me-1"></i>${utils.escapeHtml(notes)}</div>` : ''}
+          </div>
+
+          <!-- Recipient -->
+          <div class="ro-recipient">
+            <small class="text-muted" style="font-size:0.65rem;">Collecting:</small>
+            <strong title="${utils.escapeHtml(recipientName)}">${utils.escapeHtml(recipientName)}</strong>
+          </div>
+
+          <!-- Status -->
+          <div class="ro-status">
+            <select onchange="eventsModule.setROItemStatus('${item.id}', this.value)" ${this.isPublished ? 'disabled' : ''}>
+              ${statusOpts}
+            </select>
           </div>
 
           <!-- Actions -->
-          <div class="actions-col">
+          <div class="ro-actions">
             ${!this.isPublished ? `
-              <button class="btn btn-sm btn-outline-primary me-1"
-                      onclick="eventsModule.editRunningOrderItem('${item.id}')"
-                      title="Edit">
+              <button class="btn btn-sm btn-outline-secondary" onclick="eventsModule.moveROItem('${item.id}', -1)" title="Move up" ${isFirst ? 'disabled' : ''}>
+                <i class="bi bi-arrow-up"></i>
+              </button>
+              <button class="btn btn-sm btn-outline-secondary" onclick="eventsModule.moveROItem('${item.id}', 1)" title="Move down" ${isLast ? 'disabled' : ''}>
+                <i class="bi bi-arrow-down"></i>
+              </button>
+              <button class="btn btn-sm btn-outline-primary" onclick="eventsModule.editRunningOrderItem('${item.id}')" title="Edit">
                 <i class="bi bi-pencil"></i>
               </button>
-              <button class="btn btn-sm btn-outline-danger"
-                      onclick="eventsModule.deleteRunningOrderItem('${item.id}')"
-                      title="Delete">
+              <button class="btn btn-sm btn-outline-danger" onclick="eventsModule.deleteRunningOrderItem('${item.id}')" title="Delete">
                 <i class="bi bi-trash"></i>
               </button>
             ` : `
-              <span class="badge bg-success">
-                <i class="bi bi-check-circle me-1"></i>Published
-              </span>
+              <span class="badge bg-success"><i class="bi bi-check-circle me-1"></i>Locked</span>
             `}
           </div>
         </div>
-      </div>
-    `;
+      </div>`;
     }).join('');
+
+    // Update total badge
+    const totalBadge = document.querySelector('#runningOrderModal .badge.bg-secondary');
+    if (totalBadge) totalBadge.textContent = `${this.runningOrderItems.length} items`;
+
+    // Update undo button state
+    const undoBtn = document.getElementById('roUndoBtn');
+    if (undoBtn) undoBtn.disabled = this._roUndoStack.length === 0;
   },
 
-  /**
-   * Drag and Drop Handlers
-   */
+  // ============================================
+  // MOVE UP/DOWN
+  // ============================================
+  moveROItem(itemId, direction) {
+    if (this.isPublished) return;
+    const idx = this.runningOrderItems.findIndex(i => i.id === itemId);
+    if (idx === -1) return;
+    const newIdx = idx + direction;
+    if (newIdx < 0 || newIdx >= this.runningOrderItems.length) return;
+
+    // Save undo state
+    this._roPushUndo();
+
+    // Swap
+    const temp = this.runningOrderItems[idx];
+    this.runningOrderItems[idx] = this.runningOrderItems[newIdx];
+    this.runningOrderItems[newIdx] = temp;
+
+    // Recalculate order numbers
+    this._roRecalcNumbers();
+    this.renderRunningOrderItems();
+
+    // Scroll moved item into view
+    setTimeout(() => {
+      const el = document.querySelector(`.ro-item[data-id="${itemId}"]`);
+      if (el) el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }, 50);
+
+    if (this._roAutoSave) this._roAutoSaveDebounced();
+  },
+
+  // ============================================
+  // DRAG AND DROP (Enhanced)
+  // ============================================
   handleDragStart(event) {
     if (this.isPublished) return;
-    this.draggedItemId = event.currentTarget.dataset.id;
-    event.currentTarget.classList.add('dragging');
+    const item = event.currentTarget;
+    this.draggedItemId = item.dataset.id;
+    item.classList.add('dragging');
+    event.dataTransfer.effectAllowed = 'move';
+    event.dataTransfer.setData('text/plain', item.dataset.id);
+    // Save undo state before drag
+    this._roPushUndo();
   },
 
   handleDragOver(event) {
     if (this.isPublished) return;
     event.preventDefault();
-    const draggable = document.querySelector('.dragging');
-    const afterElement = this.getDragAfterElement(event.currentTarget.parentElement, event.clientY);
+    event.dataTransfer.dropEffect = 'move';
+    const target = event.currentTarget;
+    if (target.classList.contains('dragging')) return;
+
+    const draggable = document.querySelector('.ro-item.dragging');
+    if (!draggable) return;
+
+    const container = target.parentElement;
+    const afterElement = this.getDragAfterElement(container, event.clientY);
 
     if (afterElement == null) {
-      event.currentTarget.parentElement.appendChild(draggable);
+      container.appendChild(draggable);
     } else {
-      event.currentTarget.parentElement.insertBefore(draggable, afterElement);
+      container.insertBefore(draggable, afterElement);
     }
+  },
+
+  handleDragLeave(event) {
+    // No-op, visual cleanup handled by dragEnd
   },
 
   handleDrop(event) {
@@ -1150,64 +1268,185 @@ const eventsModule = {
   handleDragEnd(event) {
     if (this.isPublished) return;
     event.currentTarget.classList.remove('dragging');
+    // Remove any drag-over styles
+    document.querySelectorAll('.ro-item').forEach(el => el.classList.remove('drag-placeholder'));
     this.updateOrderFromDOM();
+    if (this._roAutoSave) this._roAutoSaveDebounced();
   },
 
   getDragAfterElement(container, y) {
-    const draggableElements = [...container.querySelectorAll('.running-order-item:not(.dragging)')];
-
+    const draggableElements = [...container.querySelectorAll('.ro-item:not(.dragging)')];
     return draggableElements.reduce((closest, child) => {
       const box = child.getBoundingClientRect();
       const offset = y - box.top - box.height / 2;
-
       if (offset < 0 && offset > closest.offset) {
-        return { offset: offset, element: child };
-      } else {
-        return closest;
+        return { offset, element: child };
       }
+      return closest;
     }, { offset: Number.NEGATIVE_INFINITY }).element;
   },
 
-  /**
-   * Update order from DOM after drag
-   */
-  updateOrderFromDOM() {
-    const items = document.querySelectorAll('.running-order-item');
-    const newOrder = [];
+  // ============================================
+  // TOUCH SUPPORT FOR MOBILE DRAG
+  // ============================================
+  handleTouchStart(event) {
+    if (this.isPublished) return;
+    const touch = event.touches[0];
+    this._roTouchStartY = touch.clientY;
+    this._roTouchItem = event.currentTarget;
+    this._roTouchItem._touchTimeout = setTimeout(() => {
+      this._roTouchItem.classList.add('dragging');
+      this._roPushUndo();
+    }, 200);
+  },
 
+  handleTouchMove(event) {
+    if (this.isPublished || !this._roTouchItem) return;
+    if (!this._roTouchItem.classList.contains('dragging')) {
+      clearTimeout(this._roTouchItem._touchTimeout);
+      return;
+    }
+    event.preventDefault();
+    const touch = event.touches[0];
+    const container = document.getElementById('runningOrderList');
+    if (!container) return;
+
+    const afterElement = this.getDragAfterElement(container, touch.clientY);
+    if (afterElement == null) {
+      container.appendChild(this._roTouchItem);
+    } else {
+      container.insertBefore(this._roTouchItem, afterElement);
+    }
+  },
+
+  handleTouchEnd(event) {
+    if (this.isPublished || !this._roTouchItem) return;
+    clearTimeout(this._roTouchItem._touchTimeout);
+    if (this._roTouchItem.classList.contains('dragging')) {
+      this._roTouchItem.classList.remove('dragging');
+      this.updateOrderFromDOM();
+      if (this._roAutoSave) this._roAutoSaveDebounced();
+    }
+    this._roTouchItem = null;
+  },
+
+  // ============================================
+  // UPDATE ORDER FROM DOM
+  // ============================================
+  updateOrderFromDOM() {
+    const items = document.querySelectorAll('.ro-item');
+    const newOrder = [];
     items.forEach((item, index) => {
       const id = item.dataset.id;
       const orderItem = this.runningOrderItems.find(i => i.id === id);
       if (orderItem) {
         orderItem.display_order = index + 1;
-        // Update award number
         orderItem.award_number = `${orderItem.section || 1}-${String(index + 1).padStart(2, '0')}`;
         newOrder.push(orderItem);
       }
     });
-
     this.runningOrderItems = newOrder;
     this.renderRunningOrderItems();
   },
 
-  /**
-   * Sync from RSVPs
-   */
+  // ============================================
+  // RECALC NUMBERS
+  // ============================================
+  _roRecalcNumbers() {
+    this.runningOrderItems.forEach((item, index) => {
+      item.display_order = index + 1;
+      item.award_number = `${item.section || 1}-${String(index + 1).padStart(2, '0')}`;
+    });
+  },
+
+  // ============================================
+  // UNDO REORDER
+  // ============================================
+  _roPushUndo() {
+    this._roUndoStack.push(this.runningOrderItems.map(i => ({ ...i })));
+    if (this._roUndoStack.length > 20) this._roUndoStack.shift();
+    const undoBtn = document.getElementById('roUndoBtn');
+    if (undoBtn) undoBtn.disabled = false;
+  },
+
+  undoROReorder() {
+    if (this._roUndoStack.length === 0) return;
+    this.runningOrderItems = this._roUndoStack.pop();
+    this.renderRunningOrderItems();
+    utils.showToast('Reorder undone', 'info');
+  },
+
+  // ============================================
+  // SEARCH WITHIN RUNNING ORDER
+  // ============================================
+  searchRunningOrder(term) {
+    this._roSearchTerm = term;
+    const search = term.toLowerCase();
+    document.querySelectorAll('.ro-item').forEach(el => {
+      const id = el.dataset.id;
+      const item = this.runningOrderItems.find(i => i.id === id);
+      if (!item) return;
+      const haystack = `${item.award_name || ''} ${item.display_name || ''} ${item.recipient_collecting || ''} ${item.notes || ''}`.toLowerCase();
+      el.classList.toggle('search-hidden', search.length > 0 && !haystack.includes(search));
+    });
+  },
+
+  // ============================================
+  // SET ITEM STATUS INLINE
+  // ============================================
+  async setROItemStatus(itemId, newStatus) {
+    const item = this.runningOrderItems.find(i => i.id === itemId);
+    if (!item) return;
+    item.status = newStatus;
+    // Update actual_time when announced/completed
+    if (newStatus === 'announced' || newStatus === 'completed') {
+      item.actual_time = new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+    }
+    try {
+      await STATE.client.from('running_order').update({ status: newStatus, actual_time: item.actual_time || null }).eq('id', itemId);
+    } catch (error) {
+      console.error('Error updating status:', error);
+    }
+    this.renderRunningOrderItems();
+  },
+
+  // ============================================
+  // SET ITEM TIME INLINE
+  // ============================================
+  async setROItemTime(itemId, time) {
+    const item = this.runningOrderItems.find(i => i.id === itemId);
+    if (!item) return;
+    item.scheduled_time = time;
+    try {
+      await STATE.client.from('running_order').update({ scheduled_time: time || null }).eq('id', itemId);
+    } catch (error) {
+      console.error('Error updating time:', error);
+    }
+  },
+
+  // ============================================
+  // AUTO-SAVE DEBOUNCED
+  // ============================================
+  _roAutoSaveTimer: null,
+  _roAutoSaveDebounced() {
+    clearTimeout(this._roAutoSaveTimer);
+    this._roAutoSaveTimer = setTimeout(() => this.saveRunningOrder(), 1500);
+  },
+
+  // ============================================
+  // SYNC FROM RSVPs
+  // ============================================
   async syncFromRSVPs() {
     try {
       utils.showLoading();
-
       const { data, error } = await STATE.client
         .rpc('populate_running_order_from_rsvps', {
           p_event_id: this.currentEventIdRunningOrder
         });
-
       if (error) throw error;
-
       utils.showToast(`Added ${data || 0} new items from RSVPs`, 'success');
       await this.loadRunningOrder();
       this.renderRunningOrderItems();
-
     } catch (error) {
       console.error('Error syncing from RSVPs:', error);
       utils.showToast('Failed to sync from RSVPs: ' + error.message, 'error');
@@ -1222,30 +1461,19 @@ const eventsModule = {
   async togglePublishMode() {
     try {
       const newPublishedState = !this.isPublished;
-
-      // Update or insert settings
       const { error } = await STATE.client
         .from('running_order_settings')
         .upsert({
           event_id: this.currentEventIdRunningOrder,
           is_published: newPublishedState,
           published_at: newPublishedState ? new Date().toISOString() : null
-        }, {
-          onConflict: 'event_id'
-        });
+        }, { onConflict: 'event_id' });
 
       if (error) throw error;
-
       this.isPublished = newPublishedState;
-      utils.showToast(
-        newPublishedState ? 'Running order published' : 'Running order unpublished',
-        'success'
-      );
-
-      // Recreate modal to update UI
+      utils.showToast(newPublishedState ? 'Running order published and locked' : 'Running order unlocked for editing', 'success');
       document.getElementById('runningOrderModal').remove();
       this.createRunningOrderModal();
-
     } catch (error) {
       console.error('Error toggling publish mode:', error);
       utils.showToast('Failed to update publish status', 'error');
@@ -1258,22 +1486,14 @@ const eventsModule = {
   async saveRunningOrder() {
     try {
       utils.showLoading();
-
-      // Update all items with new order
       for (const item of this.runningOrderItems) {
         const { error } = await STATE.client
           .from('running_order')
-          .update({
-            display_order: item.display_order,
-            award_number: item.award_number
-          })
+          .update({ display_order: item.display_order, award_number: item.award_number })
           .eq('id', item.id);
-
         if (error) throw error;
       }
-
-      utils.showToast('Running order saved successfully', 'success');
-
+      utils.showToast('Running order saved', 'success');
     } catch (error) {
       console.error('Error saving running order:', error);
       utils.showToast('Failed to save running order', 'error');
@@ -1283,7 +1503,7 @@ const eventsModule = {
   },
 
   /**
-   * Print Running Order
+   * Print Running Order - Enhanced with status and time columns
    */
   printRunningOrder() {
     if (this.runningOrderItems.length === 0) {
@@ -1291,204 +1511,68 @@ const eventsModule = {
       return;
     }
 
-    // Generate print content
-    const printContent = `
-      <!DOCTYPE html>
-      <html>
-      <head>
-        <meta charset="utf-8">
-        <title>Running Order - ${utils.escapeHtml(this.currentEventName)}</title>
-        <style>
-          @page {
-            size: A4;
-            margin: 15mm;
-          }
+    let cumMin = 0;
+    const rows = this.runningOrderItems.map(item => {
+      const awardName = item.award_name || (item.awards ? item.awards.award_name : 'N/A');
+      const companyName = item.display_name || (item.organisations ? item.organisations.company_name : 'N/A');
+      const recipient = item.recipient_collecting || (item.event_guests ? item.event_guests.guest_name : '');
+      const notes = item.notes || item.special_requirements || '';
+      const time = item.scheduled_time || '';
+      const duration = item.duration_minutes || 3;
+      cumMin += duration;
+      const status = item.status || 'pending';
+      const statusLabel = status.charAt(0).toUpperCase() + status.slice(1);
 
-          body {
-            font-family: Arial, Helvetica, sans-serif;
-            font-size: 11pt;
-            line-height: 1.4;
-            color: #000;
-            margin: 0;
-            padding: 0;
-          }
+      return `<tr>
+        <td class="award-number">${utils.escapeHtml(item.award_number)}</td>
+        <td class="time-col">${utils.escapeHtml(time)}</td>
+        <td class="award-name">${utils.escapeHtml(awardName)}</td>
+        <td class="winner-name">${utils.escapeHtml(companyName)}</td>
+        <td class="recipient">${utils.escapeHtml(recipient)}</td>
+        <td class="status-col">${statusLabel}</td>
+      </tr>${notes ? `<tr><td colspan="6" class="notes"><strong>Notes:</strong> ${utils.escapeHtml(notes)}</td></tr>` : ''}`;
+    }).join('');
 
-          .header {
-            text-align: center;
-            margin-bottom: 20px;
-            padding-bottom: 10px;
-            border-bottom: 3px solid #333;
-          }
+    const printContent = `<!DOCTYPE html><html><head><meta charset="utf-8">
+      <title>Running Order - ${utils.escapeHtml(this.currentEventName)}</title>
+      <style>
+        @page { size: A4 landscape; margin: 12mm; }
+        body { font-family: Arial, sans-serif; font-size: 10pt; line-height: 1.4; color: #000; margin: 0; }
+        .header { text-align: center; margin-bottom: 15px; padding-bottom: 8px; border-bottom: 3px solid #333; }
+        .header h1 { margin: 0 0 4px 0; font-size: 20pt; }
+        .header h2 { margin: 0; font-size: 14pt; font-weight: normal; color: #666; }
+        .print-date { text-align: right; font-size: 8pt; color: #666; margin-bottom: 10px; }
+        table { width: 100%; border-collapse: collapse; }
+        thead { background: #f0f0f0; }
+        th, td { padding: 6px 8px; border: 1px solid #333; text-align: left; }
+        th { font-size: 9pt; text-transform: uppercase; letter-spacing: 0.5px; }
+        .award-number { text-align: center; font-weight: bold; font-size: 12pt; width: 55px; }
+        .time-col { width: 60px; text-align: center; }
+        .award-name { font-weight: bold; }
+        .recipient { font-style: italic; }
+        .status-col { width: 70px; text-align: center; font-size: 9pt; }
+        .notes { font-size: 8pt; color: #666; }
+        .footer { margin-top: 20px; padding-top: 8px; border-top: 2px solid #333; text-align: center; font-size: 8pt; color: #666; }
+        tr { page-break-inside: avoid; }
+        thead { display: table-header-group; }
+        @media print { body { -webkit-print-color-adjust: exact; print-color-adjust: exact; } }
+      </style></head><body>
+      <div class="header"><h1>Awards Ceremony Running Order</h1><h2>${utils.escapeHtml(this.currentEventName)}</h2></div>
+      <div class="print-date">Printed: ${new Date().toLocaleString()}</div>
+      <table><thead><tr>
+        <th class="award-number">#</th><th class="time-col">Time</th><th class="award-name">Award</th>
+        <th class="winner-name">Winner</th><th class="recipient">Collecting</th><th class="status-col">Status</th>
+      </tr></thead><tbody>${rows}</tbody></table>
+      <div class="footer"><p>Total: ${this.runningOrderItems.length} awards | Est. duration: ${cumMin} minutes</p>
+      <p>Awards CMS - Running Order</p></div>
+      <script>window.onload=function(){window.print();};</script></body></html>`;
 
-          .header h1 {
-            margin: 0 0 5px 0;
-            font-size: 22pt;
-            font-weight: bold;
-          }
-
-          .header h2 {
-            margin: 0;
-            font-size: 16pt;
-            font-weight: normal;
-            color: #666;
-          }
-
-          .print-date {
-            text-align: right;
-            font-size: 9pt;
-            color: #666;
-            margin-bottom: 15px;
-          }
-
-          table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-bottom: 10px;
-          }
-
-          thead {
-            background: #f0f0f0;
-            font-weight: bold;
-          }
-
-          th, td {
-            padding: 8px 10px;
-            border: 1px solid #333;
-            text-align: left;
-          }
-
-          th {
-            font-size: 10pt;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-          }
-
-          .award-number {
-            text-align: center;
-            font-weight: bold;
-            font-size: 13pt;
-            width: 70px;
-          }
-
-          .award-name {
-            font-weight: bold;
-            width: 35%;
-          }
-
-          .winner-name {
-            width: 35%;
-          }
-
-          .recipient {
-            width: 25%;
-            font-style: italic;
-          }
-
-          .notes {
-            width: 100%;
-            font-size: 9pt;
-            color: #666;
-          }
-
-          .footer {
-            margin-top: 30px;
-            padding-top: 10px;
-            border-top: 2px solid #333;
-            text-align: center;
-            font-size: 9pt;
-            color: #666;
-          }
-
-          /* Page break control */
-          tr {
-            page-break-inside: avoid;
-          }
-
-          thead {
-            display: table-header-group;
-          }
-
-          @media print {
-            body {
-              -webkit-print-color-adjust: exact;
-              print-color-adjust: exact;
-            }
-
-            .no-print {
-              display: none;
-            }
-          }
-        </style>
-      </head>
-      <body>
-        <div class="header">
-          <h1>Awards Ceremony Running Order</h1>
-          <h2>${utils.escapeHtml(this.currentEventName)}</h2>
-        </div>
-
-        <div class="print-date">
-          Printed: ${new Date().toLocaleString()}
-        </div>
-
-        <table>
-          <thead>
-            <tr>
-              <th class="award-number">#</th>
-              <th class="award-name">Award</th>
-              <th class="winner-name">Winner</th>
-              <th class="recipient">Collecting</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${this.runningOrderItems.map(item => {
-              const awardName = item.award_name || (item.awards ? item.awards.award_name : 'N/A');
-              const companyName = item.display_name ||
-                                 (item.organisations ? item.organisations.company_name : 'N/A');
-              const recipient = item.recipient_collecting ||
-                              (item.event_guests ? item.event_guests.guest_name : '');
-              const notes = item.notes || item.special_requirements || '';
-
-              return `
-                <tr>
-                  <td class="award-number">${utils.escapeHtml(item.award_number)}</td>
-                  <td class="award-name">${utils.escapeHtml(awardName)}</td>
-                  <td class="winner-name">${utils.escapeHtml(companyName)}</td>
-                  <td class="recipient">${utils.escapeHtml(recipient)}</td>
-                </tr>
-                ${notes ? `
-                  <tr>
-                    <td colspan="4" class="notes">
-                      <strong>Notes:</strong> ${utils.escapeHtml(notes)}
-                    </td>
-                  </tr>
-                ` : ''}
-              `;
-            }).join('')}
-          </tbody>
-        </table>
-
-        <div class="footer">
-          <p>Total Awards: ${this.runningOrderItems.length}</p>
-          <p>Awards CMS - Running Order Management System</p>
-        </div>
-
-        <script>
-          // Auto-print when page loads
-          window.onload = function() {
-            window.print();
-          };
-        </script>
-      </body>
-      </html>
-    `;
-
-    // Open print window
-    const printWindow = window.open('', '_blank', 'width=800,height=600');
+    const printWindow = window.open('', '_blank', 'width=900,height=600');
     if (printWindow) {
       printWindow.document.write(printContent);
       printWindow.document.close();
     } else {
-      utils.showToast('Please allow popups to print the running order', 'warning');
+      utils.showToast('Please allow popups to print', 'warning');
     }
   },
 
@@ -1496,22 +1580,13 @@ const eventsModule = {
    * Delete Running Order Item
    */
   async deleteRunningOrderItem(itemId) {
-    if (!confirm('Are you sure you want to remove this item from the running order?')) {
-      return;
-    }
-
+    if (!confirm('Remove this item from the running order?')) return;
     try {
-      const { error } = await STATE.client
-        .from('running_order')
-        .delete()
-        .eq('id', itemId);
-
+      const { error } = await STATE.client.from('running_order').delete().eq('id', itemId);
       if (error) throw error;
-
-      utils.showToast('Item removed from running order', 'success');
+      utils.showToast('Item removed', 'success');
       await this.loadRunningOrder();
       this.renderRunningOrderItems();
-
     } catch (error) {
       console.error('Error deleting item:', error);
       utils.showToast('Failed to delete item', 'error');
@@ -1519,43 +1594,40 @@ const eventsModule = {
   },
 
   /**
-   * Export Running Order
+   * Export Running Order - Enhanced with time and status
    */
   exportRunningOrder() {
     if (this.runningOrderItems.length === 0) {
       utils.showToast('No items to export', 'warning');
       return;
     }
-
-    const exportData = this.runningOrderItems.map(item => {
-      const recipientName = item.recipient_collecting || item.event_guests?.guest_name || item.display_name || 'TBC';
-      const awardWinner = `${item.award_name || 'Award TBC'}: ${item.display_name}`;
-
-      return {
-        'Award Number': item.award_number,
-        'Award: Winner': awardWinner,
-        'Recipient Collecting': recipientName
-      };
-    });
-
+    const exportData = this.runningOrderItems.map(item => ({
+      'Order': item.display_order,
+      'Award Number': item.award_number,
+      'Award Name': item.award_name || 'TBC',
+      'Winner': item.display_name || 'TBC',
+      'Recipient Collecting': item.recipient_collecting || item.event_guests?.guest_name || 'TBC',
+      'Scheduled Time': item.scheduled_time || '',
+      'Duration (min)': item.duration_minutes || 3,
+      'Status': item.status || 'pending',
+      'Notes': item.notes || ''
+    }));
     const filename = `${this.currentEventName.replace(/[^a-z0-9]/gi, '_')}_running_order_${new Date().toISOString().split('T')[0]}.csv`;
     utils.exportToCSV(exportData, filename);
   },
 
   /**
-   * Add Manual Entry (placeholder for future implementation)
+   * Add Manual Entry - Enhanced with time and duration fields
    */
   addManualEntry() {
     const eventId = this.currentEventIdRunningOrder;
-    if (!eventId) {
-      utils.showToast('No event selected', 'warning');
-      return;
-    }
+    if (!eventId) { utils.showToast('No event selected', 'warning'); return; }
 
     const nextOrder = this.runningOrderItems.length + 1;
-    const nextAwardNum = this.runningOrderItems.length > 0
-      ? Math.max(...this.runningOrderItems.map(i => parseInt(i.award_number) || 0)) + 1
+    const section = this.runningOrderItems.length > 0
+      ? (this.runningOrderItems[this.runningOrderItems.length - 1].section || 1)
       : 1;
+    const nextAwardNum = `${section}-${String(nextOrder).padStart(2, '0')}`;
 
     const modalHtml = `
       <div class="modal fade" id="addManualEntryModal" tabindex="-1">
@@ -1568,13 +1640,17 @@ const eventsModule = {
             <div class="modal-body">
               <form id="addManualEntryForm">
                 <div class="row">
-                  <div class="col-md-6 mb-3">
+                  <div class="col-md-4 mb-3">
                     <label class="form-label">Award Number</label>
-                    <input type="number" class="form-control" id="manualAwardNumber" value="${nextAwardNum}" min="1">
+                    <input type="text" class="form-control" id="manualAwardNumber" value="${nextAwardNum}">
                   </div>
-                  <div class="col-md-6 mb-3">
-                    <label class="form-label">Display Order</label>
-                    <input type="number" class="form-control" id="manualDisplayOrder" value="${nextOrder}" min="1">
+                  <div class="col-md-4 mb-3">
+                    <label class="form-label">Scheduled Time</label>
+                    <input type="time" class="form-control" id="manualScheduledTime">
+                  </div>
+                  <div class="col-md-4 mb-3">
+                    <label class="form-label">Duration (min)</label>
+                    <input type="number" class="form-control" id="manualDuration" value="3" min="1" max="120">
                   </div>
                 </div>
                 <div class="mb-3">
@@ -1582,7 +1658,7 @@ const eventsModule = {
                   <input type="text" class="form-control" id="manualAwardName" required placeholder="e.g. Best New Business Award">
                 </div>
                 <div class="mb-3">
-                  <label class="form-label">Winner/Display Name <span class="text-danger">*</span></label>
+                  <label class="form-label">Winner / Display Name <span class="text-danger">*</span></label>
                   <input type="text" class="form-control" id="manualDisplayName" required placeholder="e.g. Smith & Sons Ltd">
                 </div>
                 <div class="mb-3">
@@ -1591,20 +1667,19 @@ const eventsModule = {
                 </div>
                 <div class="mb-3">
                   <label class="form-label">Notes</label>
-                  <textarea class="form-control" id="manualNotes" rows="2" placeholder="Any additional notes..."></textarea>
+                  <textarea class="form-control" id="manualNotes" rows="2" placeholder="Special requirements, notes..."></textarea>
                 </div>
               </form>
             </div>
             <div class="modal-footer">
               <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
               <button type="button" class="btn btn-primary" onclick="eventsModule.saveManualEntry()">
-                <i class="bi bi-save me-2"></i>Add to Running Order
+                <i class="bi bi-plus-circle me-2"></i>Add to Running Order
               </button>
             </div>
           </div>
         </div>
-      </div>
-    `;
+      </div>`;
 
     const existingModal = document.getElementById('addManualEntryModal');
     if (existingModal) existingModal.remove();
@@ -1616,32 +1691,26 @@ const eventsModule = {
 
   async saveManualEntry() {
     const form = document.getElementById('addManualEntryForm');
-    if (!form.checkValidity()) {
-      form.reportValidity();
-      return;
-    }
+    if (!form.checkValidity()) { form.reportValidity(); return; }
 
     const entryData = {
       event_id: this.currentEventIdRunningOrder,
-      award_number: parseInt(document.getElementById('manualAwardNumber').value) || 1,
-      display_order: parseInt(document.getElementById('manualDisplayOrder').value) || 1,
+      award_number: document.getElementById('manualAwardNumber').value.trim() || '1',
+      display_order: this.runningOrderItems.length + 1,
       award_name: document.getElementById('manualAwardName').value.trim(),
       display_name: document.getElementById('manualDisplayName').value.trim(),
       recipient_collecting: document.getElementById('manualRecipient').value.trim() || null,
-      notes: document.getElementById('manualNotes').value.trim() || null
+      scheduled_time: document.getElementById('manualScheduledTime').value || null,
+      duration_minutes: parseInt(document.getElementById('manualDuration').value) || 3,
+      notes: document.getElementById('manualNotes').value.trim() || null,
+      status: 'pending'
     };
 
     try {
-      const { error } = await STATE.client
-        .from('running_order')
-        .insert([entryData]);
-
+      const { error } = await STATE.client.from('running_order').insert([entryData]);
       if (error) throw error;
-
       utils.showToast('Entry added to running order', 'success');
       bootstrap.Modal.getInstance(document.getElementById('addManualEntryModal')).hide();
-
-      // Reload running order
       await this.loadRunningOrder();
       this.renderRunningOrderItems();
     } catch (error) {
@@ -1651,14 +1720,11 @@ const eventsModule = {
   },
 
   /**
-   * Edit Running Order Item
+   * Edit Running Order Item - Enhanced with time and duration
    */
   async editRunningOrderItem(itemId) {
     const item = this.runningOrderItems.find(i => i.id === itemId);
-    if (!item) {
-      utils.showToast('Item not found', 'error');
-      return;
-    }
+    if (!item) { utils.showToast('Item not found', 'error'); return; }
 
     const modalHtml = `
       <div class="modal fade" id="editRunningOrderModal" tabindex="-1">
@@ -1671,13 +1737,17 @@ const eventsModule = {
             <div class="modal-body">
               <form id="editRunningOrderForm">
                 <div class="row">
-                  <div class="col-md-6 mb-3">
+                  <div class="col-md-4 mb-3">
                     <label class="form-label">Award Number</label>
-                    <input type="number" class="form-control" id="editROAwardNumber" value="${item.award_number || ''}" min="1">
+                    <input type="text" class="form-control" id="editROAwardNumber" value="${utils.escapeHtml(String(item.award_number || ''))}">
                   </div>
-                  <div class="col-md-6 mb-3">
-                    <label class="form-label">Display Order</label>
-                    <input type="number" class="form-control" id="editRODisplayOrder" value="${item.display_order || ''}" min="1">
+                  <div class="col-md-4 mb-3">
+                    <label class="form-label">Scheduled Time</label>
+                    <input type="time" class="form-control" id="editROScheduledTime" value="${item.scheduled_time || ''}">
+                  </div>
+                  <div class="col-md-4 mb-3">
+                    <label class="form-label">Duration (min)</label>
+                    <input type="number" class="form-control" id="editRODuration" value="${item.duration_minutes || 3}" min="1" max="120">
                   </div>
                 </div>
                 <div class="mb-3">
@@ -1685,7 +1755,7 @@ const eventsModule = {
                   <input type="text" class="form-control" id="editROAwardName" value="${utils.escapeHtml(item.award_name || '')}">
                 </div>
                 <div class="mb-3">
-                  <label class="form-label">Winner/Display Name</label>
+                  <label class="form-label">Winner / Display Name</label>
                   <input type="text" class="form-control" id="editRODisplayName" value="${utils.escapeHtml(item.display_name || '')}">
                 </div>
                 <div class="mb-3">
@@ -1695,6 +1765,10 @@ const eventsModule = {
                 <div class="mb-3">
                   <label class="form-label">Notes</label>
                   <textarea class="form-control" id="editRONotes" rows="2">${utils.escapeHtml(item.notes || '')}</textarea>
+                </div>
+                <div class="mb-3">
+                  <label class="form-label">Special Requirements</label>
+                  <textarea class="form-control" id="editROSpecialReqs" rows="2">${utils.escapeHtml(item.special_requirements || '')}</textarea>
                 </div>
               </form>
             </div>
@@ -1706,8 +1780,7 @@ const eventsModule = {
             </div>
           </div>
         </div>
-      </div>
-    `;
+      </div>`;
 
     const existingModal = document.getElementById('editRunningOrderModal');
     if (existingModal) existingModal.remove();
@@ -1719,29 +1792,25 @@ const eventsModule = {
 
   async updateRunningOrderItem(itemId) {
     const updateData = {
-      award_number: parseInt(document.getElementById('editROAwardNumber').value) || null,
-      display_order: parseInt(document.getElementById('editRODisplayOrder').value) || null,
+      award_number: document.getElementById('editROAwardNumber').value || null,
       award_name: document.getElementById('editROAwardName').value || null,
       display_name: document.getElementById('editRODisplayName').value || null,
       recipient_collecting: document.getElementById('editRORecipient').value || null,
-      notes: document.getElementById('editRONotes').value || null
+      scheduled_time: document.getElementById('editROScheduledTime').value || null,
+      duration_minutes: parseInt(document.getElementById('editRODuration').value) || 3,
+      notes: document.getElementById('editRONotes').value || null,
+      special_requirements: document.getElementById('editROSpecialReqs').value || null
     };
 
     try {
-      const { error } = await STATE.client
-        .from('running_order')
-        .update(updateData)
-        .eq('id', itemId);
-
+      const { error } = await STATE.client.from('running_order').update(updateData).eq('id', itemId);
       if (error) throw error;
-
-      utils.showToast('Running order item updated', 'success');
+      utils.showToast('Item updated', 'success');
       bootstrap.Modal.getInstance(document.getElementById('editRunningOrderModal')).hide();
-
       await this.loadRunningOrder();
       this.renderRunningOrderItems();
     } catch (error) {
-      console.error('Error updating running order item:', error);
+      console.error('Error updating item:', error);
       utils.showToast('Failed to update item: ' + error.message, 'error');
     }
   },

@@ -2,6 +2,118 @@
 /* MAIN APPLICATION INITIALIZATION */
 /* ==================================================== */
 
+// ============================================
+// SCHEDULED REPORTS MODULE (Reports tab)
+// ============================================
+const reportsScheduler = {
+  _scheduledReports: JSON.parse(localStorage.getItem('orgScheduledReports') || '[]'),
+
+  loadReports() {
+    const container = document.getElementById('scheduledReportsGrid');
+    if (!container) return;
+    const reports = this._scheduledReports;
+    if (reports.length === 0) {
+      container.innerHTML = `<div class="text-center py-4 text-muted">
+        <i class="bi bi-calendar-x display-4 d-block mb-2 opacity-25"></i>
+        No scheduled reports configured yet
+      </div>`;
+      return;
+    }
+    container.innerHTML = reports.map((r, i) => `
+      <div class="card mb-2">
+        <div class="card-body py-2">
+          <div class="d-flex justify-content-between align-items-center">
+            <div>
+              <strong>${utils.escapeHtml(r.name)}</strong>
+              <span class="badge bg-${r.active ? 'success' : 'secondary'} ms-2">${r.active ? 'Active' : 'Paused'}</span>
+              <div class="text-muted small">${utils.escapeHtml(r.frequency)} &middot; ${r.sections.join(', ')} &middot; To: ${utils.escapeHtml(r.recipients)}</div>
+            </div>
+            <div>
+              <button class="btn btn-sm btn-outline-primary me-1" onclick="reportsScheduler.previewReport(${i})"><i class="bi bi-eye"></i> Preview</button>
+              <button class="btn btn-sm btn-outline-danger" onclick="reportsScheduler.deleteReport(${i})"><i class="bi bi-trash"></i></button>
+            </div>
+          </div>
+        </div>
+      </div>`).join('');
+  },
+
+  showCreateReport() {
+    const existingModal = document.getElementById('createScheduledReportModal');
+    if (existingModal) existingModal.remove();
+
+    const modalHtml = `<div class="modal fade" id="createScheduledReportModal" tabindex="-1">
+      <div class="modal-dialog"><div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title"><i class="bi bi-calendar-plus me-2"></i>Create Scheduled Report</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <div class="mb-3"><label class="form-label fw-semibold">Report Name</label><input type="text" class="form-control" id="reportName" placeholder="e.g. Weekly Pipeline Summary"></div>
+          <div class="mb-3"><label class="form-label fw-semibold">Frequency</label><select class="form-select" id="reportFrequency"><option value="Daily">Daily</option><option value="Weekly" selected>Weekly</option><option value="Monthly">Monthly</option></select></div>
+          <div class="mb-3"><label class="form-label fw-semibold">Recipients</label><input type="text" class="form-control" id="reportRecipients" placeholder="admin@example.com, manager@example.com"></div>
+          <div class="mb-3"><label class="form-label fw-semibold">Include</label>
+            <div class="form-check"><input class="form-check-input rpt-section" type="checkbox" value="KPI Summary" checked><label class="form-check-label">KPI Summary</label></div>
+            <div class="form-check"><input class="form-check-input rpt-section" type="checkbox" value="Pipeline" checked><label class="form-check-label">Pipeline Breakdown</label></div>
+            <div class="form-check"><input class="form-check-input rpt-section" type="checkbox" value="Overdue" checked><label class="form-check-label">Overdue Follow-ups</label></div>
+            <div class="form-check"><input class="form-check-input rpt-section" type="checkbox" value="Regional"><label class="form-check-label">Regional Distribution</label></div>
+            <div class="form-check"><input class="form-check-input rpt-section" type="checkbox" value="Data Quality"><label class="form-check-label">Data Quality Issues</label></div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button class="btn btn-primary" onclick="reportsScheduler._saveReport()"><i class="bi bi-check-circle me-2"></i>Save</button>
+        </div>
+      </div></div>
+    </div>`;
+    document.body.insertAdjacentHTML('beforeend', modalHtml);
+    new bootstrap.Modal(document.getElementById('createScheduledReportModal')).show();
+  },
+
+  _saveReport() {
+    const name = document.getElementById('reportName')?.value?.trim();
+    const frequency = document.getElementById('reportFrequency')?.value;
+    const recipients = document.getElementById('reportRecipients')?.value?.trim();
+    if (!name || !recipients) { utils.showToast('Fill in name and recipients', 'warning'); return; }
+    const sections = Array.from(document.querySelectorAll('.rpt-section:checked')).map(cb => cb.value);
+    if (sections.length === 0) { utils.showToast('Select at least one section', 'warning'); return; }
+    this._scheduledReports.push({ name, frequency, recipients, sections, active: true, created: new Date().toISOString() });
+    localStorage.setItem('orgScheduledReports', JSON.stringify(this._scheduledReports));
+    utils.showToast('Report schedule created', 'success');
+    bootstrap.Modal.getInstance(document.getElementById('createScheduledReportModal'))?.hide();
+    this.loadReports();
+  },
+
+  previewReport(index) {
+    const r = this._scheduledReports[index]; if (!r) return;
+    const orgs = (typeof STATE !== 'undefined' && STATE.allOrganisations) ? STATE.allOrganisations : [];
+    const pipeline = {}; orgs.forEach(o => { const s = o.status || 'prospect'; pipeline[s] = (pipeline[s] || 0) + 1; });
+    const regions = {}; orgs.forEach(o => { const reg = o.region || 'Unknown'; regions[reg] = (regions[reg] || 0) + 1; });
+    let preview = `<h5>${utils.escapeHtml(r.name)}</h5><p class="text-muted small">Preview generated ${new Date().toLocaleString('en-GB')}</p><hr>`;
+    if (r.sections.includes('KPI Summary')) preview += `<h6>KPI Summary</h6><div class="row text-center mb-3"><div class="col"><strong>${orgs.length}</strong><br><small>Total Orgs</small></div><div class="col"><strong>${Object.keys(regions).length}</strong><br><small>Regions</small></div></div>`;
+    if (r.sections.includes('Pipeline')) preview += `<h6>Pipeline</h6><div class="mb-3">${Object.entries(pipeline).map(([s, c]) => `<span class="badge bg-primary me-1">${s}: ${c}</span>`).join('')}</div>`;
+    if (r.sections.includes('Regional')) preview += `<h6>Regional</h6><div class="mb-3">${Object.entries(regions).sort((a,b)=>b[1]-a[1]).slice(0,10).map(([r,c])=>`<div class="d-flex justify-content-between small"><span>${utils.escapeHtml(r)}</span><strong>${c}</strong></div>`).join('')}</div>`;
+
+    const existingModal = document.getElementById('reportPreviewModal');
+    if (existingModal) existingModal.remove();
+    const modalHtml = `<div class="modal fade" id="reportPreviewModal" tabindex="-1">
+      <div class="modal-dialog modal-lg"><div class="modal-content">
+        <div class="modal-header"><h5 class="modal-title"><i class="bi bi-file-text me-2"></i>Report Preview</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+        <div class="modal-body">${preview}</div>
+        <div class="modal-footer"><button class="btn btn-secondary" data-bs-dismiss="modal">Close</button></div>
+      </div></div></div>`;
+    document.body.insertAdjacentHTML('beforeend', modalHtml);
+    new bootstrap.Modal(document.getElementById('reportPreviewModal')).show();
+  },
+
+  deleteReport(i) {
+    if (!confirm('Delete this report schedule?')) return;
+    this._scheduledReports.splice(i, 1);
+    localStorage.setItem('orgScheduledReports', JSON.stringify(this._scheduledReports));
+    this.loadReports();
+  }
+};
+window.reportsScheduler = reportsScheduler;
+
 // Wait for DOM to be fully loaded before initializing
 document.addEventListener('DOMContentLoaded', function() {
   console.log('🚀 Initializing British Trade Awards Admin...');
@@ -220,6 +332,16 @@ document.addEventListener('DOMContentLoaded', function() {
   
   // Setup export buttons after a short delay to ensure DOM is ready
   setTimeout(setupExportButtons, 100);
+
+  // Load scheduled reports when Reports tab is opened
+  const reportsTab = document.getElementById('reports-tab');
+  if (reportsTab) {
+    reportsTab.addEventListener('shown.bs.tab', () => {
+      if (typeof reportsScheduler !== 'undefined') {
+        reportsScheduler.loadReports();
+      }
+    });
+  }
   
   // ==========================================
   // STEP 3: User Activity Monitoring
@@ -388,6 +510,26 @@ document.addEventListener('DOMContentLoaded', function() {
     });
   }
 
+  // Load Accounting Integration when sub-tab is opened
+  const accountingSubTab = document.getElementById('accounting-subtab');
+  if (accountingSubTab) {
+    accountingSubTab.addEventListener('shown.bs.tab', () => {
+      if (typeof paymentsModule !== 'undefined') {
+        paymentsModule.loadAccountingIntegration();
+      }
+    });
+  }
+
+  // Load Email Sequences when sub-tab is opened
+  const emailSequencesSubTab = document.getElementById('email-sequences-subtab');
+  if (emailSequencesSubTab) {
+    emailSequencesSubTab.addEventListener('shown.bs.tab', () => {
+      if (typeof marketingModule !== 'undefined') {
+        marketingModule.loadEmailSequences();
+      }
+    });
+  }
+
   // Load payments data when payments tab is clicked
   const paymentsTab = document.getElementById('payments-tab');
   if (paymentsTab) {
@@ -416,7 +558,9 @@ document.addEventListener('DOMContentLoaded', function() {
     'communications-subtab': 'communications',
     'deals-subtab': 'deals',
     'meetings-subtab': 'meetings',
-    'segments-subtab': 'segments'
+    'segments-subtab': 'segments',
+    'smart-segments-subtab': 'smart-segments',
+    'my-tasks-subtab': 'my-tasks'
   };
 
   Object.keys(crmSubTabs).forEach(tabId => {

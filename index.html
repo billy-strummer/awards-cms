@@ -1745,17 +1745,17 @@
           <!-- Saved Filter Presets -->
           <div class="col-md-3">
             <label class="form-label small fw-semibold mb-1">
-              <i class="bi bi-bookmark me-1"></i>Presets
+              <i class="bi bi-bookmark me-1"></i>Saved Views
             </label>
             <div class="input-group input-group-sm">
               <select class="form-select form-select-sm" id="orgsFilterPreset"
                       onchange="orgsModule.loadFilterPreset(this.value)">
-                <option value="">-- Saved Presets --</option>
+                <option value="">-- Saved Views --</option>
               </select>
-              <button class="btn btn-outline-primary btn-sm" onclick="orgsModule.saveFilterPreset()" title="Save current filters as preset">
+              <button class="btn btn-outline-primary btn-sm" onclick="orgsModule.saveFilterPreset()" title="Save current view (filters, sort, columns)">
                 <i class="bi bi-bookmark-plus"></i>
               </button>
-              <button class="btn btn-outline-danger btn-sm" onclick="orgsModule.deleteFilterPreset()" title="Delete selected preset">
+              <button class="btn btn-outline-danger btn-sm" onclick="orgsModule.deleteFilterPreset()" title="Delete selected view">
                 <i class="bi bi-trash"></i>
               </button>
             </div>
@@ -1810,30 +1810,9 @@
               <button class="btn btn-sm btn-outline-secondary" onclick="orgsModule.showTagFilterModal()" title="Multi-Tag Filter">
                 <i class="bi bi-tags"></i>
               </button>
-              <button class="btn btn-sm btn-outline-secondary" onclick="orgsModule.showSegmentsBuilder()" title="Smart Segments">
-                <i class="bi bi-funnel"></i>
-              </button>
-              <button class="btn btn-sm btn-outline-secondary" onclick="orgsModule.saveView()" title="Save Current View">
-                <i class="bi bi-bookmark-plus"></i>
-              </button>
-              <button class="btn btn-sm btn-outline-secondary" onclick="orgsModule.showSavedViews()" title="Load Saved View">
-                <i class="bi bi-bookmarks"></i>
-              </button>
               <div class="vr mx-1"></div>
-              <button class="btn btn-sm btn-outline-primary" onclick="orgsModule.showMyTasks()" title="My Tasks & Follow-ups">
-                <i class="bi bi-person-check"></i>
-              </button>
               <button class="btn btn-sm btn-outline-info" onclick="orgsModule.showDuplicateDetectionDashboard()" title="Duplicate Detection Scan">
                 <i class="bi bi-search"></i>
-              </button>
-              <button class="btn btn-sm btn-outline-warning" onclick="orgsModule.showScheduledReports()" title="Scheduled Reports">
-                <i class="bi bi-calendar2-week"></i>
-              </button>
-              <button class="btn btn-sm btn-outline-secondary" onclick="orgsModule.showEmailSequences()" title="Email Sequences">
-                <i class="bi bi-envelope-arrow-up"></i>
-              </button>
-              <button class="btn btn-sm btn-outline-secondary" onclick="orgsModule.showXeroIntegration()" title="Accounting Integration">
-                <i class="bi bi-currency-pound"></i>
               </button>
             </div>
           </div>
@@ -2942,6 +2921,25 @@
             </div>
           </div>
 
+          <!-- Scheduled Reports Section -->
+          <div class="content-card mt-4">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+              <h5 class="mb-0">
+                <i class="bi bi-calendar2-week me-2"></i>Scheduled Reports
+              </h5>
+              <button class="btn btn-primary btn-sm" onclick="reportsScheduler.showCreateReport()">
+                <i class="bi bi-plus-circle me-2"></i>Create Report Schedule
+              </button>
+            </div>
+            <p class="text-muted small mb-3">Schedule automated reports to be generated on a recurring basis.</p>
+            <div id="scheduledReportsGrid">
+              <div class="text-center py-4 text-muted">
+                <i class="bi bi-calendar-x display-4 d-block mb-2 opacity-25"></i>
+                No scheduled reports configured yet
+              </div>
+            </div>
+          </div>
+
         </div>
       </div>
 
@@ -2989,6 +2987,11 @@
             <li class="nav-item" role="presentation">
               <button class="nav-link" id="email-lists-subtab" data-bs-toggle="pill" data-bs-target="#email-lists-content" type="button" role="tab">
                 <i class="bi bi-list-ul me-2"></i>Email Lists
+              </button>
+            </li>
+            <li class="nav-item" role="presentation">
+              <button class="nav-link" id="email-sequences-subtab" data-bs-toggle="pill" data-bs-target="#email-sequences-content" type="button" role="tab">
+                <i class="bi bi-envelope-arrow-up me-2"></i>Email Sequences
               </button>
             </li>
           </ul>
@@ -4182,6 +4185,23 @@
 
             </div>
 
+            <!-- Email Sequences Sub-Tab -->
+            <div class="tab-pane fade" id="email-sequences-content" role="tabpanel">
+              <div class="d-flex justify-content-between align-items-center mb-4">
+                <h4><i class="bi bi-envelope-arrow-up me-2"></i>Email Sequences</h4>
+                <button class="btn btn-primary btn-sm" onclick="marketingModule.showCreateSequence()">
+                  <i class="bi bi-plus-circle me-2"></i>Create New Sequence
+                </button>
+              </div>
+              <p class="text-muted small">Create automated email sequences triggered by status changes or manual enrollment.</p>
+              <div id="emailSequencesGrid">
+                <div class="text-center py-5 text-muted">
+                  <i class="bi bi-envelope-slash display-4 d-block mb-2 opacity-25"></i>
+                  No sequences configured yet
+                </div>
+              </div>
+            </div>
+
           </div>
 
         </div>
@@ -4216,6 +4236,11 @@
             <li class="nav-item" role="presentation">
               <button class="nav-link" id="financial-reports-subtab" data-bs-toggle="pill" data-bs-target="#financial-reports-content" type="button" role="tab">
                 <i class="bi bi-graph-up me-2"></i>Financial Reports
+              </button>
+            </li>
+            <li class="nav-item" role="presentation">
+              <button class="nav-link" id="accounting-subtab" data-bs-toggle="pill" data-bs-target="#accounting-content" type="button" role="tab">
+                <i class="bi bi-currency-pound me-2"></i>Accounting
               </button>
             </li>
           </ul>
@@ -4466,6 +4491,20 @@
 
             </div>
 
+            <!-- Accounting Integration Sub-Tab -->
+            <div class="tab-pane fade" id="accounting-content" role="tabpanel">
+              <div class="d-flex justify-content-between align-items-center mb-4">
+                <h4><i class="bi bi-currency-pound me-2"></i>Accounting Integration</h4>
+              </div>
+              <p class="text-muted small mb-3">Connect your accounting software to sync invoices and payments.</p>
+              <div id="accountingIntegrationContainer">
+                <div class="text-center py-5 text-muted">
+                  <i class="bi bi-currency-pound display-4 d-block mb-2 opacity-25"></i>
+                  Loading accounting settings...
+                </div>
+              </div>
+            </div>
+
           </div>
 
         </div>
@@ -4510,6 +4549,16 @@
             <li class="nav-item" role="presentation">
               <button class="nav-link" id="segments-subtab" data-bs-toggle="pill" data-bs-target="#segments-content" type="button" role="tab">
                 <i class="bi bi-tags me-2"></i>Segments
+              </button>
+            </li>
+            <li class="nav-item" role="presentation">
+              <button class="nav-link" id="smart-segments-subtab" data-bs-toggle="pill" data-bs-target="#smart-segments-content" type="button" role="tab">
+                <i class="bi bi-funnel me-2"></i>Smart Segments
+              </button>
+            </li>
+            <li class="nav-item" role="presentation">
+              <button class="nav-link" id="my-tasks-subtab" data-bs-toggle="pill" data-bs-target="#my-tasks-content" type="button" role="tab">
+                <i class="bi bi-person-check me-2"></i>My Tasks
               </button>
             </li>
           </ul>
@@ -4936,6 +4985,49 @@
                 </button>
               </div>
 
+            </div>
+
+            <!-- Smart Segments Sub-Tab -->
+            <div class="tab-pane fade" id="smart-segments-content" role="tabpanel">
+              <div class="d-flex justify-content-between align-items-center mb-4">
+                <h4><i class="bi bi-funnel me-2"></i>Smart Segments</h4>
+              </div>
+              <p class="small text-muted mb-3">Build dynamic segments based on rules. Matching organisations update in real-time.</p>
+              <div id="smartSegmentRules">
+                <div class="segment-rule d-flex gap-2 align-items-center mb-2">
+                  <select class="form-select form-select-sm" style="width:auto;" id="segField0">
+                    <option value="tier">Tier</option><option value="status">Status</option><option value="region">Region</option>
+                    <option value="sector">Sector</option><option value="awards_count">Awards Count</option><option value="engagement">Engagement Score</option>
+                  </select>
+                  <select class="form-select form-select-sm" style="width:auto;" id="segOp0">
+                    <option value="eq">equals</option><option value="neq">not equals</option>
+                    <option value="gt">greater than</option><option value="lt">less than</option>
+                    <option value="contains">contains</option>
+                  </select>
+                  <input type="text" class="form-control form-control-sm" style="width:150px;" id="segVal0" placeholder="Value...">
+                </div>
+              </div>
+              <button class="btn btn-sm btn-outline-secondary mb-3" onclick="crmModule.addSegmentRule()"><i class="bi bi-plus me-1"></i>Add Rule</button>
+              <div class="d-flex gap-2 mb-3">
+                <button class="btn btn-sm btn-primary" onclick="crmModule.applySmartSegment()"><i class="bi bi-funnel me-1"></i>Apply Segment</button>
+                <button class="btn btn-sm btn-outline-success" onclick="crmModule.saveSmartSegment()"><i class="bi bi-save me-1"></i>Save Segment</button>
+                <button class="btn btn-sm btn-outline-secondary" onclick="crmModule.loadSmartSegments()"><i class="bi bi-folder-open me-1"></i>Load Saved</button>
+              </div>
+              <div id="smartSegmentResult"></div>
+            </div>
+
+            <!-- My Tasks Sub-Tab -->
+            <div class="tab-pane fade" id="my-tasks-content" role="tabpanel">
+              <div class="d-flex justify-content-between align-items-center mb-4">
+                <h4><i class="bi bi-person-check me-2"></i>My Tasks & Follow-ups</h4>
+                <button class="btn btn-sm btn-outline-primary" onclick="crmModule.refreshMyTasks()"><i class="bi bi-arrow-clockwise me-1"></i>Refresh</button>
+              </div>
+              <div id="myTasksContainer">
+                <div class="text-center py-5 text-muted">
+                  <i class="bi bi-hourglass-split display-4 d-block mb-2 opacity-25"></i>
+                  Loading tasks...
+                </div>
+              </div>
             </div>
 
           </div>

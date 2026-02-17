@@ -1,0 +1,555 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Event Check-In</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+  <style>
+    :root { --brand-primary: #1a1a2e; }
+    * { box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: var(--brand-primary); color: white; margin: 0; min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    /* Header */
+    .ci-header {
+      padding: 12px 16px; background: rgba(255,255,255,0.05);
+      display: flex; justify-content: space-between; align-items: center;
+      border-bottom: 1px solid rgba(255,255,255,0.1);
+    }
+    .ci-header h1 { font-size: 1.1rem; margin: 0; font-weight: 700; }
+    .ci-header .event-label { font-size: 0.75rem; opacity: 0.5; }
+
+    /* Stats bar */
+    .ci-stats {
+      display: flex; gap: 0; border-bottom: 1px solid rgba(255,255,255,0.1);
+    }
+    .ci-stat {
+      flex: 1; text-align: center; padding: 10px 8px;
+      border-right: 1px solid rgba(255,255,255,0.1);
+    }
+    .ci-stat:last-child { border-right: none; }
+    .ci-stat .num { font-size: 1.6rem; font-weight: 800; line-height: 1; }
+    .ci-stat .label { font-size: 0.65rem; opacity: 0.5; text-transform: uppercase; letter-spacing: 1px; }
+    .ci-stat.checked .num { color: #198754; }
+    .ci-stat.pending .num { color: #ffc107; }
+    .ci-stat.rate .num { color: #0dcaf0; }
+
+    /* Mode toggle */
+    .mode-toggle {
+      display: flex; padding: 12px 16px; gap: 8px;
+    }
+    .mode-toggle .btn { flex: 1; border-radius: 10px; font-weight: 600; }
+
+    /* Scanner area */
+    #scannerContainer {
+      padding: 16px; display: flex; flex-direction: column; align-items: center;
+    }
+    #reader { width: 100%; max-width: 400px; border-radius: 12px; overflow: hidden; }
+    #reader video { border-radius: 12px; }
+
+    /* Search mode */
+    #searchContainer { padding: 0 16px; }
+    .search-input-wrap {
+      position: relative; margin-bottom: 12px;
+    }
+    .search-input-wrap input {
+      background: rgba(255,255,255,0.1); border: 2px solid rgba(255,255,255,0.2);
+      color: white; border-radius: 12px; padding: 14px 16px 14px 44px; width: 100%;
+      font-size: 1.1rem;
+    }
+    .search-input-wrap input::placeholder { color: rgba(255,255,255,0.4); }
+    .search-input-wrap input:focus { outline: none; border-color: #0d6efd; background: rgba(255,255,255,0.15); }
+    .search-input-wrap .search-icon {
+      position: absolute; left: 14px; top: 50%; transform: translateY(-50%);
+      opacity: 0.4; font-size: 1.2rem;
+    }
+
+    /* Guest list */
+    .guest-list { max-height: calc(100vh - 300px); overflow-y: auto; }
+    .guest-item {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 12px 16px; border-radius: 10px; margin-bottom: 6px;
+      background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.08);
+      transition: all 0.2s;
+    }
+    .guest-item.checked-in { background: rgba(25,135,84,0.15); border-color: rgba(25,135,84,0.3); }
+    .guest-item .guest-info { flex: 1; }
+    .guest-item .guest-name { font-weight: 600; font-size: 1rem; }
+    .guest-item .guest-meta { font-size: 0.75rem; opacity: 0.5; }
+    .guest-item .guest-badges { display: flex; gap: 4px; margin-top: 2px; }
+
+    /* Check-in result overlay */
+    #checkInResult {
+      position: fixed; inset: 0; z-index: 999; display: none;
+      align-items: center; justify-content: center;
+      background: rgba(0,0,0,0.85); backdrop-filter: blur(10px);
+    }
+    #checkInResult.show { display: flex; }
+    .result-card {
+      text-align: center; padding: 40px 30px; border-radius: 20px; max-width: 360px;
+      width: 90%; animation: popIn 0.3s ease;
+    }
+    .result-card.success { background: linear-gradient(135deg, #0a3622, #155d3a); }
+    .result-card.error { background: linear-gradient(135deg, #3b1219, #6b2331); }
+    .result-card.already { background: linear-gradient(135deg, #332701, #5c4a0a); }
+    .result-card .icon { font-size: 4rem; margin-bottom: 16px; }
+    .result-card h2 { font-size: 1.4rem; margin-bottom: 8px; }
+    .result-card .detail { opacity: 0.7; font-size: 0.9rem; margin-bottom: 4px; }
+    .result-card .table-info { font-size: 1.2rem; font-weight: 700; color: #ffc107; margin: 12px 0; }
+
+    @keyframes popIn {
+      from { transform: scale(0.8); opacity: 0; }
+      to { transform: scale(1); opacity: 1; }
+    }
+
+    /* Loading */
+    #loadingState {
+      position: fixed; inset: 0; background: var(--brand-primary);
+      display: flex; align-items: center; justify-content: center; z-index: 9999;
+    }
+  </style>
+</head>
+<body>
+  <!-- Loading -->
+  <div id="loadingState">
+    <div class="text-center">
+      <div class="spinner-border text-primary mb-3" style="width:3rem;height:3rem;"></div>
+      <p style="opacity:0.5;">Loading check-in...</p>
+    </div>
+  </div>
+
+  <!-- Error -->
+  <div id="errorState" style="display:none; padding:40px; text-align:center;">
+    <i class="bi bi-exclamation-circle display-1 text-danger mb-3"></i>
+    <h3>Check-In Unavailable</h3>
+    <p style="opacity:0.5;" id="errorMsg">Event not found.</p>
+  </div>
+
+  <!-- Main -->
+  <div id="mainContent" style="display:none;">
+    <!-- Header -->
+    <div class="ci-header">
+      <div>
+        <h1><i class="bi bi-qr-code-scan me-2"></i>Check-In</h1>
+        <div class="event-label" id="ciEventName"></div>
+      </div>
+      <div class="text-end">
+        <span class="badge bg-light text-dark" id="ciEventDate"></span>
+      </div>
+    </div>
+
+    <!-- Stats -->
+    <div class="ci-stats">
+      <div class="ci-stat checked">
+        <div class="num" id="statChecked">0</div>
+        <div class="label">Checked In</div>
+      </div>
+      <div class="ci-stat pending">
+        <div class="num" id="statPending">0</div>
+        <div class="label">Awaiting</div>
+      </div>
+      <div class="ci-stat rate">
+        <div class="num" id="statRate">0%</div>
+        <div class="label">Rate</div>
+      </div>
+    </div>
+
+    <!-- Mode Toggle -->
+    <div class="mode-toggle">
+      <button class="btn btn-primary" id="btnScanMode" onclick="switchMode('scan')">
+        <i class="bi bi-camera me-1"></i>Scan QR
+      </button>
+      <button class="btn btn-outline-light" id="btnSearchMode" onclick="switchMode('search')">
+        <i class="bi bi-search me-1"></i>Search Name
+      </button>
+    </div>
+
+    <!-- Scanner Mode -->
+    <div id="scannerContainer">
+      <div id="reader"></div>
+      <p class="text-center mt-3" style="opacity:0.4; font-size:0.85rem;">
+        Point camera at the guest's QR code ticket
+      </p>
+    </div>
+
+    <!-- Search Mode -->
+    <div id="searchContainer" style="display:none;">
+      <div class="search-input-wrap">
+        <i class="bi bi-search search-icon"></i>
+        <input type="text" id="searchInput" placeholder="Type guest name..." oninput="filterGuests()" autofocus>
+      </div>
+      <div class="guest-list" id="guestList">
+        <!-- Populated by JS -->
+      </div>
+    </div>
+  </div>
+
+  <!-- Check-in result overlay -->
+  <div id="checkInResult" onclick="dismissResult()">
+    <div class="result-card" id="resultCard">
+      <div class="icon" id="resultIcon"></div>
+      <h2 id="resultTitle"></h2>
+      <p class="detail" id="resultName"></p>
+      <p class="detail" id="resultCompany"></p>
+      <div class="table-info" id="resultTable"></div>
+      <p class="detail" id="resultDietary"></p>
+      <small style="opacity:0.3; margin-top:16px; display:block;">Tap anywhere to dismiss</small>
+    </div>
+  </div>
+
+  <script>
+    const SUPABASE_URL = 'https://qdzyknercdqwhwijbcxf.supabase.co';
+    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFkenlrbmVyY2Rxd2h3aWpiY3hmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzA4NDAwODEsImV4cCI6MjA4NjQxNjA4MX0.ecs9dgUaOW607imlYFJeLhLHlC8YWybnEUPEHJeRrkY';
+    const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+    let eventId = null;
+    let currentEvent = null;
+    let guests = [];
+    let html5QrCode = null;
+    let scanCooldown = false;
+    let currentMode = 'scan';
+
+    // ---- INIT ----
+    async function init() {
+      const params = new URLSearchParams(window.location.search);
+      eventId = params.get('event');
+
+      if (!eventId) {
+        showError('No event specified. Use: check-in.html?event=EVENT_ID');
+        return;
+      }
+
+      try {
+        // Load event
+        const { data: event, error: eventError } = await supabase
+          .from('events')
+          .select('*')
+          .eq('id', eventId)
+          .single();
+
+        if (eventError || !event) throw new Error('Event not found');
+        currentEvent = event;
+
+        // Load guests
+        await loadGuests();
+
+        // Render UI
+        document.getElementById('ciEventName').textContent = event.event_name;
+        document.getElementById('ciEventDate').textContent = event.event_date
+          ? new Date(event.event_date).toLocaleDateString('en-GB', {day:'numeric', month:'short', year:'numeric'})
+          : '';
+
+        updateStats();
+
+        document.getElementById('loadingState').style.display = 'none';
+        document.getElementById('mainContent').style.display = 'block';
+
+        // Start scanner
+        initScanner();
+
+      } catch (err) {
+        showError(err.message);
+      }
+    }
+
+    function showError(msg) {
+      document.getElementById('loadingState').style.display = 'none';
+      document.getElementById('errorMsg').textContent = msg;
+      document.getElementById('errorState').style.display = 'block';
+    }
+
+    async function loadGuests() {
+      const { data, error } = await supabase
+        .from('event_guests')
+        .select('*')
+        .eq('event_id', eventId)
+        .order('guest_name', { ascending: true });
+
+      if (error) throw error;
+      guests = data || [];
+    }
+
+    function updateStats() {
+      const confirmed = guests.filter(g => g.rsvp_status === 'confirmed');
+      const checkedIn = confirmed.filter(g => g.checked_in);
+      const pending = confirmed.filter(g => !g.checked_in);
+      const rate = confirmed.length > 0 ? Math.round(checkedIn.length / confirmed.length * 100) : 0;
+
+      document.getElementById('statChecked').textContent = checkedIn.length;
+      document.getElementById('statPending').textContent = pending.length;
+      document.getElementById('statRate').textContent = rate + '%';
+    }
+
+    // ---- MODE SWITCHING ----
+    function switchMode(mode) {
+      currentMode = mode;
+      document.getElementById('scannerContainer').style.display = mode === 'scan' ? 'flex' : 'none';
+      document.getElementById('searchContainer').style.display = mode === 'search' ? 'block' : 'none';
+      document.getElementById('btnScanMode').className = mode === 'scan' ? 'btn btn-primary' : 'btn btn-outline-light';
+      document.getElementById('btnSearchMode').className = mode === 'search' ? 'btn btn-primary' : 'btn btn-outline-light';
+
+      if (mode === 'search') {
+        renderGuestList();
+        setTimeout(() => document.getElementById('searchInput').focus(), 100);
+        if (html5QrCode && html5QrCode.isScanning) html5QrCode.stop();
+      } else {
+        if (html5QrCode && !html5QrCode.isScanning) {
+          initScanner();
+        }
+      }
+    }
+
+    // ---- QR SCANNER ----
+    function initScanner() {
+      if (html5QrCode) {
+        try { html5QrCode.stop(); } catch(e) {}
+      }
+
+      html5QrCode = new Html5Qrcode('reader');
+      html5QrCode.start(
+        { facingMode: 'environment' },
+        { fps: 10, qrbox: { width: 250, height: 250 } },
+        onScanSuccess,
+        () => {} // Ignore scan errors
+      ).catch(err => {
+        console.error('Camera error:', err);
+        document.getElementById('reader').innerHTML = `
+          <div class="text-center p-4" style="background:rgba(255,255,255,0.05); border-radius:12px;">
+            <i class="bi bi-camera-video-off display-4 mb-3 d-block" style="opacity:0.3;"></i>
+            <p style="opacity:0.5;">Camera not available. Use name search instead.</p>
+            <button class="btn btn-outline-light btn-sm" onclick="switchMode('search')">
+              <i class="bi bi-search me-1"></i>Switch to Search
+            </button>
+          </div>`;
+      });
+    }
+
+    async function onScanSuccess(decodedText) {
+      if (scanCooldown) return;
+      scanCooldown = true;
+
+      try {
+        // Try to parse as JSON (from our registration page)
+        let guestId = null;
+        try {
+          const data = JSON.parse(decodedText);
+          guestId = data.gid || data.id;
+        } catch {
+          // Maybe it's just a plain guest ID
+          guestId = decodedText.trim();
+        }
+
+        if (!guestId) {
+          showResult('error', 'Invalid QR Code', 'Could not read ticket data');
+          return;
+        }
+
+        // Find guest
+        let guest = guests.find(g => g.id === guestId);
+
+        // If not found locally, try database
+        if (!guest) {
+          const { data } = await supabase
+            .from('event_guests')
+            .select('*')
+            .eq('id', guestId)
+            .eq('event_id', eventId)
+            .single();
+          guest = data;
+        }
+
+        if (!guest) {
+          showResult('error', 'Guest Not Found', 'This QR code is not valid for this event');
+          return;
+        }
+
+        if (guest.checked_in) {
+          const time = guest.check_in_time ? new Date(guest.check_in_time).toLocaleTimeString('en-GB', {hour:'2-digit',minute:'2-digit'}) : '';
+          showResult('already', 'Already Checked In', guest.guest_name, '', `Checked in at ${time}`, '');
+          return;
+        }
+
+        // Check in
+        await performCheckIn(guest);
+
+      } catch (err) {
+        showResult('error', 'Scan Error', err.message);
+      } finally {
+        setTimeout(() => { scanCooldown = false; }, 2000);
+      }
+    }
+
+    // ---- CHECK IN ----
+    async function performCheckIn(guest) {
+      const now = new Date().toISOString();
+
+      const { error } = await supabase
+        .from('event_guests')
+        .update({ checked_in: true, check_in_time: now })
+        .eq('id', guest.id);
+
+      if (error) throw error;
+
+      // Update local data
+      const local = guests.find(g => g.id === guest.id);
+      if (local) {
+        local.checked_in = true;
+        local.check_in_time = now;
+      }
+
+      updateStats();
+
+      // Get table assignment
+      let tableInfo = '';
+      const { data: assignment } = await supabase
+        .from('table_assignments')
+        .select('*, event_tables(*)')
+        .eq('guest_id', guest.id)
+        .single();
+
+      if (assignment && assignment.event_tables) {
+        const t = assignment.event_tables;
+        tableInfo = t.table_name ? `${t.table_name} (Table ${t.table_number})` : `Table ${t.table_number}`;
+      }
+
+      showResult(
+        'success',
+        'Checked In!',
+        guest.guest_name,
+        guest.notes || '',
+        tableInfo ? `Seat: ${tableInfo}` : '',
+        guest.dietary_requirements ? `Dietary: ${guest.dietary_requirements}` : ''
+      );
+
+      // Refresh guest list if in search mode
+      if (currentMode === 'search') renderGuestList();
+    }
+
+    async function checkInByButton(guestId) {
+      const guest = guests.find(g => g.id === guestId);
+      if (!guest) return;
+
+      if (guest.checked_in) {
+        // Undo check-in
+        const { error } = await supabase
+          .from('event_guests')
+          .update({ checked_in: false, check_in_time: null })
+          .eq('id', guestId);
+
+        if (error) { alert('Error: ' + error.message); return; }
+        guest.checked_in = false;
+        guest.check_in_time = null;
+        updateStats();
+        renderGuestList();
+        return;
+      }
+
+      try {
+        await performCheckIn(guest);
+      } catch (err) {
+        alert('Check-in error: ' + err.message);
+      }
+    }
+
+    // ---- RESULT OVERLAY ----
+    function showResult(type, title, name, company, tableInfo, dietary) {
+      const overlay = document.getElementById('checkInResult');
+      const card = document.getElementById('resultCard');
+
+      card.className = `result-card ${type}`;
+      document.getElementById('resultIcon').textContent = type === 'success' ? '✓' : type === 'already' ? '⚠' : '✗';
+      document.getElementById('resultTitle').textContent = title;
+      document.getElementById('resultName').textContent = name || '';
+      document.getElementById('resultCompany').textContent = company || '';
+      document.getElementById('resultTable').textContent = tableInfo || '';
+      document.getElementById('resultDietary').textContent = dietary || '';
+
+      overlay.classList.add('show');
+
+      // Auto-dismiss after 3 seconds
+      setTimeout(dismissResult, 3000);
+    }
+
+    function dismissResult() {
+      document.getElementById('checkInResult').classList.remove('show');
+    }
+
+    // ---- SEARCH MODE ----
+    function filterGuests() {
+      renderGuestList();
+    }
+
+    function renderGuestList() {
+      const search = (document.getElementById('searchInput')?.value || '').toLowerCase();
+      const container = document.getElementById('guestList');
+
+      const confirmed = guests.filter(g => g.rsvp_status === 'confirmed');
+      const filtered = search
+        ? confirmed.filter(g => (g.guest_name || '').toLowerCase().includes(search))
+        : confirmed;
+
+      // Sort: unchecked first
+      filtered.sort((a, b) => {
+        if (a.checked_in && !b.checked_in) return 1;
+        if (!a.checked_in && b.checked_in) return -1;
+        return (a.guest_name || '').localeCompare(b.guest_name || '');
+      });
+
+      container.innerHTML = filtered.map(g => {
+        const isChecked = g.checked_in;
+        const time = g.check_in_time ? new Date(g.check_in_time).toLocaleTimeString('en-GB', {hour:'2-digit', minute:'2-digit'}) : '';
+        const typeColors = {vip:'warning', speaker:'primary', sponsor:'info', media:'purple', staff:'secondary'};
+        const typeBadge = g.guest_type && g.guest_type !== 'guest'
+          ? `<span class="badge bg-${typeColors[g.guest_type] || 'secondary'}" style="${g.guest_type === 'media' ? 'background:#6f42c1!important;' : ''}">${g.guest_type.toUpperCase()}</span>`
+          : '';
+
+        return `
+          <div class="guest-item ${isChecked ? 'checked-in' : ''}" onclick="checkInByButton('${g.id}')">
+            <div class="guest-info">
+              <div class="guest-name">
+                ${isChecked ? '<i class="bi bi-check-circle-fill text-success me-1"></i>' : '<i class="bi bi-circle text-muted me-1"></i>'}
+                ${escapeHtml(g.guest_name)}
+              </div>
+              <div class="guest-badges">
+                ${typeBadge}
+                ${g.dietary_requirements ? `<span class="badge bg-warning text-dark" style="font-size:0.6rem;"><i class="bi bi-egg-fried"></i> ${escapeHtml(g.dietary_requirements)}</span>` : ''}
+                ${g.plus_ones > 0 ? `<span class="badge bg-info" style="font-size:0.6rem;">+${g.plus_ones}</span>` : ''}
+              </div>
+              ${isChecked ? `<div class="guest-meta">Checked in at ${time}</div>` : ''}
+            </div>
+            <div>
+              ${isChecked
+                ? '<button class="btn btn-sm btn-outline-warning" onclick="event.stopPropagation(); checkInByButton(\'' + g.id + '\')"><i class="bi bi-arrow-counterclockwise"></i></button>'
+                : '<button class="btn btn-sm btn-success" onclick="event.stopPropagation(); checkInByButton(\'' + g.id + '\')"><i class="bi bi-check-lg me-1"></i>Check In</button>'
+              }
+            </div>
+          </div>`;
+      }).join('');
+
+      if (filtered.length === 0) {
+        container.innerHTML = `<div class="text-center py-4" style="opacity:0.3;">
+          <i class="bi bi-search display-4 d-block mb-2"></i>
+          <p>${search ? 'No matching guests' : 'No confirmed guests'}</p>
+        </div>`;
+      }
+    }
+
+    function escapeHtml(str) {
+      if (!str) return '';
+      const div = document.createElement('div');
+      div.textContent = str;
+      return div.innerHTML;
+    }
+
+    // ---- START ----
+    init();
+  </script>
+</body>
+</html>

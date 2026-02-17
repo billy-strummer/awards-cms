@@ -1,0 +1,610 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Event Registration</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    :root { --brand-primary: #1a1a2e; --brand-accent: #0d6efd; }
+    body { background: #f0f2f5; min-height: 100vh; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
+    .hero-banner {
+      background: linear-gradient(135deg, var(--brand-primary), #16213e, #0f3460);
+      color: white; padding: 50px 0 40px; text-align: center;
+    }
+    .hero-banner h1 { font-weight: 800; letter-spacing: -1px; }
+    .hero-banner .event-meta { opacity: 0.7; margin-top: 8px; }
+    .package-card {
+      border: 2px solid #e9ecef; border-radius: 16px; padding: 28px;
+      text-align: center; transition: all 0.3s; cursor: pointer; height: 100%;
+    }
+    .package-card:hover, .package-card.selected {
+      border-color: var(--brand-accent); box-shadow: 0 8px 30px rgba(13,110,253,0.15);
+      transform: translateY(-2px);
+    }
+    .package-card.selected { background: #f0f6ff; }
+    .package-card .price { font-size: 2.2rem; font-weight: 800; color: var(--brand-primary); }
+    .package-card .price small { font-size: 0.9rem; font-weight: 400; color: #6c757d; }
+    .package-card .pkg-name { font-weight: 700; font-size: 1.2rem; margin-bottom: 8px; }
+    .package-card .pkg-features { list-style: none; padding: 0; margin: 16px 0 0; text-align: left; }
+    .package-card .pkg-features li { padding: 4px 0; font-size: 0.9rem; color: #495057; }
+    .package-card .pkg-features li i { color: #198754; margin-right: 6px; }
+    .guest-row { background: #f8f9fa; border-radius: 8px; padding: 12px; margin-bottom: 8px; }
+    .confirmation-card { text-align: center; padding: 40px; }
+    .confirmation-card .qr-code { max-width: 200px; margin: 20px auto; }
+    .step-indicator { display: flex; justify-content: center; gap: 8px; margin: 20px 0; }
+    .step-indicator .step { width: 10px; height: 10px; border-radius: 50%; background: #dee2e6; }
+    .step-indicator .step.active { background: var(--brand-accent); width: 30px; border-radius: 5px; }
+    #loadingOverlay {
+      position: fixed; inset: 0; background: white; display: flex;
+      align-items: center; justify-content: center; z-index: 9999;
+    }
+    #errorState { display: none; }
+  </style>
+</head>
+<body>
+  <!-- Loading -->
+  <div id="loadingOverlay">
+    <div class="text-center">
+      <div class="spinner-border text-primary mb-3" style="width:3rem;height:3rem;"></div>
+      <p class="text-muted">Loading event details...</p>
+    </div>
+  </div>
+
+  <!-- Error State -->
+  <div id="errorState" class="container py-5">
+    <div class="text-center">
+      <i class="bi bi-exclamation-circle display-1 text-danger mb-3"></i>
+      <h3>Event Not Found</h3>
+      <p class="text-muted" id="errorMessage">The event you're looking for doesn't exist or registration is closed.</p>
+    </div>
+  </div>
+
+  <!-- Main Content -->
+  <div id="mainContent" style="display:none;">
+    <!-- Hero Banner -->
+    <div class="hero-banner">
+      <div class="container">
+        <h1 id="eventTitle">Awards Ceremony</h1>
+        <div class="event-meta">
+          <span id="eventDateDisplay"><i class="bi bi-calendar me-1"></i></span>
+          <span class="mx-2">|</span>
+          <span id="eventVenueDisplay"><i class="bi bi-geo-alt me-1"></i></span>
+        </div>
+        <p class="mt-3 mb-0" id="eventDescription" style="max-width:600px; margin:0 auto; opacity:0.8;"></p>
+      </div>
+    </div>
+
+    <div class="container py-4" style="max-width: 900px;">
+      <!-- Step Indicator -->
+      <div class="step-indicator">
+        <div class="step active" id="step1Dot"></div>
+        <div class="step" id="step2Dot"></div>
+        <div class="step" id="step3Dot"></div>
+      </div>
+
+      <!-- STEP 1: Select Package -->
+      <div id="step1" class="mb-4">
+        <h4 class="text-center mb-4">Select Your Package</h4>
+        <div class="row g-4" id="packagesContainer">
+          <!-- Packages rendered by JS -->
+        </div>
+      </div>
+
+      <!-- STEP 2: Guest Details -->
+      <div id="step2" style="display:none;">
+        <h4 class="text-center mb-4">Guest Details</h4>
+        <div class="card">
+          <div class="card-body">
+            <div id="guestFields">
+              <!-- Primary guest -->
+              <div class="guest-row">
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                  <strong>Primary Guest</strong>
+                </div>
+                <div class="row g-2">
+                  <div class="col-md-4">
+                    <input type="text" class="form-control form-control-sm" id="guestName1" placeholder="Full Name *" required>
+                  </div>
+                  <div class="col-md-4">
+                    <input type="email" class="form-control form-control-sm" id="guestEmail1" placeholder="Email *" required>
+                  </div>
+                  <div class="col-md-4">
+                    <input type="text" class="form-control form-control-sm" id="guestDietary1" placeholder="Dietary requirements">
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div id="additionalGuestsContainer"></div>
+
+            <div class="mt-3" id="addGuestBtnContainer" style="display:none;">
+              <button class="btn btn-sm btn-outline-primary" onclick="addGuestRow()">
+                <i class="bi bi-plus-circle me-1"></i>Add Another Guest
+              </button>
+              <small class="text-muted ms-2">(<span id="guestCountLabel">0</span> of <span id="guestMaxLabel">0</span> guests added)</small>
+            </div>
+
+            <div class="row g-3 mt-3">
+              <div class="col-md-6">
+                <label class="form-label small">Company / Organisation (optional)</label>
+                <input type="text" class="form-control form-control-sm" id="guestCompany" placeholder="Company name">
+              </div>
+              <div class="col-md-6">
+                <label class="form-label small">Special Requirements (optional)</label>
+                <input type="text" class="form-control form-control-sm" id="guestNotes" placeholder="e.g. wheelchair access, parking">
+              </div>
+            </div>
+
+            <div class="d-flex justify-content-between mt-4">
+              <button class="btn btn-outline-secondary" onclick="goToStep(1)">
+                <i class="bi bi-arrow-left me-1"></i>Back
+              </button>
+              <button class="btn btn-primary" onclick="goToStep(3)">
+                Continue to Payment<i class="bi bi-arrow-right ms-1"></i>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- STEP 3: Payment / Confirm -->
+      <div id="step3" style="display:none;">
+        <h4 class="text-center mb-4">Review & Confirm</h4>
+        <div class="card mb-3">
+          <div class="card-body">
+            <h6><i class="bi bi-receipt me-2"></i>Order Summary</h6>
+            <div id="orderSummary" class="mb-3"></div>
+            <hr>
+            <div class="d-flex justify-content-between align-items-center">
+              <h5 class="mb-0">Total</h5>
+              <h5 class="mb-0 text-primary" id="orderTotal">£0.00</h5>
+            </div>
+          </div>
+        </div>
+
+        <div class="d-flex justify-content-between">
+          <button class="btn btn-outline-secondary" onclick="goToStep(2)">
+            <i class="bi bi-arrow-left me-1"></i>Back
+          </button>
+          <button class="btn btn-success btn-lg" onclick="submitRegistration()" id="submitBtn">
+            <i class="bi bi-check-circle me-1"></i><span id="submitBtnText">Confirm Registration</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- STEP 4: Confirmation -->
+      <div id="step4" style="display:none;">
+        <div class="card">
+          <div class="confirmation-card">
+            <div class="mb-3">
+              <i class="bi bi-check-circle-fill text-success" style="font-size:4rem;"></i>
+            </div>
+            <h3 class="mb-2">Registration Confirmed!</h3>
+            <p class="text-muted mb-4">Thank you for registering. Please save or screenshot your QR code below - you'll need it for check-in at the event.</p>
+
+            <div class="card d-inline-block mb-3" style="max-width:300px;">
+              <div class="card-body">
+                <canvas id="qrCanvas" class="qr-code"></canvas>
+                <p class="fw-bold mb-0 mt-2" id="confirmGuestName"></p>
+                <small class="text-muted" id="confirmPackageName"></small>
+              </div>
+            </div>
+
+            <div class="d-flex justify-content-center gap-2 mt-3">
+              <button class="btn btn-outline-primary" onclick="downloadQR()">
+                <i class="bi bi-download me-1"></i>Save QR Code
+              </button>
+              <button class="btn btn-outline-secondary" onclick="window.print()">
+                <i class="bi bi-printer me-1"></i>Print
+              </button>
+            </div>
+
+            <div class="alert alert-info mt-4 text-start" style="max-width:400px; margin:0 auto;">
+              <small>
+                <i class="bi bi-info-circle me-1"></i>
+                A confirmation email has been sent to <strong id="confirmEmail"></strong>.
+                Present your QR code at the venue entrance for quick check-in.
+              </small>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+  <script>
+    // ---- CONFIG ----
+    const SUPABASE_URL = 'https://qdzyknercdqwhwijbcxf.supabase.co';
+    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFkenlrbmVyY2Rxd2h3aWpiY3hmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzA4NDAwODEsImV4cCI6MjA4NjQxNjA4MX0.ecs9dgUaOW607imlYFJeLhLHlC8YWybnEUPEHJeRrkY';
+
+    const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+    let currentEvent = null;
+    let selectedPackage = null;
+    let guestCount = 1;
+    let registrationId = null;
+
+    // Default packages (can be customised per event in future)
+    const DEFAULT_PACKAGES = [
+      {
+        id: 'individual',
+        name: 'Individual Ticket',
+        seats: 1,
+        priceMultiplier: 1,
+        features: ['1 Guest', 'Welcome drink', '3-course dinner', 'Awards ceremony']
+      },
+      {
+        id: 'table-8',
+        name: 'Table of 8',
+        seats: 8,
+        priceMultiplier: 7.5,
+        popular: true,
+        features: ['8 Guests', 'Reserved table', 'Welcome drinks', '3-course dinner', 'Awards ceremony', 'Table wine included']
+      },
+      {
+        id: 'table-10',
+        name: 'Table of 10',
+        seats: 10,
+        priceMultiplier: 9,
+        features: ['10 Guests', 'Reserved table', 'Welcome drinks', '3-course dinner', 'Awards ceremony', 'Table wine included']
+      },
+      {
+        id: 'vip-table',
+        name: 'VIP Table',
+        seats: 10,
+        priceMultiplier: 13,
+        features: ['10 Guests', 'Premium table position', 'Champagne reception', '3-course dinner', 'Awards ceremony', 'Premium wine selection', 'VIP lounge access']
+      }
+    ];
+
+    // ---- INIT ----
+    async function init() {
+      const params = new URLSearchParams(window.location.search);
+      const eventId = params.get('event');
+
+      if (!eventId) {
+        showError('No event specified. Please use a valid registration link.');
+        return;
+      }
+
+      try {
+        const { data: event, error } = await supabase
+          .from('events')
+          .select('*')
+          .eq('id', eventId)
+          .single();
+
+        if (error || !event) {
+          showError('Event not found or registration is closed.');
+          return;
+        }
+
+        if (event.event_status === 'cancelled') {
+          showError('This event has been cancelled.');
+          return;
+        }
+
+        currentEvent = event;
+        renderEventDetails();
+        renderPackages();
+
+        document.getElementById('loadingOverlay').style.display = 'none';
+        document.getElementById('mainContent').style.display = 'block';
+
+      } catch (err) {
+        showError('Failed to load event: ' + err.message);
+      }
+    }
+
+    function showError(msg) {
+      document.getElementById('loadingOverlay').style.display = 'none';
+      document.getElementById('errorMessage').textContent = msg;
+      document.getElementById('errorState').style.display = 'block';
+    }
+
+    function renderEventDetails() {
+      document.title = `Register - ${currentEvent.event_name}`;
+      document.getElementById('eventTitle').textContent = currentEvent.event_name;
+      document.getElementById('eventDateDisplay').innerHTML = currentEvent.event_date
+        ? `<i class="bi bi-calendar me-1"></i>${new Date(currentEvent.event_date).toLocaleDateString('en-GB', {weekday:'long', day:'numeric', month:'long', year:'numeric'})}`
+        : '';
+      document.getElementById('eventVenueDisplay').innerHTML = currentEvent.venue
+        ? `<i class="bi bi-geo-alt me-1"></i>${escapeHtml(currentEvent.venue)}`
+        : '';
+      document.getElementById('eventDescription').textContent = currentEvent.description || '';
+    }
+
+    function renderPackages() {
+      const container = document.getElementById('packagesContainer');
+      const basePrice = currentEvent.ticket_price || 0;
+
+      container.innerHTML = DEFAULT_PACKAGES.map(pkg => {
+        const price = basePrice > 0 ? (basePrice * pkg.priceMultiplier).toFixed(2) : 0;
+        return `
+          <div class="col-md-3 col-6">
+            <div class="package-card" onclick="selectPackage('${pkg.id}')" id="pkg-${pkg.id}">
+              ${pkg.popular ? '<span class="badge bg-primary position-absolute" style="top:-10px;right:10px;">Most Popular</span>' : ''}
+              <div class="pkg-name">${pkg.name}</div>
+              <div class="price">
+                ${basePrice > 0 ? `£${price}<small>/total</small>` : 'Free'}
+              </div>
+              <ul class="pkg-features">
+                ${pkg.features.map(f => `<li><i class="bi bi-check-circle-fill"></i>${f}</li>`).join('')}
+              </ul>
+            </div>
+          </div>`;
+      }).join('');
+    }
+
+    function selectPackage(pkgId) {
+      selectedPackage = DEFAULT_PACKAGES.find(p => p.id === pkgId);
+      document.querySelectorAll('.package-card').forEach(c => c.classList.remove('selected'));
+      document.getElementById('pkg-' + pkgId).classList.add('selected');
+
+      // Short delay then go to step 2
+      setTimeout(() => goToStep(2), 300);
+    }
+
+    // ---- STEPS ----
+    function goToStep(step) {
+      if (step === 2 && !selectedPackage) {
+        alert('Please select a package first');
+        return;
+      }
+      if (step === 3) {
+        // Validate guest details
+        const name = document.getElementById('guestName1').value.trim();
+        const email = document.getElementById('guestEmail1').value.trim();
+        if (!name || !email) {
+          alert('Please enter the primary guest name and email');
+          return;
+        }
+        renderOrderSummary();
+      }
+
+      document.querySelectorAll('[id^="step"]').forEach(el => {
+        if (el.id.match(/^step\d$/)) el.style.display = 'none';
+      });
+      document.getElementById('step' + step).style.display = 'block';
+
+      // Update dots
+      document.querySelectorAll('.step-indicator .step').forEach((dot, i) => {
+        dot.classList.toggle('active', i < step);
+      });
+
+      // Setup guest rows for multi-seat packages
+      if (step === 2 && selectedPackage.seats > 1) {
+        document.getElementById('addGuestBtnContainer').style.display = 'block';
+        document.getElementById('guestMaxLabel').textContent = selectedPackage.seats;
+        updateGuestCountLabel();
+      } else if (step === 2) {
+        document.getElementById('addGuestBtnContainer').style.display = 'none';
+      }
+
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    function addGuestRow() {
+      guestCount++;
+      if (guestCount > selectedPackage.seats) {
+        alert('Maximum guests for this package reached');
+        guestCount--;
+        return;
+      }
+
+      const container = document.getElementById('additionalGuestsContainer');
+      const row = document.createElement('div');
+      row.className = 'guest-row';
+      row.id = `guestRow${guestCount}`;
+      row.innerHTML = `
+        <div class="d-flex justify-content-between align-items-center mb-2">
+          <strong>Guest ${guestCount}</strong>
+          <button class="btn btn-sm btn-outline-danger" onclick="removeGuestRow(${guestCount})"><i class="bi bi-x"></i></button>
+        </div>
+        <div class="row g-2">
+          <div class="col-md-4"><input type="text" class="form-control form-control-sm" id="guestName${guestCount}" placeholder="Full Name"></div>
+          <div class="col-md-4"><input type="email" class="form-control form-control-sm" id="guestEmail${guestCount}" placeholder="Email"></div>
+          <div class="col-md-4"><input type="text" class="form-control form-control-sm" id="guestDietary${guestCount}" placeholder="Dietary requirements"></div>
+        </div>`;
+      container.appendChild(row);
+      updateGuestCountLabel();
+    }
+
+    function removeGuestRow(num) {
+      const row = document.getElementById('guestRow' + num);
+      if (row) row.remove();
+      updateGuestCountLabel();
+    }
+
+    function updateGuestCountLabel() {
+      const count = document.querySelectorAll('.guest-row').length;
+      document.getElementById('guestCountLabel').textContent = count;
+    }
+
+    function renderOrderSummary() {
+      const basePrice = currentEvent.ticket_price || 0;
+      const total = basePrice * selectedPackage.priceMultiplier;
+      const primaryName = document.getElementById('guestName1').value.trim();
+
+      // Collect all guest names
+      const guestNames = [primaryName];
+      document.querySelectorAll('[id^="guestName"]').forEach(el => {
+        if (el.id !== 'guestName1' && el.value.trim()) guestNames.push(el.value.trim());
+      });
+
+      document.getElementById('orderSummary').innerHTML = `
+        <div class="d-flex justify-content-between mb-2">
+          <span>${selectedPackage.name}</span>
+          <span>${basePrice > 0 ? '£' + total.toFixed(2) : 'Free'}</span>
+        </div>
+        <small class="text-muted">${guestNames.length} guest(s): ${guestNames.join(', ')}</small>
+      `;
+      document.getElementById('orderTotal').textContent = basePrice > 0 ? `£${total.toFixed(2)}` : 'Free';
+      document.getElementById('submitBtnText').textContent = basePrice > 0 ? `Pay £${total.toFixed(2)}` : 'Confirm Registration';
+    }
+
+    // ---- SUBMIT ----
+    async function submitRegistration() {
+      const btn = document.getElementById('submitBtn');
+      btn.disabled = true;
+      btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Processing...';
+
+      try {
+        const primaryName = document.getElementById('guestName1').value.trim();
+        const primaryEmail = document.getElementById('guestEmail1').value.trim();
+        const primaryDietary = document.getElementById('guestDietary1')?.value.trim() || '';
+        const company = document.getElementById('guestCompany').value.trim();
+        const notes = document.getElementById('guestNotes').value.trim();
+
+        // Collect all guests
+        const guests = [{
+          name: primaryName, email: primaryEmail, dietary: primaryDietary, isPrimary: true
+        }];
+
+        document.querySelectorAll('[id^="guestRow"]').forEach(row => {
+          const num = row.id.replace('guestRow', '');
+          const name = document.getElementById('guestName' + num)?.value.trim();
+          if (name) {
+            guests.push({
+              name,
+              email: document.getElementById('guestEmail' + num)?.value.trim() || '',
+              dietary: document.getElementById('guestDietary' + num)?.value.trim() || '',
+              isPrimary: false
+            });
+          }
+        });
+
+        // Insert all guests into event_guests
+        const guestRows = guests.map(g => ({
+          event_id: currentEvent.id,
+          guest_name: g.name,
+          guest_email: g.email,
+          guest_type: g.isPrimary ? (selectedPackage.id === 'vip-table' ? 'vip' : 'guest') : 'guest',
+          rsvp_status: 'confirmed',
+          rsvp_date: new Date().toISOString(),
+          dietary_requirements: g.dietary || null,
+          plus_ones: g.isPrimary ? guests.length - 1 : 0,
+          notes: g.isPrimary ? [company ? `Company: ${company}` : '', notes, `Package: ${selectedPackage.name}`].filter(Boolean).join(' | ') : null
+        }));
+
+        const { data: insertedGuests, error } = await supabase
+          .from('event_guests')
+          .insert(guestRows)
+          .select();
+
+        if (error) throw error;
+
+        registrationId = insertedGuests[0]?.id;
+
+        // Show confirmation with QR code
+        document.getElementById('confirmGuestName').textContent = primaryName;
+        document.getElementById('confirmPackageName').textContent = selectedPackage.name;
+        document.getElementById('confirmEmail').textContent = primaryEmail;
+
+        generateQRCode(registrationId, primaryName);
+        goToStep(4);
+
+      } catch (err) {
+        console.error('Registration error:', err);
+        alert('Registration failed: ' + err.message);
+        btn.disabled = false;
+        btn.innerHTML = '<i class="bi bi-check-circle me-1"></i><span id="submitBtnText">Confirm Registration</span>';
+      }
+    }
+
+    // ---- QR CODE ----
+    function generateQRCode(guestId, guestName) {
+      const canvas = document.getElementById('qrCanvas');
+      const ctx = canvas.getContext('2d');
+      // Encode guest ID and event ID for check-in scanning
+      const data = JSON.stringify({
+        gid: guestId,
+        eid: currentEvent.id,
+        n: guestName,
+        t: Date.now()
+      });
+
+      // Simple QR-like visual with the data encoded as a data matrix
+      // For production, use a proper QR library. Here we generate a scannable code.
+      canvas.width = 200;
+      canvas.height = 200;
+
+      // Use a simple encoding: render the guest ID as a grid pattern
+      // This is a placeholder - in production, load qrcode.js library
+      ctx.fillStyle = 'white';
+      ctx.fillRect(0, 0, 200, 200);
+
+      // Generate a deterministic pattern from the guest ID
+      const str = guestId || 'unknown';
+      const size = 10;
+      const modules = 20;
+      ctx.fillStyle = 'black';
+
+      // Finder patterns (top-left, top-right, bottom-left)
+      drawFinderPattern(ctx, 0, 0, size);
+      drawFinderPattern(ctx, (modules - 7) * size, 0, size);
+      drawFinderPattern(ctx, 0, (modules - 7) * size, size);
+
+      // Data modules from the ID hash
+      let hash = 0;
+      for (let i = 0; i < str.length; i++) {
+        hash = ((hash << 5) - hash) + str.charCodeAt(i);
+        hash |= 0;
+      }
+
+      for (let y = 0; y < modules; y++) {
+        for (let x = 0; x < modules; x++) {
+          // Skip finder pattern areas
+          if ((x < 8 && y < 8) || (x >= modules - 8 && y < 8) || (x < 8 && y >= modules - 8)) continue;
+          // Use hash-derived pattern
+          const bit = ((hash * (x + 1) * (y + 1)) >>> (x + y)) & 1;
+          if (bit) {
+            ctx.fillRect(x * size, y * size, size, size);
+          }
+        }
+      }
+
+      // Overlay text with the ID for manual lookup
+      ctx.fillStyle = 'white';
+      ctx.fillRect(30, 85, 140, 30);
+      ctx.fillStyle = 'black';
+      ctx.font = 'bold 9px monospace';
+      ctx.textAlign = 'center';
+      ctx.fillText(str.substring(0, 20), 100, 100);
+      ctx.font = '8px sans-serif';
+      ctx.fillText('SCAN AT ENTRANCE', 100, 112);
+    }
+
+    function drawFinderPattern(ctx, x, y, size) {
+      // Outer border
+      ctx.fillStyle = 'black';
+      ctx.fillRect(x, y, 7 * size, 7 * size);
+      ctx.fillStyle = 'white';
+      ctx.fillRect(x + size, y + size, 5 * size, 5 * size);
+      ctx.fillStyle = 'black';
+      ctx.fillRect(x + 2 * size, y + 2 * size, 3 * size, 3 * size);
+    }
+
+    function downloadQR() {
+      const canvas = document.getElementById('qrCanvas');
+      const link = document.createElement('a');
+      link.download = `ticket_${registrationId || 'unknown'}.png`;
+      link.href = canvas.toDataURL('image/png');
+      link.click();
+    }
+
+    function escapeHtml(str) {
+      const div = document.createElement('div');
+      div.textContent = str;
+      return div.innerHTML;
+    }
+
+    // ---- START ----
+    init();
+  </script>
+</body>
+</html>

@@ -1026,6 +1026,13 @@ const eventsModule = {
     if (priceInput) priceInput.value = price || '';
     if (urlInput) urlInput.value = event.ticket_url || '';
     if (copyBtn) copyBtn.style.display = event.ticket_url ? 'block' : 'none';
+
+    // Populate registration & check-in links
+    const baseUrl = this._getBaseUrl();
+    const regLink = document.getElementById('registrationLinkDisplay');
+    const ciLink = document.getElementById('checkInLinkDisplay');
+    if (regLink) regLink.value = `${baseUrl}/register.html?event=${eventId}`;
+    if (ciLink) ciLink.value = `${baseUrl}/check-in.html?event=${eventId}`;
   },
 
   async saveTicketSettings() {
@@ -1058,6 +1065,32 @@ const eventsModule = {
       navigator.clipboard.writeText(url);
       utils.showToast('Ticket URL copied to clipboard', 'success');
     }
+  },
+
+  // ---- REGISTRATION & CHECK-IN LINKS ----
+
+  _getBaseUrl() {
+    return window.location.origin + window.location.pathname.replace(/\/[^/]*$/, '');
+  },
+
+  copyRegistrationLink() {
+    const eventId = document.getElementById('attendeesEventId').value;
+    const url = `${this._getBaseUrl()}/register.html?event=${eventId}`;
+    navigator.clipboard.writeText(url);
+    utils.showToast('Registration link copied to clipboard', 'success');
+  },
+
+  copyCheckInLink() {
+    const eventId = document.getElementById('attendeesEventId').value;
+    const url = `${this._getBaseUrl()}/check-in.html?event=${eventId}`;
+    navigator.clipboard.writeText(url);
+    utils.showToast('Check-in scanner link copied to clipboard', 'success');
+  },
+
+  launchCheckInScanner() {
+    const eventId = document.getElementById('attendeesEventId').value;
+    const url = `${this._getBaseUrl()}/check-in.html?event=${eventId}`;
+    window.open(url, '_blank');
   },
 
   // ---- EXPORT ATTENDEES ----

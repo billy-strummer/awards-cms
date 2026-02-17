@@ -7115,11 +7115,16 @@ Available placeholders:
                 </div>
               </div>
 
-              <div class="input-group mb-3">
-                <span class="input-group-text"><i class="bi bi-search"></i></span>
-                <input type="text" class="form-control" id="checkInSearch" placeholder="Search guest name to check in..." oninput="eventsModule.filterCheckInList()">
-                <button class="btn btn-outline-success" onclick="eventsModule.checkInAll()" title="Check in all attending guests">
-                  <i class="bi bi-check-all me-1"></i>Check In All
+              <div class="d-flex gap-2 mb-3">
+                <div class="input-group flex-grow-1">
+                  <span class="input-group-text"><i class="bi bi-search"></i></span>
+                  <input type="text" class="form-control" id="checkInSearch" placeholder="Search guest name to check in..." oninput="eventsModule.filterCheckInList()">
+                  <button class="btn btn-outline-success" onclick="eventsModule.checkInAll()" title="Check in all attending guests">
+                    <i class="bi bi-check-all me-1"></i>Check In All
+                  </button>
+                </div>
+                <button class="btn btn-primary" onclick="eventsModule.launchCheckInScanner()" title="Open QR scanner on phone/tablet">
+                  <i class="bi bi-qr-code-scan me-1"></i>Launch Scanner
                 </button>
               </div>
 
@@ -7204,6 +7209,34 @@ Available placeholders:
                       <button class="btn btn-sm btn-outline-secondary w-100" id="ticketUrlCopyBtn" onclick="eventsModule.copyTicketUrl()" style="display:none;">
                         <i class="bi bi-link-45deg me-1"></i>Copy Link
                       </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="card">
+                <div class="card-body">
+                  <h6 class="card-title"><i class="bi bi-link-45deg me-2"></i>Registration & Check-In Links</h6>
+                  <div class="row g-3">
+                    <div class="col-md-6">
+                      <label class="form-label small">Public Registration Page</label>
+                      <div class="input-group input-group-sm">
+                        <input type="text" class="form-control" id="registrationLinkDisplay" readonly>
+                        <button class="btn btn-outline-primary" onclick="eventsModule.copyRegistrationLink()">
+                          <i class="bi bi-clipboard me-1"></i>Copy
+                        </button>
+                      </div>
+                      <small class="text-muted">Share this link on your website for guests to register and purchase tickets</small>
+                    </div>
+                    <div class="col-md-6">
+                      <label class="form-label small">Check-In Scanner Page</label>
+                      <div class="input-group input-group-sm">
+                        <input type="text" class="form-control" id="checkInLinkDisplay" readonly>
+                        <button class="btn btn-outline-primary" onclick="eventsModule.copyCheckInLink()">
+                          <i class="bi bi-clipboard me-1"></i>Copy
+                        </button>
+                      </div>
+                      <small class="text-muted">Share with door staff - opens QR scanner on any phone</small>
                     </div>
                   </div>
                 </div>

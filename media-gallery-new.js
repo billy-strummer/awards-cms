@@ -530,6 +530,8 @@ const mediaGalleryModule = {
           <button class="btn btn-outline-info btn-sm" onclick="mediaGalleryModule.openPublicGalleryPreview()"><i class="bi bi-eye me-1"></i>Public Gallery Preview</button>
           <button class="btn btn-outline-warning btn-sm" onclick="mediaGalleryModule._setPhotographer()"><i class="bi bi-person-badge me-1"></i>Set Photographer</button>
           <button class="btn btn-outline-danger btn-sm" onclick="mediaGalleryModule.openAutoTagFromRunningOrder()"><i class="bi bi-lightning me-1"></i>Auto-Tag from Running Order</button>
+          <button class="btn btn-sm btn-outline-dark" onclick="mediaGalleryModule.openNamingGuide()"><i class="bi bi-card-checklist me-1"></i>Naming Guide</button>
+          <button class="btn btn-sm btn-outline-dark" onclick="mediaGalleryModule.exportPhotographerCheatSheet()"><i class="bi bi-printer me-1"></i>Photographer Cheat Sheet</button>
         </div>
 
         <!-- Sections with Photo Thumbnails -->
@@ -1865,6 +1867,9 @@ const mediaGalleryModule = {
             </button>
             <button class="btn btn-sm btn-outline-warning" onclick="mediaGalleryModule.openAutoTagFromRunningOrder()" title="Auto-tag photos by matching filename prefixes to running order numbers">
               <i class="bi bi-lightning me-1"></i>Auto-Tag from Running Order
+            </button>
+            <button class="btn btn-sm btn-outline-dark" onclick="mediaGalleryModule.openNamingGuide()" title="Photo naming convention guide">
+              <i class="bi bi-card-checklist me-1"></i>Naming Guide
             </button>
             <button class="btn btn-sm btn-outline-secondary" onclick="mediaGalleryModule.downloadAllPhotos('${utils.escapeHtml(sectionName).replace(/'/g, "\\'")}')">
               <i class="bi bi-download me-1"></i>Download All
@@ -3297,6 +3302,247 @@ const mediaGalleryModule = {
     bootstrap.Modal.getInstance(document.getElementById('viewPhotoFullModal')).hide();
     // Delete photo
     await this.deletePhoto(this.currentMediaId);
+  },
+
+  // ========================================
+  // NAMING GUIDE & PHOTOGRAPHER CHEAT SHEET
+  // ========================================
+
+  /**
+   * Show the photo naming convention guide modal
+   */
+  openNamingGuide() {
+    const html = `
+      <div class="modal fade" id="namingGuideModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+          <div class="modal-content">
+            <div class="modal-header bg-dark text-white">
+              <h5 class="modal-title"><i class="bi bi-card-checklist me-2"></i>Photo Naming Convention Guide</h5>
+              <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+
+              <div class="alert alert-success mb-4">
+                <h6 class="alert-heading mb-1"><i class="bi bi-lightning-fill me-1"></i>Why does naming matter?</h6>
+                When you name photos with the <strong>award number prefix</strong>, the system can <strong>automatically tag every photo</strong> with the correct organisation and award in one click. No manual tagging needed.
+              </div>
+
+              <h6 class="mb-3">Award Number Format: <code>{section}-{number}</code></h6>
+
+              <div class="card mb-3">
+                <div class="card-header bg-primary text-white"><strong>Understanding the Format</strong></div>
+                <div class="card-body">
+                  <table class="table table-sm mb-0">
+                    <thead><tr><th>Part</th><th>Meaning</th><th>Example</th></tr></thead>
+                    <tbody>
+                      <tr><td><code>{section}</code></td><td>Ceremony section/act number</td><td><code>1</code> = first half, <code>2</code> = after dinner</td></tr>
+                      <tr><td><code>{number}</code></td><td>Award position within that section (zero-padded)</td><td><code>01</code> = first award, <code>02</code> = second award</td></tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              <div class="card mb-3">
+                <div class="card-header bg-success text-white"><strong>Naming Examples</strong></div>
+                <div class="card-body p-0">
+                  <table class="table table-sm table-striped mb-0">
+                    <thead><tr><th>Filename</th><th>Matches</th><th>What happens</th></tr></thead>
+                    <tbody>
+                      <tr><td><code>1-01_winner_collecting.jpg</code></td><td>Award <strong>1-01</strong></td><td>Tagged with 1st award's org + award name</td></tr>
+                      <tr><td><code>1-01_celebration.jpg</code></td><td>Award <strong>1-01</strong></td><td>Same award - multiple photos per award is fine</td></tr>
+                      <tr><td><code>1-02_on_stage.jpg</code></td><td>Award <strong>1-02</strong></td><td>Tagged with 2nd award's org + award name</td></tr>
+                      <tr><td><code>1-03 group photo.jpg</code></td><td>Award <strong>1-03</strong></td><td>Spaces work too - prefix just needs to start the filename</td></tr>
+                      <tr><td><code>2-01_after_dinner_winner.jpg</code></td><td>Award <strong>2-01</strong></td><td>First award in section 2 (e.g., after dinner)</td></tr>
+                      <tr><td><code>2-05-trophy-close-up.jpg</code></td><td>Award <strong>2-05</strong></td><td>Dashes, underscores, spaces all work as separators</td></tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              <div class="card mb-3">
+                <div class="card-header bg-warning text-dark"><strong>Alternative Matching (Fallbacks)</strong></div>
+                <div class="card-body p-0">
+                  <table class="table table-sm mb-0">
+                    <thead><tr><th>Method</th><th>Example</th><th>Matches To</th></tr></thead>
+                    <tbody>
+                      <tr><td><span class="badge bg-primary">Best</span> Award number</td><td><code>1-01_photo.jpg</code></td><td>Running order award # 1-01</td></tr>
+                      <tr><td><span class="badge bg-info">Good</span> Position number</td><td><code>03_photo.jpg</code></td><td>3rd item in running order</td></tr>
+                      <tr><td><span class="badge bg-secondary">Fallback</span> Company name</td><td><code>acme_corp_winner.jpg</code></td><td>Organisation named "Acme Corp"</td></tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              <div class="card">
+                <div class="card-header bg-info text-white"><strong>Quick Workflow</strong></div>
+                <div class="card-body">
+                  <ol class="mb-0">
+                    <li>Print the <strong>Photographer Cheat Sheet</strong> (has all award numbers + company names)</li>
+                    <li>During the ceremony, name photos starting with the award number: <code>1-01_</code>, <code>1-02_</code>, etc.</li>
+                    <li>Upload all photos to the gallery section</li>
+                    <li>Click <strong>"Auto-Tag from Running Order"</strong></li>
+                    <li>Review the preview and click <strong>"Apply Tags"</strong> - done!</li>
+                  </ol>
+                </div>
+              </div>
+            </div>
+            <div class="modal-footer">
+              <button class="btn btn-outline-secondary" onclick="mediaGalleryModule._printNamingGuide()"><i class="bi bi-printer me-1"></i>Print Guide</button>
+              <button class="btn btn-outline-primary" onclick="mediaGalleryModule.exportPhotographerCheatSheet()"><i class="bi bi-download me-1"></i>Download Cheat Sheet</button>
+              <button class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+          </div>
+        </div>
+      </div>`;
+
+    const old = document.getElementById('namingGuideModal');
+    if (old) old.remove();
+    document.body.insertAdjacentHTML('beforeend', html);
+    new bootstrap.Modal(document.getElementById('namingGuideModal')).show();
+  },
+
+  _printNamingGuide() {
+    const modal = document.getElementById('namingGuideModal');
+    const content = modal.querySelector('.modal-body').innerHTML;
+    const win = window.open('', '_blank');
+    win.document.write(`<!DOCTYPE html><html><head><title>Photo Naming Guide</title>
+      <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+      <style>body{padding:30px;font-size:14px;} @media print{.no-print{display:none;}} code{background:#f0f0f0;padding:2px 6px;border-radius:3px;}</style>
+    </head><body>
+      <h2 class="mb-4">Photo Naming Convention Guide</h2>
+      ${content}
+      <div class="text-center mt-4 no-print"><button class="btn btn-primary" onclick="window.print()">Print</button></div>
+    </body></html>`);
+    win.document.close();
+  },
+
+  /**
+   * Export a photographer cheat sheet with running order numbers,
+   * company names, and award names - ready to print
+   */
+  async exportPhotographerCheatSheet() {
+    try {
+      utils.showLoading();
+
+      const { data: roItems, error } = await STATE.client
+        .from('running_order')
+        .select('*, organisations(company_name), awards(award_name)')
+        .eq('event_id', this.currentEventId)
+        .order('display_order');
+
+      if (error) throw error;
+
+      if (!roItems || roItems.length === 0) {
+        utils.showToast('No running order found. Set up the running order in the Events tab first.', 'warning');
+        return;
+      }
+
+      const event = this.currentEvent;
+      const eventName = event?.event_name || 'Event';
+      const eventDate = event?.event_date ? new Date(event.event_date).toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }) : '';
+
+      // Group by section
+      const sections = {};
+      roItems.forEach(item => {
+        const sec = item.section || 1;
+        if (!sections[sec]) sections[sec] = [];
+        sections[sec].push(item);
+      });
+
+      const sectionsHtml = Object.entries(sections).map(([secNum, items]) => `
+        <div style="margin-bottom:20px;">
+          <h3 style="background:#1a1a2e;color:white;padding:8px 15px;border-radius:6px;font-size:1.1rem;">
+            Section ${secNum}
+          </h3>
+          <table style="width:100%;border-collapse:collapse;font-size:0.95rem;">
+            <thead>
+              <tr style="background:#f0f0f0;border-bottom:2px solid #333;">
+                <th style="padding:8px;width:100px;text-align:center;">Award #</th>
+                <th style="padding:8px;width:100px;text-align:center;">File Prefix</th>
+                <th style="padding:8px;">Organisation / Winner</th>
+                <th style="padding:8px;">Award Category</th>
+                <th style="padding:8px;width:140px;">Type</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${items.map((item, i) => {
+                const isAward = !item.item_type || item.item_type === 'award';
+                const orgName = item.display_name || item.organisations?.company_name || '-';
+                const awardName = item.award_name || item.awards?.award_name || '-';
+                const prefix = item.award_number || String(item.display_order).padStart(2, '0');
+                const typeLabel = item.item_type ? item.item_type.charAt(0).toUpperCase() + item.item_type.slice(1).replace(/_/g, ' ') : 'Award';
+                return `
+                  <tr style="border-bottom:1px solid #ddd;${!isAward ? 'background:#fff3cd;' : i % 2 ? 'background:#fafafa;' : ''}">
+                    <td style="padding:8px;text-align:center;font-weight:bold;font-size:1.1rem;color:#0d6efd;">${utils.escapeHtml(item.award_number || '-')}</td>
+                    <td style="padding:8px;text-align:center;">
+                      <code style="background:#e8f4e8;padding:4px 10px;border-radius:4px;font-size:1rem;font-weight:bold;">${utils.escapeHtml(prefix)}_</code>
+                    </td>
+                    <td style="padding:8px;font-weight:${isAward ? '600' : '400'};">${utils.escapeHtml(orgName)}</td>
+                    <td style="padding:8px;">${utils.escapeHtml(awardName)}</td>
+                    <td style="padding:8px;"><span style="background:${isAward ? '#d4edda' : '#fff3cd'};padding:2px 8px;border-radius:10px;font-size:0.85rem;">${typeLabel}</span></td>
+                  </tr>`;
+              }).join('')}
+            </tbody>
+          </table>
+        </div>`).join('');
+
+      const cheatSheetHtml = `<!DOCTYPE html>
+<html><head>
+  <title>Photographer Cheat Sheet - ${utils.escapeHtml(eventName)}</title>
+  <style>
+    * { box-sizing: border-box; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; margin: 0; padding: 20px; color: #333; }
+    @media print {
+      body { padding: 10px; }
+      .no-print { display: none !important; }
+      table { page-break-inside: auto; }
+      tr { page-break-inside: avoid; }
+    }
+    code { background: #e8f4e8; padding: 2px 6px; border-radius: 3px; font-family: 'SF Mono', Monaco, monospace; }
+    .header { background: linear-gradient(135deg, #1a1a2e, #16213e); color: white; padding: 20px 25px; border-radius: 10px; margin-bottom: 20px; }
+    .quick-ref { background: #fff3cd; border: 2px solid #ffc107; border-radius: 8px; padding: 15px; margin-bottom: 20px; }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1 style="margin:0;font-size:1.5rem;">Photographer Cheat Sheet</h1>
+    <div style="opacity:0.8;margin-top:5px;">${utils.escapeHtml(eventName)} ${eventDate ? '| ' + eventDate : ''}</div>
+  </div>
+
+  <div class="quick-ref">
+    <h3 style="margin:0 0 10px;font-size:1rem;">How to Name Your Photos</h3>
+    <p style="margin:0 0 8px;">Start each filename with the <strong>award number</strong> from the table below, followed by an underscore or space:</p>
+    <div style="display:flex;gap:15px;flex-wrap:wrap;">
+      <div><code>1-01_winner_collecting.jpg</code></div>
+      <div><code>1-01_celebration.jpg</code></div>
+      <div><code>1-02_on_stage.jpg</code></div>
+      <div><code>2-01_after_dinner.jpg</code></div>
+    </div>
+    <p style="margin:8px 0 0;font-size:0.9rem;color:#666;">Multiple photos per award? No problem - just use the same prefix. The system matches all of them.</p>
+  </div>
+
+  ${sectionsHtml}
+
+  <div style="margin-top:20px;padding:15px;background:#f0f0f0;border-radius:8px;font-size:0.85rem;">
+    <strong>After the event:</strong> Upload all photos to the Media Gallery, then click "Auto-Tag from Running Order" to tag everything in one click.
+  </div>
+
+  <div class="text-center mt-4 no-print" style="text-align:center;margin-top:20px;">
+    <button onclick="window.print()" style="padding:10px 30px;font-size:1rem;background:#0d6efd;color:white;border:none;border-radius:6px;cursor:pointer;">Print Cheat Sheet</button>
+  </div>
+</body></html>`;
+
+      const win = window.open('', '_blank', 'width=900,height=700');
+      if (!win) { utils.showToast('Please allow popups to view the cheat sheet', 'warning'); return; }
+      win.document.write(cheatSheetHtml);
+      win.document.close();
+
+    } catch (err) {
+      console.error('Error generating cheat sheet:', err);
+      utils.showToast('Error generating cheat sheet: ' + err.message, 'error');
+    } finally {
+      utils.hideLoading();
+    }
   },
 
   // ========================================

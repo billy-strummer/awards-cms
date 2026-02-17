@@ -10,6 +10,7 @@ const mediaGalleryModule = {
   currentSectionPhotos: [], // Store all photos for filtering
   currentFilter: 'all', // all, published, drafts
   currentSearchTerm: '', // For search functionality
+  currentSortBy: 'display_order', // display_order, name_asc, name_desc, date_newest, date_oldest, org_asc, tagged, untagged
   draggedFiles: null, // Store dragged files temporarily
   draggedPhotoId: null, // Store dragged photo ID for reordering
   draggedOverPhotoId: null, // Store the photo being dragged over
@@ -1855,6 +1856,43 @@ const mediaGalleryModule = {
       });
     }
 
+    // Apply sorting
+    filteredPhotos = [...filteredPhotos];
+    switch (this.currentSortBy) {
+      case 'name_asc':
+        filteredPhotos.sort((a, b) => (a.title || '').localeCompare(b.title || ''));
+        break;
+      case 'name_desc':
+        filteredPhotos.sort((a, b) => (b.title || '').localeCompare(a.title || ''));
+        break;
+      case 'date_newest':
+        filteredPhotos.sort((a, b) => new Date(b.uploaded_at || 0) - new Date(a.uploaded_at || 0));
+        break;
+      case 'date_oldest':
+        filteredPhotos.sort((a, b) => new Date(a.uploaded_at || 0) - new Date(b.uploaded_at || 0));
+        break;
+      case 'org_asc':
+        filteredPhotos.sort((a, b) => (a.organisations?.company_name || 'zzz').localeCompare(b.organisations?.company_name || 'zzz'));
+        break;
+      case 'tagged':
+        filteredPhotos.sort((a, b) => {
+          const aTagged = a.organisation_id || a.award_id ? 0 : 1;
+          const bTagged = b.organisation_id || b.award_id ? 0 : 1;
+          return aTagged - bTagged;
+        });
+        break;
+      case 'untagged':
+        filteredPhotos.sort((a, b) => {
+          const aUntagged = !a.organisation_id && !a.award_id ? 0 : 1;
+          const bUntagged = !b.organisation_id && !b.award_id ? 0 : 1;
+          return aUntagged - bUntagged;
+        });
+        break;
+      default: // display_order
+        filteredPhotos.sort((a, b) => (a.display_order || 0) - (b.display_order || 0));
+        break;
+    }
+
     const totalCount = this.currentSectionPhotos.length;
     const publishedCount = this.currentSectionPhotos.filter(p => p.published !== false).length;
     const draftCount = this.currentSectionPhotos.filter(p => p.published === false).length;
@@ -1886,30 +1924,43 @@ const mediaGalleryModule = {
           </div>
         </div>
 
-        <!-- Filters & Search -->
+        <!-- Filters, Sort & Search -->
         <div class="card mb-3">
           <div class="card-body">
             <div class="row g-3 align-items-end">
-              <div class="col-md-6">
+              <div class="col-md-4">
                 <label class="form-label small mb-1">Filter by Status:</label>
                 <div class="btn-group w-100" role="group">
-                  <button type="button" class="btn ${this.currentFilter === 'all' ? 'btn-primary' : 'btn-outline-primary'}"
+                  <button type="button" class="btn btn-sm ${this.currentFilter === 'all' ? 'btn-primary' : 'btn-outline-primary'}"
                     onclick="mediaGalleryModule.setFilter('all')">
                     All <span class="badge ${this.currentFilter === 'all' ? 'bg-light text-primary' : 'bg-primary'}">${totalCount}</span>
                   </button>
-                  <button type="button" class="btn ${this.currentFilter === 'published' ? 'btn-success' : 'btn-outline-success'}"
+                  <button type="button" class="btn btn-sm ${this.currentFilter === 'published' ? 'btn-success' : 'btn-outline-success'}"
                     onclick="mediaGalleryModule.setFilter('published')">
                     Published <span class="badge ${this.currentFilter === 'published' ? 'bg-light text-success' : 'bg-success'}">${publishedCount}</span>
                   </button>
-                  <button type="button" class="btn ${this.currentFilter === 'drafts' ? 'btn-secondary' : 'btn-outline-secondary'}"
+                  <button type="button" class="btn btn-sm ${this.currentFilter === 'drafts' ? 'btn-secondary' : 'btn-outline-secondary'}"
                     onclick="mediaGalleryModule.setFilter('drafts')">
                     Drafts <span class="badge ${this.currentFilter === 'drafts' ? 'bg-light text-secondary' : 'bg-secondary'}">${draftCount}</span>
                   </button>
                 </div>
               </div>
-              <div class="col-md-6">
+              <div class="col-md-3">
+                <label class="form-label small mb-1"><i class="bi bi-sort-down me-1"></i>Sort by:</label>
+                <select class="form-select form-select-sm" onchange="mediaGalleryModule.setSortBy(this.value)">
+                  <option value="display_order" ${this.currentSortBy === 'display_order' ? 'selected' : ''}>Manual Order (drag)</option>
+                  <option value="name_asc" ${this.currentSortBy === 'name_asc' ? 'selected' : ''}>Name A-Z</option>
+                  <option value="name_desc" ${this.currentSortBy === 'name_desc' ? 'selected' : ''}>Name Z-A</option>
+                  <option value="date_newest" ${this.currentSortBy === 'date_newest' ? 'selected' : ''}>Date (Newest)</option>
+                  <option value="date_oldest" ${this.currentSortBy === 'date_oldest' ? 'selected' : ''}>Date (Oldest)</option>
+                  <option value="org_asc" ${this.currentSortBy === 'org_asc' ? 'selected' : ''}>Organisation A-Z</option>
+                  <option value="tagged" ${this.currentSortBy === 'tagged' ? 'selected' : ''}>Tagged First</option>
+                  <option value="untagged" ${this.currentSortBy === 'untagged' ? 'selected' : ''}>Untagged First</option>
+                </select>
+              </div>
+              <div class="col-md-5">
                 <label class="form-label small mb-1">Search:</label>
-                <div class="input-group">
+                <div class="input-group input-group-sm">
                   <span class="input-group-text"><i class="bi bi-search"></i></span>
                   <input type="text" class="form-control" id="gallerySearchBox"
                     placeholder="Search by title, organisation, or award..."
@@ -2006,6 +2057,17 @@ const mediaGalleryModule = {
     if (term === '') {
       document.getElementById('gallerySearchBox').value = '';
     }
+    const sectionName = this.currentSectionPhotos[0]?.gallery_section_id ?
+      document.querySelector('h5').textContent.replace(/\s*\(.*\)/, '').replace('📁 ', '') :
+      'Section';
+    this.renderSectionPhotos(sectionName);
+  },
+
+  /**
+   * Set sort option for photos
+   */
+  setSortBy(sortBy) {
+    this.currentSortBy = sortBy;
     const sectionName = this.currentSectionPhotos[0]?.gallery_section_id ?
       document.querySelector('h5').textContent.replace(/\s*\(.*\)/, '').replace('📁 ', '') :
       'Section';

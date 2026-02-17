@@ -12,6 +12,8 @@ const mediaGalleryModule = {
   currentFilter: 'all', // all, published, drafts
   currentSearchTerm: '', // For search functionality
   currentSortBy: 'display_order', // display_order, name_asc, name_desc, date_newest, date_oldest, org_asc, tagged, untagged
+  currentPage: 1, // Current page for pagination
+  photosPerPage: 48, // Photos per page
   draggedFiles: null, // Store dragged files temporarily
   draggedPhotoId: null, // Store dragged photo ID for reordering
   draggedOverPhotoId: null, // Store the photo being dragged over
@@ -23,6 +25,8 @@ const mediaGalleryModule = {
   _autoTagMatches: null, // Store auto-tag matches for preview
   _watermarkedPhotos: null, // Store watermarked photos state
   _exportData: null, // Store export data
+  _searchDebounceTimer: null, // Debounce timer for search
+  _keyboardShortcutsActive: false, // Track keyboard shortcut registration
 
   /**
    * Initialize Media Gallery - Show events list
@@ -768,7 +772,14 @@ const mediaGalleryModule = {
     const container = document.getElementById('videosProductionContent');
 
     container.innerHTML = `
-      <div class="row g-4">
+      <div class="d-flex justify-content-between align-items-center mb-3">
+        <small class="text-muted">${videos.length} video(s)</small>
+        <button class="btn btn-sm ${this._videoReorderMode ? 'btn-primary' : 'btn-outline-primary'}" onclick="mediaGalleryModule.toggleVideoReorderMode()">
+          <i class="bi bi-${this._videoReorderMode ? 'check-circle' : 'arrows-move'} me-1"></i>
+          ${this._videoReorderMode ? 'Done Reordering' : 'Reorder Videos'}
+        </button>
+      </div>
+      <div class="row g-4" id="videosGrid">
         ${videos.map(video => {
           const isYouTube = video.youtube_id || (video.file_url && video.file_url.includes('youtube'));
           const thumbnailUrl = isYouTube
@@ -797,9 +808,22 @@ const mediaGalleryModule = {
           const hasAnyTags = companyTags.length > 0 || awardTags.length > 0;
 
           return `
-            <div class="col-md-6 col-lg-4">
-              <div class="card h-100">
-                <div class="position-relative">
+            <div class="col-md-6 col-lg-4" data-video-id="${video.id}"
+              ${this._videoReorderMode ? `
+                draggable="true"
+                ondragstart="mediaGalleryModule.onVideoDragStart(event, '${video.id}')"
+                ondragover="mediaGalleryModule.onVideoDragOver(event, '${video.id}')"
+                ondrop="mediaGalleryModule.onVideoDrop(event, '${video.id}')"
+                ondragend="mediaGalleryModule.onVideoDragEnd(event)"
+                style="cursor: move;"
+              ` : ''}>
+              <div class="card h-100 ${this._videoReorderMode ? 'border-primary' : ''}">
+                ${this._videoReorderMode ? '<div class="position-absolute top-0 start-0 m-2" style="z-index:10;"><i class="bi bi-grip-vertical text-primary" style="font-size:1.2rem;"></i></div>' : ''}
+                <div class="position-relative video-thumbnail-container"
+                  ${isYouTube ? `
+                    onmouseenter="mediaGalleryModule._showVideoHoverPreview(this, '${video.youtube_id}')"
+                    onmouseleave="mediaGalleryModule._hideVideoHoverPreview(this)"
+                  ` : ''}>
                   <img src="${thumbnailUrl}" class="card-img-top" alt="${utils.escapeHtml(video.title || 'Video')}" style="height: 200px; object-fit: cover;">
                   <div class="position-absolute top-50 start-50 translate-middle">
                     <i class="bi bi-play-circle-fill text-white" style="font-size: 3rem; opacity: 0.8;"></i>
@@ -1348,6 +1372,7 @@ const mediaGalleryModule = {
       if (error) throw error;
 
       utils.showToast('Video deleted successfully', 'success');
+      this._logActivity('delete', videoId, 'Video deleted');
       await this.loadVideosProduction();
 
     } catch (error) {
@@ -1561,6 +1586,7 @@ const mediaGalleryModule = {
    * Event selected - load gallery sections or show summary
    */
   async onEventSelected(eventId) {
+    this._unregisterKeyboardShortcuts();
     if (!eventId) {
       // Show summary view when no event is selected
       await this.showSummaryView();
@@ -1853,6 +1879,7 @@ const mediaGalleryModule = {
       this.currentFilter = 'all';
       this.currentSearchTerm = '';
       this.currentSortBy = 'display_order';
+      this.currentPage = 1;
       this.selectedPhotoIds.clear(); // Clear selections when switching sections
 
       this.renderSectionPhotos(sectionName);
@@ -1884,12 +1911,13 @@ const mediaGalleryModule = {
     // Filter by search term
     if (this.currentSearchTerm) {
       const term = this.currentSearchTerm.toLowerCase();
-      filteredPhotos = filteredPhotos.filter(p => {
-        const title = (p.title || '').toLowerCase();
-        const orgName = (p.organisations?.company_name || '').toLowerCase();
-        const awardName = (p.awards?.award_name || p.awards?.award_category || '').toLowerCase();
-        return title.includes(term) || orgName.includes(term) || awardName.includes(term);
-      });
+      filteredPhotos = filteredPhotos.filter(p =>
+        (p.title || '').toLowerCase().includes(term) ||
+        (p.organisations?.company_name || '').toLowerCase().includes(term) ||
+        (p.awards?.award_name || p.awards?.award_category || '').toLowerCase().includes(term) ||
+        (p.photographer || '').toLowerCase().includes(term) ||
+        (p.caption || '').toLowerCase().includes(term)
+      );
     }
 
     // Apply sorting
@@ -1933,6 +1961,16 @@ const mediaGalleryModule = {
     const publishedCount = this.currentSectionPhotos.filter(p => p.published !== false).length;
     const draftCount = this.currentSectionPhotos.filter(p => p.published === false).length;
 
+    // Pagination
+    const totalPages = Math.ceil(filteredPhotos.length / this.photosPerPage);
+    if (this.currentPage > totalPages && totalPages > 0) this.currentPage = totalPages;
+    const startIdx = (this.currentPage - 1) * this.photosPerPage;
+    const pagePhotos = filteredPhotos.slice(startIdx, startIdx + this.photosPerPage);
+    const showPagination = filteredPhotos.length > this.photosPerPage;
+
+    // Select all state for current page
+    const allPageSelected = pagePhotos.length > 0 && pagePhotos.every(p => this.selectedPhotoIds.has(p.id));
+
     contentDiv.innerHTML = `
       <div class="mb-4">
         <button class="btn btn-link p-0 mb-3" onclick="mediaGalleryModule.onEventSelected('${this.currentEventId}')">
@@ -1941,18 +1979,24 @@ const mediaGalleryModule = {
 
         <div class="d-flex justify-content-between align-items-center mb-3">
           <h5><i class="bi bi-images me-2"></i>${utils.escapeHtml(sectionName)}</h5>
-          <div class="btn-group">
+          <div class="btn-group flex-wrap">
             <button class="btn btn-sm btn-primary" onclick="mediaGalleryModule.openUploadPhotosModal()">
               <i class="bi bi-upload me-1"></i>Upload Photos
             </button>
             <button class="btn btn-sm btn-outline-primary" onclick="mediaGalleryModule.openYouTubeVideoModal()">
-              <i class="bi bi-youtube me-1"></i>Add YouTube Video
+              <i class="bi bi-youtube me-1"></i>Add YouTube
             </button>
             <button class="btn btn-sm btn-outline-warning" onclick="mediaGalleryModule.openAutoTagFromRunningOrder()" title="Auto-tag photos by matching filename prefixes to running order numbers">
-              <i class="bi bi-lightning me-1"></i>Auto-Tag from Running Order
+              <i class="bi bi-lightning me-1"></i>Auto-Tag
+            </button>
+            <button class="btn btn-sm btn-outline-info" onclick="mediaGalleryModule.findDuplicates()" title="Find duplicate or similar photos">
+              <i class="bi bi-files me-1"></i>Find Duplicates
             </button>
             <button class="btn btn-sm btn-outline-dark" onclick="mediaGalleryModule.openNamingGuide()" title="Photo naming convention guide">
               <i class="bi bi-card-checklist me-1"></i>Naming Guide
+            </button>
+            <button class="btn btn-sm btn-outline-secondary" onclick="mediaGalleryModule.viewActivityLog()" title="View activity log">
+              <i class="bi bi-clock-history me-1"></i>Log
             </button>
             <button class="btn btn-sm btn-outline-secondary" onclick="mediaGalleryModule.downloadAllPhotos('${utils.escapeHtml(sectionName).replace(/'/g, "\\'")}')">
               <i class="bi bi-download me-1"></i>Download All
@@ -1962,7 +2006,7 @@ const mediaGalleryModule = {
 
         <!-- Filters, Sort & Search -->
         <div class="card mb-3">
-          <div class="card-body">
+          <div class="card-body py-2">
             <div class="row g-3 align-items-end">
               <div class="col-md-4">
                 <label class="form-label small mb-1">Filter by Status:</label>
@@ -2001,7 +2045,7 @@ const mediaGalleryModule = {
                   <input type="text" class="form-control" id="gallerySearchBox"
                     placeholder="Search by title, organisation, or award..."
                     value="${utils.escapeHtml(this.currentSearchTerm)}"
-                    onkeyup="mediaGalleryModule.setSearch(this.value)">
+                    onkeyup="mediaGalleryModule.debouncedSearch(this.value)">
                   ${this.currentSearchTerm ? `
                     <button class="btn btn-outline-secondary" onclick="mediaGalleryModule.setSearch('')">
                       <i class="bi bi-x"></i>
@@ -2012,17 +2056,40 @@ const mediaGalleryModule = {
             </div>
           </div>
         </div>
+
+        <!-- Select All + Count Bar -->
+        ${filteredPhotos.length > 0 ? `
+        <div class="d-flex justify-content-between align-items-center mb-2">
+          <div class="d-flex align-items-center gap-2">
+            <button class="btn btn-sm ${allPageSelected ? 'btn-primary' : 'btn-outline-primary'}"
+              onclick="mediaGalleryModule.selectAllPage()" title="Select/deselect all on this page">
+              <i class="bi bi-${allPageSelected ? 'check-square-fill' : 'square'} me-1"></i>
+              ${allPageSelected ? 'Deselect Page' : 'Select Page'} (${pagePhotos.length})
+            </button>
+            ${filteredPhotos.length > this.photosPerPage ? `
+            <button class="btn btn-sm btn-outline-secondary"
+              onclick="mediaGalleryModule.selectAllFiltered()" title="Select all ${filteredPhotos.length} filtered photos">
+              <i class="bi bi-check-all me-1"></i>Select All ${filteredPhotos.length}
+            </button>` : ''}
+            ${this.selectedPhotoIds.size > 0 ? `
+              <span class="text-muted small">${this.selectedPhotoIds.size} selected</span>
+            ` : ''}
+          </div>
+          <small class="text-muted">
+            Showing ${startIdx + 1}-${Math.min(startIdx + this.photosPerPage, filteredPhotos.length)} of ${filteredPhotos.length}
+            ${filteredPhotos.length !== totalCount ? ` (${totalCount} total)` : ''}
+          </small>
+        </div>` : ''}
       </div>
 
       <!-- Drag & Drop Zone -->
-      <div id="dropZone" class="border border-2 border-dashed rounded p-5 text-center mb-4"
+      <div id="dropZone" class="border border-2 border-dashed rounded p-4 text-center mb-4"
         style="border-color: #dee2e6 !important; transition: all 0.3s;"
         ondragover="mediaGalleryModule.handleDragOver(event)"
         ondragleave="mediaGalleryModule.handleDragLeave(event)"
         ondrop="mediaGalleryModule.handleDrop(event)">
-        <i class="bi bi-cloud-upload text-muted" style="font-size: 3rem;"></i>
-        <p class="text-muted mb-0 mt-2">Drag & drop photos/videos here to upload</p>
-        <small class="text-muted">Or use the "Upload Photos" button above</small>
+        <i class="bi bi-cloud-upload text-muted" style="font-size: 2rem;"></i>
+        <p class="text-muted mb-0 mt-1">Drag & drop photos/videos here to upload</p>
       </div>
 
       ${filteredPhotos.length === 0 ? `
@@ -2034,8 +2101,25 @@ const mediaGalleryModule = {
         </div>
       ` : `
         <div class="row g-3" id="photoGrid">
-          ${filteredPhotos.map(photo => this.renderPhotoCard(photo)).join('')}
+          ${pagePhotos.map(photo => this.renderPhotoCard(photo)).join('')}
         </div>
+
+        ${showPagination ? `
+        <nav class="mt-4">
+          <ul class="pagination justify-content-center">
+            <li class="page-item ${this.currentPage === 1 ? 'disabled' : ''}">
+              <a class="page-link" href="#" onclick="event.preventDefault(); mediaGalleryModule.goToPage(${this.currentPage - 1})">
+                <i class="bi bi-chevron-left"></i>
+              </a>
+            </li>
+            ${this._buildPaginationItems(this.currentPage, totalPages)}
+            <li class="page-item ${this.currentPage === totalPages ? 'disabled' : ''}">
+              <a class="page-link" href="#" onclick="event.preventDefault(); mediaGalleryModule.goToPage(${this.currentPage + 1})">
+                <i class="bi bi-chevron-right"></i>
+              </a>
+            </li>
+          </ul>
+        </nav>` : ''}
       `}
 
       <!-- Floating Bulk Actions Bar -->
@@ -2055,6 +2139,9 @@ const mediaGalleryModule = {
                 <button class="btn btn-secondary" onclick="mediaGalleryModule.bulkUnpublish()" title="Unpublish selected">
                   <i class="bi bi-eye-slash me-1"></i>Unpublish
                 </button>
+                <button class="btn btn-outline-primary" onclick="mediaGalleryModule.bulkTag()" title="Tag selected photos to org/award">
+                  <i class="bi bi-tags me-1"></i>Bulk Tag
+                </button>
                 <button class="btn btn-outline-secondary" onclick="mediaGalleryModule.bulkDownload()" title="Download selected">
                   <i class="bi bi-download me-1"></i>Download
                 </button>
@@ -2069,9 +2156,17 @@ const mediaGalleryModule = {
           </div>
         </div>
       </div>
+
+      <!-- Keyboard shortcuts hint -->
+      <div class="text-center mt-2 mb-3">
+        <small class="text-muted" style="font-size: 0.7rem;">
+          <kbd>A</kbd> Select All | <kbd>Esc</kbd> Clear | <kbd>Del</kbd> Delete | <kbd>P</kbd> Publish | <kbd>U</kbd> Unpublish | <kbd>\u2190\u2192</kbd> Pages
+        </small>
+      </div>
     `;
 
     this.updateBulkActionsBar();
+    this._registerKeyboardShortcuts();
   },
 
   /**
@@ -2079,7 +2174,18 @@ const mediaGalleryModule = {
    */
   setFilter(filter) {
     this.currentFilter = filter;
+    this.currentPage = 1;
     this.renderSectionPhotos(this.currentSectionName || 'Section');
+  },
+
+  /**
+   * Debounced search - waits 300ms after typing stops before rendering
+   */
+  debouncedSearch(term) {
+    clearTimeout(this._searchDebounceTimer);
+    this._searchDebounceTimer = setTimeout(() => {
+      this.setSearch(term);
+    }, 300);
   },
 
   /**
@@ -2087,6 +2193,7 @@ const mediaGalleryModule = {
    */
   setSearch(term) {
     this.currentSearchTerm = term;
+    this.currentPage = 1;
     if (term === '') {
       const searchBox = document.getElementById('gallerySearchBox');
       if (searchBox) searchBox.value = '';
@@ -2099,7 +2206,422 @@ const mediaGalleryModule = {
    */
   setSortBy(sortBy) {
     this.currentSortBy = sortBy;
+    this.currentPage = 1;
     this.renderSectionPhotos(this.currentSectionName || 'Section');
+  },
+
+  /**
+   * Pagination - go to page
+   */
+  goToPage(page) {
+    const filteredCount = this._getFilteredPhotos().length;
+    const totalPages = Math.ceil(filteredCount / this.photosPerPage);
+    if (page < 1 || page > totalPages) return;
+    this.currentPage = page;
+    this.renderSectionPhotos(this.currentSectionName || 'Section');
+    // Scroll to top of grid
+    document.getElementById('photoGrid')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  },
+
+  /**
+   * Build pagination items HTML
+   */
+  _buildPaginationItems(current, total) {
+    let items = '';
+    const maxVisible = 7;
+    let start = Math.max(1, current - 3);
+    let end = Math.min(total, start + maxVisible - 1);
+    if (end - start < maxVisible - 1) start = Math.max(1, end - maxVisible + 1);
+
+    if (start > 1) {
+      items += `<li class="page-item"><a class="page-link" href="#" onclick="event.preventDefault(); mediaGalleryModule.goToPage(1)">1</a></li>`;
+      if (start > 2) items += `<li class="page-item disabled"><span class="page-link">...</span></li>`;
+    }
+    for (let i = start; i <= end; i++) {
+      items += `<li class="page-item ${i === current ? 'active' : ''}">
+        <a class="page-link" href="#" onclick="event.preventDefault(); mediaGalleryModule.goToPage(${i})">${i}</a>
+      </li>`;
+    }
+    if (end < total) {
+      if (end < total - 1) items += `<li class="page-item disabled"><span class="page-link">...</span></li>`;
+      items += `<li class="page-item"><a class="page-link" href="#" onclick="event.preventDefault(); mediaGalleryModule.goToPage(${total})">${total}</a></li>`;
+    }
+    return items;
+  },
+
+  /**
+   * Get currently filtered photos (shared helper for pagination/selection)
+   */
+  _getFilteredPhotos() {
+    let filtered = this.currentSectionPhotos;
+    if (this.currentFilter === 'published') filtered = filtered.filter(p => p.published !== false);
+    else if (this.currentFilter === 'drafts') filtered = filtered.filter(p => p.published === false);
+    if (this.currentSearchTerm) {
+      const term = this.currentSearchTerm.toLowerCase();
+      filtered = filtered.filter(p =>
+        (p.title || '').toLowerCase().includes(term) ||
+        (p.organisations?.company_name || '').toLowerCase().includes(term) ||
+        (p.awards?.award_name || p.awards?.award_category || '').toLowerCase().includes(term) ||
+        (p.photographer || '').toLowerCase().includes(term) ||
+        (p.caption || '').toLowerCase().includes(term)
+      );
+    }
+    // Apply sorting to match renderSectionPhotos
+    filtered = [...filtered];
+    switch (this.currentSortBy) {
+      case 'name_asc': filtered.sort((a, b) => (a.title || '').localeCompare(b.title || '')); break;
+      case 'name_desc': filtered.sort((a, b) => (b.title || '').localeCompare(a.title || '')); break;
+      case 'date_newest': filtered.sort((a, b) => new Date(b.uploaded_at || 0) - new Date(a.uploaded_at || 0)); break;
+      case 'date_oldest': filtered.sort((a, b) => new Date(a.uploaded_at || 0) - new Date(b.uploaded_at || 0)); break;
+      case 'org_asc': filtered.sort((a, b) => (a.organisations?.company_name || 'zzz').localeCompare(b.organisations?.company_name || 'zzz')); break;
+      case 'tagged': filtered.sort((a, b) => (a.organisation_id || a.award_id ? 0 : 1) - (b.organisation_id || b.award_id ? 0 : 1)); break;
+      case 'untagged': filtered.sort((a, b) => (!a.organisation_id && !a.award_id ? 0 : 1) - (!b.organisation_id && !b.award_id ? 0 : 1)); break;
+      default: filtered.sort((a, b) => (a.display_order || 0) - (b.display_order || 0)); break;
+    }
+    return filtered;
+  },
+
+  /**
+   * Select/deselect all photos on current page
+   */
+  selectAllPage() {
+    const filtered = this._getFilteredPhotos();
+    const startIdx = (this.currentPage - 1) * this.photosPerPage;
+    const pagePhotos = filtered.slice(startIdx, startIdx + this.photosPerPage);
+
+    const allSelected = pagePhotos.every(p => this.selectedPhotoIds.has(p.id));
+    if (allSelected) {
+      pagePhotos.forEach(p => this.selectedPhotoIds.delete(p.id));
+    } else {
+      pagePhotos.forEach(p => this.selectedPhotoIds.add(p.id));
+    }
+    this.renderSectionPhotos(this.currentSectionName || 'Section');
+  },
+
+  /**
+   * Select all filtered photos across all pages
+   */
+  selectAllFiltered() {
+    const filtered = this._getFilteredPhotos();
+    const allSelected = filtered.every(p => this.selectedPhotoIds.has(p.id));
+    if (allSelected) {
+      filtered.forEach(p => this.selectedPhotoIds.delete(p.id));
+    } else {
+      filtered.forEach(p => this.selectedPhotoIds.add(p.id));
+    }
+    this.renderSectionPhotos(this.currentSectionName || 'Section');
+  },
+
+  /**
+   * Bulk tag selected photos to an org/award
+   */
+  async bulkTag() {
+    if (this.selectedPhotoIds.size === 0) return;
+
+    try {
+      // Load orgs and awards for dropdowns
+      const [orgsResult, awardsResult] = await Promise.all([
+        STATE.client.from('organisations').select('id, company_name').order('company_name'),
+        STATE.client.from('awards').select('id, award_name').eq('event_id', this.currentEventId).order('award_name')
+      ]);
+
+      const orgs = orgsResult.data || [];
+      const awards = awardsResult.data || [];
+
+      const html = `
+        <div class="modal fade" id="bulkTagModal" tabindex="-1">
+          <div class="modal-dialog">
+            <div class="modal-content">
+              <div class="modal-header">
+                <h5 class="modal-title"><i class="bi bi-tags me-2"></i>Bulk Tag ${this.selectedPhotoIds.size} Photo(s)</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+              </div>
+              <div class="modal-body">
+                <div class="alert alert-info py-2">
+                  <small><i class="bi bi-info-circle me-1"></i>Leave a field empty to keep existing values. Choose "Clear" to remove tags.</small>
+                </div>
+                <div class="mb-3">
+                  <label class="form-label">Organisation</label>
+                  <select class="form-select" id="bulkTagOrg">
+                    <option value="">-- Keep existing --</option>
+                    <option value="__clear__">Clear organisation</option>
+                    ${orgs.map(o => `<option value="${o.id}">${utils.escapeHtml(o.company_name)}</option>`).join('')}
+                  </select>
+                </div>
+                <div class="mb-3">
+                  <label class="form-label">Award</label>
+                  <select class="form-select" id="bulkTagAward">
+                    <option value="">-- Keep existing --</option>
+                    <option value="__clear__">Clear award</option>
+                    ${awards.map(a => `<option value="${a.id}">${utils.escapeHtml(a.award_name)}</option>`).join('')}
+                  </select>
+                </div>
+              </div>
+              <div class="modal-footer">
+                <button class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button class="btn btn-primary" onclick="mediaGalleryModule.executeBulkTag()">
+                  <i class="bi bi-check-circle me-1"></i>Apply Tags
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>`;
+
+      const old = document.getElementById('bulkTagModal');
+      if (old) old.remove();
+      document.body.insertAdjacentHTML('beforeend', html);
+      new bootstrap.Modal(document.getElementById('bulkTagModal')).show();
+    } catch (err) {
+      console.error('Error loading bulk tag data:', err);
+      utils.showToast('Error opening bulk tag: ' + err.message, 'error');
+    }
+  },
+
+  /**
+   * Execute bulk tagging
+   */
+  async executeBulkTag() {
+    const orgVal = document.getElementById('bulkTagOrg').value;
+    const awardVal = document.getElementById('bulkTagAward').value;
+
+    if (!orgVal && !awardVal) {
+      utils.showToast('Select at least one field to update', 'warning');
+      return;
+    }
+
+    try {
+      utils.showLoading();
+      const updateData = {};
+      if (orgVal === '__clear__') updateData.organisation_id = null;
+      else if (orgVal) updateData.organisation_id = orgVal;
+      if (awardVal === '__clear__') updateData.award_id = null;
+      else if (awardVal) updateData.award_id = awardVal;
+
+      const { error } = await STATE.client
+        .from('media_gallery')
+        .update(updateData)
+        .in('id', [...this.selectedPhotoIds]);
+
+      if (error) throw error;
+
+      bootstrap.Modal.getInstance(document.getElementById('bulkTagModal')).hide();
+      const tagCount = this.selectedPhotoIds.size;
+      utils.showToast(`${tagCount} photo(s) tagged successfully`, 'success');
+      this._logActivity('bulk_tag', null, `${tagCount} photos bulk tagged`);
+      this.selectedPhotoIds.clear();
+      await this.viewSectionPhotos(this.currentSectionId, this.currentSectionName);
+    } catch (err) {
+      console.error('Error bulk tagging:', err);
+      utils.showToast('Error tagging photos: ' + err.message, 'error');
+    } finally {
+      utils.hideLoading();
+    }
+  },
+
+  /**
+   * Find duplicate photos based on file size and filename similarity
+   */
+  findDuplicates() {
+    const photos = this.currentSectionPhotos;
+    if (photos.length < 2) {
+      utils.showToast('Need at least 2 photos to check for duplicates', 'info');
+      return;
+    }
+
+    // Group by file_size
+    const sizeGroups = {};
+    photos.forEach(p => {
+      const size = p.file_size || 0;
+      if (size > 0) {
+        if (!sizeGroups[size]) sizeGroups[size] = [];
+        sizeGroups[size].push(p);
+      }
+    });
+
+    // Also check for similar filenames (ignoring timestamp prefix)
+    const nameGroups = {};
+    photos.forEach(p => {
+      const url = p.file_url || '';
+      const rawName = url.split('/').pop() || '';
+      const cleanName = rawName.replace(/^\d+_[a-z0-9]+_/, '').toLowerCase();
+      if (cleanName) {
+        if (!nameGroups[cleanName]) nameGroups[cleanName] = [];
+        nameGroups[cleanName].push(p);
+      }
+    });
+
+    const duplicates = [];
+
+    // Exact size matches
+    Object.values(sizeGroups).forEach(group => {
+      if (group.length > 1) {
+        duplicates.push({ type: 'Identical file size', photos: group, detail: `${(group[0].file_size / 1024).toFixed(0)} KB` });
+      }
+    });
+
+    // Same filename matches
+    Object.entries(nameGroups).forEach(([name, group]) => {
+      if (group.length > 1) {
+        // Avoid double-counting if already found by size
+        const alreadyFound = duplicates.some(d =>
+          d.photos.length === group.length &&
+          d.photos.every(p => group.some(g => g.id === p.id))
+        );
+        if (!alreadyFound) {
+          duplicates.push({ type: 'Same filename', photos: group, detail: name });
+        }
+      }
+    });
+
+    if (duplicates.length === 0) {
+      utils.showToast('No duplicates found - all photos look unique!', 'success');
+      return;
+    }
+
+    const html = `
+      <div class="modal fade" id="duplicatesModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+          <div class="modal-content">
+            <div class="modal-header bg-warning bg-opacity-10">
+              <h5 class="modal-title"><i class="bi bi-files me-2"></i>Potential Duplicates Found (${duplicates.length} groups)</h5>
+              <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" style="max-height: 70vh; overflow-y: auto;">
+              ${duplicates.map((dup, gi) => `
+                <div class="card mb-3">
+                  <div class="card-header py-2 d-flex justify-content-between align-items-center">
+                    <span><span class="badge bg-warning text-dark me-2">${dup.type}</span> <code>${utils.escapeHtml(dup.detail)}</code> (${dup.photos.length} photos)</span>
+                    <button class="btn btn-sm btn-outline-primary" onclick="mediaGalleryModule.selectDuplicateGroup(${gi})" title="Select all in this group for bulk action">
+                      <i class="bi bi-check-all me-1"></i>Select Group
+                    </button>
+                  </div>
+                  <div class="card-body p-2">
+                    <div class="row g-2">
+                      ${dup.photos.map(p => `
+                        <div class="col-md-3">
+                          <div class="card h-100">
+                            ${p.file_type?.startsWith('image/') ?
+                              `<img src="${p.file_url}" class="card-img-top" style="height:120px;object-fit:cover;">` :
+                              `<div class="card-img-top bg-light d-flex align-items-center justify-content-center" style="height:120px;"><i class="bi bi-play-circle" style="font-size:2rem;"></i></div>`
+                            }
+                            <div class="card-body p-2">
+                              <small class="text-truncate d-block">${utils.escapeHtml(p.title || 'Untitled')}</small>
+                              <small class="text-muted">${p.file_size ? (p.file_size / 1024).toFixed(0) + ' KB' : 'Unknown size'}</small>
+                            </div>
+                          </div>
+                        </div>
+                      `).join('')}
+                    </div>
+                  </div>
+                </div>
+              `).join('')}
+              <div class="alert alert-info py-2 mt-2">
+                <small><i class="bi bi-info-circle me-1"></i>Click "Select Group" to select those photos, then close this dialog and use bulk actions to delete duplicates.</small>
+              </div>
+            </div>
+            <div class="modal-footer">
+              <button class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+          </div>
+        </div>
+      </div>`;
+
+    // Store duplicate groups for selection
+    this._duplicateGroups = duplicates;
+
+    const old = document.getElementById('duplicatesModal');
+    if (old) old.remove();
+    document.body.insertAdjacentHTML('beforeend', html);
+    new bootstrap.Modal(document.getElementById('duplicatesModal')).show();
+  },
+
+  /**
+   * Select all photos in a duplicate group (excluding the first/original)
+   */
+  selectDuplicateGroup(groupIdx) {
+    if (!this._duplicateGroups || !this._duplicateGroups[groupIdx]) return;
+    const group = this._duplicateGroups[groupIdx].photos;
+    // Select all except the first one (keep original, select potential duplicates)
+    group.slice(1).forEach(p => this.selectedPhotoIds.add(p.id));
+    bootstrap.Modal.getInstance(document.getElementById('duplicatesModal')).hide();
+    this.renderSectionPhotos(this.currentSectionName || 'Section');
+    utils.showToast(`Selected ${group.length - 1} potential duplicate(s) for review. First photo kept as original.`, 'info');
+  },
+
+  /**
+   * Register keyboard shortcuts for gallery view
+   */
+  _registerKeyboardShortcuts() {
+    if (this._keyboardShortcutsActive) return;
+    this._keyboardShortcutsActive = true;
+
+    this._keyboardHandler = (e) => {
+      // Don't trigger shortcuts when typing in inputs
+      if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.tagName === 'SELECT' || e.target.isContentEditable) return;
+      // Only active when viewing section photos
+      if (!document.getElementById('photoGrid')) return;
+
+      switch (e.key) {
+        case 'a':
+        case 'A':
+          e.preventDefault();
+          this.selectAllPage();
+          break;
+        case 'Escape':
+          if (this.selectedPhotoIds.size > 0) {
+            e.preventDefault();
+            this.clearSelection();
+          }
+          break;
+        case 'Delete':
+        case 'Backspace':
+          if (this.selectedPhotoIds.size > 0 && !e.metaKey && !e.ctrlKey) {
+            e.preventDefault();
+            this.bulkDelete();
+          }
+          break;
+        case 'p':
+        case 'P':
+          if (this.selectedPhotoIds.size > 0) {
+            e.preventDefault();
+            this.bulkPublish();
+          }
+          break;
+        case 'u':
+        case 'U':
+          if (this.selectedPhotoIds.size > 0) {
+            e.preventDefault();
+            this.bulkUnpublish();
+          }
+          break;
+        case 'ArrowLeft':
+          if (this.currentPage > 1) {
+            e.preventDefault();
+            this.goToPage(this.currentPage - 1);
+          }
+          break;
+        case 'ArrowRight':
+          const totalPages = Math.ceil(this._getFilteredPhotos().length / this.photosPerPage);
+          if (this.currentPage < totalPages) {
+            e.preventDefault();
+            this.goToPage(this.currentPage + 1);
+          }
+          break;
+      }
+    };
+
+    document.addEventListener('keydown', this._keyboardHandler);
+  },
+
+  /**
+   * Unregister keyboard shortcuts
+   */
+  _unregisterKeyboardShortcuts() {
+    if (this._keyboardHandler) {
+      document.removeEventListener('keydown', this._keyboardHandler);
+      this._keyboardHandler = null;
+    }
+    this._keyboardShortcutsActive = false;
   },
 
   /**
@@ -2238,6 +2760,7 @@ const mediaGalleryModule = {
       }
 
       utils.showToast(`${successCount} file(s) uploaded successfully!`, 'success');
+      this._logActivity('upload', null, `${successCount} files uploaded`);
 
       // Close modal and reload
       bootstrap.Modal.getInstance(document.getElementById('dragDropPublishModal')).hide();
@@ -2872,6 +3395,7 @@ const mediaGalleryModule = {
       await this.updatePhotoDisplayOrder();
 
       utils.showToast('Photo order updated', 'success');
+      this._logActivity('reorder', null, 'Photos reordered');
 
       // Re-render to show new order
       this.renderSectionPhotos(this.currentSectionName || 'Section');
@@ -2986,6 +3510,7 @@ const mediaGalleryModule = {
       if (error) throw error;
 
       utils.showToast(`${count} photo(s) published`, 'success');
+      this._logActivity('bulk_publish', null, `${count} photos published`);
       this.selectedPhotoIds.clear();
 
       // Reload section
@@ -3021,6 +3546,7 @@ const mediaGalleryModule = {
       if (error) throw error;
 
       utils.showToast(`${count} photo(s) unpublished`, 'success');
+      this._logActivity('bulk_unpublish', null, `${count} photos unpublished`);
       this.selectedPhotoIds.clear();
 
       // Reload section
@@ -3112,6 +3638,7 @@ const mediaGalleryModule = {
       }
 
       utils.showToast(`${count} photo(s) deleted`, 'success');
+      this._logActivity('bulk_delete', null, `${count} photos deleted`);
       this.selectedPhotoIds.clear();
 
       // Reload section
@@ -3279,6 +3806,7 @@ const mediaGalleryModule = {
       }
 
       utils.showToast('Photo deleted successfully!', 'success');
+      this._logActivity('delete', photoId, 'Photo deleted');
       await this.viewSectionPhotos(this.currentSectionId, this.currentSectionName);
 
     } catch (error) {
@@ -3391,6 +3919,376 @@ const mediaGalleryModule = {
     bootstrap.Modal.getInstance(document.getElementById('viewPhotoFullModal')).hide();
     // Delete photo
     await this.deletePhoto(this.currentMediaId);
+  },
+
+  /**
+   * Open crop/rotate editor for current photo
+   */
+  async openCropRotate() {
+    const photoId = this.currentMediaId;
+    if (!photoId) { utils.showToast('No photo selected', 'warning'); return; }
+
+    const photo = this.currentSectionPhotos.find(p => p.id === photoId);
+    if (!photo || !photo.file_url || !photo.file_type?.startsWith('image/')) {
+      utils.showToast('Crop/rotate is only available for images', 'warning');
+      return;
+    }
+
+    // Close full view modal
+    bootstrap.Modal.getInstance(document.getElementById('viewPhotoFullModal'))?.hide();
+
+    const html = `
+      <div class="modal fade" id="cropRotateModal" tabindex="-1" data-bs-backdrop="static">
+        <div class="modal-dialog modal-xl">
+          <div class="modal-content">
+            <div class="modal-header">
+              <h5 class="modal-title"><i class="bi bi-crop me-2"></i>Crop & Rotate - ${utils.escapeHtml(photo.title || 'Photo')}</h5>
+              <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+              <div class="text-center mb-3">
+                <div class="btn-group mb-3">
+                  <button class="btn btn-outline-secondary" onclick="mediaGalleryModule._rotatePreview(-90)" title="Rotate left">
+                    <i class="bi bi-arrow-counterclockwise me-1"></i>Rotate Left
+                  </button>
+                  <button class="btn btn-outline-secondary" onclick="mediaGalleryModule._rotatePreview(90)" title="Rotate right">
+                    <i class="bi bi-arrow-clockwise me-1"></i>Rotate Right
+                  </button>
+                  <button class="btn btn-outline-secondary" onclick="mediaGalleryModule._flipPreview('h')" title="Flip horizontal">
+                    <i class="bi bi-symmetry-vertical me-1"></i>Flip H
+                  </button>
+                  <button class="btn btn-outline-secondary" onclick="mediaGalleryModule._flipPreview('v')" title="Flip vertical">
+                    <i class="bi bi-symmetry-horizontal me-1"></i>Flip V
+                  </button>
+                  <button class="btn btn-outline-warning" onclick="mediaGalleryModule._resetCropRotate()" title="Reset all changes">
+                    <i class="bi bi-arrow-repeat me-1"></i>Reset
+                  </button>
+                </div>
+              </div>
+              <div class="text-center" style="max-height: 60vh; overflow: auto;">
+                <canvas id="cropRotateCanvas" style="max-width: 100%; border: 1px solid #dee2e6;"></canvas>
+              </div>
+              <div class="mt-3">
+                <label class="form-label small">Crop (drag on image above, or set manually):</label>
+                <div class="row g-2">
+                  <div class="col-3">
+                    <div class="input-group input-group-sm">
+                      <span class="input-group-text">X</span>
+                      <input type="number" class="form-control" id="cropX" value="0" min="0" onchange="mediaGalleryModule._updateCropFromInputs()">
+                    </div>
+                  </div>
+                  <div class="col-3">
+                    <div class="input-group input-group-sm">
+                      <span class="input-group-text">Y</span>
+                      <input type="number" class="form-control" id="cropY" value="0" min="0" onchange="mediaGalleryModule._updateCropFromInputs()">
+                    </div>
+                  </div>
+                  <div class="col-3">
+                    <div class="input-group input-group-sm">
+                      <span class="input-group-text">W</span>
+                      <input type="number" class="form-control" id="cropW" value="0" min="0" onchange="mediaGalleryModule._updateCropFromInputs()">
+                    </div>
+                  </div>
+                  <div class="col-3">
+                    <div class="input-group input-group-sm">
+                      <span class="input-group-text">H</span>
+                      <input type="number" class="form-control" id="cropH" value="0" min="0" onchange="mediaGalleryModule._updateCropFromInputs()">
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="modal-footer">
+              <button class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+              <button class="btn btn-success" onclick="mediaGalleryModule._saveCropRotate('${photoId}')">
+                <i class="bi bi-check-circle me-1"></i>Save Changes
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>`;
+
+    const old = document.getElementById('cropRotateModal');
+    if (old) old.remove();
+    document.body.insertAdjacentHTML('beforeend', html);
+
+    // Initialize canvas
+    this._cropRotateState = { rotation: 0, flipH: false, flipV: false, cropRect: null, originalUrl: photo.file_url };
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.onload = () => {
+      this._cropRotateImage = img;
+      this._drawCropRotateCanvas();
+      this._initCropSelection();
+    };
+    img.onerror = () => {
+      utils.showToast('Could not load image for editing. The image may have CORS restrictions.', 'error');
+    };
+    img.src = photo.file_url;
+
+    new bootstrap.Modal(document.getElementById('cropRotateModal')).show();
+  },
+
+  _drawCropRotateCanvas() {
+    const canvas = document.getElementById('cropRotateCanvas');
+    if (!canvas || !this._cropRotateImage) return;
+    const ctx = canvas.getContext('2d');
+    const img = this._cropRotateImage;
+    const state = this._cropRotateState;
+
+    const isRotated90 = state.rotation === 90 || state.rotation === 270 || state.rotation === -90 || state.rotation === -270;
+    canvas.width = isRotated90 ? img.height : img.width;
+    canvas.height = isRotated90 ? img.width : img.height;
+
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.save();
+    ctx.translate(canvas.width / 2, canvas.height / 2);
+    ctx.rotate((state.rotation * Math.PI) / 180);
+    ctx.scale(state.flipH ? -1 : 1, state.flipV ? -1 : 1);
+    ctx.drawImage(img, -img.width / 2, -img.height / 2);
+    ctx.restore();
+
+    // Draw crop overlay if active
+    if (state.cropRect) {
+      const { x, y, w, h } = state.cropRect;
+      // Darken outside
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.4)';
+      ctx.fillRect(0, 0, canvas.width, y);
+      ctx.fillRect(0, y, x, h);
+      ctx.fillRect(x + w, y, canvas.width - x - w, h);
+      ctx.fillRect(0, y + h, canvas.width, canvas.height - y - h);
+      // Crop border
+      ctx.strokeStyle = '#0d6efd';
+      ctx.lineWidth = 2;
+      ctx.strokeRect(x, y, w, h);
+      // Rule of thirds
+      ctx.strokeStyle = 'rgba(255,255,255,0.5)';
+      ctx.lineWidth = 1;
+      ctx.setLineDash([5, 5]);
+      ctx.beginPath();
+      ctx.moveTo(x + w / 3, y); ctx.lineTo(x + w / 3, y + h);
+      ctx.moveTo(x + 2 * w / 3, y); ctx.lineTo(x + 2 * w / 3, y + h);
+      ctx.moveTo(x, y + h / 3); ctx.lineTo(x + w, y + h / 3);
+      ctx.moveTo(x, y + 2 * h / 3); ctx.lineTo(x + w, y + 2 * h / 3);
+      ctx.stroke();
+      ctx.setLineDash([]);
+
+      // Update input fields
+      document.getElementById('cropX').value = Math.round(x);
+      document.getElementById('cropY').value = Math.round(y);
+      document.getElementById('cropW').value = Math.round(w);
+      document.getElementById('cropH').value = Math.round(h);
+    }
+  },
+
+  _initCropSelection() {
+    const canvas = document.getElementById('cropRotateCanvas');
+    if (!canvas) return;
+    let dragging = false, startX, startY;
+
+    canvas.onmousedown = (e) => {
+      const rect = canvas.getBoundingClientRect();
+      const scaleX = canvas.width / rect.width;
+      const scaleY = canvas.height / rect.height;
+      startX = (e.clientX - rect.left) * scaleX;
+      startY = (e.clientY - rect.top) * scaleY;
+      dragging = true;
+    };
+    canvas.onmousemove = (e) => {
+      if (!dragging) return;
+      const rect = canvas.getBoundingClientRect();
+      const scaleX = canvas.width / rect.width;
+      const scaleY = canvas.height / rect.height;
+      const curX = (e.clientX - rect.left) * scaleX;
+      const curY = (e.clientY - rect.top) * scaleY;
+      this._cropRotateState.cropRect = {
+        x: Math.min(startX, curX), y: Math.min(startY, curY),
+        w: Math.abs(curX - startX), h: Math.abs(curY - startY)
+      };
+      this._drawCropRotateCanvas();
+    };
+    canvas.onmouseup = () => { dragging = false; };
+    canvas.onmouseleave = () => { dragging = false; };
+  },
+
+  _updateCropFromInputs() {
+    this._cropRotateState.cropRect = {
+      x: parseInt(document.getElementById('cropX').value) || 0,
+      y: parseInt(document.getElementById('cropY').value) || 0,
+      w: parseInt(document.getElementById('cropW').value) || 0,
+      h: parseInt(document.getElementById('cropH').value) || 0
+    };
+    this._drawCropRotateCanvas();
+  },
+
+  _rotatePreview(deg) {
+    this._cropRotateState.rotation = (this._cropRotateState.rotation + deg + 360) % 360;
+    this._cropRotateState.cropRect = null;
+    this._drawCropRotateCanvas();
+  },
+
+  _flipPreview(dir) {
+    if (dir === 'h') this._cropRotateState.flipH = !this._cropRotateState.flipH;
+    else this._cropRotateState.flipV = !this._cropRotateState.flipV;
+    this._drawCropRotateCanvas();
+  },
+
+  _resetCropRotate() {
+    this._cropRotateState = { rotation: 0, flipH: false, flipV: false, cropRect: null, originalUrl: this._cropRotateState.originalUrl };
+    this._drawCropRotateCanvas();
+  },
+
+  async _saveCropRotate(photoId) {
+    const canvas = document.getElementById('cropRotateCanvas');
+    if (!canvas) return;
+    const state = this._cropRotateState;
+
+    try {
+      utils.showLoading();
+
+      // If crop is active, create a cropped canvas
+      let outputCanvas = canvas;
+      if (state.cropRect && state.cropRect.w > 10 && state.cropRect.h > 10) {
+        outputCanvas = document.createElement('canvas');
+        const crop = state.cropRect;
+        outputCanvas.width = crop.w;
+        outputCanvas.height = crop.h;
+        outputCanvas.getContext('2d').drawImage(canvas, crop.x, crop.y, crop.w, crop.h, 0, 0, crop.w, crop.h);
+      }
+
+      // Convert canvas to blob
+      const blob = await new Promise(resolve => outputCanvas.toBlob(resolve, 'image/jpeg', 0.92));
+      if (!blob) throw new Error('Could not generate image');
+
+      // Upload to storage (new file, preserve original)
+      const timestamp = Date.now();
+      const randomSuffix = Math.random().toString(36).substring(7);
+      const fileName = `${timestamp}_${randomSuffix}_edited.jpg`;
+      const filePath = `${this.currentEventId}/${this.currentSectionId}/${fileName}`;
+
+      const { error: uploadError } = await STATE.client.storage
+        .from('media-gallery')
+        .upload(filePath, blob, { contentType: 'image/jpeg' });
+
+      if (uploadError) throw uploadError;
+
+      const { data: { publicUrl } } = STATE.client.storage
+        .from('media-gallery')
+        .getPublicUrl(filePath);
+
+      // Update database record with new URL
+      const { error: updateError } = await STATE.client
+        .from('media_gallery')
+        .update({ file_url: publicUrl, file_type: 'image/jpeg', file_size: blob.size })
+        .eq('id', photoId);
+
+      if (updateError) throw updateError;
+
+      bootstrap.Modal.getInstance(document.getElementById('cropRotateModal')).hide();
+      utils.showToast('Photo updated with crop/rotate changes!', 'success');
+
+      // Log the activity
+      this._logActivity('crop_rotate', photoId, 'Photo cropped/rotated');
+
+      await this.viewSectionPhotos(this.currentSectionId, this.currentSectionName);
+
+    } catch (err) {
+      console.error('Error saving crop/rotate:', err);
+      utils.showToast('Error saving changes: ' + err.message, 'error');
+    } finally {
+      utils.hideLoading();
+    }
+  },
+
+  /* ==================================================== */
+  /* FEATURE: Activity Log / Audit Trail                   */
+  /* ==================================================== */
+
+  /**
+   * Log an activity event
+   */
+  _logActivity(action, targetId = null, detail = '') {
+    try {
+      // Store in localStorage as simple audit trail
+      const log = JSON.parse(localStorage.getItem('mediaGalleryActivityLog') || '[]');
+      log.unshift({
+        timestamp: new Date().toISOString(),
+        action,
+        targetId,
+        detail,
+        eventId: this.currentEventId,
+        sectionId: this.currentSectionId,
+        user: STATE.currentUser?.email || 'unknown'
+      });
+      // Keep last 500 entries
+      if (log.length > 500) log.length = 500;
+      localStorage.setItem('mediaGalleryActivityLog', JSON.stringify(log));
+    } catch (e) { /* ignore storage errors */ }
+  },
+
+  /**
+   * View activity log
+   */
+  viewActivityLog() {
+    const log = JSON.parse(localStorage.getItem('mediaGalleryActivityLog') || '[]');
+    const eventLog = this.currentEventId ? log.filter(l => l.eventId === this.currentEventId) : log;
+
+    const actionLabels = {
+      upload: '<span class="badge bg-success">Upload</span>',
+      delete: '<span class="badge bg-danger">Delete</span>',
+      bulk_delete: '<span class="badge bg-danger">Bulk Delete</span>',
+      publish: '<span class="badge bg-primary">Publish</span>',
+      unpublish: '<span class="badge bg-secondary">Unpublish</span>',
+      bulk_publish: '<span class="badge bg-primary">Bulk Publish</span>',
+      bulk_unpublish: '<span class="badge bg-secondary">Bulk Unpublish</span>',
+      bulk_tag: '<span class="badge bg-info">Bulk Tag</span>',
+      tag: '<span class="badge bg-info">Tag</span>',
+      crop_rotate: '<span class="badge bg-warning text-dark">Crop/Rotate</span>',
+      reorder: '<span class="badge bg-dark">Reorder</span>',
+      auto_tag: '<span class="badge bg-warning text-dark">Auto-Tag</span>'
+    };
+
+    const html = `
+      <div class="modal fade" id="activityLogModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+          <div class="modal-content">
+            <div class="modal-header">
+              <h5 class="modal-title"><i class="bi bi-clock-history me-2"></i>Activity Log${this.currentEventId ? ' (This Event)' : ''}</h5>
+              <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" style="max-height: 70vh; overflow-y: auto;">
+              ${eventLog.length === 0 ? '<p class="text-muted text-center py-3">No activity recorded yet.</p>' : `
+                <table class="table table-sm table-hover">
+                  <thead>
+                    <tr><th>Time</th><th>Action</th><th>Details</th><th>User</th></tr>
+                  </thead>
+                  <tbody>
+                    ${eventLog.slice(0, 100).map(entry => `
+                      <tr>
+                        <td><small>${new Date(entry.timestamp).toLocaleString('en-GB', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}</small></td>
+                        <td>${actionLabels[entry.action] || `<span class="badge bg-light text-dark">${utils.escapeHtml(entry.action)}</span>`}</td>
+                        <td><small>${utils.escapeHtml(entry.detail)}</small></td>
+                        <td><small class="text-muted">${utils.escapeHtml(entry.user)}</small></td>
+                      </tr>
+                    `).join('')}
+                  </tbody>
+                </table>
+              `}
+            </div>
+            <div class="modal-footer">
+              <button class="btn btn-outline-danger btn-sm" onclick="if(confirm('Clear all activity logs?')){localStorage.removeItem('mediaGalleryActivityLog');bootstrap.Modal.getInstance(document.getElementById('activityLogModal')).hide();utils.showToast('Activity log cleared','success');}">
+                <i class="bi bi-trash me-1"></i>Clear Log
+              </button>
+              <button class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+          </div>
+        </div>
+      </div>`;
+
+    const old = document.getElementById('activityLogModal');
+    if (old) old.remove();
+    document.body.insertAdjacentHTML('beforeend', html);
+    new bootstrap.Modal(document.getElementById('activityLogModal')).show();
   },
 
   // ========================================
@@ -4701,65 +5599,13 @@ const mediaGalleryModule = {
   /* FEATURE: Drag-to-Reorder Videos                       */
   /* ==================================================== */
 
-  renderVideosGridWithReorder(videos) {
-    const container = document.getElementById('videosProductionContent');
-
-    container.innerHTML = `
-      <div class="d-flex justify-content-between align-items-center mb-3">
-        <span class="text-muted small"><i class="bi bi-grip-vertical me-1"></i>Drag videos to reorder</span>
-        <button class="btn btn-sm btn-success" onclick="mediaGalleryModule.saveVideoOrder()" id="saveVideoOrderBtn" style="display:none;">
-          <i class="bi bi-save me-1"></i>Save Order
-        </button>
-      </div>
-      <div class="row g-4" id="videosReorderGrid">
-        ${videos.map((video, index) => {
-          const isYouTube = video.youtube_id || (video.file_url && video.file_url.includes('youtube'));
-          const thumbnailUrl = isYouTube
-            ? `https://img.youtube.com/vi/${video.youtube_id || 'default'}/hqdefault.jpg`
-            : video.thumbnail_url || video.file_url;
-
-          const fkOrgName = video.organisations?.company_name;
-          const fkAwardName = video.awards?.award_name;
-
-          return `
-            <div class="col-md-6 col-lg-4" draggable="true" data-video-id="${video.id}" data-order="${index}"
-                 ondragstart="mediaGalleryModule.onVideoDragStart(event)"
-                 ondragover="mediaGalleryModule.onVideoDragOver(event)"
-                 ondrop="mediaGalleryModule.onVideoDrop(event)"
-                 ondragend="mediaGalleryModule.onVideoDragEnd(event)">
-              <div class="card h-100" style="cursor: grab;">
-                <div class="position-relative">
-                  <img src="${thumbnailUrl}" class="card-img-top" alt="${utils.escapeHtml(video.title || 'Video')}" style="height: 200px; object-fit: cover;">
-                  <span class="position-absolute top-0 start-0 m-2 badge bg-dark"><i class="bi bi-grip-vertical"></i> ${index + 1}</span>
-                  ${isYouTube ? '<span class="position-absolute top-0 end-0 m-2 badge bg-danger">YouTube</span>' : ''}
-                </div>
-                <div class="card-body p-2">
-                  <h6 class="card-title mb-1 small">${utils.escapeHtml(video.title || 'Untitled')}</h6>
-                  ${fkOrgName ? `<span class="badge bg-primary me-1 small">${utils.escapeHtml(fkOrgName)}</span>` : ''}
-                  ${fkAwardName ? `<span class="badge bg-success small">${utils.escapeHtml(fkAwardName)}</span>` : ''}
-                </div>
-                <div class="card-footer bg-transparent">
-                  <div class="btn-group btn-group-sm w-100">
-                    <button class="btn btn-outline-primary" onclick="mediaGalleryModule.viewVideo('${video.id}')" title="View"><i class="bi bi-eye"></i></button>
-                    <button class="btn btn-outline-secondary" onclick="mediaGalleryModule.editVideo('${video.id}')" title="Edit"><i class="bi bi-pencil"></i></button>
-                    <button class="btn btn-outline-danger" onclick="mediaGalleryModule.deleteVideo('${video.id}')" title="Delete"><i class="bi bi-trash"></i></button>
-                  </div>
-                </div>
-              </div>
-            </div>
-          `;
-        }).join('')}
-      </div>
-    `;
-  },
-
   _videoReorderMode: false,
 
   async toggleVideoReorderMode() {
     this._videoReorderMode = !this._videoReorderMode;
 
     if (this._videoReorderMode) {
-      // Re-fetch and render in reorder mode
+      // Re-fetch ordered by display_order and render in reorder mode
       const { data: videos } = await STATE.client
         .from('media_items')
         .select('*, organisations(company_name), awards(award_name)')
@@ -4768,7 +5614,8 @@ const mediaGalleryModule = {
         .order('display_order', { ascending: true });
 
       if (videos && videos.length > 0) {
-        this.renderVideosGridWithReorder(videos);
+        this._currentVideos = videos;
+        this.renderVideosGrid(videos);
         utils.showToast('Reorder mode enabled - drag videos to rearrange', 'info');
       } else {
         utils.showToast('No videos to reorder', 'warning');
@@ -4781,81 +5628,87 @@ const mediaGalleryModule = {
   },
 
   _draggedVideoEl: null,
+  _draggedVideoId: null,
 
-  onVideoDragStart(e) {
+  onVideoDragStart(e, videoId) {
     this._draggedVideoEl = e.currentTarget;
+    this._draggedVideoId = videoId;
     e.currentTarget.style.opacity = '0.4';
     e.dataTransfer.effectAllowed = 'move';
   },
 
-  onVideoDragOver(e) {
+  onVideoDragOver(e, videoId) {
     e.preventDefault();
     e.dataTransfer.dropEffect = 'move';
     const target = e.currentTarget;
     if (target !== this._draggedVideoEl) {
       target.style.border = '2px dashed #0d6efd';
+      target.style.borderRadius = '8px';
     }
   },
 
-  onVideoDrop(e) {
+  onVideoDrop(e, videoId) {
     e.preventDefault();
     const target = e.currentTarget;
     target.style.border = '';
 
-    if (target === this._draggedVideoEl) return;
+    if (!this._draggedVideoId || this._draggedVideoId === videoId || !this._currentVideos) return;
 
-    const grid = document.getElementById('videosReorderGrid');
-    const items = [...grid.children];
-    const fromIndex = items.indexOf(this._draggedVideoEl);
-    const toIndex = items.indexOf(target);
+    // Reorder the videos array
+    const fromIdx = this._currentVideos.findIndex(v => v.id === this._draggedVideoId);
+    const toIdx = this._currentVideos.findIndex(v => v.id === videoId);
+    if (fromIdx === -1 || toIdx === -1) return;
 
-    if (fromIndex < toIndex) {
-      grid.insertBefore(this._draggedVideoEl, target.nextSibling);
-    } else {
-      grid.insertBefore(this._draggedVideoEl, target);
-    }
+    const [moved] = this._currentVideos.splice(fromIdx, 1);
+    this._currentVideos.splice(toIdx, 0, moved);
 
-    // Update order numbers visually
-    [...grid.children].forEach((el, i) => {
-      const badge = el.querySelector('.badge.bg-dark');
-      if (badge) badge.innerHTML = `<i class="bi bi-grip-vertical"></i> ${i + 1}`;
-      el.dataset.order = i;
-    });
-
-    document.getElementById('saveVideoOrderBtn').style.display = 'inline-block';
+    // Re-render and auto-save
+    this.renderVideosGrid(this._currentVideos);
+    this.saveVideoOrder();
   },
 
   onVideoDragEnd(e) {
     e.currentTarget.style.opacity = '1';
-    document.querySelectorAll('#videosReorderGrid > div').forEach(el => {
+    document.querySelectorAll('#videosGrid > div').forEach(el => {
       el.style.border = '';
     });
+    this._draggedVideoEl = null;
+    this._draggedVideoId = null;
   },
 
   async saveVideoOrder() {
-    const grid = document.getElementById('videosReorderGrid');
-    if (!grid) return;
-
-    const items = [...grid.children];
-    utils.showLoading();
+    if (!this._currentVideos) return;
 
     try {
-      for (let i = 0; i < items.length; i++) {
-        const videoId = items[i].dataset.videoId;
+      for (let i = 0; i < this._currentVideos.length; i++) {
         await STATE.client
           .from('media_items')
           .update({ display_order: i })
-          .eq('id', videoId);
+          .eq('id', this._currentVideos[i].id);
       }
-
       utils.showToast('Video order saved!', 'success');
-      document.getElementById('saveVideoOrderBtn').style.display = 'none';
+      this._logActivity('reorder', null, 'Videos reordered');
     } catch (error) {
       console.error('Error saving video order:', error);
       utils.showToast('Failed to save order: ' + error.message, 'error');
-    } finally {
-      utils.hideLoading();
     }
+  },
+
+  /**
+   * Show YouTube hover preview - loads a small iframe on hover
+   */
+  _showVideoHoverPreview(container, youtubeId) {
+    if (!youtubeId || container.querySelector('.video-hover-preview')) return;
+    const preview = document.createElement('div');
+    preview.className = 'video-hover-preview';
+    preview.style.cssText = 'position:absolute;top:0;left:0;width:100%;height:100%;z-index:5;background:black;';
+    preview.innerHTML = `<iframe src="https://www.youtube.com/embed/${youtubeId}?autoplay=1&mute=1&controls=0&modestbranding=1&start=0" style="width:100%;height:100%;border:none;" allow="autoplay"></iframe>`;
+    container.appendChild(preview);
+  },
+
+  _hideVideoHoverPreview(container) {
+    const preview = container.querySelector('.video-hover-preview');
+    if (preview) preview.remove();
   },
 
   /* ==================================================== */

@@ -1040,7 +1040,12 @@ const mediaGalleryModule = {
   async saveVideo() {
     try {
       // Get form values
-      const sourceType = document.querySelector('input[name="videoSourceType"]:checked').value;
+      const sourceTypeEl = document.querySelector('input[name="videoSourceType"]:checked');
+      if (!sourceTypeEl) {
+        utils.showToast('Please select a video source type', 'warning');
+        return;
+      }
+      const sourceType = sourceTypeEl.value;
       const title = document.getElementById('videoTitle').value.trim();
       const description = document.getElementById('videoDescription').value.trim();
       const eventId = document.getElementById('videoEventId').value;

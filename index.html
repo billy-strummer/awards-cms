@@ -2554,11 +2554,21 @@
         <div class="container-fluid">
 
           <!-- Page Header -->
-          <div class="section-header">
-            <h1 class="section-title">
-              <i class="bi bi-images me-2"></i>Media Gallery
-            </h1>
-            <p class="section-subtitle">Manage event photos and videos</p>
+          <div class="section-header d-flex justify-content-between align-items-start">
+            <div>
+              <h1 class="section-title">
+                <i class="bi bi-images me-2"></i>Media Gallery
+              </h1>
+              <p class="section-subtitle">Manage event photos and videos</p>
+            </div>
+            <div class="d-flex gap-2 align-items-center">
+              <div class="input-group input-group-sm" style="width:280px;">
+                <span class="input-group-text"><i class="bi bi-building"></i></span>
+                <select class="form-select form-select-sm" id="mediaOrgFilter" onchange="mediaGalleryModule.viewOrgMedia(this.value)">
+                  <option value="">View all media for org...</option>
+                </select>
+              </div>
+            </div>
           </div>
 
           <!-- Media Gallery Content -->
@@ -7663,37 +7673,93 @@ Available placeholders:
 
   <!-- Tag Photo Modal (for Gallery Sections) -->
   <div class="modal fade" id="tagPhotoModal" tabindex="-1" aria-labelledby="tagPhotoModalLabel" aria-hidden="true">
-    <div class="modal-dialog">
+    <div class="modal-dialog modal-lg">
       <div class="modal-content">
         <div class="modal-header">
           <h5 class="modal-title" id="tagPhotoModalLabel">
-            <i class="bi bi-tag me-2"></i>Tag Photo
+            <i class="bi bi-tag me-2"></i>Tag & Edit Photo
           </h5>
           <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
         </div>
         <div class="modal-body">
           <form id="tagPhotoForm">
             <input type="hidden" id="tagPhotoId">
-            <div class="mb-3">
-              <label for="tagPhotoOrgSelect" class="form-label">Organisation</label>
-              <select class="form-select" id="tagPhotoOrgSelect">
-                <option value="">None</option>
-              </select>
-              <small class="text-muted">Which company is featured in this photo?</small>
+
+            <!-- Tags Row -->
+            <div class="row g-3 mb-3">
+              <div class="col-md-6">
+                <label for="tagPhotoOrgSelect" class="form-label"><i class="bi bi-building me-1"></i>Organisation</label>
+                <select class="form-select" id="tagPhotoOrgSelect">
+                  <option value="">None</option>
+                </select>
+                <small class="text-muted">Which company is featured in this photo?</small>
+              </div>
+              <div class="col-md-6">
+                <label for="tagPhotoAwardSelect" class="form-label"><i class="bi bi-trophy me-1"></i>Award</label>
+                <select class="form-select" id="tagPhotoAwardSelect">
+                  <option value="">None</option>
+                </select>
+                <small class="text-muted">Which award category is this related to?</small>
+              </div>
             </div>
+
+            <!-- Caption & Alt Text -->
+            <div class="row g-3 mb-3">
+              <div class="col-md-6">
+                <label for="tagPhotoCaption" class="form-label"><i class="bi bi-chat-left-text me-1"></i>Caption</label>
+                <textarea class="form-control form-control-sm" id="tagPhotoCaption" rows="2" placeholder="Photo caption for website display..."></textarea>
+              </div>
+              <div class="col-md-6">
+                <label for="tagPhotoAltText" class="form-label"><i class="bi bi-universal-access me-1"></i>Alt Text (Accessibility)</label>
+                <textarea class="form-control form-control-sm" id="tagPhotoAltText" rows="2" placeholder="Describe the image for screen readers..."></textarea>
+              </div>
+            </div>
+
+            <!-- Photographer -->
             <div class="mb-3">
-              <label for="tagPhotoAwardSelect" class="form-label">Award</label>
-              <select class="form-select" id="tagPhotoAwardSelect">
-                <option value="">None</option>
-              </select>
-              <small class="text-muted">Which award category is this related to?</small>
+              <label for="tagPhotoPhotographer" class="form-label"><i class="bi bi-camera me-1"></i>Photographer Credit</label>
+              <input type="text" class="form-control form-control-sm" id="tagPhotoPhotographer" placeholder="Photographer name...">
+            </div>
+
+            <!-- Where to Display -->
+            <div class="card bg-light mb-2">
+              <div class="card-body py-2">
+                <label class="form-label mb-2 fw-bold"><i class="bi bi-globe me-1"></i>Display On Website</label>
+                <div class="row g-2">
+                  <div class="col-md-4">
+                    <div class="form-check form-switch">
+                      <input class="form-check-input" type="checkbox" id="tagPhotoShowGallery" checked>
+                      <label class="form-check-label" for="tagPhotoShowGallery">
+                        <i class="bi bi-images me-1"></i>Public Gallery
+                      </label>
+                    </div>
+                  </div>
+                  <div class="col-md-4">
+                    <div class="form-check form-switch">
+                      <input class="form-check-input" type="checkbox" id="tagPhotoShowWinner" checked>
+                      <label class="form-check-label" for="tagPhotoShowWinner">
+                        <i class="bi bi-trophy me-1"></i>Winner Profile Page
+                      </label>
+                    </div>
+                  </div>
+                  <div class="col-md-4">
+                    <div class="form-check form-switch">
+                      <input class="form-check-input" type="checkbox" id="tagPhotoShowCompany" checked>
+                      <label class="form-check-label" for="tagPhotoShowCompany">
+                        <i class="bi bi-building me-1"></i>Company Profile Page
+                      </label>
+                    </div>
+                  </div>
+                </div>
+                <small class="text-muted mt-1 d-block">Controls where this photo appears on the public website</small>
+              </div>
             </div>
           </form>
         </div>
         <div class="modal-footer">
           <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
           <button type="button" class="btn btn-primary" onclick="mediaGalleryModule.savePhotoTags()">
-            <i class="bi bi-save me-2"></i>Save Tags
+            <i class="bi bi-save me-2"></i>Save
           </button>
         </div>
       </div>

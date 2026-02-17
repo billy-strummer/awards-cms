@@ -29,6 +29,9 @@ const mediaGalleryModule = {
       // Load statistics
       await this.loadMediaStatistics();
 
+      // Load org filter dropdown
+      await this._loadOrgFilterDropdown();
+
       // Load and display events list
       await this.showEventsListView();
 
@@ -721,7 +724,7 @@ const mediaGalleryModule = {
     try {
       const { data: videos, error } = await STATE.client
         .from('media_items')
-        .select('*')
+        .select('*, organisations(company_name), awards(award_name)')
         .eq('event_id', this.currentEventId)
         .eq('media_type', 'video')
         .order('created_at', { ascending: false });
@@ -764,21 +767,25 @@ const mediaGalleryModule = {
             ? `https://img.youtube.com/vi/${video.youtube_id || 'default'}/hqdefault.jpg`
             : video.thumbnail_url || video.file_url;
 
-          // Parse tags - handle both old format (array) and new format (object with companies/awards)
+          // Get org/award from FK joins (preferred) or fallback to JSON tags
+          const fkOrgName = video.organisations?.company_name;
+          const fkAwardName = video.awards?.award_name;
           let companyTags = [];
           let awardTags = [];
           if (video.tags) {
-            const parsed = JSON.parse(video.tags);
-            if (Array.isArray(parsed)) {
-              // Old format - just an array of tags
-              companyTags = parsed;
-            } else {
-              // New format - object with companies and awards
-              companyTags = parsed.companies || [];
-              awardTags = parsed.awards || [];
-            }
+            try {
+              const parsed = JSON.parse(video.tags);
+              if (Array.isArray(parsed)) {
+                companyTags = parsed;
+              } else {
+                companyTags = (parsed.companies || []).map(c => typeof c === 'string' ? c : c.name);
+                awardTags = (parsed.awards || []).map(a => typeof a === 'string' ? a : a.name);
+              }
+            } catch (e) { /* ignore parse errors */ }
           }
-
+          // If FK tags exist, show those first
+          if (fkOrgName && !companyTags.includes(fkOrgName)) companyTags.unshift(fkOrgName);
+          if (fkAwardName && !awardTags.includes(fkAwardName)) awardTags.unshift(fkAwardName);
           const hasAnyTags = companyTags.length > 0 || awardTags.length > 0;
 
           return `
@@ -876,7 +883,7 @@ const mediaGalleryModule = {
       const select = document.getElementById('videoTagInput');
       select.innerHTML = '<option value="">Select a company...</option>';
       (companies || []).forEach(company => {
-        select.innerHTML += `<option value="${company.company_name}">${utils.escapeHtml(company.company_name)}</option>`;
+        select.innerHTML += `<option value="${company.id}" data-name="${utils.escapeHtml(company.company_name)}">${utils.escapeHtml(company.company_name)}</option>`;
       });
     } catch (error) {
       console.error('Error loading companies for video tags:', error);
@@ -900,7 +907,7 @@ const mediaGalleryModule = {
       const select = document.getElementById('videoAwardTagInput');
       select.innerHTML = '<option value="">Select an award...</option>';
       (awards || []).forEach(award => {
-        select.innerHTML += `<option value="${award.award_name}">${utils.escapeHtml(award.award_name)}</option>`;
+        select.innerHTML += `<option value="${award.id}" data-name="${utils.escapeHtml(award.award_name)}">${utils.escapeHtml(award.award_name)}</option>`;
       });
     } catch (error) {
       console.error('Error loading awards for video tags:', error);
@@ -933,95 +940,70 @@ const mediaGalleryModule = {
    */
   addVideoTag() {
     const select = document.getElementById('videoTagInput');
-    const companyName = select.value.trim();
+    const id = select.value;
+    const name = select.options[select.selectedIndex]?.dataset?.name || select.options[select.selectedIndex]?.text;
 
-    if (!companyName) {
+    if (!id) {
       utils.showToast('Please select a company', 'warning');
       return;
     }
 
-    // Check if company already tagged
-    if (this.videoTags.includes(companyName)) {
+    if (this.videoTags.find(t => t.id === id)) {
       utils.showToast('Company already tagged', 'warning');
       return;
     }
 
-    // Add company name to tags array
-    this.videoTags.push(companyName);
-
-    // Render tags
+    this.videoTags.push({ id, name });
     this.renderVideoTags();
-
-    // Reset select to default
     select.value = '';
   },
 
-  /**
-   * Remove a tag from the video
-   */
-  removeVideoTag(tag) {
-    this.videoTags = this.videoTags.filter(t => t !== tag);
+  removeVideoTag(tagId) {
+    this.videoTags = this.videoTags.filter(t => t.id !== tagId);
     this.renderVideoTags();
   },
 
-  /**
-   * Render video tags in the container
-   */
   renderVideoTags() {
     const container = document.getElementById('videoTagsContainer');
     container.innerHTML = this.videoTags.map(tag => `
       <span class="badge bg-primary" style="font-size: 14px;">
-        ${tag}
-        <i class="bi bi-x-circle ms-1" style="cursor: pointer;" onclick="mediaGalleryModule.removeVideoTag('${tag}')"></i>
+        <i class="bi bi-building me-1"></i>${utils.escapeHtml(tag.name)}
+        <i class="bi bi-x-circle ms-1" style="cursor: pointer;" onclick="mediaGalleryModule.removeVideoTag('${tag.id}')"></i>
       </span>
     `).join('');
   },
 
-  /**
-   * Add an award tag to the video
-   */
   addVideoAwardTag() {
     const select = document.getElementById('videoAwardTagInput');
-    const awardName = select.value.trim();
+    const id = select.value;
+    const name = select.options[select.selectedIndex]?.dataset?.name || select.options[select.selectedIndex]?.text;
 
-    if (!awardName) {
+    if (!id) {
       utils.showToast('Please select an award', 'warning');
       return;
     }
 
-    // Check if award already tagged
-    if (this.videoAwardTags.includes(awardName)) {
+    if (this.videoAwardTags.find(t => t.id === id)) {
       utils.showToast('Award already tagged', 'warning');
       return;
     }
 
-    // Add award name to tags array
-    this.videoAwardTags.push(awardName);
-
-    // Render award tags
+    this.videoAwardTags.push({ id, name });
     this.renderVideoAwardTags();
-
-    // Reset select to default
     select.value = '';
   },
 
-  /**
-   * Remove an award tag from the video
-   */
-  removeVideoAwardTag(tag) {
-    this.videoAwardTags = this.videoAwardTags.filter(t => t !== tag);
+  removeVideoAwardTag(tagId) {
+    this.videoAwardTags = this.videoAwardTags.filter(t => t.id !== tagId);
     this.renderVideoAwardTags();
   },
 
-  /**
-   * Render video award tags in the container
-   */
   renderVideoAwardTags() {
     const container = document.getElementById('videoAwardTagsContainer');
     container.innerHTML = this.videoAwardTags.map(tag => `
       <span class="badge bg-success" style="font-size: 14px;">
-        ${tag}
-        <i class="bi bi-x-circle ms-1" style="cursor: pointer;" onclick="mediaGalleryModule.removeVideoAwardTag('${tag}')"></i>
+        <i class="bi bi-trophy me-1"></i>${utils.escapeHtml(tag.name)}
+        <i class="bi bi-x-circle ms-1" style="cursor: pointer;" onclick="mediaGalleryModule.removeVideoAwardTag('${tag.id}')"></i>
       </span>
     `).join('');
   },
@@ -1126,10 +1108,14 @@ const mediaGalleryModule = {
         }
       }
 
-      // Prepare tags object with both company and award tags
+      // Use first selected org/award as the primary FK tag (for winner profile linking)
+      const primaryOrgId = this.videoTags.length > 0 ? this.videoTags[0].id : null;
+      const primaryAwardId = this.videoAwardTags.length > 0 ? this.videoAwardTags[0].id : null;
+
+      // Also store full tags as JSON for multi-tag support (backward compatible)
       const tagsObject = {
-        companies: this.videoTags,
-        awards: this.videoAwardTags
+        companies: this.videoTags.map(t => ({ id: t.id, name: t.name })),
+        awards: this.videoAwardTags.map(t => ({ id: t.id, name: t.name }))
       };
 
       // Prepare data for database
@@ -1141,6 +1127,8 @@ const mediaGalleryModule = {
         file_url: fileUrl,
         thumbnail_url: thumbnailUrl,
         youtube_id: youtubeId,
+        organisation_id: primaryOrgId,
+        award_id: primaryAwardId,
         tags: (this.videoTags.length > 0 || this.videoAwardTags.length > 0) ? JSON.stringify(tagsObject) : null,
         status: 'published',
         created_at: new Date().toISOString()
@@ -1351,6 +1339,10 @@ const mediaGalleryModule = {
     document.getElementById('eventContentsView').style.display = 'none';
     document.getElementById('photosProductionView').style.display = 'none';
     document.getElementById('videosProductionView').style.display = 'none';
+    const orgView = document.getElementById('orgMediaView');
+    if (orgView) orgView.style.display = 'none';
+    const untaggedView = document.getElementById('untaggedPhotosView');
+    if (untaggedView) untaggedView.style.display = 'none';
   },
 
   /**
@@ -2254,6 +2246,12 @@ const mediaGalleryModule = {
             </div>
 
             ${photo.photographer ? `<div class="small text-muted mb-1"><i class="bi bi-camera me-1"></i>${utils.escapeHtml(photo.photographer)}</div>` : ''}
+            ${photo.caption ? `<div class="small text-muted mb-1 text-truncate" title="${utils.escapeHtml(photo.caption)}"><i class="bi bi-chat-left-text me-1"></i>${utils.escapeHtml(photo.caption)}</div>` : ''}
+            <div class="d-flex gap-1 mb-1">
+              ${photo.show_on_winner_page !== false ? '<span class="badge bg-light text-success border" style="font-size:0.65rem;" title="Shows on winner page"><i class="bi bi-trophy"></i></span>' : ''}
+              ${photo.show_on_company_page !== false ? '<span class="badge bg-light text-primary border" style="font-size:0.65rem;" title="Shows on company page"><i class="bi bi-building"></i></span>' : ''}
+              ${photo.show_in_gallery === false ? '<span class="badge bg-light text-danger border" style="font-size:0.65rem;" title="Hidden from gallery"><i class="bi bi-eye-slash"></i></span>' : ''}
+            </div>
 
             <div class="btn-group btn-group-sm w-100 mt-2">
               <button class="btn btn-outline-primary" onclick="mediaGalleryModule.tagPhoto('${photo.id}')" title="Tag">
@@ -3056,10 +3054,10 @@ const mediaGalleryModule = {
     this.currentMediaId = photoId;
 
     try {
-      // Load current tags
+      // Load current photo data including visibility flags and metadata
       const { data: photo, error: photoError } = await STATE.client
         .from('media_gallery')
-        .select('organisation_id, award_id')
+        .select('organisation_id, award_id, caption, alt_text, photographer, show_in_gallery, show_on_winner_page, show_on_company_page')
         .eq('id', photoId)
         .single();
 
@@ -3068,9 +3066,19 @@ const mediaGalleryModule = {
       // Populate dropdowns
       await this.populateTagDropdowns();
 
-      // Set current values
+      // Set current values - tags
       document.getElementById('tagPhotoOrgSelect').value = photo.organisation_id || '';
       document.getElementById('tagPhotoAwardSelect').value = photo.award_id || '';
+
+      // Set current values - metadata
+      document.getElementById('tagPhotoCaption').value = photo.caption || '';
+      document.getElementById('tagPhotoAltText').value = photo.alt_text || '';
+      document.getElementById('tagPhotoPhotographer').value = photo.photographer || '';
+
+      // Set current values - visibility (default to true if null)
+      document.getElementById('tagPhotoShowGallery').checked = photo.show_in_gallery !== false;
+      document.getElementById('tagPhotoShowWinner').checked = photo.show_on_winner_page !== false;
+      document.getElementById('tagPhotoShowCompany').checked = photo.show_on_company_page !== false;
 
       const modal = new bootstrap.Modal(document.getElementById('tagPhotoModal'));
       modal.show();
@@ -3117,6 +3125,12 @@ const mediaGalleryModule = {
   async savePhotoTags() {
     const orgId = document.getElementById('tagPhotoOrgSelect').value;
     const awardId = document.getElementById('tagPhotoAwardSelect').value;
+    const caption = document.getElementById('tagPhotoCaption').value.trim();
+    const altText = document.getElementById('tagPhotoAltText').value.trim();
+    const photographer = document.getElementById('tagPhotoPhotographer').value.trim();
+    const showInGallery = document.getElementById('tagPhotoShowGallery').checked;
+    const showOnWinnerPage = document.getElementById('tagPhotoShowWinner').checked;
+    const showOnCompanyPage = document.getElementById('tagPhotoShowCompany').checked;
 
     try {
       utils.showLoading();
@@ -3125,13 +3139,19 @@ const mediaGalleryModule = {
         .from('media_gallery')
         .update({
           organisation_id: orgId || null,
-          award_id: awardId || null
+          award_id: awardId || null,
+          caption: caption || null,
+          alt_text: altText || null,
+          photographer: photographer || null,
+          show_in_gallery: showInGallery,
+          show_on_winner_page: showOnWinnerPage,
+          show_on_company_page: showOnCompanyPage
         })
         .eq('id', this.currentMediaId);
 
       if (error) throw error;
 
-      utils.showToast('Tags saved successfully!', 'success');
+      utils.showToast('Photo saved successfully!', 'success');
 
       // Close modal and reload
       bootstrap.Modal.getInstance(document.getElementById('tagPhotoModal')).hide();
@@ -3145,8 +3165,8 @@ const mediaGalleryModule = {
       await this.viewSectionPhotos(this.currentSectionId, section.gallery_name);
 
     } catch (error) {
-      console.error('Error saving tags:', error);
-      utils.showToast('Error saving tags: ' + error.message, 'error');
+      console.error('Error saving photo:', error);
+      utils.showToast('Error saving: ' + error.message, 'error');
     } finally {
       utils.hideLoading();
     }
@@ -3302,6 +3322,169 @@ const mediaGalleryModule = {
     bootstrap.Modal.getInstance(document.getElementById('viewPhotoFullModal')).hide();
     // Delete photo
     await this.deletePhoto(this.currentMediaId);
+  },
+
+  // ========================================
+  // VIEW ALL MEDIA FOR AN ORGANISATION
+  // ========================================
+
+  async _loadOrgFilterDropdown() {
+    const select = document.getElementById('mediaOrgFilter');
+    if (!select) return;
+    try {
+      const { data: orgs } = await STATE.client
+        .from('organisations')
+        .select('id, company_name')
+        .order('company_name');
+      select.innerHTML = '<option value="">View all media for org...</option>';
+      (orgs || []).forEach(org => {
+        select.innerHTML += `<option value="${org.id}">${utils.escapeHtml(org.company_name)}</option>`;
+      });
+    } catch (e) { console.error('Error loading org filter:', e); }
+  },
+
+  async viewOrgMedia(orgId) {
+    if (!orgId) {
+      this.showEventsListView();
+      return;
+    }
+
+    try {
+      utils.showLoading();
+      this.currentView = 'org-media';
+      this.hideAllViews();
+
+      // Load org details
+      const { data: org } = await STATE.client
+        .from('organisations')
+        .select('id, company_name, logo_url')
+        .eq('id', orgId)
+        .single();
+
+      // Load photos tagged to this org (from gallery sections)
+      const { data: photos } = await STATE.client
+        .from('media_gallery')
+        .select('*, event_galleries(gallery_name, event_id), awards!media_gallery_award_id_fkey(award_name)')
+        .eq('organisation_id', orgId)
+        .order('uploaded_at', { ascending: false });
+
+      // Load videos tagged to this org
+      const { data: videos } = await STATE.client
+        .from('media_items')
+        .select('*, awards(award_name), events(event_name)')
+        .eq('organisation_id', orgId)
+        .eq('media_type', 'video')
+        .order('created_at', { ascending: false });
+
+      const content = document.getElementById('mediaGalleryContent');
+      let orgView = document.getElementById('orgMediaView');
+      if (!orgView) {
+        orgView = document.createElement('div');
+        orgView.id = 'orgMediaView';
+        content.appendChild(orgView);
+      }
+
+      orgView.style.display = 'block';
+
+      const allPhotos = photos || [];
+      const allVideos = videos || [];
+      const publishedPhotos = allPhotos.filter(p => p.published !== false);
+      const winnerPagePhotos = allPhotos.filter(p => p.show_on_winner_page !== false);
+      const companyPagePhotos = allPhotos.filter(p => p.show_on_company_page !== false);
+
+      orgView.innerHTML = `
+        <div class="mb-4">
+          <button class="btn btn-outline-secondary btn-sm" onclick="document.getElementById('mediaOrgFilter').value=''; mediaGalleryModule.showEventsListView()">
+            <i class="bi bi-arrow-left me-2"></i>Back to Events
+          </button>
+          <h3 class="mt-3">
+            ${org?.logo_url ? `<img src="${org.logo_url}" style="height:32px;width:32px;object-fit:contain;border-radius:4px;" class="me-2">` : '<i class="bi bi-building me-2"></i>'}
+            All Media: ${utils.escapeHtml(org?.company_name || 'Organisation')}
+          </h3>
+        </div>
+
+        <!-- Stats -->
+        <div class="row g-3 mb-4">
+          <div class="col"><div class="card text-center bg-light"><div class="card-body py-2">
+            <h4 class="mb-0">${allPhotos.length}</h4><small class="text-muted">Photos</small>
+          </div></div></div>
+          <div class="col"><div class="card text-center bg-light"><div class="card-body py-2">
+            <h4 class="mb-0">${allVideos.length}</h4><small class="text-muted">Videos</small>
+          </div></div></div>
+          <div class="col"><div class="card text-center bg-light"><div class="card-body py-2">
+            <h4 class="mb-0 text-success">${publishedPhotos.length}</h4><small class="text-muted">Published</small>
+          </div></div></div>
+          <div class="col"><div class="card text-center bg-light"><div class="card-body py-2">
+            <h4 class="mb-0 text-primary">${winnerPagePhotos.length}</h4><small class="text-muted">Winner Page</small>
+          </div></div></div>
+          <div class="col"><div class="card text-center bg-light"><div class="card-body py-2">
+            <h4 class="mb-0 text-info">${companyPagePhotos.length}</h4><small class="text-muted">Company Page</small>
+          </div></div></div>
+        </div>
+
+        <!-- Photos Grid -->
+        ${allPhotos.length > 0 ? `
+        <h5 class="mb-3"><i class="bi bi-camera me-2"></i>Photos (${allPhotos.length})</h5>
+        <div class="row g-3 mb-4">
+          ${allPhotos.map(p => {
+            const isYT = p.file_type === 'video/youtube';
+            const thumb = isYT ? `https://img.youtube.com/vi/${p.file_url}/mqdefault.jpg` : p.file_url;
+            const awardName = p.awards?.award_name || '';
+            return `
+            <div class="col-md-2 col-sm-3">
+              <div class="card h-100 ${!p.published ? 'border-secondary opacity-75' : ''}">
+                <img src="${thumb}" class="card-img-top" style="height:120px;object-fit:cover;cursor:pointer;"
+                  onclick="mediaGalleryModule.viewPhotoFull('${p.id}', '${p.file_url}', '${utils.escapeHtml(p.title || '')}', '${isYT ? 'youtube' : 'image'}')">
+                <div class="card-body p-1">
+                  <small class="d-block text-truncate fw-semibold">${utils.escapeHtml(p.title || 'Untitled')}</small>
+                  ${awardName ? `<small class="badge bg-info">${utils.escapeHtml(awardName)}</small>` : ''}
+                  <div class="d-flex gap-1 mt-1">
+                    ${p.show_on_winner_page !== false ? '<span class="badge bg-light text-success border" style="font-size:0.6rem;"><i class="bi bi-trophy"></i></span>' : ''}
+                    ${p.show_on_company_page !== false ? '<span class="badge bg-light text-primary border" style="font-size:0.6rem;"><i class="bi bi-building"></i></span>' : ''}
+                    ${p.featured ? '<span class="badge bg-warning" style="font-size:0.6rem;"><i class="bi bi-star-fill"></i></span>' : ''}
+                  </div>
+                </div>
+              </div>
+            </div>`;
+          }).join('')}
+        </div>` : ''}
+
+        <!-- Videos Grid -->
+        ${allVideos.length > 0 ? `
+        <h5 class="mb-3"><i class="bi bi-play-btn me-2"></i>Videos (${allVideos.length})</h5>
+        <div class="row g-3">
+          ${allVideos.map(v => {
+            const isYT = v.youtube_id || (v.file_url && v.file_url.includes('youtube'));
+            const thumb = isYT ? `https://img.youtube.com/vi/${v.youtube_id}/hqdefault.jpg` : v.thumbnail_url || '';
+            return `
+            <div class="col-md-3">
+              <div class="card h-100">
+                <div class="position-relative">
+                  <img src="${thumb}" class="card-img-top" style="height:160px;object-fit:cover;">
+                  <div class="position-absolute top-50 start-50 translate-middle"><i class="bi bi-play-circle-fill text-white" style="font-size:2.5rem;opacity:0.8;"></i></div>
+                </div>
+                <div class="card-body p-2">
+                  <small class="fw-semibold d-block">${utils.escapeHtml(v.title || 'Untitled')}</small>
+                  ${v.awards?.award_name ? `<small class="badge bg-info">${utils.escapeHtml(v.awards.award_name)}</small>` : ''}
+                  ${v.events?.event_name ? `<small class="text-muted d-block">${utils.escapeHtml(v.events.event_name)}</small>` : ''}
+                </div>
+              </div>
+            </div>`;
+          }).join('')}
+        </div>` : ''}
+
+        ${allPhotos.length === 0 && allVideos.length === 0 ? `
+        <div class="text-center py-5">
+          <i class="bi bi-images display-4 d-block mb-2 opacity-25"></i>
+          <p class="text-muted">No media tagged to this organisation yet. Tag photos and videos with this organisation to see them here.</p>
+        </div>` : ''}`;
+
+    } catch (error) {
+      console.error('Error loading org media:', error);
+      utils.showToast('Error loading media: ' + error.message, 'error');
+    } finally {
+      utils.hideLoading();
+    }
   },
 
   // ========================================

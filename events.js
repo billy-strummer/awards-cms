@@ -617,30 +617,35 @@ const eventsModule = {
     const event = STATE.allEvents.find(e => e.id === eventId);
     if (!event) return;
 
-    // Set event info
     document.getElementById('attendeesEventId').value = eventId;
     document.getElementById('attendeesEventName').textContent = event.event_name || 'Unnamed Event';
     document.getElementById('attendeesEventDate').textContent = event.event_date ? new Date(event.event_date).toLocaleDateString() : 'No date set';
     document.getElementById('attendeesEventVenue').textContent = event.venue || 'No venue set';
 
-    // Hide add form
     document.getElementById('addAttendeeForm').style.display = 'none';
 
-    // Load and render attendees
+    // Reset to attendees tab
+    const firstTab = document.querySelector('#attendeesModal .nav-link.active');
+    if (firstTab && !firstTab.getAttribute('href')?.includes('attendeesTab')) {
+      const attendeesTabBtn = document.querySelector('#attendeesModal a[href="#attendeesTab"]');
+      if (attendeesTabBtn) new bootstrap.Tab(attendeesTabBtn).show();
+    }
+
     this.renderAttendees(eventId);
+    this.renderCheckInTab(eventId);
+    this.renderTicketsTab(eventId);
 
     const modal = new bootstrap.Modal(document.getElementById('attendeesModal'));
     modal.show();
   },
 
   /**
-   * Render attendees table
+   * Render attendees table with all enhanced fields
    */
   renderAttendees(eventId) {
     const attendees = this.getAttendees(eventId);
     const tbody = document.getElementById('attendeesTableBody');
 
-    // Update stats
     const attending = attendees.filter(a => a.status === 'attending').length;
     const notAttending = attendees.filter(a => a.status === 'not_attending').length;
     const maybe = attendees.filter(a => a.status === 'maybe').length;
@@ -650,110 +655,196 @@ const eventsModule = {
     document.getElementById('maybeCount').textContent = maybe;
     document.getElementById('totalAttendeesCount').textContent = attendees.length;
 
-    // Update venue capacity tracker
+    // Venue capacity tracker
     const event = STATE.allEvents.find(e => e.id === eventId);
     const capacityTracker = document.getElementById('venueCapacityTracker');
     if (capacityTracker && event && event.capacity) {
       const capacity = event.capacity;
-      const pct = Math.round(attending / capacity * 100);
-      const remaining = capacity - attending;
+      const totalHeads = attendees.filter(a => a.status === 'attending').reduce((s, a) => s + 1 + (a.plusOnes || 0), 0);
+      const pct = Math.round(totalHeads / capacity * 100);
+      const remaining = capacity - totalHeads;
       const barColor = pct >= 95 ? 'bg-danger' : pct >= 80 ? 'bg-warning' : pct >= 50 ? 'bg-info' : 'bg-success';
       const badgeColor = pct >= 95 ? 'bg-danger' : pct >= 80 ? 'bg-warning text-dark' : 'bg-success';
 
-      document.getElementById('capacityAttendingNum').textContent = attending;
+      document.getElementById('capacityAttendingNum').textContent = totalHeads;
       document.getElementById('capacityTotalNum').textContent = capacity;
-
       const pctBadge = document.getElementById('capacityPctBadge');
       pctBadge.textContent = pct + '% full';
       pctBadge.className = 'badge ms-2 ' + badgeColor;
-
       const bar = document.getElementById('capacityProgressBar');
       bar.style.width = Math.min(pct, 100) + '%';
       bar.className = 'progress-bar ' + barColor;
-
       document.getElementById('capacityRemainingText').textContent = remaining > 0
-        ? `${remaining} seat${remaining !== 1 ? 's' : ''} remaining`
+        ? `${remaining} seat${remaining !== 1 ? 's' : ''} remaining (incl. plus-ones)`
         : 'Venue is at capacity!';
-
       const warningEl = document.getElementById('capacityWarningText');
       if (pct >= 100) {
         warningEl.innerHTML = '<i class="bi bi-exclamation-triangle-fill text-danger me-1"></i><span class="text-danger fw-bold">Over capacity!</span>';
       } else if (pct >= 90) {
         warningEl.innerHTML = '<i class="bi bi-exclamation-triangle text-warning me-1"></i><span class="text-warning">Almost full</span>';
-      } else {
-        warningEl.textContent = '';
-      }
-
+      } else { warningEl.textContent = ''; }
       capacityTracker.style.display = 'block';
     } else if (capacityTracker) {
       capacityTracker.style.display = 'none';
     }
 
+    // Dietary summary
+    this.renderDietarySummary(attendees);
+
     if (attendees.length === 0) {
-      tbody.innerHTML = `
-        <tr>
-          <td colspan="5" class="text-center py-4 text-muted">
-            <i class="bi bi-people display-4 d-block mb-2 opacity-25"></i>
-            No attendees yet. Click "Add Attendee" to start tracking RSVPs.
-          </td>
-        </tr>
-      `;
+      tbody.innerHTML = `<tr><td colspan="8" class="text-center py-4 text-muted">
+        <i class="bi bi-people display-4 d-block mb-2 opacity-25"></i>
+        No attendees yet. Click "Add Attendee" to start tracking RSVPs.</td></tr>`;
       return;
     }
 
-    tbody.innerHTML = attendees.map(attendee => {
-      const statusBadges = {
-        'attending': '<span class="badge bg-success">Attending</span>',
-        'not_attending': '<span class="badge bg-danger">Not Attending</span>',
-        'maybe': '<span class="badge bg-warning text-dark">Maybe</span>'
-      };
+    // Apply filters
+    const filtered = this._filterAttendees(attendees);
 
-      return `
-        <tr>
-          <td class="fw-semibold">${utils.escapeHtml(attendee.name)}</td>
-          <td>${attendee.email ? utils.escapeHtml(attendee.email) : '-'}</td>
-          <td>${statusBadges[attendee.status] || attendee.status}</td>
-          <td><small class="text-muted">${utils.formatRelativeTime(attendee.addedAt)}</small></td>
-          <td class="text-center">
-            <div class="btn-group btn-group-sm">
-              <button class="btn btn-outline-primary btn-sm"
-                onclick="eventsModule.updateAttendeeStatus('${attendee.id}', '${attendee.status === 'attending' ? 'not_attending' : 'attending'}')"
-                title="Toggle Status">
-                <i class="bi bi-arrow-repeat"></i>
-              </button>
-              <button class="btn btn-outline-danger btn-sm"
-                onclick="eventsModule.deleteAttendee('${attendee.id}')"
-                title="Remove">
-                <i class="bi bi-trash"></i>
-              </button>
-            </div>
-          </td>
-        </tr>
-      `;
-    }).join('');
+    const typeBadges = {
+      'vip': '<span class="badge bg-warning text-dark">VIP</span>',
+      'speaker': '<span class="badge bg-primary">Speaker</span>',
+      'sponsor': '<span class="badge bg-info">Sponsor</span>',
+      'media': '<span class="badge bg-purple" style="background:#6f42c1!important;">Media</span>',
+      'staff': '<span class="badge bg-secondary">Staff</span>',
+      'guest': '<span class="badge bg-light text-dark">Guest</span>'
+    };
+    const statusBadges = {
+      'attending': '<span class="badge bg-success">Attending</span>',
+      'not_attending': '<span class="badge bg-danger">Not Attending</span>',
+      'maybe': '<span class="badge bg-warning text-dark">Maybe</span>'
+    };
+
+    tbody.innerHTML = filtered.map(a => `
+      <tr>
+        <td class="fw-semibold">
+          ${utils.escapeHtml(a.name)}
+          ${a.checkedIn ? '<i class="bi bi-check-circle-fill text-success ms-1" title="Checked in"></i>' : ''}
+        </td>
+        <td><small>${a.email ? utils.escapeHtml(a.email) : '-'}</small></td>
+        <td>${typeBadges[a.guestType || 'guest'] || typeBadges['guest']}</td>
+        <td>${statusBadges[a.status] || a.status}</td>
+        <td class="text-center">${a.plusOnes ? '+' + a.plusOnes : '-'}</td>
+        <td><small class="text-muted">${a.dietary ? utils.escapeHtml(a.dietary) : '-'}</small></td>
+        <td><small class="text-muted">${a.notes ? utils.escapeHtml(a.notes) : '-'}</small></td>
+        <td class="text-center">
+          <div class="btn-group btn-group-sm">
+            <button class="btn btn-outline-primary btn-sm"
+              onclick="eventsModule.updateAttendeeStatus('${a.id}', '${a.status === 'attending' ? 'not_attending' : 'attending'}')"
+              title="Toggle RSVP"><i class="bi bi-arrow-repeat"></i></button>
+            <button class="btn btn-outline-danger btn-sm"
+              onclick="eventsModule.deleteAttendee('${a.id}')" title="Remove"><i class="bi bi-trash"></i></button>
+          </div>
+        </td>
+      </tr>
+    `).join('');
   },
 
-  /**
-   * Open add attendee form
-   */
+  // ---- DIETARY SUMMARY ----
+
+  renderDietarySummary(attendees) {
+    const card = document.getElementById('dietarySummaryCard');
+    const content = document.getElementById('dietarySummaryContent');
+    if (!card || !content) return;
+
+    const attending = attendees.filter(a => a.status === 'attending');
+    const dietaryMap = {};
+    attending.forEach(a => {
+      if (a.dietary && a.dietary.trim()) {
+        // Split on commas to handle "Vegetarian, Nut Allergy"
+        a.dietary.split(',').forEach(d => {
+          const key = d.trim().toLowerCase();
+          if (key) {
+            const label = d.trim().charAt(0).toUpperCase() + d.trim().slice(1).toLowerCase();
+            if (!dietaryMap[key]) dietaryMap[key] = { label, count: 0 };
+            dietaryMap[key].count++;
+          }
+        });
+      }
+    });
+
+    const entries = Object.values(dietaryMap).sort((a, b) => b.count - a.count);
+    if (entries.length === 0) {
+      card.style.display = 'none';
+      return;
+    }
+
+    const noDietary = attending.length - attending.filter(a => a.dietary && a.dietary.trim()).length;
+    content.innerHTML = entries.map(e =>
+      `<span class="badge bg-outline-secondary border" style="font-size:0.8rem;">${utils.escapeHtml(e.label)} <strong class="ms-1">${e.count}</strong></span>`
+    ).join('') + (noDietary > 0 ? `<span class="badge bg-light text-muted border" style="font-size:0.8rem;">No requirements <strong class="ms-1">${noDietary}</strong></span>` : '');
+    card.style.display = 'block';
+  },
+
+  exportDietarySummary() {
+    const eventId = document.getElementById('attendeesEventId').value;
+    const attendees = this.getAttendees(eventId).filter(a => a.status === 'attending');
+    const event = STATE.allEvents.find(e => e.id === eventId);
+    const eventName = event ? event.event_name : 'Event';
+
+    const exportData = attendees
+      .filter(a => a.dietary && a.dietary.trim())
+      .map(a => ({
+        'Guest Name': a.name,
+        'Dietary Requirements': a.dietary,
+        'Guest Type': (a.guestType || 'guest').charAt(0).toUpperCase() + (a.guestType || 'guest').slice(1),
+        'Plus Ones': a.plusOnes || 0,
+        'Notes': a.notes || ''
+      }));
+
+    if (exportData.length === 0) {
+      utils.showToast('No dietary requirements to export', 'info');
+      return;
+    }
+
+    const filename = `${eventName.replace(/[^a-z0-9]/gi, '_')}_dietary_report_${new Date().toISOString().split('T')[0]}.csv`;
+    utils.exportToCSV(exportData, filename);
+    utils.showToast('Dietary report exported', 'success');
+  },
+
+  // ---- ATTENDEE FILTERING ----
+
+  _filterAttendees(attendees) {
+    const search = (document.getElementById('attendeeSearchFilter')?.value || '').toLowerCase();
+    const statusFilter = document.getElementById('attendeeStatusFilter')?.value || '';
+    const typeFilter = document.getElementById('attendeeTypeFilter')?.value || '';
+
+    return attendees.filter(a => {
+      if (search && !(a.name || '').toLowerCase().includes(search) && !(a.email || '').toLowerCase().includes(search)) return false;
+      if (statusFilter && a.status !== statusFilter) return false;
+      if (typeFilter && (a.guestType || 'guest') !== typeFilter) return false;
+      return true;
+    });
+  },
+
+  filterAttendeesList() {
+    const eventId = document.getElementById('attendeesEventId').value;
+    this.renderAttendees(eventId);
+  },
+
+  // ---- ADD / UPDATE / DELETE ATTENDEES ----
+
   openAddAttendeeForm() {
     const form = document.getElementById('addAttendeeForm');
     form.style.display = form.style.display === 'none' ? 'block' : 'none';
-
-    // Clear form
     document.getElementById('attendeeName').value = '';
     document.getElementById('attendeeEmail').value = '';
     document.getElementById('attendeeStatus').value = 'attending';
+    document.getElementById('attendeeType').value = 'guest';
+    document.getElementById('attendeePlusOnes').value = '0';
+    document.getElementById('attendeeDietary').value = '';
+    document.getElementById('attendeeNotes').value = '';
   },
 
-  /**
-   * Add new attendee
-   */
   addAttendee() {
     const eventId = document.getElementById('attendeesEventId').value;
     const name = document.getElementById('attendeeName').value.trim();
     const email = document.getElementById('attendeeEmail').value.trim();
     const status = document.getElementById('attendeeStatus').value;
+    const guestType = document.getElementById('attendeeType').value;
+    const plusOnes = parseInt(document.getElementById('attendeePlusOnes').value) || 0;
+    const dietary = document.getElementById('attendeeDietary').value.trim();
+    const notes = document.getElementById('attendeeNotes').value.trim();
 
     if (!name) {
       utils.showToast('Please enter attendee name', 'warning');
@@ -761,64 +852,216 @@ const eventsModule = {
     }
 
     const attendees = this.getAttendees(eventId);
-
-    const newAttendee = {
+    attendees.push({
       id: `attendee_${Date.now()}`,
-      name: name,
-      email: email,
-      status: status,
+      name, email, status, guestType, plusOnes, dietary, notes,
+      checkedIn: false,
+      checkInTime: null,
       addedAt: new Date().toISOString()
-    };
-
-    attendees.push(newAttendee);
+    });
     this.saveAttendees(eventId, attendees);
 
-    // Clear form and hide
     document.getElementById('attendeeName').value = '';
     document.getElementById('attendeeEmail').value = '';
+    document.getElementById('attendeeDietary').value = '';
+    document.getElementById('attendeeNotes').value = '';
+    document.getElementById('attendeePlusOnes').value = '0';
     document.getElementById('addAttendeeForm').style.display = 'none';
 
-    // Re-render
     this.renderAttendees(eventId);
-
-    utils.showToast('Attendee added successfully', 'success');
+    this.renderCheckInTab(eventId);
+    utils.showToast('Attendee added', 'success');
   },
 
-  /**
-   * Update attendee status
-   */
   updateAttendeeStatus(attendeeId, newStatus) {
     const eventId = document.getElementById('attendeesEventId').value;
     const attendees = this.getAttendees(eventId);
-
     const attendee = attendees.find(a => a.id === attendeeId);
     if (attendee) {
       attendee.status = newStatus;
       this.saveAttendees(eventId, attendees);
       this.renderAttendees(eventId);
+      this.renderCheckInTab(eventId);
       utils.showToast('Status updated', 'success');
     }
   },
 
-  /**
-   * Delete attendee
-   */
   deleteAttendee(attendeeId) {
     if (!confirm('Remove this attendee from the list?')) return;
-
     const eventId = document.getElementById('attendeesEventId').value;
     let attendees = this.getAttendees(eventId);
-
     attendees = attendees.filter(a => a.id !== attendeeId);
     this.saveAttendees(eventId, attendees);
     this.renderAttendees(eventId);
-
+    this.renderCheckInTab(eventId);
     utils.showToast('Attendee removed', 'success');
   },
 
-  /**
-   * Export attendees list to CSV
-   */
+  // ---- CHECK-IN SYSTEM ----
+
+  renderCheckInTab(eventId) {
+    const attendees = this.getAttendees(eventId);
+    const attending = attendees.filter(a => a.status === 'attending');
+    const checkedIn = attending.filter(a => a.checkedIn);
+    const pending = attending.filter(a => !a.checkedIn);
+    const pct = attending.length > 0 ? Math.round(checkedIn.length / attending.length * 100) : 0;
+
+    const checkedCountEl = document.getElementById('checkInCheckedCount');
+    const pendingCountEl = document.getElementById('checkInPendingCount');
+    const progressBar = document.getElementById('checkInProgressBar');
+    const badge = document.getElementById('checkedInBadge');
+
+    if (checkedCountEl) checkedCountEl.textContent = checkedIn.length;
+    if (pendingCountEl) pendingCountEl.textContent = pending.length;
+    if (progressBar) {
+      progressBar.style.width = pct + '%';
+      progressBar.textContent = pct + '%';
+    }
+    if (badge) {
+      badge.textContent = checkedIn.length;
+      badge.style.display = checkedIn.length > 0 ? 'inline' : 'none';
+    }
+
+    const tbody = document.getElementById('checkInTableBody');
+    if (!tbody) return;
+
+    const search = (document.getElementById('checkInSearch')?.value || '').toLowerCase();
+    const filtered = attending.filter(a => !search || (a.name || '').toLowerCase().includes(search));
+
+    // Sort: unchecked first, then checked
+    filtered.sort((a, b) => {
+      if (a.checkedIn && !b.checkedIn) return 1;
+      if (!a.checkedIn && b.checkedIn) return -1;
+      return (a.name || '').localeCompare(b.name || '');
+    });
+
+    const typeBadges = {
+      'vip': '<span class="badge bg-warning text-dark">VIP</span>',
+      'speaker': '<span class="badge bg-primary">Speaker</span>',
+      'sponsor': '<span class="badge bg-info">Sponsor</span>',
+      'media': '<span class="badge bg-purple" style="background:#6f42c1!important;">Media</span>',
+      'staff': '<span class="badge bg-secondary">Staff</span>',
+      'guest': '<span class="badge bg-light text-dark">Guest</span>'
+    };
+
+    tbody.innerHTML = filtered.map(a => `
+      <tr class="${a.checkedIn ? 'table-success' : ''}">
+        <td class="fw-semibold">
+          ${a.checkedIn ? '<i class="bi bi-check-circle-fill text-success me-1"></i>' : '<i class="bi bi-circle text-muted me-1"></i>'}
+          ${utils.escapeHtml(a.name)}
+          ${a.plusOnes ? `<small class="text-muted ms-1">(+${a.plusOnes})</small>` : ''}
+        </td>
+        <td>${typeBadges[a.guestType || 'guest'] || ''}</td>
+        <td>${a.dietary ? `<small class="text-muted"><i class="bi bi-egg-fried me-1"></i>${utils.escapeHtml(a.dietary)}</small>` : '-'}</td>
+        <td><small>${a.checkedIn && a.checkInTime ? new Date(a.checkInTime).toLocaleTimeString('en-GB', {hour:'2-digit', minute:'2-digit'}) : '-'}</small></td>
+        <td class="text-center">
+          ${a.checkedIn
+            ? `<button class="btn btn-sm btn-outline-secondary" onclick="eventsModule.toggleCheckIn('${a.id}')"><i class="bi bi-x-circle me-1"></i>Undo</button>`
+            : `<button class="btn btn-sm btn-success" onclick="eventsModule.toggleCheckIn('${a.id}')"><i class="bi bi-check-lg me-1"></i>Check In</button>`
+          }
+        </td>
+      </tr>
+    `).join('');
+  },
+
+  toggleCheckIn(attendeeId) {
+    const eventId = document.getElementById('attendeesEventId').value;
+    const attendees = this.getAttendees(eventId);
+    const attendee = attendees.find(a => a.id === attendeeId);
+    if (attendee) {
+      attendee.checkedIn = !attendee.checkedIn;
+      attendee.checkInTime = attendee.checkedIn ? new Date().toISOString() : null;
+      this.saveAttendees(eventId, attendees);
+      this.renderCheckInTab(eventId);
+      this.renderAttendees(eventId);
+      utils.showToast(attendee.checkedIn ? `${attendee.name} checked in` : `${attendee.name} check-in undone`, attendee.checkedIn ? 'success' : 'info');
+    }
+  },
+
+  checkInAll() {
+    const eventId = document.getElementById('attendeesEventId').value;
+    const attendees = this.getAttendees(eventId);
+    const unchecked = attendees.filter(a => a.status === 'attending' && !a.checkedIn);
+    if (unchecked.length === 0) {
+      utils.showToast('All attending guests are already checked in', 'info');
+      return;
+    }
+    if (!confirm(`Check in all ${unchecked.length} attending guest(s)?`)) return;
+    const now = new Date().toISOString();
+    unchecked.forEach(a => { a.checkedIn = true; a.checkInTime = now; });
+    this.saveAttendees(eventId, attendees);
+    this.renderCheckInTab(eventId);
+    this.renderAttendees(eventId);
+    utils.showToast(`${unchecked.length} guest(s) checked in`, 'success');
+  },
+
+  filterCheckInList() {
+    const eventId = document.getElementById('attendeesEventId').value;
+    this.renderCheckInTab(eventId);
+  },
+
+  // ---- TICKETS TAB ----
+
+  renderTicketsTab(eventId) {
+    const event = STATE.allEvents.find(e => e.id === eventId);
+    if (!event) return;
+
+    const attendees = this.getAttendees(eventId);
+    const ticketsSold = attendees.filter(a => a.status === 'attending').length;
+    const price = event.ticket_price || 0;
+    const capacity = event.capacity || 0;
+
+    const priceEl = document.getElementById('ticketPriceDisplay');
+    const soldEl = document.getElementById('ticketsSoldCount');
+    const revenueEl = document.getElementById('ticketRevenueDisplay');
+    const remainingEl = document.getElementById('ticketsRemainingCount');
+    const priceInput = document.getElementById('ticketPriceInput');
+    const urlInput = document.getElementById('ticketUrlInput');
+    const copyBtn = document.getElementById('ticketUrlCopyBtn');
+
+    if (priceEl) priceEl.textContent = price > 0 ? `\u00A3${parseFloat(price).toFixed(2)}` : 'Free';
+    if (soldEl) soldEl.textContent = ticketsSold;
+    if (revenueEl) revenueEl.textContent = price > 0 ? `\u00A3${(ticketsSold * price).toFixed(2)}` : '-';
+    if (remainingEl) remainingEl.textContent = capacity > 0 ? Math.max(0, capacity - ticketsSold) : '-';
+    if (priceInput) priceInput.value = price || '';
+    if (urlInput) urlInput.value = event.ticket_url || '';
+    if (copyBtn) copyBtn.style.display = event.ticket_url ? 'block' : 'none';
+  },
+
+  async saveTicketSettings() {
+    const eventId = document.getElementById('attendeesEventId').value;
+    const price = parseFloat(document.getElementById('ticketPriceInput').value) || null;
+    const url = document.getElementById('ticketUrlInput').value.trim() || null;
+
+    try {
+      const { error } = await STATE.client
+        .from('events')
+        .update({ ticket_price: price, ticket_url: url })
+        .eq('id', eventId);
+      if (error) throw error;
+
+      // Update local state
+      const event = STATE.allEvents.find(e => e.id === eventId);
+      if (event) { event.ticket_price = price; event.ticket_url = url; }
+
+      this.renderTicketsTab(eventId);
+      utils.showToast('Ticket settings saved', 'success');
+    } catch (error) {
+      console.error('Error saving ticket settings:', error);
+      utils.showToast('Failed to save ticket settings', 'error');
+    }
+  },
+
+  copyTicketUrl() {
+    const url = document.getElementById('ticketUrlInput').value;
+    if (url) {
+      navigator.clipboard.writeText(url);
+      utils.showToast('Ticket URL copied to clipboard', 'success');
+    }
+  },
+
+  // ---- EXPORT ATTENDEES ----
+
   exportAttendees() {
     const eventId = document.getElementById('attendeesEventId').value;
     const attendees = this.getAttendees(eventId);
@@ -831,11 +1074,17 @@ const eventsModule = {
     const event = STATE.allEvents.find(e => e.id === eventId);
     const eventName = event ? event.event_name : 'Event';
 
-    const exportData = attendees.map(attendee => ({
-      'Name': attendee.name,
-      'Email': attendee.email || '',
-      'RSVP Status': attendee.status.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase()),
-      'Added On': utils.formatDate(attendee.addedAt)
+    const exportData = attendees.map(a => ({
+      'Name': a.name,
+      'Email': a.email || '',
+      'Type': (a.guestType || 'guest').charAt(0).toUpperCase() + (a.guestType || 'guest').slice(1),
+      'RSVP Status': (a.status || '').replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase()),
+      'Plus Ones': a.plusOnes || 0,
+      'Dietary': a.dietary || '',
+      'Notes': a.notes || '',
+      'Checked In': a.checkedIn ? 'Yes' : 'No',
+      'Check-In Time': a.checkInTime ? new Date(a.checkInTime).toLocaleString() : '',
+      'Added On': utils.formatDate(a.addedAt)
     }));
 
     const filename = `${eventName.replace(/[^a-z0-9]/gi, '_')}_attendees_${new Date().toISOString().split('T')[0]}.csv`;

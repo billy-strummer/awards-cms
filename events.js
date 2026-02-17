@@ -831,6 +831,7 @@ const eventsModule = {
     try {
       utils.showLoading();
       await this.loadRunningOrder();
+      await this.loadSectionConfig();
       this.createRunningOrderModal();
     } catch (error) {
       console.error('Error opening running order:', error);
@@ -930,6 +931,9 @@ const eventsModule = {
                   <button class="btn btn-sm btn-outline-dark" onclick="eventsModule.addSectionBreak()" ${this.isPublished ? 'disabled' : ''}>
                     <i class="bi bi-dash-lg me-1"></i>Add Break
                   </button>
+                  <button class="btn btn-sm btn-outline-secondary" onclick="eventsModule.openSectionManager()" title="Manage acts/sections">
+                    <i class="bi bi-palette me-1"></i>Sections
+                  </button>
                   <button class="btn btn-sm btn-outline-secondary" onclick="eventsModule.exportRunningOrder()">
                     <i class="bi bi-download me-1"></i>Export
                   </button>
@@ -950,6 +954,19 @@ const eventsModule = {
               </div>
 
               <!-- Column Headers -->
+              <!-- Tabs: Running Order / Checklist / Cue Sheet -->
+              <div class="px-3 pt-2">
+                <ul class="nav nav-tabs nav-tabs-sm" id="roViewTabs" role="tablist" style="font-size:0.8rem;">
+                  <li class="nav-item"><a class="nav-link active" data-ro-tab="main" onclick="eventsModule.switchROTab('main')" style="cursor:pointer;"><i class="bi bi-list-ol me-1"></i>Running Order</a></li>
+                  <li class="nav-item"><a class="nav-link" data-ro-tab="checklist" onclick="eventsModule.switchROTab('checklist')" style="cursor:pointer;"><i class="bi bi-check2-square me-1"></i>Checklist</a></li>
+                  <li class="nav-item"><a class="nav-link" data-ro-tab="cuesheet" onclick="eventsModule.switchROTab('cuesheet')" style="cursor:pointer;"><i class="bi bi-camera-reels me-1"></i>Cue Sheet</a></li>
+                  <li class="nav-item"><a class="nav-link" data-ro-tab="trophies" onclick="eventsModule.switchROTab('trophies')" style="cursor:pointer;"><i class="bi bi-trophy me-1"></i>Trophies</a></li>
+                  <li class="nav-item"><a class="nav-link" data-ro-tab="versions" onclick="eventsModule.switchROTab('versions')" style="cursor:pointer;"><i class="bi bi-clock-history me-1"></i>Versions</a></li>
+                </ul>
+              </div>
+
+              <!-- Main Running Order Tab -->
+              <div id="roTabMain">
               <div class="ro-header-row px-3 py-2 bg-light border-top border-bottom d-flex align-items-center gap-2" style="font-size:0.75rem; text-transform:uppercase; letter-spacing:0.5px; color:#6c757d; font-weight:600;">
                 <div style="width:32px;"></div>
                 <div style="width:50px; text-align:center;">#</div>
@@ -979,6 +996,35 @@ const eventsModule = {
                   </button>
                 </div>
               ` : ''}
+              </div><!-- /roTabMain -->
+
+              <!-- Checklist Tab -->
+              <div id="roTabChecklist" style="display:none;">
+                <div id="roChecklistContent" class="px-3 py-2" style="max-height:520px; overflow-y:auto;">
+                  <!-- Rendered by renderChecklistTab() -->
+                </div>
+              </div>
+
+              <!-- Cue Sheet Tab -->
+              <div id="roTabCuesheet" style="display:none;">
+                <div id="roCueSheetContent" class="px-3 py-2" style="max-height:520px; overflow-y:auto;">
+                  <!-- Rendered by renderCueSheetTab() -->
+                </div>
+              </div>
+
+              <!-- Trophies Tab -->
+              <div id="roTabTrophies" style="display:none;">
+                <div id="roTrophiesContent" class="px-3 py-2" style="max-height:520px; overflow-y:auto;">
+                  <!-- Rendered by renderTrophiesTab() -->
+                </div>
+              </div>
+
+              <!-- Versions Tab -->
+              <div id="roTabVersions" style="display:none;">
+                <div id="roVersionsContent" class="px-3 py-2" style="max-height:520px; overflow-y:auto;">
+                  <!-- Rendered by renderVersionsTab() -->
+                </div>
+              </div>
 
             </div>
             <div class="modal-footer d-flex justify-content-between">
@@ -1098,6 +1144,45 @@ const eventsModule = {
         .schedule-ahead { color: #198754; font-weight: 600; }
         .schedule-behind { color: #dc3545; font-weight: 600; }
         .schedule-on-time { color: #6c757d; }
+
+        /* Tab styles */
+        #roViewTabs .nav-link { padding: 4px 12px; font-size: 0.78rem; color: #666; }
+        #roViewTabs .nav-link.active { font-weight: 600; color: #333; }
+        #roViewTabs .nav-link:hover { color: #000; }
+
+        /* Checklist styles */
+        .ro-checklist-item { padding: 10px 12px; border-bottom: 1px solid #eee; display: flex; align-items: center; gap: 12px; }
+        .ro-checklist-item:hover { background: #f8f9fa; }
+        .ro-checklist-checks { display: flex; gap: 8px; }
+        .ro-checklist-checks label { font-size: 0.72rem; color: #666; cursor: pointer; display: flex; align-items: center; gap: 3px; }
+        .ro-checklist-checks input:checked + span { color: #198754; font-weight: 600; }
+        .ro-checklist-progress { height: 6px; border-radius: 3px; background: #e9ecef; overflow: hidden; }
+        .ro-checklist-progress-bar { height: 100%; border-radius: 3px; transition: width 0.3s; }
+
+        /* Cue sheet styles */
+        .ro-cue-item { padding: 10px 12px; border-bottom: 1px solid #eee; }
+        .ro-cue-item:hover { background: #f8f9fa; }
+        .ro-cue-notes-text { background: #1a1a2e; color: #4fc3f7; padding: 6px 10px; border-radius: 4px; font-family: monospace; font-size: 0.82rem; margin-top: 4px; }
+
+        /* Trophy tracking styles */
+        .ro-trophy-item { padding: 10px 12px; border-bottom: 1px solid #eee; display: flex; align-items: center; gap: 12px; }
+        .ro-trophy-item:hover { background: #f8f9fa; }
+        .trophy-status-badge { font-size: 0.7rem; padding: 3px 8px; border-radius: 10px; }
+
+        /* Section header styles */
+        .ro-section-header {
+          background: linear-gradient(90deg, var(--section-color, #6c757d) 0%, transparent 100%);
+          color: white;
+          padding: 6px 16px;
+          margin: 8px 0 4px 0;
+          border-radius: 6px;
+          font-weight: 700;
+          font-size: 0.85rem;
+          letter-spacing: 0.5px;
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+        }
       </style>
     `;
 
@@ -1167,10 +1252,23 @@ const eventsModule = {
     const search = this._roSearchTerm.toLowerCase();
     const renderedGroups = new Set();
     let presentationNumber = 0;
+    let currentSection = null;
 
     let html = '';
 
     this.runningOrderItems.forEach((item, index) => {
+      // Section header rendering
+      const itemSection = item.section || 1;
+      if (this._roSectionConfig.length > 0 && itemSection !== currentSection) {
+        currentSection = itemSection;
+        const sectionConf = this.getSectionConfig(itemSection);
+        if (sectionConf) {
+          html += `<div class="ro-section-header" style="--section-color: ${sectionConf.colour};">
+            <span><i class="bi bi-bookmark-fill me-2"></i>${utils.escapeHtml(sectionConf.name)}</span>
+            <span style="font-size:0.7rem; font-weight:400;">Section ${itemSection}</span>
+          </div>`;
+        }
+      }
       const recipientName = item.recipient_collecting || item.event_guests?.guest_name || item.display_name || 'TBC';
       const awardName = item.award_name || (item.awards ? item.awards.award_name : 'Award TBC');
       const winnerName = item.display_name || (item.organisations ? item.organisations.company_name : 'TBC');
@@ -1415,7 +1513,11 @@ const eventsModule = {
             <div class="duration" title="Cumulative: ${cumTime} min">${duration}m ${scheduleIndicator}</div>
           </div>
           <div class="ro-details">
-            <div class="ro-award-name" title="${utils.escapeHtml(awardName)}">${utils.escapeHtml(awardName)}</div>
+            <div class="ro-award-name" title="${utils.escapeHtml(awardName)}">
+              ${utils.escapeHtml(awardName)}
+              ${item.table_number ? `<span class="badge bg-secondary ms-1" style="font-size:0.55rem; vertical-align:middle;" title="Table ${item.table_number}"><i class="bi bi-geo-alt"></i> T${item.table_number}</span>` : ''}
+              ${item.cue_notes ? `<span class="badge bg-info ms-1" style="font-size:0.55rem; vertical-align:middle;" title="${utils.escapeHtml(item.cue_notes)}"><i class="bi bi-lightning"></i> CUE</span>` : ''}
+            </div>
             <div class="ro-winner-name" title="${utils.escapeHtml(winnerName)}">${utils.escapeHtml(winnerName)}</div>
             ${notes ? `<div class="ro-notes-preview" title="${utils.escapeHtml(notes)}"><i class="bi bi-sticky me-1"></i>${utils.escapeHtml(notes)}</div>` : ''}
           </div>
@@ -1929,7 +2031,7 @@ const eventsModule = {
     const newEntry = {
       event_id: this.currentEventIdRunningOrder,
       award_number: `${section}-${String(nextOrder).padStart(2, '0')}`,
-      display_order: item.display_order + 1, // Insert after current item
+      display_order: item.display_order + 1,
       award_name: item.award_name ? item.award_name + ' (copy)' : null,
       display_name: item.display_name || null,
       recipient_collecting: item.recipient_collecting || null,
@@ -1937,6 +2039,8 @@ const eventsModule = {
       duration_minutes: item.duration_minutes || 3,
       item_type: item.item_type || 'award',
       sponsor: item.sponsor || null,
+      cue_notes: item.cue_notes || null,
+      table_number: item.table_number || null,
       notes: item.notes || null,
       special_requirements: item.special_requirements || null,
       status: 'pending',
@@ -2169,11 +2273,17 @@ const eventsModule = {
                     ${current?.recipient_collecting ? `
                       <div style="font-size:1.1rem; color:#aaa;">
                         <i class="bi bi-person me-1"></i>Collecting: <strong style="color:#fff;">${utils.escapeHtml(current.recipient_collecting)}</strong>
+                        ${current.table_number ? `<span style="margin-left:16px; color:#aaa;"><i class="bi bi-geo-alt me-1"></i>Table ${current.table_number}</span>` : ''}
                       </div>
                     ` : ''}
                   ` : ''}
+                  ${current?.cue_notes ? `
+                    <div style="font-size:0.9rem; color:#4fc3f7; margin-top:10px; padding-top:10px; border-top:1px solid #0f3460; font-family:monospace;">
+                      <i class="bi bi-lightning-fill me-1" style="color:#ffc107;"></i>CUE: ${utils.escapeHtml(current.cue_notes)}
+                    </div>
+                  ` : ''}
                   ${current?.notes ? `
-                    <div style="font-size:0.9rem; color:#888; margin-top:10px; padding-top:10px; border-top:1px solid #0f3460;">
+                    <div style="font-size:0.9rem; color:#888; margin-top:6px; ${!current.cue_notes ? 'padding-top:10px; border-top:1px solid #0f3460;' : ''}">
                       <i class="bi bi-sticky me-1"></i>${utils.escapeHtml(current.notes)}
                     </div>
                   ` : ''}
@@ -2302,6 +2412,668 @@ const eventsModule = {
     if (clockEl) {
       clockEl.textContent = new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
     }
+  },
+
+  // ============================================
+  // TAB SWITCHING
+  // ============================================
+
+  _roCurrentTab: 'main',
+
+  switchROTab(tab) {
+    this._roCurrentTab = tab;
+    // Hide all tabs
+    ['Main', 'Checklist', 'Cuesheet', 'Trophies', 'Versions'].forEach(t => {
+      const el = document.getElementById('roTab' + t);
+      if (el) el.style.display = 'none';
+    });
+    // Deactivate all tab links
+    document.querySelectorAll('#roViewTabs .nav-link').forEach(a => a.classList.remove('active'));
+    // Show selected tab
+    const tabMap = { 'main': 'Main', 'checklist': 'Checklist', 'cuesheet': 'Cuesheet', 'trophies': 'Trophies', 'versions': 'Versions' };
+    const el = document.getElementById('roTab' + tabMap[tab]);
+    if (el) el.style.display = 'block';
+    // Activate tab link
+    const link = document.querySelector(`#roViewTabs [data-ro-tab="${tab}"]`);
+    if (link) link.classList.add('active');
+    // Render tab content
+    if (tab === 'checklist') this.renderChecklistTab();
+    if (tab === 'cuesheet') this.renderCueSheetTab();
+    if (tab === 'trophies') this.renderTrophiesTab();
+    if (tab === 'versions') this.renderVersionsTab();
+  },
+
+  // ============================================
+  // REHEARSAL CHECKLIST
+  // ============================================
+
+  renderChecklistTab() {
+    const container = document.getElementById('roChecklistContent');
+    if (!container) return;
+
+    const awardItems = this.runningOrderItems.filter(i => (i.item_type || 'award') === 'award');
+    if (awardItems.length === 0) {
+      container.innerHTML = '<div class="text-center py-4 text-muted"><i class="bi bi-check-circle display-4 d-block mb-2 opacity-25"></i><p>No award items to check.</p></div>';
+      return;
+    }
+
+    // Calculate overall progress
+    const totalChecks = awardItems.length * 4;
+    const completedChecks = awardItems.reduce((sum, item) => {
+      return sum + (item.checklist_trophy_ready ? 1 : 0) + (item.checklist_recipient_confirmed ? 1 : 0)
+        + (item.checklist_special_reqs_handled ? 1 : 0) + (item.checklist_engraving_correct ? 1 : 0);
+    }, 0);
+    const progressPct = totalChecks > 0 ? Math.round((completedChecks / totalChecks) * 100) : 0;
+    const progressColour = progressPct === 100 ? '#198754' : progressPct >= 50 ? '#ffc107' : '#dc3545';
+
+    let html = `
+      <div class="p-3 mb-3 border rounded bg-light">
+        <div class="d-flex justify-content-between align-items-center mb-2">
+          <strong>Pre-Event Readiness</strong>
+          <span class="badge" style="background:${progressColour}; color:white;">${progressPct}% Complete (${completedChecks}/${totalChecks})</span>
+        </div>
+        <div class="ro-checklist-progress">
+          <div class="ro-checklist-progress-bar" style="width:${progressPct}%; background:${progressColour};"></div>
+        </div>
+      </div>
+      <table class="table table-sm table-hover mb-0" style="font-size:0.82rem;">
+        <thead class="table-light">
+          <tr>
+            <th style="width:40px;">#</th>
+            <th>Award / Winner</th>
+            <th style="width:100px; text-align:center;">Trophy Ready</th>
+            <th style="width:100px; text-align:center;">Engraving OK</th>
+            <th style="width:100px; text-align:center;">Recipient Confirmed</th>
+            <th style="width:100px; text-align:center;">Reqs Handled</th>
+          </tr>
+        </thead>
+        <tbody>
+    `;
+
+    awardItems.forEach((item, idx) => {
+      const awardName = item.award_name || 'TBC';
+      const winnerName = item.display_name || 'TBC';
+      const allChecked = item.checklist_trophy_ready && item.checklist_engraving_correct
+        && item.checklist_recipient_confirmed && item.checklist_special_reqs_handled;
+
+      html += `
+        <tr style="${allChecked ? 'background:#f0fff4;' : ''}">
+          <td class="text-center fw-bold">${idx + 1}</td>
+          <td>
+            <strong>${utils.escapeHtml(awardName)}</strong><br>
+            <small class="text-primary">${utils.escapeHtml(winnerName)}</small>
+            ${item.table_number ? `<br><small class="text-muted"><i class="bi bi-geo-alt me-1"></i>Table ${item.table_number}</small>` : ''}
+          </td>
+          <td class="text-center">
+            <input type="checkbox" class="form-check-input" ${item.checklist_trophy_ready ? 'checked' : ''}
+              onchange="eventsModule.updateChecklist('${item.id}', 'checklist_trophy_ready', this.checked)">
+          </td>
+          <td class="text-center">
+            <input type="checkbox" class="form-check-input" ${item.checklist_engraving_correct ? 'checked' : ''}
+              onchange="eventsModule.updateChecklist('${item.id}', 'checklist_engraving_correct', this.checked)">
+          </td>
+          <td class="text-center">
+            <input type="checkbox" class="form-check-input" ${item.checklist_recipient_confirmed ? 'checked' : ''}
+              onchange="eventsModule.updateChecklist('${item.id}', 'checklist_recipient_confirmed', this.checked)">
+          </td>
+          <td class="text-center">
+            <input type="checkbox" class="form-check-input" ${item.checklist_special_reqs_handled ? 'checked' : ''}
+              onchange="eventsModule.updateChecklist('${item.id}', 'checklist_special_reqs_handled', this.checked)">
+          </td>
+        </tr>`;
+    });
+
+    html += '</tbody></table>';
+    container.innerHTML = html;
+  },
+
+  async updateChecklist(itemId, field, value) {
+    const item = this.runningOrderItems.find(i => i.id === itemId);
+    if (!item) return;
+    item[field] = value;
+    try {
+      await STATE.client.from('running_order').update({ [field]: value }).eq('id', itemId);
+    } catch (error) {
+      console.error('Error updating checklist:', error);
+    }
+    this.renderChecklistTab();
+  },
+
+  // ============================================
+  // TROPHY / AWARD TRACKING
+  // ============================================
+
+  renderTrophiesTab() {
+    const container = document.getElementById('roTrophiesContent');
+    if (!container) return;
+
+    const awardItems = this.runningOrderItems.filter(i => (i.item_type || 'award') === 'award');
+    if (awardItems.length === 0) {
+      container.innerHTML = '<div class="text-center py-4 text-muted"><i class="bi bi-trophy display-4 d-block mb-2 opacity-25"></i><p>No award items to track.</p></div>';
+      return;
+    }
+
+    const statuses = [
+      { key: 'not_started', label: 'Not Started', colour: '#6c757d', icon: 'bi-circle' },
+      { key: 'ordered', label: 'Ordered', colour: '#0d6efd', icon: 'bi-cart-check' },
+      { key: 'engraved', label: 'Engraved', colour: '#6f42c1', icon: 'bi-pen' },
+      { key: 'checked', label: 'Checked', colour: '#fd7e14', icon: 'bi-check-circle' },
+      { key: 'backstage_ready', label: 'Backstage Ready', colour: '#198754', icon: 'bi-check2-all' }
+    ];
+
+    // Summary counts
+    const counts = {};
+    statuses.forEach(s => counts[s.key] = 0);
+    awardItems.forEach(i => counts[i.trophy_status || 'not_started']++);
+
+    let html = `
+      <div class="d-flex gap-2 p-3 mb-3 border rounded bg-light flex-wrap">
+        ${statuses.map(s => `
+          <span class="badge" style="background:${s.colour}; font-size:0.75rem;">
+            <i class="${s.icon} me-1"></i>${s.label}: ${counts[s.key]}
+          </span>
+        `).join('')}
+      </div>
+      <table class="table table-sm table-hover mb-0" style="font-size:0.82rem;">
+        <thead class="table-light">
+          <tr>
+            <th style="width:40px;">#</th>
+            <th>Award</th>
+            <th>Winner</th>
+            <th>Collecting</th>
+            <th style="width:160px;">Trophy Status</th>
+          </tr>
+        </thead>
+        <tbody>
+    `;
+
+    awardItems.forEach((item, idx) => {
+      const currentStatus = item.trophy_status || 'not_started';
+      const statusInfo = statuses.find(s => s.key === currentStatus) || statuses[0];
+      const opts = statuses.map(s =>
+        `<option value="${s.key}" ${s.key === currentStatus ? 'selected' : ''}>${s.label}</option>`
+      ).join('');
+
+      html += `
+        <tr>
+          <td class="text-center fw-bold">${idx + 1}</td>
+          <td><strong>${utils.escapeHtml(item.award_name || 'TBC')}</strong></td>
+          <td>${utils.escapeHtml(item.display_name || 'TBC')}</td>
+          <td>${utils.escapeHtml(item.recipient_collecting || 'TBC')}</td>
+          <td>
+            <select class="form-select form-select-sm" style="font-size:0.75rem; border-color:${statusInfo.colour};"
+                    onchange="eventsModule.updateTrophyStatus('${item.id}', this.value)">
+              ${opts}
+            </select>
+          </td>
+        </tr>`;
+    });
+
+    html += '</tbody></table>';
+    container.innerHTML = html;
+  },
+
+  async updateTrophyStatus(itemId, status) {
+    const item = this.runningOrderItems.find(i => i.id === itemId);
+    if (!item) return;
+    item.trophy_status = status;
+    try {
+      await STATE.client.from('running_order').update({ trophy_status: status }).eq('id', itemId);
+      utils.showToast('Trophy status updated', 'success');
+    } catch (error) {
+      console.error('Error updating trophy status:', error);
+    }
+    this.renderTrophiesTab();
+  },
+
+  // ============================================
+  // CUE SHEET / AV NOTES
+  // ============================================
+
+  renderCueSheetTab() {
+    const container = document.getElementById('roCueSheetContent');
+    if (!container) return;
+
+    const items = this.runningOrderItems;
+    if (items.length === 0) {
+      container.innerHTML = '<div class="text-center py-4 text-muted"><i class="bi bi-camera-reels display-4 d-block mb-2 opacity-25"></i><p>No items in running order.</p></div>';
+      return;
+    }
+
+    const itemsWithCues = items.filter(i => i.cue_notes);
+    let html = `
+      <div class="p-3 mb-3 border rounded bg-light d-flex justify-content-between align-items-center">
+        <div>
+          <strong>AV / Lighting Cue Sheet</strong>
+          <span class="ms-2 text-muted small">${itemsWithCues.length} items with cues out of ${items.length} total</span>
+        </div>
+        <button class="btn btn-sm btn-outline-dark" onclick="eventsModule.printCueSheet()">
+          <i class="bi bi-printer me-1"></i>Print Cue Sheet
+        </button>
+      </div>
+    `;
+
+    let presNum = 0;
+    items.forEach((item, idx) => {
+      const isBreak = (item.item_type || 'award') !== 'award';
+      if (!isBreak) presNum++;
+      const awardName = item.award_name || 'TBC';
+      const cueNotes = item.cue_notes || '';
+      const time = item.scheduled_time || '';
+      const hasCue = !!cueNotes;
+
+      html += `
+        <div class="ro-cue-item ${!hasCue ? 'opacity-50' : ''}">
+          <div class="d-flex align-items-start gap-3">
+            <div style="width:35px; text-align:center; font-weight:700; color:${isBreak ? '#7e57c2' : '#ffc107'};">
+              ${isBreak ? '<i class="bi bi-' + (this._getBreakIcon(item.item_type)) + '"></i>' : presNum}
+            </div>
+            <div style="width:55px; font-size:0.78rem; color:#666;">${time}</div>
+            <div class="flex-grow-1">
+              <div style="font-weight:600; font-size:0.85rem;">${utils.escapeHtml(awardName)}</div>
+              ${hasCue ? `<div class="ro-cue-notes-text"><i class="bi bi-lightning-fill me-1" style="color:#ffc107;"></i>${utils.escapeHtml(cueNotes)}</div>` : `
+                <div style="font-size:0.75rem; color:#aaa; font-style:italic;">No cue notes</div>
+              `}
+            </div>
+            <button class="btn btn-sm btn-outline-secondary" onclick="eventsModule.editCueNote('${item.id}')" title="Edit cue note">
+              <i class="bi bi-pencil"></i>
+            </button>
+          </div>
+        </div>`;
+    });
+
+    container.innerHTML = html;
+  },
+
+  async editCueNote(itemId) {
+    const item = this.runningOrderItems.find(i => i.id === itemId);
+    if (!item) return;
+
+    const newCue = prompt('Enter cue notes for AV/Lighting team:\n(e.g. "Play intro video", "Dim lights", "Spotlight stage left")', item.cue_notes || '');
+    if (newCue === null) return; // cancelled
+
+    item.cue_notes = newCue || null;
+    try {
+      await STATE.client.from('running_order').update({ cue_notes: newCue || null }).eq('id', itemId);
+      utils.showToast('Cue note updated', 'success');
+    } catch (error) {
+      console.error('Error updating cue note:', error);
+    }
+    this.renderCueSheetTab();
+  },
+
+  /**
+   * Print a standalone cue sheet for the AV/lighting team
+   */
+  printCueSheet() {
+    const items = this.runningOrderItems;
+    if (items.length === 0) { utils.showToast('No items', 'warning'); return; }
+
+    let presNum = 0;
+    let rows = '';
+    items.forEach(item => {
+      const isBreak = (item.item_type || 'award') !== 'award';
+      if (!isBreak) presNum++;
+      const time = item.scheduled_time || '';
+      const name = item.award_name || 'TBC';
+      const cue = item.cue_notes || '-';
+      const breakLabel = isBreak ? ` [${(item.item_type || 'break').toUpperCase()}]` : '';
+
+      rows += `<tr${isBreak ? ' style="background:#e3f2fd;"' : ''}>
+        <td style="text-align:center; font-weight:bold;">${isBreak ? '-' : presNum}</td>
+        <td style="text-align:center;">${utils.escapeHtml(time)}</td>
+        <td><strong>${utils.escapeHtml(name)}</strong>${breakLabel}</td>
+        <td style="font-family:monospace; color:#1565c0; background:${cue !== '-' ? '#f3f8ff' : 'transparent'};">${utils.escapeHtml(cue)}</td>
+      </tr>`;
+    });
+
+    const printHtml = `<!DOCTYPE html><html><head><meta charset="utf-8">
+      <title>Cue Sheet - ${utils.escapeHtml(this.currentEventName)}</title>
+      <style>
+        @page { size: A4 portrait; margin: 15mm; }
+        body { font-family: Arial, sans-serif; font-size: 10pt; }
+        .header { text-align: center; margin-bottom: 15px; padding-bottom: 8px; border-bottom: 3px solid #1565c0; }
+        .header h1 { margin: 0 0 4px 0; font-size: 18pt; color: #1565c0; }
+        .header h2 { margin: 0; font-size: 12pt; font-weight: normal; color: #666; }
+        table { width: 100%; border-collapse: collapse; }
+        th, td { padding: 6px 8px; border: 1px solid #ccc; text-align: left; }
+        th { background: #1565c0; color: white; font-size: 9pt; text-transform: uppercase; }
+        .footer { margin-top: 20px; text-align: center; font-size: 8pt; color: #666; }
+        @media print { body { -webkit-print-color-adjust: exact; print-color-adjust: exact; } }
+      </style></head><body>
+      <div class="header"><h1>AV / Lighting Cue Sheet</h1><h2>${utils.escapeHtml(this.currentEventName)}</h2></div>
+      <table><thead><tr><th style="width:40px;">#</th><th style="width:60px;">Time</th><th>Item</th><th>Cue / Direction</th></tr></thead>
+      <tbody>${rows}</tbody></table>
+      <div class="footer">Printed: ${new Date().toLocaleString()}</div>
+      <script>window.onload=function(){window.print();};</script></body></html>`;
+
+    const win = window.open('', '_blank', 'width=800,height=600');
+    if (win) { win.document.write(printHtml); win.document.close(); }
+    else { utils.showToast('Please allow popups to print', 'warning'); }
+  },
+
+  // ============================================
+  // ACT / SECTION HEADERS WITH COLOURS
+  // ============================================
+
+  _roSectionConfig: [],
+
+  /**
+   * Load section config from settings
+   */
+  async loadSectionConfig() {
+    try {
+      const { data: settings } = await STATE.client
+        .from('running_order_settings')
+        .select('section_config')
+        .eq('event_id', this.currentEventIdRunningOrder)
+        .single();
+      this._roSectionConfig = settings?.section_config || [];
+    } catch (error) {
+      this._roSectionConfig = [];
+    }
+  },
+
+  /**
+   * Get section config for a given section number
+   */
+  getSectionConfig(sectionNum) {
+    return this._roSectionConfig.find(s => s.section === sectionNum) || null;
+  },
+
+  /**
+   * Open section manager to define act/section headers
+   */
+  openSectionManager() {
+    const sections = this._roSectionConfig.length > 0
+      ? this._roSectionConfig
+      : [{ section: 1, name: 'Act 1', colour: '#4caf50' }];
+
+    const modalHtml = `
+      <div class="modal fade" id="sectionManagerModal" tabindex="-1">
+        <div class="modal-dialog">
+          <div class="modal-content">
+            <div class="modal-header bg-dark text-white">
+              <h5 class="modal-title"><i class="bi bi-palette me-2"></i>Manage Sections / Acts</h5>
+              <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+              <p class="small text-muted mb-3">Define colour-coded sections to visually group your running order into acts. Assign items to sections using the "Section" field in the item's section number.</p>
+              <div id="sectionConfigList">
+                ${sections.map((s, i) => `
+                  <div class="d-flex gap-2 align-items-center mb-2" data-section-idx="${i}">
+                    <input type="number" class="form-control form-control-sm" style="width:60px;" value="${s.section}" min="1" placeholder="#">
+                    <input type="text" class="form-control form-control-sm" value="${utils.escapeHtml(s.name)}" placeholder="e.g. Act 1: Community Awards">
+                    <input type="color" class="form-control form-control-sm form-control-color" value="${s.colour}" style="width:40px; padding:2px;">
+                    <button class="btn btn-sm btn-outline-danger" onclick="this.closest('[data-section-idx]').remove()"><i class="bi bi-trash"></i></button>
+                  </div>
+                `).join('')}
+              </div>
+              <button class="btn btn-sm btn-outline-secondary mt-2" onclick="eventsModule.addSectionConfigRow()">
+                <i class="bi bi-plus me-1"></i>Add Section
+              </button>
+            </div>
+            <div class="modal-footer">
+              <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+              <button type="button" class="btn btn-dark" onclick="eventsModule.saveSectionConfig()">
+                <i class="bi bi-save me-2"></i>Save Sections
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>`;
+
+    const existing = document.getElementById('sectionManagerModal');
+    if (existing) existing.remove();
+    document.body.insertAdjacentHTML('beforeend', modalHtml);
+    new bootstrap.Modal(document.getElementById('sectionManagerModal')).show();
+    document.getElementById('sectionManagerModal').addEventListener('hidden.bs.modal', function() { this.remove(); });
+  },
+
+  addSectionConfigRow() {
+    const list = document.getElementById('sectionConfigList');
+    if (!list) return;
+    const idx = list.children.length;
+    const colours = ['#4caf50', '#2196f3', '#ff9800', '#e91e63', '#9c27b0', '#00bcd4'];
+    const colour = colours[idx % colours.length];
+    list.insertAdjacentHTML('beforeend', `
+      <div class="d-flex gap-2 align-items-center mb-2" data-section-idx="${idx}">
+        <input type="number" class="form-control form-control-sm" style="width:60px;" value="${idx + 1}" min="1" placeholder="#">
+        <input type="text" class="form-control form-control-sm" value="" placeholder="e.g. Act ${idx + 1}: Category Name">
+        <input type="color" class="form-control form-control-sm form-control-color" value="${colour}" style="width:40px; padding:2px;">
+        <button class="btn btn-sm btn-outline-danger" onclick="this.closest('[data-section-idx]').remove()"><i class="bi bi-trash"></i></button>
+      </div>
+    `);
+  },
+
+  async saveSectionConfig() {
+    const rows = document.querySelectorAll('#sectionConfigList [data-section-idx]');
+    const config = [];
+    rows.forEach(row => {
+      const inputs = row.querySelectorAll('input');
+      config.push({
+        section: parseInt(inputs[0].value) || 1,
+        name: inputs[1].value.trim() || `Section ${inputs[0].value}`,
+        colour: inputs[2].value || '#6c757d'
+      });
+    });
+
+    this._roSectionConfig = config;
+
+    try {
+      await STATE.client
+        .from('running_order_settings')
+        .upsert({
+          event_id: this.currentEventIdRunningOrder,
+          section_config: config
+        }, { onConflict: 'event_id' });
+      utils.showToast('Section configuration saved', 'success');
+      bootstrap.Modal.getInstance(document.getElementById('sectionManagerModal')).hide();
+      this.renderRunningOrderItems();
+    } catch (error) {
+      console.error('Error saving section config:', error);
+      utils.showToast('Failed to save section config', 'error');
+    }
+  },
+
+  // ============================================
+  // RUNNING ORDER VERSIONING
+  // ============================================
+
+  _roVersions: [],
+
+  renderVersionsTab() {
+    const container = document.getElementById('roVersionsContent');
+    if (!container) return;
+
+    // Load versions first
+    this.loadVersions().then(() => {
+      let html = `
+        <div class="p-3 mb-3 border rounded bg-light d-flex justify-content-between align-items-center">
+          <div>
+            <strong>Version History</strong>
+            <span class="ms-2 text-muted small">${this._roVersions.length} saved version(s)</span>
+          </div>
+          <button class="btn btn-sm btn-primary" onclick="eventsModule.saveVersion()" ${this.isPublished ? 'disabled' : ''}>
+            <i class="bi bi-save me-1"></i>Save Current as Version
+          </button>
+        </div>
+      `;
+
+      if (this._roVersions.length === 0) {
+        html += '<div class="text-center py-4 text-muted"><i class="bi bi-clock-history display-4 d-block mb-2 opacity-25"></i><p>No versions saved yet. Save a snapshot before making major changes.</p></div>';
+      } else {
+        html += `<div class="list-group">`;
+        this._roVersions.forEach(v => {
+          const itemCount = Array.isArray(v.snapshot) ? v.snapshot.length : 0;
+          const date = new Date(v.created_at).toLocaleString();
+          html += `
+            <div class="list-group-item d-flex justify-content-between align-items-center">
+              <div>
+                <strong>${utils.escapeHtml(v.version_name)}</strong>
+                <small class="text-muted d-block">v${v.version_number} | ${itemCount} items | ${date}</small>
+              </div>
+              <div class="d-flex gap-2">
+                <button class="btn btn-sm btn-outline-warning" onclick="eventsModule.restoreVersion('${v.id}')" ${this.isPublished ? 'disabled' : ''} title="Restore this version">
+                  <i class="bi bi-arrow-counterclockwise me-1"></i>Restore
+                </button>
+                <button class="btn btn-sm btn-outline-danger" onclick="eventsModule.deleteVersion('${v.id}')" title="Delete version">
+                  <i class="bi bi-trash"></i>
+                </button>
+              </div>
+            </div>`;
+        });
+        html += '</div>';
+      }
+
+      container.innerHTML = html;
+    });
+  },
+
+  async loadVersions() {
+    try {
+      const { data, error } = await STATE.client
+        .from('running_order_versions')
+        .select('*')
+        .eq('event_id', this.currentEventIdRunningOrder)
+        .order('version_number', { ascending: false });
+      if (error) throw error;
+      this._roVersions = data || [];
+    } catch (error) {
+      console.error('Error loading versions:', error);
+      this._roVersions = [];
+    }
+  },
+
+  async saveVersion() {
+    const name = prompt('Enter a name for this version:', `v${this._roVersions.length + 1} - ${new Date().toLocaleDateString()}`);
+    if (!name) return;
+
+    const snapshot = this.runningOrderItems.map(item => ({
+      award_name: item.award_name,
+      display_name: item.display_name,
+      award_number: item.award_number,
+      display_order: item.display_order,
+      section: item.section,
+      item_type: item.item_type,
+      sponsor: item.sponsor,
+      recipient_collecting: item.recipient_collecting,
+      scheduled_time: item.scheduled_time,
+      duration_minutes: item.duration_minutes,
+      status: item.status,
+      notes: item.notes,
+      special_requirements: item.special_requirements,
+      cue_notes: item.cue_notes,
+      table_number: item.table_number,
+      trophy_status: item.trophy_status,
+      presentation_group: item.presentation_group,
+      organisation_id: item.organisation_id,
+      award_id: item.award_id,
+      guest_id: item.guest_id
+    }));
+
+    try {
+      const { error } = await STATE.client
+        .from('running_order_versions')
+        .insert([{
+          event_id: this.currentEventIdRunningOrder,
+          version_name: name,
+          version_number: this._roVersions.length + 1,
+          snapshot: snapshot
+        }]);
+      if (error) throw error;
+      utils.showToast('Version saved: ' + name, 'success');
+      this.renderVersionsTab();
+    } catch (error) {
+      console.error('Error saving version:', error);
+      utils.showToast('Failed to save version: ' + error.message, 'error');
+    }
+  },
+
+  async restoreVersion(versionId) {
+    const version = this._roVersions.find(v => v.id === versionId);
+    if (!version) return;
+
+    if (!confirm(`Restore "${version.version_name}"?\n\nThis will replace the current running order with this saved version. Consider saving the current version first.`)) {
+      return;
+    }
+
+    try {
+      utils.showLoading();
+
+      // Delete all current items
+      await STATE.client
+        .from('running_order')
+        .delete()
+        .eq('event_id', this.currentEventIdRunningOrder);
+
+      // Re-insert from snapshot
+      const items = version.snapshot.map(item => ({
+        ...item,
+        event_id: this.currentEventIdRunningOrder
+      }));
+
+      if (items.length > 0) {
+        const { error } = await STATE.client
+          .from('running_order')
+          .insert(items);
+        if (error) throw error;
+      }
+
+      utils.showToast(`Restored version: ${version.version_name}`, 'success');
+      await this.loadRunningOrder();
+      this.renderRunningOrderItems();
+      this.switchROTab('main');
+    } catch (error) {
+      console.error('Error restoring version:', error);
+      utils.showToast('Failed to restore: ' + error.message, 'error');
+    } finally {
+      utils.hideLoading();
+    }
+  },
+
+  async deleteVersion(versionId) {
+    if (!confirm('Delete this saved version?')) return;
+    try {
+      await STATE.client.from('running_order_versions').delete().eq('id', versionId);
+      utils.showToast('Version deleted', 'success');
+      this.renderVersionsTab();
+    } catch (error) {
+      console.error('Error deleting version:', error);
+      utils.showToast('Failed to delete version', 'error');
+    }
+  },
+
+  // ============================================
+  // TABLE PLAN LINK
+  // ============================================
+
+  /**
+   * Render table numbers inline on running order items (shown as small badge)
+   * This data is already loaded via the table_number field and rendered in main view.
+   * The edit form allows setting table_number.
+   * This method provides a quick-assign interface.
+   */
+  async quickAssignTable(itemId) {
+    const item = this.runningOrderItems.find(i => i.id === itemId);
+    if (!item) return;
+
+    const tableNum = prompt(
+      `Assign table number for "${item.display_name || item.award_name || 'this item'}":\n(Enter a number, or leave blank to clear)`,
+      item.table_number || ''
+    );
+    if (tableNum === null) return; // cancelled
+
+    const num = tableNum ? parseInt(tableNum) : null;
+    item.table_number = num;
+
+    try {
+      await STATE.client.from('running_order').update({ table_number: num }).eq('id', itemId);
+      utils.showToast(num ? `Assigned to Table ${num}` : 'Table assignment cleared', 'success');
+    } catch (error) {
+      console.error('Error assigning table:', error);
+    }
+    this.renderRunningOrderItems();
   },
 
   // ============================================
@@ -2714,6 +3486,9 @@ const eventsModule = {
         'Status': item.status || 'pending',
         'Presentation': isGrouped ? 'Grouped' : 'Individual',
         'Group ID': item.presentation_group || '',
+        'Table #': item.table_number || '',
+        'Trophy Status': item.trophy_status || '',
+        'Cue Notes': item.cue_notes || '',
         'Notes': item.notes || ''
       };
     });
@@ -2891,6 +3666,26 @@ const eventsModule = {
                   <label class="form-label">Sponsor / Presented By</label>
                   <input type="text" class="form-control" id="editROSponsor" value="${utils.escapeHtml(item.sponsor || '')}">
                 </div>
+                <div class="row">
+                  <div class="col-md-6 mb-3">
+                    <label class="form-label">Cue Notes (AV/Lighting)</label>
+                    <textarea class="form-control" id="editROCueNotes" rows="2" placeholder="e.g. Play video, dim lights, spotlight stage left">${utils.escapeHtml(item.cue_notes || '')}</textarea>
+                  </div>
+                  <div class="col-md-3 mb-3">
+                    <label class="form-label">Table #</label>
+                    <input type="number" class="form-control" id="editROTableNumber" value="${item.table_number || ''}" min="1" placeholder="e.g. 7">
+                  </div>
+                  <div class="col-md-3 mb-3">
+                    <label class="form-label">Trophy Status</label>
+                    <select class="form-select" id="editROTrophyStatus">
+                      <option value="not_started" ${(item.trophy_status || 'not_started') === 'not_started' ? 'selected' : ''}>Not Started</option>
+                      <option value="ordered" ${item.trophy_status === 'ordered' ? 'selected' : ''}>Ordered</option>
+                      <option value="engraved" ${item.trophy_status === 'engraved' ? 'selected' : ''}>Engraved</option>
+                      <option value="checked" ${item.trophy_status === 'checked' ? 'selected' : ''}>Checked</option>
+                      <option value="backstage_ready" ${item.trophy_status === 'backstage_ready' ? 'selected' : ''}>Backstage Ready</option>
+                    </select>
+                  </div>
+                </div>
                 <div class="mb-3">
                   <label class="form-label">Notes</label>
                   <textarea class="form-control" id="editRONotes" rows="2">${utils.escapeHtml(item.notes || '')}</textarea>
@@ -2929,6 +3724,9 @@ const eventsModule = {
       duration_minutes: parseInt(document.getElementById('editRODuration').value) || 3,
       item_type: document.getElementById('editROItemType').value || 'award',
       sponsor: document.getElementById('editROSponsor').value || null,
+      cue_notes: document.getElementById('editROCueNotes').value || null,
+      table_number: parseInt(document.getElementById('editROTableNumber').value) || null,
+      trophy_status: document.getElementById('editROTrophyStatus').value || 'not_started',
       notes: document.getElementById('editRONotes').value || null,
       special_requirements: document.getElementById('editROSpecialReqs').value || null
     };

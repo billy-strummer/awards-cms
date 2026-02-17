@@ -529,6 +529,7 @@ const mediaGalleryModule = {
           <button class="btn btn-outline-secondary btn-sm" onclick="mediaGalleryModule.downloadAllEventPhotos()"><i class="bi bi-download me-1"></i>Download All</button>
           <button class="btn btn-outline-info btn-sm" onclick="mediaGalleryModule.openPublicGalleryPreview()"><i class="bi bi-eye me-1"></i>Public Gallery Preview</button>
           <button class="btn btn-outline-warning btn-sm" onclick="mediaGalleryModule._setPhotographer()"><i class="bi bi-person-badge me-1"></i>Set Photographer</button>
+          <button class="btn btn-outline-danger btn-sm" onclick="mediaGalleryModule.openAutoTagFromRunningOrder()"><i class="bi bi-lightning me-1"></i>Auto-Tag from Running Order</button>
         </div>
 
         <!-- Sections with Photo Thumbnails -->
@@ -1861,6 +1862,9 @@ const mediaGalleryModule = {
             </button>
             <button class="btn btn-sm btn-outline-primary" onclick="mediaGalleryModule.openYouTubeVideoModal()">
               <i class="bi bi-youtube me-1"></i>Add YouTube Video
+            </button>
+            <button class="btn btn-sm btn-outline-warning" onclick="mediaGalleryModule.openAutoTagFromRunningOrder()" title="Auto-tag photos by matching filename prefixes to running order numbers">
+              <i class="bi bi-lightning me-1"></i>Auto-Tag from Running Order
             </button>
             <button class="btn btn-sm btn-outline-secondary" onclick="mediaGalleryModule.downloadAllPhotos('${utils.escapeHtml(sectionName).replace(/'/g, "\\'")}')">
               <i class="bi bi-download me-1"></i>Download All
@@ -3293,6 +3297,406 @@ const mediaGalleryModule = {
     bootstrap.Modal.getInstance(document.getElementById('viewPhotoFullModal')).hide();
     // Delete photo
     await this.deletePhoto(this.currentMediaId);
+  },
+
+  // ========================================
+  // AUTO-TAG FROM RUNNING ORDER
+  // ========================================
+
+  /**
+   * Open the auto-tag tool - matches filename prefixes to running order numbers
+   *
+   * Supported filename patterns:
+   *   1-01_winner_photo.jpg  → matches award_number "1-01"
+   *   1-01 winner photo.jpg  → matches award_number "1-01"
+   *   01_photo.jpg           → matches display_order 1
+   *   1-02-ceremony.jpg      → matches award_number "1-02"
+   *   2-05 awards night.jpg  → matches award_number "2-05"
+   */
+  async openAutoTagFromRunningOrder() {
+    try {
+      utils.showLoading();
+
+      // Load running order for this event
+      const { data: roItems, error: roError } = await STATE.client
+        .from('running_order')
+        .select('*, organisations(id, company_name), awards(id, award_name)')
+        .eq('event_id', this.currentEventId)
+        .order('display_order');
+
+      if (roError) throw roError;
+
+      if (!roItems || roItems.length === 0) {
+        utils.showToast('No running order found for this event. Please set up the running order in the Events tab first.', 'warning');
+        return;
+      }
+
+      // Load all untagged photos across all sections for this event
+      const { data: sections } = await STATE.client
+        .from('event_galleries')
+        .select('id')
+        .eq('event_id', this.currentEventId);
+      const sectionIds = (sections || []).map(s => s.id);
+
+      let photos = [];
+      if (sectionIds.length > 0) {
+        const { data, error: pError } = await STATE.client
+          .from('media_gallery')
+          .select('id, title, file_url, file_type, organisation_id, award_id, gallery_section_id')
+          .in('gallery_section_id', sectionIds)
+          .order('uploaded_at');
+        if (pError) throw pError;
+        photos = data || [];
+      }
+
+      if (photos.length === 0) {
+        utils.showToast('No photos found to auto-tag', 'warning');
+        return;
+      }
+
+      // Match photos to running order items
+      const matches = this._matchPhotosToRunningOrder(photos, roItems);
+
+      // Show preview modal
+      this._showAutoTagPreview(matches, roItems, photos);
+
+    } catch (error) {
+      console.error('Error opening auto-tag:', error);
+      utils.showToast('Error loading auto-tag data: ' + error.message, 'error');
+    } finally {
+      utils.hideLoading();
+    }
+  },
+
+  /**
+   * Core matching engine - maps filename prefixes to running order items
+   * Returns array of { photo, runningOrderItem, matchType, matchedPrefix }
+   */
+  _matchPhotosToRunningOrder(photos, roItems) {
+    const matches = [];
+
+    // Build lookup maps
+    const byAwardNumber = {};   // "1-01" -> item
+    const byDisplayOrder = {};  // 1 -> item
+    const byOrgName = {};       // "company name" -> item
+
+    roItems.forEach(item => {
+      if (item.award_number) byAwardNumber[item.award_number.toLowerCase()] = item;
+      if (item.display_order != null) byDisplayOrder[item.display_order] = item;
+      if (item.organisations?.company_name) byOrgName[item.organisations.company_name.toLowerCase()] = item;
+      if (item.display_name) byOrgName[item.display_name.toLowerCase()] = item;
+    });
+
+    photos.forEach(photo => {
+      // Extract the filename (without path and extension)
+      const fullUrl = photo.file_url || '';
+      const urlParts = fullUrl.split('/');
+      const rawFilename = urlParts[urlParts.length - 1] || '';
+      // Remove the timestamp_random_ prefix that our uploader adds
+      const cleanFilename = rawFilename.replace(/^\d+_[a-z0-9]+_/, '');
+      const fileTitle = photo.title || cleanFilename;
+      const nameNoExt = fileTitle.replace(/\.[^.]+$/, '');
+
+      let matched = null;
+      let matchType = '';
+      let matchedPrefix = '';
+
+      // Priority 1: Match award_number pattern (e.g., "1-01", "2-05")
+      const awardNumMatch = nameNoExt.match(/^(\d+-\d+)/);
+      if (awardNumMatch) {
+        const key = awardNumMatch[1].toLowerCase();
+        if (byAwardNumber[key]) {
+          matched = byAwardNumber[key];
+          matchType = 'award_number';
+          matchedPrefix = awardNumMatch[1];
+        }
+      }
+
+      // Priority 2: Match plain number prefix (e.g., "01", "12")
+      if (!matched) {
+        const numMatch = nameNoExt.match(/^(\d{1,3})(?:[_\s-]|$)/);
+        if (numMatch) {
+          const num = parseInt(numMatch[1], 10);
+          if (byDisplayOrder[num]) {
+            matched = byDisplayOrder[num];
+            matchType = 'display_order';
+            matchedPrefix = numMatch[1];
+          }
+        }
+      }
+
+      // Priority 3: Match company/display name in filename
+      if (!matched) {
+        const lowerName = nameNoExt.toLowerCase().replace(/[_-]/g, ' ');
+        for (const [orgName, item] of Object.entries(byOrgName)) {
+          if (lowerName.includes(orgName) && orgName.length >= 3) {
+            matched = item;
+            matchType = 'name_match';
+            matchedPrefix = orgName;
+            break;
+          }
+        }
+      }
+
+      matches.push({
+        photo,
+        runningOrderItem: matched,
+        matchType,
+        matchedPrefix,
+        alreadyTagged: !!(photo.organisation_id || photo.award_id),
+        filename: fileTitle
+      });
+    });
+
+    return matches;
+  },
+
+  /**
+   * Show auto-tag preview modal with match results
+   */
+  _showAutoTagPreview(matches, roItems, photos) {
+    const matched = matches.filter(m => m.runningOrderItem);
+    const unmatched = matches.filter(m => !m.runningOrderItem);
+    const alreadyTagged = matches.filter(m => m.alreadyTagged);
+    const newMatches = matched.filter(m => !m.alreadyTagged);
+
+    // Build running order reference table
+    const roRefHtml = roItems.filter(i => i.item_type === 'award' || !i.item_type).map(item => `
+      <tr>
+        <td><code class="text-primary fw-bold">${utils.escapeHtml(item.award_number || '-')}</code></td>
+        <td>${utils.escapeHtml(item.display_name || item.organisations?.company_name || '-')}</td>
+        <td>${utils.escapeHtml(item.award_name || item.awards?.award_name || '-')}</td>
+      </tr>`).join('');
+
+    // Build match preview rows
+    const matchPreviewHtml = matched.map((m, idx) => {
+      const item = m.runningOrderItem;
+      const orgName = item.organisations?.company_name || item.display_name || '-';
+      const awardName = item.award_name || item.awards?.award_name || '-';
+      const matchLabels = { award_number: 'Award #', display_order: 'Position #', name_match: 'Name' };
+      return `
+        <tr class="${m.alreadyTagged ? 'table-secondary' : 'table-success'}">
+          <td>
+            <input type="checkbox" class="form-check-input auto-tag-check" data-idx="${idx}"
+              ${m.alreadyTagged ? '' : 'checked'}>
+          </td>
+          <td><small class="text-truncate d-inline-block" style="max-width:200px;" title="${utils.escapeHtml(m.filename)}">${utils.escapeHtml(m.filename)}</small></td>
+          <td><code class="text-primary">${utils.escapeHtml(m.matchedPrefix)}</code>
+            <span class="badge bg-light text-dark ms-1">${matchLabels[m.matchType] || m.matchType}</span></td>
+          <td><span class="badge bg-success">${utils.escapeHtml(orgName)}</span></td>
+          <td><span class="badge bg-info">${utils.escapeHtml(awardName)}</span></td>
+          <td>${m.alreadyTagged ? '<span class="badge bg-secondary">Already Tagged</span>' : '<span class="badge bg-warning text-dark">Will Tag</span>'}</td>
+        </tr>`;
+    }).join('');
+
+    const unmatchedHtml = unmatched.slice(0, 20).map(m => `
+      <tr>
+        <td><small class="text-truncate d-inline-block" style="max-width:250px;" title="${utils.escapeHtml(m.filename)}">${utils.escapeHtml(m.filename)}</small></td>
+        <td class="text-muted"><small>No matching prefix found</small></td>
+      </tr>`).join('');
+
+    const html = `
+      <div class="modal fade" id="autoTagModal" tabindex="-1">
+        <div class="modal-dialog modal-xl">
+          <div class="modal-content">
+            <div class="modal-header bg-warning bg-opacity-10">
+              <h5 class="modal-title"><i class="bi bi-lightning me-2"></i>Auto-Tag Photos from Running Order</h5>
+              <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+              <!-- How it works -->
+              <div class="alert alert-info mb-3">
+                <h6 class="alert-heading"><i class="bi bi-info-circle me-2"></i>How Auto-Tagging Works</h6>
+                <p class="mb-2">Name your photo files with the <strong>award number prefix</strong> from the running order. The system will automatically match and tag them.</p>
+                <div class="row g-2">
+                  <div class="col-md-4">
+                    <div class="bg-white rounded p-2">
+                      <small class="fw-bold d-block mb-1">Award Number Match (Best)</small>
+                      <code>1-01_winner_photo.jpg</code><br>
+                      <code>1-01 ceremony.jpg</code><br>
+                      <code>2-05-celebrating.jpg</code>
+                    </div>
+                  </div>
+                  <div class="col-md-4">
+                    <div class="bg-white rounded p-2">
+                      <small class="fw-bold d-block mb-1">Position Number Match</small>
+                      <code>01_photo.jpg</code><br>
+                      <code>03 awards night.jpg</code><br>
+                      <code>12_winner.jpg</code>
+                    </div>
+                  </div>
+                  <div class="col-md-4">
+                    <div class="bg-white rounded p-2">
+                      <small class="fw-bold d-block mb-1">Company Name Match</small>
+                      <code>acme_corp_winner.jpg</code><br>
+                      <code>smith-industries.jpg</code>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Stats -->
+              <div class="row g-3 mb-3">
+                <div class="col"><div class="card text-center"><div class="card-body py-2">
+                  <h4 class="mb-0">${photos.length}</h4><small class="text-muted">Total Photos</small>
+                </div></div></div>
+                <div class="col"><div class="card text-center"><div class="card-body py-2">
+                  <h4 class="mb-0 text-success">${matched.length}</h4><small class="text-muted">Matched</small>
+                </div></div></div>
+                <div class="col"><div class="card text-center"><div class="card-body py-2">
+                  <h4 class="mb-0 text-warning">${newMatches.length}</h4><small class="text-muted">New Tags</small>
+                </div></div></div>
+                <div class="col"><div class="card text-center"><div class="card-body py-2">
+                  <h4 class="mb-0 text-secondary">${alreadyTagged.length}</h4><small class="text-muted">Already Tagged</small>
+                </div></div></div>
+                <div class="col"><div class="card text-center"><div class="card-body py-2">
+                  <h4 class="mb-0 text-danger">${unmatched.length}</h4><small class="text-muted">No Match</small>
+                </div></div></div>
+              </div>
+
+              <!-- Matched Photos Preview -->
+              ${matched.length > 0 ? `
+              <h6 class="mb-2"><i class="bi bi-check-circle text-success me-2"></i>Matched Photos (${matched.length})</h6>
+              <div class="table-responsive mb-3" style="max-height:300px; overflow-y:auto;">
+                <table class="table table-sm table-hover align-middle mb-0">
+                  <thead class="table-light sticky-top">
+                    <tr>
+                      <th style="width:30px;"><input type="checkbox" class="form-check-input" id="autoTagCheckAll" checked onchange="mediaGalleryModule._toggleAutoTagAll(this.checked)"></th>
+                      <th>Filename</th><th>Matched By</th><th>Organisation</th><th>Award</th><th>Status</th>
+                    </tr>
+                  </thead>
+                  <tbody>${matchPreviewHtml}</tbody>
+                </table>
+              </div>` : ''}
+
+              <!-- Unmatched Photos -->
+              ${unmatched.length > 0 ? `
+              <details class="mb-3">
+                <summary class="text-danger" style="cursor:pointer;"><strong><i class="bi bi-x-circle me-1"></i>${unmatched.length} Unmatched Photos</strong> (click to expand)</summary>
+                <div class="table-responsive mt-2" style="max-height:200px; overflow-y:auto;">
+                  <table class="table table-sm table-hover mb-0">
+                    <thead class="table-light sticky-top"><tr><th>Filename</th><th>Status</th></tr></thead>
+                    <tbody>${unmatchedHtml}</tbody>
+                  </table>
+                </div>
+                ${unmatched.length > 20 ? `<small class="text-muted">...and ${unmatched.length - 20} more</small>` : ''}
+              </details>` : ''}
+
+              <!-- Running Order Reference -->
+              <details class="mb-2">
+                <summary style="cursor:pointer;"><strong><i class="bi bi-list-ol me-1"></i>Running Order Reference</strong> (${roItems.length} items)</summary>
+                <div class="table-responsive mt-2" style="max-height:250px; overflow-y:auto;">
+                  <table class="table table-sm table-hover mb-0">
+                    <thead class="table-light sticky-top"><tr><th>Award #</th><th>Organisation</th><th>Award</th></tr></thead>
+                    <tbody>${roRefHtml}</tbody>
+                  </table>
+                </div>
+              </details>
+            </div>
+            <div class="modal-footer">
+              <button class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+              <button class="btn btn-warning" onclick="mediaGalleryModule._executeAutoTag()" ${newMatches.length === 0 ? 'disabled' : ''}>
+                <i class="bi bi-lightning me-1"></i>Apply Tags (${newMatches.length} photos)
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>`;
+
+    // Store matches for execution
+    this._autoTagMatches = matches;
+
+    const old = document.getElementById('autoTagModal');
+    if (old) old.remove();
+    document.body.insertAdjacentHTML('beforeend', html);
+    new bootstrap.Modal(document.getElementById('autoTagModal')).show();
+  },
+
+  _toggleAutoTagAll(checked) {
+    document.querySelectorAll('.auto-tag-check').forEach(cb => {
+      if (!cb.closest('tr').classList.contains('table-secondary')) {
+        cb.checked = checked;
+      }
+    });
+  },
+
+  /**
+   * Execute auto-tagging - apply org/award IDs from running order to matched photos
+   */
+  async _executeAutoTag() {
+    if (!this._autoTagMatches) return;
+
+    const checkboxes = document.querySelectorAll('.auto-tag-check:checked');
+    const selectedIdxs = new Set(Array.from(checkboxes).map(cb => parseInt(cb.dataset.idx)));
+
+    const matched = this._autoTagMatches.filter((m, idx) => m.runningOrderItem && selectedIdxs.has(idx));
+
+    if (matched.length === 0) {
+      utils.showToast('No photos selected for tagging', 'warning');
+      return;
+    }
+
+    try {
+      utils.showLoading();
+      let taggedCount = 0;
+
+      for (const m of matched) {
+        const item = m.runningOrderItem;
+        const updateData = {};
+
+        // Set organisation_id from running order item
+        if (item.organisations?.id) {
+          updateData.organisation_id = item.organisations.id;
+        } else if (item.organisation_id) {
+          updateData.organisation_id = item.organisation_id;
+        }
+
+        // Set award_id from running order item
+        if (item.awards?.id) {
+          updateData.award_id = item.awards.id;
+        } else if (item.award_id) {
+          updateData.award_id = item.award_id;
+        }
+
+        if (Object.keys(updateData).length > 0) {
+          const { error } = await STATE.client
+            .from('media_gallery')
+            .update(updateData)
+            .eq('id', m.photo.id);
+
+          if (error) {
+            console.error(`Error tagging photo ${m.photo.id}:`, error);
+          } else {
+            taggedCount++;
+          }
+        }
+      }
+
+      utils.showToast(`Successfully tagged ${taggedCount} photos from running order!`, 'success');
+
+      // Close modal
+      bootstrap.Modal.getInstance(document.getElementById('autoTagModal')).hide();
+
+      // Reload current view
+      if (this.currentView === 'photos-production') {
+        await this.loadPhotosProduction();
+      } else if (this.currentSectionId) {
+        const { data: section } = await STATE.client
+          .from('event_galleries')
+          .select('gallery_name')
+          .eq('id', this.currentSectionId)
+          .single();
+        await this.viewSectionPhotos(this.currentSectionId, section.gallery_name);
+      }
+
+      this._autoTagMatches = null;
+
+    } catch (error) {
+      console.error('Error executing auto-tag:', error);
+      utils.showToast('Error applying tags: ' + error.message, 'error');
+    } finally {
+      utils.hideLoading();
+    }
   }
 };
 

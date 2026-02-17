@@ -1018,6 +1018,32 @@ const eventsModule = {
 
         .ro-actions { width: 120px; flex-shrink: 0; text-align: center; white-space: nowrap; }
         .ro-actions .btn { padding: 2px 6px; font-size: 0.75rem; }
+
+        /* Grouped presentation styles */
+        .ro-group-header {
+          background: linear-gradient(135deg, #fff8e1 0%, #ffffff 100%);
+          border: 2px solid #ffc107;
+          border-radius: 8px 8px 0 0;
+          margin-bottom: 0;
+          margin-top: 10px;
+          user-select: none;
+        }
+        .ro-group-header:hover { box-shadow: 0 2px 8px rgba(255,193,7,0.25); }
+        .ro-grouped-item {
+          background: #fffef8;
+          border: 1px solid #f0e6c0;
+          border-top: 1px dashed #e0d6a0;
+          border-radius: 0;
+          margin-bottom: 0;
+          padding-left: 40px;
+        }
+        .ro-grouped-item:last-of-type,
+        .ro-grouped-item + .ro-item:not(.ro-grouped-item),
+        .ro-grouped-item + .ro-group-header {
+          border-radius: 0 0 8px 8px;
+          margin-bottom: 6px;
+        }
+        .ro-grouped-item + .ro-item:not(.ro-grouped-item) { border-radius: 8px; margin-top: 6px; }
       </style>
     `;
 
@@ -1075,7 +1101,7 @@ const eventsModule = {
   },
 
   /**
-   * Render Running Order Items - Enhanced with numbered column, drag handles, status, time
+   * Render Running Order Items - With grouping, numbered column, drag handles, status, time
    */
   renderRunningOrderItems() {
     const container = document.getElementById('runningOrderList');
@@ -1083,8 +1109,12 @@ const eventsModule = {
 
     let cumulativeMin = 0;
     const search = this._roSearchTerm.toLowerCase();
+    const renderedGroups = new Set(); // Track which group headers we've already rendered
+    let presentationNumber = 0; // Separate counter for presentation numbers
 
-    container.innerHTML = this.runningOrderItems.map((item, index) => {
+    let html = '';
+
+    this.runningOrderItems.forEach((item, index) => {
       const recipientName = item.recipient_collecting || item.event_guests?.guest_name || item.display_name || 'TBC';
       const awardName = item.award_name || (item.awards ? item.awards.award_name : 'Award TBC');
       const winnerName = item.display_name || (item.organisations ? item.organisations.company_name : 'TBC');
@@ -1104,7 +1134,117 @@ const eventsModule = {
         `<option value="${s}"${s === status ? ' selected' : ''}>${s.charAt(0).toUpperCase() + s.slice(1)}</option>`
       ).join('');
 
-      return `
+      // Determine grouping state
+      const isGrouped = item.presentation_group && this.runningOrderItems.filter(
+        i => i.presentation_group === item.presentation_group
+      ).length > 1;
+      const orgAwardCount = this._roOrgAwardCount(item);
+      const isGroupStart = isGrouped && !renderedGroups.has(item.presentation_group);
+      const groupMembers = isGrouped ? this.runningOrderItems.filter(i => i.presentation_group === item.presentation_group) : [];
+
+      // Render group header if this is the first item in a group
+      if (isGroupStart) {
+        renderedGroups.add(item.presentation_group);
+        presentationNumber++;
+        const groupDuration = groupMembers.reduce((sum, m) => sum + (m.duration_minutes || 3), 0);
+
+        html += `
+        <div class="ro-group-header ${matchesSearch ? '' : 'search-hidden'}"
+             draggable="${!this.isPublished}"
+             data-group="${item.presentation_group}"
+             data-id="${item.id}"
+             ondragstart="eventsModule.handleDragStart(event)"
+             ondragover="eventsModule.handleDragOver(event)"
+             ondragleave="eventsModule.handleDragLeave(event)"
+             ondrop="eventsModule.handleDrop(event)"
+             ondragend="eventsModule.handleDragEnd(event)"
+             ontouchstart="eventsModule.handleTouchStart(event)"
+             ontouchmove="eventsModule.handleTouchMove(event)"
+             ontouchend="eventsModule.handleTouchEnd(event)">
+          <div class="d-flex align-items-center gap-2 py-2 px-2">
+            ${!this.isPublished ? `<div class="ro-drag-handle" title="Drag group to reorder"><i class="bi bi-grip-vertical"></i></div>` : '<div style="width:32px;"></div>'}
+            <div class="ro-number">${presentationNumber}<span class="sub">GROUP</span></div>
+            <div class="ro-time">
+              <input type="time" value="${groupMembers[0]?.scheduled_time || ''}"
+                     onchange="eventsModule.setROItemTime('${item.id}', this.value)"
+                     ${this.isPublished ? 'disabled' : ''}>
+              <div class="duration">${groupDuration}m</div>
+            </div>
+            <div class="ro-details">
+              <div class="ro-award-name">
+                <i class="bi bi-collection me-1"></i>${utils.escapeHtml(winnerName)}
+                <span class="badge bg-info ms-2" style="font-size:0.65rem;">${groupMembers.length} awards together</span>
+              </div>
+              <div class="ro-winner-name" style="font-size:0.75rem; color:#6c757d;">
+                ${groupMembers.map(m => utils.escapeHtml(m.award_name || 'Award')).join(' &bull; ')}
+              </div>
+            </div>
+            <div class="ro-recipient">
+              <small class="text-muted" style="font-size:0.65rem;">Collecting:</small>
+              <strong>${utils.escapeHtml(recipientName)}</strong>
+            </div>
+            <div class="ro-status">
+              <select onchange="eventsModule.setROItemStatus('${item.id}', this.value)" ${this.isPublished ? 'disabled' : ''}>
+                ${statusOpts}
+              </select>
+            </div>
+            <div class="ro-actions">
+              ${!this.isPublished ? `
+                <button class="btn btn-sm btn-outline-secondary" onclick="eventsModule.moveROItem('${item.id}', -1)" title="Move group up" ${isFirst ? 'disabled' : ''}>
+                  <i class="bi bi-arrow-up"></i>
+                </button>
+                <button class="btn btn-sm btn-outline-secondary" onclick="eventsModule.moveROItem('${item.id}', 1)" title="Move group down" ${isLast ? 'disabled' : ''}>
+                  <i class="bi bi-arrow-down"></i>
+                </button>
+                <button class="btn btn-sm btn-outline-warning" onclick="eventsModule.splitAllPresentation('${item.id}')" title="Split all into separate presentations">
+                  <i class="bi bi-scissors"></i>
+                </button>
+              ` : `<span class="badge bg-success"><i class="bi bi-check-circle me-1"></i>Locked</span>`}
+            </div>
+          </div>
+        </div>`;
+      }
+
+      // For grouped items, render as sub-items under the group header
+      if (isGrouped) {
+        html += `
+        <div class="ro-item ro-grouped-item ${this.isPublished ? 'published' : ''} ${status !== 'pending' ? 'status-' + status : ''} ${matchesSearch ? '' : 'search-hidden'}"
+             data-id="${item.id}" data-index="${index}" data-group="${item.presentation_group}">
+          <div class="d-flex align-items-center gap-2 py-1 px-2">
+            <div style="width:32px;"></div>
+            <div class="ro-number" style="font-size:0.9rem; color:#adb5bd;">
+              ${presentationNumber}.${groupMembers.indexOf(item) + 1}
+            </div>
+            <div style="width:70px;"></div>
+            <div class="ro-details">
+              <div class="ro-award-name" style="font-size:0.82rem;" title="${utils.escapeHtml(awardName)}">
+                <i class="bi bi-trophy me-1" style="color:#ffc107;"></i>${utils.escapeHtml(awardName)}
+              </div>
+              ${notes ? `<div class="ro-notes-preview" title="${utils.escapeHtml(notes)}"><i class="bi bi-sticky me-1"></i>${utils.escapeHtml(notes)}</div>` : ''}
+            </div>
+            <div class="ro-recipient"></div>
+            <div class="ro-status"></div>
+            <div class="ro-actions">
+              ${!this.isPublished ? `
+                <button class="btn btn-sm btn-outline-primary" onclick="eventsModule.editRunningOrderItem('${item.id}')" title="Edit">
+                  <i class="bi bi-pencil"></i>
+                </button>
+                <button class="btn btn-sm btn-outline-warning" onclick="eventsModule.splitPresentation('${item.id}')" title="Split into separate presentation">
+                  <i class="bi bi-box-arrow-right"></i>
+                </button>
+                <button class="btn btn-sm btn-outline-danger" onclick="eventsModule.deleteRunningOrderItem('${item.id}')" title="Delete">
+                  <i class="bi bi-trash"></i>
+                </button>
+              ` : ''}
+            </div>
+          </div>
+        </div>`;
+        return; // Don't render as a normal row
+      }
+
+      // Non-grouped item (standalone)
+      presentationNumber++;
+      html += `
       <div class="ro-item ${this.isPublished ? 'published' : ''} ${status !== 'pending' ? 'status-' + status : ''} ${matchesSearch ? '' : 'search-hidden'}"
            draggable="${!this.isPublished}"
            data-id="${item.id}"
@@ -1118,19 +1258,11 @@ const eventsModule = {
            ontouchmove="eventsModule.handleTouchMove(event)"
            ontouchend="eventsModule.handleTouchEnd(event)">
         <div class="d-flex align-items-center gap-2 py-2 px-2">
-          <!-- Drag Handle -->
-          ${!this.isPublished ? `
-          <div class="ro-drag-handle" title="Drag to reorder">
-            <i class="bi bi-grip-vertical"></i>
-          </div>` : '<div style="width:32px;"></div>'}
-
-          <!-- Number -->
+          ${!this.isPublished ? `<div class="ro-drag-handle" title="Drag to reorder"><i class="bi bi-grip-vertical"></i></div>` : '<div style="width:32px;"></div>'}
           <div class="ro-number">
-            ${index + 1}
+            ${presentationNumber}
             <span class="sub">${item.award_number || ''}</span>
           </div>
-
-          <!-- Scheduled Time -->
           <div class="ro-time">
             <input type="time" value="${scheduledTime}"
                    onchange="eventsModule.setROItemTime('${item.id}', this.value)"
@@ -1138,28 +1270,20 @@ const eventsModule = {
                    title="Scheduled time">
             <div class="duration" title="Cumulative: ${cumTime} min">${duration}m</div>
           </div>
-
-          <!-- Award & Winner Details -->
           <div class="ro-details">
             <div class="ro-award-name" title="${utils.escapeHtml(awardName)}">${utils.escapeHtml(awardName)}</div>
             <div class="ro-winner-name" title="${utils.escapeHtml(winnerName)}">${utils.escapeHtml(winnerName)}</div>
             ${notes ? `<div class="ro-notes-preview" title="${utils.escapeHtml(notes)}"><i class="bi bi-sticky me-1"></i>${utils.escapeHtml(notes)}</div>` : ''}
           </div>
-
-          <!-- Recipient -->
           <div class="ro-recipient">
             <small class="text-muted" style="font-size:0.65rem;">Collecting:</small>
             <strong title="${utils.escapeHtml(recipientName)}">${utils.escapeHtml(recipientName)}</strong>
           </div>
-
-          <!-- Status -->
           <div class="ro-status">
             <select onchange="eventsModule.setROItemStatus('${item.id}', this.value)" ${this.isPublished ? 'disabled' : ''}>
               ${statusOpts}
             </select>
           </div>
-
-          <!-- Actions -->
           <div class="ro-actions">
             ${!this.isPublished ? `
               <button class="btn btn-sm btn-outline-secondary" onclick="eventsModule.moveROItem('${item.id}', -1)" title="Move up" ${isFirst ? 'disabled' : ''}>
@@ -1171,20 +1295,24 @@ const eventsModule = {
               <button class="btn btn-sm btn-outline-primary" onclick="eventsModule.editRunningOrderItem('${item.id}')" title="Edit">
                 <i class="bi bi-pencil"></i>
               </button>
+              ${orgAwardCount > 1 && !isGrouped ? `
+              <button class="btn btn-sm btn-outline-info" onclick="eventsModule.groupPresentation('${item.id}')" title="Group all awards for this org into one presentation">
+                <i class="bi bi-collection"></i>
+              </button>` : ''}
               <button class="btn btn-sm btn-outline-danger" onclick="eventsModule.deleteRunningOrderItem('${item.id}')" title="Delete">
                 <i class="bi bi-trash"></i>
               </button>
-            ` : `
-              <span class="badge bg-success"><i class="bi bi-check-circle me-1"></i>Locked</span>
-            `}
+            ` : `<span class="badge bg-success"><i class="bi bi-check-circle me-1"></i>Locked</span>`}
           </div>
         </div>
       </div>`;
-    }).join('');
+    });
 
-    // Update total badge
+    container.innerHTML = html;
+
+    // Update total badge and presentation count
     const totalBadge = document.querySelector('#runningOrderModal .badge.bg-secondary');
-    if (totalBadge) totalBadge.textContent = `${this.runningOrderItems.length} items`;
+    if (totalBadge) totalBadge.textContent = `${this.runningOrderItems.length} items, ${presentationNumber} presentations`;
 
     // Update undo button state
     const undoBtn = document.getElementById('roUndoBtn');
@@ -1434,6 +1562,172 @@ const eventsModule = {
   },
 
   // ============================================
+  // GROUP / SPLIT PRESENTATIONS
+  // ============================================
+
+  /**
+   * Build a map of organisation_id -> array of running order items
+   */
+  _roGetOrgGroups() {
+    const groups = {};
+    this.runningOrderItems.forEach(item => {
+      const orgId = item.organisation_id || item.display_name || item.id;
+      if (!groups[orgId]) groups[orgId] = [];
+      groups[orgId].push(item);
+    });
+    return groups;
+  },
+
+  /**
+   * Check if an item is part of a group (same org has 2+ awards)
+   */
+  _roIsGrouped(item) {
+    return item.presentation_group && this.runningOrderItems.filter(
+      i => i.presentation_group === item.presentation_group
+    ).length > 1;
+  },
+
+  /**
+   * Get all items in the same presentation group
+   */
+  _roGetGroupMembers(groupId) {
+    return this.runningOrderItems.filter(i => i.presentation_group === groupId);
+  },
+
+  /**
+   * Get the number of awards this org has in the running order
+   */
+  _roOrgAwardCount(item) {
+    const orgKey = item.organisation_id || item.display_name;
+    if (!orgKey) return 1;
+    return this.runningOrderItems.filter(i =>
+      (i.organisation_id && i.organisation_id === item.organisation_id) ||
+      (!i.organisation_id && i.display_name === item.display_name)
+    ).length;
+  },
+
+  /**
+   * Group items: merge an org's awards into one presentation
+   * All awards for this org get the same presentation_group and are moved adjacent
+   */
+  async groupPresentation(itemId) {
+    const item = this.runningOrderItems.find(i => i.id === itemId);
+    if (!item) return;
+
+    this._roPushUndo();
+
+    const orgKey = item.organisation_id || item.display_name;
+    const groupId = item.organisation_id || `group_${Date.now()}`;
+
+    // Find all items for this org
+    const orgItems = this.runningOrderItems.filter(i =>
+      (i.organisation_id && i.organisation_id === item.organisation_id) ||
+      (!i.organisation_id && i.display_name === item.display_name)
+    );
+
+    if (orgItems.length < 2) {
+      utils.showToast('This organisation only has one award', 'info');
+      return;
+    }
+
+    // Set the group ID on all of them
+    orgItems.forEach(i => { i.presentation_group = groupId; });
+
+    // Move all grouped items to be adjacent (after the first one's position)
+    const firstIdx = this.runningOrderItems.indexOf(orgItems[0]);
+    const others = orgItems.slice(1);
+
+    // Remove others from their current positions
+    others.forEach(oi => {
+      const idx = this.runningOrderItems.indexOf(oi);
+      if (idx > -1) this.runningOrderItems.splice(idx, 1);
+    });
+
+    // Re-find the first item's new index after removals
+    const newFirstIdx = this.runningOrderItems.indexOf(orgItems[0]);
+
+    // Insert others right after the first
+    others.forEach((oi, i) => {
+      this.runningOrderItems.splice(newFirstIdx + 1 + i, 0, oi);
+    });
+
+    this._roRecalcNumbers();
+
+    // Persist group IDs
+    for (const oi of orgItems) {
+      try {
+        await STATE.client.from('running_order')
+          .update({ presentation_group: groupId, display_order: oi.display_order, award_number: oi.award_number })
+          .eq('id', oi.id);
+      } catch (e) { console.error('Error grouping:', e); }
+    }
+
+    this.renderRunningOrderItems();
+    utils.showToast(`Grouped ${orgItems.length} awards for ${item.display_name || 'this organisation'} into one presentation`, 'success');
+  },
+
+  /**
+   * Split: break a grouped item out into its own separate presentation
+   */
+  async splitPresentation(itemId) {
+    const item = this.runningOrderItems.find(i => i.id === itemId);
+    if (!item || !item.presentation_group) return;
+
+    this._roPushUndo();
+
+    const oldGroup = item.presentation_group;
+    item.presentation_group = null;
+
+    // If only one item remains in the old group, clear that one too
+    const remaining = this.runningOrderItems.filter(i => i.presentation_group === oldGroup);
+    if (remaining.length === 1) {
+      remaining[0].presentation_group = null;
+      try {
+        await STATE.client.from('running_order')
+          .update({ presentation_group: null })
+          .eq('id', remaining[0].id);
+      } catch (e) { console.error('Error clearing last group member:', e); }
+    }
+
+    try {
+      await STATE.client.from('running_order')
+        .update({ presentation_group: null })
+        .eq('id', itemId);
+    } catch (e) { console.error('Error splitting:', e); }
+
+    this._roRecalcNumbers();
+    this.renderRunningOrderItems();
+    utils.showToast(`Split "${item.award_name || 'Award'}" into a separate presentation`, 'success');
+  },
+
+  /**
+   * Split ALL awards for an org back into individual presentations
+   */
+  async splitAllPresentation(itemId) {
+    const item = this.runningOrderItems.find(i => i.id === itemId);
+    if (!item || !item.presentation_group) return;
+
+    this._roPushUndo();
+
+    const groupId = item.presentation_group;
+    const members = this.runningOrderItems.filter(i => i.presentation_group === groupId);
+
+    members.forEach(m => { m.presentation_group = null; });
+
+    for (const m of members) {
+      try {
+        await STATE.client.from('running_order')
+          .update({ presentation_group: null })
+          .eq('id', m.id);
+      } catch (e) { console.error('Error splitting all:', e); }
+    }
+
+    this._roRecalcNumbers();
+    this.renderRunningOrderItems();
+    utils.showToast(`Split ${members.length} awards into separate presentations`, 'success');
+  },
+
+  // ============================================
   // SYNC FROM RSVPs
   // ============================================
   async syncFromRSVPs() {
@@ -1489,7 +1783,7 @@ const eventsModule = {
       for (const item of this.runningOrderItems) {
         const { error } = await STATE.client
           .from('running_order')
-          .update({ display_order: item.display_order, award_number: item.award_number })
+          .update({ display_order: item.display_order, award_number: item.award_number, presentation_group: item.presentation_group || null })
           .eq('id', item.id);
         if (error) throw error;
       }
@@ -1503,7 +1797,7 @@ const eventsModule = {
   },
 
   /**
-   * Print Running Order - Enhanced with status and time columns
+   * Print Running Order - With grouped presentations
    */
   printRunningOrder() {
     if (this.runningOrderItems.length === 0) {
@@ -1512,7 +1806,11 @@ const eventsModule = {
     }
 
     let cumMin = 0;
-    const rows = this.runningOrderItems.map(item => {
+    let presNum = 0;
+    const renderedGroups = new Set();
+    let rows = '';
+
+    this.runningOrderItems.forEach(item => {
       const awardName = item.award_name || (item.awards ? item.awards.award_name : 'N/A');
       const companyName = item.display_name || (item.organisations ? item.organisations.company_name : 'N/A');
       const recipient = item.recipient_collecting || (item.event_guests ? item.event_guests.guest_name : '');
@@ -1523,15 +1821,46 @@ const eventsModule = {
       const status = item.status || 'pending';
       const statusLabel = status.charAt(0).toUpperCase() + status.slice(1);
 
-      return `<tr>
-        <td class="award-number">${utils.escapeHtml(item.award_number)}</td>
-        <td class="time-col">${utils.escapeHtml(time)}</td>
-        <td class="award-name">${utils.escapeHtml(awardName)}</td>
-        <td class="winner-name">${utils.escapeHtml(companyName)}</td>
-        <td class="recipient">${utils.escapeHtml(recipient)}</td>
-        <td class="status-col">${statusLabel}</td>
-      </tr>${notes ? `<tr><td colspan="6" class="notes"><strong>Notes:</strong> ${utils.escapeHtml(notes)}</td></tr>` : ''}`;
-    }).join('');
+      const isGrouped = item.presentation_group && this.runningOrderItems.filter(
+        i => i.presentation_group === item.presentation_group
+      ).length > 1;
+
+      if (isGrouped) {
+        const isGroupStart = !renderedGroups.has(item.presentation_group);
+        if (isGroupStart) {
+          renderedGroups.add(item.presentation_group);
+          presNum++;
+          const groupMembers = this.runningOrderItems.filter(i => i.presentation_group === item.presentation_group);
+          rows += `<tr style="background:#fffde7;">
+            <td class="award-number" rowspan="${groupMembers.length}" style="vertical-align:middle; font-size:14pt;">${presNum}</td>
+            <td class="time-col">${utils.escapeHtml(time)}</td>
+            <td class="award-name">${utils.escapeHtml(awardName)}</td>
+            <td class="winner-name" rowspan="${groupMembers.length}" style="vertical-align:middle;"><strong>${utils.escapeHtml(companyName)}</strong><br><small style="color:#666;">Combined presentation</small></td>
+            <td class="recipient" rowspan="${groupMembers.length}" style="vertical-align:middle;">${utils.escapeHtml(recipient)}</td>
+            <td class="status-col">${statusLabel}</td>
+          </tr>`;
+          if (notes) rows += `<tr style="background:#fffde7;"><td colspan="3" class="notes"><strong>Notes:</strong> ${utils.escapeHtml(notes)}</td></tr>`;
+        } else {
+          rows += `<tr style="background:#fffde7;">
+            <td class="time-col">${utils.escapeHtml(time)}</td>
+            <td class="award-name">${utils.escapeHtml(awardName)}</td>
+            <td class="status-col">${statusLabel}</td>
+          </tr>`;
+          if (notes) rows += `<tr style="background:#fffde7;"><td colspan="3" class="notes"><strong>Notes:</strong> ${utils.escapeHtml(notes)}</td></tr>`;
+        }
+      } else {
+        presNum++;
+        rows += `<tr>
+          <td class="award-number">${presNum}</td>
+          <td class="time-col">${utils.escapeHtml(time)}</td>
+          <td class="award-name">${utils.escapeHtml(awardName)}</td>
+          <td class="winner-name">${utils.escapeHtml(companyName)}</td>
+          <td class="recipient">${utils.escapeHtml(recipient)}</td>
+          <td class="status-col">${statusLabel}</td>
+        </tr>`;
+        if (notes) rows += `<tr><td colspan="6" class="notes"><strong>Notes:</strong> ${utils.escapeHtml(notes)}</td></tr>`;
+      }
+    });
 
     const printContent = `<!DOCTYPE html><html><head><meta charset="utf-8">
       <title>Running Order - ${utils.escapeHtml(this.currentEventName)}</title>
@@ -1563,7 +1892,7 @@ const eventsModule = {
         <th class="award-number">#</th><th class="time-col">Time</th><th class="award-name">Award</th>
         <th class="winner-name">Winner</th><th class="recipient">Collecting</th><th class="status-col">Status</th>
       </tr></thead><tbody>${rows}</tbody></table>
-      <div class="footer"><p>Total: ${this.runningOrderItems.length} awards | Est. duration: ${cumMin} minutes</p>
+      <div class="footer"><p>Total: ${this.runningOrderItems.length} awards in ${presNum} presentations | Est. duration: ${cumMin} minutes</p>
       <p>Awards CMS - Running Order</p></div>
       <script>window.onload=function(){window.print();};</script></body></html>`;
 
@@ -1601,17 +1930,24 @@ const eventsModule = {
       utils.showToast('No items to export', 'warning');
       return;
     }
-    const exportData = this.runningOrderItems.map(item => ({
-      'Order': item.display_order,
-      'Award Number': item.award_number,
-      'Award Name': item.award_name || 'TBC',
-      'Winner': item.display_name || 'TBC',
-      'Recipient Collecting': item.recipient_collecting || item.event_guests?.guest_name || 'TBC',
-      'Scheduled Time': item.scheduled_time || '',
-      'Duration (min)': item.duration_minutes || 3,
-      'Status': item.status || 'pending',
-      'Notes': item.notes || ''
-    }));
+    const exportData = this.runningOrderItems.map(item => {
+      const isGrouped = item.presentation_group && this.runningOrderItems.filter(
+        i => i.presentation_group === item.presentation_group
+      ).length > 1;
+      return {
+        'Order': item.display_order,
+        'Award Number': item.award_number,
+        'Award Name': item.award_name || 'TBC',
+        'Winner': item.display_name || 'TBC',
+        'Recipient Collecting': item.recipient_collecting || item.event_guests?.guest_name || 'TBC',
+        'Scheduled Time': item.scheduled_time || '',
+        'Duration (min)': item.duration_minutes || 3,
+        'Status': item.status || 'pending',
+        'Presentation': isGrouped ? 'Grouped' : 'Individual',
+        'Group ID': item.presentation_group || '',
+        'Notes': item.notes || ''
+      };
+    });
     const filename = `${this.currentEventName.replace(/[^a-z0-9]/gi, '_')}_running_order_${new Date().toISOString().split('T')[0]}.csv`;
     utils.exportToCSV(exportData, filename);
   },

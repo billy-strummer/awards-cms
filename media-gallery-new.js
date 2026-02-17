@@ -6,6 +6,7 @@ const mediaGalleryModule = {
   currentEventId: null,
   currentEvent: null,
   currentSectionId: null,
+  currentSectionName: null, // Store current section name for re-renders
   currentMediaId: null,
   currentSectionPhotos: [], // Store all photos for filtering
   currentFilter: 'all', // all, published, drafts
@@ -19,6 +20,9 @@ const mediaGalleryModule = {
   currentView: 'events-list', // 'events-list', 'event-contents', 'photos-production', 'videos-production'
   videoTags: [], // Store video company tags for add/edit modal
   videoAwardTags: [], // Store video award tags for add/edit modal
+  _autoTagMatches: null, // Store auto-tag matches for preview
+  _watermarkedPhotos: null, // Store watermarked photos state
+  _exportData: null, // Store export data
 
   /**
    * Initialize Media Gallery - Show events list
@@ -621,6 +625,9 @@ const mediaGalleryModule = {
     const win = window.open('', '_blank', 'width=1200,height=800');
     if (!win) { utils.showToast('Please allow popups', 'warning'); return; }
 
+    // Escape HTML for safe injection into preview window
+    const esc = (str) => String(str || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#039;');
+
     try {
       const { data: sections } = await STATE.client.from('event_galleries').select('*').eq('event_id', this.currentEventId).order('display_order');
       const sectionIds = (sections || []).map(s => s.id);
@@ -642,18 +649,18 @@ const mediaGalleryModule = {
         if (photos.length === 0) return '';
         return `
           <div style="margin-bottom:40px;">
-            <h2 style="text-align:center;font-size:1.5rem;color:#333;margin-bottom:20px;">${s.gallery_name}</h2>
-            ${s.gallery_description ? `<p style="text-align:center;color:#6c757d;margin-bottom:20px;">${s.gallery_description}</p>` : ''}
+            <h2 style="text-align:center;font-size:1.5rem;color:#333;margin-bottom:20px;">${esc(s.gallery_name)}</h2>
+            ${s.gallery_description ? `<p style="text-align:center;color:#6c757d;margin-bottom:20px;">${esc(s.gallery_description)}</p>` : ''}
             <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:12px;">
               ${photos.map(p => {
                 const isYT = p.file_type === 'video/youtube';
-                const src = isYT ? `https://img.youtube.com/vi/${p.file_url}/hqdefault.jpg` : p.file_url;
+                const src = isYT ? `https://img.youtube.com/vi/${esc(p.file_url)}/hqdefault.jpg` : esc(p.file_url);
                 return `<div style="border-radius:8px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.1);background:white;">
                   <img src="${src}" style="width:100%;height:200px;object-fit:cover;display:block;">
                   <div style="padding:10px;">
-                    <div style="font-weight:600;font-size:0.9rem;">${p.title || ''}</div>
-                    ${p.organisations?.company_name ? `<div style="font-size:0.8rem;color:#6c757d;">${p.organisations.company_name}</div>` : ''}
-                    ${p.photographer ? `<div style="font-size:0.75rem;color:#adb5bd;"><i>\u{1F4F7}</i> ${p.photographer}</div>` : ''}
+                    <div style="font-weight:600;font-size:0.9rem;">${esc(p.title)}</div>
+                    ${p.organisations?.company_name ? `<div style="font-size:0.8rem;color:#6c757d;">${esc(p.organisations.company_name)}</div>` : ''}
+                    ${p.photographer ? `<div style="font-size:0.75rem;color:#adb5bd;"><i>\u{1F4F7}</i> ${esc(p.photographer)}</div>` : ''}
                   </div>
                 </div>`;
               }).join('')}
@@ -661,7 +668,7 @@ const mediaGalleryModule = {
           </div>`;
       }).join('');
 
-      win.document.write(`<!DOCTYPE html><html><head><title>${event?.event_name || 'Gallery'} - Photo Gallery</title>
+      win.document.write(`<!DOCTYPE html><html><head><title>${esc(event?.event_name) || 'Gallery'} - Photo Gallery</title>
         <style>
           body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; margin: 0; background: #fafafa; }
           .header { background: linear-gradient(135deg, #1a1a2e, #16213e); color: white; padding: 40px; text-align: center; }
@@ -671,8 +678,8 @@ const mediaGalleryModule = {
           @media print { .no-print { display: none; } }
         </style></head><body>
         <div class="header">
-          <h1>${event?.event_name || 'Photo Gallery'}</h1>
-          <p>${event?.event_date ? new Date(event.event_date).toLocaleDateString('en-GB', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }) : ''} ${event?.venue ? '| ' + event.venue : ''}</p>
+          <h1>${esc(event?.event_name) || 'Photo Gallery'}</h1>
+          <p>${event?.event_date ? new Date(event.event_date).toLocaleDateString('en-GB', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }) : ''} ${event?.venue ? '| ' + esc(event.venue) : ''}</p>
         </div>
         <div class="container">${sectionsHtml || '<p style="text-align:center;color:#adb5bd;">No published photos yet.</p>'}</div>
         <div style="text-align:center;padding:20px;color:#adb5bd;font-size:0.8rem;">British Trade Awards Photo Gallery | ${new Date().getFullYear()}</div>
@@ -1611,6 +1618,32 @@ const mediaGalleryModule = {
         </div>
       `}
     `;
+
+    // Load photo counts for each section
+    if (sections.length > 0) {
+      this.loadSectionPhotoCounts(sections);
+    }
+  },
+
+  /**
+   * Load photo counts for section cards
+   */
+  async loadSectionPhotoCounts(sections) {
+    try {
+      for (const section of sections) {
+        const { count, error } = await STATE.client
+          .from('media_gallery')
+          .select('*', { count: 'exact', head: true })
+          .eq('gallery_section_id', section.id);
+
+        const badge = document.getElementById(`photoCount_${section.id}`);
+        if (badge) {
+          badge.innerHTML = `<i class="bi bi-camera me-1"></i>${error ? '?' : count || 0} photos`;
+        }
+      }
+    } catch (err) {
+      console.warn('Error loading section counts:', err);
+    }
   },
 
   /**
@@ -1796,11 +1829,12 @@ const mediaGalleryModule = {
    */
   async viewSectionPhotos(sectionId, sectionName) {
     this.currentSectionId = sectionId;
+    this.currentSectionName = sectionName;
 
     try {
       utils.showLoading();
 
-      // Load photos for this section
+      // Load photos for this section, ordered by display_order (fallback to uploaded_at)
       const { data: photos, error } = await STATE.client
         .from('media_gallery')
         .select(`
@@ -1809,6 +1843,7 @@ const mediaGalleryModule = {
           awards!media_gallery_award_id_fkey (*)
         `)
         .eq('gallery_section_id', sectionId)
+        .order('display_order', { ascending: true, nullsFirst: false })
         .order('uploaded_at', { ascending: false });
 
       if (error) throw error;
@@ -1817,6 +1852,7 @@ const mediaGalleryModule = {
       this.currentSectionPhotos = photos || [];
       this.currentFilter = 'all';
       this.currentSearchTerm = '';
+      this.currentSortBy = 'display_order';
       this.selectedPhotoIds.clear(); // Clear selections when switching sections
 
       this.renderSectionPhotos(sectionName);
@@ -2043,10 +2079,7 @@ const mediaGalleryModule = {
    */
   setFilter(filter) {
     this.currentFilter = filter;
-    const sectionName = this.currentSectionPhotos[0]?.gallery_section_id ?
-      document.querySelector('h5').textContent.replace(/\s*\(.*\)/, '').replace('📁 ', '') :
-      'Section';
-    this.renderSectionPhotos(sectionName);
+    this.renderSectionPhotos(this.currentSectionName || 'Section');
   },
 
   /**
@@ -2055,12 +2088,10 @@ const mediaGalleryModule = {
   setSearch(term) {
     this.currentSearchTerm = term;
     if (term === '') {
-      document.getElementById('gallerySearchBox').value = '';
+      const searchBox = document.getElementById('gallerySearchBox');
+      if (searchBox) searchBox.value = '';
     }
-    const sectionName = this.currentSectionPhotos[0]?.gallery_section_id ?
-      document.querySelector('h5').textContent.replace(/\s*\(.*\)/, '').replace('📁 ', '') :
-      'Section';
-    this.renderSectionPhotos(sectionName);
+    this.renderSectionPhotos(this.currentSectionName || 'Section');
   },
 
   /**
@@ -2068,10 +2099,7 @@ const mediaGalleryModule = {
    */
   setSortBy(sortBy) {
     this.currentSortBy = sortBy;
-    const sectionName = this.currentSectionPhotos[0]?.gallery_section_id ?
-      document.querySelector('h5').textContent.replace(/\s*\(.*\)/, '').replace('📁 ', '') :
-      'Section';
-    this.renderSectionPhotos(sectionName);
+    this.renderSectionPhotos(this.currentSectionName || 'Section');
   },
 
   /**
@@ -2214,14 +2242,7 @@ const mediaGalleryModule = {
       // Close modal and reload
       bootstrap.Modal.getInstance(document.getElementById('dragDropPublishModal')).hide();
 
-      // Get section name to reload view
-      const { data: section } = await STATE.client
-        .from('event_galleries')
-        .select('gallery_name')
-        .eq('id', this.currentSectionId)
-        .single();
-
-      await this.viewSectionPhotos(this.currentSectionId, section.gallery_name);
+      await this.viewSectionPhotos(this.currentSectionId, this.currentSectionName);
 
     } catch (error) {
       console.error('Error uploading files:', error);
@@ -2260,22 +2281,27 @@ const mediaGalleryModule = {
     };
     const videoTypeLabel = photo.video_type ? videoTypeLabels[photo.video_type] || photo.video_type : null;
 
+    const canDrag = this.currentSortBy === 'display_order' && this.currentFilter === 'all' && !this.currentSearchTerm;
+
     return `
       <div class="col-md-3">
         <div class="card h-100 ${!isPublished ? 'border-secondary' : ''} ${isSelected ? 'border-primary border-3' : ''}"
-          draggable="true"
+          ${canDrag ? `draggable="true"` : ''}
           data-photo-id="${photo.id}"
+          ${canDrag ? `
           ondragstart="mediaGalleryModule.handlePhotoDragStart(event, '${photo.id}')"
           ondragover="mediaGalleryModule.handlePhotoDragOver(event, '${photo.id}')"
           ondrop="mediaGalleryModule.handlePhotoDrop(event, '${photo.id}')"
           ondragenter="mediaGalleryModule.handlePhotoDragEnter(event, '${photo.id}')"
           ondragleave="mediaGalleryModule.handlePhotoDragLeave(event, '${photo.id}')"
           ondragend="mediaGalleryModule.handlePhotoDragEnd(event)"
+          ` : ''}
           onclick="mediaGalleryModule.toggleCardSelection(event, '${photo.id}')"
           style="cursor: pointer; transition: all 0.2s; ${isSelected ? 'box-shadow: 0 0 15px rgba(13, 110, 253, 0.5);' : ''}">
+          ${canDrag ? `
           <div class="position-absolute top-0 start-0 m-2" style="z-index: 10;">
             <i class="bi bi-grip-vertical text-muted" style="font-size: 1.2rem; cursor: move;" title="Drag to reorder" onclick="event.stopPropagation();"></i>
-          </div>
+          </div>` : ''}
           ${isSelected ? '<div class="position-absolute top-0 end-0 m-2"><div class="badge bg-primary"><i class="bi bi-check-circle-fill"></i> Selected</div></div>' : ''}
           ${!isPublished && !isSelected ? '<div class="position-absolute top-0 end-0 m-2 badge bg-secondary">Draft</div>' : ''}
           ${photo.featured && !isSelected ? '<div class="position-absolute top-0 end-0 m-2 badge bg-warning text-dark"><i class="bi bi-star-fill me-1"></i>Featured</div>' : ''}
@@ -2600,14 +2626,7 @@ const mediaGalleryModule = {
       // Close modal and reload
       bootstrap.Modal.getInstance(document.getElementById('uploadSectionPhotosModal')).hide();
 
-      // Get section name to reload view
-      const { data: section } = await STATE.client
-        .from('event_galleries')
-        .select('gallery_name')
-        .eq('id', this.currentSectionId)
-        .single();
-
-      await this.viewSectionPhotos(this.currentSectionId, section.gallery_name);
+      await this.viewSectionPhotos(this.currentSectionId, this.currentSectionName);
 
     } catch (error) {
       console.error('Error uploading photos:', error);
@@ -2682,14 +2701,7 @@ const mediaGalleryModule = {
       // Close modal and reload
       bootstrap.Modal.getInstance(document.getElementById('youtubeVideoModal')).hide();
 
-      // Get section name to reload view
-      const { data: section } = await STATE.client
-        .from('event_galleries')
-        .select('gallery_name')
-        .eq('id', this.currentSectionId)
-        .single();
-
-      await this.viewSectionPhotos(this.currentSectionId, section.gallery_name);
+      await this.viewSectionPhotos(this.currentSectionId, this.currentSectionName);
 
     } catch (error) {
       console.error('Error adding YouTube video:', error);
@@ -2862,13 +2874,7 @@ const mediaGalleryModule = {
       utils.showToast('Photo order updated', 'success');
 
       // Re-render to show new order
-      const { data: section } = await STATE.client
-        .from('event_galleries')
-        .select('gallery_name')
-        .eq('id', this.currentSectionId)
-        .single();
-
-      this.renderSectionPhotos(section.gallery_name);
+      this.renderSectionPhotos(this.currentSectionName || 'Section');
 
     } catch (error) {
       console.error('Error reordering photos:', error);
@@ -2930,10 +2936,7 @@ const mediaGalleryModule = {
     }
 
     // Re-render to show selection state
-    const sectionName = this.currentSectionPhotos[0]?.gallery_section_id ?
-      document.querySelector('h5').textContent.replace(/\s*\(.*\)/, '').replace('📁 ', '') :
-      'Section';
-    this.renderSectionPhotos(sectionName);
+    this.renderSectionPhotos(this.currentSectionName || 'Section');
   },
 
   /**
@@ -2958,10 +2961,7 @@ const mediaGalleryModule = {
    */
   clearSelection() {
     this.selectedPhotoIds.clear();
-    const sectionName = this.currentSectionPhotos[0]?.gallery_section_id ?
-      document.querySelector('h5').textContent.replace(/\s*\(.*\)/, '').replace('📁 ', '') :
-      'Section';
-    this.renderSectionPhotos(sectionName);
+    this.renderSectionPhotos(this.currentSectionName || 'Section');
   },
 
   /**
@@ -2976,27 +2976,20 @@ const mediaGalleryModule = {
 
     try {
       utils.showLoading();
+      const count = this.selectedPhotoIds.size;
 
-      for (const photoId of this.selectedPhotoIds) {
-        const { error } = await STATE.client
-          .from('media_gallery')
-          .update({ published: true })
-          .eq('id', photoId);
+      const { error } = await STATE.client
+        .from('media_gallery')
+        .update({ published: true })
+        .in('id', [...this.selectedPhotoIds]);
 
-        if (error) throw error;
-      }
+      if (error) throw error;
 
-      utils.showToast(`${this.selectedPhotoIds.size} photo(s) published`, 'success');
+      utils.showToast(`${count} photo(s) published`, 'success');
       this.selectedPhotoIds.clear();
 
       // Reload section
-      const { data: section } = await STATE.client
-        .from('event_galleries')
-        .select('gallery_name')
-        .eq('id', this.currentSectionId)
-        .single();
-
-      await this.viewSectionPhotos(this.currentSectionId, section.gallery_name);
+      await this.viewSectionPhotos(this.currentSectionId, this.currentSectionName);
 
     } catch (error) {
       console.error('Error publishing photos:', error);
@@ -3018,27 +3011,20 @@ const mediaGalleryModule = {
 
     try {
       utils.showLoading();
+      const count = this.selectedPhotoIds.size;
 
-      for (const photoId of this.selectedPhotoIds) {
-        const { error } = await STATE.client
-          .from('media_gallery')
-          .update({ published: false })
-          .eq('id', photoId);
+      const { error } = await STATE.client
+        .from('media_gallery')
+        .update({ published: false })
+        .in('id', [...this.selectedPhotoIds]);
 
-        if (error) throw error;
-      }
+      if (error) throw error;
 
-      utils.showToast(`${this.selectedPhotoIds.size} photo(s) unpublished`, 'success');
+      utils.showToast(`${count} photo(s) unpublished`, 'success');
       this.selectedPhotoIds.clear();
 
       // Reload section
-      const { data: section } = await STATE.client
-        .from('event_galleries')
-        .select('gallery_name')
-        .eq('id', this.currentSectionId)
-        .single();
-
-      await this.viewSectionPhotos(this.currentSectionId, section.gallery_name);
+      await this.viewSectionPhotos(this.currentSectionId, this.currentSectionName);
 
     } catch (error) {
       console.error('Error unpublishing photos:', error);
@@ -3096,27 +3082,40 @@ const mediaGalleryModule = {
 
     try {
       utils.showLoading();
+      const count = this.selectedPhotoIds.size;
 
-      for (const photoId of this.selectedPhotoIds) {
-        const { error } = await STATE.client
-          .from('media_gallery')
-          .delete()
-          .eq('id', photoId);
+      // Get file paths for storage cleanup (non-YouTube files only)
+      const photosToDelete = this.currentSectionPhotos.filter(p =>
+        this.selectedPhotoIds.has(p.id) && p.file_type !== 'video/youtube' && p.file_url
+      );
+      const storagePaths = photosToDelete.map(p => {
+        const url = p.file_url || '';
+        const pathMatch = url.match(/media-gallery\/(.+)$/);
+        return pathMatch ? pathMatch[1] : null;
+      }).filter(Boolean);
 
-        if (error) throw error;
+      // Delete from database in a single query
+      const { error } = await STATE.client
+        .from('media_gallery')
+        .delete()
+        .in('id', [...this.selectedPhotoIds]);
+
+      if (error) throw error;
+
+      // Clean up storage files (best-effort, don't fail if storage cleanup fails)
+      if (storagePaths.length > 0) {
+        try {
+          await STATE.client.storage.from('media-gallery').remove(storagePaths);
+        } catch (storageErr) {
+          console.warn('Storage cleanup failed (files may be orphaned):', storageErr);
+        }
       }
 
-      utils.showToast(`${this.selectedPhotoIds.size} photo(s) deleted`, 'success');
+      utils.showToast(`${count} photo(s) deleted`, 'success');
       this.selectedPhotoIds.clear();
 
       // Reload section
-      const { data: section } = await STATE.client
-        .from('event_galleries')
-        .select('gallery_name')
-        .eq('id', this.currentSectionId)
-        .single();
-
-      await this.viewSectionPhotos(this.currentSectionId, section.gallery_name);
+      await this.viewSectionPhotos(this.currentSectionId, this.currentSectionName);
 
     } catch (error) {
       console.error('Error deleting photos:', error);
@@ -3235,13 +3234,7 @@ const mediaGalleryModule = {
       // Close modal and reload
       bootstrap.Modal.getInstance(document.getElementById('tagPhotoModal')).hide();
 
-      const { data: section } = await STATE.client
-        .from('event_galleries')
-        .select('gallery_name')
-        .eq('id', this.currentSectionId)
-        .single();
-
-      await this.viewSectionPhotos(this.currentSectionId, section.gallery_name);
+      await this.viewSectionPhotos(this.currentSectionId, this.currentSectionName);
 
     } catch (error) {
       console.error('Error saving photo:', error);
@@ -3262,6 +3255,10 @@ const mediaGalleryModule = {
     try {
       utils.showLoading();
 
+      // Get file URL for storage cleanup before deleting record
+      const photo = this.currentSectionPhotos.find(p => p.id === photoId);
+      const fileUrl = photo?.file_url || '';
+
       const { error } = await STATE.client
         .from('media_gallery')
         .delete()
@@ -3269,15 +3266,20 @@ const mediaGalleryModule = {
 
       if (error) throw error;
 
+      // Clean up storage file (best-effort)
+      if (fileUrl && photo?.file_type !== 'video/youtube') {
+        try {
+          const pathMatch = fileUrl.match(/media-gallery\/(.+)$/);
+          if (pathMatch) {
+            await STATE.client.storage.from('media-gallery').remove([pathMatch[1]]);
+          }
+        } catch (storageErr) {
+          console.warn('Storage cleanup failed:', storageErr);
+        }
+      }
+
       utils.showToast('Photo deleted successfully!', 'success');
-
-      const { data: section } = await STATE.client
-        .from('event_galleries')
-        .select('gallery_name')
-        .eq('id', this.currentSectionId)
-        .single();
-
-      await this.viewSectionPhotos(this.currentSectionId, section.gallery_name);
+      await this.viewSectionPhotos(this.currentSectionId, this.currentSectionName);
 
     } catch (error) {
       console.error('Error deleting photo:', error);
@@ -3303,13 +3305,7 @@ const mediaGalleryModule = {
 
       utils.showToast(`Photo ${newPublishState ? 'published' : 'unpublished'} successfully!`, 'success');
 
-      const { data: section } = await STATE.client
-        .from('event_galleries')
-        .select('gallery_name')
-        .eq('id', this.currentSectionId)
-        .single();
-
-      await this.viewSectionPhotos(this.currentSectionId, section.gallery_name);
+      await this.viewSectionPhotos(this.currentSectionId, this.currentSectionName);
 
     } catch (error) {
       console.error('Error toggling publish status:', error);
@@ -3331,13 +3327,7 @@ const mediaGalleryModule = {
       if (error) throw error;
 
       utils.showToast(newState ? 'Photo featured!' : 'Photo unfeatured', 'success');
-
-      const { data: section } = await STATE.client
-        .from('event_galleries')
-        .select('gallery_name')
-        .eq('id', this.currentSectionId)
-        .single();
-      await this.viewSectionPhotos(this.currentSectionId, section.gallery_name);
+      await this.viewSectionPhotos(this.currentSectionId, this.currentSectionName);
     } catch (error) {
       console.error('Error toggling featured:', error);
       utils.showToast('Error: ' + error.message, 'error');
@@ -3948,6 +3938,7 @@ const mediaGalleryModule = {
 
       matches.push({
         photo,
+        photoId: photo.id,
         runningOrderItem: matched,
         matchType,
         matchedPrefix,
@@ -3985,7 +3976,7 @@ const mediaGalleryModule = {
       return `
         <tr class="${m.alreadyTagged ? 'table-secondary' : 'table-success'}">
           <td>
-            <input type="checkbox" class="form-check-input auto-tag-check" data-idx="${idx}"
+            <input type="checkbox" class="form-check-input auto-tag-check" data-photo-id="${m.photoId}"
               ${m.alreadyTagged ? '' : 'checked'}>
           </td>
           <td><small class="text-truncate d-inline-block" style="max-width:200px;" title="${utils.escapeHtml(m.filename)}">${utils.escapeHtml(m.filename)}</small></td>
@@ -4135,9 +4126,9 @@ const mediaGalleryModule = {
     if (!this._autoTagMatches) return;
 
     const checkboxes = document.querySelectorAll('.auto-tag-check:checked');
-    const selectedIdxs = new Set(Array.from(checkboxes).map(cb => parseInt(cb.dataset.idx)));
+    const selectedPhotoIds = new Set(Array.from(checkboxes).map(cb => cb.dataset.photoId));
 
-    const matched = this._autoTagMatches.filter((m, idx) => m.runningOrderItem && selectedIdxs.has(idx));
+    const matched = this._autoTagMatches.filter(m => m.runningOrderItem && selectedPhotoIds.has(m.photoId));
 
     if (matched.length === 0) {
       utils.showToast('No photos selected for tagging', 'warning');
@@ -4189,12 +4180,7 @@ const mediaGalleryModule = {
       if (this.currentView === 'photos-production') {
         await this.loadPhotosProduction();
       } else if (this.currentSectionId) {
-        const { data: section } = await STATE.client
-          .from('event_galleries')
-          .select('gallery_name')
-          .eq('id', this.currentSectionId)
-          .single();
-        await this.viewSectionPhotos(this.currentSectionId, section.gallery_name);
+        await this.viewSectionPhotos(this.currentSectionId, this.currentSectionName);
       }
 
       this._autoTagMatches = null;

@@ -59,6 +59,7 @@ const eventsModule = {
     document.getElementById('eventDate').value = '';
     document.getElementById('eventYear').value = '';
     document.getElementById('eventVenue').value = '';
+    document.getElementById('eventCapacity').value = '';
     document.getElementById('eventDescription').value = '';
     document.getElementById('eventStatus').value = 'draft';
     document.getElementById('saveEventBtn').textContent = 'Add Event';
@@ -80,6 +81,7 @@ const eventsModule = {
     document.getElementById('eventDate').value = event.event_date || '';
     document.getElementById('eventYear').value = event.year || '';
     document.getElementById('eventVenue').value = event.venue || '';
+    document.getElementById('eventCapacity').value = event.capacity || '';
     document.getElementById('eventDescription').value = event.description || '';
     document.getElementById('eventStatus').value = event.event_status || 'draft';
     document.getElementById('saveEventBtn').textContent = 'Update Event';
@@ -97,6 +99,7 @@ const eventsModule = {
     const eventDate = document.getElementById('eventDate').value;
     const eventYear = document.getElementById('eventYear').value;
     const eventVenue = document.getElementById('eventVenue').value.trim();
+    const eventCapacity = document.getElementById('eventCapacity').value;
     const eventDescription = document.getElementById('eventDescription').value.trim();
 
     if (!eventName) {
@@ -114,6 +117,7 @@ const eventsModule = {
         event_date: eventDate || null,
         year: eventYear ? parseInt(eventYear) : null,
         venue: eventVenue || null,
+        capacity: eventCapacity ? parseInt(eventCapacity) : null,
         description: eventDescription || null,
         event_status: eventStatus || 'draft'
       };
@@ -645,6 +649,45 @@ const eventsModule = {
     document.getElementById('notAttendingCount').textContent = notAttending;
     document.getElementById('maybeCount').textContent = maybe;
     document.getElementById('totalAttendeesCount').textContent = attendees.length;
+
+    // Update venue capacity tracker
+    const event = STATE.allEvents.find(e => e.id === eventId);
+    const capacityTracker = document.getElementById('venueCapacityTracker');
+    if (capacityTracker && event && event.capacity) {
+      const capacity = event.capacity;
+      const pct = Math.round(attending / capacity * 100);
+      const remaining = capacity - attending;
+      const barColor = pct >= 95 ? 'bg-danger' : pct >= 80 ? 'bg-warning' : pct >= 50 ? 'bg-info' : 'bg-success';
+      const badgeColor = pct >= 95 ? 'bg-danger' : pct >= 80 ? 'bg-warning text-dark' : 'bg-success';
+
+      document.getElementById('capacityAttendingNum').textContent = attending;
+      document.getElementById('capacityTotalNum').textContent = capacity;
+
+      const pctBadge = document.getElementById('capacityPctBadge');
+      pctBadge.textContent = pct + '% full';
+      pctBadge.className = 'badge ms-2 ' + badgeColor;
+
+      const bar = document.getElementById('capacityProgressBar');
+      bar.style.width = Math.min(pct, 100) + '%';
+      bar.className = 'progress-bar ' + barColor;
+
+      document.getElementById('capacityRemainingText').textContent = remaining > 0
+        ? `${remaining} seat${remaining !== 1 ? 's' : ''} remaining`
+        : 'Venue is at capacity!';
+
+      const warningEl = document.getElementById('capacityWarningText');
+      if (pct >= 100) {
+        warningEl.innerHTML = '<i class="bi bi-exclamation-triangle-fill text-danger me-1"></i><span class="text-danger fw-bold">Over capacity!</span>';
+      } else if (pct >= 90) {
+        warningEl.innerHTML = '<i class="bi bi-exclamation-triangle text-warning me-1"></i><span class="text-warning">Almost full</span>';
+      } else {
+        warningEl.textContent = '';
+      }
+
+      capacityTracker.style.display = 'block';
+    } else if (capacityTracker) {
+      capacityTracker.style.display = 'none';
+    }
 
     if (attendees.length === 0) {
       tbody.innerHTML = `
@@ -5285,8 +5328,29 @@ const eventsModule = {
       const attendees = this.getAttendees(event.id);
       const attendeeCount = attendees ? attendees.length : 0;
       const attending = attendees ? attendees.filter(a => a.status === 'attending').length : 0;
+      const capacity = event.capacity || 0;
+      const capacityPct = capacity > 0 ? Math.round(attending / capacity * 100) : 0;
+      const capBarColor = capacityPct >= 95 ? 'bg-danger' : capacityPct >= 80 ? 'bg-warning' : capacityPct >= 50 ? 'bg-info' : 'bg-success';
       const checked = this._selectedEvents.has(event.id) ? 'checked' : '';
       const eName = utils.escapeHtml(event.event_name).replace(/'/g, "\\'");
+
+      // Build capacity cell
+      let capacityCell;
+      if (capacity > 0 && attendeeCount > 0) {
+        capacityCell = `
+          <div class="text-center" style="min-width:90px;">
+            <div class="fw-semibold" style="font-size:0.82rem;">${attending}<span class="text-muted">/${capacity}</span></div>
+            <div class="progress mt-1" style="height:5px;">
+              <div class="progress-bar ${capBarColor}" style="width:${Math.min(capacityPct, 100)}%"></div>
+            </div>
+            <small class="text-muted" style="font-size:0.65rem;">${capacityPct}% full</small>
+            ${capacityPct >= 95 ? '<br><span class="badge bg-danger" style="font-size:0.55rem;">NEAR CAPACITY</span>' : ''}
+          </div>`;
+      } else if (attendeeCount > 0) {
+        capacityCell = `<span class="badge bg-info">${attending}/${attendeeCount}</span>`;
+      } else {
+        capacityCell = '<span class="text-muted small">-</span>';
+      }
 
       return `
         <tr class="fade-in">
@@ -5295,7 +5359,7 @@ const eventsModule = {
           <td><span class="badge bg-primary">${utils.escapeHtml(String(event.year || '-'))}</span></td>
           <td>${eventDate}</td>
           <td>${utils.escapeHtml(event.venue || '-')}</td>
-          <td class="text-center">${attendeeCount > 0 ? `<span class="badge bg-info">${attending}/${attendeeCount}</span>` : '<span class="text-muted small">-</span>'}</td>
+          <td class="text-center">${capacityCell}</td>
           <td class="text-center">${statusBadge}</td>
           <td class="text-center">
             <div class="btn-group btn-group-sm" role="group">

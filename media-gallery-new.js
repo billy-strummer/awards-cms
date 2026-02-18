@@ -1408,13 +1408,15 @@ const mediaGalleryModule = {
 
     STATE.allEvents = events || [];
 
-    // Populate event dropdown
+    // Populate event dropdown (if it exists)
     const eventSelect = document.getElementById('mediaEventSelect');
-    eventSelect.innerHTML = '<option value="">Select an Event</option>';
-    STATE.allEvents.forEach(event => {
-      const label = event.year ? `${event.event_name} (${event.year})` : event.event_name;
-      eventSelect.innerHTML += `<option value="${event.id}">${utils.escapeHtml(label)}</option>`;
-    });
+    if (eventSelect) {
+      eventSelect.innerHTML = '<option value="">Select an Event</option>';
+      STATE.allEvents.forEach(event => {
+        const label = event.year ? `${event.event_name} (${event.year})` : event.event_name;
+        eventSelect.innerHTML += `<option value="${event.id}">${utils.escapeHtml(label)}</option>`;
+      });
+    }
   },
 
   /**
@@ -1439,7 +1441,8 @@ const mediaGalleryModule = {
       utils.showLoading();
 
       // Reset event selector
-      document.getElementById('mediaEventSelect').value = '';
+      const eventSelectEl = document.getElementById('mediaEventSelect');
+      if (eventSelectEl) eventSelectEl.value = '';
 
       // Load all events
       const { data: events, error: eventsError } = await STATE.client
@@ -1559,7 +1562,7 @@ const mediaGalleryModule = {
                     </td>
                     <td class="text-center">
                       <button class="btn btn-sm btn-outline-primary"
-                        onclick="mediaGalleryModule.onEventSelected('${item.event.id}'); document.getElementById('mediaEventSelect').value='${item.event.id}'">
+                        onclick="mediaGalleryModule.onEventSelected('${item.event.id}');">
                         <i class="bi bi-eye me-1"></i>View
                       </button>
                     </td>
@@ -1706,7 +1709,7 @@ const mediaGalleryModule = {
               </div>
             </div>
 
-            ${section.description ? `<p class="card-text text-muted small mb-3">${utils.escapeHtml(section.description)}</p>` : ''}
+            ${section.gallery_description ? `<p class="card-text text-muted small mb-3">${utils.escapeHtml(section.gallery_description)}</p>` : ''}
 
             <div class="d-flex justify-content-between align-items-center">
               <span class="badge bg-info" id="photoCount_${section.id}">
@@ -1753,7 +1756,7 @@ const mediaGalleryModule = {
       document.getElementById('gallerySectionModalTitle').textContent = 'Edit Gallery Section';
       document.getElementById('gallerySectionId').value = section.id;
       document.getElementById('gallerySectionName').value = section.gallery_name;
-      document.getElementById('gallerySectionDescription').value = section.description || '';
+      document.getElementById('gallerySectionDescription').value = section.gallery_description || '';
       document.getElementById('gallerySectionOrder').value = section.display_order || 0;
       document.getElementById('saveGallerySectionBtn').textContent = 'Update Section';
 
@@ -1786,7 +1789,7 @@ const mediaGalleryModule = {
       const sectionData = {
         event_id: this.currentEventId,
         gallery_name: sectionName,
-        description: sectionDesc || null,
+        gallery_description: sectionDesc || null,
         display_order: displayOrder
       };
 
@@ -2001,6 +2004,9 @@ const mediaGalleryModule = {
             <button class="btn btn-sm btn-outline-secondary" onclick="mediaGalleryModule.downloadAllPhotos('${utils.escapeHtml(sectionName).replace(/'/g, "\\'")}')">
               <i class="bi bi-download me-1"></i>Download All
             </button>
+            <button class="btn btn-sm btn-outline-success" onclick="mediaGalleryModule.launchSlideshow()" title="Launch slideshow of published photos">
+              <i class="bi bi-play-circle me-1"></i>Slideshow
+            </button>
           </div>
         </div>
 
@@ -2141,6 +2147,9 @@ const mediaGalleryModule = {
                 </button>
                 <button class="btn btn-outline-primary" onclick="mediaGalleryModule.bulkTag()" title="Tag selected photos to org/award">
                   <i class="bi bi-tags me-1"></i>Bulk Tag
+                </button>
+                <button class="btn btn-outline-info" onclick="mediaGalleryModule.bulkMoveToSection()" title="Move to another section">
+                  <i class="bi bi-arrow-left-right me-1"></i>Move
                 </button>
                 <button class="btn btn-outline-secondary" onclick="mediaGalleryModule.bulkDownload()" title="Download selected">
                   <i class="bi bi-download me-1"></i>Download
@@ -6238,6 +6247,270 @@ const mediaGalleryModule = {
 
     } catch (error) {
       statusEl.innerHTML = `<div class="alert alert-danger">Error: ${error.message}</div>`;
+    }
+  },
+
+  // ============================================
+  // SLIDESHOW / PRESENTATION VIEW
+  // ============================================
+  async launchSlideshow(sectionId) {
+    const section = sectionId || this.currentSectionId;
+    if (!section) { utils.showToast('Select a gallery section first', 'warning'); return; }
+
+    let photos = this.currentSectionPhotos || [];
+    if (photos.length === 0) {
+      const { data } = await STATE.client
+        .from('media_gallery')
+        .select('*')
+        .eq('gallery_section_id', section)
+        .eq('is_published', true)
+        .order('display_order', { ascending: true });
+      photos = data || [];
+    } else {
+      photos = photos.filter(p => p.is_published !== false);
+    }
+
+    if (photos.length === 0) { utils.showToast('No published photos to show', 'warning'); return; }
+
+    const event = STATE.allEvents.find(e => e.id === this.currentEventId);
+    const eventName = event ? event.event_name : '';
+
+    const slideshowWin = window.open('', '_blank');
+    slideshowWin.document.write(`<!DOCTYPE html><html><head><title>Slideshow - ${utils.escapeHtml(eventName)}</title>
+      <style>
+        *{margin:0;padding:0;box-sizing:border-box}
+        body{background:#000;color:#fff;font-family:Arial,sans-serif;overflow:hidden;height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center}
+        .slide-container{position:relative;width:100%;height:100vh;display:flex;align-items:center;justify-content:center}
+        .slide-img{max-width:95vw;max-height:85vh;object-fit:contain;transition:opacity 0.5s}
+        .slide-caption{position:absolute;bottom:20px;left:0;right:0;text-align:center;padding:15px;background:linear-gradient(transparent,rgba(0,0,0,0.8))}
+        .slide-caption h3{font-size:1.2rem;margin-bottom:4px}
+        .slide-caption p{font-size:0.85rem;color:#ccc}
+        .slide-counter{position:absolute;top:15px;right:20px;font-size:0.9rem;color:#999}
+        .slide-event{position:absolute;top:15px;left:20px;font-size:0.9rem;color:#999}
+        .controls{position:absolute;bottom:80px;left:50%;transform:translateX(-50%);display:flex;gap:15px}
+        .controls button{background:rgba(255,255,255,0.15);border:none;color:#fff;padding:8px 16px;border-radius:6px;cursor:pointer;font-size:1rem}
+        .controls button:hover{background:rgba(255,255,255,0.3)}
+        .nav-arrow{position:absolute;top:50%;transform:translateY(-50%);font-size:3rem;color:rgba(255,255,255,0.5);cursor:pointer;padding:20px;z-index:10;user-select:none}
+        .nav-arrow:hover{color:#fff}
+        .nav-arrow.left{left:10px}
+        .nav-arrow.right{right:10px}
+      </style></head><body>
+      <div class="slide-container" id="slideContainer">
+        <span class="slide-event">${utils.escapeHtml(eventName)}</span>
+        <span class="slide-counter" id="slideCounter">1 / ${photos.length}</span>
+        <span class="nav-arrow left" onclick="prevSlide()">&lsaquo;</span>
+        <img class="slide-img" id="slideImg" src="${photos[0].file_url}" alt="">
+        <span class="nav-arrow right" onclick="nextSlide()">&rsaquo;</span>
+        <div class="slide-caption" id="slideCaption">
+          <h3 id="slideTitle">${utils.escapeHtml(photos[0].title || '')}</h3>
+          <p id="slideInfo">${utils.escapeHtml(photos[0].photographer ? 'Photo: ' + photos[0].photographer : '')}</p>
+        </div>
+        <div class="controls">
+          <button onclick="prevSlide()">&#9664; Prev</button>
+          <button id="playBtn" onclick="toggleAutoplay()">&#9654; Play</button>
+          <button onclick="nextSlide()">Next &#9654;</button>
+        </div>
+      </div>
+      <script>
+        const photos = ${JSON.stringify(photos.map(p => ({ url: p.file_url, title: p.title || '', photographer: p.photographer || '', org: '' })))};
+        let current = 0;
+        let autoplayTimer = null;
+
+        function showSlide(idx) {
+          current = ((idx % photos.length) + photos.length) % photos.length;
+          document.getElementById('slideImg').src = photos[current].url;
+          document.getElementById('slideTitle').textContent = photos[current].title;
+          document.getElementById('slideInfo').textContent = photos[current].photographer ? 'Photo: ' + photos[current].photographer : '';
+          document.getElementById('slideCounter').textContent = (current + 1) + ' / ' + photos.length;
+        }
+        function nextSlide() { showSlide(current + 1); }
+        function prevSlide() { showSlide(current - 1); }
+        function toggleAutoplay() {
+          if (autoplayTimer) { clearInterval(autoplayTimer); autoplayTimer = null; document.getElementById('playBtn').innerHTML = '&#9654; Play'; }
+          else { autoplayTimer = setInterval(nextSlide, 4000); document.getElementById('playBtn').innerHTML = '&#9646;&#9646; Pause'; }
+        }
+        document.addEventListener('keydown', function(e) {
+          if (e.key === 'ArrowRight' || e.key === ' ') { e.preventDefault(); nextSlide(); }
+          if (e.key === 'ArrowLeft') prevSlide();
+          if (e.key === 'Escape') window.close();
+          if (e.key === 'f') { document.documentElement.requestFullscreen?.(); }
+        });
+      <\/script></body></html>`);
+    slideshowWin.document.close();
+  },
+
+  // ============================================
+  // KEYBOARD SHORTCUTS HELP
+  // ============================================
+  showKeyboardShortcutsHelp() {
+    const old = document.getElementById('keyboardShortcutsModal');
+    if (old) old.remove();
+
+    const html = `<div class="modal fade" id="keyboardShortcutsModal" tabindex="-1">
+      <div class="modal-dialog"><div class="modal-content">
+        <div class="modal-header"><h5 class="modal-title"><i class="bi bi-keyboard me-2"></i>Keyboard Shortcuts</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+        <div class="modal-body">
+          <p class="text-muted small">These shortcuts are active when viewing photos in a gallery section.</p>
+          <table class="table table-sm">
+            <thead><tr><th>Key</th><th>Action</th></tr></thead>
+            <tbody>
+              <tr><td><kbd>A</kbd></td><td>Select / deselect all photos</td></tr>
+              <tr><td><kbd>Esc</kbd></td><td>Clear selection</td></tr>
+              <tr><td><kbd>Delete</kbd> / <kbd>Backspace</kbd></td><td>Delete selected photos</td></tr>
+              <tr><td><kbd>P</kbd></td><td>Publish selected photos</td></tr>
+              <tr><td><kbd>U</kbd></td><td>Unpublish selected photos</td></tr>
+              <tr><td><kbd>&larr;</kbd></td><td>Previous page</td></tr>
+              <tr><td><kbd>&rarr;</kbd></td><td>Next page</td></tr>
+            </tbody>
+          </table>
+          <h6 class="mt-3">Slideshow Controls</h6>
+          <table class="table table-sm">
+            <thead><tr><th>Key</th><th>Action</th></tr></thead>
+            <tbody>
+              <tr><td><kbd>&rarr;</kbd> / <kbd>Space</kbd></td><td>Next photo</td></tr>
+              <tr><td><kbd>&larr;</kbd></td><td>Previous photo</td></tr>
+              <tr><td><kbd>F</kbd></td><td>Toggle fullscreen</td></tr>
+              <tr><td><kbd>Esc</kbd></td><td>Close slideshow</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div></div></div>`;
+    document.body.insertAdjacentHTML('beforeend', html);
+    new bootstrap.Modal(document.getElementById('keyboardShortcutsModal')).show();
+  },
+
+  // ============================================
+  // BULK MOVE PHOTOS BETWEEN SECTIONS
+  // ============================================
+  async bulkMoveToSection() {
+    if (this.selectedPhotoIds.size === 0) { utils.showToast('Select photos to move', 'warning'); return; }
+
+    // Load sections for current event
+    const { data: sections, error } = await STATE.client
+      .from('event_galleries')
+      .select('id, gallery_name, display_order')
+      .eq('event_id', this.currentEventId)
+      .order('display_order', { ascending: true });
+
+    if (error || !sections || sections.length === 0) { utils.showToast('No sections available', 'warning'); return; }
+
+    const currentSection = this.currentSectionId;
+    const otherSections = sections.filter(s => s.id !== currentSection);
+    if (otherSections.length === 0) { utils.showToast('No other sections to move photos to', 'warning'); return; }
+
+    const old = document.getElementById('bulkMoveSectionModal');
+    if (old) old.remove();
+
+    const html = `<div class="modal fade" id="bulkMoveSectionModal" tabindex="-1">
+      <div class="modal-dialog"><div class="modal-content">
+        <div class="modal-header"><h5 class="modal-title"><i class="bi bi-arrow-left-right me-2"></i>Move ${this.selectedPhotoIds.size} Photo(s) to Section</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+        <div class="modal-body">
+          <p>Select the destination gallery section:</p>
+          <div class="list-group">
+            ${otherSections.map(s => `
+              <button class="list-group-item list-group-item-action d-flex justify-content-between align-items-center"
+                onclick="mediaGalleryModule._executeBulkMove('${s.id}', '${utils.escapeHtml(s.gallery_name).replace(/'/g, "\\'")}')">
+                <span><i class="bi bi-folder me-2"></i>${utils.escapeHtml(s.gallery_name)}</span>
+                <i class="bi bi-arrow-right"></i>
+              </button>
+            `).join('')}
+          </div>
+        </div>
+      </div></div></div>`;
+    document.body.insertAdjacentHTML('beforeend', html);
+    new bootstrap.Modal(document.getElementById('bulkMoveSectionModal')).show();
+  },
+
+  async _executeBulkMove(targetSectionId, targetName) {
+    const photoIds = Array.from(this.selectedPhotoIds);
+    try {
+      const { error } = await STATE.client
+        .from('media_gallery')
+        .update({ gallery_section_id: targetSectionId })
+        .in('id', photoIds);
+
+      if (error) throw error;
+
+      bootstrap.Modal.getInstance(document.getElementById('bulkMoveSectionModal'))?.hide();
+      this.selectedPhotoIds.clear();
+      utils.showToast(`Moved ${photoIds.length} photo(s) to "${targetName}"`, 'success');
+
+      // Reload current section
+      if (this.currentSectionId && this.currentSectionName) {
+        this.viewSectionPhotos(this.currentSectionId, this.currentSectionName);
+      }
+    } catch (err) {
+      utils.showToast('Error moving photos: ' + err.message, 'error');
+    }
+  },
+
+  // ============================================
+  // FEATURED PHOTOS VIEW (ALL EVENTS)
+  // ============================================
+  async showFeaturedPhotosView() {
+    try {
+      utils.showLoading();
+
+      const { data: photos, error } = await STATE.client
+        .from('media_gallery')
+        .select('*, event_galleries!inner(gallery_name, event_id)')
+        .eq('is_featured', true)
+        .order('created_at', { ascending: false })
+        .limit(100);
+
+      if (error) throw error;
+
+      if (!photos || photos.length === 0) {
+        utils.showToast('No featured photos found', 'info');
+        return;
+      }
+
+      // Group by event
+      const eventMap = {};
+      for (const photo of photos) {
+        const eventId = photo.event_galleries?.event_id;
+        if (!eventMap[eventId]) {
+          const event = STATE.allEvents.find(e => e.id === eventId);
+          eventMap[eventId] = { event, photos: [] };
+        }
+        eventMap[eventId].photos.push(photo);
+      }
+
+      const old = document.getElementById('featuredPhotosModal');
+      if (old) old.remove();
+
+      const html = `<div class="modal fade" id="featuredPhotosModal" tabindex="-1">
+        <div class="modal-dialog modal-xl"><div class="modal-content">
+          <div class="modal-header bg-warning text-dark">
+            <h5 class="modal-title"><i class="bi bi-star-fill me-2"></i>Featured Photos (${photos.length})</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+          </div>
+          <div class="modal-body">
+            ${Object.values(eventMap).map(group => `
+              <h6 class="mb-2">${group.event ? utils.escapeHtml(group.event.event_name) : 'Unknown Event'}</h6>
+              <div class="row g-2 mb-4">
+                ${group.photos.map(p => `
+                  <div class="col-6 col-md-3 col-lg-2">
+                    <div class="card h-100">
+                      <img src="${p.file_url}" class="card-img-top" style="height:120px;object-fit:cover;" alt="${utils.escapeHtml(p.title || '')}">
+                      <div class="card-body p-1 text-center">
+                        <small class="text-truncate d-block">${utils.escapeHtml(p.title || 'Untitled')}</small>
+                      </div>
+                    </div>
+                  </div>
+                `).join('')}
+              </div>
+            `).join('')}
+          </div>
+        </div></div></div>`;
+
+      document.body.insertAdjacentHTML('beforeend', html);
+      new bootstrap.Modal(document.getElementById('featuredPhotosModal')).show();
+    } catch (err) {
+      utils.showToast('Error loading featured photos: ' + err.message, 'error');
+    } finally {
+      utils.hideLoading();
     }
   }
 };

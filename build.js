@@ -32,6 +32,13 @@ const JS_FILES = [
   'crm.js',
   'assignments.js',
   'settings.js',
+  'security.js',
+  'accessibility.js',
+  'gdpr.js',
+  'stripe-frontend.js',
+  'i18n.js',
+  'multi-tenancy.js',
+  'ai-vetting.js',
   'app.js'
 ];
 
@@ -72,7 +79,8 @@ async function build() {
     const result = await esbuild.transform(jsContent, {
       minify: true,
       target: 'es2020',
-      format: 'iife'
+      format: 'iife',
+      drop: ['console', 'debugger']
     });
     fs.writeFileSync(path.join(DIST_DIR, 'app.min.js'), result.code);
     const minSize = result.code.length;

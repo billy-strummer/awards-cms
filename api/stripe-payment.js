@@ -51,7 +51,7 @@ async function createCheckoutSession(req, res) {
             product_data: {
               name: 'British Trade Awards Entry Fee',
               description: description || `Entry ${entry.entry_number}`,
-              images: ['https://yourdomain.com/logo.png'], // TODO: Add actual logo URL
+              images: [process.env.BTA_LOGO_URL || `${process.env.APP_URL || ''}/assets/british-trade-awards-logo.png`],
             },
             unit_amount: Math.round(amount * 100), // Convert to pence
           },

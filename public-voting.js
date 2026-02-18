@@ -303,8 +303,9 @@ const votingSystem = {
    */
   async getIPAddress() {
     try {
-      const response = await fetch('https://api.ipify.org?format=json');
-      const data = await response.json();
+      // Use server-side function to avoid third-party IP exposure
+      const { data, error } = await this.supabase.functions.invoke('get-client-ip');
+      if (error || !data?.ip) throw error;
       return data.ip;
     } catch {
       return 'unknown';
@@ -323,13 +324,23 @@ const votingSystem = {
    * Send verification email
    */
   async sendVerificationEmail() {
-    // TODO: Call backend API to send verification email
-    console.log(`Sending verification email to ${this.voterEmail}`);
-
-    // Email should contain:
-    // - Thank you message
-    // - Verification link
-    // - Entry details
+    try {
+      const { error } = await this.supabase.functions.invoke('send-email', {
+        body: {
+          to: this.voterEmail,
+          subject: `Vote Confirmation - British Trade Awards`,
+          template: 'entry_confirmation',
+          templateData: {
+            voter_email: this.voterEmail,
+            company_name: this.currentVote?.company_name || 'N/A',
+            award_name: this.currentVote?.award_name || 'British Trade Awards'
+          }
+        }
+      });
+      if (error) console.warn('Verification email failed:', error);
+    } catch (e) {
+      console.warn('Email service unavailable:', e.message);
+    }
   },
 
   /**

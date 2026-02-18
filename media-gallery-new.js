@@ -4216,31 +4216,74 @@ const mediaGalleryModule = {
   /**
    * Log an activity event
    */
-  _logActivity(action, targetId = null, detail = '') {
+  async _logActivity(action, targetId = null, detail = '') {
+    const entry = {
+      timestamp: new Date().toISOString(),
+      action,
+      targetId,
+      detail,
+      eventId: this.currentEventId,
+      sectionId: this.currentSectionId,
+      user: STATE.currentUser?.email || 'unknown'
+    };
     try {
-      // Store in localStorage as simple audit trail
-      const log = JSON.parse(localStorage.getItem('mediaGalleryActivityLog') || '[]');
-      log.unshift({
-        timestamp: new Date().toISOString(),
-        action,
-        targetId,
-        detail,
-        eventId: this.currentEventId,
-        sectionId: this.currentSectionId,
-        user: STATE.currentUser?.email || 'unknown'
+      const { error } = await STATE.client.from('cms_audit_logs').insert({
+        action: action,
+        entity: 'media_gallery',
+        entity_id: targetId,
+        description: detail,
+        user_email: STATE.currentUser?.email || 'unknown',
+        metadata: {
+          eventId: this.currentEventId,
+          sectionId: this.currentSectionId,
+          originalAction: action
+        },
+        created_at: entry.timestamp
       });
-      // Keep last 500 entries
-      if (log.length > 500) log.length = 500;
-      localStorage.setItem('mediaGalleryActivityLog', JSON.stringify(log));
-    } catch (e) { /* ignore storage errors */ }
+      if (error) throw error;
+    } catch (e) {
+      // Fallback to localStorage
+      try {
+        const log = JSON.parse(localStorage.getItem('mediaGalleryActivityLog') || '[]');
+        log.unshift(entry);
+        if (log.length > 500) log.length = 500;
+        localStorage.setItem('mediaGalleryActivityLog', JSON.stringify(log));
+      } catch (storageErr) { /* ignore storage errors */ }
+    }
   },
 
   /**
    * View activity log
    */
-  viewActivityLog() {
-    const log = JSON.parse(localStorage.getItem('mediaGalleryActivityLog') || '[]');
-    const eventLog = this.currentEventId ? log.filter(l => l.eventId === this.currentEventId) : log;
+  async viewActivityLog() {
+    let log = [];
+    try {
+      let query = STATE.client
+        .from('cms_audit_logs')
+        .select('*')
+        .eq('entity', 'media_gallery')
+        .order('created_at', { ascending: false })
+        .limit(500);
+      if (this.currentEventId) {
+        query = query.eq('metadata->>eventId', this.currentEventId);
+      }
+      const { data, error } = await query;
+      if (error) throw error;
+      log = (data || []).map(row => ({
+        timestamp: row.created_at,
+        action: row.metadata?.originalAction || row.action,
+        targetId: row.entity_id,
+        detail: row.description || '',
+        eventId: row.metadata?.eventId,
+        sectionId: row.metadata?.sectionId,
+        user: row.user_email || 'unknown'
+      }));
+    } catch (e) {
+      // Fallback to localStorage
+      const stored = JSON.parse(localStorage.getItem('mediaGalleryActivityLog') || '[]');
+      log = this.currentEventId ? stored.filter(l => l.eventId === this.currentEventId) : stored;
+    }
+    const eventLog = log;
 
     const actionLabels = {
       upload: '<span class="badge bg-success">Upload</span>',
@@ -4285,7 +4328,7 @@ const mediaGalleryModule = {
               `}
             </div>
             <div class="modal-footer">
-              <button class="btn btn-outline-danger btn-sm" onclick="if(confirm('Clear all activity logs?')){localStorage.removeItem('mediaGalleryActivityLog');bootstrap.Modal.getInstance(document.getElementById('activityLogModal')).hide();utils.showToast('Activity log cleared','success');}">
+              <button class="btn btn-outline-danger btn-sm" onclick="if(confirm('Clear all activity logs?')){(async()=>{try{await STATE.client.from('cms_audit_logs').delete().eq('entity','media_gallery');} catch(e){localStorage.removeItem('mediaGalleryActivityLog');}bootstrap.Modal.getInstance(document.getElementById('activityLogModal')).hide();utils.showToast('Activity log cleared','success');})();}">
                 <i class="bi bi-trash me-1"></i>Clear Log
               </button>
               <button class="btn btn-secondary" data-bs-dismiss="modal">Close</button>

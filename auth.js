@@ -107,10 +107,26 @@ const authModule = {
           await rbacModule.loadUserRole(session.user.email);
         }
         this.showDashboard();
+        this.startInactivityTimer();
         utils.showToast('Welcome back!', 'success');
       } else {
         this.showLogin();
       }
+
+      // Listen for auth state changes (token refresh, sign out, etc.)
+      STATE.client.auth.onAuthStateChange((event, session) => {
+        if (event === 'SIGNED_OUT' || !session) {
+          STATE.currentUser = null;
+          this.clearInactivityTimer();
+          this.showLogin();
+        } else if (event === 'TOKEN_REFRESHED' && session) {
+          STATE.currentUser = session.user;
+          // Reload RBAC on token refresh
+          if (typeof rbacModule !== 'undefined') {
+            rbacModule.loadUserRole(session.user.email);
+          }
+        }
+      });
     } catch (error) {
       console.error('Session check error:', error);
       this.showLogin();

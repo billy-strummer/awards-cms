@@ -4478,21 +4478,50 @@ updateCountyFilterByRegion() {
   // ============================================
   // SAVED FILTER PRESETS
   // ============================================
-  _populateFilterPresets() {
+  async _populateFilterPresets() {
     const presetSelect = document.getElementById('orgsFilterPreset');
     if (!presetSelect) return;
+    let presets = {};
     try {
-      const presets = JSON.parse(localStorage.getItem('orgsFilterPresets') || '{}');
-      presetSelect.innerHTML = '<option value="">-- Saved Views --</option>' +
-        Object.keys(presets).map(name => `<option value="${utils.escapeHtml(name)}">${utils.escapeHtml(name)}</option>`).join('');
-    } catch (e) { /* ignore */ }
+      const { data, error } = await STATE.client
+        .from('user_preferences')
+        .select('value')
+        .eq('key', 'orgsFilterPresets')
+        .single();
+      if (error && error.code !== 'PGRST116') throw error;
+      if (data?.value) {
+        presets = typeof data.value === 'string' ? JSON.parse(data.value) : data.value;
+      }
+    } catch (e) {
+      // Fallback to localStorage
+      try {
+        presets = JSON.parse(localStorage.getItem('orgsFilterPresets') || '{}');
+      } catch (parseErr) { /* ignore */ }
+    }
+    presetSelect.innerHTML = '<option value="">-- Saved Views --</option>' +
+      Object.keys(presets).map(name => `<option value="${utils.escapeHtml(name)}">${utils.escapeHtml(name)}</option>`).join('');
   },
 
-  saveFilterPreset() {
+  async saveFilterPreset() {
     const name = prompt('Name this view preset:');
     if (!name || !name.trim()) return;
     try {
-      const presets = JSON.parse(localStorage.getItem('orgsFilterPresets') || '{}');
+      // Load existing presets from Supabase first
+      let presets = {};
+      try {
+        const { data, error } = await STATE.client
+          .from('user_preferences')
+          .select('value')
+          .eq('key', 'orgsFilterPresets')
+          .single();
+        if (error && error.code !== 'PGRST116') throw error;
+        if (data?.value) {
+          presets = typeof data.value === 'string' ? JSON.parse(data.value) : data.value;
+        }
+      } catch (fetchErr) {
+        presets = JSON.parse(localStorage.getItem('orgsFilterPresets') || '{}');
+      }
+
       presets[name.trim()] = {
         year: document.getElementById('orgsYearFilter')?.value || '',
         sector: document.getElementById('orgsSectorFilter')?.value || '',
@@ -4509,66 +4538,135 @@ updateCountyFilterByRegion() {
         pageSize: this._pageSize,
         tagFilters: [...(this._selectedTagFilters || [])]
       };
-      localStorage.setItem('orgsFilterPresets', JSON.stringify(presets));
-      // Also keep saved views in sync
-      localStorage.setItem('orgsSavedViews', JSON.stringify(
-        Object.fromEntries(Object.entries(presets).map(([k, v]) => [k, { filters: v, sort: v.sort, columns: v.columns, pageSize: v.pageSize, tagFilters: v.tagFilters }]))
-      ));
+
+      // Build synced saved views
+      const savedViews = Object.fromEntries(
+        Object.entries(presets).map(([k, v]) => [k, { filters: v, sort: v.sort, columns: v.columns, pageSize: v.pageSize, tagFilters: v.tagFilters }])
+      );
+
+      try {
+        const { error } = await STATE.client
+          .from('user_preferences')
+          .upsert({
+            key: 'orgsFilterPresets',
+            value: JSON.stringify(presets),
+            user_email: STATE.currentUser?.email
+          }, { onConflict: 'key' });
+        if (error) throw error;
+
+        // Also keep saved views in sync in Supabase
+        const { error: viewsError } = await STATE.client
+          .from('user_preferences')
+          .upsert({
+            key: 'orgsSavedViews',
+            value: JSON.stringify(savedViews),
+            user_email: STATE.currentUser?.email
+          }, { onConflict: 'key' });
+        if (viewsError) throw viewsError;
+      } catch (saveErr) {
+        // Fallback to localStorage
+        localStorage.setItem('orgsFilterPresets', JSON.stringify(presets));
+        localStorage.setItem('orgsSavedViews', JSON.stringify(savedViews));
+      }
+
       this._populateFilterPresets();
       document.getElementById('orgsFilterPreset').value = name.trim();
       utils.showToast(`View "${name.trim()}" saved`, 'success');
     } catch (e) { utils.showToast('Error saving preset', 'error'); }
   },
 
-  loadFilterPreset(name) {
+  async loadFilterPreset(name) {
     if (!name) return;
+    let presets = {};
     try {
-      const presets = JSON.parse(localStorage.getItem('orgsFilterPresets') || '{}');
-      const preset = presets[name];
-      if (!preset) return;
-      document.getElementById('orgsYearFilter').value = preset.year || '';
-      document.getElementById('orgsSectorFilter').value = preset.sector || '';
-      document.getElementById('orgsRegionFilter').value = preset.region || '';
-      if (preset.region) this.updateCountyFilterByRegion();
-      document.getElementById('orgsCountyFilter').value = preset.county || '';
-      document.getElementById('orgsStatusFilter').value = preset.status || '';
-      document.getElementById('orgsSearchBox').value = preset.search || '';
-      const tierEl = document.getElementById('orgsTierFilter');
-      if (tierEl) tierEl.value = preset.tier || '';
-      const tagEl = document.getElementById('orgsTagFilter');
-      if (tagEl) tagEl.value = preset.tag || '';
-      const logoEl = document.getElementById('orgsLogoFilter');
-      if (logoEl) logoEl.value = preset.logoFilter || '';
-      const dateEl = document.getElementById('orgsDateFilter');
-      if (dateEl) dateEl.value = preset.dateFilter || '';
-      // Restore sort if saved
-      if (preset.sort?.field) {
-        this.sortField = preset.sort.field;
-        this.sortDirection = preset.sort.direction || 'asc';
+      const { data, error } = await STATE.client
+        .from('user_preferences')
+        .select('value')
+        .eq('key', 'orgsFilterPresets')
+        .single();
+      if (error && error.code !== 'PGRST116') throw error;
+      if (data?.value) {
+        presets = typeof data.value === 'string' ? JSON.parse(data.value) : data.value;
       }
-      // Restore column visibility if saved
-      if (preset.columns) {
-        this._columnVisibility = { ...preset.columns };
-        try { localStorage.setItem('orgsColumnVisibility', JSON.stringify(this._columnVisibility)); } catch (e) {}
-      }
-      // Restore page size if saved
-      if (preset.pageSize) this._pageSize = preset.pageSize;
-      // Restore tag filters if saved
-      if (preset.tagFilters) this._selectedTagFilters = [...preset.tagFilters];
-      this.filterOrganisations();
-      utils.showToast(`View "${name}" loaded`, 'success');
-    } catch (e) { /* ignore */ }
+    } catch (e) {
+      // Fallback to localStorage
+      try {
+        presets = JSON.parse(localStorage.getItem('orgsFilterPresets') || '{}');
+      } catch (parseErr) { return; }
+    }
+
+    const preset = presets[name];
+    if (!preset) return;
+    document.getElementById('orgsYearFilter').value = preset.year || '';
+    document.getElementById('orgsSectorFilter').value = preset.sector || '';
+    document.getElementById('orgsRegionFilter').value = preset.region || '';
+    if (preset.region) this.updateCountyFilterByRegion();
+    document.getElementById('orgsCountyFilter').value = preset.county || '';
+    document.getElementById('orgsStatusFilter').value = preset.status || '';
+    document.getElementById('orgsSearchBox').value = preset.search || '';
+    const tierEl = document.getElementById('orgsTierFilter');
+    if (tierEl) tierEl.value = preset.tier || '';
+    const tagEl = document.getElementById('orgsTagFilter');
+    if (tagEl) tagEl.value = preset.tag || '';
+    const logoEl = document.getElementById('orgsLogoFilter');
+    if (logoEl) logoEl.value = preset.logoFilter || '';
+    const dateEl = document.getElementById('orgsDateFilter');
+    if (dateEl) dateEl.value = preset.dateFilter || '';
+    // Restore sort if saved
+    if (preset.sort?.field) {
+      this.sortField = preset.sort.field;
+      this.sortDirection = preset.sort.direction || 'asc';
+    }
+    // Restore column visibility if saved
+    if (preset.columns) {
+      this._columnVisibility = { ...preset.columns };
+      try { localStorage.setItem('orgsColumnVisibility', JSON.stringify(this._columnVisibility)); } catch (e) {}
+    }
+    // Restore page size if saved
+    if (preset.pageSize) this._pageSize = preset.pageSize;
+    // Restore tag filters if saved
+    if (preset.tagFilters) this._selectedTagFilters = [...preset.tagFilters];
+    this.filterOrganisations();
+    utils.showToast(`View "${name}" loaded`, 'success');
   },
 
-  deleteFilterPreset() {
+  async deleteFilterPreset() {
     const presetSelect = document.getElementById('orgsFilterPreset');
     const name = presetSelect?.value;
     if (!name) { utils.showToast('Select a preset to delete', 'warning'); return; }
     if (!confirm(`Delete preset "${name}"?`)) return;
     try {
-      const presets = JSON.parse(localStorage.getItem('orgsFilterPresets') || '{}');
+      // Load existing presets from Supabase
+      let presets = {};
+      try {
+        const { data, error } = await STATE.client
+          .from('user_preferences')
+          .select('value')
+          .eq('key', 'orgsFilterPresets')
+          .single();
+        if (error && error.code !== 'PGRST116') throw error;
+        if (data?.value) {
+          presets = typeof data.value === 'string' ? JSON.parse(data.value) : data.value;
+        }
+      } catch (fetchErr) {
+        presets = JSON.parse(localStorage.getItem('orgsFilterPresets') || '{}');
+      }
+
       delete presets[name];
-      localStorage.setItem('orgsFilterPresets', JSON.stringify(presets));
+
+      try {
+        const { error } = await STATE.client
+          .from('user_preferences')
+          .upsert({
+            key: 'orgsFilterPresets',
+            value: JSON.stringify(presets),
+            user_email: STATE.currentUser?.email
+          }, { onConflict: 'key' });
+        if (error) throw error;
+      } catch (saveErr) {
+        localStorage.setItem('orgsFilterPresets', JSON.stringify(presets));
+      }
+
       this._populateFilterPresets();
       utils.showToast(`Preset "${name}" deleted`, 'success');
     } catch (e) { /* ignore */ }
@@ -6871,11 +6969,26 @@ updateCountyFilterByRegion() {
   // ============================================
   // FEATURE: SAVED VIEWS (filter + sort + columns)
   // ============================================
-  saveView() {
+  async saveView() {
     const name = prompt('Name this view:');
     if (!name || !name.trim()) return;
     try {
-      const views = JSON.parse(localStorage.getItem('orgsSavedViews') || '{}');
+      // Load existing views from Supabase
+      let views = {};
+      try {
+        const { data, error } = await STATE.client
+          .from('user_preferences')
+          .select('value')
+          .eq('key', 'orgsSavedViews')
+          .single();
+        if (error && error.code !== 'PGRST116') throw error;
+        if (data?.value) {
+          views = typeof data.value === 'string' ? JSON.parse(data.value) : data.value;
+        }
+      } catch (fetchErr) {
+        views = JSON.parse(localStorage.getItem('orgsSavedViews') || '{}');
+      }
+
       views[name.trim()] = {
         filters: {
           year: document.getElementById('orgsYearFilter')?.value || '',
@@ -6894,13 +7007,41 @@ updateCountyFilterByRegion() {
         pageSize: this._pageSize,
         tagFilters: [...this._selectedTagFilters]
       };
-      localStorage.setItem('orgsSavedViews', JSON.stringify(views));
+
+      try {
+        const { error } = await STATE.client
+          .from('user_preferences')
+          .upsert({
+            key: 'orgsSavedViews',
+            value: JSON.stringify(views),
+            user_email: STATE.currentUser?.email
+          }, { onConflict: 'key' });
+        if (error) throw error;
+      } catch (saveErr) {
+        // Fallback to localStorage
+        localStorage.setItem('orgsSavedViews', JSON.stringify(views));
+      }
+
       utils.showToast(`View "${name.trim()}" saved`, 'success');
     } catch (e) { utils.showToast('Error saving view', 'error'); }
   },
 
-  showSavedViews() {
-    const views = (() => { try { return JSON.parse(localStorage.getItem('orgsSavedViews') || '{}'); } catch (e) { return {}; } })();
+  async showSavedViews() {
+    let views = {};
+    try {
+      const { data, error } = await STATE.client
+        .from('user_preferences')
+        .select('value')
+        .eq('key', 'orgsSavedViews')
+        .single();
+      if (error && error.code !== 'PGRST116') throw error;
+      if (data?.value) {
+        views = typeof data.value === 'string' ? JSON.parse(data.value) : data.value;
+      }
+    } catch (e) {
+      // Fallback to localStorage
+      try { views = JSON.parse(localStorage.getItem('orgsSavedViews') || '{}'); } catch (parseErr) { views = {}; }
+    }
     const names = Object.keys(views);
 
     if (names.length === 0) {
@@ -6926,60 +7067,101 @@ updateCountyFilterByRegion() {
     this._showDynamicModal('Saved Views', html, 'bi-bookmark');
   },
 
-  loadView(name) {
+  async loadView(name) {
+    let views = {};
     try {
-      const views = JSON.parse(localStorage.getItem('orgsSavedViews') || '{}');
-      const view = views[name];
-      if (!view) return;
-
-      // Restore filters
-      const f = view.filters;
-      document.getElementById('orgsYearFilter').value = f.year || '';
-      document.getElementById('orgsSectorFilter').value = f.sector || '';
-      document.getElementById('orgsRegionFilter').value = f.region || '';
-      if (f.region) this.updateCountyFilterByRegion();
-      document.getElementById('orgsCountyFilter').value = f.county || '';
-      document.getElementById('orgsStatusFilter').value = f.status || '';
-      document.getElementById('orgsSearchBox').value = f.search || '';
-      const tierEl = document.getElementById('orgsTierFilter');
-      if (tierEl) tierEl.value = f.tier || '';
-      const tagEl = document.getElementById('orgsTagFilter');
-      if (tagEl) tagEl.value = f.tag || '';
-      const logoEl = document.getElementById('orgsLogoFilter');
-      if (logoEl) logoEl.value = f.logoFilter || '';
-      const dateEl = document.getElementById('orgsDateFilter');
-      if (dateEl) dateEl.value = f.dateFilter || '';
-
-      // Restore sort
-      if (view.sort?.field) {
-        this.sortField = view.sort.field;
-        this.sortDirection = view.sort.direction || 'asc';
+      const { data, error } = await STATE.client
+        .from('user_preferences')
+        .select('value')
+        .eq('key', 'orgsSavedViews')
+        .single();
+      if (error && error.code !== 'PGRST116') throw error;
+      if (data?.value) {
+        views = typeof data.value === 'string' ? JSON.parse(data.value) : data.value;
       }
+    } catch (e) {
+      // Fallback to localStorage
+      try { views = JSON.parse(localStorage.getItem('orgsSavedViews') || '{}'); } catch (parseErr) { utils.showToast('Error loading view', 'error'); return; }
+    }
 
-      // Restore column visibility
-      if (view.columns) {
-        this._columnVisibility = { ...view.columns };
-        try { localStorage.setItem('orgsColumnVisibility', JSON.stringify(this._columnVisibility)); } catch (e) {}
-      }
+    const view = views[name];
+    if (!view) return;
 
-      // Restore page size
-      if (view.pageSize) this._pageSize = view.pageSize;
+    // Restore filters
+    const f = view.filters;
+    document.getElementById('orgsYearFilter').value = f.year || '';
+    document.getElementById('orgsSectorFilter').value = f.sector || '';
+    document.getElementById('orgsRegionFilter').value = f.region || '';
+    if (f.region) this.updateCountyFilterByRegion();
+    document.getElementById('orgsCountyFilter').value = f.county || '';
+    document.getElementById('orgsStatusFilter').value = f.status || '';
+    document.getElementById('orgsSearchBox').value = f.search || '';
+    const tierEl = document.getElementById('orgsTierFilter');
+    if (tierEl) tierEl.value = f.tier || '';
+    const tagEl = document.getElementById('orgsTagFilter');
+    if (tagEl) tagEl.value = f.tag || '';
+    const logoEl = document.getElementById('orgsLogoFilter');
+    if (logoEl) logoEl.value = f.logoFilter || '';
+    const dateEl = document.getElementById('orgsDateFilter');
+    if (dateEl) dateEl.value = f.dateFilter || '';
 
-      // Restore tag filters
-      if (view.tagFilters) this._selectedTagFilters = [...view.tagFilters];
+    // Restore sort
+    if (view.sort?.field) {
+      this.sortField = view.sort.field;
+      this.sortDirection = view.sort.direction || 'asc';
+    }
 
-      this.filterOrganisations();
-      bootstrap.Modal.getInstance(document.getElementById('dynamicOrgModal'))?.hide();
-      utils.showToast(`View "${name}" loaded`, 'success');
-    } catch (e) { utils.showToast('Error loading view', 'error'); }
+    // Restore column visibility
+    if (view.columns) {
+      this._columnVisibility = { ...view.columns };
+      try { localStorage.setItem('orgsColumnVisibility', JSON.stringify(this._columnVisibility)); } catch (e) {}
+    }
+
+    // Restore page size
+    if (view.pageSize) this._pageSize = view.pageSize;
+
+    // Restore tag filters
+    if (view.tagFilters) this._selectedTagFilters = [...view.tagFilters];
+
+    this.filterOrganisations();
+    bootstrap.Modal.getInstance(document.getElementById('dynamicOrgModal'))?.hide();
+    utils.showToast(`View "${name}" loaded`, 'success');
   },
 
-  deleteView(name) {
+  async deleteView(name) {
     if (!confirm(`Delete view "${name}"?`)) return;
     try {
-      const views = JSON.parse(localStorage.getItem('orgsSavedViews') || '{}');
+      // Load existing views from Supabase
+      let views = {};
+      try {
+        const { data, error } = await STATE.client
+          .from('user_preferences')
+          .select('value')
+          .eq('key', 'orgsSavedViews')
+          .single();
+        if (error && error.code !== 'PGRST116') throw error;
+        if (data?.value) {
+          views = typeof data.value === 'string' ? JSON.parse(data.value) : data.value;
+        }
+      } catch (fetchErr) {
+        views = JSON.parse(localStorage.getItem('orgsSavedViews') || '{}');
+      }
+
       delete views[name];
-      localStorage.setItem('orgsSavedViews', JSON.stringify(views));
+
+      try {
+        const { error } = await STATE.client
+          .from('user_preferences')
+          .upsert({
+            key: 'orgsSavedViews',
+            value: JSON.stringify(views),
+            user_email: STATE.currentUser?.email
+          }, { onConflict: 'key' });
+        if (error) throw error;
+      } catch (saveErr) {
+        localStorage.setItem('orgsSavedViews', JSON.stringify(views));
+      }
+
       utils.showToast(`View "${name}" deleted`, 'success');
       this.showSavedViews();
     } catch (e) {}

@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Judge Login - British Trade Awards</title>
+
+  <!-- Bootstrap 5 -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
+
+  <!-- Supabase -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="config.js"></script>
+
+  <style>
+    body {
+      background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .login-card {
+      max-width: 440px;
+      width: 100%;
+      background: #fff;
+      border-radius: 12px;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+      overflow: hidden;
+    }
+    .login-header {
+      background: linear-gradient(135deg, #0d47a1, #1565c0);
+      color: #fff;
+      padding: 2rem;
+      text-align: center;
+    }
+    .login-header h2 { margin: 0; font-size: 1.4rem; }
+    .login-header p { margin: 0.5rem 0 0; opacity: 0.85; font-size: 0.9rem; }
+    .login-body { padding: 2rem; }
+    .login-body .form-label { font-weight: 500; font-size: 0.9rem; }
+    .btn-judge-login {
+      background: linear-gradient(135deg, #0d47a1, #1565c0);
+      border: none;
+      color: #fff;
+      padding: 0.75rem;
+      font-size: 1rem;
+      font-weight: 600;
+      border-radius: 8px;
+      width: 100%;
+    }
+    .btn-judge-login:hover { background: #0d47a1; color: #fff; }
+    .alert { font-size: 0.85rem; }
+    #loginSpinner { display: none; }
+  </style>
+</head>
+<body>
+
+  <div class="login-card">
+    <div class="login-header">
+      <i class="bi bi-award display-4 d-block mb-2"></i>
+      <h2>British Trade Awards</h2>
+      <p>Judge Portal Login</p>
+    </div>
+
+    <div class="login-body">
+      <div id="loginError" class="alert alert-danger d-none"></div>
+      <div id="loginSuccess" class="alert alert-success d-none"></div>
+
+      <!-- Email/Password Login -->
+      <form id="judgeLoginForm" onsubmit="handleLogin(event)">
+        <div class="mb-3">
+          <label for="judgeEmail" class="form-label">Email Address</label>
+          <input type="email" class="form-control" id="judgeEmail" required placeholder="your.email@example.com" autocomplete="email">
+        </div>
+        <div class="mb-3">
+          <label for="judgePassword" class="form-label">Password</label>
+          <input type="password" class="form-control" id="judgePassword" required placeholder="Enter your password" autocomplete="current-password">
+        </div>
+        <button type="submit" class="btn btn-judge-login" id="loginBtn">
+          <span id="loginSpinner" class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+          <i class="bi bi-box-arrow-in-right me-2" id="loginIcon"></i>Sign In to Judge Portal
+        </button>
+      </form>
+
+      <hr class="my-3">
+
+      <!-- Magic Link Login -->
+      <p class="text-muted text-center small mb-2">Or sign in with a magic link</p>
+      <form id="magicLinkForm" onsubmit="handleMagicLink(event)">
+        <div class="input-group mb-3">
+          <input type="email" class="form-control" id="magicEmail" placeholder="your.email@example.com" required autocomplete="email">
+          <button type="submit" class="btn btn-outline-primary" id="magicBtn">
+            <i class="bi bi-envelope me-1"></i>Send Link
+          </button>
+        </div>
+      </form>
+
+      <div class="text-center mt-3">
+        <a href="index.html" class="text-muted small"><i class="bi bi-arrow-left me-1"></i>Back to main site</a>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const supabase = window.supabase.createClient(SUPABASE_CONFIG.url, SUPABASE_CONFIG.anonKey);
+
+    // Check if already logged in as judge
+    (async function checkSession() {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session) {
+        // Verify this user has a judge role
+        const { data: role } = await supabase
+          .from('user_roles')
+          .select('role')
+          .eq('email', session.user.email)
+          .single();
+
+        if (role && (role.role === 'judge' || role.role === 'admin' || role.role === 'super_admin')) {
+          localStorage.setItem('judgeEmail', session.user.email);
+          window.location.href = '/judge-portal.html';
+          return;
+        }
+      }
+    })();
+
+    function showError(msg) {
+      const el = document.getElementById('loginError');
+      el.textContent = msg;
+      el.classList.remove('d-none');
+      document.getElementById('loginSuccess').classList.add('d-none');
+    }
+
+    function showSuccess(msg) {
+      const el = document.getElementById('loginSuccess');
+      el.textContent = msg;
+      el.classList.remove('d-none');
+      document.getElementById('loginError').classList.add('d-none');
+    }
+
+    async function handleLogin(e) {
+      e.preventDefault();
+      const email = document.getElementById('judgeEmail').value.trim();
+      const password = document.getElementById('judgePassword').value;
+      const btn = document.getElementById('loginBtn');
+      const spinner = document.getElementById('loginSpinner');
+      const icon = document.getElementById('loginIcon');
+
+      btn.disabled = true;
+      spinner.style.display = 'inline-block';
+      icon.style.display = 'none';
+
+      try {
+        // Authenticate with Supabase
+        const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+        if (error) throw error;
+
+        // Verify judge role
+        const { data: role } = await supabase
+          .from('user_roles')
+          .select('role')
+          .eq('email', email)
+          .single();
+
+        if (!role || !['judge', 'admin', 'super_admin'].includes(role.role)) {
+          await supabase.auth.signOut();
+          throw new Error('You do not have judge access. Contact the admin to be assigned as a judge.');
+        }
+
+        // Store judge email and redirect
+        localStorage.setItem('judgeEmail', email);
+        window.location.href = '/judge-portal.html';
+
+      } catch (err) {
+        showError(err.message || 'Login failed. Please check your credentials.');
+      } finally {
+        btn.disabled = false;
+        spinner.style.display = 'none';
+        icon.style.display = 'inline-block';
+      }
+    }
+
+    async function handleMagicLink(e) {
+      e.preventDefault();
+      const email = document.getElementById('magicEmail').value.trim();
+      const btn = document.getElementById('magicBtn');
+
+      btn.disabled = true;
+      btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span>';
+
+      try {
+        const { error } = await supabase.auth.signInWithOtp({
+          email,
+          options: { emailRedirectTo: window.location.origin + '/judge-portal.html' }
+        });
+        if (error) throw error;
+        showSuccess('Magic link sent! Check your email inbox.');
+      } catch (err) {
+        showError(err.message || 'Failed to send magic link.');
+      } finally {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="bi bi-envelope me-1"></i>Send Link';
+      }
+    }
+  </script>
+
+</body>
+</html>

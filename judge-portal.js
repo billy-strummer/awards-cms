@@ -70,7 +70,7 @@ const judgePortal = {
    * Get judge from session (simplified - use proper auth in production)
    */
   getJudgeFromSession() {
-    return localStorage.getItem('judgeEmail') || 'judge@example.com'; // Placeholder
+    return localStorage.getItem('judgeEmail') || null;
   },
 
   /**

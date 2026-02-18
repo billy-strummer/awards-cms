@@ -8,6 +8,24 @@ const supabase = window.supabase.createClient(
   window.SUPABASE_CONFIG.anonKey
 );
 
+// Lightweight toast for public pages (replaces alert())
+function showPublicToast(msg, type = 'warning') {
+  let container = document.getElementById('publicToastContainer');
+  if (!container) {
+    container = document.createElement('div');
+    container.id = 'publicToastContainer';
+    container.style.cssText = 'position:fixed;top:20px;right:20px;z-index:99999;max-width:400px;';
+    document.body.appendChild(container);
+  }
+  const colors = { warning: '#ffc107', error: '#dc3545', success: '#28a745', info: '#17a2b8' };
+  const toast = document.createElement('div');
+  toast.style.cssText = `background:${colors[type] || colors.warning};color:${type === 'warning' ? '#000' : '#fff'};padding:12px 20px;margin-bottom:8px;border-radius:8px;box-shadow:0 4px 12px rgba(0,0,0,.15);font-size:14px;opacity:0;transition:opacity .3s;`;
+  toast.textContent = msg;
+  container.appendChild(toast);
+  requestAnimationFrame(() => toast.style.opacity = '1');
+  setTimeout(() => { toast.style.opacity = '0'; setTimeout(() => toast.remove(), 300); }, 4000);
+}
+
 const entryFormApp = {
   currentStep: 1,
   totalSteps: 7,
@@ -181,7 +199,7 @@ const entryFormApp = {
       case 1: // Sector
         const sector = document.getElementById('sector').value;
         if (!sector) {
-          alert('Please select a sector');
+          showPublicToast('Please select a sector');
           return false;
         }
         return true;
@@ -189,14 +207,14 @@ const entryFormApp = {
       case 2: // Region
         const region = document.getElementById('region').value;
         if (!region) {
-          alert('Please select a region');
+          showPublicToast('Please select a region');
           return false;
         }
         return true;
 
       case 3: // Award Category
         if (!this.selectedAwardId) {
-          alert('Please select an award category');
+          showPublicToast('Please select an award category');
           return false;
         }
         return true;
@@ -204,7 +222,7 @@ const entryFormApp = {
       case 4: // Company Name
         const companyName = document.getElementById('companyName').value.trim();
         if (!companyName) {
-          alert('Please enter your company name');
+          showPublicToast('Please enter your company name');
           return false;
         }
         return true;
@@ -212,7 +230,7 @@ const entryFormApp = {
       case 5: // Years in Field
         const yearsInField = document.getElementById('yearsInField').value;
         if (!yearsInField) {
-          alert('Please select years in field');
+          showPublicToast('Please select years in field');
           return false;
         }
         return true;
@@ -221,15 +239,15 @@ const entryFormApp = {
         const contactName = document.getElementById('contactName').value.trim();
         const contactEmail = document.getElementById('contactEmail').value.trim();
         if (!contactName) {
-          alert('Please enter your name');
+          showPublicToast('Please enter your name');
           return false;
         }
         if (!contactEmail) {
-          alert('Please enter your email address');
+          showPublicToast('Please enter your email address');
           return false;
         }
         if (!this.validateEmail(contactEmail)) {
-          alert('Please enter a valid email address');
+          showPublicToast('Please enter a valid email address');
           return false;
         }
         return true;
@@ -510,7 +528,7 @@ const entryFormApp = {
 
     } catch (error) {
       console.error('Error submitting entry:', error);
-      alert('Error submitting entry: ' + error.message);
+      showPublicToast('Error submitting entry: ' + error.message, 'error');
 
       // Re-enable button
       const submitBtn = document.querySelector('.btn-submit');

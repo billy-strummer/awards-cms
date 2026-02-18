@@ -30,7 +30,7 @@ async function generateWinnerCertificate(entryId, outputPath = null) {
     // Get entry and winner details
     const { data: entry, error } = await supabase
       .from('entries')
-      .select('*, organisations(*), awards(*)')
+      .select('*, organisations(*), awards:award_years(*)')
       .eq('id', entryId)
       .single();
 
@@ -193,7 +193,7 @@ async function generateAllWinnerCertificates() {
 
     const { data: winners, error } = await supabase
       .from('entries')
-      .select('id, entry_number, organisations(company_name), awards(award_name)')
+      .select('id, entry_number, organisations(company_name), awards:award_years(award_name)')
       .eq('status', 'winner');
 
     if (error) throw error;

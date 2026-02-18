@@ -3121,7 +3121,7 @@ const eventsModule = {
     try {
       const { data } = await STATE.client
         .from('award_assignments')
-        .select('*, awards(award_name), organisations(company_name)')
+        .select('*, awards:award_years(award_name), organisations(company_name)')
         .eq('year', event.year)
         .eq('assignment_type', 'winner');
       winners = data || [];
@@ -3181,7 +3181,7 @@ const eventsModule = {
     try {
       const { data } = await STATE.client
         .from('award_assignments')
-        .select('*, awards(award_name), organisations(company_name)')
+        .select('*, awards:award_years(award_name), organisations(company_name)')
         .eq('year', event.year)
         .eq('assignment_type', 'winner');
       winners = data || [];
@@ -3326,7 +3326,7 @@ const eventsModule = {
     try {
       const { data } = await STATE.client
         .from('award_assignments')
-        .select('*, awards(award_name), organisations(company_name)')
+        .select('*, awards:award_years(award_name), organisations(company_name)')
         .eq('year', event.year)
         .eq('assignment_type', 'winner');
       winners = data || [];
@@ -4071,7 +4071,7 @@ const eventsModule = {
         .select(`
           *,
           organisations(company_name, logo_url),
-          awards(award_name),
+          awards:award_years(award_name),
           event_guests(guest_name, guest_email)
         `)
         .eq('event_id', this.currentEventIdRunningOrder)

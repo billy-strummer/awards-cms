@@ -128,7 +128,7 @@ const mediaGalleryModule = {
         .select(`
           *,
           organisations(company_name),
-          awards(award_name),
+          awards:award_years(award_name),
           events(event_name)
         `)
         .eq('media_type', 'image')
@@ -218,7 +218,7 @@ const mediaGalleryModule = {
     try {
       const { data: photo, error } = await STATE.client
         .from('media_items')
-        .select('*, organisations(company_name), awards(award_name)')
+        .select('*, organisations(company_name), awards:award_years(award_name)')
         .eq('id', photoId)
         .single();
       if (error) throw error;
@@ -490,7 +490,7 @@ const mediaGalleryModule = {
         let photos, pError;
         ({ data: photos, error: pError } = await STATE.client
           .from('media_gallery')
-          .select('*, organisations!media_gallery_organisation_id_fkey(*), awards!media_gallery_award_id_fkey(*)')
+          .select('*, organisations!media_gallery_organisation_id_fkey(*), awards:award_years!media_gallery_award_id_fkey(*)')
           .in('gallery_section_id', sectionIds)
           .order('display_order'));
         // Fall back if FK relationships missing
@@ -748,7 +748,7 @@ const mediaGalleryModule = {
       let videos, error;
       ({ data: videos, error } = await STATE.client
         .from('media_items')
-        .select('*, organisations(company_name), awards(award_name)')
+        .select('*, organisations(company_name), awards:award_years(award_name)')
         .eq('event_id', this.currentEventId)
         .eq('media_type', 'video')
         .order('created_at', { ascending: false }));
@@ -1891,7 +1891,7 @@ const mediaGalleryModule = {
         .select(`
           *,
           organisations!media_gallery_organisation_id_fkey (*),
-          awards!media_gallery_award_id_fkey (*)
+          awards:award_years!media_gallery_award_id_fkey (*)
         `)
         .eq('gallery_section_id', sectionId)
         .order('display_order', { ascending: true, nullsFirst: false })
@@ -4405,14 +4405,14 @@ const mediaGalleryModule = {
       // Load photos tagged to this org (from gallery sections)
       const { data: photos } = await STATE.client
         .from('media_gallery')
-        .select('*, event_galleries(gallery_name, event_id), awards!media_gallery_award_id_fkey(award_name)')
+        .select('*, event_galleries(gallery_name, event_id), awards:award_years!media_gallery_award_id_fkey(award_name)')
         .eq('organisation_id', orgId)
         .order('uploaded_at', { ascending: false });
 
       // Load videos tagged to this org
       const { data: videos } = await STATE.client
         .from('media_items')
-        .select('*, awards(award_name), events(event_name)')
+        .select('*, awards:award_years(award_name), events(event_name)')
         .eq('organisation_id', orgId)
         .eq('media_type', 'video')
         .order('created_at', { ascending: false });
@@ -4650,7 +4650,7 @@ const mediaGalleryModule = {
 
       const { data: roItems, error } = await STATE.client
         .from('running_order')
-        .select('*, organisations(company_name), awards(award_name)')
+        .select('*, organisations(company_name), awards:award_years(award_name)')
         .eq('event_id', this.currentEventId)
         .order('display_order');
 
@@ -4790,7 +4790,7 @@ const mediaGalleryModule = {
       // Load running order for this event
       const { data: roItems, error: roError } = await STATE.client
         .from('running_order')
-        .select('*, organisations(id, company_name), awards(id, award_name)')
+        .select('*, organisations(id, company_name), awards:award_years(id, award_name)')
         .eq('event_id', this.currentEventId)
         .order('display_order');
 
@@ -5682,7 +5682,7 @@ const mediaGalleryModule = {
       // Re-fetch ordered by display_order and render in reorder mode
       const { data: videos } = await STATE.client
         .from('media_items')
-        .select('*, organisations(company_name), awards(award_name)')
+        .select('*, organisations(company_name), awards:award_years(award_name)')
         .eq('event_id', this.currentEventId)
         .eq('media_type', 'video')
         .order('display_order', { ascending: true });
@@ -5932,13 +5932,13 @@ const mediaGalleryModule = {
       // Fetch photos for this org
       const { data: photos } = await STATE.client
         .from('media_gallery')
-        .select('id, file_url, title, caption, organisations!media_gallery_organisation_id_fkey(company_name), awards!media_gallery_award_id_fkey(award_name)')
+        .select('id, file_url, title, caption, organisations!media_gallery_organisation_id_fkey(company_name), awards:award_years!media_gallery_award_id_fkey(award_name)')
         .eq('organisation_id', orgId);
 
       // Fetch videos for this org
       const { data: videos } = await STATE.client
         .from('media_items')
-        .select('id, title, youtube_id, file_url, thumbnail_url, organisations(company_name), awards(award_name)')
+        .select('id, title, youtube_id, file_url, thumbnail_url, organisations(company_name), awards:award_years(award_name)')
         .eq('organisation_id', orgId)
         .eq('media_type', 'video');
 

@@ -55,7 +55,7 @@ const uploadApp = {
         .select(`
           *,
           organisations(company_name),
-          awards(award_name)
+          awards:award_years(award_name)
         `)
         .eq('entry_number', this.entryId)
         .single();

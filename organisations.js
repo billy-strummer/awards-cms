@@ -805,7 +805,7 @@ updateCountyFilterByRegion() {
         .from('award_assignments')
         .select(`
           status,
-          awards!award_assignments_award_id_fkey (*)
+          awards:award_years!award_assignments_award_id_fkey (*)
         `)
         .eq('organisation_id', orgId);
 
@@ -5725,7 +5725,7 @@ updateCountyFilterByRegion() {
       let assignments = [];
       try {
         const { data } = await STATE.client.from('award_assignments')
-          .select('*, awards!award_assignments_award_id_fkey(award_name, year)')
+          .select('*, awards:award_years!award_assignments_award_id_fkey(award_name, year)')
           .eq('organisation_id', orgId);
         assignments = data || [];
       } catch (e) { /* ignore */ }

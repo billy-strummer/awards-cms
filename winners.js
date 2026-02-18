@@ -33,7 +33,7 @@ const winnersModule = {
             .from('winners')
             .select(`
               *,
-              awards!winners_award_id_fkey (*),
+              awards:award_years!winners_award_id_fkey (*),
               winner_media (*)
             `)
             .order('created_at', { ascending: false })
@@ -457,7 +457,7 @@ const winnersModule = {
         .from('winners')
         .select(`
           *,
-          awards!winners_award_id_fkey (*),
+          awards:award_years!winners_award_id_fkey (*),
           winner_media (*)
         `)
         .order('created_at', { ascending: false });
@@ -908,7 +908,7 @@ const winnersModule = {
         .from('winners')
         .select(`
           *,
-          awards!winners_award_id_fkey (*)
+          awards:award_years!winners_award_id_fkey (*)
         `)
         .order('created_at', { ascending: false });
 
@@ -1527,7 +1527,7 @@ const winnersModule = {
         .from('winners')
         .select(`
           *,
-          awards!winners_award_id_fkey (*)
+          awards:award_years!winners_award_id_fkey (*)
         `)
         .order('created_at', { ascending: false });
 
@@ -1604,7 +1604,7 @@ const winnersModule = {
         .from('winners')
         .select(`
           *,
-          awards!winners_award_id_fkey (*)
+          awards:award_years!winners_award_id_fkey (*)
         `);
 
       if (winnersError) throw winnersError;

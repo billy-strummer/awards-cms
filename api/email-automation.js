@@ -387,7 +387,7 @@ async function sendEntryConfirmation(entryId) {
   try {
     const { data: entry } = await supabase
       .from('entries')
-      .select('*, organisations(*), awards(*)')
+      .select('*, organisations(*), awards:award_years(*)')
       .eq('id', entryId)
       .single();
 
@@ -488,7 +488,7 @@ async function sendJudgeAssignments(judgeEmail, entryIds) {
     // Get award names
     const { data: entries } = await supabase
       .from('entries')
-      .select('*, awards(award_name)')
+      .select('*, awards:award_years(award_name)')
       .in('id', entryIds);
 
     const awardList = [...new Set(entries.map(e => e.awards.award_name))]
@@ -520,7 +520,7 @@ async function sendWinnerAnnouncements(awardId = null) {
 
     let query = supabase
       .from('entries')
-      .select('*, organisations(*), awards(*)')
+      .select('*, organisations(*), awards:award_years(*)')
       .eq('status', 'winner');
 
     if (awardId) {
@@ -563,7 +563,7 @@ async function sendShortlistNotifications(awardId = null) {
 
     let query = supabase
       .from('entries')
-      .select('*, organisations(*), awards(*)')
+      .select('*, organisations(*), awards:award_years(*)')
       .eq('is_shortlisted', true);
 
     if (awardId) {

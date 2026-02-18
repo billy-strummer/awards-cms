@@ -235,7 +235,7 @@ const settingsModule = {
         .select(`
           *,
           organisations(company_name),
-          awards(award_category)
+          awards:award_years(award_category)
         `)
         .order('uploaded_at', { ascending: false });
 

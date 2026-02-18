@@ -25,7 +25,7 @@ const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 const TABLES_TO_BACKUP = [
   {
     name: 'award_assignments',
-    select: '*, awards(award_name, year, sector, county), organisations(company_name, email)'
+    select: '*, awards:award_years(award_name, year, sector, county), organisations(company_name, email)'
   },
   {
     name: 'organisations',

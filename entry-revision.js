@@ -140,7 +140,7 @@ window.entryRevisionModule = {
   /* 4. ADMIN REVIEW UI */
   async renderRevisionReview(entryId) {
     const { data: entry, error: eErr } = await STATE.client
-      .from('entries').select('*, organisations(organisation_name), awards(award_name)')
+      .from('entries').select('*, organisations(organisation_name), awards:award_years(award_name)')
       .eq('id', entryId).single();
     if (eErr) return '<p class="text-danger">Could not load entry.</p>';
 

@@ -271,7 +271,7 @@ const dashboardModule = {
           .select(`
             *,
             organisations!media_gallery_organisation_id_fkey (*),
-            awards!media_gallery_award_id_fkey (*)
+            awards:award_years!media_gallery_award_id_fkey (*)
           `)
           .or('organisation_id.is.null,award_id.is.null')
           .order('uploaded_at', { ascending: false });

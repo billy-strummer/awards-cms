@@ -6708,8 +6708,8 @@ const eventsModule = {
                     <i class="bi bi-download me-1"></i>Export
                   </button>
                   <ul class="dropdown-menu dropdown-menu-end">
-                    <li><a class="dropdown-item" href="#" onclick="eventsModule.exportTablePlan(); return false;"><i class="bi bi-filetype-csv me-2"></i>Export CSV</a></li>
-                    <li><a class="dropdown-item" href="#" onclick="eventsModule.exportTablePlanPDF(); return false;"><i class="bi bi-file-pdf me-2"></i>Export PDF (Print)</a></li>
+                    <li><a class="dropdown-item" href="#" onclick="eventsModule.exportTablePlanExcel(); return false;"><i class="bi bi-file-earmark-spreadsheet me-2"></i>Export Excel (.xlsx)</a></li>
+                    <li><a class="dropdown-item" href="#" onclick="eventsModule.exportTablePlanPDF(); return false;"><i class="bi bi-printer me-2"></i>Print Document</a></li>
                     <li><hr class="dropdown-divider"></li>
                     <li><a class="dropdown-item" href="#" onclick="eventsModule.openTVDisplay(); return false;"><i class="bi bi-tv me-2"></i>TV / Projector Display</a></li>
                   </ul>
@@ -8316,43 +8316,189 @@ const eventsModule = {
     }
   },
 
-  // ---- EXPORT ----
+  // ---- EXCEL EXPORT ----
 
-  exportTablePlan() {
+  async exportTablePlanExcel() {
     if (this.tables.length === 0) {
       utils.showToast('No tables to export', 'warning');
       return;
     }
 
-    const exportData = [];
-    this.tables.forEach(table => {
-      if (table.assignments && table.assignments.length > 0) {
-        table.assignments.forEach(assignment => {
-          exportData.push({
-            'Table Number': table.table_number,
-            'Table Name': table.table_name || '',
-            'Total Seats': table.total_seats,
-            'Guest Name': assignment.guest_name,
-            'Company': assignment.company_name || '',
-            'VIP': assignment.is_vip ? 'Yes' : 'No',
-            'Dietary': assignment.dietary_requirements || ''
-          });
-        });
-      } else {
-        exportData.push({
-          'Table Number': table.table_number,
-          'Table Name': table.table_name || '',
-          'Total Seats': table.total_seats,
-          'Guest Name': '(Empty)',
-          'Company': '',
-          'VIP': '',
-          'Dietary': ''
+    try {
+      // Load SheetJS if not already loaded
+      if (typeof XLSX === 'undefined') {
+        await new Promise((resolve, reject) => {
+          const script = document.createElement('script');
+          script.src = 'https://cdn.sheetjs.com/xlsx-0.20.0/package/dist/xlsx.full.min.js';
+          script.onload = resolve;
+          script.onerror = () => reject(new Error('Failed to load Excel library'));
+          document.head.appendChild(script);
         });
       }
-    });
 
-    const filename = `${this.currentEventNameTablePlan.replace(/[^a-z0-9]/gi, '_')}_table_plan_${new Date().toISOString().split('T')[0]}.csv`;
-    utils.exportToCSV(exportData, filename);
+      const wb = XLSX.utils.book_new();
+      const sortedTables = [...this.tables].sort((a, b) => a.table_number - b.table_number);
+
+      // ---- Sheet 1: By Table Number ----
+      const byTableRows = [];
+      sortedTables.forEach(table => {
+        const label = table.table_name || '';
+        if (table.assignments && table.assignments.length > 0) {
+          [...table.assignments]
+            .sort((a, b) => (a.guest_name || '').localeCompare(b.guest_name || ''))
+            .forEach(a => {
+              byTableRows.push({
+                'Table #': table.table_number,
+                'Table Name': label,
+                'Seats': table.total_seats,
+                'Occupied': table.assignments.length,
+                'Guest Name': a.guest_name || '',
+                'Company': a.company_name || '',
+                'Seat #': a.seat_number || '',
+                'VIP': a.is_vip ? 'Yes' : '',
+                'Dietary': a.dietary_requirements || '',
+                'Notes': a.notes || ''
+              });
+            });
+        } else {
+          byTableRows.push({
+            'Table #': table.table_number,
+            'Table Name': label,
+            'Seats': table.total_seats,
+            'Occupied': 0,
+            'Guest Name': '',
+            'Company': '',
+            'Seat #': '',
+            'VIP': '',
+            'Dietary': '',
+            'Notes': ''
+          });
+        }
+      });
+
+      const ws1 = XLSX.utils.json_to_sheet(byTableRows);
+      ws1['!cols'] = [
+        { wch: 8 },   // Table #
+        { wch: 20 },  // Table Name
+        { wch: 6 },   // Seats
+        { wch: 9 },   // Occupied
+        { wch: 28 },  // Guest Name
+        { wch: 28 },  // Company
+        { wch: 7 },   // Seat #
+        { wch: 5 },   // VIP
+        { wch: 20 },  // Dietary
+        { wch: 20 }   // Notes
+      ];
+      ws1['!autofilter'] = { ref: XLSX.utils.encode_range({ s: { r: 0, c: 0 }, e: { r: byTableRows.length, c: 9 } }) };
+      XLSX.utils.book_append_sheet(wb, ws1, 'By Table');
+
+      // ---- Sheet 2: By Company (A-Z) ----
+      const allGuests = [];
+      sortedTables.forEach(table => {
+        (table.assignments || []).forEach(a => {
+          allGuests.push({
+            'Company': a.company_name || '',
+            'Guest Name': a.guest_name || '',
+            'Table #': table.table_number,
+            'Table Name': table.table_name || '',
+            'Seat #': a.seat_number || '',
+            'VIP': a.is_vip ? 'Yes' : '',
+            'Dietary': a.dietary_requirements || ''
+          });
+        });
+      });
+      allGuests.sort((a, b) => (a['Company'] || '').localeCompare(b['Company'] || '') || (a['Guest Name'] || '').localeCompare(b['Guest Name'] || ''));
+
+      const ws2 = XLSX.utils.json_to_sheet(allGuests);
+      ws2['!cols'] = [
+        { wch: 28 },  // Company
+        { wch: 28 },  // Guest Name
+        { wch: 8 },   // Table #
+        { wch: 20 },  // Table Name
+        { wch: 7 },   // Seat #
+        { wch: 5 },   // VIP
+        { wch: 20 }   // Dietary
+      ];
+      ws2['!autofilter'] = { ref: XLSX.utils.encode_range({ s: { r: 0, c: 0 }, e: { r: allGuests.length, c: 6 } }) };
+      XLSX.utils.book_append_sheet(wb, ws2, 'By Company');
+
+      // ---- Sheet 3: Guest A-Z ----
+      const guestAZ = [...allGuests].sort((a, b) => (a['Guest Name'] || '').localeCompare(b['Guest Name'] || ''));
+      const guestRows = guestAZ.map(g => ({
+        'Guest Name': g['Guest Name'],
+        'Company': g['Company'],
+        'Table #': g['Table #'],
+        'Table Name': g['Table Name'],
+        'Seat #': g['Seat #'],
+        'VIP': g['VIP'],
+        'Dietary': g['Dietary']
+      }));
+
+      const ws3 = XLSX.utils.json_to_sheet(guestRows);
+      ws3['!cols'] = [
+        { wch: 28 },  // Guest Name
+        { wch: 28 },  // Company
+        { wch: 8 },   // Table #
+        { wch: 20 },  // Table Name
+        { wch: 7 },   // Seat #
+        { wch: 5 },   // VIP
+        { wch: 20 }   // Dietary
+      ];
+      ws3['!autofilter'] = { ref: XLSX.utils.encode_range({ s: { r: 0, c: 0 }, e: { r: guestRows.length, c: 6 } }) };
+      XLSX.utils.book_append_sheet(wb, ws3, 'Guest A-Z');
+
+      // ---- Sheet 4: Unassigned (if any) ----
+      if (this.unassignedGuests.length > 0) {
+        const unassignedRows = [...this.unassignedGuests]
+          .sort((a, b) => (a.guest_name || '').localeCompare(b.guest_name || ''))
+          .map(g => ({
+            'Guest Name': g.guest_name || '',
+            'Company': g.company_name || '',
+            'Email': g.guest_email || '',
+            'RSVP Status': g.rsvp_status || ''
+          }));
+        const ws4 = XLSX.utils.json_to_sheet(unassignedRows);
+        ws4['!cols'] = [{ wch: 28 }, { wch: 28 }, { wch: 30 }, { wch: 14 }];
+        ws4['!autofilter'] = { ref: XLSX.utils.encode_range({ s: { r: 0, c: 0 }, e: { r: unassignedRows.length, c: 3 } }) };
+        XLSX.utils.book_append_sheet(wb, ws4, 'Unassigned');
+      }
+
+      // ---- Sheet 5: Summary ----
+      const totalSeats = sortedTables.reduce((s, t) => s + t.total_seats, 0);
+      const totalSeated = sortedTables.reduce((s, t) => s + (t.assignments?.length || 0), 0);
+      const summaryRows = sortedTables.map(t => ({
+        'Table #': t.table_number,
+        'Table Name': t.table_name || '',
+        'Shape': t.shape || 'round',
+        'Total Seats': t.total_seats,
+        'Occupied': t.assignments?.length || 0,
+        'Available': t.total_seats - (t.assignments?.length || 0),
+        'Occupancy %': t.total_seats > 0 ? Math.round((t.assignments?.length || 0) / t.total_seats * 100) : 0
+      }));
+      // Add totals row
+      summaryRows.push({
+        'Table #': '',
+        'Table Name': 'TOTAL',
+        'Shape': '',
+        'Total Seats': totalSeats,
+        'Occupied': totalSeated,
+        'Available': totalSeats - totalSeated,
+        'Occupancy %': totalSeats > 0 ? Math.round(totalSeated / totalSeats * 100) : 0
+      });
+
+      const ws5 = XLSX.utils.json_to_sheet(summaryRows);
+      ws5['!cols'] = [{ wch: 8 }, { wch: 20 }, { wch: 12 }, { wch: 11 }, { wch: 9 }, { wch: 9 }, { wch: 12 }];
+      XLSX.utils.book_append_sheet(wb, ws5, 'Summary');
+
+      // Download
+      const safeName = (this.currentEventNameTablePlan || 'Event').replace(/[^a-z0-9]/gi, '_');
+      XLSX.writeFile(wb, `${safeName}_Table_Plan_${new Date().toISOString().split('T')[0]}.xlsx`);
+      utils.showToast('Excel spreadsheet exported successfully', 'success');
+
+    } catch (error) {
+      console.error('Error exporting Excel:', error);
+      utils.showToast('Failed to export spreadsheet: ' + error.message, 'error');
+    }
   },
 
   // ---- PRINTABLE TABLE PLAN DOCUMENT ----

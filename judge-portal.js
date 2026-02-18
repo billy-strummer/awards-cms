@@ -13,6 +13,7 @@ const judgePortal = {
   assignedEntries: [],
   currentEntry: null,
   currentScore: null,
+  blindMode: true, // Anonymise company names and logos for impartial judging
   scoringCriteria: [
     { id: 'innovation_score', name: 'Innovation & Creativity', maxScore: 10, weight: 0.2 },
     { id: 'impact_score', name: 'Business Impact', maxScore: 10, weight: 0.3 },
@@ -70,6 +71,28 @@ const judgePortal = {
    */
   getJudgeFromSession() {
     return localStorage.getItem('judgeEmail') || 'judge@example.com'; // Placeholder
+  },
+
+  /**
+   * Anonymise a company name for blind judging
+   * Uses a consistent hash so the same company always gets the same code
+   */
+  anonymise(text) {
+    if (!this.blindMode || !text) return text;
+    let hash = 0;
+    for (let i = 0; i < text.length; i++) {
+      hash = ((hash << 5) - hash) + text.charCodeAt(i);
+      hash |= 0;
+    }
+    return `Entry #${Math.abs(hash).toString(36).toUpperCase().slice(0, 6)}`;
+  },
+
+  /**
+   * Get display name — anonymised in blind mode
+   */
+  getCompanyDisplay(entry) {
+    if (this.blindMode) return this.anonymise(entry.organisations?.company_name || entry.id);
+    return entry.organisations?.company_name || 'Unknown';
   },
 
   /**
@@ -139,7 +162,7 @@ const judgePortal = {
       <div class="entry-card ${entry.hasScored ? 'scored' : ''} ${this.currentEntry?.id === entry.id ? 'active' : ''}"
            onclick="judgePortal.selectEntry('${entry.id}')">
         <div class="d-flex justify-content-between align-items-start mb-2">
-          <strong class="text-truncate">${entry.organisations?.company_name || 'Unknown'}</strong>
+          <strong class="text-truncate">${this.getCompanyDisplay(entry)}</strong>
           ${entry.hasScored ? '<i class="bi bi-check-circle-fill text-success"></i>' : ''}
         </div>
         <div class="small text-muted mb-1">${entry.awards?.award_name || ''}</div>
@@ -176,7 +199,7 @@ const judgePortal = {
       <div class="entry-card ${entry.hasScored ? 'scored' : ''} ${this.currentEntry?.id === entry.id ? 'active' : ''}"
            onclick="judgePortal.selectEntry('${entry.id}')">
         <div class="d-flex justify-content-between align-items-start mb-2">
-          <strong class="text-truncate">${entry.organisations?.company_name || 'Unknown'}</strong>
+          <strong class="text-truncate">${this.getCompanyDisplay(entry)}</strong>
           ${entry.hasScored ? '<i class="bi bi-check-circle-fill text-success"></i>' : ''}
         </div>
         <div class="small text-muted mb-1">${entry.awards?.award_name || ''}</div>
@@ -264,13 +287,18 @@ const judgePortal = {
   renderJudgingPanel(hasConflict) {
     const panel = document.getElementById('judgingPanel');
 
+    const companyDisplay = this.getCompanyDisplay(this.currentEntry);
+
     panel.innerHTML = `
+      <!-- Blind Mode Indicator -->
+      ${this.blindMode ? '<div class="alert alert-info py-2 mb-3"><i class="bi bi-eye-slash me-2"></i><strong>Blind Judging Mode</strong> — Company identities are hidden to ensure impartial scoring.</div>' : ''}
+
       <!-- Entry Header -->
       <div class="d-flex justify-content-between align-items-start mb-4">
         <div>
           <h3 class="mb-1">${this.currentEntry.entry_title}</h3>
           <p class="text-muted mb-0">
-            ${this.currentEntry.organisations?.company_name || 'Unknown Company'}
+            ${companyDisplay}
             | ${this.currentEntry.awards?.award_name || ''}
           </p>
         </div>

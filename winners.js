@@ -14,19 +14,38 @@ const winnersModule = {
       utils.showLoading();
       utils.showTableLoading('winnersTableBody', 6);
 
-      // Use foreign key relationship to fetch winners with awards
-      const { data, error } = await STATE.client
-        .from('winners')
-        .select(`
-          *,
-          awards!winners_award_id_fkey (*),
-          winner_media (*)
-        `)
-        .order('created_at', { ascending: false });
+      // Paginated loading for large winner datasets
+      let allData = [];
+      let page = 0;
+      const pageSize = 1000;
+      let hasMore = true;
 
-      if (error) throw error;
+      while (hasMore) {
+        const from = page * pageSize;
+        const to = from + pageSize - 1;
 
-      STATE.allWinners = data || [];
+        const { data, error } = await STATE.client
+          .from('winners')
+          .select(`
+            *,
+            awards!winners_award_id_fkey (*),
+            winner_media (*)
+          `)
+          .order('created_at', { ascending: false })
+          .range(from, to);
+
+        if (error) throw error;
+
+        if (!data || data.length === 0) {
+          hasMore = false;
+        } else {
+          allData = allData.concat(data);
+          page++;
+          if (data.length < pageSize) hasMore = false;
+        }
+      }
+
+      STATE.allWinners = allData;
       STATE.filteredWinners = STATE.allWinners;
       
       this.populateFilters();

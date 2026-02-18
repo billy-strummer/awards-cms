@@ -11,14 +11,34 @@ const eventsModule = {
       utils.showLoading();
       utils.showTableLoading('eventsTableBody', 11);
 
-      const { data, error } = await STATE.client
-        .from('events')
-        .select('*')
-        .order('event_date', { ascending: false });
+      // Paginated loading for large event datasets
+      let allData = [];
+      let evtPage = 0;
+      const evtPageSize = 1000;
+      let evtHasMore = true;
 
-      if (error) throw error;
+      while (evtHasMore) {
+        const from = evtPage * evtPageSize;
+        const to = from + evtPageSize - 1;
 
-      STATE.allEvents = data || [];
+        const { data, error } = await STATE.client
+          .from('events')
+          .select('*')
+          .order('event_date', { ascending: false })
+          .range(from, to);
+
+        if (error) throw error;
+
+        if (!data || data.length === 0) {
+          evtHasMore = false;
+        } else {
+          allData = allData.concat(data);
+          evtPage++;
+          if (data.length < evtPageSize) evtHasMore = false;
+        }
+      }
+
+      STATE.allEvents = allData;
       this.populateYearFilter();
       this._eventAwardCounts = {}; // Clear cache on reload
       this.renderEvents();

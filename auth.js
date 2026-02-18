@@ -102,6 +102,10 @@ const authModule = {
       
       if (session) {
         STATE.currentUser = session.user;
+        // Load RBAC permissions on session restore
+        if (typeof rbacModule !== 'undefined') {
+          await rbacModule.loadUserRole(session.user.email);
+        }
         this.showDashboard();
         utils.showToast('Welcome back!', 'success');
       } else {
@@ -150,6 +154,10 @@ const authModule = {
       if (error) throw error;
       
       STATE.currentUser = data.user;
+      // Load RBAC permissions before showing dashboard
+      if (typeof rbacModule !== 'undefined') {
+        await rbacModule.loadUserRole(data.user.email);
+      }
       this.showDashboard();
       utils.showToast('Login successful!', 'success');
       this.startInactivityTimer();

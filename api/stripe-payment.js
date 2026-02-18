@@ -278,8 +278,8 @@ async function sendEntryConfirmationEmail(entry) {
       subject: `Entry Confirmed: ${entry.entry_number || 'Your Submission'} - British Trade Awards`,
       html: `<h2>Thank you for your entry!</h2>
         <p>Your entry <strong>${entry.entry_number || ''}</strong> has been received and payment confirmed.</p>
-        <p><strong>Company:</strong> ${entry.company_name || ''}</p>
-        <p><strong>Category:</strong> ${entry.category || ''}</p>
+        <p><strong>Entry:</strong> ${entry.entry_title || ''}</p>
+        <p><strong>Contact:</strong> ${entry.contact_name || ''}</p>
         <p>You can upload supporting documents at: <a href="${APP_URL}/upload-documents.html?entry=${entry.entry_number || entry.id}">Upload Documents</a></p>
         <p>We will be in touch with next steps. Good luck!</p>
         <p>British Trade Awards Team</p>`

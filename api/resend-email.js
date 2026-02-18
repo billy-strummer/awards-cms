@@ -187,7 +187,7 @@ async function sendCampaignEmail(campaignId) {
       .from('email_list_subscribers')
       .select('email, first_name, last_name')
       .eq('list_id', campaign.list_id)
-      .eq('status', 'subscribed');
+      .eq('status', 'active');
 
     if (subError) throw subError;
 
@@ -196,7 +196,7 @@ async function sendCampaignEmail(campaignId) {
     }
 
     // Update campaign status
-    await supabase.from('email_campaigns').update({ status: 'sending', sent_at: new Date().toISOString() }).eq('id', campaignId);
+    await supabase.from('email_campaigns').update({ status: 'sending', sent_date: new Date().toISOString() }).eq('id', campaignId);
 
     let sent = 0;
     let failed = 0;
@@ -237,7 +237,7 @@ async function sendCampaignEmail(campaignId) {
     // Update campaign with results
     await supabase.from('email_campaigns').update({
       status: failed === subscribers.length ? 'failed' : 'sent',
-      recipients_count: subscribers.length,
+      total_recipients: subscribers.length,
       sent_count: sent,
       failed_count: failed
     }).eq('id', campaignId);

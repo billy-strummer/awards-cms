@@ -10197,3 +10197,6 @@ const eventsModule = {
 
 // Export to window for global access
 window.eventsModule = eventsModule;
+
+// Initialize seating enhancements (seat-level assignment, VIP, dietary, place cards, undo/redo)
+if (window.seatingEnhancements) window.seatingEnhancements.init();

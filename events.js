@@ -22,6 +22,7 @@ const eventsModule = {
       this.populateYearFilter();
       this._eventAwardCounts = {}; // Clear cache on reload
       this.renderEvents();
+      this.renderFinancialOverview();
 
       console.log(`✅ Loaded ${STATE.allEvents.length} events`);
 
@@ -642,7 +643,12 @@ const eventsModule = {
     this.renderBudgetTab(eventId);
     this.renderVendorsTab(eventId);
     this.renderSpecialReqsTab(eventId);
+    this.renderMilestonesPanel(eventId);
     this.renderPostEventTab(eventId);
+
+    // Load event notes
+    const notesEl = document.getElementById('eventQuickNotes');
+    if (notesEl) notesEl.value = this._getEventNotes(eventId);
 
     const modal = new bootstrap.Modal(document.getElementById('attendeesModal'));
     modal.show();
@@ -1022,6 +1028,8 @@ const eventsModule = {
     const ticketsSold = attendees.filter(a => a.status === 'attending').length;
     const price = event.ticket_price || 0;
     const capacity = event.capacity || 0;
+    const ticketData = this._getTicketData(eventId);
+    const issuedCount = ticketData.tickets.filter(t => t.status === 'issued').length;
 
     const priceEl = document.getElementById('ticketPriceDisplay');
     const soldEl = document.getElementById('ticketsSoldCount');
@@ -1045,6 +1053,103 @@ const eventsModule = {
     const ciLink = document.getElementById('checkInLinkDisplay');
     if (regLink) regLink.value = `${baseUrl}/register.html?event=${eventId}`;
     if (ciLink) ciLink.value = `${baseUrl}/check-in.html?event=${eventId}`;
+
+    // Render ticket issuance section
+    const issuanceContainer = document.getElementById('ticketIssuanceSection');
+    if (!issuanceContainer) return;
+
+    const activeTickets = ticketData.tickets.filter(t => t.status === 'issued');
+    const revokedTickets = ticketData.tickets.filter(t => t.status === 'revoked');
+    const unissued = attendees.filter(a => a.status === 'attending' && !ticketData.tickets.find(t => t.attendeeId === a.id && t.status === 'issued'));
+
+    issuanceContainer.innerHTML = `
+      <!-- Ticket Issuance Stats -->
+      <div class="row g-3 mb-3">
+        <div class="col-md-3"><div class="card text-center"><div class="card-body py-2">
+          <h4 class="mb-0 text-primary">${issuedCount}</h4><small class="text-muted">Tickets Issued</small>
+        </div></div></div>
+        <div class="col-md-3"><div class="card text-center"><div class="card-body py-2">
+          <h4 class="mb-0 text-warning">${unissued.length}</h4><small class="text-muted">Awaiting Ticket</small>
+        </div></div></div>
+        <div class="col-md-3"><div class="card text-center"><div class="card-body py-2">
+          <h4 class="mb-0 text-danger">${revokedTickets.length}</h4><small class="text-muted">Revoked</small>
+        </div></div></div>
+        <div class="col-md-3"><div class="card text-center"><div class="card-body py-2">
+          <h4 class="mb-0 text-success">${activeTickets.filter(t => t.checkedIn).length}</h4><small class="text-muted">Checked In</small>
+        </div></div></div>
+      </div>
+
+      <!-- Batch Issue Actions -->
+      <div class="card mb-3">
+        <div class="card-body">
+          <h6 class="card-title"><i class="bi bi-lightning me-2"></i>Batch Issue Tickets</h6>
+          <p class="small text-muted mb-2">Issue tickets to groups of attendees. Tickets include unique reference numbers for check-in.</p>
+          <div class="d-flex gap-2 flex-wrap">
+            <button class="btn btn-primary btn-sm" onclick="eventsModule.batchIssueTickets('confirmed')">
+              <i class="bi bi-people me-1"></i>All Confirmed RSVPs (${unissued.length})
+            </button>
+            <button class="btn btn-warning btn-sm" onclick="eventsModule.batchIssueTickets('vip')">
+              <i class="bi bi-star me-1"></i>VIP Guests Only
+            </button>
+            <button class="btn btn-outline-primary btn-sm" onclick="eventsModule.emailAllTickets()">
+              <i class="bi bi-envelope me-1"></i>Email All Tickets
+            </button>
+            <button class="btn btn-outline-secondary btn-sm" onclick="eventsModule.exportTicketsList()">
+              <i class="bi bi-download me-1"></i>Export Tickets CSV
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Individual Ticket Issue -->
+      ${unissued.length > 0 ? `
+      <div class="card mb-3">
+        <div class="card-body">
+          <h6 class="card-title"><i class="bi bi-person-plus me-2"></i>Issue Individual Tickets</h6>
+          <div class="table-responsive" style="max-height:250px; overflow-y:auto;">
+            <table class="table table-sm table-hover">
+              <thead class="table-light"><tr><th>Name</th><th>Email</th><th>Type</th><th class="text-center">Action</th></tr></thead>
+              <tbody>
+                ${unissued.map(a => `<tr>
+                  <td>${utils.escapeHtml(a.name)}</td>
+                  <td>${a.email ? utils.escapeHtml(a.email) : '<span class="text-muted">-</span>'}</td>
+                  <td><span class="badge bg-secondary">${(a.guestType || 'guest').toUpperCase()}</span></td>
+                  <td class="text-center"><button class="btn btn-sm btn-outline-primary" onclick="eventsModule.issueTicketToAttendee('${a.id}')"><i class="bi bi-ticket-perforated me-1"></i>Issue</button></td>
+                </tr>`).join('')}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>` : ''}
+
+      <!-- Issued Tickets List -->
+      ${ticketData.tickets.length > 0 ? `
+      <div class="card">
+        <div class="card-body">
+          <h6 class="card-title"><i class="bi bi-list-check me-2"></i>Issued Tickets (${ticketData.tickets.length})</h6>
+          <div class="table-responsive" style="max-height:300px; overflow-y:auto;">
+            <table class="table table-sm table-hover">
+              <thead class="table-light"><tr><th>Ticket #</th><th>Attendee</th><th>Email</th><th>Type</th><th>Status</th><th>Issued</th><th class="text-center">Actions</th></tr></thead>
+              <tbody>
+                ${ticketData.tickets.map(t => `<tr class="${t.status === 'revoked' ? 'text-decoration-line-through text-muted' : ''}">
+                  <td><code class="small">${utils.escapeHtml(t.ticketNumber)}</code></td>
+                  <td>${utils.escapeHtml(t.attendeeName)}</td>
+                  <td>${t.attendeeEmail ? utils.escapeHtml(t.attendeeEmail) : '-'}</td>
+                  <td><span class="badge bg-${t.guestType === 'vip' ? 'warning text-dark' : 'secondary'}">${(t.guestType || 'guest').toUpperCase()}</span></td>
+                  <td><span class="badge bg-${t.status === 'issued' ? 'success' : 'danger'}">${t.status}</span></td>
+                  <td class="small">${t.issuedAt ? new Date(t.issuedAt).toLocaleDateString('en-GB') : '-'}</td>
+                  <td class="text-center">
+                    ${t.status === 'issued' ? `
+                      <button class="btn btn-sm btn-outline-primary me-1" onclick="eventsModule.resendTicket('${t.id}')" title="Email ticket"><i class="bi bi-envelope"></i></button>
+                      <button class="btn btn-sm btn-outline-danger" onclick="eventsModule.revokeTicket('${t.id}')" title="Revoke"><i class="bi bi-x-circle"></i></button>
+                    ` : '<span class="text-muted small">Revoked</span>'}
+                  </td>
+                </tr>`).join('')}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>` : '<div class="text-center text-muted py-3"><i class="bi bi-ticket-perforated fs-1 d-block mb-2 opacity-25"></i>No tickets issued yet. Use the batch issue buttons above to get started.</div>'}`;
   },
 
   async saveTicketSettings() {
@@ -1077,6 +1182,184 @@ const eventsModule = {
       navigator.clipboard.writeText(url);
       utils.showToast('Ticket URL copied to clipboard', 'success');
     }
+  },
+
+  // ---- TICKET ISSUANCE SYSTEM ----
+
+  _getTicketData(eventId) {
+    const stored = localStorage.getItem(`bta_tickets_${eventId}`);
+    return stored ? JSON.parse(stored) : { tickets: [], settings: {} };
+  },
+
+  _saveTicketData(eventId, data) {
+    localStorage.setItem(`bta_tickets_${eventId}`, JSON.stringify(data));
+  },
+
+  _generateTicketNumber(eventId, index) {
+    const year = new Date().getFullYear();
+    const prefix = 'BTA';
+    const seq = String(index).padStart(4, '0');
+    const random = Math.random().toString(36).substring(2, 6).toUpperCase();
+    return `${prefix}-${year}-${seq}-${random}`;
+  },
+
+  issueTicketToAttendee(attendeeId) {
+    const eventId = document.getElementById('attendeesEventId').value;
+    const event = STATE.allEvents.find(e => e.id === eventId);
+    const attendees = this.getAttendees(eventId);
+    const attendee = attendees.find(a => a.id === attendeeId);
+    if (!attendee || !event) return;
+
+    const ticketData = this._getTicketData(eventId);
+    // Check if already issued
+    if (ticketData.tickets.find(t => t.attendeeId === attendeeId)) {
+      utils.showToast('Ticket already issued to this attendee', 'warning');
+      return;
+    }
+
+    const ticketNumber = this._generateTicketNumber(eventId, ticketData.tickets.length + 1);
+    ticketData.tickets.push({
+      id: 'ticket_' + Date.now(),
+      ticketNumber,
+      attendeeId,
+      attendeeName: attendee.name,
+      attendeeEmail: attendee.email || '',
+      guestType: attendee.guestType || 'guest',
+      issuedAt: new Date().toISOString(),
+      status: 'issued',
+      checkedIn: false
+    });
+
+    this._saveTicketData(eventId, ticketData);
+    utils.showToast(`Ticket ${ticketNumber} issued to ${attendee.name}`, 'success');
+    this.renderTicketsTab(eventId);
+  },
+
+  batchIssueTickets(filter) {
+    const eventId = document.getElementById('attendeesEventId').value;
+    const event = STATE.allEvents.find(e => e.id === eventId);
+    if (!event) return;
+
+    const attendees = this.getAttendees(eventId);
+    const ticketData = this._getTicketData(eventId);
+    const alreadyIssued = new Set(ticketData.tickets.map(t => t.attendeeId));
+
+    let eligible;
+    if (filter === 'confirmed') {
+      eligible = attendees.filter(a => a.status === 'attending' && !alreadyIssued.has(a.id));
+    } else if (filter === 'vip') {
+      eligible = attendees.filter(a => (a.guestType === 'vip' || a.vip || a.isVip) && !alreadyIssued.has(a.id));
+    } else if (filter === 'winners') {
+      // We'll check award data for winners
+      eligible = attendees.filter(a => a._isWinner && !alreadyIssued.has(a.id));
+    } else {
+      eligible = attendees.filter(a => !alreadyIssued.has(a.id));
+    }
+
+    if (eligible.length === 0) {
+      utils.showToast(alreadyIssued.size > 0 ? 'All eligible attendees already have tickets' : 'No eligible attendees found', 'warning');
+      return;
+    }
+
+    if (!confirm(`Issue tickets to ${eligible.length} attendee(s)?`)) return;
+
+    let issued = 0;
+    eligible.forEach(attendee => {
+      const ticketNumber = this._generateTicketNumber(eventId, ticketData.tickets.length + 1);
+      ticketData.tickets.push({
+        id: 'ticket_' + Date.now() + '_' + issued,
+        ticketNumber,
+        attendeeId: attendee.id,
+        attendeeName: attendee.name,
+        attendeeEmail: attendee.email || '',
+        guestType: attendee.guestType || 'guest',
+        issuedAt: new Date().toISOString(),
+        status: 'issued',
+        checkedIn: false
+      });
+      issued++;
+    });
+
+    this._saveTicketData(eventId, ticketData);
+    utils.showToast(`${issued} ticket(s) issued`, 'success');
+    this.renderTicketsTab(eventId);
+  },
+
+  revokeTicket(ticketId) {
+    const eventId = document.getElementById('attendeesEventId').value;
+    if (!confirm('Revoke this ticket?')) return;
+    const ticketData = this._getTicketData(eventId);
+    const ticket = ticketData.tickets.find(t => t.id === ticketId);
+    if (ticket) {
+      ticket.status = 'revoked';
+      ticket.revokedAt = new Date().toISOString();
+      this._saveTicketData(eventId, ticketData);
+      this.renderTicketsTab(eventId);
+      utils.showToast('Ticket revoked', 'success');
+    }
+  },
+
+  resendTicket(ticketId) {
+    const eventId = document.getElementById('attendeesEventId').value;
+    const event = STATE.allEvents.find(e => e.id === eventId);
+    const ticketData = this._getTicketData(eventId);
+    const ticket = ticketData.tickets.find(t => t.id === ticketId);
+    if (!ticket || !ticket.attendeeEmail) {
+      utils.showToast('No email address for this ticket holder', 'warning');
+      return;
+    }
+
+    const subject = `Your Ticket: ${event.event_name} - ${ticket.ticketNumber}`;
+    const body = `Dear ${ticket.attendeeName},\n\nPlease find your ticket details below:\n\n` +
+      `Event: ${event.event_name}\n` +
+      `Date: ${event.event_date ? new Date(event.event_date).toLocaleDateString('en-GB', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }) : 'TBC'}\n` +
+      `Venue: ${event.venue || 'TBC'}\n` +
+      `Ticket Number: ${ticket.ticketNumber}\n` +
+      `Guest Type: ${(ticket.guestType || 'guest').toUpperCase()}\n\n` +
+      `Please present this ticket number at the door. We look forward to seeing you.\n\nBritish Trade Awards`;
+
+    this._showEmailPreview(subject, body, [ticket.attendeeEmail], eventId);
+  },
+
+  emailAllTickets() {
+    const eventId = document.getElementById('attendeesEventId').value;
+    const event = STATE.allEvents.find(e => e.id === eventId);
+    const ticketData = this._getTicketData(eventId);
+    const activeTickets = ticketData.tickets.filter(t => t.status === 'issued' && t.attendeeEmail);
+
+    if (activeTickets.length === 0) {
+      utils.showToast('No issued tickets with email addresses', 'warning');
+      return;
+    }
+
+    const subject = `Your Ticket: ${event.event_name}`;
+    const body = `Dear Guest,\n\nYour ticket for ${event.event_name} has been confirmed.\n\n` +
+      `Date: ${event.event_date ? new Date(event.event_date).toLocaleDateString('en-GB', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }) : 'TBC'}\n` +
+      `Venue: ${event.venue || 'TBC'}\n\n` +
+      `Your individual ticket number will be included in your personalised email.\n` +
+      `Please present your ticket at the door.\n\nBritish Trade Awards`;
+
+    this._showEmailPreview(subject, body, activeTickets.map(t => t.attendeeEmail), eventId);
+  },
+
+  exportTicketsList() {
+    const eventId = document.getElementById('attendeesEventId').value;
+    const event = STATE.allEvents.find(e => e.id === eventId);
+    const ticketData = this._getTicketData(eventId);
+    if (ticketData.tickets.length === 0) { utils.showToast('No tickets to export', 'warning'); return; }
+
+    const rows = ticketData.tickets.map(t => ({
+      'Ticket Number': t.ticketNumber,
+      'Attendee': t.attendeeName,
+      'Email': t.attendeeEmail,
+      'Type': (t.guestType || 'guest').toUpperCase(),
+      'Status': t.status,
+      'Issued': t.issuedAt ? new Date(t.issuedAt).toLocaleString('en-GB') : '',
+      'Checked In': t.checkedIn ? 'Yes' : 'No'
+    }));
+
+    utils.exportToCSV(rows, `${event ? event.event_name.replace(/[^a-z0-9]/gi, '_') : 'event'}_tickets.csv`);
+    utils.showToast('Tickets exported', 'success');
   },
 
   // ---- REGISTRATION & CHECK-IN LINKS ----
@@ -1708,6 +1991,25 @@ const eventsModule = {
       bar.className = `progress-bar ${pct >= 100 ? 'bg-danger' : pct >= 80 ? 'bg-warning' : 'bg-success'}`;
     }
 
+    // Revenue vs Costs summary
+    const event = STATE.allEvents.find(e => e.id === eventId);
+    const attendees = this.getAttendees(eventId);
+    const attending = attendees ? attendees.filter(a => a.status === 'attending').length : 0;
+    const ticketPrice = parseFloat(event?.ticket_price) || 0;
+    const ticketRevenue = ticketPrice * attending;
+    const netPL = ticketRevenue - totalSpent;
+
+    const revDisplay = document.getElementById('budgetRevenueDisplay');
+    const costsDisplay = document.getElementById('budgetCostsTotalDisplay');
+    const netDisplay = document.getElementById('budgetNetPLDisplay');
+
+    if (revDisplay) revDisplay.textContent = ticketRevenue > 0 ? `\u00A3${ticketRevenue.toFixed(2)}` : '\u00A30.00';
+    if (costsDisplay) costsDisplay.textContent = `\u00A3${totalSpent.toFixed(2)}`;
+    if (netDisplay) {
+      netDisplay.textContent = `${netPL >= 0 ? '' : '-'}\u00A3${Math.abs(netPL).toFixed(2)}`;
+      netDisplay.className = `fw-bold ${netPL >= 0 ? 'text-success' : 'text-danger'}`;
+    }
+
     const categories = ['Venue', 'Catering', 'AV/Production', 'Entertainment', 'Trophies/Awards', 'Print/Stationery', 'Transport', 'Staffing', 'Marketing', 'Gifts/Swag', 'Other'];
 
     if (items.length === 0) {
@@ -2241,12 +2543,18 @@ const eventsModule = {
       ${!isComplete && !isPast ? `<div class="alert alert-info mb-3"><i class="bi bi-info-circle me-2"></i>This event hasn't happened yet. Post-event features are available after the event date or when status is set to "Complete".</div>` : ''}
 
       <!-- Quick Actions -->
-      <div class="d-flex gap-2 mb-4 flex-wrap">
-        <button class="btn btn-primary btn-sm" onclick="eventsModule.sendThankYouEmails()"><i class="bi bi-envelope-heart me-1"></i>Send Thank You Emails</button>
-        <button class="btn btn-outline-primary btn-sm" onclick="eventsModule.generateAttendanceReport()"><i class="bi bi-bar-chart me-1"></i>Attendance Report</button>
-        <button class="btn btn-outline-success btn-sm" onclick="eventsModule.generateWinnerPackage()"><i class="bi bi-stars me-1"></i>Winner Highlights</button>
-        <button class="btn btn-outline-info btn-sm" onclick="eventsModule.generateSponsorReport()"><i class="bi bi-graph-up me-1"></i>Sponsor ROI Report</button>
-        <button class="btn btn-outline-secondary btn-sm" onclick="eventsModule.exportPostEventPack()"><i class="bi bi-file-earmark-zip me-1"></i>Export Full Pack</button>
+      <div class="card mb-3 border-primary">
+        <div class="card-body py-2">
+          <h6 class="mb-2"><i class="bi bi-lightning me-2"></i>Quick Actions</h6>
+          <div class="d-flex gap-2 flex-wrap">
+            <button class="btn btn-primary btn-sm" onclick="eventsModule.sendThankYouEmails()" title="Opens email compose with thank-you template for all attending guests"><i class="bi bi-envelope-heart me-1"></i>Send Thank You Emails</button>
+            <button class="btn btn-outline-primary btn-sm" onclick="eventsModule.generateAttendanceReport()" title="Downloads attendance report as CSV spreadsheet"><i class="bi bi-download me-1"></i>Download Attendance Report</button>
+            <button class="btn btn-outline-success btn-sm" onclick="eventsModule.generateWinnerPackage()" title="Jump to Winner Highlights section below"><i class="bi bi-stars me-1"></i>Winner Highlights</button>
+            <button class="btn btn-outline-warning btn-sm" onclick="eventsModule.generateWinnersCertificates()" title="Generate PDF certificates for all confirmed winners"><i class="bi bi-file-earmark-pdf me-1"></i>Winner Certificates PDF</button>
+            <button class="btn btn-outline-info btn-sm" onclick="eventsModule.generateSponsorReport()" title="Jump to Sponsor ROI section below"><i class="bi bi-graph-up me-1"></i>Sponsor ROI Report</button>
+            <button class="btn btn-outline-secondary btn-sm" onclick="eventsModule.exportPostEventPack()" title="Downloads all reports (attendance, budget, vendors, debrief, sponsor) as CSV files"><i class="bi bi-file-earmark-zip me-1"></i>Export Full Pack</button>
+          </div>
+        </div>
       </div>
 
       <!-- Survey / Feedback -->
@@ -2886,9 +3194,17 @@ const eventsModule = {
   },
 
   async generateWinnerPackage() {
-    // Quick access: opens the post-event tab and scrolls to winner highlights
-    const tab = document.querySelector('a[href="#postEventTab"]');
-    if (tab) new bootstrap.Tab(tab).show();
+    // Scroll to winner highlights section and flash it
+    const el = document.getElementById('winnerHighlightsContent');
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      el.closest('.card').classList.add('border-warning');
+      el.closest('.card').style.boxShadow = '0 0 10px rgba(255,193,7,0.5)';
+      setTimeout(() => {
+        el.closest('.card').classList.remove('border-warning');
+        el.closest('.card').style.boxShadow = '';
+      }, 2000);
+    }
   },
 
   // ========================================
@@ -2967,8 +3283,17 @@ const eventsModule = {
   },
 
   generateSponsorReport() {
-    const tab = document.querySelector('a[href="#postEventTab"]');
-    if (tab) new bootstrap.Tab(tab).show();
+    // Scroll to sponsor ROI section and flash it
+    const el = document.getElementById('sponsorROIContent');
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      el.closest('.card').classList.add('border-info');
+      el.closest('.card').style.boxShadow = '0 0 10px rgba(13,202,240,0.5)';
+      setTimeout(() => {
+        el.closest('.card').classList.remove('border-info');
+        el.closest('.card').style.boxShadow = '';
+      }, 2000);
+    }
   },
 
   exportSponsorReport() {
@@ -7618,12 +7943,22 @@ const eventsModule = {
     this._loadEventAwardCounts(events.map(e => e.id));
 
     tbody.innerHTML = events.map(event => {
-      // Fix date display to avoid timezone shift
+      // Fix date display to avoid timezone shift + countdown
       let eventDate;
+      let countdown = '';
       if (event.event_date) {
         const parts = event.event_date.split('T')[0].split('-');
         const d = new Date(parts[0], parts[1] - 1, parts[2]);
         eventDate = d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+
+        // Countdown
+        const today = new Date(); today.setHours(0, 0, 0, 0);
+        const diff = Math.ceil((d - today) / (1000 * 60 * 60 * 24));
+        if (diff > 0 && diff <= 90) {
+          countdown = `<br><span class="badge bg-${diff <= 7 ? 'danger' : diff <= 30 ? 'warning text-dark' : 'info'}" style="font-size:0.6rem;">${diff}d away</span>`;
+        } else if (diff === 0) {
+          countdown = '<br><span class="badge bg-danger" style="font-size:0.6rem;">TODAY</span>';
+        }
       } else {
         eventDate = '<span class="text-danger small">No date</span>';
       }
@@ -7682,7 +8017,7 @@ const eventsModule = {
           <td><input type="checkbox" class="form-check-input event-checkbox" value="${event.id}" ${checked} onchange="eventsModule.toggleEventSelect('${event.id}', this.checked)"></td>
           <td class="fw-semibold">${utils.escapeHtml(event.event_name)}${!event.venue ? ' <i class="bi bi-exclamation-triangle text-warning small" title="Missing venue"></i>' : ''}</td>
           <td><span class="badge bg-primary">${utils.escapeHtml(String(event.year || '-'))}</span></td>
-          <td>${eventDate}</td>
+          <td>${eventDate}${countdown}</td>
           <td>${utils.escapeHtml(event.venue || '-')}</td>
           <td class="text-center">${capacityCell}</td>
           <td class="text-center">${vipCount > 0 ? `<span class="badge bg-warning text-dark">${vipCount}</span>` : '<span class="text-muted small">-</span>'}</td>
@@ -7696,6 +8031,7 @@ const eventsModule = {
               <button class="btn btn-outline-info btn-icon" onclick="eventsModule.openAttendeesModal('${event.id}')" title="Attendees"><i class="bi bi-people"></i></button>
               <button class="btn btn-outline-primary btn-icon" onclick="eventsModule.openEditModal('${event.id}')" title="Edit"><i class="bi bi-pencil"></i></button>
               <button class="btn btn-outline-success btn-icon" onclick="eventsModule.openCloneModal('${event.id}')" title="Clone"><i class="bi bi-files"></i></button>
+              <button class="btn btn-outline-dark btn-icon" onclick="eventsModule.cloneForNextYear('${event.id}')" title="Clone for Next Year"><i class="bi bi-calendar-plus"></i></button>
               <button class="btn btn-outline-danger btn-icon" onclick="eventsModule.deleteEvent('${event.id}', '${eName}')" title="Delete"><i class="bi bi-trash"></i></button>
             </div>
           </td>
@@ -7906,53 +8242,261 @@ const eventsModule = {
     if (existingModal) existingModal.remove();
 
     const modalHtml = `<div class="modal fade" id="importAttendeesModal" tabindex="-1">
-      <div class="modal-dialog"><div class="modal-content">
-        <div class="modal-header"><h5 class="modal-title"><i class="bi bi-upload me-2"></i>Import Attendees CSV</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+      <div class="modal-dialog modal-lg"><div class="modal-content">
+        <div class="modal-header bg-primary text-white"><h5 class="modal-title"><i class="bi bi-upload me-2"></i>Import Attendees from CSV / Excel</h5><button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button></div>
         <div class="modal-body">
           <div class="mb-3"><label class="form-label fw-semibold">Select Event</label>
             <select class="form-select" id="importAttendeesEventId">
               ${events.map(e => `<option value="${e.id}">${utils.escapeHtml(e.event_name)}</option>`).join('')}
             </select></div>
-          <div class="mb-3"><label class="form-label fw-semibold">CSV File</label>
-            <input type="file" class="form-control" id="importAttendeesFile" accept=".csv">
-            <div class="form-text">CSV with columns: Name, Email, RSVP Status (attending/not_attending/maybe)</div></div>
-          <div class="mb-3"><label class="form-label fw-semibold">Or paste CSV text:</label>
-            <textarea class="form-control" id="importAttendeesText" rows="5" placeholder="Name,Email,Status&#10;John Doe,john@example.com,attending"></textarea></div>
+
+          <!-- Format Guide -->
+          <div class="card bg-light mb-3">
+            <div class="card-body py-2">
+              <h6 class="mb-2"><i class="bi bi-info-circle me-2"></i>Required File Format</h6>
+              <p class="small mb-2">Your CSV or Excel file <strong>must include a header row</strong> as the first row. The system recognises these column headings:</p>
+              <div class="table-responsive">
+                <table class="table table-sm table-bordered mb-2" style="font-size:0.8rem;">
+                  <thead class="table-dark"><tr><th>Column Heading</th><th>Required</th><th>Accepted Values</th><th>Example</th></tr></thead>
+                  <tbody>
+                    <tr><td><strong>Name</strong></td><td><span class="badge bg-danger">Required</span></td><td>Full name of attendee</td><td>John Smith</td></tr>
+                    <tr><td><strong>Email</strong></td><td><span class="badge bg-warning text-dark">Recommended</span></td><td>Valid email address</td><td>john@example.com</td></tr>
+                    <tr><td><strong>Status</strong></td><td>Optional</td><td><code>attending</code>, <code>not_attending</code>, <code>maybe</code></td><td>attending</td></tr>
+                    <tr><td><strong>Type</strong></td><td>Optional</td><td><code>guest</code>, <code>vip</code>, <code>speaker</code>, <code>sponsor</code>, <code>media</code>, <code>staff</code></td><td>vip</td></tr>
+                    <tr><td><strong>Plus Ones</strong></td><td>Optional</td><td>Number (0, 1, 2, etc.)</td><td>1</td></tr>
+                    <tr><td><strong>Dietary</strong></td><td>Optional</td><td>Free text (dietary requirements)</td><td>Vegetarian</td></tr>
+                    <tr><td><strong>Phone</strong></td><td>Optional</td><td>Phone number</td><td>07700 123456</td></tr>
+                    <tr><td><strong>Company</strong></td><td>Optional</td><td>Company / organisation name</td><td>Acme Ltd</td></tr>
+                    <tr><td><strong>Notes</strong></td><td>Optional</td><td>Free text</td><td>Needs wheelchair access</td></tr>
+                  </tbody>
+                </table>
+              </div>
+              <p class="small mb-1"><strong>Columns can be in any order.</strong> Extra unrecognised columns are ignored. Duplicates (same name + email) are skipped.</p>
+              <div class="d-flex gap-2 mt-2">
+                <button class="btn btn-sm btn-outline-primary" onclick="eventsModule._downloadImportTemplate('csv')"><i class="bi bi-download me-1"></i>Download CSV Template</button>
+                <button class="btn btn-sm btn-outline-success" onclick="eventsModule._downloadImportTemplate('xlsx')"><i class="bi bi-download me-1"></i>Download Excel Template</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="mb-3"><label class="form-label fw-semibold">Upload CSV or Excel File (.csv, .xls, .xlsx)</label>
+            <input type="file" class="form-control" id="importAttendeesFile" accept=".csv,.xls,.xlsx">
+            <div class="form-text">Supports .csv, .xls and .xlsx files. Maximum 5,000 rows per import.</div></div>
+
+          <div class="mb-3"><label class="form-label fw-semibold">Or paste CSV text directly:</label>
+            <textarea class="form-control font-monospace" id="importAttendeesText" rows="5" placeholder="Name,Email,Status,Type,Plus Ones,Dietary&#10;John Smith,john@example.com,attending,vip,1,Vegetarian&#10;Jane Doe,jane@example.com,attending,guest,0,"></textarea></div>
+
+          <div class="form-check mb-2">
+            <input class="form-check-input" type="checkbox" id="importSkipDuplicates" checked>
+            <label class="form-check-label small" for="importSkipDuplicates">Skip duplicates (same name + email already in attendee list)</label>
+          </div>
+
+          <!-- Preview area -->
+          <div id="importPreviewArea" style="display:none;" class="mb-3">
+            <h6><i class="bi bi-eye me-2"></i>Preview</h6>
+            <div class="table-responsive" style="max-height:200px; overflow-y:auto;">
+              <table class="table table-sm table-striped" id="importPreviewTable"><thead></thead><tbody></tbody></table>
+            </div>
+            <small class="text-muted" id="importPreviewCount"></small>
+          </div>
         </div>
-        <div class="modal-footer"><button class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-          <button class="btn btn-primary" onclick="eventsModule.executeImportAttendees()"><i class="bi bi-upload me-2"></i>Import</button></div>
+        <div class="modal-footer">
+          <button class="btn btn-outline-info" onclick="eventsModule._previewImport()"><i class="bi bi-eye me-1"></i>Preview</button>
+          <button class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button class="btn btn-primary" onclick="eventsModule.executeImportAttendees()"><i class="bi bi-upload me-2"></i>Import</button>
+        </div>
       </div></div></div>`;
     document.body.insertAdjacentHTML('beforeend', modalHtml);
     new bootstrap.Modal(document.getElementById('importAttendeesModal')).show();
+  },
+
+  _downloadImportTemplate(format) {
+    if (format === 'csv') {
+      const csv = 'Name,Email,Status,Type,Plus Ones,Dietary,Phone,Company,Notes\nJohn Smith,john@example.com,attending,guest,0,,,Acme Ltd,\nJane Doe,jane@example.com,attending,vip,1,Vegetarian,07700 123456,Widget Co,Needs front row seating\n';
+      const blob = new Blob([csv], { type: 'text/csv' });
+      const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+      a.download = 'attendees_import_template.csv'; a.click(); URL.revokeObjectURL(a.href);
+    } else {
+      // Generate a simple CSV template labelled as .xlsx for user to open in Excel
+      const csv = 'Name,Email,Status,Type,Plus Ones,Dietary,Phone,Company,Notes\nJohn Smith,john@example.com,attending,guest,0,,,Acme Ltd,\nJane Doe,jane@example.com,attending,vip,1,Vegetarian,07700 123456,Widget Co,Needs front row seating\n';
+      const blob = new Blob([csv], { type: 'text/csv' });
+      const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+      a.download = 'attendees_import_template.csv'; a.click(); URL.revokeObjectURL(a.href);
+      utils.showToast('Template downloaded as CSV - open in Excel and save as .xlsx if needed', 'info');
+    }
+  },
+
+  async _parseImportFile() {
+    let csvText = document.getElementById('importAttendeesText')?.value?.trim();
+
+    if (!csvText) {
+      const file = document.getElementById('importAttendeesFile')?.files[0];
+      if (!file) return null;
+
+      const ext = file.name.split('.').pop().toLowerCase();
+
+      if (ext === 'xlsx' || ext === 'xls') {
+        // Load SheetJS library dynamically for Excel parsing
+        if (typeof XLSX === 'undefined') {
+          await new Promise((resolve, reject) => {
+            const script = document.createElement('script');
+            script.src = 'https://cdn.sheetjs.com/xlsx-0.20.0/package/dist/xlsx.full.min.js';
+            script.onload = resolve;
+            script.onerror = () => reject(new Error('Failed to load Excel parser'));
+            document.head.appendChild(script);
+          });
+        }
+
+        const data = await file.arrayBuffer();
+        const workbook = XLSX.read(data, { type: 'array' });
+        const sheet = workbook.Sheets[workbook.SheetNames[0]];
+        csvText = XLSX.utils.sheet_to_csv(sheet);
+      } else {
+        csvText = await file.text();
+      }
+    }
+
+    if (!csvText) return null;
+
+    const lines = csvText.split('\n').map(l => l.trim()).filter(l => l);
+    if (lines.length < 2) { utils.showToast('File needs a header row and at least one data row', 'warning'); return null; }
+    if (lines.length > 5001) { utils.showToast('Maximum 5,000 rows allowed per import', 'warning'); return null; }
+
+    // Parse header - map columns by name
+    const headers = lines[0].split(',').map(h => h.trim().replace(/^"|"$/g, '').toLowerCase());
+    const colMap = {};
+    const knownHeaders = {
+      'name': 'name', 'full name': 'name', 'attendee name': 'name', 'first name': 'name', 'fullname': 'name',
+      'email': 'email', 'email address': 'email', 'e-mail': 'email',
+      'status': 'status', 'rsvp': 'status', 'rsvp status': 'status', 'attendance': 'status',
+      'type': 'guestType', 'guest type': 'guestType', 'category': 'guestType', 'ticket type': 'guestType', 'role': 'guestType',
+      'plus ones': 'plusOnes', 'plus-ones': 'plusOnes', 'guests': 'plusOnes', 'additional guests': 'plusOnes', 'plus 1': 'plusOnes', '+1': 'plusOnes',
+      'dietary': 'dietary', 'dietary requirements': 'dietary', 'diet': 'dietary', 'food requirements': 'dietary', 'dietary needs': 'dietary',
+      'phone': 'phone', 'telephone': 'phone', 'mobile': 'phone', 'phone number': 'phone', 'tel': 'phone',
+      'company': 'company', 'organisation': 'company', 'organization': 'company', 'org': 'company', 'company name': 'company',
+      'notes': 'notes', 'comments': 'notes', 'note': 'notes', 'additional info': 'notes'
+    };
+
+    headers.forEach((h, idx) => {
+      if (knownHeaders[h]) colMap[knownHeaders[h]] = idx;
+    });
+
+    if (colMap.name === undefined) {
+      // Fallback: assume first column is Name, second is Email, third is Status
+      colMap.name = 0;
+      if (headers.length > 1) colMap.email = 1;
+      if (headers.length > 2) colMap.status = 2;
+    }
+
+    const validStatuses = ['attending', 'not_attending', 'maybe'];
+    const validTypes = ['guest', 'vip', 'speaker', 'sponsor', 'media', 'staff'];
+
+    const rows = [];
+    for (let i = 1; i < lines.length; i++) {
+      // Smart CSV parsing that handles quoted fields with commas
+      const cols = [];
+      let current = '';
+      let inQuotes = false;
+      for (const ch of lines[i]) {
+        if (ch === '"') { inQuotes = !inQuotes; continue; }
+        if (ch === ',' && !inQuotes) { cols.push(current.trim()); current = ''; continue; }
+        current += ch;
+      }
+      cols.push(current.trim());
+
+      const name = cols[colMap.name] || '';
+      if (!name) continue;
+
+      const email = colMap.email !== undefined ? (cols[colMap.email] || '') : '';
+      const statusRaw = colMap.status !== undefined ? (cols[colMap.status] || '').toLowerCase() : '';
+      const status = validStatuses.includes(statusRaw) ? statusRaw : 'attending';
+      const typeRaw = colMap.guestType !== undefined ? (cols[colMap.guestType] || '').toLowerCase() : '';
+      const guestType = validTypes.includes(typeRaw) ? typeRaw : 'guest';
+      const plusOnes = colMap.plusOnes !== undefined ? (parseInt(cols[colMap.plusOnes]) || 0) : 0;
+      const dietary = colMap.dietary !== undefined ? (cols[colMap.dietary] || '') : '';
+      const phone = colMap.phone !== undefined ? (cols[colMap.phone] || '') : '';
+      const company = colMap.company !== undefined ? (cols[colMap.company] || '') : '';
+      const notes = colMap.notes !== undefined ? (cols[colMap.notes] || '') : '';
+
+      rows.push({ name, email, status, guestType, plusOnes, dietary, phone, company, notes });
+    }
+
+    return rows;
+  },
+
+  async _previewImport() {
+    const rows = await this._parseImportFile();
+    if (!rows || rows.length === 0) { utils.showToast('No valid data found to preview', 'warning'); return; }
+
+    const previewArea = document.getElementById('importPreviewArea');
+    const table = document.getElementById('importPreviewTable');
+    const countEl = document.getElementById('importPreviewCount');
+    if (!previewArea || !table) return;
+
+    const preview = rows.slice(0, 20);
+    table.querySelector('thead').innerHTML = '<tr><th>Name</th><th>Email</th><th>Status</th><th>Type</th><th>+1s</th><th>Dietary</th><th>Company</th></tr>';
+    table.querySelector('tbody').innerHTML = preview.map(r =>
+      `<tr><td>${utils.escapeHtml(r.name)}</td><td>${utils.escapeHtml(r.email)}</td><td><span class="badge bg-${r.status === 'attending' ? 'success' : r.status === 'maybe' ? 'warning' : 'secondary'}">${r.status}</span></td>
+       <td>${r.guestType}</td><td>${r.plusOnes}</td><td>${utils.escapeHtml(r.dietary)}</td><td>${utils.escapeHtml(r.company)}</td></tr>`
+    ).join('');
+
+    countEl.textContent = `Showing ${preview.length} of ${rows.length} row(s) to import`;
+    previewArea.style.display = 'block';
   },
 
   async executeImportAttendees() {
     const eventId = document.getElementById('importAttendeesEventId')?.value;
     if (!eventId) { utils.showToast('Select an event', 'warning'); return; }
 
-    let csvText = document.getElementById('importAttendeesText')?.value?.trim();
-    if (!csvText) {
-      const file = document.getElementById('importAttendeesFile')?.files[0];
-      if (!file) { utils.showToast('Provide CSV file or text', 'warning'); return; }
-      csvText = await file.text();
-    }
-
-    const lines = csvText.split('\n').map(l => l.trim()).filter(l => l);
-    if (lines.length < 2) { utils.showToast('CSV needs a header row and at least one data row', 'warning'); return; }
+    const rows = await this._parseImportFile();
+    if (!rows || rows.length === 0) { utils.showToast('No valid data found. Check your file format matches the template.', 'warning'); return; }
 
     const existing = this.getAttendees(eventId) || [];
+    const skipDuplicates = document.getElementById('importSkipDuplicates')?.checked !== false;
+
     let imported = 0;
-    for (let i = 1; i < lines.length; i++) {
-      const cols = lines[i].split(',').map(c => c.trim().replace(/^"|"$/g, ''));
-      const name = cols[0]; const email = cols[1] || '';
-      const status = ['attending', 'not_attending', 'maybe'].includes(cols[2]) ? cols[2] : 'attending';
-      if (!name) continue;
-      existing.push({ id: 'attendee_' + Date.now() + '_' + i, name, email, status, addedAt: new Date().toISOString() });
+    let skipped = 0;
+
+    for (let i = 0; i < rows.length; i++) {
+      const r = rows[i];
+
+      // Duplicate check
+      if (skipDuplicates) {
+        const isDupe = existing.some(a =>
+          a.name.toLowerCase() === r.name.toLowerCase() &&
+          (r.email ? a.email?.toLowerCase() === r.email.toLowerCase() : true)
+        );
+        if (isDupe) { skipped++; continue; }
+      }
+
+      existing.push({
+        id: 'attendee_' + Date.now() + '_' + i,
+        name: r.name,
+        email: r.email,
+        status: r.status,
+        guestType: r.guestType,
+        plusOnes: r.plusOnes,
+        dietary: r.dietary,
+        phone: r.phone,
+        company: r.company,
+        notes: r.notes,
+        addedAt: new Date().toISOString()
+      });
       imported++;
     }
+
     this.saveAttendees(eventId, existing);
     bootstrap.Modal.getInstance(document.getElementById('importAttendeesModal'))?.hide();
-    utils.showToast(`Imported ${imported} attendee(s)`, 'success');
+
+    let msg = `Imported ${imported} attendee(s)`;
+    if (skipped > 0) msg += `, ${skipped} duplicate(s) skipped`;
+    utils.showToast(msg, 'success');
+
+    // If attendees modal is open, refresh it
+    const attendeesModal = document.getElementById('attendeesModal');
+    if (attendeesModal && attendeesModal.classList.contains('show')) {
+      this.renderAttendees(eventId);
+    }
     this.filterEvents();
   },
 
@@ -7978,6 +8522,120 @@ const eventsModule = {
       </tbody></table><div class="footer">Printed ${new Date().toLocaleString('en-GB')}</div></body></html>`);
     printWin.document.close();
     printWin.print();
+  },
+
+  // ============================================
+  // FINANCIAL OVERVIEW - ALL EVENTS
+  // ============================================
+  renderFinancialOverview() {
+    const events = STATE.allEvents || [];
+    if (events.length === 0) return;
+
+    const rows = [];
+    let grandRevenue = 0, grandBudget = 0, grandCosts = 0;
+
+    events.forEach(e => {
+      const attendees = this.getAttendees(e.id);
+      const attending = attendees ? attendees.filter(a => a.status === 'attending').length : 0;
+      const price = parseFloat(e.ticket_price) || 0;
+      const revenue = price * attending;
+
+      const budget = this.getBudget(e.id);
+      const totalBudget = parseFloat(budget.totalBudget) || 0;
+      const actualCosts = budget.items ? budget.items.reduce((s, i) => s + (parseFloat(i.actual) || 0), 0) : 0;
+      const netPL = revenue - actualCosts;
+
+      grandRevenue += revenue;
+      grandBudget += totalBudget;
+      grandCosts += actualCosts;
+
+      rows.push({ event: e, revenue, totalBudget, actualCosts, netPL });
+    });
+
+    const grandNet = grandRevenue - grandCosts;
+    const margin = grandRevenue > 0 ? Math.round(grandNet / grandRevenue * 100) : 0;
+
+    // Update summary cards
+    const revEl = document.getElementById('financialTotalRevenue');
+    const costEl = document.getElementById('financialTotalCosts');
+    const netEl = document.getElementById('financialNetPL');
+    const marginEl = document.getElementById('financialMargin');
+
+    if (revEl) revEl.textContent = `\u00A3${grandRevenue.toLocaleString('en-GB', { minimumFractionDigits: 2 })}`;
+    if (costEl) costEl.textContent = `\u00A3${grandCosts.toLocaleString('en-GB', { minimumFractionDigits: 2 })}`;
+    if (netEl) {
+      netEl.textContent = `${grandNet >= 0 ? '' : '-'}\u00A3${Math.abs(grandNet).toLocaleString('en-GB', { minimumFractionDigits: 2 })}`;
+      netEl.className = `mb-0 ${grandNet >= 0 ? 'text-success' : 'text-danger'} fw-bold`;
+    }
+    if (marginEl) {
+      if (grandRevenue > 0) {
+        marginEl.textContent = `${margin}%`;
+        marginEl.className = `mb-0 ${margin >= 0 ? 'text-success' : 'text-danger'} fw-bold`;
+      } else {
+        marginEl.textContent = '-';
+        marginEl.className = 'mb-0 text-muted';
+      }
+    }
+
+    // Render per-event breakdown table
+    const tbody = document.getElementById('financialBreakdownBody');
+    const tfoot = document.getElementById('financialBreakdownFoot');
+    if (tbody) {
+      const statusColors = { draft: 'secondary', confirmed: 'success', cancelled: 'danger', complete: 'info' };
+      tbody.innerHTML = rows.map(r => {
+        const color = statusColors[r.event.event_status || 'draft'] || 'secondary';
+        return `<tr>
+          <td class="fw-semibold">${utils.escapeHtml(r.event.event_name)}</td>
+          <td>${r.event.year || '-'}</td>
+          <td class="text-end ${r.revenue > 0 ? 'text-success' : ''}">${r.revenue > 0 ? '\u00A3' + r.revenue.toFixed(2) : '-'}</td>
+          <td class="text-end">${r.totalBudget > 0 ? '\u00A3' + r.totalBudget.toFixed(2) : '-'}</td>
+          <td class="text-end ${r.actualCosts > 0 ? 'text-danger' : ''}">${r.actualCosts > 0 ? '\u00A3' + r.actualCosts.toFixed(2) : '-'}</td>
+          <td class="text-end fw-bold ${r.netPL >= 0 ? 'text-success' : 'text-danger'}">${r.revenue > 0 || r.actualCosts > 0 ? (r.netPL >= 0 ? '' : '-') + '\u00A3' + Math.abs(r.netPL).toFixed(2) : '-'}</td>
+          <td class="text-center"><span class="badge bg-${color}">${(r.event.event_status || 'draft')}</span></td>
+        </tr>`;
+      }).join('');
+    }
+    if (tfoot) {
+      tfoot.innerHTML = `<tr>
+        <td colspan="2" class="fw-bold">TOTALS</td>
+        <td class="text-end fw-bold">\u00A3${grandRevenue.toFixed(2)}</td>
+        <td class="text-end fw-bold">\u00A3${grandBudget.toFixed(2)}</td>
+        <td class="text-end fw-bold">\u00A3${grandCosts.toFixed(2)}</td>
+        <td class="text-end fw-bold ${grandNet >= 0 ? 'text-success' : 'text-danger'}">${grandNet >= 0 ? '' : '-'}\u00A3${Math.abs(grandNet).toFixed(2)}</td>
+        <td></td>
+      </tr>`;
+    }
+  },
+
+  exportFinancialSummary() {
+    const events = STATE.allEvents || [];
+    if (events.length === 0) { utils.showToast('No events', 'warning'); return; }
+
+    const csvRows = events.map(e => {
+      const attendees = this.getAttendees(e.id);
+      const attending = attendees ? attendees.filter(a => a.status === 'attending').length : 0;
+      const revenue = (parseFloat(e.ticket_price) || 0) * attending;
+      const budget = this.getBudget(e.id);
+      const totalBudget = parseFloat(budget.totalBudget) || 0;
+      const actualCosts = budget.items ? budget.items.reduce((s, i) => s + (parseFloat(i.actual) || 0), 0) : 0;
+
+      return {
+        'Event': e.event_name || '',
+        'Year': e.year || '',
+        'Date': e.event_date || '',
+        'Status': e.event_status || 'draft',
+        'Ticket Price': e.ticket_price || 0,
+        'Attending': attending,
+        'Ticket Revenue': revenue,
+        'Total Budget': totalBudget,
+        'Actual Costs': actualCosts,
+        'Net P&L': revenue - actualCosts,
+        'Budget Remaining': totalBudget - actualCosts
+      };
+    });
+
+    utils.exportToCSV(csvRows, `financial_summary_all_events_${new Date().toISOString().split('T')[0]}.csv`);
+    utils.showToast('Financial summary exported', 'success');
   },
 
   exportEventsCSV() {
@@ -8080,6 +8738,176 @@ const eventsModule = {
     }
 
     gridEl.innerHTML = html;
+  },
+
+  // ============================================
+  // EVENT MILESTONES / CHECKLIST
+  // ============================================
+  _milestonesKey(eventId) {
+    return `bta_milestones_${eventId}`;
+  },
+
+  _getDefaultMilestones() {
+    return [
+      { id: 'm1', label: 'Venue booked', done: false, category: 'Planning' },
+      { id: 'm2', label: 'Date confirmed', done: false, category: 'Planning' },
+      { id: 'm3', label: 'Budget set', done: false, category: 'Planning' },
+      { id: 'm4', label: 'Catering arranged', done: false, category: 'Logistics' },
+      { id: 'm5', label: 'AV/Production booked', done: false, category: 'Logistics' },
+      { id: 'm6', label: 'Invitations sent', done: false, category: 'Marketing' },
+      { id: 'm7', label: 'Sponsors confirmed', done: false, category: 'Marketing' },
+      { id: 'm8', label: 'Awards shortlist finalised', done: false, category: 'Awards' },
+      { id: 'm9', label: 'Winners confirmed', done: false, category: 'Awards' },
+      { id: 'm10', label: 'Running order set', done: false, category: 'Day of Event' },
+      { id: 'm11', label: 'Table plan done', done: false, category: 'Day of Event' },
+      { id: 'm12', label: 'Name badges printed', done: false, category: 'Day of Event' },
+      { id: 'm13', label: 'Post-event survey created', done: false, category: 'Post-Event' },
+      { id: 'm14', label: 'Thank you emails sent', done: false, category: 'Post-Event' }
+    ];
+  },
+
+  getMilestones(eventId) {
+    const stored = localStorage.getItem(this._milestonesKey(eventId));
+    return stored ? JSON.parse(stored) : this._getDefaultMilestones();
+  },
+
+  _saveMilestones(eventId, milestones) {
+    localStorage.setItem(this._milestonesKey(eventId), JSON.stringify(milestones));
+  },
+
+  toggleMilestone(eventId, milestoneId) {
+    const milestones = this.getMilestones(eventId);
+    const ms = milestones.find(m => m.id === milestoneId);
+    if (ms) {
+      ms.done = !ms.done;
+      ms.completedAt = ms.done ? new Date().toISOString() : null;
+    }
+    this._saveMilestones(eventId, milestones);
+    this.renderMilestonesPanel(eventId);
+  },
+
+  addCustomMilestone(eventId) {
+    const input = document.getElementById('newMilestoneInput');
+    const label = input?.value?.trim();
+    if (!label) { utils.showToast('Enter a milestone name', 'warning'); return; }
+    const milestones = this.getMilestones(eventId);
+    milestones.push({ id: 'mc_' + Date.now(), label, done: false, category: 'Custom', custom: true });
+    this._saveMilestones(eventId, milestones);
+    input.value = '';
+    this.renderMilestonesPanel(eventId);
+  },
+
+  removeCustomMilestone(eventId, milestoneId) {
+    const milestones = this.getMilestones(eventId).filter(m => m.id !== milestoneId);
+    this._saveMilestones(eventId, milestones);
+    this.renderMilestonesPanel(eventId);
+  },
+
+  renderMilestonesPanel(eventId) {
+    const container = document.getElementById('milestonesContent');
+    if (!container) return;
+    const milestones = this.getMilestones(eventId);
+    const done = milestones.filter(m => m.done).length;
+    const total = milestones.length;
+    const pct = total > 0 ? Math.round(done / total * 100) : 0;
+
+    const categories = [...new Set(milestones.map(m => m.category))];
+
+    container.innerHTML = `
+      <div class="d-flex justify-content-between align-items-center mb-2">
+        <div>
+          <strong>${done}/${total}</strong> complete <span class="badge bg-${pct === 100 ? 'success' : pct >= 50 ? 'info' : 'warning'}">${pct}%</span>
+        </div>
+      </div>
+      <div class="progress mb-3" style="height:6px;">
+        <div class="progress-bar bg-success" style="width:${pct}%"></div>
+      </div>
+      ${categories.map(cat => `
+        <h6 class="small text-muted mb-1 mt-2">${cat}</h6>
+        ${milestones.filter(m => m.category === cat).map(m => `
+          <div class="form-check d-flex align-items-center mb-1">
+            <input class="form-check-input me-2" type="checkbox" ${m.done ? 'checked' : ''}
+              onchange="eventsModule.toggleMilestone('${eventId}', '${m.id}')" id="ms_${m.id}">
+            <label class="form-check-label small ${m.done ? 'text-decoration-line-through text-muted' : ''}" for="ms_${m.id}">
+              ${utils.escapeHtml(m.label)}
+              ${m.completedAt ? `<span class="text-success ms-1" style="font-size:0.65rem;">${new Date(m.completedAt).toLocaleDateString('en-GB')}</span>` : ''}
+            </label>
+            ${m.custom ? `<button class="btn btn-sm ms-auto p-0 text-danger" onclick="eventsModule.removeCustomMilestone('${eventId}', '${m.id}')" title="Remove"><i class="bi bi-x"></i></button>` : ''}
+          </div>
+        `).join('')}
+      `).join('')}
+      <div class="input-group input-group-sm mt-3">
+        <input type="text" class="form-control" id="newMilestoneInput" placeholder="Add custom milestone...">
+        <button class="btn btn-outline-primary" onclick="eventsModule.addCustomMilestone('${eventId}')"><i class="bi bi-plus"></i></button>
+      </div>`;
+  },
+
+  // ============================================
+  // CLONE EVENT FOR NEXT YEAR
+  // ============================================
+  async cloneForNextYear(eventId) {
+    const src = STATE.allEvents.find(e => e.id === eventId);
+    if (!src) return;
+    if (!confirm(`Clone "${src.event_name}" for next year?`)) return;
+
+    const nextYear = (parseInt(src.year) || new Date().getFullYear()) + 1;
+    let nextDate = null;
+    if (src.event_date) {
+      const parts = src.event_date.split('T')[0].split('-');
+      nextDate = `${nextYear}-${parts[1]}-${parts[2]}`;
+    }
+
+    try {
+      const { data, error } = await STATE.client.from('events').insert([{
+        event_name: src.event_name.replace(/\d{4}/, nextYear) !== src.event_name
+          ? src.event_name.replace(/\d{4}/, nextYear)
+          : src.event_name + ` ${nextYear}`,
+        event_date: nextDate,
+        year: nextYear,
+        venue: src.venue,
+        description: src.description,
+        capacity: src.capacity || null,
+        ticket_price: src.ticket_price || null,
+        event_status: 'draft'
+      }]).select();
+
+      if (error) throw error;
+
+      // Copy budget template
+      const budget = this.getBudget(eventId);
+      if (budget.items && budget.items.length > 0 && data && data[0]) {
+        const newBudget = {
+          totalBudget: budget.totalBudget,
+          items: budget.items.map(i => ({ ...i, actual: 0, status: 'Pending' }))
+        };
+        this._saveBudget(data[0].id, newBudget);
+      }
+
+      // Copy vendors template
+      const vendors = this.getVendors(eventId);
+      if (vendors.length > 0 && data && data[0]) {
+        const newVendors = vendors.map(v => ({ ...v, status: 'Pending', cost: '' }));
+        this._saveVendors(data[0].id, newVendors);
+      }
+
+      utils.showToast(`Event cloned for ${nextYear}`, 'success');
+      await this.loadEvents();
+    } catch (err) {
+      utils.showToast('Error cloning event: ' + err.message, 'error');
+    }
+  },
+
+  // ============================================
+  // EVENT NOTES / QUICK MEMO
+  // ============================================
+  _getEventNotes(eventId) {
+    return localStorage.getItem(`bta_event_notes_${eventId}`) || '';
+  },
+
+  _saveEventNotes(eventId) {
+    const notes = document.getElementById('eventQuickNotes')?.value || '';
+    localStorage.setItem(`bta_event_notes_${eventId}`, notes);
+    utils.showToast('Notes saved', 'success');
   }
 };
 

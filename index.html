@@ -3160,6 +3160,71 @@
             </div>
           </div>
 
+          <!-- Financial Overview Panel (collapsible) -->
+          <div class="card mb-4" id="eventsFinancialPanel">
+            <div class="card-header d-flex justify-content-between align-items-center py-2" style="cursor:pointer" onclick="document.getElementById('financialPanelBody').style.display = document.getElementById('financialPanelBody').style.display === 'none' ? 'block' : 'none'; this.querySelector('.bi-chevron-down, .bi-chevron-up').classList.toggle('bi-chevron-down'); this.querySelector('.bi-chevron-down, .bi-chevron-up').classList.toggle('bi-chevron-up');">
+              <h6 class="mb-0"><i class="bi bi-cash-stack me-2"></i>Financial Overview - All Events</h6>
+              <i class="bi bi-chevron-down"></i>
+            </div>
+            <div class="card-body" id="financialPanelBody" style="display:none;">
+              <div class="row g-3 mb-3">
+                <div class="col-md-3">
+                  <div class="card text-center bg-light border-success">
+                    <div class="card-body py-2">
+                      <h4 class="mb-0 text-success" id="financialTotalRevenue">&pound;0</h4>
+                      <small class="text-muted">Total Revenue (All Events)</small>
+                    </div>
+                  </div>
+                </div>
+                <div class="col-md-3">
+                  <div class="card text-center bg-light border-danger">
+                    <div class="card-body py-2">
+                      <h4 class="mb-0 text-danger" id="financialTotalCosts">&pound;0</h4>
+                      <small class="text-muted">Total Costs (All Events)</small>
+                    </div>
+                  </div>
+                </div>
+                <div class="col-md-3">
+                  <div class="card text-center bg-light">
+                    <div class="card-body py-2">
+                      <h4 class="mb-0" id="financialNetPL">&pound;0</h4>
+                      <small class="text-muted">Net Profit / Loss</small>
+                    </div>
+                  </div>
+                </div>
+                <div class="col-md-3">
+                  <div class="card text-center bg-light">
+                    <div class="card-body py-2">
+                      <h4 class="mb-0" id="financialMargin">-</h4>
+                      <small class="text-muted">Profit Margin</small>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <!-- Per-Event Breakdown -->
+              <h6 class="mb-2"><i class="bi bi-table me-2"></i>Per-Event Breakdown</h6>
+              <div class="table-responsive" style="max-height:250px; overflow-y:auto;">
+                <table class="table table-sm table-hover">
+                  <thead class="table-light">
+                    <tr>
+                      <th>Event</th><th>Year</th><th class="text-end">Ticket Revenue</th>
+                      <th class="text-end">Budget</th><th class="text-end">Actual Costs</th>
+                      <th class="text-end">Net P&L</th><th class="text-center">Status</th>
+                    </tr>
+                  </thead>
+                  <tbody id="financialBreakdownBody">
+                    <tr><td colspan="7" class="text-center text-muted py-2">Loading...</td></tr>
+                  </tbody>
+                  <tfoot class="table-dark" id="financialBreakdownFoot">
+                  </tfoot>
+                </table>
+              </div>
+              <div class="text-end mt-2">
+                <button class="btn btn-sm btn-outline-secondary" onclick="eventsModule.exportFinancialSummary()"><i class="bi bi-download me-1"></i>Export Financial Report</button>
+              </div>
+            </div>
+          </div>
+
           <!-- Data Quality Warnings -->
           <div id="eventsDataQualityBar" class="alert alert-warning py-2 mb-3" style="display:none;">
             <i class="bi bi-exclamation-triangle me-2"></i>
@@ -3274,7 +3339,7 @@
                     <th style="width:70px" class="text-center" title="Award Presentations Confirmed"><i class="bi bi-trophy me-1"></i>Awards</th>
                     <th style="width:65px" class="text-center" title="Winners Confirmed"><i class="bi bi-award me-1"></i>Won</th>
                     <th style="width:85px" class="text-center">Status</th>
-                    <th style="width:200px" class="text-center">Actions</th>
+                    <th style="width:230px" class="text-center">Actions</th>
                   </tr>
                 </thead>
                 <tbody id="eventsTableBody">
@@ -7304,6 +7369,8 @@ Available placeholders:
               <i class="bi bi-truck me-1"></i>Vendors <span class="badge bg-secondary ms-1" id="vendorBadge" style="display:none;">0</span></a></li>
             <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#specialReqsTab">
               <i class="bi bi-shield-check me-1"></i>Requirements</a></li>
+            <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#milestonesTab">
+              <i class="bi bi-check2-square me-1"></i>Milestones</a></li>
             <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#postEventTab">
               <i class="bi bi-clipboard-data me-1"></i>Post-Event</a></li>
           </ul>
@@ -7551,7 +7618,7 @@ Available placeholders:
                 </div>
               </div>
 
-              <div class="card">
+              <div class="card mb-3">
                 <div class="card-body">
                   <h6 class="card-title"><i class="bi bi-link-45deg me-2"></i>Registration & Check-In Links</h6>
                   <div class="row g-3">
@@ -7577,6 +7644,13 @@ Available placeholders:
                     </div>
                   </div>
                 </div>
+              </div>
+
+              <!-- Ticket Issuance System -->
+              <hr class="my-3">
+              <h5 class="mb-3"><i class="bi bi-ticket-detailed me-2"></i>Ticket Issuance</h5>
+              <div id="ticketIssuanceSection">
+                <!-- Populated by JS: batch issue, individual issue, issued list -->
               </div>
             </div>
 
@@ -7661,6 +7735,27 @@ Available placeholders:
                 <div class="progress-bar bg-success" id="budgetProgressBar" role="progressbar" style="width: 0%;">0%</div>
               </div>
 
+              <!-- Revenue vs Costs Summary -->
+              <div class="card bg-light mb-3" id="budgetRevenueSummary">
+                <div class="card-body py-2">
+                  <div class="row g-3 text-center">
+                    <div class="col-md-4">
+                      <small class="text-muted d-block">Ticket Revenue</small>
+                      <span class="fw-bold text-success" id="budgetRevenueDisplay">&pound;0.00</span>
+                    </div>
+                    <div class="col-md-4">
+                      <small class="text-muted d-block">Total Actual Costs</small>
+                      <span class="fw-bold text-danger" id="budgetCostsTotalDisplay">&pound;0.00</span>
+                    </div>
+                    <div class="col-md-4">
+                      <small class="text-muted d-block">Net Profit / Loss</small>
+                      <span class="fw-bold" id="budgetNetPLDisplay">&pound;0.00</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <h6 class="mb-2"><i class="bi bi-list-check me-2"></i>Expense Items</h6>
               <div class="table-responsive">
                 <table class="table table-sm table-hover">
                   <thead>
@@ -7706,6 +7801,31 @@ Available placeholders:
             <div class="tab-pane fade" id="specialReqsTab">
               <div id="specialReqsContent">
                 <!-- Populated by JS: accessibility, parking, photo consent, emergency, dress code -->
+              </div>
+            </div>
+
+            <!-- Milestones Tab -->
+            <div class="tab-pane fade" id="milestonesTab">
+              <div class="d-flex justify-content-between align-items-center mb-3">
+                <h6 class="mb-0"><i class="bi bi-check2-square me-2"></i>Event Milestones & Checklist</h6>
+              </div>
+              <div class="row g-3">
+                <div class="col-md-7">
+                  <div class="card">
+                    <div class="card-body" id="milestonesContent">
+                      <!-- Populated by JS -->
+                    </div>
+                  </div>
+                </div>
+                <div class="col-md-5">
+                  <div class="card">
+                    <div class="card-body">
+                      <h6 class="card-title"><i class="bi bi-sticky me-2"></i>Event Notes</h6>
+                      <textarea class="form-control mb-2" id="eventQuickNotes" rows="10" placeholder="Quick notes, reminders, important contacts..."></textarea>
+                      <button class="btn btn-sm btn-primary w-100" onclick="eventsModule._saveEventNotes(document.getElementById('attendeesEventId').value)"><i class="bi bi-save me-1"></i>Save Notes</button>
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
 

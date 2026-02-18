@@ -487,11 +487,21 @@ const mediaGalleryModule = {
       const sectionIds = (sections || []).map(s => s.id);
       let allPhotos = [];
       if (sectionIds.length > 0) {
-        const { data: photos, error: pError } = await STATE.client
+        let photos, pError;
+        ({ data: photos, error: pError } = await STATE.client
           .from('media_gallery')
           .select('*, organisations!media_gallery_organisation_id_fkey(*), awards!media_gallery_award_id_fkey(*)')
           .in('gallery_section_id', sectionIds)
-          .order('display_order');
+          .order('display_order'));
+        // Fall back if FK relationships missing
+        if (pError && (pError.message?.includes('relationship') || pError.message?.includes('schema cache'))) {
+          console.warn('Media gallery FK relationships not found, loading without joins');
+          ({ data: photos, error: pError } = await STATE.client
+            .from('media_gallery')
+            .select('*')
+            .in('gallery_section_id', sectionIds)
+            .order('display_order'));
+        }
         if (pError) throw pError;
         allPhotos = photos || [];
       }
@@ -734,12 +744,24 @@ const mediaGalleryModule = {
     const container = document.getElementById('videosProductionContent');
 
     try {
-      const { data: videos, error } = await STATE.client
+      // Try with FK joins first, fall back if relationships missing
+      let videos, error;
+      ({ data: videos, error } = await STATE.client
         .from('media_items')
         .select('*, organisations(company_name), awards(award_name)')
         .eq('event_id', this.currentEventId)
         .eq('media_type', 'video')
-        .order('created_at', { ascending: false });
+        .order('created_at', { ascending: false }));
+
+      if (error && (error.message?.includes('relationship') || error.message?.includes('schema cache'))) {
+        console.warn('Media items FK relationships not found, loading without joins');
+        ({ data: videos, error } = await STATE.client
+          .from('media_items')
+          .select('*')
+          .eq('event_id', this.currentEventId)
+          .eq('media_type', 'video')
+          .order('created_at', { ascending: false }));
+      }
 
       if (error) throw error;
 

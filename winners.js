@@ -20,19 +20,42 @@ const winnersModule = {
       const pageSize = 1000;
       let hasMore = true;
 
+      // Detect if FK joins are available
+      let useJoins = true;
+
       while (hasMore) {
         const from = page * pageSize;
         const to = from + pageSize - 1;
 
-        const { data, error } = await STATE.client
-          .from('winners')
-          .select(`
-            *,
-            awards!winners_award_id_fkey (*),
-            winner_media (*)
-          `)
-          .order('created_at', { ascending: false })
-          .range(from, to);
+        let data, error;
+        if (useJoins) {
+          ({ data, error } = await STATE.client
+            .from('winners')
+            .select(`
+              *,
+              awards!winners_award_id_fkey (*),
+              winner_media (*)
+            `)
+            .order('created_at', { ascending: false })
+            .range(from, to));
+
+          // FK relationship missing - retry without joins
+          if (error && (error.message?.includes('relationship') || error.message?.includes('schema cache'))) {
+            console.warn('Winners FK relationships not found, loading without joins');
+            useJoins = false;
+            ({ data, error } = await STATE.client
+              .from('winners')
+              .select('*')
+              .order('created_at', { ascending: false })
+              .range(from, to));
+          }
+        } else {
+          ({ data, error } = await STATE.client
+            .from('winners')
+            .select('*')
+            .order('created_at', { ascending: false })
+            .range(from, to));
+        }
 
         if (error) throw error;
 

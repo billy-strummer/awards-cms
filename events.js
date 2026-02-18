@@ -4064,7 +4064,9 @@ const eventsModule = {
    */
   async loadRunningOrder() {
     try {
-      const { data: items, error: itemsError } = await STATE.client
+      // Try with FK joins first, fall back to simple query if relationships missing
+      let items, itemsError;
+      ({ data: items, error: itemsError } = await STATE.client
         .from('running_order')
         .select(`
           *,
@@ -4073,7 +4075,7 @@ const eventsModule = {
           event_guests(guest_name, guest_email)
         `)
         .eq('event_id', this.currentEventIdRunningOrder)
-        .order('display_order', { ascending: true });
+        .order('display_order', { ascending: true }));
 
       if (itemsError) {
         // Table may not exist
@@ -4084,7 +4086,20 @@ const eventsModule = {
           this._roAutoSchedule = false;
           return;
         }
-        throw itemsError;
+        // FK relationship missing in schema cache - retry without joins
+        if (itemsError.message?.includes('relationship') || itemsError.message?.includes('schema cache')) {
+          console.warn('Running order FK relationships not found, loading without joins');
+          const fallback = await STATE.client
+            .from('running_order')
+            .select('*')
+            .eq('event_id', this.currentEventIdRunningOrder)
+            .order('display_order', { ascending: true });
+          if (fallback.error) throw fallback.error;
+          items = fallback.data || [];
+          itemsError = null;
+        } else {
+          throw itemsError;
+        }
       }
       this.runningOrderItems = items || [];
 
@@ -7444,9 +7459,17 @@ const eventsModule = {
 
   async addNewTable() {
     try {
-      const { data: nextNumber, error: numberError } = await STATE.client
+      let nextNumber;
+      const { data: rpcResult, error: numberError } = await STATE.client
         .rpc('get_next_table_number', { p_event_id: this.currentEventIdTablePlan });
-      if (numberError) throw numberError;
+      if (numberError) {
+        // RPC may not exist - compute next table number client-side
+        console.warn('get_next_table_number RPC not available, computing locally');
+        const maxNum = this.tables.reduce((max, t) => Math.max(max, t.table_number || 0), 0);
+        nextNumber = maxNum + 1;
+      } else {
+        nextNumber = rpcResult;
+      }
 
       // Place new table in a visible spot on the canvas
       const canvas = document.getElementById('tpCanvasWrapper');

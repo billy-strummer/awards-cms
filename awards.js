@@ -105,9 +105,18 @@ const awardsModule = {
    */
   async loadAssignmentCounts() {
     try {
-      const { data, error } = await STATE.client
+      let data, error;
+      ({ data, error } = await STATE.client
         .from('award_assignments')
-        .select('award_id, status, winner_position, organisations(company_name)');
+        .select('award_id, status, winner_position, organisations(company_name)'));
+
+      // FK relationship missing - retry without joins
+      if (error && (error.message?.includes('relationship') || error.message?.includes('schema cache'))) {
+        console.warn('award_assignments FK relationships not found, loading without joins');
+        ({ data, error } = await STATE.client
+          .from('award_assignments')
+          .select('award_id, status, winner_position'));
+      }
 
       if (error) throw error;
 

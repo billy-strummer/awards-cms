@@ -330,12 +330,22 @@ const dashboardModule = {
 
     setTimeout(async () => {
       try {
-        const { data: pending, error } = await STATE.client
+        let pending, error;
+        ({ data: pending, error } = await STATE.client
           .from('invoices')
           .select('id, invoice_number, total_amount, organisations(company_name)')
           .in('payment_status', ['pending', 'unpaid'])
           .eq('status', 'sent')
-          .order('created_at', { ascending: false });
+          .order('created_at', { ascending: false }));
+
+        if (error && (error.message?.includes('relationship') || error.message?.includes('schema cache'))) {
+          ({ data: pending, error } = await STATE.client
+            .from('invoices')
+            .select('id, invoice_number, total_amount')
+            .in('payment_status', ['pending', 'unpaid'])
+            .eq('status', 'sent')
+            .order('created_at', { ascending: false }));
+        }
 
         if (error) throw error;
 
@@ -362,11 +372,21 @@ const dashboardModule = {
       const activities = [];
 
       // Get recent entries (last 5) - SELF-NOMINATIONS INCLUDED
-      const { data: recentEntries } = await STATE.client
+      let recentEntries;
+      let entriesResult = await STATE.client
         .from('entries')
         .select('*, organisations(company_name), award_years(award_name)')
         .order('created_at', { ascending: false })
         .limit(5);
+
+      if (entriesResult.error && (entriesResult.error.message?.includes('relationship') || entriesResult.error.message?.includes('schema cache'))) {
+        entriesResult = await STATE.client
+          .from('entries')
+          .select('*')
+          .order('created_at', { ascending: false })
+          .limit(5);
+      }
+      recentEntries = entriesResult.data;
 
       if (recentEntries) {
         recentEntries.forEach(entry => {
@@ -376,7 +396,7 @@ const dashboardModule = {
             icon: isSelfNom ? 'person-raised-hand' : 'file-earmark-text',
             color: isSelfNom ? 'info' : 'warning',
             title: isSelfNom ? 'New Self-Nomination' : 'New Entry',
-            description: `${entry.organisations?.company_name || 'Unknown'} - ${entry.award_years?.award_name || 'Unknown Award'}`,
+            description: `${entry.organisations?.company_name || entry.company_name || 'Unknown'} - ${entry.award_years?.award_name || entry.award_name || 'Unknown Award'}`,
             time: entry.created_at
           });
         });
@@ -606,12 +626,22 @@ const dashboardModule = {
       }
 
       // Check for pending/unpaid product sales (invoices)
-      const { data: pendingInvoices, error: invoiceError } = await STATE.client
+      let invoiceResult = await STATE.client
         .from('invoices')
         .select('id, invoice_number, total_amount, organisations(company_name)', { count: 'exact' })
         .in('payment_status', ['pending', 'unpaid'])
         .eq('status', 'sent')
         .order('created_at', { ascending: false });
+
+      if (invoiceResult.error && (invoiceResult.error.message?.includes('relationship') || invoiceResult.error.message?.includes('schema cache'))) {
+        invoiceResult = await STATE.client
+          .from('invoices')
+          .select('id, invoice_number, total_amount', { count: 'exact' })
+          .in('payment_status', ['pending', 'unpaid'])
+          .eq('status', 'sent')
+          .order('created_at', { ascending: false });
+      }
+      const { data: pendingInvoices, error: invoiceError } = invoiceResult;
 
       if (!invoiceError && pendingInvoices && pendingInvoices.length > 0) {
         const totalValue = pendingInvoices.reduce((sum, inv) => sum + parseFloat(inv.total_amount || 0), 0);

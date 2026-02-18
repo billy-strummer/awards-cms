@@ -7273,47 +7273,15 @@ updateCountyFilterByRegion() {
     utils.showToast(`Showing ${this._lastSegmentMatches.length} segment matches`, 'success');
   },
 
-  _saveSegment() {
-    const rules = this._getSegmentRules();
-    if (rules.length === 0) { utils.showToast('Add at least one rule', 'warning'); return; }
-    const name = prompt('Name this segment:');
-    if (!name || !name.trim()) return;
-    try {
-      const segments = JSON.parse(localStorage.getItem('orgsSegments') || '{}');
-      segments[name.trim()] = rules;
-      localStorage.setItem('orgsSegments', JSON.stringify(segments));
-      utils.showToast(`Segment "${name.trim()}" saved`, 'success');
-    } catch (e) {}
+  // Segments — delegated to crmModule (single source of truth)
+  async _saveSegment() {
+    if (typeof crmModule !== 'undefined') { crmModule.saveSmartSegment(); }
   },
-
-  _loadSegments() {
-    const segments = (() => { try { return JSON.parse(localStorage.getItem('orgsSegments') || '{}'); } catch (e) { return {}; } })();
-    const names = Object.keys(segments);
-    if (names.length === 0) { utils.showToast('No saved segments', 'info'); return; }
-
-    const resultEl = document.getElementById('segmentResult');
-    if (resultEl) {
-      resultEl.innerHTML = `<div class="list-group">${names.map(n => {
-        const rules = segments[n];
-        return `<a href="#" class="list-group-item list-group-item-action small" onclick="event.preventDefault(); orgsModule._loadAndApplySegment('${utils.escapeHtml(n).replace(/'/g, "\\'")}')">
-          <strong>${utils.escapeHtml(n)}</strong> — ${rules.map(r => `${r.field} ${r.op} "${r.val}"`).join(' AND ')}
-        </a>`;
-      }).join('')}</div>`;
-    }
+  async _loadSegments() {
+    if (typeof crmModule !== 'undefined') { crmModule.loadSmartSegments(); }
   },
-
-  _loadAndApplySegment(name) {
-    try {
-      const segments = JSON.parse(localStorage.getItem('orgsSegments') || '{}');
-      const rules = segments[name];
-      if (!rules) return;
-      const matching = STATE.allOrganisations.filter(o => this._matchesSegmentRules(o, rules));
-      STATE.filteredOrganisations = matching;
-      this._currentPage = 1;
-      this.renderOrganisations();
-      bootstrap.Modal.getInstance(document.getElementById('dynamicOrgModal'))?.hide();
-      utils.showToast(`Segment "${name}": ${matching.length} matches`, 'success');
-    } catch (e) {}
+  async _loadAndApplySegment(name) {
+    if (typeof crmModule !== 'undefined') { crmModule._loadAndApplySegment(name); }
   },
 
   // ============================================
@@ -7472,7 +7440,7 @@ updateCountyFilterByRegion() {
     if (!content) { utils.showToast('Please enter note content', 'warning'); return; }
     try {
       const user = await this._getCurrentUserEmail();
-      await STATE.client.from('org_activity_notes').insert([{ org_id: orgId, type, content, priority, created_by: user }]);
+      await STATE.client.from('org_activity_notes').insert([{ organisation_id: orgId, type, content, priority, created_by: user }]);
       this._logAudit(orgId, 'note_added', '', `${type}: ${content.substring(0, 80)}`);
       utils.showToast('Note added', 'success');
       bootstrap.Modal.getInstance(document.getElementById('dynamicOrgModal'))?.hide();
@@ -7482,77 +7450,18 @@ updateCountyFilterByRegion() {
     } catch (e) { utils.showToast('Error saving note: ' + e.message, 'error'); }
   },
 
-  // ============================================
-  // FEATURE: EMAIL SEQUENCES (Drip Campaigns)
-  // ============================================
-  _emailSequences: JSON.parse(localStorage.getItem('orgEmailSequences') || '[]'),
-
-  showEmailSequences() {
-    const sequences = this._emailSequences;
-    const html = `<p class="text-muted small">Create automated email sequences triggered by status changes or manual enrollment.</p>
-      <button class="btn btn-primary btn-sm mb-3" onclick="orgsModule.showCreateSequence()"><i class="bi bi-plus-circle me-2"></i>Create New Sequence</button>
-      ${sequences.length === 0 ? '<div class="text-muted text-center py-4"><i class="bi bi-envelope-slash fs-1 d-block mb-2"></i>No sequences configured yet</div>' :
-        sequences.map((seq, i) => `<div class="card mb-2"><div class="card-body py-2"><div class="d-flex justify-content-between align-items-center">
-          <div><strong>${utils.escapeHtml(seq.name)}</strong><span class="badge bg-${seq.active ? 'success' : 'secondary'} ms-2">${seq.active ? 'Active' : 'Paused'}</span>
-          <div class="text-muted small">Trigger: ${utils.escapeHtml(seq.trigger)} · ${seq.steps.length} step(s) · ${seq.enrolled || 0} enrolled</div></div>
-          <div><button class="btn btn-sm btn-outline-${seq.active ? 'warning' : 'success'}" onclick="orgsModule.toggleSequence(${i})">${seq.active ? 'Pause' : 'Activate'}</button>
-          <button class="btn btn-sm btn-outline-danger ms-1" onclick="orgsModule.deleteSequence(${i})"><i class="bi bi-trash"></i></button></div>
-        </div></div></div>`).join('')}`;
-    this._showDynamicModal('Email Sequences', html, 'bi-envelope-arrow-up', 'modal-lg');
-  },
-
-  showCreateSequence() {
-    const html = `<div class="mb-3"><label class="form-label fw-semibold">Sequence Name</label>
-        <input type="text" class="form-control" id="seqName" placeholder="e.g. Welcome Onboarding"></div>
-      <div class="mb-3"><label class="form-label fw-semibold">Trigger</label>
-        <select class="form-select" id="seqTrigger">
-          <option value="status_prospect">Status → Prospect</option><option value="status_entrant">Status → Entrant</option>
-          <option value="status_nominee">Status → Nominee</option><option value="status_winner">Status → Winner</option>
-          <option value="status_sponsor">Status → Sponsor</option><option value="manual">Manual Only</option>
-        </select></div>
-      <h6 class="fw-semibold">Steps</h6>
-      <div id="seqStepsContainer"><div class="card mb-2 p-2"><div class="row g-2">
-        <div class="col-3"><label class="form-label small">Delay (days)</label><input type="number" class="form-control form-control-sm seq-delay" value="0" min="0"></div>
-        <div class="col-4"><label class="form-label small">Subject</label><input type="text" class="form-control form-control-sm seq-subject" placeholder="Subject..."></div>
-        <div class="col-5"><label class="form-label small">Body</label><textarea class="form-control form-control-sm seq-body" rows="2" placeholder="Use {{company_name}}, {{contact_name}}..."></textarea></div>
-      </div></div></div>
-      <button class="btn btn-sm btn-outline-secondary mb-3" onclick="orgsModule._addSequenceStep()"><i class="bi bi-plus me-1"></i>Add Step</button>
-      <button class="btn btn-primary w-100" onclick="orgsModule._saveSequence()"><i class="bi bi-check-circle me-2"></i>Save Sequence</button>`;
-    this._showDynamicModal('Create Email Sequence', html, 'bi-envelope-plus', 'modal-lg');
-  },
-
-  _addSequenceStep() {
-    const c = document.getElementById('seqStepsContainer'); if (!c) return;
-    const s = document.createElement('div'); s.className = 'card mb-2 p-2';
-    s.innerHTML = `<div class="row g-2"><div class="col-3"><label class="form-label small">Delay (days)</label><input type="number" class="form-control form-control-sm seq-delay" value="3" min="0"></div>
-      <div class="col-4"><label class="form-label small">Subject</label><input type="text" class="form-control form-control-sm seq-subject" placeholder="Subject..."></div>
-      <div class="col-5"><label class="form-label small">Body</label><textarea class="form-control form-control-sm seq-body" rows="2" placeholder="Use {{company_name}}..."></textarea></div></div>`;
-    c.appendChild(s);
-  },
-
-  _saveSequence() {
-    const name = document.getElementById('seqName')?.value?.trim();
-    const trigger = document.getElementById('seqTrigger')?.value;
-    if (!name) { utils.showToast('Enter a sequence name', 'warning'); return; }
-    const steps = [];
-    document.querySelectorAll('.seq-delay').forEach((d, i) => {
-      steps.push({ delay: parseInt(d.value) || 0, subject: document.querySelectorAll('.seq-subject')[i]?.value || '', body: document.querySelectorAll('.seq-body')[i]?.value || '' });
-    });
-    if (steps.length === 0 || !steps[0].subject) { utils.showToast('Add at least one step with a subject', 'warning'); return; }
-    this._emailSequences.push({ name, trigger, steps, active: true, enrolled: 0, created: new Date().toISOString() });
-    localStorage.setItem('orgEmailSequences', JSON.stringify(this._emailSequences));
-    utils.showToast('Sequence created', 'success'); this.showEmailSequences();
-  },
-
-  toggleSequence(i) { if (this._emailSequences[i]) { this._emailSequences[i].active = !this._emailSequences[i].active; localStorage.setItem('orgEmailSequences', JSON.stringify(this._emailSequences)); this.showEmailSequences(); } },
-  deleteSequence(i) { if (!confirm('Delete this sequence?')) return; this._emailSequences.splice(i, 1); localStorage.setItem('orgEmailSequences', JSON.stringify(this._emailSequences)); this.showEmailSequences(); },
+  // Email sequences — delegated to marketingModule (single source of truth)
+  showEmailSequences() { if (typeof marketingModule !== 'undefined') { marketingModule.loadEmailSequences(); const tab = document.getElementById('marketing-tab'); if (tab) new bootstrap.Tab(tab).show(); setTimeout(() => { const sub = document.getElementById('email-sequences-subtab'); if (sub) new bootstrap.Tab(sub).show(); }, 100); } },
+  showCreateSequence() { if (typeof marketingModule !== 'undefined') marketingModule.showCreateSequence(); },
+  toggleSequence(i) { if (typeof marketingModule !== 'undefined') marketingModule.toggleSequence(i); },
+  deleteSequence(i) { if (typeof marketingModule !== 'undefined') marketingModule.deleteSequence(i); },
 
   // ============================================
   // FEATURE: MY TASKS DASHBOARD
   // ============================================
   async showMyTasks() {
     let followUps = [];
-    try { const { data } = await STATE.client.from('org_follow_ups').select('*').order('date', { ascending: true }); followUps = data || []; } catch (e) { console.warn('Could not load follow-ups:', e); }
+    try { const { data } = await STATE.client.from('organisation_follow_ups').select('*').order('date', { ascending: true }); followUps = data || []; } catch (e) { console.warn('Could not load follow-ups:', e); }
     const today = new Date().toISOString().split('T')[0];
     const overdue = followUps.filter(f => !f.done && f.date < today);
     const todayTasks = followUps.filter(f => !f.done && f.date === today);
@@ -7644,64 +7553,11 @@ updateCountyFilterByRegion() {
     ${errors.length === 0 ? '<div class="alert alert-success py-2"><i class="bi bi-check-circle me-2"></i>Ready to import.</div>' : '<div class="alert alert-danger py-2">Fix errors before importing.</div>'}`;
   },
 
-  // ============================================
-  // FEATURE: SCHEDULED REPORTS
-  // ============================================
-  _scheduledReports: JSON.parse(localStorage.getItem('orgScheduledReports') || '[]'),
-
-  showScheduledReports() {
-    const reports = this._scheduledReports;
-    const html = `<p class="text-muted small">Schedule automated reports to be generated on a recurring basis.</p>
-      <button class="btn btn-primary btn-sm mb-3" onclick="orgsModule.showCreateScheduledReport()"><i class="bi bi-plus-circle me-2"></i>Create Report Schedule</button>
-      ${reports.length === 0 ? '<div class="text-center py-4 text-muted"><i class="bi bi-calendar-x fs-1 d-block mb-2"></i>No scheduled reports</div>' :
-        reports.map((r, i) => `<div class="card mb-2"><div class="card-body py-2"><div class="d-flex justify-content-between align-items-center">
-          <div><strong>${utils.escapeHtml(r.name)}</strong><span class="badge bg-${r.active ? 'success' : 'secondary'} ms-2">${r.active ? 'Active' : 'Paused'}</span>
-          <div class="text-muted small">${utils.escapeHtml(r.frequency)} · ${r.sections.join(', ')} · To: ${utils.escapeHtml(r.recipients)}</div></div>
-          <div><button class="btn btn-sm btn-outline-primary me-1" onclick="orgsModule.previewScheduledReport(${i})"><i class="bi bi-eye"></i></button>
-          <button class="btn btn-sm btn-outline-danger" onclick="orgsModule.deleteScheduledReport(${i})"><i class="bi bi-trash"></i></button></div>
-        </div></div></div>`).join('')}`;
-    this._showDynamicModal('Scheduled Reports', html, 'bi-calendar2-week', 'modal-lg');
-  },
-
-  showCreateScheduledReport() {
-    const html = `<div class="mb-3"><label class="form-label fw-semibold">Report Name</label><input type="text" class="form-control" id="reportName" placeholder="e.g. Weekly Pipeline Summary"></div>
-      <div class="mb-3"><label class="form-label fw-semibold">Frequency</label><select class="form-select" id="reportFrequency"><option value="Daily">Daily</option><option value="Weekly" selected>Weekly</option><option value="Monthly">Monthly</option></select></div>
-      <div class="mb-3"><label class="form-label fw-semibold">Recipients</label><input type="text" class="form-control" id="reportRecipients" placeholder="admin@example.com, manager@example.com"></div>
-      <div class="mb-3"><label class="form-label fw-semibold">Include</label>
-        <div class="form-check"><input class="form-check-input rpt-section" type="checkbox" value="KPI Summary" checked><label class="form-check-label">KPI Summary</label></div>
-        <div class="form-check"><input class="form-check-input rpt-section" type="checkbox" value="Pipeline" checked><label class="form-check-label">Pipeline Breakdown</label></div>
-        <div class="form-check"><input class="form-check-input rpt-section" type="checkbox" value="Overdue" checked><label class="form-check-label">Overdue Follow-ups</label></div>
-        <div class="form-check"><input class="form-check-input rpt-section" type="checkbox" value="Regional"><label class="form-check-label">Regional Distribution</label></div>
-        <div class="form-check"><input class="form-check-input rpt-section" type="checkbox" value="Data Quality"><label class="form-check-label">Data Quality Issues</label></div></div>
-      <button class="btn btn-primary w-100" onclick="orgsModule._saveScheduledReport()"><i class="bi bi-check-circle me-2"></i>Save</button>`;
-    this._showDynamicModal('Create Scheduled Report', html, 'bi-calendar-plus', '');
-  },
-
-  _saveScheduledReport() {
-    const name = document.getElementById('reportName')?.value?.trim();
-    const frequency = document.getElementById('reportFrequency')?.value;
-    const recipients = document.getElementById('reportRecipients')?.value?.trim();
-    if (!name || !recipients) { utils.showToast('Fill in name and recipients', 'warning'); return; }
-    const sections = Array.from(document.querySelectorAll('.rpt-section:checked')).map(cb => cb.value);
-    if (sections.length === 0) { utils.showToast('Select at least one section', 'warning'); return; }
-    this._scheduledReports.push({ name, frequency, recipients, sections, active: true, created: new Date().toISOString() });
-    localStorage.setItem('orgScheduledReports', JSON.stringify(this._scheduledReports));
-    utils.showToast('Report schedule created', 'success'); this.showScheduledReports();
-  },
-
-  previewScheduledReport(index) {
-    const r = this._scheduledReports[index]; if (!r) return;
-    const orgs = STATE.allOrganisations;
-    const pipeline = {}; orgs.forEach(o => { const s = o.status || 'prospect'; pipeline[s] = (pipeline[s] || 0) + 1; });
-    const regions = {}; orgs.forEach(o => { const reg = o.region || 'Unknown'; regions[reg] = (regions[reg] || 0) + 1; });
-    let preview = `<h5>${utils.escapeHtml(r.name)}</h5><p class="text-muted small">Preview generated ${new Date().toLocaleString('en-GB')}</p><hr>`;
-    if (r.sections.includes('KPI Summary')) preview += `<h6>KPI Summary</h6><div class="row text-center mb-3"><div class="col"><strong>${orgs.length}</strong><br><small>Total Orgs</small></div><div class="col"><strong>${Object.keys(regions).length}</strong><br><small>Regions</small></div></div>`;
-    if (r.sections.includes('Pipeline')) preview += `<h6>Pipeline</h6><div class="mb-3">${Object.entries(pipeline).map(([s, c]) => `<span class="badge bg-primary me-1">${s}: ${c}</span>`).join('')}</div>`;
-    if (r.sections.includes('Regional')) preview += `<h6>Regional</h6><div class="mb-3">${Object.entries(regions).sort((a,b)=>b[1]-a[1]).slice(0,10).map(([r,c])=>`<div class="d-flex justify-content-between small"><span>${utils.escapeHtml(r)}</span><strong>${c}</strong></div>`).join('')}</div>`;
-    this._showDynamicModal('Report Preview', preview, 'bi-file-text', 'modal-lg');
-  },
-
-  deleteScheduledReport(i) { if (!confirm('Delete this report schedule?')) return; this._scheduledReports.splice(i, 1); localStorage.setItem('orgScheduledReports', JSON.stringify(this._scheduledReports)); this.showScheduledReports(); },
+  // Scheduled reports — delegated to reportsScheduler (single source of truth)
+  showScheduledReports() { if (typeof reportsScheduler !== 'undefined') { reportsScheduler.loadReports(); const tab = document.getElementById('reports-tab'); if (tab) new bootstrap.Tab(tab).show(); } },
+  showCreateScheduledReport() { if (typeof reportsScheduler !== 'undefined') reportsScheduler.showCreateReport(); },
+  previewScheduledReport(i) { if (typeof reportsScheduler !== 'undefined') reportsScheduler.previewReport(i); },
+  deleteScheduledReport(i) { if (typeof reportsScheduler !== 'undefined') reportsScheduler.deleteReport(i); },
 
   // ============================================
   // FEATURE: DUPLICATE DETECTION DASHBOARD
@@ -7774,70 +7630,12 @@ updateCountyFilterByRegion() {
     bootstrap.Modal.getInstance(document.getElementById('dynamicOrgModal'))?.hide();
   },
 
-  // ============================================
-  // FEATURE: XERO / QUICKBOOKS INTEGRATION
-  // ============================================
-  _accountingConfig: JSON.parse(localStorage.getItem('orgAccountingConfig') || '{}'),
-
-  showXeroIntegration() {
-    const config = this._accountingConfig;
-    const connected = config.connected || false;
-    const provider = config.provider || 'xero';
-    const html = `<div class="text-center mb-4"><i class="bi bi-currency-pound fs-1 ${connected ? 'text-success' : 'text-muted'} d-block mb-2"></i>
-        <h6>Accounting Integration</h6><p class="text-muted small">Connect your accounting software to sync invoices and payments.</p></div>
-      <div class="row mb-4">
-        <div class="col-6"><div class="card ${provider==='xero'?'border-primary':''}" style="cursor:pointer" onclick="orgsModule._setAccountingProvider('xero')">
-          <div class="card-body text-center py-3"><i class="bi bi-x-diamond fs-2 text-primary"></i><div class="fw-bold mt-1">Xero</div><small class="text-muted">Cloud accounting</small></div></div></div>
-        <div class="col-6"><div class="card ${provider==='quickbooks'?'border-success':''}" style="cursor:pointer" onclick="orgsModule._setAccountingProvider('quickbooks')">
-          <div class="card-body text-center py-3"><i class="bi bi-book fs-2 text-success"></i><div class="fw-bold mt-1">QuickBooks</div><small class="text-muted">Intuit accounting</small></div></div></div>
-      </div>
-      ${!connected ? `<div class="card mb-3"><div class="card-body"><h6 class="fw-semibold mb-3">Connect ${provider==='xero'?'Xero':'QuickBooks'}</h6>
-        <div class="mb-3"><label class="form-label small">API Client ID</label><input type="text" class="form-control form-control-sm" id="accountingClientId" placeholder="Enter client ID..." value="${utils.escapeHtml(config.clientId||'')}"></div>
-        <div class="mb-3"><label class="form-label small">API Client Secret</label><input type="password" class="form-control form-control-sm" id="accountingClientSecret" placeholder="Enter client secret..."></div>
-        <button class="btn btn-primary w-100" onclick="orgsModule._connectAccounting()"><i class="bi bi-plug me-2"></i>Connect</button></div></div>` :
-      `<div class="alert alert-success"><i class="bi bi-check-circle me-2"></i>Connected to ${provider==='xero'?'Xero':'QuickBooks'}
-        <button class="btn btn-sm btn-outline-danger float-end" onclick="orgsModule._disconnectAccounting()">Disconnect</button></div>
-      <div class="card mb-3"><div class="card-body"><h6 class="fw-semibold mb-3">Sync Settings</h6>
-        <div class="form-check mb-2"><input class="form-check-input" type="checkbox" checked><label class="form-check-label">Sync Invoices</label></div>
-        <div class="form-check mb-2"><input class="form-check-input" type="checkbox" checked><label class="form-check-label">Sync Payments</label></div>
-        <div class="form-check mb-2"><input class="form-check-input" type="checkbox"><label class="form-check-label">Sync Contacts</label></div><hr>
-        <div class="d-flex gap-2"><button class="btn btn-sm btn-primary" onclick="orgsModule._runAccountingSync()"><i class="bi bi-arrow-repeat me-1"></i>Sync Now</button>
-        <span class="text-muted small align-self-center">Last sync: ${config.lastSync ? new Date(config.lastSync).toLocaleString('en-GB') : 'Never'}</span></div></div></div>`}
-      <div class="card"><div class="card-body"><h6 class="fw-semibold mb-2">Sync History</h6>
-        ${(config.syncHistory||[]).length===0?'<p class="text-muted small mb-0">No sync history</p>':
-          (config.syncHistory||[]).slice(0,10).map(s=>`<div class="d-flex justify-content-between py-1 border-bottom small">
-            <span>${new Date(s.date).toLocaleString('en-GB')}</span><span class="badge bg-${s.status==='success'?'success':'danger'}">${s.status}</span><span class="text-muted">${s.details||''}</span></div>`).join('')}
-      </div></div>`;
-    this._showDynamicModal('Accounting Integration', html, 'bi-currency-pound', 'modal-lg');
-  },
-
-  _setAccountingProvider(p) { this._accountingConfig.provider = p; localStorage.setItem('orgAccountingConfig', JSON.stringify(this._accountingConfig)); this.showXeroIntegration(); },
-
-  _connectAccounting() {
-    const clientId = document.getElementById('accountingClientId')?.value?.trim();
-    if (!clientId) { utils.showToast('Enter a Client ID', 'warning'); return; }
-    this._accountingConfig.connected = true; this._accountingConfig.clientId = clientId;
-    this._accountingConfig.connectedAt = new Date().toISOString(); this._accountingConfig.syncHistory = this._accountingConfig.syncHistory || [];
-    localStorage.setItem('orgAccountingConfig', JSON.stringify(this._accountingConfig));
-    utils.showToast('Connected to ' + (this._accountingConfig.provider==='xero'?'Xero':'QuickBooks'), 'success'); this.showXeroIntegration();
-  },
-
-  _disconnectAccounting() {
-    if (!confirm('Disconnect accounting integration?')) return;
-    this._accountingConfig.connected = false; localStorage.setItem('orgAccountingConfig', JSON.stringify(this._accountingConfig));
-    utils.showToast('Disconnected', 'success'); this.showXeroIntegration();
-  },
-
-  _runAccountingSync() {
-    utils.showToast('Syncing...', 'info');
-    setTimeout(() => {
-      this._accountingConfig.lastSync = new Date().toISOString();
-      this._accountingConfig.syncHistory = this._accountingConfig.syncHistory || [];
-      this._accountingConfig.syncHistory.unshift({ date: new Date().toISOString(), status: 'success', details: `Synced ${Math.floor(Math.random()*20)+5} invoices, ${Math.floor(Math.random()*10)+1} payments` });
-      localStorage.setItem('orgAccountingConfig', JSON.stringify(this._accountingConfig));
-      utils.showToast('Sync complete', 'success'); this.showXeroIntegration();
-    }, 1500);
-  },
+  // Accounting integration — delegated to paymentsModule (single source of truth)
+  showXeroIntegration() { if (typeof paymentsModule !== 'undefined') { paymentsModule.loadAccountingIntegration(); const tab = document.getElementById('payments-tab'); if (tab) new bootstrap.Tab(tab).show(); setTimeout(() => { const sub = document.getElementById('accounting-subtab'); if (sub) new bootstrap.Tab(sub).show(); }, 100); } },
+  _setAccountingProvider(p) { if (typeof paymentsModule !== 'undefined') paymentsModule._setAccountingProvider(p); },
+  _connectAccounting() { if (typeof paymentsModule !== 'undefined') paymentsModule._connectAccounting(); },
+  _disconnectAccounting() { if (typeof paymentsModule !== 'undefined') paymentsModule._disconnectAccounting(); },
+  _runAccountingSync() { if (typeof paymentsModule !== 'undefined') paymentsModule._runAccountingSync(); },
 
   // ============================================
   // FEATURE: INTERACTIVE BRITISH ISLES MAP

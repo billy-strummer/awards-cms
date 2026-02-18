@@ -12,6 +12,9 @@ const settingsModule = {
     this.loadBackupSettings();
     this.checkBackupReminders();
     this.renderAuditLog();
+    if (typeof gdprModule !== 'undefined') {
+      gdprModule.init();
+    }
   },
 
   /**

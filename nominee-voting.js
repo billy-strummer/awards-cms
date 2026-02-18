@@ -63,7 +63,7 @@ const nomineeVoting = {
         .select(`
           *,
           organisations(company_name, logo_url, website),
-          awards(award_name, category)
+          awards(award_name, award_category)
         `)
         .eq('is_public', true)
         .eq('allow_public_voting', true)
@@ -362,8 +362,7 @@ const nomineeVoting = {
    * Generate verification token
    */
   generateToken() {
-    return Math.random().toString(36).substring(2) +
-           Date.now().toString(36);
+    return crypto.randomUUID().replace(/-/g, '');
   },
 
   /**

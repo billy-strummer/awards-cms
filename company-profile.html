@@ -201,10 +201,11 @@
 
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="config.js"></script>
 
   <script>
-    const SUPABASE_URL = 'https://qdzyknercdqwhwijbcxf.supabase.co';
-    const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFkenlrbmVyY2Rxd2h3aWpiY3hmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzA4NDAwODEsImV4cCI6MjA4NjQxNjA4MX0.ecs9dgUaOW607imlYFJeLhLHlC8YWybnEUPEHJeRrkY';
+    const SUPABASE_URL = window.SUPABASE_CONFIG.url;
+    const SUPABASE_KEY = window.SUPABASE_CONFIG.anonKey;
 
     const client = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
     let currentCompany = null;

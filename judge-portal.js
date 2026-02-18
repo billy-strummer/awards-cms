@@ -126,7 +126,7 @@ const judgePortal = {
         .select(`
           *,
           organisations(company_name, logo_url),
-          awards(award_name, category),
+          awards(award_name, award_category),
           entry_files(*),
           judge_scores!judge_scores_entry_id_fkey(*)
         `)
@@ -620,6 +620,9 @@ const judgePortal = {
     window.location.href = '/judge-login.html';
   }
 };
+
+// Export to window for global access
+window.judgePortal = judgePortal;
 
 // Initialize on page load
 document.addEventListener('DOMContentLoaded', () => {

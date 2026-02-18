@@ -175,7 +175,7 @@ function calculateExpertiseScore(judge, entry) {
   let score = 0;
 
   // Match by award category
-  const awardCategory = entry.awards?.category?.toLowerCase() || '';
+  const awardCategory = entry.awards?.award_category?.toLowerCase() || '';
   const judgeExpertise = (judge.notes || '').toLowerCase();
 
   if (judgeExpertise.includes(awardCategory)) {

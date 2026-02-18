@@ -676,8 +676,10 @@ document.addEventListener('DOMContentLoaded', function() {
   });
 
   // Load media gallery data when Media Gallery tab is clicked (lazy loading)
+  let mediaGalleryInitialized = false;
   document.getElementById('media-gallery-tab').addEventListener('click', () => {
-    if (STATE.allEvents.length === 0) {
+    if (!mediaGalleryInitialized) {
+      mediaGalleryInitialized = true;
       mediaGalleryModule.initialize();
     }
   });
@@ -766,7 +768,7 @@ document.addEventListener('DOMContentLoaded', function() {
         if (tabId === 'awards-tab') {
           document.getElementById('awardsSearchBox').focus();
         } else if (tabId === 'organisations-tab') {
-          document.getElementById('orgSearchBox').focus();
+          document.getElementById('orgsSearchBox').focus();
         } else if (tabId === 'winners-tab') {
           document.getElementById('winnerSearchBox').focus();
         }

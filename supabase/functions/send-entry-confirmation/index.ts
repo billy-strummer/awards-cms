@@ -35,7 +35,7 @@ serve(async (req) => {
       .select(`
         *,
         organisations(company_name, website),
-        awards(award_name, sector, region)
+        awards(award_name, sector, county)
       `)
       .eq('id', entryId)
       .single()
@@ -67,7 +67,7 @@ serve(async (req) => {
       COMPANY_NAME: entry.organisations?.company_name || 'Your Company',
       AWARD_NAME: entry.awards?.award_name || 'Award Category',
       SECTOR: entry.awards?.sector || 'Your Sector',
-      REGION: entry.awards?.region || 'Your Region',
+      REGION: entry.awards?.county || 'Your Region',
       UPLOAD_LINK: uploadLink,
       DEADLINE_DATE: Deno.env.get('ENTRY_DEADLINE_DATE') || 'TBA',
       ANNOUNCEMENT_DATE: Deno.env.get('WINNER_ANNOUNCEMENT_DATE') || 'TBA',
@@ -117,15 +117,14 @@ serve(async (req) => {
 
     // Log the email in database (optional)
     await supabaseClient
-      .from('email_logs')
+      .from('email_log')
       .insert({
-        entry_id: entryId,
         recipient_email: entry.contact_email,
         template_id: template.id,
+        template_key: 'ENTRY_CONFIRMATION',
         subject: emailSubject,
         sent_at: new Date().toISOString(),
-        status: 'sent',
-        email_provider_id: emailResult.id
+        status: 'sent'
       })
       .select()
 

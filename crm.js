@@ -78,10 +78,10 @@ const crmModule = {
       };
 
       // Update stats display (elements may not exist in all views)
-      const el1 = document.getElementById('crm-total-companies');
-      const el2 = document.getElementById('crm-active-deals');
-      const el3 = document.getElementById('crm-recent-comms');
-      const el4 = document.getElementById('crm-pending-followups');
+      const el1 = document.getElementById('totalCompaniesCount');
+      const el2 = document.getElementById('activeDealsCount');
+      const el3 = document.getElementById('recentCommunicationsCount');
+      const el4 = document.getElementById('pendingFollowUpsCount');
       if (el1) el1.textContent = stats.totalCompanies;
       if (el2) el2.textContent = stats.activeDeals;
       if (el3) el3.textContent = stats.recentCommunications;
@@ -313,10 +313,10 @@ const crmModule = {
       };
 
       // Update stats display (elements may not exist in all views)
-      const dEl1 = document.getElementById('deals-active-count');
-      const dEl2 = document.getElementById('deals-pipeline-value');
-      const dEl3 = document.getElementById('deals-won-month');
-      const dEl4 = document.getElementById('deals-win-rate');
+      const dEl1 = document.getElementById('totalActiveDeals');
+      const dEl2 = document.getElementById('totalPipelineValue');
+      const dEl3 = document.getElementById('dealsWonThisMonth');
+      const dEl4 = document.getElementById('averageWinRate');
       if (dEl1) dEl1.textContent = stats.activeCount;
       if (dEl2) dEl2.textContent = `£${stats.pipelineValue.toLocaleString('en-GB', { minimumFractionDigits: 2 })}`;
       if (dEl3) dEl3.textContent = stats.wonThisMonth;
@@ -568,7 +568,7 @@ const crmModule = {
   },
 
   renderSegments(segments) {
-    const container = document.getElementById('segmentsContainer');
+    const container = document.getElementById('segments-content');
     if (!container) return;
 
     if (!segments || segments.length === 0) {
@@ -1985,7 +1985,7 @@ const crmModule = {
       console.error('Error updating segment:', error);
       utils.showToast('Error updating segment: ' + error.message, 'error');
     }
-  }
+  },
   // ============================================
   // SMART SEGMENTS (moved from Organisations)
   // ============================================
@@ -2148,7 +2148,7 @@ const crmModule = {
 
     let followUps = [];
     try {
-      const { data } = await STATE.client.from('org_follow_ups').select('*').order('date', { ascending: true });
+      const { data } = await STATE.client.from('organisation_follow_ups').select('*').order('date', { ascending: true });
       followUps = data || [];
     } catch (e) { console.warn('Could not load follow-ups:', e); }
 
@@ -2188,7 +2188,7 @@ const crmModule = {
 
   async completeTask(orgId, followUpId) {
     try {
-      await STATE.client.from('org_follow_ups').update({ done: true }).eq('id', followUpId);
+      await STATE.client.from('organisation_follow_ups').update({ done: true }).eq('id', followUpId);
       utils.showToast('Task completed', 'success');
       this.loadMyTasks();
     } catch (e) {

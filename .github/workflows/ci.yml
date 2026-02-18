@@ -22,7 +22,7 @@ jobs:
           cache-dependency-path: api/package-lock.json
 
       - name: Install root dependencies
-        run: npm install --save-dev jest jsdom
+        run: npm install
 
       - name: Install API dependencies
         working-directory: ./api
@@ -99,7 +99,7 @@ jobs:
           node-version: '20'
 
       - name: Install build tools
-        run: npm install --save-dev esbuild cssnano postcss postcss-cli
+        run: npm install
 
       - name: Bundle JavaScript
         run: node build.js

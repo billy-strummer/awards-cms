@@ -435,12 +435,17 @@ async function sendDeadlineReminders() {
     // Judging deadline reminders
     const { data: judges } = await supabase
       .from('contacts')
-      .select('*, judge_scores(*)')
+      .select('*')
       .eq('contact_type', 'judge');
 
+    const { data: allScores } = await supabase
+      .from('judge_scores')
+      .select('*');
+
     for (const judge of judges || []) {
-      const totalAssigned = judge.judge_scores?.length || 0;
-      const completed = judge.judge_scores?.filter(s => s.is_complete).length || 0;
+      const judgeScores = (allScores || []).filter(s => s.judge_email === judge.email || s.judge_id === judge.id);
+      const totalAssigned = judgeScores.length || 0;
+      const completed = judgeScores.filter(s => s.is_complete).length || 0;
       const pending = totalAssigned - completed;
 
       if (pending > 0) {
@@ -451,7 +456,7 @@ async function sendDeadlineReminders() {
           scored_count: completed,
           total_count: totalAssigned,
           pending_count: pending,
-          judge_portal_link: '${process.env.APP_URL || 'https://admin.britishtrade.com'}/judge-portal.html'
+          judge_portal_link: `${process.env.APP_URL || 'https://admin.britishtrade.com'}/judge-portal.html`
         };
 
         await sendTemplateEmail('JUDGE_REMINDER', judge.email, variables);
@@ -495,7 +500,7 @@ async function sendJudgeAssignments(judgeEmail, entryIds) {
       entry_count: entryIds.length,
       deadline: 'TBC',
       award_list: awardList,
-      judge_portal_link: '${process.env.APP_URL || 'https://admin.britishtrade.com'}/judge-portal.html'
+      judge_portal_link: `${process.env.APP_URL || 'https://admin.britishtrade.com'}/judge-portal.html`
     };
 
     return await sendTemplateEmail('JUDGE_ASSIGNMENT', judgeEmail, variables);
@@ -531,7 +536,7 @@ async function sendWinnerAnnouncements(awardId = null) {
         award_name: winner.awards.award_name,
         ceremony_date: 'TBC',
         ceremony_venue: 'The Grand Hall, London',
-        winners_portal_link: '${process.env.APP_URL || 'https://admin.britishtrade.com'}/winners-portal.html'
+        winners_portal_link: `${process.env.APP_URL || 'https://admin.britishtrade.com'}/winners-portal.html`
       };
 
       await sendTemplateEmail('WINNER_ANNOUNCEMENT', winner.contact_email, variables);
@@ -575,7 +580,7 @@ async function sendShortlistNotifications(awardId = null) {
         winner_date: 'TBC',
         ceremony_date: 'TBC',
         ceremony_venue: 'The Grand Hall, London',
-        ceremony_tickets_link: '${process.env.APP_URL || 'https://admin.britishtrade.com'}/tickets'
+        ceremony_tickets_link: `${process.env.APP_URL || 'https://admin.britishtrade.com'}/tickets`
       };
 
       await sendTemplateEmail('SHORTLIST_NOTIFICATION', entry.contact_email, variables);

@@ -1305,7 +1305,7 @@ const paymentsModule = {
     } catch (error) {
       console.error('Error loading organisations:', error);
     }
-  }
+  },
   // ============================================
   // ACCOUNTING INTEGRATION (moved from Organisations)
   // ============================================

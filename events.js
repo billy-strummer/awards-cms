@@ -6680,6 +6680,7 @@ const eventsModule = {
 
     const totalGuests = this.unassignedGuests.length;
     const totalSeated = this.tables.reduce((sum, t) => sum + (t.assignments?.length || 0), 0);
+    const hasTables = this.tables.length > 0;
 
     const modalHtml = `
       <div class="modal fade" id="tablePlanModal" tabindex="-1" data-bs-backdrop="static">
@@ -6691,8 +6692,8 @@ const eventsModule = {
                 <h5 class="modal-title mb-0">
                   <i class="bi bi-grid-3x3-gap me-2"></i>Table Plan - ${utils.escapeHtml(this.currentEventNameTablePlan)}
                 </h5>
-                <span class="badge bg-info">${totalSeated} seated</span>
-                <span class="badge bg-warning text-dark">${totalGuests} unassigned</span>
+                <span class="badge bg-info" id="tpSeatedBadge">${totalSeated} seated</span>
+                <span class="badge bg-warning text-dark" id="tpUnassignedBadge">${totalGuests} unassigned</span>
               </div>
               <div class="d-flex align-items-center gap-2">
                 <button class="btn btn-sm btn-outline-light" onclick="eventsModule.autoAssignGuests()" title="Auto Assign">
@@ -6719,21 +6720,79 @@ const eventsModule = {
             <div class="modal-body p-0">
               <div class="d-flex" style="height: calc(100vh - 56px);">
 
-                <!-- Left Sidebar: Guests grouped by company -->
+                <!-- Left Sidebar -->
                 <div class="tp-sidebar border-end bg-light" style="width: 300px; min-width: 300px; display: flex; flex-direction: column;">
-                  <div class="p-2 border-bottom">
-                    <div class="input-group input-group-sm">
-                      <span class="input-group-text"><i class="bi bi-search"></i></span>
-                      <input type="text" class="form-control" id="tpGuestSearch" placeholder="Search guests or companies..." oninput="eventsModule.filterGuests(this.value)">
+
+                  <!-- Room Setup Panel -->
+                  <div id="tpSetupPanel" style="display: ${hasTables ? 'none' : 'block'};">
+                    <div class="p-3 border-bottom" style="background: linear-gradient(135deg, #1a1a2e, #16213e); color: white;">
+                      <h6 class="mb-1"><i class="bi bi-gear me-1"></i>Room Setup</h6>
+                      <small class="opacity-75">Configure your table layout</small>
+                    </div>
+                    <div class="p-3">
+                      <div class="mb-3">
+                        <label class="form-label small fw-bold">Number of Tables</label>
+                        <input type="number" class="form-control form-control-sm" id="tpSetupCount" value="10" min="1" max="50">
+                      </div>
+                      <div class="mb-3">
+                        <label class="form-label small fw-bold">Seats per Table</label>
+                        <select class="form-select form-select-sm" id="tpSetupSeats">
+                          <option value="6">6 seats</option>
+                          <option value="8" selected>8 seats</option>
+                          <option value="10">10 seats</option>
+                          <option value="12">12 seats</option>
+                        </select>
+                      </div>
+                      <div class="mb-3">
+                        <label class="form-label small fw-bold">Table Shape</label>
+                        <div class="d-flex gap-2">
+                          <label class="btn btn-sm btn-outline-secondary flex-fill active" id="tpShapeRoundLabel">
+                            <input type="radio" name="tpSetupShape" value="round" checked class="d-none" onchange="document.getElementById('tpShapeRoundLabel').classList.add('active');document.getElementById('tpShapeRectLabel').classList.remove('active');">
+                            <i class="bi bi-circle me-1"></i>Round
+                          </label>
+                          <label class="btn btn-sm btn-outline-secondary flex-fill" id="tpShapeRectLabel">
+                            <input type="radio" name="tpSetupShape" value="rectangular" class="d-none" onchange="document.getElementById('tpShapeRectLabel').classList.add('active');document.getElementById('tpShapeRoundLabel').classList.remove('active');">
+                            <i class="bi bi-square me-1"></i>Rectangular
+                          </label>
+                        </div>
+                      </div>
+                      <div class="mb-3">
+                        <label class="form-label small fw-bold">Layout Style</label>
+                        <select class="form-select form-select-sm" id="tpSetupLayout">
+                          <option value="grid">Grid</option>
+                          <option value="banquet">Banquet Rows</option>
+                          <option value="circle">Circle / Horseshoe</option>
+                        </select>
+                      </div>
+                      <button class="btn btn-primary w-100" onclick="eventsModule.generateTableLayout()">
+                        <i class="bi bi-grid-3x3-gap me-1"></i>Generate Layout
+                      </button>
+                      ${hasTables ? `<button class="btn btn-sm btn-link text-muted w-100 mt-1" onclick="document.getElementById('tpSetupPanel').style.display='none'; document.getElementById('tpGuestsPanel').style.display='flex';">Cancel</button>` : ''}
                     </div>
                   </div>
-                  <div class="p-2 border-bottom d-flex justify-content-between align-items-center">
-                    <small class="fw-bold text-muted">UNASSIGNED GUESTS</small>
-                    <span class="badge bg-primary" id="tpUnassignedCount">${totalGuests}</span>
+
+                  <!-- Guests Panel (shown after tables are created) -->
+                  <div id="tpGuestsPanel" style="display: ${hasTables ? 'flex' : 'none'}; flex-direction: column; flex: 1; min-height: 0;">
+                    <div class="p-2 border-bottom">
+                      <div class="input-group input-group-sm">
+                        <span class="input-group-text"><i class="bi bi-search"></i></span>
+                        <input type="text" class="form-control" id="tpGuestSearch" placeholder="Search guests or companies..." oninput="eventsModule.filterGuests(this.value)">
+                      </div>
+                    </div>
+                    <div class="p-2 border-bottom d-flex justify-content-between align-items-center">
+                      <small class="fw-bold text-muted">UNASSIGNED GUESTS</small>
+                      <div class="d-flex align-items-center gap-2">
+                        <span class="badge bg-primary" id="tpUnassignedCount">${totalGuests}</span>
+                        <button class="btn btn-sm btn-outline-secondary py-0 px-1" onclick="document.getElementById('tpSetupPanel').style.display='block'; document.getElementById('tpGuestsPanel').style.display='none';" title="Room Setup">
+                          <i class="bi bi-gear" style="font-size: 0.75rem;"></i>
+                        </button>
+                      </div>
+                    </div>
+                    <div id="unassignedGuestsList" class="flex-grow-1 overflow-auto p-2">
+                      <!-- Guests grouped by company rendered here -->
+                    </div>
                   </div>
-                  <div id="unassignedGuestsList" class="flex-grow-1 overflow-auto p-2">
-                    <!-- Guests grouped by company rendered here -->
-                  </div>
+
                 </div>
 
                 <!-- Main Canvas Area -->
@@ -6918,14 +6977,54 @@ const eventsModule = {
         table.assignments = assignments || [];
       }
 
-      // Load unassigned guests (RPC may not exist)
+      // Load unassigned guests (RPC may not exist, fall back to direct query)
       try {
         const { data: unassigned, error: unassignedError } = await STATE.client
           .rpc('get_unassigned_guests', { p_event_id: this.currentEventIdTablePlan });
-        if (!unassignedError) this.unassignedGuests = unassigned || [];
-        else this.unassignedGuests = [];
+        if (!unassignedError && unassigned) {
+          this.unassignedGuests = unassigned;
+        } else {
+          // Fallback: query event_guests directly, exclude those already assigned
+          const assignedGuestIds = new Set();
+          for (const t of this.tables) {
+            (t.assignments || []).forEach(a => { if (a.guest_id) assignedGuestIds.add(a.guest_id); });
+          }
+          let guestQuery = STATE.client
+            .from('event_guests')
+            .select('id, guest_name, guest_email, organisation_id, guest_type, plus_ones, rsvp_status')
+            .eq('event_id', this.currentEventIdTablePlan)
+            .eq('rsvp_status', 'confirmed');
+
+          const guestResult = await guestQuery;
+          if (!guestResult.error && guestResult.data) {
+            // Enrich with company name from organisations if possible
+            const orgIds = [...new Set(guestResult.data.filter(g => g.organisation_id).map(g => g.organisation_id))];
+            let orgMap = {};
+            if (orgIds.length > 0) {
+              const { data: orgs } = await STATE.client
+                .from('organisations')
+                .select('id, company_name')
+                .in('id', orgIds);
+              if (orgs) orgs.forEach(o => { orgMap[o.id] = o.company_name; });
+            }
+            this.unassignedGuests = guestResult.data
+              .filter(g => !assignedGuestIds.has(g.id))
+              .map(g => ({
+                guest_id: g.id,
+                guest_name: g.guest_name,
+                guest_email: g.guest_email,
+                organisation_id: g.organisation_id,
+                company_name: orgMap[g.organisation_id] || null,
+                guest_type: g.guest_type || 'guest',
+                plus_ones: g.plus_ones || 0,
+                rsvp_status: g.rsvp_status
+              }));
+          } else {
+            this.unassignedGuests = [];
+          }
+        }
       } catch (rpcErr) {
-        console.warn('get_unassigned_guests RPC not available:', rpcErr);
+        console.warn('Error loading unassigned guests:', rpcErr);
         this.unassignedGuests = [];
       }
 
@@ -6933,6 +7032,133 @@ const eventsModule = {
       console.error('Error loading table plan:', error);
       throw error;
     }
+  },
+
+  /**
+   * Generate Table Layout - Batch create tables from setup wizard
+   */
+  async generateTableLayout() {
+    const count = parseInt(document.getElementById('tpSetupCount')?.value) || 10;
+    const seats = parseInt(document.getElementById('tpSetupSeats')?.value) || 8;
+    const shape = document.querySelector('input[name="tpSetupShape"]:checked')?.value || 'round';
+    const layout = document.getElementById('tpSetupLayout')?.value || 'grid';
+
+    if (count < 1 || count > 50) {
+      utils.showToast('Please enter between 1 and 50 tables', 'warning');
+      return;
+    }
+
+    // Confirm if tables already exist
+    if (this.tables.length > 0) {
+      if (!confirm(`This will add ${count} new tables to the existing ${this.tables.length} tables. Continue?`)) return;
+    }
+
+    try {
+      utils.showLoading();
+
+      // Calculate positions based on layout style
+      const positions = this._calculateLayoutPositions(count, layout, shape, seats);
+
+      // Get starting table number
+      const maxNum = this.tables.reduce((max, t) => Math.max(max, t.table_number || 0), 0);
+
+      // Batch insert all tables
+      const tablesToInsert = positions.map((pos, i) => ({
+        event_id: this.currentEventIdTablePlan,
+        table_number: maxNum + i + 1,
+        total_seats: seats,
+        shape: shape,
+        position_x: pos.x,
+        position_y: pos.y
+      }));
+
+      const { error } = await STATE.client
+        .from('event_tables')
+        .insert(tablesToInsert);
+
+      if (error) throw error;
+
+      utils.showToast(`${count} tables created`, 'success');
+
+      // Reload and re-render
+      await this.loadTablePlan();
+
+      // Switch to guests panel
+      const setupPanel = document.getElementById('tpSetupPanel');
+      const guestsPanel = document.getElementById('tpGuestsPanel');
+      if (setupPanel) setupPanel.style.display = 'none';
+      if (guestsPanel) guestsPanel.style.display = 'flex';
+
+      this.renderUnassignedGuests();
+      this.renderCanvasTables();
+
+      // Update badges
+      const totalSeated = this.tables.reduce((sum, t) => sum + (t.assignments?.length || 0), 0);
+      const seatedBadge = document.getElementById('tpSeatedBadge');
+      const unassignedBadge = document.getElementById('tpUnassignedBadge');
+      if (seatedBadge) seatedBadge.textContent = totalSeated + ' seated';
+      if (unassignedBadge) unassignedBadge.textContent = this.unassignedGuests.length + ' unassigned';
+
+    } catch (error) {
+      console.error('Error generating table layout:', error);
+      utils.showToast('Failed to generate layout: ' + error.message, 'error');
+    } finally {
+      utils.hideLoading();
+    }
+  },
+
+  /**
+   * Calculate table positions for different layout styles
+   */
+  _calculateLayoutPositions(count, layout, shape, seats) {
+    const positions = [];
+    // Table size depends on shape and seats
+    const tableSize = shape === 'rectangular' ? Math.max(140, 50 + seats * 12) : Math.max(110, 50 + seats * 8);
+    const spacing = tableSize + 60; // gap between tables
+
+    if (layout === 'grid') {
+      // Even grid layout
+      const cols = Math.ceil(Math.sqrt(count * 1.5)); // slightly wider than tall
+      const startX = 120;
+      const startY = 100;
+      for (let i = 0; i < count; i++) {
+        const col = i % cols;
+        const row = Math.floor(i / cols);
+        positions.push({
+          x: startX + col * spacing,
+          y: startY + row * spacing
+        });
+      }
+    } else if (layout === 'banquet') {
+      // Two columns with aisle
+      const rows = Math.ceil(count / 2);
+      const startX = 200;
+      const startY = 100;
+      const aisleWidth = spacing + 80;
+      for (let i = 0; i < count; i++) {
+        const col = i % 2;
+        const row = Math.floor(i / 2);
+        positions.push({
+          x: startX + col * aisleWidth,
+          y: startY + row * spacing
+        });
+      }
+    } else if (layout === 'circle') {
+      // Circle/horseshoe arrangement
+      const centerX = 800;
+      const centerY = 700;
+      const radius = Math.max(250, count * spacing / (2 * Math.PI));
+      for (let i = 0; i < count; i++) {
+        // Spread around ~300 degrees (horseshoe, open at bottom)
+        const angle = (Math.PI * 1.2) + (i / (count)) * (Math.PI * 1.6);
+        positions.push({
+          x: Math.round(centerX + radius * Math.cos(angle)),
+          y: Math.round(centerY + radius * Math.sin(angle))
+        });
+      }
+    }
+
+    return positions;
   },
 
   // ---- SIDEBAR: Guests grouped by company ----
@@ -7227,6 +7453,57 @@ const eventsModule = {
     if (!table) { panel.style.display = 'none'; return; }
 
     const assignedCount = table.assignments?.length || 0;
+    const availableSeats = table.total_seats - assignedCount;
+
+    // Build organisation picker — group unassigned guests by company, VIP first
+    const orgGroups = this._groupGuestsByCompany(this.unassignedGuests);
+    // Score each company: VIP/sponsor guests get priority
+    const vipTypes = new Set(['vip', 'sponsor', 'speaker']);
+    const companyPriority = (key) => {
+      const grp = orgGroups[key];
+      if (!grp || key === '__none__') return 0;
+      const hasVip = grp.guests.some(g => vipTypes.has(g.guest_type));
+      return hasVip ? 2 : 1;
+    };
+    const companies = Object.keys(orgGroups)
+      .sort((a, b) => {
+        const pa = companyPriority(a), pb = companyPriority(b);
+        if (pa !== pb) return pb - pa; // VIP first
+        if (a === '__none__') return 1;
+        if (b === '__none__') return -1;
+        return a.localeCompare(b);
+      });
+
+    const orgPickerHtml = availableSeats > 0 && companies.length > 0 ? `
+      <div class="mb-2">
+        <small class="fw-bold text-muted d-block mb-1">ASSIGN ORGANISATION</small>
+        <input type="text" class="form-control form-control-sm mb-1" id="tpOrgSearch" placeholder="Search companies..." oninput="eventsModule._filterOrgPicker(this.value)">
+        <div id="tpOrgPickerList" style="max-height: 180px; overflow-y: auto;">
+          ${companies.map(key => {
+            const grp = orgGroups[key];
+            const name = grp.company_name || 'No Company';
+            const guestCount = grp.guests.length;
+            const fitsAll = guestCount <= availableSeats;
+            const hasVip = grp.guests.some(g => vipTypes.has(g.guest_type));
+            const vipBadge = hasVip ? '<span class="badge bg-warning text-dark ms-1" style="font-size:0.65rem;">VIP</span>' : '';
+            return `<div class="tp-org-pick-item d-flex align-items-center justify-content-between p-2 mb-1 rounded border" style="cursor:pointer; font-size:0.82rem; background:${hasVip ? '#fff8e1' : '#f8f9fa'}; transition: background 0.15s; ${hasVip ? 'border-color:#ffc107 !important;' : ''}"
+              onmouseover="this.style.background='#e3f2fd'"
+              onmouseout="this.style.background='${hasVip ? '#fff8e1' : '#f8f9fa'}'"
+              data-org-name="${utils.escapeHtml(name).toLowerCase()}"
+              onclick="eventsModule.assignOrgToTable('${table.id}', ${JSON.stringify(key).replace(/'/g, '\\x27')})">
+              <div>
+                <div class="fw-medium"><i class="bi bi-building me-1 text-muted"></i>${utils.escapeHtml(name)}${vipBadge}</div>
+                <small class="text-muted">${guestCount} guest${guestCount !== 1 ? 's' : ''}</small>
+              </div>
+              <span class="badge ${fitsAll ? 'bg-success' : 'bg-warning text-dark'}">${fitsAll ? 'Fits' : guestCount + '/' + availableSeats}</span>
+            </div>`;
+          }).join('')}
+        </div>
+      </div>
+      <hr>
+    ` : availableSeats === 0 ? `
+      <div class="alert alert-info py-2 mb-2" style="font-size:0.8rem;"><i class="bi bi-check-circle me-1"></i>Table is full</div>
+    ` : '';
 
     content.innerHTML = `
       <div class="detail-header">
@@ -7259,6 +7536,7 @@ const eventsModule = {
           <i class="bi bi-check-lg me-1"></i>Save Changes
         </button>
         <hr>
+        ${orgPickerHtml}
         <div class="d-flex justify-content-between align-items-center mb-2">
           <small class="fw-bold text-muted">SEATED GUESTS (${assignedCount}/${table.total_seats})</small>
         </div>
@@ -7273,7 +7551,7 @@ const eventsModule = {
                 <i class="bi bi-x-circle-fill"></i>
               </span>
             </div>
-          `).join('') : '<p class="text-muted small text-center mt-3">Drop guests onto this table to assign them</p>'}
+          `).join('') : '<p class="text-muted small text-center mt-3">Click a company above or drag guests from the left panel</p>'}
         </div>
         <hr>
         <div class="d-flex gap-2 mb-2">
@@ -7291,6 +7569,80 @@ const eventsModule = {
     `;
 
     panel.style.display = 'flex';
+  },
+
+  /**
+   * Filter organisation picker in detail panel
+   */
+  _filterOrgPicker(term) {
+    const items = document.querySelectorAll('#tpOrgPickerList .tp-org-pick-item');
+    const search = (term || '').toLowerCase();
+    items.forEach(el => {
+      const name = el.getAttribute('data-org-name') || '';
+      el.style.display = name.includes(search) ? '' : 'none';
+    });
+  },
+
+  /**
+   * Assign an entire organisation's guests to a table
+   */
+  async assignOrgToTable(tableId, orgKey) {
+    const table = this.tables.find(t => t.id === tableId);
+    if (!table) return;
+
+    const assignedCount = table.assignments?.length || 0;
+    const availableSeats = table.total_seats - assignedCount;
+
+    // Get guests for this org from unassigned list
+    const guests = this.unassignedGuests.filter(g => {
+      const key = g.company_name || '__none__';
+      return key === orgKey;
+    });
+
+    if (guests.length === 0) {
+      utils.showToast('No unassigned guests for this organisation', 'warning');
+      return;
+    }
+
+    const toAssign = guests.slice(0, availableSeats);
+    if (toAssign.length < guests.length) {
+      if (!confirm(`Only ${availableSeats} seat(s) available. Assign ${toAssign.length} of ${guests.length} guests?`)) return;
+    }
+
+    try {
+      const assignments = toAssign.map(g => ({
+        event_id: this.currentEventIdTablePlan,
+        table_id: tableId,
+        guest_id: g.guest_id || g.id,
+        guest_name: g.guest_name,
+        organisation_id: g.organisation_id || null,
+        company_name: g.company_name || null
+      }));
+
+      const { error } = await STATE.client
+        .from('table_assignments')
+        .insert(assignments);
+
+      if (error) throw error;
+
+      utils.showToast(`${toAssign.length} guest(s) assigned`, 'success');
+
+      await this.loadTablePlan();
+      this.renderUnassignedGuests();
+      this.renderCanvasTables();
+      this.showTableDetail(tableId);
+
+      // Update header badges
+      const totalSeated = this.tables.reduce((sum, t) => sum + (t.assignments?.length || 0), 0);
+      const seatedBadge = document.getElementById('tpSeatedBadge');
+      const unassignedBadge = document.getElementById('tpUnassignedBadge');
+      if (seatedBadge) seatedBadge.textContent = totalSeated + ' seated';
+      if (unassignedBadge) unassignedBadge.textContent = this.unassignedGuests.length + ' unassigned';
+
+    } catch (error) {
+      console.error('Error assigning org to table:', error);
+      utils.showToast('Failed to assign guests: ' + error.message, 'error');
+    }
   },
 
   closeTableDetail() {

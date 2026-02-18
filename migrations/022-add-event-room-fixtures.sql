@@ -24,6 +24,7 @@ CREATE INDEX IF NOT EXISTS idx_event_room_fixtures_event ON event_room_fixtures(
 -- RLS
 ALTER TABLE event_room_fixtures ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Allow all access to event_room_fixtures" ON event_room_fixtures;
 CREATE POLICY "Allow all access to event_room_fixtures"
   ON event_room_fixtures FOR ALL
   USING (true)

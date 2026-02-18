@@ -8355,7 +8355,7 @@ const eventsModule = {
     utils.exportToCSV(exportData, filename);
   },
 
-  // ---- PDF EXPORT (print-friendly) ----
+  // ---- PRINTABLE TABLE PLAN DOCUMENT ----
 
   exportTablePlanPDF() {
     if (this.tables.length === 0) {
@@ -8363,111 +8363,273 @@ const eventsModule = {
       return;
     }
 
-    try {
-      const { jsPDF } = window.jspdf;
-      const doc = new jsPDF('landscape');
-      const eventName = this.currentEventNameTablePlan || 'Event';
-      const dateStr = new Date().toLocaleDateString('en-GB');
+    const esc = s => utils.escapeHtml(s || '');
+    const eventName = this.currentEventNameTablePlan || 'Event';
+    const dateStr = new Date().toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+    const totalSeats = this.tables.reduce((s, t) => s + t.total_seats, 0);
+    const totalSeated = this.tables.reduce((s, t) => s + (t.assignments?.length || 0), 0);
+    const occupancyPct = totalSeats > 0 ? Math.round(totalSeated / totalSeats * 100) : 0;
 
-      // Title page
-      doc.setFontSize(28);
-      doc.setTextColor(26, 26, 46);
-      doc.text('Table Plan', 148.5, 60, { align: 'center' });
-      doc.setFontSize(18);
-      doc.setTextColor(13, 110, 253);
-      doc.text(eventName, 148.5, 75, { align: 'center' });
-      doc.setFontSize(11);
-      doc.setTextColor(120, 120, 120);
-      doc.text(`Generated: ${dateStr}`, 148.5, 88, { align: 'center' });
+    // Sort tables by table_number
+    const sortedTables = [...this.tables].sort((a, b) => a.table_number - b.table_number);
 
-      // Summary stats
-      const totalSeats = this.tables.reduce((s, t) => s + t.total_seats, 0);
-      const totalSeated = this.tables.reduce((s, t) => s + (t.assignments?.length || 0), 0);
-      doc.setFontSize(12);
-      doc.setTextColor(80, 80, 80);
-      doc.text(`${this.tables.length} Tables  |  ${totalSeated}/${totalSeats} Seats Filled  |  ${this.unassignedGuests.length} Unassigned`, 148.5, 100, { align: 'center' });
+    // Build table cards HTML
+    const tableCardsHtml = sortedTables.map(table => {
+      const assigned = table.assignments?.length || 0;
+      const label = table.table_name
+        ? `${esc(table.table_name)} <span class="table-num">(Table ${table.table_number})</span>`
+        : `Table ${table.table_number}`;
+      const shapeLabel = (table.shape || 'round').charAt(0).toUpperCase() + (table.shape || 'round').slice(1);
 
-      // Table-by-table detail pages
-      doc.addPage('landscape');
-      doc.setFontSize(16);
-      doc.setTextColor(26, 26, 46);
-      doc.text('Seating Assignments', 14, 18);
-
-      // Build table data for autoTable
-      const tableData = [];
-      this.tables.forEach(table => {
-        const label = table.table_name ? `Table ${table.table_number} - ${table.table_name}` : `Table ${table.table_number}`;
-        const assigned = table.assignments?.length || 0;
-        if (table.assignments && table.assignments.length > 0) {
-          table.assignments.forEach((a, i) => {
-            tableData.push([
-              i === 0 ? label : '',
-              i === 0 ? `${assigned}/${table.total_seats}` : '',
-              a.guest_name,
-              a.company_name || '',
-              a.dietary_requirements || '',
-              a.is_vip ? 'VIP' : ''
-            ]);
-          });
-        } else {
-          tableData.push([label, `0/${table.total_seats}`, '(No guests)', '', '', '']);
-        }
-      });
-
-      doc.autoTable({
-        startY: 24,
-        head: [['Table', 'Capacity', 'Guest Name', 'Company', 'Dietary', 'VIP']],
-        body: tableData,
-        styles: { fontSize: 9, cellPadding: 3 },
-        headStyles: { fillColor: [26, 26, 46], textColor: 255, fontStyle: 'bold' },
-        columnStyles: {
-          0: { fontStyle: 'bold', cellWidth: 50 },
-          1: { cellWidth: 25, halign: 'center' },
-          5: { cellWidth: 18, halign: 'center' }
-        },
-        didParseCell: (data) => {
-          // Bold table name rows
-          if (data.column.index === 0 && data.cell.raw) {
-            data.cell.styles.fontStyle = 'bold';
-          }
-          // Highlight VIP
-          if (data.column.index === 5 && data.cell.raw === 'VIP') {
-            data.cell.styles.textColor = [220, 53, 69];
-            data.cell.styles.fontStyle = 'bold';
-          }
-        }
-      });
-
-      // Unassigned guests page (if any)
-      if (this.unassignedGuests.length > 0) {
-        doc.addPage('landscape');
-        doc.setFontSize(16);
-        doc.setTextColor(26, 26, 46);
-        doc.text('Unassigned Guests', 14, 18);
-
-        const unassignedData = this.unassignedGuests.map(g => [
-          g.guest_name,
-          g.company_name || '',
-          g.guest_email || ''
-        ]);
-
-        doc.autoTable({
-          startY: 24,
-          head: [['Guest Name', 'Company', 'Email']],
-          body: unassignedData,
-          styles: { fontSize: 9, cellPadding: 3 },
-          headStyles: { fillColor: [255, 193, 7], textColor: [0, 0, 0], fontStyle: 'bold' }
-        });
+      let guestsHtml = '';
+      if (table.assignments && table.assignments.length > 0) {
+        const sortedGuests = [...table.assignments].sort((a, b) =>
+          (a.guest_name || '').localeCompare(b.guest_name || ''));
+        guestsHtml = sortedGuests.map(a => `
+          <tr>
+            <td class="guest-name">${esc(a.guest_name)}${a.is_vip ? ' <span class="vip-badge">VIP</span>' : ''}</td>
+            <td class="guest-company">${esc(a.company_name)}</td>
+            <td class="guest-seat">${a.seat_number || '-'}</td>
+            <td class="guest-dietary">${esc(a.dietary_requirements)}</td>
+          </tr>
+        `).join('');
+      } else {
+        guestsHtml = '<tr><td colspan="4" class="empty-table">No guests assigned</td></tr>';
       }
 
-      const safeName = eventName.replace(/[^a-z0-9]/gi, '_');
-      doc.save(`${safeName}_Table_Plan_${new Date().toISOString().split('T')[0]}.pdf`);
-      utils.showToast('PDF exported successfully', 'success');
+      return `
+        <div class="table-card">
+          <div class="table-header">
+            <div class="table-title">${label}</div>
+            <div class="table-meta">${shapeLabel} &middot; ${assigned}/${table.total_seats} seats</div>
+          </div>
+          <table class="guest-table">
+            <thead>
+              <tr><th>Guest</th><th>Company</th><th>Seat</th><th>Dietary</th></tr>
+            </thead>
+            <tbody>${guestsHtml}</tbody>
+          </table>
+          ${table.notes ? `<div class="table-notes">Note: ${esc(table.notes)}</div>` : ''}
+        </div>
+      `;
+    }).join('');
 
-    } catch (error) {
-      console.error('Error exporting PDF:', error);
-      utils.showToast('Failed to export PDF: ' + error.message, 'error');
+    // Build alphabetical guest directory
+    const allGuests = [];
+    sortedTables.forEach(table => {
+      (table.assignments || []).forEach(a => {
+        allGuests.push({
+          name: a.guest_name || '',
+          company: a.company_name || '',
+          tableNum: table.table_number,
+          tableName: table.table_name || '',
+          seat: a.seat_number || '-',
+          vip: a.is_vip,
+          dietary: a.dietary_requirements || ''
+        });
+      });
+    });
+    allGuests.sort((a, b) => a.name.localeCompare(b.name));
+
+    const directoryHtml = allGuests.length > 0 ? allGuests.map(g => `
+      <tr>
+        <td class="guest-name">${esc(g.name)}${g.vip ? ' <span class="vip-badge">VIP</span>' : ''}</td>
+        <td>${esc(g.company)}</td>
+        <td class="table-ref"><strong>${g.tableNum}</strong>${g.tableName ? ` - ${esc(g.tableName)}` : ''}</td>
+        <td class="guest-seat">${g.seat}</td>
+      </tr>
+    `).join('') : '<tr><td colspan="4">No guests assigned yet</td></tr>';
+
+    // Unassigned guests section
+    let unassignedHtml = '';
+    if (this.unassignedGuests.length > 0) {
+      const sortedUnassigned = [...this.unassignedGuests].sort((a, b) =>
+        (a.guest_name || '').localeCompare(b.guest_name || ''));
+      unassignedHtml = `
+        <div class="section-break"></div>
+        <h2 class="section-title unassigned-title">Unassigned Guests (${this.unassignedGuests.length})</h2>
+        <table class="directory-table unassigned-table">
+          <thead><tr><th>Guest</th><th>Company</th><th>Email</th></tr></thead>
+          <tbody>
+            ${sortedUnassigned.map(g => `
+              <tr>
+                <td>${esc(g.guest_name)}</td>
+                <td>${esc(g.company_name)}</td>
+                <td>${esc(g.guest_email)}</td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+      `;
     }
+
+    // Open print window
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) {
+      utils.showToast('Please allow popups to open the print view', 'warning');
+      return;
+    }
+
+    printWindow.document.write(`<!DOCTYPE html>
+<html>
+<head>
+  <title>Table Plan - ${esc(eventName)}</title>
+  <style>
+    @page { size: A4 portrait; margin: 15mm 12mm; }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      color: #1a1a2e; font-size: 10pt; line-height: 1.4;
+    }
+
+    /* ---- Cover Page ---- */
+    .cover {
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      min-height: 90vh; text-align: center; page-break-after: always;
+    }
+    .cover h1 { font-size: 32pt; font-weight: 800; letter-spacing: -0.5px; margin-bottom: 6px; }
+    .cover .event-name { font-size: 18pt; color: #0d6efd; font-weight: 600; margin-bottom: 20px; }
+    .cover .date { font-size: 11pt; color: #888; margin-bottom: 40px; }
+    .cover .stats-grid {
+      display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px;
+      max-width: 500px; width: 100%;
+    }
+    .cover .stat-box {
+      border: 2px solid #e9ecef; border-radius: 10px; padding: 16px 8px;
+    }
+    .cover .stat-box .num { font-size: 28pt; font-weight: 800; color: #1a1a2e; }
+    .cover .stat-box .label { font-size: 8pt; text-transform: uppercase; letter-spacing: 1px; color: #888; margin-top: 2px; }
+    .cover .stat-box.highlight { border-color: #0d6efd; }
+    .cover .stat-box.highlight .num { color: #0d6efd; }
+    .cover .stat-box.warning { border-color: #ffc107; }
+    .cover .stat-box.warning .num { color: #dc3545; }
+
+    /* ---- Section Titles ---- */
+    .section-title {
+      font-size: 16pt; font-weight: 700; color: #1a1a2e; margin: 0 0 12px 0;
+      padding-bottom: 6px; border-bottom: 3px solid #1a1a2e;
+    }
+    .section-break { page-break-before: always; }
+
+    /* ---- Table Cards ---- */
+    .table-card {
+      border: 1px solid #dee2e6; border-radius: 8px; margin-bottom: 14px;
+      page-break-inside: avoid; overflow: hidden;
+    }
+    .table-header {
+      background: #1a1a2e; color: white; padding: 8px 14px;
+      display: flex; justify-content: space-between; align-items: center;
+    }
+    .table-title { font-weight: 700; font-size: 11pt; }
+    .table-title .table-num { font-weight: 400; opacity: 0.7; font-size: 9pt; }
+    .table-meta { font-size: 8pt; opacity: 0.7; }
+    .guest-table { width: 100%; border-collapse: collapse; font-size: 9pt; }
+    .guest-table th {
+      background: #f8f9fa; text-align: left; padding: 5px 10px;
+      font-size: 7.5pt; text-transform: uppercase; letter-spacing: 0.5px; color: #666;
+      border-bottom: 1px solid #dee2e6;
+    }
+    .guest-table td { padding: 5px 10px; border-bottom: 1px solid #f0f0f0; }
+    .guest-table tr:last-child td { border-bottom: none; }
+    .guest-name { font-weight: 600; }
+    .guest-company { color: #555; }
+    .guest-seat { text-align: center; width: 40px; }
+    .guest-dietary { font-size: 8pt; color: #888; }
+    .vip-badge {
+      display: inline-block; background: #dc3545; color: white; font-size: 6.5pt;
+      padding: 1px 5px; border-radius: 3px; font-weight: 700; vertical-align: middle;
+    }
+    .empty-table { color: #aaa; font-style: italic; text-align: center; padding: 10px; }
+    .table-notes { font-size: 8pt; color: #666; padding: 4px 14px 6px; background: #fffde7; border-top: 1px solid #f0f0f0; }
+
+    /* ---- Guest Directory ---- */
+    .directory-table { width: 100%; border-collapse: collapse; font-size: 9pt; margin-bottom: 20px; }
+    .directory-table th {
+      background: #1a1a2e; color: white; text-align: left; padding: 6px 10px;
+      font-size: 8pt; text-transform: uppercase; letter-spacing: 0.5px;
+    }
+    .directory-table td { padding: 5px 10px; border-bottom: 1px solid #e9ecef; }
+    .directory-table tr:nth-child(even) td { background: #f8f9fa; }
+    .table-ref { white-space: nowrap; }
+
+    /* ---- Unassigned ---- */
+    .unassigned-title { color: #dc3545; border-bottom-color: #dc3545; }
+    .unassigned-table th { background: #ffc107; color: #000; }
+
+    /* ---- Footer ---- */
+    .page-footer {
+      margin-top: 20px; padding-top: 8px; border-top: 1px solid #e9ecef;
+      font-size: 7.5pt; color: #aaa; text-align: center;
+    }
+
+    /* ---- Print-specific ---- */
+    @media print {
+      body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+      .no-print { display: none; }
+      .table-header { background: #1a1a2e !important; color: white !important; }
+      .vip-badge { background: #dc3545 !important; color: white !important; }
+      .directory-table th { background: #1a1a2e !important; color: white !important; }
+    }
+
+    /* ---- Screen toolbar ---- */
+    .print-toolbar {
+      position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+      background: #1a1a2e; color: white; padding: 10px 20px;
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .print-toolbar button {
+      background: #0d6efd; color: white; border: none; padding: 8px 20px;
+      border-radius: 6px; font-weight: 600; cursor: pointer; font-size: 10pt;
+    }
+    .print-toolbar button:hover { background: #0b5ed7; }
+    @media print { .print-toolbar { display: none; } }
+    .content { margin-top: 56px; padding: 20px; }
+    @media print { .content { margin-top: 0; padding: 0; } }
+  </style>
+</head>
+<body>
+  <div class="print-toolbar no-print">
+    <div><strong>Table Plan</strong> &mdash; ${esc(eventName)}</div>
+    <div>
+      <button onclick="window.print()">Print / Save as PDF</button>
+    </div>
+  </div>
+  <div class="content">
+    <!-- Cover Page -->
+    <div class="cover">
+      <h1>Table Plan</h1>
+      <div class="event-name">${esc(eventName)}</div>
+      <div class="date">${dateStr}</div>
+      <div class="stats-grid">
+        <div class="stat-box"><div class="num">${sortedTables.length}</div><div class="label">Tables</div></div>
+        <div class="stat-box highlight"><div class="num">${totalSeated}</div><div class="label">Seated</div></div>
+        <div class="stat-box"><div class="num">${occupancyPct}%</div><div class="label">Occupancy</div></div>
+        <div class="stat-box${this.unassignedGuests.length > 0 ? ' warning' : ''}"><div class="num">${this.unassignedGuests.length}</div><div class="label">Unassigned</div></div>
+      </div>
+    </div>
+
+    <!-- Table-by-Table Seating -->
+    <h2 class="section-title">Seating by Table</h2>
+    ${tableCardsHtml}
+
+    <!-- Alphabetical Guest Directory -->
+    <div class="section-break"></div>
+    <h2 class="section-title">Guest Directory (A&ndash;Z)</h2>
+    <table class="directory-table">
+      <thead><tr><th>Guest</th><th>Company</th><th>Table</th><th>Seat</th></tr></thead>
+      <tbody>${directoryHtml}</tbody>
+    </table>
+
+    ${unassignedHtml}
+
+    <div class="page-footer">
+      ${esc(eventName)} &mdash; Table Plan &mdash; Generated ${dateStr}
+    </div>
+  </div>
+</body>
+</html>`);
+    printWindow.document.close();
+    utils.showToast('Print document opened — use Print / Save as PDF', 'success');
   },
 
   // ---- TV / PROJECTOR DISPLAY ----

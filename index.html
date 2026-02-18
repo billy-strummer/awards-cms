@@ -5760,9 +5760,14 @@
                 <div class="mb-4 pb-4 border-bottom">
                   <h6 class="mb-3">Full Database Backup</h6>
                   <p class="small text-muted mb-3">Export all data in JSON format for complete backup</p>
-                  <button class="btn btn-primary" onclick="settingsModule.exportFullBackup()">
-                    <i class="bi bi-database-down me-2"></i>Download Full Backup
-                  </button>
+                  <div class="d-flex gap-2">
+                    <button class="btn btn-primary" onclick="settingsModule.exportFullBackup()">
+                      <i class="bi bi-database-down me-2"></i>Download Full Backup
+                    </button>
+                    <button class="btn btn-outline-warning" onclick="settingsModule.restoreFromBackup()">
+                      <i class="bi bi-database-up me-2"></i>Restore from Backup
+                    </button>
+                  </div>
                 </div>
 
                 <!-- Individual Table Exports -->
@@ -9987,6 +9992,8 @@ in recognition of excellence
   <script src="accessibility.js"></script>
   <script src="gdpr.js"></script>
   <script src="stripe-frontend.js"></script>
+  <script src="i18n.js"></script>
+  <script src="multi-tenancy.js"></script>
   <script src="test-data-manager.js"></script>
   <script src="app.js"></script>
   <script>

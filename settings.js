@@ -125,6 +125,69 @@ const settingsModule = {
   },
 
   /**
+   * Restore database from a JSON backup file
+   */
+  async restoreFromBackup() {
+    if (!rbacModule || !rbacModule.guard('settings')) {
+      utils.showToast('Admin permissions required for restore', 'error');
+      return;
+    }
+
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.json';
+    input.onchange = async (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+
+      if (!confirm('WARNING: This will overwrite existing data with the backup contents. Are you sure you want to continue?')) return;
+
+      try {
+        utils.showLoading();
+        const text = await file.text();
+        const backup = JSON.parse(text);
+
+        if (!backup.version || !backup.tables) {
+          utils.showToast('Invalid backup file format', 'error');
+          return;
+        }
+
+        const tableOrder = ['awards', 'organisations', 'winners', 'events', 'media_gallery', 'gallery_sections', 'event_templates'];
+        let restored = 0;
+
+        for (const table of tableOrder) {
+          const rows = backup.tables[table];
+          if (!rows || rows.length === 0) continue;
+
+          // Upsert in batches of 500
+          for (let i = 0; i < rows.length; i += 500) {
+            const batch = rows.slice(i, i + 500);
+            const { error } = await STATE.client.from(table).upsert(batch, { onConflict: 'id', ignoreDuplicates: false });
+            if (error) {
+              console.error(`Restore error for ${table}:`, error);
+              utils.showToast(`Warning: Some ${table} records failed to restore`, 'warning');
+            } else {
+              restored += batch.length;
+            }
+          }
+        }
+
+        utils.showToast(`Restore complete: ${restored} records restored from backup (${backup.exportDate})`, 'success');
+
+        // Reload data
+        if (typeof loadAllData === 'function') loadAllData();
+
+      } catch (error) {
+        console.error('Restore error:', error);
+        utils.showToast('Failed to restore backup: ' + error.message, 'error');
+      } finally {
+        utils.hideLoading();
+      }
+    };
+    input.click();
+  },
+
+  /**
    * Export events data to CSV
    */
   async exportEventsCSV() {

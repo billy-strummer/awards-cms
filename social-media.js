@@ -508,8 +508,22 @@ Vote now: {{website}}
 
         if (error) throw error;
 
-        if (postType === 'immediate') {
-          utils.showToast('Post published successfully!', 'success');
+        if (postType === 'immediate' && data?.[0]?.id) {
+          // Trigger server-side publish via Edge Function
+          try {
+            const { data: publishResult, error: pubErr } = await STATE.client.functions.invoke('publish-social-post', {
+              body: { postId: data[0].id }
+            });
+            if (pubErr) console.warn('Auto-publish failed, post saved:', pubErr);
+            if (publishResult?.errors?.length > 0) {
+              utils.showToast(`Published with warnings: ${publishResult.errors.map(e => e.platform).join(', ')} failed`, 'warning');
+            } else {
+              utils.showToast('Post published successfully!', 'success');
+            }
+          } catch (pubErr) {
+            console.warn('Publish API not available, post saved to database:', pubErr);
+            utils.showToast('Post saved! Configure API keys to auto-publish.', 'info');
+          }
           this.showPostSuccessMessage(platforms);
         } else {
           utils.showToast('Post scheduled successfully!', 'success');

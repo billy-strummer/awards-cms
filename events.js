@@ -373,27 +373,46 @@ const eventsModule = {
   /* ==================================================== */
 
   /**
-   * Load templates from localStorage
+   * Load templates from Supabase (falls back to localStorage)
    */
-  loadTemplates() {
+  async loadTemplates() {
     try {
-      const stored = localStorage.getItem('eventTemplates');
-      return stored ? JSON.parse(stored) : [];
-    } catch (error) {
-      console.error('Error loading templates:', error);
-      return [];
+      const { data, error } = await STATE.client
+        .from('event_templates')
+        .select('*')
+        .order('created_at', { ascending: false });
+      if (error) throw error;
+      return data || [];
+    } catch (e) {
+      try {
+        const stored = localStorage.getItem('eventTemplates');
+        return stored ? JSON.parse(stored) : [];
+      } catch (error) {
+        console.error('Error loading templates:', error);
+        return [];
+      }
     }
   },
 
   /**
-   * Save templates to localStorage
+   * Save templates to Supabase (falls back to localStorage)
    */
-  saveTemplatesStorage(templates) {
+  async saveTemplatesStorage(templates) {
     try {
-      localStorage.setItem('eventTemplates', JSON.stringify(templates));
-    } catch (error) {
-      console.error('Error saving templates:', error);
-      utils.showToast('Error saving templates', 'error');
+      await STATE.client.from('event_templates').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+      if (templates.length > 0) {
+        const { error } = await STATE.client.from('event_templates').insert(
+          templates.map(t => ({ name: t.name, template_data: t, created_by: STATE.currentUser?.email }))
+        );
+        if (error) throw error;
+      }
+    } catch (e) {
+      try {
+        localStorage.setItem('eventTemplates', JSON.stringify(templates));
+      } catch (error) {
+        console.error('Error saving templates:', error);
+        utils.showToast('Error saving templates', 'error');
+      }
     }
   },
 
@@ -415,8 +434,8 @@ const eventsModule = {
   /**
    * Render templates list
    */
-  renderTemplatesList() {
-    const templates = this.loadTemplates();
+  async renderTemplatesList() {
+    const templates = await this.loadTemplates();
     const container = document.getElementById('eventTemplatesList');
     const countEl = document.getElementById('templatesCount');
 
@@ -492,8 +511,8 @@ const eventsModule = {
   /**
    * Edit template
    */
-  editTemplate(index) {
-    const templates = this.loadTemplates();
+  async editTemplate(index) {
+    const templates = await this.loadTemplates();
     const template = templates[index];
 
     if (!template) return;
@@ -514,7 +533,7 @@ const eventsModule = {
   /**
    * Save template
    */
-  saveTemplate() {
+  async saveTemplate() {
     const name = document.getElementById('templateName').value.trim();
     const venue = document.getElementById('templateVenue').value.trim();
     const description = document.getElementById('templateDescription').value.trim();
@@ -538,7 +557,7 @@ const eventsModule = {
       gallerySections
     };
 
-    const templates = this.loadTemplates();
+    const templates = await this.loadTemplates();
 
     if (templateId !== '') {
       // Update existing template
@@ -551,23 +570,23 @@ const eventsModule = {
       utils.showToast('Template created successfully!', 'success');
     }
 
-    this.saveTemplatesStorage(templates);
-    this.renderTemplatesList();
+    await this.saveTemplatesStorage(templates);
+    await this.renderTemplatesList();
     this.cancelTemplateEdit();
   },
 
   /**
    * Delete template
    */
-  deleteTemplate(index) {
+  async deleteTemplate(index) {
     if (!utils.confirm('Are you sure you want to delete this template?')) {
       return;
     }
 
-    const templates = this.loadTemplates();
+    const templates = await this.loadTemplates();
     templates.splice(index, 1);
-    this.saveTemplatesStorage(templates);
-    this.renderTemplatesList();
+    await this.saveTemplatesStorage(templates);
+    await this.renderTemplatesList();
     utils.showToast('Template deleted successfully!', 'success');
   },
 
@@ -619,26 +638,49 @@ const eventsModule = {
   /* ==================================================== */
 
   /**
-   * Get attendees for an event from localStorage
+   * Get attendees for an event from Supabase
    */
-  getAttendees(eventId) {
-    const key = `event_attendees_${eventId}`;
-    const data = localStorage.getItem(key);
-    return data ? JSON.parse(data) : [];
+  async getAttendees(eventId) {
+    try {
+      const { data, error } = await STATE.client
+        .from('event_attendees')
+        .select('*')
+        .eq('event_id', eventId)
+        .order('created_at', { ascending: true });
+      if (error) throw error;
+      return data || [];
+    } catch (e) {
+      console.error('Error loading attendees:', e);
+      // Fallback to localStorage during migration
+      const key = `event_attendees_${eventId}`;
+      const stored = localStorage.getItem(key);
+      return stored ? JSON.parse(stored) : [];
+    }
   },
 
   /**
-   * Save attendees for an event to localStorage
+   * Save attendees for an event to Supabase
    */
-  saveAttendees(eventId, attendees) {
-    const key = `event_attendees_${eventId}`;
-    localStorage.setItem(key, JSON.stringify(attendees));
+  async saveAttendees(eventId, attendees) {
+    try {
+      // Delete existing and re-insert (simple upsert pattern)
+      await STATE.client.from('event_attendees').delete().eq('event_id', eventId);
+      if (attendees.length > 0) {
+        const rows = attendees.map(a => ({ ...a, event_id: eventId }));
+        const { error } = await STATE.client.from('event_attendees').insert(rows);
+        if (error) throw error;
+      }
+    } catch (e) {
+      console.error('Error saving attendees:', e);
+      // Fallback to localStorage
+      localStorage.setItem(`event_attendees_${eventId}`, JSON.stringify(attendees));
+    }
   },
 
   /**
    * Open attendees modal for an event
    */
-  openAttendeesModal(eventId) {
+  async openAttendeesModal(eventId) {
     const event = STATE.allEvents.find(e => e.id === eventId);
     if (!event) return;
 
@@ -668,7 +710,7 @@ const eventsModule = {
 
     // Load event notes
     const notesEl = document.getElementById('eventQuickNotes');
-    if (notesEl) notesEl.value = this._getEventNotes(eventId);
+    if (notesEl) notesEl.value = await this._getEventNotes(eventId);
 
     const modal = new bootstrap.Modal(document.getElementById('attendeesModal'));
     modal.show();
@@ -1206,13 +1248,44 @@ const eventsModule = {
 
   // ---- TICKET ISSUANCE SYSTEM ----
 
-  _getTicketData(eventId) {
-    const stored = localStorage.getItem(`bta_tickets_${eventId}`);
-    return stored ? JSON.parse(stored) : { tickets: [], settings: {} };
+  async _getTicketData(eventId) {
+    try {
+      const { data, error } = await STATE.client
+        .from('event_tickets')
+        .select('*')
+        .eq('event_id', eventId)
+        .order('created_at', { ascending: true });
+      if (error) throw error;
+      return { tickets: data || [], settings: {} };
+    } catch (e) {
+      console.error('Error loading tickets from DB:', e);
+      const stored = localStorage.getItem(`bta_tickets_${eventId}`);
+      return stored ? JSON.parse(stored) : { tickets: [], settings: {} };
+    }
   },
 
-  _saveTicketData(eventId, data) {
-    localStorage.setItem(`bta_tickets_${eventId}`, JSON.stringify(data));
+  async _saveTicketData(eventId, data) {
+    try {
+      await STATE.client.from('event_tickets').delete().eq('event_id', eventId);
+      if (data.tickets && data.tickets.length > 0) {
+        const rows = data.tickets.map(t => ({
+          event_id: eventId,
+          ticket_number: t.ticketNumber || t.ticket_number,
+          attendee_id: t.attendeeId || t.attendee_id,
+          attendee_name: t.attendeeName || t.attendee_name,
+          attendee_email: t.attendeeEmail || t.attendee_email,
+          guest_type: t.guestType || t.guest_type || 'guest',
+          status: t.status || 'issued',
+          issued_at: t.issuedAt || t.issued_at || new Date().toISOString(),
+          revoked_at: t.revokedAt || t.revoked_at || null,
+          sent_at: t.sentAt || t.sent_at || null
+        }));
+        await STATE.client.from('event_tickets').insert(rows);
+      }
+    } catch (e) {
+      console.error('Error saving tickets to DB:', e);
+      localStorage.setItem(`bta_tickets_${eventId}`, JSON.stringify(data));
+    }
   },
 
   _generateTicketNumber(eventId, index) {
@@ -1582,13 +1655,31 @@ const eventsModule = {
     return `bta_waitlist_${eventId}`;
   },
 
-  getWaitlist(eventId) {
-    const stored = localStorage.getItem(this._waitlistKey(eventId));
-    return stored ? JSON.parse(stored) : [];
+  async getWaitlist(eventId) {
+    try {
+      const { data, error } = await STATE.client
+        .from('event_waitlist')
+        .select('*')
+        .eq('event_id', eventId)
+        .order('created_at', { ascending: true });
+      if (error) throw error;
+      return data || [];
+    } catch (e) {
+      const stored = localStorage.getItem(this._waitlistKey(eventId));
+      return stored ? JSON.parse(stored) : [];
+    }
   },
 
-  _saveWaitlist(eventId, waitlist) {
-    localStorage.setItem(this._waitlistKey(eventId), JSON.stringify(waitlist));
+  async _saveWaitlist(eventId, waitlist) {
+    try {
+      await STATE.client.from('event_waitlist').delete().eq('event_id', eventId);
+      if (waitlist.length > 0) {
+        const rows = waitlist.map(w => ({ ...w, event_id: eventId }));
+        await STATE.client.from('event_waitlist').insert(rows);
+      }
+    } catch (e) {
+      localStorage.setItem(this._waitlistKey(eventId), JSON.stringify(waitlist));
+    }
   },
 
   addToWaitlist() {
@@ -1969,13 +2060,43 @@ const eventsModule = {
     return `bta_budget_${eventId}`;
   },
 
-  getBudget(eventId) {
-    const stored = localStorage.getItem(this._budgetKey(eventId));
-    return stored ? JSON.parse(stored) : { totalBudget: 0, items: [] };
+  async getBudget(eventId) {
+    try {
+      const [{ data: budgetRow }, { data: items }] = await Promise.all([
+        STATE.client.from('event_budgets').select('*').eq('event_id', eventId).single(),
+        STATE.client.from('event_budget_items').select('*').eq('event_id', eventId).order('created_at')
+      ]);
+      return { totalBudget: budgetRow?.total_budget || 0, items: items || [] };
+    } catch (e) {
+      const stored = localStorage.getItem(this._budgetKey(eventId));
+      return stored ? JSON.parse(stored) : { totalBudget: 0, items: [] };
+    }
   },
 
-  _saveBudget(eventId, budget) {
-    localStorage.setItem(this._budgetKey(eventId), JSON.stringify(budget));
+  async _saveBudget(eventId, budget) {
+    try {
+      // Upsert budget total
+      await STATE.client.from('event_budgets').upsert({
+        event_id: eventId,
+        total_budget: budget.totalBudget || 0
+      }, { onConflict: 'event_id' });
+      // Replace items
+      await STATE.client.from('event_budget_items').delete().eq('event_id', eventId);
+      if (budget.items && budget.items.length > 0) {
+        const rows = budget.items.map(item => ({
+          event_id: eventId,
+          name: item.name,
+          category: item.category,
+          estimated_amount: item.estimatedAmount || item.estimated_amount || 0,
+          actual_amount: item.actualAmount || item.actual_amount || 0,
+          notes: item.notes
+        }));
+        await STATE.client.from('event_budget_items').insert(rows);
+      }
+    } catch (e) {
+      console.error('Error saving budget to DB:', e);
+      localStorage.setItem(this._budgetKey(eventId), JSON.stringify(budget));
+    }
   },
 
   renderBudgetTab(eventId) {
@@ -2186,13 +2307,40 @@ const eventsModule = {
     return `bta_vendors_${eventId}`;
   },
 
-  getVendors(eventId) {
-    const stored = localStorage.getItem(this._vendorsKey(eventId));
-    return stored ? JSON.parse(stored) : [];
+  async getVendors(eventId) {
+    try {
+      const { data, error } = await STATE.client
+        .from('event_vendors')
+        .select('*')
+        .eq('event_id', eventId)
+        .order('created_at', { ascending: true });
+      if (error) throw error;
+      return data || [];
+    } catch (e) {
+      const stored = localStorage.getItem(this._vendorsKey(eventId));
+      return stored ? JSON.parse(stored) : [];
+    }
   },
 
-  _saveVendors(eventId, vendors) {
-    localStorage.setItem(this._vendorsKey(eventId), JSON.stringify(vendors));
+  async _saveVendors(eventId, vendors) {
+    try {
+      await STATE.client.from('event_vendors').delete().eq('event_id', eventId);
+      if (vendors.length > 0) {
+        const rows = vendors.map(v => ({
+          event_id: eventId,
+          contact_name: v.contact_name || v.contactName,
+          company: v.company,
+          email: v.email,
+          phone: v.phone,
+          vendor_type: v.type || v.vendor_type,
+          cost: v.cost || 0,
+          notes: v.notes
+        }));
+        await STATE.client.from('event_vendors').insert(rows);
+      }
+    } catch (e) {
+      localStorage.setItem(this._vendorsKey(eventId), JSON.stringify(vendors));
+    }
   },
 
   renderVendorsTab(eventId) {
@@ -2501,12 +2649,22 @@ const eventsModule = {
     return `bta_special_reqs_${eventId}`;
   },
 
-  _getSpecialReqs(eventId) {
-    const stored = localStorage.getItem(this._specialReqsKey(eventId));
-    return stored ? JSON.parse(stored) : {};
+  async _getSpecialReqs(eventId) {
+    try {
+      const { data, error } = await STATE.client
+        .from('event_special_requirements')
+        .select('*')
+        .eq('event_id', eventId)
+        .single();
+      if (error && error.code !== 'PGRST116') throw error;
+      return data || {};
+    } catch (e) {
+      const stored = localStorage.getItem(this._specialReqsKey(eventId));
+      return stored ? JSON.parse(stored) : {};
+    }
   },
 
-  saveSpecialReqs() {
+  async saveSpecialReqs() {
     const eventId = document.getElementById('attendeesEventId').value;
     const reqs = {
       parkingTotal: parseInt(document.getElementById('parkingPassesTotal')?.value) || 0,
@@ -2524,7 +2682,14 @@ const eventsModule = {
       arrivalTime: document.getElementById('arrivalTime')?.value || '',
       ceremonyTime: document.getElementById('ceremonyTime')?.value || ''
     };
-    localStorage.setItem(this._specialReqsKey(eventId), JSON.stringify(reqs));
+    try {
+      const { error } = await STATE.client
+        .from('event_special_requirements')
+        .upsert({ event_id: eventId, requirements: reqs }, { onConflict: 'event_id' });
+      if (error) throw error;
+    } catch (e) {
+      localStorage.setItem(this._specialReqsKey(eventId), JSON.stringify(reqs));
+    }
     utils.showToast('Special requirements saved', 'success');
   },
 
@@ -2534,14 +2699,31 @@ const eventsModule = {
 
   _stripePublicKey: null,
 
-  getStripePublicKey() {
-    return localStorage.getItem('bta_stripe_pk') || '';
+  async getStripePublicKey() {
+    try {
+      const { data, error } = await STATE.client
+        .from('user_preferences')
+        .select('value')
+        .eq('key', 'stripe_public_key')
+        .single();
+      if (error && error.code !== 'PGRST116') throw error;
+      return data?.value || '';
+    } catch (e) {
+      return localStorage.getItem('bta_stripe_pk') || '';
+    }
   },
 
-  saveStripeKey() {
+  async saveStripeKey() {
     const key = document.getElementById('stripePublicKeyInput')?.value?.trim();
     if (key) {
-      localStorage.setItem('bta_stripe_pk', key);
+      try {
+        const { error } = await STATE.client
+          .from('user_preferences')
+          .upsert({ key: 'stripe_public_key', value: key, user_email: STATE.currentUser?.email }, { onConflict: 'key' });
+        if (error) throw error;
+      } catch (e) {
+        localStorage.setItem('bta_stripe_pk', key);
+      }
       utils.showToast('Stripe key saved', 'success');
     }
   },
@@ -2550,7 +2732,7 @@ const eventsModule = {
   // POST-EVENT: MASTER RENDER
   // ========================================
 
-  renderPostEventTab(eventId) {
+  async renderPostEventTab(eventId) {
     const container = document.getElementById('postEventContent');
     if (!container) return;
     const event = STATE.allEvents.find(e => e.id === eventId);
@@ -2558,6 +2740,10 @@ const eventsModule = {
 
     const isComplete = event.event_status === 'complete';
     const isPast = event.event_date && new Date(event.event_date) < new Date();
+
+    // Pre-fetch async data
+    const postEventData = await this._getPostEventData(eventId);
+    const surveyStatsHtml = await this._renderSurveyStats(eventId);
 
     container.innerHTML = `
       ${!isComplete && !isPast ? `<div class="alert alert-info mb-3"><i class="bi bi-info-circle me-2"></i>This event hasn't happened yet. Post-event features are available after the event date or when status is set to "Complete".</div>` : ''}
@@ -2588,7 +2774,7 @@ const eventsModule = {
             <div class="row g-3 mb-3">
               <div class="col-md-8">
                 <label class="form-label small">Survey Link (Google Forms, Typeform, etc.)</label>
-                <input type="text" class="form-control form-control-sm" id="postEventSurveyUrl" placeholder="https://forms.google.com/..." value="${utils.escapeHtml(this._getPostEventData(eventId).surveyUrl || '')}">
+                <input type="text" class="form-control form-control-sm" id="postEventSurveyUrl" placeholder="https://forms.google.com/..." value="${utils.escapeHtml(postEventData.surveyUrl || '')}">
               </div>
               <div class="col-md-4">
                 <label class="form-label small">&nbsp;</label>
@@ -2596,7 +2782,7 @@ const eventsModule = {
               </div>
             </div>
             <div class="row g-3" id="surveyResponseStats">
-              ${this._renderSurveyStats(eventId)}
+              ${surveyStatsHtml}
             </div>
           </div>
         </div>
@@ -2657,21 +2843,38 @@ const eventsModule = {
     return `bta_post_event_${eventId}`;
   },
 
-  _getPostEventData(eventId) {
-    const stored = localStorage.getItem(this._postEventKey(eventId));
-    return stored ? JSON.parse(stored) : {};
+  async _getPostEventData(eventId) {
+    try {
+      const { data, error } = await STATE.client
+        .from('event_post_data')
+        .select('*')
+        .eq('event_id', eventId)
+        .single();
+      if (error && error.code !== 'PGRST116') throw error;
+      return data?.post_data || {};
+    } catch (e) {
+      const stored = localStorage.getItem(this._postEventKey(eventId));
+      return stored ? JSON.parse(stored) : {};
+    }
   },
 
-  _savePostEventDataStore(eventId, data) {
-    localStorage.setItem(this._postEventKey(eventId), JSON.stringify(data));
+  async _savePostEventDataStore(eventId, data) {
+    try {
+      const { error } = await STATE.client
+        .from('event_post_data')
+        .upsert({ event_id: eventId, post_data: data }, { onConflict: 'event_id' });
+      if (error) throw error;
+    } catch (e) {
+      localStorage.setItem(this._postEventKey(eventId), JSON.stringify(data));
+    }
   },
 
-  savePostEventData() {
+  async savePostEventData() {
     const eventId = document.getElementById('attendeesEventId').value;
-    const data = this._getPostEventData(eventId);
+    const data = await this._getPostEventData(eventId);
     data.surveyUrl = document.getElementById('postEventSurveyUrl')?.value || '';
     data.surveyResponses = parseInt(document.getElementById('surveyResponseCount')?.value) || data.surveyResponses || 0;
-    this._savePostEventDataStore(eventId, data);
+    await this._savePostEventDataStore(eventId, data);
     utils.showToast('Post-event data saved', 'success');
   },
 
@@ -2679,9 +2882,9 @@ const eventsModule = {
   // POST-EVENT: SURVEY & FEEDBACK
   // ========================================
 
-  _renderSurveyStats(eventId) {
-    const data = this._getPostEventData(eventId);
-    const attendees = this.getAttendees(eventId);
+  async _renderSurveyStats(eventId) {
+    const data = await this._getPostEventData(eventId);
+    const attendees = await this.getAttendees(eventId);
     const attending = attendees.filter(a => a.status === 'attending').length;
     const responses = data.surveyResponses || 0;
     const rate = attending > 0 ? Math.round(responses / attending * 100) : 0;
@@ -2708,16 +2911,16 @@ const eventsModule = {
       </div></div></div>`;
   },
 
-  sendSurveyEmails() {
+  async sendSurveyEmails() {
     const eventId = document.getElementById('attendeesEventId').value;
     const event = STATE.allEvents.find(e => e.id === eventId);
-    const data = this._getPostEventData(eventId);
+    const data = await this._getPostEventData(eventId);
     if (!data.surveyUrl) {
       utils.showToast('Please add a survey URL first', 'warning');
       return;
     }
 
-    const attendees = this.getAttendees(eventId).filter(a => a.status === 'attending' && a.email);
+    const attendees = (await this.getAttendees(eventId)).filter(a => a.status === 'attending' && a.email);
     if (attendees.length === 0) {
       utils.showToast('No attendees with email addresses', 'warning');
       return;
@@ -8786,47 +8989,73 @@ const eventsModule = {
     ];
   },
 
-  getMilestones(eventId) {
-    const stored = localStorage.getItem(this._milestonesKey(eventId));
-    return stored ? JSON.parse(stored) : this._getDefaultMilestones();
+  async getMilestones(eventId) {
+    try {
+      const { data, error } = await STATE.client
+        .from('event_milestones')
+        .select('*')
+        .eq('event_id', eventId)
+        .order('created_at', { ascending: true });
+      if (error) throw error;
+      return (data && data.length > 0) ? data.map(m => ({
+        id: m.id, label: m.label, done: m.done, category: m.category,
+        custom: m.custom || false, completedAt: m.completed_at
+      })) : this._getDefaultMilestones();
+    } catch (e) {
+      const stored = localStorage.getItem(this._milestonesKey(eventId));
+      return stored ? JSON.parse(stored) : this._getDefaultMilestones();
+    }
   },
 
-  _saveMilestones(eventId, milestones) {
-    localStorage.setItem(this._milestonesKey(eventId), JSON.stringify(milestones));
+  async _saveMilestones(eventId, milestones) {
+    try {
+      await STATE.client.from('event_milestones').delete().eq('event_id', eventId);
+      if (milestones.length > 0) {
+        const rows = milestones.map(m => ({
+          event_id: eventId, milestone_id: m.id, label: m.label,
+          done: m.done, category: m.category, custom: m.custom || false,
+          completed_at: m.completedAt || null
+        }));
+        const { error } = await STATE.client.from('event_milestones').insert(rows);
+        if (error) throw error;
+      }
+    } catch (e) {
+      localStorage.setItem(this._milestonesKey(eventId), JSON.stringify(milestones));
+    }
   },
 
-  toggleMilestone(eventId, milestoneId) {
-    const milestones = this.getMilestones(eventId);
+  async toggleMilestone(eventId, milestoneId) {
+    const milestones = await this.getMilestones(eventId);
     const ms = milestones.find(m => m.id === milestoneId);
     if (ms) {
       ms.done = !ms.done;
       ms.completedAt = ms.done ? new Date().toISOString() : null;
     }
-    this._saveMilestones(eventId, milestones);
+    await this._saveMilestones(eventId, milestones);
     this.renderMilestonesPanel(eventId);
   },
 
-  addCustomMilestone(eventId) {
+  async addCustomMilestone(eventId) {
     const input = document.getElementById('newMilestoneInput');
     const label = input?.value?.trim();
     if (!label) { utils.showToast('Enter a milestone name', 'warning'); return; }
-    const milestones = this.getMilestones(eventId);
+    const milestones = await this.getMilestones(eventId);
     milestones.push({ id: 'mc_' + Date.now(), label, done: false, category: 'Custom', custom: true });
-    this._saveMilestones(eventId, milestones);
+    await this._saveMilestones(eventId, milestones);
     input.value = '';
     this.renderMilestonesPanel(eventId);
   },
 
-  removeCustomMilestone(eventId, milestoneId) {
-    const milestones = this.getMilestones(eventId).filter(m => m.id !== milestoneId);
-    this._saveMilestones(eventId, milestones);
+  async removeCustomMilestone(eventId, milestoneId) {
+    const milestones = (await this.getMilestones(eventId)).filter(m => m.id !== milestoneId);
+    await this._saveMilestones(eventId, milestones);
     this.renderMilestonesPanel(eventId);
   },
 
-  renderMilestonesPanel(eventId) {
+  async renderMilestonesPanel(eventId) {
     const container = document.getElementById('milestonesContent');
     if (!container) return;
-    const milestones = this.getMilestones(eventId);
+    const milestones = await this.getMilestones(eventId);
     const done = milestones.filter(m => m.done).length;
     const total = milestones.length;
     const pct = total > 0 ? Math.round(done / total * 100) : 0;
@@ -8920,13 +9149,31 @@ const eventsModule = {
   // ============================================
   // EVENT NOTES / QUICK MEMO
   // ============================================
-  _getEventNotes(eventId) {
-    return localStorage.getItem(`bta_event_notes_${eventId}`) || '';
+  async _getEventNotes(eventId) {
+    try {
+      const { data, error } = await STATE.client
+        .from('events')
+        .select('notes')
+        .eq('id', eventId)
+        .single();
+      if (error) throw error;
+      return data?.notes || '';
+    } catch (e) {
+      return localStorage.getItem(`bta_event_notes_${eventId}`) || '';
+    }
   },
 
-  _saveEventNotes(eventId) {
+  async _saveEventNotes(eventId) {
     const notes = document.getElementById('eventQuickNotes')?.value || '';
-    localStorage.setItem(`bta_event_notes_${eventId}`, notes);
+    try {
+      const { error } = await STATE.client
+        .from('events')
+        .update({ notes })
+        .eq('id', eventId);
+      if (error) throw error;
+    } catch (e) {
+      localStorage.setItem(`bta_event_notes_${eventId}`, notes);
+    }
     utils.showToast('Notes saved', 'success');
   }
 };

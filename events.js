@@ -6171,14 +6171,116 @@ const eventsModule = {
   // SYNC FROM RSVPs
   // ============================================
   async syncFromRSVPs() {
+    const eventId = this.currentEventIdRunningOrder;
+    if (!eventId) { utils.showToast('No event selected', 'warning'); return; }
+
     try {
       utils.showLoading();
-      const { data, error } = await STATE.client
-        .rpc('populate_running_order_from_rsvps', {
-          p_event_id: this.currentEventIdRunningOrder
+
+      // 1. Get confirmed RSVPs for this event
+      const { data: guests, error: gErr } = await STATE.client
+        .from('event_guests')
+        .select('id, organisation_id, guest_name, guest_email, guest_type')
+        .eq('event_id', eventId)
+        .eq('rsvp_status', 'confirmed');
+      if (gErr) throw gErr;
+
+      if (!guests || guests.length === 0) {
+        utils.showToast('No confirmed RSVPs found for this event', 'warning');
+        return;
+      }
+
+      // 2. Get winner assignments for these organisations
+      const orgIds = [...new Set(guests.map(g => g.organisation_id).filter(Boolean))];
+      let assignMap = {};
+      if (orgIds.length > 0) {
+        const { data: assigns } = await STATE.client
+          .from('award_assignments')
+          .select('award_id, organisation_id')
+          .in('organisation_id', orgIds)
+          .eq('status', 'winner');
+        (assigns || []).forEach(a => {
+          if (!assignMap[a.organisation_id]) assignMap[a.organisation_id] = [];
+          assignMap[a.organisation_id].push(a.award_id);
         });
-      if (error) throw error;
-      utils.showToast(`Added ${data || 0} new items from RSVPs`, 'success');
+      }
+
+      // 3. Get award names
+      const allAwardIds = [...new Set(Object.values(assignMap).flat())];
+      let awardMap = {};
+      if (allAwardIds.length > 0) {
+        const { data: awards } = await STATE.client
+          .from('awards')
+          .select('id, award_name')
+          .in('id', allAwardIds);
+        (awards || []).forEach(a => { awardMap[a.id] = a.award_name; });
+      }
+
+      // 4. Get org names
+      let orgMap = {};
+      if (orgIds.length > 0) {
+        const { data: orgs } = await STATE.client
+          .from('organisations')
+          .select('id, company_name')
+          .in('id', orgIds);
+        (orgs || []).forEach(o => { orgMap[o.id] = o.company_name; });
+      }
+
+      // 5. Build running order entries — skip those already present
+      const existingKeys = new Set(this.runningOrderItems.map(i =>
+        `${i.guest_id || ''}|${i.award_id || ''}`
+      ));
+      const existingCount = this.runningOrderItems.length;
+      const section = existingCount > 0
+        ? (this.runningOrderItems[existingCount - 1].section || 1)
+        : 1;
+
+      let added = 0;
+      let order = existingCount;
+
+      for (const guest of guests) {
+        const awardIds = assignMap[guest.organisation_id] || [null];
+        for (const awardId of awardIds) {
+          const key = `${guest.id}|${awardId || ''}`;
+          if (existingKeys.has(key)) continue;
+
+          order++;
+          const awardNum = `${section}-${String(order).padStart(2, '0')}`;
+          const entry = {
+            event_id: eventId,
+            guest_id: guest.id,
+            organisation_id: guest.organisation_id || null,
+            award_id: awardId || null,
+            award_name: awardId ? (awardMap[awardId] || '') : '',
+            item_name: awardId ? (awardMap[awardId] || '') : guest.guest_name,
+            display_name: orgMap[guest.organisation_id] || guest.guest_name || '',
+            recipient_collecting: guest.guest_name || '',
+            award_number: awardNum,
+            display_order: order,
+            section: section,
+            duration_minutes: 3,
+            status: 'pending'
+          };
+
+          const result = await STATE.client.from('running_order').insert([entry]);
+          if (result.error) {
+            // Schema cache fallback — try minimal columns
+            const minimal = {
+              event_id: eventId,
+              item_name: entry.item_name || entry.display_name,
+              display_order: order,
+              duration_minutes: 3
+            };
+            const retry = await STATE.client.from('running_order').insert([minimal]);
+            if (!retry.error) added++;
+            else console.warn('Failed to insert RSVP entry:', retry.error.message);
+          } else {
+            added++;
+          }
+        }
+      }
+
+      utils.showToast(`Added ${added} new item${added !== 1 ? 's' : ''} from RSVPs`, 'success');
       await this.loadRunningOrder();
       this.renderRunningOrderItems();
     } catch (error) {

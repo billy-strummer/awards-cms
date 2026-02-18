@@ -6640,6 +6640,10 @@ const eventsModule = {
   currentEventNameTablePlan: null,
   tables: [],
   unassignedGuests: [],
+  roomFixtures: [], // Stage, photowall, AV booth etc.
+  _fixtureDrag: null, // {fixtureId, startX, startY, origLeft, origTop, moved}
+  _fixtureResize: null, // {fixtureId, startX, startY, origW, origH, handle}
+  _selectedFixtureId: null,
   draggedGuestId: null,
   draggedGuestData: null,
   draggedGuestIsCompany: false,
@@ -6779,14 +6783,31 @@ const eventsModule = {
                         <input type="text" class="form-control" id="tpGuestSearch" placeholder="Search guests or companies..." oninput="eventsModule.filterGuests(this.value)">
                       </div>
                     </div>
-                    <div class="p-2 border-bottom d-flex justify-content-between align-items-center">
-                      <small class="fw-bold text-muted">UNASSIGNED GUESTS</small>
-                      <div class="d-flex align-items-center gap-2">
-                        <span class="badge bg-primary" id="tpUnassignedCount">${totalGuests}</span>
+
+                    <!-- Room Elements Section -->
+                    <div class="p-2 border-bottom">
+                      <div class="d-flex justify-content-between align-items-center mb-1">
+                        <small class="fw-bold text-muted">ROOM ELEMENTS</small>
                         <button class="btn btn-sm btn-outline-secondary py-0 px-1" onclick="document.getElementById('tpSetupPanel').style.display='block'; document.getElementById('tpGuestsPanel').style.display='none';" title="Room Setup">
                           <i class="bi bi-gear" style="font-size: 0.75rem;"></i>
                         </button>
                       </div>
+                      <div class="d-flex gap-1">
+                        <button class="btn btn-sm btn-outline-dark flex-fill" onclick="eventsModule.addRoomFixture('stage')" title="Add Stage">
+                          <i class="bi bi-easel me-1"></i>Stage
+                        </button>
+                        <button class="btn btn-sm btn-outline-dark flex-fill" onclick="eventsModule.addRoomFixture('photowall')" title="Add Photo Wall">
+                          <i class="bi bi-camera me-1"></i>Photo Wall
+                        </button>
+                        <button class="btn btn-sm btn-outline-dark flex-fill" onclick="eventsModule.addRoomFixture('av_booth')" title="Add AV Booth">
+                          <i class="bi bi-soundwave me-1"></i>AV Booth
+                        </button>
+                      </div>
+                    </div>
+
+                    <div class="p-2 border-bottom d-flex justify-content-between align-items-center">
+                      <small class="fw-bold text-muted">UNASSIGNED GUESTS</small>
+                      <span class="badge bg-primary" id="tpUnassignedCount">${totalGuests}</span>
                     </div>
                     <div id="unassignedGuestsList" class="flex-grow-1 overflow-auto p-2">
                       <!-- Guests grouped by company rendered here -->
@@ -6912,6 +6933,44 @@ const eventsModule = {
           box-shadow: 0 0 0 3px rgba(13,110,253,0.5), 0 4px 15px rgba(0,0,0,0.2);
         }
 
+        /* Room fixtures (stage, photowall, AV booth) */
+        .tp-fixture {
+          position: absolute; cursor: grab; user-select: none;
+          border-radius: 8px; display: flex; align-items: center; justify-content: center;
+          z-index: 5; transition: box-shadow 0.2s;
+        }
+        .tp-fixture:hover { box-shadow: 0 2px 12px rgba(0,0,0,0.15); z-index: 8; }
+        .tp-fixture:active { cursor: grabbing; }
+        .tp-fixture-selected {
+          box-shadow: 0 0 0 3px rgba(111,66,193,0.5), 0 4px 15px rgba(0,0,0,0.2) !important;
+          z-index: 9 !important;
+        }
+        .tp-fixture-label {
+          font-weight: 700; font-size: 0.85rem; text-align: center; pointer-events: none;
+          text-transform: uppercase; letter-spacing: 0.5px;
+        }
+        .tp-fixture-actions {
+          position: absolute; top: 4px; right: 4px; z-index: 10;
+        }
+        .tp-fixture-resize-handle {
+          position: absolute; background: #6c757d; border-radius: 2px; z-index: 10;
+          opacity: 0; transition: opacity 0.15s;
+        }
+        .tp-fixture:hover .tp-fixture-resize-handle,
+        .tp-fixture-selected .tp-fixture-resize-handle { opacity: 1; }
+        .tp-resize-se {
+          bottom: -4px; right: -4px; width: 10px; height: 10px; cursor: nwse-resize;
+          border-radius: 50%; background: #495057;
+        }
+        .tp-resize-e {
+          right: -4px; top: 50%; transform: translateY(-50%);
+          width: 6px; height: 20px; cursor: ew-resize;
+        }
+        .tp-resize-s {
+          bottom: -4px; left: 50%; transform: translateX(-50%);
+          width: 20px; height: 6px; cursor: ns-resize;
+        }
+
         /* Detail panel */
         #tpDetailPanel .detail-header {
           padding: 12px 16px; background: #1a1a2e; color: white;
@@ -7026,6 +7085,27 @@ const eventsModule = {
       } catch (rpcErr) {
         console.warn('Error loading unassigned guests:', rpcErr);
         this.unassignedGuests = [];
+      }
+
+      // Load room fixtures (stage, photowall, AV booth)
+      try {
+        const { data: fixtures, error: fixturesError } = await STATE.client
+          .from('event_room_fixtures')
+          .select('*')
+          .eq('event_id', this.currentEventIdTablePlan);
+
+        if (!fixturesError && fixtures) {
+          this.roomFixtures = fixtures;
+        } else {
+          // Table may not exist - fall back to localStorage
+          const key = `room_fixtures_${this.currentEventIdTablePlan}`;
+          const stored = localStorage.getItem(key);
+          this.roomFixtures = stored ? JSON.parse(stored) : [];
+        }
+      } catch (fixtureErr) {
+        const key = `room_fixtures_${this.currentEventIdTablePlan}`;
+        const stored = localStorage.getItem(key);
+        this.roomFixtures = stored ? JSON.parse(stored) : [];
       }
 
     } catch (error) {
@@ -7308,18 +7388,21 @@ const eventsModule = {
     const zoomLabel = document.getElementById('tpZoomLevel');
     if (zoomLabel) zoomLabel.textContent = Math.round(this._canvasZoom * 100) + '%';
 
-    if (this.tables.length === 0) {
+    if (this.tables.length === 0 && this.roomFixtures.length === 0) {
       canvas.innerHTML = `
         <div class="position-absolute d-flex align-items-center justify-content-center" style="inset:0;">
           <div class="text-center text-muted">
             <i class="bi bi-grid-3x3-gap display-3 d-block mb-3 opacity-25"></i>
-            <p>Click <strong>Add Table</strong> to start building your floor plan</p>
+            <p>Click <strong>Add Table</strong> or add <strong>Room Elements</strong> to start</p>
           </div>
         </div>`;
       return;
     }
 
-    canvas.innerHTML = this.tables.map(table => {
+    // Render fixtures (stage, photowall, AV booth)
+    const fixturesHtml = this._renderFixtures();
+
+    canvas.innerHTML = fixturesHtml + this.tables.map(table => {
       const sz = this._getTableSize(table);
       const assignedCount = table.assignments?.length || 0;
       const capClass = this._getCapacityClass(assignedCount, table.total_seats);
@@ -7361,6 +7444,256 @@ const eventsModule = {
           </div>
         </div>`;
     }).join('');
+  },
+
+  // ==== ROOM FIXTURES (Stage, Photo Wall, AV Booth) ====
+
+  _fixtureConfig: {
+    stage:     { label: 'Stage',      icon: 'bi-easel',     color: '#6f42c1', bg: '#f3e8ff', defaultW: 400, defaultH: 150 },
+    photowall: { label: 'Photo Wall', icon: 'bi-camera',    color: '#0d6efd', bg: '#e7f1ff', defaultW: 200, defaultH: 80  },
+    av_booth:  { label: 'AV Booth',   icon: 'bi-soundwave', color: '#198754', bg: '#e8f5e9', defaultW: 120, defaultH: 100 }
+  },
+
+  /**
+   * Add a room fixture to the canvas
+   */
+  async addRoomFixture(type) {
+    const config = this._fixtureConfig[type];
+    if (!config) return;
+
+    const id = 'fixture_' + Date.now() + '_' + Math.random().toString(36).substr(2, 6);
+    const fixture = {
+      id,
+      event_id: this.currentEventIdTablePlan,
+      fixture_type: type,
+      label: config.label,
+      position_x: 100 + this.roomFixtures.length * 50,
+      position_y: 50 + this.roomFixtures.length * 30,
+      width: config.defaultW,
+      height: config.defaultH
+    };
+
+    // Try saving to DB first, fall back to localStorage
+    try {
+      const { data, error } = await STATE.client
+        .from('event_room_fixtures')
+        .insert([fixture])
+        .select()
+        .single();
+
+      if (!error && data) {
+        fixture.id = data.id;
+        this.roomFixtures.push(fixture);
+      } else {
+        this.roomFixtures.push(fixture);
+        this._saveFixturesToLocalStorage();
+      }
+    } catch (e) {
+      this.roomFixtures.push(fixture);
+      this._saveFixturesToLocalStorage();
+    }
+
+    this.renderCanvasTables();
+    utils.showToast(`${config.label} added`, 'success');
+  },
+
+  /**
+   * Render all room fixtures as HTML elements
+   */
+  _renderFixtures() {
+    return this.roomFixtures.map(f => {
+      const config = this._fixtureConfig[f.fixture_type] || this._fixtureConfig.stage;
+      const selected = f.id === this._selectedFixtureId;
+      const label = f.label || config.label;
+
+      return `
+        <div class="tp-fixture ${selected ? 'tp-fixture-selected' : ''}"
+             data-fixture-id="${f.id}"
+             style="left:${f.position_x}px; top:${f.position_y}px; width:${f.width}px; height:${f.height}px;
+                    background: ${config.bg}; border: 2.5px ${f.fixture_type === 'stage' ? 'double' : 'dashed'} ${config.color};"
+             onmousedown="eventsModule.startFixtureDrag(event, '${f.id}')">
+          <div class="tp-fixture-label" style="color:${config.color};">
+            <i class="bi ${config.icon} me-1"></i>${utils.escapeHtml(label)}
+          </div>
+          ${selected ? `<div class="tp-fixture-actions">
+            <button class="btn btn-sm btn-outline-danger py-0 px-1" onmousedown="event.stopPropagation();" onclick="eventsModule.removeFixture('${f.id}')" title="Remove">
+              <i class="bi bi-trash" style="font-size:0.7rem;"></i>
+            </button>
+          </div>` : ''}
+          <div class="tp-fixture-resize-handle tp-resize-se" onmousedown="eventsModule.startFixtureResize(event, '${f.id}', 'se')"></div>
+          <div class="tp-fixture-resize-handle tp-resize-e" onmousedown="eventsModule.startFixtureResize(event, '${f.id}', 'e')"></div>
+          <div class="tp-fixture-resize-handle tp-resize-s" onmousedown="eventsModule.startFixtureResize(event, '${f.id}', 's')"></div>
+        </div>`;
+    }).join('');
+  },
+
+  /**
+   * Start dragging a fixture to reposition it
+   */
+  startFixtureDrag(event, fixtureId) {
+    if (event.button !== 0) return;
+
+    // Select the fixture
+    this._selectedFixtureId = fixtureId;
+    this._selectedTableId = null;
+    const panel = document.getElementById('tpDetailPanel');
+    if (panel) panel.style.display = 'none';
+
+    const el = event.currentTarget;
+    this._fixtureDrag = {
+      fixtureId,
+      el,
+      startX: event.clientX,
+      startY: event.clientY,
+      origLeft: parseInt(el.style.left) || 0,
+      origTop: parseInt(el.style.top) || 0,
+      moved: false
+    };
+
+    const onMove = (e) => {
+      if (!this._fixtureDrag) return;
+      const dx = (e.clientX - this._fixtureDrag.startX) / this._canvasZoom;
+      const dy = (e.clientY - this._fixtureDrag.startY) / this._canvasZoom;
+      if (Math.abs(dx) > 3 || Math.abs(dy) > 3) this._fixtureDrag.moved = true;
+      this._fixtureDrag.el.style.left = Math.max(0, this._fixtureDrag.origLeft + dx) + 'px';
+      this._fixtureDrag.el.style.top = Math.max(0, this._fixtureDrag.origTop + dy) + 'px';
+    };
+
+    const onUp = async () => {
+      document.removeEventListener('mousemove', onMove);
+      document.removeEventListener('mouseup', onUp);
+      if (!this._fixtureDrag) return;
+
+      if (this._fixtureDrag.moved) {
+        const newX = Math.max(0, Math.round(parseInt(this._fixtureDrag.el.style.left)));
+        const newY = Math.max(0, Math.round(parseInt(this._fixtureDrag.el.style.top)));
+        const fixture = this.roomFixtures.find(f => f.id === fixtureId);
+        if (fixture) {
+          fixture.position_x = newX;
+          fixture.position_y = newY;
+          await this._saveFixture(fixture);
+        }
+      }
+
+      this._fixtureDrag = null;
+      this.renderCanvasTables();
+    };
+
+    document.addEventListener('mousemove', onMove);
+    document.addEventListener('mouseup', onUp);
+    event.preventDefault();
+    event.stopPropagation();
+  },
+
+  /**
+   * Start resizing a fixture via a corner/edge handle
+   */
+  startFixtureResize(event, fixtureId, handle) {
+    event.preventDefault();
+    event.stopPropagation();
+
+    const fixture = this.roomFixtures.find(f => f.id === fixtureId);
+    if (!fixture) return;
+
+    const el = document.querySelector(`[data-fixture-id="${fixtureId}"]`);
+    if (!el) return;
+
+    this._fixtureResize = {
+      fixtureId,
+      el,
+      handle,
+      startX: event.clientX,
+      startY: event.clientY,
+      origW: fixture.width,
+      origH: fixture.height
+    };
+
+    const onMove = (e) => {
+      if (!this._fixtureResize) return;
+      const dx = (e.clientX - this._fixtureResize.startX) / this._canvasZoom;
+      const dy = (e.clientY - this._fixtureResize.startY) / this._canvasZoom;
+
+      let newW = this._fixtureResize.origW;
+      let newH = this._fixtureResize.origH;
+
+      if (handle === 'se' || handle === 'e') newW = Math.max(60, this._fixtureResize.origW + dx);
+      if (handle === 'se' || handle === 's') newH = Math.max(40, this._fixtureResize.origH + dy);
+
+      this._fixtureResize.el.style.width = newW + 'px';
+      this._fixtureResize.el.style.height = newH + 'px';
+    };
+
+    const onUp = async () => {
+      document.removeEventListener('mousemove', onMove);
+      document.removeEventListener('mouseup', onUp);
+      if (!this._fixtureResize) return;
+
+      const newW = Math.max(60, Math.round(parseInt(this._fixtureResize.el.style.width)));
+      const newH = Math.max(40, Math.round(parseInt(this._fixtureResize.el.style.height)));
+
+      const fixture = this.roomFixtures.find(f => f.id === fixtureId);
+      if (fixture) {
+        fixture.width = newW;
+        fixture.height = newH;
+        await this._saveFixture(fixture);
+      }
+
+      this._fixtureResize = null;
+      this.renderCanvasTables();
+    };
+
+    document.addEventListener('mousemove', onMove);
+    document.addEventListener('mouseup', onUp);
+  },
+
+  /**
+   * Remove a fixture from the canvas
+   */
+  async removeFixture(fixtureId) {
+    if (!confirm('Remove this element?')) return;
+
+    this.roomFixtures = this.roomFixtures.filter(f => f.id !== fixtureId);
+    if (this._selectedFixtureId === fixtureId) this._selectedFixtureId = null;
+
+    try {
+      await STATE.client
+        .from('event_room_fixtures')
+        .delete()
+        .eq('id', fixtureId);
+    } catch (e) {
+      // Fall back to localStorage
+    }
+    this._saveFixturesToLocalStorage();
+    this.renderCanvasTables();
+    utils.showToast('Element removed', 'success');
+  },
+
+  /**
+   * Save a single fixture to DB or localStorage
+   */
+  async _saveFixture(fixture) {
+    try {
+      const { error } = await STATE.client
+        .from('event_room_fixtures')
+        .upsert({
+          id: fixture.id,
+          event_id: fixture.event_id,
+          fixture_type: fixture.fixture_type,
+          label: fixture.label,
+          position_x: fixture.position_x,
+          position_y: fixture.position_y,
+          width: fixture.width,
+          height: fixture.height
+        });
+      if (error) throw error;
+    } catch (e) {
+      this._saveFixturesToLocalStorage();
+    }
+  },
+
+  _saveFixturesToLocalStorage() {
+    const key = `room_fixtures_${this.currentEventIdTablePlan}`;
+    localStorage.setItem(key, JSON.stringify(this.roomFixtures));
   },
 
   canvasZoom(delta, reset) {
@@ -7440,6 +7773,7 @@ const eventsModule = {
     if (this._tableDrag && this._tableDrag.moved) return;
 
     this._selectedTableId = tableId;
+    this._selectedFixtureId = null; // Deselect any fixture
     this.renderCanvasTables();
     this.showTableDetail(tableId);
   },

@@ -109,8 +109,8 @@
             <span class="status-text">Connected</span>
           </div>
 
-          <!-- Test Mode Button (hidden by default, show with ?dev=true or Ctrl+Shift+T) -->
-          <div class="dropdown" id="testModeDropdown" style="display:none;">
+          <!-- Test Mode Button -->
+          <div class="dropdown" id="testModeDropdown">
             <button class="btn btn-outline-warning dropdown-toggle" type="button" data-bs-toggle="dropdown" title="Test Data Management">
               <i class="bi bi-bug me-1"></i>Test Mode
             </button>
@@ -10029,8 +10029,7 @@ in recognition of excellence
     })();
   </script>
 
-  <!-- TradingView Widget Script -->
-  <script type="text/javascript" src="https://s3.tradingview.com/tv.js"></script>
+  <!-- TradingView Widget -->
   <script type="text/javascript">
     const btcModule = {
       _symbol: 'COINBASE:BTCUSD',
@@ -10068,10 +10067,21 @@ in recognition of excellence
 
       createChart() {
         const container = document.getElementById('tradingview_chart');
-        if (!container || typeof TradingView === 'undefined') return;
+        if (!container) return;
         container.innerHTML = '';
 
-        new TradingView.widget({
+        // Use TradingView Advanced Chart embed widget (replaces deprecated tv.js)
+        const widgetContainer = document.createElement('div');
+        widgetContainer.className = 'tradingview-widget-container__widget';
+        widgetContainer.style.height = '100%';
+        widgetContainer.style.width = '100%';
+        container.appendChild(widgetContainer);
+
+        const script = document.createElement('script');
+        script.type = 'text/javascript';
+        script.src = 'https://s3.tradingview.com/external-embedding/embed-widget-advanced-chart.js';
+        script.async = true;
+        script.textContent = JSON.stringify({
           "autosize": true,
           "symbol": this._symbol,
           "interval": this._interval,
@@ -10079,27 +10089,24 @@ in recognition of excellence
           "theme": this._theme,
           "style": this._style,
           "locale": "en",
-          "toolbar_bg": this._theme === 'dark' ? "#1e222d" : "#f8f9fa",
-          "enable_publishing": false,
           "allow_symbol_change": true,
-          "container_id": "tradingview_chart",
           "studies": ["STD;SMA", "STD;RSI", "STD;MACD"],
           "hide_side_toolbar": false,
-          "hide_top_toolbar": false,
           "save_image": true,
           "details": true,
           "calendar": true,
           "show_popup_button": true,
           "popup_width": "1200",
-          "popup_height": "800"
+          "popup_height": "800",
+          "support_host": "https://www.tradingview.com"
         });
+        container.appendChild(script);
       },
 
       switchSymbol(symbol, btn) {
         this._symbol = symbol;
         document.querySelectorAll('.btc-symbol-btn').forEach(b => {
           b.classList.remove('active');
-          // Auto-match quick switch buttons by symbol in onclick attribute
           if (!btn && b.getAttribute('onclick') && b.getAttribute('onclick').includes("'" + symbol + "'")) {
             b.classList.add('active');
           }

@@ -137,10 +137,22 @@ async function build() {
   const indexPath = path.join(__dirname, 'index.html');
   if (fs.existsSync(indexPath)) {
     let html = fs.readFileSync(indexPath, 'utf8');
-    // The production HTML would reference bundled files
-    // For now just copy it
+
+    // Replace custom CSS block: everything from <!-- Custom Styles --> to </head>
+    html = html.replace(
+      /<!-- Custom Styles -->[\s\S]*?<\/head>/,
+      '<!-- Custom Styles -->\n  <link rel="stylesheet" href="app.min.css">\n</head>'
+    );
+
+    // Replace app script block: everything from <!-- Application Scripts --> to <script src="app.js">
+    // Keep only one bundled script tag
+    html = html.replace(
+      /\s*<!-- Application Scripts[\s\S]*?<script src="app\.js"><\/script>/,
+      '\n  <script src="app.min.js"></script>'
+    );
+
     fs.writeFileSync(path.join(DIST_DIR, 'index.html'), html);
-    console.log('  HTML: copied index.html');
+    console.log('  HTML: rewrote index.html to use bundled app.min.js + app.min.css');
   }
 
   // 4. Generate build manifest

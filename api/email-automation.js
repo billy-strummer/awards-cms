@@ -435,12 +435,17 @@ async function sendDeadlineReminders() {
     // Judging deadline reminders
     const { data: judges } = await supabase
       .from('contacts')
-      .select('*, judge_scores(*)')
+      .select('*')
       .eq('contact_type', 'judge');
 
+    const { data: allScores } = await supabase
+      .from('judge_scores')
+      .select('*');
+
     for (const judge of judges || []) {
-      const totalAssigned = judge.judge_scores?.length || 0;
-      const completed = judge.judge_scores?.filter(s => s.is_complete).length || 0;
+      const judgeScores = (allScores || []).filter(s => s.judge_email === judge.email || s.judge_id === judge.id);
+      const totalAssigned = judgeScores.length || 0;
+      const completed = judgeScores.filter(s => s.is_complete).length || 0;
       const pending = totalAssigned - completed;
 
       if (pending > 0) {

@@ -9,7 +9,7 @@ CREATE TABLE IF NOT EXISTS event_galleries (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   event_id UUID NOT NULL REFERENCES events(id) ON DELETE CASCADE,
   gallery_name VARCHAR(255) NOT NULL,
-  description TEXT,
+  gallery_description TEXT,
   display_order INTEGER DEFAULT 0,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP

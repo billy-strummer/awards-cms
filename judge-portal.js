@@ -2,6 +2,24 @@
 /* JUDGE PORTAL - Judging Interface and Scoring */
 /* ==================================================== */
 
+// Lightweight toast for judge portal (replaces alert())
+function showPortalToast(msg, type = 'info') {
+  let container = document.getElementById('portalToastContainer');
+  if (!container) {
+    container = document.createElement('div');
+    container.id = 'portalToastContainer';
+    container.style.cssText = 'position:fixed;top:20px;right:20px;z-index:99999;max-width:400px;';
+    document.body.appendChild(container);
+  }
+  const colors = { warning: '#ffc107', error: '#dc3545', success: '#28a745', info: '#17a2b8' };
+  const toast = document.createElement('div');
+  toast.style.cssText = `background:${colors[type] || colors.info};color:${type === 'warning' ? '#000' : '#fff'};padding:12px 20px;margin-bottom:8px;border-radius:8px;box-shadow:0 4px 12px rgba(0,0,0,.15);font-size:14px;opacity:0;transition:opacity .3s;`;
+  toast.textContent = msg;
+  container.appendChild(toast);
+  requestAnimationFrame(() => toast.style.opacity = '1');
+  setTimeout(() => { toast.style.opacity = '0'; setTimeout(() => toast.remove(), 300); }, 4000);
+}
+
 // Initialize Supabase using shared config
 const supabase = window.supabase.createClient(
   window.SUPABASE_CONFIG.url,
@@ -13,6 +31,7 @@ const judgePortal = {
   assignedEntries: [],
   currentEntry: null,
   currentScore: null,
+  blindMode: true, // Anonymise company names and logos for impartial judging
   scoringCriteria: [
     { id: 'innovation_score', name: 'Innovation & Creativity', maxScore: 10, weight: 0.2 },
     { id: 'impact_score', name: 'Business Impact', maxScore: 10, weight: 0.3 },
@@ -69,7 +88,29 @@ const judgePortal = {
    * Get judge from session (simplified - use proper auth in production)
    */
   getJudgeFromSession() {
-    return localStorage.getItem('judgeEmail') || 'judge@example.com'; // Placeholder
+    return localStorage.getItem('judgeEmail') || null;
+  },
+
+  /**
+   * Anonymise a company name for blind judging
+   * Uses a consistent hash so the same company always gets the same code
+   */
+  anonymise(text) {
+    if (!this.blindMode || !text) return text;
+    let hash = 0;
+    for (let i = 0; i < text.length; i++) {
+      hash = ((hash << 5) - hash) + text.charCodeAt(i);
+      hash |= 0;
+    }
+    return `Entry #${Math.abs(hash).toString(36).toUpperCase().slice(0, 6)}`;
+  },
+
+  /**
+   * Get display name — anonymised in blind mode
+   */
+  getCompanyDisplay(entry) {
+    if (this.blindMode) return this.anonymise(entry.organisations?.company_name || entry.id);
+    return entry.organisations?.company_name || 'Unknown';
   },
 
   /**
@@ -112,7 +153,7 @@ const judgePortal = {
 
     } catch (error) {
       console.error('Error loading entries:', error);
-      alert('Failed to load entries: ' + error.message);
+      showPortalToast('Failed to load entries: ' + error.message, 'error');
     }
   },
 
@@ -139,7 +180,7 @@ const judgePortal = {
       <div class="entry-card ${entry.hasScored ? 'scored' : ''} ${this.currentEntry?.id === entry.id ? 'active' : ''}"
            onclick="judgePortal.selectEntry('${entry.id}')">
         <div class="d-flex justify-content-between align-items-start mb-2">
-          <strong class="text-truncate">${entry.organisations?.company_name || 'Unknown'}</strong>
+          <strong class="text-truncate">${this.getCompanyDisplay(entry)}</strong>
           ${entry.hasScored ? '<i class="bi bi-check-circle-fill text-success"></i>' : ''}
         </div>
         <div class="small text-muted mb-1">${entry.awards?.award_name || ''}</div>
@@ -176,7 +217,7 @@ const judgePortal = {
       <div class="entry-card ${entry.hasScored ? 'scored' : ''} ${this.currentEntry?.id === entry.id ? 'active' : ''}"
            onclick="judgePortal.selectEntry('${entry.id}')">
         <div class="d-flex justify-content-between align-items-start mb-2">
-          <strong class="text-truncate">${entry.organisations?.company_name || 'Unknown'}</strong>
+          <strong class="text-truncate">${this.getCompanyDisplay(entry)}</strong>
           ${entry.hasScored ? '<i class="bi bi-check-circle-fill text-success"></i>' : ''}
         </div>
         <div class="small text-muted mb-1">${entry.awards?.award_name || ''}</div>
@@ -264,13 +305,18 @@ const judgePortal = {
   renderJudgingPanel(hasConflict) {
     const panel = document.getElementById('judgingPanel');
 
+    const companyDisplay = this.getCompanyDisplay(this.currentEntry);
+
     panel.innerHTML = `
+      <!-- Blind Mode Indicator -->
+      ${this.blindMode ? '<div class="alert alert-info py-2 mb-3"><i class="bi bi-eye-slash me-2"></i><strong>Blind Judging Mode</strong> — Company identities are hidden to ensure impartial scoring.</div>' : ''}
+
       <!-- Entry Header -->
       <div class="d-flex justify-content-between align-items-start mb-4">
         <div>
           <h3 class="mb-1">${this.currentEntry.entry_title}</h3>
           <p class="text-muted mb-0">
-            ${this.currentEntry.organisations?.company_name || 'Unknown Company'}
+            ${companyDisplay}
             | ${this.currentEntry.awards?.award_name || ''}
           </p>
         </div>
@@ -519,7 +565,7 @@ const judgePortal = {
 
       if (error) throw error;
 
-      alert(isComplete ? 'Score submitted successfully!' : 'Score saved as draft');
+      showPortalToast(isComplete ? 'Score submitted successfully!' : 'Score saved as draft', isComplete ? 'success' : 'info');
 
       // Reload entries to update status
       await this.loadAssignedEntries();
@@ -532,7 +578,7 @@ const judgePortal = {
 
     } catch (error) {
       console.error('Error saving score:', error);
-      alert('Failed to save score: ' + error.message);
+      showPortalToast('Failed to save score: ' + error.message, 'error');
     }
   },
 
@@ -546,7 +592,7 @@ const judgePortal = {
     if (nextIndex < this.assignedEntries.length) {
       this.selectEntry(this.assignedEntries[nextIndex].id);
     } else {
-      alert('You have reviewed all assigned entries!');
+      showPortalToast('You have reviewed all assigned entries!', 'success');
     }
   },
 

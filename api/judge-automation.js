@@ -10,11 +10,15 @@
  */
 
 const { createClient } = require('@supabase/supabase-js');
+const { Resend } = require('resend');
 
 const supabase = createClient(
   process.env.SUPABASE_URL,
   process.env.SUPABASE_SERVICE_KEY
 );
+
+const resend = new Resend(process.env.RESEND_API_KEY);
+const APP_URL = process.env.APP_URL || 'https://admin.britishtrade.com';
 
 /**
  * Assign judges to entries automatically
@@ -337,28 +341,63 @@ async function generateAllShortlists(topN = 5) {
  * Send judge assignment email
  */
 async function sendJudgeAssignmentEmail(judge, entry) {
-  console.log(`📧 Sending assignment email to ${judge.email}`);
-
-  // TODO: Integrate with email service
-  // Email content:
-  // - You have been assigned to judge entry X
-  // - Award category
-  // - Deadline
-  // - Link to judge portal
+  try {
+    await resend.emails.send({
+      from: process.env.FROM_EMAIL || 'awards@britishtrade.com',
+      to: judge.email,
+      subject: `Judge Assignment: ${entry.awards?.award_name || 'British Trade Awards'}`,
+      html: `
+        <h2>British Trade Awards - Judge Assignment</h2>
+        <p>Dear ${judge.full_name || judge.email},</p>
+        <p>You have been assigned to judge the following entry:</p>
+        <ul>
+          <li><strong>Award:</strong> ${entry.awards?.award_name || 'N/A'}</li>
+          <li><strong>Entry:</strong> ${entry.entry_number || entry.id}</li>
+          <li><strong>Category:</strong> ${entry.awards?.sector || 'N/A'}</li>
+        </ul>
+        <p>Please log in to the Judge Portal to begin scoring:</p>
+        <p><a href="${APP_URL}/judge-portal.html" style="background:#0d6efd;color:#fff;padding:12px 24px;text-decoration:none;border-radius:6px;display:inline-block;">Open Judge Portal</a></p>
+        <p>Thank you for your time and expertise.</p>
+        <p><em>British Trade Awards Team</em></p>
+      `
+    });
+    console.log(`Email sent: judge assignment to ${judge.email}`);
+  } catch (e) {
+    console.error(`Failed to send judge assignment email to ${judge.email}:`, e.message);
+  }
 }
 
 /**
  * Send shortlist notification email
  */
 async function sendShortlistNotificationEmail(entry) {
-  console.log(`📧 Sending shortlist notification to ${entry.contact_email}`);
+  try {
+    const toEmail = entry.contact_email || entry.organisations?.email;
+    if (!toEmail) return;
 
-  // TODO: Integrate with email service
-  // Email content:
-  // - Congratulations on being shortlisted
-  // - Award name
-  // - Next steps
-  // - Winner announcement date
+    await resend.emails.send({
+      from: process.env.FROM_EMAIL || 'awards@britishtrade.com',
+      to: toEmail,
+      subject: `Congratulations! You've been shortlisted - ${entry.awards?.award_name || 'British Trade Awards'}`,
+      html: `
+        <h2>British Trade Awards - Shortlist Notification</h2>
+        <p>Dear ${entry.contact_name || 'Nominee'},</p>
+        <p>We are delighted to inform you that <strong>${entry.organisations?.company_name || 'your company'}</strong> has been shortlisted for the <strong>${entry.awards?.award_name || ''}</strong>.</p>
+        <p>This is a significant achievement and recognises the outstanding work of your organisation.</p>
+        <h3>Next Steps</h3>
+        <ul>
+          <li>Winners will be announced at the awards ceremony</li>
+          <li>You will receive further details about the ceremony shortly</li>
+          <li>In the meantime, feel free to share this great news</li>
+        </ul>
+        <p>Congratulations once again!</p>
+        <p><em>British Trade Awards Team</em></p>
+      `
+    });
+    console.log(`Email sent: shortlist notification to ${toEmail}`);
+  } catch (e) {
+    console.error(`Failed to send shortlist notification:`, e.message);
+  }
 }
 
 /**

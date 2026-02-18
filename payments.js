@@ -1309,11 +1309,31 @@ const paymentsModule = {
   // ============================================
   // ACCOUNTING INTEGRATION (moved from Organisations)
   // ============================================
-  _accountingConfig: JSON.parse(localStorage.getItem('orgAccountingConfig') || '{}'),
+  _accountingConfig: {},
 
-  loadAccountingIntegration() {
+  async _loadAccountingConfig() {
+    try {
+      if (typeof STATE !== 'undefined' && STATE.client) {
+        const { data } = await STATE.client.from('user_preferences').select('value').eq('key', 'orgAccountingConfig').single();
+        if (data) { this._accountingConfig = JSON.parse(data.value); return; }
+      }
+    } catch (e) {}
+    try { this._accountingConfig = JSON.parse(localStorage.getItem('orgAccountingConfig') || '{}'); } catch (e) { this._accountingConfig = {}; }
+  },
+
+  async _saveAccountingConfig() {
+    try {
+      if (typeof STATE !== 'undefined' && STATE.client) {
+        await STATE.client.from('user_preferences').upsert({ key: 'orgAccountingConfig', value: JSON.stringify(this._accountingConfig), updated_at: new Date().toISOString() }, { onConflict: 'key' });
+      }
+    } catch (e) {}
+    localStorage.setItem('orgAccountingConfig', JSON.stringify(this._accountingConfig));
+  },
+
+  async loadAccountingIntegration() {
     const container = document.getElementById('accountingIntegrationContainer');
     if (!container) return;
+    await this._loadAccountingConfig();
     const config = this._accountingConfig;
     const connected = config.connected || false;
     const provider = config.provider || 'xero';
@@ -1357,39 +1377,39 @@ const paymentsModule = {
       </div></div>`;
   },
 
-  _setAccountingProvider(p) {
+  async _setAccountingProvider(p) {
     this._accountingConfig.provider = p;
-    localStorage.setItem('orgAccountingConfig', JSON.stringify(this._accountingConfig));
+    await this._saveAccountingConfig();
     this.loadAccountingIntegration();
   },
 
-  _connectAccounting() {
+  async _connectAccounting() {
     const clientId = document.getElementById('accountingClientId')?.value?.trim();
     if (!clientId) { utils.showToast('Enter a Client ID', 'warning'); return; }
     this._accountingConfig.connected = true;
     this._accountingConfig.clientId = clientId;
     this._accountingConfig.connectedAt = new Date().toISOString();
     this._accountingConfig.syncHistory = this._accountingConfig.syncHistory || [];
-    localStorage.setItem('orgAccountingConfig', JSON.stringify(this._accountingConfig));
+    await this._saveAccountingConfig();
     utils.showToast('Connected to ' + (this._accountingConfig.provider==='xero'?'Xero':'QuickBooks'), 'success');
     this.loadAccountingIntegration();
   },
 
-  _disconnectAccounting() {
+  async _disconnectAccounting() {
     if (!confirm('Disconnect accounting integration?')) return;
     this._accountingConfig.connected = false;
-    localStorage.setItem('orgAccountingConfig', JSON.stringify(this._accountingConfig));
+    await this._saveAccountingConfig();
     utils.showToast('Disconnected', 'success');
     this.loadAccountingIntegration();
   },
 
   _runAccountingSync() {
     utils.showToast('Syncing...', 'info');
-    setTimeout(() => {
+    setTimeout(async () => {
       this._accountingConfig.lastSync = new Date().toISOString();
       this._accountingConfig.syncHistory = this._accountingConfig.syncHistory || [];
       this._accountingConfig.syncHistory.unshift({ date: new Date().toISOString(), status: 'success', details: `Synced ${Math.floor(Math.random()*20)+5} invoices, ${Math.floor(Math.random()*10)+1} payments` });
-      localStorage.setItem('orgAccountingConfig', JSON.stringify(this._accountingConfig));
+      await this._saveAccountingConfig();
       utils.showToast('Sync complete', 'success');
       this.loadAccountingIntegration();
     }, 1500);

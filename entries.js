@@ -6,6 +6,8 @@ const entriesModule = {
   allEntries: [],
   filteredEntries: [],
   selectedEntryIds: new Set(),
+  _currentPage: 1,
+  _pageSize: 50,
   currentFilters: {
     status: '',
     award: '',
@@ -74,19 +76,40 @@ const entriesModule = {
    */
   async loadEntries() {
     try {
-      const { data: entries, error } = await STATE.client
-        .from('entries')
-        .select(`
-          *,
-          organisations(company_name, logo_url),
-          award_years(award_name, sector, county)
-        `)
-        .order('submission_date', { ascending: false });
+      // Paginated loading to handle large datasets
+      let allData = [];
+      let page = 0;
+      const pageSize = 1000;
+      let hasMore = true;
 
-      if (error) throw error;
+      while (hasMore) {
+        const from = page * pageSize;
+        const to = from + pageSize - 1;
 
-      this.allEntries = entries || [];
+        const { data, error } = await STATE.client
+          .from('entries')
+          .select(`
+            *,
+            organisations(company_name, logo_url),
+            award_years(award_name, sector, county)
+          `)
+          .order('submission_date', { ascending: false })
+          .range(from, to);
+
+        if (error) throw error;
+
+        if (!data || data.length === 0) {
+          hasMore = false;
+        } else {
+          allData = allData.concat(data);
+          page++;
+          if (data.length < pageSize) hasMore = false;
+        }
+      }
+
+      this.allEntries = allData;
       this.filteredEntries = [...this.allEntries];
+      this._currentPage = 1;
       this.renderEntries();
 
     } catch (error) {

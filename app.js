@@ -6,11 +6,31 @@
 // SCHEDULED REPORTS MODULE (Reports tab)
 // ============================================
 const reportsScheduler = {
-  _scheduledReports: JSON.parse(localStorage.getItem('orgScheduledReports') || '[]'),
+  _scheduledReports: [],
 
-  loadReports() {
+  async _loadScheduledReports() {
+    try {
+      if (typeof STATE !== 'undefined' && STATE.client) {
+        const { data } = await STATE.client.from('user_preferences').select('value').eq('key', 'orgScheduledReports').single();
+        if (data) { this._scheduledReports = JSON.parse(data.value); return; }
+      }
+    } catch (e) {}
+    try { this._scheduledReports = JSON.parse(localStorage.getItem('orgScheduledReports') || '[]'); } catch (e) { this._scheduledReports = []; }
+  },
+
+  async _saveScheduledReports() {
+    try {
+      if (typeof STATE !== 'undefined' && STATE.client) {
+        await STATE.client.from('user_preferences').upsert({ key: 'orgScheduledReports', value: JSON.stringify(this._scheduledReports), updated_at: new Date().toISOString() }, { onConflict: 'key' });
+      }
+    } catch (e) {}
+    localStorage.setItem('orgScheduledReports', JSON.stringify(this._scheduledReports));
+  },
+
+  async loadReports() {
     const container = document.getElementById('scheduledReportsGrid');
     if (!container) return;
+    await this._loadScheduledReports();
     const reports = this._scheduledReports;
     if (reports.length === 0) {
       container.innerHTML = `<div class="text-center py-4 text-muted">
@@ -69,7 +89,7 @@ const reportsScheduler = {
     new bootstrap.Modal(document.getElementById('createScheduledReportModal')).show();
   },
 
-  _saveReport() {
+  async _saveReport() {
     const name = document.getElementById('reportName')?.value?.trim();
     const frequency = document.getElementById('reportFrequency')?.value;
     const recipients = document.getElementById('reportRecipients')?.value?.trim();
@@ -77,7 +97,7 @@ const reportsScheduler = {
     const sections = Array.from(document.querySelectorAll('.rpt-section:checked')).map(cb => cb.value);
     if (sections.length === 0) { utils.showToast('Select at least one section', 'warning'); return; }
     this._scheduledReports.push({ name, frequency, recipients, sections, active: true, created: new Date().toISOString() });
-    localStorage.setItem('orgScheduledReports', JSON.stringify(this._scheduledReports));
+    await this._saveScheduledReports();
     utils.showToast('Report schedule created', 'success');
     bootstrap.Modal.getInstance(document.getElementById('createScheduledReportModal'))?.hide();
     this.loadReports();
@@ -105,10 +125,10 @@ const reportsScheduler = {
     new bootstrap.Modal(document.getElementById('reportPreviewModal')).show();
   },
 
-  deleteReport(i) {
+  async deleteReport(i) {
     if (!confirm('Delete this report schedule?')) return;
     this._scheduledReports.splice(i, 1);
-    localStorage.setItem('orgScheduledReports', JSON.stringify(this._scheduledReports));
+    await this._saveScheduledReports();
     this.loadReports();
   }
 };
@@ -490,9 +510,18 @@ document.addEventListener('DOMContentLoaded', function() {
   authModule.initSupabase();
   
   // ==========================================
+  // STEP 1b: Initialize Security, Accessibility, and Stripe
+  // ==========================================
+  if (typeof securityModule !== 'undefined') securityModule.init();
+  if (typeof a11yModule !== 'undefined') a11yModule.init();
+  if (typeof stripeFrontend !== 'undefined') stripeFrontend.init();
+  if (typeof i18n !== 'undefined') i18n.init();
+  if (typeof tenantModule !== 'undefined') tenantModule.init();
+
+  // ==========================================
   // STEP 2: Set up event listeners
   // ==========================================
-  
+
   // --- Login Form ---
   const loginForm = document.getElementById('loginForm');
   const loginBtn = document.getElementById('loginBtn');
@@ -772,17 +801,36 @@ document.addEventListener('DOMContentLoaded', function() {
   });
   
   // ==========================================
-  // STEP 7: Error Handling
+  // STEP 7: Error Handling + Sentry Monitoring
   // ==========================================
+  // Initialize Sentry if available (loaded via CDN in index.html)
+  if (typeof Sentry !== 'undefined' && window.SENTRY_DSN) {
+    Sentry.init({
+      dsn: window.SENTRY_DSN,
+      environment: window.location.hostname === 'localhost' ? 'development' : 'production',
+      release: 'awards-cms@2.1.0',
+      integrations: [Sentry.browserTracingIntegration()],
+      tracesSampleRate: 0.2,
+      beforeSend(event) {
+        // Strip PII from error reports
+        if (event.user) { delete event.user.email; delete event.user.ip_address; }
+        return event;
+      }
+    });
+    console.log('Sentry error monitoring initialized');
+  }
+
   // Global error handler
   window.addEventListener('error', (e) => {
     console.error('Global error:', e.error);
+    if (typeof Sentry !== 'undefined') Sentry.captureException(e.error);
     utils.showToast('An unexpected error occurred', 'error');
   });
-  
+
   // Unhandled promise rejection handler
   window.addEventListener('unhandledrejection', (e) => {
     console.error('Unhandled promise rejection:', e.reason);
+    if (typeof Sentry !== 'undefined') Sentry.captureException(e.reason);
     utils.showToast('An unexpected error occurred', 'error');
   });
   
@@ -935,6 +983,42 @@ document.addEventListener('DOMContentLoaded', function() {
   tooltipTriggerList.map(function (tooltipTriggerEl) {
     return new bootstrap.Tooltip(tooltipTriggerEl);
   });
+
+  // ==========================================
+  // STEP 13: Realtime Subscriptions
+  // ==========================================
+  // Subscribe to changes on key tables so multi-user edits are visible
+  function setupRealtimeSync() {
+    if (!STATE.client) return;
+    const tables = [
+      { table: 'awards', handler: () => { if (typeof awardsModule !== 'undefined' && STATE.allAwards.length > 0) awardsModule.loadAwards(); } },
+      { table: 'winners', handler: () => { if (typeof winnersModule !== 'undefined' && STATE.allWinners.length > 0) winnersModule.loadWinners(); } },
+      { table: 'entries', handler: () => { if (typeof entriesModule !== 'undefined' && entriesModule.allEntries.length > 0) entriesModule.loadEntries(); } },
+      { table: 'events', handler: () => { if (typeof eventsModule !== 'undefined' && STATE.allEvents.length > 0) eventsModule.loadEvents(); } },
+      { table: 'invoices', handler: () => { if (typeof paymentsModule !== 'undefined' && paymentsModule.currentInvoices.length > 0) paymentsModule.loadAllData(); } }
+    ];
+
+    const debouncedHandlers = {};
+    tables.forEach(({ table, handler }) => {
+      debouncedHandlers[table] = utils.debounce(() => {
+        handler();
+        utils.showToast(`${table} updated by another user`, 'info');
+      }, 2000);
+    });
+
+    STATE.client
+      .channel('cms-realtime')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'awards' }, () => debouncedHandlers.awards())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'winners' }, () => debouncedHandlers.winners())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'entries' }, () => debouncedHandlers.entries())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'events' }, () => debouncedHandlers.events())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'invoices' }, () => debouncedHandlers.invoices())
+      .subscribe((status) => {
+        if (status === 'SUBSCRIBED') console.log('Realtime subscriptions active');
+      });
+  }
+  // Delay realtime setup until after auth completes
+  setTimeout(setupRealtimeSync, 3000);
 
   // ==========================================
   // INITIALIZATION COMPLETE

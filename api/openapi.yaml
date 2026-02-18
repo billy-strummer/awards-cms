@@ -1,0 +1,658 @@
+openapi: 3.0.3
+info:
+  title: British Trade Awards CMS API
+  description: |
+    REST API documentation for the British Trade Awards content management system.
+    Built on Supabase (PostgREST auto-generated endpoints) plus custom Edge Functions.
+  version: 1.0.0
+  contact:
+    name: BTA Development Team
+    email: dev@britishtrade.com
+
+servers:
+  - url: https://{project}.supabase.co/rest/v1
+    description: Supabase REST API (auto-generated)
+    variables:
+      project:
+        default: your-project-ref
+  - url: https://{project}.supabase.co/functions/v1
+    description: Supabase Edge Functions
+    variables:
+      project:
+        default: your-project-ref
+
+security:
+  - bearerAuth: []
+  - apiKeyAuth: []
+
+tags:
+  - name: Awards
+    description: Award categories and seasons
+  - name: Organisations
+    description: Participating companies
+  - name: Entries
+    description: Award entries and submissions
+  - name: Winners
+    description: Confirmed winners
+  - name: Events
+    description: Ceremony and event management
+  - name: Media
+    description: Media gallery assets
+  - name: Social Media
+    description: Social media post management
+  - name: Judging
+    description: Judge portal and scoring
+  - name: GDPR
+    description: Data protection requests
+  - name: Email
+    description: Email sending via Resend
+  - name: Payments
+    description: Stripe payment integration
+  - name: Auth
+    description: Authentication and RBAC
+
+paths:
+  /awards:
+    get:
+      tags: [Awards]
+      summary: List all awards
+      parameters:
+        - $ref: '#/components/parameters/select'
+        - $ref: '#/components/parameters/order'
+        - $ref: '#/components/parameters/limit'
+        - $ref: '#/components/parameters/offset'
+        - name: season
+          in: query
+          schema:
+            type: string
+          description: Filter by season (e.g., eq.2025)
+        - name: is_active
+          in: query
+          schema:
+            type: string
+          description: Filter by active status (e.g., eq.true)
+      responses:
+        '200':
+          description: List of awards
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Award'
+    post:
+      tags: [Awards]
+      summary: Create a new award
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AwardCreate'
+      responses:
+        '201':
+          description: Award created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Award'
+
+  /awards?id=eq.{id}:
+    patch:
+      tags: [Awards]
+      summary: Update an award
+      parameters:
+        - name: id
+          in: query
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AwardCreate'
+      responses:
+        '200':
+          description: Award updated
+    delete:
+      tags: [Awards]
+      summary: Delete an award
+      parameters:
+        - name: id
+          in: query
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '204':
+          description: Award deleted
+
+  /organisations:
+    get:
+      tags: [Organisations]
+      summary: List organisations
+      parameters:
+        - $ref: '#/components/parameters/select'
+        - $ref: '#/components/parameters/order'
+        - $ref: '#/components/parameters/limit'
+        - $ref: '#/components/parameters/offset'
+        - name: company_name
+          in: query
+          schema:
+            type: string
+          description: Filter by company name (e.g., ilike.*search*)
+      responses:
+        '200':
+          description: List of organisations
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Organisation'
+    post:
+      tags: [Organisations]
+      summary: Create organisation
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OrganisationCreate'
+      responses:
+        '201':
+          description: Organisation created
+
+  /entries:
+    get:
+      tags: [Entries]
+      summary: List entries
+      parameters:
+        - $ref: '#/components/parameters/select'
+        - $ref: '#/components/parameters/order'
+        - $ref: '#/components/parameters/limit'
+        - $ref: '#/components/parameters/offset'
+        - name: award_id
+          in: query
+          schema:
+            type: string
+          description: Filter by award (e.g., eq.uuid)
+        - name: status
+          in: query
+          schema:
+            type: string
+          description: Filter by status
+      responses:
+        '200':
+          description: List of entries
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Entry'
+    post:
+      tags: [Entries]
+      summary: Create entry
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EntryCreate'
+      responses:
+        '201':
+          description: Entry created
+
+  /winners:
+    get:
+      tags: [Winners]
+      summary: List winners
+      parameters:
+        - $ref: '#/components/parameters/select'
+        - $ref: '#/components/parameters/order'
+        - $ref: '#/components/parameters/limit'
+        - $ref: '#/components/parameters/offset'
+        - name: season
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: List of winners
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Winner'
+
+  /events:
+    get:
+      tags: [Events]
+      summary: List events
+      parameters:
+        - $ref: '#/components/parameters/select'
+        - $ref: '#/components/parameters/order'
+        - $ref: '#/components/parameters/limit'
+        - $ref: '#/components/parameters/offset'
+      responses:
+        '200':
+          description: List of events
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Event'
+
+  /media_gallery:
+    get:
+      tags: [Media]
+      summary: List media gallery items
+      parameters:
+        - $ref: '#/components/parameters/select'
+        - $ref: '#/components/parameters/order'
+        - $ref: '#/components/parameters/limit'
+        - $ref: '#/components/parameters/offset'
+      responses:
+        '200':
+          description: List of media items
+
+  /social_media_posts:
+    get:
+      tags: [Social Media]
+      summary: List social media posts
+      parameters:
+        - $ref: '#/components/parameters/select'
+        - $ref: '#/components/parameters/order'
+        - name: status
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: List of social media posts
+
+  /gdpr_requests:
+    get:
+      tags: [GDPR]
+      summary: List GDPR data requests
+      responses:
+        '200':
+          description: List of GDPR requests
+    post:
+      tags: [GDPR]
+      summary: Submit a GDPR request
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                request_type:
+                  type: string
+                  enum: [export, delete, anonymize]
+                entity_type:
+                  type: string
+                  enum: [organisation, contact, entry, attendee]
+                entity_id:
+                  type: string
+                  format: uuid
+                requester_email:
+                  type: string
+                  format: email
+      responses:
+        '201':
+          description: Request submitted
+
+  /rpc/anonymize_organisation:
+    post:
+      tags: [GDPR]
+      summary: Anonymise an organisation's data
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                p_org_id:
+                  type: string
+                  format: uuid
+      responses:
+        '200':
+          description: Organisation anonymised
+
+  # Edge Functions
+  /send-email:
+    post:
+      tags: [Email]
+      summary: Send transactional email via Resend
+      description: Sends an email using the Resend.com API with branded templates
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [to, subject]
+              properties:
+                to:
+                  type: string
+                  format: email
+                subject:
+                  type: string
+                html:
+                  type: string
+                template:
+                  type: string
+                  enum: [winner_notification, event_invitation, entry_confirmation, payment_reminder, shortlist_notification, judge_assignment, ticket_issued]
+                templateData:
+                  type: object
+      responses:
+        '200':
+          description: Email sent
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                  success:
+                    type: boolean
+
+  /create-checkout-session:
+    post:
+      tags: [Payments]
+      summary: Create a Stripe checkout session
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                priceId:
+                  type: string
+                organisationId:
+                  type: string
+                  format: uuid
+                successUrl:
+                  type: string
+                  format: uri
+                cancelUrl:
+                  type: string
+                  format: uri
+      responses:
+        '200':
+          description: Checkout session created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  sessionId:
+                    type: string
+                  url:
+                    type: string
+                    format: uri
+
+  /publish-social-post:
+    post:
+      tags: [Social Media]
+      summary: Publish a post to social media platforms
+      description: Publishes to Twitter/X, LinkedIn, Facebook, and/or Instagram
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [postId]
+              properties:
+                postId:
+                  type: string
+                  format: uuid
+      responses:
+        '200':
+          description: Publish results
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  results:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        platform:
+                          type: string
+                        postId:
+                          type: string
+                        url:
+                          type: string
+                  errors:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        platform:
+                          type: string
+                        error:
+                          type: string
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: Supabase JWT token from auth
+    apiKeyAuth:
+      type: apiKey
+      in: header
+      name: apikey
+      description: Supabase anon key
+
+  parameters:
+    select:
+      name: select
+      in: query
+      schema:
+        type: string
+      description: Columns to return (e.g., id,name,email)
+    order:
+      name: order
+      in: query
+      schema:
+        type: string
+      description: Sort order (e.g., created_at.desc)
+    limit:
+      name: limit
+      in: query
+      schema:
+        type: integer
+        default: 100
+      description: Max records to return
+    offset:
+      name: offset
+      in: query
+      schema:
+        type: integer
+        default: 0
+      description: Number of records to skip
+
+  schemas:
+    Award:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        award_name:
+          type: string
+        award_description:
+          type: string
+        season:
+          type: string
+        is_active:
+          type: boolean
+        voting_open:
+          type: boolean
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    AwardCreate:
+      type: object
+      required: [award_name, season]
+      properties:
+        award_name:
+          type: string
+        award_description:
+          type: string
+        season:
+          type: string
+        is_active:
+          type: boolean
+          default: true
+
+    Organisation:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        company_name:
+          type: string
+        email:
+          type: string
+          format: email
+        phone:
+          type: string
+        website:
+          type: string
+          format: uri
+        address:
+          type: string
+        postcode:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+
+    OrganisationCreate:
+      type: object
+      required: [company_name]
+      properties:
+        company_name:
+          type: string
+        email:
+          type: string
+          format: email
+        phone:
+          type: string
+        website:
+          type: string
+        address:
+          type: string
+        postcode:
+          type: string
+
+    Entry:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        organisation_id:
+          type: string
+          format: uuid
+        award_id:
+          type: string
+          format: uuid
+        status:
+          type: string
+          enum: [pending, shortlisted, winner, finalist, rejected]
+        entry_text:
+          type: string
+        vote_count:
+          type: integer
+        created_at:
+          type: string
+          format: date-time
+
+    EntryCreate:
+      type: object
+      required: [organisation_id, award_id]
+      properties:
+        organisation_id:
+          type: string
+          format: uuid
+        award_id:
+          type: string
+          format: uuid
+        entry_text:
+          type: string
+        status:
+          type: string
+          default: pending
+
+    Winner:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        entry_id:
+          type: string
+          format: uuid
+        organisation_id:
+          type: string
+          format: uuid
+        award_id:
+          type: string
+          format: uuid
+        season:
+          type: string
+        placement:
+          type: string
+          enum: [winner, runner_up, highly_commended]
+        confirmed:
+          type: boolean
+        created_at:
+          type: string
+          format: date-time
+
+    Event:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        event_name:
+          type: string
+        event_date:
+          type: string
+          format: date-time
+        venue:
+          type: string
+        event_status:
+          type: string
+          enum: [planning, confirmed, complete, cancelled]
+        capacity:
+          type: integer
+        notes:
+          type: string
+        created_at:
+          type: string
+          format: date-time

@@ -11,15 +11,15 @@
  */
 
 const { createClient } = require('@supabase/supabase-js');
-const sgMail = require('@sendgrid/mail');
+const { Resend } = require('resend');
 
 const supabase = createClient(
   process.env.SUPABASE_URL,
   process.env.SUPABASE_SERVICE_KEY
 );
 
-// Initialize SendGrid
-sgMail.setApiKey(process.env.SENDGRID_API_KEY);
+// Initialize Resend (replacing SendGrid)
+const resend = new Resend(process.env.RESEND_API_KEY);
 
 /**
  * Email wrapper - provides consistent BTA branding for all emails
@@ -357,14 +357,12 @@ async function sendTemplateEmail(templateKey, toEmail, variables) {
       html = html.replace(regex, value || '');
     }
 
-    const msg = {
+    await resend.emails.send({
       to: toEmail,
       from: process.env.FROM_EMAIL || 'awards@britishtrade.com',
       subject: subject,
       html: html
-    };
-
-    await sgMail.send(msg);
+    });
 
     // Log email sent
     await logEmailSent(templateKey, toEmail, subject);
@@ -402,9 +400,9 @@ async function sendEntryConfirmation(entryId) {
       award_name: entry.awards.award_name,
       entry_title: entry.entry_title,
       judging_start: 'January 15, 2025',
-      judging_end: 'February 15, 2025',
+      judging_end: 'TBC',
       shortlist_date: 'February 25, 2025',
-      winner_date: 'March 15, 2025'
+      winner_date: 'TBC'
     };
 
     return await sendTemplateEmail('ENTRY_CONFIRMATION', entry.contact_email, variables);
@@ -449,11 +447,11 @@ async function sendDeadlineReminders() {
         const variables = {
           judge_name: judge.full_name,
           days_left: '7', // Calculate actual days
-          deadline: 'February 15, 2025',
+          deadline: 'TBC',
           scored_count: completed,
           total_count: totalAssigned,
           pending_count: pending,
-          judge_portal_link: 'https://yourdomain.com/judge-portal.html'
+          judge_portal_link: '${process.env.APP_URL || 'https://admin.britishtrade.com'}/judge-portal.html'
         };
 
         await sendTemplateEmail('JUDGE_REMINDER', judge.email, variables);
@@ -495,9 +493,9 @@ async function sendJudgeAssignments(judgeEmail, entryIds) {
     const variables = {
       judge_name: judge.full_name || judge.email,
       entry_count: entryIds.length,
-      deadline: 'February 15, 2025',
+      deadline: 'TBC',
       award_list: awardList,
-      judge_portal_link: 'https://yourdomain.com/judge-portal.html'
+      judge_portal_link: '${process.env.APP_URL || 'https://admin.britishtrade.com'}/judge-portal.html'
     };
 
     return await sendTemplateEmail('JUDGE_ASSIGNMENT', judgeEmail, variables);
@@ -531,9 +529,9 @@ async function sendWinnerAnnouncements(awardId = null) {
         contact_name: winner.contact_name,
         company_name: winner.organisations.company_name,
         award_name: winner.awards.award_name,
-        ceremony_date: 'March 20, 2025',
+        ceremony_date: 'TBC',
         ceremony_venue: 'The Grand Hall, London',
-        winners_portal_link: 'https://yourdomain.com/winners-portal.html'
+        winners_portal_link: '${process.env.APP_URL || 'https://admin.britishtrade.com'}/winners-portal.html'
       };
 
       await sendTemplateEmail('WINNER_ANNOUNCEMENT', winner.contact_email, variables);
@@ -574,10 +572,10 @@ async function sendShortlistNotifications(awardId = null) {
         contact_name: entry.contact_name,
         company_name: entry.organisations.company_name,
         award_name: entry.awards.award_name,
-        winner_date: 'March 15, 2025',
-        ceremony_date: 'March 20, 2025',
+        winner_date: 'TBC',
+        ceremony_date: 'TBC',
         ceremony_venue: 'The Grand Hall, London',
-        ceremony_tickets_link: 'https://yourdomain.com/tickets'
+        ceremony_tickets_link: '${process.env.APP_URL || 'https://admin.britishtrade.com'}/tickets'
       };
 
       await sendTemplateEmail('SHORTLIST_NOTIFICATION', entry.contact_email, variables);

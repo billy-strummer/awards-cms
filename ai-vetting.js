@@ -14,13 +14,8 @@ const aiVettingModule = {
     const modal = new bootstrap.Modal(document.getElementById('aiVettingModal'));
     modal.show();
 
-    // Check if API key is configured
-    const apiKey = localStorage.getItem('claude_api_key');
-    if (!apiKey) {
-      document.getElementById('vettingConfigAlert').style.display = 'block';
-    } else {
-      document.getElementById('vettingConfigAlert').style.display = 'none';
-    }
+    // API key is now server-side - no client-side config needed
+    document.getElementById('vettingConfigAlert').style.display = 'none';
 
     // Load existing results
     await this.loadVettingResults();
@@ -184,14 +179,6 @@ const aiVettingModule = {
    * Run AI vetting for all companies
    */
   async runVetting() {
-    // Check if API key is configured
-    const apiKey = localStorage.getItem('claude_api_key');
-    if (!apiKey) {
-      utils.showToast('Please configure your Claude API key in Settings first', 'error');
-      document.getElementById('vettingConfigAlert').style.display = 'block';
-      return;
-    }
-
     if (this.isVetting) {
       utils.showToast('Vetting is already in progress', 'warning');
       return;
@@ -229,8 +216,8 @@ const aiVettingModule = {
         document.getElementById('vettingProgressText').textContent = 'Vetting companies...';
         document.getElementById('vettingCurrentCompany').textContent = `Currently vetting: ${org.company_name}`;
 
-        // Vet company
-        const result = await this.vetSingleCompany(org, apiKey);
+        // Vet company via server-side proxy
+        const result = await this.vetSingleCompany(org);
 
         if (result.status === 'flagged') {
           flaggedCount++;
@@ -270,74 +257,19 @@ const aiVettingModule = {
   /**
    * Vet a single company using Claude API
    */
-  async vetSingleCompany(org, apiKey) {
+  async vetSingleCompany(org) {
     try {
-      const prompt = `Please analyze the following company and provide a comprehensive vetting report:
-
-Company Name: ${org.company_name}
-Sector: ${org.sector || 'Not specified'}
-Region: ${org.region || 'Not specified'}
-
-Please assess:
-1. Is this company still operational and in business?
-2. Does the sector/category match their actual business operations?
-3. What is their reputation (rate 1-10)?
-4. Any recent news about this company?
-5. Any recent ownership changes or significant business changes?
-
-Provide your response in the following JSON format:
-{
-  "is_operational": true/false,
-  "category_match": true/false,
-  "reputation_score": 1-10,
-  "recent_news": "brief summary",
-  "ownership_changes": "brief summary or null",
-  "recommendation": "brief recommendation",
-  "confidence_score": 0.0-1.0
-}`;
-
-      const response = await fetch('https://api.anthropic.com/v1/messages', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-api-key': apiKey,
-          'anthropic-version': '2023-06-01'
-        },
-        body: JSON.stringify({
-          model: 'claude-3-5-sonnet-20241022',
-          max_tokens: 1024,
-          messages: [{
-            role: 'user',
-            content: prompt
-          }]
-        })
+      // Call server-side proxy (keeps API key on server)
+      const { data: aiResult, error: fnError } = await STATE.client.functions.invoke('vet-company', {
+        body: {
+          companyName: org.company_name,
+          website: org.website || '',
+          sector: org.sector || '',
+          county: org.region || ''
+        }
       });
 
-      if (!response.ok) {
-        throw new Error(`Claude API error: ${response.statusText}`);
-      }
-
-      const data = await response.json();
-      const content = data.content[0].text;
-
-      // Parse JSON response
-      let aiResult;
-      try {
-        // Extract JSON from response (in case Claude wraps it in explanation)
-        const jsonMatch = content.match(/\{[\s\S]*\}/);
-        aiResult = JSON.parse(jsonMatch ? jsonMatch[0] : content);
-      } catch (e) {
-        // Fallback if parsing fails
-        aiResult = {
-          is_operational: true,
-          category_match: true,
-          reputation_score: 5,
-          recent_news: 'Unable to parse AI response',
-          ownership_changes: null,
-          recommendation: 'Manual review recommended',
-          confidence_score: 0.5
-        };
-      }
+      if (fnError) throw fnError;
 
       // Determine status
       const status = (!aiResult.is_operational || !aiResult.category_match || aiResult.reputation_score < 5)
@@ -359,7 +291,7 @@ Provide your response in the following JSON format:
           ai_recommendation: aiResult.recommendation,
           confidence_score: aiResult.confidence_score,
           status: status,
-          raw_response: data
+          raw_response: aiResult
         })
         .select()
         .single();

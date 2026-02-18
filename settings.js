@@ -125,6 +125,69 @@ const settingsModule = {
   },
 
   /**
+   * Restore database from a JSON backup file
+   */
+  async restoreFromBackup() {
+    if (!rbacModule || !rbacModule.guard('settings')) {
+      utils.showToast('Admin permissions required for restore', 'error');
+      return;
+    }
+
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.json';
+    input.onchange = async (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+
+      if (!confirm('WARNING: This will overwrite existing data with the backup contents. Are you sure you want to continue?')) return;
+
+      try {
+        utils.showLoading();
+        const text = await file.text();
+        const backup = JSON.parse(text);
+
+        if (!backup.version || !backup.tables) {
+          utils.showToast('Invalid backup file format', 'error');
+          return;
+        }
+
+        const tableOrder = ['awards', 'organisations', 'winners', 'events', 'media_gallery', 'gallery_sections', 'event_templates'];
+        let restored = 0;
+
+        for (const table of tableOrder) {
+          const rows = backup.tables[table];
+          if (!rows || rows.length === 0) continue;
+
+          // Upsert in batches of 500
+          for (let i = 0; i < rows.length; i += 500) {
+            const batch = rows.slice(i, i + 500);
+            const { error } = await STATE.client.from(table).upsert(batch, { onConflict: 'id', ignoreDuplicates: false });
+            if (error) {
+              console.error(`Restore error for ${table}:`, error);
+              utils.showToast(`Warning: Some ${table} records failed to restore`, 'warning');
+            } else {
+              restored += batch.length;
+            }
+          }
+        }
+
+        utils.showToast(`Restore complete: ${restored} records restored from backup (${backup.exportDate})`, 'success');
+
+        // Reload data
+        if (typeof loadAllData === 'function') loadAllData();
+
+      } catch (error) {
+        console.error('Restore error:', error);
+        utils.showToast('Failed to restore backup: ' + error.message, 'error');
+      } finally {
+        utils.hideLoading();
+      }
+    };
+    input.click();
+  },
+
+  /**
    * Export events data to CSV
    */
   async exportEventsCSV() {
@@ -356,7 +419,7 @@ British Trade Awards Team
   /**
    * Load selected email template
    */
-  loadEmailTemplate() {
+  async loadEmailTemplate() {
     const templateSelect = document.getElementById('emailTemplateSelect');
     const selectedTemplate = templateSelect.value;
 
@@ -366,13 +429,27 @@ British Trade Awards Team
       return;
     }
 
-    // Check if template is saved in localStorage first
-    const savedTemplate = localStorage.getItem(`emailTemplate_${selectedTemplate}`);
-
     let template;
-    if (savedTemplate) {
-      template = JSON.parse(savedTemplate);
-    } else {
+    try {
+      const { data, error } = await STATE.client
+        .from('user_preferences')
+        .select('value')
+        .eq('key', `email_template_${selectedTemplate}`)
+        .single();
+      if (error && error.code !== 'PGRST116') throw error;
+      if (data?.value) {
+        template = typeof data.value === 'string' ? JSON.parse(data.value) : data.value;
+      }
+    } catch (e) {
+      // Fallback to localStorage
+      const savedTemplate = localStorage.getItem(`emailTemplate_${selectedTemplate}`);
+      if (savedTemplate) {
+        template = JSON.parse(savedTemplate);
+      }
+    }
+
+    // If no saved customisation found, use built-in default
+    if (!template) {
       template = this.emailTemplates[selectedTemplate];
     }
 
@@ -385,7 +462,7 @@ British Trade Awards Team
   /**
    * Save email template to localStorage
    */
-  saveEmailTemplate() {
+  async saveEmailTemplate() {
     const templateSelect = document.getElementById('emailTemplateSelect');
     const selectedTemplate = templateSelect.value;
 
@@ -398,7 +475,19 @@ British Trade Awards Team
     const body = document.getElementById('emailBody').value;
 
     const template = { subject, body };
-    localStorage.setItem(`emailTemplate_${selectedTemplate}`, JSON.stringify(template));
+    try {
+      const { error } = await STATE.client
+        .from('user_preferences')
+        .upsert({
+          key: `email_template_${selectedTemplate}`,
+          value: JSON.stringify(template),
+          user_email: STATE.currentUser?.email
+        }, { onConflict: 'key' });
+      if (error) throw error;
+    } catch (e) {
+      // Fallback to localStorage
+      localStorage.setItem(`emailTemplate_${selectedTemplate}`, JSON.stringify(template));
+    }
 
     utils.showToast('Template saved successfully', 'success');
   },
@@ -406,7 +495,7 @@ British Trade Awards Team
   /**
    * Reset email template to default
    */
-  resetEmailTemplate() {
+  async resetEmailTemplate() {
     const templateSelect = document.getElementById('emailTemplateSelect');
     const selectedTemplate = templateSelect.value;
 
@@ -415,8 +504,16 @@ British Trade Awards Team
       return;
     }
 
-    // Remove from localStorage
-    localStorage.removeItem(`emailTemplate_${selectedTemplate}`);
+    // Remove from Supabase, fall back to clearing localStorage
+    try {
+      const { error } = await STATE.client
+        .from('user_preferences')
+        .delete()
+        .eq('key', `email_template_${selectedTemplate}`);
+      if (error) throw error;
+    } catch (e) {
+      localStorage.removeItem(`emailTemplate_${selectedTemplate}`);
+    }
 
     // Load default template
     const template = this.emailTemplates[selectedTemplate];
@@ -491,33 +588,51 @@ British Trade Awards Team
   /**
    * Log an action to the audit log
    */
-  logAction(action, entity, description, entityId = null) {
-    const logs = this.getAuditLogs();
-
+  async logAction(action, entity, description, entityId = null) {
     const logEntry = {
-      id: `log_${Date.now()}`,
-      timestamp: new Date().toISOString(),
-      action: action, // create, update, delete
-      entity: entity, // award, organisation, winner, event, media
-      description: description,
-      entityId: entityId,
-      user: STATE.currentUser?.email || 'System'
+      action,
+      entity_type: entity,
+      description,
+      entity_id: entityId,
+      user_email: STATE.currentUser?.email || 'System',
+      created_at: new Date().toISOString()
     };
 
-    logs.unshift(logEntry); // Add to beginning
-
-    // Keep only last 500 logs
-    const trimmedLogs = logs.slice(0, 500);
-
-    localStorage.setItem('audit_logs', JSON.stringify(trimmedLogs));
+    try {
+      const { error } = await STATE.client.from('cms_audit_logs').insert(logEntry);
+      if (error) throw error;
+    } catch (e) {
+      // Fallback to localStorage
+      const logs = JSON.parse(localStorage.getItem('audit_logs') || '[]');
+      logs.unshift({ id: `log_${Date.now()}`, timestamp: logEntry.created_at, ...logEntry });
+      localStorage.setItem('audit_logs', JSON.stringify(logs.slice(0, 500)));
+    }
   },
 
   /**
-   * Get all audit logs from localStorage
+   * Get audit logs from database (falls back to localStorage)
    */
-  getAuditLogs() {
-    const logs = localStorage.getItem('audit_logs');
-    return logs ? JSON.parse(logs) : [];
+  async getAuditLogs() {
+    try {
+      const { data, error } = await STATE.client
+        .from('cms_audit_logs')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .limit(500);
+      if (error) throw error;
+      return (data || []).map(log => ({
+        id: log.id,
+        timestamp: log.created_at,
+        action: log.action,
+        entity: log.entity_type,
+        description: log.description,
+        entityId: log.entity_id,
+        user: log.user_email
+      }));
+    } catch (e) {
+      const logs = localStorage.getItem('audit_logs');
+      return logs ? JSON.parse(logs) : [];
+    }
   },
 
   /**
@@ -538,8 +653,8 @@ British Trade Awards Team
   /**
    * Render audit log table
    */
-  renderAuditLog() {
-    const logs = this.getAuditLogs();
+  async renderAuditLog() {
+    const logs = await this.getAuditLogs();
     const tbody = document.getElementById('auditLogTableBody');
 
     // Apply filters
@@ -598,13 +713,18 @@ British Trade Awards Team
   /**
    * Clear audit log
    */
-  clearAuditLog() {
+  async clearAuditLog() {
     if (!confirm('Are you sure you want to clear the entire audit log? This cannot be undone.')) {
       return;
     }
 
+    try {
+      await STATE.client.from('cms_audit_logs').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+    } catch (e) {
+      // ignore
+    }
     localStorage.removeItem('audit_logs');
-    this.renderAuditLog();
+    await this.renderAuditLog();
     utils.showToast('Audit log cleared', 'success');
   },
 

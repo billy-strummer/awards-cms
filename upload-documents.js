@@ -2,6 +2,23 @@
 /* UPLOAD DOCUMENTS - File Upload Handler */
 /* ==================================================== */
 
+function showPublicToast(msg, type = 'warning') {
+  let container = document.getElementById('publicToastContainer');
+  if (!container) {
+    container = document.createElement('div');
+    container.id = 'publicToastContainer';
+    container.style.cssText = 'position:fixed;top:20px;right:20px;z-index:99999;max-width:400px;';
+    document.body.appendChild(container);
+  }
+  const colors = { warning: '#ffc107', error: '#dc3545', success: '#28a745', info: '#17a2b8' };
+  const toast = document.createElement('div');
+  toast.style.cssText = `background:${colors[type] || colors.warning};color:${type === 'warning' ? '#000' : '#fff'};padding:12px 20px;margin-bottom:8px;border-radius:8px;box-shadow:0 4px 12px rgba(0,0,0,.15);font-size:14px;opacity:0;transition:opacity .3s;`;
+  toast.textContent = msg;
+  container.appendChild(toast);
+  requestAnimationFrame(() => toast.style.opacity = '1');
+  setTimeout(() => { toast.style.opacity = '0'; setTimeout(() => toast.remove(), 300); }, 4000);
+}
+
 const uploadApp = {
   entryId: null,
   entryData: null,
@@ -176,13 +193,13 @@ const uploadApp = {
     Array.from(fileList).forEach(file => {
       // Validate file size
       if (file.size > maxSize) {
-        alert(`File "${file.name}" is too large. Maximum size is 10MB.`);
+        showPublicToast(`File "${file.name}" is too large. Maximum size is 10MB.`);
         return;
       }
 
       // Validate file type
       if (!allowedTypes.includes(file.type)) {
-        alert(`File "${file.name}" is not an allowed file type.`);
+        showPublicToast(`File "${file.name}" is not an allowed file type.`);
         return;
       }
 
@@ -261,7 +278,7 @@ const uploadApp = {
         console.error(`Error uploading ${file.name}:`, error);
         fileItem.classList.remove('uploading');
         fileItem.querySelector('div:last-child').innerHTML = '<i class="bi bi-x-circle-fill text-danger"></i>';
-        alert(`Failed to upload ${file.name}: ${error.message}`);
+        showPublicToast(`Failed to upload ${file.name}: ${error.message}`, 'error');
       }
     }
 

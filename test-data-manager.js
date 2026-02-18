@@ -230,7 +230,7 @@ const testDataManager = {
           </div>
           <p class="mb-2"><strong>What you can test:</strong></p>
           <ul>
-            <li>Running Order system (sync from RSVPs)</li>
+            <li>Running Order system (Add Winners checklist + Sync from RSVPs)</li>
             <li>Table Plan with drag-and-drop seating</li>
             <li>Photo tagging to winners</li>
             <li>Media gallery with event associations</li>
@@ -283,7 +283,9 @@ const testDataManager = {
       <p class="mt-3"><strong>What you can do now:</strong></p>
       <ol>
         <li>Go to Events → Open "TEST_MODE_2025 Awards Gala"</li>
-        <li>Click "Running Order" → Click "Sync from RSVPs"</li>
+        <li>Click "Running Order" → Click <strong>"Add Winners"</strong> to see the checklist</li>
+        <li>Select winners and add them to the running order</li>
+        <li>Or use "Sync from RSVPs" for the RSVP-based flow</li>
         <li>Click "Table Plan" → Add tables and drag guests</li>
         <li>Tag photos to winners in Media Gallery</li>
       </ol>

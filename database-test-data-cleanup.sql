@@ -49,7 +49,7 @@ DELETE FROM organisations
 WHERE company_name LIKE 'TEST_MODE_%';
 
 -- 10. Delete test awards
-DELETE FROM awards
+DELETE FROM award_years
 WHERE award_name LIKE 'TEST_MODE_%';
 
 -- 11. Delete test event

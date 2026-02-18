@@ -2,6 +2,24 @@
 /* JUDGE PORTAL - Judging Interface and Scoring */
 /* ==================================================== */
 
+// Lightweight toast for judge portal (replaces alert())
+function showPortalToast(msg, type = 'info') {
+  let container = document.getElementById('portalToastContainer');
+  if (!container) {
+    container = document.createElement('div');
+    container.id = 'portalToastContainer';
+    container.style.cssText = 'position:fixed;top:20px;right:20px;z-index:99999;max-width:400px;';
+    document.body.appendChild(container);
+  }
+  const colors = { warning: '#ffc107', error: '#dc3545', success: '#28a745', info: '#17a2b8' };
+  const toast = document.createElement('div');
+  toast.style.cssText = `background:${colors[type] || colors.info};color:${type === 'warning' ? '#000' : '#fff'};padding:12px 20px;margin-bottom:8px;border-radius:8px;box-shadow:0 4px 12px rgba(0,0,0,.15);font-size:14px;opacity:0;transition:opacity .3s;`;
+  toast.textContent = msg;
+  container.appendChild(toast);
+  requestAnimationFrame(() => toast.style.opacity = '1');
+  setTimeout(() => { toast.style.opacity = '0'; setTimeout(() => toast.remove(), 300); }, 4000);
+}
+
 // Initialize Supabase using shared config
 const supabase = window.supabase.createClient(
   window.SUPABASE_CONFIG.url,
@@ -135,7 +153,7 @@ const judgePortal = {
 
     } catch (error) {
       console.error('Error loading entries:', error);
-      alert('Failed to load entries: ' + error.message);
+      showPortalToast('Failed to load entries: ' + error.message, 'error');
     }
   },
 
@@ -547,7 +565,7 @@ const judgePortal = {
 
       if (error) throw error;
 
-      alert(isComplete ? 'Score submitted successfully!' : 'Score saved as draft');
+      showPortalToast(isComplete ? 'Score submitted successfully!' : 'Score saved as draft', isComplete ? 'success' : 'info');
 
       // Reload entries to update status
       await this.loadAssignedEntries();
@@ -560,7 +578,7 @@ const judgePortal = {
 
     } catch (error) {
       console.error('Error saving score:', error);
-      alert('Failed to save score: ' + error.message);
+      showPortalToast('Failed to save score: ' + error.message, 'error');
     }
   },
 
@@ -574,7 +592,7 @@ const judgePortal = {
     if (nextIndex < this.assignedEntries.length) {
       this.selectEntry(this.assignedEntries[nextIndex].id);
     } else {
-      alert('You have reviewed all assigned entries!');
+      showPortalToast('You have reviewed all assigned entries!', 'success');
     }
   },
 

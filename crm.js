@@ -2073,21 +2073,40 @@ const crmModule = {
     utils.showToast(`Showing ${this._lastSegmentMatches.length} segment matches`, 'success');
   },
 
-  saveSmartSegment() {
+  async _loadSegments() {
+    try {
+      if (typeof STATE !== 'undefined' && STATE.client) {
+        const { data } = await STATE.client.from('user_preferences').select('value').eq('key', 'orgsSegments').single();
+        if (data) return JSON.parse(data.value);
+      }
+    } catch (e) {}
+    try { return JSON.parse(localStorage.getItem('orgsSegments') || '{}'); } catch (e) { return {}; }
+  },
+
+  async _saveSegments(segments) {
+    try {
+      if (typeof STATE !== 'undefined' && STATE.client) {
+        await STATE.client.from('user_preferences').upsert({ key: 'orgsSegments', value: JSON.stringify(segments), updated_at: new Date().toISOString() }, { onConflict: 'key' });
+      }
+    } catch (e) {}
+    localStorage.setItem('orgsSegments', JSON.stringify(segments));
+  },
+
+  async saveSmartSegment() {
     const rules = this._getSegmentRules();
     if (rules.length === 0) { utils.showToast('Add at least one rule', 'warning'); return; }
     const name = prompt('Name this segment:');
     if (!name || !name.trim()) return;
     try {
-      const segments = JSON.parse(localStorage.getItem('orgsSegments') || '{}');
+      const segments = await this._loadSegments();
       segments[name.trim()] = rules;
-      localStorage.setItem('orgsSegments', JSON.stringify(segments));
+      await this._saveSegments(segments);
       utils.showToast(`Segment "${name.trim()}" saved`, 'success');
     } catch (e) {}
   },
 
-  loadSmartSegments() {
-    const segments = (() => { try { return JSON.parse(localStorage.getItem('orgsSegments') || '{}'); } catch (e) { return {}; } })();
+  async loadSmartSegments() {
+    const segments = await this._loadSegments();
     const names = Object.keys(segments);
     if (names.length === 0) { utils.showToast('No saved segments', 'info'); return; }
 
@@ -2102,9 +2121,9 @@ const crmModule = {
     }
   },
 
-  _loadAndApplySegment(name) {
+  async _loadAndApplySegment(name) {
     try {
-      const segments = JSON.parse(localStorage.getItem('orgsSegments') || '{}');
+      const segments = await this._loadSegments();
       const rules = segments[name];
       if (!rules) return;
       const orgs = (typeof STATE !== 'undefined' && STATE.allOrganisations) ? STATE.allOrganisations : [];

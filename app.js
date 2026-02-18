@@ -6,11 +6,31 @@
 // SCHEDULED REPORTS MODULE (Reports tab)
 // ============================================
 const reportsScheduler = {
-  _scheduledReports: JSON.parse(localStorage.getItem('orgScheduledReports') || '[]'),
+  _scheduledReports: [],
 
-  loadReports() {
+  async _loadScheduledReports() {
+    try {
+      if (typeof STATE !== 'undefined' && STATE.client) {
+        const { data } = await STATE.client.from('user_preferences').select('value').eq('key', 'orgScheduledReports').single();
+        if (data) { this._scheduledReports = JSON.parse(data.value); return; }
+      }
+    } catch (e) {}
+    try { this._scheduledReports = JSON.parse(localStorage.getItem('orgScheduledReports') || '[]'); } catch (e) { this._scheduledReports = []; }
+  },
+
+  async _saveScheduledReports() {
+    try {
+      if (typeof STATE !== 'undefined' && STATE.client) {
+        await STATE.client.from('user_preferences').upsert({ key: 'orgScheduledReports', value: JSON.stringify(this._scheduledReports), updated_at: new Date().toISOString() }, { onConflict: 'key' });
+      }
+    } catch (e) {}
+    localStorage.setItem('orgScheduledReports', JSON.stringify(this._scheduledReports));
+  },
+
+  async loadReports() {
     const container = document.getElementById('scheduledReportsGrid');
     if (!container) return;
+    await this._loadScheduledReports();
     const reports = this._scheduledReports;
     if (reports.length === 0) {
       container.innerHTML = `<div class="text-center py-4 text-muted">
@@ -69,7 +89,7 @@ const reportsScheduler = {
     new bootstrap.Modal(document.getElementById('createScheduledReportModal')).show();
   },
 
-  _saveReport() {
+  async _saveReport() {
     const name = document.getElementById('reportName')?.value?.trim();
     const frequency = document.getElementById('reportFrequency')?.value;
     const recipients = document.getElementById('reportRecipients')?.value?.trim();
@@ -77,7 +97,7 @@ const reportsScheduler = {
     const sections = Array.from(document.querySelectorAll('.rpt-section:checked')).map(cb => cb.value);
     if (sections.length === 0) { utils.showToast('Select at least one section', 'warning'); return; }
     this._scheduledReports.push({ name, frequency, recipients, sections, active: true, created: new Date().toISOString() });
-    localStorage.setItem('orgScheduledReports', JSON.stringify(this._scheduledReports));
+    await this._saveScheduledReports();
     utils.showToast('Report schedule created', 'success');
     bootstrap.Modal.getInstance(document.getElementById('createScheduledReportModal'))?.hide();
     this.loadReports();
@@ -105,10 +125,10 @@ const reportsScheduler = {
     new bootstrap.Modal(document.getElementById('reportPreviewModal')).show();
   },
 
-  deleteReport(i) {
+  async deleteReport(i) {
     if (!confirm('Delete this report schedule?')) return;
     this._scheduledReports.splice(i, 1);
-    localStorage.setItem('orgScheduledReports', JSON.stringify(this._scheduledReports));
+    await this._saveScheduledReports();
     this.loadReports();
   }
 };

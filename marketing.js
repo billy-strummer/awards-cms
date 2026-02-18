@@ -637,11 +637,31 @@ const marketingModule = {
   // ============================================
   // EMAIL SEQUENCES (moved from Organisations)
   // ============================================
-  _emailSequences: JSON.parse(localStorage.getItem('orgEmailSequences') || '[]'),
+  _emailSequences: [],
 
-  loadEmailSequences() {
+  async _loadEmailSequences() {
+    try {
+      if (typeof STATE !== 'undefined' && STATE.client) {
+        const { data } = await STATE.client.from('user_preferences').select('value').eq('key', 'orgEmailSequences').single();
+        if (data) { this._emailSequences = JSON.parse(data.value); return; }
+      }
+    } catch (e) {}
+    try { this._emailSequences = JSON.parse(localStorage.getItem('orgEmailSequences') || '[]'); } catch (e) { this._emailSequences = []; }
+  },
+
+  async _saveEmailSequences() {
+    try {
+      if (typeof STATE !== 'undefined' && STATE.client) {
+        await STATE.client.from('user_preferences').upsert({ key: 'orgEmailSequences', value: JSON.stringify(this._emailSequences), updated_at: new Date().toISOString() }, { onConflict: 'key' });
+      }
+    } catch (e) {}
+    localStorage.setItem('orgEmailSequences', JSON.stringify(this._emailSequences));
+  },
+
+  async loadEmailSequences() {
     const container = document.getElementById('emailSequencesGrid');
     if (!container) return;
+    await this._loadEmailSequences();
     const sequences = this._emailSequences;
     if (sequences.length === 0) {
       container.innerHTML = `<div class="text-center py-5 text-muted">
@@ -714,7 +734,7 @@ const marketingModule = {
     c.appendChild(s);
   },
 
-  _saveSequence() {
+  async _saveSequence() {
     const name = document.getElementById('seqName')?.value?.trim();
     const trigger = document.getElementById('seqTrigger')?.value;
     if (!name) { utils.showToast('Enter a sequence name', 'warning'); return; }
@@ -724,24 +744,24 @@ const marketingModule = {
     });
     if (steps.length === 0 || !steps[0].subject) { utils.showToast('Add at least one step with a subject', 'warning'); return; }
     this._emailSequences.push({ name, trigger, steps, active: true, enrolled: 0, created: new Date().toISOString() });
-    localStorage.setItem('orgEmailSequences', JSON.stringify(this._emailSequences));
+    await this._saveEmailSequences();
     utils.showToast('Sequence created', 'success');
     bootstrap.Modal.getInstance(document.getElementById('createSequenceModal'))?.hide();
     this.loadEmailSequences();
   },
 
-  toggleSequence(i) {
+  async toggleSequence(i) {
     if (this._emailSequences[i]) {
       this._emailSequences[i].active = !this._emailSequences[i].active;
-      localStorage.setItem('orgEmailSequences', JSON.stringify(this._emailSequences));
+      await this._saveEmailSequences();
       this.loadEmailSequences();
     }
   },
 
-  deleteSequence(i) {
+  async deleteSequence(i) {
     if (!confirm('Delete this sequence?')) return;
     this._emailSequences.splice(i, 1);
-    localStorage.setItem('orgEmailSequences', JSON.stringify(this._emailSequences));
+    await this._saveEmailSequences();
     this.loadEmailSequences();
   }
 };

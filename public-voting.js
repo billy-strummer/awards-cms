@@ -2,6 +2,24 @@
 /* PUBLIC VOTING SYSTEM */
 /* ==================================================== */
 
+// Lightweight toast for public pages (replaces alert())
+function showPublicToast(msg, type = 'warning') {
+  let container = document.getElementById('publicToastContainer');
+  if (!container) {
+    container = document.createElement('div');
+    container.id = 'publicToastContainer';
+    container.style.cssText = 'position:fixed;top:20px;right:20px;z-index:99999;max-width:400px;';
+    document.body.appendChild(container);
+  }
+  const colors = { warning: '#ffc107', error: '#dc3545', success: '#28a745', info: '#17a2b8' };
+  const toast = document.createElement('div');
+  toast.style.cssText = `background:${colors[type] || colors.warning};color:${type === 'warning' ? '#000' : '#fff'};padding:12px 20px;margin-bottom:8px;border-radius:8px;box-shadow:0 4px 12px rgba(0,0,0,.15);font-size:14px;opacity:0;transition:opacity .3s;`;
+  toast.textContent = msg;
+  container.appendChild(toast);
+  requestAnimationFrame(() => toast.style.opacity = '1');
+  setTimeout(() => { toast.style.opacity = '0'; setTimeout(() => toast.remove(), 300); }, 4000);
+}
+
 // Initialize Supabase using shared config
 const supabase = window.supabase.createClient(
   window.SUPABASE_CONFIG.url,
@@ -11,7 +29,7 @@ const supabase = window.supabase.createClient(
 const votingSystem = {
   allEntries: [],
   currentEntryId: null,
-  voterEmail: localStorage.getItem('voterEmail') || null,
+  voterEmail: sessionStorage.getItem('voterEmail') || null,
 
   /**
    * Initialize voting system
@@ -217,9 +235,9 @@ const votingSystem = {
       const voterName = document.getElementById('voterName').value;
 
       // Store email locally
-      localStorage.setItem('voterEmail', this.voterEmail);
+      sessionStorage.setItem('voterEmail', this.voterEmail);
       if (voterName) {
-        localStorage.setItem('voterName', voterName);
+        sessionStorage.setItem('voterName', voterName);
       }
 
       await this.submitVote();
@@ -231,7 +249,7 @@ const votingSystem = {
    */
   async submitVote() {
     try {
-      const voterName = localStorage.getItem('voterName') || '';
+      const voterName = sessionStorage.getItem('voterName') || '';
 
       // Check if already voted for this entry
       const { data: existingVote } = await supabase
@@ -242,7 +260,7 @@ const votingSystem = {
         .single();
 
       if (existingVote) {
-        alert('You have already voted for this entry!');
+        showPublicToast('You have already voted for this entry!', 'warning');
         this.closeVerificationModal();
         return;
       }
@@ -277,7 +295,7 @@ const votingSystem = {
 
     } catch (error) {
       console.error('Error submitting vote:', error);
-      alert('Failed to submit vote. Please try again.');
+      showPublicToast('Failed to submit vote. Please try again.', 'error');
     }
   },
 

@@ -3778,6 +3778,9 @@ const eventsModule = {
 
                 <!-- Actions Bar -->
                 <div class="d-flex gap-2 flex-wrap align-items-center mb-2">
+                  <button class="btn btn-sm btn-success" onclick="eventsModule.openAddWinnersChecklist()" ${this.isPublished ? 'disabled' : ''}>
+                    <i class="bi bi-trophy me-1"></i>Add Winners
+                  </button>
                   <button class="btn btn-sm btn-primary" onclick="eventsModule.syncFromRSVPs()" ${this.isPublished ? 'disabled' : ''}>
                     <i class="bi bi-arrow-repeat me-1"></i>Sync RSVPs
                   </button>
@@ -3843,13 +3846,17 @@ const eventsModule = {
                 <div class="text-center py-5">
                   <i class="bi bi-inbox display-4 d-block mb-3 opacity-25"></i>
                   <p class="text-muted">No items in running order yet.</p>
-                  <button class="btn btn-primary" onclick="eventsModule.syncFromRSVPs()">
-                    <i class="bi bi-arrow-repeat me-2"></i>Sync from RSVPs
-                  </button>
-                  <span class="mx-2 text-muted">or</span>
-                  <button class="btn btn-outline-secondary" onclick="eventsModule.addManualEntry()">
-                    <i class="bi bi-plus-circle me-2"></i>Add Manual Entry
-                  </button>
+                  <div class="d-flex gap-2 justify-content-center flex-wrap">
+                    <button class="btn btn-success" onclick="eventsModule.openAddWinnersChecklist()">
+                      <i class="bi bi-trophy me-2"></i>Add Winners
+                    </button>
+                    <button class="btn btn-primary" onclick="eventsModule.syncFromRSVPs()">
+                      <i class="bi bi-arrow-repeat me-2"></i>Sync from RSVPs
+                    </button>
+                    <button class="btn btn-outline-secondary" onclick="eventsModule.addManualEntry()">
+                      <i class="bi bi-plus-circle me-2"></i>Add Manual Entry
+                    </button>
+                  </div>
                 </div>
               ` : ''}
               </div><!-- /roTabMain -->
@@ -4159,7 +4166,7 @@ const eventsModule = {
         }
       }
       const recipientName = item.recipient_collecting || item.event_guests?.guest_name || item.display_name || 'TBC';
-      const awardName = item.award_name || (item.awards ? item.awards.award_name : 'Award TBC');
+      const awardName = item.award_name || item.item_name || (item.awards ? item.awards.award_name : 'Award TBC');
       const winnerName = item.display_name || (item.organisations ? item.organisations.company_name : 'TBC');
       const duration = item.duration_minutes || 3;
       const cumTime = cumulativeMin;
@@ -6220,7 +6227,7 @@ const eventsModule = {
     let rows = '';
 
     this.runningOrderItems.forEach(item => {
-      const awardName = item.award_name || (item.awards ? item.awards.award_name : 'N/A');
+      const awardName = item.award_name || item.item_name || (item.awards ? item.awards.award_name : 'N/A');
       const companyName = item.display_name || (item.organisations ? item.organisations.company_name : 'N/A');
       const recipient = item.recipient_collecting || (item.event_guests ? item.event_guests.guest_name : '');
       const notes = item.notes || item.special_requirements || '';
@@ -6385,6 +6392,279 @@ const eventsModule = {
     utils.exportToCSV(exportData, filename);
   },
 
+  // ========================================
+  // ADD WINNERS CHECKLIST
+  // ========================================
+
+  /**
+   * Open the Add Winners checklist modal.
+   * Queries award_assignments (status='winner') joined with awards + organisations
+   * for the current event, shows a checklist, and bulk-inserts selected winners.
+   */
+  async openAddWinnersChecklist() {
+    const eventId = this.currentEventIdRunningOrder;
+    if (!eventId) { utils.showToast('No event selected', 'warning'); return; }
+
+    try {
+      utils.showLoading();
+
+      // 1. Load all awards for this event with their winner assignments
+      const { data: awards, error: awardsErr } = await STATE.client
+        .from('award_years')
+        .select('id, award_name, award_category, sector')
+        .eq('event_id', eventId)
+        .order('sector', { ascending: true });
+      if (awardsErr) throw awardsErr;
+
+      if (!awards || awards.length === 0) {
+        utils.showToast('No awards found for this event. Add awards first.', 'warning');
+        return;
+      }
+
+      // 2. Load confirmed winners from award_assignments
+      const awardIds = awards.map(a => a.id);
+      const { data: assignments, error: assignErr } = await STATE.client
+        .from('award_assignments')
+        .select('award_id, organisation_id, status, winner_position')
+        .in('award_id', awardIds)
+        .eq('status', 'winner');
+      if (assignErr) throw assignErr;
+
+      // 3. Load organisation names for winners
+      const orgIds = [...new Set((assignments || []).map(a => a.organisation_id).filter(Boolean))];
+      let orgsMap = {};
+      if (orgIds.length > 0) {
+        const { data: orgs } = await STATE.client
+          .from('organisations')
+          .select('id, company_name')
+          .in('id', orgIds);
+        (orgs || []).forEach(o => { orgsMap[o.id] = o.company_name; });
+      }
+
+      // 4. Build the merged list: award + winner info
+      const existingAwardIds = new Set(this.runningOrderItems.map(i => i.award_id).filter(Boolean));
+      const assignmentsByAward = {};
+      (assignments || []).forEach(a => {
+        if (!assignmentsByAward[a.award_id]) assignmentsByAward[a.award_id] = [];
+        assignmentsByAward[a.award_id].push(a);
+      });
+
+      const rows = awards.map(award => {
+        const winners = assignmentsByAward[award.id] || [];
+        const topWinner = winners[0];
+        const orgName = topWinner ? (orgsMap[topWinner.organisation_id] || 'Unknown') : null;
+        const alreadyInRO = existingAwardIds.has(award.id);
+        return {
+          awardId: award.id,
+          awardName: award.award_name || 'Unnamed Award',
+          sector: award.sector || '',
+          category: award.award_category || '',
+          hasWinner: winners.length > 0,
+          winnerName: orgName,
+          winnerOrgId: topWinner?.organisation_id || null,
+          alreadyInRO
+        };
+      });
+
+      // Sort: winners first, then by sector/category
+      rows.sort((a, b) => {
+        if (a.hasWinner !== b.hasWinner) return a.hasWinner ? -1 : 1;
+        if (a.alreadyInRO !== b.alreadyInRO) return a.alreadyInRO ? 1 : -1;
+        return (a.sector + a.category).localeCompare(b.sector + b.category);
+      });
+
+      const winnersCount = rows.filter(r => r.hasWinner && !r.alreadyInRO).length;
+      const alreadyCount = rows.filter(r => r.alreadyInRO).length;
+
+      // 5. Build modal HTML
+      const modalHtml = `
+        <div class="modal fade" id="addWinnersChecklistModal" tabindex="-1">
+          <div class="modal-dialog modal-lg modal-dialog-scrollable">
+            <div class="modal-content">
+              <div class="modal-header bg-success text-white">
+                <h5 class="modal-title"><i class="bi bi-trophy me-2"></i>Add Winners to Running Order</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+              </div>
+              <div class="modal-body p-0">
+                <div class="px-3 pt-3 pb-2 bg-light border-bottom">
+                  <div class="d-flex justify-content-between align-items-center mb-2">
+                    <div>
+                      <span class="badge bg-success me-1">${winnersCount}</span> confirmed winners available
+                      ${alreadyCount > 0 ? `<span class="badge bg-secondary ms-1">${alreadyCount}</span> already in running order` : ''}
+                    </div>
+                    <div class="d-flex gap-2">
+                      <button class="btn btn-sm btn-outline-success" onclick="eventsModule._winnersChecklistSelectAll(true)">Select All Winners</button>
+                      <button class="btn btn-sm btn-outline-secondary" onclick="eventsModule._winnersChecklistSelectAll(false)">Deselect All</button>
+                    </div>
+                  </div>
+                  <div class="input-group input-group-sm">
+                    <span class="input-group-text"><i class="bi bi-search"></i></span>
+                    <input type="text" class="form-control" id="winnersChecklistSearch" placeholder="Filter awards..." oninput="eventsModule._filterWinnersChecklist(this.value)">
+                  </div>
+                </div>
+                <div id="winnersChecklistBody" style="max-height:450px; overflow-y:auto;">
+                  ${this._renderWinnersChecklistRows(rows)}
+                </div>
+              </div>
+              <div class="modal-footer">
+                <span class="text-muted small me-auto" id="winnersSelectedCount">0 selected</span>
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-success" id="addWinnersSubmitBtn" onclick="eventsModule._submitWinnersChecklist()" disabled>
+                  <i class="bi bi-plus-circle me-2"></i>Add Selected to Running Order
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>`;
+
+      // Store data for submission
+      this._winnersChecklistData = rows;
+
+      const existingModal = document.getElementById('addWinnersChecklistModal');
+      if (existingModal) existingModal.remove();
+      document.body.insertAdjacentHTML('beforeend', modalHtml);
+      const modal = new bootstrap.Modal(document.getElementById('addWinnersChecklistModal'));
+      modal.show();
+      document.getElementById('addWinnersChecklistModal').addEventListener('hidden.bs.modal', function() { this.remove(); });
+
+    } catch (err) {
+      console.error('Error loading winners checklist:', err);
+      utils.showToast('Failed to load winners: ' + err.message, 'error');
+    } finally {
+      utils.hideLoading();
+    }
+  },
+
+  _renderWinnersChecklistRows(rows) {
+    if (!rows || rows.length === 0) {
+      return '<div class="text-center py-4 text-muted"><i class="bi bi-inbox display-4 d-block mb-2 opacity-25"></i>No awards found for this event</div>';
+    }
+
+    let currentSector = '';
+    let html = '';
+
+    rows.forEach((row, idx) => {
+      // Sector group header
+      if (row.sector !== currentSector) {
+        currentSector = row.sector;
+        html += `<div class="px-3 py-1 bg-light border-bottom fw-semibold small text-uppercase text-muted" style="letter-spacing:0.5px;">${utils.escapeHtml(currentSector || 'No Sector')}</div>`;
+      }
+
+      const disabled = row.alreadyInRO;
+      const checked = row.hasWinner && !row.alreadyInRO ? 'checked' : '';
+
+      html += `
+        <div class="winners-checklist-row px-3 py-2 border-bottom d-flex align-items-center gap-2 ${disabled ? 'opacity-50' : ''}" data-idx="${idx}" data-award-name="${utils.escapeHtml(row.awardName.toLowerCase())}" data-sector="${utils.escapeHtml(row.sector.toLowerCase())}">
+          <input type="checkbox" class="form-check-input winners-cb" data-idx="${idx}"
+                 ${checked} ${disabled ? 'disabled' : ''}
+                 onchange="eventsModule._updateWinnersSelectedCount()">
+          <div class="flex-grow-1">
+            <div class="fw-semibold" style="font-size:0.9rem;">${utils.escapeHtml(row.awardName)}</div>
+            <div class="small text-muted">${utils.escapeHtml(row.category)}</div>
+          </div>
+          <div style="width:200px;" class="text-end">
+            ${row.hasWinner
+              ? `<span class="badge bg-success"><i class="bi bi-trophy-fill me-1"></i>${utils.escapeHtml(row.winnerName)}</span>`
+              : '<span class="badge bg-secondary">No winner confirmed</span>'}
+          </div>
+          <div style="width:100px;" class="text-end">
+            ${row.alreadyInRO ? '<span class="badge bg-info">In RO</span>' : ''}
+          </div>
+        </div>`;
+    });
+    return html;
+  },
+
+  _winnersChecklistSelectAll(selectAll) {
+    document.querySelectorAll('.winners-cb:not(:disabled)').forEach(cb => { cb.checked = selectAll; });
+    this._updateWinnersSelectedCount();
+  },
+
+  _filterWinnersChecklist(term) {
+    const lower = term.toLowerCase();
+    document.querySelectorAll('.winners-checklist-row').forEach(row => {
+      const name = row.dataset.awardName || '';
+      const sector = row.dataset.sector || '';
+      row.style.display = (!term || name.includes(lower) || sector.includes(lower)) ? '' : 'none';
+    });
+  },
+
+  _updateWinnersSelectedCount() {
+    const checked = document.querySelectorAll('.winners-cb:checked:not(:disabled)').length;
+    const countEl = document.getElementById('winnersSelectedCount');
+    const btn = document.getElementById('addWinnersSubmitBtn');
+    if (countEl) countEl.textContent = checked + ' selected';
+    if (btn) btn.disabled = checked === 0;
+  },
+
+  async _submitWinnersChecklist() {
+    const rows = this._winnersChecklistData || [];
+    const selectedIdxs = [];
+    document.querySelectorAll('.winners-cb:checked:not(:disabled)').forEach(cb => {
+      selectedIdxs.push(parseInt(cb.dataset.idx));
+    });
+
+    if (selectedIdxs.length === 0) { utils.showToast('No awards selected', 'warning'); return; }
+
+    try {
+      utils.showLoading();
+      const eventId = this.currentEventIdRunningOrder;
+      const existingCount = this.runningOrderItems.length;
+      const section = existingCount > 0
+        ? (this.runningOrderItems[existingCount - 1].section || 1)
+        : 1;
+
+      let added = 0;
+      for (let i = 0; i < selectedIdxs.length; i++) {
+        const row = rows[selectedIdxs[i]];
+        const order = existingCount + i + 1;
+        const awardNum = `${section}-${String(order).padStart(2, '0')}`;
+
+        const entryData = {
+          event_id: eventId,
+          award_id: row.awardId,
+          organisation_id: row.winnerOrgId || null,
+          item_name: row.awardName,
+          award_name: row.awardName,
+          display_name: row.winnerName || 'TBC',
+          award_number: awardNum,
+          display_order: order,
+          section: section,
+          duration_minutes: 3,
+          status: 'pending'
+        };
+
+        let result = await STATE.client.from('running_order').insert([entryData]);
+        // Schema cache fallback
+        if (result.error && result.error.message && result.error.message.includes('schema cache')) {
+          const baseEntry = {
+            event_id: eventId,
+            item_name: row.awardName,
+            display_order: order,
+            duration_minutes: 3
+          };
+          result = await STATE.client.from('running_order').insert([baseEntry]);
+        }
+        if (result.error) {
+          console.warn('Failed to insert award:', row.awardName, result.error.message);
+        } else {
+          added++;
+        }
+      }
+
+      utils.showToast(`Added ${added} award${added !== 1 ? 's' : ''} to running order`, 'success');
+      bootstrap.Modal.getInstance(document.getElementById('addWinnersChecklistModal'))?.hide();
+      await this.loadRunningOrder();
+      this.renderRunningOrderItems();
+
+    } catch (err) {
+      console.error('Error adding winners:', err);
+      utils.showToast('Failed to add winners: ' + err.message, 'error');
+    } finally {
+      utils.hideLoading();
+    }
+  },
+
   /**
    * Add Manual Entry - Enhanced with time and duration fields
    */
@@ -6400,7 +6680,7 @@ const eventsModule = {
 
     const modalHtml = `
       <div class="modal fade" id="addManualEntryModal" tabindex="-1">
-        <div class="modal-dialog">
+        <div class="modal-dialog modal-lg">
           <div class="modal-content">
             <div class="modal-header bg-primary text-white">
               <h5 class="modal-title"><i class="bi bi-plus-circle me-2"></i>Add Manual Entry</h5>
@@ -6422,9 +6702,46 @@ const eventsModule = {
                     <input type="number" class="form-control" id="manualDuration" value="3" min="1" max="120">
                   </div>
                 </div>
+
+                <!-- Cascading Award Selection: Sector → Category → Award -->
+                <div class="card border-primary mb-3">
+                  <div class="card-header bg-light py-2">
+                    <small class="fw-semibold text-primary"><i class="bi bi-funnel me-1"></i>Select Award</small>
+                  </div>
+                  <div class="card-body py-2">
+                    <div class="row g-2">
+                      <div class="col-md-4">
+                        <label class="form-label small mb-1">Sector</label>
+                        <select class="form-select form-select-sm" id="manualSectorFilter" onchange="eventsModule._onManualSectorChange()">
+                          <option value="">-- Select Sector --</option>
+                        </select>
+                      </div>
+                      <div class="col-md-4">
+                        <label class="form-label small mb-1">Category</label>
+                        <select class="form-select form-select-sm" id="manualCategoryFilter" onchange="eventsModule._onManualCategoryChange()" disabled>
+                          <option value="">-- Select Sector first --</option>
+                        </select>
+                      </div>
+                      <div class="col-md-4">
+                        <label class="form-label small mb-1">Award</label>
+                        <select class="form-select form-select-sm" id="manualAwardSelect" onchange="eventsModule._onManualAwardSelect()" disabled>
+                          <option value="">-- Select Category first --</option>
+                        </select>
+                      </div>
+                    </div>
+                    <div id="manualAwardInfo" class="mt-2" style="display:none;">
+                      <div class="alert alert-success py-1 px-2 mb-0 small">
+                        <i class="bi bi-check-circle me-1"></i>
+                        <span id="manualAwardInfoText"></span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
                 <div class="mb-3">
                   <label class="form-label">Award Name <span class="text-danger">*</span></label>
-                  <input type="text" class="form-control" id="manualAwardName" required placeholder="e.g. Best New Business Award">
+                  <input type="text" class="form-control" id="manualAwardName" required placeholder="Auto-filled from selection above, or type manually">
+                  <input type="hidden" id="manualAwardId" value="">
                 </div>
                 <div class="mb-3">
                   <label class="form-label">Winner / Display Name <span class="text-danger">*</span></label>
@@ -6460,6 +6777,120 @@ const eventsModule = {
     const modal = new bootstrap.Modal(document.getElementById('addManualEntryModal'));
     modal.show();
     document.getElementById('addManualEntryModal').addEventListener('hidden.bs.modal', function() { this.remove(); });
+
+    // Load awards for this event and populate the sector dropdown
+    this._loadAwardsForManualEntry();
+  },
+
+  /** Cache of awards for the current event (used by cascading dropdown) */
+  _manualEntryAwards: [],
+
+  async _loadAwardsForManualEntry() {
+    try {
+      const { data, error } = await STATE.client
+        .from('award_years')
+        .select('id, award_name, award_category, sector, event_id, winner_confirmed, prev_year_winner')
+        .eq('event_id', this.currentEventIdRunningOrder)
+        .order('sector', { ascending: true });
+
+      if (error) throw error;
+      this._manualEntryAwards = data || [];
+
+      // Populate sector dropdown with distinct sectors
+      const sectors = [...new Set(this._manualEntryAwards.map(a => a.sector).filter(Boolean))].sort();
+      const sectorSelect = document.getElementById('manualSectorFilter');
+      if (sectorSelect) {
+        sectorSelect.innerHTML = '<option value="">-- Select Sector (' + sectors.length + ') --</option>' +
+          sectors.map(s => `<option value="${utils.escapeHtml(s)}">${utils.escapeHtml(s)}</option>`).join('');
+      }
+    } catch (err) {
+      console.warn('Could not load awards for dropdown:', err);
+      // Dropdowns stay empty — user can still type manually
+    }
+  },
+
+  _onManualSectorChange() {
+    const sector = document.getElementById('manualSectorFilter').value;
+    const catSelect = document.getElementById('manualCategoryFilter');
+    const awardSelect = document.getElementById('manualAwardSelect');
+    const infoDiv = document.getElementById('manualAwardInfo');
+
+    // Reset downstream
+    awardSelect.innerHTML = '<option value="">-- Select Category first --</option>';
+    awardSelect.disabled = true;
+    if (infoDiv) infoDiv.style.display = 'none';
+    document.getElementById('manualAwardId').value = '';
+
+    if (!sector) {
+      catSelect.innerHTML = '<option value="">-- Select Sector first --</option>';
+      catSelect.disabled = true;
+      return;
+    }
+
+    const filtered = this._manualEntryAwards.filter(a => a.sector === sector);
+    const categories = [...new Set(filtered.map(a => a.award_category).filter(Boolean))].sort();
+
+    catSelect.innerHTML = '<option value="">-- Select Category (' + categories.length + ') --</option>' +
+      categories.map(c => `<option value="${utils.escapeHtml(c)}">${utils.escapeHtml(c)}</option>`).join('');
+    catSelect.disabled = false;
+  },
+
+  _onManualCategoryChange() {
+    const sector = document.getElementById('manualSectorFilter').value;
+    const category = document.getElementById('manualCategoryFilter').value;
+    const awardSelect = document.getElementById('manualAwardSelect');
+    const infoDiv = document.getElementById('manualAwardInfo');
+
+    if (infoDiv) infoDiv.style.display = 'none';
+    document.getElementById('manualAwardId').value = '';
+
+    if (!category) {
+      awardSelect.innerHTML = '<option value="">-- Select Category first --</option>';
+      awardSelect.disabled = true;
+      return;
+    }
+
+    const filtered = this._manualEntryAwards.filter(a => a.sector === sector && a.award_category === category);
+
+    // Check which awards are already in the running order
+    const existingAwardIds = new Set(this.runningOrderItems.map(i => i.award_id).filter(Boolean));
+
+    awardSelect.innerHTML = '<option value="">-- Select Award (' + filtered.length + ') --</option>' +
+      filtered.map(a => {
+        const alreadyAdded = existingAwardIds.has(a.id);
+        const label = utils.escapeHtml(a.award_name || 'Unnamed Award') +
+          (alreadyAdded ? ' (already in running order)' : '') +
+          (a.winner_confirmed ? ' \u2713' : '');
+        return `<option value="${a.id}" ${alreadyAdded ? 'class="text-muted"' : ''}>${label}</option>`;
+      }).join('');
+    awardSelect.disabled = false;
+  },
+
+  _onManualAwardSelect() {
+    const awardId = document.getElementById('manualAwardSelect').value;
+    const infoDiv = document.getElementById('manualAwardInfo');
+    const infoText = document.getElementById('manualAwardInfoText');
+
+    if (!awardId) {
+      if (infoDiv) infoDiv.style.display = 'none';
+      document.getElementById('manualAwardId').value = '';
+      return;
+    }
+
+    const award = this._manualEntryAwards.find(a => a.id === awardId);
+    if (!award) return;
+
+    // Auto-fill the award name field
+    document.getElementById('manualAwardName').value = award.award_name || '';
+    document.getElementById('manualAwardId').value = award.id;
+
+    // Show info
+    if (infoDiv && infoText) {
+      const parts = [award.award_name];
+      if (award.prev_year_winner) parts.push('Prev winner: ' + award.prev_year_winner);
+      infoText.textContent = parts.join(' | ');
+      infoDiv.style.display = 'block';
+    }
   },
 
   async saveManualEntry() {
@@ -6469,12 +6900,16 @@ const eventsModule = {
     const section = this.runningOrderItems.length > 0
       ? (this.runningOrderItems[this.runningOrderItems.length - 1].section || 1)
       : 1;
+    const awardName = document.getElementById('manualAwardName').value.trim();
+    const awardId = document.getElementById('manualAwardId').value || null;
+
     const entryData = {
       event_id: this.currentEventIdRunningOrder,
       award_number: document.getElementById('manualAwardNumber').value.trim() || '1',
       display_order: this.runningOrderItems.length + 1,
       section: section,
-      award_name: document.getElementById('manualAwardName').value.trim(),
+      item_name: awardName,
+      award_name: awardName,
       display_name: document.getElementById('manualDisplayName').value.trim(),
       recipient_collecting: document.getElementById('manualRecipient').value.trim() || null,
       scheduled_time: document.getElementById('manualScheduledTime').value || null,
@@ -6483,10 +6918,22 @@ const eventsModule = {
       notes: document.getElementById('manualNotes').value.trim() || null,
       status: 'pending'
     };
+    if (awardId) entryData.award_id = awardId;
 
     try {
-      const { error } = await STATE.client.from('running_order').insert([entryData]);
-      if (error) throw error;
+      let result = await STATE.client.from('running_order').insert([entryData]);
+      // If schema cache doesn't recognise extended columns, retry with base columns only
+      if (result.error && result.error.message && result.error.message.includes('schema cache')) {
+        console.warn('Schema cache miss on running_order, retrying with base columns');
+        const baseEntry = {
+          event_id: entryData.event_id,
+          item_name: awardName,
+          display_order: entryData.display_order,
+          duration_minutes: entryData.duration_minutes
+        };
+        result = await STATE.client.from('running_order').insert([baseEntry]);
+      }
+      if (result.error) throw result.error;
       utils.showToast('Entry added to running order', 'success');
       bootstrap.Modal.getInstance(document.getElementById('addManualEntryModal')).hide();
       await this.loadRunningOrder();
@@ -6604,9 +7051,11 @@ const eventsModule = {
   },
 
   async updateRunningOrderItem(itemId) {
+    const awardName = document.getElementById('editROAwardName').value || null;
     const updateData = {
       award_number: document.getElementById('editROAwardNumber').value || null,
-      award_name: document.getElementById('editROAwardName').value || null,
+      item_name: awardName,
+      award_name: awardName,
       display_name: document.getElementById('editRODisplayName').value || null,
       recipient_collecting: document.getElementById('editRORecipient').value || null,
       scheduled_time: document.getElementById('editROScheduledTime').value || null,
@@ -6621,8 +7070,17 @@ const eventsModule = {
     };
 
     try {
-      const { error } = await STATE.client.from('running_order').update(updateData).eq('id', itemId);
-      if (error) throw error;
+      let result = await STATE.client.from('running_order').update(updateData).eq('id', itemId);
+      // Fallback if schema cache doesn't know extended columns
+      if (result.error && result.error.message && result.error.message.includes('schema cache')) {
+        console.warn('Schema cache miss on running_order update, retrying with base columns');
+        const baseUpdate = {
+          item_name: awardName,
+          duration_minutes: updateData.duration_minutes
+        };
+        result = await STATE.client.from('running_order').update(baseUpdate).eq('id', itemId);
+      }
+      if (result.error) throw result.error;
       utils.showToast('Item updated', 'success');
       bootstrap.Modal.getInstance(document.getElementById('editRunningOrderModal')).hide();
       await this.loadRunningOrder();

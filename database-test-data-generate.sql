@@ -19,21 +19,24 @@ ON CONFLICT (id) DO UPDATE SET
   event_name = EXCLUDED.event_name,
   event_date = EXCLUDED.event_date;
 
--- 2. Create test awards (10 categories)
-INSERT INTO awards (id, award_name, category, description, year, is_active)
+-- 2. Create test awards (10 categories) linked to the test event
+INSERT INTO award_years (id, award_name, award_category, sector, description, year, is_active, event_id)
 VALUES
-  ('10000000-0000-0000-0000-000000000001', 'TEST_MODE_Best Innovation', 'Innovation', 'Excellence in innovation', 2025, true),
-  ('10000000-0000-0000-0000-000000000002', 'TEST_MODE_Rising Star', 'Growth', 'Fast growing company', 2025, true),
-  ('10000000-0000-0000-0000-000000000003', 'TEST_MODE_Export Excellence', 'International', 'Outstanding exports', 2025, true),
-  ('10000000-0000-0000-0000-000000000004', 'TEST_MODE_Sustainability Leader', 'Environment', 'Green business practices', 2025, true),
-  ('10000000-0000-0000-0000-000000000005', 'TEST_MODE_Digital Transformation', 'Technology', 'Digital innovation', 2025, true),
-  ('10000000-0000-0000-0000-000000000006', 'TEST_MODE_Best Employer', 'People', 'Great workplace', 2025, true),
-  ('10000000-0000-0000-0000-000000000007', 'TEST_MODE_Customer Excellence', 'Service', 'Outstanding customer service', 2025, true),
-  ('10000000-0000-0000-0000-000000000008', 'TEST_MODE_Manufacturing Excellence', 'Manufacturing', 'Quality manufacturing', 2025, true),
-  ('10000000-0000-0000-0000-000000000009', 'TEST_MODE_Social Impact', 'Community', 'Community contribution', 2025, true),
-  ('10000000-0000-0000-0000-000000000010', 'TEST_MODE_Lifetime Achievement', 'Special', 'Career recognition', 2025, true)
+  ('10000000-0000-0000-0000-000000000001', 'TEST_MODE_Best Innovation', 'Innovation', 'Technology & Digital', 'Excellence in innovation', 2025, true, '00000000-0000-0000-0000-000000000001'),
+  ('10000000-0000-0000-0000-000000000002', 'TEST_MODE_Rising Star', 'Growth', 'Business Services', 'Fast growing company', 2025, true, '00000000-0000-0000-0000-000000000001'),
+  ('10000000-0000-0000-0000-000000000003', 'TEST_MODE_Export Excellence', 'International', 'Business Services', 'Outstanding exports', 2025, true, '00000000-0000-0000-0000-000000000001'),
+  ('10000000-0000-0000-0000-000000000004', 'TEST_MODE_Sustainability Leader', 'Environment', 'Environment & Energy', 'Green business practices', 2025, true, '00000000-0000-0000-0000-000000000001'),
+  ('10000000-0000-0000-0000-000000000005', 'TEST_MODE_Digital Transformation', 'Technology', 'Technology & Digital', 'Digital innovation', 2025, true, '00000000-0000-0000-0000-000000000001'),
+  ('10000000-0000-0000-0000-000000000006', 'TEST_MODE_Best Employer', 'People', 'People & Culture', 'Great workplace', 2025, true, '00000000-0000-0000-0000-000000000001'),
+  ('10000000-0000-0000-0000-000000000007', 'TEST_MODE_Customer Excellence', 'Service', 'Business Services', 'Outstanding customer service', 2025, true, '00000000-0000-0000-0000-000000000001'),
+  ('10000000-0000-0000-0000-000000000008', 'TEST_MODE_Manufacturing Excellence', 'Manufacturing', 'Manufacturing & Engineering', 'Quality manufacturing', 2025, true, '00000000-0000-0000-0000-000000000001'),
+  ('10000000-0000-0000-0000-000000000009', 'TEST_MODE_Social Impact', 'Community', 'People & Culture', 'Community contribution', 2025, true, '00000000-0000-0000-0000-000000000001'),
+  ('10000000-0000-0000-0000-000000000010', 'TEST_MODE_Lifetime Achievement', 'Special', 'Special Awards', 'Career recognition', 2025, true, '00000000-0000-0000-0000-000000000001')
 ON CONFLICT (id) DO UPDATE SET
-  award_name = EXCLUDED.award_name;
+  award_name = EXCLUDED.award_name,
+  event_id = EXCLUDED.event_id,
+  sector = EXCLUDED.sector,
+  award_category = EXCLUDED.award_category;
 
 -- 3. Create 30 test organisations
 INSERT INTO organisations (id, company_name, industry, website, logo_url, description)

@@ -10012,23 +10012,6 @@ in recognition of excellence
   <script src="winner-announcements.js"></script>
 
   <script src="app.js"></script>
-  <script>
-    // Show Test Mode dropdown only with ?dev=true or Ctrl+Shift+T
-    (function() {
-      const testModeBtn = document.getElementById('testModeDropdown');
-      if (!testModeBtn) return;
-      if (new URLSearchParams(window.location.search).get('dev') === 'true') {
-        testModeBtn.style.display = '';
-      }
-      document.addEventListener('keydown', function(e) {
-        if (e.ctrlKey && e.shiftKey && e.key === 'T') {
-          e.preventDefault();
-          testModeBtn.style.display = testModeBtn.style.display === 'none' ? '' : 'none';
-        }
-      });
-    })();
-  </script>
-
   <!-- TradingView Widget -->
   <script type="text/javascript">
     const btcModule = {

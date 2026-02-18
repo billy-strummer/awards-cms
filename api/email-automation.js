@@ -451,7 +451,7 @@ async function sendDeadlineReminders() {
           scored_count: completed,
           total_count: totalAssigned,
           pending_count: pending,
-          judge_portal_link: '${process.env.APP_URL || 'https://admin.britishtrade.com'}/judge-portal.html'
+          judge_portal_link: `${process.env.APP_URL || 'https://admin.britishtrade.com'}/judge-portal.html`
         };
 
         await sendTemplateEmail('JUDGE_REMINDER', judge.email, variables);
@@ -495,7 +495,7 @@ async function sendJudgeAssignments(judgeEmail, entryIds) {
       entry_count: entryIds.length,
       deadline: 'TBC',
       award_list: awardList,
-      judge_portal_link: '${process.env.APP_URL || 'https://admin.britishtrade.com'}/judge-portal.html'
+      judge_portal_link: `${process.env.APP_URL || 'https://admin.britishtrade.com'}/judge-portal.html`
     };
 
     return await sendTemplateEmail('JUDGE_ASSIGNMENT', judgeEmail, variables);
@@ -531,7 +531,7 @@ async function sendWinnerAnnouncements(awardId = null) {
         award_name: winner.awards.award_name,
         ceremony_date: 'TBC',
         ceremony_venue: 'The Grand Hall, London',
-        winners_portal_link: '${process.env.APP_URL || 'https://admin.britishtrade.com'}/winners-portal.html'
+        winners_portal_link: `${process.env.APP_URL || 'https://admin.britishtrade.com'}/winners-portal.html`
       };
 
       await sendTemplateEmail('WINNER_ANNOUNCEMENT', winner.contact_email, variables);
@@ -575,7 +575,7 @@ async function sendShortlistNotifications(awardId = null) {
         winner_date: 'TBC',
         ceremony_date: 'TBC',
         ceremony_venue: 'The Grand Hall, London',
-        ceremony_tickets_link: '${process.env.APP_URL || 'https://admin.britishtrade.com'}/tickets'
+        ceremony_tickets_link: `${process.env.APP_URL || 'https://admin.britishtrade.com'}/tickets`
       };
 
       await sendTemplateEmail('SHORTLIST_NOTIFICATION', entry.contact_email, variables);

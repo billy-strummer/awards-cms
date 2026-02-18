@@ -1985,7 +1985,7 @@ const crmModule = {
       console.error('Error updating segment:', error);
       utils.showToast('Error updating segment: ' + error.message, 'error');
     }
-  }
+  },
   // ============================================
   // SMART SEGMENTS (moved from Organisations)
   // ============================================

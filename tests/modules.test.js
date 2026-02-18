@@ -74,11 +74,31 @@ global.window.supabase = global.supabase;
 // Load config (defines STATE, SUPABASE_CONFIG, etc.)
 require('../config.js');
 
+// config.js sets window.X — copy to global so bare names resolve in Node
+global.STATE = global.window.STATE;
+global.SUPABASE_CONFIG = global.window.SUPABASE_CONFIG;
+global.STATUS = global.window.STATUS;
+global.MEDIA_TYPES = global.window.MEDIA_TYPES;
+global.INACTIVITY_TIMEOUT = global.window.INACTIVITY_TIMEOUT;
+global.YEARS = global.window.YEARS;
+global.SECTORS = global.window.SECTORS;
+global.REGIONS = global.window.REGIONS;
+
 // Provide STATE.client
 global.STATE.client = mockSupabase;
 
+// Helper: sync window properties to global (simulates browser <script> tag behaviour)
+function syncWindowToGlobal() {
+  for (const key of Object.keys(global.window)) {
+    if (!(key in global) && typeof global.window[key] !== 'undefined') {
+      global[key] = global.window[key];
+    }
+  }
+}
+
 // Load utils
 require('../utils.js');
+syncWindowToGlobal();
 
 // ==========================================
 // TESTS
@@ -87,7 +107,9 @@ require('../utils.js');
 describe('Utils Module', () => {
   test('escapeHtml prevents XSS', () => {
     expect(utils.escapeHtml('<script>alert("xss")</script>')).not.toContain('<script>');
-    expect(utils.escapeHtml('<img onerror=alert(1)>')).not.toContain('onerror');
+    // Angle brackets are escaped, so the tag is neutralised even though "onerror" text remains
+    expect(utils.escapeHtml('<img onerror=alert(1)>')).not.toContain('<img');
+    expect(utils.escapeHtml('<img onerror=alert(1)>')).toContain('&lt;');
   });
 
   test('escapeHtml handles null/undefined', () => {
@@ -201,6 +223,7 @@ describe('Config / STATE', () => {
 describe('RBAC Module', () => {
   beforeAll(() => {
     require('../rbac.js');
+    syncWindowToGlobal();
   });
 
   test('ROLES are defined', () => {
@@ -255,6 +278,7 @@ describe('Judge Portal - Blind Mode', () => {
 
     global.window.SUPABASE_CONFIG = global.SUPABASE_CONFIG;
     require('../judge-portal.js');
+    syncWindowToGlobal();
   });
 
   test('anonymise produces consistent output', () => {

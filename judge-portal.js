@@ -621,6 +621,9 @@ const judgePortal = {
   }
 };
 
+// Export to window for global access
+window.judgePortal = judgePortal;
+
 // Initialize on page load
 document.addEventListener('DOMContentLoaded', () => {
   judgePortal.initialize();

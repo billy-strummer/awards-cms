@@ -70,7 +70,7 @@ window.winnerAnnouncementsModule = {
       try {
         const yr = new Date().getFullYear();
         const {data,error} = await STATE.client.from('winners')
-          .select('id,winner_name,year,awards(name),organisations(name)').eq('year',yr);
+          .select('id,winner_name,year,awards:award_years(name),organisations(name)').eq('year',yr);
         if (error) throw error;
         rows = (data||[]).map(w => `<tr>
           <td><input class="form-check-input winner-chk" type="checkbox" value="${w.id}" data-name="${utils.escapeHtml(w.winner_name)}"></td>
@@ -210,7 +210,7 @@ window.winnerAnnouncementsModule = {
     for (const id of winnerIds) {
       if (await this.checkEmbargo(id)) continue;
       const {data:w,error:we} = await STATE.client.from('winners')
-        .select('*,awards(name,category),organisations(name,contact_email)').eq('id',id).single();
+        .select('*,awards:award_years(name,category),organisations(name,contact_email)').eq('id',id).single();
       if (we) throw we;
       const vars = {'{winner_name}':w.winner_name||'','{award_name}':w.awards?.name||'',
         '{category}':w.awards?.category||'','{organisation}':w.organisations?.name||'',
@@ -234,7 +234,7 @@ window.winnerAnnouncementsModule = {
     for (const id of winnerIds) {
       if (await this.checkEmbargo(id)) continue;
       const {data:w,error} = await STATE.client.from('winners')
-        .select('*,awards(name),organisations(name)').eq('id',id).single();
+        .select('*,awards:award_years(name),organisations(name)').eq('id',id).single();
       if (error) throw error;
       const content = tpl
         .replace('{company}', w.organisations?.name||w.winner_name||'')
@@ -330,7 +330,7 @@ window.winnerAnnouncementsModule = {
   async generatePressRelease(winnerIds) {
     try {
       const {data,error} = await STATE.client.from('winners')
-        .select('*,awards(name,category),organisations(name)').in('id',winnerIds);
+        .select('*,awards:award_years(name,category),organisations(name)').in('id',winnerIds);
       if (error) throw error;
       const byCategory = {};
       for (const w of (data||[])) {

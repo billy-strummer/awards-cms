@@ -217,7 +217,7 @@ const emailBuilder = {
         .from('award_assignments')
         .select(`
           *,
-          awards!award_assignments_award_id_fkey (*)
+          awards:award_years!award_assignments_award_id_fkey (*)
         `)
         .eq('organisation_id', orgId);
 

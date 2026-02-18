@@ -72,7 +72,7 @@ const votingSystem = {
         .select(`
           *,
           organisations(company_name, logo_url, website),
-          awards(award_name, award_category)
+          awards:award_years(award_name, award_category)
         `)
         .eq('is_public', true)
         .eq('allow_public_voting', true)

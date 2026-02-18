@@ -44,7 +44,7 @@ async function assignJudgesToEntries(awardId = null) {
     // Get entries that need judging
     let query = supabase
       .from('entries')
-      .select('*, organisations(*), awards(*)')
+      .select('*, organisations(*), awards:award_years(*)')
       .eq('status', 'submitted');
 
     if (awardId) {
@@ -210,7 +210,7 @@ async function generateShortlist(awardId, topN = 5) {
       .select(`
         *,
         organisations(company_name),
-        awards(award_name),
+        awards:award_years(award_name),
         judge_scores!inner(*)
       `)
       .eq('award_id', awardId)

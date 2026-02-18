@@ -38,7 +38,7 @@ const assignmentsModule = {
           .select(`
             organisation_id,
             award_id,
-            awards!award_assignments_award_id_fkey (award_name, year)
+            awards:award_years!award_assignments_award_id_fkey (award_name, year)
           `)
           .in('organisation_id', orgIds)
           .neq('award_id', awardId);

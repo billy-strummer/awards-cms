@@ -154,7 +154,7 @@ async function main() {
   {
     const { data: assignments, error: aErr } = await supabase
       .from('award_assignments')
-      .select('id, award_id, organisation_id, awards(id), organisations(id)');
+      .select('id, award_id, organisation_id, awards:award_years(id), organisations(id)');
 
     if (aErr) {
       fail(`Could not query: ${aErr.message}`);

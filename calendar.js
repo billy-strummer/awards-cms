@@ -16,12 +16,20 @@ window.calendarModule = {
     const add   = (key, item) => { if (!key) return; if (!items[key]) items[key] = []; items[key].push(item); };
 
     try {
+      let invQuery = STATE.client.from('invoices').select('id,invoice_number,due_date,total_amount,organisations(company_name)').gte('due_date', start).lte('due_date', end).neq('status', 'paid');
+
       const [evR, seR, fuR, invR] = await Promise.all([
         STATE.client.from('events').select('id,event_name,event_date,venue').gte('event_date', start).lte('event_date', end),
         STATE.client.from('award_seasons').select('id,season_name,entry_deadline,judging_deadline').or(`entry_deadline.gte.${start},judging_deadline.gte.${start}`),
         STATE.client.from('organisation_follow_ups').select('id,organisation_id,follow_up_date,note,completed').gte('follow_up_date', start).lte('follow_up_date', end),
-        STATE.client.from('invoices').select('id,invoice_number,due_date,total_amount,organisations(company_name)').gte('due_date', start).lte('due_date', end).neq('status', 'paid')
+        invQuery
       ]);
+
+      // Retry invoices without FK join if relationship missing
+      let invoiceData = invR;
+      if (invR.error && (invR.error.message?.includes('relationship') || invR.error.message?.includes('schema cache'))) {
+        invoiceData = await STATE.client.from('invoices').select('id,invoice_number,due_date,total_amount').gte('due_date', start).lte('due_date', end).neq('status', 'paid');
+      }
 
       (evR.data  || []).forEach(e => add(e.event_date && e.event_date.slice(0,10), { type:'ceremony',         color:'primary', label:e.event_name,                                detail:e.venue||'',                            ref:e }));
       (seR.data  || []).forEach(s => {
@@ -31,7 +39,7 @@ window.calendarModule = {
         if (jd && jd >= start && jd <= end) add(jd, { type:'judging_deadline', color:'warning', label:s.season_name+' \u2013 Judging Deadline', detail:'', ref:s });
       });
       (fuR.data  || []).forEach(f => add(f.follow_up_date && f.follow_up_date.slice(0,10), { type:'followup', color:'success', label:f.note||'Follow-up', detail:f.completed?'Completed':'Pending', ref:f }));
-      (invR.data || []).forEach(i => add(i.due_date && i.due_date.slice(0,10), { type:'payment', color:'purple', label:`Invoice ${i.invoice_number||''} due`, detail:(i.organisations&&i.organisations.company_name)||'', ref:i }));
+      (invoiceData.data || []).forEach(i => add(i.due_date && i.due_date.slice(0,10), { type:'payment', color:'purple', label:`Invoice ${i.invoice_number||''} due`, detail:(i.organisations&&i.organisations.company_name)||'', ref:i }));
     } catch (err) { console.error('Calendar fetch error:', err); }
 
     return items;
@@ -220,6 +228,13 @@ window.calendarModule = {
         STATE.client.from('organisation_follow_ups').select('id,note,follow_up_date').gte('follow_up_date',today).lte('follow_up_date',end).eq('completed',false).order('follow_up_date').limit(limit),
         STATE.client.from('invoices').select('id,invoice_number,due_date,organisations(company_name)').gte('due_date',today).lte('due_date',end).neq('status','paid').order('due_date').limit(limit)
       ]);
+
+      // Retry invoices without FK join if relationship missing
+      let invoiceData = invR;
+      if (invR.error && (invR.error.message?.includes('relationship') || invR.error.message?.includes('schema cache'))) {
+        invoiceData = await STATE.client.from('invoices').select('id,invoice_number,due_date').gte('due_date',today).lte('due_date',end).neq('status','paid').order('due_date').limit(limit);
+      }
+
       const all = [];
       (evR.data  ||[]).forEach(e => all.push({ date:e.event_date,     color:'primary', label:e.event_name,                                                         icon:'bi-trophy'        }));
       (seR.data  ||[]).forEach(s => {
@@ -227,7 +242,7 @@ window.calendarModule = {
         if (s.judging_deadline && s.judging_deadline >= today) all.push({ date:s.judging_deadline, color:'warning', label:s.season_name+' \u2013 Judging Deadline', icon:'bi-person-check'  });
       });
       (fuR.data  ||[]).forEach(f => all.push({ date:f.follow_up_date, color:'success', label:f.note||'Follow-up',                                                  icon:'bi-bell'          }));
-      (invR.data ||[]).forEach(i => { const org=(i.organisations&&i.organisations.company_name)||''; all.push({ date:i.due_date, color:'purple', label:`Invoice ${i.invoice_number||''} due${org?' \u2013 '+org:''}`, icon:'bi-receipt' }); });
+      (invoiceData.data ||[]).forEach(i => { const org=(i.organisations&&i.organisations.company_name)||''; all.push({ date:i.due_date, color:'purple', label:`Invoice ${i.invoice_number||''} due${org?' \u2013 '+org:''}`, icon:'bi-receipt' }); });
 
       all.sort((a,b)=>a.date.localeCompare(b.date));
       const shown = all.slice(0,limit);

@@ -112,7 +112,7 @@
       }
 
       try {
-        let query = supabase.from('winners').select('*, awards(award_name, award_category, sector, county), organisations(company_name, logo_url)');
+        let query = supabase.from('winners').select('*, awards:award_years(award_name, award_category, sector, county), organisations(company_name, logo_url)');
         if (winnerId) query = query.eq('id', winnerId);
 
         const { data, error } = await query.single();

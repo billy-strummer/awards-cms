@@ -3121,7 +3121,7 @@ const eventsModule = {
     try {
       const { data } = await STATE.client
         .from('award_assignments')
-        .select('*, awards(award_name), organisations(company_name)')
+        .select('*, awards:award_years(award_name), organisations(company_name)')
         .eq('year', event.year)
         .eq('assignment_type', 'winner');
       winners = data || [];
@@ -3181,7 +3181,7 @@ const eventsModule = {
     try {
       const { data } = await STATE.client
         .from('award_assignments')
-        .select('*, awards(award_name), organisations(company_name)')
+        .select('*, awards:award_years(award_name), organisations(company_name)')
         .eq('year', event.year)
         .eq('assignment_type', 'winner');
       winners = data || [];
@@ -3326,7 +3326,7 @@ const eventsModule = {
     try {
       const { data } = await STATE.client
         .from('award_assignments')
-        .select('*, awards(award_name), organisations(company_name)')
+        .select('*, awards:award_years(award_name), organisations(company_name)')
         .eq('year', event.year)
         .eq('assignment_type', 'winner');
       winners = data || [];
@@ -4064,16 +4064,18 @@ const eventsModule = {
    */
   async loadRunningOrder() {
     try {
-      const { data: items, error: itemsError } = await STATE.client
+      // Try with FK joins first, fall back to simple query if relationships missing
+      let items, itemsError;
+      ({ data: items, error: itemsError } = await STATE.client
         .from('running_order')
         .select(`
           *,
           organisations(company_name, logo_url),
-          awards(award_name),
+          awards:award_years(award_name),
           event_guests(guest_name, guest_email)
         `)
         .eq('event_id', this.currentEventIdRunningOrder)
-        .order('display_order', { ascending: true });
+        .order('display_order', { ascending: true }));
 
       if (itemsError) {
         // Table may not exist
@@ -4084,7 +4086,20 @@ const eventsModule = {
           this._roAutoSchedule = false;
           return;
         }
-        throw itemsError;
+        // FK relationship missing in schema cache - retry without joins
+        if (itemsError.message?.includes('relationship') || itemsError.message?.includes('schema cache')) {
+          console.warn('Running order FK relationships not found, loading without joins');
+          const fallback = await STATE.client
+            .from('running_order')
+            .select('*')
+            .eq('event_id', this.currentEventIdRunningOrder)
+            .order('display_order', { ascending: true });
+          if (fallback.error) throw fallback.error;
+          items = fallback.data || [];
+          itemsError = null;
+        } else {
+          throw itemsError;
+        }
       }
       this.runningOrderItems = items || [];
 
@@ -6625,6 +6640,10 @@ const eventsModule = {
   currentEventNameTablePlan: null,
   tables: [],
   unassignedGuests: [],
+  roomFixtures: [], // Stage, photowall, AV booth etc.
+  _fixtureDrag: null, // {fixtureId, startX, startY, origLeft, origTop, moved}
+  _fixtureResize: null, // {fixtureId, startX, startY, origW, origH, handle}
+  _selectedFixtureId: null,
   draggedGuestId: null,
   draggedGuestData: null,
   draggedGuestIsCompany: false,
@@ -6665,6 +6684,7 @@ const eventsModule = {
 
     const totalGuests = this.unassignedGuests.length;
     const totalSeated = this.tables.reduce((sum, t) => sum + (t.assignments?.length || 0), 0);
+    const hasTables = this.tables.length > 0;
 
     const modalHtml = `
       <div class="modal fade" id="tablePlanModal" tabindex="-1" data-bs-backdrop="static">
@@ -6676,8 +6696,8 @@ const eventsModule = {
                 <h5 class="modal-title mb-0">
                   <i class="bi bi-grid-3x3-gap me-2"></i>Table Plan - ${utils.escapeHtml(this.currentEventNameTablePlan)}
                 </h5>
-                <span class="badge bg-info">${totalSeated} seated</span>
-                <span class="badge bg-warning text-dark">${totalGuests} unassigned</span>
+                <span class="badge bg-info" id="tpSeatedBadge">${totalSeated} seated</span>
+                <span class="badge bg-warning text-dark" id="tpUnassignedBadge">${totalGuests} unassigned</span>
               </div>
               <div class="d-flex align-items-center gap-2">
                 <button class="btn btn-sm btn-outline-light" onclick="eventsModule.autoAssignGuests()" title="Auto Assign">
@@ -6688,8 +6708,8 @@ const eventsModule = {
                     <i class="bi bi-download me-1"></i>Export
                   </button>
                   <ul class="dropdown-menu dropdown-menu-end">
-                    <li><a class="dropdown-item" href="#" onclick="eventsModule.exportTablePlan(); return false;"><i class="bi bi-filetype-csv me-2"></i>Export CSV</a></li>
-                    <li><a class="dropdown-item" href="#" onclick="eventsModule.exportTablePlanPDF(); return false;"><i class="bi bi-file-pdf me-2"></i>Export PDF (Print)</a></li>
+                    <li><a class="dropdown-item" href="#" onclick="eventsModule.exportTablePlanExcel(); return false;"><i class="bi bi-file-earmark-spreadsheet me-2"></i>Export Excel (.xlsx)</a></li>
+                    <li><a class="dropdown-item" href="#" onclick="eventsModule.exportTablePlanPDF(); return false;"><i class="bi bi-printer me-2"></i>Print Document</a></li>
                     <li><hr class="dropdown-divider"></li>
                     <li><a class="dropdown-item" href="#" onclick="eventsModule.openTVDisplay(); return false;"><i class="bi bi-tv me-2"></i>TV / Projector Display</a></li>
                   </ul>
@@ -6704,21 +6724,96 @@ const eventsModule = {
             <div class="modal-body p-0">
               <div class="d-flex" style="height: calc(100vh - 56px);">
 
-                <!-- Left Sidebar: Guests grouped by company -->
+                <!-- Left Sidebar -->
                 <div class="tp-sidebar border-end bg-light" style="width: 300px; min-width: 300px; display: flex; flex-direction: column;">
-                  <div class="p-2 border-bottom">
-                    <div class="input-group input-group-sm">
-                      <span class="input-group-text"><i class="bi bi-search"></i></span>
-                      <input type="text" class="form-control" id="tpGuestSearch" placeholder="Search guests or companies..." oninput="eventsModule.filterGuests(this.value)">
+
+                  <!-- Room Setup Panel -->
+                  <div id="tpSetupPanel" style="display: ${hasTables ? 'none' : 'block'};">
+                    <div class="p-3 border-bottom" style="background: linear-gradient(135deg, #1a1a2e, #16213e); color: white;">
+                      <h6 class="mb-1"><i class="bi bi-gear me-1"></i>Room Setup</h6>
+                      <small class="opacity-75">Configure your table layout</small>
+                    </div>
+                    <div class="p-3">
+                      <div class="mb-3">
+                        <label class="form-label small fw-bold">Number of Tables</label>
+                        <input type="number" class="form-control form-control-sm" id="tpSetupCount" value="10" min="1" max="50">
+                      </div>
+                      <div class="mb-3">
+                        <label class="form-label small fw-bold">Seats per Table</label>
+                        <select class="form-select form-select-sm" id="tpSetupSeats">
+                          <option value="6">6 seats</option>
+                          <option value="8" selected>8 seats</option>
+                          <option value="10">10 seats</option>
+                          <option value="12">12 seats</option>
+                        </select>
+                      </div>
+                      <div class="mb-3">
+                        <label class="form-label small fw-bold">Table Shape</label>
+                        <div class="d-flex gap-2">
+                          <label class="btn btn-sm btn-outline-secondary flex-fill active" id="tpShapeRoundLabel">
+                            <input type="radio" name="tpSetupShape" value="round" checked class="d-none" onchange="document.getElementById('tpShapeRoundLabel').classList.add('active');document.getElementById('tpShapeRectLabel').classList.remove('active');">
+                            <i class="bi bi-circle me-1"></i>Round
+                          </label>
+                          <label class="btn btn-sm btn-outline-secondary flex-fill" id="tpShapeRectLabel">
+                            <input type="radio" name="tpSetupShape" value="rectangular" class="d-none" onchange="document.getElementById('tpShapeRectLabel').classList.add('active');document.getElementById('tpShapeRoundLabel').classList.remove('active');">
+                            <i class="bi bi-square me-1"></i>Rectangular
+                          </label>
+                        </div>
+                      </div>
+                      <div class="mb-3">
+                        <label class="form-label small fw-bold">Layout Style</label>
+                        <select class="form-select form-select-sm" id="tpSetupLayout">
+                          <option value="grid">Grid</option>
+                          <option value="banquet">Banquet Rows</option>
+                          <option value="circle">Circle / Horseshoe</option>
+                        </select>
+                      </div>
+                      <button class="btn btn-primary w-100" onclick="eventsModule.generateTableLayout()">
+                        <i class="bi bi-grid-3x3-gap me-1"></i>Generate Layout
+                      </button>
+                      ${hasTables ? `<button class="btn btn-sm btn-link text-muted w-100 mt-1" onclick="document.getElementById('tpSetupPanel').style.display='none'; document.getElementById('tpGuestsPanel').style.display='flex';">Cancel</button>` : ''}
                     </div>
                   </div>
-                  <div class="p-2 border-bottom d-flex justify-content-between align-items-center">
-                    <small class="fw-bold text-muted">UNASSIGNED GUESTS</small>
-                    <span class="badge bg-primary" id="tpUnassignedCount">${totalGuests}</span>
+
+                  <!-- Guests Panel (shown after tables are created) -->
+                  <div id="tpGuestsPanel" style="display: ${hasTables ? 'flex' : 'none'}; flex-direction: column; flex: 1; min-height: 0;">
+                    <div class="p-2 border-bottom">
+                      <div class="input-group input-group-sm">
+                        <span class="input-group-text"><i class="bi bi-search"></i></span>
+                        <input type="text" class="form-control" id="tpGuestSearch" placeholder="Search guests or companies..." oninput="eventsModule.filterGuests(this.value)">
+                      </div>
+                    </div>
+
+                    <!-- Room Elements Section -->
+                    <div class="p-2 border-bottom">
+                      <div class="d-flex justify-content-between align-items-center mb-1">
+                        <small class="fw-bold text-muted">ROOM ELEMENTS</small>
+                        <button class="btn btn-sm btn-outline-secondary py-0 px-1" onclick="document.getElementById('tpSetupPanel').style.display='block'; document.getElementById('tpGuestsPanel').style.display='none';" title="Room Setup">
+                          <i class="bi bi-gear" style="font-size: 0.75rem;"></i>
+                        </button>
+                      </div>
+                      <div class="d-flex gap-1">
+                        <button class="btn btn-sm btn-outline-dark flex-fill" onclick="eventsModule.addRoomFixture('stage')" title="Add Stage">
+                          <i class="bi bi-easel me-1"></i>Stage
+                        </button>
+                        <button class="btn btn-sm btn-outline-dark flex-fill" onclick="eventsModule.addRoomFixture('photowall')" title="Add Photo Wall">
+                          <i class="bi bi-camera me-1"></i>Photo Wall
+                        </button>
+                        <button class="btn btn-sm btn-outline-dark flex-fill" onclick="eventsModule.addRoomFixture('av_booth')" title="Add AV Booth">
+                          <i class="bi bi-soundwave me-1"></i>AV Booth
+                        </button>
+                      </div>
+                    </div>
+
+                    <div class="p-2 border-bottom d-flex justify-content-between align-items-center">
+                      <small class="fw-bold text-muted">UNASSIGNED GUESTS</small>
+                      <span class="badge bg-primary" id="tpUnassignedCount">${totalGuests}</span>
+                    </div>
+                    <div id="unassignedGuestsList" class="flex-grow-1 overflow-auto p-2">
+                      <!-- Guests grouped by company rendered here -->
+                    </div>
                   </div>
-                  <div id="unassignedGuestsList" class="flex-grow-1 overflow-auto p-2">
-                    <!-- Guests grouped by company rendered here -->
-                  </div>
+
                 </div>
 
                 <!-- Main Canvas Area -->
@@ -6838,6 +6933,44 @@ const eventsModule = {
           box-shadow: 0 0 0 3px rgba(13,110,253,0.5), 0 4px 15px rgba(0,0,0,0.2);
         }
 
+        /* Room fixtures (stage, photowall, AV booth) */
+        .tp-fixture {
+          position: absolute; cursor: grab; user-select: none;
+          border-radius: 8px; display: flex; align-items: center; justify-content: center;
+          z-index: 5; transition: box-shadow 0.2s;
+        }
+        .tp-fixture:hover { box-shadow: 0 2px 12px rgba(0,0,0,0.15); z-index: 8; }
+        .tp-fixture:active { cursor: grabbing; }
+        .tp-fixture-selected {
+          box-shadow: 0 0 0 3px rgba(111,66,193,0.5), 0 4px 15px rgba(0,0,0,0.2) !important;
+          z-index: 9 !important;
+        }
+        .tp-fixture-label {
+          font-weight: 700; font-size: 0.85rem; text-align: center; pointer-events: none;
+          text-transform: uppercase; letter-spacing: 0.5px;
+        }
+        .tp-fixture-actions {
+          position: absolute; top: 4px; right: 4px; z-index: 10;
+        }
+        .tp-fixture-resize-handle {
+          position: absolute; background: #6c757d; border-radius: 2px; z-index: 10;
+          opacity: 0; transition: opacity 0.15s;
+        }
+        .tp-fixture:hover .tp-fixture-resize-handle,
+        .tp-fixture-selected .tp-fixture-resize-handle { opacity: 1; }
+        .tp-resize-se {
+          bottom: -4px; right: -4px; width: 10px; height: 10px; cursor: nwse-resize;
+          border-radius: 50%; background: #495057;
+        }
+        .tp-resize-e {
+          right: -4px; top: 50%; transform: translateY(-50%);
+          width: 6px; height: 20px; cursor: ew-resize;
+        }
+        .tp-resize-s {
+          bottom: -4px; left: 50%; transform: translateX(-50%);
+          width: 20px; height: 6px; cursor: ns-resize;
+        }
+
         /* Detail panel */
         #tpDetailPanel .detail-header {
           padding: 12px 16px; background: #1a1a2e; color: white;
@@ -6903,21 +7036,209 @@ const eventsModule = {
         table.assignments = assignments || [];
       }
 
-      // Load unassigned guests (RPC may not exist)
+      // Load unassigned guests (RPC may not exist, fall back to direct query)
       try {
         const { data: unassigned, error: unassignedError } = await STATE.client
           .rpc('get_unassigned_guests', { p_event_id: this.currentEventIdTablePlan });
-        if (!unassignedError) this.unassignedGuests = unassigned || [];
-        else this.unassignedGuests = [];
+        if (!unassignedError && unassigned) {
+          this.unassignedGuests = unassigned;
+        } else {
+          // Fallback: query event_guests directly, exclude those already assigned
+          const assignedGuestIds = new Set();
+          for (const t of this.tables) {
+            (t.assignments || []).forEach(a => { if (a.guest_id) assignedGuestIds.add(a.guest_id); });
+          }
+          let guestQuery = STATE.client
+            .from('event_guests')
+            .select('id, guest_name, guest_email, organisation_id, guest_type, plus_ones, rsvp_status')
+            .eq('event_id', this.currentEventIdTablePlan)
+            .eq('rsvp_status', 'confirmed');
+
+          const guestResult = await guestQuery;
+          if (!guestResult.error && guestResult.data) {
+            // Enrich with company name from organisations if possible
+            const orgIds = [...new Set(guestResult.data.filter(g => g.organisation_id).map(g => g.organisation_id))];
+            let orgMap = {};
+            if (orgIds.length > 0) {
+              const { data: orgs } = await STATE.client
+                .from('organisations')
+                .select('id, company_name')
+                .in('id', orgIds);
+              if (orgs) orgs.forEach(o => { orgMap[o.id] = o.company_name; });
+            }
+            this.unassignedGuests = guestResult.data
+              .filter(g => !assignedGuestIds.has(g.id))
+              .map(g => ({
+                guest_id: g.id,
+                guest_name: g.guest_name,
+                guest_email: g.guest_email,
+                organisation_id: g.organisation_id,
+                company_name: orgMap[g.organisation_id] || null,
+                guest_type: g.guest_type || 'guest',
+                plus_ones: g.plus_ones || 0,
+                rsvp_status: g.rsvp_status
+              }));
+          } else {
+            this.unassignedGuests = [];
+          }
+        }
       } catch (rpcErr) {
-        console.warn('get_unassigned_guests RPC not available:', rpcErr);
+        console.warn('Error loading unassigned guests:', rpcErr);
         this.unassignedGuests = [];
+      }
+
+      // Load room fixtures (stage, photowall, AV booth)
+      try {
+        const { data: fixtures, error: fixturesError } = await STATE.client
+          .from('event_room_fixtures')
+          .select('*')
+          .eq('event_id', this.currentEventIdTablePlan);
+
+        if (!fixturesError && fixtures) {
+          this.roomFixtures = fixtures;
+        } else {
+          // Table may not exist - fall back to localStorage
+          const key = `room_fixtures_${this.currentEventIdTablePlan}`;
+          const stored = localStorage.getItem(key);
+          this.roomFixtures = stored ? JSON.parse(stored) : [];
+        }
+      } catch (fixtureErr) {
+        const key = `room_fixtures_${this.currentEventIdTablePlan}`;
+        const stored = localStorage.getItem(key);
+        this.roomFixtures = stored ? JSON.parse(stored) : [];
       }
 
     } catch (error) {
       console.error('Error loading table plan:', error);
       throw error;
     }
+  },
+
+  /**
+   * Generate Table Layout - Batch create tables from setup wizard
+   */
+  async generateTableLayout() {
+    const count = parseInt(document.getElementById('tpSetupCount')?.value) || 10;
+    const seats = parseInt(document.getElementById('tpSetupSeats')?.value) || 8;
+    const shape = document.querySelector('input[name="tpSetupShape"]:checked')?.value || 'round';
+    const layout = document.getElementById('tpSetupLayout')?.value || 'grid';
+
+    if (count < 1 || count > 50) {
+      utils.showToast('Please enter between 1 and 50 tables', 'warning');
+      return;
+    }
+
+    // Confirm if tables already exist
+    if (this.tables.length > 0) {
+      if (!confirm(`This will add ${count} new tables to the existing ${this.tables.length} tables. Continue?`)) return;
+    }
+
+    try {
+      utils.showLoading();
+
+      // Calculate positions based on layout style
+      const positions = this._calculateLayoutPositions(count, layout, shape, seats);
+
+      // Get starting table number
+      const maxNum = this.tables.reduce((max, t) => Math.max(max, t.table_number || 0), 0);
+
+      // Batch insert all tables
+      const tablesToInsert = positions.map((pos, i) => ({
+        event_id: this.currentEventIdTablePlan,
+        table_number: maxNum + i + 1,
+        total_seats: seats,
+        shape: shape,
+        position_x: pos.x,
+        position_y: pos.y
+      }));
+
+      const { error } = await STATE.client
+        .from('event_tables')
+        .insert(tablesToInsert);
+
+      if (error) throw error;
+
+      utils.showToast(`${count} tables created`, 'success');
+
+      // Reload and re-render
+      await this.loadTablePlan();
+
+      // Switch to guests panel
+      const setupPanel = document.getElementById('tpSetupPanel');
+      const guestsPanel = document.getElementById('tpGuestsPanel');
+      if (setupPanel) setupPanel.style.display = 'none';
+      if (guestsPanel) guestsPanel.style.display = 'flex';
+
+      this.renderUnassignedGuests();
+      this.renderCanvasTables();
+
+      // Update badges
+      const totalSeated = this.tables.reduce((sum, t) => sum + (t.assignments?.length || 0), 0);
+      const seatedBadge = document.getElementById('tpSeatedBadge');
+      const unassignedBadge = document.getElementById('tpUnassignedBadge');
+      if (seatedBadge) seatedBadge.textContent = totalSeated + ' seated';
+      if (unassignedBadge) unassignedBadge.textContent = this.unassignedGuests.length + ' unassigned';
+
+    } catch (error) {
+      console.error('Error generating table layout:', error);
+      utils.showToast('Failed to generate layout: ' + error.message, 'error');
+    } finally {
+      utils.hideLoading();
+    }
+  },
+
+  /**
+   * Calculate table positions for different layout styles
+   */
+  _calculateLayoutPositions(count, layout, shape, seats) {
+    const positions = [];
+    // Table size depends on shape and seats
+    const tableSize = shape === 'rectangular' ? Math.max(140, 50 + seats * 12) : Math.max(110, 50 + seats * 8);
+    const spacing = tableSize + 60; // gap between tables
+
+    if (layout === 'grid') {
+      // Even grid layout
+      const cols = Math.ceil(Math.sqrt(count * 1.5)); // slightly wider than tall
+      const startX = 120;
+      const startY = 100;
+      for (let i = 0; i < count; i++) {
+        const col = i % cols;
+        const row = Math.floor(i / cols);
+        positions.push({
+          x: startX + col * spacing,
+          y: startY + row * spacing
+        });
+      }
+    } else if (layout === 'banquet') {
+      // Two columns with aisle
+      const rows = Math.ceil(count / 2);
+      const startX = 200;
+      const startY = 100;
+      const aisleWidth = spacing + 80;
+      for (let i = 0; i < count; i++) {
+        const col = i % 2;
+        const row = Math.floor(i / 2);
+        positions.push({
+          x: startX + col * aisleWidth,
+          y: startY + row * spacing
+        });
+      }
+    } else if (layout === 'circle') {
+      // Circle/horseshoe arrangement
+      const centerX = 800;
+      const centerY = 700;
+      const radius = Math.max(250, count * spacing / (2 * Math.PI));
+      for (let i = 0; i < count; i++) {
+        // Spread around ~300 degrees (horseshoe, open at bottom)
+        const angle = (Math.PI * 1.2) + (i / (count)) * (Math.PI * 1.6);
+        positions.push({
+          x: Math.round(centerX + radius * Math.cos(angle)),
+          y: Math.round(centerY + radius * Math.sin(angle))
+        });
+      }
+    }
+
+    return positions;
   },
 
   // ---- SIDEBAR: Guests grouped by company ----
@@ -7067,18 +7388,21 @@ const eventsModule = {
     const zoomLabel = document.getElementById('tpZoomLevel');
     if (zoomLabel) zoomLabel.textContent = Math.round(this._canvasZoom * 100) + '%';
 
-    if (this.tables.length === 0) {
+    if (this.tables.length === 0 && this.roomFixtures.length === 0) {
       canvas.innerHTML = `
         <div class="position-absolute d-flex align-items-center justify-content-center" style="inset:0;">
           <div class="text-center text-muted">
             <i class="bi bi-grid-3x3-gap display-3 d-block mb-3 opacity-25"></i>
-            <p>Click <strong>Add Table</strong> to start building your floor plan</p>
+            <p>Click <strong>Add Table</strong> or add <strong>Room Elements</strong> to start</p>
           </div>
         </div>`;
       return;
     }
 
-    canvas.innerHTML = this.tables.map(table => {
+    // Render fixtures (stage, photowall, AV booth)
+    const fixturesHtml = this._renderFixtures();
+
+    canvas.innerHTML = fixturesHtml + this.tables.map(table => {
       const sz = this._getTableSize(table);
       const assignedCount = table.assignments?.length || 0;
       const capClass = this._getCapacityClass(assignedCount, table.total_seats);
@@ -7120,6 +7444,256 @@ const eventsModule = {
           </div>
         </div>`;
     }).join('');
+  },
+
+  // ==== ROOM FIXTURES (Stage, Photo Wall, AV Booth) ====
+
+  _fixtureConfig: {
+    stage:     { label: 'Stage',      icon: 'bi-easel',     color: '#6f42c1', bg: '#f3e8ff', defaultW: 400, defaultH: 150 },
+    photowall: { label: 'Photo Wall', icon: 'bi-camera',    color: '#0d6efd', bg: '#e7f1ff', defaultW: 200, defaultH: 80  },
+    av_booth:  { label: 'AV Booth',   icon: 'bi-soundwave', color: '#198754', bg: '#e8f5e9', defaultW: 120, defaultH: 100 }
+  },
+
+  /**
+   * Add a room fixture to the canvas
+   */
+  async addRoomFixture(type) {
+    const config = this._fixtureConfig[type];
+    if (!config) return;
+
+    const id = 'fixture_' + Date.now() + '_' + Math.random().toString(36).substr(2, 6);
+    const fixture = {
+      id,
+      event_id: this.currentEventIdTablePlan,
+      fixture_type: type,
+      label: config.label,
+      position_x: 100 + this.roomFixtures.length * 50,
+      position_y: 50 + this.roomFixtures.length * 30,
+      width: config.defaultW,
+      height: config.defaultH
+    };
+
+    // Try saving to DB first, fall back to localStorage
+    try {
+      const { data, error } = await STATE.client
+        .from('event_room_fixtures')
+        .insert([fixture])
+        .select()
+        .single();
+
+      if (!error && data) {
+        fixture.id = data.id;
+        this.roomFixtures.push(fixture);
+      } else {
+        this.roomFixtures.push(fixture);
+        this._saveFixturesToLocalStorage();
+      }
+    } catch (e) {
+      this.roomFixtures.push(fixture);
+      this._saveFixturesToLocalStorage();
+    }
+
+    this.renderCanvasTables();
+    utils.showToast(`${config.label} added`, 'success');
+  },
+
+  /**
+   * Render all room fixtures as HTML elements
+   */
+  _renderFixtures() {
+    return this.roomFixtures.map(f => {
+      const config = this._fixtureConfig[f.fixture_type] || this._fixtureConfig.stage;
+      const selected = f.id === this._selectedFixtureId;
+      const label = f.label || config.label;
+
+      return `
+        <div class="tp-fixture ${selected ? 'tp-fixture-selected' : ''}"
+             data-fixture-id="${f.id}"
+             style="left:${f.position_x}px; top:${f.position_y}px; width:${f.width}px; height:${f.height}px;
+                    background: ${config.bg}; border: 2.5px ${f.fixture_type === 'stage' ? 'double' : 'dashed'} ${config.color};"
+             onmousedown="eventsModule.startFixtureDrag(event, '${f.id}')">
+          <div class="tp-fixture-label" style="color:${config.color};">
+            <i class="bi ${config.icon} me-1"></i>${utils.escapeHtml(label)}
+          </div>
+          ${selected ? `<div class="tp-fixture-actions">
+            <button class="btn btn-sm btn-outline-danger py-0 px-1" onmousedown="event.stopPropagation();" onclick="eventsModule.removeFixture('${f.id}')" title="Remove">
+              <i class="bi bi-trash" style="font-size:0.7rem;"></i>
+            </button>
+          </div>` : ''}
+          <div class="tp-fixture-resize-handle tp-resize-se" onmousedown="eventsModule.startFixtureResize(event, '${f.id}', 'se')"></div>
+          <div class="tp-fixture-resize-handle tp-resize-e" onmousedown="eventsModule.startFixtureResize(event, '${f.id}', 'e')"></div>
+          <div class="tp-fixture-resize-handle tp-resize-s" onmousedown="eventsModule.startFixtureResize(event, '${f.id}', 's')"></div>
+        </div>`;
+    }).join('');
+  },
+
+  /**
+   * Start dragging a fixture to reposition it
+   */
+  startFixtureDrag(event, fixtureId) {
+    if (event.button !== 0) return;
+
+    // Select the fixture
+    this._selectedFixtureId = fixtureId;
+    this._selectedTableId = null;
+    const panel = document.getElementById('tpDetailPanel');
+    if (panel) panel.style.display = 'none';
+
+    const el = event.currentTarget;
+    this._fixtureDrag = {
+      fixtureId,
+      el,
+      startX: event.clientX,
+      startY: event.clientY,
+      origLeft: parseInt(el.style.left) || 0,
+      origTop: parseInt(el.style.top) || 0,
+      moved: false
+    };
+
+    const onMove = (e) => {
+      if (!this._fixtureDrag) return;
+      const dx = (e.clientX - this._fixtureDrag.startX) / this._canvasZoom;
+      const dy = (e.clientY - this._fixtureDrag.startY) / this._canvasZoom;
+      if (Math.abs(dx) > 3 || Math.abs(dy) > 3) this._fixtureDrag.moved = true;
+      this._fixtureDrag.el.style.left = Math.max(0, this._fixtureDrag.origLeft + dx) + 'px';
+      this._fixtureDrag.el.style.top = Math.max(0, this._fixtureDrag.origTop + dy) + 'px';
+    };
+
+    const onUp = async () => {
+      document.removeEventListener('mousemove', onMove);
+      document.removeEventListener('mouseup', onUp);
+      if (!this._fixtureDrag) return;
+
+      if (this._fixtureDrag.moved) {
+        const newX = Math.max(0, Math.round(parseInt(this._fixtureDrag.el.style.left)));
+        const newY = Math.max(0, Math.round(parseInt(this._fixtureDrag.el.style.top)));
+        const fixture = this.roomFixtures.find(f => f.id === fixtureId);
+        if (fixture) {
+          fixture.position_x = newX;
+          fixture.position_y = newY;
+          await this._saveFixture(fixture);
+        }
+      }
+
+      this._fixtureDrag = null;
+      this.renderCanvasTables();
+    };
+
+    document.addEventListener('mousemove', onMove);
+    document.addEventListener('mouseup', onUp);
+    event.preventDefault();
+    event.stopPropagation();
+  },
+
+  /**
+   * Start resizing a fixture via a corner/edge handle
+   */
+  startFixtureResize(event, fixtureId, handle) {
+    event.preventDefault();
+    event.stopPropagation();
+
+    const fixture = this.roomFixtures.find(f => f.id === fixtureId);
+    if (!fixture) return;
+
+    const el = document.querySelector(`[data-fixture-id="${fixtureId}"]`);
+    if (!el) return;
+
+    this._fixtureResize = {
+      fixtureId,
+      el,
+      handle,
+      startX: event.clientX,
+      startY: event.clientY,
+      origW: fixture.width,
+      origH: fixture.height
+    };
+
+    const onMove = (e) => {
+      if (!this._fixtureResize) return;
+      const dx = (e.clientX - this._fixtureResize.startX) / this._canvasZoom;
+      const dy = (e.clientY - this._fixtureResize.startY) / this._canvasZoom;
+
+      let newW = this._fixtureResize.origW;
+      let newH = this._fixtureResize.origH;
+
+      if (handle === 'se' || handle === 'e') newW = Math.max(60, this._fixtureResize.origW + dx);
+      if (handle === 'se' || handle === 's') newH = Math.max(40, this._fixtureResize.origH + dy);
+
+      this._fixtureResize.el.style.width = newW + 'px';
+      this._fixtureResize.el.style.height = newH + 'px';
+    };
+
+    const onUp = async () => {
+      document.removeEventListener('mousemove', onMove);
+      document.removeEventListener('mouseup', onUp);
+      if (!this._fixtureResize) return;
+
+      const newW = Math.max(60, Math.round(parseInt(this._fixtureResize.el.style.width)));
+      const newH = Math.max(40, Math.round(parseInt(this._fixtureResize.el.style.height)));
+
+      const fixture = this.roomFixtures.find(f => f.id === fixtureId);
+      if (fixture) {
+        fixture.width = newW;
+        fixture.height = newH;
+        await this._saveFixture(fixture);
+      }
+
+      this._fixtureResize = null;
+      this.renderCanvasTables();
+    };
+
+    document.addEventListener('mousemove', onMove);
+    document.addEventListener('mouseup', onUp);
+  },
+
+  /**
+   * Remove a fixture from the canvas
+   */
+  async removeFixture(fixtureId) {
+    if (!confirm('Remove this element?')) return;
+
+    this.roomFixtures = this.roomFixtures.filter(f => f.id !== fixtureId);
+    if (this._selectedFixtureId === fixtureId) this._selectedFixtureId = null;
+
+    try {
+      await STATE.client
+        .from('event_room_fixtures')
+        .delete()
+        .eq('id', fixtureId);
+    } catch (e) {
+      // Fall back to localStorage
+    }
+    this._saveFixturesToLocalStorage();
+    this.renderCanvasTables();
+    utils.showToast('Element removed', 'success');
+  },
+
+  /**
+   * Save a single fixture to DB or localStorage
+   */
+  async _saveFixture(fixture) {
+    try {
+      const { error } = await STATE.client
+        .from('event_room_fixtures')
+        .upsert({
+          id: fixture.id,
+          event_id: fixture.event_id,
+          fixture_type: fixture.fixture_type,
+          label: fixture.label,
+          position_x: fixture.position_x,
+          position_y: fixture.position_y,
+          width: fixture.width,
+          height: fixture.height
+        });
+      if (error) throw error;
+    } catch (e) {
+      this._saveFixturesToLocalStorage();
+    }
+  },
+
+  _saveFixturesToLocalStorage() {
+    const key = `room_fixtures_${this.currentEventIdTablePlan}`;
+    localStorage.setItem(key, JSON.stringify(this.roomFixtures));
   },
 
   canvasZoom(delta, reset) {
@@ -7199,6 +7773,7 @@ const eventsModule = {
     if (this._tableDrag && this._tableDrag.moved) return;
 
     this._selectedTableId = tableId;
+    this._selectedFixtureId = null; // Deselect any fixture
     this.renderCanvasTables();
     this.showTableDetail(tableId);
   },
@@ -7212,6 +7787,57 @@ const eventsModule = {
     if (!table) { panel.style.display = 'none'; return; }
 
     const assignedCount = table.assignments?.length || 0;
+    const availableSeats = table.total_seats - assignedCount;
+
+    // Build organisation picker — group unassigned guests by company, VIP first
+    const orgGroups = this._groupGuestsByCompany(this.unassignedGuests);
+    // Score each company: VIP/sponsor guests get priority
+    const vipTypes = new Set(['vip', 'sponsor', 'speaker']);
+    const companyPriority = (key) => {
+      const grp = orgGroups[key];
+      if (!grp || key === '__none__') return 0;
+      const hasVip = grp.guests.some(g => vipTypes.has(g.guest_type));
+      return hasVip ? 2 : 1;
+    };
+    const companies = Object.keys(orgGroups)
+      .sort((a, b) => {
+        const pa = companyPriority(a), pb = companyPriority(b);
+        if (pa !== pb) return pb - pa; // VIP first
+        if (a === '__none__') return 1;
+        if (b === '__none__') return -1;
+        return a.localeCompare(b);
+      });
+
+    const orgPickerHtml = availableSeats > 0 && companies.length > 0 ? `
+      <div class="mb-2">
+        <small class="fw-bold text-muted d-block mb-1">ASSIGN ORGANISATION</small>
+        <input type="text" class="form-control form-control-sm mb-1" id="tpOrgSearch" placeholder="Search companies..." oninput="eventsModule._filterOrgPicker(this.value)">
+        <div id="tpOrgPickerList" style="max-height: 180px; overflow-y: auto;">
+          ${companies.map(key => {
+            const grp = orgGroups[key];
+            const name = grp.company_name || 'No Company';
+            const guestCount = grp.guests.length;
+            const fitsAll = guestCount <= availableSeats;
+            const hasVip = grp.guests.some(g => vipTypes.has(g.guest_type));
+            const vipBadge = hasVip ? '<span class="badge bg-warning text-dark ms-1" style="font-size:0.65rem;">VIP</span>' : '';
+            return `<div class="tp-org-pick-item d-flex align-items-center justify-content-between p-2 mb-1 rounded border" style="cursor:pointer; font-size:0.82rem; background:${hasVip ? '#fff8e1' : '#f8f9fa'}; transition: background 0.15s; ${hasVip ? 'border-color:#ffc107 !important;' : ''}"
+              onmouseover="this.style.background='#e3f2fd'"
+              onmouseout="this.style.background='${hasVip ? '#fff8e1' : '#f8f9fa'}'"
+              data-org-name="${utils.escapeHtml(name).toLowerCase()}"
+              onclick="eventsModule.assignOrgToTable('${table.id}', ${JSON.stringify(key).replace(/'/g, '\\x27')})">
+              <div>
+                <div class="fw-medium"><i class="bi bi-building me-1 text-muted"></i>${utils.escapeHtml(name)}${vipBadge}</div>
+                <small class="text-muted">${guestCount} guest${guestCount !== 1 ? 's' : ''}</small>
+              </div>
+              <span class="badge ${fitsAll ? 'bg-success' : 'bg-warning text-dark'}">${fitsAll ? 'Fits' : guestCount + '/' + availableSeats}</span>
+            </div>`;
+          }).join('')}
+        </div>
+      </div>
+      <hr>
+    ` : availableSeats === 0 ? `
+      <div class="alert alert-info py-2 mb-2" style="font-size:0.8rem;"><i class="bi bi-check-circle me-1"></i>Table is full</div>
+    ` : '';
 
     content.innerHTML = `
       <div class="detail-header">
@@ -7244,6 +7870,7 @@ const eventsModule = {
           <i class="bi bi-check-lg me-1"></i>Save Changes
         </button>
         <hr>
+        ${orgPickerHtml}
         <div class="d-flex justify-content-between align-items-center mb-2">
           <small class="fw-bold text-muted">SEATED GUESTS (${assignedCount}/${table.total_seats})</small>
         </div>
@@ -7258,7 +7885,7 @@ const eventsModule = {
                 <i class="bi bi-x-circle-fill"></i>
               </span>
             </div>
-          `).join('') : '<p class="text-muted small text-center mt-3">Drop guests onto this table to assign them</p>'}
+          `).join('') : '<p class="text-muted small text-center mt-3">Click a company above or drag guests from the left panel</p>'}
         </div>
         <hr>
         <div class="d-flex gap-2 mb-2">
@@ -7276,6 +7903,80 @@ const eventsModule = {
     `;
 
     panel.style.display = 'flex';
+  },
+
+  /**
+   * Filter organisation picker in detail panel
+   */
+  _filterOrgPicker(term) {
+    const items = document.querySelectorAll('#tpOrgPickerList .tp-org-pick-item');
+    const search = (term || '').toLowerCase();
+    items.forEach(el => {
+      const name = el.getAttribute('data-org-name') || '';
+      el.style.display = name.includes(search) ? '' : 'none';
+    });
+  },
+
+  /**
+   * Assign an entire organisation's guests to a table
+   */
+  async assignOrgToTable(tableId, orgKey) {
+    const table = this.tables.find(t => t.id === tableId);
+    if (!table) return;
+
+    const assignedCount = table.assignments?.length || 0;
+    const availableSeats = table.total_seats - assignedCount;
+
+    // Get guests for this org from unassigned list
+    const guests = this.unassignedGuests.filter(g => {
+      const key = g.company_name || '__none__';
+      return key === orgKey;
+    });
+
+    if (guests.length === 0) {
+      utils.showToast('No unassigned guests for this organisation', 'warning');
+      return;
+    }
+
+    const toAssign = guests.slice(0, availableSeats);
+    if (toAssign.length < guests.length) {
+      if (!confirm(`Only ${availableSeats} seat(s) available. Assign ${toAssign.length} of ${guests.length} guests?`)) return;
+    }
+
+    try {
+      const assignments = toAssign.map(g => ({
+        event_id: this.currentEventIdTablePlan,
+        table_id: tableId,
+        guest_id: g.guest_id || g.id,
+        guest_name: g.guest_name,
+        organisation_id: g.organisation_id || null,
+        company_name: g.company_name || null
+      }));
+
+      const { error } = await STATE.client
+        .from('table_assignments')
+        .insert(assignments);
+
+      if (error) throw error;
+
+      utils.showToast(`${toAssign.length} guest(s) assigned`, 'success');
+
+      await this.loadTablePlan();
+      this.renderUnassignedGuests();
+      this.renderCanvasTables();
+      this.showTableDetail(tableId);
+
+      // Update header badges
+      const totalSeated = this.tables.reduce((sum, t) => sum + (t.assignments?.length || 0), 0);
+      const seatedBadge = document.getElementById('tpSeatedBadge');
+      const unassignedBadge = document.getElementById('tpUnassignedBadge');
+      if (seatedBadge) seatedBadge.textContent = totalSeated + ' seated';
+      if (unassignedBadge) unassignedBadge.textContent = this.unassignedGuests.length + ' unassigned';
+
+    } catch (error) {
+      console.error('Error assigning org to table:', error);
+      utils.showToast('Failed to assign guests: ' + error.message, 'error');
+    }
   },
 
   closeTableDetail() {
@@ -7444,9 +8145,17 @@ const eventsModule = {
 
   async addNewTable() {
     try {
-      const { data: nextNumber, error: numberError } = await STATE.client
+      let nextNumber;
+      const { data: rpcResult, error: numberError } = await STATE.client
         .rpc('get_next_table_number', { p_event_id: this.currentEventIdTablePlan });
-      if (numberError) throw numberError;
+      if (numberError) {
+        // RPC may not exist - compute next table number client-side
+        console.warn('get_next_table_number RPC not available, computing locally');
+        const maxNum = this.tables.reduce((max, t) => Math.max(max, t.table_number || 0), 0);
+        nextNumber = maxNum + 1;
+      } else {
+        nextNumber = rpcResult;
+      }
 
       // Place new table in a visible spot on the canvas
       const canvas = document.getElementById('tpCanvasWrapper');
@@ -7607,46 +8316,192 @@ const eventsModule = {
     }
   },
 
-  // ---- EXPORT ----
+  // ---- EXCEL EXPORT ----
 
-  exportTablePlan() {
+  async exportTablePlanExcel() {
     if (this.tables.length === 0) {
       utils.showToast('No tables to export', 'warning');
       return;
     }
 
-    const exportData = [];
-    this.tables.forEach(table => {
-      if (table.assignments && table.assignments.length > 0) {
-        table.assignments.forEach(assignment => {
-          exportData.push({
-            'Table Number': table.table_number,
-            'Table Name': table.table_name || '',
-            'Total Seats': table.total_seats,
-            'Guest Name': assignment.guest_name,
-            'Company': assignment.company_name || '',
-            'VIP': assignment.is_vip ? 'Yes' : 'No',
-            'Dietary': assignment.dietary_requirements || ''
-          });
-        });
-      } else {
-        exportData.push({
-          'Table Number': table.table_number,
-          'Table Name': table.table_name || '',
-          'Total Seats': table.total_seats,
-          'Guest Name': '(Empty)',
-          'Company': '',
-          'VIP': '',
-          'Dietary': ''
+    try {
+      // Load SheetJS if not already loaded
+      if (typeof XLSX === 'undefined') {
+        await new Promise((resolve, reject) => {
+          const script = document.createElement('script');
+          script.src = 'https://cdn.sheetjs.com/xlsx-0.20.0/package/dist/xlsx.full.min.js';
+          script.onload = resolve;
+          script.onerror = () => reject(new Error('Failed to load Excel library'));
+          document.head.appendChild(script);
         });
       }
-    });
 
-    const filename = `${this.currentEventNameTablePlan.replace(/[^a-z0-9]/gi, '_')}_table_plan_${new Date().toISOString().split('T')[0]}.csv`;
-    utils.exportToCSV(exportData, filename);
+      const wb = XLSX.utils.book_new();
+      const sortedTables = [...this.tables].sort((a, b) => a.table_number - b.table_number);
+
+      // ---- Sheet 1: By Table Number ----
+      const byTableRows = [];
+      sortedTables.forEach(table => {
+        const label = table.table_name || '';
+        if (table.assignments && table.assignments.length > 0) {
+          [...table.assignments]
+            .sort((a, b) => (a.guest_name || '').localeCompare(b.guest_name || ''))
+            .forEach(a => {
+              byTableRows.push({
+                'Table #': table.table_number,
+                'Table Name': label,
+                'Seats': table.total_seats,
+                'Occupied': table.assignments.length,
+                'Guest Name': a.guest_name || '',
+                'Company': a.company_name || '',
+                'Seat #': a.seat_number || '',
+                'VIP': a.is_vip ? 'Yes' : '',
+                'Dietary': a.dietary_requirements || '',
+                'Notes': a.notes || ''
+              });
+            });
+        } else {
+          byTableRows.push({
+            'Table #': table.table_number,
+            'Table Name': label,
+            'Seats': table.total_seats,
+            'Occupied': 0,
+            'Guest Name': '',
+            'Company': '',
+            'Seat #': '',
+            'VIP': '',
+            'Dietary': '',
+            'Notes': ''
+          });
+        }
+      });
+
+      const ws1 = XLSX.utils.json_to_sheet(byTableRows);
+      ws1['!cols'] = [
+        { wch: 8 },   // Table #
+        { wch: 20 },  // Table Name
+        { wch: 6 },   // Seats
+        { wch: 9 },   // Occupied
+        { wch: 28 },  // Guest Name
+        { wch: 28 },  // Company
+        { wch: 7 },   // Seat #
+        { wch: 5 },   // VIP
+        { wch: 20 },  // Dietary
+        { wch: 20 }   // Notes
+      ];
+      ws1['!autofilter'] = { ref: XLSX.utils.encode_range({ s: { r: 0, c: 0 }, e: { r: byTableRows.length, c: 9 } }) };
+      XLSX.utils.book_append_sheet(wb, ws1, 'By Table');
+
+      // ---- Sheet 2: By Company (A-Z) ----
+      const allGuests = [];
+      sortedTables.forEach(table => {
+        (table.assignments || []).forEach(a => {
+          allGuests.push({
+            'Company': a.company_name || '',
+            'Guest Name': a.guest_name || '',
+            'Table #': table.table_number,
+            'Table Name': table.table_name || '',
+            'Seat #': a.seat_number || '',
+            'VIP': a.is_vip ? 'Yes' : '',
+            'Dietary': a.dietary_requirements || ''
+          });
+        });
+      });
+      allGuests.sort((a, b) => (a['Company'] || '').localeCompare(b['Company'] || '') || (a['Guest Name'] || '').localeCompare(b['Guest Name'] || ''));
+
+      const ws2 = XLSX.utils.json_to_sheet(allGuests);
+      ws2['!cols'] = [
+        { wch: 28 },  // Company
+        { wch: 28 },  // Guest Name
+        { wch: 8 },   // Table #
+        { wch: 20 },  // Table Name
+        { wch: 7 },   // Seat #
+        { wch: 5 },   // VIP
+        { wch: 20 }   // Dietary
+      ];
+      ws2['!autofilter'] = { ref: XLSX.utils.encode_range({ s: { r: 0, c: 0 }, e: { r: allGuests.length, c: 6 } }) };
+      XLSX.utils.book_append_sheet(wb, ws2, 'By Company');
+
+      // ---- Sheet 3: Guest A-Z ----
+      const guestAZ = [...allGuests].sort((a, b) => (a['Guest Name'] || '').localeCompare(b['Guest Name'] || ''));
+      const guestRows = guestAZ.map(g => ({
+        'Guest Name': g['Guest Name'],
+        'Company': g['Company'],
+        'Table #': g['Table #'],
+        'Table Name': g['Table Name'],
+        'Seat #': g['Seat #'],
+        'VIP': g['VIP'],
+        'Dietary': g['Dietary']
+      }));
+
+      const ws3 = XLSX.utils.json_to_sheet(guestRows);
+      ws3['!cols'] = [
+        { wch: 28 },  // Guest Name
+        { wch: 28 },  // Company
+        { wch: 8 },   // Table #
+        { wch: 20 },  // Table Name
+        { wch: 7 },   // Seat #
+        { wch: 5 },   // VIP
+        { wch: 20 }   // Dietary
+      ];
+      ws3['!autofilter'] = { ref: XLSX.utils.encode_range({ s: { r: 0, c: 0 }, e: { r: guestRows.length, c: 6 } }) };
+      XLSX.utils.book_append_sheet(wb, ws3, 'Guest A-Z');
+
+      // ---- Sheet 4: Unassigned (if any) ----
+      if (this.unassignedGuests.length > 0) {
+        const unassignedRows = [...this.unassignedGuests]
+          .sort((a, b) => (a.guest_name || '').localeCompare(b.guest_name || ''))
+          .map(g => ({
+            'Guest Name': g.guest_name || '',
+            'Company': g.company_name || '',
+            'Email': g.guest_email || '',
+            'RSVP Status': g.rsvp_status || ''
+          }));
+        const ws4 = XLSX.utils.json_to_sheet(unassignedRows);
+        ws4['!cols'] = [{ wch: 28 }, { wch: 28 }, { wch: 30 }, { wch: 14 }];
+        ws4['!autofilter'] = { ref: XLSX.utils.encode_range({ s: { r: 0, c: 0 }, e: { r: unassignedRows.length, c: 3 } }) };
+        XLSX.utils.book_append_sheet(wb, ws4, 'Unassigned');
+      }
+
+      // ---- Sheet 5: Summary ----
+      const totalSeats = sortedTables.reduce((s, t) => s + t.total_seats, 0);
+      const totalSeated = sortedTables.reduce((s, t) => s + (t.assignments?.length || 0), 0);
+      const summaryRows = sortedTables.map(t => ({
+        'Table #': t.table_number,
+        'Table Name': t.table_name || '',
+        'Shape': t.shape || 'round',
+        'Total Seats': t.total_seats,
+        'Occupied': t.assignments?.length || 0,
+        'Available': t.total_seats - (t.assignments?.length || 0),
+        'Occupancy %': t.total_seats > 0 ? Math.round((t.assignments?.length || 0) / t.total_seats * 100) : 0
+      }));
+      // Add totals row
+      summaryRows.push({
+        'Table #': '',
+        'Table Name': 'TOTAL',
+        'Shape': '',
+        'Total Seats': totalSeats,
+        'Occupied': totalSeated,
+        'Available': totalSeats - totalSeated,
+        'Occupancy %': totalSeats > 0 ? Math.round(totalSeated / totalSeats * 100) : 0
+      });
+
+      const ws5 = XLSX.utils.json_to_sheet(summaryRows);
+      ws5['!cols'] = [{ wch: 8 }, { wch: 20 }, { wch: 12 }, { wch: 11 }, { wch: 9 }, { wch: 9 }, { wch: 12 }];
+      XLSX.utils.book_append_sheet(wb, ws5, 'Summary');
+
+      // Download
+      const safeName = (this.currentEventNameTablePlan || 'Event').replace(/[^a-z0-9]/gi, '_');
+      XLSX.writeFile(wb, `${safeName}_Table_Plan_${new Date().toISOString().split('T')[0]}.xlsx`);
+      utils.showToast('Excel spreadsheet exported successfully', 'success');
+
+    } catch (error) {
+      console.error('Error exporting Excel:', error);
+      utils.showToast('Failed to export spreadsheet: ' + error.message, 'error');
+    }
   },
 
-  // ---- PDF EXPORT (print-friendly) ----
+  // ---- PRINTABLE TABLE PLAN DOCUMENT ----
 
   exportTablePlanPDF() {
     if (this.tables.length === 0) {
@@ -7654,111 +8509,273 @@ const eventsModule = {
       return;
     }
 
-    try {
-      const { jsPDF } = window.jspdf;
-      const doc = new jsPDF('landscape');
-      const eventName = this.currentEventNameTablePlan || 'Event';
-      const dateStr = new Date().toLocaleDateString('en-GB');
+    const esc = s => utils.escapeHtml(s || '');
+    const eventName = this.currentEventNameTablePlan || 'Event';
+    const dateStr = new Date().toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+    const totalSeats = this.tables.reduce((s, t) => s + t.total_seats, 0);
+    const totalSeated = this.tables.reduce((s, t) => s + (t.assignments?.length || 0), 0);
+    const occupancyPct = totalSeats > 0 ? Math.round(totalSeated / totalSeats * 100) : 0;
 
-      // Title page
-      doc.setFontSize(28);
-      doc.setTextColor(26, 26, 46);
-      doc.text('Table Plan', 148.5, 60, { align: 'center' });
-      doc.setFontSize(18);
-      doc.setTextColor(13, 110, 253);
-      doc.text(eventName, 148.5, 75, { align: 'center' });
-      doc.setFontSize(11);
-      doc.setTextColor(120, 120, 120);
-      doc.text(`Generated: ${dateStr}`, 148.5, 88, { align: 'center' });
+    // Sort tables by table_number
+    const sortedTables = [...this.tables].sort((a, b) => a.table_number - b.table_number);
 
-      // Summary stats
-      const totalSeats = this.tables.reduce((s, t) => s + t.total_seats, 0);
-      const totalSeated = this.tables.reduce((s, t) => s + (t.assignments?.length || 0), 0);
-      doc.setFontSize(12);
-      doc.setTextColor(80, 80, 80);
-      doc.text(`${this.tables.length} Tables  |  ${totalSeated}/${totalSeats} Seats Filled  |  ${this.unassignedGuests.length} Unassigned`, 148.5, 100, { align: 'center' });
+    // Build table cards HTML
+    const tableCardsHtml = sortedTables.map(table => {
+      const assigned = table.assignments?.length || 0;
+      const label = table.table_name
+        ? `${esc(table.table_name)} <span class="table-num">(Table ${table.table_number})</span>`
+        : `Table ${table.table_number}`;
+      const shapeLabel = (table.shape || 'round').charAt(0).toUpperCase() + (table.shape || 'round').slice(1);
 
-      // Table-by-table detail pages
-      doc.addPage('landscape');
-      doc.setFontSize(16);
-      doc.setTextColor(26, 26, 46);
-      doc.text('Seating Assignments', 14, 18);
-
-      // Build table data for autoTable
-      const tableData = [];
-      this.tables.forEach(table => {
-        const label = table.table_name ? `Table ${table.table_number} - ${table.table_name}` : `Table ${table.table_number}`;
-        const assigned = table.assignments?.length || 0;
-        if (table.assignments && table.assignments.length > 0) {
-          table.assignments.forEach((a, i) => {
-            tableData.push([
-              i === 0 ? label : '',
-              i === 0 ? `${assigned}/${table.total_seats}` : '',
-              a.guest_name,
-              a.company_name || '',
-              a.dietary_requirements || '',
-              a.is_vip ? 'VIP' : ''
-            ]);
-          });
-        } else {
-          tableData.push([label, `0/${table.total_seats}`, '(No guests)', '', '', '']);
-        }
-      });
-
-      doc.autoTable({
-        startY: 24,
-        head: [['Table', 'Capacity', 'Guest Name', 'Company', 'Dietary', 'VIP']],
-        body: tableData,
-        styles: { fontSize: 9, cellPadding: 3 },
-        headStyles: { fillColor: [26, 26, 46], textColor: 255, fontStyle: 'bold' },
-        columnStyles: {
-          0: { fontStyle: 'bold', cellWidth: 50 },
-          1: { cellWidth: 25, halign: 'center' },
-          5: { cellWidth: 18, halign: 'center' }
-        },
-        didParseCell: (data) => {
-          // Bold table name rows
-          if (data.column.index === 0 && data.cell.raw) {
-            data.cell.styles.fontStyle = 'bold';
-          }
-          // Highlight VIP
-          if (data.column.index === 5 && data.cell.raw === 'VIP') {
-            data.cell.styles.textColor = [220, 53, 69];
-            data.cell.styles.fontStyle = 'bold';
-          }
-        }
-      });
-
-      // Unassigned guests page (if any)
-      if (this.unassignedGuests.length > 0) {
-        doc.addPage('landscape');
-        doc.setFontSize(16);
-        doc.setTextColor(26, 26, 46);
-        doc.text('Unassigned Guests', 14, 18);
-
-        const unassignedData = this.unassignedGuests.map(g => [
-          g.guest_name,
-          g.company_name || '',
-          g.guest_email || ''
-        ]);
-
-        doc.autoTable({
-          startY: 24,
-          head: [['Guest Name', 'Company', 'Email']],
-          body: unassignedData,
-          styles: { fontSize: 9, cellPadding: 3 },
-          headStyles: { fillColor: [255, 193, 7], textColor: [0, 0, 0], fontStyle: 'bold' }
-        });
+      let guestsHtml = '';
+      if (table.assignments && table.assignments.length > 0) {
+        const sortedGuests = [...table.assignments].sort((a, b) =>
+          (a.guest_name || '').localeCompare(b.guest_name || ''));
+        guestsHtml = sortedGuests.map(a => `
+          <tr>
+            <td class="guest-name">${esc(a.guest_name)}${a.is_vip ? ' <span class="vip-badge">VIP</span>' : ''}</td>
+            <td class="guest-company">${esc(a.company_name)}</td>
+            <td class="guest-seat">${a.seat_number || '-'}</td>
+            <td class="guest-dietary">${esc(a.dietary_requirements)}</td>
+          </tr>
+        `).join('');
+      } else {
+        guestsHtml = '<tr><td colspan="4" class="empty-table">No guests assigned</td></tr>';
       }
 
-      const safeName = eventName.replace(/[^a-z0-9]/gi, '_');
-      doc.save(`${safeName}_Table_Plan_${new Date().toISOString().split('T')[0]}.pdf`);
-      utils.showToast('PDF exported successfully', 'success');
+      return `
+        <div class="table-card">
+          <div class="table-header">
+            <div class="table-title">${label}</div>
+            <div class="table-meta">${shapeLabel} &middot; ${assigned}/${table.total_seats} seats</div>
+          </div>
+          <table class="guest-table">
+            <thead>
+              <tr><th>Guest</th><th>Company</th><th>Seat</th><th>Dietary</th></tr>
+            </thead>
+            <tbody>${guestsHtml}</tbody>
+          </table>
+          ${table.notes ? `<div class="table-notes">Note: ${esc(table.notes)}</div>` : ''}
+        </div>
+      `;
+    }).join('');
 
-    } catch (error) {
-      console.error('Error exporting PDF:', error);
-      utils.showToast('Failed to export PDF: ' + error.message, 'error');
+    // Build alphabetical guest directory
+    const allGuests = [];
+    sortedTables.forEach(table => {
+      (table.assignments || []).forEach(a => {
+        allGuests.push({
+          name: a.guest_name || '',
+          company: a.company_name || '',
+          tableNum: table.table_number,
+          tableName: table.table_name || '',
+          seat: a.seat_number || '-',
+          vip: a.is_vip,
+          dietary: a.dietary_requirements || ''
+        });
+      });
+    });
+    allGuests.sort((a, b) => a.name.localeCompare(b.name));
+
+    const directoryHtml = allGuests.length > 0 ? allGuests.map(g => `
+      <tr>
+        <td class="guest-name">${esc(g.name)}${g.vip ? ' <span class="vip-badge">VIP</span>' : ''}</td>
+        <td>${esc(g.company)}</td>
+        <td class="table-ref"><strong>${g.tableNum}</strong>${g.tableName ? ` - ${esc(g.tableName)}` : ''}</td>
+        <td class="guest-seat">${g.seat}</td>
+      </tr>
+    `).join('') : '<tr><td colspan="4">No guests assigned yet</td></tr>';
+
+    // Unassigned guests section
+    let unassignedHtml = '';
+    if (this.unassignedGuests.length > 0) {
+      const sortedUnassigned = [...this.unassignedGuests].sort((a, b) =>
+        (a.guest_name || '').localeCompare(b.guest_name || ''));
+      unassignedHtml = `
+        <div class="section-break"></div>
+        <h2 class="section-title unassigned-title">Unassigned Guests (${this.unassignedGuests.length})</h2>
+        <table class="directory-table unassigned-table">
+          <thead><tr><th>Guest</th><th>Company</th><th>Email</th></tr></thead>
+          <tbody>
+            ${sortedUnassigned.map(g => `
+              <tr>
+                <td>${esc(g.guest_name)}</td>
+                <td>${esc(g.company_name)}</td>
+                <td>${esc(g.guest_email)}</td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+      `;
     }
+
+    // Open print window
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) {
+      utils.showToast('Please allow popups to open the print view', 'warning');
+      return;
+    }
+
+    printWindow.document.write(`<!DOCTYPE html>
+<html>
+<head>
+  <title>Table Plan - ${esc(eventName)}</title>
+  <style>
+    @page { size: A4 portrait; margin: 15mm 12mm; }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      color: #1a1a2e; font-size: 10pt; line-height: 1.4;
+    }
+
+    /* ---- Cover Page ---- */
+    .cover {
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      min-height: 90vh; text-align: center; page-break-after: always;
+    }
+    .cover h1 { font-size: 32pt; font-weight: 800; letter-spacing: -0.5px; margin-bottom: 6px; }
+    .cover .event-name { font-size: 18pt; color: #0d6efd; font-weight: 600; margin-bottom: 20px; }
+    .cover .date { font-size: 11pt; color: #888; margin-bottom: 40px; }
+    .cover .stats-grid {
+      display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px;
+      max-width: 500px; width: 100%;
+    }
+    .cover .stat-box {
+      border: 2px solid #e9ecef; border-radius: 10px; padding: 16px 8px;
+    }
+    .cover .stat-box .num { font-size: 28pt; font-weight: 800; color: #1a1a2e; }
+    .cover .stat-box .label { font-size: 8pt; text-transform: uppercase; letter-spacing: 1px; color: #888; margin-top: 2px; }
+    .cover .stat-box.highlight { border-color: #0d6efd; }
+    .cover .stat-box.highlight .num { color: #0d6efd; }
+    .cover .stat-box.warning { border-color: #ffc107; }
+    .cover .stat-box.warning .num { color: #dc3545; }
+
+    /* ---- Section Titles ---- */
+    .section-title {
+      font-size: 16pt; font-weight: 700; color: #1a1a2e; margin: 0 0 12px 0;
+      padding-bottom: 6px; border-bottom: 3px solid #1a1a2e;
+    }
+    .section-break { page-break-before: always; }
+
+    /* ---- Table Cards ---- */
+    .table-card {
+      border: 1px solid #dee2e6; border-radius: 8px; margin-bottom: 14px;
+      page-break-inside: avoid; overflow: hidden;
+    }
+    .table-header {
+      background: #1a1a2e; color: white; padding: 8px 14px;
+      display: flex; justify-content: space-between; align-items: center;
+    }
+    .table-title { font-weight: 700; font-size: 11pt; }
+    .table-title .table-num { font-weight: 400; opacity: 0.7; font-size: 9pt; }
+    .table-meta { font-size: 8pt; opacity: 0.7; }
+    .guest-table { width: 100%; border-collapse: collapse; font-size: 9pt; }
+    .guest-table th {
+      background: #f8f9fa; text-align: left; padding: 5px 10px;
+      font-size: 7.5pt; text-transform: uppercase; letter-spacing: 0.5px; color: #666;
+      border-bottom: 1px solid #dee2e6;
+    }
+    .guest-table td { padding: 5px 10px; border-bottom: 1px solid #f0f0f0; }
+    .guest-table tr:last-child td { border-bottom: none; }
+    .guest-name { font-weight: 600; }
+    .guest-company { color: #555; }
+    .guest-seat { text-align: center; width: 40px; }
+    .guest-dietary { font-size: 8pt; color: #888; }
+    .vip-badge {
+      display: inline-block; background: #dc3545; color: white; font-size: 6.5pt;
+      padding: 1px 5px; border-radius: 3px; font-weight: 700; vertical-align: middle;
+    }
+    .empty-table { color: #aaa; font-style: italic; text-align: center; padding: 10px; }
+    .table-notes { font-size: 8pt; color: #666; padding: 4px 14px 6px; background: #fffde7; border-top: 1px solid #f0f0f0; }
+
+    /* ---- Guest Directory ---- */
+    .directory-table { width: 100%; border-collapse: collapse; font-size: 9pt; margin-bottom: 20px; }
+    .directory-table th {
+      background: #1a1a2e; color: white; text-align: left; padding: 6px 10px;
+      font-size: 8pt; text-transform: uppercase; letter-spacing: 0.5px;
+    }
+    .directory-table td { padding: 5px 10px; border-bottom: 1px solid #e9ecef; }
+    .directory-table tr:nth-child(even) td { background: #f8f9fa; }
+    .table-ref { white-space: nowrap; }
+
+    /* ---- Unassigned ---- */
+    .unassigned-title { color: #dc3545; border-bottom-color: #dc3545; }
+    .unassigned-table th { background: #ffc107; color: #000; }
+
+    /* ---- Footer ---- */
+    .page-footer {
+      margin-top: 20px; padding-top: 8px; border-top: 1px solid #e9ecef;
+      font-size: 7.5pt; color: #aaa; text-align: center;
+    }
+
+    /* ---- Print-specific ---- */
+    @media print {
+      body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+      .no-print { display: none; }
+      .table-header { background: #1a1a2e !important; color: white !important; }
+      .vip-badge { background: #dc3545 !important; color: white !important; }
+      .directory-table th { background: #1a1a2e !important; color: white !important; }
+    }
+
+    /* ---- Screen toolbar ---- */
+    .print-toolbar {
+      position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+      background: #1a1a2e; color: white; padding: 10px 20px;
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .print-toolbar button {
+      background: #0d6efd; color: white; border: none; padding: 8px 20px;
+      border-radius: 6px; font-weight: 600; cursor: pointer; font-size: 10pt;
+    }
+    .print-toolbar button:hover { background: #0b5ed7; }
+    @media print { .print-toolbar { display: none; } }
+    .content { margin-top: 56px; padding: 20px; }
+    @media print { .content { margin-top: 0; padding: 0; } }
+  </style>
+</head>
+<body>
+  <div class="print-toolbar no-print">
+    <div><strong>Table Plan</strong> &mdash; ${esc(eventName)}</div>
+    <div>
+      <button onclick="window.print()">Print / Save as PDF</button>
+    </div>
+  </div>
+  <div class="content">
+    <!-- Cover Page -->
+    <div class="cover">
+      <h1>Table Plan</h1>
+      <div class="event-name">${esc(eventName)}</div>
+      <div class="date">${dateStr}</div>
+      <div class="stats-grid">
+        <div class="stat-box"><div class="num">${sortedTables.length}</div><div class="label">Tables</div></div>
+        <div class="stat-box highlight"><div class="num">${totalSeated}</div><div class="label">Seated</div></div>
+        <div class="stat-box"><div class="num">${occupancyPct}%</div><div class="label">Occupancy</div></div>
+        <div class="stat-box${this.unassignedGuests.length > 0 ? ' warning' : ''}"><div class="num">${this.unassignedGuests.length}</div><div class="label">Unassigned</div></div>
+      </div>
+    </div>
+
+    <!-- Table-by-Table Seating -->
+    <h2 class="section-title">Seating by Table</h2>
+    ${tableCardsHtml}
+
+    <!-- Alphabetical Guest Directory -->
+    <div class="section-break"></div>
+    <h2 class="section-title">Guest Directory (A&ndash;Z)</h2>
+    <table class="directory-table">
+      <thead><tr><th>Guest</th><th>Company</th><th>Table</th><th>Seat</th></tr></thead>
+      <tbody>${directoryHtml}</tbody>
+    </table>
+
+    ${unassignedHtml}
+
+    <div class="page-footer">
+      ${esc(eventName)} &mdash; Table Plan &mdash; Generated ${dateStr}
+    </div>
+  </div>
+</body>
+</html>`);
+    printWindow.document.close();
+    utils.showToast('Print document opened — use Print / Save as PDF', 'success');
   },
 
   // ---- TV / PROJECTOR DISPLAY ----

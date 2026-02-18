@@ -17,35 +17,10 @@ const testDataManager = {
 
     try {
       utils.showLoading();
-
-      // Read and execute the SQL script
-      const response = await fetch('database-test-data-generate.sql');
-      const sql = await response.text();
-
-      // Execute SQL using Supabase
-      const { data, error } = await STATE.client.rpc('exec_sql', { sql_string: sql });
-
-      if (error) {
-        // If exec_sql doesn't exist, we'll execute queries individually
-        await this.executeTestDataGeneration();
-      } else {
-        utils.showToast('Test data generated successfully! Reload the page to see the data.', 'success');
-
-        // Show info modal
-        setTimeout(() => {
-          this.showInfoModal();
-        }, 2000);
-      }
-
+      await this.executeTestDataGeneration();
     } catch (error) {
       console.error('Error generating test data:', error);
-
-      // Try alternative method
-      try {
-        await this.executeTestDataGeneration();
-      } catch (altError) {
-        utils.showToast('Failed to generate test data. Please run database-test-data-generate.sql manually in Supabase SQL Editor.', 'error');
-      }
+      utils.showToast('Failed to generate test data: ' + error.message, 'error');
     } finally {
       utils.hideLoading();
     }

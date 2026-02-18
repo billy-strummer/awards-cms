@@ -108,6 +108,7 @@ const entriesModule = {
       }
 
       this.allEntries = allData;
+      if (typeof STATE !== 'undefined') { STATE.allEntries = allData; }
       this.filteredEntries = [...this.allEntries];
       this._currentPage = 1;
       this.renderEntries();

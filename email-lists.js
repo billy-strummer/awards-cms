@@ -18,7 +18,7 @@ const emailListsModule = {
       await this.loadStats();
     } catch (error) {
       console.error('Error loading email lists data:', error);
-      showNotification('Error loading email lists', 'error');
+      utils.showToast('Error loading email lists', 'error');
     }
   },
 
@@ -312,12 +312,12 @@ const emailListsModule = {
 
       if (error) throw error;
 
-      showNotification('Email list created successfully', 'success');
+      utils.showToast('Email list created successfully', 'success');
       bootstrap.Modal.getInstance(document.getElementById('createListModal')).hide();
       this.loadAllData();
     } catch (error) {
       console.error('Error creating list:', error);
-      showNotification('Error creating list: ' + error.message, 'error');
+      utils.showToast('Error creating list: ' + error.message, 'error');
     }
   },
 
@@ -511,7 +511,7 @@ const emailListsModule = {
   async processImport() {
     const listId = document.getElementById('importListSelect').value;
     if (!listId) {
-      showNotification('Please select a list', 'warning');
+      utils.showToast('Please select a list', 'warning');
       return;
     }
 
@@ -532,7 +532,7 @@ const emailListsModule = {
       }
 
       if (subscribers.length === 0) {
-        showNotification('No valid subscribers to import', 'warning');
+        utils.showToast('No valid subscribers to import', 'warning');
         document.getElementById('importProgress').style.display = 'none';
         return;
       }
@@ -578,13 +578,13 @@ const emailListsModule = {
           .eq('id', batch.id);
       }
 
-      showNotification(`Successfully imported ${subscribers.length} subscribers`, 'success');
+      utils.showToast(`Successfully imported ${subscribers.length} subscribers`, 'success');
       bootstrap.Modal.getInstance(document.getElementById('importModal')).hide();
       this.loadAllData();
 
     } catch (error) {
       console.error('Import error:', error);
-      showNotification('Error importing subscribers: ' + error.message, 'error');
+      utils.showToast('Error importing subscribers: ' + error.message, 'error');
     } finally {
       document.getElementById('importProgress').style.display = 'none';
     }
@@ -625,7 +625,7 @@ const emailListsModule = {
       .map(opt => opt.value);
 
     if (selectedSegments.length === 0) {
-      showNotification('Please select at least one CRM segment', 'warning');
+      utils.showToast('Please select at least one CRM segment', 'warning');
       return [];
     }
 
@@ -729,12 +729,12 @@ const emailListsModule = {
         return true;
       });
 
-      showNotification(`Found ${unique.length} contacts from ${selectedSegments.length} segment(s)`, 'info');
+      utils.showToast(`Found ${unique.length} contacts from ${selectedSegments.length} segment(s)`, 'info');
       return unique;
 
     } catch (error) {
       console.error('CRM import error:', error);
-      showNotification('Error importing from CRM: ' + error.message, 'error');
+      utils.showToast('Error importing from CRM: ' + error.message, 'error');
       return [];
     }
   },
@@ -886,7 +886,7 @@ const emailListsModule = {
 
     } catch (error) {
       console.error('Error loading subscribers:', error);
-      showNotification('Error loading subscribers: ' + error.message, 'error');
+      utils.showToast('Error loading subscribers: ' + error.message, 'error');
     }
   },
 
@@ -919,7 +919,7 @@ const emailListsModule = {
 
       if (error) throw error;
 
-      showNotification(`Subscriber ${newStatus === 'active' ? 'resubscribed' : 'unsubscribed'} successfully`, 'success');
+      utils.showToast(`Subscriber ${newStatus === 'active' ? 'resubscribed' : 'unsubscribed'} successfully`, 'success');
 
       // Refresh the modal if open
       if (this.currentListId) {
@@ -932,7 +932,7 @@ const emailListsModule = {
       this.loadAllData();
     } catch (error) {
       console.error('Error updating subscriber:', error);
-      showNotification('Error updating subscriber: ' + error.message, 'error');
+      utils.showToast('Error updating subscriber: ' + error.message, 'error');
     }
   },
 
@@ -950,7 +950,7 @@ const emailListsModule = {
 
       if (error) throw error;
 
-      showNotification('Subscriber removed', 'success');
+      utils.showToast('Subscriber removed', 'success');
 
       // Refresh the modal
       if (listId) {
@@ -963,7 +963,7 @@ const emailListsModule = {
       this.loadAllData();
     } catch (error) {
       console.error('Error deleting subscriber:', error);
-      showNotification('Error removing subscriber: ' + error.message, 'error');
+      utils.showToast('Error removing subscriber: ' + error.message, 'error');
     }
   },
 
@@ -1030,7 +1030,7 @@ const emailListsModule = {
 
     const email = document.getElementById('subEmail').value.trim();
     if (!email || !email.includes('@')) {
-      showNotification('Please enter a valid email address', 'warning');
+      utils.showToast('Please enter a valid email address', 'warning');
       return;
     }
 
@@ -1049,13 +1049,13 @@ const emailListsModule = {
 
       if (error) {
         if (error.message?.includes('duplicate') || error.code === '23505') {
-          showNotification('This email already exists in this list', 'warning');
+          utils.showToast('This email already exists in this list', 'warning');
           return;
         }
         throw error;
       }
 
-      showNotification('Subscriber added successfully', 'success');
+      utils.showToast('Subscriber added successfully', 'success');
       bootstrap.Modal.getInstance(document.getElementById('addSubscriberModal'))?.hide();
 
       // Refresh the subscribers modal if it's open
@@ -1071,7 +1071,7 @@ const emailListsModule = {
       this.loadAllData();
     } catch (error) {
       console.error('Error adding subscriber:', error);
-      showNotification('Error adding subscriber: ' + error.message, 'error');
+      utils.showToast('Error adding subscriber: ' + error.message, 'error');
     }
   },
 
@@ -1081,7 +1081,7 @@ const emailListsModule = {
   async editList(listId) {
     const list = this.currentLists.find(l => l.id === listId);
     if (!list) {
-      showNotification('List not found', 'error');
+      utils.showToast('List not found', 'error');
       return;
     }
 
@@ -1179,12 +1179,12 @@ const emailListsModule = {
 
       if (error) throw error;
 
-      showNotification('List updated successfully', 'success');
+      utils.showToast('List updated successfully', 'success');
       bootstrap.Modal.getInstance(document.getElementById('editListModal'))?.hide();
       this.loadAllData();
     } catch (error) {
       console.error('Error updating list:', error);
-      showNotification('Error updating list: ' + error.message, 'error');
+      utils.showToast('Error updating list: ' + error.message, 'error');
     }
   },
 
@@ -1214,10 +1214,10 @@ const emailListsModule = {
       a.click();
       window.URL.revokeObjectURL(url);
 
-      showNotification('Email list exported successfully', 'success');
+      utils.showToast('Email list exported successfully', 'success');
     } catch (error) {
       console.error('Export error:', error);
-      showNotification('Error exporting list', 'error');
+      utils.showToast('Error exporting list', 'error');
     }
   },
 
@@ -1234,11 +1234,11 @@ const emailListsModule = {
 
       if (error) throw error;
 
-      showNotification('Email list deleted successfully', 'success');
+      utils.showToast('Email list deleted successfully', 'success');
       this.loadAllData();
     } catch (error) {
       console.error('Delete error:', error);
-      showNotification('Error deleting list', 'error');
+      utils.showToast('Error deleting list', 'error');
     }
   }
 };

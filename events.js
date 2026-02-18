@@ -3778,6 +3778,9 @@ const eventsModule = {
 
                 <!-- Actions Bar -->
                 <div class="d-flex gap-2 flex-wrap align-items-center mb-2">
+                  <button class="btn btn-sm btn-success" onclick="eventsModule.openAddWinnersChecklist()" ${this.isPublished ? 'disabled' : ''}>
+                    <i class="bi bi-trophy me-1"></i>Add Winners
+                  </button>
                   <button class="btn btn-sm btn-primary" onclick="eventsModule.syncFromRSVPs()" ${this.isPublished ? 'disabled' : ''}>
                     <i class="bi bi-arrow-repeat me-1"></i>Sync RSVPs
                   </button>
@@ -3843,13 +3846,17 @@ const eventsModule = {
                 <div class="text-center py-5">
                   <i class="bi bi-inbox display-4 d-block mb-3 opacity-25"></i>
                   <p class="text-muted">No items in running order yet.</p>
-                  <button class="btn btn-primary" onclick="eventsModule.syncFromRSVPs()">
-                    <i class="bi bi-arrow-repeat me-2"></i>Sync from RSVPs
-                  </button>
-                  <span class="mx-2 text-muted">or</span>
-                  <button class="btn btn-outline-secondary" onclick="eventsModule.addManualEntry()">
-                    <i class="bi bi-plus-circle me-2"></i>Add Manual Entry
-                  </button>
+                  <div class="d-flex gap-2 justify-content-center flex-wrap">
+                    <button class="btn btn-success" onclick="eventsModule.openAddWinnersChecklist()">
+                      <i class="bi bi-trophy me-2"></i>Add Winners
+                    </button>
+                    <button class="btn btn-primary" onclick="eventsModule.syncFromRSVPs()">
+                      <i class="bi bi-arrow-repeat me-2"></i>Sync from RSVPs
+                    </button>
+                    <button class="btn btn-outline-secondary" onclick="eventsModule.addManualEntry()">
+                      <i class="bi bi-plus-circle me-2"></i>Add Manual Entry
+                    </button>
+                  </div>
                 </div>
               ` : ''}
               </div><!-- /roTabMain -->
@@ -6383,6 +6390,279 @@ const eventsModule = {
     });
     const filename = `${this.currentEventName.replace(/[^a-z0-9]/gi, '_')}_running_order_${new Date().toISOString().split('T')[0]}.csv`;
     utils.exportToCSV(exportData, filename);
+  },
+
+  // ========================================
+  // ADD WINNERS CHECKLIST
+  // ========================================
+
+  /**
+   * Open the Add Winners checklist modal.
+   * Queries award_assignments (status='winner') joined with awards + organisations
+   * for the current event, shows a checklist, and bulk-inserts selected winners.
+   */
+  async openAddWinnersChecklist() {
+    const eventId = this.currentEventIdRunningOrder;
+    if (!eventId) { utils.showToast('No event selected', 'warning'); return; }
+
+    try {
+      utils.showLoading();
+
+      // 1. Load all awards for this event with their winner assignments
+      const { data: awards, error: awardsErr } = await STATE.client
+        .from('award_years')
+        .select('id, award_name, award_category, sector')
+        .eq('event_id', eventId)
+        .order('sector', { ascending: true });
+      if (awardsErr) throw awardsErr;
+
+      if (!awards || awards.length === 0) {
+        utils.showToast('No awards found for this event. Add awards first.', 'warning');
+        return;
+      }
+
+      // 2. Load confirmed winners from award_assignments
+      const awardIds = awards.map(a => a.id);
+      const { data: assignments, error: assignErr } = await STATE.client
+        .from('award_assignments')
+        .select('award_id, organisation_id, status, winner_position')
+        .in('award_id', awardIds)
+        .eq('status', 'winner');
+      if (assignErr) throw assignErr;
+
+      // 3. Load organisation names for winners
+      const orgIds = [...new Set((assignments || []).map(a => a.organisation_id).filter(Boolean))];
+      let orgsMap = {};
+      if (orgIds.length > 0) {
+        const { data: orgs } = await STATE.client
+          .from('organisations')
+          .select('id, company_name')
+          .in('id', orgIds);
+        (orgs || []).forEach(o => { orgsMap[o.id] = o.company_name; });
+      }
+
+      // 4. Build the merged list: award + winner info
+      const existingAwardIds = new Set(this.runningOrderItems.map(i => i.award_id).filter(Boolean));
+      const assignmentsByAward = {};
+      (assignments || []).forEach(a => {
+        if (!assignmentsByAward[a.award_id]) assignmentsByAward[a.award_id] = [];
+        assignmentsByAward[a.award_id].push(a);
+      });
+
+      const rows = awards.map(award => {
+        const winners = assignmentsByAward[award.id] || [];
+        const topWinner = winners[0];
+        const orgName = topWinner ? (orgsMap[topWinner.organisation_id] || 'Unknown') : null;
+        const alreadyInRO = existingAwardIds.has(award.id);
+        return {
+          awardId: award.id,
+          awardName: award.award_name || 'Unnamed Award',
+          sector: award.sector || '',
+          category: award.award_category || '',
+          hasWinner: winners.length > 0,
+          winnerName: orgName,
+          winnerOrgId: topWinner?.organisation_id || null,
+          alreadyInRO
+        };
+      });
+
+      // Sort: winners first, then by sector/category
+      rows.sort((a, b) => {
+        if (a.hasWinner !== b.hasWinner) return a.hasWinner ? -1 : 1;
+        if (a.alreadyInRO !== b.alreadyInRO) return a.alreadyInRO ? 1 : -1;
+        return (a.sector + a.category).localeCompare(b.sector + b.category);
+      });
+
+      const winnersCount = rows.filter(r => r.hasWinner && !r.alreadyInRO).length;
+      const alreadyCount = rows.filter(r => r.alreadyInRO).length;
+
+      // 5. Build modal HTML
+      const modalHtml = `
+        <div class="modal fade" id="addWinnersChecklistModal" tabindex="-1">
+          <div class="modal-dialog modal-lg modal-dialog-scrollable">
+            <div class="modal-content">
+              <div class="modal-header bg-success text-white">
+                <h5 class="modal-title"><i class="bi bi-trophy me-2"></i>Add Winners to Running Order</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+              </div>
+              <div class="modal-body p-0">
+                <div class="px-3 pt-3 pb-2 bg-light border-bottom">
+                  <div class="d-flex justify-content-between align-items-center mb-2">
+                    <div>
+                      <span class="badge bg-success me-1">${winnersCount}</span> confirmed winners available
+                      ${alreadyCount > 0 ? `<span class="badge bg-secondary ms-1">${alreadyCount}</span> already in running order` : ''}
+                    </div>
+                    <div class="d-flex gap-2">
+                      <button class="btn btn-sm btn-outline-success" onclick="eventsModule._winnersChecklistSelectAll(true)">Select All Winners</button>
+                      <button class="btn btn-sm btn-outline-secondary" onclick="eventsModule._winnersChecklistSelectAll(false)">Deselect All</button>
+                    </div>
+                  </div>
+                  <div class="input-group input-group-sm">
+                    <span class="input-group-text"><i class="bi bi-search"></i></span>
+                    <input type="text" class="form-control" id="winnersChecklistSearch" placeholder="Filter awards..." oninput="eventsModule._filterWinnersChecklist(this.value)">
+                  </div>
+                </div>
+                <div id="winnersChecklistBody" style="max-height:450px; overflow-y:auto;">
+                  ${this._renderWinnersChecklistRows(rows)}
+                </div>
+              </div>
+              <div class="modal-footer">
+                <span class="text-muted small me-auto" id="winnersSelectedCount">0 selected</span>
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-success" id="addWinnersSubmitBtn" onclick="eventsModule._submitWinnersChecklist()" disabled>
+                  <i class="bi bi-plus-circle me-2"></i>Add Selected to Running Order
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>`;
+
+      // Store data for submission
+      this._winnersChecklistData = rows;
+
+      const existingModal = document.getElementById('addWinnersChecklistModal');
+      if (existingModal) existingModal.remove();
+      document.body.insertAdjacentHTML('beforeend', modalHtml);
+      const modal = new bootstrap.Modal(document.getElementById('addWinnersChecklistModal'));
+      modal.show();
+      document.getElementById('addWinnersChecklistModal').addEventListener('hidden.bs.modal', function() { this.remove(); });
+
+    } catch (err) {
+      console.error('Error loading winners checklist:', err);
+      utils.showToast('Failed to load winners: ' + err.message, 'error');
+    } finally {
+      utils.hideLoading();
+    }
+  },
+
+  _renderWinnersChecklistRows(rows) {
+    if (!rows || rows.length === 0) {
+      return '<div class="text-center py-4 text-muted"><i class="bi bi-inbox display-4 d-block mb-2 opacity-25"></i>No awards found for this event</div>';
+    }
+
+    let currentSector = '';
+    let html = '';
+
+    rows.forEach((row, idx) => {
+      // Sector group header
+      if (row.sector !== currentSector) {
+        currentSector = row.sector;
+        html += `<div class="px-3 py-1 bg-light border-bottom fw-semibold small text-uppercase text-muted" style="letter-spacing:0.5px;">${utils.escapeHtml(currentSector || 'No Sector')}</div>`;
+      }
+
+      const disabled = row.alreadyInRO;
+      const checked = row.hasWinner && !row.alreadyInRO ? 'checked' : '';
+
+      html += `
+        <div class="winners-checklist-row px-3 py-2 border-bottom d-flex align-items-center gap-2 ${disabled ? 'opacity-50' : ''}" data-idx="${idx}" data-award-name="${utils.escapeHtml(row.awardName.toLowerCase())}" data-sector="${utils.escapeHtml(row.sector.toLowerCase())}">
+          <input type="checkbox" class="form-check-input winners-cb" data-idx="${idx}"
+                 ${checked} ${disabled ? 'disabled' : ''}
+                 onchange="eventsModule._updateWinnersSelectedCount()">
+          <div class="flex-grow-1">
+            <div class="fw-semibold" style="font-size:0.9rem;">${utils.escapeHtml(row.awardName)}</div>
+            <div class="small text-muted">${utils.escapeHtml(row.category)}</div>
+          </div>
+          <div style="width:200px;" class="text-end">
+            ${row.hasWinner
+              ? `<span class="badge bg-success"><i class="bi bi-trophy-fill me-1"></i>${utils.escapeHtml(row.winnerName)}</span>`
+              : '<span class="badge bg-secondary">No winner confirmed</span>'}
+          </div>
+          <div style="width:100px;" class="text-end">
+            ${row.alreadyInRO ? '<span class="badge bg-info">In RO</span>' : ''}
+          </div>
+        </div>`;
+    });
+    return html;
+  },
+
+  _winnersChecklistSelectAll(selectAll) {
+    document.querySelectorAll('.winners-cb:not(:disabled)').forEach(cb => { cb.checked = selectAll; });
+    this._updateWinnersSelectedCount();
+  },
+
+  _filterWinnersChecklist(term) {
+    const lower = term.toLowerCase();
+    document.querySelectorAll('.winners-checklist-row').forEach(row => {
+      const name = row.dataset.awardName || '';
+      const sector = row.dataset.sector || '';
+      row.style.display = (!term || name.includes(lower) || sector.includes(lower)) ? '' : 'none';
+    });
+  },
+
+  _updateWinnersSelectedCount() {
+    const checked = document.querySelectorAll('.winners-cb:checked:not(:disabled)').length;
+    const countEl = document.getElementById('winnersSelectedCount');
+    const btn = document.getElementById('addWinnersSubmitBtn');
+    if (countEl) countEl.textContent = checked + ' selected';
+    if (btn) btn.disabled = checked === 0;
+  },
+
+  async _submitWinnersChecklist() {
+    const rows = this._winnersChecklistData || [];
+    const selectedIdxs = [];
+    document.querySelectorAll('.winners-cb:checked:not(:disabled)').forEach(cb => {
+      selectedIdxs.push(parseInt(cb.dataset.idx));
+    });
+
+    if (selectedIdxs.length === 0) { utils.showToast('No awards selected', 'warning'); return; }
+
+    try {
+      utils.showLoading();
+      const eventId = this.currentEventIdRunningOrder;
+      const existingCount = this.runningOrderItems.length;
+      const section = existingCount > 0
+        ? (this.runningOrderItems[existingCount - 1].section || 1)
+        : 1;
+
+      let added = 0;
+      for (let i = 0; i < selectedIdxs.length; i++) {
+        const row = rows[selectedIdxs[i]];
+        const order = existingCount + i + 1;
+        const awardNum = `${section}-${String(order).padStart(2, '0')}`;
+
+        const entryData = {
+          event_id: eventId,
+          award_id: row.awardId,
+          organisation_id: row.winnerOrgId || null,
+          item_name: row.awardName,
+          award_name: row.awardName,
+          display_name: row.winnerName || 'TBC',
+          award_number: awardNum,
+          display_order: order,
+          section: section,
+          duration_minutes: 3,
+          status: 'pending'
+        };
+
+        let result = await STATE.client.from('running_order').insert([entryData]);
+        // Schema cache fallback
+        if (result.error && result.error.message && result.error.message.includes('schema cache')) {
+          const baseEntry = {
+            event_id: eventId,
+            item_name: row.awardName,
+            display_order: order,
+            duration_minutes: 3
+          };
+          result = await STATE.client.from('running_order').insert([baseEntry]);
+        }
+        if (result.error) {
+          console.warn('Failed to insert award:', row.awardName, result.error.message);
+        } else {
+          added++;
+        }
+      }
+
+      utils.showToast(`Added ${added} award${added !== 1 ? 's' : ''} to running order`, 'success');
+      bootstrap.Modal.getInstance(document.getElementById('addWinnersChecklistModal'))?.hide();
+      await this.loadRunningOrder();
+      this.renderRunningOrderItems();
+
+    } catch (err) {
+      console.error('Error adding winners:', err);
+      utils.showToast('Failed to add winners: ' + err.message, 'error');
+    } finally {
+      utils.hideLoading();
+    }
   },
 
   /**

@@ -649,7 +649,22 @@ const eventsModule = {
         .eq('event_id', eventId)
         .order('created_at', { ascending: true });
       if (error) throw error;
-      return data || [];
+      // Map DB column names to JS property names used by the UI
+      return (data || []).map(row => ({
+        id: row.id,
+        name: row.attendee_name || row.name || '',
+        email: row.attendee_email || row.email || '',
+        status: row.rsvp_status || row.status || 'attending',
+        dietary: row.meal_preference || row.dietary || '',
+        guestType: row.guest_type || row.guestType || 'guest',
+        plusOnes: row.plus_ones || row.plusOnes || 0,
+        notes: row.notes || '',
+        checkedIn: row.checked_in || row.checkedIn || false,
+        checkInTime: row.check_in_time || row.checkInTime || null,
+        addedAt: row.created_at || row.addedAt || null,
+        organisation_id: row.organisation_id || null,
+        table_number: row.table_number || null
+      }));
     } catch (e) {
       console.error('Error loading attendees:', e);
       // Fallback to localStorage during migration
@@ -667,7 +682,21 @@ const eventsModule = {
       // Delete existing and re-insert (simple upsert pattern)
       await STATE.client.from('event_attendees').delete().eq('event_id', eventId);
       if (attendees.length > 0) {
-        const rows = attendees.map(a => ({ ...a, event_id: eventId }));
+        // Map JS property names to DB column names
+        const rows = attendees.map(a => ({
+          event_id: eventId,
+          attendee_name: a.name || '',
+          attendee_email: a.email || '',
+          rsvp_status: a.status || 'attending',
+          meal_preference: a.dietary || '',
+          guest_type: a.guestType || 'guest',
+          plus_ones: a.plusOnes || 0,
+          notes: a.notes || '',
+          checked_in: a.checkedIn || false,
+          check_in_time: a.checkInTime || null,
+          organisation_id: a.organisation_id || null,
+          table_number: a.table_number || null
+        }));
         const { error } = await STATE.client.from('event_attendees').insert(rows);
         if (error) throw error;
       }
@@ -6408,16 +6437,25 @@ const eventsModule = {
     try {
       utils.showLoading();
 
-      // 1. Load all awards for this event with their winner assignments
-      const { data: awards, error: awardsErr } = await STATE.client
+      // Look up the event year to match awards (awards link to events by year)
+      const event = STATE.allEvents.find(e => e.id === eventId);
+      if (!event || !event.year) {
+        utils.showToast('Could not determine event year. Set the year on this event first.', 'warning');
+        return;
+      }
+
+      // 1. Load all awards for this event's year with their winner assignments
+      let awardsQuery = STATE.client
         .from('award_years')
         .select('id, award_name, award_category, sector')
-        .eq('event_id', eventId)
+        .eq('year', event.year)
         .order('sector', { ascending: true });
+
+      const { data: awards, error: awardsErr } = await awardsQuery;
       if (awardsErr) throw awardsErr;
 
       if (!awards || awards.length === 0) {
-        utils.showToast('No awards found for this event. Add awards first.', 'warning');
+        utils.showToast(`No awards found for ${event.year}. Add awards first.`, 'warning');
         return;
       }
 

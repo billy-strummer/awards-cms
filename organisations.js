@@ -7440,7 +7440,7 @@ updateCountyFilterByRegion() {
     if (!content) { utils.showToast('Please enter note content', 'warning'); return; }
     try {
       const user = await this._getCurrentUserEmail();
-      await STATE.client.from('org_activity_notes').insert([{ org_id: orgId, type, content, priority, created_by: user }]);
+      await STATE.client.from('org_activity_notes').insert([{ organisation_id: orgId, type, content, priority, created_by: user }]);
       this._logAudit(orgId, 'note_added', '', `${type}: ${content.substring(0, 80)}`);
       utils.showToast('Note added', 'success');
       bootstrap.Modal.getInstance(document.getElementById('dynamicOrgModal'))?.hide();

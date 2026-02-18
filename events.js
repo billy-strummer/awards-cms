@@ -41,6 +41,7 @@ const eventsModule = {
       STATE.allEvents = allData;
       this.populateYearFilter();
       this._eventAwardCounts = {}; // Clear cache on reload
+      this._eventAttendeeCounts = {};
       this.renderEvents();
       this.renderFinancialOverview();
 
@@ -719,8 +720,8 @@ const eventsModule = {
   /**
    * Render attendees table with all enhanced fields
    */
-  renderAttendees(eventId) {
-    const attendees = this.getAttendees(eventId);
+  async renderAttendees(eventId) {
+    const attendees = await this.getAttendees(eventId);
     const tbody = document.getElementById('attendeesTableBody');
 
     const attending = attendees.filter(a => a.status === 'attending').length;
@@ -856,9 +857,9 @@ const eventsModule = {
     card.style.display = 'block';
   },
 
-  exportDietarySummary() {
+  async exportDietarySummary() {
     const eventId = document.getElementById('attendeesEventId').value;
-    const attendees = this.getAttendees(eventId).filter(a => a.status === 'attending');
+    const attendees = (await this.getAttendees(eventId)).filter(a => a.status === 'attending');
     const event = STATE.allEvents.find(e => e.id === eventId);
     const eventName = event ? event.event_name : 'Event';
 
@@ -916,7 +917,7 @@ const eventsModule = {
     document.getElementById('attendeeNotes').value = '';
   },
 
-  addAttendee() {
+  async addAttendee() {
     const eventId = document.getElementById('attendeesEventId').value;
     const name = document.getElementById('attendeeName').value.trim();
     const email = document.getElementById('attendeeEmail').value.trim();
@@ -931,7 +932,7 @@ const eventsModule = {
       return;
     }
 
-    const attendees = this.getAttendees(eventId);
+    const attendees = await this.getAttendees(eventId);
     attendees.push({
       id: `attendee_${Date.now()}`,
       name, email, status, guestType, plusOnes, dietary, notes,
@@ -953,9 +954,9 @@ const eventsModule = {
     utils.showToast('Attendee added', 'success');
   },
 
-  updateAttendeeStatus(attendeeId, newStatus) {
+  async updateAttendeeStatus(attendeeId, newStatus) {
     const eventId = document.getElementById('attendeesEventId').value;
-    const attendees = this.getAttendees(eventId);
+    const attendees = await this.getAttendees(eventId);
     const attendee = attendees.find(a => a.id === attendeeId);
     if (attendee) {
       attendee.status = newStatus;
@@ -966,10 +967,10 @@ const eventsModule = {
     }
   },
 
-  deleteAttendee(attendeeId) {
+  async deleteAttendee(attendeeId) {
     if (!confirm('Remove this attendee from the list?')) return;
     const eventId = document.getElementById('attendeesEventId').value;
-    let attendees = this.getAttendees(eventId);
+    let attendees = await this.getAttendees(eventId);
     attendees = attendees.filter(a => a.id !== attendeeId);
     this.saveAttendees(eventId, attendees);
     this.renderAttendees(eventId);
@@ -979,8 +980,8 @@ const eventsModule = {
 
   // ---- CHECK-IN SYSTEM ----
 
-  renderCheckInTab(eventId) {
-    const attendees = this.getAttendees(eventId);
+  async renderCheckInTab(eventId) {
+    const attendees = await this.getAttendees(eventId);
     const attending = attendees.filter(a => a.status === 'attending');
     const checkedIn = attending.filter(a => a.checkedIn);
     const pending = attending.filter(a => !a.checkedIn);
@@ -1044,9 +1045,9 @@ const eventsModule = {
     `).join('');
   },
 
-  toggleCheckIn(attendeeId) {
+  async toggleCheckIn(attendeeId) {
     const eventId = document.getElementById('attendeesEventId').value;
-    const attendees = this.getAttendees(eventId);
+    const attendees = await this.getAttendees(eventId);
     const attendee = attendees.find(a => a.id === attendeeId);
     if (attendee) {
       attendee.checkedIn = !attendee.checkedIn;
@@ -1058,9 +1059,9 @@ const eventsModule = {
     }
   },
 
-  checkInAll() {
+  async checkInAll() {
     const eventId = document.getElementById('attendeesEventId').value;
-    const attendees = this.getAttendees(eventId);
+    const attendees = await this.getAttendees(eventId);
     const unchecked = attendees.filter(a => a.status === 'attending' && !a.checkedIn);
     if (unchecked.length === 0) {
       utils.showToast('All attending guests are already checked in', 'info');
@@ -1082,11 +1083,11 @@ const eventsModule = {
 
   // ---- TICKETS TAB ----
 
-  renderTicketsTab(eventId) {
+  async renderTicketsTab(eventId) {
     const event = STATE.allEvents.find(e => e.id === eventId);
     if (!event) return;
 
-    const attendees = this.getAttendees(eventId);
+    const attendees = await this.getAttendees(eventId);
     const ticketsSold = attendees.filter(a => a.status === 'attending').length;
     const price = event.ticket_price || 0;
     const capacity = event.capacity || 0;
@@ -1296,10 +1297,10 @@ const eventsModule = {
     return `${prefix}-${year}-${seq}-${random}`;
   },
 
-  issueTicketToAttendee(attendeeId) {
+  async issueTicketToAttendee(attendeeId) {
     const eventId = document.getElementById('attendeesEventId').value;
     const event = STATE.allEvents.find(e => e.id === eventId);
-    const attendees = this.getAttendees(eventId);
+    const attendees = await this.getAttendees(eventId);
     const attendee = attendees.find(a => a.id === attendeeId);
     if (!attendee || !event) return;
 
@@ -1328,12 +1329,12 @@ const eventsModule = {
     this.renderTicketsTab(eventId);
   },
 
-  batchIssueTickets(filter) {
+  async batchIssueTickets(filter) {
     const eventId = document.getElementById('attendeesEventId').value;
     const event = STATE.allEvents.find(e => e.id === eventId);
     if (!event) return;
 
-    const attendees = this.getAttendees(eventId);
+    const attendees = await this.getAttendees(eventId);
     const ticketData = this._getTicketData(eventId);
     const alreadyIssued = new Set(ticketData.tickets.map(t => t.attendeeId));
 
@@ -1483,9 +1484,9 @@ const eventsModule = {
 
   // ---- EXPORT ATTENDEES ----
 
-  exportAttendees() {
+  async exportAttendees() {
     const eventId = document.getElementById('attendeesEventId').value;
-    const attendees = this.getAttendees(eventId);
+    const attendees = await this.getAttendees(eventId);
 
     if (attendees.length === 0) {
       utils.showToast('No attendees to export', 'warning');
@@ -1518,7 +1519,7 @@ const eventsModule = {
 
   async sendInviteEmail(attendeeId) {
     const eventId = document.getElementById('attendeesEventId').value;
-    const attendees = this.getAttendees(eventId);
+    const attendees = await this.getAttendees(eventId);
     const attendee = attendees.find(a => a.id === attendeeId);
     const event = STATE.allEvents.find(e => e.id === eventId);
     if (!attendee || !event) return;
@@ -1546,7 +1547,7 @@ const eventsModule = {
     const event = STATE.allEvents.find(e => e.id === eventId);
     if (!event) return;
 
-    const attendees = this.getAttendees(eventId);
+    const attendees = await this.getAttendees(eventId);
     const uninvited = attendees.filter(a => a.email && !a._inviteSent);
     if (uninvited.length === 0) {
       utils.showToast('No attendees with email addresses to invite', 'warning');
@@ -1630,8 +1631,8 @@ const eventsModule = {
     utils.showToast('Email content copied to clipboard', 'success');
   },
 
-  _downloadMailMerge(eventId) {
-    const attendees = this.getAttendees(eventId);
+  async _downloadMailMerge(eventId) {
+    const attendees = await this.getAttendees(eventId);
     const event = STATE.allEvents.find(e => e.id === eventId);
     const regLink = `${this._getBaseUrl()}/register.html?event=${eventId}`;
     const rows = attendees.filter(a => a.email).map(a => ({
@@ -1714,14 +1715,14 @@ const eventsModule = {
     utils.showToast('Removed from waitlist', 'success');
   },
 
-  promoteFromWaitlist(wlId) {
+  async promoteFromWaitlist(wlId) {
     const eventId = document.getElementById('attendeesEventId').value;
     const waitlist = this.getWaitlist(eventId);
     const person = waitlist.find(w => w.id === wlId);
     if (!person) return;
 
     // Add as attendee
-    const attendees = this.getAttendees(eventId);
+    const attendees = await this.getAttendees(eventId);
     attendees.push({
       id: Date.now().toString(),
       name: person.name,
@@ -1782,10 +1783,10 @@ const eventsModule = {
   // NAME BADGES & PLACE CARDS (PDF)
   // ========================================
 
-  generateNameBadges() {
+  async generateNameBadges() {
     const eventId = document.getElementById('attendeesEventId').value;
     const event = STATE.allEvents.find(e => e.id === eventId);
-    const attendees = this.getAttendees(eventId).filter(a => a.status === 'attending');
+    const attendees = (await this.getAttendees(eventId)).filter(a => a.status === 'attending');
 
     if (attendees.length === 0) {
       utils.showToast('No attending guests to generate badges for', 'warning');
@@ -1866,10 +1867,10 @@ const eventsModule = {
     utils.showToast(`Generated ${attendees.length} name badges`, 'success');
   },
 
-  generatePlaceCards() {
+  async generatePlaceCards() {
     const eventId = document.getElementById('attendeesEventId').value;
     const event = STATE.allEvents.find(e => e.id === eventId);
-    const attendees = this.getAttendees(eventId).filter(a => a.status === 'attending');
+    const attendees = (await this.getAttendees(eventId)).filter(a => a.status === 'attending');
 
     if (attendees.length === 0) {
       utils.showToast('No attending guests to generate place cards for', 'warning');
@@ -2099,7 +2100,7 @@ const eventsModule = {
     }
   },
 
-  renderBudgetTab(eventId) {
+  async renderBudgetTab(eventId) {
     const container = document.getElementById('budgetTableBody');
     if (!container) return;
     const budget = this.getBudget(eventId);
@@ -2134,7 +2135,7 @@ const eventsModule = {
 
     // Revenue vs Costs summary
     const event = STATE.allEvents.find(e => e.id === eventId);
-    const attendees = this.getAttendees(eventId);
+    const attendees = await this.getAttendees(eventId);
     const attending = attendees ? attendees.filter(a => a.status === 'attending').length : 0;
     const ticketPrice = parseFloat(event?.ticket_price) || 0;
     const ticketRevenue = ticketPrice * attending;
@@ -2491,10 +2492,10 @@ const eventsModule = {
   // GUEST SPECIAL REQUIREMENTS
   // ========================================
 
-  renderSpecialReqsTab(eventId) {
+  async renderSpecialReqsTab(eventId) {
     const container = document.getElementById('specialReqsContent');
     if (!container) return;
-    const attendees = this.getAttendees(eventId).filter(a => a.status === 'attending');
+    const attendees = (await this.getAttendees(eventId)).filter(a => a.status === 'attending');
     const event = STATE.allEvents.find(e => e.id === eventId);
     const reqs = this._getSpecialReqs(eventId);
 
@@ -2932,10 +2933,10 @@ const eventsModule = {
     this._showEmailPreview(subject, body, attendees.map(a => a.email), eventId);
   },
 
-  sendThankYouEmails() {
+  async sendThankYouEmails() {
     const eventId = document.getElementById('attendeesEventId').value;
     const event = STATE.allEvents.find(e => e.id === eventId);
-    const attendees = this.getAttendees(eventId).filter(a => a.status === 'attending' && a.email);
+    const attendees = (await this.getAttendees(eventId)).filter(a => a.status === 'attending' && a.email);
 
     if (attendees.length === 0) {
       utils.showToast('No attendees with email addresses', 'warning');
@@ -2952,8 +2953,8 @@ const eventsModule = {
   // POST-EVENT: ATTENDANCE REPORT
   // ========================================
 
-  _renderAttendanceReport(eventId) {
-    const attendees = this.getAttendees(eventId);
+  async _renderAttendanceReport(eventId) {
+    const attendees = await this.getAttendees(eventId);
     const event = STATE.allEvents.find(e => e.id === eventId);
     const attending = attendees.filter(a => a.status === 'attending');
     const checkedIn = attendees.filter(a => a.checkedIn);
@@ -3049,10 +3050,10 @@ const eventsModule = {
     return peak ? `${String(peak[0]).padStart(2, '0')}:00 - ${String(parseInt(peak[0]) + 1).padStart(2, '0')}:00` : '-';
   },
 
-  generateAttendanceReport() {
+  async generateAttendanceReport() {
     const eventId = document.getElementById('attendeesEventId').value;
     const event = STATE.allEvents.find(e => e.id === eventId);
-    const attendees = this.getAttendees(eventId);
+    const attendees = await this.getAttendees(eventId);
 
     const rows = attendees.map(a => ({
       'Name': a.name,
@@ -3434,9 +3435,9 @@ const eventsModule = {
   // POST-EVENT: SPONSOR ROI REPORT
   // ========================================
 
-  _renderSponsorReport(eventId) {
+  async _renderSponsorReport(eventId) {
     const event = STATE.allEvents.find(e => e.id === eventId);
-    const attendees = this.getAttendees(eventId);
+    const attendees = await this.getAttendees(eventId);
     const attending = attendees.filter(a => a.status === 'attending');
     const sponsors = attendees.filter(a => a.guestType === 'sponsor');
     const budget = this.getBudget(eventId);
@@ -3519,10 +3520,10 @@ const eventsModule = {
     }
   },
 
-  exportSponsorReport() {
+  async exportSponsorReport() {
     const eventId = document.getElementById('attendeesEventId').value;
     const event = STATE.allEvents.find(e => e.id === eventId);
-    const attendees = this.getAttendees(eventId);
+    const attendees = await this.getAttendees(eventId);
     const budget = this.getBudget(eventId);
     const data = this._getPostEventData(eventId);
 
@@ -9179,8 +9180,10 @@ const eventsModule = {
     const statusIcons = { draft: 'bi-pencil', confirmed: 'bi-check-circle', cancelled: 'bi-x-circle', complete: 'bi-flag' };
     const statusOptions = ['draft', 'confirmed', 'cancelled', 'complete'];
 
-    // Pre-load award counts for all events (batch)
-    this._loadEventAwardCounts(events.map(e => e.id));
+    // Pre-load award and attendee counts for all events (async, updates DOM when ready)
+    const eventIds = events.map(e => e.id);
+    this._loadEventAwardCounts(eventIds);
+    this._loadEventAttendeeCounts(eventIds);
 
     tbody.innerHTML = events.map(event => {
       // Fix date display to avoid timezone shift + countdown
@@ -9222,35 +9225,15 @@ const eventsModule = {
           </ul>
         </div>`;
 
-      // Attendees data
-      const attendees = this.getAttendees(event.id);
-      const attendeeCount = attendees ? attendees.length : 0;
-      const attending = attendees ? attendees.filter(a => a.status === 'attending').length : 0;
-      const vipCount = attendees ? attendees.filter(a => a.vip || a.isVip || a.ticket_type === 'vip').length : 0;
       const capacity = event.capacity || 0;
-      const capacityPct = capacity > 0 ? Math.round(attending / capacity * 100) : 0;
-      const capBarColor = capacityPct >= 95 ? 'bg-danger' : capacityPct >= 80 ? 'bg-warning' : capacityPct >= 50 ? 'bg-info' : 'bg-success';
       const checked = this._selectedEvents.has(event.id) ? 'checked' : '';
       const eName = utils.escapeHtml(event.event_name).replace(/'/g, "\\'");
 
       // Award counts (from cache or placeholder)
       const awardData = this._eventAwardCounts?.[event.id] || { total: 0, confirmed: 0, winners: 0 };
 
-      // Build compact capacity cell
-      let capacityCell;
-      if (capacity > 0 && attendeeCount > 0) {
-        capacityCell = `
-          <div class="text-center" style="min-width:60px;">
-            <div class="fw-semibold" style="font-size:0.8rem;">${attending}<span class="text-muted">/${capacity}</span></div>
-            <div class="progress mt-1" style="height:4px;">
-              <div class="progress-bar ${capBarColor}" style="width:${Math.min(capacityPct, 100)}%"></div>
-            </div>
-          </div>`;
-      } else if (attendeeCount > 0) {
-        capacityCell = `<span class="badge bg-info">${attending}</span>`;
-      } else {
-        capacityCell = '<span class="text-muted small">-</span>';
-      }
+      // Capacity and attendee cells rendered as placeholders; updated async by _loadEventAttendeeCounts
+      const capacityCell = '<span class="text-muted small">-</span>';
 
       return `
         <tr class="fade-in">
@@ -9259,8 +9242,8 @@ const eventsModule = {
           <td><span class="badge bg-primary">${utils.escapeHtml(String(event.year || '-'))}</span></td>
           <td>${eventDate}${countdown}</td>
           <td>${utils.escapeHtml(event.venue || '-')}</td>
-          <td class="text-center">${capacityCell}</td>
-          <td class="text-center">${vipCount > 0 ? `<span class="badge bg-warning text-dark">${vipCount}</span>` : '<span class="text-muted small">-</span>'}</td>
+          <td class="text-center" id="capacityCell_${event.id}">${capacityCell}</td>
+          <td class="text-center" id="vipCell_${event.id}"><span class="text-muted small">-</span></td>
           <td class="text-center" id="awardCount_${event.id}">${awardData.total > 0 ? `<span class="badge bg-success" title="${awardData.confirmed} confirmed">${awardData.confirmed}/${awardData.total}</span>` : '<span class="text-muted small">-</span>'}</td>
           <td class="text-center" id="winnerCount_${event.id}">${awardData.winners > 0 ? `<span class="badge bg-info">${awardData.winners}</span>` : '<span class="text-muted small">-</span>'}</td>
           <td class="text-center">${statusDropdown}</td>
@@ -9343,6 +9326,52 @@ const eventsModule = {
       }
     } catch (err) {
       console.warn('Error loading award counts:', err);
+    }
+  },
+
+  /**
+   * Load attendee/VIP counts for events and update DOM (async, fire-and-forget)
+   */
+  _eventAttendeeCounts: {},
+
+  async _loadEventAttendeeCounts(eventIds) {
+    if (!eventIds || eventIds.length === 0) return;
+    try {
+      for (const eventId of eventIds) {
+        if (this._eventAttendeeCounts[eventId]) {
+          this._updateAttendeeCell(eventId);
+          continue;
+        }
+        const attendees = await this.getAttendees(eventId);
+        const attending = attendees.filter(a => a.status === 'attending').length;
+        const vipCount = attendees.filter(a => a.vip || a.isVip || a.ticket_type === 'vip').length;
+        this._eventAttendeeCounts[eventId] = { total: attendees.length, attending, vipCount };
+        this._updateAttendeeCell(eventId);
+      }
+    } catch (err) {
+      console.warn('Error loading attendee counts:', err);
+    }
+  },
+
+  _updateAttendeeCell(eventId) {
+    const data = this._eventAttendeeCounts[eventId];
+    if (!data) return;
+    const event = (STATE.allEvents || []).find(e => e.id === eventId);
+    const capacity = event?.capacity || 0;
+
+    const capCell = document.getElementById(`capacityCell_${eventId}`);
+    if (capCell) {
+      if (capacity > 0 && data.total > 0) {
+        const pct = Math.round(data.attending / capacity * 100);
+        const color = pct >= 95 ? 'bg-danger' : pct >= 80 ? 'bg-warning' : pct >= 50 ? 'bg-info' : 'bg-success';
+        capCell.innerHTML = `<div class="text-center" style="min-width:60px;"><div class="fw-semibold" style="font-size:0.8rem;">${data.attending}<span class="text-muted">/${capacity}</span></div><div class="progress mt-1" style="height:4px;"><div class="progress-bar ${color}" style="width:${Math.min(pct, 100)}%"></div></div></div>`;
+      } else if (data.total > 0) {
+        capCell.innerHTML = `<span class="badge bg-info">${data.attending}</span>`;
+      }
+    }
+    const vipCell = document.getElementById(`vipCell_${eventId}`);
+    if (vipCell && data.vipCount > 0) {
+      vipCell.innerHTML = `<span class="badge bg-warning text-dark">${data.vipCount}</span>`;
     }
   },
 
@@ -9691,7 +9720,7 @@ const eventsModule = {
     const rows = await this._parseImportFile();
     if (!rows || rows.length === 0) { utils.showToast('No valid data found. Check your file format matches the template.', 'warning'); return; }
 
-    const existing = this.getAttendees(eventId) || [];
+    const existing = await this.getAttendees(eventId) || [];
     const skipDuplicates = document.getElementById('importSkipDuplicates')?.checked !== false;
 
     let imported = 0;
@@ -9775,8 +9804,8 @@ const eventsModule = {
     let grandRevenue = 0, grandBudget = 0, grandCosts = 0;
 
     events.forEach(e => {
-      const attendees = this.getAttendees(e.id);
-      const attending = attendees ? attendees.filter(a => a.status === 'attending').length : 0;
+      const cachedAttendees = this._eventAttendeeCounts[e.id];
+      const attending = cachedAttendees ? cachedAttendees.attending : 0;
       const price = parseFloat(e.ticket_price) || 0;
       const revenue = price * attending;
 
@@ -9852,8 +9881,8 @@ const eventsModule = {
     if (events.length === 0) { utils.showToast('No events', 'warning'); return; }
 
     const csvRows = events.map(e => {
-      const attendees = this.getAttendees(e.id);
-      const attending = attendees ? attendees.filter(a => a.status === 'attending').length : 0;
+      const cachedAttendees = this._eventAttendeeCounts[e.id];
+      const attending = cachedAttendees ? cachedAttendees.attending : 0;
       const revenue = (parseFloat(e.ticket_price) || 0) * attending;
       const budget = this.getBudget(e.id);
       const totalBudget = parseFloat(budget.totalBudget) || 0;
@@ -9883,8 +9912,8 @@ const eventsModule = {
     if (events.length === 0) { utils.showToast('No events to export', 'warning'); return; }
     const rows = [['Event Name', 'Year', 'Date', 'Venue', 'Status', 'Description', 'Attendees']];
     events.forEach(e => {
-      const attendees = this.getAttendees(e.id);
-      rows.push([e.event_name || '', e.year || '', e.event_date || '', e.venue || '', e.event_status || 'draft', e.description || '', attendees ? attendees.length : 0]);
+      const cachedAttendees = this._eventAttendeeCounts[e.id];
+      rows.push([e.event_name || '', e.year || '', e.event_date || '', e.venue || '', e.event_status || 'draft', e.description || '', cachedAttendees ? cachedAttendees.total : 0]);
     });
     const csv = rows.map(r => r.map(c => `"${String(c).replace(/"/g, '""')}"`).join(',')).join('\n');
     const blob = new Blob([csv], { type: 'text/csv' });

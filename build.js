@@ -100,8 +100,8 @@ async function build() {
     const minSize = result.code.length;
     console.log(`  JS: ${(totalJsSize / 1024).toFixed(0)}KB -> ${(minSize / 1024).toFixed(0)}KB (${((1 - minSize / totalJsSize) * 100).toFixed(0)}% reduction)`);
   } catch (e) {
-    // Fallback: just concatenate without minification
-    fs.writeFileSync(path.join(DIST_DIR, 'app.bundle.js'), jsContent);
+    // Fallback: just concatenate without minification (use same filename so HTML references work)
+    fs.writeFileSync(path.join(DIST_DIR, 'app.min.js'), jsContent);
     console.log(`  JS: ${(totalJsSize / 1024).toFixed(0)}KB (concatenated, not minified - install esbuild for minification)`);
   }
 
@@ -129,7 +129,8 @@ async function build() {
     const minSize = result.code.length;
     console.log(`  CSS: ${(totalCssSize / 1024).toFixed(0)}KB -> ${(minSize / 1024).toFixed(0)}KB (${((1 - minSize / totalCssSize) * 100).toFixed(0)}% reduction)`);
   } catch (e) {
-    fs.writeFileSync(path.join(DIST_DIR, 'app.bundle.css'), cssContent);
+    // Fallback: use same filename so HTML references work
+    fs.writeFileSync(path.join(DIST_DIR, 'app.min.css'), cssContent);
     console.log(`  CSS: ${(totalCssSize / 1024).toFixed(0)}KB (concatenated, not minified)`);
   }
 

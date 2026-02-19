@@ -74,8 +74,8 @@ const securityModule = {
         "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://unpkg.com",
         "img-src 'self' data: blob: https://*.supabase.co https://i.ytimg.com https://*.tile.openstreetmap.org",
         "font-src 'self' https://cdn.jsdelivr.net",
-        "connect-src 'self' https://*.supabase.co https://api.resend.com https://*.sentry.io wss://*.supabase.co https://*.tradingview.com wss://*.tradingview.com",
-        "frame-src 'self' https://js.stripe.com https://www.youtube.com https://s3.tradingview.com https://*.tradingview.com",
+        "connect-src 'self' https://*.supabase.co https://api.resend.com https://*.sentry.io wss://*.supabase.co https://*.tradingview.com wss://*.tradingview.com https://*.tradingview-widget.com wss://*.tradingview-widget.com",
+        "frame-src 'self' https://js.stripe.com https://www.youtube.com https://s3.tradingview.com https://*.tradingview.com https://*.tradingview-widget.com",
         "object-src 'none'",
         "base-uri 'self'"
       ].join('; ');

@@ -529,49 +529,53 @@ document.addEventListener('DOMContentLoaded', function() {
   const loginPassword = document.getElementById('loginPassword');
   
   // Login button click
-  loginBtn.addEventListener('click', (e) => {
+  if (loginBtn) loginBtn.addEventListener('click', (e) => {
     e.preventDefault();
     authModule.handleLogin();
   });
-  
+
   // Login form submit
-  loginForm.addEventListener('submit', (e) => {
+  if (loginForm) loginForm.addEventListener('submit', (e) => {
     e.preventDefault();
     authModule.handleLogin();
   });
-  
+
   // Enter key on password field
-  loginPassword.addEventListener('keypress', (e) => {
+  if (loginPassword) loginPassword.addEventListener('keypress', (e) => {
     if (e.key === 'Enter') {
       e.preventDefault();
       authModule.handleLogin();
     }
   });
-  
+
   // Enter key on email field (focus password)
-  loginEmail.addEventListener('keypress', (e) => {
+  if (loginEmail) loginEmail.addEventListener('keypress', (e) => {
     if (e.key === 'Enter') {
       e.preventDefault();
-      loginPassword.focus();
+      if (loginPassword) loginPassword.focus();
     }
   });
-  
+
   // --- Logout ---
-  document.getElementById('logoutBtn').addEventListener('click', () => {
+  const logoutBtn = document.getElementById('logoutBtn');
+  if (logoutBtn) logoutBtn.addEventListener('click', () => {
     authModule.handleLogout();
   });
-  
+
   // --- Dark Mode Toggle ---
-  document.getElementById('darkModeToggle').addEventListener('click', () => {
+  const darkModeToggle = document.getElementById('darkModeToggle');
+  if (darkModeToggle) darkModeToggle.addEventListener('click', () => {
     document.body.classList.toggle('dark-mode');
     const icon = document.querySelector('#darkModeToggle i');
-    icon.classList.toggle('bi-moon');
-    icon.classList.toggle('bi-sun');
-    
+    if (icon) {
+      icon.classList.toggle('bi-moon');
+      icon.classList.toggle('bi-sun');
+    }
+
     // Save preference
     const isDark = document.body.classList.contains('dark-mode');
     localStorage.setItem('darkMode', isDark);
-    
+
     utils.showToast(
       isDark ? 'Dark mode enabled' : 'Light mode enabled',
       'info'
@@ -613,28 +617,34 @@ document.addEventListener('DOMContentLoaded', function() {
     awardsModule.filterAwards();
   }, 300);
   
-  document.getElementById('awardsYearFilterSelect').addEventListener('change', () => {
+  const awardsYearFilter = document.getElementById('awardsYearFilterSelect');
+  if (awardsYearFilter) awardsYearFilter.addEventListener('change', () => {
     awardsModule.filterAwards();
   });
 
-  document.getElementById('awardsStatusFilterSelect').addEventListener('change', () => {
+  const awardsStatusFilter = document.getElementById('awardsStatusFilterSelect');
+  if (awardsStatusFilter) awardsStatusFilter.addEventListener('change', () => {
     awardsModule.filterAwards();
   });
 
-  document.getElementById('awardsSectorFilterSelect').addEventListener('change', () => {
+  const awardsSectorFilter = document.getElementById('awardsSectorFilterSelect');
+  if (awardsSectorFilter) awardsSectorFilter.addEventListener('change', () => {
     awardsModule.filterAwards();
   });
-  
-  document.getElementById('awardsRegionFilterSelect').addEventListener('change', () => {
+
+  const awardsRegionFilter = document.getElementById('awardsRegionFilterSelect');
+  if (awardsRegionFilter) awardsRegionFilter.addEventListener('change', () => {
     awardsModule.updateCountyFilterByRegion();
     awardsModule.filterAwards();
   });
 
-  document.getElementById('awardsCountyFilterSelect').addEventListener('change', () => {
+  const awardsCountyFilter = document.getElementById('awardsCountyFilterSelect');
+  if (awardsCountyFilter) awardsCountyFilter.addEventListener('change', () => {
     awardsModule.filterAwards();
   });
 
-  document.getElementById('awardsSearchBox').addEventListener('input', () => {
+  const awardsSearchBox = document.getElementById('awardsSearchBox');
+  if (awardsSearchBox) awardsSearchBox.addEventListener('input', () => {
     debouncedAwardsFilter();
   });
   
@@ -655,21 +665,25 @@ document.addEventListener('DOMContentLoaded', function() {
     winnersModule.filterWinners();
   }, 300);
   
-  document.getElementById('winnerYearFilterSelect').addEventListener('change', () => {
+  const winnerYearFilter = document.getElementById('winnerYearFilterSelect');
+  if (winnerYearFilter) winnerYearFilter.addEventListener('change', () => {
     winnersModule.filterWinners();
   });
-  
-  document.getElementById('winnerAwardFilterSelect').addEventListener('change', () => {
+
+  const winnerAwardFilter = document.getElementById('winnerAwardFilterSelect');
+  if (winnerAwardFilter) winnerAwardFilter.addEventListener('change', () => {
     winnersModule.filterWinners();
   });
-  
-  document.getElementById('winnerSearchBox').addEventListener('input', () => {
+
+  const winnerSearchBox = document.getElementById('winnerSearchBox');
+  if (winnerSearchBox) winnerSearchBox.addEventListener('input', () => {
     debouncedWinnerFilter();
   });
-  
+
   // --- Tab Navigation ---
   // Load winners data when Winners tab is clicked (lazy loading)
-  document.getElementById('winners-tab').addEventListener('click', () => {
+  const winnersTab = document.getElementById('winners-tab');
+  if (winnersTab) winnersTab.addEventListener('click', () => {
     if (STATE.allWinners.length === 0) {
       winnersModule.loadWinners();
     }
@@ -677,7 +691,8 @@ document.addEventListener('DOMContentLoaded', function() {
 
   // Load media gallery data when Media Gallery tab is clicked (lazy loading)
   let mediaGalleryInitialized = false;
-  document.getElementById('media-gallery-tab').addEventListener('click', () => {
+  const mediaGalleryTab = document.getElementById('media-gallery-tab');
+  if (mediaGalleryTab) mediaGalleryTab.addEventListener('click', () => {
     if (!mediaGalleryInitialized) {
       mediaGalleryInitialized = true;
       mediaGalleryModule.initialize();
@@ -685,29 +700,34 @@ document.addEventListener('DOMContentLoaded', function() {
   });
 
   // Load events data when Events tab is clicked (lazy loading)
-  document.getElementById('events-tab').addEventListener('click', () => {
+  const eventsTab = document.getElementById('events-tab');
+  if (eventsTab) eventsTab.addEventListener('click', () => {
     if (STATE.allEvents.length === 0) {
       eventsModule.loadEvents();
     }
   });
 
   // Refresh stats when Dashboard tab is clicked
-  document.getElementById('dashboard-tab').addEventListener('click', () => {
+  const dashboardTab = document.getElementById('dashboard-tab');
+  if (dashboardTab) dashboardTab.addEventListener('click', () => {
     dashboardModule.updateStats();
   });
 
   // Initialize settings when Settings tab is clicked
-  document.getElementById('settings-tab').addEventListener('click', () => {
+  const settingsTab = document.getElementById('settings-tab');
+  if (settingsTab) settingsTab.addEventListener('click', () => {
     settingsModule.init();
   });
 
   // --- Media Upload ---
-  document.getElementById('uploadMediaBtn').addEventListener('click', () => {
+  const uploadMediaBtn = document.getElementById('uploadMediaBtn');
+  if (uploadMediaBtn) uploadMediaBtn.addEventListener('click', () => {
     winnersModule.handleUploadMedia();
   });
-  
+
   // File input change - show file name
-  document.getElementById('mediaFile').addEventListener('change', (e) => {
+  const mediaFile = document.getElementById('mediaFile');
+  if (mediaFile) mediaFile.addEventListener('change', (e) => {
     const file = e.target.files[0];
     if (file) {
       const fileSize = utils.formatFileSize(file.size);

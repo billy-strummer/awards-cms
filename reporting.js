@@ -184,12 +184,12 @@ window.reportingModule = {
   async exportSponsorROI(fmt = 'csv') {
     try {
       const { data, error } = await STATE.client.from('sponsors')
-        .select('company_name, tier, website, contact_name, created_at');
+        .select('name, company_name, tier, website, contact_name, created_at');
       if (error) throw error;
       const val = { Platinum: 15000, Gold: 8000, Silver: 4000, Bronze: 2000, Partner: 1000 };
       const imp = { Platinum: 50000, Gold: 30000, Silver: 15000, Bronze: 7500, Partner: 3000 };
       const rows = (data || []).map(s => ({
-        company: s.company_name || 'Unknown', tier: s.tier || 'Unknown',
+        company: s.name || s.company_name || 'Unknown', tier: s.tier || 'Unknown',
         contact: s.contact_name || '', website: s.website || '',
         est_value: this._fc(val[s.tier] || 0), est_impressions: imp[s.tier] || 0,
         cpm: val[s.tier] && imp[s.tier] ? (val[s.tier] / imp[s.tier] * 1000).toFixed(2) : 'N/A',

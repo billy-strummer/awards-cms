@@ -10,10 +10,11 @@ const dashboardModule = {
     try {
       utils.showLoading();
 
-      // Load awards and organisations in parallel
+      // Load awards, organisations and winners in parallel
       await Promise.all([
         awardsModule.loadAwards(),
-        orgsModule.loadOrganisations()
+        orgsModule.loadOrganisations(),
+        winnersModule.loadWinners()
       ]);
 
       // Update dashboard stats

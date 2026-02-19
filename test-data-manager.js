@@ -23,6 +23,7 @@ const testDataManager = {
   INVOICE_PREFIX: '80000000-0000-0000-0000-',
   PAYMENT_PREFIX: '81000000-0000-0000-0000-',
   VOTE_PREFIX: '90000000-0000-0000-0000-',
+  WINNER_PREFIX: 'A0000000-0000-0000-0000-',
 
   uid(prefix, n) {
     return prefix + String(n).padStart(12, '0');
@@ -85,16 +86,16 @@ const testDataManager = {
     // ===== Step 2: Create 10 test awards =====
     utils.showToast('Step 2/12: Creating test awards...', 'info');
     const awards = [
-      { id: this.uid(this.AWARD_PREFIX, 1), award_name: 'TEST_MODE_Best Innovation', award_category: 'Innovation', sector: 'Technology & Digital', description: 'Excellence in innovation', year: 2025, is_active: true },
-      { id: this.uid(this.AWARD_PREFIX, 2), award_name: 'TEST_MODE_Rising Star', award_category: 'Growth', sector: 'Business Services', description: 'Fast growing company', year: 2025, is_active: true },
-      { id: this.uid(this.AWARD_PREFIX, 3), award_name: 'TEST_MODE_Export Excellence', award_category: 'International', sector: 'Business Services', description: 'Outstanding exports', year: 2025, is_active: true },
-      { id: this.uid(this.AWARD_PREFIX, 4), award_name: 'TEST_MODE_Sustainability Leader', award_category: 'Environment', sector: 'Environment & Energy', description: 'Green business practices', year: 2025, is_active: true },
-      { id: this.uid(this.AWARD_PREFIX, 5), award_name: 'TEST_MODE_Digital Transformation', award_category: 'Technology', sector: 'Technology & Digital', description: 'Digital innovation', year: 2025, is_active: true },
-      { id: this.uid(this.AWARD_PREFIX, 6), award_name: 'TEST_MODE_Best Employer', award_category: 'People', sector: 'People & Culture', description: 'Great workplace', year: 2025, is_active: true },
-      { id: this.uid(this.AWARD_PREFIX, 7), award_name: 'TEST_MODE_Customer Excellence', award_category: 'Service', sector: 'Business Services', description: 'Outstanding customer service', year: 2025, is_active: true },
-      { id: this.uid(this.AWARD_PREFIX, 8), award_name: 'TEST_MODE_Manufacturing Excellence', award_category: 'Manufacturing', sector: 'Manufacturing & Engineering', description: 'Quality manufacturing', year: 2025, is_active: true },
-      { id: this.uid(this.AWARD_PREFIX, 9), award_name: 'TEST_MODE_Social Impact', award_category: 'Community', sector: 'People & Culture', description: 'Community contribution', year: 2025, is_active: true },
-      { id: this.uid(this.AWARD_PREFIX, 10), award_name: 'TEST_MODE_Lifetime Achievement', award_category: 'Special', sector: 'Special Awards', description: 'Career recognition', year: 2025, is_active: true }
+      { id: this.uid(this.AWARD_PREFIX, 1), award_name: 'TEST_MODE_Best Innovation', award_category: 'Innovation', sector: 'Technology & Digital', county: 'Greater London', description: 'Excellence in innovation', year: 2025, is_active: true, status: 'Published' },
+      { id: this.uid(this.AWARD_PREFIX, 2), award_name: 'TEST_MODE_Rising Star', award_category: 'Growth', sector: 'Business Services', county: 'Greater Manchester', description: 'Fast growing company', year: 2025, is_active: true, status: 'Published' },
+      { id: this.uid(this.AWARD_PREFIX, 3), award_name: 'TEST_MODE_Export Excellence', award_category: 'International', sector: 'Business Services', county: 'West Midlands', description: 'Outstanding exports', year: 2025, is_active: true, status: 'Published' },
+      { id: this.uid(this.AWARD_PREFIX, 4), award_name: 'TEST_MODE_Sustainability Leader', award_category: 'Environment', sector: 'Environment & Energy', county: 'Bristol', description: 'Green business practices', year: 2025, is_active: true, status: 'Published' },
+      { id: this.uid(this.AWARD_PREFIX, 5), award_name: 'TEST_MODE_Digital Transformation', award_category: 'Technology', sector: 'Technology & Digital', county: 'West Yorkshire', description: 'Digital innovation', year: 2025, is_active: true, status: 'Approved' },
+      { id: this.uid(this.AWARD_PREFIX, 6), award_name: 'TEST_MODE_Best Employer', award_category: 'People', sector: 'People & Culture', county: 'Surrey', description: 'Great workplace', year: 2025, is_active: true, status: 'Approved' },
+      { id: this.uid(this.AWARD_PREFIX, 7), award_name: 'TEST_MODE_Customer Excellence', award_category: 'Service', sector: 'Business Services', county: 'Edinburgh', description: 'Outstanding customer service', year: 2025, is_active: true, status: 'Approved' },
+      { id: this.uid(this.AWARD_PREFIX, 8), award_name: 'TEST_MODE_Manufacturing Excellence', award_category: 'Manufacturing', sector: 'Manufacturing & Engineering', county: 'South Yorkshire', description: 'Quality manufacturing', year: 2025, is_active: true, status: 'Approved' },
+      { id: this.uid(this.AWARD_PREFIX, 9), award_name: 'TEST_MODE_Social Impact', award_category: 'Community', sector: 'People & Culture', county: 'Cardiff', description: 'Community contribution', year: 2025, is_active: true, status: 'Pending' },
+      { id: this.uid(this.AWARD_PREFIX, 10), award_name: 'TEST_MODE_Lifetime Achievement', award_category: 'Special', sector: 'Special Awards', county: 'Belfast', description: 'Career recognition', year: 2025, is_active: true, status: 'Draft' }
     ];
     const { error: awardsErr } = await STATE.client.from('awards').upsert(awards);
     if (awardsErr) console.warn('Awards upsert:', awardsErr.message);
@@ -128,12 +129,14 @@ const testDataManager = {
     const orgs = orgNames.map((name, i) => ({
       id: this.uid(this.ORG_PREFIX, i + 1),
       company_name: 'TEST_MODE_' + name,
-      industry: industries[i],
+      sector: industries[i],
       description: 'Test organisation #' + (i + 1),
       region: regions[i],
       status: 'active',
       contact_name: 'Contact ' + (i + 1),
-      email: name.toLowerCase().replace(/[^a-z0-9]/g, '.') + '@example.com'
+      email: name.toLowerCase().replace(/[^a-z0-9]/g, '.') + '@example.com',
+      website: 'https://' + name.toLowerCase().replace(/[^a-z0-9]/g, '') + '.example.com',
+      contact_phone: '020 ' + String(7000 + i).padStart(4, '0') + ' ' + String(1000 + i * 37).padStart(4, '0')
     }));
     const { error: orgsErr } = await STATE.client.from('organisations').upsert(orgs);
     if (orgsErr) console.warn('Organisations upsert:', orgsErr.message);
@@ -165,17 +168,31 @@ const testDataManager = {
     const { error: assignErr } = await STATE.client.from('award_assignments').upsert(assignments);
     if (assignErr) console.warn('Assignments upsert:', assignErr.message);
 
+    // ===== Step 4b: Populate winners table (used by Winners tab + dashboard stats) =====
+    var winners = [];
+    var winnerIdx = 1;
+    for (var wi = 0; wi < 10; wi++) {
+      var topOrgIdx = winnerOrgIndices[wi][0]; // 1st place per award
+      winners.push({
+        id: this.uid(this.WINNER_PREFIX, winnerIdx),
+        winner_name: orgNames[topOrgIdx - 1],
+        award_id: this.uid(this.AWARD_PREFIX, wi + 1),
+        organisation_id: this.uid(this.ORG_PREFIX, topOrgIdx),
+        year: 2025
+      });
+      winnerIdx++;
+    }
+    const { error: winnerErr } = await STATE.client.from('winners').upsert(winners);
+    if (winnerErr) console.warn('Winners upsert:', winnerErr.message);
+
     // ===== Step 5: Create event guests (RSVPs) =====
     utils.showToast('Step 5/12: Creating test RSVPs...', 'info');
     const guests = orgs.map(function(org) {
       return {
         event_id: eventId,
-        organisation_id: org.id,
         guest_name: 'CEO ' + org.company_name.replace('TEST_MODE_', ''),
         guest_email: org.email,
-        guest_type: 'winner',
-        rsvp_status: 'confirmed',
-        plus_ones: 1
+        rsvp_status: 'confirmed'
       };
     });
     await STATE.client.from('event_guests').delete().eq('event_id', eventId);
@@ -238,7 +255,6 @@ const testDataManager = {
         status: status,
         payment_status: payStatuses[i % 3],
         year: 2025,
-        entry_fee: [250, 350, 500][i % 3],
         is_shortlisted: status === 'shortlisted' || status === 'winner',
         shortlisted_date: (status === 'shortlisted' || status === 'winner') ? '2025-09-01' : null,
         submission_date: '2025-0' + Math.min(i % 9 + 1, 9) + '-' + String((i % 28) + 1).padStart(2, '0'),
@@ -319,11 +335,11 @@ const testDataManager = {
    */
   async generateMarketingData() {
     var sponsors = [
-      { id: this.uid(this.SPONSOR_PREFIX, 1), company_name: 'TEST_MODE_Platinum Corp', tier: 'Platinum', sponsorship_amount: 25000, contact_name: 'Sarah Platinum', email: 'sarah@platinumcorp.example.com', website: 'https://example.com/platinum', is_active: true, display_order: 1 },
-      { id: this.uid(this.SPONSOR_PREFIX, 2), company_name: 'TEST_MODE_Gold Industries', tier: 'Gold', sponsorship_amount: 15000, contact_name: 'James Gold', email: 'james@goldindustries.example.com', website: 'https://example.com/gold', is_active: true, display_order: 2 },
-      { id: this.uid(this.SPONSOR_PREFIX, 3), company_name: 'TEST_MODE_Silver Solutions', tier: 'Silver', sponsorship_amount: 7500, contact_name: 'Emma Silver', email: 'emma@silversolutions.example.com', website: 'https://example.com/silver', is_active: true, display_order: 3 },
-      { id: this.uid(this.SPONSOR_PREFIX, 4), company_name: 'TEST_MODE_Bronze Partners', tier: 'Bronze', sponsorship_amount: 3500, contact_name: 'Tom Bronze', email: 'tom@bronzepartners.example.com', website: 'https://example.com/bronze', is_active: true, display_order: 4 },
-      { id: this.uid(this.SPONSOR_PREFIX, 5), company_name: 'TEST_MODE_Community Partner', tier: 'Partner', sponsorship_amount: 1000, contact_name: 'Lisa Partner', email: 'lisa@communitypartner.example.com', website: 'https://example.com/partner', is_active: true, display_order: 5 }
+      { id: this.uid(this.SPONSOR_PREFIX, 1), name: 'TEST_MODE_Platinum Corp', company_name: 'TEST_MODE_Platinum Corp', tier: 'Platinum', sponsorship_amount: 25000, contact_name: 'Sarah Platinum', email: 'sarah@platinumcorp.example.com', website: 'https://example.com/platinum', is_active: true, display_order: 1 },
+      { id: this.uid(this.SPONSOR_PREFIX, 2), name: 'TEST_MODE_Gold Industries', company_name: 'TEST_MODE_Gold Industries', tier: 'Gold', sponsorship_amount: 15000, contact_name: 'James Gold', email: 'james@goldindustries.example.com', website: 'https://example.com/gold', is_active: true, display_order: 2 },
+      { id: this.uid(this.SPONSOR_PREFIX, 3), name: 'TEST_MODE_Silver Solutions', company_name: 'TEST_MODE_Silver Solutions', tier: 'Silver', sponsorship_amount: 7500, contact_name: 'Emma Silver', email: 'emma@silversolutions.example.com', website: 'https://example.com/silver', is_active: true, display_order: 3 },
+      { id: this.uid(this.SPONSOR_PREFIX, 4), name: 'TEST_MODE_Bronze Partners', company_name: 'TEST_MODE_Bronze Partners', tier: 'Bronze', sponsorship_amount: 3500, contact_name: 'Tom Bronze', email: 'tom@bronzepartners.example.com', website: 'https://example.com/bronze', is_active: true, display_order: 4 },
+      { id: this.uid(this.SPONSOR_PREFIX, 5), name: 'TEST_MODE_Community Partner', company_name: 'TEST_MODE_Community Partner', tier: 'Partner', sponsorship_amount: 1000, contact_name: 'Lisa Partner', email: 'lisa@communitypartner.example.com', website: 'https://example.com/partner', is_active: true, display_order: 5 }
     ];
     var { error: sponsorErr } = await STATE.client.from('sponsors').upsert(sponsors);
     if (sponsorErr) console.warn('Sponsors upsert:', sponsorErr.message);
@@ -353,11 +369,7 @@ const testDataManager = {
         organisation_id: orgs[i].id,
         first_name: fn,
         last_name: lastNames[i],
-        job_title: jobTitles[i],
-        email: fn.toLowerCase() + '.' + lastNames[i].toLowerCase() + '@example.com',
-        phone: '020 ' + String(7000 + i).padStart(4, '0') + ' ' + String(1000 + i * 37).padStart(4, '0'),
-        is_primary: true,
-        receive_emails: true
+        email: fn.toLowerCase() + '.' + lastNames[i].toLowerCase() + '@example.com'
       };
     });
     var { error: contactErr } = await STATE.client.from('organisation_contacts').upsert(contacts);
@@ -382,8 +394,7 @@ const testDataManager = {
         message: 'This is a test ' + type + ' communication regarding ' + commSubjects[i].toLowerCase() + '.',
         regarding: regardingOptions[i % 5],
         follow_up_required: i % 3 === 0,
-        follow_up_date: i % 3 === 0 ? new Date(Date.now() + (i + 1) * 86400000 * 3).toISOString().split('T')[0] : null,
-        completed: i > 5
+        follow_up_date: i % 3 === 0 ? new Date(Date.now() + (i + 1) * 86400000 * 3).toISOString().split('T')[0] : null
       };
     });
     var { error: commErr } = await STATE.client.from('communications').upsert(comms);
@@ -404,12 +415,10 @@ const testDataManager = {
         stage: stage,
         probability: dealProbs[i],
         deal_value: dealValues[i],
-        currency: 'GBP',
         status: stage === 'closed_won' ? 'won' : 'active',
         expected_close_date: new Date(Date.now() + (i + 1) * 86400000 * 14).toISOString().split('T')[0],
         actual_close_date: stage === 'closed_won' ? new Date().toISOString().split('T')[0] : null,
-        assigned_to: 'admin@britishtrade.com',
-        notes: 'Test deal for ' + dealTypes[i] + ' with ' + orgs[i].company_name.replace('TEST_MODE_', '')
+        description: 'Test deal for ' + dealTypes[i] + ' with ' + orgs[i].company_name.replace('TEST_MODE_', '')
       };
     });
     var { error: dealErr } = await STATE.client.from('deals').upsert(deals);
@@ -417,10 +426,10 @@ const testDataManager = {
 
     // Meeting notes (4 meetings)
     var meetings = [
-      { id: this.uid(this.MEETING_PREFIX, 1), organisation_id: orgs[0].id, deal_id: deals[0].id, meeting_title: 'TEST_MODE_Platinum Sponsorship Discussion', meeting_type: 'video_call', duration_minutes: 45, location: 'Zoom', notes: 'Discussed platinum tier benefits. Very interested.', follow_up_required: true, follow_up_date: new Date(Date.now() + 7 * 86400000).toISOString().split('T')[0] },
-      { id: this.uid(this.MEETING_PREFIX, 2), organisation_id: orgs[3].id, deal_id: deals[3].id, meeting_title: 'TEST_MODE_Partnership Review', meeting_type: 'in_person', duration_minutes: 60, location: 'BTA Office', notes: 'Reviewed partnership terms. Need to send revised proposal.', follow_up_required: true, follow_up_date: new Date(Date.now() + 3 * 86400000).toISOString().split('T')[0] },
-      { id: this.uid(this.MEETING_PREFIX, 3), organisation_id: orgs[5].id, meeting_title: 'TEST_MODE_Award Entry Guidance', meeting_type: 'phone', duration_minutes: 20, location: 'Phone', notes: 'Guided them through the entry process. Will submit next week.', follow_up_required: false },
-      { id: this.uid(this.MEETING_PREFIX, 4), organisation_id: orgs[8].id, meeting_title: 'TEST_MODE_Event Planning Debrief', meeting_type: 'conference', duration_minutes: 90, location: 'Conference Room A', notes: 'Reviewed last event feedback. Planning improvements for next year.', follow_up_required: false }
+      { id: this.uid(this.MEETING_PREFIX, 1), organisation_id: orgs[0].id, deal_id: deals[0].id, meeting_title: 'TEST_MODE_Platinum Sponsorship Discussion', meeting_type: 'video_call', duration_minutes: 45, notes: 'Discussed platinum tier benefits. Very interested.', follow_up_required: true, follow_up_date: new Date(Date.now() + 7 * 86400000).toISOString().split('T')[0] },
+      { id: this.uid(this.MEETING_PREFIX, 2), organisation_id: orgs[3].id, deal_id: deals[3].id, meeting_title: 'TEST_MODE_Partnership Review', meeting_type: 'in_person', duration_minutes: 60, notes: 'Reviewed partnership terms. Need to send revised proposal.', follow_up_required: true, follow_up_date: new Date(Date.now() + 3 * 86400000).toISOString().split('T')[0] },
+      { id: this.uid(this.MEETING_PREFIX, 3), organisation_id: orgs[5].id, meeting_title: 'TEST_MODE_Award Entry Guidance', meeting_type: 'phone', duration_minutes: 20, notes: 'Guided them through the entry process. Will submit next week.', follow_up_required: false },
+      { id: this.uid(this.MEETING_PREFIX, 4), organisation_id: orgs[8].id, meeting_title: 'TEST_MODE_Event Planning Debrief', meeting_type: 'conference', duration_minutes: 90, notes: 'Reviewed last event feedback. Planning improvements for next year.', follow_up_required: false }
     ];
     var { error: meetingErr } = await STATE.client.from('meeting_notes').upsert(meetings);
     if (meetingErr) console.warn('Meetings upsert:', meetingErr.message);
@@ -438,15 +447,15 @@ const testDataManager = {
     var orgSegments = [];
     // VIP Sponsors: first 3 orgs
     for (var s1 = 0; s1 < 3; s1++) {
-      orgSegments.push({ organisation_id: orgs[s1].id, segment_id: segments[0].id, assigned_by: 'admin@britishtrade.com' });
+      orgSegments.push({ organisation_id: orgs[s1].id, segment_id: segments[0].id });
     }
     // Active Entrants: orgs 4-8
     for (var s2 = 3; s2 < 8; s2++) {
-      orgSegments.push({ organisation_id: orgs[s2].id, segment_id: segments[1].id, assigned_by: 'admin@britishtrade.com' });
+      orgSegments.push({ organisation_id: orgs[s2].id, segment_id: segments[1].id });
     }
     // Past Winners: orgs 9-14
     for (var s3 = 8; s3 < 14; s3++) {
-      orgSegments.push({ organisation_id: orgs[s3].id, segment_id: segments[2].id, assigned_by: 'admin@britishtrade.com' });
+      orgSegments.push({ organisation_id: orgs[s3].id, segment_id: segments[2].id });
     }
     for (var ds = 0; ds < segments.length; ds++) {
       await STATE.client.from('organisation_segments').delete().eq('segment_id', segments[ds].id);
@@ -516,7 +525,6 @@ const testDataManager = {
         organisation_id: inv.organisation_id,
         payment_date: new Date(Date.now() - (10 - i * 2) * 86400000).toISOString().split('T')[0],
         amount: inv.total_amount,
-        currency: 'GBP',
         payment_method: ['bank_transfer', 'card', 'stripe'][i % 3],
         status: 'completed',
         notes: '[TEST MODE] Payment for ' + inv.invoice_number
@@ -560,16 +568,13 @@ const testDataManager = {
         id: this.uid(this.MEDIA_GAL_PREFIX, mg + 1),
         gallery_section_id: galleries[mg < 4 ? 0 : 1].id,
         file_url: 'https://placehold.co/800x600?text=Award+Photo+' + (mg + 1),
-        thumbnail_url: 'https://placehold.co/200x150?text=Thumb+' + (mg + 1),
         file_type: 'image/jpeg',
-        file_size: 250000 + mg * 50000,
         organisation_id: orgs[mg].id,
         award_id: awards[mg % 10].id,
         title: 'TEST_MODE_Gallery Photo ' + (mg + 1),
         caption: 'Winner photo ' + (mg + 1) + ' from the awards ceremony',
         photographer: 'Test Photographer',
-        is_public: true,
-        featured: mg < 3,
+        published: true,
         display_order: mg + 1,
         show_in_gallery: true,
         show_on_winner_page: mg < 5,
@@ -742,6 +747,11 @@ const testDataManager = {
       // 23. Award assignments
       if (orgIds.length > 0) {
         await STATE.client.from('award_assignments').delete().in('organisation_id', orgIds);
+      }
+
+      // 23b. Winners
+      if (orgIds.length > 0) {
+        await STATE.client.from('winners').delete().in('organisation_id', orgIds);
       }
 
       // 24. Organisations

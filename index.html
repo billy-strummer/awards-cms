@@ -6169,9 +6169,7 @@ Available placeholders:
             <div class="col-lg-9">
               <div class="card border-0 shadow-sm">
                 <div class="card-body p-0">
-                  <div class="tradingview-widget-container" style="height: 700px; width: 100%;">
-                    <div id="tradingview_chart" style="height: 100%; width: 100%;"></div>
-                  </div>
+                  <div id="tradingview_chart" class="tradingview-widget-container" style="height: 700px; width: 100%;"></div>
                 </div>
               </div>
             </div>
@@ -10054,7 +10052,19 @@ in recognition of excellence
         if (!container) return;
         container.innerHTML = '';
 
-        const config = {
+        // Create __widget div (TradingView injects iframe here)
+        const widget = document.createElement('div');
+        widget.className = 'tradingview-widget-container__widget';
+        widget.style.height = '100%';
+        widget.style.width = '100%';
+        container.appendChild(widget);
+
+        // Create script with config as textContent (official TradingView pattern)
+        const script = document.createElement('script');
+        script.type = 'text/javascript';
+        script.src = 'https://s3.tradingview.com/external-embedding/embed-widget-advanced-chart.js';
+        script.async = true;
+        script.textContent = JSON.stringify({
           autosize: true,
           symbol: this._symbol,
           interval: this._interval,
@@ -10072,16 +10082,8 @@ in recognition of excellence
           popup_width: "1200",
           popup_height: "800",
           support_host: "https://www.tradingview.com"
-        };
-
-        const iframe = document.createElement('iframe');
-        iframe.src = 'https://s3.tradingview.com/external-embedding/embed-widget-advanced-chart.html#' + encodeURIComponent(JSON.stringify(config));
-        iframe.style.width = '100%';
-        iframe.style.height = '100%';
-        iframe.style.border = 'none';
-        iframe.allowFullscreen = true;
-        iframe.setAttribute('frameborder', '0');
-        container.appendChild(iframe);
+        });
+        container.appendChild(script);
       },
 
       switchSymbol(symbol, btn) {

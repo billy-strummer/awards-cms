@@ -10054,30 +10054,34 @@ in recognition of excellence
         if (!container) return;
         container.innerHTML = '';
 
-        const script = document.createElement('script');
-        script.type = 'text/javascript';
-        script.src = 'https://s3.tradingview.com/external-embedding/embed-widget-advanced-chart.js';
-        script.async = true;
-        script.innerHTML = JSON.stringify({
-          "autosize": true,
-          "symbol": this._symbol,
-          "interval": this._interval,
-          "timezone": "Europe/London",
-          "theme": this._theme,
-          "style": this._style,
-          "locale": "en",
-          "allow_symbol_change": true,
-          "studies": ["STD;SMA", "STD;RSI", "STD;MACD"],
-          "hide_side_toolbar": false,
-          "save_image": true,
-          "details": true,
-          "calendar": true,
-          "show_popup_button": true,
-          "popup_width": "1200",
-          "popup_height": "800",
-          "support_host": "https://www.tradingview.com"
-        });
-        container.appendChild(script);
+        const config = {
+          autosize: true,
+          symbol: this._symbol,
+          interval: this._interval,
+          timezone: "Europe/London",
+          theme: this._theme,
+          style: this._style,
+          locale: "en",
+          allow_symbol_change: true,
+          studies: ["STD;SMA", "STD;RSI", "STD;MACD"],
+          hide_side_toolbar: false,
+          save_image: true,
+          details: true,
+          calendar: true,
+          show_popup_button: true,
+          popup_width: "1200",
+          popup_height: "800",
+          support_host: "https://www.tradingview.com"
+        };
+
+        const iframe = document.createElement('iframe');
+        iframe.src = 'https://s3.tradingview.com/external-embedding/embed-widget-advanced-chart.html#' + encodeURIComponent(JSON.stringify(config));
+        iframe.style.width = '100%';
+        iframe.style.height = '100%';
+        iframe.style.border = 'none';
+        iframe.allowFullscreen = true;
+        iframe.setAttribute('frameborder', '0');
+        container.appendChild(iframe);
       },
 
       switchSymbol(symbol, btn) {

@@ -32,7 +32,7 @@ const testDataManager = {
    * Generate Test Data
    */
   async generateTestData() {
-    const confirm = await this.showConfirmDialog(
+    const confirmed = await this.showConfirmDialog(
       'Generate Test Data',
       'This will create comprehensive test data for <strong>every tab</strong>:<br>' +
       '<ul class="mb-0">' +
@@ -51,7 +51,7 @@ const testDataManager = {
       'Generate All Test Data'
     );
 
-    if (!confirm) return;
+    if (!confirmed) return;
 
     try {
       utils.showLoading();
@@ -491,13 +491,13 @@ const testDataManager = {
       var inv = invoices[li];
       if (inv.invoice_type === 'package') {
         lineItems.push(
-          { invoice_id: inv.id, description: 'Awards Package', quantity: 1, unit_price: inv.total_amount * 0.8, amount: inv.total_amount * 0.8 },
-          { invoice_id: inv.id, description: 'Additional Guest Tickets', quantity: Math.ceil(inv.total_amount * 0.2 / 50), unit_price: 50, amount: inv.total_amount * 0.2 }
+          { invoice_id: inv.id, item_name: 'Awards Package', quantity: 1, unit_price: inv.total_amount * 0.8, line_total: inv.total_amount * 0.8 },
+          { invoice_id: inv.id, item_name: 'Additional Guest Tickets', quantity: Math.ceil(inv.total_amount * 0.2 / 50), unit_price: 50, line_total: inv.total_amount * 0.2 }
         );
       } else if (inv.invoice_type === 'entry_fee') {
-        lineItems.push({ invoice_id: inv.id, description: 'Award Entry Fee', quantity: 1, unit_price: inv.total_amount, amount: inv.total_amount });
+        lineItems.push({ invoice_id: inv.id, item_name: 'Award Entry Fee', quantity: 1, unit_price: inv.total_amount, line_total: inv.total_amount });
       } else {
-        lineItems.push({ invoice_id: inv.id, description: 'Sponsorship Package', quantity: 1, unit_price: inv.total_amount, amount: inv.total_amount });
+        lineItems.push({ invoice_id: inv.id, item_name: 'Sponsorship Package', quantity: 1, unit_price: inv.total_amount, line_total: inv.total_amount });
       }
     }
     for (var dli = 0; dli < invoices.length; dli++) {
@@ -789,7 +789,7 @@ const testDataManager = {
         STATE.client.from('sponsors').select('*', { count: 'exact', head: true }).like('company_name', 'TEST_MODE_%'),
         STATE.client.from('banners').select('*', { count: 'exact', head: true }).like('title', 'TEST_MODE_%'),
         STATE.client.from('invoices').select('*', { count: 'exact', head: true }).like('invoice_number', 'TEST-INV-%'),
-        STATE.client.from('organisation_contacts').select('*', { count: 'exact', head: true }).like('email', '%@example.com'),
+        STATE.client.from('organisation_contacts').select('*', { count: 'exact', head: true }).like('id', testDataManager.CONTACT_PREFIX + '%'),
         STATE.client.from('deals').select('*', { count: 'exact', head: true }).like('deal_name', 'TEST_MODE_%'),
         STATE.client.from('communications').select('*', { count: 'exact', head: true }).like('subject', 'TEST_MODE_%')
       ]);
@@ -976,14 +976,15 @@ const testDataManager = {
       var modalEl = document.getElementById('confirmModal');
       var modal = new bootstrap.Modal(modalEl);
 
+      var wasConfirmed = false;
       document.getElementById('confirmBtn').onclick = function() {
+        wasConfirmed = true;
         modal.hide();
-        resolve(true);
       };
 
       modalEl.addEventListener('hidden.bs.modal', function() {
         modalEl.remove();
-        resolve(false);
+        resolve(wasConfirmed);
       });
 
       modal.show();

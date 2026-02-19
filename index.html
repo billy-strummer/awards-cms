@@ -10049,22 +10049,24 @@ in recognition of excellence
       },
 
       createChart() {
+        // The outer .tradingview-widget-container is already in the HTML (line 6171).
+        // We render into #tradingview_chart which sits inside it.
         const container = document.getElementById('tradingview_chart');
         if (!container) return;
         container.innerHTML = '';
 
-        // Use TradingView Advanced Chart embed widget (replaces deprecated tv.js)
-        const widgetContainer = document.createElement('div');
-        widgetContainer.className = 'tradingview-widget-container__widget';
-        widgetContainer.style.height = '100%';
-        widgetContainer.style.width = '100%';
-        container.appendChild(widgetContainer);
+        const widgetDiv = document.createElement('div');
+        widgetDiv.className = 'tradingview-widget-container__widget';
+        widgetDiv.style.height = 'calc(100% - 32px)';
+        widgetDiv.style.width = '100%';
+        container.appendChild(widgetDiv);
 
+        // TradingView official pattern: createElement('script'), set innerHTML to JSON config, appendChild
         const script = document.createElement('script');
         script.type = 'text/javascript';
         script.src = 'https://s3.tradingview.com/external-embedding/embed-widget-advanced-chart.js';
         script.async = true;
-        script.textContent = JSON.stringify({
+        script.innerHTML = JSON.stringify({
           "autosize": true,
           "symbol": this._symbol,
           "interval": this._interval,

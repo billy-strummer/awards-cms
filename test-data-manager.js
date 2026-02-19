@@ -17,35 +17,10 @@ const testDataManager = {
 
     try {
       utils.showLoading();
-
-      // Read and execute the SQL script
-      const response = await fetch('database-test-data-generate.sql');
-      const sql = await response.text();
-
-      // Execute SQL using Supabase
-      const { data, error } = await STATE.client.rpc('exec_sql', { sql_string: sql });
-
-      if (error) {
-        // If exec_sql doesn't exist, we'll execute queries individually
-        await this.executeTestDataGeneration();
-      } else {
-        utils.showToast('Test data generated successfully! Reload the page to see the data.', 'success');
-
-        // Show info modal
-        setTimeout(() => {
-          this.showInfoModal();
-        }, 2000);
-      }
-
+      await this.executeTestDataGeneration();
     } catch (error) {
       console.error('Error generating test data:', error);
-
-      // Try alternative method
-      try {
-        await this.executeTestDataGeneration();
-      } catch (altError) {
-        utils.showToast('Failed to generate test data. Please run database-test-data-generate.sql manually in Supabase SQL Editor.', 'error');
-      }
+      utils.showToast('Failed to generate test data: ' + error.message, 'error');
     } finally {
       utils.hideLoading();
     }
@@ -55,11 +30,11 @@ const testDataManager = {
    * Execute test data generation directly
    */
   async executeTestDataGeneration() {
-    utils.showToast('Generating test data...', 'info');
-
-    // Create test event
     const eventId = '00000000-0000-0000-0000-000000000001';
-    await STATE.client.from('events').upsert({
+
+    // Step 1: Create test event
+    utils.showToast('Creating test event...', 'info');
+    const { error: eventErr } = await STATE.client.from('events').upsert({
       id: eventId,
       event_name: 'TEST_MODE_2025 Awards Gala',
       event_date: '2025-12-15',
@@ -67,11 +42,97 @@ const testDataManager = {
       venue: 'Grand Test Ballroom',
       description: '[TEST MODE] This is a test event with mock winners for testing the CMS'
     });
+    if (eventErr) console.warn('Event upsert:', eventErr.message);
 
-    utils.showToast('Test data generation started! Please run database-test-data-generate.sql in Supabase SQL Editor for complete setup.', 'warning');
+    // Step 2: Create 10 test awards
+    utils.showToast('Creating test awards...', 'info');
+    const awards = [
+      { id: '10000000-0000-0000-0000-000000000001', award_name: 'TEST_MODE_Best Innovation', award_category: 'Innovation', sector: 'Technology & Digital', description: 'Excellence in innovation', year: 2025, is_active: true },
+      { id: '10000000-0000-0000-0000-000000000002', award_name: 'TEST_MODE_Rising Star', award_category: 'Growth', sector: 'Business Services', description: 'Fast growing company', year: 2025, is_active: true },
+      { id: '10000000-0000-0000-0000-000000000003', award_name: 'TEST_MODE_Export Excellence', award_category: 'International', sector: 'Business Services', description: 'Outstanding exports', year: 2025, is_active: true },
+      { id: '10000000-0000-0000-0000-000000000004', award_name: 'TEST_MODE_Sustainability Leader', award_category: 'Environment', sector: 'Environment & Energy', description: 'Green business practices', year: 2025, is_active: true },
+      { id: '10000000-0000-0000-0000-000000000005', award_name: 'TEST_MODE_Digital Transformation', award_category: 'Technology', sector: 'Technology & Digital', description: 'Digital innovation', year: 2025, is_active: true },
+      { id: '10000000-0000-0000-0000-000000000006', award_name: 'TEST_MODE_Best Employer', award_category: 'People', sector: 'People & Culture', description: 'Great workplace', year: 2025, is_active: true },
+      { id: '10000000-0000-0000-0000-000000000007', award_name: 'TEST_MODE_Customer Excellence', award_category: 'Service', sector: 'Business Services', description: 'Outstanding customer service', year: 2025, is_active: true },
+      { id: '10000000-0000-0000-0000-000000000008', award_name: 'TEST_MODE_Manufacturing Excellence', award_category: 'Manufacturing', sector: 'Manufacturing & Engineering', description: 'Quality manufacturing', year: 2025, is_active: true },
+      { id: '10000000-0000-0000-0000-000000000009', award_name: 'TEST_MODE_Social Impact', award_category: 'Community', sector: 'People & Culture', description: 'Community contribution', year: 2025, is_active: true },
+      { id: '10000000-0000-0000-0000-000000000010', award_name: 'TEST_MODE_Lifetime Achievement', award_category: 'Special', sector: 'Special Awards', description: 'Career recognition', year: 2025, is_active: true }
+    ];
+    const { error: awardsErr } = await STATE.client.from('awards').upsert(awards);
+    if (awardsErr) console.warn('Awards upsert:', awardsErr.message);
 
-    // Show instruction modal
-    this.showManualInstructionsModal();
+    // Step 3: Create 30 test organisations
+    utils.showToast('Creating test organisations...', 'info');
+    const orgNames = [
+      'Acme Corporation', 'Global Dynamics Ltd', 'TechStart Solutions', 'Green Energy Co', 'Premier Consulting',
+      'Digital First Agency', 'Swift Logistics', 'HealthTech Innovations', 'Financial Services Group', 'EduTech Platform',
+      'Retail Revolution', 'Construction Masters', 'Food & Beverage Co', 'Creative Studios', 'Property Development Ltd',
+      'Automotive Innovations', 'Legal Partners', 'Engineering Solutions', 'Fashion Forward', 'Sports Excellence',
+      'Travel & Tourism', 'Pharma Research', 'Insurance Partners', 'Telecom Services', 'Chemical Industries',
+      'Publishing House', 'Security Systems', 'Agriculture Tech', 'Entertainment Group', 'Environmental Services'
+    ];
+    const industries = [
+      'Technology', 'Manufacturing', 'Software', 'Energy', 'Consulting',
+      'Marketing', 'Transport', 'Healthcare', 'Finance', 'Education',
+      'Retail', 'Construction', 'Food', 'Media', 'Real Estate',
+      'Automotive', 'Legal', 'Engineering', 'Fashion', 'Sports',
+      'Tourism', 'Pharmaceutical', 'Insurance', 'Telecommunications', 'Chemical',
+      'Publishing', 'Security', 'Agriculture', 'Entertainment', 'Environment'
+    ];
+    const orgs = orgNames.map((name, i) => ({
+      id: `20000000-0000-0000-0000-${String(i + 1).padStart(12, '0')}`,
+      company_name: `TEST_MODE_${name}`,
+      industry: industries[i],
+      description: `Test organisation #${i + 1}`
+    }));
+    const { error: orgsErr } = await STATE.client.from('organisations').upsert(orgs);
+    if (orgsErr) console.warn('Organisations upsert:', orgsErr.message);
+
+    // Step 4: Create 30 award assignments (3 winners per award)
+    utils.showToast('Creating test winners...', 'info');
+    const winnerOrgIndices = [
+      [1,3,5], [7,10,11], [2,13,24], [4,28,30], [6,8,14],
+      [9,22,26], [21,23,25], [12,16,18], [15,20,29], [17,19,27]
+    ];
+    const scores = [
+      [9.5,9.2,8.9], [9.3,9.0,8.8], [9.4,9.1,8.7], [9.6,9.2,8.9], [9.3,9.0,8.8],
+      [9.4,9.1,8.9], [9.5,9.2,8.8], [9.3,9.0,8.7], [9.4,9.1,8.9], [9.6,9.5,9.3]
+    ];
+    const assignments = [];
+    let assignIdx = 1;
+    for (let a = 0; a < 10; a++) {
+      for (let w = 0; w < 3; w++) {
+        assignments.push({
+          id: `30000000-0000-0000-0000-${String(assignIdx).padStart(12, '0')}`,
+          award_id: `10000000-0000-0000-0000-${String(a + 1).padStart(12, '0')}`,
+          organisation_id: `20000000-0000-0000-0000-${String(winnerOrgIndices[a][w]).padStart(12, '0')}`,
+          status: 'winner',
+          judge_score: scores[a][w]
+        });
+        assignIdx++;
+      }
+    }
+    const { error: assignErr } = await STATE.client.from('award_assignments').upsert(assignments);
+    if (assignErr) console.warn('Assignments upsert:', assignErr.message);
+
+    // Step 5: Create event guests (RSVPs) for all 30 test orgs
+    utils.showToast('Creating test RSVPs...', 'info');
+    const guests = orgs.map(org => ({
+      event_id: eventId,
+      organisation_id: org.id,
+      guest_name: 'CEO ' + org.company_name.replace('TEST_MODE_', ''),
+      guest_email: org.company_name.replace('TEST_MODE_', '').toLowerCase().replace(/[^a-z0-9]/g, '.') + '@example.com',
+      guest_type: 'winner',
+      rsvp_status: 'confirmed',
+      plus_ones: 1
+    }));
+    // Delete existing test guests first to avoid duplicates
+    await STATE.client.from('event_guests').delete().eq('event_id', eventId);
+    const { error: guestErr } = await STATE.client.from('event_guests').insert(guests);
+    if (guestErr) console.warn('Guests insert:', guestErr.message);
+
+    utils.showToast('Test data generated successfully! Reload the page to see the data.', 'success');
+    setTimeout(() => { this.showInfoModal(); }, 1000);
   },
 
   /**

@@ -6115,7 +6115,7 @@ Available placeholders:
           </div>
 
           <!-- Quick Symbol Buttons -->
-          <div class="content-card mb-3">
+          <div class="content-card mb-1 py-2">
             <div class="d-flex flex-wrap gap-2 align-items-center">
               <span class="fw-semibold small me-2"><i class="bi bi-lightning-charge me-1"></i>Quick Switch:</span>
               <button class="btn btn-sm btn-outline-warning btc-symbol-btn active" onclick="btcModule.switchSymbol('COINBASE:BTCUSD', this)">
@@ -6164,14 +6164,10 @@ Available placeholders:
             </div>
           </div>
 
-          <div class="row g-3">
+          <div class="row g-2 mt-1">
             <!-- Main Chart -->
             <div class="col-lg-9">
-              <div class="card border-0 shadow-sm">
-                <div class="card-body p-0">
-                  <div id="tradingview_chart" style="height: 700px; width: 100%; position: relative; overflow: hidden;"></div>
-                </div>
-              </div>
+              <div id="tradingview_chart" style="height: 700px; width: 100%; position: relative; overflow: hidden;"></div>
             </div>
 
             <!-- Watchlist Sidebar -->
@@ -10056,7 +10052,8 @@ in recognition of excellence
         const buildWidget = () => {
           new TradingView.widget({
             container_id: "tradingview_chart",
-            autosize: true,
+            width: "100%",
+            height: 700,
             symbol: self._symbol,
             interval: self._interval,
             timezone: "Europe/London",

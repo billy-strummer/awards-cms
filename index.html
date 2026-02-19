@@ -10053,12 +10053,17 @@ in recognition of excellence
         if (!container) return;
         container.innerHTML = '';
 
-        // Use TradingView Advanced Chart embed widget (replaces deprecated tv.js)
-        const widgetContainer = document.createElement('div');
-        widgetContainer.className = 'tradingview-widget-container__widget';
-        widgetContainer.style.height = '100%';
-        widgetContainer.style.width = '100%';
-        container.appendChild(widgetContainer);
+        // TradingView embed widget requires the script tag INSIDE the widget container div
+        const wrapper = document.createElement('div');
+        wrapper.className = 'tradingview-widget-container';
+        wrapper.style.height = '100%';
+        wrapper.style.width = '100%';
+
+        const widgetDiv = document.createElement('div');
+        widgetDiv.className = 'tradingview-widget-container__widget';
+        widgetDiv.style.height = 'calc(100% - 32px)';
+        widgetDiv.style.width = '100%';
+        wrapper.appendChild(widgetDiv);
 
         const script = document.createElement('script');
         script.type = 'text/javascript';
@@ -10083,7 +10088,9 @@ in recognition of excellence
           "popup_height": "800",
           "support_host": "https://www.tradingview.com"
         });
-        container.appendChild(script);
+        wrapper.appendChild(script);
+
+        container.appendChild(wrapper);
       },
 
       switchSymbol(symbol, btn) {

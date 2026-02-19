@@ -6161,17 +6161,21 @@ Available placeholders:
                 <button class="btn btn-outline-dark btc-theme-btn active" onclick="btcModule.switchTheme('dark', this)"><i class="bi bi-moon-fill"></i></button>
                 <button class="btn btn-outline-light border btc-theme-btn" onclick="btcModule.switchTheme('light', this)"><i class="bi bi-sun-fill"></i></button>
               </div>
+              <div class="vr mx-2"></div>
+              <button class="btn btn-sm btn-outline-secondary" id="btcToggleSidebar" onclick="btcModule.toggleSidebar()" title="Toggle sidebar">
+                <i class="bi bi-layout-sidebar-reverse me-1"></i><span class="small">Panel</span>
+              </button>
             </div>
           </div>
 
           <div class="row g-2 mt-1">
             <!-- Main Chart -->
-            <div class="col-lg-9">
+            <div class="col-lg-9" id="btcChartCol">
               <div id="tradingview_chart" style="height: 700px; width: 100%; position: relative; overflow: hidden;"></div>
             </div>
 
             <!-- Watchlist Sidebar -->
-            <div class="col-lg-3">
+            <div class="col-lg-3" id="btcSidebarCol">
               <div class="card border-0 shadow-sm">
                 <div class="card-header bg-dark text-white py-2">
                   <h6 class="mb-0"><i class="bi bi-star me-2"></i>Watchlist</h6>
@@ -10110,6 +10114,30 @@ in recognition of excellence
         this._theme = theme;
         document.querySelectorAll('.btc-theme-btn').forEach(b => b.classList.remove('active'));
         if (btn) btn.classList.add('active');
+        this.createChart();
+      },
+
+      _sidebarOpen: true,
+
+      toggleSidebar() {
+        const chartCol = document.getElementById('btcChartCol');
+        const sidebarCol = document.getElementById('btcSidebarCol');
+        const toggleBtn = document.getElementById('btcToggleSidebar');
+        if (!chartCol || !sidebarCol) return;
+
+        this._sidebarOpen = !this._sidebarOpen;
+
+        if (this._sidebarOpen) {
+          chartCol.className = 'col-lg-9';
+          sidebarCol.style.display = '';
+          toggleBtn.classList.remove('active');
+        } else {
+          chartCol.className = 'col-lg-12';
+          sidebarCol.style.display = 'none';
+          toggleBtn.classList.add('active');
+        }
+
+        // Recreate chart to fit new width
         this.createChart();
       },
 

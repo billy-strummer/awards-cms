@@ -23,6 +23,7 @@ const testDataManager = {
   INVOICE_PREFIX: '80000000-0000-0000-0000-',
   PAYMENT_PREFIX: '81000000-0000-0000-0000-',
   VOTE_PREFIX: '90000000-0000-0000-0000-',
+  WINNER_PREFIX: 'A0000000-0000-0000-0000-',
 
   uid(prefix, n) {
     return prefix + String(n).padStart(12, '0');
@@ -85,16 +86,16 @@ const testDataManager = {
     // ===== Step 2: Create 10 test awards =====
     utils.showToast('Step 2/12: Creating test awards...', 'info');
     const awards = [
-      { id: this.uid(this.AWARD_PREFIX, 1), award_name: 'TEST_MODE_Best Innovation', award_category: 'Innovation', sector: 'Technology & Digital', description: 'Excellence in innovation', year: 2025, is_active: true, status: 'Published' },
-      { id: this.uid(this.AWARD_PREFIX, 2), award_name: 'TEST_MODE_Rising Star', award_category: 'Growth', sector: 'Business Services', description: 'Fast growing company', year: 2025, is_active: true, status: 'Published' },
-      { id: this.uid(this.AWARD_PREFIX, 3), award_name: 'TEST_MODE_Export Excellence', award_category: 'International', sector: 'Business Services', description: 'Outstanding exports', year: 2025, is_active: true, status: 'Published' },
-      { id: this.uid(this.AWARD_PREFIX, 4), award_name: 'TEST_MODE_Sustainability Leader', award_category: 'Environment', sector: 'Environment & Energy', description: 'Green business practices', year: 2025, is_active: true, status: 'Published' },
-      { id: this.uid(this.AWARD_PREFIX, 5), award_name: 'TEST_MODE_Digital Transformation', award_category: 'Technology', sector: 'Technology & Digital', description: 'Digital innovation', year: 2025, is_active: true, status: 'Approved' },
-      { id: this.uid(this.AWARD_PREFIX, 6), award_name: 'TEST_MODE_Best Employer', award_category: 'People', sector: 'People & Culture', description: 'Great workplace', year: 2025, is_active: true, status: 'Approved' },
-      { id: this.uid(this.AWARD_PREFIX, 7), award_name: 'TEST_MODE_Customer Excellence', award_category: 'Service', sector: 'Business Services', description: 'Outstanding customer service', year: 2025, is_active: true, status: 'Approved' },
-      { id: this.uid(this.AWARD_PREFIX, 8), award_name: 'TEST_MODE_Manufacturing Excellence', award_category: 'Manufacturing', sector: 'Manufacturing & Engineering', description: 'Quality manufacturing', year: 2025, is_active: true, status: 'Approved' },
-      { id: this.uid(this.AWARD_PREFIX, 9), award_name: 'TEST_MODE_Social Impact', award_category: 'Community', sector: 'People & Culture', description: 'Community contribution', year: 2025, is_active: true, status: 'Pending' },
-      { id: this.uid(this.AWARD_PREFIX, 10), award_name: 'TEST_MODE_Lifetime Achievement', award_category: 'Special', sector: 'Special Awards', description: 'Career recognition', year: 2025, is_active: true, status: 'Draft' }
+      { id: this.uid(this.AWARD_PREFIX, 1), award_name: 'TEST_MODE_Best Innovation', award_category: 'Innovation', sector: 'Technology & Digital', county: 'Greater London', description: 'Excellence in innovation', year: 2025, is_active: true, status: 'Published' },
+      { id: this.uid(this.AWARD_PREFIX, 2), award_name: 'TEST_MODE_Rising Star', award_category: 'Growth', sector: 'Business Services', county: 'Greater Manchester', description: 'Fast growing company', year: 2025, is_active: true, status: 'Published' },
+      { id: this.uid(this.AWARD_PREFIX, 3), award_name: 'TEST_MODE_Export Excellence', award_category: 'International', sector: 'Business Services', county: 'West Midlands', description: 'Outstanding exports', year: 2025, is_active: true, status: 'Published' },
+      { id: this.uid(this.AWARD_PREFIX, 4), award_name: 'TEST_MODE_Sustainability Leader', award_category: 'Environment', sector: 'Environment & Energy', county: 'Bristol', description: 'Green business practices', year: 2025, is_active: true, status: 'Published' },
+      { id: this.uid(this.AWARD_PREFIX, 5), award_name: 'TEST_MODE_Digital Transformation', award_category: 'Technology', sector: 'Technology & Digital', county: 'West Yorkshire', description: 'Digital innovation', year: 2025, is_active: true, status: 'Approved' },
+      { id: this.uid(this.AWARD_PREFIX, 6), award_name: 'TEST_MODE_Best Employer', award_category: 'People', sector: 'People & Culture', county: 'Surrey', description: 'Great workplace', year: 2025, is_active: true, status: 'Approved' },
+      { id: this.uid(this.AWARD_PREFIX, 7), award_name: 'TEST_MODE_Customer Excellence', award_category: 'Service', sector: 'Business Services', county: 'Edinburgh', description: 'Outstanding customer service', year: 2025, is_active: true, status: 'Approved' },
+      { id: this.uid(this.AWARD_PREFIX, 8), award_name: 'TEST_MODE_Manufacturing Excellence', award_category: 'Manufacturing', sector: 'Manufacturing & Engineering', county: 'South Yorkshire', description: 'Quality manufacturing', year: 2025, is_active: true, status: 'Approved' },
+      { id: this.uid(this.AWARD_PREFIX, 9), award_name: 'TEST_MODE_Social Impact', award_category: 'Community', sector: 'People & Culture', county: 'Cardiff', description: 'Community contribution', year: 2025, is_active: true, status: 'Pending' },
+      { id: this.uid(this.AWARD_PREFIX, 10), award_name: 'TEST_MODE_Lifetime Achievement', award_category: 'Special', sector: 'Special Awards', county: 'Belfast', description: 'Career recognition', year: 2025, is_active: true, status: 'Draft' }
     ];
     const { error: awardsErr } = await STATE.client.from('awards').upsert(awards);
     if (awardsErr) console.warn('Awards upsert:', awardsErr.message);
@@ -133,7 +134,9 @@ const testDataManager = {
       region: regions[i],
       status: 'active',
       contact_name: 'Contact ' + (i + 1),
-      email: name.toLowerCase().replace(/[^a-z0-9]/g, '.') + '@example.com'
+      email: name.toLowerCase().replace(/[^a-z0-9]/g, '.') + '@example.com',
+      website: 'https://' + name.toLowerCase().replace(/[^a-z0-9]/g, '') + '.example.com',
+      contact_phone: '020 ' + String(7000 + i).padStart(4, '0') + ' ' + String(1000 + i * 37).padStart(4, '0')
     }));
     const { error: orgsErr } = await STATE.client.from('organisations').upsert(orgs);
     if (orgsErr) console.warn('Organisations upsert:', orgsErr.message);
@@ -164,6 +167,23 @@ const testDataManager = {
     }
     const { error: assignErr } = await STATE.client.from('award_assignments').upsert(assignments);
     if (assignErr) console.warn('Assignments upsert:', assignErr.message);
+
+    // ===== Step 4b: Populate winners table (used by Winners tab + dashboard stats) =====
+    var winners = [];
+    var winnerIdx = 1;
+    for (var wi = 0; wi < 10; wi++) {
+      var topOrgIdx = winnerOrgIndices[wi][0]; // 1st place per award
+      winners.push({
+        id: this.uid(this.WINNER_PREFIX, winnerIdx),
+        winner_name: orgNames[topOrgIdx - 1],
+        award_id: this.uid(this.AWARD_PREFIX, wi + 1),
+        organisation_id: this.uid(this.ORG_PREFIX, topOrgIdx),
+        year: 2025
+      });
+      winnerIdx++;
+    }
+    const { error: winnerErr } = await STATE.client.from('winners').upsert(winners);
+    if (winnerErr) console.warn('Winners upsert:', winnerErr.message);
 
     // ===== Step 5: Create event guests (RSVPs) =====
     utils.showToast('Step 5/12: Creating test RSVPs...', 'info');
@@ -315,11 +335,11 @@ const testDataManager = {
    */
   async generateMarketingData() {
     var sponsors = [
-      { id: this.uid(this.SPONSOR_PREFIX, 1), company_name: 'TEST_MODE_Platinum Corp', tier: 'Platinum', sponsorship_amount: 25000, contact_name: 'Sarah Platinum', email: 'sarah@platinumcorp.example.com', website: 'https://example.com/platinum', is_active: true, display_order: 1 },
-      { id: this.uid(this.SPONSOR_PREFIX, 2), company_name: 'TEST_MODE_Gold Industries', tier: 'Gold', sponsorship_amount: 15000, contact_name: 'James Gold', email: 'james@goldindustries.example.com', website: 'https://example.com/gold', is_active: true, display_order: 2 },
-      { id: this.uid(this.SPONSOR_PREFIX, 3), company_name: 'TEST_MODE_Silver Solutions', tier: 'Silver', sponsorship_amount: 7500, contact_name: 'Emma Silver', email: 'emma@silversolutions.example.com', website: 'https://example.com/silver', is_active: true, display_order: 3 },
-      { id: this.uid(this.SPONSOR_PREFIX, 4), company_name: 'TEST_MODE_Bronze Partners', tier: 'Bronze', sponsorship_amount: 3500, contact_name: 'Tom Bronze', email: 'tom@bronzepartners.example.com', website: 'https://example.com/bronze', is_active: true, display_order: 4 },
-      { id: this.uid(this.SPONSOR_PREFIX, 5), company_name: 'TEST_MODE_Community Partner', tier: 'Partner', sponsorship_amount: 1000, contact_name: 'Lisa Partner', email: 'lisa@communitypartner.example.com', website: 'https://example.com/partner', is_active: true, display_order: 5 }
+      { id: this.uid(this.SPONSOR_PREFIX, 1), name: 'TEST_MODE_Platinum Corp', company_name: 'TEST_MODE_Platinum Corp', tier: 'Platinum', sponsorship_amount: 25000, contact_name: 'Sarah Platinum', email: 'sarah@platinumcorp.example.com', website: 'https://example.com/platinum', is_active: true, display_order: 1 },
+      { id: this.uid(this.SPONSOR_PREFIX, 2), name: 'TEST_MODE_Gold Industries', company_name: 'TEST_MODE_Gold Industries', tier: 'Gold', sponsorship_amount: 15000, contact_name: 'James Gold', email: 'james@goldindustries.example.com', website: 'https://example.com/gold', is_active: true, display_order: 2 },
+      { id: this.uid(this.SPONSOR_PREFIX, 3), name: 'TEST_MODE_Silver Solutions', company_name: 'TEST_MODE_Silver Solutions', tier: 'Silver', sponsorship_amount: 7500, contact_name: 'Emma Silver', email: 'emma@silversolutions.example.com', website: 'https://example.com/silver', is_active: true, display_order: 3 },
+      { id: this.uid(this.SPONSOR_PREFIX, 4), name: 'TEST_MODE_Bronze Partners', company_name: 'TEST_MODE_Bronze Partners', tier: 'Bronze', sponsorship_amount: 3500, contact_name: 'Tom Bronze', email: 'tom@bronzepartners.example.com', website: 'https://example.com/bronze', is_active: true, display_order: 4 },
+      { id: this.uid(this.SPONSOR_PREFIX, 5), name: 'TEST_MODE_Community Partner', company_name: 'TEST_MODE_Community Partner', tier: 'Partner', sponsorship_amount: 1000, contact_name: 'Lisa Partner', email: 'lisa@communitypartner.example.com', website: 'https://example.com/partner', is_active: true, display_order: 5 }
     ];
     var { error: sponsorErr } = await STATE.client.from('sponsors').upsert(sponsors);
     if (sponsorErr) console.warn('Sponsors upsert:', sponsorErr.message);
@@ -727,6 +747,11 @@ const testDataManager = {
       // 23. Award assignments
       if (orgIds.length > 0) {
         await STATE.client.from('award_assignments').delete().in('organisation_id', orgIds);
+      }
+
+      // 23b. Winners
+      if (orgIds.length > 0) {
+        await STATE.client.from('winners').delete().in('organisation_id', orgIds);
       }
 
       // 24. Organisations

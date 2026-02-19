@@ -10050,19 +10050,10 @@ in recognition of excellence
       },
 
       createChart() {
-        // The outer .tradingview-widget-container is already in the HTML (line 6171).
-        // We render into #tradingview_chart which sits inside it.
         const container = document.getElementById('tradingview_chart');
         if (!container) return;
         container.innerHTML = '';
 
-        const widgetDiv = document.createElement('div');
-        widgetDiv.className = 'tradingview-widget-container__widget';
-        widgetDiv.style.height = 'calc(100% - 32px)';
-        widgetDiv.style.width = '100%';
-        container.appendChild(widgetDiv);
-
-        // TradingView official pattern: createElement('script'), set innerHTML to JSON config, appendChild
         const script = document.createElement('script');
         script.type = 'text/javascript';
         script.src = 'https://s3.tradingview.com/external-embedding/embed-widget-advanced-chart.js';

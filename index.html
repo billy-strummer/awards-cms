@@ -3,6 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self' https://*.supabase.co; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net https://unpkg.com https://js.stripe.com https://browser.sentry-cdn.com https://s3.tradingview.com; style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://unpkg.com; img-src 'self' data: blob: https://*.supabase.co https://i.ytimg.com https://*.tile.openstreetmap.org; font-src 'self' https://cdn.jsdelivr.net; connect-src 'self' https://*.supabase.co https://api.resend.com https://*.sentry.io wss://*.supabase.co https://*.tradingview.com wss://*.tradingview.com https://*.tradingview-widget.com wss://*.tradingview-widget.com; frame-src 'self' https://js.stripe.com https://www.youtube.com https://s3.tradingview.com https://*.tradingview.com https://*.tradingview-widget.com; object-src 'none'; base-uri 'self'">
   <title>British Trade Awards Admin</title>
   
   <!-- Bootstrap CSS -->
@@ -6114,7 +6115,7 @@ Available placeholders:
           </div>
 
           <!-- Quick Symbol Buttons -->
-          <div class="content-card mb-3">
+          <div class="content-card mb-1 py-2">
             <div class="d-flex flex-wrap gap-2 align-items-center">
               <span class="fw-semibold small me-2"><i class="bi bi-lightning-charge me-1"></i>Quick Switch:</span>
               <button class="btn btn-sm btn-outline-warning btc-symbol-btn active" onclick="btcModule.switchSymbol('COINBASE:BTCUSD', this)">
@@ -6163,16 +6164,10 @@ Available placeholders:
             </div>
           </div>
 
-          <div class="row g-3">
+          <div class="row g-2 mt-1">
             <!-- Main Chart -->
             <div class="col-lg-9">
-              <div class="card border-0 shadow-sm">
-                <div class="card-body p-0">
-                  <div class="tradingview-widget-container" style="height: 700px; width: 100%;">
-                    <div id="tradingview_chart" style="height: 100%; width: 100%;"></div>
-                  </div>
-                </div>
-              </div>
+              <div id="tradingview_chart" style="height: 700px; width: 100%; position: relative; overflow: hidden;"></div>
             </div>
 
             <!-- Watchlist Sidebar -->
@@ -10049,43 +10044,40 @@ in recognition of excellence
       },
 
       createChart() {
-        // The outer .tradingview-widget-container is already in the HTML (line 6171).
-        // We render into #tradingview_chart which sits inside it.
         const container = document.getElementById('tradingview_chart');
         if (!container) return;
         container.innerHTML = '';
 
-        const widgetDiv = document.createElement('div');
-        widgetDiv.className = 'tradingview-widget-container__widget';
-        widgetDiv.style.height = 'calc(100% - 32px)';
-        widgetDiv.style.width = '100%';
-        container.appendChild(widgetDiv);
+        const self = this;
+        const buildWidget = () => {
+          new TradingView.widget({
+            container_id: "tradingview_chart",
+            width: "100%",
+            height: 700,
+            symbol: self._symbol,
+            interval: self._interval,
+            timezone: "Europe/London",
+            theme: self._theme,
+            style: self._style,
+            locale: "en",
+            allow_symbol_change: true,
+            studies: ["STD;SMA", "STD;RSI", "STD;MACD"],
+            hide_side_toolbar: false,
+            save_image: true,
+            details: true,
+            calendar: true
+          });
+        };
 
-        // TradingView official pattern: createElement('script'), set innerHTML to JSON config, appendChild
-        const script = document.createElement('script');
-        script.type = 'text/javascript';
-        script.src = 'https://s3.tradingview.com/external-embedding/embed-widget-advanced-chart.js';
-        script.async = true;
-        script.innerHTML = JSON.stringify({
-          "autosize": true,
-          "symbol": this._symbol,
-          "interval": this._interval,
-          "timezone": "Europe/London",
-          "theme": this._theme,
-          "style": this._style,
-          "locale": "en",
-          "allow_symbol_change": true,
-          "studies": ["STD;SMA", "STD;RSI", "STD;MACD"],
-          "hide_side_toolbar": false,
-          "save_image": true,
-          "details": true,
-          "calendar": true,
-          "show_popup_button": true,
-          "popup_width": "1200",
-          "popup_height": "800",
-          "support_host": "https://www.tradingview.com"
-        });
-        container.appendChild(script);
+        // Load tv.js once, then create widget
+        if (window.TradingView && window.TradingView.widget) {
+          buildWidget();
+        } else {
+          const script = document.createElement('script');
+          script.src = 'https://s3.tradingview.com/tv.js';
+          script.onload = buildWidget;
+          document.head.appendChild(script);
+        }
       },
 
       switchSymbol(symbol, btn) {
@@ -10154,6 +10146,7 @@ in recognition of excellence
     window.btcModule = btcModule;
 
     document.getElementById('bitcoin-tab').addEventListener('shown.bs.tab', function () {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
       btcModule.init();
     });
   </script>

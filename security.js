@@ -70,12 +70,12 @@ const securityModule = {
       // Permissive CSP that still blocks inline event handlers from injected content
       cspMeta.content = [
         "default-src 'self' https://*.supabase.co",
-        "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net https://unpkg.com https://js.stripe.com https://browser.sentry-cdn.com",
+        "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net https://unpkg.com https://js.stripe.com https://browser.sentry-cdn.com https://s3.tradingview.com",
         "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://unpkg.com",
         "img-src 'self' data: blob: https://*.supabase.co https://i.ytimg.com https://*.tile.openstreetmap.org",
         "font-src 'self' https://cdn.jsdelivr.net",
-        "connect-src 'self' https://*.supabase.co https://api.resend.com https://*.sentry.io wss://*.supabase.co",
-        "frame-src 'self' https://js.stripe.com https://www.youtube.com",
+        "connect-src 'self' https://*.supabase.co https://api.resend.com https://*.sentry.io wss://*.supabase.co https://*.tradingview.com wss://*.tradingview.com",
+        "frame-src 'self' https://js.stripe.com https://www.youtube.com https://s3.tradingview.com https://*.tradingview.com",
         "object-src 'none'",
         "base-uri 'self'"
       ].join('; ');

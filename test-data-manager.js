@@ -360,29 +360,6 @@ const testDataManager = {
   },
 
   /**
-   * Show manual instructions modal
-   */
-  showManualInstructionsModal() {
-    const message = `
-      <div class="alert alert-warning">
-        <h6><i class="bi bi-exclamation-triangle me-2"></i>Manual Setup Required</h6>
-        <p class="mb-0">Please run the SQL script manually in Supabase.</p>
-      </div>
-      <p class="mt-3"><strong>Instructions:</strong></p>
-      <ol>
-        <li>Open your Supabase Dashboard</li>
-        <li>Go to SQL Editor</li>
-        <li>Open the file: <code>database-test-data-generate.sql</code></li>
-        <li>Click "Run" to execute the script</li>
-        <li>Reload this page to see the test data</li>
-      </ol>
-      <p class="mt-3 text-muted"><small>The SQL script creates all test organisations, awards, winners, and RSVPs.</small></p>
-    `;
-
-    this.showModal('Setup Instructions', message);
-  },
-
-  /**
    * Show confirm dialog
    */
   async showConfirmDialog(title, message, confirmText = 'Confirm', variant = 'primary') {

@@ -6161,14 +6161,16 @@ Available placeholders:
                 <button class="btn btn-outline-dark btc-theme-btn active" onclick="btcModule.switchTheme('dark', this)"><i class="bi bi-moon-fill"></i></button>
                 <button class="btn btn-outline-light border btc-theme-btn" onclick="btcModule.switchTheme('light', this)"><i class="bi bi-sun-fill"></i></button>
               </div>
-              <div class="vr mx-2"></div>
-              <button class="btn btn-sm btn-outline-secondary" id="btcToggleSidebar" onclick="btcModule.toggleSidebar()" title="Toggle sidebar">
-                <i class="bi bi-layout-sidebar-reverse me-1"></i><span class="small">Panel</span>
-              </button>
             </div>
           </div>
 
-          <div class="row g-2 mt-1">
+          <div class="d-flex justify-content-end mb-1">
+            <button class="btn btn-sm btn-outline-dark" id="btcToggleSidebar" onclick="btcModule.toggleSidebar()" title="Toggle sidebar panel">
+              <i class="bi bi-layout-sidebar-reverse me-1"></i>Toggle Panel
+            </button>
+          </div>
+
+          <div class="row g-2">
             <!-- Main Chart -->
             <div class="col-lg-9" id="btcChartCol">
               <div id="tradingview_chart" style="height: 700px; width: 100%; position: relative; overflow: hidden;"></div>

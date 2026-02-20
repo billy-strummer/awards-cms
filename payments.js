@@ -1314,7 +1314,7 @@ const paymentsModule = {
   async _loadAccountingConfig() {
     try {
       if (typeof STATE !== 'undefined' && STATE.client) {
-        const { data } = await STATE.client.from('user_preferences').select('value').eq('key', 'orgAccountingConfig').single();
+        const { data } = await STATE.client.from('user_preferences').select('value').eq('key', 'orgAccountingConfig').maybeSingle();
         if (data) { this._accountingConfig = JSON.parse(data.value); return; }
       }
     } catch (e) {}

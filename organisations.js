@@ -4487,8 +4487,8 @@ updateCountyFilterByRegion() {
         .from('user_preferences')
         .select('value')
         .eq('key', 'orgsFilterPresets')
-        .single();
-      if (error && error.code !== 'PGRST116') throw error;
+        .maybeSingle();
+      if (error) throw error;
       if (data?.value) {
         presets = typeof data.value === 'string' ? JSON.parse(data.value) : data.value;
       }
@@ -4513,8 +4513,8 @@ updateCountyFilterByRegion() {
           .from('user_preferences')
           .select('value')
           .eq('key', 'orgsFilterPresets')
-          .single();
-        if (error && error.code !== 'PGRST116') throw error;
+          .maybeSingle();
+        if (error) throw error;
         if (data?.value) {
           presets = typeof data.value === 'string' ? JSON.parse(data.value) : data.value;
         }
@@ -4583,8 +4583,8 @@ updateCountyFilterByRegion() {
         .from('user_preferences')
         .select('value')
         .eq('key', 'orgsFilterPresets')
-        .single();
-      if (error && error.code !== 'PGRST116') throw error;
+        .maybeSingle();
+      if (error) throw error;
       if (data?.value) {
         presets = typeof data.value === 'string' ? JSON.parse(data.value) : data.value;
       }
@@ -4643,8 +4643,8 @@ updateCountyFilterByRegion() {
           .from('user_preferences')
           .select('value')
           .eq('key', 'orgsFilterPresets')
-          .single();
-        if (error && error.code !== 'PGRST116') throw error;
+          .maybeSingle();
+        if (error) throw error;
         if (data?.value) {
           presets = typeof data.value === 'string' ? JSON.parse(data.value) : data.value;
         }
@@ -6980,8 +6980,8 @@ updateCountyFilterByRegion() {
           .from('user_preferences')
           .select('value')
           .eq('key', 'orgsSavedViews')
-          .single();
-        if (error && error.code !== 'PGRST116') throw error;
+          .maybeSingle();
+        if (error) throw error;
         if (data?.value) {
           views = typeof data.value === 'string' ? JSON.parse(data.value) : data.value;
         }
@@ -7033,8 +7033,8 @@ updateCountyFilterByRegion() {
         .from('user_preferences')
         .select('value')
         .eq('key', 'orgsSavedViews')
-        .single();
-      if (error && error.code !== 'PGRST116') throw error;
+        .maybeSingle();
+      if (error) throw error;
       if (data?.value) {
         views = typeof data.value === 'string' ? JSON.parse(data.value) : data.value;
       }
@@ -7074,8 +7074,8 @@ updateCountyFilterByRegion() {
         .from('user_preferences')
         .select('value')
         .eq('key', 'orgsSavedViews')
-        .single();
-      if (error && error.code !== 'PGRST116') throw error;
+        .maybeSingle();
+      if (error) throw error;
       if (data?.value) {
         views = typeof data.value === 'string' ? JSON.parse(data.value) : data.value;
       }
@@ -7138,8 +7138,8 @@ updateCountyFilterByRegion() {
           .from('user_preferences')
           .select('value')
           .eq('key', 'orgsSavedViews')
-          .single();
-        if (error && error.code !== 'PGRST116') throw error;
+          .maybeSingle();
+        if (error) throw error;
         if (data?.value) {
           views = typeof data.value === 'string' ? JSON.parse(data.value) : data.value;
         }

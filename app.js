@@ -11,7 +11,7 @@ const reportsScheduler = {
   async _loadScheduledReports() {
     try {
       if (typeof STATE !== 'undefined' && STATE.client) {
-        const { data } = await STATE.client.from('user_preferences').select('value').eq('key', 'orgScheduledReports').single();
+        const { data } = await STATE.client.from('user_preferences').select('value').eq('key', 'orgScheduledReports').maybeSingle();
         if (data) { this._scheduledReports = JSON.parse(data.value); return; }
       }
     } catch (e) {}

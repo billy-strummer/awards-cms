@@ -54,12 +54,12 @@ const rbacModule = {
         .from('user_roles')
         .select('role, email')
         .eq('email', userEmail)
-        .single();
+        .maybeSingle();
 
       if (error || !data) {
         // Default to admin if no role found (owner has full access)
         this.currentRole = 'admin';
-        console.warn('No role found for user, defaulting to admin');
+        if (!error) console.log('No role found for user, defaulting to admin');
       } else {
         this.currentRole = data.role || 'admin';
       }

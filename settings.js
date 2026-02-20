@@ -438,8 +438,8 @@ British Trade Awards Team
         .from('user_preferences')
         .select('value')
         .eq('key', `email_template_${selectedTemplate}`)
-        .single();
-      if (error && error.code !== 'PGRST116') throw error;
+        .maybeSingle();
+      if (error) throw error;
       if (data?.value) {
         template = typeof data.value === 'string' ? JSON.parse(data.value) : data.value;
       }

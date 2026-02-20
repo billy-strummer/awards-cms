@@ -2735,8 +2735,8 @@ const eventsModule = {
         .from('user_preferences')
         .select('value')
         .eq('key', 'stripe_public_key')
-        .single();
-      if (error && error.code !== 'PGRST116') throw error;
+        .maybeSingle();
+      if (error) throw error;
       return data?.value || '';
     } catch (e) {
       return localStorage.getItem('bta_stripe_pk') || '';

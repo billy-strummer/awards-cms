@@ -642,7 +642,7 @@ const marketingModule = {
   async _loadEmailSequences() {
     try {
       if (typeof STATE !== 'undefined' && STATE.client) {
-        const { data } = await STATE.client.from('user_preferences').select('value').eq('key', 'orgEmailSequences').single();
+        const { data } = await STATE.client.from('user_preferences').select('value').eq('key', 'orgEmailSequences').maybeSingle();
         if (data) { this._emailSequences = JSON.parse(data.value); return; }
       }
     } catch (e) {}

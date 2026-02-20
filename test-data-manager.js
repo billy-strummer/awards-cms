@@ -37,6 +37,90 @@ const testDataManager = {
   },
 
   /**
+   * Log and show errors visibly
+   */
+  _logErr(step, err) {
+    if (err) {
+      var msg = err.message || JSON.stringify(err);
+      var code = err.code ? ' [' + err.code + ']' : '';
+      var detail = err.details ? ' | ' + err.details : '';
+      var hint = err.hint ? ' | Hint: ' + err.hint : '';
+      console.warn(step + code + ':', msg + detail + hint);
+      utils.showToast('Error: ' + step + ' - ' + msg, 'warning');
+      return true;
+    }
+    return false;
+  },
+
+  /**
+   * Resilient write: auto-strips columns the database doesn't have and retries.
+   * Works regardless of which migrations have been applied.
+   * @param {string} table - Table name
+   * @param {object|array} records - Data to write
+   * @param {string} label - Human-readable label for logging
+   * @param {string} mode - 'upsert' or 'insert'
+   * @returns {{error: object|null, stripped: string[]}}
+   */
+  async _safeWrite(table, records, label, mode) {
+    var data = JSON.parse(JSON.stringify(records)); // deep copy to avoid mutating originals
+    var stripped = [];
+
+    for (var attempt = 0; attempt < 20; attempt++) {
+      var r = (mode === 'upsert')
+        ? await STATE.client.from(table).upsert(data)
+        : await STATE.client.from(table).insert(data);
+
+      if (!r.error) {
+        if (stripped.length > 0) {
+          console.log(label + ': OK (auto-stripped missing columns: ' + stripped.join(', ') + ')');
+          utils.showToast(label + ': inserted (skipped cols: ' + stripped.join(', ') + ')', 'info');
+        }
+        return { error: null, stripped: stripped };
+      }
+
+      // Build full error text for pattern matching
+      var errText = (r.error.message || '') + ' ' + (r.error.details || '') + ' ' + (r.error.hint || '');
+
+      // PostgREST pattern: "Could not find the 'colname' column of 'table' in the schema cache"
+      var match = errText.match(/Could not find the '([^']+)' column/);
+      // PostgreSQL pattern: column "colname" of relation "table" does not exist
+      if (!match) match = errText.match(/column "([^"]+)".*does not exist/);
+      // Generic fallback
+      if (!match) match = errText.match(/Could not find.*?column.*?'([^']+)'/i);
+
+      // Check for table not found (not a column issue - bail out)
+      if (!match && /Could not find.*in the schema cache/i.test(errText) && !/column/i.test(errText)) {
+        console.warn(label + ': table "' + table + '" not found in schema cache');
+        return { error: r.error, stripped: stripped };
+      }
+
+      if (!match || stripped.indexOf(match[1]) >= 0) {
+        // Not a column error or already stripped this column - return as-is
+        return { error: r.error, stripped: stripped };
+      }
+
+      var badCol = match[1];
+      stripped.push(badCol);
+      console.warn(label + ': auto-stripping missing column "' + badCol + '", retrying...');
+
+      if (Array.isArray(data)) {
+        data.forEach(function(row) { delete row[badCol]; });
+      } else {
+        delete data[badCol];
+      }
+    }
+
+    return { error: { message: 'Too many missing columns stripped: ' + stripped.join(', ') }, stripped: stripped };
+  },
+
+  /**
+   * Safe delete: swallows errors from missing tables/columns
+   */
+  async _safeDel(promise) {
+    try { await promise; } catch(e) { console.warn('Cleanup skip:', e.message || e); }
+  },
+
+  /**
    * Generate Test Data
    */
   async generateTestData() {
@@ -77,21 +161,47 @@ const testDataManager = {
    */
   async executeTestDataGeneration() {
     const eventId = this.EVENT_ID;
+    var errors = [];
+
+    // ===== Pre-flight: verify database connectivity =====
+    utils.showToast('Pre-flight check: testing database connection...', 'info');
+    try {
+      var { data: pfData, error: pfErr } = await STATE.client.from('events').select('id').limit(1);
+      if (pfErr) {
+        var pfMsg = 'Pre-flight FAILED: cannot read from database. Error: ' + (pfErr.message || JSON.stringify(pfErr));
+        if (pfErr.code) pfMsg += ' [code: ' + pfErr.code + ']';
+        if (pfErr.hint) pfMsg += ' Hint: ' + pfErr.hint;
+        console.error(pfMsg);
+        utils.showToast(pfMsg, 'error');
+        this.showModal('Database Connection Error',
+          '<div class="alert alert-danger"><h6>Cannot connect to database</h6>' +
+          '<p>' + pfMsg + '</p>' +
+          '<p>Check that:<br>- You are logged in<br>- Your internet connection is working<br>- The Supabase project is running</p></div>');
+        return;
+      }
+      console.log('Pre-flight OK: database is accessible');
+    } catch(pfE) {
+      console.error('Pre-flight exception:', pfE);
+      utils.showToast('Pre-flight FAILED: ' + (pfE.message || pfE), 'error');
+      return;
+    }
 
     // ===== Step 0: Seed counties reference data if empty =====
-    await this.seedCounties();
+    try { await this.seedCounties(); } catch(e) { this._logErr('Counties seed', e); }
 
     // ===== Step 1: Create test event =====
     utils.showToast('Step 1/15: Creating test event...', 'info');
-    const { error: eventErr } = await STATE.client.from('events').upsert({
-      id: eventId,
-      event_name: 'TEST_MODE_2025 Awards Gala',
-      event_date: '2025-12-15',
-      year: 2025,
-      venue: 'Grand Test Ballroom',
-      description: '[TEST MODE] This is a test event with mock winners for testing the CMS'
-    });
-    if (eventErr) console.warn('Event upsert:', eventErr.message);
+    try {
+      var evtResult = await this._safeWrite('events', {
+        id: eventId,
+        event_name: 'TEST_MODE_2025 Awards Gala',
+        event_date: '2025-12-15',
+        year: 2025,
+        venue: 'Grand Test Ballroom',
+        description: '[TEST MODE] This is a test event with mock winners for testing the CMS'
+      }, 'Events', 'upsert');
+      if (this._logErr('Events', evtResult.error)) errors.push('events');
+    } catch(e) { this._logErr('Events', e); errors.push('events'); }
 
     // ===== Step 2: Create 10 test awards =====
     utils.showToast('Step 2/15: Creating test awards...', 'info');
@@ -107,8 +217,16 @@ const testDataManager = {
       { id: this.uid(this.AWARD_PREFIX, 9), award_name: 'TEST_MODE_Social Impact', award_category: 'Community', sector: 'People & Culture', county: 'Cardiff', description: 'Community contribution', year: 2025, is_active: true, status: 'Pending' },
       { id: this.uid(this.AWARD_PREFIX, 10), award_name: 'TEST_MODE_Lifetime Achievement', award_category: 'Special', sector: 'Special Awards', county: 'Belfast', description: 'Career recognition', year: 2025, is_active: true, status: 'Draft' }
     ];
-    const { error: awardsErr } = await STATE.client.from('award_years').upsert(awards);
-    if (awardsErr) console.warn('Awards upsert:', awardsErr.message);
+    try {
+      // Try direct table first, fall back to view with delete+insert
+      var awardsResult = await this._safeWrite('award_years', awards, 'Awards (award_years)', 'upsert');
+      if (awardsResult.error) {
+        console.warn('award_years upsert failed, trying awards view:', awardsResult.error.message);
+        try { await STATE.client.from('awards').delete().like('award_name', 'TEST_MODE_%'); } catch(e2) {}
+        var awardsResult2 = await this._safeWrite('awards', awards, 'Awards (view)', 'insert');
+        if (this._logErr('Awards (via view)', awardsResult2.error)) errors.push('awards');
+      }
+    } catch(e) { this._logErr('Awards', e); errors.push('awards'); }
 
     // ===== Step 3: Create 30 test organisations =====
     utils.showToast('Step 3/15: Creating test organisations...', 'info');
@@ -148,18 +266,16 @@ const testDataManager = {
       website: 'https://' + name.toLowerCase().replace(/[^a-z0-9]/g, '') + '.example.com',
       contact_phone: '020 ' + String(7000 + i).padStart(4, '0') + ' ' + String(1000 + i * 37).padStart(4, '0')
     }));
-    const { error: orgsErr } = await STATE.client.from('organisations').upsert(orgs);
-    if (orgsErr) console.warn('Organisations upsert:', orgsErr.message);
+    try {
+      var orgsResult = await this._safeWrite('organisations', orgs, 'Organisations', 'upsert');
+      if (this._logErr('Organisations', orgsResult.error)) errors.push('organisations');
+    } catch(e) { this._logErr('Organisations', e); errors.push('organisations'); }
 
     // ===== Step 4: Create 30 award assignments (3 winners per award) =====
     utils.showToast('Step 4/15: Creating test winners...', 'info');
     const winnerOrgIndices = [
       [1,3,5], [7,10,11], [2,13,24], [4,28,30], [6,8,14],
       [9,22,26], [21,23,25], [12,16,18], [15,20,29], [17,19,27]
-    ];
-    const awardScores = [
-      [9.5,9.2,8.9], [9.3,9.0,8.8], [9.4,9.1,8.7], [9.6,9.2,8.9], [9.3,9.0,8.8],
-      [9.4,9.1,8.9], [9.5,9.2,8.8], [9.3,9.0,8.7], [9.4,9.1,8.9], [9.6,9.5,9.3]
     ];
     const assignments = [];
     var assignIdx = 1;
@@ -175,14 +291,16 @@ const testDataManager = {
         assignIdx++;
       }
     }
-    const { error: assignErr } = await STATE.client.from('award_assignments').upsert(assignments);
-    if (assignErr) console.warn('Assignments upsert:', assignErr.message);
+    try {
+      var assignResult = await this._safeWrite('award_assignments', assignments, 'Award assignments', 'upsert');
+      if (this._logErr('Award assignments', assignResult.error)) errors.push('award_assignments');
+    } catch(e) { this._logErr('Award assignments', e); errors.push('award_assignments'); }
 
-    // ===== Step 4b: Populate winners table (used by Winners tab + dashboard stats) =====
+    // ===== Step 4b: Populate winners table =====
     var winners = [];
     var winnerIdx = 1;
     for (var wi = 0; wi < 10; wi++) {
-      var topOrgIdx = winnerOrgIndices[wi][0]; // 1st place per award
+      var topOrgIdx = winnerOrgIndices[wi][0];
       winners.push({
         id: this.uid(this.WINNER_PREFIX, winnerIdx),
         winner_name: orgNames[topOrgIdx - 1],
@@ -192,62 +310,77 @@ const testDataManager = {
       });
       winnerIdx++;
     }
-    const { error: winnerErr } = await STATE.client.from('winners').upsert(winners);
-    if (winnerErr) console.warn('Winners upsert:', winnerErr.message);
+    try {
+      var winnerResult = await this._safeWrite('winners', winners, 'Winners', 'upsert');
+      if (this._logErr('Winners', winnerResult.error)) errors.push('winners');
+    } catch(e) { this._logErr('Winners', e); errors.push('winners'); }
 
     // ===== Step 5: Create event guests (RSVPs) =====
     utils.showToast('Step 5/15: Creating test RSVPs...', 'info');
-    const guests = orgs.map(function(org) {
-      return {
-        event_id: eventId,
-        guest_name: 'CEO ' + org.company_name.replace('TEST_MODE_', ''),
-        guest_email: org.email,
-        rsvp_status: 'confirmed'
-      };
-    });
-    await STATE.client.from('event_guests').delete().eq('event_id', eventId);
-    const { error: guestErr } = await STATE.client.from('event_guests').insert(guests);
-    if (guestErr) console.warn('Guests insert:', guestErr.message);
+    try {
+      var guests = orgs.map(function(org) {
+        return {
+          event_id: eventId,
+          guest_name: 'CEO ' + org.company_name.replace('TEST_MODE_', ''),
+          guest_email: org.email,
+          rsvp_status: 'confirmed'
+        };
+      });
+      try { await STATE.client.from('event_guests').delete().eq('event_id', eventId); } catch(e2) {}
+      var guestResult = await this._safeWrite('event_guests', guests, 'Event guests', 'insert');
+      if (this._logErr('Event guests', guestResult.error)) errors.push('event_guests');
+    } catch(e) { this._logErr('Event guests', e); errors.push('event_guests'); }
 
     // ===== Step 6: Create entries with varied statuses =====
     utils.showToast('Step 6/15: Creating test entries...', 'info');
-    await this.generateEntries(awards, orgs);
+    try { await this.generateEntries(awards, orgs); } catch(e) { this._logErr('Entries', e); errors.push('entries'); }
 
     // ===== Step 7: Create sponsors and banners (Marketing tab) =====
     utils.showToast('Step 7/15: Creating sponsors & banners...', 'info');
-    await this.generateMarketingData();
+    try { await this.generateMarketingData(); } catch(e) { this._logErr('Marketing', e); errors.push('marketing'); }
 
     // ===== Step 8: Create CRM data =====
     utils.showToast('Step 8/15: Creating CRM data...', 'info');
-    await this.generateCRMData(orgs);
+    try { await this.generateCRMData(orgs); } catch(e) { this._logErr('CRM', e); errors.push('crm'); }
 
     // ===== Step 9: Create invoices, line items, payments (Payments tab) =====
     utils.showToast('Step 9/15: Creating invoices & payments...', 'info');
-    await this.generatePaymentsData(orgs);
+    try { await this.generatePaymentsData(orgs); } catch(e) { this._logErr('Payments', e); errors.push('payments'); }
 
     // ===== Step 10: Create media gallery data =====
     utils.showToast('Step 10/15: Creating media gallery...', 'info');
-    await this.generateMediaData(eventId, orgs, awards);
+    try { await this.generateMediaData(eventId, orgs, awards); } catch(e) { this._logErr('Media gallery', e); errors.push('media'); }
 
     // ===== Step 11: Create running order + settings =====
     utils.showToast('Step 11/15: Creating running order...', 'info');
-    await this.generateRunningOrder(eventId, awards, orgs, winnerOrgIndices);
+    try { await this.generateRunningOrder(eventId, awards, orgs, winnerOrgIndices); } catch(e) { this._logErr('Running order', e); errors.push('running_order'); }
 
     // ===== Step 12: Create event attendees + tickets =====
     utils.showToast('Step 12/15: Creating attendees & tickets...', 'info');
-    await this.generateEventExtras(eventId, orgs);
+    try { await this.generateEventExtras(eventId, orgs); } catch(e) { this._logErr('Event extras', e); errors.push('event_extras'); }
 
     // ===== Step 13: Create email templates, lists, social media posts =====
     utils.showToast('Step 13/15: Creating email & social media data...', 'info');
-    await this.generateMarketingExtras(awards, orgs);
+    try { await this.generateMarketingExtras(awards, orgs); } catch(e) { this._logErr('Marketing extras', e); errors.push('marketing_extras'); }
 
     // ===== Step 14: Create CRM follow-ups + scheduled reports =====
     utils.showToast('Step 14/15: Creating follow-ups & scheduled reports...', 'info');
-    await this.generateExtras(orgs);
+    try { await this.generateExtras(orgs); } catch(e) { this._logErr('Extras', e); errors.push('extras'); }
 
-    // ===== Step 15: Done =====
-    utils.showToast('Step 15/15: All test data generated! Reload to see it.', 'success');
-    setTimeout(function() { testDataManager.showInfoModal(); }, 1000);
+    // ===== Step 15: Done - show summary =====
+    if (errors.length > 0) {
+      utils.showToast('Test data generated with ' + errors.length + ' error(s). See details below.', 'warning');
+      var errorHtml = '<div class="alert alert-warning"><h6>Partial Success</h6>' +
+        '<p>Test data was generated but ' + errors.length + ' table(s) had errors:</p>' +
+        '<ul>' + errors.map(function(e) { return '<li><code>' + e + '</code></li>'; }).join('') + '</ul>' +
+        '<p class="small">Errors usually mean missing database columns. Run the migration SQL files in Supabase SQL Editor to add missing columns, then try again.</p>' +
+        '</div>' +
+        '<p>Tables that succeeded should now have test data. Click "Reload Page" to see it.</p>';
+      setTimeout(function() { testDataManager.showModal('Test Data - Partial Success', errorHtml, true); }, 500);
+    } else {
+      utils.showToast('Step 15/15: All test data generated! Reload to see it.', 'success');
+      setTimeout(function() { testDataManager.showInfoModal(); }, 1000);
+    }
   },
 
   /**
@@ -289,8 +422,8 @@ const testDataManager = {
         admin_notes: status === 'rejected' ? '[TEST] Did not meet minimum criteria' : null
       });
     }
-    var { error: entryErr } = await STATE.client.from('entries').upsert(entries);
-    if (entryErr) console.warn('Entries upsert:', entryErr.message);
+    var entryResult = await this._safeWrite('entries', entries, 'Entries', 'upsert');
+    this._logErr('Entries', entryResult.error);
 
     // Judge scores for entries that are under_review, shortlisted, or winner
     var scoredEntries = entries.filter(function(e) {
@@ -315,10 +448,10 @@ const testDataManager = {
     }
     if (scoreRecords.length > 0) {
       for (var di = 0; di < scoredEntries.length; di++) {
-        await STATE.client.from('judge_scores').delete().eq('entry_id', scoredEntries[di].id);
+        try { await STATE.client.from('judge_scores').delete().eq('entry_id', scoredEntries[di].id); } catch(e3) {}
       }
-      var { error: scoreErr } = await STATE.client.from('judge_scores').insert(scoreRecords);
-      if (scoreErr) console.warn('Judge scores insert:', scoreErr.message);
+      var scoreResult = await this._safeWrite('judge_scores', scoreRecords, 'Judge scores', 'insert');
+      this._logErr('Judge scores', scoreResult.error);
     }
 
     // Public votes for entries that allow it
@@ -345,10 +478,10 @@ const testDataManager = {
     }
     if (voteRecords.length > 0) {
       for (var dvi = 0; dvi < votableEntries.length; dvi++) {
-        await STATE.client.from('public_votes').delete().eq('entry_id', votableEntries[dvi].id);
+        try { await STATE.client.from('public_votes').delete().eq('entry_id', votableEntries[dvi].id); } catch(e3) {}
       }
-      var { error: voteErr } = await STATE.client.from('public_votes').insert(voteRecords);
-      if (voteErr) console.warn('Public votes insert:', voteErr.message);
+      var voteResult = await this._safeWrite('public_votes', voteRecords, 'Public votes', 'insert');
+      this._logErr('Public votes', voteResult.error);
     }
   },
 
@@ -363,8 +496,8 @@ const testDataManager = {
       { id: this.uid(this.SPONSOR_PREFIX, 4), name: 'TEST_MODE_Bronze Partners', company_name: 'TEST_MODE_Bronze Partners', tier: 'Bronze', sponsorship_amount: 3500, contact_name: 'Tom Bronze', email: 'tom@bronzepartners.example.com', website: 'https://example.com/bronze', is_active: true, display_order: 4 },
       { id: this.uid(this.SPONSOR_PREFIX, 5), name: 'TEST_MODE_Community Partner', company_name: 'TEST_MODE_Community Partner', tier: 'Partner', sponsorship_amount: 1000, contact_name: 'Lisa Partner', email: 'lisa@communitypartner.example.com', website: 'https://example.com/partner', is_active: true, display_order: 5 }
     ];
-    var { error: sponsorErr } = await STATE.client.from('sponsors').upsert(sponsors);
-    if (sponsorErr) console.warn('Sponsors upsert:', sponsorErr.message);
+    var sponsorResult = await this._safeWrite('sponsors', sponsors, 'Sponsors', 'upsert');
+    this._logErr('Sponsors', sponsorResult.error);
 
     var today = new Date().toISOString().split('T')[0];
     var banners = [
@@ -373,8 +506,8 @@ const testDataManager = {
       { id: this.uid(this.BANNER_PREFIX, 3), title: 'TEST_MODE_Early Bird Tickets', position: 'footer', image_url: 'https://placehold.co/728x90?text=Early+Bird+Tickets', link_url: 'https://example.com/tickets', width: 728, height: 90, is_active: true, display_order: 3, impressions: 560, clicks: 23, start_date: today },
       { id: this.uid(this.BANNER_PREFIX, 4), title: 'TEST_MODE_Vote Now', position: 'popup', image_url: 'https://placehold.co/600x400?text=Vote+Now', link_url: 'https://example.com/vote', width: 600, height: 400, is_active: false, display_order: 4, impressions: 320, clicks: 15, start_date: today }
     ];
-    var { error: bannerErr } = await STATE.client.from('banners').upsert(banners);
-    if (bannerErr) console.warn('Banners upsert:', bannerErr.message);
+    var bannerResult = await this._safeWrite('banners', banners, 'Banners', 'upsert');
+    this._logErr('Banners', bannerResult.error);
   },
 
   /**
@@ -394,8 +527,8 @@ const testDataManager = {
         email: fn.toLowerCase() + '.' + lastNames[i].toLowerCase() + '@example.com'
       };
     });
-    var { error: contactErr } = await STATE.client.from('organisation_contacts').upsert(contacts);
-    if (contactErr) console.warn('Contacts upsert:', contactErr.message);
+    var contactResult = await this._safeWrite('organisation_contacts', contacts, 'Contacts', 'upsert');
+    this._logErr('Contacts', contactResult.error);
 
     // Communications (10 records)
     var commTypes = ['email', 'phone', 'meeting', 'email', 'phone', 'linkedin', 'email', 'note', 'email', 'phone'];
@@ -419,8 +552,8 @@ const testDataManager = {
         follow_up_date: i % 3 === 0 ? new Date(Date.now() + (i + 1) * 86400000 * 3).toISOString().split('T')[0] : null
       };
     });
-    var { error: commErr } = await STATE.client.from('communications').upsert(comms);
-    if (commErr) console.warn('Communications upsert:', commErr.message);
+    var commResult = await this._safeWrite('communications', comms, 'Communications', 'upsert');
+    this._logErr('Communications', commResult.error);
 
     // Deals (6 at various stages)
     var dealStages = ['lead', 'contacted', 'qualified', 'proposal', 'negotiation', 'closed_won'];
@@ -432,29 +565,29 @@ const testDataManager = {
         id: testDataManager.uid(testDataManager.DEAL_PREFIX, i + 1),
         organisation_id: orgs[i].id,
         contact_id: contacts[i].id,
-        deal_name: 'TEST_MODE_' + orgs[i].company_name.replace('TEST_MODE_', '') + ' - ' + dealTypes[i],
+        title: 'TEST_MODE_' + orgs[i].company_name.replace('TEST_MODE_', '') + ' - ' + dealTypes[i],
         deal_type: dealTypes[i],
         stage: stage,
         probability: dealProbs[i],
-        deal_value: dealValues[i],
+        value: dealValues[i],
         status: stage === 'closed_won' ? 'won' : 'active',
         expected_close_date: new Date(Date.now() + (i + 1) * 86400000 * 14).toISOString().split('T')[0],
         actual_close_date: stage === 'closed_won' ? new Date().toISOString().split('T')[0] : null,
         description: 'Test deal for ' + dealTypes[i] + ' with ' + orgs[i].company_name.replace('TEST_MODE_', '')
       };
     });
-    var { error: dealErr } = await STATE.client.from('deals').upsert(deals);
-    if (dealErr) console.warn('Deals upsert:', dealErr.message);
+    var dealResult = await this._safeWrite('deals', deals, 'Deals', 'upsert');
+    this._logErr('Deals', dealResult.error);
 
     // Meeting notes (4 meetings)
     var meetings = [
-      { id: this.uid(this.MEETING_PREFIX, 1), organisation_id: orgs[0].id, deal_id: deals[0].id, meeting_title: 'TEST_MODE_Platinum Sponsorship Discussion', meeting_type: 'video_call', duration_minutes: 45, notes: 'Discussed platinum tier benefits. Very interested.', follow_up_required: true, follow_up_date: new Date(Date.now() + 7 * 86400000).toISOString().split('T')[0] },
-      { id: this.uid(this.MEETING_PREFIX, 2), organisation_id: orgs[3].id, deal_id: deals[3].id, meeting_title: 'TEST_MODE_Partnership Review', meeting_type: 'in_person', duration_minutes: 60, notes: 'Reviewed partnership terms. Need to send revised proposal.', follow_up_required: true, follow_up_date: new Date(Date.now() + 3 * 86400000).toISOString().split('T')[0] },
-      { id: this.uid(this.MEETING_PREFIX, 3), organisation_id: orgs[5].id, meeting_title: 'TEST_MODE_Award Entry Guidance', meeting_type: 'phone', duration_minutes: 20, notes: 'Guided them through the entry process. Will submit next week.', follow_up_required: false },
-      { id: this.uid(this.MEETING_PREFIX, 4), organisation_id: orgs[8].id, meeting_title: 'TEST_MODE_Event Planning Debrief', meeting_type: 'conference', duration_minutes: 90, notes: 'Reviewed last event feedback. Planning improvements for next year.', follow_up_required: false }
+      { id: this.uid(this.MEETING_PREFIX, 1), organisation_id: orgs[0].id, deal_id: deals[0].id, subject: 'TEST_MODE_Platinum Sponsorship Discussion', meeting_type: 'video_call', duration_minutes: 45, notes: 'Discussed platinum tier benefits. Very interested.', follow_up_required: true, follow_up_date: new Date(Date.now() + 7 * 86400000).toISOString().split('T')[0] },
+      { id: this.uid(this.MEETING_PREFIX, 2), organisation_id: orgs[3].id, deal_id: deals[3].id, subject: 'TEST_MODE_Partnership Review', meeting_type: 'in_person', duration_minutes: 60, notes: 'Reviewed partnership terms. Need to send revised proposal.', follow_up_required: true, follow_up_date: new Date(Date.now() + 3 * 86400000).toISOString().split('T')[0] },
+      { id: this.uid(this.MEETING_PREFIX, 3), organisation_id: orgs[5].id, subject: 'TEST_MODE_Award Entry Guidance', meeting_type: 'phone', duration_minutes: 20, notes: 'Guided them through the entry process. Will submit next week.', follow_up_required: false },
+      { id: this.uid(this.MEETING_PREFIX, 4), organisation_id: orgs[8].id, subject: 'TEST_MODE_Event Planning Debrief', meeting_type: 'conference', duration_minutes: 90, notes: 'Reviewed last event feedback. Planning improvements for next year.', follow_up_required: false }
     ];
-    var { error: meetingErr } = await STATE.client.from('meeting_notes').upsert(meetings);
-    if (meetingErr) console.warn('Meetings upsert:', meetingErr.message);
+    var meetingResult = await this._safeWrite('meeting_notes', meetings, 'Meetings', 'upsert');
+    this._logErr('Meetings', meetingResult.error);
 
     // Contact segments (3 segments)
     var segments = [
@@ -462,8 +595,8 @@ const testDataManager = {
       { id: this.uid(this.SEGMENT_PREFIX, 2), segment_name: 'TEST_MODE_Active Entrants', description: 'Organisations with active award entries', color: '#28a745', icon: 'bi-file-earmark-check' },
       { id: this.uid(this.SEGMENT_PREFIX, 3), segment_name: 'TEST_MODE_Past Winners', description: 'Previous award winners', color: '#6f42c1', icon: 'bi-trophy' }
     ];
-    var { error: segErr } = await STATE.client.from('contact_segments').upsert(segments);
-    if (segErr) console.warn('Segments upsert:', segErr.message);
+    var segResult = await this._safeWrite('contact_segments', segments, 'Segments', 'upsert');
+    this._logErr('Segments', segResult.error);
 
     // Organisation-segment relationships
     var orgSegments = [];
@@ -480,10 +613,10 @@ const testDataManager = {
       orgSegments.push({ organisation_id: orgs[s3].id, segment_id: segments[2].id });
     }
     for (var ds = 0; ds < segments.length; ds++) {
-      await STATE.client.from('organisation_segments').delete().eq('segment_id', segments[ds].id);
+      try { await STATE.client.from('organisation_segments').delete().eq('segment_id', segments[ds].id); } catch(e3) {}
     }
-    var { error: orgSegErr } = await STATE.client.from('organisation_segments').insert(orgSegments);
-    if (orgSegErr) console.warn('Org segments insert:', orgSegErr.message);
+    var orgSegResult = await this._safeWrite('organisation_segments', orgSegments, 'Org segments', 'insert');
+    this._logErr('Org segments', orgSegResult.error);
   },
 
   /**
@@ -513,8 +646,8 @@ const testDataManager = {
         notes: '[TEST MODE] Invoice #' + (ii + 1) + ' for ' + types[ii]
       });
     }
-    var { error: invErr } = await STATE.client.from('invoices').upsert(invoices);
-    if (invErr) console.warn('Invoices upsert:', invErr.message);
+    var invResult = await this._safeWrite('invoices', invoices, 'Invoices', 'upsert');
+    this._logErr('Invoices', invResult.error);
 
     // Line items
     var lineItems = [];
@@ -532,10 +665,10 @@ const testDataManager = {
       }
     }
     for (var dli = 0; dli < invoices.length; dli++) {
-      await STATE.client.from('invoice_line_items').delete().eq('invoice_id', invoices[dli].id);
+      try { await STATE.client.from('invoice_line_items').delete().eq('invoice_id', invoices[dli].id); } catch(e3) {}
     }
-    var { error: liErr } = await STATE.client.from('invoice_line_items').insert(lineItems);
-    if (liErr) console.warn('Line items insert:', liErr.message);
+    var liResult = await this._safeWrite('invoice_line_items', lineItems, 'Line items', 'insert');
+    this._logErr('Line items', liResult.error);
 
     // Payments for paid invoices
     var paidInvoices = invoices.filter(function(inv) { return inv.payment_status === 'paid'; });
@@ -552,8 +685,8 @@ const testDataManager = {
         notes: '[TEST MODE] Payment for ' + inv.invoice_number
       };
     });
-    var { error: payErr } = await STATE.client.from('payments').upsert(payments);
-    if (payErr) console.warn('Payments upsert:', payErr.message);
+    var payResult = await this._safeWrite('payments', payments, 'Payments', 'upsert');
+    this._logErr('Payments', payResult.error);
   },
 
   /**
@@ -564,8 +697,8 @@ const testDataManager = {
       { id: this.uid(this.GALLERY_PREFIX, 1), event_id: eventId, gallery_name: 'TEST_MODE_Awards Ceremony', gallery_description: 'Photos from the main ceremony', display_order: 1 },
       { id: this.uid(this.GALLERY_PREFIX, 2), event_id: eventId, gallery_name: 'TEST_MODE_Winners Collection', gallery_description: 'Winner announcement photos', display_order: 2 }
     ];
-    var { error: galErr } = await STATE.client.from('event_galleries').upsert(galleries);
-    if (galErr) console.warn('Galleries upsert:', galErr.message);
+    var galResult = await this._safeWrite('event_galleries', galleries, 'Galleries', 'upsert');
+    this._logErr('Galleries', galResult.error);
 
     var mediaItems = [];
     for (var mi = 0; mi < 10; mi++) {
@@ -581,8 +714,8 @@ const testDataManager = {
         display_order: mi + 1
       });
     }
-    var { error: miErr } = await STATE.client.from('media_items').upsert(mediaItems);
-    if (miErr) console.warn('Media items upsert:', miErr.message);
+    var miResult = await this._safeWrite('media_items', mediaItems, 'Media items', 'upsert');
+    this._logErr('Media items', miResult.error);
 
     var mediaGallery = [];
     for (var mg = 0; mg < 8; mg++) {
@@ -603,8 +736,8 @@ const testDataManager = {
         show_on_company_page: true
       });
     }
-    var { error: mgErr } = await STATE.client.from('media_gallery').upsert(mediaGallery);
-    if (mgErr) console.warn('Media gallery upsert:', mgErr.message);
+    var mgResult = await this._safeWrite('media_gallery', mediaGallery, 'Media gallery', 'upsert');
+    this._logErr('Media gallery', mgResult.error);
   },
 
   /**
@@ -629,18 +762,18 @@ const testDataManager = {
         notes: ro === 0 ? 'Opening award - extra time for speech' : null
       });
     }
-    await STATE.client.from('running_order').delete().eq('event_id', eventId);
-    var { error: roErr } = await STATE.client.from('running_order').insert(runningOrder);
-    if (roErr) console.warn('Running order insert:', roErr.message);
+    try { await STATE.client.from('running_order').delete().eq('event_id', eventId); } catch(e2) {}
+    var roResult = await this._safeWrite('running_order', runningOrder, 'Running order', 'insert');
+    this._logErr('Running order', roResult.error);
 
     // Running order settings
-    var { error: rosErr } = await STATE.client.from('running_order_settings').upsert({
+    var rosResult = await this._safeWrite('running_order_settings', {
       id: this.uid(this.RUNNING_PREFIX, 99),
       event_id: eventId,
       settings: { time_per_award: 5, break_after: 5, ceremony_type: 'formal' },
       is_published: false
-    });
-    if (rosErr) console.warn('Running order settings upsert:', rosErr.message);
+    }, 'Running order settings', 'upsert');
+    this._logErr('Running order settings', rosResult.error);
   },
 
   /**
@@ -682,9 +815,9 @@ const testDataManager = {
       { "Name": 'Antrim', region: 'Northern Ireland' },
       { "Name": 'Berkshire', region: 'South East' }
     ];
-    var { error } = await STATE.client.from('counties').insert(counties);
-    if (error) console.warn('Counties seed:', error.message);
-    else console.log('Seeded 30 counties for region/county filtering');
+    var countyResult = await this._safeWrite('counties', counties, 'Counties seed', 'insert');
+    if (this._logErr('Counties seed', countyResult.error)) return;
+    console.log('Seeded 30 counties for region/county filtering');
   },
 
   /**
@@ -712,9 +845,9 @@ const testDataManager = {
         notes: i === 0 ? 'VIP - ensure table 1 placement' : null
       });
     }
-    await STATE.client.from('event_attendees').delete().eq('event_id', eventId);
-    var { error: attErr } = await STATE.client.from('event_attendees').insert(attendees);
-    if (attErr) console.warn('Attendees insert:', attErr.message);
+    try { await STATE.client.from('event_attendees').delete().eq('event_id', eventId); } catch(e2) {}
+    var attResult = await this._safeWrite('event_attendees', attendees, 'Attendees', 'insert');
+    this._logErr('Attendees', attResult.error);
 
     // Ticket types (3 types)
     var ticketTypes = [
@@ -722,8 +855,8 @@ const testDataManager = {
       { id: this.uid(this.TICKET_TYPE_PREFIX, 2), event_id: eventId, name: 'TEST_MODE_VIP Table (10)', description: 'Premium table of 10 with champagne reception', price: 2000.00, quantity: 20, sold: 15, early_bird_price: 1750.00, includes_table: true, table_size: 10, is_active: true },
       { id: this.uid(this.TICKET_TYPE_PREFIX, 3), event_id: eventId, name: 'TEST_MODE_Corporate Package', description: 'Branding, 2 tables, sponsor recognition', price: 5000.00, quantity: 10, sold: 4, includes_table: true, table_size: 10, is_active: true }
     ];
-    var { error: ttErr } = await STATE.client.from('event_ticket_types').upsert(ticketTypes);
-    if (ttErr) console.warn('Ticket types upsert:', ttErr.message);
+    var ttResult = await this._safeWrite('event_ticket_types', ticketTypes, 'Ticket types', 'upsert');
+    this._logErr('Ticket types', ttResult.error);
   },
 
   /**
@@ -738,8 +871,8 @@ const testDataManager = {
       { id: this.uid(this.TEMPLATE_PREFIX, 4), name: 'TEST_MODE_Event Invitation', subject: 'You are invited to the Awards Gala!', body: '<h2>You are invited!</h2><p>We would be honoured to welcome {{company_name}} to the Awards Gala on {{event_date}} at {{venue}}.</p><p>Please RSVP by clicking the link below.</p>', description: 'Event invitation email', is_active: true },
       { id: this.uid(this.TEMPLATE_PREFIX, 5), name: 'TEST_MODE_Winner Announcement', subject: 'And the winner is...', body: '<h2>Winner Announcement</h2><p>We are thrilled to announce the winners of this year\'s awards!</p><p>{{winner_list}}</p><p>Congratulations to all our winners and finalists.</p>', description: 'Public winner announcement', is_active: false }
     ];
-    var { error: tplErr } = await STATE.client.from('email_templates').upsert(templates);
-    if (tplErr) console.warn('Email templates upsert:', tplErr.message);
+    var tplResult = await this._safeWrite('email_templates', templates, 'Email templates', 'upsert');
+    this._logErr('Email templates', tplResult.error);
 
     // Email lists (3 lists)
     var emailLists = [
@@ -747,8 +880,8 @@ const testDataManager = {
       { id: this.uid(this.EMAIL_LIST_PREFIX, 2), list_name: 'TEST_MODE_Sponsors & Partners', list_type: 'sponsors', is_active: true, color: '#28a745', icon: 'bi-star', description: 'Current sponsors and strategic partners', subscriber_count: 8, active_subscriber_count: 8 },
       { id: this.uid(this.EMAIL_LIST_PREFIX, 3), list_name: 'TEST_MODE_Event Guests', list_type: 'general', is_active: true, color: '#6f42c1', icon: 'bi-calendar-event', description: 'Invited guests for the awards ceremony', subscriber_count: 20, active_subscriber_count: 18 }
     ];
-    var { error: listErr } = await STATE.client.from('email_lists').upsert(emailLists);
-    if (listErr) console.warn('Email lists upsert:', listErr.message);
+    var listResult = await this._safeWrite('email_lists', emailLists, 'Email lists', 'upsert');
+    this._logErr('Email lists', listResult.error);
 
     // Email list subscribers (populate lists with org data)
     var subscribers = [];
@@ -776,10 +909,10 @@ const testDataManager = {
     }
     // Clear existing test subscribers
     for (var dl = 0; dl < emailLists.length; dl++) {
-      await STATE.client.from('email_list_subscribers').delete().eq('list_id', emailLists[dl].id);
+      try { await STATE.client.from('email_list_subscribers').delete().eq('list_id', emailLists[dl].id); } catch(e3) {}
     }
-    var { error: subErr } = await STATE.client.from('email_list_subscribers').insert(subscribers);
-    if (subErr) console.warn('Email subscribers insert:', subErr.message);
+    var subResult = await this._safeWrite('email_list_subscribers', subscribers, 'Email subscribers', 'insert');
+    this._logErr('Email subscribers', subResult.error);
 
     // Social media posts (6 posts across different statuses)
     var socialPosts = [
@@ -790,8 +923,8 @@ const testDataManager = {
       { id: this.uid(this.SOCIAL_PREFIX, 5), company_id: orgs[3].id, award_id: awards[3].id, content: 'TEST_MODE_Green Energy Co leads the way in sustainability. Read their story. #GreenBusiness', template_type: 'finalist_spotlight', platforms: ['linkedin'], status: 'draft' },
       { id: this.uid(this.SOCIAL_PREFIX, 6), content: 'Thank you to all our sponsors for making the 2025 Awards possible! #ThankYou #Awards2025', template_type: 'sponsor_thanks', platforms: ['twitter', 'linkedin', 'facebook', 'instagram'], status: 'draft' }
     ];
-    var { error: socialErr } = await STATE.client.from('social_media_posts').upsert(socialPosts);
-    if (socialErr) console.warn('Social media posts upsert:', socialErr.message);
+    var socialResult = await this._safeWrite('social_media_posts', socialPosts, 'Social media posts', 'upsert');
+    this._logErr('Social media posts', socialResult.error);
   },
 
   /**
@@ -806,8 +939,8 @@ const testDataManager = {
       { id: this.uid(this.FOLLOWUP_PREFIX, 4), organisation_id: orgs[7].id, company_name: orgs[7].company_name, follow_up_date: new Date(Date.now() - 3 * 86400000).toISOString().split('T')[0], note: 'TEST_MODE_Send revised invoice for package upgrade', completed: true, completed_at: new Date().toISOString(), created_by: 'admin@example.com' },
       { id: this.uid(this.FOLLOWUP_PREFIX, 5), organisation_id: orgs[9].id, company_name: orgs[9].company_name, follow_up_date: new Date(Date.now() + 14 * 86400000).toISOString().split('T')[0], note: 'TEST_MODE_Book photography session for winner profile', completed: false, created_by: 'admin@example.com' }
     ];
-    var { error: fuErr } = await STATE.client.from('organisation_follow_ups').upsert(followUps);
-    if (fuErr) console.warn('Follow-ups upsert:', fuErr.message);
+    var fuResult = await this._safeWrite('organisation_follow_ups', followUps, 'Follow-ups', 'upsert');
+    this._logErr('Follow-ups', fuResult.error);
 
     // Scheduled reports (Reports tab)
     var reports = [
@@ -815,8 +948,8 @@ const testDataManager = {
       { id: this.uid(this.REPORT_PREFIX, 2), name: 'TEST_MODE_Monthly Financial Report', report_type: 'financial', frequency: 'monthly', recipients: ['admin@example.com', 'finance@example.com'], sections: ['revenue', 'payments', 'overdue'], is_active: true, next_run_at: new Date(Date.now() + 30 * 86400000).toISOString(), created_by: 'admin@example.com' },
       { id: this.uid(this.REPORT_PREFIX, 3), name: 'TEST_MODE_Judge Scoring Progress', report_type: 'judging', frequency: 'daily', recipients: ['admin@example.com'], sections: ['judge_progress', 'score_distribution'], is_active: false, created_by: 'admin@example.com' }
     ];
-    var { error: repErr } = await STATE.client.from('scheduled_reports').upsert(reports);
-    if (repErr) console.warn('Scheduled reports upsert:', repErr.message);
+    var repResult = await this._safeWrite('scheduled_reports', reports, 'Scheduled reports', 'upsert');
+    this._logErr('Scheduled reports', repResult.error);
   },
 
   /**
@@ -863,172 +996,124 @@ const testDataManager = {
       var entryIds = (testEntries || []).map(function(e) { return e.id; });
 
       utils.showToast('Removing test data...', 'info');
+      var self = this;
 
       // ---- NEW TABLES (added for full coverage) ----
+      // Each delete is wrapped in _safeDel so one missing table won't stop the rest
 
-      // A. Scheduled reports
-      await STATE.client.from('scheduled_reports').delete().like('name', 'TEST_MODE_%');
-
-      // B. Organisation follow-ups
-      await STATE.client.from('organisation_follow_ups').delete().like('note', 'TEST_MODE_%');
+      await self._safeDel(STATE.client.from('scheduled_reports').delete().like('name', 'TEST_MODE_%'));
+      await self._safeDel(STATE.client.from('organisation_follow_ups').delete().like('note', 'TEST_MODE_%'));
       if (orgIds.length > 0) {
-        await STATE.client.from('organisation_follow_ups').delete().in('organisation_id', orgIds);
+        await self._safeDel(STATE.client.from('organisation_follow_ups').delete().in('organisation_id', orgIds));
       }
-
-      // C. Social media posts
-      await STATE.client.from('social_media_posts').delete().like('content', '%TEST_MODE_%');
+      await self._safeDel(STATE.client.from('social_media_posts').delete().like('content', '%TEST_MODE_%'));
       if (orgIds.length > 0) {
-        await STATE.client.from('social_media_posts').delete().in('company_id', orgIds);
+        await self._safeDel(STATE.client.from('social_media_posts').delete().in('company_id', orgIds));
       }
 
       // D. Email list subscribers (must be before email lists)
-      var { data: testLists } = await STATE.client
-        .from('email_lists').select('id').like('list_name', 'TEST_MODE_%');
-      if (testLists && testLists.length > 0) {
-        for (var els = 0; els < testLists.length; els++) {
-          await STATE.client.from('email_list_subscribers').delete().eq('list_id', testLists[els].id);
+      try {
+        var { data: testLists } = await STATE.client
+          .from('email_lists').select('id').like('list_name', 'TEST_MODE_%');
+        if (testLists && testLists.length > 0) {
+          for (var els = 0; els < testLists.length; els++) {
+            await self._safeDel(STATE.client.from('email_list_subscribers').delete().eq('list_id', testLists[els].id));
+          }
         }
-      }
+      } catch(e3) { console.warn('Cleanup skip: email_list_subscribers', e3.message); }
 
-      // E. Email lists
-      await STATE.client.from('email_lists').delete().like('list_name', 'TEST_MODE_%');
-
-      // F. Email templates
-      await STATE.client.from('email_templates').delete().like('name', 'TEST_MODE_%');
-
-      // G. Event tickets (child of event_ticket_types and event_guests)
-      await STATE.client.from('event_tickets').delete().eq('event_id', eventId);
-
-      // H. Event ticket types
-      await STATE.client.from('event_ticket_types').delete().eq('event_id', eventId);
-
-      // I. Event attendees
-      await STATE.client.from('event_attendees').delete().eq('event_id', eventId);
+      await self._safeDel(STATE.client.from('email_lists').delete().like('list_name', 'TEST_MODE_%'));
+      await self._safeDel(STATE.client.from('email_templates').delete().like('name', 'TEST_MODE_%'));
+      await self._safeDel(STATE.client.from('event_tickets').delete().eq('event_id', eventId));
+      await self._safeDel(STATE.client.from('event_ticket_types').delete().eq('event_id', eventId));
+      await self._safeDel(STATE.client.from('event_attendees').delete().eq('event_id', eventId));
 
       // ---- ORIGINAL TABLES ----
 
-      // 1. Public votes (child of entries)
       for (var pv = 0; pv < entryIds.length; pv++) {
-        await STATE.client.from('public_votes').delete().eq('entry_id', entryIds[pv]);
+        await self._safeDel(STATE.client.from('public_votes').delete().eq('entry_id', entryIds[pv]));
       }
-
-      // 2. Judge scores (child of entries)
       for (var js = 0; js < entryIds.length; js++) {
-        await STATE.client.from('judge_scores').delete().eq('entry_id', entryIds[js]);
+        await self._safeDel(STATE.client.from('judge_scores').delete().eq('entry_id', entryIds[js]));
       }
+      await self._safeDel(STATE.client.from('entries').delete().like('entry_number', 'TEST-ENT-%'));
 
-      // 3. Entries
-      await STATE.client.from('entries').delete().like('entry_number', 'TEST-ENT-%');
-
-      // 4. Organisation segments
-      var { data: testSegs } = await STATE.client
-        .from('contact_segments').select('id').like('segment_name', 'TEST_MODE_%');
-      if (testSegs && testSegs.length > 0) {
-        for (var os = 0; os < testSegs.length; os++) {
-          await STATE.client.from('organisation_segments').delete().eq('segment_id', testSegs[os].id);
+      try {
+        var { data: testSegs } = await STATE.client
+          .from('contact_segments').select('id').like('segment_name', 'TEST_MODE_%');
+        if (testSegs && testSegs.length > 0) {
+          for (var os = 0; os < testSegs.length; os++) {
+            await self._safeDel(STATE.client.from('organisation_segments').delete().eq('segment_id', testSegs[os].id));
+          }
         }
-      }
+      } catch(e3) { console.warn('Cleanup skip: organisation_segments', e3.message); }
 
-      // 5. Contact segments
-      await STATE.client.from('contact_segments').delete().like('segment_name', 'TEST_MODE_%');
-
-      // 6. Meeting notes (use both org-based and prefix-based deletion)
-      await STATE.client.from('meeting_notes').delete().like('meeting_title', 'TEST_MODE_%');
+      await self._safeDel(STATE.client.from('contact_segments').delete().like('segment_name', 'TEST_MODE_%'));
+      await self._safeDel(STATE.client.from('meeting_notes').delete().like('subject', 'TEST_MODE_%'));
       if (orgIds.length > 0) {
-        await STATE.client.from('meeting_notes').delete().in('organisation_id', orgIds);
+        await self._safeDel(STATE.client.from('meeting_notes').delete().in('organisation_id', orgIds));
       }
-
-      // 7. Communications
-      await STATE.client.from('communications').delete().like('subject', 'TEST_MODE_%');
+      await self._safeDel(STATE.client.from('communications').delete().like('subject', 'TEST_MODE_%'));
       if (orgIds.length > 0) {
-        await STATE.client.from('communications').delete().in('organisation_id', orgIds);
+        await self._safeDel(STATE.client.from('communications').delete().in('organisation_id', orgIds));
       }
-
-      // 8. Deals
-      await STATE.client.from('deals').delete().like('deal_name', 'TEST_MODE_%');
+      await self._safeDel(STATE.client.from('deals').delete().like('title', 'TEST_MODE_%'));
       if (orgIds.length > 0) {
-        await STATE.client.from('deals').delete().in('organisation_id', orgIds);
+        await self._safeDel(STATE.client.from('deals').delete().in('organisation_id', orgIds));
       }
 
       // 9. Organisation contacts
       if (orgIds.length > 0) {
-        await STATE.client.from('organisation_contacts').delete().in('organisation_id', orgIds);
+        await self._safeDel(STATE.client.from('organisation_contacts').delete().in('organisation_id', orgIds));
       }
 
       // 10. Payments
-      await STATE.client.from('payments').delete().like('payment_reference', 'TEST-PAY-%');
+      await self._safeDel(STATE.client.from('payments').delete().like('payment_reference', 'TEST-PAY-%'));
 
       // 11. Invoice line items
-      var { data: testInvoices } = await STATE.client
-        .from('invoices').select('id').like('invoice_number', 'TEST-INV-%');
-      if (testInvoices && testInvoices.length > 0) {
-        for (var il = 0; il < testInvoices.length; il++) {
-          await STATE.client.from('invoice_line_items').delete().eq('invoice_id', testInvoices[il].id);
+      try {
+        var { data: testInvoices } = await STATE.client
+          .from('invoices').select('id').like('invoice_number', 'TEST-INV-%');
+        if (testInvoices && testInvoices.length > 0) {
+          for (var il = 0; il < testInvoices.length; il++) {
+            await self._safeDel(STATE.client.from('invoice_line_items').delete().eq('invoice_id', testInvoices[il].id));
+          }
         }
-      }
+      } catch(e3) { console.warn('Cleanup skip: invoice_line_items', e3.message); }
 
-      // 12. Invoices
-      await STATE.client.from('invoices').delete().like('invoice_number', 'TEST-INV-%');
-
-      // 13. Sponsors
-      await STATE.client.from('sponsors').delete().like('company_name', 'TEST_MODE_%');
-
-      // 14. Banners
-      await STATE.client.from('banners').delete().like('title', 'TEST_MODE_%');
-
-      // 15. Media gallery records
-      await STATE.client.from('media_gallery').delete().like('title', 'TEST_MODE_%');
+      await self._safeDel(STATE.client.from('invoices').delete().like('invoice_number', 'TEST-INV-%'));
+      await self._safeDel(STATE.client.from('sponsors').delete().like('name', 'TEST_MODE_%'));
+      await self._safeDel(STATE.client.from('banners').delete().like('title', 'TEST_MODE_%'));
+      await self._safeDel(STATE.client.from('media_gallery').delete().like('title', 'TEST_MODE_%'));
       if (orgIds.length > 0) {
-        await STATE.client.from('media_gallery').delete().in('organisation_id', orgIds);
+        await self._safeDel(STATE.client.from('media_gallery').delete().in('organisation_id', orgIds));
       }
+      await self._safeDel(STATE.client.from('media_items').delete().like('title', 'TEST_MODE_%'));
+      await self._safeDel(STATE.client.from('media_items').delete().eq('event_id', eventId));
+      await self._safeDel(STATE.client.from('event_galleries').delete().like('gallery_name', 'TEST_MODE_%'));
+      await self._safeDel(STATE.client.from('event_galleries').delete().eq('event_id', eventId));
+      await self._safeDel(STATE.client.from('table_assignments').delete().eq('event_id', eventId));
+      await self._safeDel(STATE.client.from('event_tables').delete().eq('event_id', eventId));
+      await self._safeDel(STATE.client.from('running_order').delete().eq('event_id', eventId));
+      await self._safeDel(STATE.client.from('running_order_settings').delete().eq('event_id', eventId));
+      await self._safeDel(STATE.client.from('event_guests').delete().eq('event_id', eventId));
 
-      // 16. Media items
-      await STATE.client.from('media_items').delete().like('title', 'TEST_MODE_%');
-      await STATE.client.from('media_items').delete().eq('event_id', eventId);
-
-      // 17. Event galleries
-      await STATE.client.from('event_galleries').delete().like('gallery_name', 'TEST_MODE_%');
-      await STATE.client.from('event_galleries').delete().eq('event_id', eventId);
-
-      // 18. Table assignments
-      await STATE.client.from('table_assignments').delete().eq('event_id', eventId);
-
-      // 19. Event tables
-      await STATE.client.from('event_tables').delete().eq('event_id', eventId);
-
-      // 20. Running order
-      await STATE.client.from('running_order').delete().eq('event_id', eventId);
-
-      // 21. Running order settings
-      await STATE.client.from('running_order_settings').delete().eq('event_id', eventId);
-
-      // 22. Event guests
-      await STATE.client.from('event_guests').delete().eq('event_id', eventId);
-
-      // 23. Award assignments (delete by org IDs and award IDs for full coverage)
       if (awardIds.length > 0) {
-        await STATE.client.from('award_assignments').delete().in('award_id', awardIds);
+        await self._safeDel(STATE.client.from('award_assignments').delete().in('award_id', awardIds));
       }
       if (orgIds.length > 0) {
-        await STATE.client.from('award_assignments').delete().in('organisation_id', orgIds);
+        await self._safeDel(STATE.client.from('award_assignments').delete().in('organisation_id', orgIds));
       }
-
-      // 23b. Winners (delete by org IDs and award IDs for full coverage)
       if (awardIds.length > 0) {
-        await STATE.client.from('winners').delete().in('award_id', awardIds);
+        await self._safeDel(STATE.client.from('winners').delete().in('award_id', awardIds));
       }
       if (orgIds.length > 0) {
-        await STATE.client.from('winners').delete().in('organisation_id', orgIds);
+        await self._safeDel(STATE.client.from('winners').delete().in('organisation_id', orgIds));
       }
 
-      // 24. Organisations
-      await STATE.client.from('organisations').delete().like('company_name', 'TEST_MODE_%');
-
-      // 25. Awards (delete directly from award_years table, not the view)
-      await STATE.client.from('award_years').delete().like('award_name', 'TEST_MODE_%');
-
-      // 26. Event
-      await STATE.client.from('events').delete().eq('id', eventId);
+      await self._safeDel(STATE.client.from('organisations').delete().like('company_name', 'TEST_MODE_%'));
+      await self._safeDel(STATE.client.from('award_years').delete().like('award_name', 'TEST_MODE_%'));
+      await self._safeDel(STATE.client.from('events').delete().eq('id', eventId));
 
       utils.showToast('All test data removed successfully!', 'success');
 
@@ -1063,11 +1148,11 @@ const testDataManager = {
         STATE.client.from('awards').select('*', { count: 'exact', head: true }).like('award_name', 'TEST_MODE_%'),
         STATE.client.from('event_guests').select('*', { count: 'exact', head: true }).eq('event_id', this.EVENT_ID),
         STATE.client.from('entries').select('*', { count: 'exact', head: true }).like('entry_number', 'TEST-ENT-%'),
-        STATE.client.from('sponsors').select('*', { count: 'exact', head: true }).like('company_name', 'TEST_MODE_%'),
+        STATE.client.from('sponsors').select('*', { count: 'exact', head: true }).like('name', 'TEST_MODE_%'),
         STATE.client.from('banners').select('*', { count: 'exact', head: true }).like('title', 'TEST_MODE_%'),
         STATE.client.from('invoices').select('*', { count: 'exact', head: true }).like('invoice_number', 'TEST-INV-%'),
         STATE.client.from('organisation_contacts').select('*', { count: 'exact', head: true }).like('id', testDataManager.CONTACT_PREFIX + '%'),
-        STATE.client.from('deals').select('*', { count: 'exact', head: true }).like('deal_name', 'TEST_MODE_%'),
+        STATE.client.from('deals').select('*', { count: 'exact', head: true }).like('title', 'TEST_MODE_%'),
         STATE.client.from('communications').select('*', { count: 'exact', head: true }).like('subject', 'TEST_MODE_%')
       ]);
 

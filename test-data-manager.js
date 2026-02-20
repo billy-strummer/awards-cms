@@ -565,11 +565,11 @@ const testDataManager = {
         id: testDataManager.uid(testDataManager.DEAL_PREFIX, i + 1),
         organisation_id: orgs[i].id,
         contact_id: contacts[i].id,
-        deal_name: 'TEST_MODE_' + orgs[i].company_name.replace('TEST_MODE_', '') + ' - ' + dealTypes[i],
+        title: 'TEST_MODE_' + orgs[i].company_name.replace('TEST_MODE_', '') + ' - ' + dealTypes[i],
         deal_type: dealTypes[i],
         stage: stage,
         probability: dealProbs[i],
-        deal_value: dealValues[i],
+        value: dealValues[i],
         status: stage === 'closed_won' ? 'won' : 'active',
         expected_close_date: new Date(Date.now() + (i + 1) * 86400000 * 14).toISOString().split('T')[0],
         actual_close_date: stage === 'closed_won' ? new Date().toISOString().split('T')[0] : null,
@@ -581,10 +581,10 @@ const testDataManager = {
 
     // Meeting notes (4 meetings)
     var meetings = [
-      { id: this.uid(this.MEETING_PREFIX, 1), organisation_id: orgs[0].id, deal_id: deals[0].id, meeting_title: 'TEST_MODE_Platinum Sponsorship Discussion', meeting_type: 'video_call', duration_minutes: 45, notes: 'Discussed platinum tier benefits. Very interested.', follow_up_required: true, follow_up_date: new Date(Date.now() + 7 * 86400000).toISOString().split('T')[0] },
-      { id: this.uid(this.MEETING_PREFIX, 2), organisation_id: orgs[3].id, deal_id: deals[3].id, meeting_title: 'TEST_MODE_Partnership Review', meeting_type: 'in_person', duration_minutes: 60, notes: 'Reviewed partnership terms. Need to send revised proposal.', follow_up_required: true, follow_up_date: new Date(Date.now() + 3 * 86400000).toISOString().split('T')[0] },
-      { id: this.uid(this.MEETING_PREFIX, 3), organisation_id: orgs[5].id, meeting_title: 'TEST_MODE_Award Entry Guidance', meeting_type: 'phone', duration_minutes: 20, notes: 'Guided them through the entry process. Will submit next week.', follow_up_required: false },
-      { id: this.uid(this.MEETING_PREFIX, 4), organisation_id: orgs[8].id, meeting_title: 'TEST_MODE_Event Planning Debrief', meeting_type: 'conference', duration_minutes: 90, notes: 'Reviewed last event feedback. Planning improvements for next year.', follow_up_required: false }
+      { id: this.uid(this.MEETING_PREFIX, 1), organisation_id: orgs[0].id, deal_id: deals[0].id, subject: 'TEST_MODE_Platinum Sponsorship Discussion', meeting_type: 'video_call', duration_minutes: 45, notes: 'Discussed platinum tier benefits. Very interested.', follow_up_required: true, follow_up_date: new Date(Date.now() + 7 * 86400000).toISOString().split('T')[0] },
+      { id: this.uid(this.MEETING_PREFIX, 2), organisation_id: orgs[3].id, deal_id: deals[3].id, subject: 'TEST_MODE_Partnership Review', meeting_type: 'in_person', duration_minutes: 60, notes: 'Reviewed partnership terms. Need to send revised proposal.', follow_up_required: true, follow_up_date: new Date(Date.now() + 3 * 86400000).toISOString().split('T')[0] },
+      { id: this.uid(this.MEETING_PREFIX, 3), organisation_id: orgs[5].id, subject: 'TEST_MODE_Award Entry Guidance', meeting_type: 'phone', duration_minutes: 20, notes: 'Guided them through the entry process. Will submit next week.', follow_up_required: false },
+      { id: this.uid(this.MEETING_PREFIX, 4), organisation_id: orgs[8].id, subject: 'TEST_MODE_Event Planning Debrief', meeting_type: 'conference', duration_minutes: 90, notes: 'Reviewed last event feedback. Planning improvements for next year.', follow_up_required: false }
     ];
     var meetingResult = await this._safeWrite('meeting_notes', meetings, 'Meetings', 'upsert');
     this._logErr('Meetings', meetingResult.error);
@@ -1049,7 +1049,7 @@ const testDataManager = {
       } catch(e3) { console.warn('Cleanup skip: organisation_segments', e3.message); }
 
       await self._safeDel(STATE.client.from('contact_segments').delete().like('segment_name', 'TEST_MODE_%'));
-      await self._safeDel(STATE.client.from('meeting_notes').delete().like('meeting_title', 'TEST_MODE_%'));
+      await self._safeDel(STATE.client.from('meeting_notes').delete().like('subject', 'TEST_MODE_%'));
       if (orgIds.length > 0) {
         await self._safeDel(STATE.client.from('meeting_notes').delete().in('organisation_id', orgIds));
       }
@@ -1057,7 +1057,7 @@ const testDataManager = {
       if (orgIds.length > 0) {
         await self._safeDel(STATE.client.from('communications').delete().in('organisation_id', orgIds));
       }
-      await self._safeDel(STATE.client.from('deals').delete().like('deal_name', 'TEST_MODE_%'));
+      await self._safeDel(STATE.client.from('deals').delete().like('title', 'TEST_MODE_%'));
       if (orgIds.length > 0) {
         await self._safeDel(STATE.client.from('deals').delete().in('organisation_id', orgIds));
       }
@@ -1082,7 +1082,7 @@ const testDataManager = {
       } catch(e3) { console.warn('Cleanup skip: invoice_line_items', e3.message); }
 
       await self._safeDel(STATE.client.from('invoices').delete().like('invoice_number', 'TEST-INV-%'));
-      await self._safeDel(STATE.client.from('sponsors').delete().like('company_name', 'TEST_MODE_%'));
+      await self._safeDel(STATE.client.from('sponsors').delete().like('name', 'TEST_MODE_%'));
       await self._safeDel(STATE.client.from('banners').delete().like('title', 'TEST_MODE_%'));
       await self._safeDel(STATE.client.from('media_gallery').delete().like('title', 'TEST_MODE_%'));
       if (orgIds.length > 0) {
@@ -1148,11 +1148,11 @@ const testDataManager = {
         STATE.client.from('awards').select('*', { count: 'exact', head: true }).like('award_name', 'TEST_MODE_%'),
         STATE.client.from('event_guests').select('*', { count: 'exact', head: true }).eq('event_id', this.EVENT_ID),
         STATE.client.from('entries').select('*', { count: 'exact', head: true }).like('entry_number', 'TEST-ENT-%'),
-        STATE.client.from('sponsors').select('*', { count: 'exact', head: true }).like('company_name', 'TEST_MODE_%'),
+        STATE.client.from('sponsors').select('*', { count: 'exact', head: true }).like('name', 'TEST_MODE_%'),
         STATE.client.from('banners').select('*', { count: 'exact', head: true }).like('title', 'TEST_MODE_%'),
         STATE.client.from('invoices').select('*', { count: 'exact', head: true }).like('invoice_number', 'TEST-INV-%'),
         STATE.client.from('organisation_contacts').select('*', { count: 'exact', head: true }).like('id', testDataManager.CONTACT_PREFIX + '%'),
-        STATE.client.from('deals').select('*', { count: 'exact', head: true }).like('deal_name', 'TEST_MODE_%'),
+        STATE.client.from('deals').select('*', { count: 'exact', head: true }).like('title', 'TEST_MODE_%'),
         STATE.client.from('communications').select('*', { count: 'exact', head: true }).like('subject', 'TEST_MODE_%')
       ]);
 

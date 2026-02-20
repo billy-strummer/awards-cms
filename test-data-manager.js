@@ -41,11 +41,83 @@ const testDataManager = {
    */
   _logErr(step, err) {
     if (err) {
-      console.warn(step + ':', err.message || err);
-      utils.showToast('Error: ' + step + ' - ' + (err.message || err), 'warning');
+      var msg = err.message || JSON.stringify(err);
+      var code = err.code ? ' [' + err.code + ']' : '';
+      var detail = err.details ? ' | ' + err.details : '';
+      var hint = err.hint ? ' | Hint: ' + err.hint : '';
+      console.warn(step + code + ':', msg + detail + hint);
+      utils.showToast('Error: ' + step + ' - ' + msg, 'warning');
       return true;
     }
     return false;
+  },
+
+  /**
+   * Resilient write: auto-strips columns the database doesn't have and retries.
+   * Works regardless of which migrations have been applied.
+   * @param {string} table - Table name
+   * @param {object|array} records - Data to write
+   * @param {string} label - Human-readable label for logging
+   * @param {string} mode - 'upsert' or 'insert'
+   * @returns {{error: object|null, stripped: string[]}}
+   */
+  async _safeWrite(table, records, label, mode) {
+    var data = JSON.parse(JSON.stringify(records)); // deep copy to avoid mutating originals
+    var stripped = [];
+
+    for (var attempt = 0; attempt < 20; attempt++) {
+      var r = (mode === 'upsert')
+        ? await STATE.client.from(table).upsert(data)
+        : await STATE.client.from(table).insert(data);
+
+      if (!r.error) {
+        if (stripped.length > 0) {
+          console.log(label + ': OK (auto-stripped missing columns: ' + stripped.join(', ') + ')');
+          utils.showToast(label + ': inserted (skipped cols: ' + stripped.join(', ') + ')', 'info');
+        }
+        return { error: null, stripped: stripped };
+      }
+
+      // Build full error text for pattern matching
+      var errText = (r.error.message || '') + ' ' + (r.error.details || '') + ' ' + (r.error.hint || '');
+
+      // PostgREST pattern: "Could not find the 'colname' column of 'table' in the schema cache"
+      var match = errText.match(/Could not find the '([^']+)' column/);
+      // PostgreSQL pattern: column "colname" of relation "table" does not exist
+      if (!match) match = errText.match(/column "([^"]+)".*does not exist/);
+      // Generic fallback
+      if (!match) match = errText.match(/Could not find.*?column.*?'([^']+)'/i);
+
+      // Check for table not found (not a column issue - bail out)
+      if (!match && /Could not find.*in the schema cache/i.test(errText) && !/column/i.test(errText)) {
+        console.warn(label + ': table "' + table + '" not found in schema cache');
+        return { error: r.error, stripped: stripped };
+      }
+
+      if (!match || stripped.indexOf(match[1]) >= 0) {
+        // Not a column error or already stripped this column - return as-is
+        return { error: r.error, stripped: stripped };
+      }
+
+      var badCol = match[1];
+      stripped.push(badCol);
+      console.warn(label + ': auto-stripping missing column "' + badCol + '", retrying...');
+
+      if (Array.isArray(data)) {
+        data.forEach(function(row) { delete row[badCol]; });
+      } else {
+        delete data[badCol];
+      }
+    }
+
+    return { error: { message: 'Too many missing columns stripped: ' + stripped.join(', ') }, stripped: stripped };
+  },
+
+  /**
+   * Safe delete: swallows errors from missing tables/columns
+   */
+  async _safeDel(promise) {
+    try { await promise; } catch(e) { console.warn('Cleanup skip:', e.message || e); }
   },
 
   /**
@@ -91,21 +163,44 @@ const testDataManager = {
     const eventId = this.EVENT_ID;
     var errors = [];
 
+    // ===== Pre-flight: verify database connectivity =====
+    utils.showToast('Pre-flight check: testing database connection...', 'info');
+    try {
+      var { data: pfData, error: pfErr } = await STATE.client.from('events').select('id').limit(1);
+      if (pfErr) {
+        var pfMsg = 'Pre-flight FAILED: cannot read from database. Error: ' + (pfErr.message || JSON.stringify(pfErr));
+        if (pfErr.code) pfMsg += ' [code: ' + pfErr.code + ']';
+        if (pfErr.hint) pfMsg += ' Hint: ' + pfErr.hint;
+        console.error(pfMsg);
+        utils.showToast(pfMsg, 'error');
+        this.showModal('Database Connection Error',
+          '<div class="alert alert-danger"><h6>Cannot connect to database</h6>' +
+          '<p>' + pfMsg + '</p>' +
+          '<p>Check that:<br>- You are logged in<br>- Your internet connection is working<br>- The Supabase project is running</p></div>');
+        return;
+      }
+      console.log('Pre-flight OK: database is accessible');
+    } catch(pfE) {
+      console.error('Pre-flight exception:', pfE);
+      utils.showToast('Pre-flight FAILED: ' + (pfE.message || pfE), 'error');
+      return;
+    }
+
     // ===== Step 0: Seed counties reference data if empty =====
     try { await this.seedCounties(); } catch(e) { this._logErr('Counties seed', e); }
 
     // ===== Step 1: Create test event =====
     utils.showToast('Step 1/15: Creating test event...', 'info');
     try {
-      var { error: eventErr } = await STATE.client.from('events').upsert({
+      var evtResult = await this._safeWrite('events', {
         id: eventId,
         event_name: 'TEST_MODE_2025 Awards Gala',
         event_date: '2025-12-15',
         year: 2025,
         venue: 'Grand Test Ballroom',
         description: '[TEST MODE] This is a test event with mock winners for testing the CMS'
-      });
-      if (this._logErr('Events', eventErr)) errors.push('events');
+      }, 'Events', 'upsert');
+      if (this._logErr('Events', evtResult.error)) errors.push('events');
     } catch(e) { this._logErr('Events', e); errors.push('events'); }
 
     // ===== Step 2: Create 10 test awards =====
@@ -124,12 +219,12 @@ const testDataManager = {
     ];
     try {
       // Try direct table first, fall back to view with delete+insert
-      var { error: awardsErr } = await STATE.client.from('award_years').upsert(awards);
-      if (awardsErr) {
-        console.warn('award_years upsert failed, trying awards view:', awardsErr.message);
-        await STATE.client.from('awards').delete().like('award_name', 'TEST_MODE_%');
-        var { error: awardsErr2 } = await STATE.client.from('awards').insert(awards);
-        if (this._logErr('Awards (via view)', awardsErr2)) errors.push('awards');
+      var awardsResult = await this._safeWrite('award_years', awards, 'Awards (award_years)', 'upsert');
+      if (awardsResult.error) {
+        console.warn('award_years upsert failed, trying awards view:', awardsResult.error.message);
+        try { await STATE.client.from('awards').delete().like('award_name', 'TEST_MODE_%'); } catch(e2) {}
+        var awardsResult2 = await this._safeWrite('awards', awards, 'Awards (view)', 'insert');
+        if (this._logErr('Awards (via view)', awardsResult2.error)) errors.push('awards');
       }
     } catch(e) { this._logErr('Awards', e); errors.push('awards'); }
 
@@ -163,15 +258,17 @@ const testDataManager = {
       id: this.uid(this.ORG_PREFIX, i + 1),
       company_name: 'TEST_MODE_' + name,
       sector: industries[i],
+      description: 'Test organisation #' + (i + 1),
       region: regions[i],
+      status: 'active',
       contact_name: 'Contact ' + (i + 1),
       email: name.toLowerCase().replace(/[^a-z0-9]/g, '.') + '@example.com',
       website: 'https://' + name.toLowerCase().replace(/[^a-z0-9]/g, '') + '.example.com',
       contact_phone: '020 ' + String(7000 + i).padStart(4, '0') + ' ' + String(1000 + i * 37).padStart(4, '0')
     }));
     try {
-      var { error: orgsErr } = await STATE.client.from('organisations').upsert(orgs);
-      if (this._logErr('Organisations', orgsErr)) errors.push('organisations');
+      var orgsResult = await this._safeWrite('organisations', orgs, 'Organisations', 'upsert');
+      if (this._logErr('Organisations', orgsResult.error)) errors.push('organisations');
     } catch(e) { this._logErr('Organisations', e); errors.push('organisations'); }
 
     // ===== Step 4: Create 30 award assignments (3 winners per award) =====
@@ -195,8 +292,8 @@ const testDataManager = {
       }
     }
     try {
-      var { error: assignErr } = await STATE.client.from('award_assignments').upsert(assignments);
-      if (this._logErr('Award assignments', assignErr)) errors.push('award_assignments');
+      var assignResult = await this._safeWrite('award_assignments', assignments, 'Award assignments', 'upsert');
+      if (this._logErr('Award assignments', assignResult.error)) errors.push('award_assignments');
     } catch(e) { this._logErr('Award assignments', e); errors.push('award_assignments'); }
 
     // ===== Step 4b: Populate winners table =====
@@ -214,8 +311,8 @@ const testDataManager = {
       winnerIdx++;
     }
     try {
-      var { error: winnerErr } = await STATE.client.from('winners').upsert(winners);
-      if (this._logErr('Winners', winnerErr)) errors.push('winners');
+      var winnerResult = await this._safeWrite('winners', winners, 'Winners', 'upsert');
+      if (this._logErr('Winners', winnerResult.error)) errors.push('winners');
     } catch(e) { this._logErr('Winners', e); errors.push('winners'); }
 
     // ===== Step 5: Create event guests (RSVPs) =====
@@ -224,14 +321,14 @@ const testDataManager = {
       var guests = orgs.map(function(org) {
         return {
           event_id: eventId,
-          name: 'CEO ' + org.company_name.replace('TEST_MODE_', ''),
-          email: org.email,
+          guest_name: 'CEO ' + org.company_name.replace('TEST_MODE_', ''),
+          guest_email: org.email,
           rsvp_status: 'confirmed'
         };
       });
-      await STATE.client.from('event_guests').delete().eq('event_id', eventId);
-      var { error: guestErr } = await STATE.client.from('event_guests').insert(guests);
-      if (this._logErr('Event guests', guestErr)) errors.push('event_guests');
+      try { await STATE.client.from('event_guests').delete().eq('event_id', eventId); } catch(e2) {}
+      var guestResult = await this._safeWrite('event_guests', guests, 'Event guests', 'insert');
+      if (this._logErr('Event guests', guestResult.error)) errors.push('event_guests');
     } catch(e) { this._logErr('Event guests', e); errors.push('event_guests'); }
 
     // ===== Step 6: Create entries with varied statuses =====
@@ -270,13 +367,20 @@ const testDataManager = {
     utils.showToast('Step 14/15: Creating follow-ups & scheduled reports...', 'info');
     try { await this.generateExtras(orgs); } catch(e) { this._logErr('Extras', e); errors.push('extras'); }
 
-    // ===== Step 15: Done =====
+    // ===== Step 15: Done - show summary =====
     if (errors.length > 0) {
-      utils.showToast('Test data generated with ' + errors.length + ' error(s): ' + errors.join(', ') + '. Check console.', 'warning');
+      utils.showToast('Test data generated with ' + errors.length + ' error(s). See details below.', 'warning');
+      var errorHtml = '<div class="alert alert-warning"><h6>Partial Success</h6>' +
+        '<p>Test data was generated but ' + errors.length + ' table(s) had errors:</p>' +
+        '<ul>' + errors.map(function(e) { return '<li><code>' + e + '</code></li>'; }).join('') + '</ul>' +
+        '<p class="small">Errors usually mean missing database columns. Run the migration SQL files in Supabase SQL Editor to add missing columns, then try again.</p>' +
+        '</div>' +
+        '<p>Tables that succeeded should now have test data. Click "Reload Page" to see it.</p>';
+      setTimeout(function() { testDataManager.showModal('Test Data - Partial Success', errorHtml, true); }, 500);
     } else {
       utils.showToast('Step 15/15: All test data generated! Reload to see it.', 'success');
+      setTimeout(function() { testDataManager.showInfoModal(); }, 1000);
     }
-    setTimeout(function() { testDataManager.showInfoModal(); }, 1000);
   },
 
   /**
@@ -296,24 +400,30 @@ const testDataManager = {
         organisation_id: orgs[orgIdx].id,
         award_id: awards[awardIdx].id,
         entry_title: 'TEST_MODE_Entry: ' + orgs[orgIdx].company_name.replace('TEST_MODE_', '') + ' for ' + awards[awardIdx].award_name.replace('TEST_MODE_', ''),
-        entry_description: 'This is a test entry #' + (i + 1) + '. Outstanding achievements in ' + awards[awardIdx].award_category + '.',
+        entry_description: 'This is a test entry #' + (i + 1) + ' demonstrating the awards entry submission process.',
+        why_should_win: 'Outstanding achievements in ' + awards[awardIdx].award_category + ' including significant growth and innovation.',
+        supporting_information: 'Revenue increased 45% year-over-year. Launched 3 new products. Expanded to 5 new markets.',
         contact_name: 'Contact Person ' + (i + 1),
         contact_email: 'entry' + (i + 1) + '@example.com',
+        contact_phone: '0' + (1234567890 + i),
+        contact_position: ['CEO', 'CTO', 'COO', 'CFO', 'Director'][i % 5],
         status: status,
         payment_status: payStatuses[i % 3],
+        year: 2025,
         is_shortlisted: status === 'shortlisted' || status === 'winner',
         shortlisted_date: (status === 'shortlisted' || status === 'winner') ? '2025-09-01' : null,
         submission_date: '2025-0' + Math.min(i % 9 + 1, 9) + '-' + String((i % 28) + 1).padStart(2, '0'),
+        is_self_nomination: i % 4 === 0,
         allow_public_voting: i % 3 === 0,
         is_public: status !== 'draft',
         public_votes: i % 3 === 0 ? Math.floor(Math.random() * 50) + 5 : 0,
-        vote_count: i % 3 === 0 ? Math.floor(Math.random() * 8) + 2 : 0,
         average_score: status === 'winner' ? 8.5 + Math.random() : (status === 'shortlisted' ? 7.0 + Math.random() * 1.5 : null),
+        total_scores: ['under_review', 'shortlisted', 'winner'].includes(status) ? 3 : 0,
         admin_notes: status === 'rejected' ? '[TEST] Did not meet minimum criteria' : null
       });
     }
-    var { error: entryErr } = await STATE.client.from('entries').upsert(entries);
-    this._logErr('Entries', entryErr);
+    var entryResult = await this._safeWrite('entries', entries, 'Entries', 'upsert');
+    this._logErr('Entries', entryResult.error);
 
     // Judge scores for entries that are under_review, shortlisted, or winner
     var scoredEntries = entries.filter(function(e) {
@@ -338,10 +448,10 @@ const testDataManager = {
     }
     if (scoreRecords.length > 0) {
       for (var di = 0; di < scoredEntries.length; di++) {
-        await STATE.client.from('judge_scores').delete().eq('entry_id', scoredEntries[di].id);
+        try { await STATE.client.from('judge_scores').delete().eq('entry_id', scoredEntries[di].id); } catch(e3) {}
       }
-      var { error: scoreErr } = await STATE.client.from('judge_scores').insert(scoreRecords);
-      this._logErr('Judge scores', scoreErr);
+      var scoreResult = await this._safeWrite('judge_scores', scoreRecords, 'Judge scores', 'insert');
+      this._logErr('Judge scores', scoreResult.error);
     }
 
     // Public votes for entries that allow it
@@ -357,17 +467,21 @@ const testDataManager = {
         voteRecords.push({
           id: this.uid(this.VOTE_PREFIX, voteIdx),
           entry_id: vEntry.id,
-          voter_email: 'voter' + voteIdx + '@example.com'
+          voter_email: 'voter' + voteIdx + '@example.com',
+          voter_name: 'Test Voter ' + voteIdx,
+          voter_ip: '192.168.1.' + ((voteIdx % 254) + 1),
+          vote_value: 1,
+          email_verified: true
         });
         voteIdx++;
       }
     }
     if (voteRecords.length > 0) {
       for (var dvi = 0; dvi < votableEntries.length; dvi++) {
-        await STATE.client.from('public_votes').delete().eq('entry_id', votableEntries[dvi].id);
+        try { await STATE.client.from('public_votes').delete().eq('entry_id', votableEntries[dvi].id); } catch(e3) {}
       }
-      var { error: voteErr } = await STATE.client.from('public_votes').insert(voteRecords);
-      this._logErr('Public votes', voteErr);
+      var voteResult = await this._safeWrite('public_votes', voteRecords, 'Public votes', 'insert');
+      this._logErr('Public votes', voteResult.error);
     }
   },
 
@@ -376,14 +490,14 @@ const testDataManager = {
    */
   async generateMarketingData() {
     var sponsors = [
-      { id: this.uid(this.SPONSOR_PREFIX, 1), name: 'TEST_MODE_Platinum Corp', tier: 'Platinum', website: 'https://example.com/platinum', is_active: true },
-      { id: this.uid(this.SPONSOR_PREFIX, 2), name: 'TEST_MODE_Gold Industries', tier: 'Gold', website: 'https://example.com/gold', is_active: true },
-      { id: this.uid(this.SPONSOR_PREFIX, 3), name: 'TEST_MODE_Silver Solutions', tier: 'Silver', website: 'https://example.com/silver', is_active: true },
-      { id: this.uid(this.SPONSOR_PREFIX, 4), name: 'TEST_MODE_Bronze Partners', tier: 'Bronze', website: 'https://example.com/bronze', is_active: true },
-      { id: this.uid(this.SPONSOR_PREFIX, 5), name: 'TEST_MODE_Community Partner', tier: 'Partner', website: 'https://example.com/partner', is_active: true }
+      { id: this.uid(this.SPONSOR_PREFIX, 1), name: 'TEST_MODE_Platinum Corp', company_name: 'TEST_MODE_Platinum Corp', tier: 'Platinum', sponsorship_amount: 25000, contact_name: 'Sarah Platinum', email: 'sarah@platinumcorp.example.com', website: 'https://example.com/platinum', is_active: true, display_order: 1 },
+      { id: this.uid(this.SPONSOR_PREFIX, 2), name: 'TEST_MODE_Gold Industries', company_name: 'TEST_MODE_Gold Industries', tier: 'Gold', sponsorship_amount: 15000, contact_name: 'James Gold', email: 'james@goldindustries.example.com', website: 'https://example.com/gold', is_active: true, display_order: 2 },
+      { id: this.uid(this.SPONSOR_PREFIX, 3), name: 'TEST_MODE_Silver Solutions', company_name: 'TEST_MODE_Silver Solutions', tier: 'Silver', sponsorship_amount: 7500, contact_name: 'Emma Silver', email: 'emma@silversolutions.example.com', website: 'https://example.com/silver', is_active: true, display_order: 3 },
+      { id: this.uid(this.SPONSOR_PREFIX, 4), name: 'TEST_MODE_Bronze Partners', company_name: 'TEST_MODE_Bronze Partners', tier: 'Bronze', sponsorship_amount: 3500, contact_name: 'Tom Bronze', email: 'tom@bronzepartners.example.com', website: 'https://example.com/bronze', is_active: true, display_order: 4 },
+      { id: this.uid(this.SPONSOR_PREFIX, 5), name: 'TEST_MODE_Community Partner', company_name: 'TEST_MODE_Community Partner', tier: 'Partner', sponsorship_amount: 1000, contact_name: 'Lisa Partner', email: 'lisa@communitypartner.example.com', website: 'https://example.com/partner', is_active: true, display_order: 5 }
     ];
-    var { error: sponsorErr } = await STATE.client.from('sponsors').upsert(sponsors);
-    this._logErr('Sponsors', sponsorErr);
+    var sponsorResult = await this._safeWrite('sponsors', sponsors, 'Sponsors', 'upsert');
+    this._logErr('Sponsors', sponsorResult.error);
 
     var today = new Date().toISOString().split('T')[0];
     var banners = [
@@ -392,8 +506,8 @@ const testDataManager = {
       { id: this.uid(this.BANNER_PREFIX, 3), title: 'TEST_MODE_Early Bird Tickets', position: 'footer', image_url: 'https://placehold.co/728x90?text=Early+Bird+Tickets', link_url: 'https://example.com/tickets', width: 728, height: 90, is_active: true, display_order: 3, impressions: 560, clicks: 23, start_date: today },
       { id: this.uid(this.BANNER_PREFIX, 4), title: 'TEST_MODE_Vote Now', position: 'popup', image_url: 'https://placehold.co/600x400?text=Vote+Now', link_url: 'https://example.com/vote', width: 600, height: 400, is_active: false, display_order: 4, impressions: 320, clicks: 15, start_date: today }
     ];
-    var { error: bannerErr } = await STATE.client.from('banners').upsert(banners);
-    this._logErr('Banners', bannerErr);
+    var bannerResult = await this._safeWrite('banners', banners, 'Banners', 'upsert');
+    this._logErr('Banners', bannerResult.error);
   },
 
   /**
@@ -413,8 +527,8 @@ const testDataManager = {
         email: fn.toLowerCase() + '.' + lastNames[i].toLowerCase() + '@example.com'
       };
     });
-    var { error: contactErr } = await STATE.client.from('organisation_contacts').upsert(contacts);
-    this._logErr('Contacts', contactErr);
+    var contactResult = await this._safeWrite('organisation_contacts', contacts, 'Contacts', 'upsert');
+    this._logErr('Contacts', contactResult.error);
 
     // Communications (10 records)
     var commTypes = ['email', 'phone', 'meeting', 'email', 'phone', 'linkedin', 'email', 'note', 'email', 'phone'];
@@ -438,27 +552,71 @@ const testDataManager = {
         follow_up_date: i % 3 === 0 ? new Date(Date.now() + (i + 1) * 86400000 * 3).toISOString().split('T')[0] : null
       };
     });
-    var { error: commErr } = await STATE.client.from('communications').upsert(comms);
-    this._logErr('Communications', commErr);
+    var commResult = await this._safeWrite('communications', comms, 'Communications', 'upsert');
+    this._logErr('Communications', commResult.error);
 
     // Deals (6 at various stages)
     var dealStages = ['lead', 'contacted', 'qualified', 'proposal', 'negotiation', 'closed_won'];
     var dealTypes = ['sponsorship', 'award_fee', 'event_tickets', 'partnership', 'package_upgrade', 'sponsorship'];
     var dealValues = [25000, 500, 2500, 10000, 1500, 15000];
+    var dealProbs = [10, 25, 50, 65, 80, 100];
     var deals = dealStages.map(function(stage, i) {
       return {
         id: testDataManager.uid(testDataManager.DEAL_PREFIX, i + 1),
         organisation_id: orgs[i].id,
-        title: 'TEST_MODE_' + orgs[i].company_name.replace('TEST_MODE_', '') + ' - ' + dealTypes[i],
+        contact_id: contacts[i].id,
+        deal_name: 'TEST_MODE_' + orgs[i].company_name.replace('TEST_MODE_', '') + ' - ' + dealTypes[i],
+        deal_type: dealTypes[i],
         stage: stage,
-        value: dealValues[i]
+        probability: dealProbs[i],
+        deal_value: dealValues[i],
+        status: stage === 'closed_won' ? 'won' : 'active',
+        expected_close_date: new Date(Date.now() + (i + 1) * 86400000 * 14).toISOString().split('T')[0],
+        actual_close_date: stage === 'closed_won' ? new Date().toISOString().split('T')[0] : null,
+        description: 'Test deal for ' + dealTypes[i] + ' with ' + orgs[i].company_name.replace('TEST_MODE_', '')
       };
     });
-    var { error: dealErr } = await STATE.client.from('deals').upsert(deals);
-    this._logErr('Deals', dealErr);
+    var dealResult = await this._safeWrite('deals', deals, 'Deals', 'upsert');
+    this._logErr('Deals', dealResult.error);
 
-    // NOTE: meeting_notes, contact_segments, organisation_segments tables
-    // do not exist in the database schema - skipped
+    // Meeting notes (4 meetings)
+    var meetings = [
+      { id: this.uid(this.MEETING_PREFIX, 1), organisation_id: orgs[0].id, deal_id: deals[0].id, meeting_title: 'TEST_MODE_Platinum Sponsorship Discussion', meeting_type: 'video_call', duration_minutes: 45, notes: 'Discussed platinum tier benefits. Very interested.', follow_up_required: true, follow_up_date: new Date(Date.now() + 7 * 86400000).toISOString().split('T')[0] },
+      { id: this.uid(this.MEETING_PREFIX, 2), organisation_id: orgs[3].id, deal_id: deals[3].id, meeting_title: 'TEST_MODE_Partnership Review', meeting_type: 'in_person', duration_minutes: 60, notes: 'Reviewed partnership terms. Need to send revised proposal.', follow_up_required: true, follow_up_date: new Date(Date.now() + 3 * 86400000).toISOString().split('T')[0] },
+      { id: this.uid(this.MEETING_PREFIX, 3), organisation_id: orgs[5].id, meeting_title: 'TEST_MODE_Award Entry Guidance', meeting_type: 'phone', duration_minutes: 20, notes: 'Guided them through the entry process. Will submit next week.', follow_up_required: false },
+      { id: this.uid(this.MEETING_PREFIX, 4), organisation_id: orgs[8].id, meeting_title: 'TEST_MODE_Event Planning Debrief', meeting_type: 'conference', duration_minutes: 90, notes: 'Reviewed last event feedback. Planning improvements for next year.', follow_up_required: false }
+    ];
+    var meetingResult = await this._safeWrite('meeting_notes', meetings, 'Meetings', 'upsert');
+    this._logErr('Meetings', meetingResult.error);
+
+    // Contact segments (3 segments)
+    var segments = [
+      { id: this.uid(this.SEGMENT_PREFIX, 1), segment_name: 'TEST_MODE_VIP Sponsors', description: 'High-value sponsors (Gold+ tier)', color: '#FFD700', icon: 'bi-star-fill' },
+      { id: this.uid(this.SEGMENT_PREFIX, 2), segment_name: 'TEST_MODE_Active Entrants', description: 'Organisations with active award entries', color: '#28a745', icon: 'bi-file-earmark-check' },
+      { id: this.uid(this.SEGMENT_PREFIX, 3), segment_name: 'TEST_MODE_Past Winners', description: 'Previous award winners', color: '#6f42c1', icon: 'bi-trophy' }
+    ];
+    var segResult = await this._safeWrite('contact_segments', segments, 'Segments', 'upsert');
+    this._logErr('Segments', segResult.error);
+
+    // Organisation-segment relationships
+    var orgSegments = [];
+    // VIP Sponsors: first 3 orgs
+    for (var s1 = 0; s1 < 3; s1++) {
+      orgSegments.push({ organisation_id: orgs[s1].id, segment_id: segments[0].id });
+    }
+    // Active Entrants: orgs 4-8
+    for (var s2 = 3; s2 < 8; s2++) {
+      orgSegments.push({ organisation_id: orgs[s2].id, segment_id: segments[1].id });
+    }
+    // Past Winners: orgs 9-14
+    for (var s3 = 8; s3 < 14; s3++) {
+      orgSegments.push({ organisation_id: orgs[s3].id, segment_id: segments[2].id });
+    }
+    for (var ds = 0; ds < segments.length; ds++) {
+      try { await STATE.client.from('organisation_segments').delete().eq('segment_id', segments[ds].id); } catch(e3) {}
+    }
+    var orgSegResult = await this._safeWrite('organisation_segments', orgSegments, 'Org segments', 'insert');
+    this._logErr('Org segments', orgSegResult.error);
   },
 
   /**
@@ -488,8 +646,8 @@ const testDataManager = {
         notes: '[TEST MODE] Invoice #' + (ii + 1) + ' for ' + types[ii]
       });
     }
-    var { error: invErr } = await STATE.client.from('invoices').upsert(invoices);
-    this._logErr('Invoices', invErr);
+    var invResult = await this._safeWrite('invoices', invoices, 'Invoices', 'upsert');
+    this._logErr('Invoices', invResult.error);
 
     // Line items
     var lineItems = [];
@@ -497,20 +655,20 @@ const testDataManager = {
       var inv = invoices[li];
       if (inv.invoice_type === 'package') {
         lineItems.push(
-          { invoice_id: inv.id, description: 'Awards Package', quantity: 1, unit_price: inv.total_amount * 0.8, total: inv.total_amount * 0.8 },
-          { invoice_id: inv.id, description: 'Additional Guest Tickets', quantity: Math.ceil(inv.total_amount * 0.2 / 50), unit_price: 50, total: inv.total_amount * 0.2 }
+          { invoice_id: inv.id, item_name: 'Awards Package', quantity: 1, unit_price: inv.total_amount * 0.8, line_total: inv.total_amount * 0.8 },
+          { invoice_id: inv.id, item_name: 'Additional Guest Tickets', quantity: Math.ceil(inv.total_amount * 0.2 / 50), unit_price: 50, line_total: inv.total_amount * 0.2 }
         );
       } else if (inv.invoice_type === 'entry_fee') {
-        lineItems.push({ invoice_id: inv.id, description: 'Award Entry Fee', quantity: 1, unit_price: inv.total_amount, total: inv.total_amount });
+        lineItems.push({ invoice_id: inv.id, item_name: 'Award Entry Fee', quantity: 1, unit_price: inv.total_amount, line_total: inv.total_amount });
       } else {
-        lineItems.push({ invoice_id: inv.id, description: 'Sponsorship Package', quantity: 1, unit_price: inv.total_amount, total: inv.total_amount });
+        lineItems.push({ invoice_id: inv.id, item_name: 'Sponsorship Package', quantity: 1, unit_price: inv.total_amount, line_total: inv.total_amount });
       }
     }
     for (var dli = 0; dli < invoices.length; dli++) {
-      await STATE.client.from('invoice_line_items').delete().eq('invoice_id', invoices[dli].id);
+      try { await STATE.client.from('invoice_line_items').delete().eq('invoice_id', invoices[dli].id); } catch(e3) {}
     }
-    var { error: liErr } = await STATE.client.from('invoice_line_items').insert(lineItems);
-    this._logErr('Line items', liErr);
+    var liResult = await this._safeWrite('invoice_line_items', lineItems, 'Line items', 'insert');
+    this._logErr('Line items', liResult.error);
 
     // Payments for paid invoices
     var paidInvoices = invoices.filter(function(inv) { return inv.payment_status === 'paid'; });
@@ -522,11 +680,13 @@ const testDataManager = {
         organisation_id: inv.organisation_id,
         payment_date: new Date(Date.now() - (10 - i * 2) * 86400000).toISOString().split('T')[0],
         amount: inv.total_amount,
-        payment_method: ['bank_transfer', 'card', 'stripe'][i % 3]
+        payment_method: ['bank_transfer', 'card', 'stripe'][i % 3],
+        status: 'completed',
+        notes: '[TEST MODE] Payment for ' + inv.invoice_number
       };
     });
-    var { error: payErr } = await STATE.client.from('payments').upsert(payments);
-    this._logErr('Payments', payErr);
+    var payResult = await this._safeWrite('payments', payments, 'Payments', 'upsert');
+    this._logErr('Payments', payResult.error);
   },
 
   /**
@@ -537,8 +697,8 @@ const testDataManager = {
       { id: this.uid(this.GALLERY_PREFIX, 1), event_id: eventId, gallery_name: 'TEST_MODE_Awards Ceremony', gallery_description: 'Photos from the main ceremony', display_order: 1 },
       { id: this.uid(this.GALLERY_PREFIX, 2), event_id: eventId, gallery_name: 'TEST_MODE_Winners Collection', gallery_description: 'Winner announcement photos', display_order: 2 }
     ];
-    var { error: galErr } = await STATE.client.from('event_galleries').upsert(galleries);
-    this._logErr('Galleries', galErr);
+    var galResult = await this._safeWrite('event_galleries', galleries, 'Galleries', 'upsert');
+    this._logErr('Galleries', galResult.error);
 
     var mediaItems = [];
     for (var mi = 0; mi < 10; mi++) {
@@ -554,23 +714,30 @@ const testDataManager = {
         display_order: mi + 1
       });
     }
-    var { error: miErr } = await STATE.client.from('media_items').upsert(mediaItems);
-    this._logErr('Media items', miErr);
+    var miResult = await this._safeWrite('media_items', mediaItems, 'Media items', 'upsert');
+    this._logErr('Media items', miResult.error);
 
     var mediaGallery = [];
     for (var mg = 0; mg < 8; mg++) {
       mediaGallery.push({
         id: this.uid(this.MEDIA_GAL_PREFIX, mg + 1),
+        gallery_section_id: galleries[mg < 4 ? 0 : 1].id,
         file_url: 'https://placehold.co/800x600?text=Award+Photo+' + (mg + 1),
         file_type: 'image/jpeg',
         organisation_id: orgs[mg].id,
         award_id: awards[mg % 10].id,
         title: 'TEST_MODE_Gallery Photo ' + (mg + 1),
-        published: true
+        caption: 'Winner photo ' + (mg + 1) + ' from the awards ceremony',
+        photographer: 'Test Photographer',
+        published: true,
+        display_order: mg + 1,
+        show_in_gallery: true,
+        show_on_winner_page: mg < 5,
+        show_on_company_page: true
       });
     }
-    var { error: mgErr } = await STATE.client.from('media_gallery').upsert(mediaGallery);
-    this._logErr('Media gallery', mgErr);
+    var mgResult = await this._safeWrite('media_gallery', mediaGallery, 'Media gallery', 'upsert');
+    this._logErr('Media gallery', mgResult.error);
   },
 
   /**
@@ -583,22 +750,30 @@ const testDataManager = {
       runningOrder.push({
         id: this.uid(this.RUNNING_PREFIX, ro + 1),
         event_id: eventId,
-        item_name: awards[ro].award_name.replace('TEST_MODE_', '') + ' - ' + orgs[winnerOrgIdx - 1].company_name.replace('TEST_MODE_', ''),
+        organisation_id: this.uid(this.ORG_PREFIX, winnerOrgIdx),
+        award_id: awards[ro].id,
+        display_name: orgs[winnerOrgIdx - 1].company_name.replace('TEST_MODE_', ''),
+        award_name: awards[ro].award_name.replace('TEST_MODE_', ''),
+        award_number: '1-' + String(ro + 1).padStart(2, '0'),
         display_order: ro + 1,
-        duration_minutes: 5
+        section: 1,
+        status: ro < 3 ? 'completed' : (ro < 6 ? 'announced' : 'pending'),
+        duration_minutes: 5,
+        notes: ro === 0 ? 'Opening award - extra time for speech' : null
       });
     }
-    await STATE.client.from('running_order').delete().eq('event_id', eventId);
-    var { error: roErr } = await STATE.client.from('running_order').insert(runningOrder);
-    this._logErr('Running order', roErr);
+    try { await STATE.client.from('running_order').delete().eq('event_id', eventId); } catch(e2) {}
+    var roResult = await this._safeWrite('running_order', runningOrder, 'Running order', 'insert');
+    this._logErr('Running order', roResult.error);
 
     // Running order settings
-    var { error: rosErr } = await STATE.client.from('running_order_settings').upsert({
+    var rosResult = await this._safeWrite('running_order_settings', {
       id: this.uid(this.RUNNING_PREFIX, 99),
       event_id: eventId,
-      settings: { time_per_award: 5, break_after: 5, ceremony_type: 'formal' }
-    });
-    this._logErr('Running order settings', rosErr);
+      settings: { time_per_award: 5, break_after: 5, ceremony_type: 'formal' },
+      is_published: false
+    }, 'Running order settings', 'upsert');
+    this._logErr('Running order settings', rosResult.error);
   },
 
   /**
@@ -640,8 +815,8 @@ const testDataManager = {
       { "Name": 'Antrim', region: 'Northern Ireland' },
       { "Name": 'Berkshire', region: 'South East' }
     ];
-    var { error } = await STATE.client.from('counties').insert(counties);
-    if (this._logErr('Counties seed', error)) return;
+    var countyResult = await this._safeWrite('counties', counties, 'Counties seed', 'insert');
+    if (this._logErr('Counties seed', countyResult.error)) return;
     console.log('Seeded 30 counties for region/county filtering');
   },
 
@@ -649,7 +824,8 @@ const testDataManager = {
    * Generate event attendees, ticket types, and tickets
    */
   async generateEventExtras(eventId, orgs) {
-    // Event attendees (20 attendees)
+    // Event attendees (20 attendees with varied check-in statuses)
+    var guestTypes = ['vip', 'guest', 'sponsor', 'media', 'staff'];
     var mealPrefs = ['standard', 'vegetarian', 'vegan', 'halal', 'gluten-free'];
     var attendees = [];
     for (var i = 0; i < 20; i++) {
@@ -661,13 +837,26 @@ const testDataManager = {
         organisation_id: orgs[i].id,
         table_number: Math.floor(i / 4) + 1,
         meal_preference: mealPrefs[i % 5],
-        rsvp_status: i < 15 ? 'confirmed' : (i < 18 ? 'pending' : 'declined')
+        rsvp_status: i < 15 ? 'confirmed' : (i < 18 ? 'pending' : 'declined'),
+        guest_type: guestTypes[i % 5],
+        plus_ones: i % 4 === 0 ? 1 : 0,
+        checked_in: i < 8,
+        check_in_time: i < 8 ? new Date(Date.now() - (20 - i) * 60000).toISOString() : null,
+        notes: i === 0 ? 'VIP - ensure table 1 placement' : null
       });
     }
-    await STATE.client.from('event_attendees').delete().eq('event_id', eventId);
-    var { error: attErr } = await STATE.client.from('event_attendees').insert(attendees);
-    this._logErr('Attendees', attErr);
-    // NOTE: event_ticket_types table does not exist in schema - skipped
+    try { await STATE.client.from('event_attendees').delete().eq('event_id', eventId); } catch(e2) {}
+    var attResult = await this._safeWrite('event_attendees', attendees, 'Attendees', 'insert');
+    this._logErr('Attendees', attResult.error);
+
+    // Ticket types (3 types)
+    var ticketTypes = [
+      { id: this.uid(this.TICKET_TYPE_PREFIX, 1), event_id: eventId, name: 'TEST_MODE_Standard Ticket', description: 'General admission with dinner', price: 150.00, quantity: 200, sold: 142, early_bird_price: 120.00, includes_table: false, is_active: true },
+      { id: this.uid(this.TICKET_TYPE_PREFIX, 2), event_id: eventId, name: 'TEST_MODE_VIP Table (10)', description: 'Premium table of 10 with champagne reception', price: 2000.00, quantity: 20, sold: 15, early_bird_price: 1750.00, includes_table: true, table_size: 10, is_active: true },
+      { id: this.uid(this.TICKET_TYPE_PREFIX, 3), event_id: eventId, name: 'TEST_MODE_Corporate Package', description: 'Branding, 2 tables, sponsor recognition', price: 5000.00, quantity: 10, sold: 4, includes_table: true, table_size: 10, is_active: true }
+    ];
+    var ttResult = await this._safeWrite('event_ticket_types', ticketTypes, 'Ticket types', 'upsert');
+    this._logErr('Ticket types', ttResult.error);
   },
 
   /**
@@ -682,17 +871,17 @@ const testDataManager = {
       { id: this.uid(this.TEMPLATE_PREFIX, 4), name: 'TEST_MODE_Event Invitation', subject: 'You are invited to the Awards Gala!', body: '<h2>You are invited!</h2><p>We would be honoured to welcome {{company_name}} to the Awards Gala on {{event_date}} at {{venue}}.</p><p>Please RSVP by clicking the link below.</p>', description: 'Event invitation email', is_active: true },
       { id: this.uid(this.TEMPLATE_PREFIX, 5), name: 'TEST_MODE_Winner Announcement', subject: 'And the winner is...', body: '<h2>Winner Announcement</h2><p>We are thrilled to announce the winners of this year\'s awards!</p><p>{{winner_list}}</p><p>Congratulations to all our winners and finalists.</p>', description: 'Public winner announcement', is_active: false }
     ];
-    var { error: tplErr } = await STATE.client.from('email_templates').upsert(templates);
-    this._logErr('Email templates', tplErr);
+    var tplResult = await this._safeWrite('email_templates', templates, 'Email templates', 'upsert');
+    this._logErr('Email templates', tplResult.error);
 
     // Email lists (3 lists)
     var emailLists = [
-      { id: this.uid(this.EMAIL_LIST_PREFIX, 1), list_name: 'TEST_MODE_All Entrants 2025', list_type: 'entrants', is_active: true, color: '#007bff', icon: 'bi-file-earmark-text' },
-      { id: this.uid(this.EMAIL_LIST_PREFIX, 2), list_name: 'TEST_MODE_Sponsors & Partners', list_type: 'sponsors', is_active: true, color: '#28a745', icon: 'bi-star' },
-      { id: this.uid(this.EMAIL_LIST_PREFIX, 3), list_name: 'TEST_MODE_Event Guests', list_type: 'general', is_active: true, color: '#6f42c1', icon: 'bi-calendar-event' }
+      { id: this.uid(this.EMAIL_LIST_PREFIX, 1), list_name: 'TEST_MODE_All Entrants 2025', list_type: 'entrants', is_active: true, color: '#007bff', icon: 'bi-file-earmark-text', description: 'All organisations that submitted entries in 2025', subscriber_count: 15, active_subscriber_count: 14 },
+      { id: this.uid(this.EMAIL_LIST_PREFIX, 2), list_name: 'TEST_MODE_Sponsors & Partners', list_type: 'sponsors', is_active: true, color: '#28a745', icon: 'bi-star', description: 'Current sponsors and strategic partners', subscriber_count: 8, active_subscriber_count: 8 },
+      { id: this.uid(this.EMAIL_LIST_PREFIX, 3), list_name: 'TEST_MODE_Event Guests', list_type: 'general', is_active: true, color: '#6f42c1', icon: 'bi-calendar-event', description: 'Invited guests for the awards ceremony', subscriber_count: 20, active_subscriber_count: 18 }
     ];
-    var { error: listErr } = await STATE.client.from('email_lists').upsert(emailLists);
-    this._logErr('Email lists', listErr);
+    var listResult = await this._safeWrite('email_lists', emailLists, 'Email lists', 'upsert');
+    this._logErr('Email lists', listResult.error);
 
     // Email list subscribers (populate lists with org data)
     var subscribers = [];
@@ -703,7 +892,8 @@ const testDataManager = {
         first_name: 'Contact',
         last_name: orgs[sl].company_name.replace('TEST_MODE_', ''),
         company_name: orgs[sl].company_name.replace('TEST_MODE_', ''),
-        status: sl < 14 ? 'active' : 'unsubscribed'
+        status: sl < 14 ? 'active' : 'unsubscribed',
+        source: 'entry_submission'
       });
     }
     for (var ss = 0; ss < 5; ss++) {
@@ -713,15 +903,16 @@ const testDataManager = {
         first_name: ['Sarah', 'James', 'Emma', 'Tom', 'Lisa'][ss],
         last_name: ['Platinum', 'Gold', 'Silver', 'Bronze', 'Partner'][ss],
         company_name: ['Platinum Corp', 'Gold Industries', 'Silver Solutions', 'Bronze Partners', 'Community Partner'][ss],
-        status: 'active'
+        status: 'active',
+        source: 'manual'
       });
     }
     // Clear existing test subscribers
     for (var dl = 0; dl < emailLists.length; dl++) {
-      await STATE.client.from('email_list_subscribers').delete().eq('list_id', emailLists[dl].id);
+      try { await STATE.client.from('email_list_subscribers').delete().eq('list_id', emailLists[dl].id); } catch(e3) {}
     }
-    var { error: subErr } = await STATE.client.from('email_list_subscribers').insert(subscribers);
-    this._logErr('Email subscribers', subErr);
+    var subResult = await this._safeWrite('email_list_subscribers', subscribers, 'Email subscribers', 'insert');
+    this._logErr('Email subscribers', subResult.error);
 
     // Social media posts (6 posts across different statuses)
     var socialPosts = [
@@ -732,16 +923,33 @@ const testDataManager = {
       { id: this.uid(this.SOCIAL_PREFIX, 5), company_id: orgs[3].id, award_id: awards[3].id, content: 'TEST_MODE_Green Energy Co leads the way in sustainability. Read their story. #GreenBusiness', template_type: 'finalist_spotlight', platforms: ['linkedin'], status: 'draft' },
       { id: this.uid(this.SOCIAL_PREFIX, 6), content: 'Thank you to all our sponsors for making the 2025 Awards possible! #ThankYou #Awards2025', template_type: 'sponsor_thanks', platforms: ['twitter', 'linkedin', 'facebook', 'instagram'], status: 'draft' }
     ];
-    var { error: socialErr } = await STATE.client.from('social_media_posts').upsert(socialPosts);
-    this._logErr('Social media posts', socialErr);
+    var socialResult = await this._safeWrite('social_media_posts', socialPosts, 'Social media posts', 'upsert');
+    this._logErr('Social media posts', socialResult.error);
   },
 
   /**
    * Generate CRM follow-ups and scheduled reports
    */
   async generateExtras(orgs) {
-    // NOTE: organisation_follow_ups and scheduled_reports tables
-    // do not exist in the database schema - skipped
+    // Organisation follow-ups (CRM > My Tasks)
+    var followUps = [
+      { id: this.uid(this.FOLLOWUP_PREFIX, 1), organisation_id: orgs[0].id, company_name: orgs[0].company_name, follow_up_date: new Date(Date.now() + 2 * 86400000).toISOString().split('T')[0], note: 'TEST_MODE_Follow up on platinum sponsorship proposal', completed: false, created_by: 'admin@example.com' },
+      { id: this.uid(this.FOLLOWUP_PREFIX, 2), organisation_id: orgs[2].id, company_name: orgs[2].company_name, follow_up_date: new Date(Date.now() - 1 * 86400000).toISOString().split('T')[0], note: 'TEST_MODE_Chase outstanding entry submission', completed: false, created_by: 'admin@example.com' },
+      { id: this.uid(this.FOLLOWUP_PREFIX, 3), organisation_id: orgs[4].id, company_name: orgs[4].company_name, follow_up_date: new Date(Date.now() + 7 * 86400000).toISOString().split('T')[0], note: 'TEST_MODE_Discuss event table requirements', completed: false, created_by: 'admin@example.com' },
+      { id: this.uid(this.FOLLOWUP_PREFIX, 4), organisation_id: orgs[7].id, company_name: orgs[7].company_name, follow_up_date: new Date(Date.now() - 3 * 86400000).toISOString().split('T')[0], note: 'TEST_MODE_Send revised invoice for package upgrade', completed: true, completed_at: new Date().toISOString(), created_by: 'admin@example.com' },
+      { id: this.uid(this.FOLLOWUP_PREFIX, 5), organisation_id: orgs[9].id, company_name: orgs[9].company_name, follow_up_date: new Date(Date.now() + 14 * 86400000).toISOString().split('T')[0], note: 'TEST_MODE_Book photography session for winner profile', completed: false, created_by: 'admin@example.com' }
+    ];
+    var fuResult = await this._safeWrite('organisation_follow_ups', followUps, 'Follow-ups', 'upsert');
+    this._logErr('Follow-ups', fuResult.error);
+
+    // Scheduled reports (Reports tab)
+    var reports = [
+      { id: this.uid(this.REPORT_PREFIX, 1), name: 'TEST_MODE_Weekly Entry Summary', report_type: 'entries', frequency: 'weekly', recipients: ['admin@example.com'], sections: ['entry_stats', 'status_breakdown'], is_active: true, next_run_at: new Date(Date.now() + 7 * 86400000).toISOString(), created_by: 'admin@example.com' },
+      { id: this.uid(this.REPORT_PREFIX, 2), name: 'TEST_MODE_Monthly Financial Report', report_type: 'financial', frequency: 'monthly', recipients: ['admin@example.com', 'finance@example.com'], sections: ['revenue', 'payments', 'overdue'], is_active: true, next_run_at: new Date(Date.now() + 30 * 86400000).toISOString(), created_by: 'admin@example.com' },
+      { id: this.uid(this.REPORT_PREFIX, 3), name: 'TEST_MODE_Judge Scoring Progress', report_type: 'judging', frequency: 'daily', recipients: ['admin@example.com'], sections: ['judge_progress', 'score_distribution'], is_active: false, created_by: 'admin@example.com' }
+    ];
+    var repResult = await this._safeWrite('scheduled_reports', reports, 'Scheduled reports', 'upsert');
+    this._logErr('Scheduled reports', repResult.error);
   },
 
   /**
@@ -788,139 +996,124 @@ const testDataManager = {
       var entryIds = (testEntries || []).map(function(e) { return e.id; });
 
       utils.showToast('Removing test data...', 'info');
+      var self = this;
 
-      // ---- EXTENDED TABLES ----
+      // ---- NEW TABLES (added for full coverage) ----
+      // Each delete is wrapped in _safeDel so one missing table won't stop the rest
 
-      // A. Social media posts
-      await STATE.client.from('social_media_posts').delete().like('content', '%TEST_MODE_%');
+      await self._safeDel(STATE.client.from('scheduled_reports').delete().like('name', 'TEST_MODE_%'));
+      await self._safeDel(STATE.client.from('organisation_follow_ups').delete().like('note', 'TEST_MODE_%'));
       if (orgIds.length > 0) {
-        await STATE.client.from('social_media_posts').delete().in('company_id', orgIds);
+        await self._safeDel(STATE.client.from('organisation_follow_ups').delete().in('organisation_id', orgIds));
+      }
+      await self._safeDel(STATE.client.from('social_media_posts').delete().like('content', '%TEST_MODE_%'));
+      if (orgIds.length > 0) {
+        await self._safeDel(STATE.client.from('social_media_posts').delete().in('company_id', orgIds));
       }
 
-      // B. Email list subscribers (must be before email lists)
-      var { data: testLists } = await STATE.client
-        .from('email_lists').select('id').like('list_name', 'TEST_MODE_%');
-      if (testLists && testLists.length > 0) {
-        for (var els = 0; els < testLists.length; els++) {
-          await STATE.client.from('email_list_subscribers').delete().eq('list_id', testLists[els].id);
+      // D. Email list subscribers (must be before email lists)
+      try {
+        var { data: testLists } = await STATE.client
+          .from('email_lists').select('id').like('list_name', 'TEST_MODE_%');
+        if (testLists && testLists.length > 0) {
+          for (var els = 0; els < testLists.length; els++) {
+            await self._safeDel(STATE.client.from('email_list_subscribers').delete().eq('list_id', testLists[els].id));
+          }
         }
-      }
+      } catch(e3) { console.warn('Cleanup skip: email_list_subscribers', e3.message); }
 
-      // C. Email lists
-      await STATE.client.from('email_lists').delete().like('list_name', 'TEST_MODE_%');
-
-      // D. Email templates
-      await STATE.client.from('email_templates').delete().like('name', 'TEST_MODE_%');
-
-      // E. Event attendees
-      await STATE.client.from('event_attendees').delete().eq('event_id', eventId);
+      await self._safeDel(STATE.client.from('email_lists').delete().like('list_name', 'TEST_MODE_%'));
+      await self._safeDel(STATE.client.from('email_templates').delete().like('name', 'TEST_MODE_%'));
+      await self._safeDel(STATE.client.from('event_tickets').delete().eq('event_id', eventId));
+      await self._safeDel(STATE.client.from('event_ticket_types').delete().eq('event_id', eventId));
+      await self._safeDel(STATE.client.from('event_attendees').delete().eq('event_id', eventId));
 
       // ---- ORIGINAL TABLES ----
 
-      // 1. Public votes (child of entries)
       for (var pv = 0; pv < entryIds.length; pv++) {
-        await STATE.client.from('public_votes').delete().eq('entry_id', entryIds[pv]);
+        await self._safeDel(STATE.client.from('public_votes').delete().eq('entry_id', entryIds[pv]));
       }
-
-      // 2. Judge scores (child of entries)
       for (var js = 0; js < entryIds.length; js++) {
-        await STATE.client.from('judge_scores').delete().eq('entry_id', entryIds[js]);
+        await self._safeDel(STATE.client.from('judge_scores').delete().eq('entry_id', entryIds[js]));
       }
+      await self._safeDel(STATE.client.from('entries').delete().like('entry_number', 'TEST-ENT-%'));
 
-      // 3. Entries
-      await STATE.client.from('entries').delete().like('entry_number', 'TEST-ENT-%');
+      try {
+        var { data: testSegs } = await STATE.client
+          .from('contact_segments').select('id').like('segment_name', 'TEST_MODE_%');
+        if (testSegs && testSegs.length > 0) {
+          for (var os = 0; os < testSegs.length; os++) {
+            await self._safeDel(STATE.client.from('organisation_segments').delete().eq('segment_id', testSegs[os].id));
+          }
+        }
+      } catch(e3) { console.warn('Cleanup skip: organisation_segments', e3.message); }
 
-      // 4. Communications
-      await STATE.client.from('communications').delete().like('subject', 'TEST_MODE_%');
+      await self._safeDel(STATE.client.from('contact_segments').delete().like('segment_name', 'TEST_MODE_%'));
+      await self._safeDel(STATE.client.from('meeting_notes').delete().like('meeting_title', 'TEST_MODE_%'));
       if (orgIds.length > 0) {
-        await STATE.client.from('communications').delete().in('organisation_id', orgIds);
+        await self._safeDel(STATE.client.from('meeting_notes').delete().in('organisation_id', orgIds));
       }
-
-      // 5. Deals
-      await STATE.client.from('deals').delete().like('title', 'TEST_MODE_%');
+      await self._safeDel(STATE.client.from('communications').delete().like('subject', 'TEST_MODE_%'));
       if (orgIds.length > 0) {
-        await STATE.client.from('deals').delete().in('organisation_id', orgIds);
+        await self._safeDel(STATE.client.from('communications').delete().in('organisation_id', orgIds));
+      }
+      await self._safeDel(STATE.client.from('deals').delete().like('deal_name', 'TEST_MODE_%'));
+      if (orgIds.length > 0) {
+        await self._safeDel(STATE.client.from('deals').delete().in('organisation_id', orgIds));
       }
 
       // 9. Organisation contacts
       if (orgIds.length > 0) {
-        await STATE.client.from('organisation_contacts').delete().in('organisation_id', orgIds);
+        await self._safeDel(STATE.client.from('organisation_contacts').delete().in('organisation_id', orgIds));
       }
 
       // 10. Payments
-      await STATE.client.from('payments').delete().like('payment_reference', 'TEST-PAY-%');
+      await self._safeDel(STATE.client.from('payments').delete().like('payment_reference', 'TEST-PAY-%'));
 
       // 11. Invoice line items
-      var { data: testInvoices } = await STATE.client
-        .from('invoices').select('id').like('invoice_number', 'TEST-INV-%');
-      if (testInvoices && testInvoices.length > 0) {
-        for (var il = 0; il < testInvoices.length; il++) {
-          await STATE.client.from('invoice_line_items').delete().eq('invoice_id', testInvoices[il].id);
+      try {
+        var { data: testInvoices } = await STATE.client
+          .from('invoices').select('id').like('invoice_number', 'TEST-INV-%');
+        if (testInvoices && testInvoices.length > 0) {
+          for (var il = 0; il < testInvoices.length; il++) {
+            await self._safeDel(STATE.client.from('invoice_line_items').delete().eq('invoice_id', testInvoices[il].id));
+          }
         }
-      }
+      } catch(e3) { console.warn('Cleanup skip: invoice_line_items', e3.message); }
 
-      // 12. Invoices
-      await STATE.client.from('invoices').delete().like('invoice_number', 'TEST-INV-%');
-
-      // 10. Sponsors
-      await STATE.client.from('sponsors').delete().like('name', 'TEST_MODE_%');
-
-      // 14. Banners
-      await STATE.client.from('banners').delete().like('title', 'TEST_MODE_%');
-
-      // 15. Media gallery records
-      await STATE.client.from('media_gallery').delete().like('title', 'TEST_MODE_%');
+      await self._safeDel(STATE.client.from('invoices').delete().like('invoice_number', 'TEST-INV-%'));
+      await self._safeDel(STATE.client.from('sponsors').delete().like('company_name', 'TEST_MODE_%'));
+      await self._safeDel(STATE.client.from('banners').delete().like('title', 'TEST_MODE_%'));
+      await self._safeDel(STATE.client.from('media_gallery').delete().like('title', 'TEST_MODE_%'));
       if (orgIds.length > 0) {
-        await STATE.client.from('media_gallery').delete().in('organisation_id', orgIds);
+        await self._safeDel(STATE.client.from('media_gallery').delete().in('organisation_id', orgIds));
       }
+      await self._safeDel(STATE.client.from('media_items').delete().like('title', 'TEST_MODE_%'));
+      await self._safeDel(STATE.client.from('media_items').delete().eq('event_id', eventId));
+      await self._safeDel(STATE.client.from('event_galleries').delete().like('gallery_name', 'TEST_MODE_%'));
+      await self._safeDel(STATE.client.from('event_galleries').delete().eq('event_id', eventId));
+      await self._safeDel(STATE.client.from('table_assignments').delete().eq('event_id', eventId));
+      await self._safeDel(STATE.client.from('event_tables').delete().eq('event_id', eventId));
+      await self._safeDel(STATE.client.from('running_order').delete().eq('event_id', eventId));
+      await self._safeDel(STATE.client.from('running_order_settings').delete().eq('event_id', eventId));
+      await self._safeDel(STATE.client.from('event_guests').delete().eq('event_id', eventId));
 
-      // 16. Media items
-      await STATE.client.from('media_items').delete().like('title', 'TEST_MODE_%');
-      await STATE.client.from('media_items').delete().eq('event_id', eventId);
-
-      // 17. Event galleries
-      await STATE.client.from('event_galleries').delete().like('gallery_name', 'TEST_MODE_%');
-      await STATE.client.from('event_galleries').delete().eq('event_id', eventId);
-
-      // 18. Table assignments
-      await STATE.client.from('table_assignments').delete().eq('event_id', eventId);
-
-      // 19. Event tables
-      await STATE.client.from('event_tables').delete().eq('event_id', eventId);
-
-      // 20. Running order
-      await STATE.client.from('running_order').delete().eq('event_id', eventId);
-
-      // 21. Running order settings
-      await STATE.client.from('running_order_settings').delete().eq('event_id', eventId);
-
-      // 22. Event guests
-      await STATE.client.from('event_guests').delete().eq('event_id', eventId);
-
-      // 23. Award assignments (delete by org IDs and award IDs for full coverage)
       if (awardIds.length > 0) {
-        await STATE.client.from('award_assignments').delete().in('award_id', awardIds);
+        await self._safeDel(STATE.client.from('award_assignments').delete().in('award_id', awardIds));
       }
       if (orgIds.length > 0) {
-        await STATE.client.from('award_assignments').delete().in('organisation_id', orgIds);
+        await self._safeDel(STATE.client.from('award_assignments').delete().in('organisation_id', orgIds));
       }
-
-      // 23b. Winners (delete by org IDs and award IDs for full coverage)
       if (awardIds.length > 0) {
-        await STATE.client.from('winners').delete().in('award_id', awardIds);
+        await self._safeDel(STATE.client.from('winners').delete().in('award_id', awardIds));
       }
       if (orgIds.length > 0) {
-        await STATE.client.from('winners').delete().in('organisation_id', orgIds);
+        await self._safeDel(STATE.client.from('winners').delete().in('organisation_id', orgIds));
       }
 
-      // 24. Organisations
-      await STATE.client.from('organisations').delete().like('company_name', 'TEST_MODE_%');
-
-      // 25. Awards (delete directly from award_years table, not the view)
-      await STATE.client.from('award_years').delete().like('award_name', 'TEST_MODE_%');
-
-      // 26. Event
-      await STATE.client.from('events').delete().eq('id', eventId);
+      await self._safeDel(STATE.client.from('organisations').delete().like('company_name', 'TEST_MODE_%'));
+      await self._safeDel(STATE.client.from('award_years').delete().like('award_name', 'TEST_MODE_%'));
+      await self._safeDel(STATE.client.from('events').delete().eq('id', eventId));
 
       utils.showToast('All test data removed successfully!', 'success');
 
@@ -955,11 +1148,11 @@ const testDataManager = {
         STATE.client.from('awards').select('*', { count: 'exact', head: true }).like('award_name', 'TEST_MODE_%'),
         STATE.client.from('event_guests').select('*', { count: 'exact', head: true }).eq('event_id', this.EVENT_ID),
         STATE.client.from('entries').select('*', { count: 'exact', head: true }).like('entry_number', 'TEST-ENT-%'),
-        STATE.client.from('sponsors').select('*', { count: 'exact', head: true }).like('name', 'TEST_MODE_%'),
+        STATE.client.from('sponsors').select('*', { count: 'exact', head: true }).like('company_name', 'TEST_MODE_%'),
         STATE.client.from('banners').select('*', { count: 'exact', head: true }).like('title', 'TEST_MODE_%'),
         STATE.client.from('invoices').select('*', { count: 'exact', head: true }).like('invoice_number', 'TEST-INV-%'),
         STATE.client.from('organisation_contacts').select('*', { count: 'exact', head: true }).like('id', testDataManager.CONTACT_PREFIX + '%'),
-        STATE.client.from('deals').select('*', { count: 'exact', head: true }).like('title', 'TEST_MODE_%'),
+        STATE.client.from('deals').select('*', { count: 'exact', head: true }).like('deal_name', 'TEST_MODE_%'),
         STATE.client.from('communications').select('*', { count: 'exact', head: true }).like('subject', 'TEST_MODE_%')
       ]);
 
@@ -1217,6 +1410,7 @@ const testDataManager = {
             company_name: 'TEST_MODE_Mock Company Ltd',
             contact_name: 'Test Contact',
             email: 'test@mockcompany.com',
+            status: 'active',
             region: 'London'
           })
           .select()
@@ -1238,6 +1432,7 @@ const testDataManager = {
           status: 'sent',
           payment_status: 'unpaid',
           invoice_type: 'package',
+          package_type: 'gold',
           total_amount: 1250.00,
           currency: 'GBP',
           notes: '[TEST MODE] Mock order for testing dashboard notifications'
@@ -1250,8 +1445,8 @@ const testDataManager = {
       await STATE.client
         .from('invoice_line_items')
         .insert([
-          { invoice_id: invoice.id, description: 'Gold Package', quantity: 1, unit_price: 1000.00, total: 1000.00 },
-          { invoice_id: invoice.id, description: 'Extra Tickets', quantity: 5, unit_price: 50.00, total: 250.00 }
+          { invoice_id: invoice.id, item_name: 'Gold Package', quantity: 1, unit_price: 1000.00, line_total: 1000.00 },
+          { invoice_id: invoice.id, item_name: 'Extra Tickets', quantity: 5, unit_price: 50.00, line_total: 250.00 }
         ]);
 
       utils.hideLoading();

@@ -97,7 +97,7 @@ const testDataManager = {
       { id: this.uid(this.AWARD_PREFIX, 9), award_name: 'TEST_MODE_Social Impact', award_category: 'Community', sector: 'People & Culture', county: 'Cardiff', description: 'Community contribution', year: 2025, is_active: true, status: 'Pending' },
       { id: this.uid(this.AWARD_PREFIX, 10), award_name: 'TEST_MODE_Lifetime Achievement', award_category: 'Special', sector: 'Special Awards', county: 'Belfast', description: 'Career recognition', year: 2025, is_active: true, status: 'Draft' }
     ];
-    const { error: awardsErr } = await STATE.client.from('awards').upsert(awards);
+    const { error: awardsErr } = await STATE.client.from('award_years').upsert(awards);
     if (awardsErr) console.warn('Awards upsert:', awardsErr.message);
 
     // ===== Step 3: Create 30 test organisations =====
@@ -160,7 +160,7 @@ const testDataManager = {
           award_id: this.uid(this.AWARD_PREFIX, a + 1),
           organisation_id: this.uid(this.ORG_PREFIX, winnerOrgIndices[a][w]),
           status: 'winner',
-          judge_score: awardScores[a][w]
+          winner_position: w + 1
         });
         assignIdx++;
       }

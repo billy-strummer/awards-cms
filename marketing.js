@@ -642,8 +642,8 @@ const marketingModule = {
   async _loadEmailSequences() {
     try {
       if (typeof STATE !== 'undefined' && STATE.client) {
-        const { data } = await STATE.client.from('user_preferences').select('value').eq('key', 'orgEmailSequences').maybeSingle();
-        if (data) { this._emailSequences = JSON.parse(data.value); return; }
+        const { data } = await STATE.client.from('user_preferences').select('value').eq('key', 'orgEmailSequences').limit(1);
+        if (data?.[0]) { this._emailSequences = JSON.parse(data[0].value); return; }
       }
     } catch (e) {}
     try { this._emailSequences = JSON.parse(localStorage.getItem('orgEmailSequences') || '[]'); } catch (e) { this._emailSequences = []; }

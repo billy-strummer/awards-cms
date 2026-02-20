@@ -2076,8 +2076,8 @@ const crmModule = {
   async _loadSegments() {
     try {
       if (typeof STATE !== 'undefined' && STATE.client) {
-        const { data } = await STATE.client.from('user_preferences').select('value').eq('key', 'orgsSegments').maybeSingle();
-        if (data) return JSON.parse(data.value);
+        const { data } = await STATE.client.from('user_preferences').select('value').eq('key', 'orgsSegments').limit(1);
+        if (data?.[0]) return JSON.parse(data[0].value);
       }
     } catch (e) {}
     try { return JSON.parse(localStorage.getItem('orgsSegments') || '{}'); } catch (e) { return {}; }

@@ -4487,10 +4487,10 @@ updateCountyFilterByRegion() {
         .from('user_preferences')
         .select('value')
         .eq('key', 'orgsFilterPresets')
-        .maybeSingle();
+        .limit(1);
       if (error) throw error;
-      if (data?.value) {
-        presets = typeof data.value === 'string' ? JSON.parse(data.value) : data.value;
+      if (data?.[0]?.value) {
+        presets = typeof data[0].value === 'string' ? JSON.parse(data[0].value) : data[0].value;
       }
     } catch (e) {
       // Fallback to localStorage
@@ -4513,10 +4513,10 @@ updateCountyFilterByRegion() {
           .from('user_preferences')
           .select('value')
           .eq('key', 'orgsFilterPresets')
-          .maybeSingle();
+          .limit(1);
         if (error) throw error;
-        if (data?.value) {
-          presets = typeof data.value === 'string' ? JSON.parse(data.value) : data.value;
+        if (data?.[0]?.value) {
+          presets = typeof data[0].value === 'string' ? JSON.parse(data[0].value) : data[0].value;
         }
       } catch (fetchErr) {
         presets = JSON.parse(localStorage.getItem('orgsFilterPresets') || '{}');
@@ -4583,10 +4583,10 @@ updateCountyFilterByRegion() {
         .from('user_preferences')
         .select('value')
         .eq('key', 'orgsFilterPresets')
-        .maybeSingle();
+        .limit(1);
       if (error) throw error;
-      if (data?.value) {
-        presets = typeof data.value === 'string' ? JSON.parse(data.value) : data.value;
+      if (data?.[0]?.value) {
+        presets = typeof data[0].value === 'string' ? JSON.parse(data[0].value) : data[0].value;
       }
     } catch (e) {
       // Fallback to localStorage
@@ -4643,10 +4643,10 @@ updateCountyFilterByRegion() {
           .from('user_preferences')
           .select('value')
           .eq('key', 'orgsFilterPresets')
-          .maybeSingle();
+          .limit(1);
         if (error) throw error;
-        if (data?.value) {
-          presets = typeof data.value === 'string' ? JSON.parse(data.value) : data.value;
+        if (data?.[0]?.value) {
+          presets = typeof data[0].value === 'string' ? JSON.parse(data[0].value) : data[0].value;
         }
       } catch (fetchErr) {
         presets = JSON.parse(localStorage.getItem('orgsFilterPresets') || '{}');

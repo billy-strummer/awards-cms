@@ -24,6 +24,13 @@ const testDataManager = {
   PAYMENT_PREFIX: '81000000-0000-0000-0000-',
   VOTE_PREFIX: '90000000-0000-0000-0000-',
   WINNER_PREFIX: 'A0000000-0000-0000-0000-',
+  TEMPLATE_PREFIX: 'B0000000-0000-0000-0000-',
+  EMAIL_LIST_PREFIX: 'B1000000-0000-0000-0000-',
+  SOCIAL_PREFIX: 'B2000000-0000-0000-0000-',
+  TICKET_TYPE_PREFIX: 'B3000000-0000-0000-0000-',
+  FOLLOWUP_PREFIX: 'B4000000-0000-0000-0000-',
+  REPORT_PREFIX: 'B5000000-0000-0000-0000-',
+  ATTENDEE_PREFIX: 'B6000000-0000-0000-0000-',
 
   uid(prefix, n) {
     return prefix + String(n).padStart(12, '0');
@@ -38,16 +45,16 @@ const testDataManager = {
       'This will create comprehensive test data for <strong>every tab</strong>:<br>' +
       '<ul class="mb-0">' +
       '<li><strong>Dashboard:</strong> Aggregated stats from all below</li>' +
-      '<li><strong>Awards:</strong> 10 award categories</li>' +
+      '<li><strong>Awards:</strong> 10 award categories with county reference data</li>' +
       '<li><strong>Organisations:</strong> 30 companies with contacts</li>' +
       '<li><strong>Winners:</strong> 30 award assignments</li>' +
       '<li><strong>Entries:</strong> 20 entries with varied statuses + judge scores + public votes</li>' +
       '<li><strong>Media Gallery:</strong> 2 galleries with 10 media items</li>' +
-      '<li><strong>Events:</strong> 1 event with RSVPs, running order</li>' +
-      '<li><strong>Reports:</strong> Data from entries, payments, judges, sponsors</li>' +
-      '<li><strong>Marketing:</strong> 5 sponsors + 4 banners</li>' +
+      '<li><strong>Events:</strong> 1 event with RSVPs, attendees, tickets, running order</li>' +
+      '<li><strong>Reports:</strong> Scheduled reports + data from entries, payments, judges</li>' +
+      '<li><strong>Marketing:</strong> Sponsors, banners, email templates, email lists, social media posts</li>' +
       '<li><strong>Payments:</strong> 8 invoices with line items + 5 payments</li>' +
-      '<li><strong>CRM:</strong> 15 contacts, 6 deals, 10 communications, 4 meetings, 3 segments</li>' +
+      '<li><strong>CRM:</strong> 15 contacts, 6 deals, 10 communications, 4 meetings, 3 segments, follow-ups</li>' +
       '</ul><br>All test data uses <code>TEST_MODE_</code> prefix or fixed UUID ranges.',
       'Generate All Test Data'
     );
@@ -71,8 +78,11 @@ const testDataManager = {
   async executeTestDataGeneration() {
     const eventId = this.EVENT_ID;
 
+    // ===== Step 0: Seed counties reference data if empty =====
+    await this.seedCounties();
+
     // ===== Step 1: Create test event =====
-    utils.showToast('Step 1/12: Creating test event...', 'info');
+    utils.showToast('Step 1/15: Creating test event...', 'info');
     const { error: eventErr } = await STATE.client.from('events').upsert({
       id: eventId,
       event_name: 'TEST_MODE_2025 Awards Gala',
@@ -84,7 +94,7 @@ const testDataManager = {
     if (eventErr) console.warn('Event upsert:', eventErr.message);
 
     // ===== Step 2: Create 10 test awards =====
-    utils.showToast('Step 2/12: Creating test awards...', 'info');
+    utils.showToast('Step 2/15: Creating test awards...', 'info');
     const awards = [
       { id: this.uid(this.AWARD_PREFIX, 1), award_name: 'TEST_MODE_Best Innovation', award_category: 'Innovation', sector: 'Technology & Digital', county: 'Greater London', description: 'Excellence in innovation', year: 2025, is_active: true, status: 'Published' },
       { id: this.uid(this.AWARD_PREFIX, 2), award_name: 'TEST_MODE_Rising Star', award_category: 'Growth', sector: 'Business Services', county: 'Greater Manchester', description: 'Fast growing company', year: 2025, is_active: true, status: 'Published' },
@@ -101,7 +111,7 @@ const testDataManager = {
     if (awardsErr) console.warn('Awards upsert:', awardsErr.message);
 
     // ===== Step 3: Create 30 test organisations =====
-    utils.showToast('Step 3/12: Creating test organisations...', 'info');
+    utils.showToast('Step 3/15: Creating test organisations...', 'info');
     const orgNames = [
       'Acme Corporation', 'Global Dynamics Ltd', 'TechStart Solutions', 'Green Energy Co', 'Premier Consulting',
       'Digital First Agency', 'Swift Logistics', 'HealthTech Innovations', 'Financial Services Group', 'EduTech Platform',
@@ -142,7 +152,7 @@ const testDataManager = {
     if (orgsErr) console.warn('Organisations upsert:', orgsErr.message);
 
     // ===== Step 4: Create 30 award assignments (3 winners per award) =====
-    utils.showToast('Step 4/12: Creating test winners...', 'info');
+    utils.showToast('Step 4/15: Creating test winners...', 'info');
     const winnerOrgIndices = [
       [1,3,5], [7,10,11], [2,13,24], [4,28,30], [6,8,14],
       [9,22,26], [21,23,25], [12,16,18], [15,20,29], [17,19,27]
@@ -186,7 +196,7 @@ const testDataManager = {
     if (winnerErr) console.warn('Winners upsert:', winnerErr.message);
 
     // ===== Step 5: Create event guests (RSVPs) =====
-    utils.showToast('Step 5/12: Creating test RSVPs...', 'info');
+    utils.showToast('Step 5/15: Creating test RSVPs...', 'info');
     const guests = orgs.map(function(org) {
       return {
         event_id: eventId,
@@ -200,31 +210,43 @@ const testDataManager = {
     if (guestErr) console.warn('Guests insert:', guestErr.message);
 
     // ===== Step 6: Create entries with varied statuses =====
-    utils.showToast('Step 6/12: Creating test entries...', 'info');
+    utils.showToast('Step 6/15: Creating test entries...', 'info');
     await this.generateEntries(awards, orgs);
 
     // ===== Step 7: Create sponsors and banners (Marketing tab) =====
-    utils.showToast('Step 7/12: Creating sponsors & banners...', 'info');
+    utils.showToast('Step 7/15: Creating sponsors & banners...', 'info');
     await this.generateMarketingData();
 
     // ===== Step 8: Create CRM data =====
-    utils.showToast('Step 8/12: Creating CRM data...', 'info');
+    utils.showToast('Step 8/15: Creating CRM data...', 'info');
     await this.generateCRMData(orgs);
 
     // ===== Step 9: Create invoices, line items, payments (Payments tab) =====
-    utils.showToast('Step 9/12: Creating invoices & payments...', 'info');
+    utils.showToast('Step 9/15: Creating invoices & payments...', 'info');
     await this.generatePaymentsData(orgs);
 
     // ===== Step 10: Create media gallery data =====
-    utils.showToast('Step 10/12: Creating media gallery...', 'info');
+    utils.showToast('Step 10/15: Creating media gallery...', 'info');
     await this.generateMediaData(eventId, orgs, awards);
 
-    // ===== Step 11: Create running order =====
-    utils.showToast('Step 11/12: Creating running order...', 'info');
+    // ===== Step 11: Create running order + settings =====
+    utils.showToast('Step 11/15: Creating running order...', 'info');
     await this.generateRunningOrder(eventId, awards, orgs, winnerOrgIndices);
 
-    // ===== Step 12: Done =====
-    utils.showToast('Step 12/12: All test data generated! Reload to see it.', 'success');
+    // ===== Step 12: Create event attendees + tickets =====
+    utils.showToast('Step 12/15: Creating attendees & tickets...', 'info');
+    await this.generateEventExtras(eventId, orgs);
+
+    // ===== Step 13: Create email templates, lists, social media posts =====
+    utils.showToast('Step 13/15: Creating email & social media data...', 'info');
+    await this.generateMarketingExtras(awards, orgs);
+
+    // ===== Step 14: Create CRM follow-ups + scheduled reports =====
+    utils.showToast('Step 14/15: Creating follow-ups & scheduled reports...', 'info');
+    await this.generateExtras(orgs);
+
+    // ===== Step 15: Done =====
+    utils.showToast('Step 15/15: All test data generated! Reload to see it.', 'success');
     setTimeout(function() { testDataManager.showInfoModal(); }, 1000);
   },
 
@@ -610,6 +632,191 @@ const testDataManager = {
     await STATE.client.from('running_order').delete().eq('event_id', eventId);
     var { error: roErr } = await STATE.client.from('running_order').insert(runningOrder);
     if (roErr) console.warn('Running order insert:', roErr.message);
+
+    // Running order settings
+    var { error: rosErr } = await STATE.client.from('running_order_settings').upsert({
+      id: this.uid(this.RUNNING_PREFIX, 99),
+      event_id: eventId,
+      settings: { time_per_award: 5, break_after: 5, ceremony_type: 'formal' },
+      is_published: false
+    });
+    if (rosErr) console.warn('Running order settings upsert:', rosErr.message);
+  },
+
+  /**
+   * Seed counties reference data if table is empty
+   */
+  async seedCounties() {
+    var { count } = await STATE.client.from('counties').select('*', { count: 'exact', head: true });
+    if (count && count > 0) return; // already seeded
+
+    var counties = [
+      { "Name": 'Greater London', region: 'London' },
+      { "Name": 'Greater Manchester', region: 'North West' },
+      { "Name": 'West Midlands', region: 'West Midlands' },
+      { "Name": 'West Yorkshire', region: 'Yorkshire' },
+      { "Name": 'South Yorkshire', region: 'Yorkshire' },
+      { "Name": 'Surrey', region: 'South East' },
+      { "Name": 'Kent', region: 'South East' },
+      { "Name": 'Essex', region: 'East of England' },
+      { "Name": 'Hampshire', region: 'South East' },
+      { "Name": 'Lancashire', region: 'North West' },
+      { "Name": 'Merseyside', region: 'North West' },
+      { "Name": 'Tyne and Wear', region: 'North East' },
+      { "Name": 'Nottinghamshire', region: 'East Midlands' },
+      { "Name": 'Derbyshire', region: 'East Midlands' },
+      { "Name": 'Devon', region: 'South West' },
+      { "Name": 'Bristol', region: 'South West' },
+      { "Name": 'Somerset', region: 'South West' },
+      { "Name": 'Norfolk', region: 'East of England' },
+      { "Name": 'Suffolk', region: 'East of England' },
+      { "Name": 'Oxfordshire', region: 'South East' },
+      { "Name": 'Cambridgeshire', region: 'East of England' },
+      { "Name": 'Warwickshire', region: 'West Midlands' },
+      { "Name": 'Staffordshire', region: 'West Midlands' },
+      { "Name": 'Edinburgh', region: 'Scotland' },
+      { "Name": 'Glasgow', region: 'Scotland' },
+      { "Name": 'Cardiff', region: 'Wales' },
+      { "Name": 'Swansea', region: 'Wales' },
+      { "Name": 'Belfast', region: 'Northern Ireland' },
+      { "Name": 'Antrim', region: 'Northern Ireland' },
+      { "Name": 'Berkshire', region: 'South East' }
+    ];
+    var { error } = await STATE.client.from('counties').insert(counties);
+    if (error) console.warn('Counties seed:', error.message);
+    else console.log('Seeded 30 counties for region/county filtering');
+  },
+
+  /**
+   * Generate event attendees, ticket types, and tickets
+   */
+  async generateEventExtras(eventId, orgs) {
+    // Event attendees (20 attendees with varied check-in statuses)
+    var guestTypes = ['vip', 'guest', 'sponsor', 'media', 'staff'];
+    var mealPrefs = ['standard', 'vegetarian', 'vegan', 'halal', 'gluten-free'];
+    var attendees = [];
+    for (var i = 0; i < 20; i++) {
+      attendees.push({
+        id: this.uid(this.ATTENDEE_PREFIX, i + 1),
+        event_id: eventId,
+        attendee_name: orgs[i].contact_name || ('Attendee ' + (i + 1)),
+        attendee_email: orgs[i].email,
+        organisation_id: orgs[i].id,
+        table_number: Math.floor(i / 4) + 1,
+        meal_preference: mealPrefs[i % 5],
+        rsvp_status: i < 15 ? 'confirmed' : (i < 18 ? 'pending' : 'declined'),
+        guest_type: guestTypes[i % 5],
+        plus_ones: i % 4 === 0 ? 1 : 0,
+        checked_in: i < 8,
+        check_in_time: i < 8 ? new Date(Date.now() - (20 - i) * 60000).toISOString() : null,
+        notes: i === 0 ? 'VIP - ensure table 1 placement' : null
+      });
+    }
+    await STATE.client.from('event_attendees').delete().eq('event_id', eventId);
+    var { error: attErr } = await STATE.client.from('event_attendees').insert(attendees);
+    if (attErr) console.warn('Attendees insert:', attErr.message);
+
+    // Ticket types (3 types)
+    var ticketTypes = [
+      { id: this.uid(this.TICKET_TYPE_PREFIX, 1), event_id: eventId, name: 'TEST_MODE_Standard Ticket', description: 'General admission with dinner', price: 150.00, quantity: 200, sold: 142, early_bird_price: 120.00, includes_table: false, is_active: true },
+      { id: this.uid(this.TICKET_TYPE_PREFIX, 2), event_id: eventId, name: 'TEST_MODE_VIP Table (10)', description: 'Premium table of 10 with champagne reception', price: 2000.00, quantity: 20, sold: 15, early_bird_price: 1750.00, includes_table: true, table_size: 10, is_active: true },
+      { id: this.uid(this.TICKET_TYPE_PREFIX, 3), event_id: eventId, name: 'TEST_MODE_Corporate Package', description: 'Branding, 2 tables, sponsor recognition', price: 5000.00, quantity: 10, sold: 4, includes_table: true, table_size: 10, is_active: true }
+    ];
+    var { error: ttErr } = await STATE.client.from('event_ticket_types').upsert(ticketTypes);
+    if (ttErr) console.warn('Ticket types upsert:', ttErr.message);
+  },
+
+  /**
+   * Generate email templates, email lists, subscribers, social media posts
+   */
+  async generateMarketingExtras(awards, orgs) {
+    // Email templates (5 templates for different use cases)
+    var templates = [
+      { id: this.uid(this.TEMPLATE_PREFIX, 1), name: 'TEST_MODE_Entry Confirmation', subject: 'Your award entry has been received', body: '<h2>Thank you for your entry!</h2><p>We have received your submission for {{award_name}}. Your entry number is {{entry_number}}.</p><p>We will be in touch with updates as the judging process progresses.</p>', description: 'Sent when a new entry is submitted', is_active: true, is_default: true },
+      { id: this.uid(this.TEMPLATE_PREFIX, 2), name: 'TEST_MODE_Shortlist Notification', subject: 'Congratulations! You have been shortlisted', body: '<h2>Congratulations {{company_name}}!</h2><p>We are delighted to inform you that your entry for {{award_name}} has been shortlisted.</p><p>The winners will be announced at the Awards Gala on {{event_date}}.</p>', description: 'Sent to shortlisted entrants', is_active: true },
+      { id: this.uid(this.TEMPLATE_PREFIX, 3), name: 'TEST_MODE_Invoice Reminder', subject: 'Payment reminder - Invoice {{invoice_number}}', body: '<h2>Payment Reminder</h2><p>This is a reminder that invoice {{invoice_number}} for {{total_amount}} is due on {{due_date}}.</p><p>Please arrange payment at your earliest convenience.</p>', description: 'Sent for overdue invoices', is_active: true },
+      { id: this.uid(this.TEMPLATE_PREFIX, 4), name: 'TEST_MODE_Event Invitation', subject: 'You are invited to the Awards Gala!', body: '<h2>You are invited!</h2><p>We would be honoured to welcome {{company_name}} to the Awards Gala on {{event_date}} at {{venue}}.</p><p>Please RSVP by clicking the link below.</p>', description: 'Event invitation email', is_active: true },
+      { id: this.uid(this.TEMPLATE_PREFIX, 5), name: 'TEST_MODE_Winner Announcement', subject: 'And the winner is...', body: '<h2>Winner Announcement</h2><p>We are thrilled to announce the winners of this year\'s awards!</p><p>{{winner_list}}</p><p>Congratulations to all our winners and finalists.</p>', description: 'Public winner announcement', is_active: false }
+    ];
+    var { error: tplErr } = await STATE.client.from('email_templates').upsert(templates);
+    if (tplErr) console.warn('Email templates upsert:', tplErr.message);
+
+    // Email lists (3 lists)
+    var emailLists = [
+      { id: this.uid(this.EMAIL_LIST_PREFIX, 1), list_name: 'TEST_MODE_All Entrants 2025', list_type: 'entrants', is_active: true, color: '#007bff', icon: 'bi-file-earmark-text', description: 'All organisations that submitted entries in 2025', subscriber_count: 15, active_subscriber_count: 14 },
+      { id: this.uid(this.EMAIL_LIST_PREFIX, 2), list_name: 'TEST_MODE_Sponsors & Partners', list_type: 'sponsors', is_active: true, color: '#28a745', icon: 'bi-star', description: 'Current sponsors and strategic partners', subscriber_count: 8, active_subscriber_count: 8 },
+      { id: this.uid(this.EMAIL_LIST_PREFIX, 3), list_name: 'TEST_MODE_Event Guests', list_type: 'general', is_active: true, color: '#6f42c1', icon: 'bi-calendar-event', description: 'Invited guests for the awards ceremony', subscriber_count: 20, active_subscriber_count: 18 }
+    ];
+    var { error: listErr } = await STATE.client.from('email_lists').upsert(emailLists);
+    if (listErr) console.warn('Email lists upsert:', listErr.message);
+
+    // Email list subscribers (populate lists with org data)
+    var subscribers = [];
+    for (var sl = 0; sl < Math.min(15, orgs.length); sl++) {
+      subscribers.push({
+        list_id: emailLists[0].id,
+        email: orgs[sl].email,
+        first_name: 'Contact',
+        last_name: orgs[sl].company_name.replace('TEST_MODE_', ''),
+        company_name: orgs[sl].company_name.replace('TEST_MODE_', ''),
+        status: sl < 14 ? 'active' : 'unsubscribed',
+        source: 'entry_submission'
+      });
+    }
+    for (var ss = 0; ss < 5; ss++) {
+      subscribers.push({
+        list_id: emailLists[1].id,
+        email: 'sponsor' + (ss + 1) + '@example.com',
+        first_name: ['Sarah', 'James', 'Emma', 'Tom', 'Lisa'][ss],
+        last_name: ['Platinum', 'Gold', 'Silver', 'Bronze', 'Partner'][ss],
+        company_name: ['Platinum Corp', 'Gold Industries', 'Silver Solutions', 'Bronze Partners', 'Community Partner'][ss],
+        status: 'active',
+        source: 'manual'
+      });
+    }
+    // Clear existing test subscribers
+    for (var dl = 0; dl < emailLists.length; dl++) {
+      await STATE.client.from('email_list_subscribers').delete().eq('list_id', emailLists[dl].id);
+    }
+    var { error: subErr } = await STATE.client.from('email_list_subscribers').insert(subscribers);
+    if (subErr) console.warn('Email subscribers insert:', subErr.message);
+
+    // Social media posts (6 posts across different statuses)
+    var socialPosts = [
+      { id: this.uid(this.SOCIAL_PREFIX, 1), company_id: orgs[0].id, award_id: awards[0].id, content: 'Congratulations to TEST_MODE_Acme Corporation for winning Best Innovation! #Awards2025', template_type: 'winner_announcement', platforms: ['twitter', 'linkedin'], status: 'published', scheduled_for: new Date(Date.now() - 7 * 86400000).toISOString() },
+      { id: this.uid(this.SOCIAL_PREFIX, 2), company_id: orgs[1].id, award_id: awards[1].id, content: 'Meet our Rising Star finalist: TEST_MODE_Global Dynamics Ltd! #Awards2025 #RisingStar', template_type: 'finalist_spotlight', platforms: ['twitter', 'facebook', 'instagram'], status: 'published', scheduled_for: new Date(Date.now() - 5 * 86400000).toISOString() },
+      { id: this.uid(this.SOCIAL_PREFIX, 3), content: 'Entries are now open for the 2025 Awards! Submit yours today. #Awards2025 #EnterNow', template_type: 'call_for_entries', platforms: ['twitter', 'linkedin', 'facebook'], status: 'scheduled', scheduled_for: new Date(Date.now() + 2 * 86400000).toISOString() },
+      { id: this.uid(this.SOCIAL_PREFIX, 4), content: 'Only 2 weeks until the Awards Gala! Have you got your tickets? #Awards2025 #Countdown', template_type: 'event_promotion', platforms: ['twitter', 'instagram'], status: 'scheduled', scheduled_for: new Date(Date.now() + 5 * 86400000).toISOString() },
+      { id: this.uid(this.SOCIAL_PREFIX, 5), company_id: orgs[3].id, award_id: awards[3].id, content: 'TEST_MODE_Green Energy Co leads the way in sustainability. Read their story. #GreenBusiness', template_type: 'finalist_spotlight', platforms: ['linkedin'], status: 'draft' },
+      { id: this.uid(this.SOCIAL_PREFIX, 6), content: 'Thank you to all our sponsors for making the 2025 Awards possible! #ThankYou #Awards2025', template_type: 'sponsor_thanks', platforms: ['twitter', 'linkedin', 'facebook', 'instagram'], status: 'draft' }
+    ];
+    var { error: socialErr } = await STATE.client.from('social_media_posts').upsert(socialPosts);
+    if (socialErr) console.warn('Social media posts upsert:', socialErr.message);
+  },
+
+  /**
+   * Generate CRM follow-ups and scheduled reports
+   */
+  async generateExtras(orgs) {
+    // Organisation follow-ups (CRM > My Tasks)
+    var followUps = [
+      { id: this.uid(this.FOLLOWUP_PREFIX, 1), organisation_id: orgs[0].id, company_name: orgs[0].company_name, follow_up_date: new Date(Date.now() + 2 * 86400000).toISOString().split('T')[0], note: 'TEST_MODE_Follow up on platinum sponsorship proposal', completed: false, created_by: 'admin@example.com' },
+      { id: this.uid(this.FOLLOWUP_PREFIX, 2), organisation_id: orgs[2].id, company_name: orgs[2].company_name, follow_up_date: new Date(Date.now() - 1 * 86400000).toISOString().split('T')[0], note: 'TEST_MODE_Chase outstanding entry submission', completed: false, created_by: 'admin@example.com' },
+      { id: this.uid(this.FOLLOWUP_PREFIX, 3), organisation_id: orgs[4].id, company_name: orgs[4].company_name, follow_up_date: new Date(Date.now() + 7 * 86400000).toISOString().split('T')[0], note: 'TEST_MODE_Discuss event table requirements', completed: false, created_by: 'admin@example.com' },
+      { id: this.uid(this.FOLLOWUP_PREFIX, 4), organisation_id: orgs[7].id, company_name: orgs[7].company_name, follow_up_date: new Date(Date.now() - 3 * 86400000).toISOString().split('T')[0], note: 'TEST_MODE_Send revised invoice for package upgrade', completed: true, completed_at: new Date().toISOString(), created_by: 'admin@example.com' },
+      { id: this.uid(this.FOLLOWUP_PREFIX, 5), organisation_id: orgs[9].id, company_name: orgs[9].company_name, follow_up_date: new Date(Date.now() + 14 * 86400000).toISOString().split('T')[0], note: 'TEST_MODE_Book photography session for winner profile', completed: false, created_by: 'admin@example.com' }
+    ];
+    var { error: fuErr } = await STATE.client.from('organisation_follow_ups').upsert(followUps);
+    if (fuErr) console.warn('Follow-ups upsert:', fuErr.message);
+
+    // Scheduled reports (Reports tab)
+    var reports = [
+      { id: this.uid(this.REPORT_PREFIX, 1), name: 'TEST_MODE_Weekly Entry Summary', report_type: 'entries', frequency: 'weekly', recipients: ['admin@example.com'], sections: ['entry_stats', 'status_breakdown'], is_active: true, next_run_at: new Date(Date.now() + 7 * 86400000).toISOString(), created_by: 'admin@example.com' },
+      { id: this.uid(this.REPORT_PREFIX, 2), name: 'TEST_MODE_Monthly Financial Report', report_type: 'financial', frequency: 'monthly', recipients: ['admin@example.com', 'finance@example.com'], sections: ['revenue', 'payments', 'overdue'], is_active: true, next_run_at: new Date(Date.now() + 30 * 86400000).toISOString(), created_by: 'admin@example.com' },
+      { id: this.uid(this.REPORT_PREFIX, 3), name: 'TEST_MODE_Judge Scoring Progress', report_type: 'judging', frequency: 'daily', recipients: ['admin@example.com'], sections: ['judge_progress', 'score_distribution'], is_active: false, created_by: 'admin@example.com' }
+    ];
+    var { error: repErr } = await STATE.client.from('scheduled_reports').upsert(reports);
+    if (repErr) console.warn('Scheduled reports upsert:', repErr.message);
   },
 
   /**
@@ -620,14 +827,14 @@ const testDataManager = {
       'Remove All Test Data',
       'This will permanently delete <strong>all</strong> test data including:<br>' +
       '<ul>' +
-      '<li>Test event, RSVPs, running order, table plan</li>' +
-      '<li>Test organisations and contacts</li>' +
+      '<li>Test event, RSVPs, attendees, tickets, running order, table plan</li>' +
+      '<li>Test organisations, contacts, and follow-ups</li>' +
       '<li>Test awards and award assignments</li>' +
       '<li>Test entries, judge scores, public votes</li>' +
       '<li>Test invoices, payments, line items</li>' +
-      '<li>Test sponsors and banners</li>' +
+      '<li>Test sponsors, banners, email templates, email lists, social media posts</li>' +
       '<li>Test CRM data (communications, deals, meetings, segments)</li>' +
-      '<li>Test media gallery items</li>' +
+      '<li>Test media gallery items and scheduled reports</li>' +
       '</ul>' +
       '<strong>This action cannot be undone!</strong>',
       'Delete All Test Data',
@@ -656,6 +863,49 @@ const testDataManager = {
       var entryIds = (testEntries || []).map(function(e) { return e.id; });
 
       utils.showToast('Removing test data...', 'info');
+
+      // ---- NEW TABLES (added for full coverage) ----
+
+      // A. Scheduled reports
+      await STATE.client.from('scheduled_reports').delete().like('name', 'TEST_MODE_%');
+
+      // B. Organisation follow-ups
+      await STATE.client.from('organisation_follow_ups').delete().like('note', 'TEST_MODE_%');
+      if (orgIds.length > 0) {
+        await STATE.client.from('organisation_follow_ups').delete().in('organisation_id', orgIds);
+      }
+
+      // C. Social media posts
+      await STATE.client.from('social_media_posts').delete().like('content', '%TEST_MODE_%');
+      if (orgIds.length > 0) {
+        await STATE.client.from('social_media_posts').delete().in('company_id', orgIds);
+      }
+
+      // D. Email list subscribers (must be before email lists)
+      var { data: testLists } = await STATE.client
+        .from('email_lists').select('id').like('list_name', 'TEST_MODE_%');
+      if (testLists && testLists.length > 0) {
+        for (var els = 0; els < testLists.length; els++) {
+          await STATE.client.from('email_list_subscribers').delete().eq('list_id', testLists[els].id);
+        }
+      }
+
+      // E. Email lists
+      await STATE.client.from('email_lists').delete().like('list_name', 'TEST_MODE_%');
+
+      // F. Email templates
+      await STATE.client.from('email_templates').delete().like('name', 'TEST_MODE_%');
+
+      // G. Event tickets (child of event_ticket_types and event_guests)
+      await STATE.client.from('event_tickets').delete().eq('event_id', eventId);
+
+      // H. Event ticket types
+      await STATE.client.from('event_ticket_types').delete().eq('event_id', eventId);
+
+      // I. Event attendees
+      await STATE.client.from('event_attendees').delete().eq('event_id', eventId);
+
+      // ---- ORIGINAL TABLES ----
 
       // 1. Public votes (child of entries)
       for (var pv = 0; pv < entryIds.length; pv++) {
@@ -916,33 +1166,35 @@ const testDataManager = {
       '</div>' +
       '<p class="mt-3"><strong>What has been created:</strong></p>' +
       '<div class="row"><div class="col-md-6"><ul>' +
-      '<li>1 test event with RSVPs</li>' +
-      '<li>10 award categories</li>' +
+      '<li>1 test event with RSVPs + 20 attendees</li>' +
+      '<li>10 award categories + counties data</li>' +
       '<li>30 organisations with contacts</li>' +
-      '<li>30 award winners</li>' +
+      '<li>30 award winners + 10 in winners table</li>' +
       '<li>20 entries (varied statuses)</li>' +
       '<li>Judge scores + public votes</li>' +
+      '<li>5 email templates + 3 email lists</li>' +
       '</ul></div><div class="col-md-6"><ul>' +
       '<li>5 sponsors + 4 banners</li>' +
       '<li>8 invoices + payments</li>' +
       '<li>6 CRM deals + 10 communications</li>' +
-      '<li>4 meeting notes + 3 segments</li>' +
+      '<li>4 meeting notes + 3 segments + 5 follow-ups</li>' +
       '<li>2 galleries + 10 media items</li>' +
-      '<li>Running order (10 awards)</li>' +
+      '<li>Running order + 3 ticket types</li>' +
+      '<li>6 social media posts + 3 scheduled reports</li>' +
       '</ul></div></div>' +
       '<p class="mt-3"><strong>Try every tab:</strong></p>' +
       '<ol>' +
       '<li><strong>Dashboard</strong> - Aggregated stats and charts</li>' +
-      '<li><strong>Awards</strong> - 10 categories to manage</li>' +
+      '<li><strong>Awards</strong> - 10 categories with county/region filters</li>' +
       '<li><strong>Organisations</strong> - 30 companies with details</li>' +
       '<li><strong>Winners</strong> - Award assignments and scores</li>' +
       '<li><strong>Entries</strong> - Draft, submitted, reviewed, shortlisted, winner, rejected</li>' +
       '<li><strong>Media Gallery</strong> - Photos in 2 galleries</li>' +
-      '<li><strong>Events</strong> - Running order + table plan + RSVPs</li>' +
-      '<li><strong>Reports</strong> - Financial, entry, and judging reports</li>' +
-      '<li><strong>Marketing</strong> - Sponsors (5 tiers) + banners</li>' +
+      '<li><strong>Events</strong> - Attendees, tickets, running order, RSVPs</li>' +
+      '<li><strong>Reports</strong> - Scheduled reports + financial, entry, judging data</li>' +
+      '<li><strong>Marketing</strong> - Sponsors, banners, email templates, lists, social media</li>' +
       '<li><strong>Payments</strong> - Invoices, line items, and payment records</li>' +
-      '<li><strong>CRM</strong> - Contacts, deals, comms, meetings, segments</li>' +
+      '<li><strong>CRM</strong> - Contacts, deals, comms, meetings, segments, follow-ups</li>' +
       '</ol>' +
       '<hr>' +
       '<p class="text-muted small mb-0">' +

@@ -5,10 +5,16 @@
 -- ============================================================
 
 -- ============================================================
--- 1. AWARDS VIEW (maps 'awards' to your existing 'award_years' table)
+-- 1. AWARDS TABLE & VIEW
 -- ============================================================
 
--- First, add any missing columns to the existing award_years table
+-- Create award_years table if it doesn't exist yet
+CREATE TABLE IF NOT EXISTS award_years (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  year INTEGER
+);
+
+-- Add any missing columns to the award_years table
 ALTER TABLE award_years ADD COLUMN IF NOT EXISTS award_name TEXT;
 ALTER TABLE award_years ADD COLUMN IF NOT EXISTS award_category TEXT;
 ALTER TABLE award_years ADD COLUMN IF NOT EXISTS sector TEXT;

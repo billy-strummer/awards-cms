@@ -37,6 +37,18 @@ const testDataManager = {
   },
 
   /**
+   * Log and show errors visibly
+   */
+  _logErr(step, err) {
+    if (err) {
+      console.warn(step + ':', err.message || err);
+      utils.showToast('Error: ' + step + ' - ' + (err.message || err), 'warning');
+      return true;
+    }
+    return false;
+  },
+
+  /**
    * Generate Test Data
    */
   async generateTestData() {
@@ -77,21 +89,24 @@ const testDataManager = {
    */
   async executeTestDataGeneration() {
     const eventId = this.EVENT_ID;
+    var errors = [];
 
     // ===== Step 0: Seed counties reference data if empty =====
-    await this.seedCounties();
+    try { await this.seedCounties(); } catch(e) { this._logErr('Counties seed', e); }
 
     // ===== Step 1: Create test event =====
     utils.showToast('Step 1/15: Creating test event...', 'info');
-    const { error: eventErr } = await STATE.client.from('events').upsert({
-      id: eventId,
-      event_name: 'TEST_MODE_2025 Awards Gala',
-      event_date: '2025-12-15',
-      year: 2025,
-      venue: 'Grand Test Ballroom',
-      description: '[TEST MODE] This is a test event with mock winners for testing the CMS'
-    });
-    if (eventErr) console.warn('Event upsert:', eventErr.message);
+    try {
+      var { error: eventErr } = await STATE.client.from('events').upsert({
+        id: eventId,
+        event_name: 'TEST_MODE_2025 Awards Gala',
+        event_date: '2025-12-15',
+        year: 2025,
+        venue: 'Grand Test Ballroom',
+        description: '[TEST MODE] This is a test event with mock winners for testing the CMS'
+      });
+      if (this._logErr('Events', eventErr)) errors.push('events');
+    } catch(e) { this._logErr('Events', e); errors.push('events'); }
 
     // ===== Step 2: Create 10 test awards =====
     utils.showToast('Step 2/15: Creating test awards...', 'info');
@@ -107,8 +122,16 @@ const testDataManager = {
       { id: this.uid(this.AWARD_PREFIX, 9), award_name: 'TEST_MODE_Social Impact', award_category: 'Community', sector: 'People & Culture', county: 'Cardiff', description: 'Community contribution', year: 2025, is_active: true, status: 'Pending' },
       { id: this.uid(this.AWARD_PREFIX, 10), award_name: 'TEST_MODE_Lifetime Achievement', award_category: 'Special', sector: 'Special Awards', county: 'Belfast', description: 'Career recognition', year: 2025, is_active: true, status: 'Draft' }
     ];
-    const { error: awardsErr } = await STATE.client.from('award_years').upsert(awards);
-    if (awardsErr) console.warn('Awards upsert:', awardsErr.message);
+    try {
+      // Try direct table first, fall back to view with delete+insert
+      var { error: awardsErr } = await STATE.client.from('award_years').upsert(awards);
+      if (awardsErr) {
+        console.warn('award_years upsert failed, trying awards view:', awardsErr.message);
+        await STATE.client.from('awards').delete().like('award_name', 'TEST_MODE_%');
+        var { error: awardsErr2 } = await STATE.client.from('awards').insert(awards);
+        if (this._logErr('Awards (via view)', awardsErr2)) errors.push('awards');
+      }
+    } catch(e) { this._logErr('Awards', e); errors.push('awards'); }
 
     // ===== Step 3: Create 30 test organisations =====
     utils.showToast('Step 3/15: Creating test organisations...', 'info');
@@ -148,18 +171,16 @@ const testDataManager = {
       website: 'https://' + name.toLowerCase().replace(/[^a-z0-9]/g, '') + '.example.com',
       contact_phone: '020 ' + String(7000 + i).padStart(4, '0') + ' ' + String(1000 + i * 37).padStart(4, '0')
     }));
-    const { error: orgsErr } = await STATE.client.from('organisations').upsert(orgs);
-    if (orgsErr) console.warn('Organisations upsert:', orgsErr.message);
+    try {
+      var { error: orgsErr } = await STATE.client.from('organisations').upsert(orgs);
+      if (this._logErr('Organisations', orgsErr)) errors.push('organisations');
+    } catch(e) { this._logErr('Organisations', e); errors.push('organisations'); }
 
     // ===== Step 4: Create 30 award assignments (3 winners per award) =====
     utils.showToast('Step 4/15: Creating test winners...', 'info');
     const winnerOrgIndices = [
       [1,3,5], [7,10,11], [2,13,24], [4,28,30], [6,8,14],
       [9,22,26], [21,23,25], [12,16,18], [15,20,29], [17,19,27]
-    ];
-    const awardScores = [
-      [9.5,9.2,8.9], [9.3,9.0,8.8], [9.4,9.1,8.7], [9.6,9.2,8.9], [9.3,9.0,8.8],
-      [9.4,9.1,8.9], [9.5,9.2,8.8], [9.3,9.0,8.7], [9.4,9.1,8.9], [9.6,9.5,9.3]
     ];
     const assignments = [];
     var assignIdx = 1;
@@ -175,14 +196,16 @@ const testDataManager = {
         assignIdx++;
       }
     }
-    const { error: assignErr } = await STATE.client.from('award_assignments').upsert(assignments);
-    if (assignErr) console.warn('Assignments upsert:', assignErr.message);
+    try {
+      var { error: assignErr } = await STATE.client.from('award_assignments').upsert(assignments);
+      if (this._logErr('Award assignments', assignErr)) errors.push('award_assignments');
+    } catch(e) { this._logErr('Award assignments', e); errors.push('award_assignments'); }
 
-    // ===== Step 4b: Populate winners table (used by Winners tab + dashboard stats) =====
+    // ===== Step 4b: Populate winners table =====
     var winners = [];
     var winnerIdx = 1;
     for (var wi = 0; wi < 10; wi++) {
-      var topOrgIdx = winnerOrgIndices[wi][0]; // 1st place per award
+      var topOrgIdx = winnerOrgIndices[wi][0];
       winners.push({
         id: this.uid(this.WINNER_PREFIX, winnerIdx),
         winner_name: orgNames[topOrgIdx - 1],
@@ -192,61 +215,69 @@ const testDataManager = {
       });
       winnerIdx++;
     }
-    const { error: winnerErr } = await STATE.client.from('winners').upsert(winners);
-    if (winnerErr) console.warn('Winners upsert:', winnerErr.message);
+    try {
+      var { error: winnerErr } = await STATE.client.from('winners').upsert(winners);
+      if (this._logErr('Winners', winnerErr)) errors.push('winners');
+    } catch(e) { this._logErr('Winners', e); errors.push('winners'); }
 
     // ===== Step 5: Create event guests (RSVPs) =====
     utils.showToast('Step 5/15: Creating test RSVPs...', 'info');
-    const guests = orgs.map(function(org) {
-      return {
-        event_id: eventId,
-        guest_name: 'CEO ' + org.company_name.replace('TEST_MODE_', ''),
-        guest_email: org.email,
-        rsvp_status: 'confirmed'
-      };
-    });
-    await STATE.client.from('event_guests').delete().eq('event_id', eventId);
-    const { error: guestErr } = await STATE.client.from('event_guests').insert(guests);
-    if (guestErr) console.warn('Guests insert:', guestErr.message);
+    try {
+      var guests = orgs.map(function(org) {
+        return {
+          event_id: eventId,
+          guest_name: 'CEO ' + org.company_name.replace('TEST_MODE_', ''),
+          guest_email: org.email,
+          rsvp_status: 'confirmed'
+        };
+      });
+      await STATE.client.from('event_guests').delete().eq('event_id', eventId);
+      var { error: guestErr } = await STATE.client.from('event_guests').insert(guests);
+      if (this._logErr('Event guests', guestErr)) errors.push('event_guests');
+    } catch(e) { this._logErr('Event guests', e); errors.push('event_guests'); }
 
     // ===== Step 6: Create entries with varied statuses =====
     utils.showToast('Step 6/15: Creating test entries...', 'info');
-    await this.generateEntries(awards, orgs);
+    try { await this.generateEntries(awards, orgs); } catch(e) { this._logErr('Entries', e); errors.push('entries'); }
 
     // ===== Step 7: Create sponsors and banners (Marketing tab) =====
     utils.showToast('Step 7/15: Creating sponsors & banners...', 'info');
-    await this.generateMarketingData();
+    try { await this.generateMarketingData(); } catch(e) { this._logErr('Marketing', e); errors.push('marketing'); }
 
     // ===== Step 8: Create CRM data =====
     utils.showToast('Step 8/15: Creating CRM data...', 'info');
-    await this.generateCRMData(orgs);
+    try { await this.generateCRMData(orgs); } catch(e) { this._logErr('CRM', e); errors.push('crm'); }
 
     // ===== Step 9: Create invoices, line items, payments (Payments tab) =====
     utils.showToast('Step 9/15: Creating invoices & payments...', 'info');
-    await this.generatePaymentsData(orgs);
+    try { await this.generatePaymentsData(orgs); } catch(e) { this._logErr('Payments', e); errors.push('payments'); }
 
     // ===== Step 10: Create media gallery data =====
     utils.showToast('Step 10/15: Creating media gallery...', 'info');
-    await this.generateMediaData(eventId, orgs, awards);
+    try { await this.generateMediaData(eventId, orgs, awards); } catch(e) { this._logErr('Media gallery', e); errors.push('media'); }
 
     // ===== Step 11: Create running order + settings =====
     utils.showToast('Step 11/15: Creating running order...', 'info');
-    await this.generateRunningOrder(eventId, awards, orgs, winnerOrgIndices);
+    try { await this.generateRunningOrder(eventId, awards, orgs, winnerOrgIndices); } catch(e) { this._logErr('Running order', e); errors.push('running_order'); }
 
     // ===== Step 12: Create event attendees + tickets =====
     utils.showToast('Step 12/15: Creating attendees & tickets...', 'info');
-    await this.generateEventExtras(eventId, orgs);
+    try { await this.generateEventExtras(eventId, orgs); } catch(e) { this._logErr('Event extras', e); errors.push('event_extras'); }
 
     // ===== Step 13: Create email templates, lists, social media posts =====
     utils.showToast('Step 13/15: Creating email & social media data...', 'info');
-    await this.generateMarketingExtras(awards, orgs);
+    try { await this.generateMarketingExtras(awards, orgs); } catch(e) { this._logErr('Marketing extras', e); errors.push('marketing_extras'); }
 
     // ===== Step 14: Create CRM follow-ups + scheduled reports =====
     utils.showToast('Step 14/15: Creating follow-ups & scheduled reports...', 'info');
-    await this.generateExtras(orgs);
+    try { await this.generateExtras(orgs); } catch(e) { this._logErr('Extras', e); errors.push('extras'); }
 
     // ===== Step 15: Done =====
-    utils.showToast('Step 15/15: All test data generated! Reload to see it.', 'success');
+    if (errors.length > 0) {
+      utils.showToast('Test data generated with ' + errors.length + ' error(s): ' + errors.join(', ') + '. Check console.', 'warning');
+    } else {
+      utils.showToast('Step 15/15: All test data generated! Reload to see it.', 'success');
+    }
     setTimeout(function() { testDataManager.showInfoModal(); }, 1000);
   },
 
@@ -290,7 +321,7 @@ const testDataManager = {
       });
     }
     var { error: entryErr } = await STATE.client.from('entries').upsert(entries);
-    if (entryErr) console.warn('Entries upsert:', entryErr.message);
+    this._logErr('Entries', entryErr);
 
     // Judge scores for entries that are under_review, shortlisted, or winner
     var scoredEntries = entries.filter(function(e) {
@@ -318,7 +349,7 @@ const testDataManager = {
         await STATE.client.from('judge_scores').delete().eq('entry_id', scoredEntries[di].id);
       }
       var { error: scoreErr } = await STATE.client.from('judge_scores').insert(scoreRecords);
-      if (scoreErr) console.warn('Judge scores insert:', scoreErr.message);
+      this._logErr('Judge scores', scoreErr);
     }
 
     // Public votes for entries that allow it
@@ -348,7 +379,7 @@ const testDataManager = {
         await STATE.client.from('public_votes').delete().eq('entry_id', votableEntries[dvi].id);
       }
       var { error: voteErr } = await STATE.client.from('public_votes').insert(voteRecords);
-      if (voteErr) console.warn('Public votes insert:', voteErr.message);
+      this._logErr('Public votes', voteErr);
     }
   },
 
@@ -364,7 +395,7 @@ const testDataManager = {
       { id: this.uid(this.SPONSOR_PREFIX, 5), name: 'TEST_MODE_Community Partner', company_name: 'TEST_MODE_Community Partner', tier: 'Partner', sponsorship_amount: 1000, contact_name: 'Lisa Partner', email: 'lisa@communitypartner.example.com', website: 'https://example.com/partner', is_active: true, display_order: 5 }
     ];
     var { error: sponsorErr } = await STATE.client.from('sponsors').upsert(sponsors);
-    if (sponsorErr) console.warn('Sponsors upsert:', sponsorErr.message);
+    this._logErr('Sponsors', sponsorErr);
 
     var today = new Date().toISOString().split('T')[0];
     var banners = [
@@ -374,7 +405,7 @@ const testDataManager = {
       { id: this.uid(this.BANNER_PREFIX, 4), title: 'TEST_MODE_Vote Now', position: 'popup', image_url: 'https://placehold.co/600x400?text=Vote+Now', link_url: 'https://example.com/vote', width: 600, height: 400, is_active: false, display_order: 4, impressions: 320, clicks: 15, start_date: today }
     ];
     var { error: bannerErr } = await STATE.client.from('banners').upsert(banners);
-    if (bannerErr) console.warn('Banners upsert:', bannerErr.message);
+    this._logErr('Banners', bannerErr);
   },
 
   /**
@@ -395,7 +426,7 @@ const testDataManager = {
       };
     });
     var { error: contactErr } = await STATE.client.from('organisation_contacts').upsert(contacts);
-    if (contactErr) console.warn('Contacts upsert:', contactErr.message);
+    this._logErr('Contacts', contactErr);
 
     // Communications (10 records)
     var commTypes = ['email', 'phone', 'meeting', 'email', 'phone', 'linkedin', 'email', 'note', 'email', 'phone'];
@@ -420,7 +451,7 @@ const testDataManager = {
       };
     });
     var { error: commErr } = await STATE.client.from('communications').upsert(comms);
-    if (commErr) console.warn('Communications upsert:', commErr.message);
+    this._logErr('Communications', commErr);
 
     // Deals (6 at various stages)
     var dealStages = ['lead', 'contacted', 'qualified', 'proposal', 'negotiation', 'closed_won'];
@@ -444,7 +475,7 @@ const testDataManager = {
       };
     });
     var { error: dealErr } = await STATE.client.from('deals').upsert(deals);
-    if (dealErr) console.warn('Deals upsert:', dealErr.message);
+    this._logErr('Deals', dealErr);
 
     // Meeting notes (4 meetings)
     var meetings = [
@@ -454,7 +485,7 @@ const testDataManager = {
       { id: this.uid(this.MEETING_PREFIX, 4), organisation_id: orgs[8].id, meeting_title: 'TEST_MODE_Event Planning Debrief', meeting_type: 'conference', duration_minutes: 90, notes: 'Reviewed last event feedback. Planning improvements for next year.', follow_up_required: false }
     ];
     var { error: meetingErr } = await STATE.client.from('meeting_notes').upsert(meetings);
-    if (meetingErr) console.warn('Meetings upsert:', meetingErr.message);
+    this._logErr('Meetings', meetingErr);
 
     // Contact segments (3 segments)
     var segments = [
@@ -463,7 +494,7 @@ const testDataManager = {
       { id: this.uid(this.SEGMENT_PREFIX, 3), segment_name: 'TEST_MODE_Past Winners', description: 'Previous award winners', color: '#6f42c1', icon: 'bi-trophy' }
     ];
     var { error: segErr } = await STATE.client.from('contact_segments').upsert(segments);
-    if (segErr) console.warn('Segments upsert:', segErr.message);
+    this._logErr('Segments', segErr);
 
     // Organisation-segment relationships
     var orgSegments = [];
@@ -483,7 +514,7 @@ const testDataManager = {
       await STATE.client.from('organisation_segments').delete().eq('segment_id', segments[ds].id);
     }
     var { error: orgSegErr } = await STATE.client.from('organisation_segments').insert(orgSegments);
-    if (orgSegErr) console.warn('Org segments insert:', orgSegErr.message);
+    this._logErr('Org segments', orgSegErr);
   },
 
   /**
@@ -514,7 +545,7 @@ const testDataManager = {
       });
     }
     var { error: invErr } = await STATE.client.from('invoices').upsert(invoices);
-    if (invErr) console.warn('Invoices upsert:', invErr.message);
+    this._logErr('Invoices', invErr);
 
     // Line items
     var lineItems = [];
@@ -535,7 +566,7 @@ const testDataManager = {
       await STATE.client.from('invoice_line_items').delete().eq('invoice_id', invoices[dli].id);
     }
     var { error: liErr } = await STATE.client.from('invoice_line_items').insert(lineItems);
-    if (liErr) console.warn('Line items insert:', liErr.message);
+    this._logErr('Line items', liErr);
 
     // Payments for paid invoices
     var paidInvoices = invoices.filter(function(inv) { return inv.payment_status === 'paid'; });
@@ -553,7 +584,7 @@ const testDataManager = {
       };
     });
     var { error: payErr } = await STATE.client.from('payments').upsert(payments);
-    if (payErr) console.warn('Payments upsert:', payErr.message);
+    this._logErr('Payments', payErr);
   },
 
   /**
@@ -565,7 +596,7 @@ const testDataManager = {
       { id: this.uid(this.GALLERY_PREFIX, 2), event_id: eventId, gallery_name: 'TEST_MODE_Winners Collection', gallery_description: 'Winner announcement photos', display_order: 2 }
     ];
     var { error: galErr } = await STATE.client.from('event_galleries').upsert(galleries);
-    if (galErr) console.warn('Galleries upsert:', galErr.message);
+    this._logErr('Galleries', galErr);
 
     var mediaItems = [];
     for (var mi = 0; mi < 10; mi++) {
@@ -582,7 +613,7 @@ const testDataManager = {
       });
     }
     var { error: miErr } = await STATE.client.from('media_items').upsert(mediaItems);
-    if (miErr) console.warn('Media items upsert:', miErr.message);
+    this._logErr('Media items', miErr);
 
     var mediaGallery = [];
     for (var mg = 0; mg < 8; mg++) {
@@ -604,7 +635,7 @@ const testDataManager = {
       });
     }
     var { error: mgErr } = await STATE.client.from('media_gallery').upsert(mediaGallery);
-    if (mgErr) console.warn('Media gallery upsert:', mgErr.message);
+    this._logErr('Media gallery', mgErr);
   },
 
   /**
@@ -631,7 +662,7 @@ const testDataManager = {
     }
     await STATE.client.from('running_order').delete().eq('event_id', eventId);
     var { error: roErr } = await STATE.client.from('running_order').insert(runningOrder);
-    if (roErr) console.warn('Running order insert:', roErr.message);
+    this._logErr('Running order', roErr);
 
     // Running order settings
     var { error: rosErr } = await STATE.client.from('running_order_settings').upsert({
@@ -640,7 +671,7 @@ const testDataManager = {
       settings: { time_per_award: 5, break_after: 5, ceremony_type: 'formal' },
       is_published: false
     });
-    if (rosErr) console.warn('Running order settings upsert:', rosErr.message);
+    this._logErr('Running order settings', rosErr);
   },
 
   /**
@@ -683,8 +714,8 @@ const testDataManager = {
       { "Name": 'Berkshire', region: 'South East' }
     ];
     var { error } = await STATE.client.from('counties').insert(counties);
-    if (error) console.warn('Counties seed:', error.message);
-    else console.log('Seeded 30 counties for region/county filtering');
+    if (this._logErr('Counties seed', error)) return;
+    console.log('Seeded 30 counties for region/county filtering');
   },
 
   /**
@@ -714,7 +745,7 @@ const testDataManager = {
     }
     await STATE.client.from('event_attendees').delete().eq('event_id', eventId);
     var { error: attErr } = await STATE.client.from('event_attendees').insert(attendees);
-    if (attErr) console.warn('Attendees insert:', attErr.message);
+    this._logErr('Attendees', attErr);
 
     // Ticket types (3 types)
     var ticketTypes = [
@@ -723,7 +754,7 @@ const testDataManager = {
       { id: this.uid(this.TICKET_TYPE_PREFIX, 3), event_id: eventId, name: 'TEST_MODE_Corporate Package', description: 'Branding, 2 tables, sponsor recognition', price: 5000.00, quantity: 10, sold: 4, includes_table: true, table_size: 10, is_active: true }
     ];
     var { error: ttErr } = await STATE.client.from('event_ticket_types').upsert(ticketTypes);
-    if (ttErr) console.warn('Ticket types upsert:', ttErr.message);
+    this._logErr('Ticket types', ttErr);
   },
 
   /**
@@ -739,7 +770,7 @@ const testDataManager = {
       { id: this.uid(this.TEMPLATE_PREFIX, 5), name: 'TEST_MODE_Winner Announcement', subject: 'And the winner is...', body: '<h2>Winner Announcement</h2><p>We are thrilled to announce the winners of this year\'s awards!</p><p>{{winner_list}}</p><p>Congratulations to all our winners and finalists.</p>', description: 'Public winner announcement', is_active: false }
     ];
     var { error: tplErr } = await STATE.client.from('email_templates').upsert(templates);
-    if (tplErr) console.warn('Email templates upsert:', tplErr.message);
+    this._logErr('Email templates', tplErr);
 
     // Email lists (3 lists)
     var emailLists = [
@@ -748,7 +779,7 @@ const testDataManager = {
       { id: this.uid(this.EMAIL_LIST_PREFIX, 3), list_name: 'TEST_MODE_Event Guests', list_type: 'general', is_active: true, color: '#6f42c1', icon: 'bi-calendar-event', description: 'Invited guests for the awards ceremony', subscriber_count: 20, active_subscriber_count: 18 }
     ];
     var { error: listErr } = await STATE.client.from('email_lists').upsert(emailLists);
-    if (listErr) console.warn('Email lists upsert:', listErr.message);
+    this._logErr('Email lists', listErr);
 
     // Email list subscribers (populate lists with org data)
     var subscribers = [];
@@ -779,7 +810,7 @@ const testDataManager = {
       await STATE.client.from('email_list_subscribers').delete().eq('list_id', emailLists[dl].id);
     }
     var { error: subErr } = await STATE.client.from('email_list_subscribers').insert(subscribers);
-    if (subErr) console.warn('Email subscribers insert:', subErr.message);
+    this._logErr('Email subscribers', subErr);
 
     // Social media posts (6 posts across different statuses)
     var socialPosts = [
@@ -791,7 +822,7 @@ const testDataManager = {
       { id: this.uid(this.SOCIAL_PREFIX, 6), content: 'Thank you to all our sponsors for making the 2025 Awards possible! #ThankYou #Awards2025', template_type: 'sponsor_thanks', platforms: ['twitter', 'linkedin', 'facebook', 'instagram'], status: 'draft' }
     ];
     var { error: socialErr } = await STATE.client.from('social_media_posts').upsert(socialPosts);
-    if (socialErr) console.warn('Social media posts upsert:', socialErr.message);
+    this._logErr('Social media posts', socialErr);
   },
 
   /**
@@ -807,7 +838,7 @@ const testDataManager = {
       { id: this.uid(this.FOLLOWUP_PREFIX, 5), organisation_id: orgs[9].id, company_name: orgs[9].company_name, follow_up_date: new Date(Date.now() + 14 * 86400000).toISOString().split('T')[0], note: 'TEST_MODE_Book photography session for winner profile', completed: false, created_by: 'admin@example.com' }
     ];
     var { error: fuErr } = await STATE.client.from('organisation_follow_ups').upsert(followUps);
-    if (fuErr) console.warn('Follow-ups upsert:', fuErr.message);
+    this._logErr('Follow-ups', fuErr);
 
     // Scheduled reports (Reports tab)
     var reports = [
@@ -816,7 +847,7 @@ const testDataManager = {
       { id: this.uid(this.REPORT_PREFIX, 3), name: 'TEST_MODE_Judge Scoring Progress', report_type: 'judging', frequency: 'daily', recipients: ['admin@example.com'], sections: ['judge_progress', 'score_distribution'], is_active: false, created_by: 'admin@example.com' }
     ];
     var { error: repErr } = await STATE.client.from('scheduled_reports').upsert(reports);
-    if (repErr) console.warn('Scheduled reports upsert:', repErr.message);
+    this._logErr('Scheduled reports', repErr);
   },
 
   /**

@@ -438,10 +438,10 @@ British Trade Awards Team
         .from('user_preferences')
         .select('value')
         .eq('key', `email_template_${selectedTemplate}`)
-        .single();
-      if (error && error.code !== 'PGRST116') throw error;
-      if (data?.value) {
-        template = typeof data.value === 'string' ? JSON.parse(data.value) : data.value;
+        .limit(1);
+      if (error) throw error;
+      if (data?.[0]?.value) {
+        template = typeof data[0].value === 'string' ? JSON.parse(data[0].value) : data[0].value;
       }
     } catch (e) {
       // Fallback to localStorage

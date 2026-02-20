@@ -4487,10 +4487,10 @@ updateCountyFilterByRegion() {
         .from('user_preferences')
         .select('value')
         .eq('key', 'orgsFilterPresets')
-        .single();
-      if (error && error.code !== 'PGRST116') throw error;
-      if (data?.value) {
-        presets = typeof data.value === 'string' ? JSON.parse(data.value) : data.value;
+        .limit(1);
+      if (error) throw error;
+      if (data?.[0]?.value) {
+        presets = typeof data[0].value === 'string' ? JSON.parse(data[0].value) : data[0].value;
       }
     } catch (e) {
       // Fallback to localStorage
@@ -4513,10 +4513,10 @@ updateCountyFilterByRegion() {
           .from('user_preferences')
           .select('value')
           .eq('key', 'orgsFilterPresets')
-          .single();
-        if (error && error.code !== 'PGRST116') throw error;
-        if (data?.value) {
-          presets = typeof data.value === 'string' ? JSON.parse(data.value) : data.value;
+          .limit(1);
+        if (error) throw error;
+        if (data?.[0]?.value) {
+          presets = typeof data[0].value === 'string' ? JSON.parse(data[0].value) : data[0].value;
         }
       } catch (fetchErr) {
         presets = JSON.parse(localStorage.getItem('orgsFilterPresets') || '{}');
@@ -4583,10 +4583,10 @@ updateCountyFilterByRegion() {
         .from('user_preferences')
         .select('value')
         .eq('key', 'orgsFilterPresets')
-        .single();
-      if (error && error.code !== 'PGRST116') throw error;
-      if (data?.value) {
-        presets = typeof data.value === 'string' ? JSON.parse(data.value) : data.value;
+        .limit(1);
+      if (error) throw error;
+      if (data?.[0]?.value) {
+        presets = typeof data[0].value === 'string' ? JSON.parse(data[0].value) : data[0].value;
       }
     } catch (e) {
       // Fallback to localStorage
@@ -4643,10 +4643,10 @@ updateCountyFilterByRegion() {
           .from('user_preferences')
           .select('value')
           .eq('key', 'orgsFilterPresets')
-          .single();
-        if (error && error.code !== 'PGRST116') throw error;
-        if (data?.value) {
-          presets = typeof data.value === 'string' ? JSON.parse(data.value) : data.value;
+          .limit(1);
+        if (error) throw error;
+        if (data?.[0]?.value) {
+          presets = typeof data[0].value === 'string' ? JSON.parse(data[0].value) : data[0].value;
         }
       } catch (fetchErr) {
         presets = JSON.parse(localStorage.getItem('orgsFilterPresets') || '{}');
@@ -6980,8 +6980,8 @@ updateCountyFilterByRegion() {
           .from('user_preferences')
           .select('value')
           .eq('key', 'orgsSavedViews')
-          .single();
-        if (error && error.code !== 'PGRST116') throw error;
+          .maybeSingle();
+        if (error) throw error;
         if (data?.value) {
           views = typeof data.value === 'string' ? JSON.parse(data.value) : data.value;
         }
@@ -7033,8 +7033,8 @@ updateCountyFilterByRegion() {
         .from('user_preferences')
         .select('value')
         .eq('key', 'orgsSavedViews')
-        .single();
-      if (error && error.code !== 'PGRST116') throw error;
+        .maybeSingle();
+      if (error) throw error;
       if (data?.value) {
         views = typeof data.value === 'string' ? JSON.parse(data.value) : data.value;
       }
@@ -7074,8 +7074,8 @@ updateCountyFilterByRegion() {
         .from('user_preferences')
         .select('value')
         .eq('key', 'orgsSavedViews')
-        .single();
-      if (error && error.code !== 'PGRST116') throw error;
+        .maybeSingle();
+      if (error) throw error;
       if (data?.value) {
         views = typeof data.value === 'string' ? JSON.parse(data.value) : data.value;
       }
@@ -7138,8 +7138,8 @@ updateCountyFilterByRegion() {
           .from('user_preferences')
           .select('value')
           .eq('key', 'orgsSavedViews')
-          .single();
-        if (error && error.code !== 'PGRST116') throw error;
+          .maybeSingle();
+        if (error) throw error;
         if (data?.value) {
           views = typeof data.value === 'string' ? JSON.parse(data.value) : data.value;
         }

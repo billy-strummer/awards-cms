@@ -43,8 +43,8 @@ CREATE TRIGGER set_tenants_updated_at
 -- Add tenant_id column to core tables (nullable for backward compat)
 DO $$
 BEGIN
-  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='awards' AND column_name='tenant_id') THEN
-    ALTER TABLE awards ADD COLUMN tenant_id UUID REFERENCES tenants(id);
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='award_years' AND column_name='tenant_id') THEN
+    ALTER TABLE award_years ADD COLUMN tenant_id UUID REFERENCES tenants(id);
   END IF;
   IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='organisations' AND column_name='tenant_id') THEN
     ALTER TABLE organisations ADD COLUMN tenant_id UUID REFERENCES tenants(id);

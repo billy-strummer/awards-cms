@@ -1314,8 +1314,8 @@ const paymentsModule = {
   async _loadAccountingConfig() {
     try {
       if (typeof STATE !== 'undefined' && STATE.client) {
-        const { data } = await STATE.client.from('user_preferences').select('value').eq('key', 'orgAccountingConfig').single();
-        if (data) { this._accountingConfig = JSON.parse(data.value); return; }
+        const { data } = await STATE.client.from('user_preferences').select('value').eq('key', 'orgAccountingConfig').limit(1);
+        if (data?.[0]) { this._accountingConfig = JSON.parse(data[0].value); return; }
       }
     } catch (e) {}
     try { this._accountingConfig = JSON.parse(localStorage.getItem('orgAccountingConfig') || '{}'); } catch (e) { this._accountingConfig = {}; }

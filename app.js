@@ -11,8 +11,8 @@ const reportsScheduler = {
   async _loadScheduledReports() {
     try {
       if (typeof STATE !== 'undefined' && STATE.client) {
-        const { data } = await STATE.client.from('user_preferences').select('value').eq('key', 'orgScheduledReports').single();
-        if (data) { this._scheduledReports = JSON.parse(data.value); return; }
+        const { data } = await STATE.client.from('user_preferences').select('value').eq('key', 'orgScheduledReports').limit(1);
+        if (data?.[0]) { this._scheduledReports = JSON.parse(data[0].value); return; }
       }
     } catch (e) {}
     try { this._scheduledReports = JSON.parse(localStorage.getItem('orgScheduledReports') || '[]'); } catch (e) { this._scheduledReports = []; }

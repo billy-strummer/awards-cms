@@ -163,9 +163,7 @@ const testDataManager = {
       id: this.uid(this.ORG_PREFIX, i + 1),
       company_name: 'TEST_MODE_' + name,
       sector: industries[i],
-      description: 'Test organisation #' + (i + 1),
       region: regions[i],
-      status: 'active',
       contact_name: 'Contact ' + (i + 1),
       email: name.toLowerCase().replace(/[^a-z0-9]/g, '.') + '@example.com',
       website: 'https://' + name.toLowerCase().replace(/[^a-z0-9]/g, '') + '.example.com',
@@ -226,8 +224,8 @@ const testDataManager = {
       var guests = orgs.map(function(org) {
         return {
           event_id: eventId,
-          guest_name: 'CEO ' + org.company_name.replace('TEST_MODE_', ''),
-          guest_email: org.email,
+          name: 'CEO ' + org.company_name.replace('TEST_MODE_', ''),
+          email: org.email,
           rsvp_status: 'confirmed'
         };
       });
@@ -298,25 +296,19 @@ const testDataManager = {
         organisation_id: orgs[orgIdx].id,
         award_id: awards[awardIdx].id,
         entry_title: 'TEST_MODE_Entry: ' + orgs[orgIdx].company_name.replace('TEST_MODE_', '') + ' for ' + awards[awardIdx].award_name.replace('TEST_MODE_', ''),
-        entry_description: 'This is a test entry #' + (i + 1) + ' demonstrating the awards entry submission process.',
-        why_should_win: 'Outstanding achievements in ' + awards[awardIdx].award_category + ' including significant growth and innovation.',
-        supporting_information: 'Revenue increased 45% year-over-year. Launched 3 new products. Expanded to 5 new markets.',
+        entry_description: 'This is a test entry #' + (i + 1) + '. Outstanding achievements in ' + awards[awardIdx].award_category + '.',
         contact_name: 'Contact Person ' + (i + 1),
         contact_email: 'entry' + (i + 1) + '@example.com',
-        contact_phone: '0' + (1234567890 + i),
-        contact_position: ['CEO', 'CTO', 'COO', 'CFO', 'Director'][i % 5],
         status: status,
         payment_status: payStatuses[i % 3],
-        year: 2025,
         is_shortlisted: status === 'shortlisted' || status === 'winner',
         shortlisted_date: (status === 'shortlisted' || status === 'winner') ? '2025-09-01' : null,
         submission_date: '2025-0' + Math.min(i % 9 + 1, 9) + '-' + String((i % 28) + 1).padStart(2, '0'),
-        is_self_nomination: i % 4 === 0,
         allow_public_voting: i % 3 === 0,
         is_public: status !== 'draft',
         public_votes: i % 3 === 0 ? Math.floor(Math.random() * 50) + 5 : 0,
+        vote_count: i % 3 === 0 ? Math.floor(Math.random() * 8) + 2 : 0,
         average_score: status === 'winner' ? 8.5 + Math.random() : (status === 'shortlisted' ? 7.0 + Math.random() * 1.5 : null),
-        total_scores: ['under_review', 'shortlisted', 'winner'].includes(status) ? 3 : 0,
         admin_notes: status === 'rejected' ? '[TEST] Did not meet minimum criteria' : null
       });
     }
@@ -365,11 +357,7 @@ const testDataManager = {
         voteRecords.push({
           id: this.uid(this.VOTE_PREFIX, voteIdx),
           entry_id: vEntry.id,
-          voter_email: 'voter' + voteIdx + '@example.com',
-          voter_name: 'Test Voter ' + voteIdx,
-          voter_ip: '192.168.1.' + ((voteIdx % 254) + 1),
-          vote_value: 1,
-          email_verified: true
+          voter_email: 'voter' + voteIdx + '@example.com'
         });
         voteIdx++;
       }
@@ -388,11 +376,11 @@ const testDataManager = {
    */
   async generateMarketingData() {
     var sponsors = [
-      { id: this.uid(this.SPONSOR_PREFIX, 1), name: 'TEST_MODE_Platinum Corp', company_name: 'TEST_MODE_Platinum Corp', tier: 'Platinum', sponsorship_amount: 25000, contact_name: 'Sarah Platinum', email: 'sarah@platinumcorp.example.com', website: 'https://example.com/platinum', is_active: true, display_order: 1 },
-      { id: this.uid(this.SPONSOR_PREFIX, 2), name: 'TEST_MODE_Gold Industries', company_name: 'TEST_MODE_Gold Industries', tier: 'Gold', sponsorship_amount: 15000, contact_name: 'James Gold', email: 'james@goldindustries.example.com', website: 'https://example.com/gold', is_active: true, display_order: 2 },
-      { id: this.uid(this.SPONSOR_PREFIX, 3), name: 'TEST_MODE_Silver Solutions', company_name: 'TEST_MODE_Silver Solutions', tier: 'Silver', sponsorship_amount: 7500, contact_name: 'Emma Silver', email: 'emma@silversolutions.example.com', website: 'https://example.com/silver', is_active: true, display_order: 3 },
-      { id: this.uid(this.SPONSOR_PREFIX, 4), name: 'TEST_MODE_Bronze Partners', company_name: 'TEST_MODE_Bronze Partners', tier: 'Bronze', sponsorship_amount: 3500, contact_name: 'Tom Bronze', email: 'tom@bronzepartners.example.com', website: 'https://example.com/bronze', is_active: true, display_order: 4 },
-      { id: this.uid(this.SPONSOR_PREFIX, 5), name: 'TEST_MODE_Community Partner', company_name: 'TEST_MODE_Community Partner', tier: 'Partner', sponsorship_amount: 1000, contact_name: 'Lisa Partner', email: 'lisa@communitypartner.example.com', website: 'https://example.com/partner', is_active: true, display_order: 5 }
+      { id: this.uid(this.SPONSOR_PREFIX, 1), name: 'TEST_MODE_Platinum Corp', tier: 'Platinum', website: 'https://example.com/platinum', is_active: true },
+      { id: this.uid(this.SPONSOR_PREFIX, 2), name: 'TEST_MODE_Gold Industries', tier: 'Gold', website: 'https://example.com/gold', is_active: true },
+      { id: this.uid(this.SPONSOR_PREFIX, 3), name: 'TEST_MODE_Silver Solutions', tier: 'Silver', website: 'https://example.com/silver', is_active: true },
+      { id: this.uid(this.SPONSOR_PREFIX, 4), name: 'TEST_MODE_Bronze Partners', tier: 'Bronze', website: 'https://example.com/bronze', is_active: true },
+      { id: this.uid(this.SPONSOR_PREFIX, 5), name: 'TEST_MODE_Community Partner', tier: 'Partner', website: 'https://example.com/partner', is_active: true }
     ];
     var { error: sponsorErr } = await STATE.client.from('sponsors').upsert(sponsors);
     this._logErr('Sponsors', sponsorErr);
@@ -457,64 +445,20 @@ const testDataManager = {
     var dealStages = ['lead', 'contacted', 'qualified', 'proposal', 'negotiation', 'closed_won'];
     var dealTypes = ['sponsorship', 'award_fee', 'event_tickets', 'partnership', 'package_upgrade', 'sponsorship'];
     var dealValues = [25000, 500, 2500, 10000, 1500, 15000];
-    var dealProbs = [10, 25, 50, 65, 80, 100];
     var deals = dealStages.map(function(stage, i) {
       return {
         id: testDataManager.uid(testDataManager.DEAL_PREFIX, i + 1),
         organisation_id: orgs[i].id,
-        contact_id: contacts[i].id,
-        deal_name: 'TEST_MODE_' + orgs[i].company_name.replace('TEST_MODE_', '') + ' - ' + dealTypes[i],
-        deal_type: dealTypes[i],
+        title: 'TEST_MODE_' + orgs[i].company_name.replace('TEST_MODE_', '') + ' - ' + dealTypes[i],
         stage: stage,
-        probability: dealProbs[i],
-        deal_value: dealValues[i],
-        status: stage === 'closed_won' ? 'won' : 'active',
-        expected_close_date: new Date(Date.now() + (i + 1) * 86400000 * 14).toISOString().split('T')[0],
-        actual_close_date: stage === 'closed_won' ? new Date().toISOString().split('T')[0] : null,
-        description: 'Test deal for ' + dealTypes[i] + ' with ' + orgs[i].company_name.replace('TEST_MODE_', '')
+        value: dealValues[i]
       };
     });
     var { error: dealErr } = await STATE.client.from('deals').upsert(deals);
     this._logErr('Deals', dealErr);
 
-    // Meeting notes (4 meetings)
-    var meetings = [
-      { id: this.uid(this.MEETING_PREFIX, 1), organisation_id: orgs[0].id, deal_id: deals[0].id, meeting_title: 'TEST_MODE_Platinum Sponsorship Discussion', meeting_type: 'video_call', duration_minutes: 45, notes: 'Discussed platinum tier benefits. Very interested.', follow_up_required: true, follow_up_date: new Date(Date.now() + 7 * 86400000).toISOString().split('T')[0] },
-      { id: this.uid(this.MEETING_PREFIX, 2), organisation_id: orgs[3].id, deal_id: deals[3].id, meeting_title: 'TEST_MODE_Partnership Review', meeting_type: 'in_person', duration_minutes: 60, notes: 'Reviewed partnership terms. Need to send revised proposal.', follow_up_required: true, follow_up_date: new Date(Date.now() + 3 * 86400000).toISOString().split('T')[0] },
-      { id: this.uid(this.MEETING_PREFIX, 3), organisation_id: orgs[5].id, meeting_title: 'TEST_MODE_Award Entry Guidance', meeting_type: 'phone', duration_minutes: 20, notes: 'Guided them through the entry process. Will submit next week.', follow_up_required: false },
-      { id: this.uid(this.MEETING_PREFIX, 4), organisation_id: orgs[8].id, meeting_title: 'TEST_MODE_Event Planning Debrief', meeting_type: 'conference', duration_minutes: 90, notes: 'Reviewed last event feedback. Planning improvements for next year.', follow_up_required: false }
-    ];
-    var { error: meetingErr } = await STATE.client.from('meeting_notes').upsert(meetings);
-    this._logErr('Meetings', meetingErr);
-
-    // Contact segments (3 segments)
-    var segments = [
-      { id: this.uid(this.SEGMENT_PREFIX, 1), segment_name: 'TEST_MODE_VIP Sponsors', description: 'High-value sponsors (Gold+ tier)', color: '#FFD700', icon: 'bi-star-fill' },
-      { id: this.uid(this.SEGMENT_PREFIX, 2), segment_name: 'TEST_MODE_Active Entrants', description: 'Organisations with active award entries', color: '#28a745', icon: 'bi-file-earmark-check' },
-      { id: this.uid(this.SEGMENT_PREFIX, 3), segment_name: 'TEST_MODE_Past Winners', description: 'Previous award winners', color: '#6f42c1', icon: 'bi-trophy' }
-    ];
-    var { error: segErr } = await STATE.client.from('contact_segments').upsert(segments);
-    this._logErr('Segments', segErr);
-
-    // Organisation-segment relationships
-    var orgSegments = [];
-    // VIP Sponsors: first 3 orgs
-    for (var s1 = 0; s1 < 3; s1++) {
-      orgSegments.push({ organisation_id: orgs[s1].id, segment_id: segments[0].id });
-    }
-    // Active Entrants: orgs 4-8
-    for (var s2 = 3; s2 < 8; s2++) {
-      orgSegments.push({ organisation_id: orgs[s2].id, segment_id: segments[1].id });
-    }
-    // Past Winners: orgs 9-14
-    for (var s3 = 8; s3 < 14; s3++) {
-      orgSegments.push({ organisation_id: orgs[s3].id, segment_id: segments[2].id });
-    }
-    for (var ds = 0; ds < segments.length; ds++) {
-      await STATE.client.from('organisation_segments').delete().eq('segment_id', segments[ds].id);
-    }
-    var { error: orgSegErr } = await STATE.client.from('organisation_segments').insert(orgSegments);
-    this._logErr('Org segments', orgSegErr);
+    // NOTE: meeting_notes, contact_segments, organisation_segments tables
+    // do not exist in the database schema - skipped
   },
 
   /**
@@ -553,13 +497,13 @@ const testDataManager = {
       var inv = invoices[li];
       if (inv.invoice_type === 'package') {
         lineItems.push(
-          { invoice_id: inv.id, item_name: 'Awards Package', quantity: 1, unit_price: inv.total_amount * 0.8, line_total: inv.total_amount * 0.8 },
-          { invoice_id: inv.id, item_name: 'Additional Guest Tickets', quantity: Math.ceil(inv.total_amount * 0.2 / 50), unit_price: 50, line_total: inv.total_amount * 0.2 }
+          { invoice_id: inv.id, description: 'Awards Package', quantity: 1, unit_price: inv.total_amount * 0.8, total: inv.total_amount * 0.8 },
+          { invoice_id: inv.id, description: 'Additional Guest Tickets', quantity: Math.ceil(inv.total_amount * 0.2 / 50), unit_price: 50, total: inv.total_amount * 0.2 }
         );
       } else if (inv.invoice_type === 'entry_fee') {
-        lineItems.push({ invoice_id: inv.id, item_name: 'Award Entry Fee', quantity: 1, unit_price: inv.total_amount, line_total: inv.total_amount });
+        lineItems.push({ invoice_id: inv.id, description: 'Award Entry Fee', quantity: 1, unit_price: inv.total_amount, total: inv.total_amount });
       } else {
-        lineItems.push({ invoice_id: inv.id, item_name: 'Sponsorship Package', quantity: 1, unit_price: inv.total_amount, line_total: inv.total_amount });
+        lineItems.push({ invoice_id: inv.id, description: 'Sponsorship Package', quantity: 1, unit_price: inv.total_amount, total: inv.total_amount });
       }
     }
     for (var dli = 0; dli < invoices.length; dli++) {
@@ -578,9 +522,7 @@ const testDataManager = {
         organisation_id: inv.organisation_id,
         payment_date: new Date(Date.now() - (10 - i * 2) * 86400000).toISOString().split('T')[0],
         amount: inv.total_amount,
-        payment_method: ['bank_transfer', 'card', 'stripe'][i % 3],
-        status: 'completed',
-        notes: '[TEST MODE] Payment for ' + inv.invoice_number
+        payment_method: ['bank_transfer', 'card', 'stripe'][i % 3]
       };
     });
     var { error: payErr } = await STATE.client.from('payments').upsert(payments);
@@ -619,19 +561,12 @@ const testDataManager = {
     for (var mg = 0; mg < 8; mg++) {
       mediaGallery.push({
         id: this.uid(this.MEDIA_GAL_PREFIX, mg + 1),
-        gallery_section_id: galleries[mg < 4 ? 0 : 1].id,
         file_url: 'https://placehold.co/800x600?text=Award+Photo+' + (mg + 1),
         file_type: 'image/jpeg',
         organisation_id: orgs[mg].id,
         award_id: awards[mg % 10].id,
         title: 'TEST_MODE_Gallery Photo ' + (mg + 1),
-        caption: 'Winner photo ' + (mg + 1) + ' from the awards ceremony',
-        photographer: 'Test Photographer',
-        published: true,
-        display_order: mg + 1,
-        show_in_gallery: true,
-        show_on_winner_page: mg < 5,
-        show_on_company_page: true
+        published: true
       });
     }
     var { error: mgErr } = await STATE.client.from('media_gallery').upsert(mediaGallery);
@@ -648,16 +583,9 @@ const testDataManager = {
       runningOrder.push({
         id: this.uid(this.RUNNING_PREFIX, ro + 1),
         event_id: eventId,
-        organisation_id: this.uid(this.ORG_PREFIX, winnerOrgIdx),
-        award_id: awards[ro].id,
-        display_name: orgs[winnerOrgIdx - 1].company_name.replace('TEST_MODE_', ''),
-        award_name: awards[ro].award_name.replace('TEST_MODE_', ''),
-        award_number: '1-' + String(ro + 1).padStart(2, '0'),
+        item_name: awards[ro].award_name.replace('TEST_MODE_', '') + ' - ' + orgs[winnerOrgIdx - 1].company_name.replace('TEST_MODE_', ''),
         display_order: ro + 1,
-        section: 1,
-        status: ro < 3 ? 'completed' : (ro < 6 ? 'announced' : 'pending'),
-        duration_minutes: 5,
-        notes: ro === 0 ? 'Opening award - extra time for speech' : null
+        duration_minutes: 5
       });
     }
     await STATE.client.from('running_order').delete().eq('event_id', eventId);
@@ -668,8 +596,7 @@ const testDataManager = {
     var { error: rosErr } = await STATE.client.from('running_order_settings').upsert({
       id: this.uid(this.RUNNING_PREFIX, 99),
       event_id: eventId,
-      settings: { time_per_award: 5, break_after: 5, ceremony_type: 'formal' },
-      is_published: false
+      settings: { time_per_award: 5, break_after: 5, ceremony_type: 'formal' }
     });
     this._logErr('Running order settings', rosErr);
   },
@@ -722,8 +649,7 @@ const testDataManager = {
    * Generate event attendees, ticket types, and tickets
    */
   async generateEventExtras(eventId, orgs) {
-    // Event attendees (20 attendees with varied check-in statuses)
-    var guestTypes = ['vip', 'guest', 'sponsor', 'media', 'staff'];
+    // Event attendees (20 attendees)
     var mealPrefs = ['standard', 'vegetarian', 'vegan', 'halal', 'gluten-free'];
     var attendees = [];
     for (var i = 0; i < 20; i++) {
@@ -735,26 +661,13 @@ const testDataManager = {
         organisation_id: orgs[i].id,
         table_number: Math.floor(i / 4) + 1,
         meal_preference: mealPrefs[i % 5],
-        rsvp_status: i < 15 ? 'confirmed' : (i < 18 ? 'pending' : 'declined'),
-        guest_type: guestTypes[i % 5],
-        plus_ones: i % 4 === 0 ? 1 : 0,
-        checked_in: i < 8,
-        check_in_time: i < 8 ? new Date(Date.now() - (20 - i) * 60000).toISOString() : null,
-        notes: i === 0 ? 'VIP - ensure table 1 placement' : null
+        rsvp_status: i < 15 ? 'confirmed' : (i < 18 ? 'pending' : 'declined')
       });
     }
     await STATE.client.from('event_attendees').delete().eq('event_id', eventId);
     var { error: attErr } = await STATE.client.from('event_attendees').insert(attendees);
     this._logErr('Attendees', attErr);
-
-    // Ticket types (3 types)
-    var ticketTypes = [
-      { id: this.uid(this.TICKET_TYPE_PREFIX, 1), event_id: eventId, name: 'TEST_MODE_Standard Ticket', description: 'General admission with dinner', price: 150.00, quantity: 200, sold: 142, early_bird_price: 120.00, includes_table: false, is_active: true },
-      { id: this.uid(this.TICKET_TYPE_PREFIX, 2), event_id: eventId, name: 'TEST_MODE_VIP Table (10)', description: 'Premium table of 10 with champagne reception', price: 2000.00, quantity: 20, sold: 15, early_bird_price: 1750.00, includes_table: true, table_size: 10, is_active: true },
-      { id: this.uid(this.TICKET_TYPE_PREFIX, 3), event_id: eventId, name: 'TEST_MODE_Corporate Package', description: 'Branding, 2 tables, sponsor recognition', price: 5000.00, quantity: 10, sold: 4, includes_table: true, table_size: 10, is_active: true }
-    ];
-    var { error: ttErr } = await STATE.client.from('event_ticket_types').upsert(ticketTypes);
-    this._logErr('Ticket types', ttErr);
+    // NOTE: event_ticket_types table does not exist in schema - skipped
   },
 
   /**
@@ -774,9 +687,9 @@ const testDataManager = {
 
     // Email lists (3 lists)
     var emailLists = [
-      { id: this.uid(this.EMAIL_LIST_PREFIX, 1), list_name: 'TEST_MODE_All Entrants 2025', list_type: 'entrants', is_active: true, color: '#007bff', icon: 'bi-file-earmark-text', description: 'All organisations that submitted entries in 2025', subscriber_count: 15, active_subscriber_count: 14 },
-      { id: this.uid(this.EMAIL_LIST_PREFIX, 2), list_name: 'TEST_MODE_Sponsors & Partners', list_type: 'sponsors', is_active: true, color: '#28a745', icon: 'bi-star', description: 'Current sponsors and strategic partners', subscriber_count: 8, active_subscriber_count: 8 },
-      { id: this.uid(this.EMAIL_LIST_PREFIX, 3), list_name: 'TEST_MODE_Event Guests', list_type: 'general', is_active: true, color: '#6f42c1', icon: 'bi-calendar-event', description: 'Invited guests for the awards ceremony', subscriber_count: 20, active_subscriber_count: 18 }
+      { id: this.uid(this.EMAIL_LIST_PREFIX, 1), list_name: 'TEST_MODE_All Entrants 2025', list_type: 'entrants', is_active: true, color: '#007bff', icon: 'bi-file-earmark-text' },
+      { id: this.uid(this.EMAIL_LIST_PREFIX, 2), list_name: 'TEST_MODE_Sponsors & Partners', list_type: 'sponsors', is_active: true, color: '#28a745', icon: 'bi-star' },
+      { id: this.uid(this.EMAIL_LIST_PREFIX, 3), list_name: 'TEST_MODE_Event Guests', list_type: 'general', is_active: true, color: '#6f42c1', icon: 'bi-calendar-event' }
     ];
     var { error: listErr } = await STATE.client.from('email_lists').upsert(emailLists);
     this._logErr('Email lists', listErr);
@@ -790,8 +703,7 @@ const testDataManager = {
         first_name: 'Contact',
         last_name: orgs[sl].company_name.replace('TEST_MODE_', ''),
         company_name: orgs[sl].company_name.replace('TEST_MODE_', ''),
-        status: sl < 14 ? 'active' : 'unsubscribed',
-        source: 'entry_submission'
+        status: sl < 14 ? 'active' : 'unsubscribed'
       });
     }
     for (var ss = 0; ss < 5; ss++) {
@@ -801,8 +713,7 @@ const testDataManager = {
         first_name: ['Sarah', 'James', 'Emma', 'Tom', 'Lisa'][ss],
         last_name: ['Platinum', 'Gold', 'Silver', 'Bronze', 'Partner'][ss],
         company_name: ['Platinum Corp', 'Gold Industries', 'Silver Solutions', 'Bronze Partners', 'Community Partner'][ss],
-        status: 'active',
-        source: 'manual'
+        status: 'active'
       });
     }
     // Clear existing test subscribers
@@ -829,25 +740,8 @@ const testDataManager = {
    * Generate CRM follow-ups and scheduled reports
    */
   async generateExtras(orgs) {
-    // Organisation follow-ups (CRM > My Tasks)
-    var followUps = [
-      { id: this.uid(this.FOLLOWUP_PREFIX, 1), organisation_id: orgs[0].id, company_name: orgs[0].company_name, follow_up_date: new Date(Date.now() + 2 * 86400000).toISOString().split('T')[0], note: 'TEST_MODE_Follow up on platinum sponsorship proposal', completed: false, created_by: 'admin@example.com' },
-      { id: this.uid(this.FOLLOWUP_PREFIX, 2), organisation_id: orgs[2].id, company_name: orgs[2].company_name, follow_up_date: new Date(Date.now() - 1 * 86400000).toISOString().split('T')[0], note: 'TEST_MODE_Chase outstanding entry submission', completed: false, created_by: 'admin@example.com' },
-      { id: this.uid(this.FOLLOWUP_PREFIX, 3), organisation_id: orgs[4].id, company_name: orgs[4].company_name, follow_up_date: new Date(Date.now() + 7 * 86400000).toISOString().split('T')[0], note: 'TEST_MODE_Discuss event table requirements', completed: false, created_by: 'admin@example.com' },
-      { id: this.uid(this.FOLLOWUP_PREFIX, 4), organisation_id: orgs[7].id, company_name: orgs[7].company_name, follow_up_date: new Date(Date.now() - 3 * 86400000).toISOString().split('T')[0], note: 'TEST_MODE_Send revised invoice for package upgrade', completed: true, completed_at: new Date().toISOString(), created_by: 'admin@example.com' },
-      { id: this.uid(this.FOLLOWUP_PREFIX, 5), organisation_id: orgs[9].id, company_name: orgs[9].company_name, follow_up_date: new Date(Date.now() + 14 * 86400000).toISOString().split('T')[0], note: 'TEST_MODE_Book photography session for winner profile', completed: false, created_by: 'admin@example.com' }
-    ];
-    var { error: fuErr } = await STATE.client.from('organisation_follow_ups').upsert(followUps);
-    this._logErr('Follow-ups', fuErr);
-
-    // Scheduled reports (Reports tab)
-    var reports = [
-      { id: this.uid(this.REPORT_PREFIX, 1), name: 'TEST_MODE_Weekly Entry Summary', report_type: 'entries', frequency: 'weekly', recipients: ['admin@example.com'], sections: ['entry_stats', 'status_breakdown'], is_active: true, next_run_at: new Date(Date.now() + 7 * 86400000).toISOString(), created_by: 'admin@example.com' },
-      { id: this.uid(this.REPORT_PREFIX, 2), name: 'TEST_MODE_Monthly Financial Report', report_type: 'financial', frequency: 'monthly', recipients: ['admin@example.com', 'finance@example.com'], sections: ['revenue', 'payments', 'overdue'], is_active: true, next_run_at: new Date(Date.now() + 30 * 86400000).toISOString(), created_by: 'admin@example.com' },
-      { id: this.uid(this.REPORT_PREFIX, 3), name: 'TEST_MODE_Judge Scoring Progress', report_type: 'judging', frequency: 'daily', recipients: ['admin@example.com'], sections: ['judge_progress', 'score_distribution'], is_active: false, created_by: 'admin@example.com' }
-    ];
-    var { error: repErr } = await STATE.client.from('scheduled_reports').upsert(reports);
-    this._logErr('Scheduled reports', repErr);
+    // NOTE: organisation_follow_ups and scheduled_reports tables
+    // do not exist in the database schema - skipped
   },
 
   /**
@@ -895,24 +789,15 @@ const testDataManager = {
 
       utils.showToast('Removing test data...', 'info');
 
-      // ---- NEW TABLES (added for full coverage) ----
+      // ---- EXTENDED TABLES ----
 
-      // A. Scheduled reports
-      await STATE.client.from('scheduled_reports').delete().like('name', 'TEST_MODE_%');
-
-      // B. Organisation follow-ups
-      await STATE.client.from('organisation_follow_ups').delete().like('note', 'TEST_MODE_%');
-      if (orgIds.length > 0) {
-        await STATE.client.from('organisation_follow_ups').delete().in('organisation_id', orgIds);
-      }
-
-      // C. Social media posts
+      // A. Social media posts
       await STATE.client.from('social_media_posts').delete().like('content', '%TEST_MODE_%');
       if (orgIds.length > 0) {
         await STATE.client.from('social_media_posts').delete().in('company_id', orgIds);
       }
 
-      // D. Email list subscribers (must be before email lists)
+      // B. Email list subscribers (must be before email lists)
       var { data: testLists } = await STATE.client
         .from('email_lists').select('id').like('list_name', 'TEST_MODE_%');
       if (testLists && testLists.length > 0) {
@@ -921,19 +806,13 @@ const testDataManager = {
         }
       }
 
-      // E. Email lists
+      // C. Email lists
       await STATE.client.from('email_lists').delete().like('list_name', 'TEST_MODE_%');
 
-      // F. Email templates
+      // D. Email templates
       await STATE.client.from('email_templates').delete().like('name', 'TEST_MODE_%');
 
-      // G. Event tickets (child of event_ticket_types and event_guests)
-      await STATE.client.from('event_tickets').delete().eq('event_id', eventId);
-
-      // H. Event ticket types
-      await STATE.client.from('event_ticket_types').delete().eq('event_id', eventId);
-
-      // I. Event attendees
+      // E. Event attendees
       await STATE.client.from('event_attendees').delete().eq('event_id', eventId);
 
       // ---- ORIGINAL TABLES ----
@@ -951,32 +830,14 @@ const testDataManager = {
       // 3. Entries
       await STATE.client.from('entries').delete().like('entry_number', 'TEST-ENT-%');
 
-      // 4. Organisation segments
-      var { data: testSegs } = await STATE.client
-        .from('contact_segments').select('id').like('segment_name', 'TEST_MODE_%');
-      if (testSegs && testSegs.length > 0) {
-        for (var os = 0; os < testSegs.length; os++) {
-          await STATE.client.from('organisation_segments').delete().eq('segment_id', testSegs[os].id);
-        }
-      }
-
-      // 5. Contact segments
-      await STATE.client.from('contact_segments').delete().like('segment_name', 'TEST_MODE_%');
-
-      // 6. Meeting notes (use both org-based and prefix-based deletion)
-      await STATE.client.from('meeting_notes').delete().like('meeting_title', 'TEST_MODE_%');
-      if (orgIds.length > 0) {
-        await STATE.client.from('meeting_notes').delete().in('organisation_id', orgIds);
-      }
-
-      // 7. Communications
+      // 4. Communications
       await STATE.client.from('communications').delete().like('subject', 'TEST_MODE_%');
       if (orgIds.length > 0) {
         await STATE.client.from('communications').delete().in('organisation_id', orgIds);
       }
 
-      // 8. Deals
-      await STATE.client.from('deals').delete().like('deal_name', 'TEST_MODE_%');
+      // 5. Deals
+      await STATE.client.from('deals').delete().like('title', 'TEST_MODE_%');
       if (orgIds.length > 0) {
         await STATE.client.from('deals').delete().in('organisation_id', orgIds);
       }
@@ -1001,8 +862,8 @@ const testDataManager = {
       // 12. Invoices
       await STATE.client.from('invoices').delete().like('invoice_number', 'TEST-INV-%');
 
-      // 13. Sponsors
-      await STATE.client.from('sponsors').delete().like('company_name', 'TEST_MODE_%');
+      // 10. Sponsors
+      await STATE.client.from('sponsors').delete().like('name', 'TEST_MODE_%');
 
       // 14. Banners
       await STATE.client.from('banners').delete().like('title', 'TEST_MODE_%');
@@ -1094,11 +955,11 @@ const testDataManager = {
         STATE.client.from('awards').select('*', { count: 'exact', head: true }).like('award_name', 'TEST_MODE_%'),
         STATE.client.from('event_guests').select('*', { count: 'exact', head: true }).eq('event_id', this.EVENT_ID),
         STATE.client.from('entries').select('*', { count: 'exact', head: true }).like('entry_number', 'TEST-ENT-%'),
-        STATE.client.from('sponsors').select('*', { count: 'exact', head: true }).like('company_name', 'TEST_MODE_%'),
+        STATE.client.from('sponsors').select('*', { count: 'exact', head: true }).like('name', 'TEST_MODE_%'),
         STATE.client.from('banners').select('*', { count: 'exact', head: true }).like('title', 'TEST_MODE_%'),
         STATE.client.from('invoices').select('*', { count: 'exact', head: true }).like('invoice_number', 'TEST-INV-%'),
         STATE.client.from('organisation_contacts').select('*', { count: 'exact', head: true }).like('id', testDataManager.CONTACT_PREFIX + '%'),
-        STATE.client.from('deals').select('*', { count: 'exact', head: true }).like('deal_name', 'TEST_MODE_%'),
+        STATE.client.from('deals').select('*', { count: 'exact', head: true }).like('title', 'TEST_MODE_%'),
         STATE.client.from('communications').select('*', { count: 'exact', head: true }).like('subject', 'TEST_MODE_%')
       ]);
 
@@ -1356,7 +1217,6 @@ const testDataManager = {
             company_name: 'TEST_MODE_Mock Company Ltd',
             contact_name: 'Test Contact',
             email: 'test@mockcompany.com',
-            status: 'active',
             region: 'London'
           })
           .select()
@@ -1378,7 +1238,6 @@ const testDataManager = {
           status: 'sent',
           payment_status: 'unpaid',
           invoice_type: 'package',
-          package_type: 'gold',
           total_amount: 1250.00,
           currency: 'GBP',
           notes: '[TEST MODE] Mock order for testing dashboard notifications'
@@ -1391,8 +1250,8 @@ const testDataManager = {
       await STATE.client
         .from('invoice_line_items')
         .insert([
-          { invoice_id: invoice.id, item_name: 'Gold Package', quantity: 1, unit_price: 1000.00, line_total: 1000.00 },
-          { invoice_id: invoice.id, item_name: 'Extra Tickets', quantity: 5, unit_price: 50.00, line_total: 250.00 }
+          { invoice_id: invoice.id, description: 'Gold Package', quantity: 1, unit_price: 1000.00, total: 1000.00 },
+          { invoice_id: invoice.id, description: 'Extra Tickets', quantity: 5, unit_price: 50.00, total: 250.00 }
         ]);
 
       utils.hideLoading();

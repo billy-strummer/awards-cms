@@ -645,6 +645,11 @@ const testDataManager = {
         .from('organisations').select('id').like('company_name', 'TEST_MODE_%');
       var orgIds = (testOrgs || []).map(function(o) { return o.id; });
 
+      // Get test award IDs
+      var { data: testAwards } = await STATE.client
+        .from('award_years').select('id').like('award_name', 'TEST_MODE_%');
+      var awardIds = (testAwards || []).map(function(a) { return a.id; });
+
       // Get test entry IDs
       var { data: testEntries } = await STATE.client
         .from('entries').select('id').like('entry_number', 'TEST-ENT-%');
@@ -652,12 +657,12 @@ const testDataManager = {
 
       utils.showToast('Removing test data...', 'info');
 
-      // 1. Public votes
+      // 1. Public votes (child of entries)
       for (var pv = 0; pv < entryIds.length; pv++) {
         await STATE.client.from('public_votes').delete().eq('entry_id', entryIds[pv]);
       }
 
-      // 2. Judge scores
+      // 2. Judge scores (child of entries)
       for (var js = 0; js < entryIds.length; js++) {
         await STATE.client.from('judge_scores').delete().eq('entry_id', entryIds[js]);
       }
@@ -677,17 +682,20 @@ const testDataManager = {
       // 5. Contact segments
       await STATE.client.from('contact_segments').delete().like('segment_name', 'TEST_MODE_%');
 
-      // 6. Meeting notes
+      // 6. Meeting notes (use both org-based and prefix-based deletion)
+      await STATE.client.from('meeting_notes').delete().like('meeting_title', 'TEST_MODE_%');
       if (orgIds.length > 0) {
         await STATE.client.from('meeting_notes').delete().in('organisation_id', orgIds);
       }
 
       // 7. Communications
+      await STATE.client.from('communications').delete().like('subject', 'TEST_MODE_%');
       if (orgIds.length > 0) {
         await STATE.client.from('communications').delete().in('organisation_id', orgIds);
       }
 
       // 8. Deals
+      await STATE.client.from('deals').delete().like('deal_name', 'TEST_MODE_%');
       if (orgIds.length > 0) {
         await STATE.client.from('deals').delete().in('organisation_id', orgIds);
       }
@@ -719,14 +727,17 @@ const testDataManager = {
       await STATE.client.from('banners').delete().like('title', 'TEST_MODE_%');
 
       // 15. Media gallery records
+      await STATE.client.from('media_gallery').delete().like('title', 'TEST_MODE_%');
       if (orgIds.length > 0) {
         await STATE.client.from('media_gallery').delete().in('organisation_id', orgIds);
       }
 
       // 16. Media items
+      await STATE.client.from('media_items').delete().like('title', 'TEST_MODE_%');
       await STATE.client.from('media_items').delete().eq('event_id', eventId);
 
       // 17. Event galleries
+      await STATE.client.from('event_galleries').delete().like('gallery_name', 'TEST_MODE_%');
       await STATE.client.from('event_galleries').delete().eq('event_id', eventId);
 
       // 18. Table assignments
@@ -744,12 +755,18 @@ const testDataManager = {
       // 22. Event guests
       await STATE.client.from('event_guests').delete().eq('event_id', eventId);
 
-      // 23. Award assignments
+      // 23. Award assignments (delete by org IDs and award IDs for full coverage)
+      if (awardIds.length > 0) {
+        await STATE.client.from('award_assignments').delete().in('award_id', awardIds);
+      }
       if (orgIds.length > 0) {
         await STATE.client.from('award_assignments').delete().in('organisation_id', orgIds);
       }
 
-      // 23b. Winners
+      // 23b. Winners (delete by org IDs and award IDs for full coverage)
+      if (awardIds.length > 0) {
+        await STATE.client.from('winners').delete().in('award_id', awardIds);
+      }
       if (orgIds.length > 0) {
         await STATE.client.from('winners').delete().in('organisation_id', orgIds);
       }
@@ -757,8 +774,8 @@ const testDataManager = {
       // 24. Organisations
       await STATE.client.from('organisations').delete().like('company_name', 'TEST_MODE_%');
 
-      // 25. Awards
-      await STATE.client.from('awards').delete().like('award_name', 'TEST_MODE_%');
+      // 25. Awards (delete directly from award_years table, not the view)
+      await STATE.client.from('award_years').delete().like('award_name', 'TEST_MODE_%');
 
       // 26. Event
       await STATE.client.from('events').delete().eq('id', eventId);
@@ -1119,14 +1136,42 @@ const testDataManager = {
     try {
       utils.showLoading();
 
-      var { error } = await STATE.client
+      // 1. Find mock invoices so we can clean up related records
+      var { data: mockInvoices } = await STATE.client
         .from('invoices')
-        .delete()
+        .select('id')
         .like('invoice_number', 'TEST-INV-%');
 
-      if (error) throw error;
+      if (mockInvoices && mockInvoices.length > 0) {
+        // 2. Delete line items for these invoices (in case CASCADE doesn't fire)
+        for (var i = 0; i < mockInvoices.length; i++) {
+          await STATE.client.from('invoice_line_items').delete().eq('invoice_id', mockInvoices[i].id);
+        }
 
+        // 3. Delete payments referencing these invoices
+        for (var p = 0; p < mockInvoices.length; p++) {
+          await STATE.client.from('payments').delete().eq('invoice_id', mockInvoices[p].id);
+        }
+      }
+
+      // 4. Delete the invoices themselves
+      await STATE.client.from('invoices').delete().like('invoice_number', 'TEST-INV-%');
+
+      // 5. Delete the mock organisation (and its children via CASCADE)
+      await STATE.client.from('organisations').delete().eq('company_name', 'TEST_MODE_Mock Company Ltd');
+
+      utils.hideLoading();
       utils.showToast('Mock orders removed successfully!', 'success');
+
+      setTimeout(function() {
+        testDataManager.showModal('Mock Orders Removed',
+          '<div class="alert alert-success">' +
+          '<h6><i class="bi bi-check-circle me-2"></i>Cleanup Complete</h6>' +
+          '<p class="mb-0">All mock order data has been removed.</p>' +
+          '</div>' +
+          '<p class="mt-3">Click "Reload Page" to refresh all views.</p>',
+          true);
+      }, 500);
 
     } catch (error) {
       console.error('Error removing mock orders:', error);

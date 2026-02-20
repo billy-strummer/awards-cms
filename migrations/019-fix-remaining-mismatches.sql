@@ -7,9 +7,18 @@
 -- 1. AWARD_ASSIGNMENTS — add missing FK so PostgREST can resolve the hint
 --    4 queries use awards!award_assignments_award_id_fkey which requires
 --    the actual FK constraint to exist
-ALTER TABLE award_assignments
-  ADD CONSTRAINT award_assignments_award_id_fkey
-  FOREIGN KEY (award_id) REFERENCES award_years(id) ON DELETE SET NULL;
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.table_constraints
+    WHERE constraint_name = 'award_assignments_award_id_fkey'
+      AND table_name = 'award_assignments'
+  ) THEN
+    ALTER TABLE award_assignments
+      ADD CONSTRAINT award_assignments_award_id_fkey
+      FOREIGN KEY (award_id) REFERENCES award_years(id) ON DELETE SET NULL;
+  END IF;
+END $$;
 
 -- 2. EMAIL_LOG — add 3 missing columns used by email-automation API
 ALTER TABLE email_log ADD COLUMN IF NOT EXISTS template_key TEXT;

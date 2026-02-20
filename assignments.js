@@ -176,10 +176,10 @@ const assignmentsModule = {
                 <button type="button" class="btn btn-outline-secondary active" id="filter-all" onclick="assignmentsModule.filterAssignments('all')">
                   All
                 </button>
-                <button type="button" class="btn btn-outline-info" id="filter-self" onclick="assignmentsModule.filterAssignments('self_nomination')">
+                <button type="button" class="btn btn-outline-info" id="filter-self_nomination" onclick="assignmentsModule.filterAssignments('self_nomination')">
                   <i class="bi bi-hand-index me-1"></i>Self Nominated
                 </button>
-                <button type="button" class="btn btn-outline-warning" id="filter-previous" onclick="assignmentsModule.filterAssignments('previous_winner')">
+                <button type="button" class="btn btn-outline-warning" id="filter-previous_winner" onclick="assignmentsModule.filterAssignments('previous_winner')">
                   <i class="bi bi-trophy me-1"></i>Previous Winners
                 </button>
                 <button type="button" class="btn btn-outline-primary" id="filter-new" onclick="assignmentsModule.filterAssignments('new')">
@@ -420,7 +420,8 @@ const assignmentsModule = {
     document.querySelectorAll('[id^="filter-"]').forEach(btn => {
       btn.classList.remove('active');
     });
-    document.getElementById(`filter-${filterType}`).classList.add('active');
+    const activeBtn = document.getElementById(`filter-${filterType}`);
+    if (activeBtn) activeBtn.classList.add('active');
 
     // Filter assignments
     let filtered = this.allAssignments;

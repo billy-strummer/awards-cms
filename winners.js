@@ -144,9 +144,17 @@ const winnersModule = {
     count.textContent = STATE.filteredWinners.length;
 
     if (STATE.filteredWinners.length === 0) {
-      utils.showEmptyState('winnersTableBody', 5, 'No winners found');
+      utils.showEmptyState('winnersTableBody', 6, 'No winners found');
       return;
     }
+
+    const statusConfig = {
+      pending:       { label: 'Pending',       bg: 'bg-secondary' },
+      notified:      { label: 'Notified',      bg: 'bg-info' },
+      pack_sent:     { label: 'Pack Sent',     bg: 'bg-primary' },
+      confirmed:     { label: 'Confirmed',     bg: 'bg-success' },
+      published:     { label: 'Published',     bg: 'bg-warning text-dark' }
+    };
 
     tbody.innerHTML = STATE.filteredWinners.map(winner => {
       const photoCount = winner.winner_media?.filter(m => m.media_type === MEDIA_TYPES.PHOTO).length || 0;
@@ -155,6 +163,8 @@ const winnersModule = {
       const awardCategory = winner.awards?.award_category || 'N/A';
       const year = winner.awards?.year || 'N/A';
       const awardId = winner.award_id || '';
+      const status = winner.winner_status || 'pending';
+      const statusInfo = statusConfig[status] || statusConfig.pending;
 
       return `
         <tr class="fade-in">
@@ -174,6 +184,20 @@ const winnersModule = {
               <i class="bi bi-collection me-1"></i>${mediaTotal}
             </span>
             ${mediaTotal > 0 ? `<span class="text-muted small ms-1">${photoCount}<i class="bi bi-camera ms-1 me-2"></i>${videoCount}<i class="bi bi-camera-video ms-1"></i></span>` : ''}
+          </td>
+          <td>
+            <div class="dropdown">
+              <button class="btn btn-sm ${statusInfo.bg} dropdown-toggle" type="button" data-bs-toggle="dropdown" style="min-width: 100px;">
+                ${statusInfo.label}
+              </button>
+              <ul class="dropdown-menu">
+                ${Object.entries(statusConfig).map(([key, cfg]) => `
+                  <li><a class="dropdown-item ${key === status ? 'active' : ''}" href="#" onclick="event.preventDefault(); winnersModule.updateWinnerStatus('${winner.id}', '${key}')">
+                    <span class="badge ${cfg.bg} me-2">&nbsp;</span>${cfg.label}
+                  </a></li>
+                `).join('')}
+              </ul>
+            </div>
           </td>
           <td class="text-center">
             <div class="d-flex gap-1 justify-content-center flex-wrap">
@@ -835,22 +859,20 @@ const winnersModule = {
         // Winner heading
         doc.setFontSize(14);
         doc.setTextColor(0, 0, 0);
-        doc.text(`${index + 1}. ${winner.company_name}`, 14, yPosition);
+        const winnerName = winner.winner_name || 'Unnamed Winner';
+        doc.text(`${index + 1}. ${winnerName}`, 14, yPosition);
         yPosition += 7;
 
         // Award details
+        const awardName = winner.awards?.award_name || winner.awards?.award_category || 'N/A';
+        const awardYear = winner.awards?.year || '';
         doc.setFontSize(10);
         doc.setTextColor(100, 100, 100);
-        doc.text(`Award: ${winner.award_name}`, 20, yPosition);
+        doc.text(`Award: ${awardName}`, 20, yPosition);
         yPosition += 5;
 
-        if (winner.year) {
-          doc.text(`Year: ${winner.year}`, 20, yPosition);
-          yPosition += 5;
-        }
-
-        if (winner.sector) {
-          doc.text(`Sector: ${winner.sector}`, 20, yPosition);
+        if (awardYear) {
+          doc.text(`Year: ${awardYear}`, 20, yPosition);
           yPosition += 5;
         }
 
@@ -859,13 +881,13 @@ const winnersModule = {
           yPosition += 5;
         }
 
-        // Winner quote
-        if (winner.winner_quote) {
+        // Judge quote
+        if (winner.judge_quote) {
           doc.setTextColor(0, 0, 0);
           doc.text(`Quote:`, 20, yPosition);
           yPosition += 5;
 
-          const quoteLines = doc.splitTextToSize(winner.winner_quote, 170);
+          const quoteLines = doc.splitTextToSize(winner.judge_quote, 170);
           doc.setTextColor(80, 80, 80);
           quoteLines.forEach(line => {
             if (yPosition > 270) {
@@ -2418,19 +2440,466 @@ const winnersModule = {
    */
   async exportFilteredWinners() {
     try {
-      // Get currently filtered winners from STATE
-      const filteredWinners = this.getFilteredWinners();
+      const filteredWinners = STATE.filteredWinners || [];
 
-      if (!filteredWinners || filteredWinners.length === 0) {
+      if (filteredWinners.length === 0) {
         utils.showToast('No winners to export. Please add some winners first.', 'warning');
         return;
       }
 
-      // Call the existing exportAsPDF function
       await this.exportAsPDF(filteredWinners);
     } catch (error) {
       console.error('Error exporting filtered winners:', error);
       utils.showToast('Error exporting winners: ' + error.message, 'error');
+    }
+  },
+
+  /**
+   * Export currently filtered winners as CSV
+   */
+  exportFilteredWinnersCSV() {
+    const filteredWinners = STATE.filteredWinners || [];
+
+    if (filteredWinners.length === 0) {
+      utils.showToast('No winners to export.', 'warning');
+      return;
+    }
+
+    const exportData = filteredWinners.map(winner => {
+      const awardName = winner.awards?.award_name || winner.awards?.award_category || 'N/A';
+      const year = winner.awards?.year || 'N/A';
+      const photos = winner.winner_media?.filter(m => m.media_type === 'photo') || [];
+      const videos = winner.winner_media?.filter(m => m.media_type === 'video') || [];
+      const status = winner.winner_status || 'pending';
+
+      return {
+        'Winner Name': winner.winner_name || '',
+        'Award': awardName,
+        'Year': year,
+        'Status': status.charAt(0).toUpperCase() + status.slice(1),
+        'Score': winner.score || '',
+        'Photos': photos.length,
+        'Videos': videos.length,
+        'Impact Statement': winner.impact_statement || '',
+        'Judge Quote': winner.judge_quote || '',
+        'Announced Date': winner.announced_date || ''
+      };
+    });
+
+    const filename = `winners_export_${new Date().toISOString().split('T')[0]}.csv`;
+    utils.exportToCSV(exportData, filename);
+  },
+
+  /* ==================================================== */
+  /* IMPORT WINNERS (CSV) */
+  /* ==================================================== */
+
+  /**
+   * Open import winners modal
+   */
+  openImportWinners() {
+    document.getElementById('importWinnersFile').value = '';
+    document.getElementById('importWinnersPreview').classList.add('d-none');
+    document.getElementById('importWinnersPreviewBody').innerHTML = '';
+    document.getElementById('importWinnersBtn').disabled = true;
+    this.importWinnersData = null;
+
+    const modal = new bootstrap.Modal(document.getElementById('importWinnersModal'));
+    modal.show();
+  },
+
+  importWinnersData: null,
+
+  /**
+   * Preview CSV file before importing
+   */
+  previewImportFile() {
+    const fileInput = document.getElementById('importWinnersFile');
+    if (!fileInput.files || !fileInput.files[0]) return;
+
+    const file = fileInput.files[0];
+    if (!file.name.endsWith('.csv')) {
+      utils.showToast('Please select a CSV file', 'warning');
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      try {
+        const text = e.target.result;
+        const lines = text.split('\n').map(line => line.trim()).filter(line => line);
+
+        if (lines.length < 2) {
+          utils.showToast('CSV file must have a header row and at least one data row', 'warning');
+          return;
+        }
+
+        // Parse CSV header
+        const headers = this.parseCSVLine(lines[0]);
+        const requiredFields = ['winner_name'];
+
+        // Check for required fields
+        const hasRequired = requiredFields.every(field =>
+          headers.some(h => h.toLowerCase().replace(/\s+/g, '_') === field)
+        );
+
+        if (!hasRequired) {
+          utils.showToast('CSV must contain a "winner_name" column', 'error');
+          return;
+        }
+
+        // Parse data rows
+        const rows = [];
+        for (let i = 1; i < lines.length; i++) {
+          const values = this.parseCSVLine(lines[i]);
+          if (values.length === headers.length) {
+            const row = {};
+            headers.forEach((header, idx) => {
+              row[header.toLowerCase().replace(/\s+/g, '_')] = values[idx];
+            });
+            rows.push(row);
+          }
+        }
+
+        this.importWinnersData = rows;
+
+        // Show preview
+        const previewDiv = document.getElementById('importWinnersPreview');
+        const previewBody = document.getElementById('importWinnersPreviewBody');
+        previewDiv.classList.remove('d-none');
+        document.getElementById('importWinnersBtn').disabled = false;
+        document.getElementById('importWinnersCount').textContent = rows.length;
+
+        // Show first 5 rows as preview
+        const previewRows = rows.slice(0, 5);
+        let html = '<table class="table table-sm table-bordered"><thead><tr>';
+        const displayHeaders = Object.keys(previewRows[0] || {});
+        displayHeaders.forEach(h => { html += `<th class="small">${utils.escapeHtml(h)}</th>`; });
+        html += '</tr></thead><tbody>';
+
+        previewRows.forEach(row => {
+          html += '<tr>';
+          displayHeaders.forEach(h => {
+            html += `<td class="small">${utils.escapeHtml(row[h] || '')}</td>`;
+          });
+          html += '</tr>';
+        });
+
+        if (rows.length > 5) {
+          html += `<tr><td colspan="${displayHeaders.length}" class="text-center text-muted small">... and ${rows.length - 5} more rows</td></tr>`;
+        }
+
+        html += '</tbody></table>';
+        previewBody.innerHTML = html;
+
+      } catch (err) {
+        console.error('Error parsing CSV:', err);
+        utils.showToast('Error parsing CSV file: ' + err.message, 'error');
+      }
+    };
+
+    reader.readAsText(file);
+  },
+
+  /**
+   * Parse a single CSV line handling quoted fields
+   */
+  parseCSVLine(line) {
+    const result = [];
+    let current = '';
+    let inQuotes = false;
+
+    for (let i = 0; i < line.length; i++) {
+      const char = line[i];
+      if (char === '"') {
+        if (inQuotes && line[i + 1] === '"') {
+          current += '"';
+          i++;
+        } else {
+          inQuotes = !inQuotes;
+        }
+      } else if (char === ',' && !inQuotes) {
+        result.push(current.trim());
+        current = '';
+      } else {
+        current += char;
+      }
+    }
+    result.push(current.trim());
+    return result;
+  },
+
+  /**
+   * Import winners from parsed CSV data
+   */
+  async importWinners() {
+    if (!this.importWinnersData || this.importWinnersData.length === 0) {
+      utils.showToast('No data to import', 'warning');
+      return;
+    }
+
+    try {
+      utils.showLoading();
+
+      let successCount = 0;
+      let errorCount = 0;
+
+      for (const row of this.importWinnersData) {
+        const winnerData = {
+          winner_name: row.winner_name || null,
+          winner_status: row.winner_status || row.status || 'pending'
+        };
+
+        // Map optional fields
+        if (row.award_id) winnerData.award_id = row.award_id;
+        if (row.organisation_id) winnerData.organisation_id = row.organisation_id;
+        if (row.year) winnerData.year = parseInt(row.year);
+        if (row.winner_story) winnerData.winner_story = row.winner_story;
+        if (row.judge_quote) winnerData.judge_quote = row.judge_quote;
+        if (row.impact_statement) winnerData.impact_statement = row.impact_statement;
+        if (row.score) winnerData.score = parseFloat(row.score);
+
+        if (!winnerData.winner_name) {
+          errorCount++;
+          continue;
+        }
+
+        const { error } = await STATE.client
+          .from('winners')
+          .insert([winnerData]);
+
+        if (error) {
+          console.error('Error importing winner:', row.winner_name, error);
+          errorCount++;
+        } else {
+          successCount++;
+        }
+      }
+
+      bootstrap.Modal.getInstance(document.getElementById('importWinnersModal')).hide();
+      await this.loadWinners();
+
+      if (errorCount > 0) {
+        utils.showToast(`Imported ${successCount} winners. ${errorCount} failed.`, 'warning');
+      } else {
+        utils.showToast(`Successfully imported ${successCount} winners!`, 'success');
+      }
+
+    } catch (error) {
+      console.error('Error importing winners:', error);
+      utils.showToast('Error importing winners: ' + error.message, 'error');
+    } finally {
+      utils.hideLoading();
+    }
+  },
+
+  /* ==================================================== */
+  /* BULK MEDIA PACK & WINNER PACKAGE */
+  /* ==================================================== */
+
+  /**
+   * Generate media packs for all currently filtered winners
+   */
+  async bulkGenerateMediaPacks() {
+    const winners = STATE.filteredWinners || [];
+    if (winners.length === 0) {
+      utils.showToast('No winners to generate media packs for', 'warning');
+      return;
+    }
+
+    if (!confirm(`Generate media packs for ${winners.length} winner(s)? This will download multiple files.`)) {
+      return;
+    }
+
+    try {
+      utils.showLoading();
+      let count = 0;
+
+      for (const winner of winners) {
+        const awardName = winner.awards?.award_name || winner.awards?.award_category || 'Award';
+        const year = winner.awards?.year || new Date().getFullYear();
+        const safeWinnerName = (winner.winner_name || 'winner').replace(/[^a-z0-9]/gi, '_').toLowerCase();
+        const photos = winner.winner_media?.filter(m => m.media_type === MEDIA_TYPES.PHOTO) || [];
+
+        // Build HTML media pack
+        let html = `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Media Pack - ${utils.escapeHtml(winner.winner_name)}</title>
+  <style>
+    body { font-family: Arial, sans-serif; max-width: 900px; margin: 0 auto; padding: 40px; color: #333; }
+    h1 { color: #0d6efd; border-bottom: 3px solid #0d6efd; padding-bottom: 10px; }
+    h2 { color: #495057; margin-top: 30px; }
+    .meta { color: #666; margin-bottom: 30px; font-size: 14px; }
+    .section { margin-bottom: 40px; padding: 20px; border: 1px solid #dee2e6; border-radius: 8px; }
+    .photos { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 15px; }
+    .photo-item img { width: 100%; height: 200px; object-fit: cover; border-radius: 4px; }
+    .caption { font-size: 13px; color: #666; margin-top: 5px; }
+    .quote { font-style: italic; font-size: 18px; color: #495057; border-left: 4px solid #0d6efd; padding: 15px 20px; margin: 20px 0; background: #f8f9fa; }
+    .footer { margin-top: 40px; padding-top: 20px; border-top: 1px solid #dee2e6; font-size: 12px; color: #999; }
+  </style>
+</head>
+<body>
+  <h1>MEDIA PACK</h1>
+  <div class="meta">
+    <strong>Winner:</strong> ${utils.escapeHtml(winner.winner_name || 'N/A')}<br>
+    <strong>Award:</strong> ${utils.escapeHtml(awardName)}<br>
+    <strong>Year:</strong> ${year}<br>
+    <strong>Generated:</strong> ${new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'long', year: 'numeric' })}
+  </div>
+  <div class="section">
+    <h2>Press Release</h2>
+    <p><strong>${utils.escapeHtml(winner.winner_name)}</strong> has been named the winner of the <strong>${utils.escapeHtml(awardName)}</strong> at the ${year} awards ceremony.</p>
+    <p>The award recognises outstanding achievement and excellence in the category. ${utils.escapeHtml(winner.winner_name)} was selected from a competitive field of nominees following a rigorous judging process.</p>
+    ${winner.winner_quote ? `<p>"${utils.escapeHtml(winner.winner_quote)}"</p>` : ''}
+    ${winner.impact_statement ? `<p><strong>Impact:</strong> ${utils.escapeHtml(winner.impact_statement)}</p>` : ''}
+  </div>
+  ${winner.judge_quote ? `
+  <div class="section">
+    <h2>Quotable Excerpts</h2>
+    <div class="quote">"${utils.escapeHtml(winner.judge_quote)}"</div>
+    <p>— ${utils.escapeHtml(winner.winner_name)}, ${utils.escapeHtml(awardName)} Winner ${year}</p>
+  </div>` : ''}
+  ${photos.length > 0 ? `
+  <div class="section">
+    <h2>Photo Assets</h2>
+    <p>${photos.length} high-resolution photo(s) available.</p>
+    <div class="photos">
+      ${photos.map(photo => `
+        <div class="photo-item">
+          <img src="${photo.file_url}" alt="${utils.escapeHtml(photo.caption || 'Winner photo')}">
+          <div class="caption">${utils.escapeHtml(photo.caption || 'No caption')}</div>
+        </div>
+      `).join('')}
+    </div>
+  </div>` : ''}
+  <div class="footer">
+    <p>This media pack was generated on ${new Date().toLocaleDateString('en-GB')}. For media enquiries, please contact the awards team.</p>
+  </div>
+</body>
+</html>`;
+
+        const blob = new Blob([html], { type: 'text/html' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `media_pack_${safeWinnerName}_${year}.html`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+        count++;
+
+        // Delay between downloads
+        await new Promise(resolve => setTimeout(resolve, 400));
+      }
+
+      utils.showToast(`Generated ${count} media pack(s)!`, 'success');
+
+    } catch (error) {
+      console.error('Error generating bulk media packs:', error);
+      utils.showToast('Error generating media packs: ' + error.message, 'error');
+    } finally {
+      utils.hideLoading();
+    }
+  },
+
+  /**
+   * Generate winner packages for all currently filtered winners
+   */
+  async bulkGenerateWinnerPackages() {
+    const winners = STATE.filteredWinners || [];
+    if (winners.length === 0) {
+      utils.showToast('No winners to generate packages for', 'warning');
+      return;
+    }
+
+    if (!confirm(`Generate winner packages for ${winners.length} winner(s)? This will download multiple files per winner (badge, certificate, banners).`)) {
+      return;
+    }
+
+    try {
+      utils.showLoading();
+
+      const brandColor = '#0d6efd';
+      const accentColor = '#ffc107';
+      let count = 0;
+
+      for (const winner of winners) {
+        const safeWinnerName = (winner.winner_name || 'winner').replace(/[^a-z0-9]/gi, '_').toLowerCase();
+
+        // Badge
+        await this.downloadSVGAsImage(
+          this.generateShieldSVG(winner, brandColor, accentColor),
+          `${safeWinnerName}_winner_badge.png`,
+          400, 400
+        );
+        count++;
+
+        // Email Banner
+        await this.downloadSVGAsImage(
+          this.generateEmailBannerSVG(winner, brandColor, accentColor),
+          `${safeWinnerName}_email_banner.png`,
+          600, 150
+        );
+        count++;
+
+        // Web Banner
+        await this.downloadSVGAsImage(
+          this.generateWebBannerSVG(winner, brandColor, accentColor),
+          `${safeWinnerName}_web_banner.png`,
+          1200, 300
+        );
+        count++;
+
+        // Certificate
+        await this.generateCertificatePDF(winner, brandColor, accentColor);
+        count++;
+
+        // Delay between winners
+        await new Promise(resolve => setTimeout(resolve, 600));
+      }
+
+      utils.showToast(`Generated ${count} assets for ${winners.length} winner(s)!`, 'success');
+
+    } catch (error) {
+      console.error('Error generating bulk winner packages:', error);
+      utils.showToast('Error generating winner packages: ' + error.message, 'error');
+    } finally {
+      utils.hideLoading();
+    }
+  },
+
+  /* ==================================================== */
+  /* WINNER STATUS TRACKING */
+  /* ==================================================== */
+
+  /**
+   * Update winner status
+   */
+  async updateWinnerStatus(winnerId, newStatus) {
+    try {
+      const { error } = await STATE.client
+        .from('winners')
+        .update({ winner_status: newStatus })
+        .eq('id', winnerId);
+
+      if (error) throw error;
+
+      // Update local state
+      const winner = STATE.allWinners.find(w => w.id === winnerId);
+      if (winner) winner.winner_status = newStatus;
+
+      const filteredWinner = STATE.filteredWinners.find(w => w.id === winnerId);
+      if (filteredWinner) filteredWinner.winner_status = newStatus;
+
+      this.renderWinners();
+      utils.showToast(`Status updated to "${newStatus}"`, 'success');
+
+    } catch (error) {
+      console.error('Error updating winner status:', error);
+      utils.showToast('Error updating status: ' + error.message, 'error');
     }
   }
 };

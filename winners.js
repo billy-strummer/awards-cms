@@ -169,11 +169,11 @@ const winnersModule = {
     }
 
     const statusConfig = {
-      pending:       { label: 'Pending',       bg: 'bg-secondary',           dot: 'secondary' },
-      notified:      { label: 'Notified',      bg: 'bg-info',               dot: 'info' },
-      pack_sent:     { label: 'Pack Sent',     bg: 'bg-primary',            dot: 'primary' },
-      confirmed:     { label: 'Confirmed',     bg: 'bg-success',            dot: 'success' },
-      published:     { label: 'Published',     bg: 'bg-warning text-dark',  dot: 'warning' }
+      pending:       { label: 'Pending',       bg: 'bg-secondary',           icon: 'bi-clock',        color: 'text-secondary' },
+      notified:      { label: 'Notified',      bg: 'bg-info',               icon: 'bi-bell',         color: 'text-info' },
+      pack_sent:     { label: 'Pack Sent',     bg: 'bg-primary',            icon: 'bi-send',         color: 'text-primary' },
+      confirmed:     { label: 'Confirmed',     bg: 'bg-success',            icon: 'bi-check-circle', color: 'text-success' },
+      published:     { label: 'Published',     bg: 'bg-warning text-dark',  icon: 'bi-globe',        color: 'text-warning' }
     };
 
     tbody.innerHTML = STATE.filteredWinners.map(winner => {
@@ -205,15 +205,15 @@ const winnersModule = {
             </span>
             ${mediaTotal > 0 ? `<span class="text-muted small ms-1">${photoCount}<i class="bi bi-camera ms-1 me-2"></i>${videoCount}<i class="bi bi-camera-video ms-1"></i></span>` : ''}
           </td>
-          <td>
-            <div class="dropdown">
-              <span class="dropdown-toggle badge ${statusInfo.bg}" role="button" data-bs-toggle="dropdown" style="cursor: pointer; font-size: 0.75em;">
-                ${statusInfo.label}
-              </span>
+          <td class="text-center">
+            <div class="btn-group btn-group-sm">
+              <button class="btn btn-outline-secondary btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown" data-bs-display="static" aria-expanded="false">
+                <i class="bi ${statusInfo.icon} me-1"></i>${statusInfo.label}
+              </button>
               <ul class="dropdown-menu dropdown-menu-end">
                 ${Object.entries(statusConfig).map(([key, cfg]) => `
-                  <li><a class="dropdown-item small ${key === status ? 'active' : ''}" href="#" onclick="event.preventDefault(); winnersModule.updateWinnerStatus('${winner.id}', '${key}')">
-                    <span class="d-inline-block rounded-circle me-2" style="width:8px;height:8px;background:var(--bs-${cfg.dot});"></span>${cfg.label}
+                  <li><a class="dropdown-item ${key === status ? 'active' : ''}" href="#" onclick="event.preventDefault(); winnersModule.updateWinnerStatus('${winner.id}', '${key}')">
+                    <i class="bi ${cfg.icon} ${cfg.color} me-2"></i>${cfg.label}
                   </a></li>
                 `).join('')}
               </ul>
@@ -222,13 +222,13 @@ const winnersModule = {
           <td class="text-center">
             <div class="d-flex gap-1 justify-content-center flex-wrap">
               ${mediaTotal > 0 ? `
-              <div class="dropdown">
-                <button class="btn btn-outline-info btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown" title="View Media">
+              <div class="btn-group btn-group-sm">
+                <button class="btn btn-outline-secondary btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown" data-bs-display="static" title="View Media">
                   <i class="bi bi-collection"></i>
                 </button>
                 <ul class="dropdown-menu dropdown-menu-end">
-                  <li><a class="dropdown-item" href="#" onclick="event.preventDefault(); winnersModule.viewMedia('${winner.id}', '${MEDIA_TYPES.PHOTO}')"><i class="bi bi-images me-2"></i>View Photos (${photoCount})</a></li>
-                  <li><a class="dropdown-item" href="#" onclick="event.preventDefault(); winnersModule.viewMedia('${winner.id}', '${MEDIA_TYPES.VIDEO}')"><i class="bi bi-play-circle me-2"></i>View Videos (${videoCount})</a></li>
+                  <li><a class="dropdown-item" href="#" onclick="event.preventDefault(); winnersModule.viewMedia('${winner.id}', '${MEDIA_TYPES.PHOTO}')"><i class="bi bi-images text-primary me-2"></i>View Photos (${photoCount})</a></li>
+                  <li><a class="dropdown-item" href="#" onclick="event.preventDefault(); winnersModule.viewMedia('${winner.id}', '${MEDIA_TYPES.VIDEO}')"><i class="bi bi-play-circle text-info me-2"></i>View Videos (${videoCount})</a></li>
                 </ul>
               </div>
               ` : ''}

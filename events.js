@@ -7302,15 +7302,15 @@ const eventsModule = {
                 <button class="btn btn-sm btn-outline-light" onclick="eventsModule.autoAssignGuests()" title="Auto Assign">
                   <i class="bi bi-magic me-1"></i>Auto Assign
                 </button>
-                <div class="dropdown">
-                  <button class="btn btn-sm btn-outline-light dropdown-toggle" data-bs-toggle="dropdown">
+                <div class="btn-group btn-group-sm">
+                  <button class="btn btn-sm btn-outline-light dropdown-toggle" data-bs-toggle="dropdown" data-bs-display="static">
                     <i class="bi bi-download me-1"></i>Export
                   </button>
                   <ul class="dropdown-menu dropdown-menu-end">
-                    <li><a class="dropdown-item" href="#" onclick="eventsModule.exportTablePlanExcel(); return false;"><i class="bi bi-file-earmark-spreadsheet me-2"></i>Export Excel (.xlsx)</a></li>
-                    <li><a class="dropdown-item" href="#" onclick="eventsModule.exportTablePlanPDF(); return false;"><i class="bi bi-printer me-2"></i>Print Document</a></li>
+                    <li><a class="dropdown-item" href="#" onclick="eventsModule.exportTablePlanExcel(); return false;"><i class="bi bi-file-earmark-spreadsheet text-success me-2"></i>Export Excel (.xlsx)</a></li>
+                    <li><a class="dropdown-item" href="#" onclick="eventsModule.exportTablePlanPDF(); return false;"><i class="bi bi-printer text-primary me-2"></i>Print Document</a></li>
                     <li><hr class="dropdown-divider"></li>
-                    <li><a class="dropdown-item" href="#" onclick="eventsModule.openTVDisplay(); return false;"><i class="bi bi-tv me-2"></i>TV / Projector Display</a></li>
+                    <li><a class="dropdown-item" href="#" onclick="eventsModule.openTVDisplay(); return false;"><i class="bi bi-tv text-info me-2"></i>TV / Projector Display</a></li>
                   </ul>
                 </div>
                 <button class="btn btn-sm btn-outline-light" onclick="eventsModule.showTablePlanStats()" title="Stats Summary">
@@ -9810,10 +9810,10 @@ const eventsModule = {
 
       // Clickable status dropdown
       const statusDropdown = `
-        <div class="dropdown d-inline-block">
-          <span class="badge bg-${color}" role="button" data-bs-toggle="dropdown" style="cursor:pointer;" title="Click to change status">
-            <i class="bi ${icon} me-1"></i>${evtStatus.charAt(0).toUpperCase() + evtStatus.slice(1)} <i class="bi bi-chevron-down" style="font-size:0.6rem;"></i>
-          </span>
+        <div class="btn-group btn-group-sm">
+          <button class="btn btn-outline-secondary btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown" data-bs-display="static" aria-expanded="false">
+            <i class="bi ${icon} me-1"></i>${evtStatus.charAt(0).toUpperCase() + evtStatus.slice(1)}
+          </button>
           <ul class="dropdown-menu dropdown-menu-end">
             ${statusOptions.map(s => `
               <li><a class="dropdown-item ${s === evtStatus ? 'active' : ''}" href="#" onclick="event.preventDefault(); eventsModule.quickSetStatus('${event.id}', '${s}')">

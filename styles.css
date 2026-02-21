@@ -393,6 +393,18 @@ body.dark-mode {
   min-width: 160px;
 }
 
+/* Elevate the table cell containing an open dropdown so its menu
+   renders above buttons/badges in every other row */
+.table td:has(.btn-group.show),
+.table td:has(.dropdown.show) {
+  position: relative;
+  z-index: 1050;
+}
+
+.table-responsive .dropdown-menu.show {
+  z-index: 1051;
+}
+
 /* ==================================================== */
 /* BUTTONS */
 /* ==================================================== */

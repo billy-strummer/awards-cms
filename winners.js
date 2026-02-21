@@ -176,33 +176,32 @@ const winnersModule = {
             ${mediaTotal > 0 ? `<span class="text-muted small ms-1">${photoCount}<i class="bi bi-camera ms-1 me-2"></i>${videoCount}<i class="bi bi-camera-video ms-1"></i></span>` : ''}
           </td>
           <td class="text-center">
-            <div class="btn-group btn-group-sm" role="group">
+            <div class="d-flex gap-1 justify-content-center flex-wrap">
+              ${mediaTotal > 0 ? `
+              <div class="dropdown">
+                <button class="btn btn-outline-info btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown" title="View Media">
+                  <i class="bi bi-collection"></i>
+                </button>
+                <ul class="dropdown-menu dropdown-menu-end">
+                  <li><a class="dropdown-item" href="#" onclick="event.preventDefault(); winnersModule.viewMedia('${winner.id}', '${MEDIA_TYPES.PHOTO}')"><i class="bi bi-images me-2"></i>View Photos (${photoCount})</a></li>
+                  <li><a class="dropdown-item" href="#" onclick="event.preventDefault(); winnersModule.viewMedia('${winner.id}', '${MEDIA_TYPES.VIDEO}')"><i class="bi bi-play-circle me-2"></i>View Videos (${videoCount})</a></li>
+                </ul>
+              </div>
+              ` : ''}
               <button
-                class="btn btn-outline-primary btn-icon"
-                onclick="winnersModule.uploadMedia('${winner.id}', '${MEDIA_TYPES.PHOTO}')"
-                title="Upload Photo">
-                <i class="bi bi-camera"></i>
+                class="btn btn-outline-secondary btn-sm"
+                onclick="winnersModule.downloadMediaPack('${winner.id}')"
+                title="Download Media Pack">
+                <i class="bi bi-newspaper"></i>
               </button>
               <button
-                class="btn btn-outline-danger btn-icon"
-                onclick="winnersModule.uploadMedia('${winner.id}', '${MEDIA_TYPES.VIDEO}')"
-                title="Upload Video">
-                <i class="bi bi-camera-video"></i>
+                class="btn btn-outline-primary btn-sm"
+                onclick="winnersModule.downloadWinnerPackage('${winner.id}')"
+                title="Download Winner Package">
+                <i class="bi bi-gift"></i>
               </button>
               <button
-                class="btn btn-outline-info btn-icon"
-                onclick="winnersModule.viewMedia('${winner.id}', '${MEDIA_TYPES.PHOTO}')"
-                title="View Photos">
-                <i class="bi bi-images"></i>
-              </button>
-              <button
-                class="btn btn-outline-warning btn-icon"
-                onclick="winnersModule.viewMedia('${winner.id}', '${MEDIA_TYPES.VIDEO}')"
-                title="View Videos">
-                <i class="bi bi-play-circle"></i>
-              </button>
-              <button
-                class="btn btn-outline-secondary btn-icon"
+                class="btn btn-outline-danger btn-sm"
                 onclick="winnersModule.deleteWinner('${winner.id}')"
                 title="Delete Winner">
                 <i class="bi bi-trash"></i>
@@ -1382,7 +1381,7 @@ const winnersModule = {
   generateEmailBannerSVG(winner, brandColor, accentColor) {
     const awardName = winner.awards?.award_name || winner.awards?.award_category || 'Award Winner';
     const year = winner.awards?.year || new Date().getFullYear();
-    const organizerName = document.getElementById('organizerName').value || 'Awards';
+    const organizerName = document.getElementById('organizerName')?.value || 'Awards';
 
     return `
       <svg width="600" height="150" xmlns="http://www.w3.org/2000/svg">
@@ -1423,7 +1422,7 @@ const winnersModule = {
   generateWebBannerSVG(winner, brandColor, accentColor) {
     const awardName = winner.awards?.award_name || winner.awards?.award_category || 'Award Winner';
     const year = winner.awards?.year || new Date().getFullYear();
-    const organizerName = document.getElementById('organizerName').value || 'British Trade Awards';
+    const organizerName = document.getElementById('organizerName')?.value || 'British Trade Awards';
 
     return `
       <svg width="1200" height="300" xmlns="http://www.w3.org/2000/svg">
@@ -1496,7 +1495,7 @@ const winnersModule = {
     ctx.fillText('CERTIFICATE OF ACHIEVEMENT', canvas.width / 2, 400);
 
     // Certificate text template
-    const template = document.getElementById('certificateText').value;
+    const template = document.getElementById('certificateText')?.value || 'This is to certify that\n\n{WINNER_NAME}\n\nhas been awarded\n\n{AWARD_NAME}\n\nin recognition of excellence\n\n{YEAR}';
     const awardName = winner.awards?.award_name || winner.awards?.award_category || 'Excellence';
     const year = winner.awards?.year || new Date().getFullYear();
 
@@ -1529,13 +1528,13 @@ const winnersModule = {
     });
 
     // Organizer name
-    const organizerName = document.getElementById('organizerName').value || 'British Trade Awards';
+    const organizerName = document.getElementById('organizerName')?.value || 'British Trade Awards';
     ctx.font = 'bold 50px Arial';
     ctx.fillStyle = '#333333';
     ctx.fillText(organizerName, canvas.width / 2, canvas.height - 300);
 
     // Signature name (if provided)
-    const signatureName = document.getElementById('signatureName').value;
+    const signatureName = document.getElementById('signatureName')?.value || '';
     if (signatureName) {
       ctx.font = 'italic 40px Arial';
       ctx.fillStyle = '#666666';
@@ -1613,6 +1612,327 @@ const winnersModule = {
 
       img.src = url;
     });
+  },
+
+  /* ==================================================== */
+  /* MEDIA PACK (for journalists/media outlets) */
+  /* ==================================================== */
+
+  mediaPackWinnerId: null,
+
+  /**
+   * Open media pack download modal for a specific winner
+   */
+  downloadMediaPack(winnerId) {
+    const winner = STATE.allWinners.find(w => w.id === winnerId);
+    if (!winner) {
+      utils.showToast('Winner not found', 'error');
+      return;
+    }
+
+    this.mediaPackWinnerId = winnerId;
+
+    const awardName = winner.awards?.award_name || winner.awards?.award_category || 'N/A';
+    const year = winner.awards?.year || 'N/A';
+    const photos = winner.winner_media?.filter(m => m.media_type === MEDIA_TYPES.PHOTO) || [];
+
+    document.getElementById('mediaPackWinnerInfo').innerHTML = `
+      <div class="d-flex align-items-center">
+        <div>
+          <h6 class="mb-1">${utils.escapeHtml(winner.winner_name || 'Unnamed Winner')}</h6>
+          <div class="text-muted small">
+            <i class="bi bi-trophy me-1"></i>${utils.escapeHtml(awardName)}
+            <span class="ms-2"><i class="bi bi-calendar me-1"></i>${year}</span>
+            <span class="ms-2"><i class="bi bi-image me-1"></i>${photos.length} photo(s)</span>
+          </div>
+        </div>
+      </div>
+    `;
+
+    const modal = new bootstrap.Modal(document.getElementById('mediaPackDownloadModal'));
+    modal.show();
+  },
+
+  /**
+   * Generate and download media pack for current winner
+   */
+  async generateMediaPackForWinner() {
+    const winner = STATE.allWinners.find(w => w.id === this.mediaPackWinnerId);
+    if (!winner) {
+      utils.showToast('Winner not found', 'error');
+      return;
+    }
+
+    const includePR = document.getElementById('mpIncludePressRelease').checked;
+    const includePhotos = document.getElementById('mpIncludePhotos').checked;
+    const includeQuotes = document.getElementById('mpIncludeQuotes').checked;
+    const includeGuidelines = document.getElementById('mpIncludeGuidelines').checked;
+
+    if (!includePR && !includePhotos && !includeQuotes && !includeGuidelines) {
+      utils.showToast('Please select at least one item to include', 'warning');
+      return;
+    }
+
+    try {
+      utils.showLoading();
+
+      const awardName = winner.awards?.award_name || winner.awards?.award_category || 'Award';
+      const year = winner.awards?.year || new Date().getFullYear();
+      const safeWinnerName = (winner.winner_name || 'winner').replace(/[^a-z0-9]/gi, '_').toLowerCase();
+      const photos = winner.winner_media?.filter(m => m.media_type === MEDIA_TYPES.PHOTO) || [];
+
+      // Build HTML media pack document
+      let html = `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Media Pack - ${utils.escapeHtml(winner.winner_name)}</title>
+  <style>
+    body { font-family: Arial, sans-serif; max-width: 900px; margin: 0 auto; padding: 40px; color: #333; }
+    h1 { color: #0d6efd; border-bottom: 3px solid #0d6efd; padding-bottom: 10px; }
+    h2 { color: #495057; margin-top: 30px; }
+    .meta { color: #666; margin-bottom: 30px; font-size: 14px; }
+    .section { margin-bottom: 40px; padding: 20px; border: 1px solid #dee2e6; border-radius: 8px; }
+    .photos { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 15px; }
+    .photo-item img { width: 100%; height: 200px; object-fit: cover; border-radius: 4px; }
+    .caption { font-size: 13px; color: #666; margin-top: 5px; }
+    .quote { font-style: italic; font-size: 18px; color: #495057; border-left: 4px solid #0d6efd; padding: 15px 20px; margin: 20px 0; background: #f8f9fa; }
+    .guidelines { background: #fff3cd; padding: 20px; border-radius: 8px; }
+    .footer { margin-top: 40px; padding-top: 20px; border-top: 1px solid #dee2e6; font-size: 12px; color: #999; }
+  </style>
+</head>
+<body>
+  <h1>MEDIA PACK</h1>
+  <div class="meta">
+    <strong>Winner:</strong> ${utils.escapeHtml(winner.winner_name || 'N/A')}<br>
+    <strong>Award:</strong> ${utils.escapeHtml(awardName)}<br>
+    <strong>Year:</strong> ${year}<br>
+    <strong>Generated:</strong> ${new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'long', year: 'numeric' })}
+  </div>`;
+
+      if (includePR) {
+        html += `
+  <div class="section">
+    <h2>Press Release</h2>
+    <p><strong>${utils.escapeHtml(winner.winner_name)}</strong> has been named the winner of the <strong>${utils.escapeHtml(awardName)}</strong> at the ${year} awards ceremony.</p>
+    <p>The award recognises outstanding achievement and excellence in the category. ${utils.escapeHtml(winner.winner_name)} was selected from a competitive field of nominees following a rigorous judging process.</p>
+    ${winner.winner_quote ? `<p>"${utils.escapeHtml(winner.winner_quote)}"</p>` : ''}
+    ${winner.impact_statement ? `<p><strong>Impact:</strong> ${utils.escapeHtml(winner.impact_statement)}</p>` : ''}
+  </div>`;
+      }
+
+      if (includeQuotes && winner.winner_quote) {
+        html += `
+  <div class="section">
+    <h2>Quotable Excerpts</h2>
+    <div class="quote">"${utils.escapeHtml(winner.winner_quote)}"</div>
+    <p class="text-muted">— ${utils.escapeHtml(winner.winner_name)}, ${utils.escapeHtml(awardName)} Winner ${year}</p>
+  </div>`;
+      }
+
+      if (includePhotos && photos.length > 0) {
+        html += `
+  <div class="section">
+    <h2>Photo Assets</h2>
+    <p>${photos.length} high-resolution photo(s) available.</p>
+    <div class="photos">
+      ${photos.map(photo => `
+        <div class="photo-item">
+          <img src="${photo.file_url}" alt="${utils.escapeHtml(photo.caption || 'Winner photo')}">
+          <div class="caption">${utils.escapeHtml(photo.caption || 'No caption')}</div>
+        </div>
+      `).join('')}
+    </div>
+  </div>`;
+      }
+
+      if (includeGuidelines) {
+        html += `
+  <div class="section guidelines">
+    <h2>Brand Guidelines</h2>
+    <ul>
+      <li>The winner badge/logo must not be altered, stretched, or recoloured</li>
+      <li>Minimum clear space around the logo should be equal to the height of the award icon</li>
+      <li>When referencing the award, please use the full title: "${utils.escapeHtml(awardName)} ${year}"</li>
+      <li>Photo credits must be included when using supplied photography</li>
+      <li>For any queries regarding usage, please contact the awards team</li>
+    </ul>
+  </div>`;
+      }
+
+      html += `
+  <div class="footer">
+    <p>This media pack was generated on ${new Date().toLocaleDateString('en-GB')}. For media enquiries, please contact the awards team.</p>
+  </div>
+</body>
+</html>`;
+
+      // Download as HTML file
+      const blob = new Blob([html], { type: 'text/html' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `media_pack_${safeWinnerName}_${year}.html`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+
+      utils.showToast('Media pack downloaded!', 'success');
+      bootstrap.Modal.getInstance(document.getElementById('mediaPackDownloadModal')).hide();
+
+    } catch (error) {
+      console.error('Error generating media pack:', error);
+      utils.showToast('Error generating media pack: ' + error.message, 'error');
+    } finally {
+      utils.hideLoading();
+    }
+  },
+
+  /* ==================================================== */
+  /* WINNER PACKAGE (for winners themselves) */
+  /* ==================================================== */
+
+  winnerPackageWinnerId: null,
+
+  /**
+   * Open winner package download modal for a specific winner
+   */
+  downloadWinnerPackage(winnerId) {
+    const winner = STATE.allWinners.find(w => w.id === winnerId);
+    if (!winner) {
+      utils.showToast('Winner not found', 'error');
+      return;
+    }
+
+    this.winnerPackageWinnerId = winnerId;
+
+    const awardName = winner.awards?.award_name || winner.awards?.award_category || 'N/A';
+    const year = winner.awards?.year || 'N/A';
+    const photos = winner.winner_media?.filter(m => m.media_type === MEDIA_TYPES.PHOTO) || [];
+
+    document.getElementById('winnerPackageWinnerInfo').innerHTML = `
+      <div class="d-flex align-items-center">
+        <div>
+          <h6 class="mb-1">${utils.escapeHtml(winner.winner_name || 'Unnamed Winner')}</h6>
+          <div class="text-muted small">
+            <i class="bi bi-trophy me-1"></i>${utils.escapeHtml(awardName)}
+            <span class="ms-2"><i class="bi bi-calendar me-1"></i>${year}</span>
+            <span class="ms-2"><i class="bi bi-image me-1"></i>${photos.length} photo(s)</span>
+          </div>
+        </div>
+      </div>
+    `;
+
+    const modal = new bootstrap.Modal(document.getElementById('winnerPackageDownloadModal'));
+    modal.show();
+  },
+
+  /**
+   * Generate and download winner package for current winner
+   */
+  async generateWinnerPackageForWinner() {
+    const winner = STATE.allWinners.find(w => w.id === this.winnerPackageWinnerId);
+    if (!winner) {
+      utils.showToast('Winner not found', 'error');
+      return;
+    }
+
+    const includeBadge = document.getElementById('wpIncludeBadge').checked;
+    const includeSocial = document.getElementById('wpIncludeSocialGraphics').checked;
+    const includeCert = document.getElementById('wpIncludeCertificate').checked;
+    const includePhotos = document.getElementById('wpIncludePhotos').checked;
+    const includeEmail = document.getElementById('wpIncludeEmailBanner').checked;
+    const includeWeb = document.getElementById('wpIncludeWebBanner').checked;
+
+    if (!includeBadge && !includeSocial && !includeCert && !includePhotos && !includeEmail && !includeWeb) {
+      utils.showToast('Please select at least one item to include', 'warning');
+      return;
+    }
+
+    try {
+      utils.showLoading();
+
+      const brandColor = document.getElementById('wpBrandColor').value;
+      const accentColor = document.getElementById('wpAccentColor').value;
+      const safeWinnerName = (winner.winner_name || 'winner').replace(/[^a-z0-9]/gi, '_').toLowerCase();
+      let generatedCount = 0;
+
+      // Generate Winner Badge/Shield
+      if (includeBadge) {
+        await this.downloadSVGAsImage(
+          this.generateShieldSVG(winner, brandColor, accentColor),
+          `${safeWinnerName}_winner_badge.png`,
+          400,
+          400
+        );
+        generatedCount++;
+      }
+
+      // Generate Social Media Graphics (web banner works for social)
+      if (includeSocial) {
+        await this.downloadSVGAsImage(
+          this.generateWebBannerSVG(winner, brandColor, accentColor),
+          `${safeWinnerName}_social_graphic.png`,
+          1200,
+          300
+        );
+        generatedCount++;
+      }
+
+      // Generate Certificate
+      if (includeCert) {
+        await this.generateCertificatePDF(winner, brandColor, accentColor);
+        generatedCount++;
+      }
+
+      // Generate Email Signature Banner
+      if (includeEmail) {
+        await this.downloadSVGAsImage(
+          this.generateEmailBannerSVG(winner, brandColor, accentColor),
+          `${safeWinnerName}_email_banner.png`,
+          600,
+          150
+        );
+        generatedCount++;
+      }
+
+      // Generate Website Banner
+      if (includeWeb) {
+        await this.downloadSVGAsImage(
+          this.generateWebBannerSVG(winner, brandColor, accentColor),
+          `${safeWinnerName}_web_banner.png`,
+          1200,
+          300
+        );
+        generatedCount++;
+      }
+
+      // Download photos
+      if (includePhotos) {
+        const photos = winner.winner_media?.filter(m => m.media_type === MEDIA_TYPES.PHOTO) || [];
+        for (const photo of photos) {
+          const link = document.createElement('a');
+          link.href = photo.file_url;
+          link.download = `${safeWinnerName}_photo_${photo.id}.jpg`;
+          link.target = '_blank';
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+          generatedCount++;
+          await new Promise(resolve => setTimeout(resolve, 300));
+        }
+      }
+
+      utils.showToast(`Winner package downloaded! ${generatedCount} file(s) generated.`, 'success');
+      bootstrap.Modal.getInstance(document.getElementById('winnerPackageDownloadModal')).hide();
+
+    } catch (error) {
+      console.error('Error generating winner package:', error);
+      utils.showToast('Error generating winner package: ' + error.message, 'error');
+    } finally {
+      utils.hideLoading();
+    }
   },
 
   /* ==================================================== */

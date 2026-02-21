@@ -226,7 +226,7 @@ const emailTemplatesModule = {
         is_active: document.getElementById('templateActive').checked,
         is_default: document.getElementById('templateDefault').checked,
         updated_at: new Date().toISOString(),
-        last_modified_by: STATE.user?.email || 'admin'
+        last_modified_by: STATE.currentUser?.email || 'admin'
       };
 
       const { error } = await STATE.client
@@ -527,8 +527,8 @@ const emailTemplatesModule = {
       is_default: document.getElementById('newTemplateDefault').checked,
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
-      created_by: STATE.user?.email || 'admin',
-      last_modified_by: STATE.user?.email || 'admin'
+      created_by: STATE.currentUser?.email || 'admin',
+      last_modified_by: STATE.currentUser?.email || 'admin'
     };
 
     try {

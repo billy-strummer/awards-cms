@@ -84,7 +84,7 @@ window.winnerPipelineModule = {
       if (slErr) throw slErr;
 
       const esc = s => utils.escapeHtml ? utils.escapeHtml(s) : s;
-      const userEmail = STATE.user?.email || 'unknown@user';
+      const userEmail = STATE.currentUser?.email || 'unknown@user';
       const badgeCls = { shortlisted: 'secondary', finalist: 'primary', winner: 'success', runner_up: 'warning' };
       const badge = s => `<span class="badge bg-${badgeCls[s] || 'secondary'}">${s.replace('_', ' ')}</span>`;
 
@@ -203,7 +203,7 @@ window.winnerPipelineModule = {
       const { error: logErr } = await STATE.client.from('activity_logs').insert({
         action: 'winner_confirmed', entity_type: 'entry', entity_id: entryId,
         details: JSON.stringify({ award_id: awardId, position, year }),
-        performed_by: STATE.user?.email || 'system',
+        performed_by: STATE.currentUser?.email || 'system',
       });
       if (logErr) console.warn('Audit log failed:', logErr.message);
 

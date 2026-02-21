@@ -69,8 +69,28 @@ const winnersModule = {
       }
 
       STATE.allWinners = allData;
+
+      // If join failed or awards data is missing, fetch award_years separately
+      const missingAwards = STATE.allWinners.filter(w => w.award_id && !w.awards);
+      if (missingAwards.length > 0) {
+        const awardIds = [...new Set(missingAwards.map(w => w.award_id))];
+        const { data: awardsData } = await STATE.client
+          .from('awards')
+          .select('*')
+          .in('id', awardIds);
+        if (awardsData) {
+          const awardsMap = {};
+          awardsData.forEach(a => { awardsMap[a.id] = a; });
+          STATE.allWinners.forEach(w => {
+            if (w.award_id && !w.awards && awardsMap[w.award_id]) {
+              w.awards = awardsMap[w.award_id];
+            }
+          });
+        }
+      }
+
       STATE.filteredWinners = STATE.allWinners;
-      
+
       this.populateFilters();
       this.renderWinners();
       
@@ -89,12 +109,12 @@ const winnersModule = {
    * Populate filter dropdowns
    */
   populateFilters() {
-    // Populate award filter with unique award categories
+    // Populate award filter with unique formatted award names
     const awardSelect = document.getElementById('winnerAwardFilterSelect');
     const uniqueAwards = [...new Set(
       STATE.allWinners
-        .map(w => w.awards?.award_category)
-        .filter(Boolean)
+        .map(w => utils.formatAwardName(w.awards))
+        .filter(name => name && name !== '-')
     )].sort();
 
     awardSelect.innerHTML = '<option value="">All Awards</option>';
@@ -116,14 +136,14 @@ const winnersModule = {
       if (year && String(winner.awards?.year) !== year) return false;
 
       // Award filter
-      if (award && winner.awards?.award_category !== award) return false;
+      if (award && utils.formatAwardName(winner.awards) !== award) return false;
 
       // Search filter
       if (search) {
         const winnerName = winner.winner_name?.toLowerCase() || '';
-        const awardCategory = winner.awards?.award_category?.toLowerCase() || '';
+        const formattedAward = utils.formatAwardName(winner.awards).toLowerCase();
 
-        if (!winnerName.includes(search) && !awardCategory.includes(search)) {
+        if (!winnerName.includes(search) && !formattedAward.includes(search)) {
           return false;
         }
       }
@@ -149,18 +169,18 @@ const winnersModule = {
     }
 
     const statusConfig = {
-      pending:       { label: 'Pending',       bg: 'bg-secondary' },
-      notified:      { label: 'Notified',      bg: 'bg-info' },
-      pack_sent:     { label: 'Pack Sent',     bg: 'bg-primary' },
-      confirmed:     { label: 'Confirmed',     bg: 'bg-success' },
-      published:     { label: 'Published',     bg: 'bg-warning text-dark' }
+      pending:       { label: 'Pending',       bg: 'bg-secondary',           dot: 'secondary' },
+      notified:      { label: 'Notified',      bg: 'bg-info',               dot: 'info' },
+      pack_sent:     { label: 'Pack Sent',     bg: 'bg-primary',            dot: 'primary' },
+      confirmed:     { label: 'Confirmed',     bg: 'bg-success',            dot: 'success' },
+      published:     { label: 'Published',     bg: 'bg-warning text-dark',  dot: 'warning' }
     };
 
     tbody.innerHTML = STATE.filteredWinners.map(winner => {
       const photoCount = winner.winner_media?.filter(m => m.media_type === MEDIA_TYPES.PHOTO).length || 0;
       const videoCount = winner.winner_media?.filter(m => m.media_type === MEDIA_TYPES.VIDEO).length || 0;
       const mediaTotal = photoCount + videoCount;
-      const awardCategory = winner.awards?.award_category || 'N/A';
+      const awardDisplay = utils.formatAwardName(winner.awards);
       const year = winner.awards?.year || 'N/A';
       const awardId = winner.award_id || '';
       const status = winner.winner_status || 'pending';
@@ -172,8 +192,8 @@ const winnersModule = {
             <div class="fw-semibold">${utils.escapeHtml(winner.winner_name || 'N/A')}</div>
           </td>
           <td>
-            <a href="#" class="text-decoration-none fw-semibold" onclick="event.preventDefault(); winnersModule.showAwardPlacements('${awardId}', '${utils.escapeHtml(awardCategory)}')" title="View placements and nominees">
-              ${utils.escapeHtml(awardCategory)} <i class="bi bi-chevron-right small"></i>
+            <a href="#" class="text-decoration-none fw-semibold" onclick="event.preventDefault(); winnersModule.showAwardPlacements('${awardId}', '${utils.escapeHtml(awardDisplay)}')" title="View placements and nominees">
+              ${utils.escapeHtml(awardDisplay)} <i class="bi bi-chevron-right small"></i>
             </a>
           </td>
           <td>
@@ -187,13 +207,13 @@ const winnersModule = {
           </td>
           <td>
             <div class="dropdown">
-              <button class="btn btn-sm ${statusInfo.bg} dropdown-toggle" type="button" data-bs-toggle="dropdown" style="min-width: 100px;">
+              <span class="dropdown-toggle badge ${statusInfo.bg}" role="button" data-bs-toggle="dropdown" style="cursor: pointer; font-size: 0.75em;">
                 ${statusInfo.label}
-              </button>
-              <ul class="dropdown-menu">
+              </span>
+              <ul class="dropdown-menu dropdown-menu-end">
                 ${Object.entries(statusConfig).map(([key, cfg]) => `
-                  <li><a class="dropdown-item ${key === status ? 'active' : ''}" href="#" onclick="event.preventDefault(); winnersModule.updateWinnerStatus('${winner.id}', '${key}')">
-                    <span class="badge ${cfg.bg} me-2">&nbsp;</span>${cfg.label}
+                  <li><a class="dropdown-item small ${key === status ? 'active' : ''}" href="#" onclick="event.preventDefault(); winnersModule.updateWinnerStatus('${winner.id}', '${key}')">
+                    <span class="d-inline-block rounded-circle me-2" style="width:8px;height:8px;background:var(--bs-${cfg.dot});"></span>${cfg.label}
                   </a></li>
                 `).join('')}
               </ul>

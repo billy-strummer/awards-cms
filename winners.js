@@ -69,8 +69,28 @@ const winnersModule = {
       }
 
       STATE.allWinners = allData;
+
+      // If join failed or awards data is missing, fetch award_years separately
+      const missingAwards = STATE.allWinners.filter(w => w.award_id && !w.awards);
+      if (missingAwards.length > 0) {
+        const awardIds = [...new Set(missingAwards.map(w => w.award_id))];
+        const { data: awardsData } = await STATE.client
+          .from('awards')
+          .select('*')
+          .in('id', awardIds);
+        if (awardsData) {
+          const awardsMap = {};
+          awardsData.forEach(a => { awardsMap[a.id] = a; });
+          STATE.allWinners.forEach(w => {
+            if (w.award_id && !w.awards && awardsMap[w.award_id]) {
+              w.awards = awardsMap[w.award_id];
+            }
+          });
+        }
+      }
+
       STATE.filteredWinners = STATE.allWinners;
-      
+
       this.populateFilters();
       this.renderWinners();
       

@@ -8,7 +8,7 @@ CREATE TABLE IF NOT EXISTS entries (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   entry_number VARCHAR(50) UNIQUE NOT NULL, -- Auto-generated: BTA-2025-001
   organisation_id UUID REFERENCES organisations(id) ON DELETE CASCADE,
-  award_id UUID REFERENCES awards(id) ON DELETE CASCADE,
+  award_id UUID REFERENCES award_years(id) ON DELETE CASCADE,
 
   -- Entry Details
   entry_title VARCHAR(500) NOT NULL,

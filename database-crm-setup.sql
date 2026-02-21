@@ -4,6 +4,22 @@
 -- ============================================
 
 -- ============================================
+-- CLEAN UP: Drop partially-created tables from previous failed run
+-- (safe to run even if they don't exist)
+-- ============================================
+DROP TABLE IF EXISTS organisation_segments CASCADE;
+DROP TABLE IF EXISTS sponsorship_opportunities CASCADE;
+DROP TABLE IF EXISTS meeting_notes CASCADE;
+DROP TABLE IF EXISTS contact_segments CASCADE;
+DROP TABLE IF EXISTS deals CASCADE;
+DROP TABLE IF EXISTS communications CASCADE;
+
+DROP VIEW IF EXISTS organisations_with_crm_summary CASCADE;
+DROP VIEW IF EXISTS deal_pipeline_summary CASCADE;
+DROP VIEW IF EXISTS communication_activity CASCADE;
+DROP VIEW IF EXISTS upcoming_follow_ups CASCADE;
+
+-- ============================================
 -- COMMUNICATIONS LOG
 -- ============================================
 CREATE TABLE IF NOT EXISTS communications (
@@ -185,7 +201,7 @@ CREATE TABLE IF NOT EXISTS sponsorship_opportunities (
 
   -- Event/Award Connection
   event_id UUID REFERENCES events(id) ON DELETE SET NULL,
-  award_id UUID REFERENCES awards(id) ON DELETE SET NULL,
+  award_id UUID REFERENCES award_years(id) ON DELETE SET NULL,
 
   -- Status
   is_active BOOLEAN DEFAULT true,

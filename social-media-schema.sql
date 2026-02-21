@@ -7,7 +7,7 @@
 CREATE TABLE IF NOT EXISTS social_media_posts (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   company_id UUID REFERENCES organisations(id) ON DELETE SET NULL,
-  award_id UUID REFERENCES awards(id) ON DELETE SET NULL,
+  award_id UUID REFERENCES award_years(id) ON DELETE SET NULL,
   content TEXT NOT NULL,
   template_type VARCHAR(50), -- 'nominee', 'winner', 'voting', or NULL for custom
   platforms TEXT[] NOT NULL, -- Array of platforms: ['twitter', 'facebook', 'instagram', 'linkedin']
@@ -80,7 +80,7 @@ CREATE TABLE IF NOT EXISTS social_media_campaigns (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   name VARCHAR(255) NOT NULL,
   description TEXT,
-  award_id UUID REFERENCES awards(id) ON DELETE SET NULL,
+  award_id UUID REFERENCES award_years(id) ON DELETE SET NULL,
   start_date DATE,
   end_date DATE,
   status VARCHAR(20) DEFAULT 'active', -- 'active', 'paused', 'completed'

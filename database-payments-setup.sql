@@ -12,7 +12,7 @@ CREATE TABLE IF NOT EXISTS invoices (
   -- Relationships
   organisation_id UUID REFERENCES organisations(id) ON DELETE CASCADE,
   event_id UUID REFERENCES events(id) ON DELETE SET NULL,
-  award_id UUID REFERENCES awards(id) ON DELETE SET NULL,
+  award_id UUID REFERENCES award_years(id) ON DELETE SET NULL,
 
   -- Invoice Details
   invoice_date DATE NOT NULL DEFAULT CURRENT_DATE,

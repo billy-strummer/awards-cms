@@ -119,7 +119,7 @@ BEGIN
     ALTER TABLE winners 
     ADD CONSTRAINT winners_award_id_fkey 
     FOREIGN KEY (award_id) 
-    REFERENCES awards(id) 
+    REFERENCES award_years(id) 
     ON DELETE SET NULL;
   END IF;
 END $$;
@@ -131,7 +131,7 @@ END $$;
 -- Award Assignments
 CREATE TABLE IF NOT EXISTS award_assignments (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  award_id UUID REFERENCES awards(id) ON DELETE CASCADE,
+  award_id UUID REFERENCES award_years(id) ON DELETE CASCADE,
   organisation_id UUID REFERENCES organisations(id) ON DELETE CASCADE,
   
   status VARCHAR(50) DEFAULT 'nominated',
@@ -523,7 +523,7 @@ DO $$
 BEGIN
   IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'media_gallery_award_id_fkey') THEN
     ALTER TABLE media_gallery ADD CONSTRAINT media_gallery_award_id_fkey 
-    FOREIGN KEY (award_id) REFERENCES awards(id) ON DELETE SET NULL;
+    FOREIGN KEY (award_id) REFERENCES award_years(id) ON DELETE SET NULL;
   END IF;
   
   IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'media_gallery_organisation_id_fkey') THEN

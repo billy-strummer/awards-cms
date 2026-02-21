@@ -4,9 +4,18 @@
 -- ============================================================
 
 -- 1. WINNERS — add missing FK so PostgREST can resolve !winners_award_id_fkey
-ALTER TABLE winners
-  ADD CONSTRAINT winners_award_id_fkey
-  FOREIGN KEY (award_id) REFERENCES award_years(id) ON DELETE SET NULL;
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.table_constraints
+    WHERE constraint_name = 'winners_award_id_fkey'
+      AND table_name = 'winners'
+  ) THEN
+    ALTER TABLE winners
+      ADD CONSTRAINT winners_award_id_fkey
+      FOREIGN KEY (award_id) REFERENCES award_years(id) ON DELETE SET NULL;
+  END IF;
+END $$;
 
 -- 2. MEDIA_GALLERY — rename visibility columns to match JS code
 --    Migration 014 created: show_on_winner, show_on_company, show_on_gallery

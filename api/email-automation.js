@@ -545,8 +545,8 @@ async function sendWinnerAnnouncements(awardId = null) {
       // TODO: Integrate with social-media.js
     }
 
-    console.log(`✅ Sent ${winners.length} winner announcements`);
-    return winners.length;
+    console.log(`✅ Sent ${(winners || []).length} winner announcements`);
+    return (winners || []).length;
 
   } catch (error) {
     console.error('Error sending winner announcements:', error);

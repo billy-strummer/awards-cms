@@ -6328,11 +6328,11 @@ const mediaGalleryModule = {
         .from('media_gallery')
         .select('*')
         .eq('gallery_section_id', section)
-        .eq('is_published', true)
+        .eq('published', true)
         .order('display_order', { ascending: true });
       photos = data || [];
     } else {
-      photos = photos.filter(p => p.is_published !== false);
+      photos = photos.filter(p => p.published !== false);
     }
 
     if (photos.length === 0) { utils.showToast('No published photos to show', 'warning'); return; }

@@ -740,7 +740,10 @@ British Trade Awards Team
    */
   async loadSeasons() {
     try {
-      const { data, error } = await STATE.client.rpc('get_award_seasons');
+      const { data, error } = await STATE.client
+        .from('award_seasons')
+        .select('*')
+        .order('year', { ascending: false });
 
       if (error) throw error;
 
@@ -892,19 +895,22 @@ British Trade Awards Team
 
       // If setting as default, unset other defaults first
       if (isDefault) {
-        await STATE.client.rpc('unset_default_seasons');
+        await STATE.client
+          .from('award_seasons')
+          .update({ is_default: false })
+          .eq('is_default', true);
       }
 
       let result;
       if (id) {
-        result = await STATE.client.rpc('update_award_season', {
-          season_id: id,
-          season_data: seasonData
-        });
+        result = await STATE.client
+          .from('award_seasons')
+          .update(seasonData)
+          .eq('id', id);
       } else {
-        result = await STATE.client.rpc('insert_award_season', {
-          season_data: seasonData
-        });
+        result = await STATE.client
+          .from('award_seasons')
+          .insert(seasonData);
       }
 
       if (result.error) throw result.error;
@@ -931,7 +937,10 @@ British Trade Awards Team
 
     try {
       utils.showLoading();
-      const { error } = await STATE.client.rpc('delete_award_season', { season_id: seasonId });
+      const { error } = await STATE.client
+        .from('award_seasons')
+        .delete()
+        .eq('id', seasonId);
       if (error) throw error;
 
       utils.showToast('Season deleted', 'success');

@@ -44,7 +44,7 @@ BEGIN
   ) THEN
     ALTER TABLE media_gallery
       ADD CONSTRAINT media_gallery_award_id_fkey
-      FOREIGN KEY (award_id) REFERENCES awards(id) ON DELETE SET NULL;
+      FOREIGN KEY (award_id) REFERENCES award_years(id) ON DELETE SET NULL;
   END IF;
 END $$;
 
@@ -88,7 +88,7 @@ BEGIN
   ) THEN
     ALTER TABLE media_items
       ADD CONSTRAINT media_items_award_id_fkey
-      FOREIGN KEY (award_id) REFERENCES awards(id) ON DELETE SET NULL;
+      FOREIGN KEY (award_id) REFERENCES award_years(id) ON DELETE SET NULL;
   END IF;
 END $$;
 

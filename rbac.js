@@ -10,12 +10,12 @@ const rbacModule = {
   ROLES: {
     super_admin: {
       label: 'Super Admin',
-      modules: ['dashboard', 'awards', 'organisations', 'winners', 'entries', 'events', 'media-gallery', 'marketing', 'payments', 'crm', 'settings', 'reports'],
+      modules: ['dashboard', 'awards', 'organisations', 'winners', 'entries', 'events', 'media-gallery', 'marketing', 'payments', 'crm', 'settings', 'reports', 'bitcoin'],
       actions: ['create', 'read', 'update', 'delete', 'export', 'import', 'manage_users', 'manage_roles', 'gdpr', 'backup']
     },
     admin: {
       label: 'Admin',
-      modules: ['dashboard', 'awards', 'organisations', 'winners', 'entries', 'events', 'media-gallery', 'marketing', 'payments', 'crm', 'settings', 'reports'],
+      modules: ['dashboard', 'awards', 'organisations', 'winners', 'entries', 'events', 'media-gallery', 'marketing', 'payments', 'crm', 'settings', 'reports', 'bitcoin'],
       actions: ['create', 'read', 'update', 'delete', 'export', 'import', 'backup']
     },
     editor: {
@@ -110,7 +110,8 @@ const rbacModule = {
       'payments-tab': 'payments',
       'crm-tab': 'crm',
       'settings-tab': 'settings',
-      'reports-tab': 'reports'
+      'reports-tab': 'reports',
+      'bitcoin-tab': 'bitcoin'
     };
 
     // Show/hide tabs based on module access

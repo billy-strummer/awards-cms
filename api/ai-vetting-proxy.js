@@ -51,7 +51,8 @@ Provide your response in the following JSON format:
     messages: [{ role: 'user', content: prompt }]
   });
 
-  const content = message.content[0].text;
+  const content = message.content?.[0]?.text;
+  if (!content) throw new Error('Empty response from AI service');
 
   // Parse JSON from response
   const jsonMatch = content.match(/\{[\s\S]*\}/);

@@ -86,7 +86,44 @@ GRANT ALL ON public.sponsorship_opportunities TO authenticated;
 GRANT ALL ON public.sponsorship_opportunities TO service_role;
 
 -- ============================================
--- 7. GRANT SELECT on CRM views
+-- 7. Add missing FK: communications.related_deal_id -> deals
+-- ============================================
+-- Was created as a bare UUID with no constraint, so orphaned
+-- deal references won't get cleaned up on deal deletion.
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.table_constraints
+    WHERE constraint_name = 'communications_related_deal_id_fkey'
+      AND table_name = 'communications'
+  ) THEN
+    ALTER TABLE communications
+      ADD CONSTRAINT communications_related_deal_id_fkey
+      FOREIGN KEY (related_deal_id) REFERENCES deals(id) ON DELETE SET NULL;
+  END IF;
+END $$;
+
+-- ============================================
+-- 8. Fix upcoming_follow_ups view
+-- ============================================
+-- The original view filters on completed = false, but new communications
+-- default to completed = true. This means follow-ups never appear unless
+-- manually set. Fix: only check follow_up_required and follow_up_date.
+CREATE OR REPLACE VIEW upcoming_follow_ups AS
+SELECT
+  c.*,
+  o.company_name,
+  oc.first_name || ' ' || oc.last_name as contact_name,
+  oc.email as contact_email
+FROM communications c
+LEFT JOIN organisations o ON c.organisation_id = o.id
+LEFT JOIN organisation_contacts oc ON c.contact_id = oc.id
+WHERE c.follow_up_required = true
+  AND c.follow_up_date >= CURRENT_DATE
+ORDER BY c.follow_up_date ASC;
+
+-- ============================================
+-- 9. GRANT SELECT on CRM views
 -- ============================================
 GRANT SELECT ON public.organisations_with_crm_summary TO anon;
 GRANT SELECT ON public.organisations_with_crm_summary TO authenticated;
@@ -105,6 +142,6 @@ GRANT SELECT ON public.upcoming_follow_ups TO authenticated;
 GRANT SELECT ON public.upcoming_follow_ups TO service_role;
 
 -- ============================================
--- 8. Refresh PostgREST schema cache
+-- 10. Refresh PostgREST schema cache
 -- ============================================
 NOTIFY pgrst, 'reload schema';

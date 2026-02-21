@@ -149,11 +149,11 @@ const winnersModule = {
     }
 
     const statusConfig = {
-      pending:       { label: 'Pending',       bg: 'bg-secondary' },
-      notified:      { label: 'Notified',      bg: 'bg-info' },
-      pack_sent:     { label: 'Pack Sent',     bg: 'bg-primary' },
-      confirmed:     { label: 'Confirmed',     bg: 'bg-success' },
-      published:     { label: 'Published',     bg: 'bg-warning text-dark' }
+      pending:       { label: 'Pending',       bg: 'bg-secondary',           dot: 'secondary' },
+      notified:      { label: 'Notified',      bg: 'bg-info',               dot: 'info' },
+      pack_sent:     { label: 'Pack Sent',     bg: 'bg-primary',            dot: 'primary' },
+      confirmed:     { label: 'Confirmed',     bg: 'bg-success',            dot: 'success' },
+      published:     { label: 'Published',     bg: 'bg-warning text-dark',  dot: 'warning' }
     };
 
     tbody.innerHTML = STATE.filteredWinners.map(winner => {
@@ -187,13 +187,13 @@ const winnersModule = {
           </td>
           <td>
             <div class="dropdown">
-              <button class="btn btn-sm ${statusInfo.bg} dropdown-toggle" type="button" data-bs-toggle="dropdown" style="min-width: 100px;">
+              <span class="dropdown-toggle badge ${statusInfo.bg}" role="button" data-bs-toggle="dropdown" style="cursor: pointer; font-size: 0.75em;">
                 ${statusInfo.label}
-              </button>
-              <ul class="dropdown-menu">
+              </span>
+              <ul class="dropdown-menu dropdown-menu-end">
                 ${Object.entries(statusConfig).map(([key, cfg]) => `
-                  <li><a class="dropdown-item ${key === status ? 'active' : ''}" href="#" onclick="event.preventDefault(); winnersModule.updateWinnerStatus('${winner.id}', '${key}')">
-                    <span class="badge ${cfg.bg} me-2">&nbsp;</span>${cfg.label}
+                  <li><a class="dropdown-item small ${key === status ? 'active' : ''}" href="#" onclick="event.preventDefault(); winnersModule.updateWinnerStatus('${winner.id}', '${key}')">
+                    <span class="d-inline-block rounded-circle me-2" style="width:8px;height:8px;background:var(--bs-${cfg.dot});"></span>${cfg.label}
                   </a></li>
                 `).join('')}
               </ul>

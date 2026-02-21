@@ -1712,14 +1712,14 @@ const mediaGalleryModule = {
                 <i class="bi bi-images me-2 text-primary"></i>
                 ${utils.escapeHtml(section.gallery_name)}
               </h5>
-              <div class="dropdown">
-                <button class="btn btn-sm btn-link text-muted" data-bs-toggle="dropdown">
+              <div class="btn-group btn-group-sm">
+                <button class="btn btn-outline-secondary btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown" data-bs-display="static" aria-expanded="false">
                   <i class="bi bi-three-dots-vertical"></i>
                 </button>
                 <ul class="dropdown-menu dropdown-menu-end">
                   <li>
                     <a class="dropdown-item" href="#" onclick="mediaGalleryModule.editSection('${section.id}'); return false;">
-                      <i class="bi bi-pencil me-2"></i>Edit
+                      <i class="bi bi-pencil text-warning me-2"></i>Edit
                     </a>
                   </li>
                   <li>

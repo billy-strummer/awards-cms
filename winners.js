@@ -222,13 +222,13 @@ const winnersModule = {
           <td class="text-center">
             <div class="d-flex gap-1 justify-content-center flex-wrap">
               ${mediaTotal > 0 ? `
-              <div class="dropdown">
-                <button class="btn btn-outline-info btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown" data-bs-display="static" title="View Media">
+              <div class="btn-group btn-group-sm">
+                <button class="btn btn-outline-secondary btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown" data-bs-display="static" title="View Media">
                   <i class="bi bi-collection"></i>
                 </button>
                 <ul class="dropdown-menu dropdown-menu-end">
-                  <li><a class="dropdown-item" href="#" onclick="event.preventDefault(); winnersModule.viewMedia('${winner.id}', '${MEDIA_TYPES.PHOTO}')"><i class="bi bi-images me-2"></i>View Photos (${photoCount})</a></li>
-                  <li><a class="dropdown-item" href="#" onclick="event.preventDefault(); winnersModule.viewMedia('${winner.id}', '${MEDIA_TYPES.VIDEO}')"><i class="bi bi-play-circle me-2"></i>View Videos (${videoCount})</a></li>
+                  <li><a class="dropdown-item" href="#" onclick="event.preventDefault(); winnersModule.viewMedia('${winner.id}', '${MEDIA_TYPES.PHOTO}')"><i class="bi bi-images text-primary me-2"></i>View Photos (${photoCount})</a></li>
+                  <li><a class="dropdown-item" href="#" onclick="event.preventDefault(); winnersModule.viewMedia('${winner.id}', '${MEDIA_TYPES.VIDEO}')"><i class="bi bi-play-circle text-info me-2"></i>View Videos (${videoCount})</a></li>
                 </ul>
               </div>
               ` : ''}

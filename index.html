@@ -1455,8 +1455,8 @@
                     <i class="bi bi-file-earmark me-1"></i>Set Draft
                   </button>
                 </div>
-                <div class="dropdown d-inline-block">
-                  <button class="btn btn-info btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                <div class="btn-group btn-group-sm d-inline-block">
+                  <button class="btn btn-outline-secondary btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown" data-bs-display="static">
                     <i class="bi bi-calendar-event me-1"></i>Apply Season
                   </button>
                   <ul class="dropdown-menu" id="bulkSeasonDropdown"></ul>
@@ -1779,13 +1779,13 @@
               <button class="btn btn-sm btn-outline-success" data-bs-toggle="modal" data-bs-target="#csvImportModal" title="Import CSV">
                 <i class="bi bi-upload me-1"></i>Import
               </button>
-              <div class="dropdown d-inline-block">
-                <button class="btn btn-sm btn-outline-secondary dropdown-toggle" data-bs-toggle="dropdown" title="Export">
+              <div class="btn-group btn-group-sm d-inline-block">
+                <button class="btn btn-sm btn-outline-secondary dropdown-toggle" data-bs-toggle="dropdown" data-bs-display="static" title="Export">
                   <i class="bi bi-download me-1"></i>Export
                 </button>
                 <ul class="dropdown-menu">
-                  <li><a class="dropdown-item" href="#" onclick="orgsModule.exportToCSV()"><i class="bi bi-filetype-csv me-2"></i>Export CSV</a></li>
-                  <li><a class="dropdown-item" href="#" onclick="orgsModule.exportToExcel()"><i class="bi bi-file-earmark-spreadsheet me-2"></i>Export Excel (.xlsx)</a></li>
+                  <li><a class="dropdown-item" href="#" onclick="orgsModule.exportToCSV()"><i class="bi bi-filetype-csv text-success me-2"></i>Export CSV</a></li>
+                  <li><a class="dropdown-item" href="#" onclick="orgsModule.exportToExcel()"><i class="bi bi-file-earmark-spreadsheet text-primary me-2"></i>Export Excel (.xlsx)</a></li>
                 </ul>
               </div>
               <button class="btn btn-sm btn-outline-secondary" id="togglePhoneColBtn" onclick="orgsModule.togglePhoneColumn()" title="Toggle Phone Column">
@@ -2203,29 +2203,29 @@
             <span id="selectedCount">0</span> selected
           </span>
           <div class="vr"></div>
-          <div class="dropdown">
-            <button class="btn btn-sm btn-warning dropdown-toggle" data-bs-toggle="dropdown">
+          <div class="btn-group btn-group-sm">
+            <button class="btn btn-sm btn-outline-secondary dropdown-toggle" data-bs-toggle="dropdown" data-bs-display="static">
               <i class="bi bi-arrow-repeat me-1"></i>Status
             </button>
             <ul class="dropdown-menu">
-              <li><a class="dropdown-item" href="#" onclick="orgsModule.bulkStatusChange('prospect')">Prospect</a></li>
-              <li><a class="dropdown-item" href="#" onclick="orgsModule.bulkStatusChange('entrant')">Entrant</a></li>
-              <li><a class="dropdown-item" href="#" onclick="orgsModule.bulkStatusChange('nominee')">Nominee</a></li>
-              <li><a class="dropdown-item" href="#" onclick="orgsModule.bulkStatusChange('shortlisted')">Shortlisted</a></li>
-              <li><a class="dropdown-item" href="#" onclick="orgsModule.bulkStatusChange('winner')">Winner</a></li>
-              <li><a class="dropdown-item" href="#" onclick="orgsModule.bulkStatusChange('sponsor')">Sponsor</a></li>
-              <li><hr class="dropdown-menu-divider"></li>
-              <li><a class="dropdown-item text-danger" href="#" onclick="orgsModule.bulkStatusChange('archived')">Archive</a></li>
+              <li><a class="dropdown-item" href="#" onclick="orgsModule.bulkStatusChange('prospect')"><i class="bi bi-eye text-secondary me-2"></i>Prospect</a></li>
+              <li><a class="dropdown-item" href="#" onclick="orgsModule.bulkStatusChange('entrant')"><i class="bi bi-pencil text-primary me-2"></i>Entrant</a></li>
+              <li><a class="dropdown-item" href="#" onclick="orgsModule.bulkStatusChange('nominee')"><i class="bi bi-person-check text-info me-2"></i>Nominee</a></li>
+              <li><a class="dropdown-item" href="#" onclick="orgsModule.bulkStatusChange('shortlisted')"><i class="bi bi-list-check text-warning me-2"></i>Shortlisted</a></li>
+              <li><a class="dropdown-item" href="#" onclick="orgsModule.bulkStatusChange('winner')"><i class="bi bi-trophy text-success me-2"></i>Winner</a></li>
+              <li><a class="dropdown-item" href="#" onclick="orgsModule.bulkStatusChange('sponsor')"><i class="bi bi-star text-purple me-2" style="color:#6f42c1;"></i>Sponsor</a></li>
+              <li><hr class="dropdown-divider"></li>
+              <li><a class="dropdown-item text-danger" href="#" onclick="orgsModule.bulkStatusChange('archived')"><i class="bi bi-archive me-2"></i>Archive</a></li>
             </ul>
           </div>
-          <div class="dropdown">
-            <button class="btn btn-sm btn-info dropdown-toggle" data-bs-toggle="dropdown">
+          <div class="btn-group btn-group-sm">
+            <button class="btn btn-sm btn-outline-secondary dropdown-toggle" data-bs-toggle="dropdown" data-bs-display="static">
               <i class="bi bi-pencil-square me-1"></i>Set Field
             </button>
             <ul class="dropdown-menu">
-              <li><a class="dropdown-item" href="#" onclick="orgsModule.showBulkFieldModal('sector')"><i class="bi bi-briefcase me-2"></i>Sector</a></li>
-              <li><a class="dropdown-item" href="#" onclick="orgsModule.showBulkFieldModal('region')"><i class="bi bi-geo-alt me-2"></i>Region</a></li>
-              <li><a class="dropdown-item" href="#" onclick="orgsModule.showBulkFieldModal('tier')"><i class="bi bi-award me-2"></i>Tier</a></li>
+              <li><a class="dropdown-item" href="#" onclick="orgsModule.showBulkFieldModal('sector')"><i class="bi bi-briefcase text-primary me-2"></i>Sector</a></li>
+              <li><a class="dropdown-item" href="#" onclick="orgsModule.showBulkFieldModal('region')"><i class="bi bi-geo-alt text-success me-2"></i>Region</a></li>
+              <li><a class="dropdown-item" href="#" onclick="orgsModule.showBulkFieldModal('tier')"><i class="bi bi-award text-warning me-2"></i>Tier</a></li>
             </ul>
           </div>
           <button class="btn btn-sm btn-success" onclick="orgsModule.bulkFetchLogos()" title="Fetch logos for selected orgs with websites but no logo">
@@ -2240,13 +2240,13 @@
           <button class="btn btn-sm btn-primary" onclick="orgsModule.bulkEmail()">
             <i class="bi bi-envelope me-1"></i>Email
           </button>
-          <div class="dropdown d-inline-block">
-            <button class="btn btn-sm btn-outline-secondary dropdown-toggle" data-bs-toggle="dropdown">
+          <div class="btn-group btn-group-sm d-inline-block">
+            <button class="btn btn-sm btn-outline-secondary dropdown-toggle" data-bs-toggle="dropdown" data-bs-display="static">
               <i class="bi bi-download me-1"></i>Export
             </button>
             <ul class="dropdown-menu">
-              <li><a class="dropdown-item small" href="#" onclick="orgsModule.bulkExport('csv')"><i class="bi bi-filetype-csv me-2"></i>Export CSV</a></li>
-              <li><a class="dropdown-item small" href="#" onclick="orgsModule.bulkExport('excel')"><i class="bi bi-file-earmark-spreadsheet me-2"></i>Export Excel</a></li>
+              <li><a class="dropdown-item" href="#" onclick="orgsModule.bulkExport('csv')"><i class="bi bi-filetype-csv text-success me-2"></i>Export CSV</a></li>
+              <li><a class="dropdown-item" href="#" onclick="orgsModule.bulkExport('excel')"><i class="bi bi-file-earmark-spreadsheet text-primary me-2"></i>Export Excel</a></li>
             </ul>
           </div>
           <button class="btn btn-sm btn-outline-info" onclick="orgsModule.showOrgComparison()" title="Compare selected (2-4)">
@@ -2338,13 +2338,13 @@
                 <button class="btn btn-success btn-sm" onclick="winnersModule.openImportWinners()">
                   <i class="bi bi-upload me-1"></i>Import CSV
                 </button>
-                <div class="dropdown">
-                  <button class="btn btn-outline-secondary btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                <div class="btn-group btn-group-sm">
+                  <button class="btn btn-outline-secondary btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown" data-bs-display="static">
                     <i class="bi bi-download me-1"></i>Export
                   </button>
                   <ul class="dropdown-menu">
-                    <li><a class="dropdown-item" href="#" onclick="event.preventDefault(); winnersModule.exportFilteredWinnersCSV()"><i class="bi bi-file-earmark-spreadsheet me-2"></i>Export CSV</a></li>
-                    <li><a class="dropdown-item" href="#" onclick="event.preventDefault(); winnersModule.exportFilteredWinners()"><i class="bi bi-file-pdf me-2"></i>Export PDF</a></li>
+                    <li><a class="dropdown-item" href="#" onclick="event.preventDefault(); winnersModule.exportFilteredWinnersCSV()"><i class="bi bi-file-earmark-spreadsheet text-success me-2"></i>Export CSV</a></li>
+                    <li><a class="dropdown-item" href="#" onclick="event.preventDefault(); winnersModule.exportFilteredWinners()"><i class="bi bi-file-pdf text-danger me-2"></i>Export PDF</a></li>
                   </ul>
                 </div>
                 <div class="badge bg-info-subtle text-info fs-6">
@@ -2660,14 +2660,14 @@
 
               <!-- Photo Tools -->
               <div class="mb-3 d-flex flex-wrap gap-2">
-                <div class="btn-group">
-                  <button class="btn btn-outline-secondary btn-sm dropdown-toggle" data-bs-toggle="dropdown">
+                <div class="btn-group btn-group-sm">
+                  <button class="btn btn-outline-secondary btn-sm dropdown-toggle" data-bs-toggle="dropdown" data-bs-display="static">
                     <i class="bi bi-tools me-1"></i>Photo Tools
                   </button>
                   <ul class="dropdown-menu">
-                    <li><a class="dropdown-item" href="#" onclick="mediaGalleryModule.openWatermarkModal()"><i class="bi bi-droplet me-2"></i>Watermark Photos</a></li>
-                    <li><a class="dropdown-item" href="#" onclick="mediaGalleryModule.openExportModal()"><i class="bi bi-box-arrow-up me-2"></i>Export for Social</a></li>
-                    <li><a class="dropdown-item" href="#" onclick="mediaGalleryModule.openComparisonModal()"><i class="bi bi-layout-split me-2"></i>Event Comparison</a></li>
+                    <li><a class="dropdown-item" href="#" onclick="mediaGalleryModule.openWatermarkModal()"><i class="bi bi-droplet text-info me-2"></i>Watermark Photos</a></li>
+                    <li><a class="dropdown-item" href="#" onclick="mediaGalleryModule.openExportModal()"><i class="bi bi-box-arrow-up text-primary me-2"></i>Export for Social</a></li>
+                    <li><a class="dropdown-item" href="#" onclick="mediaGalleryModule.openComparisonModal()"><i class="bi bi-layout-split text-success me-2"></i>Event Comparison</a></li>
                   </ul>
                 </div>
               </div>
@@ -2704,17 +2704,17 @@
                 <button class="btn btn-outline-info" onclick="mediaGalleryModule.openPlaylistSyncModal()">
                   <i class="bi bi-collection-play me-2"></i>Playlist Import
                 </button>
-                <div class="btn-group">
-                  <button class="btn btn-outline-secondary dropdown-toggle" data-bs-toggle="dropdown">
+                <div class="btn-group btn-group-sm">
+                  <button class="btn btn-outline-secondary btn-sm dropdown-toggle" data-bs-toggle="dropdown" data-bs-display="static">
                     <i class="bi bi-tools me-1"></i>Tools
                   </button>
                   <ul class="dropdown-menu">
-                    <li><a class="dropdown-item" href="#" onclick="mediaGalleryModule.openYouTubeHealthCheck()"><i class="bi bi-heart-pulse me-2"></i>YouTube Link Checker</a></li>
-                    <li><a class="dropdown-item" href="#" onclick="mediaGalleryModule.openComparisonModal()"><i class="bi bi-layout-split me-2"></i>Event Comparison</a></li>
-                    <li><a class="dropdown-item" href="#" onclick="mediaGalleryModule.openExportModal()"><i class="bi bi-box-arrow-up me-2"></i>Export for Social</a></li>
-                    <li><a class="dropdown-item" href="#" onclick="mediaGalleryModule.openWatermarkModal()"><i class="bi bi-droplet me-2"></i>Watermark Photos</a></li>
+                    <li><a class="dropdown-item" href="#" onclick="mediaGalleryModule.openYouTubeHealthCheck()"><i class="bi bi-heart-pulse text-danger me-2"></i>YouTube Link Checker</a></li>
+                    <li><a class="dropdown-item" href="#" onclick="mediaGalleryModule.openComparisonModal()"><i class="bi bi-layout-split text-success me-2"></i>Event Comparison</a></li>
+                    <li><a class="dropdown-item" href="#" onclick="mediaGalleryModule.openExportModal()"><i class="bi bi-box-arrow-up text-primary me-2"></i>Export for Social</a></li>
+                    <li><a class="dropdown-item" href="#" onclick="mediaGalleryModule.openWatermarkModal()"><i class="bi bi-droplet text-info me-2"></i>Watermark Photos</a></li>
                     <li><hr class="dropdown-divider"></li>
-                    <li><a class="dropdown-item" href="#" onclick="mediaGalleryModule.toggleVideoReorderMode()"><i class="bi bi-sort-numeric-down me-2"></i>Reorder Videos</a></li>
+                    <li><a class="dropdown-item" href="#" onclick="mediaGalleryModule.toggleVideoReorderMode()"><i class="bi bi-sort-numeric-down text-warning me-2"></i>Reorder Videos</a></li>
                   </ul>
                 </div>
               </div>
@@ -3378,14 +3378,14 @@
             <div class="vr bg-light mx-1"></div>
             <button class="btn btn-sm btn-outline-light" onclick="eventsModule.bulkClone()"><i class="bi bi-files me-1"></i>Clone</button>
             <div class="btn-group btn-group-sm">
-              <button class="btn btn-outline-light dropdown-toggle" data-bs-toggle="dropdown">
+              <button class="btn btn-outline-light btn-sm dropdown-toggle" data-bs-toggle="dropdown" data-bs-display="static">
                 <i class="bi bi-flag me-1"></i>Set Status
               </button>
               <ul class="dropdown-menu">
-                <li><a class="dropdown-item" href="#" onclick="event.preventDefault(); eventsModule.bulkSetStatus('draft')">Draft</a></li>
-                <li><a class="dropdown-item" href="#" onclick="event.preventDefault(); eventsModule.bulkSetStatus('confirmed')">Confirmed</a></li>
-                <li><a class="dropdown-item" href="#" onclick="event.preventDefault(); eventsModule.bulkSetStatus('cancelled')">Cancelled</a></li>
-                <li><a class="dropdown-item" href="#" onclick="event.preventDefault(); eventsModule.bulkSetStatus('complete')">Complete</a></li>
+                <li><a class="dropdown-item" href="#" onclick="event.preventDefault(); eventsModule.bulkSetStatus('draft')"><i class="bi bi-pencil text-secondary me-2"></i>Draft</a></li>
+                <li><a class="dropdown-item" href="#" onclick="event.preventDefault(); eventsModule.bulkSetStatus('confirmed')"><i class="bi bi-check-circle text-success me-2"></i>Confirmed</a></li>
+                <li><a class="dropdown-item" href="#" onclick="event.preventDefault(); eventsModule.bulkSetStatus('cancelled')"><i class="bi bi-x-circle text-danger me-2"></i>Cancelled</a></li>
+                <li><a class="dropdown-item" href="#" onclick="event.preventDefault(); eventsModule.bulkSetStatus('complete')"><i class="bi bi-flag-fill text-primary me-2"></i>Complete</a></li>
               </ul>
             </div>
             <button class="btn btn-sm btn-outline-danger" onclick="eventsModule.bulkDelete()"><i class="bi bi-trash me-1"></i>Delete</button>
@@ -7288,18 +7288,18 @@ Available placeholders:
               </p>
             </div>
             <div class="d-flex gap-2 flex-wrap">
-              <div class="dropdown">
-                <button class="btn btn-outline-secondary btn-sm dropdown-toggle" data-bs-toggle="dropdown">
+              <div class="btn-group btn-group-sm">
+                <button class="btn btn-outline-secondary btn-sm dropdown-toggle" data-bs-toggle="dropdown" data-bs-display="static">
                   <i class="bi bi-download me-1"></i>Export
                 </button>
                 <ul class="dropdown-menu dropdown-menu-end">
-                  <li><a class="dropdown-item" href="#" onclick="eventsModule.exportAttendees()"><i class="bi bi-file-earmark-spreadsheet me-2"></i>Export Attendees CSV</a></li>
-                  <li><a class="dropdown-item" href="#" onclick="eventsModule.exportDietarySummary()"><i class="bi bi-egg-fried me-2"></i>Export Dietary Report</a></li>
+                  <li><a class="dropdown-item" href="#" onclick="eventsModule.exportAttendees()"><i class="bi bi-file-earmark-spreadsheet text-success me-2"></i>Export Attendees CSV</a></li>
+                  <li><a class="dropdown-item" href="#" onclick="eventsModule.exportDietarySummary()"><i class="bi bi-egg-fried text-warning me-2"></i>Export Dietary Report</a></li>
                   <li><hr class="dropdown-divider"></li>
-                  <li><a class="dropdown-item" href="#" onclick="eventsModule.generateNameBadges()"><i class="bi bi-person-badge me-2"></i>Name Badges PDF</a></li>
-                  <li><a class="dropdown-item" href="#" onclick="eventsModule.generatePlaceCards()"><i class="bi bi-card-text me-2"></i>Place Cards PDF</a></li>
+                  <li><a class="dropdown-item" href="#" onclick="eventsModule.generateNameBadges()"><i class="bi bi-person-badge text-primary me-2"></i>Name Badges PDF</a></li>
+                  <li><a class="dropdown-item" href="#" onclick="eventsModule.generatePlaceCards()"><i class="bi bi-card-text text-info me-2"></i>Place Cards PDF</a></li>
                   <li><hr class="dropdown-divider"></li>
-                  <li><a class="dropdown-item" href="#" onclick="eventsModule.openShareableSeatingChart()"><i class="bi bi-share me-2"></i>Shareable Seating Chart</a></li>
+                  <li><a class="dropdown-item" href="#" onclick="eventsModule.openShareableSeatingChart()"><i class="bi bi-share text-purple me-2" style="color:#6f42c1;"></i>Shareable Seating Chart</a></li>
                 </ul>
               </div>
               <button class="btn btn-outline-info btn-sm" onclick="eventsModule.sendBulkInvites()" title="Send invitation email to all guests">
@@ -9885,9 +9885,9 @@ in recognition of excellence
   <script src="winners.js?v=5"></script>
   <script src="entries.js"></script>
   <script src="email-templates.js"></script>
-  <script src="media-gallery-new.js"></script>
+  <script src="media-gallery-new.js?v=2"></script>
   <script src="social-media.js"></script>
-  <script src="events.js?v=2"></script>
+  <script src="events.js?v=3"></script>
   <script src="assignments.js"></script>
   <script src="dashboard.js"></script>
   <script src="ai-vetting.js"></script>
@@ -9913,10 +9913,10 @@ in recognition of excellence
   <script src="notifications.js"></script>
   <script src="entry-revision.js"></script>
   <script src="winner-pipeline.js"></script>
-  <script src="branding.js"></script>
+  <script src="branding.js?v=2"></script>
   <script src="webhooks.js"></script>
   <script src="document-management.js"></script>
-  <script src="seating-enhancements.js"></script>
+  <script src="seating-enhancements.js?v=2"></script>
   <script src="calendar.js"></script>
   <script src="rate-limiting.js"></script>
   <script src="winner-announcements.js"></script>

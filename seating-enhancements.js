@@ -367,14 +367,14 @@ window.seatingEnhancements = {
     if(!tb||tb.querySelector('.se-injected')) return;
     const f=document.createElement('span'); f.className='se-injected d-contents';
     f.innerHTML=`<div class="vr"></div>
-      <div class="dropdown"><button class="btn btn-sm btn-outline-success dropdown-toggle" data-bs-toggle="dropdown"><i class="bi bi-layers me-1"></i>Sections</button>
+      <div class="btn-group btn-group-sm"><button class="btn btn-sm btn-outline-secondary dropdown-toggle" data-bs-toggle="dropdown" data-bs-display="static"><i class="bi bi-layers me-1"></i>Sections</button>
         <ul class="dropdown-menu">
-          <li><a class="dropdown-item" href="#" onclick="seatingEnhancements.addSection('VIP Area','#ffc107');return false">VIP Area</a></li>
-          <li><a class="dropdown-item" href="#" onclick="seatingEnhancements.addSection('Stage','#6f42c1');return false">Stage</a></li>
-          <li><a class="dropdown-item" href="#" onclick="seatingEnhancements.addSection('Bar','#20c997');return false">Bar</a></li>
-          <li><a class="dropdown-item" href="#" onclick="seatingEnhancements.addSection('General','#6c757d');return false">General</a></li>
+          <li><a class="dropdown-item" href="#" onclick="seatingEnhancements.addSection('VIP Area','#ffc107');return false"><i class="bi bi-star-fill me-2" style="color:#ffc107;"></i>VIP Area</a></li>
+          <li><a class="dropdown-item" href="#" onclick="seatingEnhancements.addSection('Stage','#6f42c1');return false"><i class="bi bi-mic-fill me-2" style="color:#6f42c1;"></i>Stage</a></li>
+          <li><a class="dropdown-item" href="#" onclick="seatingEnhancements.addSection('Bar','#20c997');return false"><i class="bi bi-cup-straw me-2" style="color:#20c997;"></i>Bar</a></li>
+          <li><a class="dropdown-item" href="#" onclick="seatingEnhancements.addSection('General','#6c757d');return false"><i class="bi bi-people me-2" style="color:#6c757d;"></i>General</a></li>
           <li><hr class="dropdown-divider"></li>
-          <li><a class="dropdown-item" href="#" onclick="let n=prompt('Section name:');if(n)seatingEnhancements.addSection(n,prompt('Color hex:','#0d6efd')||'#0d6efd');return false">Custom...</a></li>
+          <li><a class="dropdown-item" href="#" onclick="let n=prompt('Section name:');if(n)seatingEnhancements.addSection(n,prompt('Color hex:','#0d6efd')||'#0d6efd');return false"><i class="bi bi-plus-circle text-primary me-2"></i>Custom...</a></li>
         </ul></div>
       <button class="btn btn-sm btn-outline-secondary" onclick="seatingEnhancements.showDietarySummary()" title="Dietary Summary"><i class="bi bi-egg-fried"></i></button>
       <div class="dropdown"><button class="btn btn-sm btn-outline-secondary dropdown-toggle" data-bs-toggle="dropdown" title="Print"><i class="bi bi-printer"></i></button>

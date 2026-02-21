@@ -160,7 +160,7 @@ window.brandingModule = {
     container.innerHTML = `<div class="row g-4">
       <div class="col-lg-7"><div class="card"><div class="card-header d-flex justify-content-between align-items-center">
         <h5 class="mb-0">Brand Settings</h5>
-        <div class="dropdown"><button class="btn btn-outline-secondary btn-sm dropdown-toggle" data-bs-toggle="dropdown">Load Preset</button>
+        <div class="btn-group btn-group-sm"><button class="btn btn-outline-secondary btn-sm dropdown-toggle" data-bs-toggle="dropdown" data-bs-display="static"><i class="bi bi-palette me-1"></i>Load Preset</button>
         <ul class="dropdown-menu dropdown-menu-end">${presetItems}</ul></div></div>
         <div class="card-body"><form id="brandingForm" novalidate>
           <h6 class="text-muted fw-semibold mb-3">Identity</h6>

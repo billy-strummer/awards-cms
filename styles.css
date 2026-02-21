@@ -382,8 +382,7 @@ body.dark-mode {
 }
 
 /* Allow dropdowns to escape the table-responsive container */
-.table-responsive:has(.dropdown.show),
-.table-responsive:has(.btn-group.show) {
+.table-responsive.dropdown-open {
   overflow: visible !important;
 }
 
@@ -393,10 +392,8 @@ body.dark-mode {
   min-width: 160px;
 }
 
-/* Elevate the table cell containing an open dropdown so its menu
-   renders above buttons/badges in every other row */
-.table td:has(.btn-group.show),
-.table td:has(.dropdown.show) {
+/* When a row has an open dropdown, elevate it above all sibling rows */
+.table tr.dropdown-row-active {
   position: relative;
   z-index: 1050;
 }

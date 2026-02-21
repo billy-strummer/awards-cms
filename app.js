@@ -590,6 +590,26 @@ document.addEventListener('DOMContentLoaded', function() {
     icon.classList.add('bi-sun');
   }
 
+  // --- Table dropdown z-index fix ---
+  // When a dropdown opens inside a table, elevate its row so the menu
+  // renders above buttons/badges in every other row.
+  document.addEventListener('show.bs.dropdown', function(e) {
+    const tr = e.target.closest('.table-responsive tr');
+    if (tr) {
+      tr.classList.add('dropdown-row-active');
+      const wrapper = tr.closest('.table-responsive');
+      if (wrapper) wrapper.classList.add('dropdown-open');
+    }
+  });
+  document.addEventListener('hide.bs.dropdown', function(e) {
+    const tr = e.target.closest('.table-responsive tr');
+    if (tr) {
+      tr.classList.remove('dropdown-row-active');
+      const wrapper = tr.closest('.table-responsive');
+      if (wrapper) wrapper.classList.remove('dropdown-open');
+    }
+  });
+
   // --- Quick Actions Button ---
   const quickActionsBtn = document.getElementById('quickActionsBtn');
   const quickActionsMenu = document.getElementById('quickActionsMenu');

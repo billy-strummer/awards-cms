@@ -12,7 +12,7 @@ const winnersModule = {
   async loadWinners() {
     try {
       utils.showLoading();
-      utils.showTableLoading('winnersTableBody', 6);
+      utils.showTableLoading('winnersTableBody', 5);
 
       // Paginated loading for large winner datasets
       let allData = [];
@@ -79,7 +79,7 @@ const winnersModule = {
     } catch (error) {
       console.error('Error loading winners:', error);
       utils.showToast('Failed to load winners: ' + error.message, 'error');
-      utils.showEmptyState('winnersTableBody', 6, 'Failed to load winners', 'bi-exclamation-triangle');
+      utils.showEmptyState('winnersTableBody', 5, 'Failed to load winners', 'bi-exclamation-triangle');
     } finally {
       utils.hideLoading();
     }
@@ -140,69 +140,69 @@ const winnersModule = {
   renderWinners() {
     const tbody = document.getElementById('winnersTableBody');
     const count = document.getElementById('winnersCount');
-    
+
     count.textContent = STATE.filteredWinners.length;
-    
+
     if (STATE.filteredWinners.length === 0) {
-      utils.showEmptyState('winnersTableBody', 6, 'No winners found');
+      utils.showEmptyState('winnersTableBody', 5, 'No winners found');
       return;
     }
-    
+
     tbody.innerHTML = STATE.filteredWinners.map(winner => {
       const photoCount = winner.winner_media?.filter(m => m.media_type === MEDIA_TYPES.PHOTO).length || 0;
       const videoCount = winner.winner_media?.filter(m => m.media_type === MEDIA_TYPES.VIDEO).length || 0;
+      const mediaTotal = photoCount + videoCount;
       const awardCategory = winner.awards?.award_category || 'N/A';
       const year = winner.awards?.year || 'N/A';
-      
+      const awardId = winner.award_id || '';
+
       return `
         <tr class="fade-in">
           <td>
             <div class="fw-semibold">${utils.escapeHtml(winner.winner_name || 'N/A')}</div>
           </td>
           <td>
-            <strong>${utils.escapeHtml(awardCategory)}</strong>
+            <a href="#" class="text-decoration-none fw-semibold" onclick="event.preventDefault(); winnersModule.showAwardPlacements('${awardId}', '${utils.escapeHtml(awardCategory)}')" title="View placements and nominees">
+              ${utils.escapeHtml(awardCategory)} <i class="bi bi-chevron-right small"></i>
+            </a>
           </td>
           <td>
             <span class="badge bg-primary-subtle text-primary">${year}</span>
           </td>
           <td>
-            <span class="badge ${photoCount > 0 ? 'bg-info' : 'bg-secondary'}">
-              <i class="bi bi-camera me-1"></i>${photoCount}
+            <span class="badge ${mediaTotal > 0 ? 'bg-info' : 'bg-secondary'}">
+              <i class="bi bi-collection me-1"></i>${mediaTotal}
             </span>
-          </td>
-          <td>
-            <span class="badge ${videoCount > 0 ? 'bg-danger' : 'bg-secondary'}">
-              <i class="bi bi-camera-video me-1"></i>${videoCount}
-            </span>
+            ${mediaTotal > 0 ? `<span class="text-muted small ms-1">${photoCount}<i class="bi bi-camera ms-1 me-2"></i>${videoCount}<i class="bi bi-camera-video ms-1"></i></span>` : ''}
           </td>
           <td class="text-center">
             <div class="btn-group btn-group-sm" role="group">
-              <button 
-                class="btn btn-outline-primary btn-icon" 
+              <button
+                class="btn btn-outline-primary btn-icon"
                 onclick="winnersModule.uploadMedia('${winner.id}', '${MEDIA_TYPES.PHOTO}')"
                 title="Upload Photo">
                 <i class="bi bi-camera"></i>
               </button>
-              <button 
-                class="btn btn-outline-danger btn-icon" 
+              <button
+                class="btn btn-outline-danger btn-icon"
                 onclick="winnersModule.uploadMedia('${winner.id}', '${MEDIA_TYPES.VIDEO}')"
                 title="Upload Video">
                 <i class="bi bi-camera-video"></i>
               </button>
-              <button 
-                class="btn btn-outline-info btn-icon" 
+              <button
+                class="btn btn-outline-info btn-icon"
                 onclick="winnersModule.viewMedia('${winner.id}', '${MEDIA_TYPES.PHOTO}')"
                 title="View Photos">
                 <i class="bi bi-images"></i>
               </button>
-              <button 
-                class="btn btn-outline-warning btn-icon" 
+              <button
+                class="btn btn-outline-warning btn-icon"
                 onclick="winnersModule.viewMedia('${winner.id}', '${MEDIA_TYPES.VIDEO}')"
                 title="View Videos">
                 <i class="bi bi-play-circle"></i>
               </button>
-              <button 
-                class="btn btn-outline-secondary btn-icon" 
+              <button
+                class="btn btn-outline-secondary btn-icon"
                 onclick="winnersModule.deleteWinner('${winner.id}')"
                 title="Delete Winner">
                 <i class="bi bi-trash"></i>
@@ -212,6 +212,119 @@ const winnersModule = {
         </tr>
       `;
     }).join('');
+  },
+
+  /**
+   * Show award placements (winner, 2nd, 3rd, nominees) for a given award
+   */
+  async showAwardPlacements(awardId, awardName) {
+    if (!awardId) return;
+
+    const content = document.getElementById('awardPlacementsContent');
+    document.getElementById('awardPlacementsModalTitle').textContent = awardName || 'Award Placements';
+
+    // Show loading state
+    content.innerHTML = `
+      <div class="text-center py-4">
+        <div class="spinner-border text-primary" role="status"></div>
+        <p class="mt-2 text-muted">Loading placements...</p>
+      </div>`;
+
+    const modal = new bootstrap.Modal(document.getElementById('awardPlacementsModal'));
+    modal.show();
+
+    try {
+      // Load assignments for this award with organisation names
+      let data, error;
+      ({ data, error } = await STATE.client
+        .from('award_assignments')
+        .select('id, status, winner_position, organisations(company_name)')
+        .eq('award_id', awardId)
+        .order('winner_position', { ascending: true }));
+
+      // FK relationship missing - retry without joins
+      if (error && (error.message?.includes('relationship') || error.message?.includes('schema cache'))) {
+        ({ data, error } = await STATE.client
+          .from('award_assignments')
+          .select('id, status, winner_position, organisation_id')
+          .eq('award_id', awardId)
+          .order('winner_position', { ascending: true }));
+      }
+
+      if (error) throw error;
+
+      if (!data || data.length === 0) {
+        content.innerHTML = `
+          <div class="text-center py-4 text-muted">
+            <i class="bi bi-info-circle display-4 d-block mb-3 opacity-50"></i>
+            <p>No assignments found for this award.</p>
+          </div>`;
+        return;
+      }
+
+      // Separate into placed winners and remaining nominees
+      const winners = data.filter(a => a.status === 'winner').sort((a, b) => (a.winner_position || 99) - (b.winner_position || 99));
+      const shortlisted = data.filter(a => a.status === 'shortlisted');
+      const nominated = data.filter(a => a.status === 'nominated');
+
+      const positionLabels = {
+        1: { label: '1st Place', icon: 'bi-trophy-fill', color: 'warning' },
+        2: { label: '2nd Place', icon: 'bi-award-fill', color: 'secondary' },
+        3: { label: '3rd Place', icon: 'bi-award', color: 'dark' }
+      };
+
+      let html = '';
+
+      // Placed winners
+      if (winners.length > 0) {
+        html += '<div class="mb-3">';
+        winners.forEach(w => {
+          const name = w.organisations?.company_name || 'Unknown';
+          const pos = w.winner_position || 1;
+          const meta = positionLabels[pos] || { label: `Position ${pos}`, icon: 'bi-award', color: 'info' };
+          html += `
+            <div class="d-flex align-items-center p-2 mb-2 rounded border">
+              <span class="badge bg-${meta.color} me-3 px-3 py-2">
+                <i class="bi ${meta.icon} me-1"></i>${meta.label}
+              </span>
+              <span class="fw-semibold">${utils.escapeHtml(name)}</span>
+            </div>`;
+        });
+        html += '</div>';
+      }
+
+      // Shortlisted
+      if (shortlisted.length > 0) {
+        html += `<h6 class="text-muted mt-3 mb-2"><i class="bi bi-star me-1"></i>Shortlisted (${shortlisted.length})</h6>`;
+        html += '<ul class="list-group list-group-flush mb-3">';
+        shortlisted.forEach(s => {
+          const name = s.organisations?.company_name || 'Unknown';
+          html += `<li class="list-group-item py-2">${utils.escapeHtml(name)}</li>`;
+        });
+        html += '</ul>';
+      }
+
+      // Nominated
+      if (nominated.length > 0) {
+        html += `<h6 class="text-muted mt-3 mb-2"><i class="bi bi-people me-1"></i>Nominees (${nominated.length})</h6>`;
+        html += '<ul class="list-group list-group-flush">';
+        nominated.forEach(n => {
+          const name = n.organisations?.company_name || 'Unknown';
+          html += `<li class="list-group-item py-2 text-muted">${utils.escapeHtml(name)}</li>`;
+        });
+        html += '</ul>';
+      }
+
+      content.innerHTML = html;
+
+    } catch (err) {
+      console.error('Error loading award placements:', err);
+      content.innerHTML = `
+        <div class="text-center py-4 text-danger">
+          <i class="bi bi-exclamation-triangle display-4 d-block mb-3"></i>
+          <p>Failed to load placements: ${utils.escapeHtml(err.message)}</p>
+        </div>`;
+    }
   },
 
   /**

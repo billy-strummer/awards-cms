@@ -52,7 +52,7 @@ CREATE TABLE IF NOT EXISTS sponsors (
 CREATE TABLE IF NOT EXISTS sponsor_assignments (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   sponsor_id UUID REFERENCES sponsors(id) ON DELETE CASCADE,
-  award_id UUID REFERENCES awards(id) ON DELETE CASCADE,
+  award_id UUID REFERENCES award_years(id) ON DELETE CASCADE,
   event_id UUID REFERENCES events(id) ON DELETE CASCADE,
   assigned_date TIMESTAMPTZ DEFAULT NOW()
 );
@@ -75,7 +75,7 @@ CREATE TABLE IF NOT EXISTS social_campaigns (
   shares INTEGER DEFAULT 0,
   comments INTEGER DEFAULT 0,
   reach INTEGER DEFAULT 0,
-  award_id UUID REFERENCES awards(id) ON DELETE SET NULL,
+  award_id UUID REFERENCES award_years(id) ON DELETE SET NULL,
   event_id UUID REFERENCES events(id) ON DELETE SET NULL,
   organisation_id UUID REFERENCES organisations(id) ON DELETE SET NULL,
   hashtags TEXT,
@@ -119,7 +119,7 @@ CREATE TABLE IF NOT EXISTS email_campaigns (
   opened_count INTEGER DEFAULT 0,
   clicked_count INTEGER DEFAULT 0,
   bounced_count INTEGER DEFAULT 0,
-  award_id UUID REFERENCES awards(id) ON DELETE SET NULL,
+  award_id UUID REFERENCES award_years(id) ON DELETE SET NULL,
   event_id UUID REFERENCES events(id) ON DELETE SET NULL,
   notes TEXT,
   created_at TIMESTAMPTZ DEFAULT NOW(),
@@ -138,7 +138,7 @@ CREATE TABLE IF NOT EXISTS press_releases (
   publish_date DATE NOT NULL,
   is_published BOOLEAN DEFAULT false,
   author VARCHAR(255),
-  award_id UUID REFERENCES awards(id) ON DELETE SET NULL,
+  award_id UUID REFERENCES award_years(id) ON DELETE SET NULL,
   event_id UUID REFERENCES events(id) ON DELETE SET NULL,
   organisation_id UUID REFERENCES organisations(id) ON DELETE SET NULL,
   tags TEXT,

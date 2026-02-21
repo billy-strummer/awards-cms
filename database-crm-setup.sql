@@ -185,7 +185,7 @@ CREATE TABLE IF NOT EXISTS sponsorship_opportunities (
 
   -- Event/Award Connection
   event_id UUID REFERENCES events(id) ON DELETE SET NULL,
-  award_id UUID REFERENCES awards(id) ON DELETE SET NULL,
+  award_id UUID REFERENCES award_years(id) ON DELETE SET NULL,
 
   -- Status
   is_active BOOLEAN DEFAULT true,

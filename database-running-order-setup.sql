@@ -12,7 +12,7 @@ CREATE TABLE IF NOT EXISTS running_order (
 
   -- Winner/Organisation Details
   organisation_id UUID REFERENCES organisations(id) ON DELETE CASCADE,
-  award_id UUID REFERENCES awards(id) ON DELETE SET NULL,
+  award_id UUID REFERENCES award_years(id) ON DELETE SET NULL,
   guest_id UUID REFERENCES event_guests(id) ON DELETE SET NULL,
 
   -- Display Information

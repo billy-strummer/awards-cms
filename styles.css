@@ -377,7 +377,14 @@ body.dark-mode {
 
 .table-responsive {
   border-radius: var(--radius-md);
-  overflow: visible;
+  overflow-x: auto;
+  overflow-y: visible !important;
+}
+
+/* Allow dropdowns to escape the table-responsive container */
+.table-responsive:has(.dropdown.show),
+.table-responsive:has(.btn-group.show) {
+  overflow: visible !important;
 }
 
 /* Ensure dropdown menus inside tables appear above other rows */

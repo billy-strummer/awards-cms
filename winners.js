@@ -205,12 +205,12 @@ const winnersModule = {
             </span>
             ${mediaTotal > 0 ? `<span class="text-muted small ms-1">${photoCount}<i class="bi bi-camera ms-1 me-2"></i>${videoCount}<i class="bi bi-camera-video ms-1"></i></span>` : ''}
           </td>
-          <td style="position: relative; z-index: 1;">
+          <td>
             <div class="dropdown">
-              <span class="dropdown-toggle badge ${statusInfo.bg}" role="button" data-bs-toggle="dropdown" style="cursor: pointer; font-size: 0.75em;">
+              <span class="dropdown-toggle badge ${statusInfo.bg}" role="button" data-bs-toggle="dropdown" data-bs-display="static" style="cursor: pointer; font-size: 0.75em;">
                 ${statusInfo.label}
               </span>
-              <ul class="dropdown-menu dropdown-menu-end" style="z-index: 1050; min-width: 160px;">
+              <ul class="dropdown-menu dropdown-menu-end">
                 ${Object.entries(statusConfig).map(([key, cfg]) => `
                   <li><a class="dropdown-item small ${key === status ? 'active' : ''}" href="#" onclick="event.preventDefault(); winnersModule.updateWinnerStatus('${winner.id}', '${key}')">
                     <span class="d-inline-block rounded-circle me-2" style="width:8px;height:8px;background:var(--bs-${cfg.dot});"></span>${cfg.label}
@@ -223,7 +223,7 @@ const winnersModule = {
             <div class="d-flex gap-1 justify-content-center flex-wrap">
               ${mediaTotal > 0 ? `
               <div class="dropdown">
-                <button class="btn btn-outline-info btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown" title="View Media">
+                <button class="btn btn-outline-info btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown" data-bs-display="static" title="View Media">
                   <i class="bi bi-collection"></i>
                 </button>
                 <ul class="dropdown-menu dropdown-menu-end">

@@ -9811,7 +9811,7 @@ const eventsModule = {
       // Clickable status dropdown
       const statusDropdown = `
         <div class="dropdown d-inline-block">
-          <span class="badge bg-${color}" role="button" data-bs-toggle="dropdown" style="cursor:pointer;" title="Click to change status">
+          <span class="badge bg-${color}" role="button" data-bs-toggle="dropdown" data-bs-display="static" style="cursor:pointer;" title="Click to change status">
             <i class="bi ${icon} me-1"></i>${evtStatus.charAt(0).toUpperCase() + evtStatus.slice(1)} <i class="bi bi-chevron-down" style="font-size:0.6rem;"></i>
           </span>
           <ul class="dropdown-menu dropdown-menu-end">

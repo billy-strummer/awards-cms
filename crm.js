@@ -1260,7 +1260,7 @@ const crmModule = {
   },
 
   async deleteCommunication(commId) {
-    if (!confirm('Are you sure you want to delete this communication? This action cannot be undone.')) {
+    if (!await utils.confirmDialog({ title: 'Delete Communication', message: 'Are you sure you want to delete this communication? This action cannot be undone.' })) {
       return;
     }
 
@@ -1536,7 +1536,7 @@ const crmModule = {
   },
 
   async deleteDeal(dealId) {
-    if (!confirm('Are you sure you want to delete this deal? This action cannot be undone.')) {
+    if (!await utils.confirmDialog({ title: 'Delete Deal', message: 'Are you sure you want to delete this deal? This action cannot be undone.' })) {
       return;
     }
 
@@ -1810,7 +1810,7 @@ const crmModule = {
   },
 
   async deleteMeeting(meetingId) {
-    if (!confirm('Are you sure you want to delete this meeting note? This action cannot be undone.')) {
+    if (!await utils.confirmDialog({ title: 'Delete Meeting Note', message: 'Are you sure you want to delete this meeting note? This action cannot be undone.' })) {
       return;
     }
 
@@ -1920,7 +1920,7 @@ const crmModule = {
   },
 
   async removeFromSegment(assignmentId, segmentId, segmentName) {
-    if (!confirm('Remove this company from the segment?')) return;
+    if (!await utils.confirmDialog({ title: 'Remove from Segment', message: 'Remove this company from the segment?', confirmText: 'Remove' })) return;
 
     try {
       const { error } = await STATE.client

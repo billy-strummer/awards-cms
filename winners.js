@@ -5,6 +5,7 @@
 const winnersModule = {
   currentWinnerId: null,
   currentMediaType: null,
+  _selectedWinnerIds: new Set(),
 
   /**
    * Load all winners from database
@@ -175,7 +176,7 @@ const winnersModule = {
     count.textContent = STATE.filteredWinners.length;
 
     if (STATE.filteredWinners.length === 0) {
-      utils.showEmptyState('winnersTableBody', 6, 'No winners found');
+      utils.showEmptyState('winnersTableBody', 7, 'No winners found');
       return;
     }
 
@@ -197,8 +198,11 @@ const winnersModule = {
       const status = winner.winner_status || 'pending';
       const statusInfo = statusConfig[status] || statusConfig.pending;
 
+      const winnerChecked = this._selectedWinnerIds.has(winner.id) ? 'checked' : '';
+
       return `
         <tr class="fade-in">
+          <td><input type="checkbox" class="form-check-input winner-checkbox" value="${winner.id}" ${winnerChecked} onchange="winnersModule.toggleWinnerSelect('${winner.id}', this.checked)"></td>
           <td>
             <div class="fw-semibold">${utils.escapeHtml(winner.winner_name || 'N/A')}</div>
           </td>

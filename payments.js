@@ -64,6 +64,8 @@ const paymentsModule = {
     const orgId = document.getElementById('invoiceOrgFilter')?.value || '';
     const month = document.getElementById('invoiceMonthFilter')?.value || '';
 
+    try { localStorage.setItem('invoiceFilters', JSON.stringify({ search: document.getElementById('invoiceSearchBox')?.value || '', status, orgId, month })); } catch(e) {}
+
     this.currentInvoices = this.allInvoices.filter(inv => {
       // Search filter
       if (search) {
@@ -251,7 +253,7 @@ const paymentsModule = {
           <input type="number" class="form-control form-control-sm" placeholder="Price" step="0.01" min="0" required>
         </div>
         <div class="col-md-1">
-          <button type="button" class="btn btn-sm btn-danger w-100" onclick="paymentsModule.removeInvoiceLineItem(${itemId})">
+          <button type="button" class="btn btn-sm btn-danger w-100" onclick="paymentsModule.removeInvoiceLineItem(${itemId})" aria-label="Remove line item">
             <i class="bi bi-trash"></i>
           </button>
         </div>
@@ -643,6 +645,8 @@ const paymentsModule = {
     const method = document.getElementById('paymentMethodFilter')?.value || '';
     const status = document.getElementById('paymentStatusFilter')?.value || '';
     const month = document.getElementById('paymentMonthFilter')?.value || '';
+
+    try { localStorage.setItem('paymentFilters', JSON.stringify({ search: document.getElementById('paymentSearchBox')?.value || '', method, status, month })); } catch(e) {}
 
     this.currentPayments = this.allPayments.filter(p => {
       // Search filter

@@ -92,7 +92,16 @@ const winnersModule = {
       STATE.filteredWinners = STATE.allWinners;
 
       this.populateFilters();
-      this.renderWinners();
+
+      // Restore saved filters from localStorage
+      try {
+        const saved = JSON.parse(localStorage.getItem('winnersFilters') || '{}');
+        if (saved.year) document.getElementById('winnerYearFilterSelect').value = saved.year;
+        if (saved.award) document.getElementById('winnerAwardFilterSelect').value = saved.award;
+        if (saved.search) document.getElementById('winnerSearchBox').value = saved.search;
+      } catch(e) {}
+
+      this.filterWinners();
       
       console.log(`✅ Loaded ${STATE.allWinners.length} winners`);
       
@@ -130,7 +139,9 @@ const winnersModule = {
     const year = document.getElementById('winnerYearFilterSelect').value;
     const award = document.getElementById('winnerAwardFilterSelect').value;
     const search = document.getElementById('winnerSearchBox').value.toLowerCase().trim();
-    
+
+    try { localStorage.setItem('winnersFilters', JSON.stringify({ year, award, search })); } catch(e) {}
+
     STATE.filteredWinners = STATE.allWinners.filter(winner => {
       // Year filter
       if (year && String(winner.awards?.year) !== year) return false;

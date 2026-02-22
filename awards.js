@@ -65,13 +65,14 @@ const awardsModule = {
       await this.loadAssignmentCounts();
 
       // Save current filter state before repopulating dropdowns
+      const lsAwardsFilters = (() => { try { return JSON.parse(localStorage.getItem('awardsFilters') || '{}'); } catch (e) { return {}; } })();
       const savedFilters = {
-        year: document.getElementById('awardsYearFilterSelect')?.value || '',
-        status: document.getElementById('awardsStatusFilterSelect')?.value || '',
-        sector: document.getElementById('awardsSectorFilterSelect')?.value || '',
-        region: document.getElementById('awardsRegionFilterSelect')?.value || '',
-        county: document.getElementById('awardsCountyFilterSelect')?.value || '',
-        search: document.getElementById('awardsSearchBox')?.value || ''
+        year: document.getElementById('awardsYearFilterSelect')?.value || lsAwardsFilters.year || '',
+        status: document.getElementById('awardsStatusFilterSelect')?.value || lsAwardsFilters.status || '',
+        sector: document.getElementById('awardsSectorFilterSelect')?.value || lsAwardsFilters.sector || '',
+        region: document.getElementById('awardsRegionFilterSelect')?.value || lsAwardsFilters.region || '',
+        county: document.getElementById('awardsCountyFilterSelect')?.value || lsAwardsFilters.county || '',
+        search: document.getElementById('awardsSearchBox')?.value || lsAwardsFilters.search || ''
       };
 
       STATE.filteredAwards = STATE.allAwards;
@@ -343,6 +344,8 @@ const awardsModule = {
     const county = document.getElementById('awardsCountyFilterSelect').value;
     const region = document.getElementById('awardsRegionFilterSelect').value;
     const search = document.getElementById('awardsSearchBox').value.toLowerCase().trim();
+
+    try { localStorage.setItem('awardsFilters', JSON.stringify({ year, status, sector, county, region, search })); } catch(e) {}
 
     STATE.filteredAwards = STATE.allAwards.filter(award => {
       // Year filter - handle both date strings and year numbers

@@ -248,7 +248,8 @@ const crmModule = {
 
       if (error) throw error;
 
-      this.renderCommunicationsTable(communications);
+      this._communications = communications || [];
+      this.renderCommunicationsTable(this._communications);
 
     } catch (error) {
       console.error('Error loading communications:', error);
@@ -389,7 +390,8 @@ const crmModule = {
       if (dEl3) dEl3.textContent = stats.wonThisMonth;
       if (dEl4) dEl4.textContent = `${stats.winRate}%`;
 
-      this.renderDealsTable(deals);
+      this._deals = deals || [];
+      this.renderDealsTable(this._deals);
 
     } catch (error) {
       console.error('Error loading deals:', error);
@@ -398,6 +400,12 @@ const crmModule = {
   },
 
   renderDealsTable(deals) {
+    // Kanban view toggle
+    if (this._kanbanView) {
+      this.renderKanbanBoard();
+      return;
+    }
+
     const tbody = document.getElementById('dealsTableBody');
     if (!tbody) return;
 
@@ -515,7 +523,8 @@ const crmModule = {
 
       if (error) throw error;
 
-      this.renderMeetingsTable(meetings);
+      this._meetings = meetings || [];
+      this.renderMeetingsTable(this._meetings);
 
     } catch (error) {
       console.error('Error loading meetings:', error);
@@ -2768,7 +2777,8 @@ const crmModule = {
     const stageLabels = { prospecting: 'Prospecting', proposal: 'Proposal', negotiation: 'Negotiation', won: 'Won', lost: 'Lost' };
     const stageColors = { prospecting: 'primary', proposal: 'info', negotiation: 'warning', won: 'success', lost: 'danger' };
 
-    const container = document.getElementById('dealsTableContainer') || document.getElementById('crmDealsContent');
+    const tbody = document.getElementById('dealsTableBody');
+    const container = tbody?.closest('.table-responsive') || tbody?.parentElement;
     if (!container) return;
 
     let html = '<div class="kanban-board">';

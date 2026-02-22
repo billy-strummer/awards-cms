@@ -127,7 +127,7 @@ const winnersModule = {
 
     } catch (error) {
       console.error('Error loading winners:', error);
-      utils.showToast('Failed to load winners: ' + error.message, 'error');
+      utils.showErrorWithRetry(error, 'loading winners', () => this.loadWinners());
       utils.showEmptyState('winnersTableBody', 7, 'Failed to load winners', 'bi-exclamation-triangle');
     } finally {
       utils.hideLoading();
@@ -183,6 +183,14 @@ const winnersModule = {
       return true;
     });
 
+    // If search query is active and no exact matches found, try fuzzy search
+    if (search && STATE.filteredWinners.length === 0) {
+      STATE.filteredWinners = utils.fuzzyFilter(STATE.allWinners, search, ['winner_name']);
+      // Also apply non-search filters to fuzzy results
+      if (year) STATE.filteredWinners = STATE.filteredWinners.filter(w => String(w.awards?.year) === year);
+      if (award) STATE.filteredWinners = STATE.filteredWinners.filter(w => utils.formatAwardName(w.awards) === award);
+    }
+
     // Sort
     STATE.filteredWinners.sort((a, b) => {
       let aVal, bVal;
@@ -234,7 +242,7 @@ const winnersModule = {
     const pageWinners = STATE.filteredWinners.slice(start, end);
 
     if (STATE.filteredWinners.length === 0) {
-      utils.showEmptyState('winnersTableBody', 7, 'No winners found');
+      utils.showEnhancedEmptyState('winnersTableBody', 7, { icon: 'bi-trophy', message: 'No winners found', description: 'Winners will appear here once confirmed', actionLabel: 'View Pipeline', actionOnclick: "document.querySelector('[data-section=\"winner-pipeline\"]')?.click()", isFiltered: STATE.filteredWinners.length === 0 && STATE.allWinners.length > 0 });
       return;
     }
 
@@ -535,42 +543,43 @@ const winnersModule = {
     }
     
     try {
-      uploadBtn.disabled = true;
-      progressDiv.classList.remove('d-none');
-      
-      // Generate unique filename
-      const timestamp = Date.now();
-      const fileName = `${this.currentWinnerId}/${this.currentMediaType}/${timestamp}_${file.name}`;
-      
-      // Upload file to Supabase Storage (v2 syntax)
-      const { data: uploadData, error: uploadError } = await STATE.client.storage
-        .from('winner-media')
-        .upload(fileName, file);
-      
-      if (uploadError) throw uploadError;
-      
-      // Get public URL (v2 syntax)
-      const { data: urlData } = STATE.client.storage
-        .from('winner-media')
-        .getPublicUrl(fileName);
-      
-      // Insert record into database (v2 syntax)
-      const { error: dbError } = await STATE.client
-        .from('winner_media')
-        .insert([{
-          winner_id: this.currentWinnerId,
-          media_type: this.currentMediaType,
-          file_url: urlData.publicUrl,
-          caption: caption || null
-        }]);
-      
-      if (dbError) throw dbError;
-      
-      // Close modal and reload
-      bootstrap.Modal.getInstance(document.getElementById('uploadMediaModal')).hide();
-      await this.loadWinners();
-      utils.showToast('Media uploaded successfully!', 'success');
-      
+      await utils.protectModalDuringSave('uploadMediaModal', async () => {
+        uploadBtn.disabled = true;
+        progressDiv.classList.remove('d-none');
+
+        // Generate unique filename
+        const timestamp = Date.now();
+        const fileName = `${this.currentWinnerId}/${this.currentMediaType}/${timestamp}_${file.name}`;
+
+        // Upload file to Supabase Storage (v2 syntax)
+        const { data: uploadData, error: uploadError } = await STATE.client.storage
+          .from('winner-media')
+          .upload(fileName, file);
+
+        if (uploadError) throw uploadError;
+
+        // Get public URL (v2 syntax)
+        const { data: urlData } = STATE.client.storage
+          .from('winner-media')
+          .getPublicUrl(fileName);
+
+        // Insert record into database (v2 syntax)
+        const { error: dbError } = await STATE.client
+          .from('winner_media')
+          .insert([{
+            winner_id: this.currentWinnerId,
+            media_type: this.currentMediaType,
+            file_url: urlData.publicUrl,
+            caption: caption || null
+          }]);
+
+        if (dbError) throw dbError;
+
+        // Close modal and reload
+        bootstrap.Modal.getInstance(document.getElementById('uploadMediaModal')).hide();
+        await this.loadWinners();
+        utils.showToast('Media uploaded successfully!', 'success');
+      });
     } catch (error) {
       console.error('Error uploading media:', error);
       utils.showToast('Error uploading media: ' + error.message, 'error');
@@ -2620,6 +2629,56 @@ const winnersModule = {
 
     const filename = `winners_export_${new Date().toISOString().split('T')[0]}.csv`;
     utils.exportToCSV(exportData, filename);
+  },
+
+  /**
+   * Export filtered winners to Excel format
+   */
+  exportFilteredWinnersExcel() {
+    const filteredWinners = STATE.filteredWinners || [];
+    if (filteredWinners.length === 0) { utils.showToast('No winners to export', 'warning'); return; }
+    const exportData = filteredWinners.map(winner => {
+      const awardName = winner.awards?.award_name || winner.awards?.award_category || 'N/A';
+      const year = winner.awards?.year || 'N/A';
+      const photos = winner.winner_media?.filter(m => m.media_type === 'photo') || [];
+      const videos = winner.winner_media?.filter(m => m.media_type === 'video') || [];
+      const status = winner.winner_status || 'pending';
+      return {
+        winner_name: winner.winner_name || '',
+        award: awardName,
+        year: year,
+        status: status.charAt(0).toUpperCase() + status.slice(1),
+        score: winner.score || '',
+        photos: photos.length,
+        videos: videos.length,
+        impact_statement: winner.impact_statement || '',
+        judge_quote: winner.judge_quote || '',
+        announced_date: winner.announced_date || ''
+      };
+    });
+    utils.exportToExcel(exportData, `winners_export_${new Date().toISOString().split('T')[0]}`);
+  },
+
+  /**
+   * Export filtered winners to printable PDF
+   */
+  exportFilteredWinnersPDF() {
+    const filteredWinners = STATE.filteredWinners || [];
+    if (filteredWinners.length === 0) { utils.showToast('No winners to export', 'warning'); return; }
+    const exportData = filteredWinners.map(winner => {
+      const awardName = winner.awards?.award_name || winner.awards?.award_category || 'N/A';
+      const year = winner.awards?.year || 'N/A';
+      const status = winner.winner_status || 'pending';
+      return {
+        winner_name: winner.winner_name || '',
+        award: awardName,
+        year: year,
+        status: status.charAt(0).toUpperCase() + status.slice(1),
+        score: winner.score || '',
+        announced_date: winner.announced_date || ''
+      };
+    });
+    utils.exportToPrintablePDF(exportData, 'Winners Report', { columns: ['winner_name', 'award', 'year', 'status', 'score', 'announced_date'] });
   },
 
   /* ==================================================== */

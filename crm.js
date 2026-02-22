@@ -64,7 +64,7 @@ const crmModule = {
       }
     } catch (error) {
       console.error('Error loading CRM data:', error);
-      utils.showToast('Error loading CRM data', 'error');
+      utils.showErrorWithRetry(error, 'loading CRM data', () => this.loadAllData());
     }
   },
 
@@ -132,7 +132,7 @@ const crmModule = {
 
     } catch (error) {
       console.error('Error loading companies:', error);
-      utils.showToast('Error loading companies data', 'error');
+      utils.showErrorWithRetry(error, 'loading companies', () => this.loadCompanies());
     }
   },
 
@@ -141,7 +141,7 @@ const crmModule = {
     if (!tbody) return;
 
     if (!companies || companies.length === 0) {
-      tbody.innerHTML = '<tr><td colspan="8" class="text-center text-muted py-4">No companies found</td></tr>';
+      utils.showEnhancedEmptyState('companiesCrmTableBody', 8, { icon: 'bi-building', message: 'No companies found', description: 'Companies will appear here once added' });
       return;
     }
 
@@ -264,7 +264,7 @@ const crmModule = {
     if (!tbody) return;
 
     if (!communications || communications.length === 0) {
-      tbody.innerHTML = '<tr><td colspan="8" class="text-center text-muted py-4">No communications found</td></tr>';
+      utils.showEnhancedEmptyState('communicationsTableBody', 8, { icon: 'bi-chat-dots', message: 'No communications found', description: 'Communications will appear here once logged' });
       return;
     }
 
@@ -428,7 +428,7 @@ const crmModule = {
     if (!tbody) return;
 
     if (!deals || deals.length === 0) {
-      tbody.innerHTML = '<tr><td colspan="9" class="text-center text-muted py-4">No deals found</td></tr>';
+      utils.showEnhancedEmptyState('dealsTableBody', 9, { icon: 'bi-handshake', message: 'No deals found', description: 'Deals will appear here once created' });
       return;
     }
 
@@ -571,7 +571,7 @@ const crmModule = {
     if (!tbody) return;
 
     if (!meetings || meetings.length === 0) {
-      tbody.innerHTML = '<tr><td colspan="8" class="text-center text-muted py-4">No meetings found</td></tr>';
+      utils.showEnhancedEmptyState('meetingsTableBody', 8, { icon: 'bi-calendar-check', message: 'No meetings found', description: 'Meetings will appear here once scheduled' });
       return;
     }
 
@@ -2823,10 +2823,12 @@ const crmModule = {
     if (!await utils.confirmDialog({ title: 'Bulk Delete', message: `Delete ${set.size} ${type} record(s)? This cannot be undone.`, confirmText: 'Delete All', danger: true })) return;
     try {
       utils.showLoading();
-      for (const id of set) {
-        await STATE.client.from(table).delete().eq('id', id);
-      }
-      utils.showToast(`Deleted ${set.size} ${type} records`, 'success');
+      const ids = [...set];
+      const result = await utils.runBatchOperation(ids, async (id) => {
+        const { error } = await STATE.client.from(table).delete().eq('id', id);
+        if (error) throw error;
+      }, `Deleting ${type} records`);
+      utils.showToast(`${result.succeeded.length} ${type} record(s) deleted`, 'success');
       set.clear();
       if (type === 'deal') this.loadDeals();
       else if (type === 'meeting') this.loadMeetings();

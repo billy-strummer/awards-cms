@@ -61,7 +61,7 @@ const eventsModule = {
 
     } catch (error) {
       console.error('Error loading events:', error);
-      utils.showToast('Failed to load events: ' + error.message, 'error');
+      utils.showErrorWithRetry(error, 'loading events', () => this.loadEvents());
       utils.showEmptyState('eventsTableBody', 8, 'Failed to load events', 'bi-exclamation-triangle');
     } finally {
       utils.hideLoading();
@@ -78,7 +78,7 @@ const eventsModule = {
     if (count) count.textContent = events.length;
 
     if (events.length === 0) {
-      utils.showEmptyState('eventsTableBody', 8, 'No events found. Click "Add Event" to create one.');
+      utils.showEnhancedEmptyState('eventsTableBody', 11, { icon: 'bi-calendar-event', message: 'No events found', description: 'Create your first event to get started' });
       return;
     }
 
@@ -144,69 +144,70 @@ const eventsModule = {
     }
 
     try {
-      utils.showLoading();
+      await utils.protectModalDuringSave('eventModal', async () => {
+        utils.showLoading();
 
-      const eventStatus = document.getElementById('eventStatus').value;
+        const eventStatus = document.getElementById('eventStatus').value;
 
-      const eventData = {
-        event_name: eventName,
-        event_date: eventDate || null,
-        year: eventYear ? parseInt(eventYear) : null,
-        venue: eventVenue || null,
-        capacity: eventCapacity ? parseInt(eventCapacity) : null,
-        description: eventDescription || null,
-        event_status: eventStatus || 'draft'
-      };
+        const eventData = {
+          event_name: eventName,
+          event_date: eventDate || null,
+          year: eventYear ? parseInt(eventYear) : null,
+          venue: eventVenue || null,
+          capacity: eventCapacity ? parseInt(eventCapacity) : null,
+          description: eventDescription || null,
+          event_status: eventStatus || 'draft'
+        };
 
-      let error;
+        let error;
 
-      if (eventId) {
-        // Update existing event
-        ({ error } = await STATE.client
-          .from('events')
-          .update(eventData)
-          .eq('id', eventId));
+        if (eventId) {
+          // Update existing event
+          ({ error } = await STATE.client
+            .from('events')
+            .update(eventData)
+            .eq('id', eventId));
 
-        if (error) throw error;
+          if (error) throw error;
 
-      } else {
-        // Insert new event
-        const { data: newEvent, error: insertError } = await STATE.client
-          .from('events')
-          .insert([eventData])
-          .select()
-          .single();
+        } else {
+          // Insert new event
+          const { data: newEvent, error: insertError } = await STATE.client
+            .from('events')
+            .insert([eventData])
+            .select()
+            .single();
 
-        if (insertError) throw insertError;
+          if (insertError) throw insertError;
 
-        // Create gallery sections from template if available
-        if (window._templateGallerySections && window._templateGallerySections.length > 0) {
-          const sections = window._templateGallerySections.map((sectionName, index) => ({
-            event_id: newEvent.id,
-            gallery_name: sectionName,
-            gallery_description: '',
-            display_order: index + 1
-          }));
+          // Create gallery sections from template if available
+          if (window._templateGallerySections && window._templateGallerySections.length > 0) {
+            const sections = window._templateGallerySections.map((sectionName, index) => ({
+              event_id: newEvent.id,
+              gallery_name: sectionName,
+              gallery_description: '',
+              display_order: index + 1
+            }));
 
-          const { error: sectionsError } = await STATE.client
-            .from('event_galleries')
-            .insert(sections);
+            const { error: sectionsError } = await STATE.client
+              .from('event_galleries')
+              .insert(sections);
 
-          if (!sectionsError) {
-            console.log(`✅ Created ${sections.length} gallery sections from template`);
+            if (!sectionsError) {
+              console.log(`✅ Created ${sections.length} gallery sections from template`);
+            }
+
+            // Clear template sections
+            window._templateGallerySections = [];
           }
-
-          // Clear template sections
-          window._templateGallerySections = [];
         }
-      }
 
-      utils.showToast(`Event ${eventId ? 'updated' : 'added'} successfully!`, 'success');
+        utils.showToast(`Event ${eventId ? 'updated' : 'added'} successfully!`, 'success');
 
-      // Close modal and reload
-      bootstrap.Modal.getInstance(document.getElementById('eventModal')).hide();
-      await this.loadEvents();
-
+        // Close modal and reload
+        bootstrap.Modal.getInstance(document.getElementById('eventModal')).hide();
+        await this.loadEvents();
+      });
     } catch (error) {
       console.error('Error saving event:', error);
       utils.showToast('Error saving event: ' + error.message, 'error');
@@ -9777,6 +9778,17 @@ const eventsModule = {
       return true;
     });
 
+    // If search query is active and no exact matches found, try fuzzy search
+    if (search && filtered.length === 0) {
+      filtered = utils.fuzzyFilter(STATE.allEvents || [], search, ['event_name', 'venue', 'description']);
+      // Also apply non-search filters to fuzzy results
+      if (year) filtered = filtered.filter(e => String(e.year) === year || (e.event_date && e.event_date.startsWith(year)));
+      if (timeStatus === 'upcoming') filtered = filtered.filter(e => e.event_date && e.event_date >= today);
+      if (timeStatus === 'past') filtered = filtered.filter(e => e.event_date && e.event_date < today);
+      if (timeStatus === 'this-month') filtered = filtered.filter(e => e.event_date && e.event_date >= monthStart && e.event_date <= monthEnd);
+      if (eventStatus) filtered = filtered.filter(e => (e.event_status || 'draft') === eventStatus);
+    }
+
     // Sort
     filtered.sort((a, b) => {
       let aVal = a[this._sortField] || '';
@@ -9858,7 +9870,7 @@ const eventsModule = {
     }
 
     if (events.length === 0) {
-      tbody.innerHTML = '<tr><td colspan="11" class="text-center py-4 text-muted"><i class="bi bi-calendar-x fs-1 d-block mb-2 opacity-25"></i>No events match your filters</td></tr>';
+      utils.showEnhancedEmptyState('eventsTableBody', 11, { icon: 'bi-calendar-event', message: 'No events match your filters', description: 'Try adjusting your filters to see more results', isFiltered: true });
       return;
     }
 
@@ -10702,6 +10714,47 @@ const eventsModule = {
     a.download = `events_export_${new Date().toISOString().split('T')[0]}.csv`;
     a.click(); URL.revokeObjectURL(a.href);
     utils.showToast('Events exported', 'success');
+  },
+
+  /**
+   * Export events to Excel format
+   */
+  exportEventsExcel() {
+    const events = STATE.allEvents || [];
+    if (events.length === 0) { utils.showToast('No events to export', 'warning'); return; }
+    const exportData = events.map(e => {
+      const cachedAttendees = this._eventAttendeeCounts[e.id];
+      return {
+        event_name: e.event_name || '',
+        year: e.year || '',
+        date: e.event_date || '',
+        venue: e.venue || '',
+        status: e.event_status || 'draft',
+        description: e.description || '',
+        attendees: cachedAttendees ? cachedAttendees.total : 0
+      };
+    });
+    utils.exportToExcel(exportData, `events_export_${new Date().toISOString().split('T')[0]}`);
+  },
+
+  /**
+   * Export events to printable PDF
+   */
+  exportEventsPDF() {
+    const events = STATE.allEvents || [];
+    if (events.length === 0) { utils.showToast('No events to export', 'warning'); return; }
+    const exportData = events.map(e => {
+      const cachedAttendees = this._eventAttendeeCounts[e.id];
+      return {
+        event_name: e.event_name || '',
+        year: e.year || '',
+        date: e.event_date || '',
+        venue: e.venue || '',
+        status: e.event_status || 'draft',
+        attendees: cachedAttendees ? cachedAttendees.total : 0
+      };
+    });
+    utils.exportToPrintablePDF(exportData, 'Events Report', { columns: ['event_name', 'year', 'date', 'venue', 'status', 'attendees'] });
   },
 
   // ============================================

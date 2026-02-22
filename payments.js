@@ -54,7 +54,7 @@ const paymentsModule = {
       utils.trackDataLoad('payments');
     } catch (error) {
       console.error('Error loading payments data:', error);
-      utils.showToast('Failed to load payments data', 'error');
+      utils.showErrorWithRetry(error, 'loading payments data', () => this.loadAllData());
     } finally {
       utils.hideLoading();
     }
@@ -91,7 +91,7 @@ const paymentsModule = {
 
     } catch (error) {
       console.error('Error loading invoices:', error);
-      utils.showToast('Failed to load invoices', 'error');
+      utils.showErrorWithRetry(error, 'loading invoices', () => this.loadInvoices());
     }
   },
 
@@ -138,14 +138,7 @@ const paymentsModule = {
     const pageInvoices = this.currentInvoices.slice(invStart, invEnd);
 
     if (this.currentInvoices.length === 0) {
-      tbody.innerHTML = `
-        <tr>
-          <td colspan="10" class="text-center py-5 text-muted">
-            <i class="bi bi-inbox display-4 d-block mb-2 opacity-25"></i>
-            No invoices found. Create your first invoice to get started!
-          </td>
-        </tr>
-      `;
+      utils.showEnhancedEmptyState('invoicesTableBody', 10, { icon: 'bi-receipt', message: 'No invoices found', description: 'Create your first invoice to get started' });
       return;
     }
 
@@ -847,7 +840,7 @@ const paymentsModule = {
       this.filterPayments();
     } catch (error) {
       console.error('Error loading payments:', error);
-      utils.showToast('Failed to load payments', 'error');
+      utils.showErrorWithRetry(error, 'loading payments', () => this.loadPayments());
     }
   },
 
@@ -896,14 +889,7 @@ const paymentsModule = {
     const pagePayments = this.currentPayments.slice(payStart, payEnd);
 
     if (this.currentPayments.length === 0) {
-      tbody.innerHTML = `
-        <tr>
-          <td colspan="8" class="text-center py-5 text-muted">
-            <i class="bi bi-inbox display-4 d-block mb-2 opacity-25"></i>
-            No payments recorded yet.
-          </td>
-        </tr>
-      `;
+      utils.showEnhancedEmptyState('paymentsTableBody', 8, { icon: 'bi-credit-card', message: 'No payments found', description: 'Payments will appear here once recorded' });
       return;
     }
 
@@ -1342,6 +1328,80 @@ const paymentsModule = {
     link.click();
     document.body.removeChild(link);
     URL.revokeObjectURL(url);
+  },
+
+  /**
+   * Export invoices to Excel format
+   */
+  exportInvoicesExcel() {
+    const invoices = this.currentInvoices || [];
+    if (invoices.length === 0) { utils.showToast('No invoices to export', 'warning'); return; }
+    const exportData = invoices.map(inv => ({
+      invoice_number: inv.invoice_number || '',
+      organisation: inv.organisations?.company_name || '',
+      invoice_date: inv.invoice_date || '',
+      due_date: inv.due_date || '',
+      type: this.formatInvoiceType(inv.invoice_type),
+      total_amount: parseFloat(inv.total_amount || 0).toFixed(2),
+      paid_amount: parseFloat(inv.paid_amount || 0).toFixed(2),
+      balance_due: parseFloat(inv.balance_due || 0).toFixed(2),
+      status: inv.status || ''
+    }));
+    utils.exportToExcel(exportData, `invoices_export_${new Date().toISOString().split('T')[0]}`);
+  },
+
+  /**
+   * Export invoices to printable PDF
+   */
+  exportInvoicesPDF() {
+    const invoices = this.currentInvoices || [];
+    if (invoices.length === 0) { utils.showToast('No invoices to export', 'warning'); return; }
+    const exportData = invoices.map(inv => ({
+      invoice_number: inv.invoice_number || '',
+      organisation: inv.organisations?.company_name || '',
+      date: inv.invoice_date || '',
+      due_date: inv.due_date || '',
+      amount: parseFloat(inv.total_amount || 0).toFixed(2),
+      balance: parseFloat(inv.balance_due || 0).toFixed(2),
+      status: inv.status || ''
+    }));
+    utils.exportToPrintablePDF(exportData, 'Invoices Report', { columns: ['invoice_number', 'organisation', 'date', 'due_date', 'amount', 'balance', 'status'] });
+  },
+
+  /**
+   * Export payments to Excel format
+   */
+  exportPaymentsExcel() {
+    const payments = this.currentPayments || [];
+    if (payments.length === 0) { utils.showToast('No payments to export', 'warning'); return; }
+    const exportData = payments.map(p => ({
+      payment_reference: p.payment_reference || '',
+      payment_date: p.payment_date || '',
+      organisation: p.organisations?.company_name || '',
+      invoice: p.invoices?.invoice_number || '',
+      method: this.formatPaymentMethod(p.payment_method),
+      amount: parseFloat(p.amount || 0).toFixed(2),
+      status: p.status || ''
+    }));
+    utils.exportToExcel(exportData, `payments_export_${new Date().toISOString().split('T')[0]}`);
+  },
+
+  /**
+   * Export payments to printable PDF
+   */
+  exportPaymentsPDF() {
+    const payments = this.currentPayments || [];
+    if (payments.length === 0) { utils.showToast('No payments to export', 'warning'); return; }
+    const exportData = payments.map(p => ({
+      reference: p.payment_reference || '',
+      date: p.payment_date || '',
+      organisation: p.organisations?.company_name || '',
+      invoice: p.invoices?.invoice_number || '',
+      method: this.formatPaymentMethod(p.payment_method),
+      amount: parseFloat(p.amount || 0).toFixed(2),
+      status: p.status || ''
+    }));
+    utils.exportToPrintablePDF(exportData, 'Payments Report', { columns: ['reference', 'date', 'organisation', 'invoice', 'method', 'amount', 'status'] });
   },
 
   /* ==================================================== */
@@ -2021,11 +2081,12 @@ const paymentsModule = {
     if (!await utils.confirmDialog({ title: 'Bulk Status Update', message: `Update ${ids.length} invoice(s) to "${status}"?`, confirmText: 'Update', danger: false })) return;
     try {
       utils.showLoading();
-      for (const id of ids) {
-        await STATE.client.from('invoices').update({ status }).eq('id', id);
-      }
+      const result = await utils.runBatchOperation(ids, async (id) => {
+        const { error } = await STATE.client.from('invoices').update({ status }).eq('id', id);
+        if (error) throw error;
+      }, 'Updating invoices');
       this._selectedInvoiceIds.clear();
-      utils.showToast(`Updated ${ids.length} invoices to ${status}`, 'success');
+      utils.showToast(`${result.succeeded.length} invoice(s) updated to ${status}`, 'success');
       await this.loadInvoices();
       this.filterInvoices();
     } catch (err) {
@@ -2041,11 +2102,12 @@ const paymentsModule = {
     if (!await utils.confirmDialog({ title: 'Bulk Delete Invoices', message: `Delete ${ids.length} invoice(s)? This cannot be undone.`, confirmText: 'Delete All', danger: true })) return;
     try {
       utils.showLoading();
-      for (const id of ids) {
-        await STATE.client.from('invoices').delete().eq('id', id);
-      }
+      const result = await utils.runBatchOperation(ids, async (id) => {
+        const { error } = await STATE.client.from('invoices').delete().eq('id', id);
+        if (error) throw error;
+      }, 'Deleting invoices');
       this._selectedInvoiceIds.clear();
-      utils.showToast(`Deleted ${ids.length} invoices`, 'success');
+      utils.showToast(`${result.succeeded.length} invoice(s) deleted`, 'success');
       await this.loadInvoices();
       this.filterInvoices();
     } catch (err) {

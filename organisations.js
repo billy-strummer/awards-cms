@@ -173,7 +173,7 @@ async loadOrganisations() {
   } catch (error) {
     console.error('Error loading organisations:', error);
     console.error('Error details:', error.details, error.hint, error.message);
-    utils.showToast('Failed to load organisations: ' + error.message, 'error');
+    utils.showErrorWithRetry(error, 'loading organisations', () => this.loadOrganisations());
     utils.showEmptyState('orgsTableBody', 10, 'Failed to load organisations', 'bi-exclamation-triangle');
   } finally {
     utils.hideLoading();
@@ -519,6 +519,18 @@ updateCountyFilterByRegion() {
     return true;
   });
 
+  // If search query is active and no exact matches found, try fuzzy search
+  if (search && STATE.filteredOrganisations.length === 0) {
+    STATE.filteredOrganisations = utils.fuzzyFilter(STATE.allOrganisations, search, ['company_name', 'contact_name', 'email']);
+    // Also apply non-search filters to fuzzy results
+    if (year) STATE.filteredOrganisations = STATE.filteredOrganisations.filter(o => !o.year || String(o.year) === String(year));
+    if (status && status !== 'all') STATE.filteredOrganisations = STATE.filteredOrganisations.filter(o => (o.status || 'prospect') === status);
+    if (sector) STATE.filteredOrganisations = STATE.filteredOrganisations.filter(o => o.sector === sector);
+    if (county) STATE.filteredOrganisations = STATE.filteredOrganisations.filter(o => o.county === county);
+    if (region) STATE.filteredOrganisations = STATE.filteredOrganisations.filter(o => o.region === region);
+    if (tier) STATE.filteredOrganisations = STATE.filteredOrganisations.filter(o => (o.tier || '') === tier);
+  }
+
   // Clear the missing field filter after applying it once
   this._filterMissingField = null;
 
@@ -576,37 +588,8 @@ updateCountyFilterByRegion() {
   const visibleColCount = 2 + Object.keys(colVisMap).filter(c => isColVisible(c)).length + (this._showPhoneColumn ? 1 : 0) + 1;
 
   if (totalFiltered === 0) {
-    // Build active filters summary
-    const activeFilters = [];
-    const year = document.getElementById('orgsYearFilter')?.value;
-    const sector = document.getElementById('orgsSectorFilter')?.value;
-    const region = document.getElementById('orgsRegionFilter')?.value;
-    const county = document.getElementById('orgsCountyFilter')?.value;
-    const status = document.getElementById('orgsStatusFilter')?.value;
-    const search = document.getElementById('orgsSearchBox')?.value;
-    if (year) activeFilters.push(`Year: <strong>${utils.escapeHtml(year)}</strong>`);
-    if (sector) activeFilters.push(`Sector: <strong>${utils.escapeHtml(sector)}</strong>`);
-    if (region) activeFilters.push(`Region: <strong>${utils.escapeHtml(region)}</strong>`);
-    if (county) activeFilters.push(`County: <strong>${utils.escapeHtml(county)}</strong>`);
-    if (status) activeFilters.push(`Status: <strong>${utils.escapeHtml(status)}</strong>`);
-    if (search) activeFilters.push(`Search: <strong>"${utils.escapeHtml(search)}"</strong>`);
-
-    const filterSummary = activeFilters.length > 0
-      ? `<p class="text-muted small mt-2 mb-2">Active filters: ${activeFilters.join(' &middot; ')}</p>
-         <button class="btn btn-sm btn-outline-primary" onclick="orgsModule.resetFilters()">
-           <i class="bi bi-x-circle me-1"></i>Clear all filters
-         </button>`
-      : '';
-
-    tbody.innerHTML = `
-      <tr>
-        <td colspan="${visibleColCount}" class="text-center py-5">
-          <i class="bi bi-inbox display-4 text-muted opacity-25"></i>
-          <p class="text-muted mt-3 mb-0">No organisations found</p>
-          ${filterSummary}
-        </td>
-      </tr>
-    `;
+    const hasActiveFilters = !!(document.getElementById('orgsYearFilter')?.value || document.getElementById('orgsSectorFilter')?.value || document.getElementById('orgsRegionFilter')?.value || document.getElementById('orgsCountyFilter')?.value || document.getElementById('orgsStatusFilter')?.value || document.getElementById('orgsSearchBox')?.value);
+    utils.showEnhancedEmptyState('orgsTableBody', visibleColCount, { icon: 'bi-building', message: 'No organisations found', description: 'Organisations will appear here once added', isFiltered: hasActiveFilters });
     this._renderPaginationControls(0, 1);
     return;
   }

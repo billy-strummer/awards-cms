@@ -1163,9 +1163,9 @@ document.addEventListener('DOMContentLoaded', function() {
         Object.values(state).forEach(presences => {
           presences.forEach(p => users.push(p));
         });
-        _activeUsers.clear();
-        users.forEach(u => _activeUsers.set(u.email, u));
-        _renderPresenceIndicator();
+        window._activeUsers.clear();
+        users.forEach(u => window._activeUsers.set(u.email, u));
+        window._renderPresenceIndicator();
       });
       channel.subscribe(async (status) => {
         if (status === 'SUBSCRIBED') {
@@ -1190,9 +1190,9 @@ document.addEventListener('DOMContentLoaded', function() {
       el.style.zIndex = '1040';
       document.body.appendChild(el);
     }
-    const count = _activeUsers.size;
+    const count = window._activeUsers.size;
     if (count <= 1) { el.innerHTML = ''; return; }
-    const names = [..._activeUsers.values()].map(u => u.email).slice(0, 5);
+    const names = [...window._activeUsers.values()].map(u => u.email).slice(0, 5);
     el.innerHTML = `
       <div class="badge bg-success-subtle text-success border px-2 py-1" title="${names.join(', ')}" style="cursor:pointer;">
         <i class="bi bi-people-fill me-1"></i>${count} online
@@ -1207,6 +1207,7 @@ document.addEventListener('DOMContentLoaded', function() {
   // ==========================================
   document.querySelectorAll('[data-bs-toggle="tab"]').forEach(tab => {
     tab.addEventListener('shown.bs.tab', (e) => {
+      // Stale data auto-refresh
       const tabId = e.target.id;
       const refreshMap = {
         'awards-tab': { key: 'awards', fn: () => awardsModule?.loadAwards() },
@@ -1221,20 +1222,13 @@ document.addEventListener('DOMContentLoaded', function() {
         console.log('Auto-refreshing stale data for', config.key);
         config.fn();
       }
-    });
-  });
 
-  // ==========================================
-  // STEP 14b: Tab State in URL (MEDIUM-6)
-  // ==========================================
-  // Save active tab to URL hash on tab switch
-  document.querySelectorAll('[data-bs-toggle="tab"]').forEach(tab => {
-    tab.addEventListener('shown.bs.tab', (e) => {
+      // Tab state in URL (MEDIUM-6)
       const target = e.target.getAttribute('data-bs-target') || e.target.getAttribute('href');
       if (target) {
-        history.replaceState(null, '', '#' + target.replace('#', '').replace('Page', ''));
-        // Update breadcrumb
-        utils._updateBreadcrumb && utils._updateBreadcrumb(target.replace('#', '').replace('Page', ''));
+        const tabName = target.replace('#', '');
+        history.replaceState(null, '', '#' + tabName);
+        utils._updateBreadcrumb && utils._updateBreadcrumb(tabName);
       }
     });
   });
@@ -1243,7 +1237,7 @@ document.addEventListener('DOMContentLoaded', function() {
   window.addEventListener('hashchange', () => {
     const hash = window.location.hash.replace('#', '');
     if (hash) {
-      const tabBtn = document.querySelector(`[data-bs-target="#${hash}Page"]`) || document.querySelector(`[data-bs-target="#${hash}"]`);
+      const tabBtn = document.querySelector(`[data-bs-target="#${hash}"]`);
       if (tabBtn) tabBtn.click();
     }
   });

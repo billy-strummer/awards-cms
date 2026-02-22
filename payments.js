@@ -3,6 +3,8 @@
 /* ==================================================== */
 
 const paymentsModule = {
+  allInvoices: [],
+  allPayments: [],
   currentInvoices: [],
   currentPayments: [],
   currentOrganisations: [],
@@ -46,12 +48,31 @@ const paymentsModule = {
 
       if (error) throw error;
 
-      this.currentInvoices = data || [];
-      this.renderInvoices();
+      this.allInvoices = data || [];
+      this.filterInvoices();
     } catch (error) {
       console.error('Error loading invoices:', error);
       utils.showToast('Failed to load invoices', 'error');
     }
+  },
+
+  filterInvoices() {
+    const status = document.getElementById('invoiceStatusFilter')?.value || '';
+    const orgId = document.getElementById('invoiceOrgFilter')?.value || '';
+    const month = document.getElementById('invoiceMonthFilter')?.value || '';
+
+    this.currentInvoices = this.allInvoices.filter(inv => {
+      if (status) {
+        // Match either status or payment_status
+        if (inv.status !== status && inv.payment_status !== status) return false;
+      }
+      if (orgId && inv.organisation_id !== orgId) return false;
+      if (month && !(inv.invoice_date || '').startsWith(month)) return false;
+      return true;
+    });
+
+    this.renderInvoices();
+    this.updateStatistics();
   },
 
   renderInvoices() {
@@ -595,12 +616,35 @@ const paymentsModule = {
 
       if (error) throw error;
 
-      this.currentPayments = data || [];
-      this.renderPayments();
+      this.allPayments = data || [];
+      this.filterPayments();
     } catch (error) {
       console.error('Error loading payments:', error);
       utils.showToast('Failed to load payments', 'error');
     }
+  },
+
+  filterPayments() {
+    const method = document.getElementById('paymentMethodFilter')?.value || '';
+    const status = document.getElementById('paymentStatusFilter')?.value || '';
+    const month = document.getElementById('paymentMonthFilter')?.value || '';
+
+    this.currentPayments = this.allPayments.filter(p => {
+      if (method && p.payment_method !== method) return false;
+      if (status && p.status !== status) return false;
+      if (month && !(p.payment_date || '').startsWith(month)) return false;
+      return true;
+    });
+
+    this.renderPayments();
+    this.updateStatistics();
+  },
+
+  filterThisMonth() {
+    const currentMonth = new Date().toISOString().slice(0, 7);
+    const el = document.getElementById('paymentMonthFilter');
+    if (el) el.value = currentMonth;
+    this.filterPayments();
   },
 
   renderPayments() {

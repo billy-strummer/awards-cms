@@ -403,6 +403,58 @@ body.dark-mode {
 }
 
 /* ==================================================== */
+/* CLICKABLE STAT CARDS                                 */
+/* ==================================================== */
+/* Cards with [data-stat-filter] are clickable to filter the table below */
+.content-card[data-stat-filter],
+.card.stats-card[data-stat-filter],
+.stat-card[data-stat-filter],
+.col-md-2[data-stat-filter] {
+  cursor: pointer;
+  transition: all 0.2s ease;
+  position: relative;
+}
+
+.content-card[data-stat-filter]:hover,
+.card.stats-card[data-stat-filter]:hover,
+.stat-card[data-stat-filter]:hover,
+.col-md-2[data-stat-filter]:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+}
+
+.content-card[data-stat-filter]:active,
+.card.stats-card[data-stat-filter]:active,
+.stat-card[data-stat-filter]:active,
+.col-md-2[data-stat-filter]:active {
+  transform: translateY(0);
+}
+
+.content-card.stat-card-active,
+.card.stats-card.stat-card-active,
+.stat-card.stat-card-active,
+.col-md-2.stat-card-active {
+  outline: 2px solid var(--bs-primary, #0d6efd);
+  outline-offset: -2px;
+  background: rgba(13, 110, 253, 0.04);
+}
+
+/* Pipeline badges clickable */
+.badge[data-stat-filter] {
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+.badge[data-stat-filter]:hover {
+  transform: scale(1.1);
+  box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+}
+.badge[data-stat-filter].stat-card-active {
+  outline: 2px solid #fff;
+  outline-offset: 1px;
+  box-shadow: 0 0 0 3px var(--bs-primary, #0d6efd);
+}
+
+/* ==================================================== */
 /* BUTTONS */
 /* ==================================================== */
 .btn {

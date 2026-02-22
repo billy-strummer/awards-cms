@@ -626,6 +626,22 @@ const crmModule = {
     }
   },
 
+  // Stat-card shortcut filters for deals
+  filterDealsActive() {
+    this.applyFilter('deals', 'status', 'active');
+    document.getElementById('dealStatusFilter').value = 'active';
+  },
+  filterDealsAll() {
+    this.applyFilter('deals', 'status', 'all');
+    this.applyFilter('deals', 'stage', 'all');
+    document.getElementById('dealStatusFilter').value = '';
+    document.getElementById('dealStageFilter').value = '';
+  },
+  filterDealsWon() {
+    this.applyFilter('deals', 'status', 'won');
+    document.getElementById('dealStatusFilter').value = 'won';
+  },
+
   // ============================================
   // MODAL & ACTION FUNCTIONS
   // ============================================

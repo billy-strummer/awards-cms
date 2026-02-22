@@ -610,6 +610,51 @@ document.addEventListener('DOMContentLoaded', function() {
     }
   });
 
+  // --- Clickable Stat Cards ---
+  // Cards with [data-stat-filter] attributes filter the data below them.
+  // data-stat-filter = "filterId:value" or "callback:module.method"
+  document.addEventListener('click', function(e) {
+    const card = e.target.closest('[data-stat-filter]');
+    if (!card) return;
+
+    const spec = card.dataset.statFilter;
+
+    // Highlight active card, deactivate siblings
+    const container = card.closest('.row, .d-flex');
+    if (container) {
+      container.querySelectorAll('[data-stat-filter]').forEach(c => c.classList.remove('stat-card-active'));
+    }
+
+    // If clicking the same "show all" or toggling off, just clear
+    const isShowAll = spec.startsWith('clear:');
+
+    if (!isShowAll) {
+      card.classList.add('stat-card-active');
+    }
+
+    // Parse spec
+    if (spec.startsWith('callback:')) {
+      // e.g. "callback:eventsModule.filterDataIssues"
+      const fn = spec.replace('callback:', '');
+      const parts = fn.split('.');
+      let obj = window;
+      for (const p of parts.slice(0, -1)) obj = obj[p];
+      if (obj && typeof obj[parts[parts.length - 1]] === 'function') {
+        obj[parts[parts.length - 1]]();
+      }
+    } else {
+      // e.g. "invoiceStatusFilter:paid" or "clear:invoiceStatusFilter"
+      const [target, value] = isShowAll
+        ? [spec.replace('clear:', ''), '']
+        : spec.split(':');
+      const el = document.getElementById(target);
+      if (el) {
+        el.value = value || '';
+        el.dispatchEvent(new Event('change'));
+      }
+    }
+  });
+
   // --- Quick Actions Button ---
   const quickActionsBtn = document.getElementById('quickActionsBtn');
   const quickActionsMenu = document.getElementById('quickActionsMenu');

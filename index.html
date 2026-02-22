@@ -22,7 +22,7 @@
   <script src="https://browser.sentry-cdn.com/8.0.0/bundle.tracing.min.js" crossorigin="anonymous" defer></script>
 
   <!-- Custom Styles -->
-  <link rel="stylesheet" href="styles.css?v=5">
+  <link rel="stylesheet" href="styles.css?v=6">
   <link rel="stylesheet" href="modern-theme.css">
 </head>
 <body>
@@ -1302,27 +1302,27 @@
               <div class="card border-0 shadow-sm">
                 <div class="card-body py-3">
                   <div class="row text-center">
-                    <div class="col-md-2">
+                    <div class="col-md-2" data-stat-filter="clear:awardsStatusFilterSelect" title="Show all awards">
                       <h6 class="text-muted mb-1 small">Total Awards</h6>
                       <h3 class="mb-0 fw-bold text-primary" id="statsTotalAwards">0</h3>
                     </div>
-                    <div class="col-md-2">
+                    <div class="col-md-2" data-stat-filter="awardsStatusFilterSelect:active" title="Filter to active awards">
                       <h6 class="text-muted mb-1 small">Active</h6>
                       <h3 class="mb-0 fw-bold text-success" id="statsActiveAwards">0</h3>
                     </div>
-                    <div class="col-md-2">
+                    <div class="col-md-2" title="With Nominees">
                       <h6 class="text-muted mb-1 small">With Nominees</h6>
                       <h3 class="mb-0 fw-bold text-info" id="statsWithNominees">0</h3>
                     </div>
-                    <div class="col-md-2">
+                    <div class="col-md-2" title="Winners Declared">
                       <h6 class="text-muted mb-1 small">Winners Declared</h6>
                       <h3 class="mb-0 fw-bold text-warning" id="statsWithWinners">0</h3>
                     </div>
-                    <div class="col-md-2">
+                    <div class="col-md-2" title="Counties">
                       <h6 class="text-muted mb-1 small">Counties</h6>
                       <h3 class="mb-0 fw-bold text-secondary" id="statsCounties">0</h3>
                     </div>
-                    <div class="col-md-2">
+                    <div class="col-md-2" title="Sectors">
                       <h6 class="text-muted mb-1 small">Sectors</h6>
                       <h3 class="mb-0 fw-bold text-dark" id="statsSectors">0</h3>
                     </div>
@@ -1548,7 +1548,7 @@
                 <h6 class="text-muted mb-1 small">Missing Logo</h6>
                 <h3 class="mb-0 fw-bold text-warning" id="orgsMissingLogo" style="cursor:pointer" title="Click to filter" onclick="document.getElementById('orgsSearchBox').value=''; orgsModule._filterMissingField='logo_url'; orgsModule.filterOrganisations();">0</h3>
               </div>
-              <div class="col">
+              <div class="col" style="cursor:pointer" title="Click to filter sponsors" onclick="document.getElementById('orgsStatusFilter').value='sponsor'; orgsModule.filterOrganisations();">
                 <h6 class="text-muted mb-1 small">Sponsors</h6>
                 <h3 class="mb-0 fw-bold text-purple" id="orgsSponsorCount" style="color:#6f42c1;">0</h3>
               </div>
@@ -1581,19 +1581,19 @@
             <div class="mt-3 pt-2 border-top">
               <div class="d-flex align-items-center justify-content-center gap-1 flex-wrap small">
                 <span class="text-muted fw-semibold">Pipeline:</span>
-                <span class="badge bg-secondary" id="orgsPipelineProspect" title="Prospects">0 Prospects</span>
+                <span class="badge bg-secondary" id="orgsPipelineProspect" title="Click to filter prospects" data-stat-filter="orgsStatusFilter:prospect">0 Prospects</span>
                 <span class="text-muted" style="font-size: 0.65rem;" id="orgsConvProspectEntrant" title="Conversion rate">0%</span>
                 <i class="bi bi-chevron-right text-muted"></i>
-                <span class="badge bg-info" id="orgsPipelineEntrant" title="Entrants">0 Entrants</span>
+                <span class="badge bg-info" id="orgsPipelineEntrant" title="Click to filter entrants" data-stat-filter="orgsStatusFilter:entrant">0 Entrants</span>
                 <span class="text-muted" style="font-size: 0.65rem;" id="orgsConvEntrantNominee" title="Conversion rate">0%</span>
                 <i class="bi bi-chevron-right text-muted"></i>
-                <span class="badge bg-primary" id="orgsPipelineNominee" title="Nominees">0 Nominees</span>
+                <span class="badge bg-primary" id="orgsPipelineNominee" title="Click to filter nominees" data-stat-filter="orgsStatusFilter:nominee">0 Nominees</span>
                 <span class="text-muted" style="font-size: 0.65rem;" id="orgsConvNomineeShortlisted" title="Conversion rate">0%</span>
                 <i class="bi bi-chevron-right text-muted"></i>
-                <span class="badge bg-warning text-dark" id="orgsPipelineShortlisted" title="Shortlisted">0 Shortlisted</span>
+                <span class="badge bg-warning text-dark" id="orgsPipelineShortlisted" title="Click to filter shortlisted" data-stat-filter="orgsStatusFilter:shortlisted">0 Shortlisted</span>
                 <span class="text-muted" style="font-size: 0.65rem;" id="orgsConvShortlistedWinner" title="Conversion rate">0%</span>
                 <i class="bi bi-chevron-right text-muted"></i>
-                <span class="badge bg-success" id="orgsPipelineWinner" title="Winners">0 Winners</span>
+                <span class="badge bg-success" id="orgsPipelineWinner" title="Click to filter winners" data-stat-filter="orgsStatusFilter:winner">0 Winners</span>
               </div>
             </div>
           </div>
@@ -2399,7 +2399,7 @@
           <!-- Stats Cards -->
           <div class="row g-3 mb-4">
             <div class="col-md-3">
-              <div class="card stats-card">
+              <div class="card stats-card" data-stat-filter="clear:entriesStatusFilter" title="Show all entries">
                 <div class="card-body">
                   <div class="d-flex align-items-center">
                     <div class="stats-icon bg-primary">
@@ -2414,7 +2414,7 @@
               </div>
             </div>
             <div class="col-md-3">
-              <div class="card stats-card">
+              <div class="card stats-card" data-stat-filter="entriesStatusFilter:under_review" title="Filter to pending review">
                 <div class="card-body">
                   <div class="d-flex align-items-center">
                     <div class="stats-icon bg-warning">
@@ -2429,7 +2429,7 @@
               </div>
             </div>
             <div class="col-md-3">
-              <div class="card stats-card">
+              <div class="card stats-card" data-stat-filter="entriesStatusFilter:shortlisted" title="Filter to shortlisted">
                 <div class="card-body">
                   <div class="d-flex align-items-center">
                     <div class="stats-icon bg-info">
@@ -2444,7 +2444,7 @@
               </div>
             </div>
             <div class="col-md-3">
-              <div class="card stats-card">
+              <div class="card stats-card" data-stat-filter="entriesStatusFilter:winner" title="Filter to winners">
                 <div class="card-body">
                   <div class="d-flex align-items-center">
                     <div class="stats-icon bg-success">
@@ -3138,35 +3138,35 @@
           <!-- Quick Stats -->
           <div class="row g-3 mb-4">
             <div class="col-6 col-md-3 col-lg">
-              <div class="stat-card">
+              <div class="stat-card" data-stat-filter="clear:eventsStatusFilter" title="Show all events">
                 <i class="bi bi-calendar-event stat-card-icon text-primary"></i>
                 <h6>Total Events</h6>
                 <div class="stat-value" id="eventsTotalCount">0</div>
               </div>
             </div>
             <div class="col-6 col-md-3 col-lg">
-              <div class="stat-card">
+              <div class="stat-card" data-stat-filter="eventsStatusFilter:upcoming" title="Filter to upcoming events">
                 <i class="bi bi-calendar-plus stat-card-icon text-success"></i>
                 <h6>Upcoming</h6>
                 <div class="stat-value text-success" id="eventsUpcomingCount">0</div>
               </div>
             </div>
             <div class="col-6 col-md-3 col-lg">
-              <div class="stat-card">
+              <div class="stat-card" data-stat-filter="eventsStatusFilter:this-month" title="Filter to this month's events">
                 <i class="bi bi-calendar-check stat-card-icon text-info"></i>
                 <h6>This Year</h6>
                 <div class="stat-value text-info" id="eventsThisYearCount">0</div>
               </div>
             </div>
             <div class="col-6 col-md-3 col-lg">
-              <div class="stat-card">
+              <div class="stat-card" data-stat-filter="eventsStatusFilter:past" title="Filter to past events">
                 <i class="bi bi-clock-history stat-card-icon text-secondary"></i>
                 <h6>Past Events</h6>
                 <div class="stat-value text-secondary" id="eventsPastCount">0</div>
               </div>
             </div>
             <div class="col-6 col-md-3 col-lg">
-              <div class="stat-card" style="cursor:pointer" onclick="eventsModule.filterDataIssues();" title="Click to view events with missing data">
+              <div class="stat-card" data-stat-filter="callback:eventsModule.filterDataIssues" title="Click to view events with missing data">
                 <i class="bi bi-exclamation-triangle stat-card-icon text-warning"></i>
                 <h6>Data Issues</h6>
                 <div class="stat-value text-warning" id="eventsDataIssuesCount">0</div>
@@ -4915,28 +4915,28 @@
               <!-- Quick Stats -->
               <div class="row g-3 mb-4">
                 <div class="col-md-3">
-                  <div class="content-card text-center">
+                  <div class="content-card text-center" data-stat-filter="clear:invoiceStatusFilter" title="Show all invoices">
                     <i class="bi bi-file-earmark-text text-primary fs-1 mb-2"></i>
                     <div class="fs-2 fw-bold" id="totalInvoicesCount">0</div>
                     <div class="text-muted small">Total Invoices</div>
                   </div>
                 </div>
                 <div class="col-md-3">
-                  <div class="content-card text-center">
+                  <div class="content-card text-center" data-stat-filter="invoiceStatusFilter:paid" title="Filter to paid invoices">
                     <i class="bi bi-check-circle text-success fs-1 mb-2"></i>
                     <div class="fs-2 fw-bold" id="paidInvoicesCount">0</div>
                     <div class="text-muted small">Paid Invoices</div>
                   </div>
                 </div>
                 <div class="col-md-3">
-                  <div class="content-card text-center">
+                  <div class="content-card text-center" data-stat-filter="invoiceStatusFilter:overdue" title="Filter to overdue invoices">
                     <i class="bi bi-exclamation-triangle text-warning fs-1 mb-2"></i>
                     <div class="fs-2 fw-bold" id="overdueInvoicesCount">0</div>
                     <div class="text-muted small">Overdue Invoices</div>
                   </div>
                 </div>
                 <div class="col-md-3">
-                  <div class="content-card text-center">
+                  <div class="content-card text-center" data-stat-filter="invoiceStatusFilter:partially_paid" title="Filter to invoices with outstanding balance">
                     <i class="bi bi-currency-pound text-info fs-1 mb-2"></i>
                     <div class="fs-2 fw-bold" id="totalOutstandingAmount">£0</div>
                     <div class="text-muted small">Outstanding</div>
@@ -4949,7 +4949,7 @@
                 <div class="row g-3 align-items-end">
                   <div class="col-md-3">
                     <label class="form-label small fw-bold">Status</label>
-                    <select class="form-select form-select-sm" id="invoiceStatusFilter">
+                    <select class="form-select form-select-sm" id="invoiceStatusFilter" onchange="paymentsModule.filterInvoices()">
                       <option value="">All Statuses</option>
                       <option value="draft">Draft</option>
                       <option value="sent">Sent</option>
@@ -4962,13 +4962,13 @@
                   </div>
                   <div class="col-md-3">
                     <label class="form-label small fw-bold">Organisation</label>
-                    <select class="form-select form-select-sm" id="invoiceOrgFilter">
+                    <select class="form-select form-select-sm" id="invoiceOrgFilter" onchange="paymentsModule.filterInvoices()">
                       <option value="">All Organisations</option>
                     </select>
                   </div>
                   <div class="col-md-3">
                     <label class="form-label small fw-bold">Date Range</label>
-                    <input type="month" class="form-control form-control-sm" id="invoiceMonthFilter">
+                    <input type="month" class="form-control form-control-sm" id="invoiceMonthFilter" onchange="paymentsModule.filterInvoices()">
                   </div>
                   <div class="col-md-3">
                     <button class="btn btn-primary btn-sm w-100" onclick="paymentsModule.createNewInvoice()">
@@ -5016,21 +5016,21 @@
               <!-- Quick Stats -->
               <div class="row g-3 mb-4">
                 <div class="col-md-4">
-                  <div class="content-card text-center">
+                  <div class="content-card text-center" data-stat-filter="clear:paymentStatusFilter" title="Show all payments">
                     <i class="bi bi-cash-coin text-success fs-1 mb-2"></i>
                     <div class="fs-2 fw-bold" id="totalPaymentsCount">0</div>
                     <div class="text-muted small">Total Payments</div>
                   </div>
                 </div>
                 <div class="col-md-4">
-                  <div class="content-card text-center">
+                  <div class="content-card text-center" data-stat-filter="paymentStatusFilter:completed" title="Filter to completed payments">
                     <i class="bi bi-currency-pound text-primary fs-1 mb-2"></i>
                     <div class="fs-2 fw-bold" id="totalPaymentsAmount">£0</div>
                     <div class="text-muted small">Total Received</div>
                   </div>
                 </div>
                 <div class="col-md-4">
-                  <div class="content-card text-center">
+                  <div class="content-card text-center" data-stat-filter="callback:paymentsModule.filterThisMonth" title="Filter to this month's payments">
                     <i class="bi bi-calendar-month text-info fs-1 mb-2"></i>
                     <div class="fs-2 fw-bold" id="monthlyPaymentsAmount">£0</div>
                     <div class="text-muted small">This Month</div>
@@ -5043,7 +5043,7 @@
                 <div class="row g-3 align-items-end">
                   <div class="col-md-3">
                     <label class="form-label small fw-bold">Payment Method</label>
-                    <select class="form-select form-select-sm" id="paymentMethodFilter">
+                    <select class="form-select form-select-sm" id="paymentMethodFilter" onchange="paymentsModule.filterPayments()">
                       <option value="">All Methods</option>
                       <option value="bank_transfer">Bank Transfer</option>
                       <option value="card">Card</option>
@@ -5056,7 +5056,7 @@
                   </div>
                   <div class="col-md-3">
                     <label class="form-label small fw-bold">Status</label>
-                    <select class="form-select form-select-sm" id="paymentStatusFilter">
+                    <select class="form-select form-select-sm" id="paymentStatusFilter" onchange="paymentsModule.filterPayments()">
                       <option value="">All Statuses</option>
                       <option value="pending">Pending</option>
                       <option value="completed">Completed</option>
@@ -5066,7 +5066,7 @@
                   </div>
                   <div class="col-md-3">
                     <label class="form-label small fw-bold">Date Range</label>
-                    <input type="month" class="form-control form-control-sm" id="paymentMonthFilter">
+                    <input type="month" class="form-control form-control-sm" id="paymentMonthFilter" onchange="paymentsModule.filterPayments()">
                   </div>
                   <div class="col-md-3">
                     <button class="btn btn-success btn-sm w-100" onclick="paymentsModule.recordNewPayment()">
@@ -5395,28 +5395,28 @@
               <!-- Pipeline Stats -->
               <div class="row g-3 mb-4">
                 <div class="col-md-3">
-                  <div class="content-card text-center">
+                  <div class="content-card text-center" data-stat-filter="callback:crmModule.filterDealsActive" title="Filter to active deals">
                     <i class="bi bi-lightning text-warning fs-1 mb-2"></i>
                     <div class="fs-2 fw-bold" id="totalActiveDeals">0</div>
                     <div class="text-muted small">Active Deals</div>
                   </div>
                 </div>
                 <div class="col-md-3">
-                  <div class="content-card text-center">
+                  <div class="content-card text-center" data-stat-filter="callback:crmModule.filterDealsAll" title="Show all deals">
                     <i class="bi bi-currency-pound text-success fs-1 mb-2"></i>
                     <div class="fs-2 fw-bold" id="totalPipelineValue">£0</div>
                     <div class="text-muted small">Pipeline Value</div>
                   </div>
                 </div>
                 <div class="col-md-3">
-                  <div class="content-card text-center">
+                  <div class="content-card text-center" data-stat-filter="callback:crmModule.filterDealsWon" title="Filter to won deals">
                     <i class="bi bi-check-circle text-primary fs-1 mb-2"></i>
                     <div class="fs-2 fw-bold" id="dealsWonThisMonth">0</div>
                     <div class="text-muted small">Won This Month</div>
                   </div>
                 </div>
                 <div class="col-md-3">
-                  <div class="content-card text-center">
+                  <div class="content-card text-center" title="Win Rate">
                     <i class="bi bi-percent text-info fs-1 mb-2"></i>
                     <div class="fs-2 fw-bold" id="averageWinRate">0%</div>
                     <div class="text-muted small">Win Rate</div>
@@ -5429,7 +5429,7 @@
                 <div class="row g-3 align-items-end">
                   <div class="col-md-3">
                     <label class="form-label small fw-bold">Stage</label>
-                    <select class="form-select form-select-sm" id="dealStageFilter">
+                    <select class="form-select form-select-sm" id="dealStageFilter" onchange="crmModule.applyFilter('deals', 'stage', this.value || 'all')">
                       <option value="">All Stages</option>
                       <option value="lead">Lead</option>
                       <option value="contacted">Contacted</option>
@@ -5442,7 +5442,7 @@
                   </div>
                   <div class="col-md-3">
                     <label class="form-label small fw-bold">Type</label>
-                    <select class="form-select form-select-sm" id="dealTypeFilter">
+                    <select class="form-select form-select-sm" id="dealTypeFilter" onchange="crmModule.applyFilter('deals', 'type', this.value || 'all')">
                       <option value="">All Types</option>
                       <option value="sponsorship">Sponsorship</option>
                       <option value="award_fee">Award Fee</option>
@@ -5454,7 +5454,8 @@
                   </div>
                   <div class="col-md-3">
                     <label class="form-label small fw-bold">Status</label>
-                    <select class="form-select form-select-sm" id="dealStatusFilter">
+                    <select class="form-select form-select-sm" id="dealStatusFilter" onchange="crmModule.applyFilter('deals', 'status', this.value || 'all')">
+                      <option value="">All Statuses</option>
                       <option value="active">Active</option>
                       <option value="won">Won</option>
                       <option value="lost">Lost</option>

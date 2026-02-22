@@ -1130,7 +1130,7 @@ const awardsModule = {
     const count = this.selectedAwards.size;
     if (count === 0) return;
 
-    if (!confirm(`Set ${count} awards to "${newStatus}"?`)) return;
+    if (!await utils.confirmDialog({ title: 'Update Award Status', message: `Set ${count} award(s) to "${newStatus}"?`, confirmText: 'Update', danger: false })) return;
 
     try {
       utils.showLoading();
@@ -1162,8 +1162,8 @@ const awardsModule = {
     const count = this.selectedAwards.size;
     if (count === 0) return;
 
-    if (!confirm(`Delete ${count} awards? This cannot be undone.`)) return;
-    if (!confirm(`Are you absolutely sure? This will permanently delete ${count} awards and their assignments.`)) return;
+    if (!await utils.confirmDialog({ title: 'Delete Awards', message: `Delete ${count} award(s)? This cannot be undone.` })) return;
+    if (!await utils.confirmDialog({ title: 'Final Confirmation', message: `Are you absolutely sure? This will permanently delete ${count} award(s) and their assignments.` })) return;
 
     try {
       utils.showLoading();
@@ -1243,7 +1243,7 @@ const awardsModule = {
    * Delete a single award
    */
   async deleteAward(awardId) {
-    if (!utils.confirm('Are you sure you want to delete this award? This action cannot be undone.')) {
+    if (!await utils.confirmDialog({ title: 'Delete Award', message: 'Are you sure you want to delete this award? This action cannot be undone.' })) {
       return;
     }
     
@@ -1305,7 +1305,7 @@ const awardsModule = {
       message += `\n\n⚠️ ${targetYear} already has ${existingTarget.length} awards. Only NEW award names (not already in ${targetYear}) will be copied.`;
     }
 
-    if (!confirm(message)) return;
+    if (!await utils.confirmDialog({ title: 'Roll Over Awards', message: message.replace(/\n/g, '<br>'), confirmText: 'Roll Over', danger: false })) return;
 
     try {
       utils.showLoading();
@@ -1440,7 +1440,7 @@ const awardsModule = {
     const season = seasons.find(s => s.id === seasonId);
     if (!season) return;
 
-    if (!confirm(`Apply "${season.name} (${season.year})" dates to ${count} selected awards?`)) return;
+    if (!await utils.confirmDialog({ title: 'Apply Season Dates', message: `Apply "${season.name} (${season.year})" dates to ${count} selected award(s)?`, confirmText: 'Apply', danger: false })) return;
 
     try {
       utils.showLoading();
@@ -1736,7 +1736,7 @@ const awardsModule = {
     const targetYear = parseInt(prompt(`Clone ${count} selected awards to which year?`, new Date().getFullYear()));
     if (!targetYear || isNaN(targetYear)) return;
 
-    if (!confirm(`Clone ${count} awards to ${targetYear}? Existing duplicates will be skipped.`)) return;
+    if (!await utils.confirmDialog({ title: 'Clone Awards', message: `Clone ${count} award(s) to ${targetYear}? Existing duplicates will be skipped.`, confirmText: 'Clone', danger: false })) return;
 
     try {
       utils.showLoading();

@@ -106,7 +106,7 @@ const paymentsModule = {
       <tr>
         <td>
           <strong>${utils.escapeHtml(invoice.invoice_number)}</strong>
-          <button class="btn btn-link btn-sm p-0 ms-1" onclick="event.stopPropagation(); paymentsModule.copyToClipboard('${utils.escapeHtml(invoice.invoice_number)}')" title="Copy invoice number">
+          <button class="btn btn-link btn-sm p-0 ms-1" onclick="event.stopPropagation(); paymentsModule.copyToClipboard('${utils.escapeHtml(invoice.invoice_number)}')" title="Copy invoice number" aria-label="Copy invoice number">
             <i class="bi bi-clipboard text-muted small"></i>
           </button>
         </td>
@@ -688,7 +688,7 @@ const paymentsModule = {
       <tr>
         <td>
           <strong>${utils.escapeHtml(payment.payment_reference)}</strong>
-          <button class="btn btn-link btn-sm p-0 ms-1" onclick="event.stopPropagation(); paymentsModule.copyToClipboard('${utils.escapeHtml(payment.payment_reference)}')" title="Copy payment reference">
+          <button class="btn btn-link btn-sm p-0 ms-1" onclick="event.stopPropagation(); paymentsModule.copyToClipboard('${utils.escapeHtml(payment.payment_reference)}')" title="Copy payment reference" aria-label="Copy payment reference">
             <i class="bi bi-clipboard text-muted small"></i>
           </button>
         </td>
@@ -710,10 +710,10 @@ const paymentsModule = {
         <td>${this.getPaymentStatusBadge(payment.status)}</td>
         <td>
           <div class="btn-group btn-group-sm" role="group">
-            <button class="btn btn-outline-primary" onclick="paymentsModule.viewPayment('${payment.id}')" title="View">
+            <button class="btn btn-outline-primary" onclick="paymentsModule.viewPayment('${payment.id}')" title="View" aria-label="View payment">
               <i class="bi bi-eye"></i>
             </button>
-            <button class="btn btn-outline-danger" onclick="paymentsModule.deletePayment('${payment.id}')" title="Delete">
+            <button class="btn btn-outline-danger" onclick="paymentsModule.deletePayment('${payment.id}')" title="Delete" aria-label="Delete payment">
               <i class="bi bi-trash"></i>
             </button>
           </div>

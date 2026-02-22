@@ -42,7 +42,18 @@ const eventsModule = {
       this.populateYearFilter();
       this._eventAwardCounts = {}; // Clear cache on reload
       this._eventAttendeeCounts = {};
-      this.renderEvents();
+
+      // Restore saved filters from localStorage
+      try {
+        const saved = JSON.parse(localStorage.getItem('eventsFilters') || '{}');
+        if (saved.search) document.getElementById('eventsSearchBox').value = saved.search;
+        if (saved.year) document.getElementById('eventsYearFilter').value = saved.year;
+        if (saved.timeStatus) document.getElementById('eventsStatusFilter').value = saved.timeStatus;
+        if (saved.eventStatus) document.getElementById('eventsEventStatusFilter').value = saved.eventStatus;
+      } catch(e) {}
+
+      this.updateEventStats();
+      this.filterEvents();
       this.renderFinancialOverview();
 
       console.log(`✅ Loaded ${STATE.allEvents.length} events`);
@@ -9682,6 +9693,9 @@ const eventsModule = {
     const year = document.getElementById('eventsYearFilter')?.value || '';
     const timeStatus = document.getElementById('eventsStatusFilter')?.value || '';
     const eventStatus = document.getElementById('eventsEventStatusFilter')?.value || '';
+
+    try { localStorage.setItem('eventsFilters', JSON.stringify({ search, year, timeStatus, eventStatus })); } catch(e) {}
+
     const today = new Date().toISOString().split('T')[0];
     const now = new Date();
     const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];

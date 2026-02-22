@@ -9828,7 +9828,23 @@ const eventsModule = {
       this._sortField = field;
       this._sortDir = 'asc';
     }
+    utils.saveSortState('events', this._sortField, this._sortDir);
+    this._updateSortIndicators();
     this.filterEvents();
+  },
+
+  _updateSortIndicators() {
+    const icons = document.querySelectorAll('[data-sort-icon-events]');
+    icons.forEach(icon => {
+      const field = icon.getAttribute('data-sort-icon-events');
+      if (field === this._sortField) {
+        icon.className = this._sortDir === 'asc'
+          ? 'bi bi-caret-up-fill text-primary ms-1 small'
+          : 'bi bi-caret-down-fill text-primary ms-1 small';
+      } else {
+        icon.className = 'bi bi-arrow-down-up text-muted ms-1 small';
+      }
+    });
   },
 
   resetEventFilters() {

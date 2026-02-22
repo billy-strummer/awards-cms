@@ -317,8 +317,24 @@ const entriesModule = {
       this._sortField = field;
       this._sortDir = 'asc';
     }
+    utils.saveSortState('entries', this._sortField, this._sortDir);
+    this._updateSortIndicators();
     this._currentPage = 1;
     this.applyFilters();
+  },
+
+  _updateSortIndicators() {
+    const icons = document.querySelectorAll('[data-sort-icon-entries]');
+    icons.forEach(icon => {
+      const field = icon.getAttribute('data-sort-icon-entries');
+      if (field === this._sortField) {
+        icon.className = this._sortDir === 'asc'
+          ? 'bi bi-caret-up-fill text-primary ms-1 small'
+          : 'bi bi-caret-down-fill text-primary ms-1 small';
+      } else {
+        icon.className = 'bi bi-arrow-down-up text-muted ms-1 small';
+      }
+    });
   },
 
   /**

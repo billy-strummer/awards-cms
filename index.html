@@ -2425,11 +2425,11 @@
                 <thead>
                   <tr>
                     <th scope="col" style="width:35px"><input type="checkbox" class="form-check-input" id="selectAllWinners" onchange="winnersModule.toggleSelectAllWinners(this.checked)" aria-label="Select all winners"></th>
-                    <th scope="col" style="cursor: pointer;" data-sort-field="winner_name" onclick="winnersModule.sortWinners('winner_name')">Winner Name <i class="bi bi-arrow-down-up text-muted ms-1 small"></i></th>
-                    <th scope="col" style="cursor: pointer;" data-sort-field="award" onclick="winnersModule.sortWinners('award')">Award <i class="bi bi-arrow-down-up text-muted ms-1 small"></i></th>
-                    <th scope="col" style="cursor: pointer;" data-sort-field="year" onclick="winnersModule.sortWinners('year')">Year <i class="bi bi-arrow-down-up text-muted ms-1 small"></i></th>
+                    <th scope="col" style="cursor: pointer;" data-sort-field="winner_name" onclick="winnersModule.sortWinners('winner_name')">Winner Name <i data-sort-icon-winners="winner_name" class="bi bi-arrow-down-up text-muted ms-1 small"></i></th>
+                    <th scope="col" style="cursor: pointer;" data-sort-field="award" onclick="winnersModule.sortWinners('award')">Award <i data-sort-icon-winners="award" class="bi bi-arrow-down-up text-muted ms-1 small"></i></th>
+                    <th scope="col" style="cursor: pointer;" data-sort-field="year" onclick="winnersModule.sortWinners('year')">Year <i data-sort-icon-winners="year" class="bi bi-arrow-down-up text-muted ms-1 small"></i></th>
                     <th scope="col">Media</th>
-                    <th scope="col" style="cursor: pointer;" data-sort-field="status" onclick="winnersModule.sortWinners('status')">Status <i class="bi bi-arrow-down-up text-muted ms-1 small"></i></th>
+                    <th scope="col" style="cursor: pointer;" data-sort-field="status" onclick="winnersModule.sortWinners('status')">Status <i data-sort-icon-winners="status" class="bi bi-arrow-down-up text-muted ms-1 small"></i></th>
                     <th scope="col" width="220" class="text-center">Actions</th>
                   </tr>
                 </thead>
@@ -2617,14 +2617,14 @@
                     <th scope="col" style="width: 40px;">
                       <input type="checkbox" id="selectAllEntries" onchange="entriesModule.toggleSelectAll()" aria-label="Select all entries">
                     </th>
-                    <th scope="col">Entry #</th>
-                    <th scope="col">Company</th>
-                    <th scope="col">Award</th>
+                    <th scope="col" style="cursor:pointer" onclick="entriesModule.sortEntries('entry_number')">Entry # <i data-sort-icon-entries="entry_number" class="bi bi-arrow-down-up text-muted ms-1 small"></i></th>
+                    <th scope="col" style="cursor:pointer" onclick="entriesModule.sortEntries('company')">Company <i data-sort-icon-entries="company" class="bi bi-arrow-down-up text-muted ms-1 small"></i></th>
+                    <th scope="col" style="cursor:pointer" onclick="entriesModule.sortEntries('award')">Award <i data-sort-icon-entries="award" class="bi bi-arrow-down-up text-muted ms-1 small"></i></th>
                     <th scope="col">Entry Title</th>
-                    <th scope="col">Status</th>
-                    <th scope="col">Score</th>
+                    <th scope="col" style="cursor:pointer" onclick="entriesModule.sortEntries('status')">Status <i data-sort-icon-entries="status" class="bi bi-arrow-down-up text-muted ms-1 small"></i></th>
+                    <th scope="col" style="cursor:pointer" onclick="entriesModule.sortEntries('score')">Score <i data-sort-icon-entries="score" class="bi bi-arrow-down-up text-muted ms-1 small"></i></th>
                     <th scope="col">Payment</th>
-                    <th scope="col">Submitted</th>
+                    <th scope="col" style="cursor:pointer" onclick="entriesModule.sortEntries('submission_date')">Submitted <i data-sort-icon-entries="submission_date" class="bi bi-arrow-down-up text-muted ms-1 small"></i></th>
                     <th scope="col" style="width: 150px;">Actions</th>
                   </tr>
                 </thead>
@@ -3460,10 +3460,10 @@
                 <thead>
                   <tr>
                     <th scope="col" style="width:35px"><input type="checkbox" class="form-check-input" id="selectAllEvents" onchange="eventsModule.toggleSelectAll(this.checked)" aria-label="Select all events"></th>
-                    <th scope="col" style="cursor:pointer" data-sort-field="event_name" onclick="eventsModule.sortEvents('event_name')">Event Name <i class="bi bi-arrow-down-up text-muted small"></i></th>
-                    <th scope="col" style="width:70px;cursor:pointer" data-sort-field="year" onclick="eventsModule.sortEvents('year')">Year <i class="bi bi-arrow-down-up text-muted small"></i></th>
-                    <th scope="col" style="width:100px;cursor:pointer" data-sort-field="event_date" onclick="eventsModule.sortEvents('event_date')">Date <i class="bi bi-arrow-down-up text-muted small"></i></th>
-                    <th scope="col" style="cursor:pointer" data-sort-field="venue" onclick="eventsModule.sortEvents('venue')">Venue <i class="bi bi-arrow-down-up text-muted small"></i></th>
+                    <th scope="col" style="cursor:pointer" data-sort-field="event_name" onclick="eventsModule.sortEvents('event_name')">Event Name <i data-sort-icon-events="event_name" class="bi bi-arrow-down-up text-muted small"></i></th>
+                    <th scope="col" style="width:70px;cursor:pointer" data-sort-field="year" onclick="eventsModule.sortEvents('year')">Year <i data-sort-icon-events="year" class="bi bi-arrow-down-up text-muted small"></i></th>
+                    <th scope="col" style="width:100px;cursor:pointer" data-sort-field="event_date" onclick="eventsModule.sortEvents('event_date')">Date <i data-sort-icon-events="event_date" class="bi bi-arrow-down-up text-muted small"></i></th>
+                    <th scope="col" style="cursor:pointer" data-sort-field="venue" onclick="eventsModule.sortEvents('venue')">Venue <i data-sort-icon-events="venue" class="bi bi-arrow-down-up text-muted small"></i></th>
                     <th scope="col" style="width:70px" class="text-center" title="Attendees"><i class="bi bi-people me-1"></i>Att.</th>
                     <th scope="col" style="width:55px" class="text-center" title="VIP Guests"><i class="bi bi-star me-1"></i>VIP</th>
                     <th scope="col" style="width:70px" class="text-center" title="Award Presentations Confirmed"><i class="bi bi-trophy me-1"></i>Awards</th>

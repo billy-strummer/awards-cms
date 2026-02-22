@@ -121,6 +121,15 @@ const paymentsModule = {
       return true;
     });
 
+    // If search query is active and no exact matches found, try fuzzy search
+    if (search && this.currentInvoices.length === 0) {
+      this.currentInvoices = utils.fuzzyFilter(this.allInvoices, search, ['invoice_number', 'notes', 'description']);
+      // Also apply non-search filters to fuzzy results
+      if (status) this.currentInvoices = this.currentInvoices.filter(inv => inv.status === status || inv.payment_status === status);
+      if (orgId) this.currentInvoices = this.currentInvoices.filter(inv => inv.organisation_id === orgId);
+      if (month) this.currentInvoices = this.currentInvoices.filter(inv => (inv.invoice_date || '').startsWith(month));
+    }
+
     this._applySortInvoices();
     this.renderInvoices();
     this.updateStatistics();
@@ -865,6 +874,15 @@ const paymentsModule = {
       if (month && !(p.payment_date || '').startsWith(month)) return false;
       return true;
     });
+
+    // If search query is active and no exact matches found, try fuzzy search
+    if (search && this.currentPayments.length === 0) {
+      this.currentPayments = utils.fuzzyFilter(this.allPayments, search, ['payment_reference']);
+      // Also apply non-search filters to fuzzy results
+      if (method) this.currentPayments = this.currentPayments.filter(p => p.payment_method === method);
+      if (status) this.currentPayments = this.currentPayments.filter(p => p.status === status);
+      if (month) this.currentPayments = this.currentPayments.filter(p => (p.payment_date || '').startsWith(month));
+    }
 
     this.renderPayments();
     this.updateStatistics();

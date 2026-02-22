@@ -2351,69 +2351,70 @@ updateCountyFilterByRegion() {
    */
   async saveOrgChanges(orgId) {
     try {
-      utils.showLoading();
+      await utils.protectModalDuringSave('companyProfileModal', async () => {
+        utils.showLoading();
 
-      // Collect updated data from form fields
-      const updatedData = {
-        contact_name: document.getElementById('editContactName').value.trim(),
-        email: document.getElementById('editEmail').value.trim(),
-        contact_phone: document.getElementById('editPhone').value.trim(),
-        website: document.getElementById('editWebsite').value.trim(),
-        region: document.getElementById('editRegion').value,
-        address: document.getElementById('editAddress').value.trim(),
-        catchment_area: document.getElementById('editCatchmentArea').value.trim(),
-        // Extended fields
-        description: document.getElementById('editDescription')?.value.trim() || null,
-        achievements: document.getElementById('editAchievements')?.value.trim() || null,
-        company_size: document.getElementById('editCompanySize')?.value || null,
-        employee_count: document.getElementById('editEmployeeCount')?.value ? parseInt(document.getElementById('editEmployeeCount').value) : null,
-        year_founded: document.getElementById('editYearFounded')?.value ? parseInt(document.getElementById('editYearFounded').value) : null,
-        annual_revenue: document.getElementById('editAnnualRevenue')?.value ? parseFloat(document.getElementById('editAnnualRevenue').value) : null,
-        tier: document.getElementById('editTier')?.value || null,
-        linkedin_url: document.getElementById('editLinkedin')?.value.trim() || null,
-        twitter_url: document.getElementById('editTwitter')?.value.trim() || null,
-        facebook_url: document.getElementById('editFacebook')?.value.trim() || null,
-        instagram_url: document.getElementById('editInstagram')?.value.trim() || null
-      };
-
-      // Update in database
-      const { error } = await STATE.client
-        .from('organisations')
-        .update(updatedData)
-        .eq('id', orgId);
-
-      if (error) throw error;
-
-      // Update local state
-      const orgIndex = STATE.allOrganisations.findIndex(o => o.id === orgId);
-      if (orgIndex !== -1) {
-        STATE.allOrganisations[orgIndex] = {
-          ...STATE.allOrganisations[orgIndex],
-          ...updatedData
+        // Collect updated data from form fields
+        const updatedData = {
+          contact_name: document.getElementById('editContactName').value.trim(),
+          email: document.getElementById('editEmail').value.trim(),
+          contact_phone: document.getElementById('editPhone').value.trim(),
+          website: document.getElementById('editWebsite').value.trim(),
+          region: document.getElementById('editRegion').value,
+          address: document.getElementById('editAddress').value.trim(),
+          catchment_area: document.getElementById('editCatchmentArea').value.trim(),
+          // Extended fields
+          description: document.getElementById('editDescription')?.value.trim() || null,
+          achievements: document.getElementById('editAchievements')?.value.trim() || null,
+          company_size: document.getElementById('editCompanySize')?.value || null,
+          employee_count: document.getElementById('editEmployeeCount')?.value ? parseInt(document.getElementById('editEmployeeCount').value) : null,
+          year_founded: document.getElementById('editYearFounded')?.value ? parseInt(document.getElementById('editYearFounded').value) : null,
+          annual_revenue: document.getElementById('editAnnualRevenue')?.value ? parseFloat(document.getElementById('editAnnualRevenue').value) : null,
+          tier: document.getElementById('editTier')?.value || null,
+          linkedin_url: document.getElementById('editLinkedin')?.value.trim() || null,
+          twitter_url: document.getElementById('editTwitter')?.value.trim() || null,
+          facebook_url: document.getElementById('editFacebook')?.value.trim() || null,
+          instagram_url: document.getElementById('editInstagram')?.value.trim() || null
         };
-      }
 
-      // Update filtered organisations
-      const filteredIndex = STATE.filteredOrganisations.findIndex(o => o.id === orgId);
-      if (filteredIndex !== -1) {
-        STATE.filteredOrganisations[filteredIndex] = {
-          ...STATE.filteredOrganisations[filteredIndex],
-          ...updatedData
-        };
-      }
+        // Update in database
+        const { error } = await STATE.client
+          .from('organisations')
+          .update(updatedData)
+          .eq('id', orgId);
 
-      // Update current editing org
-      this.currentEditingOrg = { ...this.currentEditingOrg, ...updatedData };
-      this.originalOrgData = { ...this.currentEditingOrg };
+        if (error) throw error;
 
-      utils.showToast('Organisation updated successfully', 'success');
+        // Update local state
+        const orgIndex = STATE.allOrganisations.findIndex(o => o.id === orgId);
+        if (orgIndex !== -1) {
+          STATE.allOrganisations[orgIndex] = {
+            ...STATE.allOrganisations[orgIndex],
+            ...updatedData
+          };
+        }
 
-      // Refresh the profile view
-      await this.openCompanyProfile(orgId, this.currentEditingOrg.company_name);
+        // Update filtered organisations
+        const filteredIndex = STATE.filteredOrganisations.findIndex(o => o.id === orgId);
+        if (filteredIndex !== -1) {
+          STATE.filteredOrganisations[filteredIndex] = {
+            ...STATE.filteredOrganisations[filteredIndex],
+            ...updatedData
+          };
+        }
 
-      // Refresh the organisations table
-      this.renderOrganisations();
+        // Update current editing org
+        this.currentEditingOrg = { ...this.currentEditingOrg, ...updatedData };
+        this.originalOrgData = { ...this.currentEditingOrg };
 
+        utils.showToast('Organisation updated successfully', 'success');
+
+        // Refresh the profile view
+        await this.openCompanyProfile(orgId, this.currentEditingOrg.company_name);
+
+        // Refresh the organisations table
+        this.renderOrganisations();
+      });
     } catch (error) {
       console.error('Error saving organisation changes:', error);
       utils.showToast('Failed to save changes: ' + error.message, 'error');

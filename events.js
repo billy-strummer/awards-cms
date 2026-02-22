@@ -102,6 +102,7 @@ const eventsModule = {
 
     const modal = new bootstrap.Modal(document.getElementById('eventModal'));
     modal.show();
+    utils.initInlineValidation('eventForm');
   },
 
   /**
@@ -124,6 +125,7 @@ const eventsModule = {
 
     const modal = new bootstrap.Modal(document.getElementById('eventModal'));
     modal.show();
+    utils.initInlineValidation('eventForm');
   },
 
   /**
@@ -296,46 +298,47 @@ const eventsModule = {
     }
 
     try {
-      utils.showLoading();
+      await utils.protectModalDuringSave('cloneEventModal', async () => {
+        utils.showLoading();
 
-      // Step 1: Create new event (fetch source for capacity)
-      const { data: srcEvt } = await STATE.client.from('events').select('capacity').eq('id', sourceEventId).single();
-      const newEventData = {
-        event_name: newEventName,
-        event_date: newEventDate || null,
-        year: parseInt(newEventYear),
-        venue: newEventVenue || null,
-        description: newEventDescription || null,
-        event_status: 'draft',
-        capacity: srcEvt?.capacity || null
-      };
+        // Step 1: Create new event (fetch source for capacity)
+        const { data: srcEvt } = await STATE.client.from('events').select('capacity').eq('id', sourceEventId).single();
+        const newEventData = {
+          event_name: newEventName,
+          event_date: newEventDate || null,
+          year: parseInt(newEventYear),
+          venue: newEventVenue || null,
+          description: newEventDescription || null,
+          event_status: 'draft',
+          capacity: srcEvt?.capacity || null
+        };
 
-      const { data: newEvent, error: eventError } = await STATE.client
-        .from('events')
-        .insert([newEventData])
-        .select()
-        .single();
+        const { data: newEvent, error: eventError } = await STATE.client
+          .from('events')
+          .insert([newEventData])
+          .select()
+          .single();
 
-      if (eventError) throw eventError;
+        if (eventError) throw eventError;
 
-      utils.showToast(`Event "${newEventName}" created successfully!`, 'success');
+        utils.showToast(`Event "${newEventName}" created successfully!`, 'success');
 
-      // Step 2: Clone gallery sections if requested
-      if (cloneGallerySections) {
-        await this.cloneGallerySections(sourceEventId, newEvent.id);
-      }
+        // Step 2: Clone gallery sections if requested
+        if (cloneGallerySections) {
+          await this.cloneGallerySections(sourceEventId, newEvent.id);
+        }
 
-      // Close modal and reload
-      bootstrap.Modal.getInstance(document.getElementById('cloneEventModal')).hide();
-      await this.loadEvents();
+        // Close modal and reload
+        bootstrap.Modal.getInstance(document.getElementById('cloneEventModal')).hide();
+        await this.loadEvents();
 
-      // Show success summary
-      const message = cloneGallerySections
-        ? `Event cloned successfully with gallery sections!`
-        : `Event cloned successfully!`;
+        // Show success summary
+        const message = cloneGallerySections
+          ? `Event cloned successfully with gallery sections!`
+          : `Event cloned successfully!`;
 
-      utils.showToast(message, 'success');
-
+        utils.showToast(message, 'success');
+      });
     } catch (error) {
       console.error('Error cloning event:', error);
       utils.showToast('Error cloning event: ' + error.message, 'error');

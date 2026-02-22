@@ -502,7 +502,7 @@ const awardsModule = {
           <td>${winnerHtml}</td>
           <td class="text-center">
             <div class="btn-group btn-group-sm">
-              <button class="btn btn-outline-secondary btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown" data-bs-display="static" aria-expanded="false">
+              <button class="btn btn-outline-secondary btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown" data-bs-display="static" aria-expanded="false" aria-label="Award actions">
                 <i class="bi bi-three-dots-vertical"></i>
               </button>
               <ul class="dropdown-menu dropdown-menu-end">
@@ -1946,8 +1946,8 @@ const awardsModule = {
               <span class="text-muted ms-1">(${a.county}, ${a.year})</span>
             </div>
             <div class="btn-group btn-group-sm">
-              <button class="btn btn-outline-primary" onclick="awardsModule.openEditModal('${a.id}')" title="Edit first"><i class="bi bi-pencil"></i></button>
-              <button class="btn btn-outline-danger" onclick="awardsModule.deleteAward('${b.id}')" title="Delete second"><i class="bi bi-trash"></i></button>
+              <button class="btn btn-outline-primary" onclick="awardsModule.openEditModal('${a.id}')" title="Edit first" aria-label="Edit first award"><i class="bi bi-pencil"></i></button>
+              <button class="btn btn-outline-danger" onclick="awardsModule.deleteAward('${b.id}')" title="Delete second" aria-label="Delete second award"><i class="bi bi-trash"></i></button>
             </div>
           </div>
         </div></div>`;

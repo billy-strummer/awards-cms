@@ -1107,7 +1107,7 @@ const eventsModule = {
       utils.showToast('All attending guests are already checked in', 'info');
       return;
     }
-    if (!confirm(`Check in all ${unchecked.length} attending guest(s)?`)) return;
+    if (!await utils.confirmDialog({ title: 'Bulk Check In', message: `Check in all ${unchecked.length} attending guest(s)?`, confirmText: 'Check In All', danger: false })) return;
     const now = new Date().toISOString();
     unchecked.forEach(a => { a.checkedIn = true; a.checkInTime = now; });
     this.saveAttendees(eventId, attendees);
@@ -1395,7 +1395,7 @@ const eventsModule = {
       return;
     }
 
-    if (!confirm(`Issue tickets to ${eligible.length} attendee(s)?`)) return;
+    if (!await utils.confirmDialog({ title: 'Issue Tickets', message: `Issue tickets to ${eligible.length} attendee(s)?`, confirmText: 'Issue Tickets', danger: false })) return;
 
     let issued = 0;
     eligible.forEach(attendee => {
@@ -1419,9 +1419,9 @@ const eventsModule = {
     this.renderTicketsTab(eventId);
   },
 
-  revokeTicket(ticketId) {
+  async revokeTicket(ticketId) {
     const eventId = document.getElementById('attendeesEventId').value;
-    if (!confirm('Revoke this ticket?')) return;
+    if (!await utils.confirmDialog({ title: 'Revoke Ticket', message: 'Revoke this ticket?', confirmText: 'Revoke' })) return;
     const ticketData = this._getTicketData(eventId);
     const ticket = ticketData.tickets.find(t => t.id === ticketId);
     if (ticket) {
@@ -1745,9 +1745,9 @@ const eventsModule = {
     utils.showToast(`${name.trim()} added to waitlist`, 'success');
   },
 
-  removeFromWaitlist(wlId) {
+  async removeFromWaitlist(wlId) {
     const eventId = document.getElementById('attendeesEventId').value;
-    if (!confirm('Remove from waitlist?')) return;
+    if (!await utils.confirmDialog({ title: 'Remove from Waitlist', message: 'Remove from waitlist?', confirmText: 'Remove' })) return;
     let waitlist = this.getWaitlist(eventId);
     waitlist = waitlist.filter(w => w.id !== wlId);
     this._saveWaitlist(eventId, waitlist);
@@ -2312,8 +2312,8 @@ const eventsModule = {
     this._editBudgetIdx = null;
   },
 
-  deleteBudgetItem(idx) {
-    if (!confirm('Delete this budget item?')) return;
+  async deleteBudgetItem(idx) {
+    if (!await utils.confirmDialog({ title: 'Delete Budget Item', message: 'Delete this budget item?' })) return;
     const eventId = document.getElementById('attendeesEventId').value;
     const budget = this.getBudget(eventId);
     budget.items.splice(idx, 1);

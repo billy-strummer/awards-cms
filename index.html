@@ -22,7 +22,7 @@
   <script src="https://browser.sentry-cdn.com/8.0.0/bundle.tracing.min.js" crossorigin="anonymous" defer></script>
 
   <!-- Custom Styles -->
-  <link rel="stylesheet" href="styles.css?v=4">
+  <link rel="stylesheet" href="styles.css?v=6">
   <link rel="stylesheet" href="modern-theme.css">
 </head>
 <body>
@@ -140,7 +140,7 @@
           </div>
 
           <!-- Dark Mode Toggle -->
-          <button class="btn btn-outline-light" id="darkModeToggle" title="Toggle dark mode">
+          <button class="btn btn-outline-light" id="darkModeToggle" title="Toggle dark mode" aria-label="Toggle dark mode">
             <i class="bi bi-moon"></i>
           </button>
 
@@ -1302,27 +1302,27 @@
               <div class="card border-0 shadow-sm">
                 <div class="card-body py-3">
                   <div class="row text-center">
-                    <div class="col-md-2">
+                    <div class="col-md-2" data-stat-filter="clear:awardsStatusFilterSelect" title="Show all awards">
                       <h6 class="text-muted mb-1 small">Total Awards</h6>
                       <h3 class="mb-0 fw-bold text-primary" id="statsTotalAwards">0</h3>
                     </div>
-                    <div class="col-md-2">
+                    <div class="col-md-2" data-stat-filter="awardsStatusFilterSelect:active" title="Filter to active awards">
                       <h6 class="text-muted mb-1 small">Active</h6>
                       <h3 class="mb-0 fw-bold text-success" id="statsActiveAwards">0</h3>
                     </div>
-                    <div class="col-md-2">
+                    <div class="col-md-2" title="With Nominees">
                       <h6 class="text-muted mb-1 small">With Nominees</h6>
                       <h3 class="mb-0 fw-bold text-info" id="statsWithNominees">0</h3>
                     </div>
-                    <div class="col-md-2">
+                    <div class="col-md-2" title="Winners Declared">
                       <h6 class="text-muted mb-1 small">Winners Declared</h6>
                       <h3 class="mb-0 fw-bold text-warning" id="statsWithWinners">0</h3>
                     </div>
-                    <div class="col-md-2">
+                    <div class="col-md-2" title="Counties">
                       <h6 class="text-muted mb-1 small">Counties</h6>
                       <h3 class="mb-0 fw-bold text-secondary" id="statsCounties">0</h3>
                     </div>
-                    <div class="col-md-2">
+                    <div class="col-md-2" title="Sectors">
                       <h6 class="text-muted mb-1 small">Sectors</h6>
                       <h3 class="mb-0 fw-bold text-dark" id="statsSectors">0</h3>
                     </div>
@@ -1548,7 +1548,7 @@
                 <h6 class="text-muted mb-1 small">Missing Logo</h6>
                 <h3 class="mb-0 fw-bold text-warning" id="orgsMissingLogo" style="cursor:pointer" title="Click to filter" onclick="document.getElementById('orgsSearchBox').value=''; orgsModule._filterMissingField='logo_url'; orgsModule.filterOrganisations();">0</h3>
               </div>
-              <div class="col">
+              <div class="col" style="cursor:pointer" title="Click to filter sponsors" onclick="document.getElementById('orgsStatusFilter').value='sponsor'; orgsModule.filterOrganisations();">
                 <h6 class="text-muted mb-1 small">Sponsors</h6>
                 <h3 class="mb-0 fw-bold text-purple" id="orgsSponsorCount" style="color:#6f42c1;">0</h3>
               </div>
@@ -1581,19 +1581,19 @@
             <div class="mt-3 pt-2 border-top">
               <div class="d-flex align-items-center justify-content-center gap-1 flex-wrap small">
                 <span class="text-muted fw-semibold">Pipeline:</span>
-                <span class="badge bg-secondary" id="orgsPipelineProspect" title="Prospects">0 Prospects</span>
+                <span class="badge bg-secondary" id="orgsPipelineProspect" title="Click to filter prospects" data-stat-filter="orgsStatusFilter:prospect">0 Prospects</span>
                 <span class="text-muted" style="font-size: 0.65rem;" id="orgsConvProspectEntrant" title="Conversion rate">0%</span>
                 <i class="bi bi-chevron-right text-muted"></i>
-                <span class="badge bg-info" id="orgsPipelineEntrant" title="Entrants">0 Entrants</span>
+                <span class="badge bg-info" id="orgsPipelineEntrant" title="Click to filter entrants" data-stat-filter="orgsStatusFilter:entrant">0 Entrants</span>
                 <span class="text-muted" style="font-size: 0.65rem;" id="orgsConvEntrantNominee" title="Conversion rate">0%</span>
                 <i class="bi bi-chevron-right text-muted"></i>
-                <span class="badge bg-primary" id="orgsPipelineNominee" title="Nominees">0 Nominees</span>
+                <span class="badge bg-primary" id="orgsPipelineNominee" title="Click to filter nominees" data-stat-filter="orgsStatusFilter:nominee">0 Nominees</span>
                 <span class="text-muted" style="font-size: 0.65rem;" id="orgsConvNomineeShortlisted" title="Conversion rate">0%</span>
                 <i class="bi bi-chevron-right text-muted"></i>
-                <span class="badge bg-warning text-dark" id="orgsPipelineShortlisted" title="Shortlisted">0 Shortlisted</span>
+                <span class="badge bg-warning text-dark" id="orgsPipelineShortlisted" title="Click to filter shortlisted" data-stat-filter="orgsStatusFilter:shortlisted">0 Shortlisted</span>
                 <span class="text-muted" style="font-size: 0.65rem;" id="orgsConvShortlistedWinner" title="Conversion rate">0%</span>
                 <i class="bi bi-chevron-right text-muted"></i>
-                <span class="badge bg-success" id="orgsPipelineWinner" title="Winners">0 Winners</span>
+                <span class="badge bg-success" id="orgsPipelineWinner" title="Click to filter winners" data-stat-filter="orgsStatusFilter:winner">0 Winners</span>
               </div>
             </div>
           </div>
@@ -2319,6 +2319,24 @@
             </div>
           </div>
 
+          <!-- Winners Bulk Action Bar -->
+          <div class="card mb-3 d-none" id="winnersBulkBar">
+            <div class="card-body py-2 d-flex align-items-center justify-content-between">
+              <span><strong id="winnersBulkCount">0</strong> winners selected</span>
+              <div class="btn-group btn-group-sm">
+                <button class="btn btn-outline-danger" onclick="winnersModule.bulkDeleteWinners()">
+                  <i class="bi bi-trash me-1"></i>Delete Selected
+                </button>
+                <button class="btn btn-outline-secondary" onclick="winnersModule.bulkExportWinners()">
+                  <i class="bi bi-download me-1"></i>Export Selected
+                </button>
+                <button class="btn btn-outline-secondary" onclick="winnersModule.clearWinnerSelection()">
+                  <i class="bi bi-x-circle me-1"></i>Clear
+                </button>
+              </div>
+            </div>
+          </div>
+
           <!-- Winners Table -->
           <div class="table-container">
             <div class="d-flex justify-content-between align-items-center mb-3">
@@ -2357,6 +2375,7 @@
               <table class="table table-hover table-striped align-middle">
                 <thead>
                   <tr>
+                    <th style="width:35px"><input type="checkbox" class="form-check-input" id="selectAllWinners" onchange="winnersModule.toggleSelectAllWinners(this.checked)"></th>
                     <th>Winner Name</th>
                     <th>Award</th>
                     <th>Year</th>
@@ -2367,7 +2386,7 @@
                 </thead>
                 <tbody id="winnersTableBody">
                   <tr>
-                    <td colspan="6" class="text-center py-5">
+                    <td colspan="7" class="text-center py-5">
                       <div class="text-muted">
                         <i class="bi bi-inbox display-3 d-block mb-3 opacity-25"></i>
                         <p class="mb-0">Loading winners...</p>
@@ -2399,7 +2418,7 @@
           <!-- Stats Cards -->
           <div class="row g-3 mb-4">
             <div class="col-md-3">
-              <div class="card stats-card">
+              <div class="card stats-card" data-stat-filter="clear:entriesStatusFilter" title="Show all entries">
                 <div class="card-body">
                   <div class="d-flex align-items-center">
                     <div class="stats-icon bg-primary">
@@ -2414,7 +2433,7 @@
               </div>
             </div>
             <div class="col-md-3">
-              <div class="card stats-card">
+              <div class="card stats-card" data-stat-filter="entriesStatusFilter:under_review" title="Filter to pending review">
                 <div class="card-body">
                   <div class="d-flex align-items-center">
                     <div class="stats-icon bg-warning">
@@ -2429,7 +2448,7 @@
               </div>
             </div>
             <div class="col-md-3">
-              <div class="card stats-card">
+              <div class="card stats-card" data-stat-filter="entriesStatusFilter:shortlisted" title="Filter to shortlisted">
                 <div class="card-body">
                   <div class="d-flex align-items-center">
                     <div class="stats-icon bg-info">
@@ -2444,7 +2463,7 @@
               </div>
             </div>
             <div class="col-md-3">
-              <div class="card stats-card">
+              <div class="card stats-card" data-stat-filter="entriesStatusFilter:winner" title="Filter to winners">
                 <div class="card-body">
                   <div class="d-flex align-items-center">
                     <div class="stats-icon bg-success">
@@ -2550,6 +2569,7 @@
                 </tbody>
               </table>
             </div>
+            <div id="entriesPagination"></div>
           </div>
 
         </div>
@@ -3138,35 +3158,35 @@
           <!-- Quick Stats -->
           <div class="row g-3 mb-4">
             <div class="col-6 col-md-3 col-lg">
-              <div class="stat-card">
+              <div class="stat-card" data-stat-filter="clear:eventsStatusFilter" title="Show all events">
                 <i class="bi bi-calendar-event stat-card-icon text-primary"></i>
                 <h6>Total Events</h6>
                 <div class="stat-value" id="eventsTotalCount">0</div>
               </div>
             </div>
             <div class="col-6 col-md-3 col-lg">
-              <div class="stat-card">
+              <div class="stat-card" data-stat-filter="eventsStatusFilter:upcoming" title="Filter to upcoming events">
                 <i class="bi bi-calendar-plus stat-card-icon text-success"></i>
                 <h6>Upcoming</h6>
                 <div class="stat-value text-success" id="eventsUpcomingCount">0</div>
               </div>
             </div>
             <div class="col-6 col-md-3 col-lg">
-              <div class="stat-card">
+              <div class="stat-card" data-stat-filter="eventsStatusFilter:this-month" title="Filter to this month's events">
                 <i class="bi bi-calendar-check stat-card-icon text-info"></i>
                 <h6>This Year</h6>
                 <div class="stat-value text-info" id="eventsThisYearCount">0</div>
               </div>
             </div>
             <div class="col-6 col-md-3 col-lg">
-              <div class="stat-card">
+              <div class="stat-card" data-stat-filter="eventsStatusFilter:past" title="Filter to past events">
                 <i class="bi bi-clock-history stat-card-icon text-secondary"></i>
                 <h6>Past Events</h6>
                 <div class="stat-value text-secondary" id="eventsPastCount">0</div>
               </div>
             </div>
             <div class="col-6 col-md-3 col-lg">
-              <div class="stat-card" style="cursor:pointer" onclick="eventsModule.filterDataIssues();" title="Click to view events with missing data">
+              <div class="stat-card" data-stat-filter="callback:eventsModule.filterDataIssues" title="Click to view events with missing data">
                 <i class="bi bi-exclamation-triangle stat-card-icon text-warning"></i>
                 <h6>Data Issues</h6>
                 <div class="stat-value text-warning" id="eventsDataIssuesCount">0</div>
@@ -3317,14 +3337,32 @@
             <div class="d-flex justify-content-between align-items-center mb-3">
               <h5 class="mb-0"><i class="bi bi-calendar-week me-2"></i>Events Calendar</h5>
               <div class="d-flex gap-2 align-items-center">
-                <button class="btn btn-sm btn-outline-secondary" onclick="eventsModule.calendarPrev()"><i class="bi bi-chevron-left"></i></button>
+                <button class="btn btn-sm btn-outline-secondary" onclick="eventsModule.calendarPrev()" aria-label="Previous month"><i class="bi bi-chevron-left"></i></button>
                 <span class="fw-semibold" id="eventsCalendarTitle">February 2026</span>
-                <button class="btn btn-sm btn-outline-secondary" onclick="eventsModule.calendarNext()"><i class="bi bi-chevron-right"></i></button>
+                <button class="btn btn-sm btn-outline-secondary" onclick="eventsModule.calendarNext()" aria-label="Next month"><i class="bi bi-chevron-right"></i></button>
                 <div class="vr mx-1"></div>
                 <button class="btn btn-sm btn-outline-secondary" onclick="eventsModule.hideEventsCalendar()"><i class="bi bi-x-lg"></i> Close</button>
               </div>
             </div>
             <div id="eventsCalendarGrid" class="row g-1"></div>
+          </div>
+
+          <!-- Events Bulk Action Bar -->
+          <div class="card mb-3 d-none" id="eventsBulkBar">
+            <div class="card-body py-2 d-flex align-items-center justify-content-between">
+              <span><strong id="eventsBulkCount">0</strong> events selected</span>
+              <div class="btn-group btn-group-sm">
+                <button class="btn btn-outline-danger" onclick="eventsModule.bulkDeleteEvents()">
+                  <i class="bi bi-trash me-1"></i>Delete Selected
+                </button>
+                <button class="btn btn-outline-secondary" onclick="eventsModule.bulkExportEvents()">
+                  <i class="bi bi-download me-1"></i>Export Selected
+                </button>
+                <button class="btn btn-outline-secondary" onclick="eventsModule.clearSelection()">
+                  <i class="bi bi-x-circle me-1"></i>Clear
+                </button>
+              </div>
+            </div>
           </div>
 
           <!-- Events Table -->
@@ -3389,7 +3427,7 @@
               </ul>
             </div>
             <button class="btn btn-sm btn-outline-danger" onclick="eventsModule.bulkDelete()"><i class="bi bi-trash me-1"></i>Delete</button>
-            <button class="btn btn-sm btn-outline-light" onclick="eventsModule.clearEventSelection()"><i class="bi bi-x-lg"></i></button>
+            <button class="btn btn-sm btn-outline-light" onclick="eventsModule.clearEventSelection()" aria-label="Clear selection"><i class="bi bi-x-lg"></i></button>
           </div>
 
         </div>
@@ -4672,10 +4710,10 @@
                       <h6 class="mb-0"><i class="bi bi-palette me-2"></i>Email Canvas</h6>
                       <div class="d-flex gap-2">
                         <div class="btn-group btn-group-sm" role="group">
-                          <button class="btn btn-outline-secondary" onclick="emailBuilder.undo()" title="Undo (Ctrl+Z)">
+                          <button class="btn btn-outline-secondary" onclick="emailBuilder.undo()" title="Undo (Ctrl+Z)" aria-label="Undo">
                             <i class="bi bi-arrow-counterclockwise"></i>
                           </button>
-                          <button class="btn btn-outline-secondary" onclick="emailBuilder.redo()" title="Redo (Ctrl+Y)">
+                          <button class="btn btn-outline-secondary" onclick="emailBuilder.redo()" title="Redo (Ctrl+Y)" aria-label="Redo">
                             <i class="bi bi-arrow-clockwise"></i>
                           </button>
                         </div>
@@ -4915,28 +4953,28 @@
               <!-- Quick Stats -->
               <div class="row g-3 mb-4">
                 <div class="col-md-3">
-                  <div class="content-card text-center">
+                  <div class="content-card text-center" data-stat-filter="clear:invoiceStatusFilter" title="Show all invoices">
                     <i class="bi bi-file-earmark-text text-primary fs-1 mb-2"></i>
                     <div class="fs-2 fw-bold" id="totalInvoicesCount">0</div>
                     <div class="text-muted small">Total Invoices</div>
                   </div>
                 </div>
                 <div class="col-md-3">
-                  <div class="content-card text-center">
+                  <div class="content-card text-center" data-stat-filter="invoiceStatusFilter:paid" title="Filter to paid invoices">
                     <i class="bi bi-check-circle text-success fs-1 mb-2"></i>
                     <div class="fs-2 fw-bold" id="paidInvoicesCount">0</div>
                     <div class="text-muted small">Paid Invoices</div>
                   </div>
                 </div>
                 <div class="col-md-3">
-                  <div class="content-card text-center">
+                  <div class="content-card text-center" data-stat-filter="invoiceStatusFilter:overdue" title="Filter to overdue invoices">
                     <i class="bi bi-exclamation-triangle text-warning fs-1 mb-2"></i>
                     <div class="fs-2 fw-bold" id="overdueInvoicesCount">0</div>
                     <div class="text-muted small">Overdue Invoices</div>
                   </div>
                 </div>
                 <div class="col-md-3">
-                  <div class="content-card text-center">
+                  <div class="content-card text-center" data-stat-filter="invoiceStatusFilter:partially_paid" title="Filter to invoices with outstanding balance">
                     <i class="bi bi-currency-pound text-info fs-1 mb-2"></i>
                     <div class="fs-2 fw-bold" id="totalOutstandingAmount">£0</div>
                     <div class="text-muted small">Outstanding</div>
@@ -4948,8 +4986,12 @@
               <div class="content-card mb-4">
                 <div class="row g-3 align-items-end">
                   <div class="col-md-3">
+                    <label class="form-label small fw-bold">Search</label>
+                    <input type="text" class="form-control form-control-sm" id="invoiceSearchBox" placeholder="Invoice #, company..." oninput="paymentsModule.filterInvoices()">
+                  </div>
+                  <div class="col-md-3">
                     <label class="form-label small fw-bold">Status</label>
-                    <select class="form-select form-select-sm" id="invoiceStatusFilter">
+                    <select class="form-select form-select-sm" id="invoiceStatusFilter" onchange="paymentsModule.filterInvoices()">
                       <option value="">All Statuses</option>
                       <option value="draft">Draft</option>
                       <option value="sent">Sent</option>
@@ -4960,20 +5002,25 @@
                       <option value="cancelled">Cancelled</option>
                     </select>
                   </div>
-                  <div class="col-md-3">
+                  <div class="col-md-2">
                     <label class="form-label small fw-bold">Organisation</label>
-                    <select class="form-select form-select-sm" id="invoiceOrgFilter">
+                    <select class="form-select form-select-sm" id="invoiceOrgFilter" onchange="paymentsModule.filterInvoices()">
                       <option value="">All Organisations</option>
                     </select>
                   </div>
-                  <div class="col-md-3">
+                  <div class="col-md-2">
                     <label class="form-label small fw-bold">Date Range</label>
-                    <input type="month" class="form-control form-control-sm" id="invoiceMonthFilter">
+                    <input type="month" class="form-control form-control-sm" id="invoiceMonthFilter" onchange="paymentsModule.filterInvoices()">
                   </div>
-                  <div class="col-md-3">
-                    <button class="btn btn-primary btn-sm w-100" onclick="paymentsModule.createNewInvoice()">
-                      <i class="bi bi-plus-circle me-1"></i>Create Invoice
-                    </button>
+                  <div class="col-md-2">
+                    <div class="d-flex gap-1">
+                      <button class="btn btn-primary btn-sm flex-grow-1" onclick="paymentsModule.createNewInvoice()">
+                        <i class="bi bi-plus-circle me-1"></i>Create Invoice
+                      </button>
+                      <button class="btn btn-outline-secondary btn-sm" onclick="paymentsModule.exportInvoicesCSV()" title="Export CSV">
+                        <i class="bi bi-download me-1"></i>Export
+                      </button>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -4984,15 +5031,15 @@
                   <table class="table table-hover table-striped align-middle">
                     <thead class="table-light">
                       <tr>
-                        <th>Invoice #</th>
-                        <th>Organisation</th>
-                        <th>Date</th>
-                        <th>Due Date</th>
+                        <th style="cursor:pointer" onclick="paymentsModule.sortInvoices('invoice_number')">Invoice #</th>
+                        <th style="cursor:pointer" onclick="paymentsModule.sortInvoices('org_name')">Organisation</th>
+                        <th style="cursor:pointer" onclick="paymentsModule.sortInvoices('invoice_date')">Date</th>
+                        <th style="cursor:pointer" onclick="paymentsModule.sortInvoices('due_date')">Due Date</th>
                         <th>Type</th>
-                        <th>Amount</th>
+                        <th style="cursor:pointer" onclick="paymentsModule.sortInvoices('total_amount')">Amount</th>
                         <th>Paid</th>
-                        <th>Balance</th>
-                        <th>Status</th>
+                        <th style="cursor:pointer" onclick="paymentsModule.sortInvoices('balance_due')">Balance</th>
+                        <th style="cursor:pointer" onclick="paymentsModule.sortInvoices('status')">Status</th>
                         <th>Actions</th>
                       </tr>
                     </thead>
@@ -5016,21 +5063,21 @@
               <!-- Quick Stats -->
               <div class="row g-3 mb-4">
                 <div class="col-md-4">
-                  <div class="content-card text-center">
+                  <div class="content-card text-center" data-stat-filter="clear:paymentStatusFilter" title="Show all payments">
                     <i class="bi bi-cash-coin text-success fs-1 mb-2"></i>
                     <div class="fs-2 fw-bold" id="totalPaymentsCount">0</div>
                     <div class="text-muted small">Total Payments</div>
                   </div>
                 </div>
                 <div class="col-md-4">
-                  <div class="content-card text-center">
+                  <div class="content-card text-center" data-stat-filter="paymentStatusFilter:completed" title="Filter to completed payments">
                     <i class="bi bi-currency-pound text-primary fs-1 mb-2"></i>
                     <div class="fs-2 fw-bold" id="totalPaymentsAmount">£0</div>
                     <div class="text-muted small">Total Received</div>
                   </div>
                 </div>
                 <div class="col-md-4">
-                  <div class="content-card text-center">
+                  <div class="content-card text-center" data-stat-filter="callback:paymentsModule.filterThisMonth" title="Filter to this month's payments">
                     <i class="bi bi-calendar-month text-info fs-1 mb-2"></i>
                     <div class="fs-2 fw-bold" id="monthlyPaymentsAmount">£0</div>
                     <div class="text-muted small">This Month</div>
@@ -5042,8 +5089,12 @@
               <div class="content-card mb-4">
                 <div class="row g-3 align-items-end">
                   <div class="col-md-3">
+                    <label class="form-label small fw-bold">Search</label>
+                    <input type="text" class="form-control form-control-sm" id="paymentSearchBox" placeholder="Reference, company..." oninput="paymentsModule.filterPayments()">
+                  </div>
+                  <div class="col-md-2">
                     <label class="form-label small fw-bold">Payment Method</label>
-                    <select class="form-select form-select-sm" id="paymentMethodFilter">
+                    <select class="form-select form-select-sm" id="paymentMethodFilter" onchange="paymentsModule.filterPayments()">
                       <option value="">All Methods</option>
                       <option value="bank_transfer">Bank Transfer</option>
                       <option value="card">Card</option>
@@ -5054,9 +5105,9 @@
                       <option value="other">Other</option>
                     </select>
                   </div>
-                  <div class="col-md-3">
+                  <div class="col-md-2">
                     <label class="form-label small fw-bold">Status</label>
-                    <select class="form-select form-select-sm" id="paymentStatusFilter">
+                    <select class="form-select form-select-sm" id="paymentStatusFilter" onchange="paymentsModule.filterPayments()">
                       <option value="">All Statuses</option>
                       <option value="pending">Pending</option>
                       <option value="completed">Completed</option>
@@ -5064,14 +5115,19 @@
                       <option value="refunded">Refunded</option>
                     </select>
                   </div>
-                  <div class="col-md-3">
+                  <div class="col-md-2">
                     <label class="form-label small fw-bold">Date Range</label>
-                    <input type="month" class="form-control form-control-sm" id="paymentMonthFilter">
+                    <input type="month" class="form-control form-control-sm" id="paymentMonthFilter" onchange="paymentsModule.filterPayments()">
                   </div>
                   <div class="col-md-3">
-                    <button class="btn btn-success btn-sm w-100" onclick="paymentsModule.recordNewPayment()">
-                      <i class="bi bi-plus-circle me-1"></i>Record Payment
-                    </button>
+                    <div class="d-flex gap-1">
+                      <button class="btn btn-success btn-sm flex-grow-1" onclick="paymentsModule.recordNewPayment()">
+                        <i class="bi bi-plus-circle me-1"></i>Record Payment
+                      </button>
+                      <button class="btn btn-outline-secondary btn-sm" onclick="paymentsModule.exportPaymentsCSV()" title="Export CSV">
+                        <i class="bi bi-download me-1"></i>Export
+                      </button>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -5267,13 +5323,13 @@
                 <div class="row g-3">
                   <div class="col-md-4">
                     <label class="form-label small fw-bold">Filter by Segment</label>
-                    <select class="form-select form-select-sm" id="crmSegmentFilter">
+                    <select class="form-select form-select-sm" id="crmSegmentFilter" onchange="crmModule.filterCompanies()">
                       <option value="">All Companies</option>
                     </select>
                   </div>
                   <div class="col-md-4">
                     <label class="form-label small fw-bold">Search</label>
-                    <input type="text" class="form-control form-control-sm" id="crmCompanySearch" placeholder="Search companies...">
+                    <input type="text" class="form-control form-control-sm" id="crmCompanySearch" placeholder="Search companies..." oninput="crmModule.filterCompanies()">
                   </div>
                   <div class="col-md-4 d-flex align-items-end">
                     <button class="btn btn-primary btn-sm w-100" onclick="crmModule.openCompanyDetails()">
@@ -5321,7 +5377,7 @@
                 <div class="row g-3 align-items-end">
                   <div class="col-md-3">
                     <label class="form-label small fw-bold">Type</label>
-                    <select class="form-select form-select-sm" id="communicationTypeFilter">
+                    <select class="form-select form-select-sm" id="communicationTypeFilter" onchange="crmModule.loadCommunications()">
                       <option value="">All Types</option>
                       <option value="email">Email</option>
                       <option value="phone">Phone</option>
@@ -5333,7 +5389,7 @@
                   </div>
                   <div class="col-md-3">
                     <label class="form-label small fw-bold">Regarding</label>
-                    <select class="form-select form-select-sm" id="communicationRegardingFilter">
+                    <select class="form-select form-select-sm" id="communicationRegardingFilter" onchange="crmModule.loadCommunications()">
                       <option value="">All Topics</option>
                       <option value="sponsorship">Sponsorship</option>
                       <option value="award_application">Award Application</option>
@@ -5345,7 +5401,7 @@
                   </div>
                   <div class="col-md-3">
                     <label class="form-label small fw-bold">Follow-up Required</label>
-                    <select class="form-select form-select-sm" id="communicationFollowUpFilter">
+                    <select class="form-select form-select-sm" id="communicationFollowUpFilter" onchange="crmModule.loadCommunications()">
                       <option value="">All</option>
                       <option value="true">Yes</option>
                       <option value="false">No</option>
@@ -5395,28 +5451,28 @@
               <!-- Pipeline Stats -->
               <div class="row g-3 mb-4">
                 <div class="col-md-3">
-                  <div class="content-card text-center">
+                  <div class="content-card text-center" data-stat-filter="callback:crmModule.filterDealsActive" title="Filter to active deals">
                     <i class="bi bi-lightning text-warning fs-1 mb-2"></i>
                     <div class="fs-2 fw-bold" id="totalActiveDeals">0</div>
                     <div class="text-muted small">Active Deals</div>
                   </div>
                 </div>
                 <div class="col-md-3">
-                  <div class="content-card text-center">
+                  <div class="content-card text-center" data-stat-filter="callback:crmModule.filterDealsAll" title="Show all deals">
                     <i class="bi bi-currency-pound text-success fs-1 mb-2"></i>
                     <div class="fs-2 fw-bold" id="totalPipelineValue">£0</div>
                     <div class="text-muted small">Pipeline Value</div>
                   </div>
                 </div>
                 <div class="col-md-3">
-                  <div class="content-card text-center">
+                  <div class="content-card text-center" data-stat-filter="callback:crmModule.filterDealsWon" title="Filter to won deals">
                     <i class="bi bi-check-circle text-primary fs-1 mb-2"></i>
                     <div class="fs-2 fw-bold" id="dealsWonThisMonth">0</div>
                     <div class="text-muted small">Won This Month</div>
                   </div>
                 </div>
                 <div class="col-md-3">
-                  <div class="content-card text-center">
+                  <div class="content-card text-center" title="Win Rate">
                     <i class="bi bi-percent text-info fs-1 mb-2"></i>
                     <div class="fs-2 fw-bold" id="averageWinRate">0%</div>
                     <div class="text-muted small">Win Rate</div>
@@ -5429,7 +5485,7 @@
                 <div class="row g-3 align-items-end">
                   <div class="col-md-3">
                     <label class="form-label small fw-bold">Stage</label>
-                    <select class="form-select form-select-sm" id="dealStageFilter">
+                    <select class="form-select form-select-sm" id="dealStageFilter" onchange="crmModule.applyFilter('deals', 'stage', this.value || 'all')">
                       <option value="">All Stages</option>
                       <option value="lead">Lead</option>
                       <option value="contacted">Contacted</option>
@@ -5442,7 +5498,7 @@
                   </div>
                   <div class="col-md-3">
                     <label class="form-label small fw-bold">Type</label>
-                    <select class="form-select form-select-sm" id="dealTypeFilter">
+                    <select class="form-select form-select-sm" id="dealTypeFilter" onchange="crmModule.applyFilter('deals', 'type', this.value || 'all')">
                       <option value="">All Types</option>
                       <option value="sponsorship">Sponsorship</option>
                       <option value="award_fee">Award Fee</option>
@@ -5454,7 +5510,8 @@
                   </div>
                   <div class="col-md-3">
                     <label class="form-label small fw-bold">Status</label>
-                    <select class="form-select form-select-sm" id="dealStatusFilter">
+                    <select class="form-select form-select-sm" id="dealStatusFilter" onchange="crmModule.applyFilter('deals', 'status', this.value || 'all')">
+                      <option value="">All Statuses</option>
                       <option value="active">Active</option>
                       <option value="won">Won</option>
                       <option value="lost">Lost</option>
@@ -6151,16 +6208,16 @@ Available placeholders:
               <div class="vr mx-2"></div>
               <span class="fw-semibold small me-1">Style:</span>
               <div class="btn-group btn-group-sm">
-                <button class="btn btn-outline-secondary btc-style-btn active" onclick="btcModule.switchStyle('1', this)" title="Candles"><i class="bi bi-bar-chart"></i></button>
-                <button class="btn btn-outline-secondary btc-style-btn" onclick="btcModule.switchStyle('2', this)" title="Line"><i class="bi bi-graph-up"></i></button>
-                <button class="btn btn-outline-secondary btc-style-btn" onclick="btcModule.switchStyle('3', this)" title="Area"><i class="bi bi-graph-down"></i></button>
-                <button class="btn btn-outline-secondary btc-style-btn" onclick="btcModule.switchStyle('0', this)" title="Bars"><i class="bi bi-bar-chart-steps"></i></button>
+                <button class="btn btn-outline-secondary btc-style-btn active" onclick="btcModule.switchStyle('1', this)" title="Candles" aria-label="Candles chart style"><i class="bi bi-bar-chart"></i></button>
+                <button class="btn btn-outline-secondary btc-style-btn" onclick="btcModule.switchStyle('2', this)" title="Line" aria-label="Line chart style"><i class="bi bi-graph-up"></i></button>
+                <button class="btn btn-outline-secondary btc-style-btn" onclick="btcModule.switchStyle('3', this)" title="Area" aria-label="Area chart style"><i class="bi bi-graph-down"></i></button>
+                <button class="btn btn-outline-secondary btc-style-btn" onclick="btcModule.switchStyle('0', this)" title="Bars" aria-label="Bars chart style"><i class="bi bi-bar-chart-steps"></i></button>
               </div>
               <div class="vr mx-2"></div>
               <span class="fw-semibold small me-1">Theme:</span>
               <div class="btn-group btn-group-sm">
-                <button class="btn btn-outline-dark btc-theme-btn active" onclick="btcModule.switchTheme('dark', this)"><i class="bi bi-moon-fill"></i></button>
-                <button class="btn btn-outline-light border btc-theme-btn" onclick="btcModule.switchTheme('light', this)"><i class="bi bi-sun-fill"></i></button>
+                <button class="btn btn-outline-dark btc-theme-btn active" onclick="btcModule.switchTheme('dark', this)" aria-label="Dark theme"><i class="bi bi-moon-fill"></i></button>
+                <button class="btn btn-outline-light border btc-theme-btn" onclick="btcModule.switchTheme('light', this)" aria-label="Light theme"><i class="bi bi-sun-fill"></i></button>
               </div>
             </div>
           </div>
@@ -8976,6 +9033,23 @@ in recognition of excellence
           <button type="button" class="btn btn-success" id="importWinnersBtn" disabled onclick="winnersModule.importWinners()">
             <i class="bi bi-upload me-1"></i>Import Winners
           </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Confirmation Dialog Modal -->
+  <div class="modal fade" id="confirmDialogModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="confirmDialogTitle">Confirm</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body" id="confirmDialogBody">Are you sure?</div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="button" class="btn btn-danger" id="confirmDialogOk">Delete</button>
         </div>
       </div>
     </div>

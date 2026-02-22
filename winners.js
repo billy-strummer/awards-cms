@@ -5,6 +5,7 @@
 const winnersModule = {
   currentWinnerId: null,
   currentMediaType: null,
+  _selectedWinnerIds: new Set(),
 
   /**
    * Load all winners from database
@@ -12,7 +13,7 @@ const winnersModule = {
   async loadWinners() {
     try {
       utils.showLoading();
-      utils.showTableLoading('winnersTableBody', 5);
+      utils.showTableLoading('winnersTableBody', 7);
 
       // Paginated loading for large winner datasets
       let allData = [];
@@ -92,14 +93,23 @@ const winnersModule = {
       STATE.filteredWinners = STATE.allWinners;
 
       this.populateFilters();
-      this.renderWinners();
+
+      // Restore saved filters from localStorage
+      try {
+        const saved = JSON.parse(localStorage.getItem('winnersFilters') || '{}');
+        if (saved.year) document.getElementById('winnerYearFilterSelect').value = saved.year;
+        if (saved.award) document.getElementById('winnerAwardFilterSelect').value = saved.award;
+        if (saved.search) document.getElementById('winnerSearchBox').value = saved.search;
+      } catch(e) {}
+
+      this.filterWinners();
       
       console.log(`✅ Loaded ${STATE.allWinners.length} winners`);
       
     } catch (error) {
       console.error('Error loading winners:', error);
       utils.showToast('Failed to load winners: ' + error.message, 'error');
-      utils.showEmptyState('winnersTableBody', 5, 'Failed to load winners', 'bi-exclamation-triangle');
+      utils.showEmptyState('winnersTableBody', 7, 'Failed to load winners', 'bi-exclamation-triangle');
     } finally {
       utils.hideLoading();
     }
@@ -130,7 +140,9 @@ const winnersModule = {
     const year = document.getElementById('winnerYearFilterSelect').value;
     const award = document.getElementById('winnerAwardFilterSelect').value;
     const search = document.getElementById('winnerSearchBox').value.toLowerCase().trim();
-    
+
+    try { localStorage.setItem('winnersFilters', JSON.stringify({ year, award, search })); } catch(e) {}
+
     STATE.filteredWinners = STATE.allWinners.filter(winner => {
       // Year filter
       if (year && String(winner.awards?.year) !== year) return false;
@@ -164,7 +176,7 @@ const winnersModule = {
     count.textContent = STATE.filteredWinners.length;
 
     if (STATE.filteredWinners.length === 0) {
-      utils.showEmptyState('winnersTableBody', 6, 'No winners found');
+      utils.showEmptyState('winnersTableBody', 7, 'No winners found');
       return;
     }
 
@@ -186,8 +198,11 @@ const winnersModule = {
       const status = winner.winner_status || 'pending';
       const statusInfo = statusConfig[status] || statusConfig.pending;
 
+      const winnerChecked = this._selectedWinnerIds.has(winner.id) ? 'checked' : '';
+
       return `
         <tr class="fade-in">
+          <td><input type="checkbox" class="form-check-input winner-checkbox" value="${winner.id}" ${winnerChecked} onchange="winnersModule.toggleWinnerSelect('${winner.id}', this.checked)"></td>
           <td>
             <div class="fw-semibold">${utils.escapeHtml(winner.winner_name || 'N/A')}</div>
           </td>
@@ -223,7 +238,7 @@ const winnersModule = {
             <div class="d-flex gap-1 justify-content-center flex-wrap">
               ${mediaTotal > 0 ? `
               <div class="btn-group btn-group-sm">
-                <button class="btn btn-outline-secondary btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown" data-bs-display="static" title="View Media">
+                <button class="btn btn-outline-secondary btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown" data-bs-display="static" title="View Media" aria-label="View media">
                   <i class="bi bi-collection"></i>
                 </button>
                 <ul class="dropdown-menu dropdown-menu-end">
@@ -235,19 +250,22 @@ const winnersModule = {
               <button
                 class="btn btn-outline-secondary btn-sm"
                 onclick="winnersModule.downloadMediaPack('${winner.id}')"
-                title="Download Media Pack">
+                title="Download Media Pack"
+                aria-label="Download media pack">
                 <i class="bi bi-newspaper"></i>
               </button>
               <button
                 class="btn btn-outline-primary btn-sm"
                 onclick="winnersModule.downloadWinnerPackage('${winner.id}')"
-                title="Download Winner Package">
+                title="Download Winner Package"
+                aria-label="Download winner package">
                 <i class="bi bi-gift"></i>
               </button>
               <button
                 class="btn btn-outline-danger btn-sm"
                 onclick="winnersModule.deleteWinner('${winner.id}')"
-                title="Delete Winner">
+                title="Delete Winner"
+                aria-label="Delete winner">
                 <i class="bi bi-trash"></i>
               </button>
             </div>
@@ -530,7 +548,7 @@ const winnersModule = {
    * @param {string} mediaId - Media ID
    */
   async deleteMedia(mediaId) {
-    if (!utils.confirm('Are you sure you want to delete this media?')) {
+    if (!await utils.confirmDialog({ title: 'Delete Media', message: 'Are you sure you want to delete this media?' })) {
       return;
     }
     
@@ -562,7 +580,7 @@ const winnersModule = {
    * @param {string} winnerId - Winner ID
    */
   async deleteWinner(winnerId) {
-    if (!utils.confirm('Are you sure you want to delete this winner? All associated media will also be deleted.')) {
+    if (!await utils.confirmDialog({ title: 'Delete Winner', message: 'Are you sure you want to delete this winner? All associated media will also be deleted.' })) {
       return;
     }
 
@@ -2727,7 +2745,7 @@ const winnersModule = {
       return;
     }
 
-    if (!confirm(`Generate media packs for ${winners.length} winner(s)? This will download multiple files.`)) {
+    if (!await utils.confirmDialog({ title: 'Generate Media Packs', message: `Generate media packs for ${winners.length} winner(s)? This will download multiple files.`, confirmText: 'Generate', danger: false })) {
       return;
     }
 
@@ -2835,7 +2853,7 @@ const winnersModule = {
       return;
     }
 
-    if (!confirm(`Generate winner packages for ${winners.length} winner(s)? This will download multiple files per winner (badge, certificate, banners).`)) {
+    if (!await utils.confirmDialog({ title: 'Generate Winner Packages', message: `Generate winner packages for ${winners.length} winner(s)? This will download multiple files per winner (badge, certificate, banners).`, confirmText: 'Generate', danger: false })) {
       return;
     }
 
@@ -2921,6 +2939,80 @@ const winnersModule = {
       console.error('Error updating winner status:', error);
       utils.showToast('Error updating status: ' + error.message, 'error');
     }
+  },
+
+  // ============================================
+  // BULK OPERATIONS (table-level)
+  // ============================================
+
+  toggleWinnerSelect(winnerId, checked) {
+    if (checked) this._selectedWinnerIds.add(winnerId);
+    else this._selectedWinnerIds.delete(winnerId);
+    this.updateWinnersBulkBar();
+  },
+
+  toggleSelectAllWinners(checked) {
+    document.querySelectorAll('.winner-checkbox').forEach(cb => {
+      cb.checked = checked;
+      if (checked) this._selectedWinnerIds.add(cb.value);
+      else this._selectedWinnerIds.delete(cb.value);
+    });
+    this.updateWinnersBulkBar();
+  },
+
+  updateWinnersBulkBar() {
+    const bar = document.getElementById('winnersBulkBar');
+    const count = document.getElementById('winnersBulkCount');
+    if (bar && count) {
+      count.textContent = this._selectedWinnerIds.size;
+      bar.classList.toggle('d-none', this._selectedWinnerIds.size === 0);
+    }
+  },
+
+  clearWinnerSelection() {
+    this._selectedWinnerIds.clear();
+    document.querySelectorAll('.winner-checkbox').forEach(cb => cb.checked = false);
+    const selectAll = document.getElementById('selectAllWinners');
+    if (selectAll) selectAll.checked = false;
+    this.updateWinnersBulkBar();
+  },
+
+  async bulkDeleteWinners() {
+    if (this._selectedWinnerIds.size === 0) return;
+    if (!await utils.confirmDialog({ title: 'Delete Winners', message: `Delete ${this._selectedWinnerIds.size} selected winners? This cannot be undone.` })) return;
+
+    try {
+      for (const id of this._selectedWinnerIds) {
+        await STATE.client.from('winners').delete().eq('id', id);
+      }
+      utils.showToast(`Deleted ${this._selectedWinnerIds.size} winners`, 'success');
+      this._selectedWinnerIds.clear();
+      this.updateWinnersBulkBar();
+      this.loadWinners();
+    } catch (error) {
+      console.error('Bulk delete winners error:', error);
+      utils.showToast('Error deleting winners', 'error');
+    }
+  },
+
+  bulkExportWinners() {
+    if (this._selectedWinnerIds.size === 0) return;
+    const winners = (STATE.filteredWinners || STATE.allWinners || []).filter(w => this._selectedWinnerIds.has(w.id));
+    const headers = ['Winner Name', 'Award', 'Year', 'Status'];
+    const rows = winners.map(w => [
+      w.winner_name || '',
+      utils.formatAwardName ? utils.formatAwardName(w.awards) : (w.awards?.award_name || ''),
+      w.awards?.year || '',
+      w.winner_status || ''
+    ]);
+    const csv = [headers, ...rows].map(r => r.map(c => `"${String(c).replace(/"/g, '""')}"`).join(',')).join('\n');
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'winners_export.csv';
+    a.click();
+    URL.revokeObjectURL(a.href);
+    utils.showToast(`Exported ${winners.length} winners`, 'success');
   }
 };
 

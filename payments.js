@@ -3,10 +3,14 @@
 /* ==================================================== */
 
 const paymentsModule = {
+  allInvoices: [],
+  allPayments: [],
   currentInvoices: [],
   currentPayments: [],
   currentOrganisations: [],
   currentSendInvoiceId: null,
+  _invoiceSortField: 'created_at',
+  _invoiceSortDir: 'desc',
 
   /* ==================================================== */
   /* INITIALIZATION */
@@ -20,6 +24,26 @@ const paymentsModule = {
         this.loadPayments(),
         this.loadOrganisationsForFilters()
       ]);
+      // Restore saved invoice filters from localStorage
+      try {
+        const savedInv = JSON.parse(localStorage.getItem('invoiceFilters') || '{}');
+        if (savedInv.search) document.getElementById('invoiceSearchBox').value = savedInv.search;
+        if (savedInv.status) document.getElementById('invoiceStatusFilter').value = savedInv.status;
+        if (savedInv.orgId) document.getElementById('invoiceOrgFilter').value = savedInv.orgId;
+        if (savedInv.month) document.getElementById('invoiceMonthFilter').value = savedInv.month;
+        this.filterInvoices();
+      } catch(e) {}
+
+      // Restore saved payment filters from localStorage
+      try {
+        const savedPay = JSON.parse(localStorage.getItem('paymentFilters') || '{}');
+        if (savedPay.search) document.getElementById('paymentSearchBox').value = savedPay.search;
+        if (savedPay.method) document.getElementById('paymentMethodFilter').value = savedPay.method;
+        if (savedPay.status) document.getElementById('paymentStatusFilter').value = savedPay.status;
+        if (savedPay.month) document.getElementById('paymentMonthFilter').value = savedPay.month;
+        this.filterPayments();
+      } catch(e) {}
+
       this.updateStatistics();
       console.log('Payments data loaded');
     } catch (error) {
@@ -46,12 +70,42 @@ const paymentsModule = {
 
       if (error) throw error;
 
-      this.currentInvoices = data || [];
-      this.renderInvoices();
+      this.allInvoices = data || [];
+      this.filterInvoices();
     } catch (error) {
       console.error('Error loading invoices:', error);
       utils.showToast('Failed to load invoices', 'error');
     }
+  },
+
+  filterInvoices() {
+    const search = (document.getElementById('invoiceSearchBox')?.value || '').trim().toLowerCase();
+    const status = document.getElementById('invoiceStatusFilter')?.value || '';
+    const orgId = document.getElementById('invoiceOrgFilter')?.value || '';
+    const month = document.getElementById('invoiceMonthFilter')?.value || '';
+
+    try { localStorage.setItem('invoiceFilters', JSON.stringify({ search: document.getElementById('invoiceSearchBox')?.value || '', status, orgId, month })); } catch(e) {}
+
+    this.currentInvoices = this.allInvoices.filter(inv => {
+      // Search filter
+      if (search) {
+        const invoiceNum = (inv.invoice_number || '').toLowerCase();
+        const companyName = (inv.organisations?.company_name || '').toLowerCase();
+        const notes = (inv.notes || inv.description || '').toLowerCase();
+        if (!invoiceNum.includes(search) && !companyName.includes(search) && !notes.includes(search)) return false;
+      }
+      if (status) {
+        // Match either status or payment_status
+        if (inv.status !== status && inv.payment_status !== status) return false;
+      }
+      if (orgId && inv.organisation_id !== orgId) return false;
+      if (month && !(inv.invoice_date || '').startsWith(month)) return false;
+      return true;
+    });
+
+    this._applySortInvoices();
+    this.renderInvoices();
+    this.updateStatistics();
   },
 
   renderInvoices() {
@@ -74,6 +128,9 @@ const paymentsModule = {
       <tr>
         <td>
           <strong>${utils.escapeHtml(invoice.invoice_number)}</strong>
+          <button class="btn btn-link btn-sm p-0 ms-1" onclick="event.stopPropagation(); paymentsModule.copyToClipboard('${utils.escapeHtml(invoice.invoice_number)}')" title="Copy invoice number" aria-label="Copy invoice number">
+            <i class="bi bi-clipboard text-muted small"></i>
+          </button>
         </td>
         <td>
           ${invoice.organisations?.id && invoice.organisations?.company_name ?
@@ -95,16 +152,16 @@ const paymentsModule = {
         <td>${this.getInvoiceStatusBadge(invoice.status, invoice.payment_status)}</td>
         <td>
           <div class="btn-group btn-group-sm" role="group">
-            <button class="btn btn-outline-primary" onclick="paymentsModule.viewInvoice('${invoice.id}')" title="View">
+            <button class="btn btn-outline-primary" onclick="paymentsModule.viewInvoice('${invoice.id}')" title="View" aria-label="View invoice">
               <i class="bi bi-eye"></i>
             </button>
-            <button class="btn btn-outline-success" onclick="paymentsModule.recordPaymentForInvoice('${invoice.id}')" title="Record Payment">
+            <button class="btn btn-outline-success" onclick="paymentsModule.recordPaymentForInvoice('${invoice.id}')" title="Record Payment" aria-label="Record payment">
               <i class="bi bi-cash"></i>
             </button>
-            <button class="btn btn-outline-secondary" onclick="paymentsModule.sendInvoice('${invoice.id}')" title="Send">
+            <button class="btn btn-outline-secondary" onclick="paymentsModule.sendInvoice('${invoice.id}')" title="Send" aria-label="Send invoice">
               <i class="bi bi-envelope"></i>
             </button>
-            <button class="btn btn-outline-danger" onclick="paymentsModule.deleteInvoice('${invoice.id}')" title="Delete">
+            <button class="btn btn-outline-danger" onclick="paymentsModule.deleteInvoice('${invoice.id}')" title="Delete" aria-label="Delete invoice">
               <i class="bi bi-trash"></i>
             </button>
           </div>
@@ -216,7 +273,7 @@ const paymentsModule = {
           <input type="number" class="form-control form-control-sm" placeholder="Price" step="0.01" min="0" required>
         </div>
         <div class="col-md-1">
-          <button type="button" class="btn btn-sm btn-danger w-100" onclick="paymentsModule.removeInvoiceLineItem(${itemId})">
+          <button type="button" class="btn btn-sm btn-danger w-100" onclick="paymentsModule.removeInvoiceLineItem(${itemId})" aria-label="Remove line item">
             <i class="bi bi-trash"></i>
           </button>
         </div>
@@ -460,7 +517,7 @@ const paymentsModule = {
   },
 
   async deleteInvoice(invoiceId) {
-    if (!confirm('Are you sure you want to delete this invoice? This action cannot be undone.')) {
+    if (!await utils.confirmDialog({ title: 'Delete Invoice', message: 'Are you sure you want to delete this invoice? This action cannot be undone.' })) {
       return;
     }
 
@@ -595,12 +652,44 @@ const paymentsModule = {
 
       if (error) throw error;
 
-      this.currentPayments = data || [];
-      this.renderPayments();
+      this.allPayments = data || [];
+      this.filterPayments();
     } catch (error) {
       console.error('Error loading payments:', error);
       utils.showToast('Failed to load payments', 'error');
     }
+  },
+
+  filterPayments() {
+    const search = (document.getElementById('paymentSearchBox')?.value || '').trim().toLowerCase();
+    const method = document.getElementById('paymentMethodFilter')?.value || '';
+    const status = document.getElementById('paymentStatusFilter')?.value || '';
+    const month = document.getElementById('paymentMonthFilter')?.value || '';
+
+    try { localStorage.setItem('paymentFilters', JSON.stringify({ search: document.getElementById('paymentSearchBox')?.value || '', method, status, month })); } catch(e) {}
+
+    this.currentPayments = this.allPayments.filter(p => {
+      // Search filter
+      if (search) {
+        const ref = (p.payment_reference || '').toLowerCase();
+        const companyName = (p.organisations?.company_name || '').toLowerCase();
+        if (!ref.includes(search) && !companyName.includes(search)) return false;
+      }
+      if (method && p.payment_method !== method) return false;
+      if (status && p.status !== status) return false;
+      if (month && !(p.payment_date || '').startsWith(month)) return false;
+      return true;
+    });
+
+    this.renderPayments();
+    this.updateStatistics();
+  },
+
+  filterThisMonth() {
+    const currentMonth = new Date().toISOString().slice(0, 7);
+    const el = document.getElementById('paymentMonthFilter');
+    if (el) el.value = currentMonth;
+    this.filterPayments();
   },
 
   renderPayments() {
@@ -621,7 +710,12 @@ const paymentsModule = {
 
     tbody.innerHTML = this.currentPayments.map(payment => `
       <tr>
-        <td><strong>${utils.escapeHtml(payment.payment_reference)}</strong></td>
+        <td>
+          <strong>${utils.escapeHtml(payment.payment_reference)}</strong>
+          <button class="btn btn-link btn-sm p-0 ms-1" onclick="event.stopPropagation(); paymentsModule.copyToClipboard('${utils.escapeHtml(payment.payment_reference)}')" title="Copy payment reference" aria-label="Copy payment reference">
+            <i class="bi bi-clipboard text-muted small"></i>
+          </button>
+        </td>
         <td>${payment.payment_date ? new Date(payment.payment_date).toLocaleDateString() : 'N/A'}</td>
         <td>
           ${payment.organisations?.id && payment.organisations?.company_name ?
@@ -640,10 +734,10 @@ const paymentsModule = {
         <td>${this.getPaymentStatusBadge(payment.status)}</td>
         <td>
           <div class="btn-group btn-group-sm" role="group">
-            <button class="btn btn-outline-primary" onclick="paymentsModule.viewPayment('${payment.id}')" title="View">
+            <button class="btn btn-outline-primary" onclick="paymentsModule.viewPayment('${payment.id}')" title="View" aria-label="View payment">
               <i class="bi bi-eye"></i>
             </button>
-            <button class="btn btn-outline-danger" onclick="paymentsModule.deletePayment('${payment.id}')" title="Delete">
+            <button class="btn btn-outline-danger" onclick="paymentsModule.deletePayment('${payment.id}')" title="Delete" aria-label="Delete payment">
               <i class="bi bi-trash"></i>
             </button>
           </div>
@@ -865,7 +959,7 @@ const paymentsModule = {
   },
 
   async deletePayment(paymentId) {
-    if (!confirm('Are you sure you want to delete this payment record?')) {
+    if (!await utils.confirmDialog({ title: 'Delete Payment', message: 'Are you sure you want to delete this payment record?' })) {
       return;
     }
 
@@ -930,6 +1024,99 @@ const paymentsModule = {
     } finally {
       utils.hideLoading();
     }
+  },
+
+  /* ==================================================== */
+  /* SORTING */
+  /* ==================================================== */
+
+  sortInvoices(field) {
+    if (this._invoiceSortField === field) {
+      this._invoiceSortDir = this._invoiceSortDir === 'asc' ? 'desc' : 'asc';
+    } else {
+      this._invoiceSortField = field;
+      this._invoiceSortDir = 'asc';
+    }
+    this._applySortInvoices();
+    this.renderInvoices();
+  },
+
+  _applySortInvoices() {
+    const field = this._invoiceSortField;
+    const dir = this._invoiceSortDir;
+    this.currentInvoices.sort((a, b) => {
+      let valA, valB;
+      if (field === 'org_name') {
+        valA = (a.organisations?.company_name || '').toLowerCase();
+        valB = (b.organisations?.company_name || '').toLowerCase();
+      } else if (['total_amount', 'balance_due', 'paid_amount'].includes(field)) {
+        valA = parseFloat(a[field] || 0);
+        valB = parseFloat(b[field] || 0);
+      } else {
+        valA = (a[field] || '').toString().toLowerCase();
+        valB = (b[field] || '').toString().toLowerCase();
+      }
+      if (valA < valB) return dir === 'asc' ? -1 : 1;
+      if (valA > valB) return dir === 'asc' ? 1 : -1;
+      return 0;
+    });
+  },
+
+  /* ==================================================== */
+  /* CSV EXPORT */
+  /* ==================================================== */
+
+  exportInvoicesCSV() {
+    const headers = ['Invoice #', 'Organisation', 'Date', 'Due Date', 'Type', 'Amount', 'Paid', 'Balance', 'Status'];
+    const rows = this.currentInvoices.map(inv => [
+      inv.invoice_number || '',
+      inv.organisations?.company_name || '',
+      inv.invoice_date || '',
+      inv.due_date || '',
+      this.formatInvoiceType(inv.invoice_type),
+      parseFloat(inv.total_amount || 0).toFixed(2),
+      parseFloat(inv.paid_amount || 0).toFixed(2),
+      parseFloat(inv.balance_due || 0).toFixed(2),
+      inv.status || ''
+    ]);
+    this._downloadCSV(headers, rows, 'invoices_export.csv');
+  },
+
+  exportPaymentsCSV() {
+    const headers = ['Reference', 'Date', 'Organisation', 'Invoice', 'Method', 'Amount', 'Status'];
+    const rows = this.currentPayments.map(p => [
+      p.payment_reference || '',
+      p.payment_date || '',
+      p.organisations?.company_name || '',
+      p.invoices?.invoice_number || '',
+      this.formatPaymentMethod(p.payment_method),
+      parseFloat(p.amount || 0).toFixed(2),
+      p.status || ''
+    ]);
+    this._downloadCSV(headers, rows, 'payments_export.csv');
+  },
+
+  _downloadCSV(headers, rows, filename) {
+    const escapeCSV = (val) => {
+      const str = String(val);
+      if (str.includes(',') || str.includes('"') || str.includes('\n')) {
+        return '"' + str.replace(/"/g, '""') + '"';
+      }
+      return str;
+    };
+    const csvContent = [headers.map(escapeCSV).join(',')]
+      .concat(rows.map(row => row.map(escapeCSV).join(',')))
+      .join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.setAttribute('href', url);
+    link.setAttribute('download', filename);
+    link.style.display = 'none';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
   },
 
   /* ==================================================== */
@@ -1284,6 +1471,14 @@ const paymentsModule = {
   /* UTILITIES */
   /* ==================================================== */
 
+  copyToClipboard(text) {
+    navigator.clipboard.writeText(text).then(() => {
+      utils.showToast('Copied to clipboard: ' + text, 'success');
+    }).catch(() => {
+      utils.showToast('Failed to copy', 'error');
+    });
+  },
+
   async loadOrganisationsForFilters() {
     try {
       const { data, error } = await STATE.client
@@ -1396,7 +1591,7 @@ const paymentsModule = {
   },
 
   async _disconnectAccounting() {
-    if (!confirm('Disconnect accounting integration?')) return;
+    if (!await utils.confirmDialog({ title: 'Disconnect Integration', message: 'Disconnect accounting integration?', confirmText: 'Disconnect' })) return;
     this._accountingConfig.connected = false;
     await this._saveAccountingConfig();
     utils.showToast('Disconnected', 'success');

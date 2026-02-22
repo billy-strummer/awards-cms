@@ -198,12 +198,51 @@ const utils = {
   },
 
   /**
-   * Show confirmation dialog
+   * Show confirmation dialog (legacy wrapper - use confirmDialog for new code)
    * @param {string} message - Confirmation message
    * @returns {boolean} User's choice
    */
   confirm(message) {
     return window.confirm(message);
+  },
+
+  /**
+   * Show styled Bootstrap confirmation dialog
+   * @param {Object} options - Dialog options
+   * @param {string} options.title - Dialog title
+   * @param {string} options.message - Dialog message
+   * @param {string} options.confirmText - Text for confirm button
+   * @param {boolean} options.danger - Whether to use danger styling
+   * @returns {Promise<boolean>} User's choice
+   */
+  confirmDialog({ title = 'Confirm', message = 'Are you sure?', confirmText = 'Delete', danger = true } = {}) {
+    return new Promise((resolve) => {
+      document.getElementById('confirmDialogTitle').textContent = title;
+      document.getElementById('confirmDialogBody').innerHTML = message;
+      const okBtn = document.getElementById('confirmDialogOk');
+      okBtn.textContent = confirmText;
+      okBtn.className = danger ? 'btn btn-danger' : 'btn btn-primary';
+
+      const modal = new bootstrap.Modal(document.getElementById('confirmDialogModal'));
+
+      const onConfirm = () => {
+        cleanup();
+        modal.hide();
+        resolve(true);
+      };
+      const onDismiss = () => {
+        cleanup();
+        resolve(false);
+      };
+      const cleanup = () => {
+        okBtn.removeEventListener('click', onConfirm);
+        document.getElementById('confirmDialogModal').removeEventListener('hidden.bs.modal', onDismiss);
+      };
+
+      okBtn.addEventListener('click', onConfirm);
+      document.getElementById('confirmDialogModal').addEventListener('hidden.bs.modal', onDismiss);
+      modal.show();
+    });
   },
 
   /**

@@ -454,8 +454,9 @@ updateCountyFilterByRegion() {
     // Hide archived unless explicitly filtering for them
     if (!showArchived && orgStatus === 'archived') return false;
 
-    // Year filter
-    if (year && String(org.year || '') !== String(year)) return false;
+    // Year filter — show orgs assigned to the selected year AND unassigned orgs (no year).
+    // Only hide orgs explicitly assigned to a different year.
+    if (year && org.year && String(org.year) !== String(year)) return false;
 
     // Status filter (skip if 'all')
     if (status && status !== 'all' && orgStatus !== status) return false;
@@ -1905,7 +1906,7 @@ updateCountyFilterByRegion() {
    * @param {string} companyName - Company name
    */
   async cancelWinnerProfile(orgId, companyName) {
-    if (utils.confirm('Discard changes to winner profile?')) {
+    if (await utils.confirmDialog({ title: 'Discard Changes', message: 'Discard changes to winner profile?', confirmText: 'Discard' })) {
       await this.openCompanyProfile(orgId, companyName);
     }
   },
@@ -2279,7 +2280,7 @@ updateCountyFilterByRegion() {
    * @param {string} orgId - Organisation ID
    */
   async deleteCompanyImage(imageId, orgId) {
-    if (!confirm('Are you sure you want to delete this image? This action cannot be undone.')) {
+    if (!await utils.confirmDialog({ title: 'Delete Image', message: 'Are you sure you want to delete this image? This action cannot be undone.' })) {
       return;
     }
 
@@ -2669,7 +2670,7 @@ updateCountyFilterByRegion() {
     const fuzzyDupes = this.checkDuplicateOnEntry(companyName);
     if (fuzzyDupes && fuzzyDupes.length > 0) {
       const dupeList = fuzzyDupes.join(', ');
-      if (!confirm(`Potential duplicates found:\n${dupeList}\n\nAdd "${companyName}" anyway?`)) {
+      if (!await utils.confirmDialog({ title: 'Potential Duplicates', message: `Potential duplicates found:<br>${dupeList}<br><br>Add "${companyName}" anyway?`, confirmText: 'Add Anyway', danger: false })) {
         return;
       }
     }
@@ -3066,7 +3067,7 @@ updateCountyFilterByRegion() {
 
     if (allEmails.length === 0) { utils.showToast('No recipients with email addresses', 'warning'); return; }
 
-    if (!confirm(`Send email to ${allEmails.length} recipient(s) via ${method === 'bcc' ? 'BCC' : 'individual emails'}?`)) return;
+    if (!await utils.confirmDialog({ title: 'Send Email', message: `Send email to ${allEmails.length} recipient(s) via ${method === 'bcc' ? 'BCC' : 'individual emails'}?`, confirmText: 'Send', danger: false })) return;
 
     if (method === 'bcc') {
       // BCC mode: single mailto with all addresses in BCC
@@ -3167,7 +3168,7 @@ updateCountyFilterByRegion() {
   // ARCHIVE ORGANISATION (Soft Delete)
   // ============================================
   async deleteOrganisation(orgId, companyName) {
-    if (!confirm(`Archive "${companyName}"? This will hide it from the main list but keep all data intact. You can restore it later from the "Show Archived" filter.`)) {
+    if (!await utils.confirmDialog({ title: 'Archive Organisation', message: `Archive "${companyName}"? This will hide it from the main list but keep all data intact. You can restore it later from the "Show Archived" filter.`, confirmText: 'Archive' })) {
       return;
     }
 
@@ -3225,8 +3226,8 @@ updateCountyFilterByRegion() {
   },
 
   async permanentDelete(orgId, companyName) {
-    if (!confirm(`PERMANENTLY delete "${companyName}" and all associated data? This CANNOT be undone.`)) return;
-    if (!confirm(`Final confirmation: Delete "${companyName}" forever?`)) return;
+    if (!await utils.confirmDialog({ title: 'Permanent Delete', message: `PERMANENTLY delete "${companyName}" and all associated data? This CANNOT be undone.` })) return;
+    if (!await utils.confirmDialog({ title: 'Final Confirmation', message: `Final confirmation: Delete "${companyName}" forever?` })) return;
 
     try {
       utils.showLoading();
@@ -3260,7 +3261,7 @@ updateCountyFilterByRegion() {
     }
 
     const count = this.selectedOrgs.size;
-    if (!confirm(`Archive ${count} organisation(s)? They will be hidden from the main list but can be restored later.`)) {
+    if (!await utils.confirmDialog({ title: 'Bulk Archive', message: `Archive ${count} organisation(s)? They will be hidden from the main list but can be restored later.`, confirmText: 'Archive' })) {
       return;
     }
 
@@ -3304,7 +3305,7 @@ updateCountyFilterByRegion() {
     }
 
     const count = this.selectedOrgs.size;
-    if (!confirm(`Change status of ${count} organisation(s) to "${newStatus.replace('_', ' ')}"?`)) return;
+    if (!await utils.confirmDialog({ title: 'Change Status', message: `Change status of ${count} organisation(s) to "${newStatus.replace('_', ' ')}"?`, confirmText: 'Update', danger: false })) return;
 
     try {
       utils.showLoading();
@@ -3872,7 +3873,7 @@ updateCountyFilterByRegion() {
 
     const count = this.selectedOrgs.size;
     const displayValue = value || '(empty)';
-    if (!confirm(`Set ${field} to "${displayValue}" for ${count} organisation(s)?`)) return;
+    if (!await utils.confirmDialog({ title: 'Bulk Update Field', message: `Set ${field} to "${displayValue}" for ${count} organisation(s)?`, confirmText: 'Update', danger: false })) return;
 
     try {
       utils.showLoading();
@@ -3960,7 +3961,7 @@ updateCountyFilterByRegion() {
       return;
     }
 
-    if (!confirm(`Fetch logos for ${orgs.length} organisations with websites but no logo?`)) return;
+    if (!await utils.confirmDialog({ title: 'Fetch Logos', message: `Fetch logos for ${orgs.length} organisations with websites but no logo?`, confirmText: 'Fetch Logos', danger: false })) return;
 
     utils.showLoading(`Fetching logos: 0/${orgs.length}`);
     let successCount = 0;
@@ -4285,15 +4286,15 @@ updateCountyFilterByRegion() {
       // Merge mode: update existing records with new data
       mergeRows = dupRows;
       rowsToImport = newRows;
-      if (!confirm(`Merge mode: ${dupRows.length} existing record(s) will be updated, ${newRows.length} new record(s) will be inserted. Continue?`)) return;
+      if (!await utils.confirmDialog({ title: 'Merge Import', message: `Merge mode: ${dupRows.length} existing record(s) will be updated, ${newRows.length} new record(s) will be inserted. Continue?`, confirmText: 'Import', danger: false })) return;
     } else if (dupRows.length > 0 && newRows.length > 0) {
-      if (confirm(`${dupRows.length} duplicate(s) found. Import only the ${newRows.length} new companies? (Cancel to import ALL including duplicates)`)) {
+      if (await utils.confirmDialog({ title: 'Duplicates Found', message: `${dupRows.length} duplicate(s) found. Import only the ${newRows.length} new companies?<br><br>Click "Import New Only" to skip duplicates, or Cancel and re-run to import all.`, confirmText: 'Import New Only', danger: false })) {
         rowsToImport = newRows;
       } else {
         rowsToImport = this._csvPreviewRows;
       }
     } else if (newRows.length === 0) {
-      if (!confirm(`All ${dupRows.length} companies already exist. Import them anyway as duplicates?`)) {
+      if (!await utils.confirmDialog({ title: 'All Duplicates', message: `All ${dupRows.length} companies already exist. Import them anyway as duplicates?`, confirmText: 'Import Anyway', danger: false })) {
         return;
       }
       rowsToImport = this._csvPreviewRows;
@@ -4634,7 +4635,7 @@ updateCountyFilterByRegion() {
     const presetSelect = document.getElementById('orgsFilterPreset');
     const name = presetSelect?.value;
     if (!name) { utils.showToast('Select a preset to delete', 'warning'); return; }
-    if (!confirm(`Delete preset "${name}"?`)) return;
+    if (!await utils.confirmDialog({ title: 'Delete Preset', message: `Delete preset "${name}"?` })) return;
     try {
       // Load existing presets from Supabase
       let presets = {};
@@ -4775,7 +4776,7 @@ updateCountyFilterByRegion() {
   },
 
   async deleteContact(orgId, contactId) {
-    if (!confirm('Delete this contact?')) return;
+    if (!await utils.confirmDialog({ title: 'Delete Contact', message: 'Delete this contact?' })) return;
     try {
       const { error } = await STATE.client.from('organisation_contacts').delete().eq('id', contactId);
       if (error) throw error;
@@ -5280,7 +5281,7 @@ updateCountyFilterByRegion() {
   },
 
   async executeMerge(id1, id2) {
-    if (!confirm('This will merge the two organisations. The non-primary org will be deleted. Continue?')) return;
+    if (!await utils.confirmDialog({ title: 'Merge Organisations', message: 'This will merge the two organisations. The non-primary org will be deleted. Continue?', confirmText: 'Merge' })) return;
 
     const org1 = STATE.allOrganisations.find(o => o.id === id1);
     const org2 = STATE.allOrganisations.find(o => o.id === id2);
@@ -6062,7 +6063,7 @@ updateCountyFilterByRegion() {
   },
 
   async deleteThreadedNote(noteId, orgId) {
-    if (!confirm('Delete this note?')) return;
+    if (!await utils.confirmDialog({ title: 'Delete Note', message: 'Delete this note?' })) return;
     try {
       await STATE.client.from('organisation_notes').delete().eq('id', noteId);
       utils.showToast('Note deleted', 'success');
@@ -6140,7 +6141,7 @@ updateCountyFilterByRegion() {
   },
 
   async deleteSponsorshipPackage(pkgId, orgId) {
-    if (!confirm('Delete this sponsorship package?')) return;
+    if (!await utils.confirmDialog({ title: 'Delete Sponsorship Package', message: 'Delete this sponsorship package?' })) return;
     try {
       await STATE.client.from('sponsorship_packages').delete().eq('id', pkgId);
       utils.showToast('Package deleted', 'success');
@@ -7129,7 +7130,7 @@ updateCountyFilterByRegion() {
   },
 
   async deleteView(name) {
-    if (!confirm(`Delete view "${name}"?`)) return;
+    if (!await utils.confirmDialog({ title: 'Delete View', message: `Delete view "${name}"?` })) return;
     try {
       // Load existing views from Supabase
       let views = {};

@@ -65,13 +65,14 @@ const awardsModule = {
       await this.loadAssignmentCounts();
 
       // Save current filter state before repopulating dropdowns
+      const lsAwardsFilters = (() => { try { return JSON.parse(localStorage.getItem('awardsFilters') || '{}'); } catch (e) { return {}; } })();
       const savedFilters = {
-        year: document.getElementById('awardsYearFilterSelect')?.value || '',
-        status: document.getElementById('awardsStatusFilterSelect')?.value || '',
-        sector: document.getElementById('awardsSectorFilterSelect')?.value || '',
-        region: document.getElementById('awardsRegionFilterSelect')?.value || '',
-        county: document.getElementById('awardsCountyFilterSelect')?.value || '',
-        search: document.getElementById('awardsSearchBox')?.value || ''
+        year: document.getElementById('awardsYearFilterSelect')?.value || lsAwardsFilters.year || '',
+        status: document.getElementById('awardsStatusFilterSelect')?.value || lsAwardsFilters.status || '',
+        sector: document.getElementById('awardsSectorFilterSelect')?.value || lsAwardsFilters.sector || '',
+        region: document.getElementById('awardsRegionFilterSelect')?.value || lsAwardsFilters.region || '',
+        county: document.getElementById('awardsCountyFilterSelect')?.value || lsAwardsFilters.county || '',
+        search: document.getElementById('awardsSearchBox')?.value || lsAwardsFilters.search || ''
       };
 
       STATE.filteredAwards = STATE.allAwards;
@@ -344,6 +345,8 @@ const awardsModule = {
     const region = document.getElementById('awardsRegionFilterSelect').value;
     const search = document.getElementById('awardsSearchBox').value.toLowerCase().trim();
 
+    try { localStorage.setItem('awardsFilters', JSON.stringify({ year, status, sector, county, region, search })); } catch(e) {}
+
     STATE.filteredAwards = STATE.allAwards.filter(award => {
       // Year filter - handle both date strings and year numbers
       if (year) {
@@ -499,7 +502,7 @@ const awardsModule = {
           <td>${winnerHtml}</td>
           <td class="text-center">
             <div class="btn-group btn-group-sm">
-              <button class="btn btn-outline-secondary btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown" data-bs-display="static" aria-expanded="false">
+              <button class="btn btn-outline-secondary btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown" data-bs-display="static" aria-expanded="false" aria-label="Award actions">
                 <i class="bi bi-three-dots-vertical"></i>
               </button>
               <ul class="dropdown-menu dropdown-menu-end">
@@ -1127,7 +1130,7 @@ const awardsModule = {
     const count = this.selectedAwards.size;
     if (count === 0) return;
 
-    if (!confirm(`Set ${count} awards to "${newStatus}"?`)) return;
+    if (!await utils.confirmDialog({ title: 'Update Award Status', message: `Set ${count} award(s) to "${newStatus}"?`, confirmText: 'Update', danger: false })) return;
 
     try {
       utils.showLoading();
@@ -1159,8 +1162,8 @@ const awardsModule = {
     const count = this.selectedAwards.size;
     if (count === 0) return;
 
-    if (!confirm(`Delete ${count} awards? This cannot be undone.`)) return;
-    if (!confirm(`Are you absolutely sure? This will permanently delete ${count} awards and their assignments.`)) return;
+    if (!await utils.confirmDialog({ title: 'Delete Awards', message: `Delete ${count} award(s)? This cannot be undone.` })) return;
+    if (!await utils.confirmDialog({ title: 'Final Confirmation', message: `Are you absolutely sure? This will permanently delete ${count} award(s) and their assignments.` })) return;
 
     try {
       utils.showLoading();
@@ -1240,7 +1243,7 @@ const awardsModule = {
    * Delete a single award
    */
   async deleteAward(awardId) {
-    if (!utils.confirm('Are you sure you want to delete this award? This action cannot be undone.')) {
+    if (!await utils.confirmDialog({ title: 'Delete Award', message: 'Are you sure you want to delete this award? This action cannot be undone.' })) {
       return;
     }
     
@@ -1302,7 +1305,7 @@ const awardsModule = {
       message += `\n\n⚠️ ${targetYear} already has ${existingTarget.length} awards. Only NEW award names (not already in ${targetYear}) will be copied.`;
     }
 
-    if (!confirm(message)) return;
+    if (!await utils.confirmDialog({ title: 'Roll Over Awards', message: message.replace(/\n/g, '<br>'), confirmText: 'Roll Over', danger: false })) return;
 
     try {
       utils.showLoading();
@@ -1437,7 +1440,7 @@ const awardsModule = {
     const season = seasons.find(s => s.id === seasonId);
     if (!season) return;
 
-    if (!confirm(`Apply "${season.name} (${season.year})" dates to ${count} selected awards?`)) return;
+    if (!await utils.confirmDialog({ title: 'Apply Season Dates', message: `Apply "${season.name} (${season.year})" dates to ${count} selected award(s)?`, confirmText: 'Apply', danger: false })) return;
 
     try {
       utils.showLoading();
@@ -1733,7 +1736,7 @@ const awardsModule = {
     const targetYear = parseInt(prompt(`Clone ${count} selected awards to which year?`, new Date().getFullYear()));
     if (!targetYear || isNaN(targetYear)) return;
 
-    if (!confirm(`Clone ${count} awards to ${targetYear}? Existing duplicates will be skipped.`)) return;
+    if (!await utils.confirmDialog({ title: 'Clone Awards', message: `Clone ${count} award(s) to ${targetYear}? Existing duplicates will be skipped.`, confirmText: 'Clone', danger: false })) return;
 
     try {
       utils.showLoading();
@@ -1943,8 +1946,8 @@ const awardsModule = {
               <span class="text-muted ms-1">(${a.county}, ${a.year})</span>
             </div>
             <div class="btn-group btn-group-sm">
-              <button class="btn btn-outline-primary" onclick="awardsModule.openEditModal('${a.id}')" title="Edit first"><i class="bi bi-pencil"></i></button>
-              <button class="btn btn-outline-danger" onclick="awardsModule.deleteAward('${b.id}')" title="Delete second"><i class="bi bi-trash"></i></button>
+              <button class="btn btn-outline-primary" onclick="awardsModule.openEditModal('${a.id}')" title="Edit first" aria-label="Edit first award"><i class="bi bi-pencil"></i></button>
+              <button class="btn btn-outline-danger" onclick="awardsModule.deleteAward('${b.id}')" title="Delete second" aria-label="Delete second award"><i class="bi bi-trash"></i></button>
             </div>
           </div>
         </div></div>`;

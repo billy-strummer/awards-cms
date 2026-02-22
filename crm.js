@@ -5,6 +5,7 @@
 
 const crmModule = {
   currentSubTab: 'companies-crm',
+  allCompanies: [],
   filters: {
     companies: {},
     communications: { type: 'all', regarding: 'all', followUpRequired: 'all' },
@@ -87,6 +88,27 @@ const crmModule = {
       if (el3) el3.textContent = stats.recentCommunications;
       if (el4) el4.textContent = stats.pendingFollowUps;
 
+      // Store full companies list for client-side filtering
+      this.allCompanies = companies;
+
+      // Populate segment filter dropdown from unique segments
+      const segmentFilter = document.getElementById('crmSegmentFilter');
+      if (segmentFilter) {
+        const segments = new Set();
+        companies.forEach(c => {
+          if (c.segments) {
+            c.segments.split(',').forEach(s => {
+              const trimmed = s.trim();
+              if (trimmed) segments.add(trimmed);
+            });
+          }
+        });
+        const currentVal = segmentFilter.value;
+        segmentFilter.innerHTML = '<option value="">All Companies</option>' +
+          [...segments].sort().map(s => `<option value="${utils.escapeHtml(s)}">${utils.escapeHtml(s)}</option>`).join('');
+        segmentFilter.value = currentVal;
+      }
+
       // Render companies table
       this.renderCompaniesTable(companies);
 
@@ -134,13 +156,13 @@ const crmModule = {
           </td>
           <td>
             <div class="btn-group btn-group-sm">
-              <button class="btn btn-outline-primary" onclick="crmModule.viewCompanyProfile('${company.id}')" title="View Profile">
+              <button class="btn btn-outline-primary" onclick="crmModule.viewCompanyProfile('${company.id}')" title="View Profile" aria-label="View company profile">
                 <i class="bi bi-eye"></i>
               </button>
-              <button class="btn btn-outline-success" onclick="crmModule.logCommunication('${company.id}')" title="Log Communication">
+              <button class="btn btn-outline-success" onclick="crmModule.logCommunication('${company.id}')" title="Log Communication" aria-label="Log communication">
                 <i class="bi bi-chat-dots"></i>
               </button>
-              <button class="btn btn-outline-info" onclick="crmModule.createDeal('${company.id}')" title="Create Deal">
+              <button class="btn btn-outline-info" onclick="crmModule.createDeal('${company.id}')" title="Create Deal" aria-label="Create deal">
                 <i class="bi bi-cash-coin"></i>
               </button>
             </div>
@@ -150,11 +172,40 @@ const crmModule = {
     }).join('');
   },
 
+  filterCompanies() {
+    const searchVal = (document.getElementById('crmCompanySearch')?.value || '').toLowerCase();
+    const segmentVal = document.getElementById('crmSegmentFilter')?.value || '';
+
+    let filtered = this.allCompanies;
+
+    if (searchVal) {
+      filtered = filtered.filter(c =>
+        (c.company_name || '').toLowerCase().includes(searchVal)
+      );
+    }
+
+    if (segmentVal) {
+      filtered = filtered.filter(c =>
+        c.segments && c.segments.split(',').map(s => s.trim()).includes(segmentVal)
+      );
+    }
+
+    this.renderCompaniesTable(filtered);
+  },
+
   // ============================================
   // COMMUNICATIONS LOG
   // ============================================
   async loadCommunications() {
     console.log('Loading communications...');
+
+    // Read filter values from DOM
+    const typeEl = document.getElementById('communicationTypeFilter');
+    const regardingEl = document.getElementById('communicationRegardingFilter');
+    const followUpEl = document.getElementById('communicationFollowUpFilter');
+    this.filters.communications.type = typeEl && typeEl.value ? typeEl.value : 'all';
+    this.filters.communications.regarding = regardingEl && regardingEl.value ? regardingEl.value : 'all';
+    this.filters.communications.followUpRequired = followUpEl && followUpEl.value ? followUpEl.value : 'all';
 
     try {
       let query = STATE.client
@@ -174,7 +225,7 @@ const crmModule = {
         query = query.eq('regarding', this.filters.communications.regarding);
       }
       if (this.filters.communications.followUpRequired !== 'all') {
-        query = query.eq('follow_up_required', this.filters.communications.followUpRequired === 'yes');
+        query = query.eq('follow_up_required', this.filters.communications.followUpRequired === 'true');
       }
 
       const { data: communications, error } = await query;
@@ -624,6 +675,22 @@ const crmModule = {
         this.loadMeetings();
         break;
     }
+  },
+
+  // Stat-card shortcut filters for deals
+  filterDealsActive() {
+    this.applyFilter('deals', 'status', 'active');
+    document.getElementById('dealStatusFilter').value = 'active';
+  },
+  filterDealsAll() {
+    this.applyFilter('deals', 'status', 'all');
+    this.applyFilter('deals', 'stage', 'all');
+    document.getElementById('dealStatusFilter').value = '';
+    document.getElementById('dealStageFilter').value = '';
+  },
+  filterDealsWon() {
+    this.applyFilter('deals', 'status', 'won');
+    document.getElementById('dealStatusFilter').value = 'won';
   },
 
   // ============================================
@@ -1193,7 +1260,7 @@ const crmModule = {
   },
 
   async deleteCommunication(commId) {
-    if (!confirm('Are you sure you want to delete this communication? This action cannot be undone.')) {
+    if (!await utils.confirmDialog({ title: 'Delete Communication', message: 'Are you sure you want to delete this communication? This action cannot be undone.' })) {
       return;
     }
 
@@ -1469,7 +1536,7 @@ const crmModule = {
   },
 
   async deleteDeal(dealId) {
-    if (!confirm('Are you sure you want to delete this deal? This action cannot be undone.')) {
+    if (!await utils.confirmDialog({ title: 'Delete Deal', message: 'Are you sure you want to delete this deal? This action cannot be undone.' })) {
       return;
     }
 
@@ -1743,7 +1810,7 @@ const crmModule = {
   },
 
   async deleteMeeting(meetingId) {
-    if (!confirm('Are you sure you want to delete this meeting note? This action cannot be undone.')) {
+    if (!await utils.confirmDialog({ title: 'Delete Meeting Note', message: 'Are you sure you want to delete this meeting note? This action cannot be undone.' })) {
       return;
     }
 
@@ -1853,7 +1920,7 @@ const crmModule = {
   },
 
   async removeFromSegment(assignmentId, segmentId, segmentName) {
-    if (!confirm('Remove this company from the segment?')) return;
+    if (!await utils.confirmDialog({ title: 'Remove from Segment', message: 'Remove this company from the segment?', confirmText: 'Remove' })) return;
 
     try {
       const { error } = await STATE.client

@@ -42,7 +42,18 @@ const eventsModule = {
       this.populateYearFilter();
       this._eventAwardCounts = {}; // Clear cache on reload
       this._eventAttendeeCounts = {};
-      this.renderEvents();
+
+      // Restore saved filters from localStorage
+      try {
+        const saved = JSON.parse(localStorage.getItem('eventsFilters') || '{}');
+        if (saved.search) document.getElementById('eventsSearchBox').value = saved.search;
+        if (saved.year) document.getElementById('eventsYearFilter').value = saved.year;
+        if (saved.timeStatus) document.getElementById('eventsStatusFilter').value = saved.timeStatus;
+        if (saved.eventStatus) document.getElementById('eventsEventStatusFilter').value = saved.eventStatus;
+      } catch(e) {}
+
+      this.updateEventStats();
+      this.filterEvents();
       this.renderFinancialOverview();
 
       console.log(`✅ Loaded ${STATE.allEvents.length} events`);
@@ -207,7 +218,7 @@ const eventsModule = {
    * Delete event
    */
   async deleteEvent(eventId, eventName) {
-    if (!confirm(`Are you sure you want to delete "${eventName}"?\n\nNote: Media associated with this event will NOT be deleted, but will be unlinked from the event.`)) {
+    if (!await utils.confirmDialog({ title: 'Delete Event', message: `Are you sure you want to delete "${eventName}"?<br><br>Note: Media associated with this event will NOT be deleted, but will be unlinked from the event.` })) {
       return;
     }
 
@@ -580,7 +591,7 @@ const eventsModule = {
    * Delete template
    */
   async deleteTemplate(index) {
-    if (!utils.confirm('Are you sure you want to delete this template?')) {
+    if (!await utils.confirmDialog({ title: 'Delete Template', message: 'Are you sure you want to delete this template?' })) {
       return;
     }
 
@@ -838,12 +849,12 @@ const eventsModule = {
           <div class="btn-group btn-group-sm">
             ${a.email ? `<button class="btn btn-outline-info btn-sm"
               onclick="eventsModule.sendInviteEmail('${a.id}')"
-              title="Send invite"><i class="bi bi-envelope"></i></button>` : ''}
+              title="Send invite" aria-label="Send invite"><i class="bi bi-envelope"></i></button>` : ''}
             <button class="btn btn-outline-primary btn-sm"
               onclick="eventsModule.updateAttendeeStatus('${a.id}', '${a.status === 'attending' ? 'not_attending' : 'attending'}')"
-              title="Toggle RSVP"><i class="bi bi-arrow-repeat"></i></button>
+              title="Toggle RSVP" aria-label="Toggle RSVP"><i class="bi bi-arrow-repeat"></i></button>
             <button class="btn btn-outline-danger btn-sm"
-              onclick="eventsModule.deleteAttendee('${a.id}')" title="Remove"><i class="bi bi-trash"></i></button>
+              onclick="eventsModule.deleteAttendee('${a.id}')" title="Remove" aria-label="Remove attendee"><i class="bi bi-trash"></i></button>
           </div>
         </td>
       </tr>
@@ -997,7 +1008,7 @@ const eventsModule = {
   },
 
   async deleteAttendee(attendeeId) {
-    if (!confirm('Remove this attendee from the list?')) return;
+    if (!await utils.confirmDialog({ title: 'Remove Attendee', message: 'Remove this attendee from the list?', confirmText: 'Remove' })) return;
     const eventId = document.getElementById('attendeesEventId').value;
     let attendees = await this.getAttendees(eventId);
     attendees = attendees.filter(a => a.id !== attendeeId);
@@ -1096,7 +1107,7 @@ const eventsModule = {
       utils.showToast('All attending guests are already checked in', 'info');
       return;
     }
-    if (!confirm(`Check in all ${unchecked.length} attending guest(s)?`)) return;
+    if (!await utils.confirmDialog({ title: 'Bulk Check In', message: `Check in all ${unchecked.length} attending guest(s)?`, confirmText: 'Check In All', danger: false })) return;
     const now = new Date().toISOString();
     unchecked.forEach(a => { a.checkedIn = true; a.checkInTime = now; });
     this.saveAttendees(eventId, attendees);
@@ -1384,7 +1395,7 @@ const eventsModule = {
       return;
     }
 
-    if (!confirm(`Issue tickets to ${eligible.length} attendee(s)?`)) return;
+    if (!await utils.confirmDialog({ title: 'Issue Tickets', message: `Issue tickets to ${eligible.length} attendee(s)?`, confirmText: 'Issue Tickets', danger: false })) return;
 
     let issued = 0;
     eligible.forEach(attendee => {
@@ -1408,9 +1419,9 @@ const eventsModule = {
     this.renderTicketsTab(eventId);
   },
 
-  revokeTicket(ticketId) {
+  async revokeTicket(ticketId) {
     const eventId = document.getElementById('attendeesEventId').value;
-    if (!confirm('Revoke this ticket?')) return;
+    if (!await utils.confirmDialog({ title: 'Revoke Ticket', message: 'Revoke this ticket?', confirmText: 'Revoke' })) return;
     const ticketData = this._getTicketData(eventId);
     const ticket = ticketData.tickets.find(t => t.id === ticketId);
     if (ticket) {
@@ -1734,9 +1745,9 @@ const eventsModule = {
     utils.showToast(`${name.trim()} added to waitlist`, 'success');
   },
 
-  removeFromWaitlist(wlId) {
+  async removeFromWaitlist(wlId) {
     const eventId = document.getElementById('attendeesEventId').value;
-    if (!confirm('Remove from waitlist?')) return;
+    if (!await utils.confirmDialog({ title: 'Remove from Waitlist', message: 'Remove from waitlist?', confirmText: 'Remove' })) return;
     let waitlist = this.getWaitlist(eventId);
     waitlist = waitlist.filter(w => w.id !== wlId);
     this._saveWaitlist(eventId, waitlist);
@@ -2301,8 +2312,8 @@ const eventsModule = {
     this._editBudgetIdx = null;
   },
 
-  deleteBudgetItem(idx) {
-    if (!confirm('Delete this budget item?')) return;
+  async deleteBudgetItem(idx) {
+    if (!await utils.confirmDialog({ title: 'Delete Budget Item', message: 'Delete this budget item?' })) return;
     const eventId = document.getElementById('attendeesEventId').value;
     const budget = this.getBudget(eventId);
     budget.items.splice(idx, 1);
@@ -2494,8 +2505,8 @@ const eventsModule = {
     this._editVendorIdx = null;
   },
 
-  deleteVendor(idx) {
-    if (!confirm('Remove this vendor?')) return;
+  async deleteVendor(idx) {
+    if (!await utils.confirmDialog({ title: 'Remove Vendor', message: 'Remove this vendor?', confirmText: 'Remove' })) return;
     const eventId = document.getElementById('attendeesEventId').value;
     const vendors = this.getVendors(eventId);
     vendors.splice(idx, 1);
@@ -5919,7 +5930,7 @@ const eventsModule = {
     const version = this._roVersions.find(v => v.id === versionId);
     if (!version) return;
 
-    if (!confirm(`Restore "${version.version_name}"?\n\nThis will replace the current running order with this saved version. Consider saving the current version first.`)) {
+    if (!await utils.confirmDialog({ title: 'Restore Version', message: `Restore "${version.version_name}"?<br><br>This will replace the current running order with this saved version. Consider saving the current version first.`, confirmText: 'Restore', danger: false })) {
       return;
     }
 
@@ -5958,7 +5969,7 @@ const eventsModule = {
   },
 
   async deleteVersion(versionId) {
-    if (!confirm('Delete this saved version?')) return;
+    if (!await utils.confirmDialog({ title: 'Delete Version', message: 'Delete this saved version?' })) return;
     try {
       await STATE.client.from('running_order_versions').delete().eq('id', versionId);
       utils.showToast('Version deleted', 'success');
@@ -6474,7 +6485,7 @@ const eventsModule = {
    * Delete Running Order Item
    */
   async deleteRunningOrderItem(itemId) {
-    if (!confirm('Remove this item from the running order?')) return;
+    if (!await utils.confirmDialog({ title: 'Remove Item', message: 'Remove this item from the running order?', confirmText: 'Remove' })) return;
     try {
       const { error } = await STATE.client.from('running_order').delete().eq('id', itemId);
       if (error) throw error;
@@ -7729,7 +7740,7 @@ const eventsModule = {
 
     // Confirm if tables already exist
     if (this.tables.length > 0) {
-      if (!confirm(`This will add ${count} new tables to the existing ${this.tables.length} tables. Continue?`)) return;
+      if (!await utils.confirmDialog({ title: 'Add Tables', message: `This will add ${count} new tables to the existing ${this.tables.length} tables. Continue?`, confirmText: 'Add Tables', danger: false })) return;
     }
 
     try {
@@ -8249,7 +8260,7 @@ const eventsModule = {
    * Remove a fixture from the canvas
    */
   async removeFixture(fixtureId) {
-    if (!confirm('Remove this element?')) return;
+    if (!await utils.confirmDialog({ title: 'Remove Element', message: 'Remove this element?', confirmText: 'Remove' })) return;
 
     this.roomFixtures = this.roomFixtures.filter(f => f.id !== fixtureId);
     if (this._selectedFixtureId === fixtureId) this._selectedFixtureId = null;
@@ -8539,7 +8550,7 @@ const eventsModule = {
 
     const toAssign = guests.slice(0, availableSeats);
     if (toAssign.length < guests.length) {
-      if (!confirm(`Only ${availableSeats} seat(s) available. Assign ${toAssign.length} of ${guests.length} guests?`)) return;
+      if (!await utils.confirmDialog({ title: 'Limited Seats', message: `Only ${availableSeats} seat(s) available. Assign ${toAssign.length} of ${guests.length} guests?`, confirmText: 'Assign', danger: false })) return;
     }
 
     try {
@@ -8786,7 +8797,7 @@ const eventsModule = {
   },
 
   async deleteTable(tableId) {
-    if (!confirm('Delete this table? All seated guests will be unassigned.')) return;
+    if (!await utils.confirmDialog({ title: 'Delete Table', message: 'Delete this table? All seated guests will be unassigned.' })) return;
 
     try {
       const { error } = await STATE.client
@@ -8860,7 +8871,7 @@ const eventsModule = {
     const groups = this._groupGuestsByCompany(this.unassignedGuests);
     const guestsToAssign = Math.min(this.unassignedGuests.length, totalAvailable);
 
-    if (!confirm(`Auto-assign ${guestsToAssign} guest(s) across ${tablesWithSpace.length} table(s)?\n\nGuests from the same company will be kept together where possible.`)) {
+    if (!await utils.confirmDialog({ title: 'Auto-Assign Guests', message: `Auto-assign ${guestsToAssign} guest(s) across ${tablesWithSpace.length} table(s)?<br><br>Guests from the same company will be kept together where possible.`, confirmText: 'Auto-Assign', danger: false })) {
       return;
     }
 
@@ -9611,7 +9622,7 @@ const eventsModule = {
     const table = this.tables.find(t => t.id === tableId);
     if (!table || !table.assignments || table.assignments.length === 0) return;
 
-    if (!confirm(`Remove all ${table.assignments.length} guest(s) from this table?`)) return;
+    if (!await utils.confirmDialog({ title: 'Clear Table', message: `Remove all ${table.assignments.length} guest(s) from this table?`, confirmText: 'Clear Table' })) return;
 
     try {
       const { error } = await STATE.client
@@ -9682,6 +9693,9 @@ const eventsModule = {
     const year = document.getElementById('eventsYearFilter')?.value || '';
     const timeStatus = document.getElementById('eventsStatusFilter')?.value || '';
     const eventStatus = document.getElementById('eventsEventStatusFilter')?.value || '';
+
+    try { localStorage.setItem('eventsFilters', JSON.stringify({ search, year, timeStatus, eventStatus })); } catch(e) {}
+
     const today = new Date().toISOString().split('T')[0];
     const now = new Date();
     const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];
@@ -9847,13 +9861,13 @@ const eventsModule = {
           <td class="text-center">${statusDropdown}</td>
           <td class="text-center">
             <div class="btn-group btn-group-sm" role="group">
-              <button class="btn btn-outline-warning btn-icon" onclick="eventsModule.openRunningOrderModal('${event.id}', '${eName}')" title="Running Order"><i class="bi bi-list-ol"></i></button>
-              <button class="btn btn-outline-secondary btn-icon" onclick="eventsModule.openTablePlanModal('${event.id}', '${eName}')" title="Table Plan"><i class="bi bi-table"></i></button>
-              <button class="btn btn-outline-info btn-icon" onclick="eventsModule.openAttendeesModal('${event.id}')" title="Attendees"><i class="bi bi-people"></i></button>
-              <button class="btn btn-outline-primary btn-icon" onclick="eventsModule.openEditModal('${event.id}')" title="Edit"><i class="bi bi-pencil"></i></button>
-              <button class="btn btn-outline-success btn-icon" onclick="eventsModule.openCloneModal('${event.id}')" title="Clone"><i class="bi bi-files"></i></button>
-              <button class="btn btn-outline-dark btn-icon" onclick="eventsModule.cloneForNextYear('${event.id}')" title="Clone for Next Year"><i class="bi bi-calendar-plus"></i></button>
-              <button class="btn btn-outline-danger btn-icon" onclick="eventsModule.deleteEvent('${event.id}', '${eName}')" title="Delete"><i class="bi bi-trash"></i></button>
+              <button class="btn btn-outline-warning btn-icon" onclick="eventsModule.openRunningOrderModal('${event.id}', '${eName}')" title="Running Order" aria-label="Running order"><i class="bi bi-list-ol"></i></button>
+              <button class="btn btn-outline-secondary btn-icon" onclick="eventsModule.openTablePlanModal('${event.id}', '${eName}')" title="Table Plan" aria-label="Table plan"><i class="bi bi-table"></i></button>
+              <button class="btn btn-outline-info btn-icon" onclick="eventsModule.openAttendeesModal('${event.id}')" title="Attendees" aria-label="Attendees"><i class="bi bi-people"></i></button>
+              <button class="btn btn-outline-primary btn-icon" onclick="eventsModule.openEditModal('${event.id}')" title="Edit" aria-label="Edit event"><i class="bi bi-pencil"></i></button>
+              <button class="btn btn-outline-success btn-icon" onclick="eventsModule.openCloneModal('${event.id}')" title="Clone" aria-label="Clone event"><i class="bi bi-files"></i></button>
+              <button class="btn btn-outline-dark btn-icon" onclick="eventsModule.cloneForNextYear('${event.id}')" title="Clone for Next Year" aria-label="Clone for next year"><i class="bi bi-calendar-plus"></i></button>
+              <button class="btn btn-outline-danger btn-icon" onclick="eventsModule.deleteEvent('${event.id}', '${eName}')" title="Delete" aria-label="Delete event"><i class="bi bi-trash"></i></button>
             </div>
           </td>
         </tr>`;
@@ -10010,6 +10024,7 @@ const eventsModule = {
     if (checked) this._selectedEvents.add(eventId);
     else this._selectedEvents.delete(eventId);
     this._updateBulkBar();
+    this.updateBulkBar();
   },
 
   toggleSelectAll(checked) {
@@ -10019,6 +10034,7 @@ const eventsModule = {
       else this._selectedEvents.delete(cb.value);
     });
     this._updateBulkBar();
+    this.updateBulkBar();
   },
 
   clearEventSelection() {
@@ -10045,7 +10061,7 @@ const eventsModule = {
   async bulkDelete() {
     const ids = Array.from(this._selectedEvents);
     if (ids.length === 0) return;
-    if (!confirm(`Delete ${ids.length} event(s)? This cannot be undone.`)) return;
+    if (!await utils.confirmDialog({ title: 'Delete Events', message: `Delete ${ids.length} event(s)? This cannot be undone.` })) return;
     try {
       for (const id of ids) {
         await STATE.client.from('events').delete().eq('id', id);
@@ -10061,7 +10077,7 @@ const eventsModule = {
   async bulkClone() {
     const ids = Array.from(this._selectedEvents);
     if (ids.length === 0) return;
-    if (!confirm(`Clone ${ids.length} event(s)?`)) return;
+    if (!await utils.confirmDialog({ title: 'Clone Events', message: `Clone ${ids.length} event(s)?`, confirmText: 'Clone', danger: false })) return;
     try {
       for (const id of ids) {
         const src = STATE.allEvents.find(e => e.id === id);
@@ -10097,6 +10113,65 @@ const eventsModule = {
     } catch (e) {
       utils.showToast('Error updating status: ' + e.message, 'error');
     }
+  },
+
+  // ============================================
+  // ADDITIONAL BULK OPERATIONS (inline bar)
+  // ============================================
+
+  updateBulkBar() {
+    const bar = document.getElementById('eventsBulkBar');
+    const count = document.getElementById('eventsBulkCount');
+    if (bar && count) {
+      count.textContent = this._selectedEvents.size;
+      bar.classList.toggle('d-none', this._selectedEvents.size === 0);
+    }
+  },
+
+  clearSelection() {
+    this._selectedEvents.clear();
+    document.querySelectorAll('.event-select-cb').forEach(cb => cb.checked = false);
+    document.querySelectorAll('.event-checkbox').forEach(cb => cb.checked = false);
+    const selectAll = document.getElementById('selectAllEvents');
+    if (selectAll) selectAll.checked = false;
+    this.updateBulkBar();
+    this._updateBulkBar();
+  },
+
+  async bulkDeleteEvents() {
+    if (this._selectedEvents.size === 0) return;
+    if (!await utils.confirmDialog({ title: 'Delete Events', message: `Delete ${this._selectedEvents.size} selected events? This cannot be undone.` })) return;
+
+    try {
+      for (const id of this._selectedEvents) {
+        await STATE.client.from('events').delete().eq('id', id);
+      }
+      utils.showToast(`Deleted ${this._selectedEvents.size} events`, 'success');
+      this._selectedEvents.clear();
+      this.updateBulkBar();
+      this._updateBulkBar();
+      this.loadEvents();
+    } catch (error) {
+      console.error('Bulk delete error:', error);
+      utils.showToast('Error deleting events', 'error');
+    }
+  },
+
+  bulkExportEvents() {
+    if (this._selectedEvents.size === 0) return;
+    const events = (STATE.allEvents || []).filter(e => this._selectedEvents.has(e.id));
+    const headers = ['Event Name', 'Date', 'Venue', 'Status', 'Year'];
+    const rows = events.map(e => [
+      e.event_name || '', e.event_date || '', e.venue || '', e.event_status || '', e.year || ''
+    ]);
+    const csv = [headers, ...rows].map(r => r.map(c => `"${String(c).replace(/"/g, '""')}"`).join(',')).join('\n');
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'events_export.csv';
+    a.click();
+    URL.revokeObjectURL(a.href);
+    utils.showToast(`Exported ${events.length} events`, 'success');
   },
 
   // ============================================
@@ -10741,7 +10816,7 @@ const eventsModule = {
   async cloneForNextYear(eventId) {
     const src = STATE.allEvents.find(e => e.id === eventId);
     if (!src) return;
-    if (!confirm(`Clone "${src.event_name}" for next year?`)) return;
+    if (!await utils.confirmDialog({ title: 'Clone Event', message: `Clone "${src.event_name}" for next year?`, confirmText: 'Clone', danger: false })) return;
 
     const nextYear = (parseInt(src.year) || new Date().getFullYear()) + 1;
     let nextDate = null;

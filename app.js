@@ -1150,6 +1150,58 @@ document.addEventListener('DOMContentLoaded', function() {
   // Delay realtime setup until after auth completes
   setTimeout(setupRealtimeSync, 3000);
 
+  // Real-time presence indicators (LOW-10)
+  window._activeUsers = new Map();
+
+  window._initPresence = function() {
+    if (!STATE.client) return;
+    try {
+      const channel = STATE.client.channel('online-users');
+      channel.on('presence', { event: 'sync' }, () => {
+        const state = channel.presenceState();
+        const users = [];
+        Object.values(state).forEach(presences => {
+          presences.forEach(p => users.push(p));
+        });
+        _activeUsers.clear();
+        users.forEach(u => _activeUsers.set(u.email, u));
+        _renderPresenceIndicator();
+      });
+      channel.subscribe(async (status) => {
+        if (status === 'SUBSCRIBED') {
+          await channel.track({
+            email: STATE.user?.email || 'unknown',
+            tab: document.querySelector('.nav-link.active')?.textContent?.trim() || 'Dashboard',
+            online_at: new Date().toISOString()
+          });
+        }
+      });
+    } catch (e) {
+      console.warn('Presence not available:', e.message);
+    }
+  };
+
+  window._renderPresenceIndicator = function() {
+    let el = document.getElementById('presenceIndicator');
+    if (!el) {
+      el = document.createElement('div');
+      el.id = 'presenceIndicator';
+      el.className = 'position-fixed bottom-0 start-0 mb-3 ms-3';
+      el.style.zIndex = '1040';
+      document.body.appendChild(el);
+    }
+    const count = _activeUsers.size;
+    if (count <= 1) { el.innerHTML = ''; return; }
+    const names = [..._activeUsers.values()].map(u => u.email).slice(0, 5);
+    el.innerHTML = `
+      <div class="badge bg-success-subtle text-success border px-2 py-1" title="${names.join(', ')}" style="cursor:pointer;">
+        <i class="bi bi-people-fill me-1"></i>${count} online
+      </div>`;
+  };
+
+  // Initialize presence after a delay
+  setTimeout(() => { if (window._initPresence) window._initPresence(); }, 4000);
+
   // ==========================================
   // STEP 14: Stale Data Auto-Refresh on Tab Switch
   // ==========================================

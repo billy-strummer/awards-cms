@@ -1332,6 +1332,39 @@ const awardsModule = {
   },
 
   /**
+   * Enhanced CSV export with additional fields
+   */
+  exportAwardsToCSV() {
+    const awards = STATE.filteredAwards || STATE.allAwards || [];
+    if (awards.length === 0) {
+      utils.showToast('No awards to export', 'warning');
+      return;
+    }
+    const headers = ['Award Name', 'Category', 'Year', 'Status', 'Event', 'Description', 'Created At'];
+    const rows = awards.map(a => [
+      a.award_name || '',
+      a.category || '',
+      a.year || '',
+      a.status || '',
+      a.event_name || '',
+      (a.description || '').replace(/"/g, '""').replace(/\n/g, ' '),
+      a.created_at || ''
+    ]);
+    let csv = headers.join(',') + '\n';
+    rows.forEach(row => {
+      csv += row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(',') + '\n';
+    });
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `awards-export-${new Date().toISOString().split('T')[0]}.csv`;
+    link.click();
+    URL.revokeObjectURL(url);
+    utils.showToast(`Exported ${awards.length} awards`, 'success');
+  },
+
+  /**
    * Delete a single award
    */
   async deleteAward(awardId) {

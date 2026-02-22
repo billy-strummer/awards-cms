@@ -9691,6 +9691,63 @@ const eventsModule = {
         dqBar.style.display = 'none';
       }
     }
+    this.renderEventsCharts();
+  },
+
+  renderEventsCharts() {
+    const container = document.getElementById('eventsChartsContainer');
+    if (!container) return;
+    const events = STATE.allEvents || [];
+
+    // Events by status breakdown
+    const statusCounts = {};
+    events.forEach(e => {
+      const s = e.event_status || 'draft';
+      statusCounts[s] = (statusCounts[s] || 0) + 1;
+    });
+
+    // Events by month timeline
+    const monthCounts = {};
+    events.forEach(e => {
+      if (e.event_date) {
+        const m = e.event_date.substring(0, 7); // YYYY-MM
+        monthCounts[m] = (monthCounts[m] || 0) + 1;
+      }
+    });
+
+    const statusColors = { draft: '#6c757d', confirmed: '#198754', cancelled: '#dc3545', complete: '#0dcaf0' };
+
+    // Render simple bar charts using CSS
+    let html = '<div class="row g-3 mb-3">';
+
+    // Status breakdown
+    html += '<div class="col-md-6"><div class="card"><div class="card-body"><h6 class="card-title small fw-semibold">Events by Status</h6>';
+    const maxStatus = Math.max(...Object.values(statusCounts), 1);
+    Object.entries(statusCounts).forEach(([status, count]) => {
+      const pct = (count / maxStatus) * 100;
+      html += `<div class="d-flex align-items-center mb-1 small">
+        <span class="text-muted" style="width:80px;">${status.charAt(0).toUpperCase() + status.slice(1)}</span>
+        <div class="flex-grow-1 mx-2"><div class="progress" style="height:12px;"><div class="progress-bar" style="width:${pct}%;background:${statusColors[status] || '#0d6efd'}"></div></div></div>
+        <span class="fw-semibold">${count}</span>
+      </div>`;
+    });
+    html += '</div></div></div>';
+
+    // Monthly timeline
+    html += '<div class="col-md-6"><div class="card"><div class="card-body"><h6 class="card-title small fw-semibold">Events by Month</h6>';
+    const sortedMonths = Object.entries(monthCounts).sort((a, b) => a[0].localeCompare(b[0])).slice(-12);
+    const maxMonth = Math.max(...sortedMonths.map(m => m[1]), 1);
+    sortedMonths.forEach(([month, count]) => {
+      const pct = (count / maxMonth) * 100;
+      html += `<div class="d-flex align-items-center mb-1 small">
+        <span class="text-muted" style="width:60px;">${month.slice(5)}</span>
+        <div class="flex-grow-1 mx-2"><div class="progress" style="height:10px;"><div class="progress-bar bg-primary" style="width:${pct}%"></div></div></div>
+        <span>${count}</span>
+      </div>`;
+    });
+    html += '</div></div></div></div>';
+
+    container.innerHTML = html;
   },
 
   filterEvents() {
@@ -10945,6 +11002,57 @@ const eventsModule = {
       localStorage.setItem(`bta_event_notes_${eventId}`, notes);
     }
     utils.showToast('Notes saved', 'success');
+  },
+
+  importEventsCSV() {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.csv';
+    input.onchange = async (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+      const text = await file.text();
+      const lines = text.split('\n').filter(l => l.trim());
+      if (lines.length < 2) { utils.showToast('CSV file is empty', 'warning'); return; }
+
+      const headers = lines[0].split(',').map(h => h.trim().toLowerCase().replace(/"/g, ''));
+      const records = [];
+
+      for (let i = 1; i < lines.length; i++) {
+        const values = lines[i].match(/(".*?"|[^,]+)/g)?.map(v => v.replace(/^"|"$/g, '').trim()) || [];
+        const record = {};
+        headers.forEach((h, idx) => {
+          if (h.includes('name') || h === 'event_name') record.event_name = values[idx];
+          else if (h.includes('date') || h === 'event_date') record.event_date = values[idx];
+          else if (h === 'year') record.year = parseInt(values[idx]) || null;
+          else if (h.includes('venue')) record.venue = values[idx];
+          else if (h.includes('capacity')) record.capacity = parseInt(values[idx]) || null;
+          else if (h.includes('status') || h === 'event_status') record.event_status = values[idx] || 'draft';
+          else if (h.includes('description')) record.description = values[idx];
+        });
+        if (record.event_name) records.push(record);
+      }
+
+      if (records.length === 0) { utils.showToast('No valid records in CSV', 'warning'); return; }
+      if (!confirm(`Import ${records.length} events?`)) return;
+
+      try {
+        utils.showLoading();
+        let imported = 0;
+        for (const record of records) {
+          const { error } = await STATE.client.from('events').insert([record]);
+          if (!error) imported++;
+          if (utils.showBulkProgress) utils.showBulkProgress(imported, records.length, 'Importing events');
+        }
+        utils.showToast(`Imported ${imported} of ${records.length} events`, 'success');
+        await this.loadEvents();
+      } catch (err) {
+        utils.showToast('Import error: ' + err.message, 'error');
+      } finally {
+        utils.hideLoading();
+      }
+    };
+    input.click();
   }
 };
 

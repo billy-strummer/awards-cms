@@ -1762,6 +1762,50 @@ const entriesModule = {
     } catch(e) {
       utils.showToast('Failed to update status', 'error');
     }
+  },
+
+  importEntriesCSV() {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.csv';
+    input.onchange = async (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+      const text = await file.text();
+      const lines = text.split('\n').filter(l => l.trim());
+      if (lines.length < 2) { utils.showToast('CSV file is empty', 'warning'); return; }
+      const headers = lines[0].split(',').map(h => h.trim().toLowerCase().replace(/"/g, ''));
+      const records = [];
+      for (let i = 1; i < lines.length; i++) {
+        const values = lines[i].match(/(".*?"|[^,]+)/g)?.map(v => v.replace(/^"|"$/g, '').trim()) || [];
+        const record = {};
+        headers.forEach((h, idx) => {
+          if (h.includes('title') || h === 'entry_title') record.entry_title = values[idx];
+          else if (h.includes('number') || h === 'entry_number') record.entry_number = values[idx];
+          else if (h === 'year') record.year = parseInt(values[idx]) || null;
+          else if (h.includes('status')) record.status = values[idx] || 'draft';
+        });
+        if (record.entry_title || record.entry_number) records.push(record);
+      }
+      if (records.length === 0) { utils.showToast('No valid records', 'warning'); return; }
+      if (!confirm(`Import ${records.length} entries?`)) return;
+      try {
+        utils.showLoading();
+        let imported = 0;
+        for (const record of records) {
+          const { error } = await STATE.client.from('entries').insert([record]);
+          if (!error) imported++;
+        }
+        utils.showToast(`Imported ${imported} of ${records.length} entries`, 'success');
+        await this.loadEntries();
+        this.applyFilters();
+      } catch (err) {
+        utils.showToast('Import error: ' + err.message, 'error');
+      } finally {
+        utils.hideLoading();
+      }
+    };
+    input.click();
   }
 };
 

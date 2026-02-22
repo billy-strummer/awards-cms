@@ -104,6 +104,15 @@ const dashboardModule = {
     this.updateTopCompanies();
   },
 
+  renderTrendIndicator(current, previous) {
+    if (!previous || previous === 0) return '';
+    const change = ((current - previous) / previous * 100).toFixed(1);
+    const up = change > 0;
+    const color = up ? 'text-success' : 'text-danger';
+    const icon = up ? 'bi-arrow-up-short' : 'bi-arrow-down-short';
+    return `<span class="${color} small ms-1"><i class="bi ${icon}"></i>${Math.abs(change)}%</span>`;
+  },
+
   /**
    * Load Awards Year-over-Year Summary table
    */

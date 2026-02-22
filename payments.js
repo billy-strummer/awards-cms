@@ -2053,6 +2053,52 @@ const paymentsModule = {
     } finally {
       utils.hideLoading();
     }
+  },
+
+  importInvoicesCSV() {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.csv';
+    input.onchange = async (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+      const text = await file.text();
+      const lines = text.split('\n').filter(l => l.trim());
+      if (lines.length < 2) { utils.showToast('CSV file is empty', 'warning'); return; }
+      const headers = lines[0].split(',').map(h => h.trim().toLowerCase().replace(/"/g, ''));
+      const records = [];
+      for (let i = 1; i < lines.length; i++) {
+        const values = lines[i].match(/(".*?"|[^,]+)/g)?.map(v => v.replace(/^"|"$/g, '').trim()) || [];
+        const record = {};
+        headers.forEach((h, idx) => {
+          if (h.includes('number') || h === 'invoice_number') record.invoice_number = values[idx];
+          else if (h.includes('amount') || h === 'total_amount') record.total_amount = parseFloat(values[idx]) || 0;
+          else if (h.includes('date') && h.includes('due')) record.due_date = values[idx];
+          else if (h.includes('date') || h === 'invoice_date') record.invoice_date = values[idx];
+          else if (h.includes('status')) record.status = values[idx] || 'draft';
+          else if (h.includes('type')) record.invoice_type = values[idx];
+        });
+        if (record.invoice_number || record.total_amount) records.push(record);
+      }
+      if (records.length === 0) { utils.showToast('No valid records', 'warning'); return; }
+      if (!confirm(`Import ${records.length} invoices?`)) return;
+      try {
+        utils.showLoading();
+        let imported = 0;
+        for (const record of records) {
+          const { error } = await STATE.client.from('invoices').insert([record]);
+          if (!error) imported++;
+        }
+        utils.showToast(`Imported ${imported} of ${records.length} invoices`, 'success');
+        await this.loadInvoices();
+        this.filterInvoices();
+      } catch (err) {
+        utils.showToast('Import error: ' + err.message, 'error');
+      } finally {
+        utils.hideLoading();
+      }
+    };
+    input.click();
   }
 };
 

@@ -1352,7 +1352,7 @@ updateCountyFilterByRegion() {
                   <div class="card h-100">
                     <img src="${img.file_url}" class="card-img-top" alt="${utils.escapeHtml(img.title || 'Company Image')}"
                       style="height: 180px; object-fit: cover; cursor: pointer;"
-                      onclick="orgsModule.viewImageFull('${img.file_url}', '${utils.escapeHtml(img.title || 'Company Image')}')">
+                      onclick="orgsModule.viewImageFull('${utils.escapeHtml(img.file_url)}', '${utils.escapeHtml(img.title || 'Company Image')}')">
                     <div class="card-body p-2">
                       <p class="card-text small mb-1 fw-semibold">${utils.escapeHtml(img.title || 'Untitled')}</p>
                       ${img.caption ? `<p class="card-text small text-muted mb-2">${utils.escapeHtml(img.caption)}</p>` : ''}
@@ -1997,7 +1997,7 @@ updateCountyFilterByRegion() {
           ${validLogos.map(media => `
             <div class="col-md-3">
               <div class="card h-100 logo-option" style="cursor: pointer;"
-                   onclick="orgsModule.setLogoFromGallery('${orgId}', '${media.file_url}', '${media.id}')">
+                   onclick="orgsModule.setLogoFromGallery('${orgId}', '${utils.escapeHtml(media.file_url)}', '${media.id}')">
                 <img src="${media.file_url}" class="card-img-top"
                      alt="${utils.escapeHtml(media.title || 'Logo')}"
                      style="height: 170px; object-fit: contain; background: #f8f9fa;">

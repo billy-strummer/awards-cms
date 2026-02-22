@@ -3007,7 +3007,7 @@ const winnersModule = {
       utils.showToast(`Deleted ${this._selectedWinnerIds.size} winners`, 'success');
       this._selectedWinnerIds.clear();
       this.updateWinnersBulkBar();
-      this.loadWinners();
+      await this.loadWinners();
     } catch (error) {
       console.error('Bulk delete winners error:', error);
       utils.showToast('Error deleting winners', 'error');

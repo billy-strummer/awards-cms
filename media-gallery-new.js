@@ -584,7 +584,7 @@ const mediaGalleryModule = {
                   const isYT = p.file_type === 'video/youtube';
                   const thumb = isYT ? `https://img.youtube.com/vi/${p.file_url}/mqdefault.jpg` : p.thumbnail_url || p.file_url;
                   return `<div style="min-width:80px;width:80px;height:60px;border-radius:6px;overflow:hidden;flex-shrink:0;cursor:pointer;position:relative;${!p.published ? 'opacity:0.5;' : ''}"
-                    onclick="mediaGalleryModule.viewPhotoFull('${p.id}', '${p.file_url}', '${utils.escapeHtml(p.title || '')}', '${isYT ? 'youtube' : 'image'}')">
+                    onclick="mediaGalleryModule.viewPhotoFull('${p.id}', '${utils.escapeHtml(p.file_url)}', '${utils.escapeHtml(p.title || '')}', '${isYT ? 'youtube' : 'image'}')">
                     <img src="${thumb}" style="width:100%;height:100%;object-fit:cover;">
                     ${p.featured ? '<div style="position:absolute;top:2px;right:2px;"><i class="bi bi-star-fill text-warning" style="font-size:0.7rem;filter:drop-shadow(0 0 2px black);"></i></div>' : ''}
                   </div>`;
@@ -2863,10 +2863,10 @@ const mediaGalleryModule = {
           ${isImage ?
             `<img src="${photo.file_url}" class="card-img-top ${!isPublished ? 'opacity-50' : ''}" alt="${utils.escapeHtml(photo.title || 'Photo')}"
               style="height: 200px; object-fit: cover; cursor: pointer;"
-              onclick="mediaGalleryModule.viewPhotoFull('${photo.id}', '${photo.file_url}', '${utils.escapeHtml(photo.title || 'Photo')}', 'image')">` :
+              onclick="mediaGalleryModule.viewPhotoFull('${photo.id}', '${utils.escapeHtml(photo.file_url)}', '${utils.escapeHtml(photo.title || 'Photo')}', 'image')">` :
             isYouTube ?
             `<div class="card-img-top ${!isPublished ? 'opacity-50' : ''}" style="height: 200px; position: relative; cursor: pointer;"
-              onclick="mediaGalleryModule.viewPhotoFull('${photo.id}', '${photo.file_url}', '${utils.escapeHtml(photo.title || 'Video')}', 'youtube')">
+              onclick="mediaGalleryModule.viewPhotoFull('${photo.id}', '${utils.escapeHtml(photo.file_url)}', '${utils.escapeHtml(photo.title || 'Video')}', 'youtube')">
               <img src="https://img.youtube.com/vi/${photo.file_url}/mqdefault.jpg"
                 alt="${utils.escapeHtml(photo.title || 'YouTube Video')}"
                 style="width: 100%; height: 100%; object-fit: cover;">
@@ -4475,7 +4475,7 @@ const mediaGalleryModule = {
             <div class="col-md-2 col-sm-3">
               <div class="card h-100 ${!p.published ? 'border-secondary opacity-75' : ''}">
                 <img src="${thumb}" class="card-img-top" style="height:120px;object-fit:cover;cursor:pointer;"
-                  onclick="mediaGalleryModule.viewPhotoFull('${p.id}', '${p.file_url}', '${utils.escapeHtml(p.title || '')}', '${isYT ? 'youtube' : 'image'}')">
+                  onclick="mediaGalleryModule.viewPhotoFull('${p.id}', '${utils.escapeHtml(p.file_url)}', '${utils.escapeHtml(p.title || '')}', '${isYT ? 'youtube' : 'image'}')">
                 <div class="card-body p-1">
                   <small class="d-block text-truncate fw-semibold">${utils.escapeHtml(p.title || 'Untitled')}</small>
                   ${awardName ? `<small class="badge bg-info">${utils.escapeHtml(awardName)}</small>` : ''}

@@ -619,7 +619,7 @@ const eventsModule = {
    * Use template to create new event
    */
   async useTemplate(index) {
-    const templates = this.loadTemplates();
+    const templates = await this.loadTemplates();
     const template = templates[index];
 
     if (!template) return;
@@ -10155,7 +10155,7 @@ const eventsModule = {
       this._selectedEvents.clear();
       this.updateBulkBar();
       this._updateBulkBar();
-      this.loadEvents();
+      await this.loadEvents();
     } catch (error) {
       console.error('Bulk delete error:', error);
       utils.showToast('Error deleting events', 'error');

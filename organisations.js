@@ -3234,6 +3234,10 @@ updateCountyFilterByRegion() {
     try {
       utils.showLoading();
 
+      // Save to trash before permanently deleting
+      const org = STATE.allOrganisations.find(o => o.id === orgId);
+      if (org) utils.softDelete('organisations', org);
+
       await STATE.client.from('award_assignments').delete().eq('organisation_id', orgId);
       const { error } = await STATE.client.from('organisations').delete().eq('id', orgId);
       if (error) throw error;
@@ -3242,7 +3246,7 @@ updateCountyFilterByRegion() {
       STATE.filteredOrganisations = STATE.filteredOrganisations.filter(o => o.id !== orgId);
       this.selectedOrgs.delete(orgId);
 
-      utils.showToast(`"${companyName}" permanently deleted`, 'success');
+      utils.showToast(`"${companyName}" permanently deleted. <a href="#" onclick="event.preventDefault(); utils.undoLastDelete('organisations')">Undo</a>`, 'info');
       this.renderOrganisations();
       this.updateBulkActionsBar();
     } catch (error) {

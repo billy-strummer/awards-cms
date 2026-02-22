@@ -9,6 +9,8 @@ const paymentsModule = {
   currentPayments: [],
   currentOrganisations: [],
   currentSendInvoiceId: null,
+  _invoiceSortField: 'created_at',
+  _invoiceSortDir: 'desc',
 
   /* ==================================================== */
   /* INITIALIZATION */
@@ -57,11 +59,19 @@ const paymentsModule = {
   },
 
   filterInvoices() {
+    const search = (document.getElementById('invoiceSearchBox')?.value || '').trim().toLowerCase();
     const status = document.getElementById('invoiceStatusFilter')?.value || '';
     const orgId = document.getElementById('invoiceOrgFilter')?.value || '';
     const month = document.getElementById('invoiceMonthFilter')?.value || '';
 
     this.currentInvoices = this.allInvoices.filter(inv => {
+      // Search filter
+      if (search) {
+        const invoiceNum = (inv.invoice_number || '').toLowerCase();
+        const companyName = (inv.organisations?.company_name || '').toLowerCase();
+        const notes = (inv.notes || inv.description || '').toLowerCase();
+        if (!invoiceNum.includes(search) && !companyName.includes(search) && !notes.includes(search)) return false;
+      }
       if (status) {
         // Match either status or payment_status
         if (inv.status !== status && inv.payment_status !== status) return false;
@@ -71,6 +81,7 @@ const paymentsModule = {
       return true;
     });
 
+    this._applySortInvoices();
     this.renderInvoices();
     this.updateStatistics();
   },
@@ -95,6 +106,9 @@ const paymentsModule = {
       <tr>
         <td>
           <strong>${utils.escapeHtml(invoice.invoice_number)}</strong>
+          <button class="btn btn-link btn-sm p-0 ms-1" onclick="event.stopPropagation(); paymentsModule.copyToClipboard('${utils.escapeHtml(invoice.invoice_number)}')" title="Copy invoice number">
+            <i class="bi bi-clipboard text-muted small"></i>
+          </button>
         </td>
         <td>
           ${invoice.organisations?.id && invoice.organisations?.company_name ?
@@ -625,11 +639,18 @@ const paymentsModule = {
   },
 
   filterPayments() {
+    const search = (document.getElementById('paymentSearchBox')?.value || '').trim().toLowerCase();
     const method = document.getElementById('paymentMethodFilter')?.value || '';
     const status = document.getElementById('paymentStatusFilter')?.value || '';
     const month = document.getElementById('paymentMonthFilter')?.value || '';
 
     this.currentPayments = this.allPayments.filter(p => {
+      // Search filter
+      if (search) {
+        const ref = (p.payment_reference || '').toLowerCase();
+        const companyName = (p.organisations?.company_name || '').toLowerCase();
+        if (!ref.includes(search) && !companyName.includes(search)) return false;
+      }
       if (method && p.payment_method !== method) return false;
       if (status && p.status !== status) return false;
       if (month && !(p.payment_date || '').startsWith(month)) return false;
@@ -665,7 +686,12 @@ const paymentsModule = {
 
     tbody.innerHTML = this.currentPayments.map(payment => `
       <tr>
-        <td><strong>${utils.escapeHtml(payment.payment_reference)}</strong></td>
+        <td>
+          <strong>${utils.escapeHtml(payment.payment_reference)}</strong>
+          <button class="btn btn-link btn-sm p-0 ms-1" onclick="event.stopPropagation(); paymentsModule.copyToClipboard('${utils.escapeHtml(payment.payment_reference)}')" title="Copy payment reference">
+            <i class="bi bi-clipboard text-muted small"></i>
+          </button>
+        </td>
         <td>${payment.payment_date ? new Date(payment.payment_date).toLocaleDateString() : 'N/A'}</td>
         <td>
           ${payment.organisations?.id && payment.organisations?.company_name ?
@@ -974,6 +1000,99 @@ const paymentsModule = {
     } finally {
       utils.hideLoading();
     }
+  },
+
+  /* ==================================================== */
+  /* SORTING */
+  /* ==================================================== */
+
+  sortInvoices(field) {
+    if (this._invoiceSortField === field) {
+      this._invoiceSortDir = this._invoiceSortDir === 'asc' ? 'desc' : 'asc';
+    } else {
+      this._invoiceSortField = field;
+      this._invoiceSortDir = 'asc';
+    }
+    this._applySortInvoices();
+    this.renderInvoices();
+  },
+
+  _applySortInvoices() {
+    const field = this._invoiceSortField;
+    const dir = this._invoiceSortDir;
+    this.currentInvoices.sort((a, b) => {
+      let valA, valB;
+      if (field === 'org_name') {
+        valA = (a.organisations?.company_name || '').toLowerCase();
+        valB = (b.organisations?.company_name || '').toLowerCase();
+      } else if (['total_amount', 'balance_due', 'paid_amount'].includes(field)) {
+        valA = parseFloat(a[field] || 0);
+        valB = parseFloat(b[field] || 0);
+      } else {
+        valA = (a[field] || '').toString().toLowerCase();
+        valB = (b[field] || '').toString().toLowerCase();
+      }
+      if (valA < valB) return dir === 'asc' ? -1 : 1;
+      if (valA > valB) return dir === 'asc' ? 1 : -1;
+      return 0;
+    });
+  },
+
+  /* ==================================================== */
+  /* CSV EXPORT */
+  /* ==================================================== */
+
+  exportInvoicesCSV() {
+    const headers = ['Invoice #', 'Organisation', 'Date', 'Due Date', 'Type', 'Amount', 'Paid', 'Balance', 'Status'];
+    const rows = this.currentInvoices.map(inv => [
+      inv.invoice_number || '',
+      inv.organisations?.company_name || '',
+      inv.invoice_date || '',
+      inv.due_date || '',
+      this.formatInvoiceType(inv.invoice_type),
+      parseFloat(inv.total_amount || 0).toFixed(2),
+      parseFloat(inv.paid_amount || 0).toFixed(2),
+      parseFloat(inv.balance_due || 0).toFixed(2),
+      inv.status || ''
+    ]);
+    this._downloadCSV(headers, rows, 'invoices_export.csv');
+  },
+
+  exportPaymentsCSV() {
+    const headers = ['Reference', 'Date', 'Organisation', 'Invoice', 'Method', 'Amount', 'Status'];
+    const rows = this.currentPayments.map(p => [
+      p.payment_reference || '',
+      p.payment_date || '',
+      p.organisations?.company_name || '',
+      p.invoices?.invoice_number || '',
+      this.formatPaymentMethod(p.payment_method),
+      parseFloat(p.amount || 0).toFixed(2),
+      p.status || ''
+    ]);
+    this._downloadCSV(headers, rows, 'payments_export.csv');
+  },
+
+  _downloadCSV(headers, rows, filename) {
+    const escapeCSV = (val) => {
+      const str = String(val);
+      if (str.includes(',') || str.includes('"') || str.includes('\n')) {
+        return '"' + str.replace(/"/g, '""') + '"';
+      }
+      return str;
+    };
+    const csvContent = [headers.map(escapeCSV).join(',')]
+      .concat(rows.map(row => row.map(escapeCSV).join(',')))
+      .join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.setAttribute('href', url);
+    link.setAttribute('download', filename);
+    link.style.display = 'none';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
   },
 
   /* ==================================================== */
@@ -1327,6 +1446,14 @@ const paymentsModule = {
   /* ==================================================== */
   /* UTILITIES */
   /* ==================================================== */
+
+  copyToClipboard(text) {
+    navigator.clipboard.writeText(text).then(() => {
+      utils.showToast('Copied to clipboard: ' + text, 'success');
+    }).catch(() => {
+      utils.showToast('Failed to copy', 'error');
+    });
+  },
 
   async loadOrganisationsForFilters() {
     try {

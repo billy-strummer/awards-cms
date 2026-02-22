@@ -1082,7 +1082,11 @@ document.addEventListener('DOMContentLoaded', function() {
       { table: 'winners', handler: () => { if (typeof winnersModule !== 'undefined' && STATE.allWinners.length > 0) winnersModule.loadWinners(); } },
       { table: 'entries', handler: () => { if (typeof entriesModule !== 'undefined' && entriesModule.allEntries.length > 0) entriesModule.loadEntries(); } },
       { table: 'events', handler: () => { if (typeof eventsModule !== 'undefined' && STATE.allEvents.length > 0) eventsModule.loadEvents(); } },
-      { table: 'invoices', handler: () => { if (typeof paymentsModule !== 'undefined' && paymentsModule.currentInvoices.length > 0) paymentsModule.loadAllData(); } }
+      { table: 'invoices', handler: () => { if (typeof paymentsModule !== 'undefined' && paymentsModule.currentInvoices.length > 0) paymentsModule.loadAllData(); } },
+      { table: 'organisations', handler: () => { if (typeof orgsModule !== 'undefined' && STATE.allOrganisations.length > 0) orgsModule.loadOrganisations(); } },
+      { table: 'payments', handler: () => { if (typeof paymentsModule !== 'undefined') paymentsModule.loadAllData(); } },
+      { table: 'communications', handler: () => { if (typeof crmModule !== 'undefined') crmModule.loadCommunications(); } },
+      { table: 'deals', handler: () => { if (typeof crmModule !== 'undefined') crmModule.loadDeals(); } }
     ];
 
     const debouncedHandlers = {};
@@ -1100,6 +1104,10 @@ document.addEventListener('DOMContentLoaded', function() {
       .on('postgres_changes', { event: '*', schema: 'public', table: 'entries' }, () => debouncedHandlers.entries())
       .on('postgres_changes', { event: '*', schema: 'public', table: 'events' }, () => debouncedHandlers.events())
       .on('postgres_changes', { event: '*', schema: 'public', table: 'invoices' }, () => debouncedHandlers.invoices())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'organisations' }, () => debouncedHandlers.organisations())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'payments' }, () => debouncedHandlers.payments())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'communications' }, () => debouncedHandlers.communications())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'deals' }, () => debouncedHandlers.deals())
       .subscribe((status) => {
         if (status === 'SUBSCRIBED') console.log('Realtime subscriptions active');
       });

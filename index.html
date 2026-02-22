@@ -4948,6 +4948,10 @@
               <div class="content-card mb-4">
                 <div class="row g-3 align-items-end">
                   <div class="col-md-3">
+                    <label class="form-label small fw-bold">Search</label>
+                    <input type="text" class="form-control form-control-sm" id="invoiceSearchBox" placeholder="Invoice #, company..." oninput="paymentsModule.filterInvoices()">
+                  </div>
+                  <div class="col-md-3">
                     <label class="form-label small fw-bold">Status</label>
                     <select class="form-select form-select-sm" id="invoiceStatusFilter" onchange="paymentsModule.filterInvoices()">
                       <option value="">All Statuses</option>
@@ -4960,20 +4964,25 @@
                       <option value="cancelled">Cancelled</option>
                     </select>
                   </div>
-                  <div class="col-md-3">
+                  <div class="col-md-2">
                     <label class="form-label small fw-bold">Organisation</label>
                     <select class="form-select form-select-sm" id="invoiceOrgFilter" onchange="paymentsModule.filterInvoices()">
                       <option value="">All Organisations</option>
                     </select>
                   </div>
-                  <div class="col-md-3">
+                  <div class="col-md-2">
                     <label class="form-label small fw-bold">Date Range</label>
                     <input type="month" class="form-control form-control-sm" id="invoiceMonthFilter" onchange="paymentsModule.filterInvoices()">
                   </div>
-                  <div class="col-md-3">
-                    <button class="btn btn-primary btn-sm w-100" onclick="paymentsModule.createNewInvoice()">
-                      <i class="bi bi-plus-circle me-1"></i>Create Invoice
-                    </button>
+                  <div class="col-md-2">
+                    <div class="d-flex gap-1">
+                      <button class="btn btn-primary btn-sm flex-grow-1" onclick="paymentsModule.createNewInvoice()">
+                        <i class="bi bi-plus-circle me-1"></i>Create Invoice
+                      </button>
+                      <button class="btn btn-outline-secondary btn-sm" onclick="paymentsModule.exportInvoicesCSV()" title="Export CSV">
+                        <i class="bi bi-download me-1"></i>Export
+                      </button>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -4984,15 +4993,15 @@
                   <table class="table table-hover table-striped align-middle">
                     <thead class="table-light">
                       <tr>
-                        <th>Invoice #</th>
-                        <th>Organisation</th>
-                        <th>Date</th>
-                        <th>Due Date</th>
+                        <th style="cursor:pointer" onclick="paymentsModule.sortInvoices('invoice_number')">Invoice #</th>
+                        <th style="cursor:pointer" onclick="paymentsModule.sortInvoices('org_name')">Organisation</th>
+                        <th style="cursor:pointer" onclick="paymentsModule.sortInvoices('invoice_date')">Date</th>
+                        <th style="cursor:pointer" onclick="paymentsModule.sortInvoices('due_date')">Due Date</th>
                         <th>Type</th>
-                        <th>Amount</th>
+                        <th style="cursor:pointer" onclick="paymentsModule.sortInvoices('total_amount')">Amount</th>
                         <th>Paid</th>
-                        <th>Balance</th>
-                        <th>Status</th>
+                        <th style="cursor:pointer" onclick="paymentsModule.sortInvoices('balance_due')">Balance</th>
+                        <th style="cursor:pointer" onclick="paymentsModule.sortInvoices('status')">Status</th>
                         <th>Actions</th>
                       </tr>
                     </thead>
@@ -5042,6 +5051,10 @@
               <div class="content-card mb-4">
                 <div class="row g-3 align-items-end">
                   <div class="col-md-3">
+                    <label class="form-label small fw-bold">Search</label>
+                    <input type="text" class="form-control form-control-sm" id="paymentSearchBox" placeholder="Reference, company..." oninput="paymentsModule.filterPayments()">
+                  </div>
+                  <div class="col-md-2">
                     <label class="form-label small fw-bold">Payment Method</label>
                     <select class="form-select form-select-sm" id="paymentMethodFilter" onchange="paymentsModule.filterPayments()">
                       <option value="">All Methods</option>
@@ -5054,7 +5067,7 @@
                       <option value="other">Other</option>
                     </select>
                   </div>
-                  <div class="col-md-3">
+                  <div class="col-md-2">
                     <label class="form-label small fw-bold">Status</label>
                     <select class="form-select form-select-sm" id="paymentStatusFilter" onchange="paymentsModule.filterPayments()">
                       <option value="">All Statuses</option>
@@ -5064,14 +5077,19 @@
                       <option value="refunded">Refunded</option>
                     </select>
                   </div>
-                  <div class="col-md-3">
+                  <div class="col-md-2">
                     <label class="form-label small fw-bold">Date Range</label>
                     <input type="month" class="form-control form-control-sm" id="paymentMonthFilter" onchange="paymentsModule.filterPayments()">
                   </div>
                   <div class="col-md-3">
-                    <button class="btn btn-success btn-sm w-100" onclick="paymentsModule.recordNewPayment()">
-                      <i class="bi bi-plus-circle me-1"></i>Record Payment
-                    </button>
+                    <div class="d-flex gap-1">
+                      <button class="btn btn-success btn-sm flex-grow-1" onclick="paymentsModule.recordNewPayment()">
+                        <i class="bi bi-plus-circle me-1"></i>Record Payment
+                      </button>
+                      <button class="btn btn-outline-secondary btn-sm" onclick="paymentsModule.exportPaymentsCSV()" title="Export CSV">
+                        <i class="bi bi-download me-1"></i>Export
+                      </button>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -5267,13 +5285,13 @@
                 <div class="row g-3">
                   <div class="col-md-4">
                     <label class="form-label small fw-bold">Filter by Segment</label>
-                    <select class="form-select form-select-sm" id="crmSegmentFilter">
+                    <select class="form-select form-select-sm" id="crmSegmentFilter" onchange="crmModule.filterCompanies()">
                       <option value="">All Companies</option>
                     </select>
                   </div>
                   <div class="col-md-4">
                     <label class="form-label small fw-bold">Search</label>
-                    <input type="text" class="form-control form-control-sm" id="crmCompanySearch" placeholder="Search companies...">
+                    <input type="text" class="form-control form-control-sm" id="crmCompanySearch" placeholder="Search companies..." oninput="crmModule.filterCompanies()">
                   </div>
                   <div class="col-md-4 d-flex align-items-end">
                     <button class="btn btn-primary btn-sm w-100" onclick="crmModule.openCompanyDetails()">
@@ -5321,7 +5339,7 @@
                 <div class="row g-3 align-items-end">
                   <div class="col-md-3">
                     <label class="form-label small fw-bold">Type</label>
-                    <select class="form-select form-select-sm" id="communicationTypeFilter">
+                    <select class="form-select form-select-sm" id="communicationTypeFilter" onchange="crmModule.loadCommunications()">
                       <option value="">All Types</option>
                       <option value="email">Email</option>
                       <option value="phone">Phone</option>
@@ -5333,7 +5351,7 @@
                   </div>
                   <div class="col-md-3">
                     <label class="form-label small fw-bold">Regarding</label>
-                    <select class="form-select form-select-sm" id="communicationRegardingFilter">
+                    <select class="form-select form-select-sm" id="communicationRegardingFilter" onchange="crmModule.loadCommunications()">
                       <option value="">All Topics</option>
                       <option value="sponsorship">Sponsorship</option>
                       <option value="award_application">Award Application</option>
@@ -5345,7 +5363,7 @@
                   </div>
                   <div class="col-md-3">
                     <label class="form-label small fw-bold">Follow-up Required</label>
-                    <select class="form-select form-select-sm" id="communicationFollowUpFilter">
+                    <select class="form-select form-select-sm" id="communicationFollowUpFilter" onchange="crmModule.loadCommunications()">
                       <option value="">All</option>
                       <option value="true">Yes</option>
                       <option value="false">No</option>

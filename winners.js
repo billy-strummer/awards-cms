@@ -118,6 +118,9 @@ const winnersModule = {
 
       utils.trackDataLoad('winners');
 
+      // Render saved views dropdown
+      this._renderSavedWinnersViews();
+
     } catch (error) {
       console.error('Error loading winners:', error);
       utils.showToast('Failed to load winners: ' + error.message, 'error');
@@ -599,6 +602,10 @@ const winnersModule = {
     try {
       utils.showLoading();
 
+      // Save to trash before deleting
+      const winner = STATE.allWinners?.find(w => w.id === winnerId);
+      if (winner) utils.softDelete('winners', winner);
+
       // Supabase v2 syntax for delete
       const { error } = await STATE.client
         .from('winners')
@@ -608,7 +615,7 @@ const winnersModule = {
       if (error) throw error;
 
       await this.loadWinners();
-      utils.showToast('Winner deleted successfully!', 'success');
+      utils.showToast('Winner deleted. <a href="#" onclick="event.preventDefault(); utils.undoLastDelete(\'winners\')">Undo</a>', 'info');
 
     } catch (error) {
       console.error('Error deleting winner:', error);
@@ -3025,6 +3032,65 @@ const winnersModule = {
     a.click();
     URL.revokeObjectURL(a.href);
     utils.showToast(`Exported ${winners.length} winners`, 'success');
+  },
+
+  /* ==================================================== */
+  /* SAVED FILTER VIEWS */
+  /* ==================================================== */
+
+  saveCurrentWinnersView() {
+    const name = prompt('Enter a name for this view:');
+    if (!name) return;
+    const filters = {
+      year: document.getElementById('winnerYearFilterSelect')?.value || '',
+      award: document.getElementById('winnerAwardFilterSelect')?.value || '',
+      search: document.getElementById('winnerSearchBox')?.value || ''
+    };
+    try {
+      const views = JSON.parse(localStorage.getItem('winnersSavedViews') || '[]');
+      views.push({ name, filters, created: Date.now() });
+      localStorage.setItem('winnersSavedViews', JSON.stringify(views));
+      this._renderSavedWinnersViews();
+      utils.showToast('View saved: ' + name, 'success');
+    } catch(e) {}
+  },
+
+  _renderSavedWinnersViews() {
+    const el = document.getElementById('winnersSavedViewsList');
+    if (!el) return;
+    try {
+      const views = JSON.parse(localStorage.getItem('winnersSavedViews') || '[]');
+      if (views.length === 0) {
+        el.innerHTML = '<option value="">No saved views</option>';
+        return;
+      }
+      el.innerHTML = '<option value="">Load saved view...</option>' +
+        views.map((v, i) => `<option value="${i}">${utils.escapeHtml(v.name)}</option>`).join('');
+    } catch(e) {}
+  },
+
+  loadSavedWinnersView(index) {
+    try {
+      const views = JSON.parse(localStorage.getItem('winnersSavedViews') || '[]');
+      const view = views[index];
+      if (!view) return;
+      if (view.filters.year) document.getElementById('winnerYearFilterSelect').value = view.filters.year;
+      if (view.filters.award) document.getElementById('winnerAwardFilterSelect').value = view.filters.award;
+      if (view.filters.search) document.getElementById('winnerSearchBox').value = view.filters.search;
+      this.filterWinners();
+      utils.showToast('Loaded view: ' + view.name, 'success');
+    } catch(e) {}
+  },
+
+  deleteSavedWinnersView(index) {
+    try {
+      const views = JSON.parse(localStorage.getItem('winnersSavedViews') || '[]');
+      const name = views[index]?.name;
+      views.splice(index, 1);
+      localStorage.setItem('winnersSavedViews', JSON.stringify(views));
+      this._renderSavedWinnersViews();
+      utils.showToast('Deleted view: ' + name, 'info');
+    } catch(e) {}
   }
 };
 

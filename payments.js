@@ -239,6 +239,34 @@ const paymentsModule = {
 
       modal.show();
 
+      // Draft recovery: check for a saved invoice draft
+      const draft = utils.getFormDraft('invoice_new');
+      if (draft) {
+        const banner = utils.showDraftRecoveryBanner('invoice_new', (data) => {
+          if (data.organisation_id) document.getElementById('invoiceOrganisation').value = data.organisation_id;
+          if (data.invoice_date) document.getElementById('invoiceDate').value = data.invoice_date;
+          if (data.due_date) document.getElementById('invoiceDueDate').value = data.due_date;
+          if (data.invoice_type) document.getElementById('invoiceType').value = data.invoice_type;
+          if (data.description) document.getElementById('invoiceDescription').value = data.description;
+        });
+        const modalBody = document.querySelector('#createInvoiceModal .modal-body');
+        if (modalBody && banner) modalBody.prepend(banner);
+      }
+
+      // Start auto-save for the invoice create form
+      utils.startFormAutoSave('invoice_new', () => ({
+        organisation_id: document.getElementById('invoiceOrganisation')?.value,
+        invoice_date: document.getElementById('invoiceDate')?.value,
+        due_date: document.getElementById('invoiceDueDate')?.value,
+        invoice_type: document.getElementById('invoiceType')?.value,
+        description: document.getElementById('invoiceDescription')?.value,
+      }));
+
+      // Stop auto-save when modal is closed
+      document.getElementById('createInvoiceModal').addEventListener('hidden.bs.modal', () => {
+        utils.stopFormAutoSave('invoice_new');
+      }, { once: true });
+
     } catch (error) {
       console.error('Error opening invoice creation modal:', error);
       utils.showToast('Error opening invoice modal: ' + error.message, 'error');
@@ -396,6 +424,9 @@ const paymentsModule = {
         .insert(lineItemsWithInvoiceId);
 
       if (lineItemsError) throw lineItemsError;
+
+      // Clear auto-save draft on successful save
+      utils.clearFormDraft('invoice_new');
 
       bootstrap.Modal.getInstance(document.getElementById('createInvoiceModal')).hide();
 
@@ -632,6 +663,10 @@ const paymentsModule = {
     try {
       utils.showLoading();
 
+      // Save to trash before deleting
+      const inv = this.allInvoices.find(i => i.id === invoiceId);
+      if (inv) utils.softDelete('invoices', inv);
+
       // Delete line items first
       await STATE.client.from('invoice_line_items').delete().eq('invoice_id', invoiceId);
 
@@ -642,7 +677,7 @@ const paymentsModule = {
 
       if (error) throw error;
 
-      utils.showToast('Invoice deleted successfully', 'success');
+      utils.showToast('Invoice deleted. <a href="#" onclick="event.preventDefault(); utils.undoLastDelete(\'invoices\')">Undo</a>', 'info');
       await this.loadInvoices();
       this.updateStatistics();
     } catch (error) {

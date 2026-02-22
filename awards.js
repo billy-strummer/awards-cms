@@ -1133,6 +1133,13 @@ const awardsModule = {
 
       if (error) throw error;
 
+      // Clear auto-save draft on successful save
+      if (id) {
+        utils.clearFormDraft('award_edit_' + id);
+      } else {
+        utils.clearFormDraft('award_new');
+      }
+
       // Close modal
       const modal = bootstrap.Modal.getInstance(document.getElementById('awardFormModal'));
       if (modal) modal.hide();
@@ -1336,6 +1343,8 @@ const awardsModule = {
       utils.showLoading();
       
       const award = STATE.allAwards.find(a => a.id === awardId);
+      if (award) utils.softDelete('awards', award);
+
       const { error } = await STATE.client
         .from('awards')
         .delete()
@@ -1346,7 +1355,7 @@ const awardsModule = {
       this._logAwardAudit(awardId, 'deleted', award?.award_name || '', `Award deleted: ${award?.award_name || 'Unknown'}`);
 
       await this.loadAwards();
-      utils.showToast('Award deleted successfully', 'success');
+      utils.showToast('Award deleted. <a href="#" onclick="event.preventDefault(); utils.undoLastDelete(\'awards\')">Undo</a>', 'info');
       
     } catch (error) {
       console.error('Error deleting award:', error);

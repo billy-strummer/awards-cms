@@ -2963,7 +2963,7 @@ function updateTabCounts() {
   setBadge('entriesTabCount', (STATE.allEntries || []).length);
   setBadge('eventsTabCount', (STATE.allEvents || []).length);
   // For payments, show overdue count in red if > 0
-  const overdueCount = (typeof paymentsModule !== 'undefined' && paymentsModule.allInvoices || []).filter(i => i.status === 'overdue').length;
+  const overdueCount = ((typeof paymentsModule !== 'undefined' && paymentsModule.allInvoices) || []).filter(i => i.status === 'overdue').length;
   setBadge('paymentsTabCount', overdueCount, overdueCount > 0 ? 'bg-danger' : 'bg-secondary');
 }
 window.updateTabCounts = updateTabCounts;

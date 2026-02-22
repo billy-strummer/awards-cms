@@ -2309,7 +2309,7 @@
             <h1 class="section-title">
               <i class="bi bi-award me-2"></i>Winners Management
             </h1>
-            <p class="section-subtitle">Manage award winners and their media</p>
+            <p class="section-subtitle">Manage award winners and their media<span id="winnersFreshness" class="ms-2"></span></p>
           </div>
 
           <!-- Filters Section -->
@@ -2342,6 +2342,19 @@
                   <i class="bi bi-search me-1"></i>Search
                 </label>
                 <input type="text" class="form-control" id="winnerSearchBox" placeholder="Search winners...">
+              </div>
+            </div>
+            <div class="row g-3 mt-1">
+              <div class="col-md-3">
+                <label class="form-label small fw-semibold"><i class="bi bi-bookmark me-1"></i>Saved Views</label>
+                <div class="input-group input-group-sm">
+                  <select class="form-select form-select-sm" id="winnersSavedViewsList" onchange="if(this.value) winnersModule.loadSavedWinnersView(parseInt(this.value))">
+                    <option value="">No saved views</option>
+                  </select>
+                  <button class="btn btn-outline-primary" onclick="winnersModule.saveCurrentWinnersView()" title="Save current filters as view">
+                    <i class="bi bi-bookmark-plus"></i>
+                  </button>
+                </div>
               </div>
             </div>
           </div>
@@ -2439,7 +2452,7 @@
             <h1 class="section-title">
               <i class="bi bi-file-earmark-text me-2"></i>Entry Submissions
             </h1>
-            <p class="section-subtitle">Manage award entries and submissions</p>
+            <p class="section-subtitle">Manage award entries and submissions<span id="entriesFreshness" class="ms-2"></span></p>
           </div>
 
           <!-- Stats Cards -->
@@ -2545,6 +2558,19 @@
                 <div class="col-md-2">
                   <label class="form-label">Search</label>
                   <input type="text" class="form-control" id="entriesSearchInput" placeholder="Search entries..." onkeyup="entriesModule.searchEntries()">
+                </div>
+              </div>
+              <div class="row g-3 mt-1">
+                <div class="col-md-3">
+                  <label class="form-label small fw-semibold"><i class="bi bi-bookmark me-1"></i>Saved Views</label>
+                  <div class="input-group input-group-sm">
+                    <select class="form-select form-select-sm" id="entriesSavedViewsList" onchange="if(this.value) entriesModule.loadSavedEntriesView(parseInt(this.value))">
+                      <option value="">No saved views</option>
+                    </select>
+                    <button class="btn btn-outline-primary" onclick="entriesModule.saveCurrentEntriesView()" title="Save current filters as view">
+                      <i class="bi bi-bookmark-plus"></i>
+                    </button>
+                  </div>
                 </div>
               </div>
               <div class="mt-3 d-flex gap-2">
@@ -3179,7 +3205,7 @@
             <h1 class="section-title">
               <i class="bi bi-calendar-event me-2"></i>Events Management
             </h1>
-            <p class="section-subtitle">Plan, manage, and track award ceremonies and events</p>
+            <p class="section-subtitle">Plan, manage, and track award ceremonies and events<span id="eventsFreshness" class="ms-2"></span></p>
           </div>
 
           <!-- Quick Stats -->
@@ -4944,7 +4970,7 @@
             <h1 class="section-title">
               <i class="bi bi-credit-card me-2"></i>Payments & Invoicing
             </h1>
-            <p class="section-subtitle">Manage invoices, payments, and financial tracking</p>
+            <p class="section-subtitle">Manage invoices, payments, and financial tracking<span id="paymentsFreshness" class="ms-2"></span></p>
           </div>
 
           <!-- Sub-navigation -->

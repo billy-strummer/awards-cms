@@ -245,7 +245,15 @@ const entriesModule = {
               ${selfNomBadge}
             </div>
           </td>
-          <td>${statusBadge}</td>
+          <td>
+            <select class="form-select form-select-sm d-inline-block" style="width:auto; font-size:0.75rem;"
+              onchange="entriesModule.inlineUpdateEntryStatus('${entry.id}', this.value)"
+              aria-label="Change entry status">
+              ${['draft','submitted','under_review','shortlisted','winner','rejected'].map(s =>
+                `<option value="${s}" ${(entry.status || '').toLowerCase() === s ? 'selected' : ''}>${s === 'under_review' ? 'Under Review' : s.charAt(0).toUpperCase() + s.slice(1)}</option>`
+              ).join('')}
+            </select>
+          </td>
           <td>${scoreDisplay}</td>
           <td>${paymentBadge}</td>
           <td>${submittedDate}</td>
@@ -454,6 +462,8 @@ const entriesModule = {
         .single();
 
       if (error) throw error;
+
+      utils.trackRecentlyViewed('entry', entryId, (entry.organisations?.company_name || 'Entry') + ' - ' + (entry.award_years?.award_name || 'Award'));
 
       // Show entry details modal (we'll create this next)
       this.showEntryDetailsModal(entry);

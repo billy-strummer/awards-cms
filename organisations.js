@@ -132,6 +132,15 @@ async loadOrganisations() {
     // Initialize keyboard shortcuts
     this.initKeyboardShortcuts();
 
+    // Initialize inline validation for Add Company form when modal is shown
+    const addOrgModalEl = document.getElementById('addNewOrgModal');
+    if (addOrgModalEl && !addOrgModalEl._inlineValidationInit) {
+      addOrgModalEl._inlineValidationInit = true;
+      addOrgModalEl.addEventListener('shown.bs.modal', () => {
+        utils.initInlineValidation('addCompanyForm');
+      });
+    }
+
     // Subscribe to realtime changes
     this._subscribeToRealtimeChanges();
 
@@ -2677,19 +2686,20 @@ updateCountyFilterByRegion() {
     };
 
     try {
-      utils.showLoading();
+      await utils.protectModalDuringSave('addNewOrgModal', async () => {
+        utils.showLoading();
 
-      const { error } = await STATE.client
-        .from('organisations')
-        .insert([companyData]);
+        const { error } = await STATE.client
+          .from('organisations')
+          .insert([companyData]);
 
-      if (error) throw error;
+        if (error) throw error;
 
-      utils.showToast('Company added successfully!', 'success');
-      bootstrap.Modal.getInstance(document.getElementById('addNewOrgModal'))?.hide();
-      form.reset();
-      await this.loadOrganisations();
-
+        utils.showToast('Company added successfully!', 'success');
+        bootstrap.Modal.getInstance(document.getElementById('addNewOrgModal'))?.hide();
+        form.reset();
+        await this.loadOrganisations();
+      });
     } catch (error) {
       console.error('Error saving new company:', error);
       utils.showToast('Error saving company: ' + error.message, 'error');

@@ -1148,6 +1148,7 @@ const entriesModule = {
       document.body.insertAdjacentHTML('beforeend', modalHtml);
       const modal = new bootstrap.Modal(document.getElementById('editEntryModal'));
       modal.show();
+      utils.initInlineValidation('editEntryForm');
       document.getElementById('editEntryModal').addEventListener('hidden.bs.modal', function() { this.remove(); });
 
     } catch (error) {
@@ -1189,17 +1190,19 @@ const entriesModule = {
     }
 
     try {
-      const { error } = await STATE.client
-        .from('entries')
-        .update(updateData)
-        .eq('id', entryId);
+      await utils.protectModalDuringSave('editEntryModal', async () => {
+        const { error } = await STATE.client
+          .from('entries')
+          .update(updateData)
+          .eq('id', entryId);
 
-      if (error) throw error;
+        if (error) throw error;
 
-      utils.showToast('Entry updated successfully', 'success');
-      bootstrap.Modal.getInstance(document.getElementById('editEntryModal')).hide();
-      await this.loadEntries();
-      await this.loadStats();
+        utils.showToast('Entry updated successfully', 'success');
+        bootstrap.Modal.getInstance(document.getElementById('editEntryModal')).hide();
+        await this.loadEntries();
+        await this.loadStats();
+      });
     } catch (error) {
       console.error('Error updating entry:', error);
       utils.showToast('Failed to update entry: ' + error.message, 'error');

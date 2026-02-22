@@ -57,6 +57,7 @@ const eventsModule = {
       this.renderFinancialOverview();
 
       console.log(`✅ Loaded ${STATE.allEvents.length} events`);
+      utils.trackDataLoad('events');
 
     } catch (error) {
       console.error('Error loading events:', error);

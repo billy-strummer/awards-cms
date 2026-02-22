@@ -870,6 +870,13 @@ document.addEventListener('DOMContentLoaded', function() {
         }
       });
     }
+
+    // ? key to show keyboard shortcuts help
+    const tag = e.target.tagName;
+    if (e.key === '?' && !e.ctrlKey && !e.metaKey && tag !== 'INPUT' && tag !== 'TEXTAREA' && tag !== 'SELECT') {
+      e.preventDefault();
+      new bootstrap.Modal(document.getElementById('shortcutsHelpModal')).show();
+    }
   });
   
   // ==========================================
@@ -1114,6 +1121,33 @@ document.addEventListener('DOMContentLoaded', function() {
   }
   // Delay realtime setup until after auth completes
   setTimeout(setupRealtimeSync, 3000);
+
+  // ==========================================
+  // STEP 14: Stale Data Auto-Refresh on Tab Switch
+  // ==========================================
+  document.querySelectorAll('[data-bs-toggle="tab"]').forEach(tab => {
+    tab.addEventListener('shown.bs.tab', (e) => {
+      const tabId = e.target.id;
+      const refreshMap = {
+        'awards-tab': { key: 'awards', fn: () => awardsModule?.loadAwards() },
+        'organisations-tab': { key: 'organisations', fn: () => orgsModule?.loadOrganisations() },
+        'winners-tab': { key: 'winners', fn: () => winnersModule?.loadWinners() },
+        'entries-tab': { key: 'entries', fn: () => entriesModule?.initialize() },
+        'events-tab': { key: 'events', fn: () => eventsModule?.loadEvents() },
+        'payments-tab': { key: 'payments', fn: () => paymentsModule?.loadAllData() },
+      };
+      const config = refreshMap[tabId];
+      if (config && utils.isDataStale(config.key)) {
+        console.log('Auto-refreshing stale data for', config.key);
+        config.fn();
+      }
+    });
+  });
+
+  // ==========================================
+  // STEP 15: Data Freshness Timer
+  // ==========================================
+  utils.startFreshnessTimer();
 
   // ==========================================
   // INITIALIZATION COMPLETE

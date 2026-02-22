@@ -46,6 +46,7 @@ const paymentsModule = {
 
       this.updateStatistics();
       console.log('Payments data loaded');
+      utils.trackDataLoad('payments');
     } catch (error) {
       console.error('Error loading payments data:', error);
       utils.showToast('Failed to load payments data', 'error');
@@ -72,6 +73,17 @@ const paymentsModule = {
 
       this.allInvoices = data || [];
       this.filterInvoices();
+
+      // Initialise reusable keyboard navigation (once)
+      if (!this._keyboardNavInit) {
+        this._keyboardNavInit = true;
+        utils.initTableKeyboardNav({
+          tableBodyId: 'invoicesTableBody',
+          searchBoxId: 'invoiceSearchBox',
+          onEnter: (row) => { const btn = row.querySelector('.dropdown-toggle'); if (btn) btn.click(); }
+        });
+      }
+
     } catch (error) {
       console.error('Error loading invoices:', error);
       utils.showToast('Failed to load invoices', 'error');
@@ -420,6 +432,7 @@ const paymentsModule = {
 
       const invoice = invoiceResult.data;
       const lineItems = lineItemsResult.data || [];
+      utils.trackRecentlyViewed('invoice', invoiceId, 'Invoice ' + invoice.invoice_number);
 
       body.innerHTML = `
         <div class="row mb-4">
@@ -491,22 +504,117 @@ const paymentsModule = {
       };
 
       document.getElementById('viewInvoicePrintBtn').onclick = () => {
+        const inv = invoice;
+        const items = lineItems;
+        const statusClass = (inv.status || 'draft').toLowerCase();
+        const printHtml = `
+<!DOCTYPE html>
+<html>
+<head>
+<title>Invoice ${inv.invoice_number}</title>
+<style>
+  body { font-family: Arial, sans-serif; padding: 40px; color: #333; max-width: 800px; margin: 0 auto; }
+  .header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 30px; border-bottom: 3px solid #0d6efd; padding-bottom: 20px; }
+  .company-info { font-size: 0.9rem; color: #666; }
+  .invoice-title { text-align: right; }
+  .invoice-title h1 { margin: 0; color: #0d6efd; font-size: 2rem; }
+  .invoice-meta { margin-top: 10px; font-size: 0.9rem; }
+  .invoice-meta div { margin-bottom: 4px; }
+  .addresses { display: flex; justify-content: space-between; margin-bottom: 30px; }
+  .address-block { width: 45%; }
+  .address-block h4 { font-size: 0.85rem; text-transform: uppercase; color: #888; margin-bottom: 8px; }
+  table { width: 100%; border-collapse: collapse; margin-bottom: 30px; }
+  th { background: #f8f9fa; padding: 10px 12px; text-align: left; border-bottom: 2px solid #dee2e6; font-size: 0.85rem; text-transform: uppercase; color: #666; }
+  td { padding: 10px 12px; border-bottom: 1px solid #eee; }
+  .amount-col { text-align: right; }
+  .totals { width: 300px; margin-left: auto; }
+  .totals tr td { padding: 6px 12px; }
+  .totals .grand-total td { font-size: 1.2rem; font-weight: bold; border-top: 2px solid #333; color: #0d6efd; }
+  .payment-info { background: #f8f9fa; padding: 20px; border-radius: 8px; margin-top: 20px; }
+  .payment-info h4 { margin-top: 0; font-size: 0.95rem; }
+  .status-badge { display: inline-block; padding: 4px 12px; border-radius: 12px; font-size: 0.8rem; font-weight: bold; }
+  .status-paid { background: #d4edda; color: #155724; }
+  .status-overdue { background: #f8d7da; color: #721c24; }
+  .status-sent { background: #d1ecf1; color: #0c5460; }
+  .status-draft { background: #e2e3e5; color: #383d41; }
+  .status-partially_paid { background: #fff3cd; color: #856404; }
+  .status-cancelled { background: #f5c6cb; color: #721c24; }
+  .footer { margin-top: 40px; text-align: center; font-size: 0.8rem; color: #999; border-top: 1px solid #eee; padding-top: 15px; }
+  @media print { body { padding: 20px; } .no-print { display: none; } }
+</style>
+</head>
+<body>
+  <div class="header">
+    <div class="company-info">
+      <h2 style="margin:0;">British Trade Awards</h2>
+      <div>Awards Management System</div>
+    </div>
+    <div class="invoice-title">
+      <h1>INVOICE</h1>
+      <div class="invoice-meta">
+        <div><strong>Invoice #:</strong> ${utils.escapeHtml(inv.invoice_number)}</div>
+        <div><strong>Date:</strong> ${inv.invoice_date ? new Date(inv.invoice_date).toLocaleDateString('en-GB') : 'N/A'}</div>
+        <div><strong>Due Date:</strong> ${inv.due_date ? new Date(inv.due_date).toLocaleDateString('en-GB') : 'N/A'}</div>
+        <div><span class="status-badge status-${statusClass}">${(inv.status || 'Draft').toUpperCase()}</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="addresses">
+    <div class="address-block">
+      <h4>Bill To</h4>
+      <strong>${utils.escapeHtml(inv.organisations?.company_name || 'N/A')}</strong><br>
+      ${inv.organisations?.email ? utils.escapeHtml(inv.organisations.email) + '<br>' : ''}
+      ${inv.organisations?.contact_phone ? utils.escapeHtml(inv.organisations.contact_phone) : ''}
+    </div>
+  </div>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Description</th>
+        <th class="amount-col">Qty</th>
+        <th class="amount-col">Unit Price</th>
+        <th class="amount-col">Amount</th>
+      </tr>
+    </thead>
+    <tbody>
+      ${items.length > 0 ? items.map(item => `
+        <tr>
+          <td>${utils.escapeHtml(item.item_name || item.description || inv.invoice_type || 'Service')}</td>
+          <td class="amount-col">${item.quantity || 1}</td>
+          <td class="amount-col">&pound;${parseFloat(item.unit_price || 0).toFixed(2)}</td>
+          <td class="amount-col">&pound;${parseFloat(item.line_total || 0).toFixed(2)}</td>
+        </tr>
+      `).join('') : `<tr><td>${utils.escapeHtml(inv.invoice_type || 'Service')}</td><td class="amount-col">1</td><td class="amount-col">&pound;${parseFloat(inv.total_amount || 0).toFixed(2)}</td><td class="amount-col">&pound;${parseFloat(inv.total_amount || 0).toFixed(2)}</td></tr>`}
+    </tbody>
+  </table>
+
+  <table class="totals">
+    <tr><td>Subtotal</td><td class="amount-col">&pound;${parseFloat(inv.subtotal || inv.total_amount || 0).toFixed(2)}</td></tr>
+    ${inv.discount_amount ? `<tr><td>Discount${inv.discount_percentage ? ' (' + inv.discount_percentage + '%)' : ''}</td><td class="amount-col">-&pound;${parseFloat(inv.discount_amount).toFixed(2)}</td></tr>` : ''}
+    ${inv.tax_amount ? `<tr><td>VAT (${inv.tax_rate || 20}%)</td><td class="amount-col">&pound;${parseFloat(inv.tax_amount).toFixed(2)}</td></tr>` : ''}
+    <tr><td><strong>Total</strong></td><td class="amount-col"><strong>&pound;${parseFloat(inv.total_amount || 0).toFixed(2)}</strong></td></tr>
+    <tr><td>Paid</td><td class="amount-col">&pound;${parseFloat(inv.paid_amount || 0).toFixed(2)}</td></tr>
+    <tr class="grand-total"><td>Balance Due</td><td class="amount-col">&pound;${parseFloat(inv.balance_due || 0).toFixed(2)}</td></tr>
+  </table>
+
+  ${inv.description ? `<div class="payment-info"><h4>Notes</h4><p>${utils.escapeHtml(inv.description)}</p></div>` : ''}
+
+  <div class="footer">
+    <p>Thank you for your business</p>
+    <p>British Trade Awards &bull; Generated ${new Date().toLocaleDateString('en-GB')}</p>
+  </div>
+
+  <div class="no-print" style="text-align:center; margin-top:20px;">
+    <button onclick="window.print()" style="padding:10px 30px; background:#0d6efd; color:#fff; border:none; border-radius:6px; cursor:pointer; font-size:1rem;">Print Invoice</button>
+  </div>
+
+  <script>window.onload = function() { window.print(); }</script>
+</body>
+</html>`;
         const printWindow = window.open('', '_blank');
-        printWindow.document.write(`
-          <html><head><title>Invoice ${invoice.invoice_number}</title>
-          <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-          <style>body{padding:40px;} @media print{.no-print{display:none;}}</style>
-          </head><body>
-          <div class="container">
-            <div class="d-flex justify-content-between mb-4">
-              <div><h2>British Trade Awards</h2><p class="text-muted">Invoice</p></div>
-              <div class="text-end"><h3 class="text-primary">${invoice.invoice_number}</h3></div>
-            </div>
-            ${body.innerHTML}
-            <div class="mt-4 text-center no-print"><button onclick="window.print()" class="btn btn-primary">Print</button></div>
-          </div>
-          </body></html>
-        `);
+        printWindow.document.write(printHtml);
         printWindow.document.close();
       };
 
@@ -1465,6 +1573,109 @@ const paymentsModule = {
         </table>
       </div>
     `;
+  },
+
+  /* ==================================================== */
+  /* OVERDUE REMINDERS */
+  /* ==================================================== */
+
+  sendOverdueReminders() {
+    const overdueInvoices = this.allInvoices.filter(inv => inv.status === 'overdue');
+
+    if (overdueInvoices.length === 0) {
+      utils.showToast('No overdue invoices found', 'info');
+      return;
+    }
+
+    const now = new Date();
+    const listContainer = document.getElementById('overdueRemindersList');
+
+    let tableHTML = `
+      <div class="table-responsive">
+        <table class="table table-sm table-striped align-middle mb-0">
+          <thead class="table-light">
+            <tr>
+              <th style="width: 40px;">
+                <input type="checkbox" class="form-check-input" id="overdueSelectAll" checked onchange="paymentsModule.toggleAllOverdueCheckboxes(this.checked)">
+              </th>
+              <th>Company</th>
+              <th>Invoice #</th>
+              <th class="text-end">Amount</th>
+              <th class="text-end">Days Overdue</th>
+            </tr>
+          </thead>
+          <tbody>`;
+
+    overdueInvoices.forEach(inv => {
+      const dueDate = inv.due_date ? new Date(inv.due_date) : null;
+      const daysOverdue = dueDate ? Math.floor((now - dueDate) / (1000 * 60 * 60 * 24)) : 0;
+      const companyName = inv.organisations?.company_name || 'N/A';
+      const amount = parseFloat(inv.balance_due || inv.total_amount || 0).toFixed(2);
+
+      tableHTML += `
+            <tr>
+              <td>
+                <input type="checkbox" class="form-check-input overdue-reminder-check" data-invoice-id="${inv.id}" checked>
+              </td>
+              <td>${utils.escapeHtml(companyName)}</td>
+              <td><strong>${utils.escapeHtml(inv.invoice_number)}</strong></td>
+              <td class="text-end">&pound;${amount}</td>
+              <td class="text-end"><span class="badge bg-danger">${daysOverdue} days</span></td>
+            </tr>`;
+    });
+
+    tableHTML += `
+          </tbody>
+        </table>
+      </div>
+      <div class="mt-3 text-muted small">${overdueInvoices.length} overdue invoice${overdueInvoices.length !== 1 ? 's' : ''} found</div>`;
+
+    listContainer.innerHTML = tableHTML;
+
+    const modal = new bootstrap.Modal(document.getElementById('overdueRemindersModal'));
+    modal.show();
+  },
+
+  toggleAllOverdueCheckboxes(checked) {
+    document.querySelectorAll('.overdue-reminder-check').forEach(cb => {
+      cb.checked = checked;
+    });
+  },
+
+  async executeOverdueReminders() {
+    const checkboxes = document.querySelectorAll('.overdue-reminder-check:checked');
+    const invoiceIds = Array.from(checkboxes).map(cb => cb.dataset.invoiceId);
+
+    if (invoiceIds.length === 0) {
+      utils.showToast('No invoices selected', 'warning');
+      return;
+    }
+
+    // Close the modal
+    const modalEl = document.getElementById('overdueRemindersModal');
+    const modalInstance = bootstrap.Modal.getInstance(modalEl);
+    if (modalInstance) modalInstance.hide();
+
+    utils.showToast(`Sending reminders for ${invoiceIds.length} invoice${invoiceIds.length !== 1 ? 's' : ''}...`, 'info');
+
+    let sentCount = 0;
+    let failCount = 0;
+
+    for (const id of invoiceIds) {
+      try {
+        await this.sendInvoice(id);
+        sentCount++;
+      } catch (error) {
+        console.error(`Failed to send reminder for invoice ${id}:`, error);
+        failCount++;
+      }
+    }
+
+    if (failCount === 0) {
+      utils.showToast(`Successfully sent ${sentCount} overdue reminder${sentCount !== 1 ? 's' : ''}`, 'success');
+    } else {
+      utils.showToast(`Sent ${sentCount} reminder${sentCount !== 1 ? 's' : ''}, ${failCount} failed`, 'warning');
+    }
   },
 
   /* ==================================================== */

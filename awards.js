@@ -93,6 +93,21 @@ const awardsModule = {
       this.updateStats();
       this.filterAwards();
 
+      // Initialise reusable keyboard navigation (once)
+      if (!this._keyboardNavInit) {
+        this._keyboardNavInit = true;
+        utils.initTableKeyboardNav({
+          tableBodyId: 'awardsTableBody',
+          searchBoxId: 'awardsSearchBox',
+          onEnter: (row) => { const btn = row.querySelector('.dropdown-toggle'); if (btn) btn.click(); }
+        });
+      }
+
+      utils.trackDataLoad('awards');
+
+      // Render saved views dropdown
+      this._renderSavedAwardsViews();
+
     } catch (error) {
       console.error('Error loading awards:', error);
       utils.showToast('Failed to load awards: ' + error.message, 'error');
@@ -488,7 +503,15 @@ const awardsModule = {
               ${utils.escapeHtml(award.sector || '-')}
             </span>
           </td>
-          <td>${utils.getStatusBadge(award.status || 'Draft')}</td>
+          <td>
+            <select class="form-select form-select-sm d-inline-block" style="width:auto; font-size:0.75rem;"
+              onchange="awardsModule.inlineUpdateStatus('${award.id}', this.value)"
+              aria-label="Change award status">
+              ${['draft','pending','published','active','archived'].map(s =>
+                `<option value="${s}" ${(award.status || '').toLowerCase() === s ? 'selected' : ''}>${s.charAt(0).toUpperCase() + s.slice(1)}</option>`
+              ).join('')}
+            </select>
+          </td>
           <td class="text-center">
             <div class="assignment-count-badge ${countBadgeClass}"
               style="cursor: pointer;"
@@ -559,6 +582,7 @@ const awardsModule = {
   async viewDetails(awardId) {
     const award = STATE.allAwards.find(a => a.id === awardId);
     if (!award) return;
+    utils.trackRecentlyViewed('award', awardId, utils.formatAwardName(award));
 
     try {
       utils.showLoading();
@@ -899,6 +923,36 @@ const awardsModule = {
 
     const modal = new bootstrap.Modal(document.getElementById('awardFormModal'));
     modal.show();
+
+    // Draft recovery: check for a saved draft
+    const draft = utils.getFormDraft('award_new');
+    if (draft) {
+      const banner = utils.showDraftRecoveryBanner('award_new', (data) => {
+        if (data.award_name) document.getElementById('awardFormName').value = data.award_name;
+        if (data.county) document.getElementById('awardFormCounty').value = data.county;
+        if (data.sector) document.getElementById('awardFormSector').value = data.sector;
+        if (data.year) document.getElementById('awardFormYear').value = data.year;
+        if (data.status) document.getElementById('awardFormStatus').value = data.status;
+        if (data.description) document.getElementById('awardFormDescription').value = data.description;
+      });
+      const modalBody = document.querySelector('#awardFormModal .modal-body');
+      if (modalBody && banner) modalBody.prepend(banner);
+    }
+
+    // Start auto-save for the create form
+    utils.startFormAutoSave('award_new', () => ({
+      award_name: document.getElementById('awardFormName')?.value,
+      county: document.getElementById('awardFormCounty')?.value,
+      sector: document.getElementById('awardFormSector')?.value,
+      year: document.getElementById('awardFormYear')?.value,
+      status: document.getElementById('awardFormStatus')?.value,
+      description: document.getElementById('awardFormDescription')?.value,
+    }));
+
+    // Stop auto-save when modal is closed
+    document.getElementById('awardFormModal').addEventListener('hidden.bs.modal', () => {
+      utils.stopFormAutoSave('award_new');
+    }, { once: true });
   },
 
   /**
@@ -941,6 +995,37 @@ const awardsModule = {
 
     const modal = new bootstrap.Modal(document.getElementById('awardFormModal'));
     modal.show();
+
+    // Draft recovery: check for a saved draft for this award
+    const editFormKey = 'award_edit_' + awardId;
+    const draft = utils.getFormDraft(editFormKey);
+    if (draft) {
+      const banner = utils.showDraftRecoveryBanner(editFormKey, (data) => {
+        if (data.award_name) document.getElementById('awardFormName').value = data.award_name;
+        if (data.county) document.getElementById('awardFormCounty').value = data.county;
+        if (data.sector) document.getElementById('awardFormSector').value = data.sector;
+        if (data.year) document.getElementById('awardFormYear').value = data.year;
+        if (data.status) document.getElementById('awardFormStatus').value = data.status;
+        if (data.description) document.getElementById('awardFormDescription').value = data.description;
+      });
+      const modalBody = document.querySelector('#awardFormModal .modal-body');
+      if (modalBody && banner) modalBody.prepend(banner);
+    }
+
+    // Start auto-save for the edit form
+    utils.startFormAutoSave(editFormKey, () => ({
+      award_name: document.getElementById('awardFormName')?.value,
+      county: document.getElementById('awardFormCounty')?.value,
+      sector: document.getElementById('awardFormSector')?.value,
+      year: document.getElementById('awardFormYear')?.value,
+      status: document.getElementById('awardFormStatus')?.value,
+      description: document.getElementById('awardFormDescription')?.value,
+    }));
+
+    // Stop auto-save when modal is closed
+    document.getElementById('awardFormModal').addEventListener('hidden.bs.modal', () => {
+      utils.stopFormAutoSave(editFormKey);
+    }, { once: true });
   },
 
   /**
@@ -1987,6 +2072,89 @@ const awardsModule = {
     </div>`;
     document.body.insertAdjacentHTML('beforeend', modalHtml);
     new bootstrap.Modal(document.getElementById('dynamicAwardModal')).show();
+  },
+
+  /* ==================================================== */
+  /* SAVED FILTER VIEWS */
+  /* ==================================================== */
+
+  saveCurrentAwardsView() {
+    const name = prompt('Enter a name for this view:');
+    if (!name) return;
+    const filters = {
+      year: document.getElementById('awardsYearFilterSelect')?.value || '',
+      status: document.getElementById('awardsStatusFilterSelect')?.value || '',
+      sector: document.getElementById('awardsSectorFilterSelect')?.value || '',
+      county: document.getElementById('awardsCountyFilterSelect')?.value || '',
+      region: document.getElementById('awardsRegionFilterSelect')?.value || '',
+      search: document.getElementById('awardsSearchBox')?.value || ''
+    };
+    try {
+      const views = JSON.parse(localStorage.getItem('awardsSavedViews') || '[]');
+      views.push({ name, filters, created: Date.now() });
+      localStorage.setItem('awardsSavedViews', JSON.stringify(views));
+      this._renderSavedAwardsViews();
+      utils.showToast('View saved: ' + name, 'success');
+    } catch(e) {}
+  },
+
+  _renderSavedAwardsViews() {
+    const el = document.getElementById('awardsSavedViewsList');
+    if (!el) return;
+    try {
+      const views = JSON.parse(localStorage.getItem('awardsSavedViews') || '[]');
+      if (views.length === 0) {
+        el.innerHTML = '<option value="">No saved views</option>';
+        return;
+      }
+      el.innerHTML = '<option value="">Load saved view...</option>' +
+        views.map((v, i) => `<option value="${i}">${utils.escapeHtml(v.name)}</option>`).join('');
+    } catch(e) {}
+  },
+
+  loadSavedAwardsView(index) {
+    try {
+      const views = JSON.parse(localStorage.getItem('awardsSavedViews') || '[]');
+      const view = views[index];
+      if (!view) return;
+      if (view.filters.year) document.getElementById('awardsYearFilterSelect').value = view.filters.year;
+      if (view.filters.status) document.getElementById('awardsStatusFilterSelect').value = view.filters.status;
+      if (view.filters.sector) document.getElementById('awardsSectorFilterSelect').value = view.filters.sector;
+      if (view.filters.region) document.getElementById('awardsRegionFilterSelect').value = view.filters.region;
+      if (view.filters.county) document.getElementById('awardsCountyFilterSelect').value = view.filters.county;
+      if (view.filters.search) document.getElementById('awardsSearchBox').value = view.filters.search;
+      this.filterAwards();
+      utils.showToast('Loaded view: ' + view.name, 'success');
+    } catch(e) {}
+  },
+
+  deleteSavedAwardsView(index) {
+    try {
+      const views = JSON.parse(localStorage.getItem('awardsSavedViews') || '[]');
+      const name = views[index]?.name;
+      views.splice(index, 1);
+      localStorage.setItem('awardsSavedViews', JSON.stringify(views));
+      this._renderSavedAwardsViews();
+      utils.showToast('Deleted view: ' + name, 'info');
+    } catch(e) {}
+  },
+
+  /* ==================================================== */
+  /* INLINE STATUS EDITING */
+  /* ==================================================== */
+
+  async inlineUpdateStatus(awardId, newStatus) {
+    try {
+      const { error } = await STATE.client.from('awards').update({ status: newStatus }).eq('id', awardId);
+      if (error) throw error;
+      // Update local state
+      const award = STATE.allAwards.find(a => a.id === awardId);
+      if (award) award.status = newStatus;
+      this.filterAwards();
+      utils.showToast('Status updated to ' + newStatus, 'success');
+    } catch(e) {
+      utils.showToast('Failed to update status', 'error');
+    }
   }
 };
 

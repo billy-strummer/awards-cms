@@ -103,9 +103,21 @@ const winnersModule = {
       } catch(e) {}
 
       this.filterWinners();
-      
+
       console.log(`✅ Loaded ${STATE.allWinners.length} winners`);
-      
+
+      // Initialise reusable keyboard navigation (once)
+      if (!this._keyboardNavInit) {
+        this._keyboardNavInit = true;
+        utils.initTableKeyboardNav({
+          tableBodyId: 'winnersTableBody',
+          searchBoxId: 'winnerSearchBox',
+          onEnter: (row) => { const btn = row.querySelector('.dropdown-toggle'); if (btn) btn.click(); }
+        });
+      }
+
+      utils.trackDataLoad('winners');
+
     } catch (error) {
       console.error('Error loading winners:', error);
       utils.showToast('Failed to load winners: ' + error.message, 'error');

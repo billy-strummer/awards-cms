@@ -168,7 +168,8 @@ async loadOrganisations() {
 
     this.filterOrganisations();
     this.populateSectorSuggestions();
-    
+    utils.trackDataLoad('organisations');
+
   } catch (error) {
     console.error('Error loading organisations:', error);
     console.error('Error details:', error.details, error.hint, error.message);
@@ -746,6 +747,7 @@ updateCountyFilterByRegion() {
    */
 
   async openCompanyProfile(orgId, companyName) {
+    utils.trackRecentlyViewed('organisation', orgId, companyName);
     const modal = new bootstrap.Modal(document.getElementById('companyProfileModal'));
     const contentDiv = document.getElementById('companyProfileContent');
     const titleEl = document.getElementById('companyProfileModalLabel');

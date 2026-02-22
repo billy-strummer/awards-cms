@@ -43,6 +43,9 @@ const entriesModule = {
       // Load stats
       await this.loadStats();
 
+      // Render saved views dropdown
+      this._renderSavedEntriesViews();
+
     } catch (error) {
       console.error('Error initializing entries module:', error);
       utils.showToast('Failed to load entries: ' + error.message, 'error');
@@ -123,6 +126,18 @@ const entriesModule = {
       this.filteredEntries = [...this.allEntries];
       this._currentPage = 1;
       this.renderEntries();
+
+      // Initialise reusable keyboard navigation (once)
+      if (!this._keyboardNavInit) {
+        this._keyboardNavInit = true;
+        utils.initTableKeyboardNav({
+          tableBodyId: 'entriesTableBody',
+          searchBoxId: 'entriesSearchInput',
+          onEnter: (row) => { const btn = row.querySelector('.dropdown-toggle'); if (btn) btn.click(); }
+        });
+      }
+
+      utils.trackDataLoad('entries');
 
     } catch (error) {
       console.error('Error loading entries:', error);
@@ -1213,24 +1228,34 @@ const entriesModule = {
         'Award',
         'Entry Title',
         'Status',
-        'Score',
         'Payment Status',
+        'Self Nomination',
+        'Average Score',
+        'Number of Scores',
         'Submission Date',
         'Contact Name',
-        'Contact Email'
+        'Contact Email',
+        'Contact Phone',
+        'Year',
+        'Description'
       ];
 
       const rows = entriesToExport.map(entry => [
-        entry.entry_number,
+        entry.entry_number || '',
         entry.organisations?.company_name || '',
         entry.award_years?.award_name || '',
-        entry.entry_title,
-        entry.status,
-        entry.average_score || '',
-        entry.payment_status,
-        entry.submission_date ? new Date(entry.submission_date).toLocaleDateString() : '',
-        entry.contact_name,
-        entry.contact_email
+        entry.entry_title || '',
+        entry.status || '',
+        entry.payment_status || '',
+        entry.is_self_nomination ? 'Yes' : 'No',
+        entry.average_score != null ? entry.average_score : '',
+        entry.total_scores != null ? entry.total_scores : '',
+        entry.submission_date ? new Date(entry.submission_date).toLocaleDateString('en-GB') : '',
+        entry.contact_name || '',
+        entry.contact_email || '',
+        entry.contact_phone || '',
+        entry.year || '',
+        entry.entry_description ? String(entry.entry_description).substring(0, 200) : ''
       ]);
 
       const csv = [headers, ...rows]
@@ -1602,6 +1627,87 @@ const entriesModule = {
       utils.showToast('Failed to update visibility', 'error');
       // Revert checkbox
       document.getElementById('isPublicToggle').checked = !isPublic;
+    }
+  },
+
+  /* ==================================================== */
+  /* SAVED FILTER VIEWS */
+  /* ==================================================== */
+
+  saveCurrentEntriesView() {
+    const name = prompt('Enter a name for this view:');
+    if (!name) return;
+    const filters = {
+      status: document.getElementById('entriesStatusFilter')?.value || '',
+      award: document.getElementById('entriesAwardFilter')?.value || '',
+      year: document.getElementById('entriesYearFilter')?.value || '',
+      selfNom: document.getElementById('entriesSelfNomFilter')?.value || '',
+      search: document.getElementById('entriesSearchInput')?.value || ''
+    };
+    try {
+      const views = JSON.parse(localStorage.getItem('entriesSavedViews') || '[]');
+      views.push({ name, filters, created: Date.now() });
+      localStorage.setItem('entriesSavedViews', JSON.stringify(views));
+      this._renderSavedEntriesViews();
+      utils.showToast('View saved: ' + name, 'success');
+    } catch(e) {}
+  },
+
+  _renderSavedEntriesViews() {
+    const el = document.getElementById('entriesSavedViewsList');
+    if (!el) return;
+    try {
+      const views = JSON.parse(localStorage.getItem('entriesSavedViews') || '[]');
+      if (views.length === 0) {
+        el.innerHTML = '<option value="">No saved views</option>';
+        return;
+      }
+      el.innerHTML = '<option value="">Load saved view...</option>' +
+        views.map((v, i) => `<option value="${i}">${utils.escapeHtml(v.name)}</option>`).join('');
+    } catch(e) {}
+  },
+
+  loadSavedEntriesView(index) {
+    try {
+      const views = JSON.parse(localStorage.getItem('entriesSavedViews') || '[]');
+      const view = views[index];
+      if (!view) return;
+      if (view.filters.status) document.getElementById('entriesStatusFilter').value = view.filters.status;
+      if (view.filters.award) document.getElementById('entriesAwardFilter').value = view.filters.award;
+      if (view.filters.year) document.getElementById('entriesYearFilter').value = view.filters.year;
+      if (view.filters.selfNom) document.getElementById('entriesSelfNomFilter').value = view.filters.selfNom;
+      if (view.filters.search) document.getElementById('entriesSearchInput').value = view.filters.search;
+      this.filterEntries();
+      utils.showToast('Loaded view: ' + view.name, 'success');
+    } catch(e) {}
+  },
+
+  deleteSavedEntriesView(index) {
+    try {
+      const views = JSON.parse(localStorage.getItem('entriesSavedViews') || '[]');
+      const name = views[index]?.name;
+      views.splice(index, 1);
+      localStorage.setItem('entriesSavedViews', JSON.stringify(views));
+      this._renderSavedEntriesViews();
+      utils.showToast('Deleted view: ' + name, 'info');
+    } catch(e) {}
+  },
+
+  /* ==================================================== */
+  /* INLINE STATUS EDITING */
+  /* ==================================================== */
+
+  async inlineUpdateEntryStatus(entryId, newStatus) {
+    try {
+      const { error } = await STATE.client.from('entries').update({ status: newStatus }).eq('id', entryId);
+      if (error) throw error;
+      // Update local state
+      const entry = this.allEntries.find(e => e.id === entryId);
+      if (entry) entry.status = newStatus;
+      this.applyFilters();
+      utils.showToast('Status updated to ' + newStatus, 'success');
+    } catch(e) {
+      utils.showToast('Failed to update status', 'error');
     }
   }
 };

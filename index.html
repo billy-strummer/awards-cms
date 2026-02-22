@@ -139,6 +139,16 @@
             </ul>
           </div>
 
+          <!-- Recently Viewed -->
+          <div class="dropdown d-inline-block me-2">
+            <button class="btn btn-outline-light btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown" data-bs-auto-close="outside" title="Recently viewed">
+              <i class="bi bi-clock-history"></i>
+            </button>
+            <ul class="dropdown-menu dropdown-menu-end" id="recentlyViewedList" style="min-width:280px; max-height:400px; overflow-y:auto;">
+              <li><span class="dropdown-item text-muted small">No recent items</span></li>
+            </ul>
+          </div>
+
           <!-- Dark Mode Toggle -->
           <button class="btn btn-outline-light" id="darkModeToggle" title="Toggle dark mode" aria-label="Toggle dark mode">
             <i class="bi bi-moon"></i>
@@ -168,21 +178,25 @@
       <li class="nav-item" role="presentation">
         <button class="nav-link" id="awards-tab" data-bs-toggle="tab" data-bs-target="#awards" type="button" role="tab">
           <i class="bi bi-trophy me-2"></i>Awards
+          <span class="badge rounded-pill bg-secondary ms-1 tab-count-badge" id="awardsTabCount"></span>
         </button>
       </li>
       <li class="nav-item" role="presentation">
         <button class="nav-link" id="organisations-tab" data-bs-toggle="tab" data-bs-target="#organisations" type="button" role="tab">
           <i class="bi bi-building me-2"></i>Organisations
+          <span class="badge rounded-pill bg-secondary ms-1 tab-count-badge" id="orgsTabCount"></span>
         </button>
       </li>
       <li class="nav-item" role="presentation">
         <button class="nav-link" id="winners-tab" data-bs-toggle="tab" data-bs-target="#winners" type="button" role="tab">
           <i class="bi bi-award me-2"></i>Winners
+          <span class="badge rounded-pill bg-secondary ms-1 tab-count-badge" id="winnersTabCount"></span>
         </button>
       </li>
       <li class="nav-item" role="presentation">
         <button class="nav-link" id="entries-tab" data-bs-toggle="tab" data-bs-target="#entries" type="button" role="tab">
           <i class="bi bi-file-earmark-text me-2"></i>Entries
+          <span class="badge rounded-pill bg-secondary ms-1 tab-count-badge" id="entriesTabCount"></span>
         </button>
       </li>
       <li class="nav-item" role="presentation">
@@ -193,6 +207,7 @@
       <li class="nav-item" role="presentation">
         <button class="nav-link" id="events-tab" data-bs-toggle="tab" data-bs-target="#events" type="button" role="tab">
           <i class="bi bi-calendar-event me-2"></i>Events
+          <span class="badge rounded-pill bg-secondary ms-1 tab-count-badge" id="eventsTabCount"></span>
         </button>
       </li>
       <li class="nav-item" role="presentation">
@@ -208,6 +223,7 @@
       <li class="nav-item" role="presentation">
         <button class="nav-link" id="payments-tab" data-bs-toggle="tab" data-bs-target="#payments" type="button" role="tab">
           <i class="bi bi-credit-card me-2"></i>Payments
+          <span class="badge rounded-pill bg-secondary ms-1 tab-count-badge" id="paymentsTabCount"></span>
         </button>
       </li>
       <li class="nav-item" role="presentation">
@@ -1293,7 +1309,7 @@
             <h1 class="section-title">
               <i class="bi bi-trophy me-2"></i>Award Management
             </h1>
-            <p class="section-subtitle">Manage and review award submissions</p>
+            <p class="section-subtitle">Manage and review award submissions<span id="awardsFreshness" class="ms-2"></span></p>
           </div>
 
           <!-- Stats Summary -->
@@ -1398,6 +1414,17 @@
         <i class="bi bi-search me-1"></i>Search
       </label>
       <input type="text" class="form-control" id="awardsSearchBox" placeholder="Search awards...">
+    </div>
+    <div class="col-md-2">
+      <label class="form-label small fw-semibold"><i class="bi bi-bookmark me-1"></i>Saved Views</label>
+      <div class="input-group input-group-sm">
+        <select class="form-select form-select-sm" id="awardsSavedViewsList" onchange="if(this.value) awardsModule.loadSavedAwardsView(parseInt(this.value))">
+          <option value="">No saved views</option>
+        </select>
+        <button class="btn btn-outline-primary" onclick="awardsModule.saveCurrentAwardsView()" title="Save current filters as view">
+          <i class="bi bi-bookmark-plus"></i>
+        </button>
+      </div>
     </div>
     <div class="col-md-1 d-flex align-items-end">
       <button class="btn btn-outline-secondary btn-sm w-100" onclick="awardsModule.resetFilters()" title="Reset all filters">
@@ -1515,7 +1542,7 @@
       <h1 class="section-title">
         <i class="bi bi-building me-2"></i>Organisation Management
       </h1>
-      <p class="section-subtitle">View and manage registered companies</p>
+      <p class="section-subtitle">View and manage registered companies<span id="organisationsFreshness" class="ms-2"></span></p>
     </div>
 
     <!-- Enhanced Stats Card with Pipeline & Data Quality -->
@@ -5020,6 +5047,9 @@
                       <button class="btn btn-outline-secondary btn-sm" onclick="paymentsModule.exportInvoicesCSV()" title="Export CSV">
                         <i class="bi bi-download me-1"></i>Export
                       </button>
+                      <button class="btn btn-outline-warning btn-sm" onclick="paymentsModule.sendOverdueReminders()" title="Send payment reminders to all overdue invoices">
+                        <i class="bi bi-bell me-1"></i>Reminders
+                      </button>
                     </div>
                   </div>
                 </div>
@@ -6820,6 +6850,28 @@ Available placeholders:
           <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
           <button type="button" class="btn btn-info text-white" onclick="paymentsModule.confirmSendInvoice()">
             <i class="bi bi-send me-1"></i>Send Invoice
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Overdue Reminders Modal -->
+  <div class="modal fade" id="overdueRemindersModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title"><i class="bi bi-bell-fill text-warning me-2"></i>Send Overdue Payment Reminders</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <p class="text-muted mb-3">Select invoices to send payment reminder emails:</p>
+          <div id="overdueRemindersList"></div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="button" class="btn btn-warning" onclick="paymentsModule.executeOverdueReminders()">
+            <i class="bi bi-send me-1"></i>Send Reminders
           </button>
         </div>
       </div>
@@ -9033,6 +9085,39 @@ in recognition of excellence
           <button type="button" class="btn btn-success" id="importWinnersBtn" disabled onclick="winnersModule.importWinners()">
             <i class="bi bi-upload me-1"></i>Import Winners
           </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Keyboard Shortcuts Help Modal -->
+  <div class="modal fade" id="shortcutsHelpModal" tabindex="-1">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title"><i class="bi bi-keyboard me-2"></i>Keyboard Shortcuts</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <h6 class="text-muted mb-2">Global</h6>
+          <div class="d-flex justify-content-between mb-1"><span>Search</span><kbd>Ctrl+K</kbd></div>
+          <div class="d-flex justify-content-between mb-1"><span>Close modal / deselect</span><kbd>Esc</kbd></div>
+          <div class="d-flex justify-content-between mb-1"><span>Show this help</span><kbd>?</kbd></div>
+          <hr>
+          <h6 class="text-muted mb-2">Tables</h6>
+          <div class="d-flex justify-content-between mb-1"><span>Navigate rows</span><kbd>&uarr;</kbd> <kbd>&darr;</kbd></div>
+          <div class="d-flex justify-content-between mb-1"><span>Open selected row</span><kbd>Enter</kbd></div>
+          <div class="d-flex justify-content-between mb-1"><span>Focus search</span><kbd>/</kbd></div>
+          <hr>
+          <h6 class="text-muted mb-2">Organisations</h6>
+          <div class="d-flex justify-content-between mb-1"><span>New organisation</span><kbd>Ctrl+N</kbd></div>
+          <div class="d-flex justify-content-between mb-1"><span>Next / previous page</span><kbd>Ctrl+&rarr;</kbd> <kbd>Ctrl+&larr;</kbd></div>
+          <div class="d-flex justify-content-between mb-1"><span>Toggle checkbox</span><kbd>Space</kbd></div>
+          <hr>
+          <h6 class="text-muted mb-2">Running Order / Seating</h6>
+          <div class="d-flex justify-content-between mb-1"><span>Undo</span><kbd>Ctrl+Z</kbd></div>
+          <div class="d-flex justify-content-between mb-1"><span>Redo</span><kbd>Ctrl+Y</kbd></div>
+          <div class="d-flex justify-content-between mb-1"><span>Save</span><kbd>Ctrl+S</kbd></div>
         </div>
       </div>
     </div>

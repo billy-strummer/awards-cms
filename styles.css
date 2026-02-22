@@ -3253,3 +3253,6 @@ body.dark-mode #schedulePreview {
   background-color: rgba(255, 193, 7, 0.1) !important;
   outline: 2px solid var(--warning-color);
 }
+
+/* Tab count badges - hide when empty */
+.tab-count-badge:empty { display: none; }

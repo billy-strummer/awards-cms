@@ -9,7 +9,7 @@ const eventsModule = {
   async loadEvents() {
     try {
       utils.showLoading();
-      utils.showTableLoading('eventsTableBody', 11);
+      utils.showSkeletonLoading('eventsTableBody', 11);
 
       // Paginated loading for large event datasets
       let allData = [];

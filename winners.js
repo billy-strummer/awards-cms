@@ -17,7 +17,7 @@ const winnersModule = {
   async loadWinners() {
     try {
       utils.showLoading();
-      utils.showTableLoading('winnersTableBody', 7);
+      utils.showSkeletonLoading('winnersTableBody', 7);
 
       // Paginated loading for large winner datasets
       let allData = [];

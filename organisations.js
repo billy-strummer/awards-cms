@@ -33,7 +33,7 @@ const orgsModule = {
 async loadOrganisations() {
   try {
     utils.showLoading();
-    utils.showTableLoading('orgsTableBody', 10);
+    utils.showSkeletonLoading('orgsTableBody', 10);
     
     // Load all organisations using proper Supabase v2 pagination
     let allData = [];

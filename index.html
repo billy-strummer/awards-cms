@@ -2416,11 +2416,11 @@
                 <thead>
                   <tr>
                     <th style="width:35px"><input type="checkbox" class="form-check-input" id="selectAllWinners" onchange="winnersModule.toggleSelectAllWinners(this.checked)"></th>
-                    <th>Winner Name</th>
-                    <th>Award</th>
-                    <th>Year</th>
+                    <th style="cursor: pointer;" onclick="winnersModule.sortWinners('winner_name')">Winner Name <i class="bi bi-arrow-down-up text-muted ms-1 small"></i></th>
+                    <th style="cursor: pointer;" onclick="winnersModule.sortWinners('award')">Award <i class="bi bi-arrow-down-up text-muted ms-1 small"></i></th>
+                    <th style="cursor: pointer;" onclick="winnersModule.sortWinners('year')">Year <i class="bi bi-arrow-down-up text-muted ms-1 small"></i></th>
                     <th>Media</th>
-                    <th>Status</th>
+                    <th style="cursor: pointer;" onclick="winnersModule.sortWinners('status')">Status <i class="bi bi-arrow-down-up text-muted ms-1 small"></i></th>
                     <th width="220" class="text-center">Actions</th>
                   </tr>
                 </thead>

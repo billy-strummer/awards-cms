@@ -909,8 +909,8 @@ const utils = {
     }
 
     // Search organisations
-    if (window.STATE?.organisations) {
-      STATE.organisations.filter(o => (o.company_name || '').toLowerCase().includes(q)).slice(0, 5).forEach(o => {
+    if (window.STATE?.allOrganisations) {
+      STATE.allOrganisations.filter(o => (o.company_name || '').toLowerCase().includes(q)).slice(0, 5).forEach(o => {
         results.push({ type: 'org', label: o.company_name, icon: 'bi-building', id: o.id, hint: 'Organisation' });
       });
     }
@@ -945,20 +945,20 @@ const utils = {
   _commandPaletteAction(type, id) {
     this.closeCommandPalette();
     if (type === 'tab') {
-      const tabBtn = document.querySelector(`[data-bs-target="#${id}Page"]`) || document.querySelector(`[href="#${id}Page"]`);
+      const tabBtn = document.querySelector(`[data-bs-target="#${id}"]`) || document.querySelector(`[href="#${id}"]`);
       if (tabBtn) tabBtn.click();
     } else if (type === 'org' && window.orgsModule) {
-      const tabBtn = document.querySelector('[data-bs-target="#organisationsPage"]');
+      const tabBtn = document.querySelector('[data-bs-target="#organisations"]');
       if (tabBtn) tabBtn.click();
       setTimeout(() => { if (orgsModule.openCompanyProfile) orgsModule.openCompanyProfile(id, ''); }, 300);
     } else if (type === 'award') {
-      const tabBtn = document.querySelector('[data-bs-target="#awardsPage"]');
+      const tabBtn = document.querySelector('[data-bs-target="#awards"]');
       if (tabBtn) tabBtn.click();
     } else if (type === 'event') {
-      const tabBtn = document.querySelector('[data-bs-target="#eventsPage"]');
+      const tabBtn = document.querySelector('[data-bs-target="#events"]');
       if (tabBtn) tabBtn.click();
     } else if (type === 'winner') {
-      const tabBtn = document.querySelector('[data-bs-target="#winnersPage"]');
+      const tabBtn = document.querySelector('[data-bs-target="#winners"]');
       if (tabBtn) tabBtn.click();
     }
   },
@@ -972,7 +972,7 @@ const utils = {
    */
   showToastWithAction(message, type, actions) {
     const actionHtml = actions ? actions.map(a =>
-      `<button class="btn btn-sm btn-${a.class || 'light'} ms-2" onclick="${a.onclick}">${a.label}</button>`
+      `<button class="btn btn-sm btn-${this.escapeHtml(a.class || 'light')} ms-2" onclick="${this.escapeHtml(a.onclick)}">${this.escapeHtml(a.label)}</button>`
     ).join('') : '';
     this.showToast(message + actionHtml, type);
   },

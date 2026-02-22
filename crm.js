@@ -27,6 +27,8 @@ const crmModule = {
   _selectedDealIds: new Set(),
   _meetingCurrentPage: 1,
   _meetingPageSize: 50,
+  _meetingSortField: 'meeting_date',
+  _meetingSortDir: 'desc',
   _selectedMeetingIds: new Set(),
   _kanbanView: false,
 
@@ -2732,7 +2734,25 @@ const crmModule = {
       this._crmSortField = field;
       this._crmSortDir = 'asc';
     }
-    this.renderCommunicationsTable(this._communications);
+    const sorted = [...(this._communications || [])].sort((a, b) => {
+      let aVal, bVal;
+      if (field === 'company') {
+        aVal = (a.organisation?.company_name || '').toLowerCase();
+        bVal = (b.organisation?.company_name || '').toLowerCase();
+      } else if (field === 'contact') {
+        aVal = (a.contact ? `${a.contact.first_name} ${a.contact.last_name}` : '').toLowerCase();
+        bVal = (b.contact ? `${b.contact.first_name} ${b.contact.last_name}` : '').toLowerCase();
+      } else {
+        aVal = (a[field] || '').toString().toLowerCase();
+        bVal = (b[field] || '').toString().toLowerCase();
+      }
+      if (aVal < bVal) return this._crmSortDir === 'asc' ? -1 : 1;
+      if (aVal > bVal) return this._crmSortDir === 'asc' ? 1 : -1;
+      return 0;
+    });
+    this._communications = sorted;
+    this._crmCurrentPage = 1;
+    this.renderCommunicationsTable(sorted);
   },
 
   sortDeals(field) {
@@ -2742,7 +2762,53 @@ const crmModule = {
       this._dealSortField = field;
       this._dealSortDir = 'asc';
     }
-    this.renderDealsTable(this._deals);
+    const sorted = [...(this._deals || [])].sort((a, b) => {
+      let aVal, bVal;
+      if (field === 'company') {
+        aVal = (a.organisation?.company_name || '').toLowerCase();
+        bVal = (b.organisation?.company_name || '').toLowerCase();
+      } else if (field === 'deal_value') {
+        aVal = parseFloat(a.deal_value) || 0;
+        bVal = parseFloat(b.deal_value) || 0;
+      } else if (field === 'probability') {
+        aVal = parseFloat(a.probability) || 0;
+        bVal = parseFloat(b.probability) || 0;
+      } else {
+        aVal = (a[field] || '').toString().toLowerCase();
+        bVal = (b[field] || '').toString().toLowerCase();
+      }
+      if (aVal < bVal) return this._dealSortDir === 'asc' ? -1 : 1;
+      if (aVal > bVal) return this._dealSortDir === 'asc' ? 1 : -1;
+      return 0;
+    });
+    this._deals = sorted;
+    this._dealCurrentPage = 1;
+    this.renderDealsTable(sorted);
+  },
+
+  sortMeetings(field) {
+    if (this._meetingSortField === field) {
+      this._meetingSortDir = this._meetingSortDir === 'asc' ? 'desc' : 'asc';
+    } else {
+      this._meetingSortField = field;
+      this._meetingSortDir = 'asc';
+    }
+    const sorted = [...(this._meetings || [])].sort((a, b) => {
+      let aVal, bVal;
+      if (field === 'company') {
+        aVal = (a.organisation?.company_name || '').toLowerCase();
+        bVal = (b.organisation?.company_name || '').toLowerCase();
+      } else {
+        aVal = (a[field] || '').toString().toLowerCase();
+        bVal = (b[field] || '').toString().toLowerCase();
+      }
+      if (aVal < bVal) return this._meetingSortDir === 'asc' ? -1 : 1;
+      if (aVal > bVal) return this._meetingSortDir === 'asc' ? 1 : -1;
+      return 0;
+    });
+    this._meetings = sorted;
+    this._meetingCurrentPage = 1;
+    this.renderMeetingsTable(sorted);
   },
 
   toggleCrmSelect(id, checked, type) {
@@ -2753,7 +2819,7 @@ const crmModule = {
   async bulkDeleteCrm(type) {
     const set = type === 'deal' ? this._selectedDealIds : type === 'meeting' ? this._selectedMeetingIds : this._selectedCrmIds;
     if (set.size === 0) return;
-    const table = type === 'deal' ? 'crm_deals' : type === 'meeting' ? 'crm_meetings' : 'crm_communications';
+    const table = type === 'deal' ? 'deals' : type === 'meeting' ? 'meeting_notes' : 'communications';
     if (!confirm(`Delete ${set.size} ${type} record(s)?`)) return;
     try {
       utils.showLoading();
@@ -2779,7 +2845,7 @@ const crmModule = {
       filename = 'crm-communications';
       headers = ['Date', 'Type', 'Company', 'Contact', 'Subject', 'Notes'];
       const rows = data.map(r => [
-        r.communication_date || '', r.communication_type || '', r.company_name || '', r.contact_name || '', r.subject || '', (r.notes || '').replace(/"/g, '""')
+        r.communication_date || '', r.type || '', r.organisation?.company_name || '', r.contact ? `${r.contact.first_name} ${r.contact.last_name}` : '', r.subject || '', (r.message || '').replace(/"/g, '""')
       ]);
       this._downloadCSV(headers, rows, filename);
     } else if (type === 'deals') {
@@ -2787,7 +2853,7 @@ const crmModule = {
       filename = 'crm-deals';
       headers = ['Deal Name', 'Company', 'Value', 'Stage', 'Probability', 'Expected Close', 'Created'];
       const rows = data.map(r => [
-        r.deal_name || '', r.company_name || '', r.deal_value || 0, r.stage || '', r.probability || '', r.expected_close_date || '', r.created_at || ''
+        r.deal_name || '', r.organisation?.company_name || '', r.deal_value || 0, r.stage || '', r.probability || '', r.expected_close_date || '', r.created_at || ''
       ]);
       this._downloadCSV(headers, rows, filename);
     } else if (type === 'meetings') {
@@ -2795,7 +2861,7 @@ const crmModule = {
       filename = 'crm-meetings';
       headers = ['Date', 'Title', 'Company', 'Attendees', 'Location', 'Notes'];
       const rows = data.map(r => [
-        r.meeting_date || '', r.title || '', r.company_name || '', r.attendees || '', r.location || '', (r.notes || '').replace(/"/g, '""')
+        r.meeting_date || '', r.meeting_title || '', r.organisation?.company_name || '', r.attendees || '', r.location || '', (r.notes || '').replace(/"/g, '""')
       ]);
       this._downloadCSV(headers, rows, filename);
     }

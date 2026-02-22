@@ -3899,7 +3899,8 @@ const mediaGalleryModule = {
   viewPhotoFull(photoId, photoUrl, title, mediaType = 'image') {
     this.currentMediaId = photoId;
     const modal = new bootstrap.Modal(document.getElementById('viewPhotoFullModal'));
-    document.getElementById('viewPhotoFullTitle').textContent = title;
+    const titleEl = document.getElementById('viewPhotoFullTitle') || document.getElementById('viewPhotoFullModalLabel');
+    if (titleEl) titleEl.textContent = title;
 
     if (mediaType === 'youtube') {
       // Display YouTube embed
@@ -6576,6 +6577,166 @@ const mediaGalleryModule = {
       utils.showToast('Error loading featured photos: ' + err.message, 'error');
     } finally {
       utils.hideLoading();
+    }
+  },
+
+  // ============================================
+  // UPLOAD MEDIA GALLERY MODAL FUNCTIONS
+  // ============================================
+
+  async handleUpload() {
+    const form = document.getElementById('uploadMediaGalleryForm');
+    if (!form.checkValidity()) { form.reportValidity(); return; }
+
+    const eventId = document.getElementById('uploadEventSelect').value;
+    if (!eventId) { utils.showToast('Please select an event', 'warning'); return; }
+
+    const fileInput = document.getElementById('uploadFile');
+    if (!fileInput.files || fileInput.files.length === 0) {
+      utils.showToast('Please select files to upload', 'warning');
+      return;
+    }
+
+    const title = document.getElementById('uploadTitle').value.trim();
+    const caption = document.getElementById('uploadCaption').value.trim();
+    const maxSizeMB = 4.5;
+    const maxSizeBytes = maxSizeMB * 1024 * 1024;
+
+    try {
+      const btn = document.getElementById('uploadMediaGalleryBtn');
+      btn.disabled = true;
+      btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Uploading...';
+      document.getElementById('uploadFileProgress').classList.remove('d-none');
+
+      let successCount = 0;
+      const files = Array.from(fileInput.files);
+
+      for (const file of files) {
+        if (file.size > maxSizeBytes) {
+          utils.showToast(`Skipping ${file.name} (exceeds ${maxSizeMB}MB limit)`, 'warning');
+          continue;
+        }
+
+        const timestamp = Date.now();
+        const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
+        const fileName = `gallery/${eventId}/${timestamp}_${safeName}`;
+
+        const { error: uploadError } = await STATE.client.storage
+          .from('media')
+          .upload(fileName, file, { cacheControl: '3600', upsert: false });
+
+        if (uploadError) {
+          console.error('Upload error for', file.name, uploadError);
+          continue;
+        }
+
+        const { data: urlData } = STATE.client.storage
+          .from('media')
+          .getPublicUrl(fileName);
+
+        const { error: dbError } = await STATE.client
+          .from('media_gallery')
+          .insert([{
+            event_id: eventId,
+            file_url: urlData.publicUrl,
+            file_type: file.type,
+            title: title || file.name,
+            caption: caption || null,
+            published: true
+          }]);
+
+        if (dbError) {
+          console.error('DB error for', file.name, dbError);
+          continue;
+        }
+        successCount++;
+      }
+
+      if (successCount > 0) {
+        utils.showToast(`${successCount} file(s) uploaded successfully!`, 'success');
+        bootstrap.Modal.getInstance(document.getElementById('uploadMediaGalleryModal')).hide();
+        this.loadAllGalleries();
+      } else {
+        utils.showToast('No files were uploaded', 'error');
+      }
+    } catch (error) {
+      console.error('Error uploading:', error);
+      utils.showToast('Error uploading files: ' + error.message, 'error');
+    } finally {
+      const btn = document.getElementById('uploadMediaGalleryBtn');
+      if (btn) { btn.disabled = false; btn.innerHTML = '<i class="bi bi-upload me-2"></i>Upload'; }
+      document.getElementById('uploadFileProgress').classList.add('d-none');
+    }
+  },
+
+  showQuickAddEvent() {
+    document.getElementById('quickAddEventForm').classList.remove('d-none');
+    document.getElementById('quickEventName').focus();
+  },
+
+  cancelQuickAddEvent() {
+    document.getElementById('quickAddEventForm').classList.add('d-none');
+    document.getElementById('quickEventName').value = '';
+    document.getElementById('quickEventDate').value = '';
+    document.getElementById('quickEventYear').value = '';
+  },
+
+  async saveQuickEvent() {
+    const name = document.getElementById('quickEventName').value.trim();
+    if (!name) { utils.showToast('Event name is required', 'warning'); return; }
+
+    const eventDate = document.getElementById('quickEventDate').value;
+    const year = document.getElementById('quickEventYear').value || new Date().getFullYear();
+
+    try {
+      const { data, error } = await STATE.client
+        .from('events')
+        .insert([{ event_name: name, event_date: eventDate || null, year: parseInt(year) }])
+        .select('id, event_name')
+        .single();
+
+      if (error) throw error;
+
+      // Add to the event select and select it
+      const select = document.getElementById('uploadEventSelect');
+      const option = new Option(utils.escapeHtml(data.event_name), data.id, true, true);
+      select.appendChild(option);
+
+      this.cancelQuickAddEvent();
+      utils.showToast('Event created and selected', 'success');
+    } catch (error) {
+      console.error('Error creating quick event:', error);
+      utils.showToast('Error creating event: ' + error.message, 'error');
+    }
+  },
+
+  _currentTagMediaId: null,
+
+  async saveTags() {
+    const orgId = document.getElementById('tagOrgSelect').value || null;
+    const awardId = document.getElementById('tagAwardSelect').value || null;
+
+    if (!this._currentTagMediaId) {
+      utils.showToast('No media selected for tagging', 'warning');
+      return;
+    }
+
+    try {
+      const { error } = await STATE.client
+        .from('media_gallery')
+        .update({
+          organisation_id: orgId,
+          award_id: awardId
+        })
+        .eq('id', this._currentTagMediaId);
+
+      if (error) throw error;
+
+      utils.showToast('Tags saved successfully', 'success');
+      bootstrap.Modal.getInstance(document.getElementById('tagMediaModal')).hide();
+    } catch (error) {
+      console.error('Error saving tags:', error);
+      utils.showToast('Error saving tags: ' + error.message, 'error');
     }
   }
 };

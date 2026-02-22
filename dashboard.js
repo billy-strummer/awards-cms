@@ -58,6 +58,9 @@ const dashboardModule = {
       // Load geographic distribution
       await this.loadGeoDistribution();
 
+      // Update tab count badges
+      updateTabCounts();
+
       console.log('✅ Dashboard data loaded');
 
     } catch (error) {
@@ -99,6 +102,15 @@ const dashboardModule = {
 
     // Update top companies table
     this.updateTopCompanies();
+  },
+
+  renderTrendIndicator(current, previous) {
+    if (!previous || previous === 0) return '';
+    const change = ((current - previous) / previous * 100).toFixed(1);
+    const up = change > 0;
+    const color = up ? 'text-success' : 'text-danger';
+    const icon = up ? 'bi-arrow-up-short' : 'bi-arrow-down-short';
+    return `<span class="${color} small ms-1"><i class="bi ${icon}"></i>${Math.abs(change)}%</span>`;
   },
 
   /**
@@ -2942,3 +2954,25 @@ const dashboardModule = {
 
 // Export to window for global access
 window.dashboardModule = dashboardModule;
+
+/**
+ * Update tab count badges in the main navigation
+ */
+function updateTabCounts() {
+  const setBadge = (id, count, className) => {
+    const el = document.getElementById(id);
+    if (el) {
+      el.textContent = count > 0 ? count : '';
+      el.className = count > 0 ? 'badge rounded-pill ms-1 tab-count-badge ' + (className || 'bg-secondary') : '';
+    }
+  };
+  setBadge('awardsTabCount', (STATE.allAwards || []).length);
+  setBadge('orgsTabCount', (STATE.allOrganisations || []).length);
+  setBadge('winnersTabCount', (STATE.allWinners || []).length);
+  setBadge('entriesTabCount', (STATE.allEntries || []).length);
+  setBadge('eventsTabCount', (STATE.allEvents || []).length);
+  // For payments, show overdue count in red if > 0
+  const overdueCount = ((typeof paymentsModule !== 'undefined' && paymentsModule.allInvoices) || []).filter(i => i.status === 'overdue').length;
+  setBadge('paymentsTabCount', overdueCount, overdueCount > 0 ? 'bg-danger' : 'bg-secondary');
+}
+window.updateTabCounts = updateTabCounts;

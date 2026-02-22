@@ -287,7 +287,7 @@ const tenantModule = {
   },
 
   async deleteTenant(tenantId) {
-    if (!confirm('Delete this programme? Data associated with it will become orphaned.')) return;
+    if (!await utils.confirmDialog({ title: 'Delete Programme', message: 'Delete this programme? Data associated with it will become orphaned.', confirmText: 'Delete', danger: true })) return;
     try {
       const { error } = await STATE.client.from('tenants').update({ is_active: false }).eq('id', tenantId);
       if (error) throw error;

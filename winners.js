@@ -6,6 +6,10 @@ const winnersModule = {
   currentWinnerId: null,
   currentMediaType: null,
   _selectedWinnerIds: new Set(),
+  _currentPage: 1,
+  _pageSize: 50,
+  _sortField: 'created_at',
+  _sortDir: 'desc',
 
   /**
    * Load all winners from database
@@ -100,12 +104,27 @@ const winnersModule = {
         if (saved.year) document.getElementById('winnerYearFilterSelect').value = saved.year;
         if (saved.award) document.getElementById('winnerAwardFilterSelect').value = saved.award;
         if (saved.search) document.getElementById('winnerSearchBox').value = saved.search;
-      } catch(e) {}
+      } catch(e) { console.warn('Failed to restore winner filters:', e.message); }
 
       this.filterWinners();
-      
+
       console.log(`✅ Loaded ${STATE.allWinners.length} winners`);
-      
+
+      // Initialise reusable keyboard navigation (once)
+      if (!this._keyboardNavInit) {
+        this._keyboardNavInit = true;
+        utils.initTableKeyboardNav({
+          tableBodyId: 'winnersTableBody',
+          searchBoxId: 'winnerSearchBox',
+          onEnter: (row) => { const btn = row.querySelector('.dropdown-toggle'); if (btn) btn.click(); }
+        });
+      }
+
+      utils.trackDataLoad('winners');
+
+      // Render saved views dropdown
+      this._renderSavedWinnersViews();
+
     } catch (error) {
       console.error('Error loading winners:', error);
       utils.showToast('Failed to load winners: ' + error.message, 'error');
@@ -137,11 +156,12 @@ const winnersModule = {
    * Filter winners based on current filter values
    */
   filterWinners() {
+    this._currentPage = 1;
     const year = document.getElementById('winnerYearFilterSelect').value;
     const award = document.getElementById('winnerAwardFilterSelect').value;
     const search = document.getElementById('winnerSearchBox').value.toLowerCase().trim();
 
-    try { localStorage.setItem('winnersFilters', JSON.stringify({ year, award, search })); } catch(e) {}
+    try { localStorage.setItem('winnersFilters', JSON.stringify({ year, award, search })); } catch(e) { console.warn('Failed to save winner filters:', e.message); }
 
     STATE.filteredWinners = STATE.allWinners.filter(winner => {
       // Year filter
@@ -162,8 +182,39 @@ const winnersModule = {
 
       return true;
     });
-    
+
+    // Sort
+    STATE.filteredWinners.sort((a, b) => {
+      let aVal, bVal;
+      if (this._sortField === 'winner_name') {
+        aVal = (a.winner_name || '').toLowerCase();
+        bVal = (b.winner_name || '').toLowerCase();
+      } else if (this._sortField === 'award') {
+        aVal = utils.formatAwardName(a.awards).toLowerCase();
+        bVal = utils.formatAwardName(b.awards).toLowerCase();
+      } else if (this._sortField === 'year') {
+        aVal = Number(a.awards?.year) || 0;
+        bVal = Number(b.awards?.year) || 0;
+      } else {
+        aVal = a[this._sortField] || '';
+        bVal = b[this._sortField] || '';
+      }
+      if (aVal < bVal) return this._sortDir === 'asc' ? -1 : 1;
+      if (aVal > bVal) return this._sortDir === 'asc' ? 1 : -1;
+      return 0;
+    });
+
     this.renderWinners();
+  },
+
+  sortWinners(field) {
+    if (this._sortField === field) {
+      this._sortDir = this._sortDir === 'asc' ? 'desc' : 'asc';
+    } else {
+      this._sortField = field;
+      this._sortDir = 'asc';
+    }
+    this.filterWinners();
   },
 
   /**
@@ -174,6 +225,13 @@ const winnersModule = {
     const count = document.getElementById('winnersCount');
 
     count.textContent = STATE.filteredWinners.length;
+
+    // Pagination
+    const totalPages = Math.ceil(STATE.filteredWinners.length / this._pageSize);
+    if (this._currentPage > totalPages) this._currentPage = totalPages || 1;
+    const start = (this._currentPage - 1) * this._pageSize;
+    const end = start + this._pageSize;
+    const pageWinners = STATE.filteredWinners.slice(start, end);
 
     if (STATE.filteredWinners.length === 0) {
       utils.showEmptyState('winnersTableBody', 7, 'No winners found');
@@ -188,7 +246,7 @@ const winnersModule = {
       published:     { label: 'Published',     bg: 'bg-warning text-dark',  icon: 'bi-globe',        color: 'text-warning' }
     };
 
-    tbody.innerHTML = STATE.filteredWinners.map(winner => {
+    tbody.innerHTML = pageWinners.map(winner => {
       const photoCount = winner.winner_media?.filter(m => m.media_type === MEDIA_TYPES.PHOTO).length || 0;
       const videoCount = winner.winner_media?.filter(m => m.media_type === MEDIA_TYPES.VIDEO).length || 0;
       const mediaTotal = photoCount + videoCount;
@@ -273,6 +331,38 @@ const winnersModule = {
         </tr>
       `;
     }).join('');
+
+    // Render pagination
+    let paginationEl = document.getElementById('winnersPagination');
+    if (!paginationEl) {
+      paginationEl = document.createElement('div');
+      paginationEl.id = 'winnersPagination';
+      const tableParent = document.getElementById('winnersTableBody')?.closest('.table-responsive') || document.getElementById('winnersTableBody')?.parentElement;
+      if (tableParent) tableParent.after(paginationEl);
+    }
+    if (totalPages > 1) {
+      let html = '<nav><ul class="pagination pagination-sm justify-content-center mt-3">';
+      html += `<li class="page-item ${this._currentPage <= 1 ? 'disabled' : ''}"><a class="page-link" href="#" onclick="event.preventDefault(); winnersModule.goToPage(${this._currentPage - 1})">Prev</a></li>`;
+      for (let i = 1; i <= totalPages; i++) {
+        if (i === 1 || i === totalPages || (i >= this._currentPage - 2 && i <= this._currentPage + 2)) {
+          html += `<li class="page-item ${i === this._currentPage ? 'active' : ''}"><a class="page-link" href="#" onclick="event.preventDefault(); winnersModule.goToPage(${i})">${i}</a></li>`;
+        } else if (i === this._currentPage - 3 || i === this._currentPage + 3) {
+          html += '<li class="page-item disabled"><span class="page-link">...</span></li>';
+        }
+      }
+      html += `<li class="page-item ${this._currentPage >= totalPages ? 'disabled' : ''}"><a class="page-link" href="#" onclick="event.preventDefault(); winnersModule.goToPage(${this._currentPage + 1})">Next</a></li>`;
+      html += '</ul></nav>';
+      html += `<div class="text-center text-muted small">Showing ${start+1}-${Math.min(end, STATE.filteredWinners.length)} of ${STATE.filteredWinners.length}</div>`;
+      paginationEl.innerHTML = html;
+    } else if (paginationEl) {
+      paginationEl.innerHTML = '';
+    }
+  },
+
+  goToPage(page) {
+    const totalPages = Math.ceil(STATE.filteredWinners.length / this._pageSize);
+    this._currentPage = Math.max(1, Math.min(page, totalPages));
+    this.renderWinners();
   },
 
   /**
@@ -587,6 +677,10 @@ const winnersModule = {
     try {
       utils.showLoading();
 
+      // Save to trash before deleting
+      const winner = STATE.allWinners?.find(w => w.id === winnerId);
+      if (winner) utils.softDelete('winners', winner);
+
       // Supabase v2 syntax for delete
       const { error } = await STATE.client
         .from('winners')
@@ -596,7 +690,7 @@ const winnersModule = {
       if (error) throw error;
 
       await this.loadWinners();
-      utils.showToast('Winner deleted successfully!', 'success');
+      utils.showToast('Winner deleted. <a href="#" onclick="event.preventDefault(); utils.undoLastDelete(\'winners\')">Undo</a>', 'info');
 
     } catch (error) {
       console.error('Error deleting winner:', error);
@@ -2988,7 +3082,7 @@ const winnersModule = {
       utils.showToast(`Deleted ${this._selectedWinnerIds.size} winners`, 'success');
       this._selectedWinnerIds.clear();
       this.updateWinnersBulkBar();
-      this.loadWinners();
+      await this.loadWinners();
     } catch (error) {
       console.error('Bulk delete winners error:', error);
       utils.showToast('Error deleting winners', 'error');
@@ -3013,6 +3107,65 @@ const winnersModule = {
     a.click();
     URL.revokeObjectURL(a.href);
     utils.showToast(`Exported ${winners.length} winners`, 'success');
+  },
+
+  /* ==================================================== */
+  /* SAVED FILTER VIEWS */
+  /* ==================================================== */
+
+  saveCurrentWinnersView() {
+    const name = prompt('Enter a name for this view:');
+    if (!name) return;
+    const filters = {
+      year: document.getElementById('winnerYearFilterSelect')?.value || '',
+      award: document.getElementById('winnerAwardFilterSelect')?.value || '',
+      search: document.getElementById('winnerSearchBox')?.value || ''
+    };
+    try {
+      const views = JSON.parse(localStorage.getItem('winnersSavedViews') || '[]');
+      views.push({ name, filters, created: Date.now() });
+      localStorage.setItem('winnersSavedViews', JSON.stringify(views));
+      this._renderSavedWinnersViews();
+      utils.showToast('View saved: ' + name, 'success');
+    } catch(e) { utils.showToast('Failed to save view', 'warning'); }
+  },
+
+  _renderSavedWinnersViews() {
+    const el = document.getElementById('winnersSavedViewsList');
+    if (!el) return;
+    try {
+      const views = JSON.parse(localStorage.getItem('winnersSavedViews') || '[]');
+      if (views.length === 0) {
+        el.innerHTML = '<option value="">No saved views</option>';
+        return;
+      }
+      el.innerHTML = '<option value="">Load saved view...</option>' +
+        views.map((v, i) => `<option value="${i}">${utils.escapeHtml(v.name)}</option>`).join('');
+    } catch(e) { console.warn('Failed to render saved views:', e.message); }
+  },
+
+  loadSavedWinnersView(index) {
+    try {
+      const views = JSON.parse(localStorage.getItem('winnersSavedViews') || '[]');
+      const view = views[index];
+      if (!view) return;
+      if (view.filters.year) document.getElementById('winnerYearFilterSelect').value = view.filters.year;
+      if (view.filters.award) document.getElementById('winnerAwardFilterSelect').value = view.filters.award;
+      if (view.filters.search) document.getElementById('winnerSearchBox').value = view.filters.search;
+      this.filterWinners();
+      utils.showToast('Loaded view: ' + view.name, 'success');
+    } catch(e) { utils.showToast('Failed to load view', 'warning'); }
+  },
+
+  deleteSavedWinnersView(index) {
+    try {
+      const views = JSON.parse(localStorage.getItem('winnersSavedViews') || '[]');
+      const name = views[index]?.name;
+      views.splice(index, 1);
+      localStorage.setItem('winnersSavedViews', JSON.stringify(views));
+      this._renderSavedWinnersViews();
+      utils.showToast('Deleted view: ' + name, 'info');
+    } catch(e) { utils.showToast('Failed to delete view', 'warning'); }
   }
 };
 

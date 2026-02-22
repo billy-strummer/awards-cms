@@ -8,6 +8,8 @@ const entriesModule = {
   selectedEntryIds: new Set(),
   _currentPage: 1,
   _pageSize: 50,
+  _sortField: 'submission_date',
+  _sortDir: 'desc',
   currentFilters: {
     status: '',
     award: '',
@@ -22,6 +24,7 @@ const entriesModule = {
   async initialize() {
     try {
       utils.showLoading();
+      utils.showSkeletonLoading('entriesTableBody', 10);
 
       // Load filter options
       await this.loadFilterOptions();
@@ -38,10 +41,13 @@ const entriesModule = {
         if (saved.selfNom) { document.getElementById('entriesSelfNomFilter').value = saved.selfNom; this.currentFilters.selfNom = saved.selfNom; }
         if (saved.search) { document.getElementById('entriesSearchInput').value = saved.search; this.currentFilters.search = saved.search; }
         this.applyFilters();
-      } catch(e) {}
+      } catch(e) { console.warn('Failed to restore entry filters:', e.message); }
 
       // Load stats
       await this.loadStats();
+
+      // Render saved views dropdown
+      this._renderSavedEntriesViews();
 
     } catch (error) {
       console.error('Error initializing entries module:', error);
@@ -123,6 +129,18 @@ const entriesModule = {
       this.filteredEntries = [...this.allEntries];
       this._currentPage = 1;
       this.renderEntries();
+
+      // Initialise reusable keyboard navigation (once)
+      if (!this._keyboardNavInit) {
+        this._keyboardNavInit = true;
+        utils.initTableKeyboardNav({
+          tableBodyId: 'entriesTableBody',
+          searchBoxId: 'entriesSearchInput',
+          onEnter: (row) => { const btn = row.querySelector('.dropdown-toggle'); if (btn) btn.click(); }
+        });
+      }
+
+      utils.trackDataLoad('entries');
 
     } catch (error) {
       console.error('Error loading entries:', error);
@@ -230,7 +248,15 @@ const entriesModule = {
               ${selfNomBadge}
             </div>
           </td>
-          <td>${statusBadge}</td>
+          <td>
+            <select class="form-select form-select-sm d-inline-block" style="width:auto; font-size:0.75rem;"
+              onchange="entriesModule.inlineUpdateEntryStatus('${entry.id}', this.value)"
+              aria-label="Change entry status">
+              ${['draft','submitted','under_review','shortlisted','winner','rejected'].map(s =>
+                `<option value="${s}" ${(entry.status || '').toLowerCase() === s ? 'selected' : ''}>${s === 'under_review' ? 'Under Review' : s.charAt(0).toUpperCase() + s.slice(1)}</option>`
+              ).join('')}
+            </select>
+          </td>
           <td>${scoreDisplay}</td>
           <td>${paymentBadge}</td>
           <td>${submittedDate}</td>
@@ -282,6 +308,17 @@ const entriesModule = {
     const totalPages = Math.ceil(this.filteredEntries.length / this._pageSize);
     this._currentPage = Math.max(1, Math.min(page, totalPages));
     this.renderEntries();
+  },
+
+  sortEntries(field) {
+    if (this._sortField === field) {
+      this._sortDir = this._sortDir === 'asc' ? 'desc' : 'asc';
+    } else {
+      this._sortField = field;
+      this._sortDir = 'asc';
+    }
+    this._currentPage = 1;
+    this.applyFilters();
   },
 
   /**
@@ -336,7 +373,7 @@ const entriesModule = {
    * Apply all filters
    */
   applyFilters() {
-    try { localStorage.setItem('entriesFilters', JSON.stringify(this.currentFilters)); } catch(e) {}
+    try { localStorage.setItem('entriesFilters', JSON.stringify(this.currentFilters)); } catch(e) { console.warn('Failed to save entry filters:', e.message); }
 
     this.filteredEntries = this.allEntries.filter(entry => {
       // Status filter
@@ -381,6 +418,36 @@ const entriesModule = {
       }
 
       return true;
+    });
+
+    // Sort
+    this.filteredEntries.sort((a, b) => {
+      let aVal, bVal;
+      if (this._sortField === 'entry_number') {
+        aVal = a.entry_number || '';
+        bVal = b.entry_number || '';
+      } else if (this._sortField === 'company') {
+        aVal = (a.organisations?.company_name || '').toLowerCase();
+        bVal = (b.organisations?.company_name || '').toLowerCase();
+      } else if (this._sortField === 'award') {
+        aVal = (a.award_years?.award_name || '').toLowerCase();
+        bVal = (b.award_years?.award_name || '').toLowerCase();
+      } else if (this._sortField === 'status') {
+        aVal = (a.status || '').toLowerCase();
+        bVal = (b.status || '').toLowerCase();
+      } else if (this._sortField === 'score') {
+        aVal = a.average_score || 0;
+        bVal = b.average_score || 0;
+      } else if (this._sortField === 'submission_date') {
+        aVal = a.submission_date || '';
+        bVal = b.submission_date || '';
+      } else {
+        aVal = a[this._sortField] || '';
+        bVal = b[this._sortField] || '';
+      }
+      if (aVal < bVal) return this._sortDir === 'asc' ? -1 : 1;
+      if (aVal > bVal) return this._sortDir === 'asc' ? 1 : -1;
+      return 0;
     });
 
     this._currentPage = 1;
@@ -439,6 +506,8 @@ const entriesModule = {
         .single();
 
       if (error) throw error;
+
+      utils.trackRecentlyViewed('entry', entryId, (entry.organisations?.company_name || 'Entry') + ' - ' + (entry.award_years?.award_name || 'Award'));
 
       // Show entry details modal (we'll create this next)
       this.showEntryDetailsModal(entry);
@@ -1213,24 +1282,34 @@ const entriesModule = {
         'Award',
         'Entry Title',
         'Status',
-        'Score',
         'Payment Status',
+        'Self Nomination',
+        'Average Score',
+        'Number of Scores',
         'Submission Date',
         'Contact Name',
-        'Contact Email'
+        'Contact Email',
+        'Contact Phone',
+        'Year',
+        'Description'
       ];
 
       const rows = entriesToExport.map(entry => [
-        entry.entry_number,
+        entry.entry_number || '',
         entry.organisations?.company_name || '',
         entry.award_years?.award_name || '',
-        entry.entry_title,
-        entry.status,
-        entry.average_score || '',
-        entry.payment_status,
-        entry.submission_date ? new Date(entry.submission_date).toLocaleDateString() : '',
-        entry.contact_name,
-        entry.contact_email
+        entry.entry_title || '',
+        entry.status || '',
+        entry.payment_status || '',
+        entry.is_self_nomination ? 'Yes' : 'No',
+        entry.average_score != null ? entry.average_score : '',
+        entry.total_scores != null ? entry.total_scores : '',
+        entry.submission_date ? new Date(entry.submission_date).toLocaleDateString('en-GB') : '',
+        entry.contact_name || '',
+        entry.contact_email || '',
+        entry.contact_phone || '',
+        entry.year || '',
+        entry.entry_description ? String(entry.entry_description).substring(0, 200) : ''
       ]);
 
       const csv = [headers, ...rows]
@@ -1254,6 +1333,48 @@ const entriesModule = {
       console.error('Error exporting entries:', error);
       utils.showToast('Failed to export entries', 'error');
     }
+  },
+
+  /**
+   * Export entries to Excel format
+   */
+  exportEntriesExcel() {
+    const entriesToExport = this.selectedEntryIds.size > 0
+      ? this.filteredEntries.filter(e => this.selectedEntryIds.has(e.id))
+      : this.filteredEntries;
+    if (entriesToExport.length === 0) { utils.showToast('No entries to export', 'warning'); return; }
+    const exportData = entriesToExport.map(e => ({
+      entry_number: e.entry_number || '',
+      company: e.organisations?.company_name || '',
+      award: e.award_years?.award_name || '',
+      entry_title: e.entry_title || '',
+      status: e.status || '',
+      payment_status: e.payment_status || '',
+      average_score: e.average_score != null ? e.average_score : '',
+      submission_date: e.submission_date || '',
+      contact_name: e.contact_name || '',
+      contact_email: e.contact_email || ''
+    }));
+    utils.exportToExcel(exportData, `entries-export-${new Date().toISOString().split('T')[0]}`);
+  },
+
+  /**
+   * Export entries to printable PDF
+   */
+  exportEntriesPDF() {
+    const entriesToExport = this.selectedEntryIds.size > 0
+      ? this.filteredEntries.filter(e => this.selectedEntryIds.has(e.id))
+      : this.filteredEntries;
+    if (entriesToExport.length === 0) { utils.showToast('No entries to export', 'warning'); return; }
+    const exportData = entriesToExport.map(e => ({
+      entry_number: e.entry_number || '',
+      company: e.organisations?.company_name || '',
+      award: e.award_years?.award_name || '',
+      status: e.status || '',
+      score: e.average_score != null ? e.average_score : '',
+      submitted: e.submission_date || ''
+    }));
+    utils.exportToPrintablePDF(exportData, 'Entries Report', { columns: ['entry_number', 'company', 'award', 'status', 'score', 'submitted'] });
   },
 
   /**
@@ -1603,6 +1724,131 @@ const entriesModule = {
       // Revert checkbox
       document.getElementById('isPublicToggle').checked = !isPublic;
     }
+  },
+
+  /* ==================================================== */
+  /* SAVED FILTER VIEWS */
+  /* ==================================================== */
+
+  saveCurrentEntriesView() {
+    const name = prompt('Enter a name for this view:');
+    if (!name) return;
+    const filters = {
+      status: document.getElementById('entriesStatusFilter')?.value || '',
+      award: document.getElementById('entriesAwardFilter')?.value || '',
+      year: document.getElementById('entriesYearFilter')?.value || '',
+      selfNom: document.getElementById('entriesSelfNomFilter')?.value || '',
+      search: document.getElementById('entriesSearchInput')?.value || ''
+    };
+    try {
+      const views = JSON.parse(localStorage.getItem('entriesSavedViews') || '[]');
+      views.push({ name, filters, created: Date.now() });
+      localStorage.setItem('entriesSavedViews', JSON.stringify(views));
+      this._renderSavedEntriesViews();
+      utils.showToast('View saved: ' + name, 'success');
+    } catch(e) { utils.showToast('Failed to save view', 'warning'); }
+  },
+
+  _renderSavedEntriesViews() {
+    const el = document.getElementById('entriesSavedViewsList');
+    if (!el) return;
+    try {
+      const views = JSON.parse(localStorage.getItem('entriesSavedViews') || '[]');
+      if (views.length === 0) {
+        el.innerHTML = '<option value="">No saved views</option>';
+        return;
+      }
+      el.innerHTML = '<option value="">Load saved view...</option>' +
+        views.map((v, i) => `<option value="${i}">${utils.escapeHtml(v.name)}</option>`).join('');
+    } catch(e) { console.warn('Failed to render saved views:', e.message); }
+  },
+
+  loadSavedEntriesView(index) {
+    try {
+      const views = JSON.parse(localStorage.getItem('entriesSavedViews') || '[]');
+      const view = views[index];
+      if (!view) return;
+      if (view.filters.status) document.getElementById('entriesStatusFilter').value = view.filters.status;
+      if (view.filters.award) document.getElementById('entriesAwardFilter').value = view.filters.award;
+      if (view.filters.year) document.getElementById('entriesYearFilter').value = view.filters.year;
+      if (view.filters.selfNom) document.getElementById('entriesSelfNomFilter').value = view.filters.selfNom;
+      if (view.filters.search) document.getElementById('entriesSearchInput').value = view.filters.search;
+      this.filterEntries();
+      utils.showToast('Loaded view: ' + view.name, 'success');
+    } catch(e) { utils.showToast('Failed to load view', 'warning'); }
+  },
+
+  deleteSavedEntriesView(index) {
+    try {
+      const views = JSON.parse(localStorage.getItem('entriesSavedViews') || '[]');
+      const name = views[index]?.name;
+      views.splice(index, 1);
+      localStorage.setItem('entriesSavedViews', JSON.stringify(views));
+      this._renderSavedEntriesViews();
+      utils.showToast('Deleted view: ' + name, 'info');
+    } catch(e) { utils.showToast('Failed to delete view', 'warning'); }
+  },
+
+  /* ==================================================== */
+  /* INLINE STATUS EDITING */
+  /* ==================================================== */
+
+  async inlineUpdateEntryStatus(entryId, newStatus) {
+    try {
+      const { error } = await STATE.client.from('entries').update({ status: newStatus }).eq('id', entryId);
+      if (error) throw error;
+      // Update local state
+      const entry = this.allEntries.find(e => e.id === entryId);
+      if (entry) entry.status = newStatus;
+      this.applyFilters();
+      utils.showToast('Status updated to ' + newStatus, 'success');
+    } catch(e) {
+      utils.showToast('Failed to update status', 'error');
+    }
+  },
+
+  importEntriesCSV() {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.csv';
+    input.onchange = async (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+      const text = await file.text();
+      const lines = text.split('\n').filter(l => l.trim());
+      if (lines.length < 2) { utils.showToast('CSV file is empty', 'warning'); return; }
+      const headers = lines[0].split(',').map(h => h.trim().toLowerCase().replace(/"/g, ''));
+      const records = [];
+      for (let i = 1; i < lines.length; i++) {
+        const values = lines[i].match(/(".*?"|[^,]+)/g)?.map(v => v.replace(/^"|"$/g, '').trim()) || [];
+        const record = {};
+        headers.forEach((h, idx) => {
+          if (h.includes('title') || h === 'entry_title') record.entry_title = values[idx];
+          else if (h.includes('number') || h === 'entry_number') record.entry_number = values[idx];
+          else if (h === 'year') record.year = parseInt(values[idx]) || null;
+          else if (h.includes('status')) record.status = values[idx] || 'draft';
+        });
+        if (record.entry_title || record.entry_number) records.push(record);
+      }
+      if (records.length === 0) { utils.showToast('No valid records', 'warning'); return; }
+      if (!await utils.confirmDialog({ title: 'Import Entries', message: `Import ${records.length} entries?`, confirmText: 'Import', danger: false })) return;
+      try {
+        utils.showLoading();
+        let imported = 0;
+        for (const record of records) {
+          const { error } = await STATE.client.from('entries').insert([record]);
+          if (!error) imported++;
+        }
+        utils.showToast(`Imported ${imported} of ${records.length} entries`, 'success');
+        await this.loadEntries();
+        this.applyFilters();
+      } catch (err) {
+        utils.showToast('Import error: ' + err.message, 'error');
+      } finally {
+        utils.hideLoading();
+      }
+    };
+    input.click();
   }
 };
 

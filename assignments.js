@@ -573,7 +573,10 @@ const assignmentsModule = {
    * Remove assignment
    */
   async removeAssignment(assignmentId) {
-    if (!confirm('Remove this company from the award?')) {
+    // Find the assignment to show context in confirmation
+    const assignment = (this.currentAssignments || []).find(a => a.id === assignmentId);
+    const companyName = assignment?.organisations?.company_name || assignment?.company_name || 'this company';
+    if (!await utils.confirmDialog({ title: 'Remove Assignment', message: `Remove <strong>${utils.escapeHtml(companyName)}</strong> from the award?`, confirmText: 'Remove', danger: true })) {
       return;
     }
     
@@ -834,6 +837,64 @@ const assignmentsModule = {
     } finally {
       utils.hideLoading();
     }
+  },
+
+  /**
+   * Filter the bulk add company list by search input
+   */
+  filterBulkAdd() {
+    const searchVal = (document.getElementById('bulkAddSearchBox')?.value || '').toLowerCase();
+    const listEl = document.getElementById('bulkAddCompanyList');
+    if (!listEl) return;
+
+    const items = listEl.querySelectorAll('.bulk-add-item');
+    items.forEach(item => {
+      const name = (item.dataset.name || '').toLowerCase();
+      item.style.display = name.includes(searchVal) ? '' : 'none';
+    });
+  },
+
+  /**
+   * Add all selected companies from the bulk add modal
+   */
+  async addSelectedCompanies() {
+    const checkboxes = document.querySelectorAll('.bulk-add-check:checked');
+    if (checkboxes.length === 0) {
+      utils.showToast('No companies selected', 'warning');
+      return;
+    }
+
+    const orgIds = [...checkboxes].map(cb => cb.value);
+
+    try {
+      utils.showLoading();
+
+      await this.bulkAssignCompanies(this.currentAwardId, orgIds);
+
+      // Close the add modal
+      const addModal = document.getElementById('addCompanyModal');
+      if (addModal) {
+        const bsModal = bootstrap.Modal.getInstance(addModal);
+        if (bsModal) bsModal.hide();
+      }
+
+      // Refresh assignments list
+      await this.refreshAssignments();
+    } catch (error) {
+      console.error('Error adding selected companies:', error);
+      utils.showToast('Error adding companies: ' + error.message, 'error');
+    } finally {
+      utils.hideLoading();
+    }
+  },
+
+  /**
+   * Update the selected count display
+   */
+  updateSelectedCount() {
+    const count = document.querySelectorAll('.bulk-add-check:checked').length;
+    const el = document.getElementById('assignSelectedCount');
+    if (el) el.textContent = count;
   }
 };
 

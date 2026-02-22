@@ -137,7 +137,7 @@
       <div class="row align-items-center">
         <div class="col-md-8">
           <label class="form-label fw-bold">Select Award Category</label>
-          <select class="form-select form-select-lg" id="awardFilter" onchange="votingSystem.filterByAward()">
+          <select class="form-select form-select-lg" id="awardFilter" onchange="votingSystem.filterByAward()" aria-label="Filter nominees by award category">
             <option value="">All Categories</option>
           </select>
         </div>
@@ -153,7 +153,7 @@
     <!-- Entries Grid -->
     <div id="entriesGrid">
       <div class="text-center py-5">
-        <div class="spinner-border text-white" role="status">
+        <div class="spinner-border text-white" role="status" aria-label="Loading">
           <span class="visually-hidden">Loading...</span>
         </div>
         <p class="text-white mt-3">Loading nominees...</p>
@@ -163,7 +163,7 @@
   </div>
 
   <!-- Verification Modal -->
-  <div id="verificationModal" style="display: none;">
+  <div id="verificationModal" style="display: none;" role="dialog" aria-label="Email verification">
     <div class="verification-modal">
       <h3 class="text-center mb-4">Verify Your Email</h3>
       <p class="text-center text-muted">Enter your email to verify your vote</p>

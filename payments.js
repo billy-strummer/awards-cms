@@ -11,6 +11,11 @@ const paymentsModule = {
   currentSendInvoiceId: null,
   _invoiceSortField: 'created_at',
   _invoiceSortDir: 'desc',
+  _invCurrentPage: 1,
+  _invPageSize: 50,
+  _payCurrentPage: 1,
+  _payPageSize: 50,
+  _selectedInvoiceIds: new Set(),
 
   /* ==================================================== */
   /* INITIALIZATION */
@@ -32,7 +37,7 @@ const paymentsModule = {
         if (savedInv.orgId) document.getElementById('invoiceOrgFilter').value = savedInv.orgId;
         if (savedInv.month) document.getElementById('invoiceMonthFilter').value = savedInv.month;
         this.filterInvoices();
-      } catch(e) {}
+      } catch(e) { console.warn('Failed to restore invoice filters:', e.message); }
 
       // Restore saved payment filters from localStorage
       try {
@@ -42,10 +47,11 @@ const paymentsModule = {
         if (savedPay.status) document.getElementById('paymentStatusFilter').value = savedPay.status;
         if (savedPay.month) document.getElementById('paymentMonthFilter').value = savedPay.month;
         this.filterPayments();
-      } catch(e) {}
+      } catch(e) { console.warn('Failed to restore payment filters:', e.message); }
 
       this.updateStatistics();
       console.log('Payments data loaded');
+      utils.trackDataLoad('payments');
     } catch (error) {
       console.error('Error loading payments data:', error);
       utils.showToast('Failed to load payments data', 'error');
@@ -72,6 +78,17 @@ const paymentsModule = {
 
       this.allInvoices = data || [];
       this.filterInvoices();
+
+      // Initialise reusable keyboard navigation (once)
+      if (!this._keyboardNavInit) {
+        this._keyboardNavInit = true;
+        utils.initTableKeyboardNav({
+          tableBodyId: 'invoicesTableBody',
+          searchBoxId: 'invoiceSearchBox',
+          onEnter: (row) => { const btn = row.querySelector('.dropdown-toggle'); if (btn) btn.click(); }
+        });
+      }
+
     } catch (error) {
       console.error('Error loading invoices:', error);
       utils.showToast('Failed to load invoices', 'error');
@@ -79,12 +96,13 @@ const paymentsModule = {
   },
 
   filterInvoices() {
+    this._invCurrentPage = 1;
     const search = (document.getElementById('invoiceSearchBox')?.value || '').trim().toLowerCase();
     const status = document.getElementById('invoiceStatusFilter')?.value || '';
     const orgId = document.getElementById('invoiceOrgFilter')?.value || '';
     const month = document.getElementById('invoiceMonthFilter')?.value || '';
 
-    try { localStorage.setItem('invoiceFilters', JSON.stringify({ search: document.getElementById('invoiceSearchBox')?.value || '', status, orgId, month })); } catch(e) {}
+    try { localStorage.setItem('invoiceFilters', JSON.stringify({ search: document.getElementById('invoiceSearchBox')?.value || '', status, orgId, month })); } catch(e) { console.warn('Failed to save invoice filters:', e.message); }
 
     this.currentInvoices = this.allInvoices.filter(inv => {
       // Search filter
@@ -112,6 +130,13 @@ const paymentsModule = {
     const tbody = document.getElementById('invoicesTableBody');
     if (!tbody) return;
 
+    // Pagination
+    const totalPages = Math.ceil(this.currentInvoices.length / this._invPageSize);
+    if (this._invCurrentPage > totalPages) this._invCurrentPage = totalPages || 1;
+    const invStart = (this._invCurrentPage - 1) * this._invPageSize;
+    const invEnd = invStart + this._invPageSize;
+    const pageInvoices = this.currentInvoices.slice(invStart, invEnd);
+
     if (this.currentInvoices.length === 0) {
       tbody.innerHTML = `
         <tr>
@@ -124,8 +149,9 @@ const paymentsModule = {
       return;
     }
 
-    tbody.innerHTML = this.currentInvoices.map(invoice => `
+    tbody.innerHTML = pageInvoices.map(invoice => `
       <tr>
+        <td><input type="checkbox" class="form-check-input invoice-checkbox" value="${invoice.id}" ${this._selectedInvoiceIds.has(invoice.id) ? 'checked' : ''} onchange="paymentsModule.toggleInvoiceSelect('${invoice.id}', this.checked)"></td>
         <td>
           <strong>${utils.escapeHtml(invoice.invoice_number)}</strong>
           <button class="btn btn-link btn-sm p-0 ms-1" onclick="event.stopPropagation(); paymentsModule.copyToClipboard('${utils.escapeHtml(invoice.invoice_number)}')" title="Copy invoice number" aria-label="Copy invoice number">
@@ -149,7 +175,15 @@ const paymentsModule = {
         <td><strong>&pound;${parseFloat(invoice.total_amount || 0).toFixed(2)}</strong></td>
         <td class="text-success">&pound;${parseFloat(invoice.paid_amount || 0).toFixed(2)}</td>
         <td class="text-danger">&pound;${parseFloat(invoice.balance_due || 0).toFixed(2)}</td>
-        <td>${this.getInvoiceStatusBadge(invoice.status, invoice.payment_status)}</td>
+        <td>
+          <select class="form-select form-select-sm d-inline-block" style="width:auto; font-size:0.75rem;"
+            onchange="paymentsModule.inlineUpdateInvoiceStatus('${invoice.id}', this.value)"
+            aria-label="Change invoice status">
+            ${['draft','sent','viewed','paid','partially_paid','overdue','cancelled'].map(s =>
+              `<option value="${s}" ${(invoice.status || '').toLowerCase() === s ? 'selected' : ''}>${s === 'partially_paid' ? 'Partially Paid' : s.charAt(0).toUpperCase() + s.slice(1)}</option>`
+            ).join('')}
+          </select>
+        </td>
         <td>
           <div class="btn-group btn-group-sm" role="group">
             <button class="btn btn-outline-primary" onclick="paymentsModule.viewInvoice('${invoice.id}')" title="View" aria-label="View invoice">
@@ -168,6 +202,32 @@ const paymentsModule = {
         </td>
       </tr>
     `).join('');
+
+    // Render pagination
+    let paginationEl = document.getElementById('invoicesPagination');
+    if (!paginationEl) {
+      paginationEl = document.createElement('div');
+      paginationEl.id = 'invoicesPagination';
+      const tableParent = tbody.closest('.table-responsive') || tbody.parentElement;
+      if (tableParent) tableParent.after(paginationEl);
+    }
+    if (totalPages > 1) {
+      let html = '<nav><ul class="pagination pagination-sm justify-content-center mt-3">';
+      html += `<li class="page-item ${this._invCurrentPage <= 1 ? 'disabled' : ''}"><a class="page-link" href="#" onclick="event.preventDefault(); paymentsModule.goToInvoicePage(${this._invCurrentPage - 1})">Prev</a></li>`;
+      for (let i = 1; i <= totalPages; i++) {
+        if (i === 1 || i === totalPages || (i >= this._invCurrentPage - 2 && i <= this._invCurrentPage + 2)) {
+          html += `<li class="page-item ${i === this._invCurrentPage ? 'active' : ''}"><a class="page-link" href="#" onclick="event.preventDefault(); paymentsModule.goToInvoicePage(${i})">${i}</a></li>`;
+        } else if (i === this._invCurrentPage - 3 || i === this._invCurrentPage + 3) {
+          html += '<li class="page-item disabled"><span class="page-link">...</span></li>';
+        }
+      }
+      html += `<li class="page-item ${this._invCurrentPage >= totalPages ? 'disabled' : ''}"><a class="page-link" href="#" onclick="event.preventDefault(); paymentsModule.goToInvoicePage(${this._invCurrentPage + 1})">Next</a></li>`;
+      html += '</ul></nav>';
+      html += `<div class="text-center text-muted small">Showing ${invStart+1}-${Math.min(invEnd, this.currentInvoices.length)} of ${this.currentInvoices.length}</div>`;
+      paginationEl.innerHTML = html;
+    } else if (paginationEl) {
+      paginationEl.innerHTML = '';
+    }
   },
 
   formatInvoiceType(type) {
@@ -226,6 +286,34 @@ const paymentsModule = {
         orgs.map(org => `<option value="${org.id}">${utils.escapeHtml(org.company_name)}</option>`).join('');
 
       modal.show();
+
+      // Draft recovery: check for a saved invoice draft
+      const draft = utils.getFormDraft('invoice_new');
+      if (draft) {
+        const banner = utils.showDraftRecoveryBanner('invoice_new', (data) => {
+          if (data.organisation_id) document.getElementById('invoiceOrganisation').value = data.organisation_id;
+          if (data.invoice_date) document.getElementById('invoiceDate').value = data.invoice_date;
+          if (data.due_date) document.getElementById('invoiceDueDate').value = data.due_date;
+          if (data.invoice_type) document.getElementById('invoiceType').value = data.invoice_type;
+          if (data.description) document.getElementById('invoiceDescription').value = data.description;
+        });
+        const modalBody = document.querySelector('#createInvoiceModal .modal-body');
+        if (modalBody && banner) modalBody.prepend(banner);
+      }
+
+      // Start auto-save for the invoice create form
+      utils.startFormAutoSave('invoice_new', () => ({
+        organisation_id: document.getElementById('invoiceOrganisation')?.value,
+        invoice_date: document.getElementById('invoiceDate')?.value,
+        due_date: document.getElementById('invoiceDueDate')?.value,
+        invoice_type: document.getElementById('invoiceType')?.value,
+        description: document.getElementById('invoiceDescription')?.value,
+      }));
+
+      // Stop auto-save when modal is closed
+      document.getElementById('createInvoiceModal').addEventListener('hidden.bs.modal', () => {
+        utils.stopFormAutoSave('invoice_new');
+      }, { once: true });
 
     } catch (error) {
       console.error('Error opening invoice creation modal:', error);
@@ -385,6 +473,9 @@ const paymentsModule = {
 
       if (lineItemsError) throw lineItemsError;
 
+      // Clear auto-save draft on successful save
+      utils.clearFormDraft('invoice_new');
+
       bootstrap.Modal.getInstance(document.getElementById('createInvoiceModal')).hide();
 
       utils.showToast(`Invoice ${invoiceNumber} created successfully!`, 'success');
@@ -420,6 +511,7 @@ const paymentsModule = {
 
       const invoice = invoiceResult.data;
       const lineItems = lineItemsResult.data || [];
+      utils.trackRecentlyViewed('invoice', invoiceId, 'Invoice ' + invoice.invoice_number);
 
       body.innerHTML = `
         <div class="row mb-4">
@@ -491,22 +583,117 @@ const paymentsModule = {
       };
 
       document.getElementById('viewInvoicePrintBtn').onclick = () => {
+        const inv = invoice;
+        const items = lineItems;
+        const statusClass = (inv.status || 'draft').toLowerCase();
+        const printHtml = `
+<!DOCTYPE html>
+<html>
+<head>
+<title>Invoice ${inv.invoice_number}</title>
+<style>
+  body { font-family: Arial, sans-serif; padding: 40px; color: #333; max-width: 800px; margin: 0 auto; }
+  .header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 30px; border-bottom: 3px solid #0d6efd; padding-bottom: 20px; }
+  .company-info { font-size: 0.9rem; color: #666; }
+  .invoice-title { text-align: right; }
+  .invoice-title h1 { margin: 0; color: #0d6efd; font-size: 2rem; }
+  .invoice-meta { margin-top: 10px; font-size: 0.9rem; }
+  .invoice-meta div { margin-bottom: 4px; }
+  .addresses { display: flex; justify-content: space-between; margin-bottom: 30px; }
+  .address-block { width: 45%; }
+  .address-block h4 { font-size: 0.85rem; text-transform: uppercase; color: #888; margin-bottom: 8px; }
+  table { width: 100%; border-collapse: collapse; margin-bottom: 30px; }
+  th { background: #f8f9fa; padding: 10px 12px; text-align: left; border-bottom: 2px solid #dee2e6; font-size: 0.85rem; text-transform: uppercase; color: #666; }
+  td { padding: 10px 12px; border-bottom: 1px solid #eee; }
+  .amount-col { text-align: right; }
+  .totals { width: 300px; margin-left: auto; }
+  .totals tr td { padding: 6px 12px; }
+  .totals .grand-total td { font-size: 1.2rem; font-weight: bold; border-top: 2px solid #333; color: #0d6efd; }
+  .payment-info { background: #f8f9fa; padding: 20px; border-radius: 8px; margin-top: 20px; }
+  .payment-info h4 { margin-top: 0; font-size: 0.95rem; }
+  .status-badge { display: inline-block; padding: 4px 12px; border-radius: 12px; font-size: 0.8rem; font-weight: bold; }
+  .status-paid { background: #d4edda; color: #155724; }
+  .status-overdue { background: #f8d7da; color: #721c24; }
+  .status-sent { background: #d1ecf1; color: #0c5460; }
+  .status-draft { background: #e2e3e5; color: #383d41; }
+  .status-partially_paid { background: #fff3cd; color: #856404; }
+  .status-cancelled { background: #f5c6cb; color: #721c24; }
+  .footer { margin-top: 40px; text-align: center; font-size: 0.8rem; color: #999; border-top: 1px solid #eee; padding-top: 15px; }
+  @media print { body { padding: 20px; } .no-print { display: none; } }
+</style>
+</head>
+<body>
+  <div class="header">
+    <div class="company-info">
+      <h2 style="margin:0;">British Trade Awards</h2>
+      <div>Awards Management System</div>
+    </div>
+    <div class="invoice-title">
+      <h1>INVOICE</h1>
+      <div class="invoice-meta">
+        <div><strong>Invoice #:</strong> ${utils.escapeHtml(inv.invoice_number)}</div>
+        <div><strong>Date:</strong> ${inv.invoice_date ? new Date(inv.invoice_date).toLocaleDateString('en-GB') : 'N/A'}</div>
+        <div><strong>Due Date:</strong> ${inv.due_date ? new Date(inv.due_date).toLocaleDateString('en-GB') : 'N/A'}</div>
+        <div><span class="status-badge status-${statusClass}">${(inv.status || 'Draft').toUpperCase()}</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="addresses">
+    <div class="address-block">
+      <h4>Bill To</h4>
+      <strong>${utils.escapeHtml(inv.organisations?.company_name || 'N/A')}</strong><br>
+      ${inv.organisations?.email ? utils.escapeHtml(inv.organisations.email) + '<br>' : ''}
+      ${inv.organisations?.contact_phone ? utils.escapeHtml(inv.organisations.contact_phone) : ''}
+    </div>
+  </div>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Description</th>
+        <th class="amount-col">Qty</th>
+        <th class="amount-col">Unit Price</th>
+        <th class="amount-col">Amount</th>
+      </tr>
+    </thead>
+    <tbody>
+      ${items.length > 0 ? items.map(item => `
+        <tr>
+          <td>${utils.escapeHtml(item.item_name || item.description || inv.invoice_type || 'Service')}</td>
+          <td class="amount-col">${item.quantity || 1}</td>
+          <td class="amount-col">&pound;${parseFloat(item.unit_price || 0).toFixed(2)}</td>
+          <td class="amount-col">&pound;${parseFloat(item.line_total || 0).toFixed(2)}</td>
+        </tr>
+      `).join('') : `<tr><td>${utils.escapeHtml(inv.invoice_type || 'Service')}</td><td class="amount-col">1</td><td class="amount-col">&pound;${parseFloat(inv.total_amount || 0).toFixed(2)}</td><td class="amount-col">&pound;${parseFloat(inv.total_amount || 0).toFixed(2)}</td></tr>`}
+    </tbody>
+  </table>
+
+  <table class="totals">
+    <tr><td>Subtotal</td><td class="amount-col">&pound;${parseFloat(inv.subtotal || inv.total_amount || 0).toFixed(2)}</td></tr>
+    ${inv.discount_amount ? `<tr><td>Discount${inv.discount_percentage ? ' (' + inv.discount_percentage + '%)' : ''}</td><td class="amount-col">-&pound;${parseFloat(inv.discount_amount).toFixed(2)}</td></tr>` : ''}
+    ${inv.tax_amount ? `<tr><td>VAT (${inv.tax_rate || 20}%)</td><td class="amount-col">&pound;${parseFloat(inv.tax_amount).toFixed(2)}</td></tr>` : ''}
+    <tr><td><strong>Total</strong></td><td class="amount-col"><strong>&pound;${parseFloat(inv.total_amount || 0).toFixed(2)}</strong></td></tr>
+    <tr><td>Paid</td><td class="amount-col">&pound;${parseFloat(inv.paid_amount || 0).toFixed(2)}</td></tr>
+    <tr class="grand-total"><td>Balance Due</td><td class="amount-col">&pound;${parseFloat(inv.balance_due || 0).toFixed(2)}</td></tr>
+  </table>
+
+  ${inv.description ? `<div class="payment-info"><h4>Notes</h4><p>${utils.escapeHtml(inv.description)}</p></div>` : ''}
+
+  <div class="footer">
+    <p>Thank you for your business</p>
+    <p>British Trade Awards &bull; Generated ${new Date().toLocaleDateString('en-GB')}</p>
+  </div>
+
+  <div class="no-print" style="text-align:center; margin-top:20px;">
+    <button onclick="window.print()" style="padding:10px 30px; background:#0d6efd; color:#fff; border:none; border-radius:6px; cursor:pointer; font-size:1rem;">Print Invoice</button>
+  </div>
+
+  <script>window.onload = function() { window.print(); }</script>
+</body>
+</html>`;
         const printWindow = window.open('', '_blank');
-        printWindow.document.write(`
-          <html><head><title>Invoice ${invoice.invoice_number}</title>
-          <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-          <style>body{padding:40px;} @media print{.no-print{display:none;}}</style>
-          </head><body>
-          <div class="container">
-            <div class="d-flex justify-content-between mb-4">
-              <div><h2>British Trade Awards</h2><p class="text-muted">Invoice</p></div>
-              <div class="text-end"><h3 class="text-primary">${invoice.invoice_number}</h3></div>
-            </div>
-            ${body.innerHTML}
-            <div class="mt-4 text-center no-print"><button onclick="window.print()" class="btn btn-primary">Print</button></div>
-          </div>
-          </body></html>
-        `);
+        printWindow.document.write(printHtml);
         printWindow.document.close();
       };
 
@@ -524,6 +711,10 @@ const paymentsModule = {
     try {
       utils.showLoading();
 
+      // Save to trash before deleting
+      const inv = this.allInvoices.find(i => i.id === invoiceId);
+      if (inv) utils.softDelete('invoices', inv);
+
       // Delete line items first
       await STATE.client.from('invoice_line_items').delete().eq('invoice_id', invoiceId);
 
@@ -534,7 +725,7 @@ const paymentsModule = {
 
       if (error) throw error;
 
-      utils.showToast('Invoice deleted successfully', 'success');
+      utils.showToast('Invoice deleted. <a href="#" onclick="event.preventDefault(); utils.undoLastDelete(\'invoices\')">Undo</a>', 'info');
       await this.loadInvoices();
       this.updateStatistics();
     } catch (error) {
@@ -661,12 +852,13 @@ const paymentsModule = {
   },
 
   filterPayments() {
+    this._payCurrentPage = 1;
     const search = (document.getElementById('paymentSearchBox')?.value || '').trim().toLowerCase();
     const method = document.getElementById('paymentMethodFilter')?.value || '';
     const status = document.getElementById('paymentStatusFilter')?.value || '';
     const month = document.getElementById('paymentMonthFilter')?.value || '';
 
-    try { localStorage.setItem('paymentFilters', JSON.stringify({ search: document.getElementById('paymentSearchBox')?.value || '', method, status, month })); } catch(e) {}
+    try { localStorage.setItem('paymentFilters', JSON.stringify({ search: document.getElementById('paymentSearchBox')?.value || '', method, status, month })); } catch(e) { console.warn('Failed to save payment filters:', e.message); }
 
     this.currentPayments = this.allPayments.filter(p => {
       // Search filter
@@ -696,6 +888,13 @@ const paymentsModule = {
     const tbody = document.getElementById('paymentsTableBody');
     if (!tbody) return;
 
+    // Pagination
+    const payTotalPages = Math.ceil(this.currentPayments.length / this._payPageSize);
+    if (this._payCurrentPage > payTotalPages) this._payCurrentPage = payTotalPages || 1;
+    const payStart = (this._payCurrentPage - 1) * this._payPageSize;
+    const payEnd = payStart + this._payPageSize;
+    const pagePayments = this.currentPayments.slice(payStart, payEnd);
+
     if (this.currentPayments.length === 0) {
       tbody.innerHTML = `
         <tr>
@@ -708,7 +907,7 @@ const paymentsModule = {
       return;
     }
 
-    tbody.innerHTML = this.currentPayments.map(payment => `
+    tbody.innerHTML = pagePayments.map(payment => `
       <tr>
         <td>
           <strong>${utils.escapeHtml(payment.payment_reference)}</strong>
@@ -744,6 +943,32 @@ const paymentsModule = {
         </td>
       </tr>
     `).join('');
+
+    // Render pagination
+    let payPaginationEl = document.getElementById('paymentsPagination');
+    if (!payPaginationEl) {
+      payPaginationEl = document.createElement('div');
+      payPaginationEl.id = 'paymentsPagination';
+      const payTableParent = tbody.closest('.table-responsive') || tbody.parentElement;
+      if (payTableParent) payTableParent.after(payPaginationEl);
+    }
+    if (payTotalPages > 1) {
+      let html = '<nav><ul class="pagination pagination-sm justify-content-center mt-3">';
+      html += `<li class="page-item ${this._payCurrentPage <= 1 ? 'disabled' : ''}"><a class="page-link" href="#" onclick="event.preventDefault(); paymentsModule.goToPaymentPage(${this._payCurrentPage - 1})">Prev</a></li>`;
+      for (let i = 1; i <= payTotalPages; i++) {
+        if (i === 1 || i === payTotalPages || (i >= this._payCurrentPage - 2 && i <= this._payCurrentPage + 2)) {
+          html += `<li class="page-item ${i === this._payCurrentPage ? 'active' : ''}"><a class="page-link" href="#" onclick="event.preventDefault(); paymentsModule.goToPaymentPage(${i})">${i}</a></li>`;
+        } else if (i === this._payCurrentPage - 3 || i === this._payCurrentPage + 3) {
+          html += '<li class="page-item disabled"><span class="page-link">...</span></li>';
+        }
+      }
+      html += `<li class="page-item ${this._payCurrentPage >= payTotalPages ? 'disabled' : ''}"><a class="page-link" href="#" onclick="event.preventDefault(); paymentsModule.goToPaymentPage(${this._payCurrentPage + 1})">Next</a></li>`;
+      html += '</ul></nav>';
+      html += `<div class="text-center text-muted small">Showing ${payStart+1}-${Math.min(payEnd, this.currentPayments.length)} of ${this.currentPayments.length}</div>`;
+      payPaginationEl.innerHTML = html;
+    } else if (payPaginationEl) {
+      payPaginationEl.innerHTML = '';
+    }
   },
 
   formatPaymentMethod(method) {
@@ -1468,6 +1693,109 @@ const paymentsModule = {
   },
 
   /* ==================================================== */
+  /* OVERDUE REMINDERS */
+  /* ==================================================== */
+
+  sendOverdueReminders() {
+    const overdueInvoices = this.allInvoices.filter(inv => inv.status === 'overdue');
+
+    if (overdueInvoices.length === 0) {
+      utils.showToast('No overdue invoices found', 'info');
+      return;
+    }
+
+    const now = new Date();
+    const listContainer = document.getElementById('overdueRemindersList');
+
+    let tableHTML = `
+      <div class="table-responsive">
+        <table class="table table-sm table-striped align-middle mb-0">
+          <thead class="table-light">
+            <tr>
+              <th style="width: 40px;">
+                <input type="checkbox" class="form-check-input" id="overdueSelectAll" checked onchange="paymentsModule.toggleAllOverdueCheckboxes(this.checked)">
+              </th>
+              <th>Company</th>
+              <th>Invoice #</th>
+              <th class="text-end">Amount</th>
+              <th class="text-end">Days Overdue</th>
+            </tr>
+          </thead>
+          <tbody>`;
+
+    overdueInvoices.forEach(inv => {
+      const dueDate = inv.due_date ? new Date(inv.due_date) : null;
+      const daysOverdue = dueDate ? Math.floor((now - dueDate) / (1000 * 60 * 60 * 24)) : 0;
+      const companyName = inv.organisations?.company_name || 'N/A';
+      const amount = parseFloat(inv.balance_due || inv.total_amount || 0).toFixed(2);
+
+      tableHTML += `
+            <tr>
+              <td>
+                <input type="checkbox" class="form-check-input overdue-reminder-check" data-invoice-id="${inv.id}" checked>
+              </td>
+              <td>${utils.escapeHtml(companyName)}</td>
+              <td><strong>${utils.escapeHtml(inv.invoice_number)}</strong></td>
+              <td class="text-end">&pound;${amount}</td>
+              <td class="text-end"><span class="badge bg-danger">${daysOverdue} days</span></td>
+            </tr>`;
+    });
+
+    tableHTML += `
+          </tbody>
+        </table>
+      </div>
+      <div class="mt-3 text-muted small">${overdueInvoices.length} overdue invoice${overdueInvoices.length !== 1 ? 's' : ''} found</div>`;
+
+    listContainer.innerHTML = tableHTML;
+
+    const modal = new bootstrap.Modal(document.getElementById('overdueRemindersModal'));
+    modal.show();
+  },
+
+  toggleAllOverdueCheckboxes(checked) {
+    document.querySelectorAll('.overdue-reminder-check').forEach(cb => {
+      cb.checked = checked;
+    });
+  },
+
+  async executeOverdueReminders() {
+    const checkboxes = document.querySelectorAll('.overdue-reminder-check:checked');
+    const invoiceIds = Array.from(checkboxes).map(cb => cb.dataset.invoiceId);
+
+    if (invoiceIds.length === 0) {
+      utils.showToast('No invoices selected', 'warning');
+      return;
+    }
+
+    // Close the modal
+    const modalEl = document.getElementById('overdueRemindersModal');
+    const modalInstance = bootstrap.Modal.getInstance(modalEl);
+    if (modalInstance) modalInstance.hide();
+
+    utils.showToast(`Sending reminders for ${invoiceIds.length} invoice${invoiceIds.length !== 1 ? 's' : ''}...`, 'info');
+
+    let sentCount = 0;
+    let failCount = 0;
+
+    for (const id of invoiceIds) {
+      try {
+        await this.sendInvoice(id);
+        sentCount++;
+      } catch (error) {
+        console.error(`Failed to send reminder for invoice ${id}:`, error);
+        failCount++;
+      }
+    }
+
+    if (failCount === 0) {
+      utils.showToast(`Successfully sent ${sentCount} overdue reminder${sentCount !== 1 ? 's' : ''}`, 'success');
+    } else {
+      utils.showToast(`Sent ${sentCount} reminder${sentCount !== 1 ? 's' : ''}, ${failCount} failed`, 'warning');
+    }
+  },
+
+  /* ==================================================== */
   /* UTILITIES */
   /* ==================================================== */
 
@@ -1512,8 +1840,8 @@ const paymentsModule = {
         const { data } = await STATE.client.from('user_preferences').select('value').eq('key', 'orgAccountingConfig').limit(1);
         if (data?.[0]) { this._accountingConfig = JSON.parse(data[0].value); return; }
       }
-    } catch (e) {}
-    try { this._accountingConfig = JSON.parse(localStorage.getItem('orgAccountingConfig') || '{}'); } catch (e) { this._accountingConfig = {}; }
+    } catch (e) { console.warn('Failed to load accounting config from database:', e.message); }
+    try { this._accountingConfig = JSON.parse(localStorage.getItem('orgAccountingConfig') || '{}'); } catch (e) { console.warn('Failed to parse accounting config from localStorage:', e.message); this._accountingConfig = {}; }
   },
 
   async _saveAccountingConfig() {
@@ -1521,7 +1849,7 @@ const paymentsModule = {
       if (typeof STATE !== 'undefined' && STATE.client) {
         await STATE.client.from('user_preferences').upsert({ key: 'orgAccountingConfig', value: JSON.stringify(this._accountingConfig), updated_at: new Date().toISOString() }, { onConflict: 'key' });
       }
-    } catch (e) {}
+    } catch (e) { console.warn('Failed to save accounting config to database:', e.message); }
     localStorage.setItem('orgAccountingConfig', JSON.stringify(this._accountingConfig));
   },
 
@@ -1608,6 +1936,169 @@ const paymentsModule = {
       utils.showToast('Sync complete', 'success');
       this.loadAccountingIntegration();
     }, 1500);
+  },
+
+  /* ==================================================== */
+  /* INLINE INVOICE STATUS EDITING */
+  /* ==================================================== */
+
+  async inlineUpdateInvoiceStatus(invoiceId, newStatus) {
+    try {
+      const { error } = await STATE.client.from('invoices').update({ status: newStatus }).eq('id', invoiceId);
+      if (error) throw error;
+      // Update local state
+      const invoice = this.allInvoices.find(i => i.id === invoiceId);
+      if (invoice) invoice.status = newStatus;
+      this.filterInvoices();
+      utils.showToast('Invoice status updated to ' + newStatus, 'success');
+    } catch(e) {
+      utils.showToast('Failed to update invoice status', 'error');
+    }
+  },
+
+  /* ==================================================== */
+  /* PAGINATION & BULK ACTIONS */
+  /* ==================================================== */
+
+  goToInvoicePage(page) {
+    const totalPages = Math.ceil(this.currentInvoices.length / this._invPageSize);
+    this._invCurrentPage = Math.max(1, Math.min(page, totalPages));
+    this.renderInvoices();
+  },
+
+  goToPaymentPage(page) {
+    const totalPages = Math.ceil(this.currentPayments.length / this._payPageSize);
+    this._payCurrentPage = Math.max(1, Math.min(page, totalPages));
+    this.renderPayments();
+  },
+
+  toggleInvoiceSelect(id, checked) {
+    if (checked) {
+      this._selectedInvoiceIds.add(id);
+    } else {
+      this._selectedInvoiceIds.delete(id);
+    }
+    this._updateInvoiceBulkBar();
+  },
+
+  toggleAllInvoices(checked) {
+    const checkboxes = document.querySelectorAll('.invoice-checkbox');
+    checkboxes.forEach(cb => {
+      cb.checked = checked;
+      if (checked) this._selectedInvoiceIds.add(cb.value);
+      else this._selectedInvoiceIds.delete(cb.value);
+    });
+    this._updateInvoiceBulkBar();
+  },
+
+  _updateInvoiceBulkBar() {
+    let bar = document.getElementById('invoiceBulkBar');
+    if (!bar) {
+      bar = document.createElement('div');
+      bar.id = 'invoiceBulkBar';
+      bar.className = 'alert alert-info d-flex align-items-center gap-2 mt-2';
+      bar.style.display = 'none';
+      const tableParent = document.getElementById('invoicesTableBody')?.closest('.table-responsive') || document.getElementById('invoicesTableBody')?.parentElement;
+      if (tableParent) tableParent.before(bar);
+    }
+    if (this._selectedInvoiceIds.size > 0) {
+      bar.style.display = 'flex';
+      bar.innerHTML = `
+        <strong>${this._selectedInvoiceIds.size} invoice(s) selected</strong>
+        <button class="btn btn-sm btn-success ms-2" onclick="paymentsModule.bulkUpdateInvoiceStatus('paid')"><i class="bi bi-check-circle me-1"></i>Mark Paid</button>
+        <button class="btn btn-sm btn-warning ms-2" onclick="paymentsModule.bulkUpdateInvoiceStatus('sent')"><i class="bi bi-envelope me-1"></i>Mark Sent</button>
+        <button class="btn btn-sm btn-danger ms-2" onclick="paymentsModule.bulkDeleteInvoices()"><i class="bi bi-trash me-1"></i>Delete</button>
+        <button class="btn btn-sm btn-outline-secondary ms-auto" onclick="paymentsModule.toggleAllInvoices(false)">Clear</button>
+      `;
+    } else {
+      bar.style.display = 'none';
+    }
+  },
+
+  async bulkUpdateInvoiceStatus(status) {
+    if (this._selectedInvoiceIds.size === 0) return;
+    const ids = [...this._selectedInvoiceIds];
+    if (!await utils.confirmDialog({ title: 'Bulk Status Update', message: `Update ${ids.length} invoice(s) to "${status}"?`, confirmText: 'Update', danger: false })) return;
+    try {
+      utils.showLoading();
+      for (const id of ids) {
+        await STATE.client.from('invoices').update({ status }).eq('id', id);
+      }
+      this._selectedInvoiceIds.clear();
+      utils.showToast(`Updated ${ids.length} invoices to ${status}`, 'success');
+      await this.loadInvoices();
+      this.filterInvoices();
+    } catch (err) {
+      utils.showToast('Error updating invoices: ' + err.message, 'error');
+    } finally {
+      utils.hideLoading();
+    }
+  },
+
+  async bulkDeleteInvoices() {
+    if (this._selectedInvoiceIds.size === 0) return;
+    const ids = [...this._selectedInvoiceIds];
+    if (!await utils.confirmDialog({ title: 'Bulk Delete Invoices', message: `Delete ${ids.length} invoice(s)? This cannot be undone.`, confirmText: 'Delete All', danger: true })) return;
+    try {
+      utils.showLoading();
+      for (const id of ids) {
+        await STATE.client.from('invoices').delete().eq('id', id);
+      }
+      this._selectedInvoiceIds.clear();
+      utils.showToast(`Deleted ${ids.length} invoices`, 'success');
+      await this.loadInvoices();
+      this.filterInvoices();
+    } catch (err) {
+      utils.showToast('Error deleting invoices: ' + err.message, 'error');
+    } finally {
+      utils.hideLoading();
+    }
+  },
+
+  importInvoicesCSV() {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.csv';
+    input.onchange = async (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+      const text = await file.text();
+      const lines = text.split('\n').filter(l => l.trim());
+      if (lines.length < 2) { utils.showToast('CSV file is empty', 'warning'); return; }
+      const headers = lines[0].split(',').map(h => h.trim().toLowerCase().replace(/"/g, ''));
+      const records = [];
+      for (let i = 1; i < lines.length; i++) {
+        const values = lines[i].match(/(".*?"|[^,]+)/g)?.map(v => v.replace(/^"|"$/g, '').trim()) || [];
+        const record = {};
+        headers.forEach((h, idx) => {
+          if (h.includes('number') || h === 'invoice_number') record.invoice_number = values[idx];
+          else if (h.includes('amount') || h === 'total_amount') record.total_amount = parseFloat(values[idx]) || 0;
+          else if (h.includes('date') && h.includes('due')) record.due_date = values[idx];
+          else if (h.includes('date') || h === 'invoice_date') record.invoice_date = values[idx];
+          else if (h.includes('status')) record.status = values[idx] || 'draft';
+          else if (h.includes('type')) record.invoice_type = values[idx];
+        });
+        if (record.invoice_number || record.total_amount) records.push(record);
+      }
+      if (records.length === 0) { utils.showToast('No valid records', 'warning'); return; }
+      if (!await utils.confirmDialog({ title: 'Import Invoices', message: `Import ${records.length} invoices from CSV?`, confirmText: 'Import', danger: false })) return;
+      try {
+        utils.showLoading();
+        let imported = 0;
+        for (const record of records) {
+          const { error } = await STATE.client.from('invoices').insert([record]);
+          if (!error) imported++;
+        }
+        utils.showToast(`Imported ${imported} of ${records.length} invoices`, 'success');
+        await this.loadInvoices();
+        this.filterInvoices();
+      } catch (err) {
+        utils.showToast('Import error: ' + err.message, 'error');
+      } finally {
+        utils.hideLoading();
+      }
+    };
+    input.click();
   }
 };
 

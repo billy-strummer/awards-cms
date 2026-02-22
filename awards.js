@@ -12,7 +12,7 @@ const awardsModule = {
   async loadAwards() {
     try {
       utils.showLoading();
-      utils.showTableLoading('awardsTableBody', 10);
+      utils.showSkeletonLoading('awardsTableBody', 10);
 
       let allData = [];
       let page = 0;
@@ -92,6 +92,21 @@ const awardsModule = {
 
       this.updateStats();
       this.filterAwards();
+
+      // Initialise reusable keyboard navigation (once)
+      if (!this._keyboardNavInit) {
+        this._keyboardNavInit = true;
+        utils.initTableKeyboardNav({
+          tableBodyId: 'awardsTableBody',
+          searchBoxId: 'awardsSearchBox',
+          onEnter: (row) => { const btn = row.querySelector('.dropdown-toggle'); if (btn) btn.click(); }
+        });
+      }
+
+      utils.trackDataLoad('awards');
+
+      // Render saved views dropdown
+      this._renderSavedAwardsViews();
 
     } catch (error) {
       console.error('Error loading awards:', error);
@@ -280,8 +295,30 @@ const awardsModule = {
       this.currentSort.direction = 'asc';
     }
 
+    // Persist sort state and update visual indicators
+    utils.saveSortState('awards', this.currentSort.column, this.currentSort.direction);
+    this._updateSortIndicators();
+
     this.applySorting();
     this.renderAwards();
+  },
+
+  /**
+   * Update sort direction arrows on table headers
+   */
+  _updateSortIndicators() {
+    document.querySelectorAll('#awardsTableBody').forEach(() => {});
+    const icons = document.querySelectorAll('[data-sort-icon]');
+    icons.forEach(icon => {
+      const field = icon.getAttribute('data-sort-icon');
+      if (field === this.currentSort.column) {
+        icon.className = this.currentSort.direction === 'asc'
+          ? 'bi bi-caret-up-fill text-primary ms-1 small'
+          : 'bi bi-caret-down-fill text-primary ms-1 small';
+      } else {
+        icon.className = 'bi bi-arrow-down-up text-muted ms-1 small';
+      }
+    });
   },
 
   /**
@@ -345,7 +382,7 @@ const awardsModule = {
     const region = document.getElementById('awardsRegionFilterSelect').value;
     const search = document.getElementById('awardsSearchBox').value.toLowerCase().trim();
 
-    try { localStorage.setItem('awardsFilters', JSON.stringify({ year, status, sector, county, region, search })); } catch(e) {}
+    try { localStorage.setItem('awardsFilters', JSON.stringify({ year, status, sector, county, region, search })); } catch(e) { console.warn('Failed to save filter state:', e.message); }
 
     STATE.filteredAwards = STATE.allAwards.filter(award => {
       // Year filter - handle both date strings and year numbers
@@ -488,7 +525,15 @@ const awardsModule = {
               ${utils.escapeHtml(award.sector || '-')}
             </span>
           </td>
-          <td>${utils.getStatusBadge(award.status || 'Draft')}</td>
+          <td>
+            <select class="form-select form-select-sm d-inline-block" style="width:auto; font-size:0.75rem;"
+              onchange="awardsModule.inlineUpdateStatus('${award.id}', this.value)"
+              aria-label="Change award status">
+              ${['draft','pending','published','active','archived'].map(s =>
+                `<option value="${s}" ${(award.status || '').toLowerCase() === s ? 'selected' : ''}>${s.charAt(0).toUpperCase() + s.slice(1)}</option>`
+              ).join('')}
+            </select>
+          </td>
           <td class="text-center">
             <div class="assignment-count-badge ${countBadgeClass}"
               style="cursor: pointer;"
@@ -559,6 +604,7 @@ const awardsModule = {
   async viewDetails(awardId) {
     const award = STATE.allAwards.find(a => a.id === awardId);
     if (!award) return;
+    utils.trackRecentlyViewed('award', awardId, utils.formatAwardName(award));
 
     try {
       utils.showLoading();
@@ -899,6 +945,39 @@ const awardsModule = {
 
     const modal = new bootstrap.Modal(document.getElementById('awardFormModal'));
     modal.show();
+
+    // Initialize inline form validation
+    utils.initInlineValidation('awardForm');
+
+    // Draft recovery: check for a saved draft
+    const draft = utils.getFormDraft('award_new');
+    if (draft) {
+      const banner = utils.showDraftRecoveryBanner('award_new', (data) => {
+        if (data.award_name) document.getElementById('awardFormName').value = data.award_name;
+        if (data.county) document.getElementById('awardFormCounty').value = data.county;
+        if (data.sector) document.getElementById('awardFormSector').value = data.sector;
+        if (data.year) document.getElementById('awardFormYear').value = data.year;
+        if (data.status) document.getElementById('awardFormStatus').value = data.status;
+        if (data.description) document.getElementById('awardFormDescription').value = data.description;
+      });
+      const modalBody = document.querySelector('#awardFormModal .modal-body');
+      if (modalBody && banner) modalBody.prepend(banner);
+    }
+
+    // Start auto-save for the create form
+    utils.startFormAutoSave('award_new', () => ({
+      award_name: document.getElementById('awardFormName')?.value,
+      county: document.getElementById('awardFormCounty')?.value,
+      sector: document.getElementById('awardFormSector')?.value,
+      year: document.getElementById('awardFormYear')?.value,
+      status: document.getElementById('awardFormStatus')?.value,
+      description: document.getElementById('awardFormDescription')?.value,
+    }));
+
+    // Stop auto-save when modal is closed
+    document.getElementById('awardFormModal').addEventListener('hidden.bs.modal', () => {
+      utils.stopFormAutoSave('award_new');
+    }, { once: true });
   },
 
   /**
@@ -941,6 +1020,37 @@ const awardsModule = {
 
     const modal = new bootstrap.Modal(document.getElementById('awardFormModal'));
     modal.show();
+
+    // Draft recovery: check for a saved draft for this award
+    const editFormKey = 'award_edit_' + awardId;
+    const draft = utils.getFormDraft(editFormKey);
+    if (draft) {
+      const banner = utils.showDraftRecoveryBanner(editFormKey, (data) => {
+        if (data.award_name) document.getElementById('awardFormName').value = data.award_name;
+        if (data.county) document.getElementById('awardFormCounty').value = data.county;
+        if (data.sector) document.getElementById('awardFormSector').value = data.sector;
+        if (data.year) document.getElementById('awardFormYear').value = data.year;
+        if (data.status) document.getElementById('awardFormStatus').value = data.status;
+        if (data.description) document.getElementById('awardFormDescription').value = data.description;
+      });
+      const modalBody = document.querySelector('#awardFormModal .modal-body');
+      if (modalBody && banner) modalBody.prepend(banner);
+    }
+
+    // Start auto-save for the edit form
+    utils.startFormAutoSave(editFormKey, () => ({
+      award_name: document.getElementById('awardFormName')?.value,
+      county: document.getElementById('awardFormCounty')?.value,
+      sector: document.getElementById('awardFormSector')?.value,
+      year: document.getElementById('awardFormYear')?.value,
+      status: document.getElementById('awardFormStatus')?.value,
+      description: document.getElementById('awardFormDescription')?.value,
+    }));
+
+    // Stop auto-save when modal is closed
+    document.getElementById('awardFormModal').addEventListener('hidden.bs.modal', () => {
+      utils.stopFormAutoSave(editFormKey);
+    }, { once: true });
   },
 
   /**
@@ -1047,6 +1157,13 @@ const awardsModule = {
       }
 
       if (error) throw error;
+
+      // Clear auto-save draft on successful save
+      if (id) {
+        utils.clearFormDraft('award_edit_' + id);
+      } else {
+        utils.clearFormDraft('award_new');
+      }
 
       // Close modal
       const modal = bootstrap.Modal.getInstance(document.getElementById('awardFormModal'));
@@ -1240,6 +1357,77 @@ const awardsModule = {
   },
 
   /**
+   * Export awards to Excel format
+   */
+  exportAwardsExcel() {
+    const awards = STATE.filteredAwards || STATE.allAwards || [];
+    if (awards.length === 0) { utils.showToast('No awards to export', 'warning'); return; }
+    const exportData = awards.map(a => ({
+      award_name: utils.formatAwardName(a),
+      category: a.award_name || '',
+      county: a.county || '',
+      region: a._actualRegion || '',
+      sector: a.sector || '',
+      year: a.year || '',
+      status: a.status || '',
+      nominees: (a._assignmentCounts || { total: 0 }).total,
+      winner: a._winnerName || '',
+      prev_year_winner: a.prev_year_winner || ''
+    }));
+    utils.exportToExcel(exportData, `awards-export-${new Date().toISOString().split('T')[0]}`);
+  },
+
+  /**
+   * Export awards to printable PDF
+   */
+  exportAwardsPDF() {
+    const awards = STATE.filteredAwards || STATE.allAwards || [];
+    if (awards.length === 0) { utils.showToast('No awards to export', 'warning'); return; }
+    const exportData = awards.map(a => ({
+      award_name: utils.formatAwardName(a),
+      county: a.county || '',
+      sector: a.sector || '',
+      year: a.year || '',
+      status: a.status || '',
+      winner: a._winnerName || ''
+    }));
+    utils.exportToPrintablePDF(exportData, 'Awards Report', { columns: ['award_name', 'county', 'sector', 'year', 'status', 'winner'] });
+  },
+
+  /**
+   * Enhanced CSV export with additional fields
+   */
+  exportAwardsToCSV() {
+    const awards = STATE.filteredAwards || STATE.allAwards || [];
+    if (awards.length === 0) {
+      utils.showToast('No awards to export', 'warning');
+      return;
+    }
+    const headers = ['Award Name', 'Category', 'Year', 'Status', 'Event', 'Description', 'Created At'];
+    const rows = awards.map(a => [
+      a.award_name || '',
+      a.category || '',
+      a.year || '',
+      a.status || '',
+      a.event_name || '',
+      (a.description || '').replace(/"/g, '""').replace(/\n/g, ' '),
+      a.created_at || ''
+    ]);
+    let csv = headers.join(',') + '\n';
+    rows.forEach(row => {
+      csv += row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(',') + '\n';
+    });
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `awards-export-${new Date().toISOString().split('T')[0]}.csv`;
+    link.click();
+    URL.revokeObjectURL(url);
+    utils.showToast(`Exported ${awards.length} awards`, 'success');
+  },
+
+  /**
    * Delete a single award
    */
   async deleteAward(awardId) {
@@ -1251,6 +1439,8 @@ const awardsModule = {
       utils.showLoading();
       
       const award = STATE.allAwards.find(a => a.id === awardId);
+      if (award) utils.softDelete('awards', award);
+
       const { error } = await STATE.client
         .from('awards')
         .delete()
@@ -1261,7 +1451,7 @@ const awardsModule = {
       this._logAwardAudit(awardId, 'deleted', award?.award_name || '', `Award deleted: ${award?.award_name || 'Unknown'}`);
 
       await this.loadAwards();
-      utils.showToast('Award deleted successfully', 'success');
+      utils.showToast('Award deleted. <a href="#" onclick="event.preventDefault(); utils.undoLastDelete(\'awards\')">Undo</a>', 'info');
       
     } catch (error) {
       console.error('Error deleting award:', error);
@@ -1987,6 +2177,89 @@ const awardsModule = {
     </div>`;
     document.body.insertAdjacentHTML('beforeend', modalHtml);
     new bootstrap.Modal(document.getElementById('dynamicAwardModal')).show();
+  },
+
+  /* ==================================================== */
+  /* SAVED FILTER VIEWS */
+  /* ==================================================== */
+
+  saveCurrentAwardsView() {
+    const name = prompt('Enter a name for this view:');
+    if (!name) return;
+    const filters = {
+      year: document.getElementById('awardsYearFilterSelect')?.value || '',
+      status: document.getElementById('awardsStatusFilterSelect')?.value || '',
+      sector: document.getElementById('awardsSectorFilterSelect')?.value || '',
+      county: document.getElementById('awardsCountyFilterSelect')?.value || '',
+      region: document.getElementById('awardsRegionFilterSelect')?.value || '',
+      search: document.getElementById('awardsSearchBox')?.value || ''
+    };
+    try {
+      const views = JSON.parse(localStorage.getItem('awardsSavedViews') || '[]');
+      views.push({ name, filters, created: Date.now() });
+      localStorage.setItem('awardsSavedViews', JSON.stringify(views));
+      this._renderSavedAwardsViews();
+      utils.showToast('View saved: ' + name, 'success');
+    } catch(e) { utils.showToast('Failed to save view', 'warning'); }
+  },
+
+  _renderSavedAwardsViews() {
+    const el = document.getElementById('awardsSavedViewsList');
+    if (!el) return;
+    try {
+      const views = JSON.parse(localStorage.getItem('awardsSavedViews') || '[]');
+      if (views.length === 0) {
+        el.innerHTML = '<option value="">No saved views</option>';
+        return;
+      }
+      el.innerHTML = '<option value="">Load saved view...</option>' +
+        views.map((v, i) => `<option value="${i}">${utils.escapeHtml(v.name)}</option>`).join('');
+    } catch(e) { console.warn('Failed to render saved views:', e.message); }
+  },
+
+  loadSavedAwardsView(index) {
+    try {
+      const views = JSON.parse(localStorage.getItem('awardsSavedViews') || '[]');
+      const view = views[index];
+      if (!view) return;
+      if (view.filters.year) document.getElementById('awardsYearFilterSelect').value = view.filters.year;
+      if (view.filters.status) document.getElementById('awardsStatusFilterSelect').value = view.filters.status;
+      if (view.filters.sector) document.getElementById('awardsSectorFilterSelect').value = view.filters.sector;
+      if (view.filters.region) document.getElementById('awardsRegionFilterSelect').value = view.filters.region;
+      if (view.filters.county) document.getElementById('awardsCountyFilterSelect').value = view.filters.county;
+      if (view.filters.search) document.getElementById('awardsSearchBox').value = view.filters.search;
+      this.filterAwards();
+      utils.showToast('Loaded view: ' + view.name, 'success');
+    } catch(e) { utils.showToast('Failed to load view', 'warning'); }
+  },
+
+  deleteSavedAwardsView(index) {
+    try {
+      const views = JSON.parse(localStorage.getItem('awardsSavedViews') || '[]');
+      const name = views[index]?.name;
+      views.splice(index, 1);
+      localStorage.setItem('awardsSavedViews', JSON.stringify(views));
+      this._renderSavedAwardsViews();
+      utils.showToast('Deleted view: ' + name, 'info');
+    } catch(e) { utils.showToast('Failed to delete view', 'warning'); }
+  },
+
+  /* ==================================================== */
+  /* INLINE STATUS EDITING */
+  /* ==================================================== */
+
+  async inlineUpdateStatus(awardId, newStatus) {
+    try {
+      const { error } = await STATE.client.from('awards').update({ status: newStatus }).eq('id', awardId);
+      if (error) throw error;
+      // Update local state
+      const award = STATE.allAwards.find(a => a.id === awardId);
+      if (award) award.status = newStatus;
+      this.filterAwards();
+      utils.showToast('Status updated to ' + newStatus, 'success');
+    } catch(e) {
+      utils.showToast('Failed to update status', 'error');
+    }
   }
 };
 

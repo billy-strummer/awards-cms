@@ -14,6 +14,24 @@ const crmModule = {
     segments: {}
   },
 
+  // Pagination, sorting, selection & view state
+  _crmCurrentPage: 1,
+  _crmPageSize: 50,
+  _crmSortField: 'created_at',
+  _crmSortDir: 'desc',
+  _selectedCrmIds: new Set(),
+  _dealCurrentPage: 1,
+  _dealPageSize: 50,
+  _dealSortField: 'created_at',
+  _dealSortDir: 'desc',
+  _selectedDealIds: new Set(),
+  _meetingCurrentPage: 1,
+  _meetingPageSize: 50,
+  _meetingSortField: 'meeting_date',
+  _meetingSortDir: 'desc',
+  _selectedMeetingIds: new Set(),
+  _kanbanView: false,
+
   // ============================================
   // MAIN LOAD FUNCTION
   // ============================================
@@ -232,7 +250,8 @@ const crmModule = {
 
       if (error) throw error;
 
-      this.renderCommunicationsTable(communications);
+      this._communications = communications || [];
+      this.renderCommunicationsTable(this._communications);
 
     } catch (error) {
       console.error('Error loading communications:', error);
@@ -249,7 +268,14 @@ const crmModule = {
       return;
     }
 
-    tbody.innerHTML = communications.map(comm => {
+    // Pagination
+    const commTotalPages = Math.ceil(communications.length / this._crmPageSize);
+    if (this._crmCurrentPage > commTotalPages) this._crmCurrentPage = commTotalPages || 1;
+    const commStart = (this._crmCurrentPage - 1) * this._crmPageSize;
+    const commEnd = commStart + this._crmPageSize;
+    const pageComms = communications.slice(commStart, commEnd);
+
+    tbody.innerHTML = pageComms.map(comm => {
       const date = new Date(comm.communication_date).toLocaleDateString();
       const companyName = comm.organisation?.company_name || 'Unknown';
       const contactName = comm.contact
@@ -297,6 +323,15 @@ const crmModule = {
         </tr>
       `;
     }).join('');
+
+    // Pagination controls
+    this._renderCrmPagination('crmCommsPagination', this._crmCurrentPage, commTotalPages, 'crmModule.goToCrmCommPage', 'communicationsTableBody');
+  },
+
+  goToCrmCommPage(page) {
+    const total = Math.ceil((this._communications || []).length / this._crmPageSize);
+    this._crmCurrentPage = Math.max(1, Math.min(page, total));
+    this.renderCommunicationsTable(this._communications);
   },
 
   getTypeBadge(type) {
@@ -373,7 +408,8 @@ const crmModule = {
       if (dEl3) dEl3.textContent = stats.wonThisMonth;
       if (dEl4) dEl4.textContent = `${stats.winRate}%`;
 
-      this.renderDealsTable(deals);
+      this._deals = deals || [];
+      this.renderDealsTable(this._deals);
 
     } catch (error) {
       console.error('Error loading deals:', error);
@@ -382,6 +418,12 @@ const crmModule = {
   },
 
   renderDealsTable(deals) {
+    // Kanban view toggle
+    if (this._kanbanView) {
+      this.renderKanbanBoard();
+      return;
+    }
+
     const tbody = document.getElementById('dealsTableBody');
     if (!tbody) return;
 
@@ -390,7 +432,14 @@ const crmModule = {
       return;
     }
 
-    tbody.innerHTML = deals.map(deal => {
+    // Pagination
+    const dealTotalPages = Math.ceil(deals.length / this._dealPageSize);
+    if (this._dealCurrentPage > dealTotalPages) this._dealCurrentPage = dealTotalPages || 1;
+    const dealStart = (this._dealCurrentPage - 1) * this._dealPageSize;
+    const dealEnd = dealStart + this._dealPageSize;
+    const pageDeals = deals.slice(dealStart, dealEnd);
+
+    tbody.innerHTML = pageDeals.map(deal => {
       const companyName = deal.organisation?.company_name || 'Unknown';
       const stageBadge = this.getStageBadge(deal.stage);
       const statusBadge = this.getStatusBadge(deal.status);
@@ -436,6 +485,15 @@ const crmModule = {
         </tr>
       `;
     }).join('');
+
+    // Pagination controls
+    this._renderCrmPagination('crmDealsPagination', this._dealCurrentPage, dealTotalPages, 'crmModule.goToCrmDealPage', 'dealsTableBody');
+  },
+
+  goToCrmDealPage(page) {
+    const total = Math.ceil((this._deals || []).length / this._dealPageSize);
+    this._dealCurrentPage = Math.max(1, Math.min(page, total));
+    this.renderDealsTable(this._deals);
   },
 
   getStageBadge(stage) {
@@ -499,7 +557,8 @@ const crmModule = {
 
       if (error) throw error;
 
-      this.renderMeetingsTable(meetings);
+      this._meetings = meetings || [];
+      this.renderMeetingsTable(this._meetings);
 
     } catch (error) {
       console.error('Error loading meetings:', error);
@@ -516,7 +575,14 @@ const crmModule = {
       return;
     }
 
-    tbody.innerHTML = meetings.map(meeting => {
+    // Pagination
+    const mtgTotalPages = Math.ceil(meetings.length / this._meetingPageSize);
+    if (this._meetingCurrentPage > mtgTotalPages) this._meetingCurrentPage = mtgTotalPages || 1;
+    const mtgStart = (this._meetingCurrentPage - 1) * this._meetingPageSize;
+    const mtgEnd = mtgStart + this._meetingPageSize;
+    const pageMeetings = meetings.slice(mtgStart, mtgEnd);
+
+    tbody.innerHTML = pageMeetings.map(meeting => {
       const date = new Date(meeting.meeting_date).toLocaleDateString();
       const time = new Date(meeting.meeting_date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
       const companyName = meeting.organisation?.company_name || 'Unknown';
@@ -527,7 +593,7 @@ const crmModule = {
       try {
         const attendeesList = JSON.parse(meeting.attendees || '[]');
         attendees = attendeesList.length > 0 ? `${attendeesList.length} attendees` : attendees;
-      } catch (e) {}
+      } catch (e) { console.warn('Failed to parse meeting attendees:', e.message); }
 
       const followUpBadge = meeting.follow_up_required
         ? `<span class="badge bg-warning text-dark">
@@ -565,6 +631,15 @@ const crmModule = {
         </tr>
       `;
     }).join('');
+
+    // Pagination controls
+    this._renderCrmPagination('crmMeetingsPagination', this._meetingCurrentPage, mtgTotalPages, 'crmModule.goToCrmMeetingPage', 'meetingsTableBody');
+  },
+
+  goToCrmMeetingPage(page) {
+    const total = Math.ceil((this._meetings || []).length / this._meetingPageSize);
+    this._meetingCurrentPage = Math.max(1, Math.min(page, total));
+    this.renderMeetingsTable(this._meetings);
   },
 
   getMeetingTypeBadge(type) {
@@ -1577,7 +1652,7 @@ const crmModule = {
       const companyName = meeting.organisation?.company_name || 'N/A';
       const dealName = meeting.deal?.deal_name || 'N/A';
       let attendeesList = [];
-      try { attendeesList = JSON.parse(meeting.attendees || '[]'); } catch (e) {}
+      try { attendeesList = JSON.parse(meeting.attendees || '[]'); } catch (e) { console.warn('Failed to parse meeting attendees for view:', e.message); }
 
       const modalHtml = `
         <div class="modal fade" id="viewMeetingModal" tabindex="-1">
@@ -1665,7 +1740,7 @@ const crmModule = {
       if (error) throw error;
 
       let attendeesList = [];
-      try { attendeesList = JSON.parse(meeting.attendees || '[]'); } catch (e) {}
+      try { attendeesList = JSON.parse(meeting.attendees || '[]'); } catch (e) { console.warn('Failed to parse meeting attendees for edit:', e.message); }
       const meetingDateTime = meeting.meeting_date ? meeting.meeting_date.split('T') : ['', ''];
 
       const modalHtml = `
@@ -2146,8 +2221,8 @@ const crmModule = {
         const { data } = await STATE.client.from('user_preferences').select('value').eq('key', 'orgsSegments').limit(1);
         if (data?.[0]) return JSON.parse(data[0].value);
       }
-    } catch (e) {}
-    try { return JSON.parse(localStorage.getItem('orgsSegments') || '{}'); } catch (e) { return {}; }
+    } catch (e) { console.warn('Failed to load segments from database:', e.message); }
+    try { return JSON.parse(localStorage.getItem('orgsSegments') || '{}'); } catch (e) { console.warn('Failed to parse segments from localStorage:', e.message); return {}; }
   },
 
   async _saveSegments(segments) {
@@ -2155,7 +2230,7 @@ const crmModule = {
       if (typeof STATE !== 'undefined' && STATE.client) {
         await STATE.client.from('user_preferences').upsert({ key: 'orgsSegments', value: JSON.stringify(segments), updated_at: new Date().toISOString() }, { onConflict: 'key' });
       }
-    } catch (e) {}
+    } catch (e) { console.warn('Failed to save segments to database:', e.message); }
     localStorage.setItem('orgsSegments', JSON.stringify(segments));
   },
 
@@ -2169,7 +2244,7 @@ const crmModule = {
       segments[name.trim()] = rules;
       await this._saveSegments(segments);
       utils.showToast(`Segment "${name.trim()}" saved`, 'success');
-    } catch (e) {}
+    } catch (e) { console.warn('Failed to save smart segment:', e.message); }
   },
 
   async loadSmartSegments() {
@@ -2203,7 +2278,7 @@ const crmModule = {
           <button class="btn btn-sm btn-outline-primary ms-2" onclick="crmModule.applySegmentAsFilter()">View in Organisations Tab</button>
         </div>`;
       }
-    } catch (e) {}
+    } catch (e) { console.warn('Failed to load and apply segment:', e.message); }
   },
 
   // ============================================
@@ -2266,6 +2341,599 @@ const crmModule = {
   async refreshMyTasks() {
     await this.loadMyTasks();
     utils.showToast('Tasks refreshed', 'success');
+  },
+
+  // ============================================
+  // MISSING ACTION FUNCTIONS
+  // ============================================
+
+  openCompanyDetails() {
+    // "Add Company Activity" button - opens the log communication form
+    // which is the primary way to add activity for a company
+    this.logCommunication(null);
+  },
+
+  async createMeetingNote() {
+    try {
+      // Load organisations for the company dropdown
+      const { data: orgs, error: orgsError } = await STATE.client
+        .from('organisations')
+        .select('id, company_name')
+        .order('company_name');
+
+      if (orgsError) throw orgsError;
+
+      const orgOptions = (orgs || []).map(o =>
+        `<option value="${o.id}">${utils.escapeHtml(o.company_name)}</option>`
+      ).join('');
+
+      const today = new Date().toISOString().split('T')[0];
+
+      const modalHtml = `
+        <div class="modal fade" id="createMeetingNoteModal" tabindex="-1">
+          <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+              <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title"><i class="bi bi-calendar-plus me-2"></i>Add Meeting Note</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+              </div>
+              <div class="modal-body">
+                <form id="createMeetingNoteForm">
+                  <div class="row">
+                    <div class="col-md-6 mb-3">
+                      <label class="form-label">Meeting Title <span class="text-danger">*</span></label>
+                      <input type="text" class="form-control" id="newMeetingTitle" required placeholder="e.g. Quarterly Review">
+                    </div>
+                    <div class="col-md-6 mb-3">
+                      <label class="form-label">Company <span class="text-danger">*</span></label>
+                      <select class="form-select" id="newMeetingOrg" required>
+                        <option value="">Select company...</option>
+                        ${orgOptions}
+                      </select>
+                    </div>
+                  </div>
+                  <div class="row">
+                    <div class="col-md-4 mb-3">
+                      <label class="form-label">Meeting Type</label>
+                      <select class="form-select" id="newMeetingType">
+                        <option value="in_person">In Person</option>
+                        <option value="video_call">Video Call</option>
+                        <option value="phone">Phone</option>
+                        <option value="conference">Conference</option>
+                      </select>
+                    </div>
+                    <div class="col-md-4 mb-3">
+                      <label class="form-label">Date</label>
+                      <input type="date" class="form-control" id="newMeetingDate" value="${today}">
+                    </div>
+                    <div class="col-md-4 mb-3">
+                      <label class="form-label">Time</label>
+                      <input type="time" class="form-control" id="newMeetingTime">
+                    </div>
+                  </div>
+                  <div class="row">
+                    <div class="col-md-6 mb-3">
+                      <label class="form-label">Duration (minutes)</label>
+                      <input type="number" class="form-control" id="newMeetingDuration" min="0" placeholder="60">
+                    </div>
+                    <div class="col-md-6 mb-3">
+                      <label class="form-label">Location</label>
+                      <input type="text" class="form-control" id="newMeetingLocation" placeholder="e.g. Office, Zoom, Teams">
+                    </div>
+                  </div>
+                  <div class="mb-3">
+                    <label class="form-label">Attendees (comma-separated)</label>
+                    <input type="text" class="form-control" id="newMeetingAttendees" placeholder="John Smith, Jane Doe">
+                  </div>
+                  <div class="mb-3">
+                    <label class="form-label">Meeting Notes</label>
+                    <textarea class="form-control" id="newMeetingNotes" rows="3" placeholder="Key discussion points..."></textarea>
+                  </div>
+                  <div class="mb-3">
+                    <label class="form-label">Action Items</label>
+                    <textarea class="form-control" id="newMeetingActions" rows="2" placeholder="Follow-up actions..."></textarea>
+                  </div>
+                  <div class="form-check mb-3">
+                    <input class="form-check-input" type="checkbox" id="newMeetingFollowUp"
+                           onchange="document.getElementById('newMeetingFollowUpDate').parentElement.style.display = this.checked ? 'block' : 'none';">
+                    <label class="form-check-label" for="newMeetingFollowUp">Follow-up Required</label>
+                  </div>
+                  <div class="mb-3" style="display:none;">
+                    <label class="form-label">Follow-up Date</label>
+                    <input type="date" class="form-control" id="newMeetingFollowUpDate">
+                  </div>
+                </form>
+              </div>
+              <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" onclick="crmModule.saveMeetingNote()">
+                  <i class="bi bi-save me-2"></i>Save Meeting Note
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      `;
+
+      const existing = document.getElementById('createMeetingNoteModal');
+      if (existing) existing.remove();
+      document.body.insertAdjacentHTML('beforeend', modalHtml);
+      const modal = new bootstrap.Modal(document.getElementById('createMeetingNoteModal'));
+      modal.show();
+      document.getElementById('createMeetingNoteModal').addEventListener('hidden.bs.modal', function() { this.remove(); });
+    } catch (error) {
+      console.error('Error opening meeting note form:', error);
+      utils.showToast('Error opening meeting note form', 'error');
+    }
+  },
+
+  async saveMeetingNote() {
+    const form = document.getElementById('createMeetingNoteForm');
+    if (!form.checkValidity()) { form.reportValidity(); return; }
+
+    const dateVal = document.getElementById('newMeetingDate').value;
+    const timeVal = document.getElementById('newMeetingTime').value;
+    const meetingDate = timeVal ? `${dateVal}T${timeVal}:00` : `${dateVal}T00:00:00`;
+
+    const attendeesRaw = document.getElementById('newMeetingAttendees').value;
+    const attendeesArr = attendeesRaw ? attendeesRaw.split(',').map(a => a.trim()).filter(Boolean) : [];
+
+    const data = {
+      meeting_title: document.getElementById('newMeetingTitle').value,
+      organisation_id: document.getElementById('newMeetingOrg').value,
+      meeting_type: document.getElementById('newMeetingType').value,
+      meeting_date: meetingDate,
+      duration_minutes: document.getElementById('newMeetingDuration').value ? parseInt(document.getElementById('newMeetingDuration').value) : null,
+      location: document.getElementById('newMeetingLocation').value,
+      attendees: JSON.stringify(attendeesArr),
+      notes: document.getElementById('newMeetingNotes').value,
+      action_items: document.getElementById('newMeetingActions').value,
+      follow_up_required: document.getElementById('newMeetingFollowUp').checked,
+      follow_up_date: document.getElementById('newMeetingFollowUp').checked ? document.getElementById('newMeetingFollowUpDate').value : null,
+      created_by: STATE.currentUser?.email
+    };
+
+    try {
+      const { error } = await STATE.client.from('meeting_notes').insert(data);
+      if (error) throw error;
+
+      utils.showToast('Meeting note created successfully', 'success');
+      bootstrap.Modal.getInstance(document.getElementById('createMeetingNoteModal')).hide();
+      this.loadMeetings();
+    } catch (error) {
+      console.error('Error saving meeting note:', error);
+      utils.showToast('Error saving meeting note: ' + error.message, 'error');
+    }
+  },
+
+  async assignSegments() {
+    try {
+      // Load segments and organisations
+      const [segmentsRes, orgsRes] = await Promise.all([
+        STATE.client.from('contact_segments').select('*').order('segment_name'),
+        STATE.client.from('organisations').select('id, company_name').order('company_name')
+      ]);
+
+      if (segmentsRes.error) throw segmentsRes.error;
+      if (orgsRes.error) throw orgsRes.error;
+
+      const segments = segmentsRes.data || [];
+      const orgs = orgsRes.data || [];
+
+      const orgOptions = orgs.map(o =>
+        `<option value="${o.id}">${utils.escapeHtml(o.company_name)}</option>`
+      ).join('');
+
+      const segmentCheckboxes = segments.map(s => `
+        <div class="form-check">
+          <input class="form-check-input segment-assign-check" type="checkbox" value="${s.id}" id="segAssign_${s.id}">
+          <label class="form-check-label" for="segAssign_${s.id}">
+            <i class="bi bi-${s.icon || 'tag'} me-1" style="color: ${s.color}"></i>
+            ${utils.escapeHtml(s.segment_name)}
+          </label>
+        </div>
+      `).join('');
+
+      const modalHtml = `
+        <div class="modal fade" id="assignSegmentsModal" tabindex="-1">
+          <div class="modal-dialog">
+            <div class="modal-content">
+              <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title"><i class="bi bi-tags me-2"></i>Assign Company to Segments</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+              </div>
+              <div class="modal-body">
+                <div class="mb-3">
+                  <label class="form-label">Select Company <span class="text-danger">*</span></label>
+                  <select class="form-select" id="assignSegmentOrg" required>
+                    <option value="">Select company...</option>
+                    ${orgOptions}
+                  </select>
+                </div>
+                <div class="mb-3">
+                  <label class="form-label">Select Segments</label>
+                  ${segments.length > 0 ? segmentCheckboxes : '<p class="text-muted">No segments created yet.</p>'}
+                </div>
+              </div>
+              <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" onclick="crmModule.saveSegmentAssignments()">
+                  <i class="bi bi-save me-2"></i>Assign
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      `;
+
+      const existing = document.getElementById('assignSegmentsModal');
+      if (existing) existing.remove();
+      document.body.insertAdjacentHTML('beforeend', modalHtml);
+      const modal = new bootstrap.Modal(document.getElementById('assignSegmentsModal'));
+      modal.show();
+      document.getElementById('assignSegmentsModal').addEventListener('hidden.bs.modal', function() { this.remove(); });
+    } catch (error) {
+      console.error('Error opening assign segments:', error);
+      utils.showToast('Error loading segments data', 'error');
+    }
+  },
+
+  async saveSegmentAssignments() {
+    const orgId = document.getElementById('assignSegmentOrg').value;
+    if (!orgId) { utils.showToast('Please select a company', 'warning'); return; }
+
+    const checked = document.querySelectorAll('.segment-assign-check:checked');
+    if (checked.length === 0) { utils.showToast('Please select at least one segment', 'warning'); return; }
+
+    try {
+      const assignments = [...checked].map(cb => ({
+        organisation_id: orgId,
+        segment_id: cb.value
+      }));
+
+      const { error } = await STATE.client.from('organisation_segments').upsert(assignments, { onConflict: 'organisation_id,segment_id' });
+      if (error) throw error;
+
+      utils.showToast(`Company assigned to ${assignments.length} segment(s)`, 'success');
+      bootstrap.Modal.getInstance(document.getElementById('assignSegmentsModal')).hide();
+      this.loadSegments();
+    } catch (error) {
+      console.error('Error assigning segments:', error);
+      utils.showToast('Error assigning segments: ' + error.message, 'error');
+    }
+  },
+
+  async createCustomSegment() {
+    const colors = ['#0d6efd', '#198754', '#dc3545', '#ffc107', '#0dcaf0', '#6f42c1', '#fd7e14', '#20c997', '#d63384', '#6610f2'];
+    const icons = ['tag', 'trophy', 'star', 'people', 'building', 'award', 'cash', 'calendar-event', 'graph-up', 'megaphone'];
+
+    const modalHtml = `
+      <div class="modal fade" id="createSegmentModal" tabindex="-1">
+        <div class="modal-dialog">
+          <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+              <h5 class="modal-title"><i class="bi bi-plus-circle me-2"></i>Create Custom Segment</h5>
+              <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+              <form id="createSegmentForm">
+                <div class="mb-3">
+                  <label class="form-label">Segment Name <span class="text-danger">*</span></label>
+                  <input type="text" class="form-control" id="newSegmentName" required placeholder="e.g. Enterprise Clients">
+                </div>
+                <div class="mb-3">
+                  <label class="form-label">Description</label>
+                  <textarea class="form-control" id="newSegmentDescription" rows="2" placeholder="Brief description of this segment..."></textarea>
+                </div>
+                <div class="mb-3">
+                  <label class="form-label">Color</label>
+                  <div class="d-flex flex-wrap gap-2" id="newSegmentColorPicker">
+                    ${colors.map((c, i) => `
+                      <div class="rounded-circle border ${i === 0 ? 'border-dark border-3' : ''}"
+                           style="width: 32px; height: 32px; background: ${c}; cursor: pointer;"
+                           onclick="document.getElementById('newSegmentColor').value = '${c}'; document.querySelectorAll('#newSegmentColorPicker > div').forEach(d => d.classList.remove('border-dark','border-3')); this.classList.add('border-dark','border-3');">
+                      </div>
+                    `).join('')}
+                  </div>
+                  <input type="hidden" id="newSegmentColor" value="#0d6efd">
+                </div>
+                <div class="mb-3">
+                  <label class="form-label">Icon</label>
+                  <div class="d-flex flex-wrap gap-2" id="newSegmentIconPicker">
+                    ${icons.map((ic, i) => `
+                      <button type="button" class="btn btn-sm ${i === 0 ? 'btn-primary' : 'btn-outline-secondary'}"
+                              onclick="document.getElementById('newSegmentIcon').value = '${ic}'; document.querySelectorAll('#newSegmentIconPicker > button').forEach(b => { b.classList.remove('btn-primary'); b.classList.add('btn-outline-secondary'); }); this.classList.remove('btn-outline-secondary'); this.classList.add('btn-primary');">
+                        <i class="bi bi-${ic}"></i>
+                      </button>
+                    `).join('')}
+                  </div>
+                  <input type="hidden" id="newSegmentIcon" value="tag">
+                </div>
+              </form>
+            </div>
+            <div class="modal-footer">
+              <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+              <button type="button" class="btn btn-primary" onclick="crmModule.saveCustomSegment()">
+                <i class="bi bi-save me-2"></i>Create Segment
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+
+    const existing = document.getElementById('createSegmentModal');
+    if (existing) existing.remove();
+    document.body.insertAdjacentHTML('beforeend', modalHtml);
+    const modal = new bootstrap.Modal(document.getElementById('createSegmentModal'));
+    modal.show();
+    document.getElementById('createSegmentModal').addEventListener('hidden.bs.modal', function() { this.remove(); });
+  },
+
+  async saveCustomSegment() {
+    const form = document.getElementById('createSegmentForm');
+    if (!form.checkValidity()) { form.reportValidity(); return; }
+
+    const data = {
+      segment_name: document.getElementById('newSegmentName').value,
+      description: document.getElementById('newSegmentDescription').value,
+      color: document.getElementById('newSegmentColor').value,
+      icon: document.getElementById('newSegmentIcon').value
+    };
+
+    try {
+      const { error } = await STATE.client.from('contact_segments').insert(data);
+      if (error) throw error;
+
+      utils.showToast('Segment created successfully', 'success');
+      bootstrap.Modal.getInstance(document.getElementById('createSegmentModal')).hide();
+      this.loadSegments();
+    } catch (error) {
+      console.error('Error creating segment:', error);
+      utils.showToast('Error creating segment: ' + error.message, 'error');
+    }
+  },
+
+  // ============================================
+  // PAGINATION, SORTING, BULK ACTIONS & EXPORT
+  // ============================================
+
+  _renderCrmPagination(containerId, currentPage, totalPages, goToFn, tbodyId) {
+    let el = document.getElementById(containerId);
+    if (!el) {
+      el = document.createElement('div');
+      el.id = containerId;
+      // Insert after the table containing the tbody
+      const tbody = tbodyId ? document.getElementById(tbodyId) : null;
+      const tableParent = tbody?.closest('.table-responsive') || tbody?.parentElement;
+      if (tableParent) tableParent.after(el);
+      else document.querySelector('.tab-pane.active')?.appendChild(el);
+    }
+    if (totalPages > 1) {
+      let html = '<nav><ul class="pagination pagination-sm justify-content-center mt-3">';
+      html += `<li class="page-item ${currentPage <= 1 ? 'disabled' : ''}"><a class="page-link" href="#" onclick="event.preventDefault(); ${goToFn}(${currentPage - 1})">Prev</a></li>`;
+      for (let i = 1; i <= totalPages; i++) {
+        if (i === 1 || i === totalPages || (i >= currentPage - 2 && i <= currentPage + 2)) {
+          html += `<li class="page-item ${i === currentPage ? 'active' : ''}"><a class="page-link" href="#" onclick="event.preventDefault(); ${goToFn}(${i})">${i}</a></li>`;
+        } else if (i === currentPage - 3 || i === currentPage + 3) {
+          html += '<li class="page-item disabled"><span class="page-link">...</span></li>';
+        }
+      }
+      html += `<li class="page-item ${currentPage >= totalPages ? 'disabled' : ''}"><a class="page-link" href="#" onclick="event.preventDefault(); ${goToFn}(${currentPage + 1})">Next</a></li>`;
+      html += '</ul></nav>';
+      el.innerHTML = html;
+    } else if (el) {
+      el.innerHTML = '';
+    }
+  },
+
+  sortCommunications(field) {
+    if (this._crmSortField === field) {
+      this._crmSortDir = this._crmSortDir === 'asc' ? 'desc' : 'asc';
+    } else {
+      this._crmSortField = field;
+      this._crmSortDir = 'asc';
+    }
+    const sorted = [...(this._communications || [])].sort((a, b) => {
+      let aVal, bVal;
+      if (field === 'company') {
+        aVal = (a.organisation?.company_name || '').toLowerCase();
+        bVal = (b.organisation?.company_name || '').toLowerCase();
+      } else if (field === 'contact') {
+        aVal = (a.contact ? `${a.contact.first_name} ${a.contact.last_name}` : '').toLowerCase();
+        bVal = (b.contact ? `${b.contact.first_name} ${b.contact.last_name}` : '').toLowerCase();
+      } else {
+        aVal = (a[field] || '').toString().toLowerCase();
+        bVal = (b[field] || '').toString().toLowerCase();
+      }
+      if (aVal < bVal) return this._crmSortDir === 'asc' ? -1 : 1;
+      if (aVal > bVal) return this._crmSortDir === 'asc' ? 1 : -1;
+      return 0;
+    });
+    this._communications = sorted;
+    this._crmCurrentPage = 1;
+    this.renderCommunicationsTable(sorted);
+  },
+
+  sortDeals(field) {
+    if (this._dealSortField === field) {
+      this._dealSortDir = this._dealSortDir === 'asc' ? 'desc' : 'asc';
+    } else {
+      this._dealSortField = field;
+      this._dealSortDir = 'asc';
+    }
+    const sorted = [...(this._deals || [])].sort((a, b) => {
+      let aVal, bVal;
+      if (field === 'company') {
+        aVal = (a.organisation?.company_name || '').toLowerCase();
+        bVal = (b.organisation?.company_name || '').toLowerCase();
+      } else if (field === 'deal_value') {
+        aVal = parseFloat(a.deal_value) || 0;
+        bVal = parseFloat(b.deal_value) || 0;
+      } else if (field === 'probability') {
+        aVal = parseFloat(a.probability) || 0;
+        bVal = parseFloat(b.probability) || 0;
+      } else {
+        aVal = (a[field] || '').toString().toLowerCase();
+        bVal = (b[field] || '').toString().toLowerCase();
+      }
+      if (aVal < bVal) return this._dealSortDir === 'asc' ? -1 : 1;
+      if (aVal > bVal) return this._dealSortDir === 'asc' ? 1 : -1;
+      return 0;
+    });
+    this._deals = sorted;
+    this._dealCurrentPage = 1;
+    this.renderDealsTable(sorted);
+  },
+
+  sortMeetings(field) {
+    if (this._meetingSortField === field) {
+      this._meetingSortDir = this._meetingSortDir === 'asc' ? 'desc' : 'asc';
+    } else {
+      this._meetingSortField = field;
+      this._meetingSortDir = 'asc';
+    }
+    const sorted = [...(this._meetings || [])].sort((a, b) => {
+      let aVal, bVal;
+      if (field === 'company') {
+        aVal = (a.organisation?.company_name || '').toLowerCase();
+        bVal = (b.organisation?.company_name || '').toLowerCase();
+      } else {
+        aVal = (a[field] || '').toString().toLowerCase();
+        bVal = (b[field] || '').toString().toLowerCase();
+      }
+      if (aVal < bVal) return this._meetingSortDir === 'asc' ? -1 : 1;
+      if (aVal > bVal) return this._meetingSortDir === 'asc' ? 1 : -1;
+      return 0;
+    });
+    this._meetings = sorted;
+    this._meetingCurrentPage = 1;
+    this.renderMeetingsTable(sorted);
+  },
+
+  toggleCrmSelect(id, checked, type) {
+    const set = type === 'deal' ? this._selectedDealIds : type === 'meeting' ? this._selectedMeetingIds : this._selectedCrmIds;
+    if (checked) set.add(id); else set.delete(id);
+  },
+
+  async bulkDeleteCrm(type) {
+    const set = type === 'deal' ? this._selectedDealIds : type === 'meeting' ? this._selectedMeetingIds : this._selectedCrmIds;
+    if (set.size === 0) return;
+    const table = type === 'deal' ? 'deals' : type === 'meeting' ? 'meeting_notes' : 'communications';
+    if (!await utils.confirmDialog({ title: 'Bulk Delete', message: `Delete ${set.size} ${type} record(s)? This cannot be undone.`, confirmText: 'Delete All', danger: true })) return;
+    try {
+      utils.showLoading();
+      for (const id of set) {
+        await STATE.client.from(table).delete().eq('id', id);
+      }
+      utils.showToast(`Deleted ${set.size} ${type} records`, 'success');
+      set.clear();
+      if (type === 'deal') this.loadDeals();
+      else if (type === 'meeting') this.loadMeetings();
+      else this.loadCommunications();
+    } catch (err) {
+      utils.showToast('Error: ' + err.message, 'error');
+    } finally {
+      utils.hideLoading();
+    }
+  },
+
+  exportCrmToCSV(type) {
+    let data, filename, headers;
+    if (type === 'communications') {
+      data = this._communications || [];
+      filename = 'crm-communications';
+      headers = ['Date', 'Type', 'Company', 'Contact', 'Subject', 'Notes'];
+      const rows = data.map(r => [
+        r.communication_date || '', r.type || '', r.organisation?.company_name || '', r.contact ? `${r.contact.first_name} ${r.contact.last_name}` : '', r.subject || '', (r.message || '').replace(/"/g, '""')
+      ]);
+      this._downloadCSV(headers, rows, filename);
+    } else if (type === 'deals') {
+      data = this._deals || [];
+      filename = 'crm-deals';
+      headers = ['Deal Name', 'Company', 'Value', 'Stage', 'Probability', 'Expected Close', 'Created'];
+      const rows = data.map(r => [
+        r.deal_name || '', r.organisation?.company_name || '', r.deal_value || 0, r.stage || '', r.probability || '', r.expected_close_date || '', r.created_at || ''
+      ]);
+      this._downloadCSV(headers, rows, filename);
+    } else if (type === 'meetings') {
+      data = this._meetings || [];
+      filename = 'crm-meetings';
+      headers = ['Date', 'Title', 'Company', 'Attendees', 'Location', 'Notes'];
+      const rows = data.map(r => [
+        r.meeting_date || '', r.meeting_title || '', r.organisation?.company_name || '', r.attendees || '', r.location || '', (r.notes || '').replace(/"/g, '""')
+      ]);
+      this._downloadCSV(headers, rows, filename);
+    }
+  },
+
+  _downloadCSV(headers, rows, filename) {
+    let csv = headers.join(',') + '\n';
+    rows.forEach(row => {
+      csv += row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(',') + '\n';
+    });
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${filename}-${new Date().toISOString().split('T')[0]}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  },
+
+  toggleKanbanView() {
+    this._kanbanView = !this._kanbanView;
+    this.renderDealsTable(this._deals);
+  },
+
+  renderKanbanBoard() {
+    const deals = this._deals || [];
+    const stages = ['prospecting', 'proposal', 'negotiation', 'won', 'lost'];
+    const stageLabels = { prospecting: 'Prospecting', proposal: 'Proposal', negotiation: 'Negotiation', won: 'Won', lost: 'Lost' };
+    const stageColors = { prospecting: 'primary', proposal: 'info', negotiation: 'warning', won: 'success', lost: 'danger' };
+
+    const tbody = document.getElementById('dealsTableBody');
+    const container = tbody?.closest('.table-responsive') || tbody?.parentElement;
+    if (!container) return;
+
+    let html = '<div class="kanban-board">';
+    stages.forEach(stage => {
+      const stageDeals = deals.filter(d => (d.stage || 'prospecting') === stage);
+      const totalValue = stageDeals.reduce((sum, d) => sum + (parseFloat(d.deal_value) || 0), 0);
+      html += `
+        <div class="kanban-column">
+          <div class="kanban-column-header">
+            <span class="badge bg-${stageColors[stage]}">${stageLabels[stage]}</span>
+            <span class="text-muted small">${stageDeals.length} &middot; £${totalValue.toLocaleString()}</span>
+          </div>
+          ${stageDeals.length === 0 ? '<p class="text-muted small text-center py-3">No deals</p>' : ''}
+          ${stageDeals.map(deal => `
+            <div class="kanban-card" draggable="true" data-deal-id="${deal.id}">
+              <div class="fw-semibold small">${utils.escapeHtml(deal.deal_name || 'Untitled')}</div>
+              <div class="text-muted" style="font-size:0.75rem;">${utils.escapeHtml(deal.company_name || '')}</div>
+              <div class="kanban-deal-value mt-1">£${(parseFloat(deal.deal_value) || 0).toLocaleString()}</div>
+            </div>
+          `).join('')}
+        </div>`;
+    });
+    html += '</div>';
+    container.innerHTML = html;
+  },
+
+  goToCrmPage(page, type) {
+    if (type === 'deal') {
+      const totalPages = Math.ceil((this._deals || []).length / this._dealPageSize);
+      this._dealCurrentPage = Math.max(1, Math.min(page, totalPages));
+      this.renderDealsTable(this._deals);
+    } else if (type === 'meeting') {
+      const totalPages = Math.ceil((this._meetings || []).length / this._meetingPageSize);
+      this._meetingCurrentPage = Math.max(1, Math.min(page, totalPages));
+      this.renderMeetingsTable(this._meetings);
+    } else {
+      const totalPages = Math.ceil((this._communications || []).length / this._crmPageSize);
+      this._crmCurrentPage = Math.max(1, Math.min(page, totalPages));
+      this.renderCommunicationsTable(this._communications);
+    }
   }
 };
 

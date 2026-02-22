@@ -163,10 +163,12 @@ window.documentModule = {
   },
 
   async deleteDocument(id) {
-    if (!confirm('Delete this document?')) return;
+    const row = document.querySelector(`#docLibraryTable tr[data-id="${id}"]`);
+    const docName = row?.querySelector('td:nth-child(1)')?.textContent?.trim() || 'this document';
+    if (!await utils.confirmDialog({ title: 'Delete Document', message: `Delete <strong>${utils.escapeHtml(docName)}</strong>? This action cannot be undone.`, confirmText: 'Delete', danger: true })) return;
     const { error } = await this._client().from('documents').delete().eq('id', id);
     if (error) { utils.showToast('Delete failed: ' + error.message, 'error'); throw error; }
-    document.querySelector(`#docLibraryTable tr[data-id="${id}"]`)?.remove();
+    row?.remove();
     utils.showToast('Document deleted', 'success');
   },
 

@@ -14,7 +14,7 @@ const reportsScheduler = {
         const { data } = await STATE.client.from('user_preferences').select('value').eq('key', 'orgScheduledReports').limit(1);
         if (data?.[0]) { this._scheduledReports = JSON.parse(data[0].value); return; }
       }
-    } catch (e) {}
+    } catch (e) { console.warn('Scheduled reports: ' + e.message); }
     try { this._scheduledReports = JSON.parse(localStorage.getItem('orgScheduledReports') || '[]'); } catch (e) { this._scheduledReports = []; }
   },
 
@@ -23,7 +23,7 @@ const reportsScheduler = {
       if (typeof STATE !== 'undefined' && STATE.client) {
         await STATE.client.from('user_preferences').upsert({ key: 'orgScheduledReports', value: JSON.stringify(this._scheduledReports), updated_at: new Date().toISOString() }, { onConflict: 'key' });
       }
-    } catch (e) {}
+    } catch (e) { console.warn('Scheduled reports: ' + e.message); }
     localStorage.setItem('orgScheduledReports', JSON.stringify(this._scheduledReports));
   },
 
@@ -126,7 +126,7 @@ const reportsScheduler = {
   },
 
   async deleteReport(i) {
-    if (!confirm('Delete this report schedule?')) return;
+    if (!await utils.confirmDialog({ title: 'Delete Report Schedule', message: 'Delete this report schedule?', confirmText: 'Delete', danger: true })) return;
     this._scheduledReports.splice(i, 1);
     await this._saveScheduledReports();
     this.loadReports();
@@ -870,6 +870,13 @@ document.addEventListener('DOMContentLoaded', function() {
         }
       });
     }
+
+    // ? key to show keyboard shortcuts help
+    const tag = e.target.tagName;
+    if (e.key === '?' && !e.ctrlKey && !e.metaKey && tag !== 'INPUT' && tag !== 'TEXTAREA' && tag !== 'SELECT') {
+      e.preventDefault();
+      new bootstrap.Modal(document.getElementById('shortcutsHelpModal')).show();
+    }
   });
   
   // ==========================================
@@ -886,6 +893,34 @@ document.addEventListener('DOMContentLoaded', function() {
       form.classList.add('was-validated');
     });
   });
+
+  // ==========================================
+  // STEP 6b: Enhanced Field-level Validation (HIGH-3)
+  // ==========================================
+  document.addEventListener('submit', (e) => {
+    const form = e.target;
+    if (!form.checkValidity || form.checkValidity()) return;
+
+    // Add is-invalid to each invalid field with feedback message
+    form.querySelectorAll(':invalid').forEach(field => {
+      field.classList.add('is-invalid');
+      if (!field.nextElementSibling?.classList.contains('invalid-feedback')) {
+        const feedback = document.createElement('div');
+        feedback.className = 'invalid-feedback';
+        feedback.textContent = field.validationMessage || 'This field is required';
+        field.parentNode.insertBefore(feedback, field.nextSibling);
+      }
+    });
+
+    // Clear validation on input
+    form.querySelectorAll('.is-invalid').forEach(field => {
+      field.addEventListener('input', () => {
+        field.classList.remove('is-invalid');
+        const fb = field.nextElementSibling;
+        if (fb?.classList.contains('invalid-feedback')) fb.remove();
+      }, { once: true });
+    });
+  }, true);
   
   // ==========================================
   // STEP 7: Error Handling + Sentry Monitoring
@@ -1114,6 +1149,186 @@ document.addEventListener('DOMContentLoaded', function() {
   }
   // Delay realtime setup until after auth completes
   setTimeout(setupRealtimeSync, 3000);
+
+  // Real-time presence indicators (LOW-10)
+  window._activeUsers = new Map();
+
+  window._initPresence = function() {
+    if (!STATE.client) return;
+    try {
+      const channel = STATE.client.channel('online-users');
+      channel.on('presence', { event: 'sync' }, () => {
+        const state = channel.presenceState();
+        const users = [];
+        Object.values(state).forEach(presences => {
+          presences.forEach(p => users.push(p));
+        });
+        window._activeUsers.clear();
+        users.forEach(u => window._activeUsers.set(u.email, u));
+        window._renderPresenceIndicator();
+      });
+      channel.subscribe(async (status) => {
+        if (status === 'SUBSCRIBED') {
+          await channel.track({
+            email: STATE.user?.email || 'unknown',
+            tab: document.querySelector('.nav-link.active')?.textContent?.trim() || 'Dashboard',
+            online_at: new Date().toISOString()
+          });
+        }
+      });
+    } catch (e) {
+      console.warn('Presence not available:', e.message);
+    }
+  };
+
+  window._renderPresenceIndicator = function() {
+    let el = document.getElementById('presenceIndicator');
+    if (!el) {
+      el = document.createElement('div');
+      el.id = 'presenceIndicator';
+      el.className = 'position-fixed bottom-0 start-0 mb-3 ms-3';
+      el.style.zIndex = '1040';
+      document.body.appendChild(el);
+    }
+    const count = window._activeUsers.size;
+    if (count <= 1) { el.innerHTML = ''; return; }
+    const names = [...window._activeUsers.values()].map(u => u.email).slice(0, 5);
+    el.innerHTML = `
+      <div class="badge bg-success-subtle text-success border px-2 py-1" title="${names.join(', ')}" style="cursor:pointer;">
+        <i class="bi bi-people-fill me-1"></i>${count} online
+      </div>`;
+  };
+
+  // Initialize presence after a delay
+  setTimeout(() => { if (window._initPresence) window._initPresence(); }, 4000);
+
+  // ==========================================
+  // STEP 14: Stale Data Auto-Refresh on Tab Switch
+  // ==========================================
+  document.querySelectorAll('[data-bs-toggle="tab"]').forEach(tab => {
+    tab.addEventListener('shown.bs.tab', (e) => {
+      // Stale data auto-refresh
+      const tabId = e.target.id;
+      const refreshMap = {
+        'awards-tab': { key: 'awards', fn: () => awardsModule?.loadAwards() },
+        'organisations-tab': { key: 'organisations', fn: () => orgsModule?.loadOrganisations() },
+        'winners-tab': { key: 'winners', fn: () => winnersModule?.loadWinners() },
+        'entries-tab': { key: 'entries', fn: () => entriesModule?.initialize() },
+        'events-tab': { key: 'events', fn: () => eventsModule?.loadEvents() },
+        'payments-tab': { key: 'payments', fn: () => paymentsModule?.loadAllData() },
+      };
+      const config = refreshMap[tabId];
+      if (config && utils.isDataStale(config.key)) {
+        console.log('Auto-refreshing stale data for', config.key);
+        config.fn();
+      }
+
+      // Tab state in URL (MEDIUM-6)
+      const target = e.target.getAttribute('data-bs-target') || e.target.getAttribute('href');
+      if (target) {
+        const tabName = target.replace('#', '');
+        history.replaceState(null, '', '#' + tabName);
+        utils._updateBreadcrumb && utils._updateBreadcrumb(tabName);
+      }
+    });
+  });
+
+  // Restore tab from URL hash when hash changes
+  window.addEventListener('hashchange', () => {
+    const hash = window.location.hash.replace('#', '');
+    if (hash) {
+      const tabBtn = document.querySelector(`[data-bs-target="#${hash}"]`);
+      if (tabBtn) tabBtn.click();
+    }
+  });
+
+  // Restore tab from URL or user preference (LOW-6: default landing tab)
+  const hashTab = window.location.hash.replace('#', '');
+  const defaultTab = localStorage.getItem('defaultLandingTab');
+  const startTab = hashTab || defaultTab;
+  if (startTab) {
+    const tabBtn = document.querySelector(`[data-bs-target="#${startTab}Page"]`) || document.querySelector(`[data-bs-target="#${startTab}"]`);
+    if (tabBtn) setTimeout(() => tabBtn.click(), 100);
+  }
+
+  // ==========================================
+  // STEP 14c: URL Filter State / Deep Linking (MEDIUM-4)
+  // ==========================================
+  // URL filter state management
+  window._saveFilterState = function(module, filters) {
+    const params = new URLSearchParams(window.location.search);
+    Object.entries(filters).forEach(([k, v]) => {
+      if (v) params.set(`${module}_${k}`, v);
+      else params.delete(`${module}_${k}`);
+    });
+    const newUrl = window.location.pathname + (params.toString() ? '?' + params.toString() : '') + window.location.hash;
+    history.replaceState(null, '', newUrl);
+  };
+
+  window._loadFilterState = function(module) {
+    const params = new URLSearchParams(window.location.search);
+    const filters = {};
+    params.forEach((v, k) => {
+      if (k.startsWith(module + '_')) {
+        filters[k.replace(module + '_', '')] = v;
+      }
+    });
+    return filters;
+  };
+
+  // ==========================================
+  // STEP 15: Data Freshness Timer
+  // ==========================================
+  utils.startFreshnessTimer();
+
+  // ==========================================
+  // STEP 16: Save Button Loading States (HIGH-4)
+  // ==========================================
+  window._withSaveButton = async (btnSelector, asyncFn) => {
+    const btn = typeof btnSelector === 'string' ? document.querySelector(btnSelector) : btnSelector;
+    if (!btn) return await asyncFn();
+    const originalText = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Saving...';
+    try {
+      return await asyncFn();
+    } finally {
+      btn.disabled = false;
+      btn.innerHTML = originalText;
+    }
+  };
+
+  // ==========================================
+  // STEP 17: Breadcrumb Navigation (MEDIUM-5)
+  // ==========================================
+  utils._updateBreadcrumb = function(tabName) {
+    let bc = document.getElementById('mainBreadcrumb');
+    if (!bc) {
+      bc = document.createElement('nav');
+      bc.id = 'mainBreadcrumb';
+      bc.setAttribute('aria-label', 'breadcrumb');
+      bc.className = 'ms-3 d-inline-block';
+      bc.style.fontSize = '0.85rem';
+      const tabContent = document.querySelector('.tab-content');
+      if (tabContent) tabContent.parentElement.insertBefore(bc, tabContent);
+    }
+    const label = tabName.charAt(0).toUpperCase() + tabName.slice(1);
+    bc.innerHTML = `<ol class="breadcrumb mb-0 bg-transparent p-0"><li class="breadcrumb-item"><a href="#" onclick="event.preventDefault(); document.querySelector('[data-bs-target=\\'#dashboardPage\\']')?.click();">Dashboard</a></li><li class="breadcrumb-item active" aria-current="page">${label}</li></ol>`;
+  };
+
+  // ==========================================
+  // STEP 18: Initialize New UX Features
+  // ==========================================
+  if (utils.initCommandPalette) utils.initCommandPalette();
+  if (utils.initScrollToTop) utils.initScrollToTop();
+  if (utils.initKeyboardShortcutHelp) utils.initKeyboardShortcutHelp();
+  if (utils.startFreshnessTimer) utils.startFreshnessTimer();
+
+  // Initialize debounced search for main search boxes
+  if (utils.initDebouncedSearch) {
+    utils.initDebouncedSearch('awardsSearchBox', () => { if (window.awardsModule) awardsModule.filterAwards(); });
+    utils.initDebouncedSearch('entriesSearchInput', () => { if (window.entriesModule) entriesModule.applyFilters(); });
+  }
 
   // ==========================================
   // INITIALIZATION COMPLETE

@@ -447,22 +447,25 @@
         <div class="form-step" id="step6">
           <div class="form-section">
             <h2 class="step-question">Your contact information</h2>
-            <div class="mb-3">
-              <input type="text" class="form-control form-control-lg" id="contactName"
-                placeholder="Your Name *" required>
-            </div>
-            <div class="mb-3">
-              <input type="text" class="form-control form-control-lg" id="contactPosition"
-                placeholder="Position/Title">
-            </div>
-            <div class="mb-3">
-              <input type="email" class="form-control form-control-lg" id="contactEmail"
-                placeholder="Email Address *" required>
-            </div>
-            <div class="mb-3">
-              <input type="tel" class="form-control form-control-lg" id="contactPhone"
-                placeholder="Phone Number">
-            </div>
+            <fieldset>
+              <legend class="visually-hidden">Contact Information</legend>
+              <div class="mb-3">
+                <input type="text" class="form-control form-control-lg" id="contactName"
+                  placeholder="Your Name *" required>
+              </div>
+              <div class="mb-3">
+                <input type="text" class="form-control form-control-lg" id="contactPosition"
+                  placeholder="Position/Title">
+              </div>
+              <div class="mb-3">
+                <input type="email" class="form-control form-control-lg" id="contactEmail"
+                  placeholder="Email Address *" required>
+              </div>
+              <div class="mb-3">
+                <input type="tel" class="form-control form-control-lg" id="contactPhone"
+                  placeholder="Phone Number">
+              </div>
+            </fieldset>
             <button type="button" class="btn btn-next" onclick="entryFormApp.nextStep(6)">
               Review & Submit <i class="bi bi-arrow-right ms-2"></i>
             </button>

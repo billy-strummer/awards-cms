@@ -1452,8 +1452,8 @@ const testDataManager = {
       utils.hideLoading();
       utils.showToast('Mock order created: ' + invoiceNumber + ' for £1,250.00', 'success');
 
-      setTimeout(function() {
-        if (window.confirm('Mock order created! Go to Dashboard to see the notification?')) {
+      setTimeout(async function() {
+        if (await utils.confirmDialog({ title: 'Mock Order Created', message: 'Mock order created! Go to Dashboard to see the notification?', confirmText: 'Go to Dashboard', danger: false })) {
           document.getElementById('dashboard-tab').click();
         }
       }, 1500);

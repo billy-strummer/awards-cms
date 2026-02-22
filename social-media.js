@@ -430,7 +430,7 @@ Vote now: {{website}}
       // Confirm before posting immediately
       if (postType === 'immediate') {
         const platformNames = platforms.map(p => p.charAt(0).toUpperCase() + p.slice(1)).join(', ');
-        if (!confirm(`Post immediately to ${platformNames}?`)) return;
+        if (!await utils.confirmDialog({ title: 'Publish Post', message: `Post immediately to ${platformNames}?`, confirmText: 'Publish Now', danger: false })) return;
       }
 
       let scheduledFor = null;
@@ -903,7 +903,7 @@ Vote now: {{website}}
   },
 
   async deleteScheduledPost(postId) {
-    if (!confirm('Are you sure you want to delete this post?')) return;
+    if (!await utils.confirmDialog({ title: 'Delete Post', message: 'Are you sure you want to delete this post?', confirmText: 'Delete', danger: true })) return;
 
     try {
       const { error } = await STATE.client

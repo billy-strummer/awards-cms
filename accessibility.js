@@ -15,6 +15,7 @@ const a11yModule = {
     this.enhanceModals();
     this.setupKeyboardNav();
     this.setupLiveRegion();
+    this.setupFocusManagement();
     console.log('Accessibility module initialized');
   },
 
@@ -199,6 +200,53 @@ const a11yModule = {
     this.enhanceButtons();
     this.enhanceTables();
     this.enhanceModals();
+    this.setupFocusManagement();
+  },
+
+  /**
+   * Setup focus management - return focus to trigger element after modal close
+   */
+  setupFocusManagement() {
+    if (this._focusMgmtInit) return;
+    this._focusMgmtInit = true;
+
+    // Track which element opened each modal
+    document.addEventListener('show.bs.modal', (e) => {
+      e.target._a11yTrigger = document.activeElement;
+    });
+
+    document.addEventListener('hidden.bs.modal', (e) => {
+      const trigger = e.target._a11yTrigger;
+      if (trigger && document.body.contains(trigger)) {
+        setTimeout(() => trigger.focus(), 50);
+      }
+      e.target._a11yTrigger = null;
+    });
+  },
+
+  /**
+   * Announce dynamic content changes to screen readers (HIGH-8)
+   * Call this after table renders, filter changes, CRUD operations, etc.
+   */
+  announceTableUpdate(action, count, moduleName) {
+    const messages = {
+      'load': `${moduleName}: ${count} records loaded`,
+      'filter': `${moduleName}: ${count} records match current filters`,
+      'create': `${moduleName}: Record created successfully. ${count} total records`,
+      'update': `${moduleName}: Record updated successfully`,
+      'delete': `${moduleName}: Record deleted. ${count} records remaining`,
+      'page': `${moduleName}: Showing page of ${count} records`,
+      'sort': `${moduleName}: Table sorted. ${count} records`,
+      'bulk': `${moduleName}: Bulk operation completed on ${count} records`
+    };
+    this.announce(messages[action] || `${moduleName}: ${count} records`);
+  },
+
+  /**
+   * Announce navigation changes
+   */
+  announceNavigation(tabName) {
+    this.announce(`Navigated to ${tabName}`);
   }
 };
 

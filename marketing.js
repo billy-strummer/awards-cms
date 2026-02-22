@@ -304,7 +304,7 @@ const marketingModule = {
    * Delete banner
    */
   async deleteBanner(bannerId) {
-    if (!confirm('Are you sure you want to delete this banner?')) return;
+    if (!await utils.confirmDialog({ title: 'Delete Banner', message: 'Are you sure you want to delete this banner?', confirmText: 'Delete', danger: true })) return;
 
     try {
       const { error } = await STATE.client
@@ -605,7 +605,7 @@ const marketingModule = {
   },
 
   async deleteSponsor(sponsorId) {
-    if (!confirm('Are you sure you want to delete this sponsor?')) return;
+    if (!await utils.confirmDialog({ title: 'Delete Sponsor', message: 'Are you sure you want to delete this sponsor?', confirmText: 'Delete', danger: true })) return;
     try {
       const { error } = await STATE.client.from('sponsors').delete().eq('id', sponsorId);
       if (error) throw error;
@@ -645,8 +645,8 @@ const marketingModule = {
         const { data } = await STATE.client.from('user_preferences').select('value').eq('key', 'orgEmailSequences').limit(1);
         if (data?.[0]) { this._emailSequences = JSON.parse(data[0].value); return; }
       }
-    } catch (e) {}
-    try { this._emailSequences = JSON.parse(localStorage.getItem('orgEmailSequences') || '[]'); } catch (e) { this._emailSequences = []; }
+    } catch (e) { console.warn('Failed to load email sequences from database:', e.message); }
+    try { this._emailSequences = JSON.parse(localStorage.getItem('orgEmailSequences') || '[]'); } catch (e) { console.warn('Failed to parse email sequences from localStorage:', e.message); this._emailSequences = []; }
   },
 
   async _saveEmailSequences() {
@@ -654,7 +654,7 @@ const marketingModule = {
       if (typeof STATE !== 'undefined' && STATE.client) {
         await STATE.client.from('user_preferences').upsert({ key: 'orgEmailSequences', value: JSON.stringify(this._emailSequences), updated_at: new Date().toISOString() }, { onConflict: 'key' });
       }
-    } catch (e) {}
+    } catch (e) { console.warn('Failed to save email sequences to database:', e.message); }
     localStorage.setItem('orgEmailSequences', JSON.stringify(this._emailSequences));
   },
 
@@ -759,7 +759,7 @@ const marketingModule = {
   },
 
   async deleteSequence(i) {
-    if (!confirm('Delete this sequence?')) return;
+    if (!await utils.confirmDialog({ title: 'Delete Sequence', message: 'Delete this email sequence?', confirmText: 'Delete', danger: true })) return;
     this._emailSequences.splice(i, 1);
     await this._saveEmailSequences();
     this.loadEmailSequences();

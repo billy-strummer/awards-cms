@@ -584,7 +584,7 @@ const mediaGalleryModule = {
                   const isYT = p.file_type === 'video/youtube';
                   const thumb = isYT ? `https://img.youtube.com/vi/${p.file_url}/mqdefault.jpg` : p.thumbnail_url || p.file_url;
                   return `<div style="min-width:80px;width:80px;height:60px;border-radius:6px;overflow:hidden;flex-shrink:0;cursor:pointer;position:relative;${!p.published ? 'opacity:0.5;' : ''}"
-                    onclick="mediaGalleryModule.viewPhotoFull('${p.id}', '${p.file_url}', '${utils.escapeHtml(p.title || '')}', '${isYT ? 'youtube' : 'image'}')">
+                    onclick="mediaGalleryModule.viewPhotoFull('${p.id}', '${utils.escapeHtml(p.file_url)}', '${utils.escapeHtml(p.title || '')}', '${isYT ? 'youtube' : 'image'}')">
                     <img src="${thumb}" style="width:100%;height:100%;object-fit:cover;">
                     ${p.featured ? '<div style="position:absolute;top:2px;right:2px;"><i class="bi bi-star-fill text-warning" style="font-size:0.7rem;filter:drop-shadow(0 0 2px black);"></i></div>' : ''}
                   </div>`;
@@ -602,7 +602,7 @@ const mediaGalleryModule = {
   },
 
   async _bulkPublishAll() {
-    if (!confirm('Publish all draft photos across all sections?')) return;
+    if (!await utils.confirmDialog({ title: 'Publish All Photos', message: 'Publish all draft photos across all sections?', confirmText: 'Publish All', danger: false })) return;
     try {
       const { data: sections } = await STATE.client.from('event_galleries').select('id').eq('event_id', this.currentEventId);
       const sectionIds = (sections || []).map(s => s.id);
@@ -1383,7 +1383,7 @@ const mediaGalleryModule = {
    * Delete Video
    */
   async deleteVideo(videoId) {
-    if (!confirm('Are you sure you want to delete this video?')) return;
+    if (!await utils.confirmDialog({ title: 'Delete Video', message: 'Are you sure you want to delete this video?', confirmText: 'Delete', danger: true })) return;
 
     try {
       const { error } = await STATE.client
@@ -1850,7 +1850,7 @@ const mediaGalleryModule = {
    * Delete section
    */
   async deleteSection(sectionId, sectionName) {
-    if (!confirm(`Delete "${sectionName}"?\n\nPhotos in this section will NOT be deleted, but will be unlinked from this section.`)) {
+    if (!await utils.confirmDialog({ title: 'Delete Section', message: `Delete "${sectionName}"?<br><br>Photos in this section will NOT be deleted, but will be unlinked from this section.`, confirmText: 'Delete Section', danger: true })) {
       return;
     }
 
@@ -2863,10 +2863,10 @@ const mediaGalleryModule = {
           ${isImage ?
             `<img src="${photo.file_url}" class="card-img-top ${!isPublished ? 'opacity-50' : ''}" alt="${utils.escapeHtml(photo.title || 'Photo')}"
               style="height: 200px; object-fit: cover; cursor: pointer;"
-              onclick="mediaGalleryModule.viewPhotoFull('${photo.id}', '${photo.file_url}', '${utils.escapeHtml(photo.title || 'Photo')}', 'image')">` :
+              onclick="mediaGalleryModule.viewPhotoFull('${photo.id}', '${utils.escapeHtml(photo.file_url)}', '${utils.escapeHtml(photo.title || 'Photo')}', 'image')">` :
             isYouTube ?
             `<div class="card-img-top ${!isPublished ? 'opacity-50' : ''}" style="height: 200px; position: relative; cursor: pointer;"
-              onclick="mediaGalleryModule.viewPhotoFull('${photo.id}', '${photo.file_url}', '${utils.escapeHtml(photo.title || 'Video')}', 'youtube')">
+              onclick="mediaGalleryModule.viewPhotoFull('${photo.id}', '${utils.escapeHtml(photo.file_url)}', '${utils.escapeHtml(photo.title || 'Video')}', 'youtube')">
               <img src="https://img.youtube.com/vi/${photo.file_url}/mqdefault.jpg"
                 alt="${utils.escapeHtml(photo.title || 'YouTube Video')}"
                 style="width: 100%; height: 100%; object-fit: cover;">
@@ -3291,7 +3291,7 @@ const mediaGalleryModule = {
       return;
     }
 
-    if (!confirm(`Download ${photos.length} photo(s)? They will be downloaded one by one.`)) {
+    if (!await utils.confirmDialog({ title: 'Download Photos', message: `Download ${photos.length} photo(s)? They will be downloaded one by one.`, confirmText: 'Download', danger: false })) {
       return;
     }
 
@@ -3525,7 +3525,7 @@ const mediaGalleryModule = {
   async bulkPublish() {
     if (this.selectedPhotoIds.size === 0) return;
 
-    if (!confirm(`Publish ${this.selectedPhotoIds.size} photo(s)?`)) {
+    if (!await utils.confirmDialog({ title: 'Publish Photos', message: `Publish ${this.selectedPhotoIds.size} photo(s)?`, confirmText: 'Publish', danger: false })) {
       return;
     }
 
@@ -3561,7 +3561,7 @@ const mediaGalleryModule = {
   async bulkUnpublish() {
     if (this.selectedPhotoIds.size === 0) return;
 
-    if (!confirm(`Unpublish ${this.selectedPhotoIds.size} photo(s)?`)) {
+    if (!await utils.confirmDialog({ title: 'Unpublish Photos', message: `Unpublish ${this.selectedPhotoIds.size} photo(s)?`, confirmText: 'Unpublish', danger: false })) {
       return;
     }
 
@@ -3606,7 +3606,7 @@ const mediaGalleryModule = {
       return;
     }
 
-    if (!confirm(`Download ${photos.length} photo(s)? They will be downloaded one by one.`)) {
+    if (!await utils.confirmDialog({ title: 'Download Photos', message: `Download ${photos.length} photo(s)? They will be downloaded one by one.`, confirmText: 'Download', danger: false })) {
       return;
     }
 
@@ -3633,7 +3633,7 @@ const mediaGalleryModule = {
   async bulkDelete() {
     if (this.selectedPhotoIds.size === 0) return;
 
-    if (!confirm(`Delete ${this.selectedPhotoIds.size} photo(s)? This action cannot be undone.`)) {
+    if (!await utils.confirmDialog({ title: 'Delete Photos', message: `Delete ${this.selectedPhotoIds.size} photo(s)? This action cannot be undone.`, confirmText: 'Delete All', danger: true })) {
       return;
     }
 
@@ -3806,7 +3806,7 @@ const mediaGalleryModule = {
    * Delete photo
    */
   async deletePhoto(photoId) {
-    if (!confirm('Delete this photo? This action cannot be undone.')) {
+    if (!await utils.confirmDialog({ title: 'Delete Photo', message: 'Delete this photo? This action cannot be undone.', confirmText: 'Delete', danger: true })) {
       return;
     }
 
@@ -3899,7 +3899,8 @@ const mediaGalleryModule = {
   viewPhotoFull(photoId, photoUrl, title, mediaType = 'image') {
     this.currentMediaId = photoId;
     const modal = new bootstrap.Modal(document.getElementById('viewPhotoFullModal'));
-    document.getElementById('viewPhotoFullTitle').textContent = title;
+    const titleEl = document.getElementById('viewPhotoFullTitle') || document.getElementById('viewPhotoFullModalLabel');
+    if (titleEl) titleEl.textContent = title;
 
     if (mediaType === 'youtube') {
       // Display YouTube embed
@@ -4350,7 +4351,7 @@ const mediaGalleryModule = {
               `}
             </div>
             <div class="modal-footer">
-              <button class="btn btn-outline-danger btn-sm" onclick="if(confirm('Clear all activity logs?')){(async()=>{try{await STATE.client.from('cms_audit_logs').delete().eq('entity','media_gallery');} catch(e){localStorage.removeItem('mediaGalleryActivityLog');}bootstrap.Modal.getInstance(document.getElementById('activityLogModal')).hide();utils.showToast('Activity log cleared','success');})();}">
+              <button class="btn btn-outline-danger btn-sm" onclick="(async()=>{if(!await utils.confirmDialog({title:'Clear Logs',message:'Clear all activity logs?',confirmText:'Clear',danger:true}))return;try{await STATE.client.from('cms_audit_logs').delete().eq('entity','media_gallery');} catch(e){localStorage.removeItem('mediaGalleryActivityLog');}bootstrap.Modal.getInstance(document.getElementById('activityLogModal')).hide();utils.showToast('Activity log cleared','success');})()">
                 <i class="bi bi-trash me-1"></i>Clear Log
               </button>
               <button class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
@@ -4475,7 +4476,7 @@ const mediaGalleryModule = {
             <div class="col-md-2 col-sm-3">
               <div class="card h-100 ${!p.published ? 'border-secondary opacity-75' : ''}">
                 <img src="${thumb}" class="card-img-top" style="height:120px;object-fit:cover;cursor:pointer;"
-                  onclick="mediaGalleryModule.viewPhotoFull('${p.id}', '${p.file_url}', '${utils.escapeHtml(p.title || '')}', '${isYT ? 'youtube' : 'image'}')">
+                  onclick="mediaGalleryModule.viewPhotoFull('${p.id}', '${utils.escapeHtml(p.file_url)}', '${utils.escapeHtml(p.title || '')}', '${isYT ? 'youtube' : 'image'}')">
                 <div class="card-body p-1">
                   <small class="d-block text-truncate fw-semibold">${utils.escapeHtml(p.title || 'Untitled')}</small>
                   ${awardName ? `<small class="badge bg-info">${utils.escapeHtml(awardName)}</small>` : ''}
@@ -5454,7 +5455,7 @@ const mediaGalleryModule = {
       return;
     }
 
-    if (!confirm(`This will create watermarked copies of ${photos.length} photos. The originals will NOT be modified. Continue?`)) return;
+    if (!await utils.confirmDialog({ title: 'Watermark Photos', message: `This will create watermarked copies of ${photos.length} photos. The originals will NOT be modified. Continue?`, confirmText: 'Create Watermarks', danger: false })) return;
 
     utils.showLoading();
 
@@ -6576,6 +6577,166 @@ const mediaGalleryModule = {
       utils.showToast('Error loading featured photos: ' + err.message, 'error');
     } finally {
       utils.hideLoading();
+    }
+  },
+
+  // ============================================
+  // UPLOAD MEDIA GALLERY MODAL FUNCTIONS
+  // ============================================
+
+  async handleUpload() {
+    const form = document.getElementById('uploadMediaGalleryForm');
+    if (!form.checkValidity()) { form.reportValidity(); return; }
+
+    const eventId = document.getElementById('uploadEventSelect').value;
+    if (!eventId) { utils.showToast('Please select an event', 'warning'); return; }
+
+    const fileInput = document.getElementById('uploadFile');
+    if (!fileInput.files || fileInput.files.length === 0) {
+      utils.showToast('Please select files to upload', 'warning');
+      return;
+    }
+
+    const title = document.getElementById('uploadTitle').value.trim();
+    const caption = document.getElementById('uploadCaption').value.trim();
+    const maxSizeMB = 4.5;
+    const maxSizeBytes = maxSizeMB * 1024 * 1024;
+
+    try {
+      const btn = document.getElementById('uploadMediaGalleryBtn');
+      btn.disabled = true;
+      btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Uploading...';
+      document.getElementById('uploadFileProgress').classList.remove('d-none');
+
+      let successCount = 0;
+      const files = Array.from(fileInput.files);
+
+      for (const file of files) {
+        if (file.size > maxSizeBytes) {
+          utils.showToast(`Skipping ${file.name} (exceeds ${maxSizeMB}MB limit)`, 'warning');
+          continue;
+        }
+
+        const timestamp = Date.now();
+        const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
+        const fileName = `gallery/${eventId}/${timestamp}_${safeName}`;
+
+        const { error: uploadError } = await STATE.client.storage
+          .from('media')
+          .upload(fileName, file, { cacheControl: '3600', upsert: false });
+
+        if (uploadError) {
+          console.error('Upload error for', file.name, uploadError);
+          continue;
+        }
+
+        const { data: urlData } = STATE.client.storage
+          .from('media')
+          .getPublicUrl(fileName);
+
+        const { error: dbError } = await STATE.client
+          .from('media_gallery')
+          .insert([{
+            event_id: eventId,
+            file_url: urlData.publicUrl,
+            file_type: file.type,
+            title: title || file.name,
+            caption: caption || null,
+            published: true
+          }]);
+
+        if (dbError) {
+          console.error('DB error for', file.name, dbError);
+          continue;
+        }
+        successCount++;
+      }
+
+      if (successCount > 0) {
+        utils.showToast(`${successCount} file(s) uploaded successfully!`, 'success');
+        bootstrap.Modal.getInstance(document.getElementById('uploadMediaGalleryModal')).hide();
+        this.loadAllGalleries();
+      } else {
+        utils.showToast('No files were uploaded', 'error');
+      }
+    } catch (error) {
+      console.error('Error uploading:', error);
+      utils.showToast('Error uploading files: ' + error.message, 'error');
+    } finally {
+      const btn = document.getElementById('uploadMediaGalleryBtn');
+      if (btn) { btn.disabled = false; btn.innerHTML = '<i class="bi bi-upload me-2"></i>Upload'; }
+      document.getElementById('uploadFileProgress').classList.add('d-none');
+    }
+  },
+
+  showQuickAddEvent() {
+    document.getElementById('quickAddEventForm').classList.remove('d-none');
+    document.getElementById('quickEventName').focus();
+  },
+
+  cancelQuickAddEvent() {
+    document.getElementById('quickAddEventForm').classList.add('d-none');
+    document.getElementById('quickEventName').value = '';
+    document.getElementById('quickEventDate').value = '';
+    document.getElementById('quickEventYear').value = '';
+  },
+
+  async saveQuickEvent() {
+    const name = document.getElementById('quickEventName').value.trim();
+    if (!name) { utils.showToast('Event name is required', 'warning'); return; }
+
+    const eventDate = document.getElementById('quickEventDate').value;
+    const year = document.getElementById('quickEventYear').value || new Date().getFullYear();
+
+    try {
+      const { data, error } = await STATE.client
+        .from('events')
+        .insert([{ event_name: name, event_date: eventDate || null, year: parseInt(year) }])
+        .select('id, event_name')
+        .single();
+
+      if (error) throw error;
+
+      // Add to the event select and select it
+      const select = document.getElementById('uploadEventSelect');
+      const option = new Option(utils.escapeHtml(data.event_name), data.id, true, true);
+      select.appendChild(option);
+
+      this.cancelQuickAddEvent();
+      utils.showToast('Event created and selected', 'success');
+    } catch (error) {
+      console.error('Error creating quick event:', error);
+      utils.showToast('Error creating event: ' + error.message, 'error');
+    }
+  },
+
+  _currentTagMediaId: null,
+
+  async saveTags() {
+    const orgId = document.getElementById('tagOrgSelect').value || null;
+    const awardId = document.getElementById('tagAwardSelect').value || null;
+
+    if (!this._currentTagMediaId) {
+      utils.showToast('No media selected for tagging', 'warning');
+      return;
+    }
+
+    try {
+      const { error } = await STATE.client
+        .from('media_gallery')
+        .update({
+          organisation_id: orgId,
+          award_id: awardId
+        })
+        .eq('id', this._currentTagMediaId);
+
+      if (error) throw error;
+
+      utils.showToast('Tags saved successfully', 'success');
+      bootstrap.Modal.getInstance(document.getElementById('tagMediaModal')).hide();
+    } catch (error) {
+      console.error('Error saving tags:', error);
+      utils.showToast('Error saving tags: ' + error.message, 'error');
     }
   }
 };

@@ -50,13 +50,14 @@ const eventsModule = {
         if (saved.year) document.getElementById('eventsYearFilter').value = saved.year;
         if (saved.timeStatus) document.getElementById('eventsStatusFilter').value = saved.timeStatus;
         if (saved.eventStatus) document.getElementById('eventsEventStatusFilter').value = saved.eventStatus;
-      } catch(e) {}
+      } catch(e) { console.warn('Failed to restore event filters:', e.message); }
 
       this.updateEventStats();
       this.filterEvents();
       this.renderFinancialOverview();
 
       console.log(`✅ Loaded ${STATE.allEvents.length} events`);
+      utils.trackDataLoad('events');
 
     } catch (error) {
       console.error('Error loading events:', error);
@@ -225,6 +226,10 @@ const eventsModule = {
     try {
       utils.showLoading();
 
+      // Save to trash before deleting
+      const event = STATE.allEvents?.find(e => e.id === eventId);
+      if (event) utils.softDelete('events', event);
+
       const { error } = await STATE.client
         .from('events')
         .delete()
@@ -232,7 +237,7 @@ const eventsModule = {
 
       if (error) throw error;
 
-      utils.showToast('Event deleted successfully!', 'success');
+      utils.showToast('Event deleted. <a href="#" onclick="event.preventDefault(); utils.undoLastDelete(\'events\')">Undo</a>', 'info');
       await this.loadEvents();
 
     } catch (error) {
@@ -614,7 +619,7 @@ const eventsModule = {
    * Use template to create new event
    */
   async useTemplate(index) {
-    const templates = this.loadTemplates();
+    const templates = await this.loadTemplates();
     const template = templates[index];
 
     if (!template) return;
@@ -9686,15 +9691,73 @@ const eventsModule = {
         dqBar.style.display = 'none';
       }
     }
+    this.renderEventsCharts();
+  },
+
+  renderEventsCharts() {
+    const container = document.getElementById('eventsChartsContainer');
+    if (!container) return;
+    const events = STATE.allEvents || [];
+
+    // Events by status breakdown
+    const statusCounts = {};
+    events.forEach(e => {
+      const s = e.event_status || 'draft';
+      statusCounts[s] = (statusCounts[s] || 0) + 1;
+    });
+
+    // Events by month timeline
+    const monthCounts = {};
+    events.forEach(e => {
+      if (e.event_date) {
+        const m = e.event_date.substring(0, 7); // YYYY-MM
+        monthCounts[m] = (monthCounts[m] || 0) + 1;
+      }
+    });
+
+    const statusColors = { draft: '#6c757d', confirmed: '#198754', cancelled: '#dc3545', complete: '#0dcaf0' };
+
+    // Render simple bar charts using CSS
+    let html = '<div class="row g-3 mb-3">';
+
+    // Status breakdown
+    html += '<div class="col-md-6"><div class="card"><div class="card-body"><h6 class="card-title small fw-semibold">Events by Status</h6>';
+    const maxStatus = Math.max(...Object.values(statusCounts), 1);
+    Object.entries(statusCounts).forEach(([status, count]) => {
+      const pct = (count / maxStatus) * 100;
+      html += `<div class="d-flex align-items-center mb-1 small">
+        <span class="text-muted" style="width:80px;">${status.charAt(0).toUpperCase() + status.slice(1)}</span>
+        <div class="flex-grow-1 mx-2"><div class="progress" style="height:12px;"><div class="progress-bar" style="width:${pct}%;background:${statusColors[status] || '#0d6efd'}"></div></div></div>
+        <span class="fw-semibold">${count}</span>
+      </div>`;
+    });
+    html += '</div></div></div>';
+
+    // Monthly timeline
+    html += '<div class="col-md-6"><div class="card"><div class="card-body"><h6 class="card-title small fw-semibold">Events by Month</h6>';
+    const sortedMonths = Object.entries(monthCounts).sort((a, b) => a[0].localeCompare(b[0])).slice(-12);
+    const maxMonth = Math.max(...sortedMonths.map(m => m[1]), 1);
+    sortedMonths.forEach(([month, count]) => {
+      const pct = (count / maxMonth) * 100;
+      html += `<div class="d-flex align-items-center mb-1 small">
+        <span class="text-muted" style="width:60px;">${month.slice(5)}</span>
+        <div class="flex-grow-1 mx-2"><div class="progress" style="height:10px;"><div class="progress-bar bg-primary" style="width:${pct}%"></div></div></div>
+        <span>${count}</span>
+      </div>`;
+    });
+    html += '</div></div></div></div>';
+
+    container.innerHTML = html;
   },
 
   filterEvents() {
+    this._evtCurrentPage = 1;
     const search = (document.getElementById('eventsSearchBox')?.value || '').toLowerCase().trim();
     const year = document.getElementById('eventsYearFilter')?.value || '';
     const timeStatus = document.getElementById('eventsStatusFilter')?.value || '';
     const eventStatus = document.getElementById('eventsEventStatusFilter')?.value || '';
 
-    try { localStorage.setItem('eventsFilters', JSON.stringify({ search, year, timeStatus, eventStatus })); } catch(e) {}
+    try { localStorage.setItem('eventsFilters', JSON.stringify({ search, year, timeStatus, eventStatus })); } catch(e) { console.warn('Failed to save event filters:', e.message); }
 
     const today = new Date().toISOString().split('T')[0];
     const now = new Date();
@@ -9764,6 +9827,9 @@ const eventsModule = {
     this.renderEvents();
   },
 
+  _evtCurrentPage: 1,
+  _evtPageSize: 50,
+
   _selectedEvents: new Set(),
 
   renderFilteredEvents(events) {
@@ -9771,6 +9837,14 @@ const eventsModule = {
     const count = document.getElementById('eventsCount');
     if (!tbody) return;
     if (count) count.textContent = events.length;
+
+    // Pagination
+    const totalPages = Math.ceil(events.length / (this._evtPageSize || 50));
+    if ((this._evtCurrentPage || 1) > totalPages) this._evtCurrentPage = totalPages || 1;
+    const pgStart = ((this._evtCurrentPage || 1) - 1) * (this._evtPageSize || 50);
+    const pgEnd = pgStart + (this._evtPageSize || 50);
+    const pageEvents = events.slice(pgStart, pgEnd);
+    this._lastFilteredEvents = events; // store for page navigation
 
     // Update last refreshed
     const refreshEl = document.getElementById('eventsLastRefreshed');
@@ -9797,7 +9871,7 @@ const eventsModule = {
     this._loadEventAwardCounts(eventIds);
     this._loadEventAttendeeCounts(eventIds);
 
-    tbody.innerHTML = events.map(event => {
+    tbody.innerHTML = pageEvents.map(event => {
       // Fix date display to avoid timezone shift + countdown
       let eventDate;
       let countdown = '';
@@ -9872,6 +9946,40 @@ const eventsModule = {
           </td>
         </tr>`;
     }).join('');
+
+    // Render pagination
+    let paginationEl = document.getElementById('eventsPagination');
+    if (!paginationEl) {
+      paginationEl = document.createElement('div');
+      paginationEl.id = 'eventsPagination';
+      const tableParent = tbody.closest('.table-responsive') || tbody.parentElement;
+      if (tableParent) tableParent.after(paginationEl);
+    }
+    if (totalPages > 1) {
+      const cp = this._evtCurrentPage || 1;
+      let html = '<nav><ul class="pagination pagination-sm justify-content-center mt-3">';
+      html += `<li class="page-item ${cp <= 1 ? 'disabled' : ''}"><a class="page-link" href="#" onclick="event.preventDefault(); eventsModule.goToEventsPage(${cp - 1})">Prev</a></li>`;
+      for (let i = 1; i <= totalPages; i++) {
+        if (i === 1 || i === totalPages || (i >= cp - 2 && i <= cp + 2)) {
+          html += `<li class="page-item ${i === cp ? 'active' : ''}"><a class="page-link" href="#" onclick="event.preventDefault(); eventsModule.goToEventsPage(${i})">${i}</a></li>`;
+        } else if (i === cp - 3 || i === cp + 3) {
+          html += '<li class="page-item disabled"><span class="page-link">...</span></li>';
+        }
+      }
+      html += `<li class="page-item ${cp >= totalPages ? 'disabled' : ''}"><a class="page-link" href="#" onclick="event.preventDefault(); eventsModule.goToEventsPage(${cp + 1})">Next</a></li>`;
+      html += '</ul></nav>';
+      html += `<div class="text-center text-muted small">Showing ${pgStart+1}-${Math.min(pgEnd, events.length)} of ${events.length}</div>`;
+      paginationEl.innerHTML = html;
+    } else if (paginationEl) {
+      paginationEl.innerHTML = '';
+    }
+  },
+
+  goToEventsPage(page) {
+    const events = this._lastFilteredEvents || STATE.allEvents || [];
+    const totalPages = Math.ceil(events.length / (this._evtPageSize || 50));
+    this._evtCurrentPage = Math.max(1, Math.min(page, totalPages));
+    this.renderFilteredEvents(events);
   },
 
   /**
@@ -10150,7 +10258,7 @@ const eventsModule = {
       this._selectedEvents.clear();
       this.updateBulkBar();
       this._updateBulkBar();
-      this.loadEvents();
+      await this.loadEvents();
     } catch (error) {
       console.error('Bulk delete error:', error);
       utils.showToast('Error deleting events', 'error');
@@ -10894,6 +11002,57 @@ const eventsModule = {
       localStorage.setItem(`bta_event_notes_${eventId}`, notes);
     }
     utils.showToast('Notes saved', 'success');
+  },
+
+  importEventsCSV() {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.csv';
+    input.onchange = async (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+      const text = await file.text();
+      const lines = text.split('\n').filter(l => l.trim());
+      if (lines.length < 2) { utils.showToast('CSV file is empty', 'warning'); return; }
+
+      const headers = lines[0].split(',').map(h => h.trim().toLowerCase().replace(/"/g, ''));
+      const records = [];
+
+      for (let i = 1; i < lines.length; i++) {
+        const values = lines[i].match(/(".*?"|[^,]+)/g)?.map(v => v.replace(/^"|"$/g, '').trim()) || [];
+        const record = {};
+        headers.forEach((h, idx) => {
+          if (h.includes('name') || h === 'event_name') record.event_name = values[idx];
+          else if (h.includes('date') || h === 'event_date') record.event_date = values[idx];
+          else if (h === 'year') record.year = parseInt(values[idx]) || null;
+          else if (h.includes('venue')) record.venue = values[idx];
+          else if (h.includes('capacity')) record.capacity = parseInt(values[idx]) || null;
+          else if (h.includes('status') || h === 'event_status') record.event_status = values[idx] || 'draft';
+          else if (h.includes('description')) record.description = values[idx];
+        });
+        if (record.event_name) records.push(record);
+      }
+
+      if (records.length === 0) { utils.showToast('No valid records in CSV', 'warning'); return; }
+      if (!await utils.confirmDialog({ title: 'Import Events', message: `Import ${records.length} events from CSV?`, confirmText: 'Import', danger: false })) return;
+
+      try {
+        utils.showLoading();
+        let imported = 0;
+        for (const record of records) {
+          const { error } = await STATE.client.from('events').insert([record]);
+          if (!error) imported++;
+          if (utils.showBulkProgress) utils.showBulkProgress(imported, records.length, 'Importing events');
+        }
+        utils.showToast(`Imported ${imported} of ${records.length} events`, 'success');
+        await this.loadEvents();
+      } catch (err) {
+        utils.showToast('Import error: ' + err.message, 'error');
+      } finally {
+        utils.hideLoading();
+      }
+    };
+    input.click();
   }
 };
 

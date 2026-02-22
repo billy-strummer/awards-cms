@@ -161,7 +161,15 @@ const paymentsModule = {
         <td><strong>&pound;${parseFloat(invoice.total_amount || 0).toFixed(2)}</strong></td>
         <td class="text-success">&pound;${parseFloat(invoice.paid_amount || 0).toFixed(2)}</td>
         <td class="text-danger">&pound;${parseFloat(invoice.balance_due || 0).toFixed(2)}</td>
-        <td>${this.getInvoiceStatusBadge(invoice.status, invoice.payment_status)}</td>
+        <td>
+          <select class="form-select form-select-sm d-inline-block" style="width:auto; font-size:0.75rem;"
+            onchange="paymentsModule.inlineUpdateInvoiceStatus('${invoice.id}', this.value)"
+            aria-label="Change invoice status">
+            ${['draft','sent','viewed','paid','partially_paid','overdue','cancelled'].map(s =>
+              `<option value="${s}" ${(invoice.status || '').toLowerCase() === s ? 'selected' : ''}>${s === 'partially_paid' ? 'Partially Paid' : s.charAt(0).toUpperCase() + s.slice(1)}</option>`
+            ).join('')}
+          </select>
+        </td>
         <td>
           <div class="btn-group btn-group-sm" role="group">
             <button class="btn btn-outline-primary" onclick="paymentsModule.viewInvoice('${invoice.id}')" title="View" aria-label="View invoice">
@@ -1854,6 +1862,24 @@ const paymentsModule = {
       utils.showToast('Sync complete', 'success');
       this.loadAccountingIntegration();
     }, 1500);
+  },
+
+  /* ==================================================== */
+  /* INLINE INVOICE STATUS EDITING */
+  /* ==================================================== */
+
+  async inlineUpdateInvoiceStatus(invoiceId, newStatus) {
+    try {
+      const { error } = await STATE.client.from('invoices').update({ status: newStatus }).eq('id', invoiceId);
+      if (error) throw error;
+      // Update local state
+      const invoice = this.allInvoices.find(i => i.id === invoiceId);
+      if (invoice) invoice.status = newStatus;
+      this.filterInvoices();
+      utils.showToast('Invoice status updated to ' + newStatus, 'success');
+    } catch(e) {
+      utils.showToast('Failed to update invoice status', 'error');
+    }
   }
 };
 

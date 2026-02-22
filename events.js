@@ -226,6 +226,10 @@ const eventsModule = {
     try {
       utils.showLoading();
 
+      // Save to trash before deleting
+      const event = STATE.allEvents?.find(e => e.id === eventId);
+      if (event) utils.softDelete('events', event);
+
       const { error } = await STATE.client
         .from('events')
         .delete()
@@ -233,7 +237,7 @@ const eventsModule = {
 
       if (error) throw error;
 
-      utils.showToast('Event deleted successfully!', 'success');
+      utils.showToast('Event deleted. <a href="#" onclick="event.preventDefault(); utils.undoLastDelete(\'events\')">Undo</a>', 'info');
       await this.loadEvents();
 
     } catch (error) {

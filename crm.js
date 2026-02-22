@@ -2266,6 +2266,357 @@ const crmModule = {
   async refreshMyTasks() {
     await this.loadMyTasks();
     utils.showToast('Tasks refreshed', 'success');
+  },
+
+  // ============================================
+  // MISSING ACTION FUNCTIONS
+  // ============================================
+
+  openCompanyDetails() {
+    // "Add Company Activity" button - opens the log communication form
+    // which is the primary way to add activity for a company
+    this.logCommunication(null);
+  },
+
+  async createMeetingNote() {
+    try {
+      // Load organisations for the company dropdown
+      const { data: orgs, error: orgsError } = await STATE.client
+        .from('organisations')
+        .select('id, company_name')
+        .order('company_name');
+
+      if (orgsError) throw orgsError;
+
+      const orgOptions = (orgs || []).map(o =>
+        `<option value="${o.id}">${utils.escapeHtml(o.company_name)}</option>`
+      ).join('');
+
+      const today = new Date().toISOString().split('T')[0];
+
+      const modalHtml = `
+        <div class="modal fade" id="createMeetingNoteModal" tabindex="-1">
+          <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+              <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title"><i class="bi bi-calendar-plus me-2"></i>Add Meeting Note</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+              </div>
+              <div class="modal-body">
+                <form id="createMeetingNoteForm">
+                  <div class="row">
+                    <div class="col-md-6 mb-3">
+                      <label class="form-label">Meeting Title <span class="text-danger">*</span></label>
+                      <input type="text" class="form-control" id="newMeetingTitle" required placeholder="e.g. Quarterly Review">
+                    </div>
+                    <div class="col-md-6 mb-3">
+                      <label class="form-label">Company <span class="text-danger">*</span></label>
+                      <select class="form-select" id="newMeetingOrg" required>
+                        <option value="">Select company...</option>
+                        ${orgOptions}
+                      </select>
+                    </div>
+                  </div>
+                  <div class="row">
+                    <div class="col-md-4 mb-3">
+                      <label class="form-label">Meeting Type</label>
+                      <select class="form-select" id="newMeetingType">
+                        <option value="in_person">In Person</option>
+                        <option value="video_call">Video Call</option>
+                        <option value="phone">Phone</option>
+                        <option value="conference">Conference</option>
+                      </select>
+                    </div>
+                    <div class="col-md-4 mb-3">
+                      <label class="form-label">Date</label>
+                      <input type="date" class="form-control" id="newMeetingDate" value="${today}">
+                    </div>
+                    <div class="col-md-4 mb-3">
+                      <label class="form-label">Time</label>
+                      <input type="time" class="form-control" id="newMeetingTime">
+                    </div>
+                  </div>
+                  <div class="row">
+                    <div class="col-md-6 mb-3">
+                      <label class="form-label">Duration (minutes)</label>
+                      <input type="number" class="form-control" id="newMeetingDuration" min="0" placeholder="60">
+                    </div>
+                    <div class="col-md-6 mb-3">
+                      <label class="form-label">Location</label>
+                      <input type="text" class="form-control" id="newMeetingLocation" placeholder="e.g. Office, Zoom, Teams">
+                    </div>
+                  </div>
+                  <div class="mb-3">
+                    <label class="form-label">Attendees (comma-separated)</label>
+                    <input type="text" class="form-control" id="newMeetingAttendees" placeholder="John Smith, Jane Doe">
+                  </div>
+                  <div class="mb-3">
+                    <label class="form-label">Meeting Notes</label>
+                    <textarea class="form-control" id="newMeetingNotes" rows="3" placeholder="Key discussion points..."></textarea>
+                  </div>
+                  <div class="mb-3">
+                    <label class="form-label">Action Items</label>
+                    <textarea class="form-control" id="newMeetingActions" rows="2" placeholder="Follow-up actions..."></textarea>
+                  </div>
+                  <div class="form-check mb-3">
+                    <input class="form-check-input" type="checkbox" id="newMeetingFollowUp"
+                           onchange="document.getElementById('newMeetingFollowUpDate').parentElement.style.display = this.checked ? 'block' : 'none';">
+                    <label class="form-check-label" for="newMeetingFollowUp">Follow-up Required</label>
+                  </div>
+                  <div class="mb-3" style="display:none;">
+                    <label class="form-label">Follow-up Date</label>
+                    <input type="date" class="form-control" id="newMeetingFollowUpDate">
+                  </div>
+                </form>
+              </div>
+              <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" onclick="crmModule.saveMeetingNote()">
+                  <i class="bi bi-save me-2"></i>Save Meeting Note
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      `;
+
+      const existing = document.getElementById('createMeetingNoteModal');
+      if (existing) existing.remove();
+      document.body.insertAdjacentHTML('beforeend', modalHtml);
+      const modal = new bootstrap.Modal(document.getElementById('createMeetingNoteModal'));
+      modal.show();
+      document.getElementById('createMeetingNoteModal').addEventListener('hidden.bs.modal', function() { this.remove(); });
+    } catch (error) {
+      console.error('Error opening meeting note form:', error);
+      utils.showToast('Error opening meeting note form', 'error');
+    }
+  },
+
+  async saveMeetingNote() {
+    const form = document.getElementById('createMeetingNoteForm');
+    if (!form.checkValidity()) { form.reportValidity(); return; }
+
+    const dateVal = document.getElementById('newMeetingDate').value;
+    const timeVal = document.getElementById('newMeetingTime').value;
+    const meetingDate = timeVal ? `${dateVal}T${timeVal}:00` : `${dateVal}T00:00:00`;
+
+    const attendeesRaw = document.getElementById('newMeetingAttendees').value;
+    const attendeesArr = attendeesRaw ? attendeesRaw.split(',').map(a => a.trim()).filter(Boolean) : [];
+
+    const data = {
+      meeting_title: document.getElementById('newMeetingTitle').value,
+      organisation_id: document.getElementById('newMeetingOrg').value,
+      meeting_type: document.getElementById('newMeetingType').value,
+      meeting_date: meetingDate,
+      duration_minutes: document.getElementById('newMeetingDuration').value ? parseInt(document.getElementById('newMeetingDuration').value) : null,
+      location: document.getElementById('newMeetingLocation').value,
+      attendees: JSON.stringify(attendeesArr),
+      notes: document.getElementById('newMeetingNotes').value,
+      action_items: document.getElementById('newMeetingActions').value,
+      follow_up_required: document.getElementById('newMeetingFollowUp').checked,
+      follow_up_date: document.getElementById('newMeetingFollowUp').checked ? document.getElementById('newMeetingFollowUpDate').value : null,
+      created_by: STATE.currentUser?.email
+    };
+
+    try {
+      const { error } = await STATE.client.from('meeting_notes').insert(data);
+      if (error) throw error;
+
+      utils.showToast('Meeting note created successfully', 'success');
+      bootstrap.Modal.getInstance(document.getElementById('createMeetingNoteModal')).hide();
+      this.loadMeetings();
+    } catch (error) {
+      console.error('Error saving meeting note:', error);
+      utils.showToast('Error saving meeting note: ' + error.message, 'error');
+    }
+  },
+
+  async assignSegments() {
+    try {
+      // Load segments and organisations
+      const [segmentsRes, orgsRes] = await Promise.all([
+        STATE.client.from('contact_segments').select('*').order('segment_name'),
+        STATE.client.from('organisations').select('id, company_name').order('company_name')
+      ]);
+
+      if (segmentsRes.error) throw segmentsRes.error;
+      if (orgsRes.error) throw orgsRes.error;
+
+      const segments = segmentsRes.data || [];
+      const orgs = orgsRes.data || [];
+
+      const orgOptions = orgs.map(o =>
+        `<option value="${o.id}">${utils.escapeHtml(o.company_name)}</option>`
+      ).join('');
+
+      const segmentCheckboxes = segments.map(s => `
+        <div class="form-check">
+          <input class="form-check-input segment-assign-check" type="checkbox" value="${s.id}" id="segAssign_${s.id}">
+          <label class="form-check-label" for="segAssign_${s.id}">
+            <i class="bi bi-${s.icon || 'tag'} me-1" style="color: ${s.color}"></i>
+            ${utils.escapeHtml(s.segment_name)}
+          </label>
+        </div>
+      `).join('');
+
+      const modalHtml = `
+        <div class="modal fade" id="assignSegmentsModal" tabindex="-1">
+          <div class="modal-dialog">
+            <div class="modal-content">
+              <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title"><i class="bi bi-tags me-2"></i>Assign Company to Segments</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+              </div>
+              <div class="modal-body">
+                <div class="mb-3">
+                  <label class="form-label">Select Company <span class="text-danger">*</span></label>
+                  <select class="form-select" id="assignSegmentOrg" required>
+                    <option value="">Select company...</option>
+                    ${orgOptions}
+                  </select>
+                </div>
+                <div class="mb-3">
+                  <label class="form-label">Select Segments</label>
+                  ${segments.length > 0 ? segmentCheckboxes : '<p class="text-muted">No segments created yet.</p>'}
+                </div>
+              </div>
+              <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" onclick="crmModule.saveSegmentAssignments()">
+                  <i class="bi bi-save me-2"></i>Assign
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      `;
+
+      const existing = document.getElementById('assignSegmentsModal');
+      if (existing) existing.remove();
+      document.body.insertAdjacentHTML('beforeend', modalHtml);
+      const modal = new bootstrap.Modal(document.getElementById('assignSegmentsModal'));
+      modal.show();
+      document.getElementById('assignSegmentsModal').addEventListener('hidden.bs.modal', function() { this.remove(); });
+    } catch (error) {
+      console.error('Error opening assign segments:', error);
+      utils.showToast('Error loading segments data', 'error');
+    }
+  },
+
+  async saveSegmentAssignments() {
+    const orgId = document.getElementById('assignSegmentOrg').value;
+    if (!orgId) { utils.showToast('Please select a company', 'warning'); return; }
+
+    const checked = document.querySelectorAll('.segment-assign-check:checked');
+    if (checked.length === 0) { utils.showToast('Please select at least one segment', 'warning'); return; }
+
+    try {
+      const assignments = [...checked].map(cb => ({
+        organisation_id: orgId,
+        segment_id: cb.value
+      }));
+
+      const { error } = await STATE.client.from('organisation_segments').upsert(assignments, { onConflict: 'organisation_id,segment_id' });
+      if (error) throw error;
+
+      utils.showToast(`Company assigned to ${assignments.length} segment(s)`, 'success');
+      bootstrap.Modal.getInstance(document.getElementById('assignSegmentsModal')).hide();
+      this.loadSegments();
+    } catch (error) {
+      console.error('Error assigning segments:', error);
+      utils.showToast('Error assigning segments: ' + error.message, 'error');
+    }
+  },
+
+  async createCustomSegment() {
+    const colors = ['#0d6efd', '#198754', '#dc3545', '#ffc107', '#0dcaf0', '#6f42c1', '#fd7e14', '#20c997', '#d63384', '#6610f2'];
+    const icons = ['tag', 'trophy', 'star', 'people', 'building', 'award', 'cash', 'calendar-event', 'graph-up', 'megaphone'];
+
+    const modalHtml = `
+      <div class="modal fade" id="createSegmentModal" tabindex="-1">
+        <div class="modal-dialog">
+          <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+              <h5 class="modal-title"><i class="bi bi-plus-circle me-2"></i>Create Custom Segment</h5>
+              <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+              <form id="createSegmentForm">
+                <div class="mb-3">
+                  <label class="form-label">Segment Name <span class="text-danger">*</span></label>
+                  <input type="text" class="form-control" id="newSegmentName" required placeholder="e.g. Enterprise Clients">
+                </div>
+                <div class="mb-3">
+                  <label class="form-label">Description</label>
+                  <textarea class="form-control" id="newSegmentDescription" rows="2" placeholder="Brief description of this segment..."></textarea>
+                </div>
+                <div class="mb-3">
+                  <label class="form-label">Color</label>
+                  <div class="d-flex flex-wrap gap-2" id="newSegmentColorPicker">
+                    ${colors.map((c, i) => `
+                      <div class="rounded-circle border ${i === 0 ? 'border-dark border-3' : ''}"
+                           style="width: 32px; height: 32px; background: ${c}; cursor: pointer;"
+                           onclick="document.getElementById('newSegmentColor').value = '${c}'; document.querySelectorAll('#newSegmentColorPicker > div').forEach(d => d.classList.remove('border-dark','border-3')); this.classList.add('border-dark','border-3');">
+                      </div>
+                    `).join('')}
+                  </div>
+                  <input type="hidden" id="newSegmentColor" value="#0d6efd">
+                </div>
+                <div class="mb-3">
+                  <label class="form-label">Icon</label>
+                  <div class="d-flex flex-wrap gap-2" id="newSegmentIconPicker">
+                    ${icons.map((ic, i) => `
+                      <button type="button" class="btn btn-sm ${i === 0 ? 'btn-primary' : 'btn-outline-secondary'}"
+                              onclick="document.getElementById('newSegmentIcon').value = '${ic}'; document.querySelectorAll('#newSegmentIconPicker > button').forEach(b => { b.classList.remove('btn-primary'); b.classList.add('btn-outline-secondary'); }); this.classList.remove('btn-outline-secondary'); this.classList.add('btn-primary');">
+                        <i class="bi bi-${ic}"></i>
+                      </button>
+                    `).join('')}
+                  </div>
+                  <input type="hidden" id="newSegmentIcon" value="tag">
+                </div>
+              </form>
+            </div>
+            <div class="modal-footer">
+              <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+              <button type="button" class="btn btn-primary" onclick="crmModule.saveCustomSegment()">
+                <i class="bi bi-save me-2"></i>Create Segment
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+
+    const existing = document.getElementById('createSegmentModal');
+    if (existing) existing.remove();
+    document.body.insertAdjacentHTML('beforeend', modalHtml);
+    const modal = new bootstrap.Modal(document.getElementById('createSegmentModal'));
+    modal.show();
+    document.getElementById('createSegmentModal').addEventListener('hidden.bs.modal', function() { this.remove(); });
+  },
+
+  async saveCustomSegment() {
+    const form = document.getElementById('createSegmentForm');
+    if (!form.checkValidity()) { form.reportValidity(); return; }
+
+    const data = {
+      segment_name: document.getElementById('newSegmentName').value,
+      description: document.getElementById('newSegmentDescription').value,
+      color: document.getElementById('newSegmentColor').value,
+      icon: document.getElementById('newSegmentIcon').value
+    };
+
+    try {
+      const { error } = await STATE.client.from('contact_segments').insert(data);
+      if (error) throw error;
+
+      utils.showToast('Segment created successfully', 'success');
+      bootstrap.Modal.getInstance(document.getElementById('createSegmentModal')).hide();
+      this.loadSegments();
+    } catch (error) {
+      console.error('Error creating segment:', error);
+      utils.showToast('Error creating segment: ' + error.message, 'error');
+    }
   }
 };
 

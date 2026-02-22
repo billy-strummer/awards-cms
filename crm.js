@@ -266,7 +266,14 @@ const crmModule = {
       return;
     }
 
-    tbody.innerHTML = communications.map(comm => {
+    // Pagination
+    const commTotalPages = Math.ceil(communications.length / this._crmPageSize);
+    if (this._crmCurrentPage > commTotalPages) this._crmCurrentPage = commTotalPages || 1;
+    const commStart = (this._crmCurrentPage - 1) * this._crmPageSize;
+    const commEnd = commStart + this._crmPageSize;
+    const pageComms = communications.slice(commStart, commEnd);
+
+    tbody.innerHTML = pageComms.map(comm => {
       const date = new Date(comm.communication_date).toLocaleDateString();
       const companyName = comm.organisation?.company_name || 'Unknown';
       const contactName = comm.contact
@@ -314,6 +321,15 @@ const crmModule = {
         </tr>
       `;
     }).join('');
+
+    // Pagination controls
+    this._renderCrmPagination('crmCommsPagination', this._crmCurrentPage, commTotalPages, 'crmModule.goToCrmCommPage', 'communicationsTableBody');
+  },
+
+  goToCrmCommPage(page) {
+    const total = Math.ceil((this._communications || []).length / this._crmPageSize);
+    this._crmCurrentPage = Math.max(1, Math.min(page, total));
+    this.renderCommunicationsTable(this._communications);
   },
 
   getTypeBadge(type) {
@@ -414,7 +430,14 @@ const crmModule = {
       return;
     }
 
-    tbody.innerHTML = deals.map(deal => {
+    // Pagination
+    const dealTotalPages = Math.ceil(deals.length / this._dealPageSize);
+    if (this._dealCurrentPage > dealTotalPages) this._dealCurrentPage = dealTotalPages || 1;
+    const dealStart = (this._dealCurrentPage - 1) * this._dealPageSize;
+    const dealEnd = dealStart + this._dealPageSize;
+    const pageDeals = deals.slice(dealStart, dealEnd);
+
+    tbody.innerHTML = pageDeals.map(deal => {
       const companyName = deal.organisation?.company_name || 'Unknown';
       const stageBadge = this.getStageBadge(deal.stage);
       const statusBadge = this.getStatusBadge(deal.status);
@@ -460,6 +483,15 @@ const crmModule = {
         </tr>
       `;
     }).join('');
+
+    // Pagination controls
+    this._renderCrmPagination('crmDealsPagination', this._dealCurrentPage, dealTotalPages, 'crmModule.goToCrmDealPage', 'dealsTableBody');
+  },
+
+  goToCrmDealPage(page) {
+    const total = Math.ceil((this._deals || []).length / this._dealPageSize);
+    this._dealCurrentPage = Math.max(1, Math.min(page, total));
+    this.renderDealsTable(this._deals);
   },
 
   getStageBadge(stage) {
@@ -541,7 +573,14 @@ const crmModule = {
       return;
     }
 
-    tbody.innerHTML = meetings.map(meeting => {
+    // Pagination
+    const mtgTotalPages = Math.ceil(meetings.length / this._meetingPageSize);
+    if (this._meetingCurrentPage > mtgTotalPages) this._meetingCurrentPage = mtgTotalPages || 1;
+    const mtgStart = (this._meetingCurrentPage - 1) * this._meetingPageSize;
+    const mtgEnd = mtgStart + this._meetingPageSize;
+    const pageMeetings = meetings.slice(mtgStart, mtgEnd);
+
+    tbody.innerHTML = pageMeetings.map(meeting => {
       const date = new Date(meeting.meeting_date).toLocaleDateString();
       const time = new Date(meeting.meeting_date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
       const companyName = meeting.organisation?.company_name || 'Unknown';
@@ -590,6 +629,15 @@ const crmModule = {
         </tr>
       `;
     }).join('');
+
+    // Pagination controls
+    this._renderCrmPagination('crmMeetingsPagination', this._meetingCurrentPage, mtgTotalPages, 'crmModule.goToCrmMeetingPage', 'meetingsTableBody');
+  },
+
+  goToCrmMeetingPage(page) {
+    const total = Math.ceil((this._meetings || []).length / this._meetingPageSize);
+    this._meetingCurrentPage = Math.max(1, Math.min(page, total));
+    this.renderMeetingsTable(this._meetings);
   },
 
   getMeetingTypeBadge(type) {
@@ -2648,15 +2696,16 @@ const crmModule = {
   // PAGINATION, SORTING, BULK ACTIONS & EXPORT
   // ============================================
 
-  _renderCrmPagination(containerId, currentPage, totalPages, goToFn) {
+  _renderCrmPagination(containerId, currentPage, totalPages, goToFn, tbodyId) {
     let el = document.getElementById(containerId);
     if (!el) {
       el = document.createElement('div');
       el.id = containerId;
-      // Try to insert after the nearest table
-      const tables = document.querySelectorAll('.table-responsive');
-      const lastTable = tables[tables.length - 1];
-      if (lastTable) lastTable.after(el);
+      // Insert after the table containing the tbody
+      const tbody = tbodyId ? document.getElementById(tbodyId) : null;
+      const tableParent = tbody?.closest('.table-responsive') || tbody?.parentElement;
+      if (tableParent) tableParent.after(el);
+      else document.querySelector('.tab-pane.active')?.appendChild(el);
     }
     if (totalPages > 1) {
       let html = '<nav><ul class="pagination pagination-sm justify-content-center mt-3">';

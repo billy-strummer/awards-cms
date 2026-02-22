@@ -8260,7 +8260,7 @@ const eventsModule = {
    * Remove a fixture from the canvas
    */
   async removeFixture(fixtureId) {
-    if (!confirm('Remove this element?')) return;
+    if (!await utils.confirmDialog({ title: 'Remove Element', message: 'Remove this element?', confirmText: 'Remove' })) return;
 
     this.roomFixtures = this.roomFixtures.filter(f => f.id !== fixtureId);
     if (this._selectedFixtureId === fixtureId) this._selectedFixtureId = null;
@@ -8550,7 +8550,7 @@ const eventsModule = {
 
     const toAssign = guests.slice(0, availableSeats);
     if (toAssign.length < guests.length) {
-      if (!confirm(`Only ${availableSeats} seat(s) available. Assign ${toAssign.length} of ${guests.length} guests?`)) return;
+      if (!await utils.confirmDialog({ title: 'Limited Seats', message: `Only ${availableSeats} seat(s) available. Assign ${toAssign.length} of ${guests.length} guests?`, confirmText: 'Assign', danger: false })) return;
     }
 
     try {
@@ -8797,7 +8797,7 @@ const eventsModule = {
   },
 
   async deleteTable(tableId) {
-    if (!confirm('Delete this table? All seated guests will be unassigned.')) return;
+    if (!await utils.confirmDialog({ title: 'Delete Table', message: 'Delete this table? All seated guests will be unassigned.' })) return;
 
     try {
       const { error } = await STATE.client
@@ -8871,7 +8871,7 @@ const eventsModule = {
     const groups = this._groupGuestsByCompany(this.unassignedGuests);
     const guestsToAssign = Math.min(this.unassignedGuests.length, totalAvailable);
 
-    if (!confirm(`Auto-assign ${guestsToAssign} guest(s) across ${tablesWithSpace.length} table(s)?\n\nGuests from the same company will be kept together where possible.`)) {
+    if (!await utils.confirmDialog({ title: 'Auto-Assign Guests', message: `Auto-assign ${guestsToAssign} guest(s) across ${tablesWithSpace.length} table(s)?<br><br>Guests from the same company will be kept together where possible.`, confirmText: 'Auto-Assign', danger: false })) {
       return;
     }
 
@@ -9622,7 +9622,7 @@ const eventsModule = {
     const table = this.tables.find(t => t.id === tableId);
     if (!table || !table.assignments || table.assignments.length === 0) return;
 
-    if (!confirm(`Remove all ${table.assignments.length} guest(s) from this table?`)) return;
+    if (!await utils.confirmDialog({ title: 'Clear Table', message: `Remove all ${table.assignments.length} guest(s) from this table?`, confirmText: 'Clear Table' })) return;
 
     try {
       const { error } = await STATE.client
@@ -10061,7 +10061,7 @@ const eventsModule = {
   async bulkDelete() {
     const ids = Array.from(this._selectedEvents);
     if (ids.length === 0) return;
-    if (!confirm(`Delete ${ids.length} event(s)? This cannot be undone.`)) return;
+    if (!await utils.confirmDialog({ title: 'Delete Events', message: `Delete ${ids.length} event(s)? This cannot be undone.` })) return;
     try {
       for (const id of ids) {
         await STATE.client.from('events').delete().eq('id', id);
@@ -10077,7 +10077,7 @@ const eventsModule = {
   async bulkClone() {
     const ids = Array.from(this._selectedEvents);
     if (ids.length === 0) return;
-    if (!confirm(`Clone ${ids.length} event(s)?`)) return;
+    if (!await utils.confirmDialog({ title: 'Clone Events', message: `Clone ${ids.length} event(s)?`, confirmText: 'Clone', danger: false })) return;
     try {
       for (const id of ids) {
         const src = STATE.allEvents.find(e => e.id === id);
@@ -10819,7 +10819,7 @@ const eventsModule = {
   async cloneForNextYear(eventId) {
     const src = STATE.allEvents.find(e => e.id === eventId);
     if (!src) return;
-    if (!confirm(`Clone "${src.event_name}" for next year?`)) return;
+    if (!await utils.confirmDialog({ title: 'Clone Event', message: `Clone "${src.event_name}" for next year?`, confirmText: 'Clone', danger: false })) return;
 
     const nextYear = (parseInt(src.year) || new Date().getFullYear()) + 1;
     let nextDate = null;

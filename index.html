@@ -2319,6 +2319,24 @@
             </div>
           </div>
 
+          <!-- Winners Bulk Action Bar -->
+          <div class="card mb-3 d-none" id="winnersBulkBar">
+            <div class="card-body py-2 d-flex align-items-center justify-content-between">
+              <span><strong id="winnersBulkCount">0</strong> winners selected</span>
+              <div class="btn-group btn-group-sm">
+                <button class="btn btn-outline-danger" onclick="winnersModule.bulkDeleteWinners()">
+                  <i class="bi bi-trash me-1"></i>Delete Selected
+                </button>
+                <button class="btn btn-outline-secondary" onclick="winnersModule.bulkExportWinners()">
+                  <i class="bi bi-download me-1"></i>Export Selected
+                </button>
+                <button class="btn btn-outline-secondary" onclick="winnersModule.clearWinnerSelection()">
+                  <i class="bi bi-x-circle me-1"></i>Clear
+                </button>
+              </div>
+            </div>
+          </div>
+
           <!-- Winners Table -->
           <div class="table-container">
             <div class="d-flex justify-content-between align-items-center mb-3">
@@ -2357,6 +2375,7 @@
               <table class="table table-hover table-striped align-middle">
                 <thead>
                   <tr>
+                    <th style="width:35px"><input type="checkbox" class="form-check-input" id="selectAllWinners" onchange="winnersModule.toggleSelectAllWinners(this.checked)"></th>
                     <th>Winner Name</th>
                     <th>Award</th>
                     <th>Year</th>
@@ -2367,7 +2386,7 @@
                 </thead>
                 <tbody id="winnersTableBody">
                   <tr>
-                    <td colspan="6" class="text-center py-5">
+                    <td colspan="7" class="text-center py-5">
                       <div class="text-muted">
                         <i class="bi bi-inbox display-3 d-block mb-3 opacity-25"></i>
                         <p class="mb-0">Loading winners...</p>
@@ -2550,6 +2569,7 @@
                 </tbody>
               </table>
             </div>
+            <div id="entriesPagination"></div>
           </div>
 
         </div>

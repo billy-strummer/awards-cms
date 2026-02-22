@@ -1180,6 +1180,47 @@ body.dark-mode .shadow-sm {
 }
 
 /* ==================================================== */
+/* MOBILE RESPONSIVE                                    */
+/* ==================================================== */
+@media (max-width: 768px) {
+  /* Stack action buttons vertically on mobile */
+  .table .btn-group {
+    flex-direction: column;
+    gap: 2px;
+  }
+  .table .btn-group .btn {
+    border-radius: var(--radius-sm, 4px) !important;
+    font-size: 0.75rem;
+    padding: 0.2rem 0.4rem;
+  }
+
+  /* Make stat cards stack properly */
+  .stat-card, .content-card {
+    margin-bottom: 0.5rem;
+  }
+
+  /* Reduce padding on mobile */
+  .card-body {
+    padding: 0.75rem;
+  }
+
+  /* Make filter rows wrap better */
+  .filters-section .row {
+    gap: 0.5rem;
+  }
+}
+
+@media (max-width: 576px) {
+  /* Even more compact on very small screens */
+  .table .btn-group {
+    flex-wrap: wrap;
+  }
+  .fs-2 {
+    font-size: 1.25rem !important;
+  }
+}
+
+/* ==================================================== */
 /* ANIMATIONS */
 /* ==================================================== */
 @keyframes fadeIn {

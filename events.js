@@ -2505,8 +2505,8 @@ const eventsModule = {
     this._editVendorIdx = null;
   },
 
-  deleteVendor(idx) {
-    if (!confirm('Remove this vendor?')) return;
+  async deleteVendor(idx) {
+    if (!await utils.confirmDialog({ title: 'Remove Vendor', message: 'Remove this vendor?', confirmText: 'Remove' })) return;
     const eventId = document.getElementById('attendeesEventId').value;
     const vendors = this.getVendors(eventId);
     vendors.splice(idx, 1);
@@ -5930,7 +5930,7 @@ const eventsModule = {
     const version = this._roVersions.find(v => v.id === versionId);
     if (!version) return;
 
-    if (!confirm(`Restore "${version.version_name}"?\n\nThis will replace the current running order with this saved version. Consider saving the current version first.`)) {
+    if (!await utils.confirmDialog({ title: 'Restore Version', message: `Restore "${version.version_name}"?<br><br>This will replace the current running order with this saved version. Consider saving the current version first.`, confirmText: 'Restore', danger: false })) {
       return;
     }
 
@@ -5969,7 +5969,7 @@ const eventsModule = {
   },
 
   async deleteVersion(versionId) {
-    if (!confirm('Delete this saved version?')) return;
+    if (!await utils.confirmDialog({ title: 'Delete Version', message: 'Delete this saved version?' })) return;
     try {
       await STATE.client.from('running_order_versions').delete().eq('id', versionId);
       utils.showToast('Version deleted', 'success');
@@ -6485,7 +6485,7 @@ const eventsModule = {
    * Delete Running Order Item
    */
   async deleteRunningOrderItem(itemId) {
-    if (!confirm('Remove this item from the running order?')) return;
+    if (!await utils.confirmDialog({ title: 'Remove Item', message: 'Remove this item from the running order?', confirmText: 'Remove' })) return;
     try {
       const { error } = await STATE.client.from('running_order').delete().eq('id', itemId);
       if (error) throw error;
@@ -7740,7 +7740,7 @@ const eventsModule = {
 
     // Confirm if tables already exist
     if (this.tables.length > 0) {
-      if (!confirm(`This will add ${count} new tables to the existing ${this.tables.length} tables. Continue?`)) return;
+      if (!await utils.confirmDialog({ title: 'Add Tables', message: `This will add ${count} new tables to the existing ${this.tables.length} tables. Continue?`, confirmText: 'Add Tables', danger: false })) return;
     }
 
     try {

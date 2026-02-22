@@ -12,7 +12,7 @@ const awardsModule = {
   async loadAwards() {
     try {
       utils.showLoading();
-      utils.showTableLoading('awardsTableBody', 10);
+      utils.showSkeletonLoading('awardsTableBody', 10);
 
       let allData = [];
       let page = 0;
@@ -295,8 +295,30 @@ const awardsModule = {
       this.currentSort.direction = 'asc';
     }
 
+    // Persist sort state and update visual indicators
+    utils.saveSortState('awards', this.currentSort.column, this.currentSort.direction);
+    this._updateSortIndicators();
+
     this.applySorting();
     this.renderAwards();
+  },
+
+  /**
+   * Update sort direction arrows on table headers
+   */
+  _updateSortIndicators() {
+    document.querySelectorAll('#awardsTableBody').forEach(() => {});
+    const icons = document.querySelectorAll('[data-sort-icon]');
+    icons.forEach(icon => {
+      const field = icon.getAttribute('data-sort-icon');
+      if (field === this.currentSort.column) {
+        icon.className = this.currentSort.direction === 'asc'
+          ? 'bi bi-caret-up-fill text-primary ms-1 small'
+          : 'bi bi-caret-down-fill text-primary ms-1 small';
+      } else {
+        icon.className = 'bi bi-arrow-down-up text-muted ms-1 small';
+      }
+    });
   },
 
   /**
@@ -360,7 +382,7 @@ const awardsModule = {
     const region = document.getElementById('awardsRegionFilterSelect').value;
     const search = document.getElementById('awardsSearchBox').value.toLowerCase().trim();
 
-    try { localStorage.setItem('awardsFilters', JSON.stringify({ year, status, sector, county, region, search })); } catch(e) {}
+    try { localStorage.setItem('awardsFilters', JSON.stringify({ year, status, sector, county, region, search })); } catch(e) { console.warn('Failed to save filter state:', e.message); }
 
     STATE.filteredAwards = STATE.allAwards.filter(award => {
       // Year filter - handle both date strings and year numbers
@@ -924,6 +946,9 @@ const awardsModule = {
     const modal = new bootstrap.Modal(document.getElementById('awardFormModal'));
     modal.show();
 
+    // Initialize inline form validation
+    utils.initInlineValidation('awardForm');
+
     // Draft recovery: check for a saved draft
     const draft = utils.getFormDraft('award_new');
     if (draft) {
@@ -1329,6 +1354,44 @@ const awardsModule = {
     URL.revokeObjectURL(link.href);
 
     utils.showToast(`Exported ${awards.length} awards`, 'success');
+  },
+
+  /**
+   * Export awards to Excel format
+   */
+  exportAwardsExcel() {
+    const awards = STATE.filteredAwards || STATE.allAwards || [];
+    if (awards.length === 0) { utils.showToast('No awards to export', 'warning'); return; }
+    const exportData = awards.map(a => ({
+      award_name: utils.formatAwardName(a),
+      category: a.award_name || '',
+      county: a.county || '',
+      region: a._actualRegion || '',
+      sector: a.sector || '',
+      year: a.year || '',
+      status: a.status || '',
+      nominees: (a._assignmentCounts || { total: 0 }).total,
+      winner: a._winnerName || '',
+      prev_year_winner: a.prev_year_winner || ''
+    }));
+    utils.exportToExcel(exportData, `awards-export-${new Date().toISOString().split('T')[0]}`);
+  },
+
+  /**
+   * Export awards to printable PDF
+   */
+  exportAwardsPDF() {
+    const awards = STATE.filteredAwards || STATE.allAwards || [];
+    if (awards.length === 0) { utils.showToast('No awards to export', 'warning'); return; }
+    const exportData = awards.map(a => ({
+      award_name: utils.formatAwardName(a),
+      county: a.county || '',
+      sector: a.sector || '',
+      year: a.year || '',
+      status: a.status || '',
+      winner: a._winnerName || ''
+    }));
+    utils.exportToPrintablePDF(exportData, 'Awards Report', { columns: ['award_name', 'county', 'sector', 'year', 'status', 'winner'] });
   },
 
   /**
@@ -2137,7 +2200,7 @@ const awardsModule = {
       localStorage.setItem('awardsSavedViews', JSON.stringify(views));
       this._renderSavedAwardsViews();
       utils.showToast('View saved: ' + name, 'success');
-    } catch(e) {}
+    } catch(e) { utils.showToast('Failed to save view', 'warning'); }
   },
 
   _renderSavedAwardsViews() {
@@ -2151,7 +2214,7 @@ const awardsModule = {
       }
       el.innerHTML = '<option value="">Load saved view...</option>' +
         views.map((v, i) => `<option value="${i}">${utils.escapeHtml(v.name)}</option>`).join('');
-    } catch(e) {}
+    } catch(e) { console.warn('Failed to render saved views:', e.message); }
   },
 
   loadSavedAwardsView(index) {
@@ -2167,7 +2230,7 @@ const awardsModule = {
       if (view.filters.search) document.getElementById('awardsSearchBox').value = view.filters.search;
       this.filterAwards();
       utils.showToast('Loaded view: ' + view.name, 'success');
-    } catch(e) {}
+    } catch(e) { utils.showToast('Failed to load view', 'warning'); }
   },
 
   deleteSavedAwardsView(index) {
@@ -2178,7 +2241,7 @@ const awardsModule = {
       localStorage.setItem('awardsSavedViews', JSON.stringify(views));
       this._renderSavedAwardsViews();
       utils.showToast('Deleted view: ' + name, 'info');
-    } catch(e) {}
+    } catch(e) { utils.showToast('Failed to delete view', 'warning'); }
   },
 
   /* ==================================================== */

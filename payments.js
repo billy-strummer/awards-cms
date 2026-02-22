@@ -37,7 +37,7 @@ const paymentsModule = {
         if (savedInv.orgId) document.getElementById('invoiceOrgFilter').value = savedInv.orgId;
         if (savedInv.month) document.getElementById('invoiceMonthFilter').value = savedInv.month;
         this.filterInvoices();
-      } catch(e) {}
+      } catch(e) { console.warn('Failed to restore invoice filters:', e.message); }
 
       // Restore saved payment filters from localStorage
       try {
@@ -47,7 +47,7 @@ const paymentsModule = {
         if (savedPay.status) document.getElementById('paymentStatusFilter').value = savedPay.status;
         if (savedPay.month) document.getElementById('paymentMonthFilter').value = savedPay.month;
         this.filterPayments();
-      } catch(e) {}
+      } catch(e) { console.warn('Failed to restore payment filters:', e.message); }
 
       this.updateStatistics();
       console.log('Payments data loaded');
@@ -102,7 +102,7 @@ const paymentsModule = {
     const orgId = document.getElementById('invoiceOrgFilter')?.value || '';
     const month = document.getElementById('invoiceMonthFilter')?.value || '';
 
-    try { localStorage.setItem('invoiceFilters', JSON.stringify({ search: document.getElementById('invoiceSearchBox')?.value || '', status, orgId, month })); } catch(e) {}
+    try { localStorage.setItem('invoiceFilters', JSON.stringify({ search: document.getElementById('invoiceSearchBox')?.value || '', status, orgId, month })); } catch(e) { console.warn('Failed to save invoice filters:', e.message); }
 
     this.currentInvoices = this.allInvoices.filter(inv => {
       // Search filter
@@ -858,7 +858,7 @@ const paymentsModule = {
     const status = document.getElementById('paymentStatusFilter')?.value || '';
     const month = document.getElementById('paymentMonthFilter')?.value || '';
 
-    try { localStorage.setItem('paymentFilters', JSON.stringify({ search: document.getElementById('paymentSearchBox')?.value || '', method, status, month })); } catch(e) {}
+    try { localStorage.setItem('paymentFilters', JSON.stringify({ search: document.getElementById('paymentSearchBox')?.value || '', method, status, month })); } catch(e) { console.warn('Failed to save payment filters:', e.message); }
 
     this.currentPayments = this.allPayments.filter(p => {
       // Search filter
@@ -1840,8 +1840,8 @@ const paymentsModule = {
         const { data } = await STATE.client.from('user_preferences').select('value').eq('key', 'orgAccountingConfig').limit(1);
         if (data?.[0]) { this._accountingConfig = JSON.parse(data[0].value); return; }
       }
-    } catch (e) {}
-    try { this._accountingConfig = JSON.parse(localStorage.getItem('orgAccountingConfig') || '{}'); } catch (e) { this._accountingConfig = {}; }
+    } catch (e) { console.warn('Failed to load accounting config from database:', e.message); }
+    try { this._accountingConfig = JSON.parse(localStorage.getItem('orgAccountingConfig') || '{}'); } catch (e) { console.warn('Failed to parse accounting config from localStorage:', e.message); this._accountingConfig = {}; }
   },
 
   async _saveAccountingConfig() {
@@ -1849,7 +1849,7 @@ const paymentsModule = {
       if (typeof STATE !== 'undefined' && STATE.client) {
         await STATE.client.from('user_preferences').upsert({ key: 'orgAccountingConfig', value: JSON.stringify(this._accountingConfig), updated_at: new Date().toISOString() }, { onConflict: 'key' });
       }
-    } catch (e) {}
+    } catch (e) { console.warn('Failed to save accounting config to database:', e.message); }
     localStorage.setItem('orgAccountingConfig', JSON.stringify(this._accountingConfig));
   },
 
@@ -2018,7 +2018,7 @@ const paymentsModule = {
   async bulkUpdateInvoiceStatus(status) {
     if (this._selectedInvoiceIds.size === 0) return;
     const ids = [...this._selectedInvoiceIds];
-    if (!confirm(`Update ${ids.length} invoice(s) to "${status}"?`)) return;
+    if (!await utils.confirmDialog({ title: 'Bulk Status Update', message: `Update ${ids.length} invoice(s) to "${status}"?`, confirmText: 'Update', danger: false })) return;
     try {
       utils.showLoading();
       for (const id of ids) {
@@ -2038,7 +2038,7 @@ const paymentsModule = {
   async bulkDeleteInvoices() {
     if (this._selectedInvoiceIds.size === 0) return;
     const ids = [...this._selectedInvoiceIds];
-    if (!confirm(`Delete ${ids.length} invoice(s)? This cannot be undone.`)) return;
+    if (!await utils.confirmDialog({ title: 'Bulk Delete Invoices', message: `Delete ${ids.length} invoice(s)? This cannot be undone.`, confirmText: 'Delete All', danger: true })) return;
     try {
       utils.showLoading();
       for (const id of ids) {
@@ -2081,7 +2081,7 @@ const paymentsModule = {
         if (record.invoice_number || record.total_amount) records.push(record);
       }
       if (records.length === 0) { utils.showToast('No valid records', 'warning'); return; }
-      if (!confirm(`Import ${records.length} invoices?`)) return;
+      if (!await utils.confirmDialog({ title: 'Import Invoices', message: `Import ${records.length} invoices from CSV?`, confirmText: 'Import', danger: false })) return;
       try {
         utils.showLoading();
         let imported = 0;

@@ -593,7 +593,7 @@ const crmModule = {
       try {
         const attendeesList = JSON.parse(meeting.attendees || '[]');
         attendees = attendeesList.length > 0 ? `${attendeesList.length} attendees` : attendees;
-      } catch (e) {}
+      } catch (e) { console.warn('Failed to parse meeting attendees:', e.message); }
 
       const followUpBadge = meeting.follow_up_required
         ? `<span class="badge bg-warning text-dark">
@@ -1652,7 +1652,7 @@ const crmModule = {
       const companyName = meeting.organisation?.company_name || 'N/A';
       const dealName = meeting.deal?.deal_name || 'N/A';
       let attendeesList = [];
-      try { attendeesList = JSON.parse(meeting.attendees || '[]'); } catch (e) {}
+      try { attendeesList = JSON.parse(meeting.attendees || '[]'); } catch (e) { console.warn('Failed to parse meeting attendees for view:', e.message); }
 
       const modalHtml = `
         <div class="modal fade" id="viewMeetingModal" tabindex="-1">
@@ -1740,7 +1740,7 @@ const crmModule = {
       if (error) throw error;
 
       let attendeesList = [];
-      try { attendeesList = JSON.parse(meeting.attendees || '[]'); } catch (e) {}
+      try { attendeesList = JSON.parse(meeting.attendees || '[]'); } catch (e) { console.warn('Failed to parse meeting attendees for edit:', e.message); }
       const meetingDateTime = meeting.meeting_date ? meeting.meeting_date.split('T') : ['', ''];
 
       const modalHtml = `
@@ -2221,8 +2221,8 @@ const crmModule = {
         const { data } = await STATE.client.from('user_preferences').select('value').eq('key', 'orgsSegments').limit(1);
         if (data?.[0]) return JSON.parse(data[0].value);
       }
-    } catch (e) {}
-    try { return JSON.parse(localStorage.getItem('orgsSegments') || '{}'); } catch (e) { return {}; }
+    } catch (e) { console.warn('Failed to load segments from database:', e.message); }
+    try { return JSON.parse(localStorage.getItem('orgsSegments') || '{}'); } catch (e) { console.warn('Failed to parse segments from localStorage:', e.message); return {}; }
   },
 
   async _saveSegments(segments) {
@@ -2230,7 +2230,7 @@ const crmModule = {
       if (typeof STATE !== 'undefined' && STATE.client) {
         await STATE.client.from('user_preferences').upsert({ key: 'orgsSegments', value: JSON.stringify(segments), updated_at: new Date().toISOString() }, { onConflict: 'key' });
       }
-    } catch (e) {}
+    } catch (e) { console.warn('Failed to save segments to database:', e.message); }
     localStorage.setItem('orgsSegments', JSON.stringify(segments));
   },
 
@@ -2244,7 +2244,7 @@ const crmModule = {
       segments[name.trim()] = rules;
       await this._saveSegments(segments);
       utils.showToast(`Segment "${name.trim()}" saved`, 'success');
-    } catch (e) {}
+    } catch (e) { console.warn('Failed to save smart segment:', e.message); }
   },
 
   async loadSmartSegments() {
@@ -2278,7 +2278,7 @@ const crmModule = {
           <button class="btn btn-sm btn-outline-primary ms-2" onclick="crmModule.applySegmentAsFilter()">View in Organisations Tab</button>
         </div>`;
       }
-    } catch (e) {}
+    } catch (e) { console.warn('Failed to load and apply segment:', e.message); }
   },
 
   // ============================================
@@ -2820,7 +2820,7 @@ const crmModule = {
     const set = type === 'deal' ? this._selectedDealIds : type === 'meeting' ? this._selectedMeetingIds : this._selectedCrmIds;
     if (set.size === 0) return;
     const table = type === 'deal' ? 'deals' : type === 'meeting' ? 'meeting_notes' : 'communications';
-    if (!confirm(`Delete ${set.size} ${type} record(s)?`)) return;
+    if (!await utils.confirmDialog({ title: 'Bulk Delete', message: `Delete ${set.size} ${type} record(s)? This cannot be undone.`, confirmText: 'Delete All', danger: true })) return;
     try {
       utils.showLoading();
       for (const id of set) {

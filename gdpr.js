@@ -258,7 +258,7 @@ const gdprModule = {
    * Process a GDPR request (export, delete, or anonymise)
    */
   async processRequest(requestId, requestType, entityId) {
-    if (!confirm(`Process this ${requestType} request? This may permanently alter data.`)) return;
+    if (!await utils.confirmDialog({ title: 'Process GDPR Request', message: `Process this ${requestType} request? This may permanently alter data.`, confirmText: 'Process', danger: true })) return;
 
     try {
       utils.showLoading();
@@ -335,7 +335,7 @@ const gdprModule = {
    * Reject a GDPR request
    */
   async rejectRequest(requestId) {
-    if (!confirm('Reject this GDPR request?')) return;
+    if (!await utils.confirmDialog({ title: 'Reject Request', message: 'Reject this GDPR request?', confirmText: 'Reject', danger: true })) return;
     await STATE.client.from('gdpr_requests').update({
       status: 'rejected',
       processed_by: STATE.currentUser?.email,
@@ -349,7 +349,7 @@ const gdprModule = {
    * Run data retention cleanup
    */
   async runRetentionCleanup() {
-    if (!confirm('Run data retention cleanup? This will permanently delete old logs.')) return;
+    if (!await utils.confirmDialog({ title: 'Data Retention Cleanup', message: 'Run data retention cleanup? This will permanently delete old logs.', confirmText: 'Run Cleanup', danger: true })) return;
 
     try {
       utils.showLoading();

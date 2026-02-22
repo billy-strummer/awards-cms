@@ -24,6 +24,7 @@ const entriesModule = {
   async initialize() {
     try {
       utils.showLoading();
+      utils.showSkeletonLoading('entriesTableBody', 10);
 
       // Load filter options
       await this.loadFilterOptions();
@@ -40,7 +41,7 @@ const entriesModule = {
         if (saved.selfNom) { document.getElementById('entriesSelfNomFilter').value = saved.selfNom; this.currentFilters.selfNom = saved.selfNom; }
         if (saved.search) { document.getElementById('entriesSearchInput').value = saved.search; this.currentFilters.search = saved.search; }
         this.applyFilters();
-      } catch(e) {}
+      } catch(e) { console.warn('Failed to restore entry filters:', e.message); }
 
       // Load stats
       await this.loadStats();
@@ -372,7 +373,7 @@ const entriesModule = {
    * Apply all filters
    */
   applyFilters() {
-    try { localStorage.setItem('entriesFilters', JSON.stringify(this.currentFilters)); } catch(e) {}
+    try { localStorage.setItem('entriesFilters', JSON.stringify(this.currentFilters)); } catch(e) { console.warn('Failed to save entry filters:', e.message); }
 
     this.filteredEntries = this.allEntries.filter(entry => {
       // Status filter
@@ -1335,6 +1336,48 @@ const entriesModule = {
   },
 
   /**
+   * Export entries to Excel format
+   */
+  exportEntriesExcel() {
+    const entriesToExport = this.selectedEntryIds.size > 0
+      ? this.filteredEntries.filter(e => this.selectedEntryIds.has(e.id))
+      : this.filteredEntries;
+    if (entriesToExport.length === 0) { utils.showToast('No entries to export', 'warning'); return; }
+    const exportData = entriesToExport.map(e => ({
+      entry_number: e.entry_number || '',
+      company: e.organisations?.company_name || '',
+      award: e.award_years?.award_name || '',
+      entry_title: e.entry_title || '',
+      status: e.status || '',
+      payment_status: e.payment_status || '',
+      average_score: e.average_score != null ? e.average_score : '',
+      submission_date: e.submission_date || '',
+      contact_name: e.contact_name || '',
+      contact_email: e.contact_email || ''
+    }));
+    utils.exportToExcel(exportData, `entries-export-${new Date().toISOString().split('T')[0]}`);
+  },
+
+  /**
+   * Export entries to printable PDF
+   */
+  exportEntriesPDF() {
+    const entriesToExport = this.selectedEntryIds.size > 0
+      ? this.filteredEntries.filter(e => this.selectedEntryIds.has(e.id))
+      : this.filteredEntries;
+    if (entriesToExport.length === 0) { utils.showToast('No entries to export', 'warning'); return; }
+    const exportData = entriesToExport.map(e => ({
+      entry_number: e.entry_number || '',
+      company: e.organisations?.company_name || '',
+      award: e.award_years?.award_name || '',
+      status: e.status || '',
+      score: e.average_score != null ? e.average_score : '',
+      submitted: e.submission_date || ''
+    }));
+    utils.exportToPrintablePDF(exportData, 'Entries Report', { columns: ['entry_number', 'company', 'award', 'status', 'score', 'submitted'] });
+  },
+
+  /**
    * Bulk actions
    */
   bulkActions() {
@@ -1703,7 +1746,7 @@ const entriesModule = {
       localStorage.setItem('entriesSavedViews', JSON.stringify(views));
       this._renderSavedEntriesViews();
       utils.showToast('View saved: ' + name, 'success');
-    } catch(e) {}
+    } catch(e) { utils.showToast('Failed to save view', 'warning'); }
   },
 
   _renderSavedEntriesViews() {
@@ -1717,7 +1760,7 @@ const entriesModule = {
       }
       el.innerHTML = '<option value="">Load saved view...</option>' +
         views.map((v, i) => `<option value="${i}">${utils.escapeHtml(v.name)}</option>`).join('');
-    } catch(e) {}
+    } catch(e) { console.warn('Failed to render saved views:', e.message); }
   },
 
   loadSavedEntriesView(index) {
@@ -1732,7 +1775,7 @@ const entriesModule = {
       if (view.filters.search) document.getElementById('entriesSearchInput').value = view.filters.search;
       this.filterEntries();
       utils.showToast('Loaded view: ' + view.name, 'success');
-    } catch(e) {}
+    } catch(e) { utils.showToast('Failed to load view', 'warning'); }
   },
 
   deleteSavedEntriesView(index) {
@@ -1743,7 +1786,7 @@ const entriesModule = {
       localStorage.setItem('entriesSavedViews', JSON.stringify(views));
       this._renderSavedEntriesViews();
       utils.showToast('Deleted view: ' + name, 'info');
-    } catch(e) {}
+    } catch(e) { utils.showToast('Failed to delete view', 'warning'); }
   },
 
   /* ==================================================== */
@@ -1788,7 +1831,7 @@ const entriesModule = {
         if (record.entry_title || record.entry_number) records.push(record);
       }
       if (records.length === 0) { utils.showToast('No valid records', 'warning'); return; }
-      if (!confirm(`Import ${records.length} entries?`)) return;
+      if (!await utils.confirmDialog({ title: 'Import Entries', message: `Import ${records.length} entries?`, confirmText: 'Import', danger: false })) return;
       try {
         utils.showLoading();
         let imported = 0;

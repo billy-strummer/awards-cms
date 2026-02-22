@@ -14,7 +14,7 @@ const reportsScheduler = {
         const { data } = await STATE.client.from('user_preferences').select('value').eq('key', 'orgScheduledReports').limit(1);
         if (data?.[0]) { this._scheduledReports = JSON.parse(data[0].value); return; }
       }
-    } catch (e) {}
+    } catch (e) { console.warn('Scheduled reports: ' + e.message); }
     try { this._scheduledReports = JSON.parse(localStorage.getItem('orgScheduledReports') || '[]'); } catch (e) { this._scheduledReports = []; }
   },
 
@@ -23,7 +23,7 @@ const reportsScheduler = {
       if (typeof STATE !== 'undefined' && STATE.client) {
         await STATE.client.from('user_preferences').upsert({ key: 'orgScheduledReports', value: JSON.stringify(this._scheduledReports), updated_at: new Date().toISOString() }, { onConflict: 'key' });
       }
-    } catch (e) {}
+    } catch (e) { console.warn('Scheduled reports: ' + e.message); }
     localStorage.setItem('orgScheduledReports', JSON.stringify(this._scheduledReports));
   },
 
@@ -126,7 +126,7 @@ const reportsScheduler = {
   },
 
   async deleteReport(i) {
-    if (!confirm('Delete this report schedule?')) return;
+    if (!await utils.confirmDialog({ title: 'Delete Report Schedule', message: 'Delete this report schedule?', confirmText: 'Delete', danger: true })) return;
     this._scheduledReports.splice(i, 1);
     await this._saveScheduledReports();
     this.loadReports();
@@ -1321,6 +1321,14 @@ document.addEventListener('DOMContentLoaded', function() {
   // ==========================================
   if (utils.initCommandPalette) utils.initCommandPalette();
   if (utils.initScrollToTop) utils.initScrollToTop();
+  if (utils.initKeyboardShortcutHelp) utils.initKeyboardShortcutHelp();
+  if (utils.startFreshnessTimer) utils.startFreshnessTimer();
+
+  // Initialize debounced search for main search boxes
+  if (utils.initDebouncedSearch) {
+    utils.initDebouncedSearch('awardsSearchBox', () => { if (window.awardsModule) awardsModule.filterAwards(); });
+    utils.initDebouncedSearch('entriesSearchInput', () => { if (window.entriesModule) entriesModule.applyFilters(); });
+  }
 
   // ==========================================
   // INITIALIZATION COMPLETE

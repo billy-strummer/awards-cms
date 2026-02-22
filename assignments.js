@@ -573,7 +573,10 @@ const assignmentsModule = {
    * Remove assignment
    */
   async removeAssignment(assignmentId) {
-    if (!confirm('Remove this company from the award?')) {
+    // Find the assignment to show context in confirmation
+    const assignment = (this.currentAssignments || []).find(a => a.id === assignmentId);
+    const companyName = assignment?.organisations?.company_name || assignment?.company_name || 'this company';
+    if (!await utils.confirmDialog({ title: 'Remove Assignment', message: `Remove <strong>${utils.escapeHtml(companyName)}</strong> from the award?`, confirmText: 'Remove', danger: true })) {
       return;
     }
     

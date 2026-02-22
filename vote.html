@@ -205,7 +205,7 @@
 
     <!-- Loading State -->
     <div id="loadingState" class="loading-spinner">
-      <div class="spinner-border text-white" style="width: 3rem; height: 3rem;" role="status">
+      <div class="spinner-border text-white" style="width: 3rem; height: 3rem;" role="status" aria-label="Loading">
         <span class="visually-hidden">Loading...</span>
       </div>
       <p class="text-white mt-3 fs-5">Loading nominee...</p>
@@ -279,16 +279,16 @@
 
         <!-- Share Buttons -->
         <div class="share-buttons">
-          <button class="share-btn twitter" onclick="nomineeVoting.shareTwitter()">
+          <button class="share-btn twitter" onclick="nomineeVoting.shareTwitter()" aria-label="Share on Twitter">
             <i class="bi bi-twitter-x me-2"></i>Share
           </button>
-          <button class="share-btn facebook" onclick="nomineeVoting.shareFacebook()">
+          <button class="share-btn facebook" onclick="nomineeVoting.shareFacebook()" aria-label="Share on Facebook">
             <i class="bi bi-facebook me-2"></i>Share
           </button>
-          <button class="share-btn linkedin" onclick="nomineeVoting.shareLinkedIn()">
+          <button class="share-btn linkedin" onclick="nomineeVoting.shareLinkedIn()" aria-label="Share on LinkedIn">
             <i class="bi bi-linkedin me-2"></i>Share
           </button>
-          <button class="share-btn copy" onclick="nomineeVoting.copyLink()">
+          <button class="share-btn copy" onclick="nomineeVoting.copyLink()" aria-label="Copy link to clipboard">
             <i class="bi bi-link-45deg me-2"></i>Copy Link
           </button>
         </div>
@@ -304,7 +304,7 @@
   </div>
 
   <!-- Verification Modal -->
-  <div id="verificationModal" class="verification-modal" style="display: none;">
+  <div id="verificationModal" class="verification-modal" style="display: none;" role="dialog" aria-label="Email verification">
     <div class="modal-content">
       <h3 class="text-center mb-4">Verify Your Email</h3>
       <p class="text-center text-muted">Enter your email to verify your vote</p>
@@ -354,13 +354,13 @@
       <div class="mt-4 pt-4 border-top">
         <p class="small text-muted mb-3">Help spread the word!</p>
         <div class="share-buttons">
-          <button class="share-btn twitter" onclick="nomineeVoting.shareTwitter()">
+          <button class="share-btn twitter" onclick="nomineeVoting.shareTwitter()" aria-label="Share on Twitter">
             <i class="bi bi-twitter-x"></i>
           </button>
-          <button class="share-btn facebook" onclick="nomineeVoting.shareFacebook()">
+          <button class="share-btn facebook" onclick="nomineeVoting.shareFacebook()" aria-label="Share on Facebook">
             <i class="bi bi-facebook"></i>
           </button>
-          <button class="share-btn linkedin" onclick="nomineeVoting.shareLinkedIn()">
+          <button class="share-btn linkedin" onclick="nomineeVoting.shareLinkedIn()" aria-label="Share on LinkedIn">
             <i class="bi bi-linkedin"></i>
           </button>
         </div>

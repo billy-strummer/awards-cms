@@ -1443,9 +1443,16 @@
                 <button class="btn btn-primary btn-sm" onclick="awardsModule.openCreateModal()">
                   <i class="bi bi-plus-lg me-1"></i>Add Award
                 </button>
-                <button class="btn btn-outline-secondary btn-sm" onclick="awardsModule.exportAwards()">
-                  <i class="bi bi-download me-1"></i>Export CSV
-                </button>
+                <div class="btn-group">
+                  <button class="btn btn-outline-secondary btn-sm dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
+                    <i class="bi bi-download me-1"></i>Export
+                  </button>
+                  <ul class="dropdown-menu">
+                    <li><a class="dropdown-item" href="#" onclick="event.preventDefault(); awardsModule.exportAwards()"><i class="bi bi-filetype-csv text-success me-2"></i>Export CSV</a></li>
+                    <li><a class="dropdown-item" href="#" onclick="event.preventDefault(); awardsModule.exportAwardsExcel()"><i class="bi bi-file-earmark-spreadsheet text-primary me-2"></i>Export Excel</a></li>
+                    <li><a class="dropdown-item" href="#" onclick="event.preventDefault(); awardsModule.exportAwardsPDF()"><i class="bi bi-file-pdf text-danger me-2"></i>Print / PDF</a></li>
+                  </ul>
+                </div>
                 <button class="btn btn-outline-info btn-sm" onclick="awardsModule.rolloverToNextYear()">
                   <i class="bi bi-arrow-repeat me-1"></i>Roll Over
                 </button>
@@ -1501,19 +1508,20 @@
             </div>
 
             <div class="table-responsive">
-              <table class="table table-hover table-striped align-middle">
+              <div class="table-responsive">
+              <table class="table table-hover table-striped align-middle" aria-label="Awards list">
                 <thead>
                   <tr>
-                    <th style="width: 3%;"><input type="checkbox" class="form-check-input" id="awardsSelectAll" onchange="awardsModule.toggleSelectAll(this.checked)"></th>
-                    <th style="width: 5%; cursor: pointer;" onclick="awardsModule.sortBy('year')">Year <i class="bi bi-arrow-down-up text-muted ms-1 small" data-sort-icon="year"></i></th>
-                    <th style="width: 22%; cursor: pointer;" onclick="awardsModule.sortBy('award_name')">Award Name <i class="bi bi-arrow-down-up text-muted ms-1 small" data-sort-icon="award_name"></i></th>
-                    <th style="width: 12%; cursor: pointer;" onclick="awardsModule.sortBy('county')">County/City <i class="bi bi-arrow-down-up text-muted ms-1 small" data-sort-icon="county"></i></th>
-                    <th style="width: 10%; cursor: pointer;" onclick="awardsModule.sortBy('sector')">Sector <i class="bi bi-arrow-down-up text-muted ms-1 small" data-sort-icon="sector"></i></th>
-                    <th style="width: 7%; cursor: pointer;" onclick="awardsModule.sortBy('status')">Status <i class="bi bi-arrow-down-up text-muted ms-1 small" data-sort-icon="status"></i></th>
-                    <th style="width: 6%; cursor: pointer;" class="text-center" onclick="awardsModule.sortBy('nominees')">Nominees <i class="bi bi-arrow-down-up text-muted ms-1 small" data-sort-icon="nominees"></i></th>
-                    <th style="width: 7%;" class="text-center">Phase</th>
-                    <th style="width: 14%; cursor: pointer;" onclick="awardsModule.sortBy('winner')">Winner <i class="bi bi-arrow-down-up text-muted ms-1 small" data-sort-icon="winner"></i></th>
-                    <th style="width: 6%;" class="text-center">Actions</th>
+                    <th scope="col" style="width: 3%;"><input type="checkbox" class="form-check-input" id="awardsSelectAll" onchange="awardsModule.toggleSelectAll(this.checked)" aria-label="Select all awards"></th>
+                    <th scope="col" style="width: 5%; cursor: pointer;" data-sort-field="year" onclick="awardsModule.sortBy('year')">Year <i class="bi bi-arrow-down-up text-muted ms-1 small" data-sort-icon="year"></i></th>
+                    <th scope="col" style="width: 22%; cursor: pointer;" data-sort-field="award_name" onclick="awardsModule.sortBy('award_name')">Award Name <i class="bi bi-arrow-down-up text-muted ms-1 small" data-sort-icon="award_name"></i></th>
+                    <th scope="col" style="width: 12%; cursor: pointer;" data-sort-field="county" onclick="awardsModule.sortBy('county')">County/City <i class="bi bi-arrow-down-up text-muted ms-1 small" data-sort-icon="county"></i></th>
+                    <th scope="col" style="width: 10%; cursor: pointer;" data-sort-field="sector" onclick="awardsModule.sortBy('sector')">Sector <i class="bi bi-arrow-down-up text-muted ms-1 small" data-sort-icon="sector"></i></th>
+                    <th scope="col" style="width: 7%; cursor: pointer;" data-sort-field="status" onclick="awardsModule.sortBy('status')">Status <i class="bi bi-arrow-down-up text-muted ms-1 small" data-sort-icon="status"></i></th>
+                    <th scope="col" style="width: 6%; cursor: pointer;" class="text-center" data-sort-field="nominees" onclick="awardsModule.sortBy('nominees')">Nominees <i class="bi bi-arrow-down-up text-muted ms-1 small" data-sort-icon="nominees"></i></th>
+                    <th scope="col" style="width: 7%;" class="text-center">Phase</th>
+                    <th scope="col" style="width: 14%; cursor: pointer;" data-sort-field="winner" onclick="awardsModule.sortBy('winner')">Winner <i class="bi bi-arrow-down-up text-muted ms-1 small" data-sort-icon="winner"></i></th>
+                    <th scope="col" style="width: 6%;" class="text-center">Actions</th>
                   </tr>
                 </thead>
                 <tbody id="awardsTableBody">
@@ -1527,6 +1535,7 @@
                   </tr>
                 </tbody>
               </table>
+              </div><!-- /table-responsive -->
             </div>
           </div>
 
@@ -2415,13 +2424,13 @@
               <table class="table table-hover table-striped align-middle">
                 <thead>
                   <tr>
-                    <th style="width:35px"><input type="checkbox" class="form-check-input" id="selectAllWinners" onchange="winnersModule.toggleSelectAllWinners(this.checked)"></th>
-                    <th style="cursor: pointer;" onclick="winnersModule.sortWinners('winner_name')">Winner Name <i class="bi bi-arrow-down-up text-muted ms-1 small"></i></th>
-                    <th style="cursor: pointer;" onclick="winnersModule.sortWinners('award')">Award <i class="bi bi-arrow-down-up text-muted ms-1 small"></i></th>
-                    <th style="cursor: pointer;" onclick="winnersModule.sortWinners('year')">Year <i class="bi bi-arrow-down-up text-muted ms-1 small"></i></th>
-                    <th>Media</th>
-                    <th style="cursor: pointer;" onclick="winnersModule.sortWinners('status')">Status <i class="bi bi-arrow-down-up text-muted ms-1 small"></i></th>
-                    <th width="220" class="text-center">Actions</th>
+                    <th scope="col" style="width:35px"><input type="checkbox" class="form-check-input" id="selectAllWinners" onchange="winnersModule.toggleSelectAllWinners(this.checked)" aria-label="Select all winners"></th>
+                    <th scope="col" style="cursor: pointer;" data-sort-field="winner_name" onclick="winnersModule.sortWinners('winner_name')">Winner Name <i class="bi bi-arrow-down-up text-muted ms-1 small"></i></th>
+                    <th scope="col" style="cursor: pointer;" data-sort-field="award" onclick="winnersModule.sortWinners('award')">Award <i class="bi bi-arrow-down-up text-muted ms-1 small"></i></th>
+                    <th scope="col" style="cursor: pointer;" data-sort-field="year" onclick="winnersModule.sortWinners('year')">Year <i class="bi bi-arrow-down-up text-muted ms-1 small"></i></th>
+                    <th scope="col">Media</th>
+                    <th scope="col" style="cursor: pointer;" data-sort-field="status" onclick="winnersModule.sortWinners('status')">Status <i class="bi bi-arrow-down-up text-muted ms-1 small"></i></th>
+                    <th scope="col" width="220" class="text-center">Actions</th>
                   </tr>
                 </thead>
                 <tbody id="winnersTableBody">
@@ -2577,9 +2586,16 @@
                 <button class="btn btn-sm btn-primary" onclick="entriesModule.openPublicFormLink()">
                   <i class="bi bi-link-45deg me-1"></i>Get Public Entry Form Link
                 </button>
-                <button class="btn btn-sm btn-outline-secondary" onclick="entriesModule.exportEntries()">
-                  <i class="bi bi-download me-1"></i>Export CSV
-                </button>
+                <div class="btn-group">
+                  <button class="btn btn-sm btn-outline-secondary dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
+                    <i class="bi bi-download me-1"></i>Export
+                  </button>
+                  <ul class="dropdown-menu">
+                    <li><a class="dropdown-item" href="#" onclick="event.preventDefault(); entriesModule.exportEntries()"><i class="bi bi-filetype-csv text-success me-2"></i>Export CSV</a></li>
+                    <li><a class="dropdown-item" href="#" onclick="event.preventDefault(); entriesModule.exportEntriesExcel()"><i class="bi bi-file-earmark-spreadsheet text-primary me-2"></i>Export Excel</a></li>
+                    <li><a class="dropdown-item" href="#" onclick="event.preventDefault(); entriesModule.exportEntriesPDF()"><i class="bi bi-file-pdf text-danger me-2"></i>Print / PDF</a></li>
+                  </ul>
+                </div>
                 <button class="btn btn-sm btn-outline-danger" onclick="entriesModule.bulkActions()">
                   <i class="bi bi-list-check me-1"></i>Bulk Actions
                 </button>
@@ -2598,18 +2614,18 @@
               <table class="table table-hover">
                 <thead>
                   <tr>
-                    <th style="width: 40px;">
-                      <input type="checkbox" id="selectAllEntries" onchange="entriesModule.toggleSelectAll()">
+                    <th scope="col" style="width: 40px;">
+                      <input type="checkbox" id="selectAllEntries" onchange="entriesModule.toggleSelectAll()" aria-label="Select all entries">
                     </th>
-                    <th>Entry #</th>
-                    <th>Company</th>
-                    <th>Award</th>
-                    <th>Entry Title</th>
-                    <th>Status</th>
-                    <th>Score</th>
-                    <th>Payment</th>
-                    <th>Submitted</th>
-                    <th style="width: 150px;">Actions</th>
+                    <th scope="col">Entry #</th>
+                    <th scope="col">Company</th>
+                    <th scope="col">Award</th>
+                    <th scope="col">Entry Title</th>
+                    <th scope="col">Status</th>
+                    <th scope="col">Score</th>
+                    <th scope="col">Payment</th>
+                    <th scope="col">Submitted</th>
+                    <th scope="col" style="width: 150px;">Actions</th>
                   </tr>
                 </thead>
                 <tbody id="entriesTableBody">
@@ -3437,17 +3453,17 @@
               <table class="table table-hover">
                 <thead>
                   <tr>
-                    <th style="width:35px"><input type="checkbox" class="form-check-input" id="selectAllEvents" onchange="eventsModule.toggleSelectAll(this.checked)"></th>
-                    <th style="cursor:pointer" onclick="eventsModule.sortEvents('event_name')">Event Name <i class="bi bi-arrow-down-up text-muted small"></i></th>
-                    <th style="width:70px;cursor:pointer" onclick="eventsModule.sortEvents('year')">Year <i class="bi bi-arrow-down-up text-muted small"></i></th>
-                    <th style="width:100px;cursor:pointer" onclick="eventsModule.sortEvents('event_date')">Date <i class="bi bi-arrow-down-up text-muted small"></i></th>
-                    <th style="cursor:pointer" onclick="eventsModule.sortEvents('venue')">Venue <i class="bi bi-arrow-down-up text-muted small"></i></th>
-                    <th style="width:70px" class="text-center" title="Attendees"><i class="bi bi-people me-1"></i>Att.</th>
-                    <th style="width:55px" class="text-center" title="VIP Guests"><i class="bi bi-star me-1"></i>VIP</th>
-                    <th style="width:70px" class="text-center" title="Award Presentations Confirmed"><i class="bi bi-trophy me-1"></i>Awards</th>
-                    <th style="width:65px" class="text-center" title="Winners Confirmed"><i class="bi bi-award me-1"></i>Won</th>
-                    <th style="width:85px" class="text-center">Status</th>
-                    <th style="width:230px" class="text-center">Actions</th>
+                    <th scope="col" style="width:35px"><input type="checkbox" class="form-check-input" id="selectAllEvents" onchange="eventsModule.toggleSelectAll(this.checked)" aria-label="Select all events"></th>
+                    <th scope="col" style="cursor:pointer" data-sort-field="event_name" onclick="eventsModule.sortEvents('event_name')">Event Name <i class="bi bi-arrow-down-up text-muted small"></i></th>
+                    <th scope="col" style="width:70px;cursor:pointer" data-sort-field="year" onclick="eventsModule.sortEvents('year')">Year <i class="bi bi-arrow-down-up text-muted small"></i></th>
+                    <th scope="col" style="width:100px;cursor:pointer" data-sort-field="event_date" onclick="eventsModule.sortEvents('event_date')">Date <i class="bi bi-arrow-down-up text-muted small"></i></th>
+                    <th scope="col" style="cursor:pointer" data-sort-field="venue" onclick="eventsModule.sortEvents('venue')">Venue <i class="bi bi-arrow-down-up text-muted small"></i></th>
+                    <th scope="col" style="width:70px" class="text-center" title="Attendees"><i class="bi bi-people me-1"></i>Att.</th>
+                    <th scope="col" style="width:55px" class="text-center" title="VIP Guests"><i class="bi bi-star me-1"></i>VIP</th>
+                    <th scope="col" style="width:70px" class="text-center" title="Award Presentations Confirmed"><i class="bi bi-trophy me-1"></i>Awards</th>
+                    <th scope="col" style="width:65px" class="text-center" title="Winners Confirmed"><i class="bi bi-award me-1"></i>Won</th>
+                    <th scope="col" style="width:85px" class="text-center">Status</th>
+                    <th scope="col" style="width:230px" class="text-center">Actions</th>
                   </tr>
                 </thead>
                 <tbody id="eventsTableBody">
@@ -6496,7 +6512,7 @@ Available placeholders:
             <div class="row g-3">
               <div class="col-md-8">
                 <label for="awardFormName" class="form-label fw-semibold">Category Name</label>
-                <input type="text" class="form-control" id="awardFormName" placeholder="e.g. Loft Conversion Company" required>
+                <input type="text" class="form-control" id="awardFormName" placeholder="e.g. Loft Conversion Company" required minlength="2" aria-required="true">
                 <div class="form-text">The category name (county prefix is added automatically)</div>
               </div>
               <div class="col-md-4">

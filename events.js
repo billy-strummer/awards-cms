@@ -50,7 +50,7 @@ const eventsModule = {
         if (saved.year) document.getElementById('eventsYearFilter').value = saved.year;
         if (saved.timeStatus) document.getElementById('eventsStatusFilter').value = saved.timeStatus;
         if (saved.eventStatus) document.getElementById('eventsEventStatusFilter').value = saved.eventStatus;
-      } catch(e) {}
+      } catch(e) { console.warn('Failed to restore event filters:', e.message); }
 
       this.updateEventStats();
       this.filterEvents();
@@ -9757,7 +9757,7 @@ const eventsModule = {
     const timeStatus = document.getElementById('eventsStatusFilter')?.value || '';
     const eventStatus = document.getElementById('eventsEventStatusFilter')?.value || '';
 
-    try { localStorage.setItem('eventsFilters', JSON.stringify({ search, year, timeStatus, eventStatus })); } catch(e) {}
+    try { localStorage.setItem('eventsFilters', JSON.stringify({ search, year, timeStatus, eventStatus })); } catch(e) { console.warn('Failed to save event filters:', e.message); }
 
     const today = new Date().toISOString().split('T')[0];
     const now = new Date();
@@ -11034,7 +11034,7 @@ const eventsModule = {
       }
 
       if (records.length === 0) { utils.showToast('No valid records in CSV', 'warning'); return; }
-      if (!confirm(`Import ${records.length} events?`)) return;
+      if (!await utils.confirmDialog({ title: 'Import Events', message: `Import ${records.length} events from CSV?`, confirmText: 'Import', danger: false })) return;
 
       try {
         utils.showLoading();

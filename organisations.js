@@ -4429,7 +4429,7 @@ updateCountyFilterByRegion() {
           lastImport: new Date().toISOString()
         };
         localStorage.setItem('csvImportedCounties', JSON.stringify(imported));
-      } catch (e) { /* ignore */ }
+      } catch (e) { console.warn('Failed to track imported counties:', e.message); }
 
       // Log import history
       const fileInput = document.getElementById('csvFileInput');
@@ -4627,7 +4627,7 @@ updateCountyFilterByRegion() {
     // Restore column visibility if saved
     if (preset.columns) {
       this._columnVisibility = { ...preset.columns };
-      try { localStorage.setItem('orgsColumnVisibility', JSON.stringify(this._columnVisibility)); } catch (e) {}
+      try { localStorage.setItem('orgsColumnVisibility', JSON.stringify(this._columnVisibility)); } catch (e) { console.warn('Failed to save column visibility to localStorage:', e.message); }
     }
     // Restore page size if saved
     if (preset.pageSize) this._pageSize = preset.pageSize;
@@ -6620,13 +6620,13 @@ updateCountyFilterByRegion() {
 
   toggleColumnVisibility(col, visible) {
     this._columnVisibility[col] = visible;
-    try { localStorage.setItem('orgsColumnVisibility', JSON.stringify(this._columnVisibility)); } catch (e) {}
+    try { localStorage.setItem('orgsColumnVisibility', JSON.stringify(this._columnVisibility)); } catch (e) { console.warn('Failed to save column visibility to localStorage:', e.message); }
     this.renderOrganisations();
   },
 
   resetColumnVisibility() {
     this._columnVisibility = {};
-    try { localStorage.setItem('orgsColumnVisibility', JSON.stringify(this._columnVisibility)); } catch (e) {}
+    try { localStorage.setItem('orgsColumnVisibility', JSON.stringify(this._columnVisibility)); } catch (e) { console.warn('Failed to save column visibility to localStorage:', e.message); }
     document.querySelectorAll('[id^="colVis_"]').forEach(cb => cb.checked = true);
     this.renderOrganisations();
   },
@@ -6634,7 +6634,7 @@ updateCountyFilterByRegion() {
   hideAllColumns() {
     const cols = ['sector','county','contact','email','tier','tags','region','status','awards','updated','lastContacted','health'];
     cols.forEach(c => this._columnVisibility[c] = false);
-    try { localStorage.setItem('orgsColumnVisibility', JSON.stringify(this._columnVisibility)); } catch (e) {}
+    try { localStorage.setItem('orgsColumnVisibility', JSON.stringify(this._columnVisibility)); } catch (e) { console.warn('Failed to save column visibility to localStorage:', e.message); }
     document.querySelectorAll('[id^="colVis_"]').forEach(cb => cb.checked = false);
     this.renderOrganisations();
   },
@@ -6962,7 +6962,7 @@ updateCountyFilterByRegion() {
 
     // Save custom order
     this._customOrgOrder = arr.map(o => o.id);
-    try { localStorage.setItem('orgsCustomOrder', JSON.stringify(this._customOrgOrder)); } catch (e) {}
+    try { localStorage.setItem('orgsCustomOrder', JSON.stringify(this._customOrgOrder)); } catch (e) { console.warn('Failed to save custom org order to localStorage:', e.message); }
 
     this._draggedOrgId = null;
     this.renderOrganisations();
@@ -7121,7 +7121,7 @@ updateCountyFilterByRegion() {
     // Restore column visibility
     if (view.columns) {
       this._columnVisibility = { ...view.columns };
-      try { localStorage.setItem('orgsColumnVisibility', JSON.stringify(this._columnVisibility)); } catch (e) {}
+      try { localStorage.setItem('orgsColumnVisibility', JSON.stringify(this._columnVisibility)); } catch (e) { console.warn('Failed to save column visibility to localStorage:', e.message); }
     }
 
     // Restore page size
@@ -7171,7 +7171,7 @@ updateCountyFilterByRegion() {
 
       utils.showToast(`View "${name}" deleted`, 'success');
       this.showSavedViews();
-    } catch (e) {}
+    } catch (e) { console.warn('Failed to delete view:', e.message); utils.showToast('Failed to delete view', 'warning'); }
   },
 
   // ============================================

@@ -179,7 +179,7 @@ window.winnerPipelineModule = {
 
   async confirmWinner(awardId, entryId, position) {
     const label = position === 'winner' ? 'winner' : 'runner-up';
-    if (!confirm(`Confirm this entry as ${label}? This will publish the entry and create a winner record.`)) return;
+    if (!await utils.confirmDialog({ title: 'Confirm Winner', message: `Confirm this entry as ${label}? This will publish the entry and create a winner record.`, confirmText: 'Confirm', danger: false })) return;
     try {
       const { data: entry, error: eErr } = await STATE.client
         .from('entries').select('entry_title, organisation_id').eq('id', entryId).single();

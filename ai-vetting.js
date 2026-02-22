@@ -384,7 +384,7 @@ const aiVettingModule = {
    * Dismiss a flag
    */
   async dismissFlag(resultId) {
-    if (!confirm('Are you sure you want to dismiss this flag?')) return;
+    if (!await utils.confirmDialog({ title: 'Dismiss Flag', message: 'Are you sure you want to dismiss this flag?', confirmText: 'Dismiss', danger: false })) return;
 
     try {
       const { error } = await STATE.client

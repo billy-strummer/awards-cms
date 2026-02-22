@@ -389,7 +389,9 @@ const emailTemplatesModule = {
    * Delete template
    */
   async deleteTemplate(templateId) {
-    if (!confirm('Are you sure you want to delete this template? This action cannot be undone.')) {
+    const template = (this.templates || []).find(t => t.id === templateId);
+    const templateName = template?.name || template?.subject || 'this template';
+    if (!await utils.confirmDialog({ title: 'Delete Template', message: `Delete <strong>${utils.escapeHtml(templateName)}</strong>? This action cannot be undone.`, confirmText: 'Delete', danger: true })) {
       return;
     }
 

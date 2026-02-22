@@ -1436,8 +1436,8 @@ ${content}
   /**
    * Clear canvas
    */
-  clearCanvas() {
-    if (confirm('Are you sure you want to clear all blocks?')) {
+  async clearCanvas() {
+    if (await utils.confirmDialog({ title: 'Clear Canvas', message: 'Are you sure you want to clear all blocks?', confirmText: 'Clear', danger: true })) {
       this.blocks = [];
       this.showEmptyState();
       this.updatePreview();
@@ -2525,7 +2525,7 @@ ${content}
 
     const listName = document.getElementById('builderEmailList')?.selectedOptions[0]?.text || 'selected list';
 
-    if (!confirm(`Send "${subject}" to ${count || 0} subscribers in "${listName}"?\n\nThis action cannot be undone.`)) {
+    if (!await utils.confirmDialog({ title: 'Send Campaign', message: `Send "${subject}" to ${count || 0} subscribers in "${listName}"?\n\nThis action cannot be undone.`, confirmText: 'Send', danger: false })) {
       return;
     }
 
@@ -2693,7 +2693,7 @@ ${content}
     const listName = document.getElementById('builderEmailList')?.selectedOptions[0]?.text || 'selected list';
     const opts = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' };
 
-    if (!confirm(`Schedule "${subject}" to ${count || 0} subscribers in "${listName}"?\n\nScheduled for: ${scheduledAt.toLocaleDateString('en-GB', opts)}`)) {
+    if (!await utils.confirmDialog({ title: 'Schedule Campaign', message: `Schedule "${subject}" to ${count || 0} subscribers in "${listName}"?\n\nScheduled for: ${scheduledAt.toLocaleDateString('en-GB', opts)}`, confirmText: 'Schedule', danger: false })) {
       return;
     }
 
@@ -2753,7 +2753,7 @@ ${content}
    * Cancel a scheduled campaign
    */
   async cancelScheduledCampaign(campaignId) {
-    if (!confirm('Cancel this scheduled campaign? This cannot be undone.')) return;
+    if (!await utils.confirmDialog({ title: 'Cancel Scheduled Campaign', message: 'Cancel this scheduled campaign? This cannot be undone.', confirmText: 'Cancel Campaign', danger: true })) return;
 
     try {
       const { error } = await STATE.client
@@ -2786,7 +2786,7 @@ ${content}
       if (error) throw error;
 
       let notes = {};
-      try { notes = JSON.parse(campaign.notes || '{}'); } catch (e) {}
+      try { notes = JSON.parse(campaign.notes || '{}'); } catch (e) { console.warn('Failed to parse campaign notes:', e.message); }
 
       // Populate campaign settings
       const nameInput = document.getElementById('builderCampaignName');
@@ -3448,7 +3448,7 @@ ${content}
       if (error) throw error;
 
       let notes = {};
-      try { notes = JSON.parse(campaign.notes || '{}'); } catch (e) {}
+      try { notes = JSON.parse(campaign.notes || '{}'); } catch (e) { console.warn('Failed to parse campaign notes:', e.message); }
 
       // Populate settings
       const nameInput = document.getElementById('builderCampaignName');
@@ -3763,7 +3763,7 @@ ${content}
     const countB = count - countA;
     const listName = document.getElementById('builderEmailList')?.selectedOptions[0]?.text || 'selected list';
 
-    if (!confirm(`A/B Test Campaign:\n\nVariant A (${splitPercent}%): "${subjectA}" -> ${countA} recipients\nVariant B (${100 - splitPercent}%): "${subjectB}" -> ${countB} recipients\n\nTotal: ${count} in "${listName}"\n\nProceed?`)) {
+    if (!await utils.confirmDialog({ title: 'A/B Test Campaign', message: `A/B Test Campaign:\n\nVariant A (${splitPercent}%): "${subjectA}" -> ${countA} recipients\nVariant B (${100 - splitPercent}%): "${subjectB}" -> ${countB} recipients\n\nTotal: ${count} in "${listName}"\n\nProceed?`, confirmText: 'Send', danger: false })) {
       return;
     }
 

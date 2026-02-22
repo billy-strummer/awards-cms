@@ -104,7 +104,7 @@ const winnersModule = {
         if (saved.year) document.getElementById('winnerYearFilterSelect').value = saved.year;
         if (saved.award) document.getElementById('winnerAwardFilterSelect').value = saved.award;
         if (saved.search) document.getElementById('winnerSearchBox').value = saved.search;
-      } catch(e) {}
+      } catch(e) { console.warn('Failed to restore winner filters:', e.message); }
 
       this.filterWinners();
 
@@ -161,7 +161,7 @@ const winnersModule = {
     const award = document.getElementById('winnerAwardFilterSelect').value;
     const search = document.getElementById('winnerSearchBox').value.toLowerCase().trim();
 
-    try { localStorage.setItem('winnersFilters', JSON.stringify({ year, award, search })); } catch(e) {}
+    try { localStorage.setItem('winnersFilters', JSON.stringify({ year, award, search })); } catch(e) { console.warn('Failed to save winner filters:', e.message); }
 
     STATE.filteredWinners = STATE.allWinners.filter(winner => {
       // Year filter
@@ -3127,7 +3127,7 @@ const winnersModule = {
       localStorage.setItem('winnersSavedViews', JSON.stringify(views));
       this._renderSavedWinnersViews();
       utils.showToast('View saved: ' + name, 'success');
-    } catch(e) {}
+    } catch(e) { utils.showToast('Failed to save view', 'warning'); }
   },
 
   _renderSavedWinnersViews() {
@@ -3141,7 +3141,7 @@ const winnersModule = {
       }
       el.innerHTML = '<option value="">Load saved view...</option>' +
         views.map((v, i) => `<option value="${i}">${utils.escapeHtml(v.name)}</option>`).join('');
-    } catch(e) {}
+    } catch(e) { console.warn('Failed to render saved views:', e.message); }
   },
 
   loadSavedWinnersView(index) {
@@ -3154,7 +3154,7 @@ const winnersModule = {
       if (view.filters.search) document.getElementById('winnerSearchBox').value = view.filters.search;
       this.filterWinners();
       utils.showToast('Loaded view: ' + view.name, 'success');
-    } catch(e) {}
+    } catch(e) { utils.showToast('Failed to load view', 'warning'); }
   },
 
   deleteSavedWinnersView(index) {
@@ -3165,7 +3165,7 @@ const winnersModule = {
       localStorage.setItem('winnersSavedViews', JSON.stringify(views));
       this._renderSavedWinnersViews();
       utils.showToast('Deleted view: ' + name, 'info');
-    } catch(e) {}
+    } catch(e) { utils.showToast('Failed to delete view', 'warning'); }
   }
 };
 

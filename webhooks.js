@@ -250,7 +250,7 @@ window.webhooksModule = {
   },
 
   async deleteWebhook(id) {
-    if (!confirm('Delete this webhook?')) return;
+    if (!await utils.confirmDialog({ title: 'Delete Webhook', message: 'Delete this webhook?', confirmText: 'Delete', danger: true })) return;
     const { error } = await STATE.client.from('webhooks').delete().eq('id', id);
     if (error) { utils.showToast('Delete failed: ' + error.message, 'error'); return; }
     utils.showToast('Webhook deleted', 'success');

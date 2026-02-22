@@ -940,7 +940,7 @@ const emailListsModule = {
    * Delete a subscriber from a list
    */
   async deleteSubscriber(subscriberId, listId) {
-    if (!confirm('Remove this subscriber from the list?')) return;
+    if (!await utils.confirmDialog({ title: 'Remove Subscriber', message: 'Remove this subscriber from the list?', confirmText: 'Remove', danger: true })) return;
 
     try {
       const { error } = await STATE.client
@@ -1222,7 +1222,7 @@ const emailListsModule = {
   },
 
   async deleteList(listId) {
-    if (!confirm('Are you sure you want to delete this list? All subscribers will be removed. This cannot be undone.')) {
+    if (!await utils.confirmDialog({ title: 'Delete Email List', message: 'Are you sure you want to delete this list? All subscribers will be removed. This cannot be undone.', confirmText: 'Delete', danger: true })) {
       return;
     }
 

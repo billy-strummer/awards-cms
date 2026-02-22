@@ -145,7 +145,7 @@ const settingsModule = {
       const file = e.target.files[0];
       if (!file) return;
 
-      if (!confirm('WARNING: This will overwrite existing data with the backup contents. Are you sure you want to continue?')) return;
+      if (!await utils.confirmDialog({ title: 'Restore Backup', message: 'WARNING: This will overwrite existing data with the backup contents. Are you sure you want to continue?', confirmText: 'Restore', danger: true })) return;
 
       try {
         utils.showLoading();
@@ -719,7 +719,7 @@ British Trade Awards Team
    * Clear audit log
    */
   async clearAuditLog() {
-    if (!confirm('Are you sure you want to clear the entire audit log? This cannot be undone.')) {
+    if (!await utils.confirmDialog({ title: 'Clear Audit Log', message: 'Are you sure you want to clear the entire audit log? This cannot be undone.', confirmText: 'Clear', danger: true })) {
       return;
     }
 
@@ -935,7 +935,7 @@ British Trade Awards Team
    * Delete a season
    */
   async deleteSeason(seasonId) {
-    if (!confirm('Delete this season?')) return;
+    if (!await utils.confirmDialog({ title: 'Delete Season', message: 'Delete this season?', confirmText: 'Delete', danger: true })) return;
 
     try {
       utils.showLoading();
@@ -962,7 +962,7 @@ British Trade Awards Team
     const season = this.allSeasons.find(s => s.id === seasonId);
     if (!season) return;
 
-    if (!confirm(`Apply "${season.name}" dates to ALL awards for ${season.year}?\n\nThis will update all key dates (entries, nominees, judging, voting, winners).`)) return;
+    if (!await utils.confirmDialog({ title: 'Apply Season Dates', message: `Apply "${season.name}" dates to ALL awards for ${season.year}?\n\nThis will update all key dates (entries, nominees, judging, voting, winners).`, confirmText: 'Apply', danger: false })) return;
 
     try {
       utils.showLoading();

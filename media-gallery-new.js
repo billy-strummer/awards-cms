@@ -602,7 +602,7 @@ const mediaGalleryModule = {
   },
 
   async _bulkPublishAll() {
-    if (!confirm('Publish all draft photos across all sections?')) return;
+    if (!await utils.confirmDialog({ title: 'Publish All Photos', message: 'Publish all draft photos across all sections?', confirmText: 'Publish All', danger: false })) return;
     try {
       const { data: sections } = await STATE.client.from('event_galleries').select('id').eq('event_id', this.currentEventId);
       const sectionIds = (sections || []).map(s => s.id);
@@ -1383,7 +1383,7 @@ const mediaGalleryModule = {
    * Delete Video
    */
   async deleteVideo(videoId) {
-    if (!confirm('Are you sure you want to delete this video?')) return;
+    if (!await utils.confirmDialog({ title: 'Delete Video', message: 'Are you sure you want to delete this video?', confirmText: 'Delete', danger: true })) return;
 
     try {
       const { error } = await STATE.client
@@ -1850,7 +1850,7 @@ const mediaGalleryModule = {
    * Delete section
    */
   async deleteSection(sectionId, sectionName) {
-    if (!confirm(`Delete "${sectionName}"?\n\nPhotos in this section will NOT be deleted, but will be unlinked from this section.`)) {
+    if (!await utils.confirmDialog({ title: 'Delete Section', message: `Delete "${sectionName}"?<br><br>Photos in this section will NOT be deleted, but will be unlinked from this section.`, confirmText: 'Delete Section', danger: true })) {
       return;
     }
 
@@ -3291,7 +3291,7 @@ const mediaGalleryModule = {
       return;
     }
 
-    if (!confirm(`Download ${photos.length} photo(s)? They will be downloaded one by one.`)) {
+    if (!await utils.confirmDialog({ title: 'Download Photos', message: `Download ${photos.length} photo(s)? They will be downloaded one by one.`, confirmText: 'Download', danger: false })) {
       return;
     }
 
@@ -3525,7 +3525,7 @@ const mediaGalleryModule = {
   async bulkPublish() {
     if (this.selectedPhotoIds.size === 0) return;
 
-    if (!confirm(`Publish ${this.selectedPhotoIds.size} photo(s)?`)) {
+    if (!await utils.confirmDialog({ title: 'Publish Photos', message: `Publish ${this.selectedPhotoIds.size} photo(s)?`, confirmText: 'Publish', danger: false })) {
       return;
     }
 
@@ -3561,7 +3561,7 @@ const mediaGalleryModule = {
   async bulkUnpublish() {
     if (this.selectedPhotoIds.size === 0) return;
 
-    if (!confirm(`Unpublish ${this.selectedPhotoIds.size} photo(s)?`)) {
+    if (!await utils.confirmDialog({ title: 'Unpublish Photos', message: `Unpublish ${this.selectedPhotoIds.size} photo(s)?`, confirmText: 'Unpublish', danger: false })) {
       return;
     }
 
@@ -3606,7 +3606,7 @@ const mediaGalleryModule = {
       return;
     }
 
-    if (!confirm(`Download ${photos.length} photo(s)? They will be downloaded one by one.`)) {
+    if (!await utils.confirmDialog({ title: 'Download Photos', message: `Download ${photos.length} photo(s)? They will be downloaded one by one.`, confirmText: 'Download', danger: false })) {
       return;
     }
 
@@ -3633,7 +3633,7 @@ const mediaGalleryModule = {
   async bulkDelete() {
     if (this.selectedPhotoIds.size === 0) return;
 
-    if (!confirm(`Delete ${this.selectedPhotoIds.size} photo(s)? This action cannot be undone.`)) {
+    if (!await utils.confirmDialog({ title: 'Delete Photos', message: `Delete ${this.selectedPhotoIds.size} photo(s)? This action cannot be undone.`, confirmText: 'Delete All', danger: true })) {
       return;
     }
 
@@ -3806,7 +3806,7 @@ const mediaGalleryModule = {
    * Delete photo
    */
   async deletePhoto(photoId) {
-    if (!confirm('Delete this photo? This action cannot be undone.')) {
+    if (!await utils.confirmDialog({ title: 'Delete Photo', message: 'Delete this photo? This action cannot be undone.', confirmText: 'Delete', danger: true })) {
       return;
     }
 
@@ -4351,7 +4351,7 @@ const mediaGalleryModule = {
               `}
             </div>
             <div class="modal-footer">
-              <button class="btn btn-outline-danger btn-sm" onclick="if(confirm('Clear all activity logs?')){(async()=>{try{await STATE.client.from('cms_audit_logs').delete().eq('entity','media_gallery');} catch(e){localStorage.removeItem('mediaGalleryActivityLog');}bootstrap.Modal.getInstance(document.getElementById('activityLogModal')).hide();utils.showToast('Activity log cleared','success');})();}">
+              <button class="btn btn-outline-danger btn-sm" onclick="(async()=>{if(!await utils.confirmDialog({title:'Clear Logs',message:'Clear all activity logs?',confirmText:'Clear',danger:true}))return;try{await STATE.client.from('cms_audit_logs').delete().eq('entity','media_gallery');} catch(e){localStorage.removeItem('mediaGalleryActivityLog');}bootstrap.Modal.getInstance(document.getElementById('activityLogModal')).hide();utils.showToast('Activity log cleared','success');})()">
                 <i class="bi bi-trash me-1"></i>Clear Log
               </button>
               <button class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
@@ -5455,7 +5455,7 @@ const mediaGalleryModule = {
       return;
     }
 
-    if (!confirm(`This will create watermarked copies of ${photos.length} photos. The originals will NOT be modified. Continue?`)) return;
+    if (!await utils.confirmDialog({ title: 'Watermark Photos', message: `This will create watermarked copies of ${photos.length} photos. The originals will NOT be modified. Continue?`, confirmText: 'Create Watermarks', danger: false })) return;
 
     utils.showLoading();
 

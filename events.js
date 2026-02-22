@@ -9694,6 +9694,7 @@ const eventsModule = {
   },
 
   filterEvents() {
+    this._evtCurrentPage = 1;
     const search = (document.getElementById('eventsSearchBox')?.value || '').toLowerCase().trim();
     const year = document.getElementById('eventsYearFilter')?.value || '';
     const timeStatus = document.getElementById('eventsStatusFilter')?.value || '';
@@ -9769,6 +9770,9 @@ const eventsModule = {
     this.renderEvents();
   },
 
+  _evtCurrentPage: 1,
+  _evtPageSize: 50,
+
   _selectedEvents: new Set(),
 
   renderFilteredEvents(events) {
@@ -9776,6 +9780,14 @@ const eventsModule = {
     const count = document.getElementById('eventsCount');
     if (!tbody) return;
     if (count) count.textContent = events.length;
+
+    // Pagination
+    const totalPages = Math.ceil(events.length / (this._evtPageSize || 50));
+    if ((this._evtCurrentPage || 1) > totalPages) this._evtCurrentPage = totalPages || 1;
+    const pgStart = ((this._evtCurrentPage || 1) - 1) * (this._evtPageSize || 50);
+    const pgEnd = pgStart + (this._evtPageSize || 50);
+    const pageEvents = events.slice(pgStart, pgEnd);
+    this._lastFilteredEvents = events; // store for page navigation
 
     // Update last refreshed
     const refreshEl = document.getElementById('eventsLastRefreshed');
@@ -9802,7 +9814,7 @@ const eventsModule = {
     this._loadEventAwardCounts(eventIds);
     this._loadEventAttendeeCounts(eventIds);
 
-    tbody.innerHTML = events.map(event => {
+    tbody.innerHTML = pageEvents.map(event => {
       // Fix date display to avoid timezone shift + countdown
       let eventDate;
       let countdown = '';
@@ -9877,6 +9889,40 @@ const eventsModule = {
           </td>
         </tr>`;
     }).join('');
+
+    // Render pagination
+    let paginationEl = document.getElementById('eventsPagination');
+    if (!paginationEl) {
+      paginationEl = document.createElement('div');
+      paginationEl.id = 'eventsPagination';
+      const tableParent = tbody.closest('.table-responsive') || tbody.parentElement;
+      if (tableParent) tableParent.after(paginationEl);
+    }
+    if (totalPages > 1) {
+      const cp = this._evtCurrentPage || 1;
+      let html = '<nav><ul class="pagination pagination-sm justify-content-center mt-3">';
+      html += `<li class="page-item ${cp <= 1 ? 'disabled' : ''}"><a class="page-link" href="#" onclick="event.preventDefault(); eventsModule.goToEventsPage(${cp - 1})">Prev</a></li>`;
+      for (let i = 1; i <= totalPages; i++) {
+        if (i === 1 || i === totalPages || (i >= cp - 2 && i <= cp + 2)) {
+          html += `<li class="page-item ${i === cp ? 'active' : ''}"><a class="page-link" href="#" onclick="event.preventDefault(); eventsModule.goToEventsPage(${i})">${i}</a></li>`;
+        } else if (i === cp - 3 || i === cp + 3) {
+          html += '<li class="page-item disabled"><span class="page-link">...</span></li>';
+        }
+      }
+      html += `<li class="page-item ${cp >= totalPages ? 'disabled' : ''}"><a class="page-link" href="#" onclick="event.preventDefault(); eventsModule.goToEventsPage(${cp + 1})">Next</a></li>`;
+      html += '</ul></nav>';
+      html += `<div class="text-center text-muted small">Showing ${pgStart+1}-${Math.min(pgEnd, events.length)} of ${events.length}</div>`;
+      paginationEl.innerHTML = html;
+    } else if (paginationEl) {
+      paginationEl.innerHTML = '';
+    }
+  },
+
+  goToEventsPage(page) {
+    const events = this._lastFilteredEvents || STATE.allEvents || [];
+    const totalPages = Math.ceil(events.length / (this._evtPageSize || 50));
+    this._evtCurrentPage = Math.max(1, Math.min(page, totalPages));
+    this.renderFilteredEvents(events);
   },
 
   /**

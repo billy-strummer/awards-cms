@@ -893,6 +893,34 @@ document.addEventListener('DOMContentLoaded', function() {
       form.classList.add('was-validated');
     });
   });
+
+  // ==========================================
+  // STEP 6b: Enhanced Field-level Validation (HIGH-3)
+  // ==========================================
+  document.addEventListener('submit', (e) => {
+    const form = e.target;
+    if (!form.checkValidity || form.checkValidity()) return;
+
+    // Add is-invalid to each invalid field with feedback message
+    form.querySelectorAll(':invalid').forEach(field => {
+      field.classList.add('is-invalid');
+      if (!field.nextElementSibling?.classList.contains('invalid-feedback')) {
+        const feedback = document.createElement('div');
+        feedback.className = 'invalid-feedback';
+        feedback.textContent = field.validationMessage || 'This field is required';
+        field.parentNode.insertBefore(feedback, field.nextSibling);
+      }
+    });
+
+    // Clear validation on input
+    form.querySelectorAll('.is-invalid').forEach(field => {
+      field.addEventListener('input', () => {
+        field.classList.remove('is-invalid');
+        const fb = field.nextElementSibling;
+        if (fb?.classList.contains('invalid-feedback')) fb.remove();
+      }, { once: true });
+    });
+  }, true);
   
   // ==========================================
   // STEP 7: Error Handling + Sentry Monitoring
@@ -1145,9 +1173,108 @@ document.addEventListener('DOMContentLoaded', function() {
   });
 
   // ==========================================
+  // STEP 14b: Tab State in URL (MEDIUM-6)
+  // ==========================================
+  // Save active tab to URL hash on tab switch
+  document.querySelectorAll('[data-bs-toggle="tab"]').forEach(tab => {
+    tab.addEventListener('shown.bs.tab', (e) => {
+      const target = e.target.getAttribute('data-bs-target') || e.target.getAttribute('href');
+      if (target) {
+        history.replaceState(null, '', '#' + target.replace('#', '').replace('Page', ''));
+        // Update breadcrumb
+        utils._updateBreadcrumb && utils._updateBreadcrumb(target.replace('#', '').replace('Page', ''));
+      }
+    });
+  });
+
+  // Restore tab from URL hash when hash changes
+  window.addEventListener('hashchange', () => {
+    const hash = window.location.hash.replace('#', '');
+    if (hash) {
+      const tabBtn = document.querySelector(`[data-bs-target="#${hash}Page"]`) || document.querySelector(`[data-bs-target="#${hash}"]`);
+      if (tabBtn) tabBtn.click();
+    }
+  });
+
+  // Restore tab from URL or user preference (LOW-6: default landing tab)
+  const hashTab = window.location.hash.replace('#', '');
+  const defaultTab = localStorage.getItem('defaultLandingTab');
+  const startTab = hashTab || defaultTab;
+  if (startTab) {
+    const tabBtn = document.querySelector(`[data-bs-target="#${startTab}Page"]`) || document.querySelector(`[data-bs-target="#${startTab}"]`);
+    if (tabBtn) setTimeout(() => tabBtn.click(), 100);
+  }
+
+  // ==========================================
+  // STEP 14c: URL Filter State / Deep Linking (MEDIUM-4)
+  // ==========================================
+  // URL filter state management
+  window._saveFilterState = function(module, filters) {
+    const params = new URLSearchParams(window.location.search);
+    Object.entries(filters).forEach(([k, v]) => {
+      if (v) params.set(`${module}_${k}`, v);
+      else params.delete(`${module}_${k}`);
+    });
+    const newUrl = window.location.pathname + (params.toString() ? '?' + params.toString() : '') + window.location.hash;
+    history.replaceState(null, '', newUrl);
+  };
+
+  window._loadFilterState = function(module) {
+    const params = new URLSearchParams(window.location.search);
+    const filters = {};
+    params.forEach((v, k) => {
+      if (k.startsWith(module + '_')) {
+        filters[k.replace(module + '_', '')] = v;
+      }
+    });
+    return filters;
+  };
+
+  // ==========================================
   // STEP 15: Data Freshness Timer
   // ==========================================
   utils.startFreshnessTimer();
+
+  // ==========================================
+  // STEP 16: Save Button Loading States (HIGH-4)
+  // ==========================================
+  window._withSaveButton = async (btnSelector, asyncFn) => {
+    const btn = typeof btnSelector === 'string' ? document.querySelector(btnSelector) : btnSelector;
+    if (!btn) return await asyncFn();
+    const originalText = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Saving...';
+    try {
+      return await asyncFn();
+    } finally {
+      btn.disabled = false;
+      btn.innerHTML = originalText;
+    }
+  };
+
+  // ==========================================
+  // STEP 17: Breadcrumb Navigation (MEDIUM-5)
+  // ==========================================
+  utils._updateBreadcrumb = function(tabName) {
+    let bc = document.getElementById('mainBreadcrumb');
+    if (!bc) {
+      bc = document.createElement('nav');
+      bc.id = 'mainBreadcrumb';
+      bc.setAttribute('aria-label', 'breadcrumb');
+      bc.className = 'ms-3 d-inline-block';
+      bc.style.fontSize = '0.85rem';
+      const tabContent = document.querySelector('.tab-content');
+      if (tabContent) tabContent.parentElement.insertBefore(bc, tabContent);
+    }
+    const label = tabName.charAt(0).toUpperCase() + tabName.slice(1);
+    bc.innerHTML = `<ol class="breadcrumb mb-0 bg-transparent p-0"><li class="breadcrumb-item"><a href="#" onclick="event.preventDefault(); document.querySelector('[data-bs-target=\\'#dashboardPage\\']')?.click();">Dashboard</a></li><li class="breadcrumb-item active" aria-current="page">${label}</li></ol>`;
+  };
+
+  // ==========================================
+  // STEP 18: Initialize New UX Features
+  // ==========================================
+  if (utils.initCommandPalette) utils.initCommandPalette();
+  if (utils.initScrollToTop) utils.initScrollToTop();
 
   // ==========================================
   // INITIALIZATION COMPLETE

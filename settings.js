@@ -7,11 +7,13 @@ const settingsModule = {
    * Initialize settings tab
    */
   async init() {
+    this.applyDensity();
     await this.updateSystemInfo();
     await this.loadSeasons();
     this.loadBackupSettings();
     this.checkBackupReminders();
     this.renderAuditLog();
+    this.renderUxSettings();
     if (typeof gdprModule !== 'undefined') {
       gdprModule.init();
     }
@@ -996,6 +998,88 @@ British Trade Awards Team
     } finally {
       utils.hideLoading();
     }
+  },
+
+  /* ==================================================== */
+  /* UX PREFERENCE SETTINGS                               */
+  /* ==================================================== */
+
+  /**
+   * Render UX preference settings
+   */
+  renderUxSettings() {
+    const container = document.getElementById('uxSettingsContainer');
+    if (!container) return;
+
+    const density = localStorage.getItem('layoutDensity') || 'comfortable';
+    const defaultTab = localStorage.getItem('defaultLandingTab') || '';
+    const pageSize = localStorage.getItem('globalPageSize') || '50';
+
+    container.innerHTML = `
+      <div class="card mb-3">
+        <div class="card-header"><h6 class="mb-0"><i class="bi bi-sliders me-2"></i>Display Preferences</h6></div>
+        <div class="card-body">
+          <div class="row g-3">
+            <div class="col-md-4">
+              <label class="form-label fw-semibold">Layout Density</label>
+              <select class="form-select" id="densitySetting" onchange="settingsModule.saveDensity(this.value)">
+                <option value="comfortable" ${density === 'comfortable' ? 'selected' : ''}>Comfortable (Default)</option>
+                <option value="compact" ${density === 'compact' ? 'selected' : ''}>Compact</option>
+              </select>
+              <small class="text-muted">Controls spacing in tables and cards</small>
+            </div>
+            <div class="col-md-4">
+              <label class="form-label fw-semibold">Default Landing Tab</label>
+              <select class="form-select" id="defaultTabSetting" onchange="settingsModule.saveDefaultTab(this.value)">
+                <option value="" ${!defaultTab ? 'selected' : ''}>Dashboard (Default)</option>
+                <option value="awards" ${defaultTab === 'awards' ? 'selected' : ''}>Awards</option>
+                <option value="organisations" ${defaultTab === 'organisations' ? 'selected' : ''}>Organisations</option>
+                <option value="winners" ${defaultTab === 'winners' ? 'selected' : ''}>Winners</option>
+                <option value="entries" ${defaultTab === 'entries' ? 'selected' : ''}>Entries</option>
+                <option value="events" ${defaultTab === 'events' ? 'selected' : ''}>Events</option>
+                <option value="payments" ${defaultTab === 'payments' ? 'selected' : ''}>Payments</option>
+                <option value="crm" ${defaultTab === 'crm' ? 'selected' : ''}>CRM</option>
+              </select>
+              <small class="text-muted">Tab shown when you log in</small>
+            </div>
+            <div class="col-md-4">
+              <label class="form-label fw-semibold">Table Page Size</label>
+              <select class="form-select" id="pageSizeSetting" onchange="settingsModule.savePageSize(this.value)">
+                <option value="25" ${pageSize === '25' ? 'selected' : ''}>25 per page</option>
+                <option value="50" ${pageSize === '50' ? 'selected' : ''}>50 per page (Default)</option>
+                <option value="100" ${pageSize === '100' ? 'selected' : ''}>100 per page</option>
+                <option value="250" ${pageSize === '250' ? 'selected' : ''}>250 per page</option>
+              </select>
+              <small class="text-muted">Default rows per page in all tables</small>
+            </div>
+          </div>
+        </div>
+      </div>`;
+  },
+
+  saveDensity(value) {
+    localStorage.setItem('layoutDensity', value);
+    document.body.className = document.body.className.replace(/density-\w+/g, '');
+    document.body.classList.add('density-' + value);
+    utils.showToast('Layout density updated', 'success');
+  },
+
+  saveDefaultTab(value) {
+    localStorage.setItem('defaultLandingTab', value);
+    utils.showToast('Default landing tab updated', 'success');
+  },
+
+  savePageSize(value) {
+    localStorage.setItem('globalPageSize', value);
+    utils.showToast('Page size updated. Changes take effect on next data load.', 'success');
+  },
+
+  /**
+   * Apply saved density on page load
+   */
+  applyDensity() {
+    const density = localStorage.getItem('layoutDensity') || 'comfortable';
+    document.body.classList.add('density-' + density);
   }
 };
 

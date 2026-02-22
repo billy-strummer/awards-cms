@@ -11,6 +11,11 @@ const paymentsModule = {
   currentSendInvoiceId: null,
   _invoiceSortField: 'created_at',
   _invoiceSortDir: 'desc',
+  _invCurrentPage: 1,
+  _invPageSize: 50,
+  _payCurrentPage: 1,
+  _payPageSize: 50,
+  _selectedInvoiceIds: new Set(),
 
   /* ==================================================== */
   /* INITIALIZATION */
@@ -91,6 +96,7 @@ const paymentsModule = {
   },
 
   filterInvoices() {
+    this._invCurrentPage = 1;
     const search = (document.getElementById('invoiceSearchBox')?.value || '').trim().toLowerCase();
     const status = document.getElementById('invoiceStatusFilter')?.value || '';
     const orgId = document.getElementById('invoiceOrgFilter')?.value || '';
@@ -124,6 +130,13 @@ const paymentsModule = {
     const tbody = document.getElementById('invoicesTableBody');
     if (!tbody) return;
 
+    // Pagination
+    const totalPages = Math.ceil(this.currentInvoices.length / this._invPageSize);
+    if (this._invCurrentPage > totalPages) this._invCurrentPage = totalPages || 1;
+    const invStart = (this._invCurrentPage - 1) * this._invPageSize;
+    const invEnd = invStart + this._invPageSize;
+    const pageInvoices = this.currentInvoices.slice(invStart, invEnd);
+
     if (this.currentInvoices.length === 0) {
       tbody.innerHTML = `
         <tr>
@@ -136,8 +149,9 @@ const paymentsModule = {
       return;
     }
 
-    tbody.innerHTML = this.currentInvoices.map(invoice => `
+    tbody.innerHTML = pageInvoices.map(invoice => `
       <tr>
+        <td><input type="checkbox" class="form-check-input invoice-checkbox" value="${invoice.id}" ${this._selectedInvoiceIds.has(invoice.id) ? 'checked' : ''} onchange="paymentsModule.toggleInvoiceSelect('${invoice.id}', this.checked)"></td>
         <td>
           <strong>${utils.escapeHtml(invoice.invoice_number)}</strong>
           <button class="btn btn-link btn-sm p-0 ms-1" onclick="event.stopPropagation(); paymentsModule.copyToClipboard('${utils.escapeHtml(invoice.invoice_number)}')" title="Copy invoice number" aria-label="Copy invoice number">
@@ -188,6 +202,32 @@ const paymentsModule = {
         </td>
       </tr>
     `).join('');
+
+    // Render pagination
+    let paginationEl = document.getElementById('invoicesPagination');
+    if (!paginationEl) {
+      paginationEl = document.createElement('div');
+      paginationEl.id = 'invoicesPagination';
+      const tableParent = tbody.closest('.table-responsive') || tbody.parentElement;
+      if (tableParent) tableParent.after(paginationEl);
+    }
+    if (totalPages > 1) {
+      let html = '<nav><ul class="pagination pagination-sm justify-content-center mt-3">';
+      html += `<li class="page-item ${this._invCurrentPage <= 1 ? 'disabled' : ''}"><a class="page-link" href="#" onclick="event.preventDefault(); paymentsModule.goToInvoicePage(${this._invCurrentPage - 1})">Prev</a></li>`;
+      for (let i = 1; i <= totalPages; i++) {
+        if (i === 1 || i === totalPages || (i >= this._invCurrentPage - 2 && i <= this._invCurrentPage + 2)) {
+          html += `<li class="page-item ${i === this._invCurrentPage ? 'active' : ''}"><a class="page-link" href="#" onclick="event.preventDefault(); paymentsModule.goToInvoicePage(${i})">${i}</a></li>`;
+        } else if (i === this._invCurrentPage - 3 || i === this._invCurrentPage + 3) {
+          html += '<li class="page-item disabled"><span class="page-link">...</span></li>';
+        }
+      }
+      html += `<li class="page-item ${this._invCurrentPage >= totalPages ? 'disabled' : ''}"><a class="page-link" href="#" onclick="event.preventDefault(); paymentsModule.goToInvoicePage(${this._invCurrentPage + 1})">Next</a></li>`;
+      html += '</ul></nav>';
+      html += `<div class="text-center text-muted small">Showing ${invStart+1}-${Math.min(invEnd, this.currentInvoices.length)} of ${this.currentInvoices.length}</div>`;
+      paginationEl.innerHTML = html;
+    } else if (paginationEl) {
+      paginationEl.innerHTML = '';
+    }
   },
 
   formatInvoiceType(type) {
@@ -812,6 +852,7 @@ const paymentsModule = {
   },
 
   filterPayments() {
+    this._payCurrentPage = 1;
     const search = (document.getElementById('paymentSearchBox')?.value || '').trim().toLowerCase();
     const method = document.getElementById('paymentMethodFilter')?.value || '';
     const status = document.getElementById('paymentStatusFilter')?.value || '';
@@ -847,6 +888,13 @@ const paymentsModule = {
     const tbody = document.getElementById('paymentsTableBody');
     if (!tbody) return;
 
+    // Pagination
+    const payTotalPages = Math.ceil(this.currentPayments.length / this._payPageSize);
+    if (this._payCurrentPage > payTotalPages) this._payCurrentPage = payTotalPages || 1;
+    const payStart = (this._payCurrentPage - 1) * this._payPageSize;
+    const payEnd = payStart + this._payPageSize;
+    const pagePayments = this.currentPayments.slice(payStart, payEnd);
+
     if (this.currentPayments.length === 0) {
       tbody.innerHTML = `
         <tr>
@@ -859,7 +907,7 @@ const paymentsModule = {
       return;
     }
 
-    tbody.innerHTML = this.currentPayments.map(payment => `
+    tbody.innerHTML = pagePayments.map(payment => `
       <tr>
         <td>
           <strong>${utils.escapeHtml(payment.payment_reference)}</strong>
@@ -895,6 +943,32 @@ const paymentsModule = {
         </td>
       </tr>
     `).join('');
+
+    // Render pagination
+    let payPaginationEl = document.getElementById('paymentsPagination');
+    if (!payPaginationEl) {
+      payPaginationEl = document.createElement('div');
+      payPaginationEl.id = 'paymentsPagination';
+      const payTableParent = tbody.closest('.table-responsive') || tbody.parentElement;
+      if (payTableParent) payTableParent.after(payPaginationEl);
+    }
+    if (payTotalPages > 1) {
+      let html = '<nav><ul class="pagination pagination-sm justify-content-center mt-3">';
+      html += `<li class="page-item ${this._payCurrentPage <= 1 ? 'disabled' : ''}"><a class="page-link" href="#" onclick="event.preventDefault(); paymentsModule.goToPaymentPage(${this._payCurrentPage - 1})">Prev</a></li>`;
+      for (let i = 1; i <= payTotalPages; i++) {
+        if (i === 1 || i === payTotalPages || (i >= this._payCurrentPage - 2 && i <= this._payCurrentPage + 2)) {
+          html += `<li class="page-item ${i === this._payCurrentPage ? 'active' : ''}"><a class="page-link" href="#" onclick="event.preventDefault(); paymentsModule.goToPaymentPage(${i})">${i}</a></li>`;
+        } else if (i === this._payCurrentPage - 3 || i === this._payCurrentPage + 3) {
+          html += '<li class="page-item disabled"><span class="page-link">...</span></li>';
+        }
+      }
+      html += `<li class="page-item ${this._payCurrentPage >= payTotalPages ? 'disabled' : ''}"><a class="page-link" href="#" onclick="event.preventDefault(); paymentsModule.goToPaymentPage(${this._payCurrentPage + 1})">Next</a></li>`;
+      html += '</ul></nav>';
+      html += `<div class="text-center text-muted small">Showing ${payStart+1}-${Math.min(payEnd, this.currentPayments.length)} of ${this.currentPayments.length}</div>`;
+      payPaginationEl.innerHTML = html;
+    } else if (payPaginationEl) {
+      payPaginationEl.innerHTML = '';
+    }
   },
 
   formatPaymentMethod(method) {
@@ -1879,6 +1953,105 @@ const paymentsModule = {
       utils.showToast('Invoice status updated to ' + newStatus, 'success');
     } catch(e) {
       utils.showToast('Failed to update invoice status', 'error');
+    }
+  },
+
+  /* ==================================================== */
+  /* PAGINATION & BULK ACTIONS */
+  /* ==================================================== */
+
+  goToInvoicePage(page) {
+    const totalPages = Math.ceil(this.currentInvoices.length / this._invPageSize);
+    this._invCurrentPage = Math.max(1, Math.min(page, totalPages));
+    this.renderInvoices();
+  },
+
+  goToPaymentPage(page) {
+    const totalPages = Math.ceil(this.currentPayments.length / this._payPageSize);
+    this._payCurrentPage = Math.max(1, Math.min(page, totalPages));
+    this.renderPayments();
+  },
+
+  toggleInvoiceSelect(id, checked) {
+    if (checked) {
+      this._selectedInvoiceIds.add(id);
+    } else {
+      this._selectedInvoiceIds.delete(id);
+    }
+    this._updateInvoiceBulkBar();
+  },
+
+  toggleAllInvoices(checked) {
+    const checkboxes = document.querySelectorAll('.invoice-checkbox');
+    checkboxes.forEach(cb => {
+      cb.checked = checked;
+      if (checked) this._selectedInvoiceIds.add(cb.value);
+      else this._selectedInvoiceIds.delete(cb.value);
+    });
+    this._updateInvoiceBulkBar();
+  },
+
+  _updateInvoiceBulkBar() {
+    let bar = document.getElementById('invoiceBulkBar');
+    if (!bar) {
+      bar = document.createElement('div');
+      bar.id = 'invoiceBulkBar';
+      bar.className = 'alert alert-info d-flex align-items-center gap-2 mt-2';
+      bar.style.display = 'none';
+      const tableParent = document.getElementById('invoicesTableBody')?.closest('.table-responsive') || document.getElementById('invoicesTableBody')?.parentElement;
+      if (tableParent) tableParent.before(bar);
+    }
+    if (this._selectedInvoiceIds.size > 0) {
+      bar.style.display = 'flex';
+      bar.innerHTML = `
+        <strong>${this._selectedInvoiceIds.size} invoice(s) selected</strong>
+        <button class="btn btn-sm btn-success ms-2" onclick="paymentsModule.bulkUpdateInvoiceStatus('paid')"><i class="bi bi-check-circle me-1"></i>Mark Paid</button>
+        <button class="btn btn-sm btn-warning ms-2" onclick="paymentsModule.bulkUpdateInvoiceStatus('sent')"><i class="bi bi-envelope me-1"></i>Mark Sent</button>
+        <button class="btn btn-sm btn-danger ms-2" onclick="paymentsModule.bulkDeleteInvoices()"><i class="bi bi-trash me-1"></i>Delete</button>
+        <button class="btn btn-sm btn-outline-secondary ms-auto" onclick="paymentsModule.toggleAllInvoices(false)">Clear</button>
+      `;
+    } else {
+      bar.style.display = 'none';
+    }
+  },
+
+  async bulkUpdateInvoiceStatus(status) {
+    if (this._selectedInvoiceIds.size === 0) return;
+    const ids = [...this._selectedInvoiceIds];
+    if (!confirm(`Update ${ids.length} invoice(s) to "${status}"?`)) return;
+    try {
+      utils.showLoading();
+      for (const id of ids) {
+        await STATE.client.from('invoices').update({ status }).eq('id', id);
+      }
+      this._selectedInvoiceIds.clear();
+      utils.showToast(`Updated ${ids.length} invoices to ${status}`, 'success');
+      await this.loadInvoices();
+      this.filterInvoices();
+    } catch (err) {
+      utils.showToast('Error updating invoices: ' + err.message, 'error');
+    } finally {
+      utils.hideLoading();
+    }
+  },
+
+  async bulkDeleteInvoices() {
+    if (this._selectedInvoiceIds.size === 0) return;
+    const ids = [...this._selectedInvoiceIds];
+    if (!confirm(`Delete ${ids.length} invoice(s)? This cannot be undone.`)) return;
+    try {
+      utils.showLoading();
+      for (const id of ids) {
+        await STATE.client.from('invoices').delete().eq('id', id);
+      }
+      this._selectedInvoiceIds.clear();
+      utils.showToast(`Deleted ${ids.length} invoices`, 'success');
+      await this.loadInvoices();
+      this.filterInvoices();
+    } catch (err) {
+      utils.showToast('Error deleting invoices: ' + err.message, 'error');
+    } finally {
+      utils.hideLoading();
     }
   }
 };

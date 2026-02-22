@@ -6,6 +6,10 @@ const winnersModule = {
   currentWinnerId: null,
   currentMediaType: null,
   _selectedWinnerIds: new Set(),
+  _currentPage: 1,
+  _pageSize: 50,
+  _sortField: 'created_at',
+  _sortDir: 'desc',
 
   /**
    * Load all winners from database
@@ -152,6 +156,7 @@ const winnersModule = {
    * Filter winners based on current filter values
    */
   filterWinners() {
+    this._currentPage = 1;
     const year = document.getElementById('winnerYearFilterSelect').value;
     const award = document.getElementById('winnerAwardFilterSelect').value;
     const search = document.getElementById('winnerSearchBox').value.toLowerCase().trim();
@@ -177,8 +182,39 @@ const winnersModule = {
 
       return true;
     });
-    
+
+    // Sort
+    STATE.filteredWinners.sort((a, b) => {
+      let aVal, bVal;
+      if (this._sortField === 'winner_name') {
+        aVal = (a.winner_name || '').toLowerCase();
+        bVal = (b.winner_name || '').toLowerCase();
+      } else if (this._sortField === 'award') {
+        aVal = utils.formatAwardName(a.awards).toLowerCase();
+        bVal = utils.formatAwardName(b.awards).toLowerCase();
+      } else if (this._sortField === 'year') {
+        aVal = Number(a.awards?.year) || 0;
+        bVal = Number(b.awards?.year) || 0;
+      } else {
+        aVal = a[this._sortField] || '';
+        bVal = b[this._sortField] || '';
+      }
+      if (aVal < bVal) return this._sortDir === 'asc' ? -1 : 1;
+      if (aVal > bVal) return this._sortDir === 'asc' ? 1 : -1;
+      return 0;
+    });
+
     this.renderWinners();
+  },
+
+  sortWinners(field) {
+    if (this._sortField === field) {
+      this._sortDir = this._sortDir === 'asc' ? 'desc' : 'asc';
+    } else {
+      this._sortField = field;
+      this._sortDir = 'asc';
+    }
+    this.filterWinners();
   },
 
   /**
@@ -189,6 +225,13 @@ const winnersModule = {
     const count = document.getElementById('winnersCount');
 
     count.textContent = STATE.filteredWinners.length;
+
+    // Pagination
+    const totalPages = Math.ceil(STATE.filteredWinners.length / this._pageSize);
+    if (this._currentPage > totalPages) this._currentPage = totalPages || 1;
+    const start = (this._currentPage - 1) * this._pageSize;
+    const end = start + this._pageSize;
+    const pageWinners = STATE.filteredWinners.slice(start, end);
 
     if (STATE.filteredWinners.length === 0) {
       utils.showEmptyState('winnersTableBody', 7, 'No winners found');
@@ -203,7 +246,7 @@ const winnersModule = {
       published:     { label: 'Published',     bg: 'bg-warning text-dark',  icon: 'bi-globe',        color: 'text-warning' }
     };
 
-    tbody.innerHTML = STATE.filteredWinners.map(winner => {
+    tbody.innerHTML = pageWinners.map(winner => {
       const photoCount = winner.winner_media?.filter(m => m.media_type === MEDIA_TYPES.PHOTO).length || 0;
       const videoCount = winner.winner_media?.filter(m => m.media_type === MEDIA_TYPES.VIDEO).length || 0;
       const mediaTotal = photoCount + videoCount;
@@ -288,6 +331,38 @@ const winnersModule = {
         </tr>
       `;
     }).join('');
+
+    // Render pagination
+    let paginationEl = document.getElementById('winnersPagination');
+    if (!paginationEl) {
+      paginationEl = document.createElement('div');
+      paginationEl.id = 'winnersPagination';
+      const tableParent = document.getElementById('winnersTableBody')?.closest('.table-responsive') || document.getElementById('winnersTableBody')?.parentElement;
+      if (tableParent) tableParent.after(paginationEl);
+    }
+    if (totalPages > 1) {
+      let html = '<nav><ul class="pagination pagination-sm justify-content-center mt-3">';
+      html += `<li class="page-item ${this._currentPage <= 1 ? 'disabled' : ''}"><a class="page-link" href="#" onclick="event.preventDefault(); winnersModule.goToPage(${this._currentPage - 1})">Prev</a></li>`;
+      for (let i = 1; i <= totalPages; i++) {
+        if (i === 1 || i === totalPages || (i >= this._currentPage - 2 && i <= this._currentPage + 2)) {
+          html += `<li class="page-item ${i === this._currentPage ? 'active' : ''}"><a class="page-link" href="#" onclick="event.preventDefault(); winnersModule.goToPage(${i})">${i}</a></li>`;
+        } else if (i === this._currentPage - 3 || i === this._currentPage + 3) {
+          html += '<li class="page-item disabled"><span class="page-link">...</span></li>';
+        }
+      }
+      html += `<li class="page-item ${this._currentPage >= totalPages ? 'disabled' : ''}"><a class="page-link" href="#" onclick="event.preventDefault(); winnersModule.goToPage(${this._currentPage + 1})">Next</a></li>`;
+      html += '</ul></nav>';
+      html += `<div class="text-center text-muted small">Showing ${start+1}-${Math.min(end, STATE.filteredWinners.length)} of ${STATE.filteredWinners.length}</div>`;
+      paginationEl.innerHTML = html;
+    } else if (paginationEl) {
+      paginationEl.innerHTML = '';
+    }
+  },
+
+  goToPage(page) {
+    const totalPages = Math.ceil(STATE.filteredWinners.length / this._pageSize);
+    this._currentPage = Math.max(1, Math.min(page, totalPages));
+    this.renderWinners();
   },
 
   /**

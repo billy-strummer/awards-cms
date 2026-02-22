@@ -8,6 +8,8 @@ const entriesModule = {
   selectedEntryIds: new Set(),
   _currentPage: 1,
   _pageSize: 50,
+  _sortField: 'submission_date',
+  _sortDir: 'desc',
   currentFilters: {
     status: '',
     award: '',
@@ -307,6 +309,17 @@ const entriesModule = {
     this.renderEntries();
   },
 
+  sortEntries(field) {
+    if (this._sortField === field) {
+      this._sortDir = this._sortDir === 'asc' ? 'desc' : 'asc';
+    } else {
+      this._sortField = field;
+      this._sortDir = 'asc';
+    }
+    this._currentPage = 1;
+    this.applyFilters();
+  },
+
   /**
    * Get status badge HTML
    */
@@ -404,6 +417,36 @@ const entriesModule = {
       }
 
       return true;
+    });
+
+    // Sort
+    this.filteredEntries.sort((a, b) => {
+      let aVal, bVal;
+      if (this._sortField === 'entry_number') {
+        aVal = a.entry_number || '';
+        bVal = b.entry_number || '';
+      } else if (this._sortField === 'company') {
+        aVal = (a.organisations?.company_name || '').toLowerCase();
+        bVal = (b.organisations?.company_name || '').toLowerCase();
+      } else if (this._sortField === 'award') {
+        aVal = (a.award_years?.award_name || '').toLowerCase();
+        bVal = (b.award_years?.award_name || '').toLowerCase();
+      } else if (this._sortField === 'status') {
+        aVal = (a.status || '').toLowerCase();
+        bVal = (b.status || '').toLowerCase();
+      } else if (this._sortField === 'score') {
+        aVal = a.average_score || 0;
+        bVal = b.average_score || 0;
+      } else if (this._sortField === 'submission_date') {
+        aVal = a.submission_date || '';
+        bVal = b.submission_date || '';
+      } else {
+        aVal = a[this._sortField] || '';
+        bVal = b[this._sortField] || '';
+      }
+      if (aVal < bVal) return this._sortDir === 'asc' ? -1 : 1;
+      if (aVal > bVal) return this._sortDir === 'asc' ? 1 : -1;
+      return 0;
     });
 
     this._currentPage = 1;

@@ -787,6 +787,481 @@ const utils = {
       case 'event': document.getElementById('events-tab')?.click(); break;
       case 'winner': document.getElementById('winners-tab')?.click(); break;
     }
+  },
+
+  /* ==================================================== */
+  /* COMMAND PALETTE                                       */
+  /* ==================================================== */
+
+  /**
+   * Global command palette (Ctrl+K)
+   */
+  _commandPaletteOpen: false,
+
+  initCommandPalette() {
+    // Create the palette HTML if not present
+    if (!document.getElementById('commandPalette')) {
+      const div = document.createElement('div');
+      div.id = 'commandPalette';
+      div.innerHTML = `
+        <div id="commandPaletteBox">
+          <input type="text" id="commandPaletteInput" placeholder="Search across all modules... (Ctrl+K)" autocomplete="off">
+          <div id="commandPaletteResults"></div>
+        </div>`;
+      document.body.appendChild(div);
+
+      // Close on backdrop click
+      div.addEventListener('click', (e) => { if (e.target === div) utils.closeCommandPalette(); });
+
+      // Input handler
+      document.getElementById('commandPaletteInput').addEventListener('input', (e) => {
+        utils._searchCommandPalette(e.target.value.trim());
+      });
+
+      // Keyboard nav
+      document.getElementById('commandPaletteInput').addEventListener('keydown', (e) => {
+        const items = document.querySelectorAll('#commandPaletteResults .cp-item');
+        const active = document.querySelector('#commandPaletteResults .cp-item.active');
+        let idx = Array.from(items).indexOf(active);
+        if (e.key === 'ArrowDown') { e.preventDefault(); idx = Math.min(idx + 1, items.length - 1); }
+        else if (e.key === 'ArrowUp') { e.preventDefault(); idx = Math.max(idx - 1, 0); }
+        else if (e.key === 'Enter' && active) { e.preventDefault(); active.click(); return; }
+        else if (e.key === 'Escape') { utils.closeCommandPalette(); return; }
+        else return;
+        items.forEach(i => i.classList.remove('active'));
+        if (items[idx]) items[idx].classList.add('active');
+      });
+    }
+
+    // Global Ctrl+K binding
+    document.addEventListener('keydown', (e) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
+        e.preventDefault();
+        utils.toggleCommandPalette();
+      }
+    });
+  },
+
+  toggleCommandPalette() {
+    if (this._commandPaletteOpen) this.closeCommandPalette();
+    else this.openCommandPalette();
+  },
+
+  openCommandPalette() {
+    const el = document.getElementById('commandPalette');
+    if (!el) return;
+    el.classList.add('show');
+    this._commandPaletteOpen = true;
+    const input = document.getElementById('commandPaletteInput');
+    input.value = '';
+    document.getElementById('commandPaletteResults').innerHTML = '';
+    setTimeout(() => input.focus(), 50);
+    this._showCommandPaletteDefaults();
+  },
+
+  closeCommandPalette() {
+    const el = document.getElementById('commandPalette');
+    if (el) el.classList.remove('show');
+    this._commandPaletteOpen = false;
+  },
+
+  _showCommandPaletteDefaults() {
+    const tabs = [
+      { label: 'Dashboard', icon: 'bi-speedometer2', tab: 'dashboard' },
+      { label: 'Awards', icon: 'bi-trophy', tab: 'awards' },
+      { label: 'Organisations', icon: 'bi-building', tab: 'organisations' },
+      { label: 'Winners', icon: 'bi-star', tab: 'winners' },
+      { label: 'Entries', icon: 'bi-file-earmark-text', tab: 'entries' },
+      { label: 'Events', icon: 'bi-calendar-event', tab: 'events' },
+      { label: 'Payments', icon: 'bi-credit-card', tab: 'payments' },
+      { label: 'CRM', icon: 'bi-people', tab: 'crm' },
+      { label: 'Settings', icon: 'bi-gear', tab: 'settings' }
+    ];
+    const resultsEl = document.getElementById('commandPaletteResults');
+    resultsEl.innerHTML = tabs.map(t => `
+      <div class="cp-item" onclick="utils._commandPaletteAction('tab', '${t.tab}')">
+        <span class="cp-icon"><i class="bi ${t.icon}"></i></span>
+        <span class="cp-label">Go to ${t.label}</span>
+        <span class="cp-hint">Tab</span>
+      </div>`).join('');
+  },
+
+  _searchCommandPalette(query) {
+    if (!query) { this._showCommandPaletteDefaults(); return; }
+    const q = query.toLowerCase();
+    const results = [];
+
+    // Search tabs
+    const tabMap = {
+      dashboard: 'bi-speedometer2', awards: 'bi-trophy', organisations: 'bi-building',
+      winners: 'bi-star', entries: 'bi-file-earmark-text', events: 'bi-calendar-event',
+      payments: 'bi-credit-card', crm: 'bi-people', settings: 'bi-gear'
+    };
+    Object.keys(tabMap).forEach(tab => {
+      if (tab.includes(q)) results.push({ type: 'tab', label: `Go to ${tab.charAt(0).toUpperCase() + tab.slice(1)}`, icon: tabMap[tab], id: tab });
+    });
+
+    // Search awards
+    if (window.STATE?.allAwards) {
+      STATE.allAwards.filter(a => (a.award_name || '').toLowerCase().includes(q)).slice(0, 5).forEach(a => {
+        results.push({ type: 'award', label: a.award_name, icon: 'bi-trophy', id: a.id, hint: 'Award' });
+      });
+    }
+
+    // Search organisations
+    if (window.STATE?.organisations) {
+      STATE.organisations.filter(o => (o.company_name || '').toLowerCase().includes(q)).slice(0, 5).forEach(o => {
+        results.push({ type: 'org', label: o.company_name, icon: 'bi-building', id: o.id, hint: 'Organisation' });
+      });
+    }
+
+    // Search winners
+    if (window.STATE?.allWinners) {
+      STATE.allWinners.filter(w => (w.winner_name || '').toLowerCase().includes(q)).slice(0, 5).forEach(w => {
+        results.push({ type: 'winner', label: w.winner_name, icon: 'bi-star', id: w.id, hint: 'Winner' });
+      });
+    }
+
+    // Search events
+    if (window.STATE?.allEvents) {
+      STATE.allEvents.filter(e => (e.event_name || '').toLowerCase().includes(q)).slice(0, 5).forEach(e => {
+        results.push({ type: 'event', label: e.event_name, icon: 'bi-calendar-event', id: e.id, hint: 'Event' });
+      });
+    }
+
+    const resultsEl = document.getElementById('commandPaletteResults');
+    if (results.length === 0) {
+      resultsEl.innerHTML = '<div class="p-3 text-center text-muted">No results found</div>';
+      return;
+    }
+    resultsEl.innerHTML = results.slice(0, 20).map((r, i) => `
+      <div class="cp-item ${i === 0 ? 'active' : ''}" onclick="utils._commandPaletteAction('${r.type}', '${r.id}')">
+        <span class="cp-icon"><i class="bi ${r.icon}"></i></span>
+        <span class="cp-label">${utils.escapeHtml(r.label)}</span>
+        ${r.hint ? `<span class="cp-hint">${r.hint}</span>` : ''}
+      </div>`).join('');
+  },
+
+  _commandPaletteAction(type, id) {
+    this.closeCommandPalette();
+    if (type === 'tab') {
+      const tabBtn = document.querySelector(`[data-bs-target="#${id}Page"]`) || document.querySelector(`[href="#${id}Page"]`);
+      if (tabBtn) tabBtn.click();
+    } else if (type === 'org' && window.orgsModule) {
+      const tabBtn = document.querySelector('[data-bs-target="#organisationsPage"]');
+      if (tabBtn) tabBtn.click();
+      setTimeout(() => { if (orgsModule.openCompanyProfile) orgsModule.openCompanyProfile(id, ''); }, 300);
+    } else if (type === 'award') {
+      const tabBtn = document.querySelector('[data-bs-target="#awardsPage"]');
+      if (tabBtn) tabBtn.click();
+    } else if (type === 'event') {
+      const tabBtn = document.querySelector('[data-bs-target="#eventsPage"]');
+      if (tabBtn) tabBtn.click();
+    } else if (type === 'winner') {
+      const tabBtn = document.querySelector('[data-bs-target="#winnersPage"]');
+      if (tabBtn) tabBtn.click();
+    }
+  },
+
+  /* ==================================================== */
+  /* TOAST WITH ACTION BUTTONS                             */
+  /* ==================================================== */
+
+  /**
+   * Show toast with optional action buttons
+   */
+  showToastWithAction(message, type, actions) {
+    const actionHtml = actions ? actions.map(a =>
+      `<button class="btn btn-sm btn-${a.class || 'light'} ms-2" onclick="${a.onclick}">${a.label}</button>`
+    ).join('') : '';
+    this.showToast(message + actionHtml, type);
+  },
+
+  /* ==================================================== */
+  /* API RETRY MECHANISM                                   */
+  /* ==================================================== */
+
+  /**
+   * Retry an async operation with exponential backoff
+   */
+  async withRetry(fn, maxRetries = 3, baseDelay = 1000) {
+    for (let attempt = 0; attempt <= maxRetries; attempt++) {
+      try {
+        return await fn();
+      } catch (err) {
+        if (attempt === maxRetries) throw err;
+        const delay = baseDelay * Math.pow(2, attempt);
+        console.warn(`Retry ${attempt + 1}/${maxRetries} after ${delay}ms:`, err.message);
+        await new Promise(r => setTimeout(r, delay));
+      }
+    }
+  },
+
+  /* ==================================================== */
+  /* BULK OPERATION PROGRESS                               */
+  /* ==================================================== */
+
+  /**
+   * Show progress for bulk operations
+   */
+  showBulkProgress(current, total, label) {
+    let bar = document.getElementById('bulkProgressBar');
+    if (!bar) {
+      bar = document.createElement('div');
+      bar.id = 'bulkProgressBar';
+      bar.className = 'position-fixed bottom-0 start-50 translate-middle-x mb-3 bg-white shadow rounded p-3';
+      bar.style.zIndex = '9999';
+      bar.style.minWidth = '300px';
+      document.body.appendChild(bar);
+    }
+    const pct = Math.round((current / total) * 100);
+    bar.innerHTML = `
+      <div class="d-flex justify-content-between small mb-1"><span>${label || 'Processing'}</span><span>${current} of ${total}</span></div>
+      <div class="progress" style="height:6px;"><div class="progress-bar" style="width:${pct}%"></div></div>`;
+    bar.style.display = 'block';
+    if (current >= total) {
+      setTimeout(() => { bar.style.display = 'none'; }, 1500);
+    }
+  },
+
+  /* ==================================================== */
+  /* SCROLL TO TOP                                         */
+  /* ==================================================== */
+
+  /**
+   * Initialize scroll-to-top button
+   */
+  initScrollToTop() {
+    if (document.getElementById('scrollToTopBtn')) return;
+    const btn = document.createElement('button');
+    btn.id = 'scrollToTopBtn';
+    btn.innerHTML = '<i class="bi bi-arrow-up"></i>';
+    btn.setAttribute('aria-label', 'Scroll to top');
+    btn.addEventListener('click', () => window.scrollTo({ top: 0, behavior: 'smooth' }));
+    document.body.appendChild(btn);
+
+    window.addEventListener('scroll', () => {
+      btn.classList.toggle('show', window.scrollY > 300);
+    }, { passive: true });
+  },
+
+  /* ==================================================== */
+  /* SEARCH HIGHLIGHT HELPER                               */
+  /* ==================================================== */
+
+  /**
+   * Highlight search matches in text
+   */
+  highlightSearch(text, query) {
+    if (!query || !text) return utils.escapeHtml(text || '');
+    const escaped = utils.escapeHtml(text);
+    const q = query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    return escaped.replace(new RegExp(`(${q})`, 'gi'), '<mark class="search-highlight">$1</mark>');
+  },
+
+  /* ==================================================== */
+  /* UNSAVED CHANGES TRACKER                               */
+  /* ==================================================== */
+
+  /**
+   * Track form dirty state and warn on close
+   */
+  _dirtyForms: new Set(),
+
+  trackFormChanges(modalId) {
+    const modal = document.getElementById(modalId);
+    if (!modal) return;
+    const inputs = modal.querySelectorAll('input, textarea, select');
+    const snapshot = {};
+    inputs.forEach((inp, i) => { snapshot[i] = inp.value; });
+    modal._formSnapshot = snapshot;
+    modal._formDirty = false;
+
+    const onChange = () => {
+      const current = {};
+      inputs.forEach((inp, i) => { current[i] = inp.value; });
+      modal._formDirty = JSON.stringify(current) !== JSON.stringify(snapshot);
+    };
+    inputs.forEach(inp => inp.addEventListener('input', onChange));
+
+    // Warn on close
+    const modalInstance = bootstrap.Modal.getInstance(modal) || new bootstrap.Modal(modal);
+    modal.addEventListener('hide.bs.modal', (e) => {
+      if (modal._formDirty && !modal._formSaved) {
+        if (!confirm('You have unsaved changes. Discard them?')) {
+          e.preventDefault();
+        }
+      }
+      modal._formDirty = false;
+      modal._formSaved = false;
+    });
+  },
+
+  markFormSaved(modalId) {
+    const modal = document.getElementById(modalId);
+    if (modal) { modal._formSaved = true; modal._formDirty = false; }
+  },
+
+  /* ==================================================== */
+  /* PER-RECORD COMMENTS/NOTES (MEDIUM-12)                */
+  /* ==================================================== */
+
+  /**
+   * Per-record notes/comments system (MEDIUM-12)
+   */
+  async loadRecordNotes(tableName, recordId) {
+    try {
+      const { data, error } = await STATE.client
+        .from('record_notes')
+        .select('*')
+        .eq('table_name', tableName)
+        .eq('record_id', recordId)
+        .order('created_at', { ascending: false });
+      if (error) {
+        // Table may not exist - return empty gracefully
+        console.warn('record_notes table not available:', error.message);
+        return [];
+      }
+      return data || [];
+    } catch (e) {
+      return [];
+    }
+  },
+
+  async addRecordNote(tableName, recordId, noteText) {
+    try {
+      const { error } = await STATE.client
+        .from('record_notes')
+        .insert([{
+          table_name: tableName,
+          record_id: recordId,
+          note: noteText,
+          created_by: STATE.user?.email || 'unknown',
+          created_at: new Date().toISOString()
+        }]);
+      if (error) throw error;
+      utils.showToast('Note added', 'success');
+      return true;
+    } catch (e) {
+      utils.showToast('Could not save note: ' + e.message, 'warning');
+      return false;
+    }
+  },
+
+  renderNotesPanel(containerId, tableName, recordId) {
+    const container = document.getElementById(containerId);
+    if (!container) return;
+    container.innerHTML = `<div class="text-center py-2"><div class="spinner-border spinner-border-sm"></div></div>`;
+
+    this.loadRecordNotes(tableName, recordId).then(notes => {
+      container.innerHTML = `
+        <div class="mb-2">
+          <div class="input-group input-group-sm">
+            <input type="text" class="form-control" id="noteInput_${containerId}" placeholder="Add a note...">
+            <button class="btn btn-outline-primary" onclick="utils._submitNote('${containerId}', '${tableName}', '${recordId}')"><i class="bi bi-plus"></i></button>
+          </div>
+        </div>
+        <div class="notes-list" style="max-height:200px;overflow-y:auto;">
+          ${notes.length === 0 ? '<p class="text-muted small">No notes yet</p>' :
+            notes.map(n => `
+              <div class="small border-bottom py-1">
+                <div>${utils.escapeHtml(n.note)}</div>
+                <div class="text-muted" style="font-size:0.7rem;">${n.created_by} &middot; ${utils.formatRelativeTime(n.created_at)}</div>
+              </div>`).join('')}
+        </div>`;
+    });
+  },
+
+  async _submitNote(containerId, tableName, recordId) {
+    const input = document.getElementById('noteInput_' + containerId);
+    if (!input || !input.value.trim()) return;
+    await this.addRecordNote(tableName, recordId, input.value.trim());
+    this.renderNotesPanel(containerId, tableName, recordId);
+  },
+
+  /* ==================================================== */
+  /* USER ATTRIBUTION / LAST MODIFIED BY (MEDIUM-13)      */
+  /* ==================================================== */
+
+  /**
+   * Track last modified by for records (MEDIUM-13)
+   */
+  getModifiedByData() {
+    return {
+      last_modified_by: STATE.user?.email || 'unknown',
+      last_modified_at: new Date().toISOString()
+    };
+  },
+
+  /* ==================================================== */
+  /* COLUMN VISIBILITY TOGGLES (MEDIUM-1)                 */
+  /* ==================================================== */
+
+  /**
+   * Column visibility toggle system (MEDIUM-1)
+   */
+  showColumnVisibilityDialog(tableId, columns) {
+    const storageKey = `colVis_${tableId}`;
+    const saved = JSON.parse(localStorage.getItem(storageKey) || '{}');
+
+    let html = '<div class="p-3"><h6>Show/Hide Columns</h6>';
+    columns.forEach((col, i) => {
+      const visible = saved[col.key] !== false;
+      html += `<div class="form-check"><input class="form-check-input" type="checkbox" id="colVis_${i}" ${visible ? 'checked' : ''} onchange="utils._toggleColumn('${tableId}', '${col.key}', this.checked)"><label class="form-check-label" for="colVis_${i}">${col.label}</label></div>`;
+    });
+    html += '</div>';
+
+    // Show in a popover or small modal
+    let dialog = document.getElementById('colVisDialog');
+    if (!dialog) {
+      dialog = document.createElement('div');
+      dialog.id = 'colVisDialog';
+      dialog.className = 'position-fixed bg-white shadow rounded border p-0';
+      dialog.style.cssText = 'z-index:9998;top:50%;left:50%;transform:translate(-50%,-50%);max-width:300px;';
+      document.body.appendChild(dialog);
+    }
+    dialog.innerHTML = html + '<div class="p-2 border-top"><button class="btn btn-sm btn-secondary w-100" onclick="document.getElementById(\'colVisDialog\').style.display=\'none\'">Close</button></div>';
+    dialog.style.display = 'block';
+  },
+
+  _toggleColumn(tableId, colKey, visible) {
+    const storageKey = `colVis_${tableId}`;
+    const saved = JSON.parse(localStorage.getItem(storageKey) || '{}');
+    saved[colKey] = visible;
+    localStorage.setItem(storageKey, JSON.stringify(saved));
+
+    // Toggle column visibility via CSS class
+    const table = document.getElementById(tableId) || document.querySelector(`#${tableId}`);
+    if (!table) return;
+    const colIndex = Array.from(table.querySelectorAll('thead th')).findIndex(th => th.dataset.colKey === colKey);
+    if (colIndex === -1) return;
+    table.querySelectorAll(`tr`).forEach(row => {
+      const cells = row.querySelectorAll('th, td');
+      if (cells[colIndex]) cells[colIndex].style.display = visible ? '' : 'none';
+    });
+  },
+
+  applyColumnVisibility(tableId) {
+    const storageKey = `colVis_${tableId}`;
+    const saved = JSON.parse(localStorage.getItem(storageKey) || '{}');
+    Object.entries(saved).forEach(([colKey, visible]) => {
+      if (!visible) this._toggleColumn(tableId, colKey, false);
+    });
+  },
+
+  /* ==================================================== */
+  /* ROW COUNT SUMMARY (LOW-1)                            */
+  /* ==================================================== */
+
+  /**
+   * Render a consistent row count summary (LOW-1)
+   */
+  renderRowCount(containerId, shown, total, label) {
+    const el = document.getElementById(containerId);
+    if (!el) return;
+    el.innerHTML = shown < total
+      ? `<span class="text-muted small">Showing ${shown} of ${total} ${label || 'records'}</span>`
+      : `<span class="text-muted small">${total} ${label || 'records'}</span>`;
   }
 };
 

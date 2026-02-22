@@ -14,6 +14,22 @@ const crmModule = {
     segments: {}
   },
 
+  // Pagination, sorting, selection & view state
+  _crmCurrentPage: 1,
+  _crmPageSize: 50,
+  _crmSortField: 'created_at',
+  _crmSortDir: 'desc',
+  _selectedCrmIds: new Set(),
+  _dealCurrentPage: 1,
+  _dealPageSize: 50,
+  _dealSortField: 'created_at',
+  _dealSortDir: 'desc',
+  _selectedDealIds: new Set(),
+  _meetingCurrentPage: 1,
+  _meetingPageSize: 50,
+  _selectedMeetingIds: new Set(),
+  _kanbanView: false,
+
   // ============================================
   // MAIN LOAD FUNCTION
   // ============================================
@@ -2616,6 +2632,182 @@ const crmModule = {
     } catch (error) {
       console.error('Error creating segment:', error);
       utils.showToast('Error creating segment: ' + error.message, 'error');
+    }
+  },
+
+  // ============================================
+  // PAGINATION, SORTING, BULK ACTIONS & EXPORT
+  // ============================================
+
+  _renderCrmPagination(containerId, currentPage, totalPages, goToFn) {
+    let el = document.getElementById(containerId);
+    if (!el) {
+      el = document.createElement('div');
+      el.id = containerId;
+      // Try to insert after the nearest table
+      const tables = document.querySelectorAll('.table-responsive');
+      const lastTable = tables[tables.length - 1];
+      if (lastTable) lastTable.after(el);
+    }
+    if (totalPages > 1) {
+      let html = '<nav><ul class="pagination pagination-sm justify-content-center mt-3">';
+      html += `<li class="page-item ${currentPage <= 1 ? 'disabled' : ''}"><a class="page-link" href="#" onclick="event.preventDefault(); ${goToFn}(${currentPage - 1})">Prev</a></li>`;
+      for (let i = 1; i <= totalPages; i++) {
+        if (i === 1 || i === totalPages || (i >= currentPage - 2 && i <= currentPage + 2)) {
+          html += `<li class="page-item ${i === currentPage ? 'active' : ''}"><a class="page-link" href="#" onclick="event.preventDefault(); ${goToFn}(${i})">${i}</a></li>`;
+        } else if (i === currentPage - 3 || i === currentPage + 3) {
+          html += '<li class="page-item disabled"><span class="page-link">...</span></li>';
+        }
+      }
+      html += `<li class="page-item ${currentPage >= totalPages ? 'disabled' : ''}"><a class="page-link" href="#" onclick="event.preventDefault(); ${goToFn}(${currentPage + 1})">Next</a></li>`;
+      html += '</ul></nav>';
+      el.innerHTML = html;
+    } else if (el) {
+      el.innerHTML = '';
+    }
+  },
+
+  sortCommunications(field) {
+    if (this._crmSortField === field) {
+      this._crmSortDir = this._crmSortDir === 'asc' ? 'desc' : 'asc';
+    } else {
+      this._crmSortField = field;
+      this._crmSortDir = 'asc';
+    }
+    this.renderCommunicationsTable(this._communications);
+  },
+
+  sortDeals(field) {
+    if (this._dealSortField === field) {
+      this._dealSortDir = this._dealSortDir === 'asc' ? 'desc' : 'asc';
+    } else {
+      this._dealSortField = field;
+      this._dealSortDir = 'asc';
+    }
+    this.renderDealsTable(this._deals);
+  },
+
+  toggleCrmSelect(id, checked, type) {
+    const set = type === 'deal' ? this._selectedDealIds : type === 'meeting' ? this._selectedMeetingIds : this._selectedCrmIds;
+    if (checked) set.add(id); else set.delete(id);
+  },
+
+  async bulkDeleteCrm(type) {
+    const set = type === 'deal' ? this._selectedDealIds : type === 'meeting' ? this._selectedMeetingIds : this._selectedCrmIds;
+    if (set.size === 0) return;
+    const table = type === 'deal' ? 'crm_deals' : type === 'meeting' ? 'crm_meetings' : 'crm_communications';
+    if (!confirm(`Delete ${set.size} ${type} record(s)?`)) return;
+    try {
+      utils.showLoading();
+      for (const id of set) {
+        await STATE.client.from(table).delete().eq('id', id);
+      }
+      utils.showToast(`Deleted ${set.size} ${type} records`, 'success');
+      set.clear();
+      if (type === 'deal') this.loadDeals();
+      else if (type === 'meeting') this.loadMeetings();
+      else this.loadCommunications();
+    } catch (err) {
+      utils.showToast('Error: ' + err.message, 'error');
+    } finally {
+      utils.hideLoading();
+    }
+  },
+
+  exportCrmToCSV(type) {
+    let data, filename, headers;
+    if (type === 'communications') {
+      data = this._communications || [];
+      filename = 'crm-communications';
+      headers = ['Date', 'Type', 'Company', 'Contact', 'Subject', 'Notes'];
+      const rows = data.map(r => [
+        r.communication_date || '', r.communication_type || '', r.company_name || '', r.contact_name || '', r.subject || '', (r.notes || '').replace(/"/g, '""')
+      ]);
+      this._downloadCSV(headers, rows, filename);
+    } else if (type === 'deals') {
+      data = this._deals || [];
+      filename = 'crm-deals';
+      headers = ['Deal Name', 'Company', 'Value', 'Stage', 'Probability', 'Expected Close', 'Created'];
+      const rows = data.map(r => [
+        r.deal_name || '', r.company_name || '', r.deal_value || 0, r.stage || '', r.probability || '', r.expected_close_date || '', r.created_at || ''
+      ]);
+      this._downloadCSV(headers, rows, filename);
+    } else if (type === 'meetings') {
+      data = this._meetings || [];
+      filename = 'crm-meetings';
+      headers = ['Date', 'Title', 'Company', 'Attendees', 'Location', 'Notes'];
+      const rows = data.map(r => [
+        r.meeting_date || '', r.title || '', r.company_name || '', r.attendees || '', r.location || '', (r.notes || '').replace(/"/g, '""')
+      ]);
+      this._downloadCSV(headers, rows, filename);
+    }
+  },
+
+  _downloadCSV(headers, rows, filename) {
+    let csv = headers.join(',') + '\n';
+    rows.forEach(row => {
+      csv += row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(',') + '\n';
+    });
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${filename}-${new Date().toISOString().split('T')[0]}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  },
+
+  toggleKanbanView() {
+    this._kanbanView = !this._kanbanView;
+    this.renderDealsTable(this._deals);
+  },
+
+  renderKanbanBoard() {
+    const deals = this._deals || [];
+    const stages = ['prospecting', 'proposal', 'negotiation', 'won', 'lost'];
+    const stageLabels = { prospecting: 'Prospecting', proposal: 'Proposal', negotiation: 'Negotiation', won: 'Won', lost: 'Lost' };
+    const stageColors = { prospecting: 'primary', proposal: 'info', negotiation: 'warning', won: 'success', lost: 'danger' };
+
+    const container = document.getElementById('dealsTableContainer') || document.getElementById('crmDealsContent');
+    if (!container) return;
+
+    let html = '<div class="kanban-board">';
+    stages.forEach(stage => {
+      const stageDeals = deals.filter(d => (d.stage || 'prospecting') === stage);
+      const totalValue = stageDeals.reduce((sum, d) => sum + (parseFloat(d.deal_value) || 0), 0);
+      html += `
+        <div class="kanban-column">
+          <div class="kanban-column-header">
+            <span class="badge bg-${stageColors[stage]}">${stageLabels[stage]}</span>
+            <span class="text-muted small">${stageDeals.length} &middot; £${totalValue.toLocaleString()}</span>
+          </div>
+          ${stageDeals.length === 0 ? '<p class="text-muted small text-center py-3">No deals</p>' : ''}
+          ${stageDeals.map(deal => `
+            <div class="kanban-card" draggable="true" data-deal-id="${deal.id}">
+              <div class="fw-semibold small">${utils.escapeHtml(deal.deal_name || 'Untitled')}</div>
+              <div class="text-muted" style="font-size:0.75rem;">${utils.escapeHtml(deal.company_name || '')}</div>
+              <div class="kanban-deal-value mt-1">£${(parseFloat(deal.deal_value) || 0).toLocaleString()}</div>
+            </div>
+          `).join('')}
+        </div>`;
+    });
+    html += '</div>';
+    container.innerHTML = html;
+  },
+
+  goToCrmPage(page, type) {
+    if (type === 'deal') {
+      const totalPages = Math.ceil((this._deals || []).length / this._dealPageSize);
+      this._dealCurrentPage = Math.max(1, Math.min(page, totalPages));
+      this.renderDealsTable(this._deals);
+    } else if (type === 'meeting') {
+      const totalPages = Math.ceil((this._meetings || []).length / this._meetingPageSize);
+      this._meetingCurrentPage = Math.max(1, Math.min(page, totalPages));
+      this.renderMeetingsTable(this._meetings);
+    } else {
+      const totalPages = Math.ceil((this._communications || []).length / this._crmPageSize);
+      this._crmCurrentPage = Math.max(1, Math.min(page, totalPages));
+      this.renderCommunicationsTable(this._communications);
     }
   }
 };

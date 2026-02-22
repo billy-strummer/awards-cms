@@ -541,7 +541,7 @@ const winnersModule = {
    * @param {string} mediaId - Media ID
    */
   async deleteMedia(mediaId) {
-    if (!utils.confirm('Are you sure you want to delete this media?')) {
+    if (!await utils.confirmDialog({ title: 'Delete Media', message: 'Are you sure you want to delete this media?' })) {
       return;
     }
     
@@ -573,7 +573,7 @@ const winnersModule = {
    * @param {string} winnerId - Winner ID
    */
   async deleteWinner(winnerId) {
-    if (!utils.confirm('Are you sure you want to delete this winner? All associated media will also be deleted.')) {
+    if (!await utils.confirmDialog({ title: 'Delete Winner', message: 'Are you sure you want to delete this winner? All associated media will also be deleted.' })) {
       return;
     }
 
@@ -2738,7 +2738,7 @@ const winnersModule = {
       return;
     }
 
-    if (!confirm(`Generate media packs for ${winners.length} winner(s)? This will download multiple files.`)) {
+    if (!await utils.confirmDialog({ title: 'Generate Media Packs', message: `Generate media packs for ${winners.length} winner(s)? This will download multiple files.`, confirmText: 'Generate', danger: false })) {
       return;
     }
 
@@ -2846,7 +2846,7 @@ const winnersModule = {
       return;
     }
 
-    if (!confirm(`Generate winner packages for ${winners.length} winner(s)? This will download multiple files per winner (badge, certificate, banners).`)) {
+    if (!await utils.confirmDialog({ title: 'Generate Winner Packages', message: `Generate winner packages for ${winners.length} winner(s)? This will download multiple files per winner (badge, certificate, banners).`, confirmText: 'Generate', danger: false })) {
       return;
     }
 

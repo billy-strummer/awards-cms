@@ -3122,6 +3122,8 @@ updateCountyFilterByRegion() {
     STATE.filteredOrganisations = STATE.allOrganisations.filter(org => this.selectedOrgs.has(org.id));
     if (format === 'excel') {
       this.exportToExcel();
+    } else if (format === 'pdf') {
+      this.exportToPDF();
     } else {
       this.exportToCSV();
     }
@@ -5651,6 +5653,23 @@ updateCountyFilterByRegion() {
     a.click();
     window.URL.revokeObjectURL(url);
     utils.showToast(`Exported ${data.length} organisations to Excel`, 'success');
+  },
+
+  // PDF Export
+  exportToPDF() {
+    const data = STATE.filteredOrganisations;
+    if (data.length === 0) { utils.showToast('No organisations to export', 'warning'); return; }
+
+    const exportData = data.map(org => ({
+      company_name: org.company_name || '',
+      sector: org.sector || '',
+      county: org.county || '',
+      region: org.region || '',
+      contact_name: org.contact_name || '',
+      email: org.email || '',
+      status: org.status || 'prospect'
+    }));
+    utils.exportToPrintablePDF(exportData, 'Organisations Report', { columns: ['company_name', 'sector', 'county', 'region', 'contact_name', 'email', 'status'] });
   },
 
   _xmlEscape(str) {

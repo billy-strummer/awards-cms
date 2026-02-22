@@ -108,7 +108,7 @@ window.winnerAnnouncementsModule = {
         try {
           const {data} = await STATE.client.from('email_templates').select('id,name').eq('template_type','winner');
           opts += (data||[]).map(t=>`<option value="${t.id}">${utils.escapeHtml(t.name)}</option>`).join('');
-        } catch(_) {}
+        } catch(_) { console.warn('Failed to load email templates:', _.message); }
         html += `<div class="mb-3"><label class="form-label fw-semibold">Email Template</label>
           <select class="form-select" id="wizEmailTmpl">${opts}</select></div>`;
       }
@@ -293,7 +293,7 @@ window.winnerAnnouncementsModule = {
     try {
       const {data} = await STATE.client.from('winners').select('embargo_until').eq('id',winnerId).single();
       if (data?.embargo_until) { this._embargoMap[winnerId] = data.embargo_until; return new Date(data.embargo_until) > new Date(); }
-    } catch(_) {}
+    } catch(_) { console.warn('Embargo check failed:', _.message); }
     return false;
   },
 

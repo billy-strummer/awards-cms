@@ -1649,8 +1649,7 @@
               <i class="bi bi-search me-1"></i>Search
             </label>
             <input type="text" class="form-control form-control-sm" id="orgsSearchBox"
-                   placeholder="Company, email, contact..."
-                   oninput="orgsModule.filterOrganisations()">
+                   placeholder="Company, email, contact...">
           </div>
 
           <!-- Year Filter -->
@@ -2410,8 +2409,9 @@
                     <i class="bi bi-download me-1"></i>Export
                   </button>
                   <ul class="dropdown-menu">
-                    <li><a class="dropdown-item" href="#" onclick="event.preventDefault(); winnersModule.exportFilteredWinnersCSV()"><i class="bi bi-file-earmark-spreadsheet text-success me-2"></i>Export CSV</a></li>
-                    <li><a class="dropdown-item" href="#" onclick="event.preventDefault(); winnersModule.exportFilteredWinners()"><i class="bi bi-file-pdf text-danger me-2"></i>Export PDF</a></li>
+                    <li><a class="dropdown-item" href="#" onclick="event.preventDefault(); winnersModule.exportFilteredWinnersCSV()"><i class="bi bi-filetype-csv text-success me-2"></i>Export CSV</a></li>
+                    <li><a class="dropdown-item" href="#" onclick="event.preventDefault(); winnersModule.exportFilteredWinnersExcel()"><i class="bi bi-file-earmark-spreadsheet text-primary me-2"></i>Export Excel</a></li>
+                    <li><a class="dropdown-item" href="#" onclick="event.preventDefault(); winnersModule.exportFilteredWinnersPDF()"><i class="bi bi-file-pdf text-danger me-2"></i>Print / PDF</a></li>
                   </ul>
                 </div>
                 <div class="badge bg-info-subtle text-info fs-6">
@@ -3343,8 +3343,7 @@
                   <i class="bi bi-search me-1"></i>Search
                 </label>
                 <input type="text" class="form-control form-control-sm" id="eventsSearchBox"
-                       placeholder="Search events..."
-                       oninput="eventsModule.filterEvents()">
+                       placeholder="Search events...">
               </div>
               <div class="col-md-2">
                 <label class="form-label small fw-semibold mb-1">
@@ -3444,9 +3443,16 @@
                 All Events (<span id="eventsCount">0</span>)
               </h5>
               <div class="d-flex gap-2">
-                <button class="btn btn-sm btn-outline-secondary" onclick="eventsModule.exportEventsCSV()" title="Export CSV">
-                  <i class="bi bi-download me-1"></i>Export
-                </button>
+                <div class="btn-group">
+                  <button class="btn btn-outline-secondary btn-sm dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
+                    <i class="bi bi-download me-1"></i>Export
+                  </button>
+                  <ul class="dropdown-menu">
+                    <li><a class="dropdown-item" href="#" onclick="event.preventDefault(); eventsModule.exportEventsCSV()"><i class="bi bi-filetype-csv text-success me-2"></i>Export CSV</a></li>
+                    <li><a class="dropdown-item" href="#" onclick="event.preventDefault(); eventsModule.exportEventsExcel()"><i class="bi bi-file-earmark-spreadsheet text-primary me-2"></i>Export Excel</a></li>
+                    <li><a class="dropdown-item" href="#" onclick="event.preventDefault(); eventsModule.exportEventsPDF()"><i class="bi bi-file-pdf text-danger me-2"></i>Print / PDF</a></li>
+                  </ul>
+                </div>
               </div>
             </div>
             <div class="table-responsive">
@@ -5089,9 +5095,16 @@
                       <button class="btn btn-primary btn-sm flex-grow-1" onclick="paymentsModule.createNewInvoice()">
                         <i class="bi bi-plus-circle me-1"></i>Create Invoice
                       </button>
-                      <button class="btn btn-outline-secondary btn-sm" onclick="paymentsModule.exportInvoicesCSV()" title="Export CSV">
-                        <i class="bi bi-download me-1"></i>Export
-                      </button>
+                      <div class="btn-group">
+                        <button class="btn btn-outline-secondary btn-sm dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
+                          <i class="bi bi-download me-1"></i>Export
+                        </button>
+                        <ul class="dropdown-menu">
+                          <li><a class="dropdown-item" href="#" onclick="event.preventDefault(); paymentsModule.exportInvoicesCSV()"><i class="bi bi-filetype-csv text-success me-2"></i>Export CSV</a></li>
+                          <li><a class="dropdown-item" href="#" onclick="event.preventDefault(); paymentsModule.exportInvoicesExcel()"><i class="bi bi-file-earmark-spreadsheet text-primary me-2"></i>Export Excel</a></li>
+                          <li><a class="dropdown-item" href="#" onclick="event.preventDefault(); paymentsModule.exportInvoicesPDF()"><i class="bi bi-file-pdf text-danger me-2"></i>Print / PDF</a></li>
+                        </ul>
+                      </div>
                       <button class="btn btn-outline-warning btn-sm" onclick="paymentsModule.sendOverdueReminders()" title="Send payment reminders to all overdue invoices">
                         <i class="bi bi-bell me-1"></i>Reminders
                       </button>
@@ -5199,9 +5212,16 @@
                       <button class="btn btn-success btn-sm flex-grow-1" onclick="paymentsModule.recordNewPayment()">
                         <i class="bi bi-plus-circle me-1"></i>Record Payment
                       </button>
-                      <button class="btn btn-outline-secondary btn-sm" onclick="paymentsModule.exportPaymentsCSV()" title="Export CSV">
-                        <i class="bi bi-download me-1"></i>Export
-                      </button>
+                      <div class="btn-group">
+                        <button class="btn btn-outline-secondary btn-sm dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
+                          <i class="bi bi-download me-1"></i>Export
+                        </button>
+                        <ul class="dropdown-menu">
+                          <li><a class="dropdown-item" href="#" onclick="event.preventDefault(); paymentsModule.exportPaymentsCSV()"><i class="bi bi-filetype-csv text-success me-2"></i>Export CSV</a></li>
+                          <li><a class="dropdown-item" href="#" onclick="event.preventDefault(); paymentsModule.exportPaymentsExcel()"><i class="bi bi-file-earmark-spreadsheet text-primary me-2"></i>Export Excel</a></li>
+                          <li><a class="dropdown-item" href="#" onclick="event.preventDefault(); paymentsModule.exportPaymentsPDF()"><i class="bi bi-file-pdf text-danger me-2"></i>Print / PDF</a></li>
+                        </ul>
+                      </div>
                     </div>
                   </div>
                 </div>

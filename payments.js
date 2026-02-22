@@ -24,6 +24,26 @@ const paymentsModule = {
         this.loadPayments(),
         this.loadOrganisationsForFilters()
       ]);
+      // Restore saved invoice filters from localStorage
+      try {
+        const savedInv = JSON.parse(localStorage.getItem('invoiceFilters') || '{}');
+        if (savedInv.search) document.getElementById('invoiceSearchBox').value = savedInv.search;
+        if (savedInv.status) document.getElementById('invoiceStatusFilter').value = savedInv.status;
+        if (savedInv.orgId) document.getElementById('invoiceOrgFilter').value = savedInv.orgId;
+        if (savedInv.month) document.getElementById('invoiceMonthFilter').value = savedInv.month;
+        this.filterInvoices();
+      } catch(e) {}
+
+      // Restore saved payment filters from localStorage
+      try {
+        const savedPay = JSON.parse(localStorage.getItem('paymentFilters') || '{}');
+        if (savedPay.search) document.getElementById('paymentSearchBox').value = savedPay.search;
+        if (savedPay.method) document.getElementById('paymentMethodFilter').value = savedPay.method;
+        if (savedPay.status) document.getElementById('paymentStatusFilter').value = savedPay.status;
+        if (savedPay.month) document.getElementById('paymentMonthFilter').value = savedPay.month;
+        this.filterPayments();
+      } catch(e) {}
+
       this.updateStatistics();
       console.log('Payments data loaded');
     } catch (error) {

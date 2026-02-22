@@ -849,12 +849,12 @@ const eventsModule = {
           <div class="btn-group btn-group-sm">
             ${a.email ? `<button class="btn btn-outline-info btn-sm"
               onclick="eventsModule.sendInviteEmail('${a.id}')"
-              title="Send invite"><i class="bi bi-envelope"></i></button>` : ''}
+              title="Send invite" aria-label="Send invite"><i class="bi bi-envelope"></i></button>` : ''}
             <button class="btn btn-outline-primary btn-sm"
               onclick="eventsModule.updateAttendeeStatus('${a.id}', '${a.status === 'attending' ? 'not_attending' : 'attending'}')"
-              title="Toggle RSVP"><i class="bi bi-arrow-repeat"></i></button>
+              title="Toggle RSVP" aria-label="Toggle RSVP"><i class="bi bi-arrow-repeat"></i></button>
             <button class="btn btn-outline-danger btn-sm"
-              onclick="eventsModule.deleteAttendee('${a.id}')" title="Remove"><i class="bi bi-trash"></i></button>
+              onclick="eventsModule.deleteAttendee('${a.id}')" title="Remove" aria-label="Remove attendee"><i class="bi bi-trash"></i></button>
           </div>
         </td>
       </tr>
@@ -9861,13 +9861,13 @@ const eventsModule = {
           <td class="text-center">${statusDropdown}</td>
           <td class="text-center">
             <div class="btn-group btn-group-sm" role="group">
-              <button class="btn btn-outline-warning btn-icon" onclick="eventsModule.openRunningOrderModal('${event.id}', '${eName}')" title="Running Order"><i class="bi bi-list-ol"></i></button>
-              <button class="btn btn-outline-secondary btn-icon" onclick="eventsModule.openTablePlanModal('${event.id}', '${eName}')" title="Table Plan"><i class="bi bi-table"></i></button>
-              <button class="btn btn-outline-info btn-icon" onclick="eventsModule.openAttendeesModal('${event.id}')" title="Attendees"><i class="bi bi-people"></i></button>
-              <button class="btn btn-outline-primary btn-icon" onclick="eventsModule.openEditModal('${event.id}')" title="Edit"><i class="bi bi-pencil"></i></button>
-              <button class="btn btn-outline-success btn-icon" onclick="eventsModule.openCloneModal('${event.id}')" title="Clone"><i class="bi bi-files"></i></button>
-              <button class="btn btn-outline-dark btn-icon" onclick="eventsModule.cloneForNextYear('${event.id}')" title="Clone for Next Year"><i class="bi bi-calendar-plus"></i></button>
-              <button class="btn btn-outline-danger btn-icon" onclick="eventsModule.deleteEvent('${event.id}', '${eName}')" title="Delete"><i class="bi bi-trash"></i></button>
+              <button class="btn btn-outline-warning btn-icon" onclick="eventsModule.openRunningOrderModal('${event.id}', '${eName}')" title="Running Order" aria-label="Running order"><i class="bi bi-list-ol"></i></button>
+              <button class="btn btn-outline-secondary btn-icon" onclick="eventsModule.openTablePlanModal('${event.id}', '${eName}')" title="Table Plan" aria-label="Table plan"><i class="bi bi-table"></i></button>
+              <button class="btn btn-outline-info btn-icon" onclick="eventsModule.openAttendeesModal('${event.id}')" title="Attendees" aria-label="Attendees"><i class="bi bi-people"></i></button>
+              <button class="btn btn-outline-primary btn-icon" onclick="eventsModule.openEditModal('${event.id}')" title="Edit" aria-label="Edit event"><i class="bi bi-pencil"></i></button>
+              <button class="btn btn-outline-success btn-icon" onclick="eventsModule.openCloneModal('${event.id}')" title="Clone" aria-label="Clone event"><i class="bi bi-files"></i></button>
+              <button class="btn btn-outline-dark btn-icon" onclick="eventsModule.cloneForNextYear('${event.id}')" title="Clone for Next Year" aria-label="Clone for next year"><i class="bi bi-calendar-plus"></i></button>
+              <button class="btn btn-outline-danger btn-icon" onclick="eventsModule.deleteEvent('${event.id}', '${eName}')" title="Delete" aria-label="Delete event"><i class="bi bi-trash"></i></button>
             </div>
           </td>
         </tr>`;

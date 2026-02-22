@@ -679,7 +679,7 @@ const entriesModule = {
 
     const label = statusLabels[newStatus] || 'change status';
 
-    if (!confirm(`Are you sure you want to ${label} this entry?`)) {
+    if (!await utils.confirmDialog({ title: 'Change Entry Status', message: `Are you sure you want to ${label} this entry?`, confirmText: 'Confirm', danger: false })) {
       return;
     }
 
@@ -1102,7 +1102,7 @@ const entriesModule = {
    * Delete entry
    */
   async deleteEntry(entryId) {
-    if (!confirm('Are you sure you want to delete this entry? This action cannot be undone.')) {
+    if (!await utils.confirmDialog({ title: 'Delete Entry', message: 'Are you sure you want to delete this entry? This action cannot be undone.' })) {
       return;
     }
 
@@ -1297,7 +1297,7 @@ const entriesModule = {
     const ids = Array.from(this.selectedEntryIds);
 
     if (actionType === 'delete') {
-      if (!confirm(`Are you sure you want to DELETE ${count} entries? This cannot be undone.`)) return;
+      if (!await utils.confirmDialog({ title: 'Delete Entries', message: `Are you sure you want to DELETE ${count} entries? This cannot be undone.` })) return;
 
       try {
         const { error } = await STATE.client
@@ -1314,7 +1314,7 @@ const entriesModule = {
         return;
       }
     } else if (actionType === 'status') {
-      if (!confirm(`Change status to "${value}" for ${count} entries?`)) return;
+      if (!await utils.confirmDialog({ title: 'Change Entry Status', message: `Change status to "${value}" for ${count} entries?`, confirmText: 'Update', danger: false })) return;
 
       try {
         const updateData = { status: value };
@@ -1337,7 +1337,7 @@ const entriesModule = {
         return;
       }
     } else if (actionType === 'payment') {
-      if (!confirm(`Change payment status to "${value}" for ${count} entries?`)) return;
+      if (!await utils.confirmDialog({ title: 'Change Payment Status', message: `Change payment status to "${value}" for ${count} entries?`, confirmText: 'Update', danger: false })) return;
 
       try {
         const { error } = await STATE.client

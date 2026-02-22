@@ -10024,6 +10024,7 @@ const eventsModule = {
     if (checked) this._selectedEvents.add(eventId);
     else this._selectedEvents.delete(eventId);
     this._updateBulkBar();
+    this.updateBulkBar();
   },
 
   toggleSelectAll(checked) {
@@ -10033,6 +10034,7 @@ const eventsModule = {
       else this._selectedEvents.delete(cb.value);
     });
     this._updateBulkBar();
+    this.updateBulkBar();
   },
 
   clearEventSelection() {
@@ -10111,6 +10113,68 @@ const eventsModule = {
     } catch (e) {
       utils.showToast('Error updating status: ' + e.message, 'error');
     }
+  },
+
+  // ============================================
+  // ADDITIONAL BULK OPERATIONS (inline bar)
+  // ============================================
+
+  updateBulkBar() {
+    const bar = document.getElementById('eventsBulkBar');
+    const count = document.getElementById('eventsBulkCount');
+    if (bar && count) {
+      count.textContent = this._selectedEvents.size;
+      bar.classList.toggle('d-none', this._selectedEvents.size === 0);
+    }
+  },
+
+  clearSelection() {
+    this._selectedEvents.clear();
+    document.querySelectorAll('.event-select-cb').forEach(cb => cb.checked = false);
+    document.querySelectorAll('.event-checkbox').forEach(cb => cb.checked = false);
+    const selectAll = document.getElementById('selectAllEvents');
+    if (selectAll) selectAll.checked = false;
+    this.updateBulkBar();
+    this._updateBulkBar();
+  },
+
+  async bulkDeleteEvents() {
+    if (this._selectedEvents.size === 0) return;
+    const confirmed = typeof utils.confirmDialog === 'function'
+      ? await utils.confirmDialog({ title: 'Delete Events', message: `Delete ${this._selectedEvents.size} selected events? This cannot be undone.` })
+      : confirm(`Delete ${this._selectedEvents.size} selected events?`);
+    if (!confirmed) return;
+
+    try {
+      for (const id of this._selectedEvents) {
+        await STATE.client.from('events').delete().eq('id', id);
+      }
+      utils.showToast(`Deleted ${this._selectedEvents.size} events`, 'success');
+      this._selectedEvents.clear();
+      this.updateBulkBar();
+      this._updateBulkBar();
+      this.loadEvents();
+    } catch (error) {
+      console.error('Bulk delete error:', error);
+      utils.showToast('Error deleting events', 'error');
+    }
+  },
+
+  bulkExportEvents() {
+    if (this._selectedEvents.size === 0) return;
+    const events = (STATE.allEvents || []).filter(e => this._selectedEvents.has(e.id));
+    const headers = ['Event Name', 'Date', 'Venue', 'Status', 'Year'];
+    const rows = events.map(e => [
+      e.event_name || '', e.event_date || '', e.venue || '', e.event_status || '', e.year || ''
+    ]);
+    const csv = [headers, ...rows].map(r => r.map(c => `"${String(c).replace(/"/g, '""')}"`).join(',')).join('\n');
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'events_export.csv';
+    a.click();
+    URL.revokeObjectURL(a.href);
+    utils.showToast(`Exported ${events.length} events`, 'success');
   },
 
   // ============================================

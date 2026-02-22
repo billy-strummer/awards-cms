@@ -517,7 +517,7 @@ const paymentsModule = {
   },
 
   async deleteInvoice(invoiceId) {
-    if (!confirm('Are you sure you want to delete this invoice? This action cannot be undone.')) {
+    if (!await utils.confirmDialog({ title: 'Delete Invoice', message: 'Are you sure you want to delete this invoice? This action cannot be undone.' })) {
       return;
     }
 
@@ -959,7 +959,7 @@ const paymentsModule = {
   },
 
   async deletePayment(paymentId) {
-    if (!confirm('Are you sure you want to delete this payment record?')) {
+    if (!await utils.confirmDialog({ title: 'Delete Payment', message: 'Are you sure you want to delete this payment record?' })) {
       return;
     }
 
@@ -1591,7 +1591,7 @@ const paymentsModule = {
   },
 
   async _disconnectAccounting() {
-    if (!confirm('Disconnect accounting integration?')) return;
+    if (!await utils.confirmDialog({ title: 'Disconnect Integration', message: 'Disconnect accounting integration?', confirmText: 'Disconnect' })) return;
     this._accountingConfig.connected = false;
     await this._saveAccountingConfig();
     utils.showToast('Disconnected', 'success');

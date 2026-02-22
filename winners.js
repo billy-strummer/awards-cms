@@ -234,7 +234,7 @@ const winnersModule = {
             <div class="d-flex gap-1 justify-content-center flex-wrap">
               ${mediaTotal > 0 ? `
               <div class="btn-group btn-group-sm">
-                <button class="btn btn-outline-secondary btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown" data-bs-display="static" title="View Media">
+                <button class="btn btn-outline-secondary btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown" data-bs-display="static" title="View Media" aria-label="View media">
                   <i class="bi bi-collection"></i>
                 </button>
                 <ul class="dropdown-menu dropdown-menu-end">
@@ -246,19 +246,22 @@ const winnersModule = {
               <button
                 class="btn btn-outline-secondary btn-sm"
                 onclick="winnersModule.downloadMediaPack('${winner.id}')"
-                title="Download Media Pack">
+                title="Download Media Pack"
+                aria-label="Download media pack">
                 <i class="bi bi-newspaper"></i>
               </button>
               <button
                 class="btn btn-outline-primary btn-sm"
                 onclick="winnersModule.downloadWinnerPackage('${winner.id}')"
-                title="Download Winner Package">
+                title="Download Winner Package"
+                aria-label="Download winner package">
                 <i class="bi bi-gift"></i>
               </button>
               <button
                 class="btn btn-outline-danger btn-sm"
                 onclick="winnersModule.deleteWinner('${winner.id}')"
-                title="Delete Winner">
+                title="Delete Winner"
+                aria-label="Delete winner">
                 <i class="bi bi-trash"></i>
               </button>
             </div>

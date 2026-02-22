@@ -10140,10 +10140,7 @@ const eventsModule = {
 
   async bulkDeleteEvents() {
     if (this._selectedEvents.size === 0) return;
-    const confirmed = typeof utils.confirmDialog === 'function'
-      ? await utils.confirmDialog({ title: 'Delete Events', message: `Delete ${this._selectedEvents.size} selected events? This cannot be undone.` })
-      : confirm(`Delete ${this._selectedEvents.size} selected events?`);
-    if (!confirmed) return;
+    if (!await utils.confirmDialog({ title: 'Delete Events', message: `Delete ${this._selectedEvents.size} selected events? This cannot be undone.` })) return;
 
     try {
       for (const id of this._selectedEvents) {

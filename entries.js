@@ -170,7 +170,7 @@ const entriesModule = {
   },
 
   /**
-   * Render entries in table
+   * Render entries in table (with pagination)
    */
   renderEntries() {
     const tbody = document.getElementById('entriesTableBody');
@@ -187,10 +187,19 @@ const entriesModule = {
           </td>
         </tr>
       `;
+      const paginationEl = document.getElementById('entriesPagination');
+      if (paginationEl) paginationEl.innerHTML = '';
       return;
     }
 
-    tbody.innerHTML = this.filteredEntries.map(entry => {
+    // Pagination
+    const totalPages = Math.ceil(this.filteredEntries.length / this._pageSize);
+    if (this._currentPage > totalPages) this._currentPage = totalPages;
+    const start = (this._currentPage - 1) * this._pageSize;
+    const end = start + this._pageSize;
+    const pageEntries = this.filteredEntries.slice(start, end);
+
+    tbody.innerHTML = pageEntries.map(entry => {
       const companyName = entry.organisations?.company_name || 'Unknown';
       const awardName = entry.award_years?.award_name || 'Unknown';
       const statusBadge = this.getStatusBadge(entry.status);
@@ -244,6 +253,35 @@ const entriesModule = {
         </tr>
       `;
     }).join('');
+
+    // Render pagination controls
+    const paginationEl = document.getElementById('entriesPagination');
+    if (paginationEl && totalPages > 1) {
+      let html = '<nav><ul class="pagination pagination-sm justify-content-center mt-3">';
+      html += `<li class="page-item ${this._currentPage <= 1 ? 'disabled' : ''}"><a class="page-link" href="#" onclick="event.preventDefault(); entriesModule.goToEntriesPage(${this._currentPage - 1})">Prev</a></li>`;
+      for (let i = 1; i <= totalPages; i++) {
+        if (i === 1 || i === totalPages || (i >= this._currentPage - 2 && i <= this._currentPage + 2)) {
+          html += `<li class="page-item ${i === this._currentPage ? 'active' : ''}"><a class="page-link" href="#" onclick="event.preventDefault(); entriesModule.goToEntriesPage(${i})">${i}</a></li>`;
+        } else if (i === this._currentPage - 3 || i === this._currentPage + 3) {
+          html += '<li class="page-item disabled"><span class="page-link">...</span></li>';
+        }
+      }
+      html += `<li class="page-item ${this._currentPage >= totalPages ? 'disabled' : ''}"><a class="page-link" href="#" onclick="event.preventDefault(); entriesModule.goToEntriesPage(${this._currentPage + 1})">Next</a></li>`;
+      html += '</ul></nav>';
+      html += `<div class="text-center text-muted small">Showing ${((this._currentPage-1)*this._pageSize)+1}-${Math.min(this._currentPage*this._pageSize, this.filteredEntries.length)} of ${this.filteredEntries.length}</div>`;
+      paginationEl.innerHTML = html;
+    } else if (paginationEl) {
+      paginationEl.innerHTML = '';
+    }
+  },
+
+  /**
+   * Go to a specific entries page
+   */
+  goToEntriesPage(page) {
+    const totalPages = Math.ceil(this.filteredEntries.length / this._pageSize);
+    this._currentPage = Math.max(1, Math.min(page, totalPages));
+    this.renderEntries();
   },
 
   /**
@@ -345,6 +383,7 @@ const entriesModule = {
       return true;
     });
 
+    this._currentPage = 1;
     this.renderEntries();
   },
 

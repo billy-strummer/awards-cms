@@ -13,7 +13,7 @@ const winnersModule = {
   async loadWinners() {
     try {
       utils.showLoading();
-      utils.showTableLoading('winnersTableBody', 5);
+      utils.showTableLoading('winnersTableBody', 7);
 
       // Paginated loading for large winner datasets
       let allData = [];
@@ -109,7 +109,7 @@ const winnersModule = {
     } catch (error) {
       console.error('Error loading winners:', error);
       utils.showToast('Failed to load winners: ' + error.message, 'error');
-      utils.showEmptyState('winnersTableBody', 5, 'Failed to load winners', 'bi-exclamation-triangle');
+      utils.showEmptyState('winnersTableBody', 7, 'Failed to load winners', 'bi-exclamation-triangle');
     } finally {
       utils.hideLoading();
     }
@@ -2939,6 +2939,80 @@ const winnersModule = {
       console.error('Error updating winner status:', error);
       utils.showToast('Error updating status: ' + error.message, 'error');
     }
+  },
+
+  // ============================================
+  // BULK OPERATIONS (table-level)
+  // ============================================
+
+  toggleWinnerSelect(winnerId, checked) {
+    if (checked) this._selectedWinnerIds.add(winnerId);
+    else this._selectedWinnerIds.delete(winnerId);
+    this.updateWinnersBulkBar();
+  },
+
+  toggleSelectAllWinners(checked) {
+    document.querySelectorAll('.winner-checkbox').forEach(cb => {
+      cb.checked = checked;
+      if (checked) this._selectedWinnerIds.add(cb.value);
+      else this._selectedWinnerIds.delete(cb.value);
+    });
+    this.updateWinnersBulkBar();
+  },
+
+  updateWinnersBulkBar() {
+    const bar = document.getElementById('winnersBulkBar');
+    const count = document.getElementById('winnersBulkCount');
+    if (bar && count) {
+      count.textContent = this._selectedWinnerIds.size;
+      bar.classList.toggle('d-none', this._selectedWinnerIds.size === 0);
+    }
+  },
+
+  clearWinnerSelection() {
+    this._selectedWinnerIds.clear();
+    document.querySelectorAll('.winner-checkbox').forEach(cb => cb.checked = false);
+    const selectAll = document.getElementById('selectAllWinners');
+    if (selectAll) selectAll.checked = false;
+    this.updateWinnersBulkBar();
+  },
+
+  async bulkDeleteWinners() {
+    if (this._selectedWinnerIds.size === 0) return;
+    if (!await utils.confirmDialog({ title: 'Delete Winners', message: `Delete ${this._selectedWinnerIds.size} selected winners? This cannot be undone.` })) return;
+
+    try {
+      for (const id of this._selectedWinnerIds) {
+        await STATE.client.from('winners').delete().eq('id', id);
+      }
+      utils.showToast(`Deleted ${this._selectedWinnerIds.size} winners`, 'success');
+      this._selectedWinnerIds.clear();
+      this.updateWinnersBulkBar();
+      this.loadWinners();
+    } catch (error) {
+      console.error('Bulk delete winners error:', error);
+      utils.showToast('Error deleting winners', 'error');
+    }
+  },
+
+  bulkExportWinners() {
+    if (this._selectedWinnerIds.size === 0) return;
+    const winners = (STATE.filteredWinners || STATE.allWinners || []).filter(w => this._selectedWinnerIds.has(w.id));
+    const headers = ['Winner Name', 'Award', 'Year', 'Status'];
+    const rows = winners.map(w => [
+      w.winner_name || '',
+      utils.formatAwardName ? utils.formatAwardName(w.awards) : (w.awards?.award_name || ''),
+      w.awards?.year || '',
+      w.winner_status || ''
+    ]);
+    const csv = [headers, ...rows].map(r => r.map(c => `"${String(c).replace(/"/g, '""')}"`).join(',')).join('\n');
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'winners_export.csv';
+    a.click();
+    URL.revokeObjectURL(a.href);
+    utils.showToast(`Exported ${winners.length} winners`, 'success');
   }
 };
 

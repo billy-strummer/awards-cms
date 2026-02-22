@@ -454,8 +454,9 @@ updateCountyFilterByRegion() {
     // Hide archived unless explicitly filtering for them
     if (!showArchived && orgStatus === 'archived') return false;
 
-    // Year filter
-    if (year && String(org.year || '') !== String(year)) return false;
+    // Year filter — show orgs assigned to the selected year AND unassigned orgs (no year).
+    // Only hide orgs explicitly assigned to a different year.
+    if (year && org.year && String(org.year) !== String(year)) return false;
 
     // Status filter (skip if 'all')
     if (status && status !== 'all' && orgStatus !== status) return false;

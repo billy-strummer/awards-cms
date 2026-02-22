@@ -140,7 +140,7 @@
           </div>
 
           <!-- Dark Mode Toggle -->
-          <button class="btn btn-outline-light" id="darkModeToggle" title="Toggle dark mode">
+          <button class="btn btn-outline-light" id="darkModeToggle" title="Toggle dark mode" aria-label="Toggle dark mode">
             <i class="bi bi-moon"></i>
           </button>
 
@@ -3317,9 +3317,9 @@
             <div class="d-flex justify-content-between align-items-center mb-3">
               <h5 class="mb-0"><i class="bi bi-calendar-week me-2"></i>Events Calendar</h5>
               <div class="d-flex gap-2 align-items-center">
-                <button class="btn btn-sm btn-outline-secondary" onclick="eventsModule.calendarPrev()"><i class="bi bi-chevron-left"></i></button>
+                <button class="btn btn-sm btn-outline-secondary" onclick="eventsModule.calendarPrev()" aria-label="Previous month"><i class="bi bi-chevron-left"></i></button>
                 <span class="fw-semibold" id="eventsCalendarTitle">February 2026</span>
-                <button class="btn btn-sm btn-outline-secondary" onclick="eventsModule.calendarNext()"><i class="bi bi-chevron-right"></i></button>
+                <button class="btn btn-sm btn-outline-secondary" onclick="eventsModule.calendarNext()" aria-label="Next month"><i class="bi bi-chevron-right"></i></button>
                 <div class="vr mx-1"></div>
                 <button class="btn btn-sm btn-outline-secondary" onclick="eventsModule.hideEventsCalendar()"><i class="bi bi-x-lg"></i> Close</button>
               </div>
@@ -3407,7 +3407,7 @@
               </ul>
             </div>
             <button class="btn btn-sm btn-outline-danger" onclick="eventsModule.bulkDelete()"><i class="bi bi-trash me-1"></i>Delete</button>
-            <button class="btn btn-sm btn-outline-light" onclick="eventsModule.clearEventSelection()"><i class="bi bi-x-lg"></i></button>
+            <button class="btn btn-sm btn-outline-light" onclick="eventsModule.clearEventSelection()" aria-label="Clear selection"><i class="bi bi-x-lg"></i></button>
           </div>
 
         </div>

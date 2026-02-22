@@ -218,7 +218,7 @@ const eventsModule = {
    * Delete event
    */
   async deleteEvent(eventId, eventName) {
-    if (!confirm(`Are you sure you want to delete "${eventName}"?\n\nNote: Media associated with this event will NOT be deleted, but will be unlinked from the event.`)) {
+    if (!await utils.confirmDialog({ title: 'Delete Event', message: `Are you sure you want to delete "${eventName}"?<br><br>Note: Media associated with this event will NOT be deleted, but will be unlinked from the event.` })) {
       return;
     }
 
@@ -591,7 +591,7 @@ const eventsModule = {
    * Delete template
    */
   async deleteTemplate(index) {
-    if (!utils.confirm('Are you sure you want to delete this template?')) {
+    if (!await utils.confirmDialog({ title: 'Delete Template', message: 'Are you sure you want to delete this template?' })) {
       return;
     }
 
@@ -1008,7 +1008,7 @@ const eventsModule = {
   },
 
   async deleteAttendee(attendeeId) {
-    if (!confirm('Remove this attendee from the list?')) return;
+    if (!await utils.confirmDialog({ title: 'Remove Attendee', message: 'Remove this attendee from the list?', confirmText: 'Remove' })) return;
     const eventId = document.getElementById('attendeesEventId').value;
     let attendees = await this.getAttendees(eventId);
     attendees = attendees.filter(a => a.id !== attendeeId);

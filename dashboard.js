@@ -65,7 +65,7 @@ const dashboardModule = {
 
     } catch (error) {
       console.error('Error loading dashboard data:', error);
-      utils.showToast('Failed to load dashboard data', 'error');
+      utils.showErrorWithRetry(error, 'loading dashboard', () => this.loadAllData());
     } finally {
       utils.hideLoading();
     }

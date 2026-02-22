@@ -54,7 +54,7 @@ const aiVettingModule = {
 
     } catch (error) {
       console.error('Error loading vetting results:', error);
-      utils.showToast('Failed to load vetting results', 'error');
+      utils.showErrorWithRetry(error, 'loading vetting results', () => this.loadVettingResults());
     }
   },
 

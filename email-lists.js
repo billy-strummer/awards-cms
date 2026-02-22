@@ -18,7 +18,7 @@ const emailListsModule = {
       await this.loadStats();
     } catch (error) {
       console.error('Error loading email lists data:', error);
-      utils.showToast('Error loading email lists', 'error');
+      utils.showErrorWithRetry(error, 'loading email lists', () => this.loadAllData());
     }
   },
 
@@ -755,6 +755,7 @@ const emailListsModule = {
       if (error) throw error;
 
       const subs = subscribers || [];
+      this._currentSubscribers = subs;
 
       const statusCounts = {
         active: subs.filter(s => s.status === 'active').length,
@@ -898,13 +899,27 @@ const emailListsModule = {
     const status = document.getElementById('subscriberStatusFilter')?.value || 'all';
     const rows = document.querySelectorAll('#subscribersTableBody tr');
 
+    let visibleCount = 0;
     rows.forEach(row => {
       const text = row.textContent.toLowerCase();
       const rowStatus = row.querySelector('.badge')?.textContent?.toLowerCase() || '';
       const matchesSearch = !search || text.includes(search);
       const matchesStatus = status === 'all' || rowStatus === status;
-      row.style.display = matchesSearch && matchesStatus ? '' : 'none';
+      const visible = matchesSearch && matchesStatus;
+      row.style.display = visible ? '' : 'none';
+      if (visible) visibleCount++;
     });
+
+    // If search query is active and no exact matches found, try fuzzy search
+    if (search && visibleCount === 0 && this._currentSubscribers) {
+      let fuzzyResults = utils.fuzzyFilter(this._currentSubscribers, search, ['email', 'first_name', 'last_name', 'company_name']);
+      if (status !== 'all') fuzzyResults = fuzzyResults.filter(s => s.status === status);
+      const fuzzyEmails = new Set(fuzzyResults.map(s => s.email?.toLowerCase()));
+      rows.forEach(row => {
+        const rowEmail = (row.querySelector('td')?.textContent || '').toLowerCase().trim();
+        row.style.display = fuzzyEmails.has(rowEmail) ? '' : 'none';
+      });
+    }
   },
 
   /**

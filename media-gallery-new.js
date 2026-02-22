@@ -46,7 +46,7 @@ const mediaGalleryModule = {
 
     } catch (error) {
       console.error('Error initializing media gallery:', error);
-      utils.showToast('Failed to load media gallery: ' + error.message, 'error');
+      utils.showErrorWithRetry(error, 'loading media gallery', () => this.initialize());
     } finally {
       utils.hideLoading();
     }

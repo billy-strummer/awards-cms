@@ -93,7 +93,7 @@ window.ticketModule = {
   },
 
   async deleteTicketType(id, eventId) {
-    if (!utils.confirm('Delete this ticket type?')) return;
+    if (!await utils.confirmDialog({ title: 'Delete Ticket Type', message: 'Delete this ticket type?', confirmText: 'Delete', danger: true })) return;
     try {
       utils.showLoading();
       const { error } = await STATE.client.from('event_ticket_types').delete().eq('id', id);
@@ -330,7 +330,7 @@ window.ticketModule = {
   /* -------------------------------------------------- */
 
   async processRefund(ticketId) {
-    if (!utils.confirm('Cancel this ticket and issue a refund?')) return;
+    if (!await utils.confirmDialog({ title: 'Cancel Ticket', message: 'Cancel this ticket and issue a refund?', confirmText: 'Cancel & Refund', danger: true })) return;
     try {
       utils.showLoading();
       const { data: guest, error: fetchErr } = await STATE.client.from('event_guests')

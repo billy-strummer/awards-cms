@@ -15,7 +15,7 @@ const emailTemplatesModule = {
       await this.loadTemplates();
     } catch (error) {
       console.error('Error initializing email templates module:', error);
-      utils.showToast('Failed to load email templates: ' + error.message, 'error');
+      utils.showErrorWithRetry(error, 'loading email templates', () => this.initialize());
     } finally {
       utils.hideLoading();
     }

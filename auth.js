@@ -212,7 +212,7 @@ const authModule = {
    * Handle user logout
    */
   async handleLogout() {
-    if (!utils.confirm('Are you sure you want to logout?')) {
+    if (!await utils.confirmDialog({ title: 'Logout', message: 'Are you sure you want to logout?', confirmText: 'Logout', danger: false })) {
       return;
     }
     

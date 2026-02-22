@@ -130,16 +130,16 @@ const paymentsModule = {
         <td>${this.getInvoiceStatusBadge(invoice.status, invoice.payment_status)}</td>
         <td>
           <div class="btn-group btn-group-sm" role="group">
-            <button class="btn btn-outline-primary" onclick="paymentsModule.viewInvoice('${invoice.id}')" title="View">
+            <button class="btn btn-outline-primary" onclick="paymentsModule.viewInvoice('${invoice.id}')" title="View" aria-label="View invoice">
               <i class="bi bi-eye"></i>
             </button>
-            <button class="btn btn-outline-success" onclick="paymentsModule.recordPaymentForInvoice('${invoice.id}')" title="Record Payment">
+            <button class="btn btn-outline-success" onclick="paymentsModule.recordPaymentForInvoice('${invoice.id}')" title="Record Payment" aria-label="Record payment">
               <i class="bi bi-cash"></i>
             </button>
-            <button class="btn btn-outline-secondary" onclick="paymentsModule.sendInvoice('${invoice.id}')" title="Send">
+            <button class="btn btn-outline-secondary" onclick="paymentsModule.sendInvoice('${invoice.id}')" title="Send" aria-label="Send invoice">
               <i class="bi bi-envelope"></i>
             </button>
-            <button class="btn btn-outline-danger" onclick="paymentsModule.deleteInvoice('${invoice.id}')" title="Delete">
+            <button class="btn btn-outline-danger" onclick="paymentsModule.deleteInvoice('${invoice.id}')" title="Delete" aria-label="Delete invoice">
               <i class="bi bi-trash"></i>
             </button>
           </div>

@@ -29,6 +29,17 @@ const entriesModule = {
       // Load all entries
       await this.loadEntries();
 
+      // Restore saved filters from localStorage
+      try {
+        const saved = JSON.parse(localStorage.getItem('entriesFilters') || '{}');
+        if (saved.status) { document.getElementById('entriesStatusFilter').value = saved.status; this.currentFilters.status = saved.status; }
+        if (saved.award) { document.getElementById('entriesAwardFilter').value = saved.award; this.currentFilters.award = saved.award; }
+        if (saved.year) { document.getElementById('entriesYearFilter').value = saved.year; this.currentFilters.year = saved.year; }
+        if (saved.selfNom) { document.getElementById('entriesSelfNomFilter').value = saved.selfNom; this.currentFilters.selfNom = saved.selfNom; }
+        if (saved.search) { document.getElementById('entriesSearchInput').value = saved.search; this.currentFilters.search = saved.search; }
+        this.applyFilters();
+      } catch(e) {}
+
       // Load stats
       await this.loadStats();
 
@@ -287,6 +298,8 @@ const entriesModule = {
    * Apply all filters
    */
   applyFilters() {
+    try { localStorage.setItem('entriesFilters', JSON.stringify(this.currentFilters)); } catch(e) {}
+
     this.filteredEntries = this.allEntries.filter(entry => {
       // Status filter
       if (this.currentFilters.status && entry.status !== this.currentFilters.status) {

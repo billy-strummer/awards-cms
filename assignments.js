@@ -463,6 +463,7 @@ const assignmentsModule = {
       this.currentSortColumn = column;
       this.currentSortDirection = 'asc';
     }
+    utils.saveSortState('assignments', this.currentSortColumn, this.currentSortDirection);
 
     // Get currently displayed assignments (respects filters)
     const listContainer = document.getElementById('assignedCompaniesList');

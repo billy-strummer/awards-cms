@@ -9,7 +9,7 @@ const eventsModule = {
   async loadEvents() {
     try {
       utils.showLoading();
-      utils.showTableLoading('eventsTableBody', 11);
+      utils.showSkeletonLoading('eventsTableBody', 11);
 
       // Paginated loading for large event datasets
       let allData = [];
@@ -61,7 +61,7 @@ const eventsModule = {
 
     } catch (error) {
       console.error('Error loading events:', error);
-      utils.showToast('Failed to load events: ' + error.message, 'error');
+      utils.showErrorWithRetry(error, 'loading events', () => this.loadEvents());
       utils.showEmptyState('eventsTableBody', 8, 'Failed to load events', 'bi-exclamation-triangle');
     } finally {
       utils.hideLoading();
@@ -78,7 +78,7 @@ const eventsModule = {
     if (count) count.textContent = events.length;
 
     if (events.length === 0) {
-      utils.showEmptyState('eventsTableBody', 8, 'No events found. Click "Add Event" to create one.');
+      utils.showEnhancedEmptyState('eventsTableBody', 11, { icon: 'bi-calendar-event', message: 'No events found', description: 'Create your first event to get started' });
       return;
     }
 
@@ -102,6 +102,7 @@ const eventsModule = {
 
     const modal = new bootstrap.Modal(document.getElementById('eventModal'));
     modal.show();
+    utils.initInlineValidation('eventForm');
   },
 
   /**
@@ -124,6 +125,7 @@ const eventsModule = {
 
     const modal = new bootstrap.Modal(document.getElementById('eventModal'));
     modal.show();
+    utils.initInlineValidation('eventForm');
   },
 
   /**
@@ -144,69 +146,70 @@ const eventsModule = {
     }
 
     try {
-      utils.showLoading();
+      await utils.protectModalDuringSave('eventModal', async () => {
+        utils.showLoading();
 
-      const eventStatus = document.getElementById('eventStatus').value;
+        const eventStatus = document.getElementById('eventStatus').value;
 
-      const eventData = {
-        event_name: eventName,
-        event_date: eventDate || null,
-        year: eventYear ? parseInt(eventYear) : null,
-        venue: eventVenue || null,
-        capacity: eventCapacity ? parseInt(eventCapacity) : null,
-        description: eventDescription || null,
-        event_status: eventStatus || 'draft'
-      };
+        const eventData = {
+          event_name: eventName,
+          event_date: eventDate || null,
+          year: eventYear ? parseInt(eventYear) : null,
+          venue: eventVenue || null,
+          capacity: eventCapacity ? parseInt(eventCapacity) : null,
+          description: eventDescription || null,
+          event_status: eventStatus || 'draft'
+        };
 
-      let error;
+        let error;
 
-      if (eventId) {
-        // Update existing event
-        ({ error } = await STATE.client
-          .from('events')
-          .update(eventData)
-          .eq('id', eventId));
+        if (eventId) {
+          // Update existing event
+          ({ error } = await STATE.client
+            .from('events')
+            .update(eventData)
+            .eq('id', eventId));
 
-        if (error) throw error;
+          if (error) throw error;
 
-      } else {
-        // Insert new event
-        const { data: newEvent, error: insertError } = await STATE.client
-          .from('events')
-          .insert([eventData])
-          .select()
-          .single();
+        } else {
+          // Insert new event
+          const { data: newEvent, error: insertError } = await STATE.client
+            .from('events')
+            .insert([eventData])
+            .select()
+            .single();
 
-        if (insertError) throw insertError;
+          if (insertError) throw insertError;
 
-        // Create gallery sections from template if available
-        if (window._templateGallerySections && window._templateGallerySections.length > 0) {
-          const sections = window._templateGallerySections.map((sectionName, index) => ({
-            event_id: newEvent.id,
-            gallery_name: sectionName,
-            gallery_description: '',
-            display_order: index + 1
-          }));
+          // Create gallery sections from template if available
+          if (window._templateGallerySections && window._templateGallerySections.length > 0) {
+            const sections = window._templateGallerySections.map((sectionName, index) => ({
+              event_id: newEvent.id,
+              gallery_name: sectionName,
+              gallery_description: '',
+              display_order: index + 1
+            }));
 
-          const { error: sectionsError } = await STATE.client
-            .from('event_galleries')
-            .insert(sections);
+            const { error: sectionsError } = await STATE.client
+              .from('event_galleries')
+              .insert(sections);
 
-          if (!sectionsError) {
-            console.log(`✅ Created ${sections.length} gallery sections from template`);
+            if (!sectionsError) {
+              console.log(`✅ Created ${sections.length} gallery sections from template`);
+            }
+
+            // Clear template sections
+            window._templateGallerySections = [];
           }
-
-          // Clear template sections
-          window._templateGallerySections = [];
         }
-      }
 
-      utils.showToast(`Event ${eventId ? 'updated' : 'added'} successfully!`, 'success');
+        utils.showToast(`Event ${eventId ? 'updated' : 'added'} successfully!`, 'success');
 
-      // Close modal and reload
-      bootstrap.Modal.getInstance(document.getElementById('eventModal')).hide();
-      await this.loadEvents();
-
+        // Close modal and reload
+        bootstrap.Modal.getInstance(document.getElementById('eventModal')).hide();
+        await this.loadEvents();
+      });
     } catch (error) {
       console.error('Error saving event:', error);
       utils.showToast('Error saving event: ' + error.message, 'error');
@@ -275,6 +278,7 @@ const eventsModule = {
     // Show modal
     const modal = new bootstrap.Modal(document.getElementById('cloneEventModal'));
     modal.show();
+    utils.initInlineValidation('cloneEventForm');
   },
 
   /**
@@ -295,46 +299,47 @@ const eventsModule = {
     }
 
     try {
-      utils.showLoading();
+      await utils.protectModalDuringSave('cloneEventModal', async () => {
+        utils.showLoading();
 
-      // Step 1: Create new event (fetch source for capacity)
-      const { data: srcEvt } = await STATE.client.from('events').select('capacity').eq('id', sourceEventId).single();
-      const newEventData = {
-        event_name: newEventName,
-        event_date: newEventDate || null,
-        year: parseInt(newEventYear),
-        venue: newEventVenue || null,
-        description: newEventDescription || null,
-        event_status: 'draft',
-        capacity: srcEvt?.capacity || null
-      };
+        // Step 1: Create new event (fetch source for capacity)
+        const { data: srcEvt } = await STATE.client.from('events').select('capacity').eq('id', sourceEventId).single();
+        const newEventData = {
+          event_name: newEventName,
+          event_date: newEventDate || null,
+          year: parseInt(newEventYear),
+          venue: newEventVenue || null,
+          description: newEventDescription || null,
+          event_status: 'draft',
+          capacity: srcEvt?.capacity || null
+        };
 
-      const { data: newEvent, error: eventError } = await STATE.client
-        .from('events')
-        .insert([newEventData])
-        .select()
-        .single();
+        const { data: newEvent, error: eventError } = await STATE.client
+          .from('events')
+          .insert([newEventData])
+          .select()
+          .single();
 
-      if (eventError) throw eventError;
+        if (eventError) throw eventError;
 
-      utils.showToast(`Event "${newEventName}" created successfully!`, 'success');
+        utils.showToast(`Event "${newEventName}" created successfully!`, 'success');
 
-      // Step 2: Clone gallery sections if requested
-      if (cloneGallerySections) {
-        await this.cloneGallerySections(sourceEventId, newEvent.id);
-      }
+        // Step 2: Clone gallery sections if requested
+        if (cloneGallerySections) {
+          await this.cloneGallerySections(sourceEventId, newEvent.id);
+        }
 
-      // Close modal and reload
-      bootstrap.Modal.getInstance(document.getElementById('cloneEventModal')).hide();
-      await this.loadEvents();
+        // Close modal and reload
+        bootstrap.Modal.getInstance(document.getElementById('cloneEventModal')).hide();
+        await this.loadEvents();
 
-      // Show success summary
-      const message = cloneGallerySections
-        ? `Event cloned successfully with gallery sections!`
-        : `Event cloned successfully!`;
+        // Show success summary
+        const message = cloneGallerySections
+          ? `Event cloned successfully with gallery sections!`
+          : `Event cloned successfully!`;
 
-      utils.showToast(message, 'success');
-
+        utils.showToast(message, 'success');
+      });
     } catch (error) {
       console.error('Error cloning event:', error);
       utils.showToast('Error cloning event: ' + error.message, 'error');
@@ -815,9 +820,7 @@ const eventsModule = {
     this.renderDietarySummary(attendees);
 
     if (attendees.length === 0) {
-      tbody.innerHTML = `<tr><td colspan="8" class="text-center py-4 text-muted">
-        <i class="bi bi-people display-4 d-block mb-2 opacity-25"></i>
-        No attendees yet. Click "Add Attendee" to start tracking RSVPs.</td></tr>`;
+      utils.showEnhancedEmptyState('attendeesTableBody', 8, { icon: 'bi-people', message: 'No attendees yet', description: 'Click "Add Attendee" to start tracking RSVPs' });
       return;
     }
 
@@ -935,12 +938,21 @@ const eventsModule = {
     const statusFilter = document.getElementById('attendeeStatusFilter')?.value || '';
     const typeFilter = document.getElementById('attendeeTypeFilter')?.value || '';
 
-    return attendees.filter(a => {
+    let filtered = attendees.filter(a => {
       if (search && !(a.name || '').toLowerCase().includes(search) && !(a.email || '').toLowerCase().includes(search)) return false;
       if (statusFilter && a.status !== statusFilter) return false;
       if (typeFilter && (a.guestType || 'guest') !== typeFilter) return false;
       return true;
     });
+
+    // Fuzzy search fallback
+    if (search && filtered.length === 0) {
+      filtered = utils.fuzzyFilter(attendees, search, ['name', 'email']);
+      if (statusFilter) filtered = filtered.filter(a => a.status === statusFilter);
+      if (typeFilter) filtered = filtered.filter(a => (a.guestType || 'guest') === typeFilter);
+    }
+
+    return filtered;
   },
 
   filterAttendeesList() {
@@ -1801,7 +1813,7 @@ const eventsModule = {
     if (countEl) countEl.textContent = waitlist.filter(w => !w.promoted).length;
 
     if (waitlist.length === 0) {
-      container.innerHTML = '<tr><td colspan="6" class="text-center text-muted py-3">No one on the waitlist</td></tr>';
+      utils.showEmptyState('waitlistTableBody', 6, 'No one on the waitlist', 'bi-person-slash');
       return;
     }
 
@@ -2200,7 +2212,7 @@ const eventsModule = {
     const categories = ['Venue', 'Catering', 'AV/Production', 'Entertainment', 'Trophies/Awards', 'Print/Stationery', 'Transport', 'Staffing', 'Marketing', 'Gifts/Swag', 'Other'];
 
     if (items.length === 0) {
-      container.innerHTML = '<tr><td colspan="7" class="text-center text-muted py-3">No budget items. Click "Add Item" to start tracking.</td></tr>';
+      utils.showEnhancedEmptyState('budgetTableBody', 7, { icon: 'bi-calculator', message: 'No budget items', description: 'Click "Add Item" to start tracking' });
       return;
     }
 
@@ -2397,7 +2409,7 @@ const eventsModule = {
     if (countEl) countEl.textContent = vendors.length;
 
     if (vendors.length === 0) {
-      container.innerHTML = '<tr><td colspan="7" class="text-center text-muted py-3">No vendors/suppliers added yet</td></tr>';
+      utils.showEmptyState('vendorsTableBody', 7, 'No vendors/suppliers added yet', 'bi-briefcase');
       return;
     }
 
@@ -3851,7 +3863,7 @@ const eventsModule = {
                     <div class="input-group input-group-sm" style="width:200px;">
                       <span class="input-group-text"><i class="bi bi-search"></i></span>
                       <input type="text" class="form-control" id="roSearchInput" placeholder="Search items..."
-                             oninput="eventsModule.searchRunningOrder(this.value)">
+                             oninput="clearTimeout(eventsModule._roSearchTimer); eventsModule._roSearchTimer = setTimeout(() => eventsModule.searchRunningOrder(this.value), 300)">
                     </div>
                   </div>
                 </div>
@@ -9777,6 +9789,17 @@ const eventsModule = {
       return true;
     });
 
+    // If search query is active and no exact matches found, try fuzzy search
+    if (search && filtered.length === 0) {
+      filtered = utils.fuzzyFilter(STATE.allEvents || [], search, ['event_name', 'venue', 'description']);
+      // Also apply non-search filters to fuzzy results
+      if (year) filtered = filtered.filter(e => String(e.year) === year || (e.event_date && e.event_date.startsWith(year)));
+      if (timeStatus === 'upcoming') filtered = filtered.filter(e => e.event_date && e.event_date >= today);
+      if (timeStatus === 'past') filtered = filtered.filter(e => e.event_date && e.event_date < today);
+      if (timeStatus === 'this-month') filtered = filtered.filter(e => e.event_date && e.event_date >= monthStart && e.event_date <= monthEnd);
+      if (eventStatus) filtered = filtered.filter(e => (e.event_status || 'draft') === eventStatus);
+    }
+
     // Sort
     filtered.sort((a, b) => {
       let aVal = a[this._sortField] || '';
@@ -9813,7 +9836,23 @@ const eventsModule = {
       this._sortField = field;
       this._sortDir = 'asc';
     }
+    utils.saveSortState('events', this._sortField, this._sortDir);
+    this._updateSortIndicators();
     this.filterEvents();
+  },
+
+  _updateSortIndicators() {
+    const icons = document.querySelectorAll('[data-sort-icon-events]');
+    icons.forEach(icon => {
+      const field = icon.getAttribute('data-sort-icon-events');
+      if (field === this._sortField) {
+        icon.className = this._sortDir === 'asc'
+          ? 'bi bi-caret-up-fill text-primary ms-1 small'
+          : 'bi bi-caret-down-fill text-primary ms-1 small';
+      } else {
+        icon.className = 'bi bi-arrow-down-up text-muted ms-1 small';
+      }
+    });
   },
 
   resetEventFilters() {
@@ -9858,7 +9897,7 @@ const eventsModule = {
     }
 
     if (events.length === 0) {
-      tbody.innerHTML = '<tr><td colspan="11" class="text-center py-4 text-muted"><i class="bi bi-calendar-x fs-1 d-block mb-2 opacity-25"></i>No events match your filters</td></tr>';
+      utils.showEnhancedEmptyState('eventsTableBody', 11, { icon: 'bi-calendar-event', message: 'No events match your filters', description: 'Try adjusting your filters to see more results', isFiltered: true });
       return;
     }
 
@@ -10171,10 +10210,11 @@ const eventsModule = {
     if (ids.length === 0) return;
     if (!await utils.confirmDialog({ title: 'Delete Events', message: `Delete ${ids.length} event(s)? This cannot be undone.` })) return;
     try {
-      for (const id of ids) {
-        await STATE.client.from('events').delete().eq('id', id);
-      }
-      utils.showToast(`${ids.length} event(s) deleted`, 'success');
+      const result = await utils.runBatchOperation(ids, async (id) => {
+        const { error } = await STATE.client.from('events').delete().eq('id', id);
+        if (error) throw error;
+      }, 'Deleting events');
+      utils.showToast(`${result.succeeded.length} event(s) deleted`, 'success');
       this.clearEventSelection();
       await this.loadEvents();
     } catch (e) {
@@ -10187,10 +10227,10 @@ const eventsModule = {
     if (ids.length === 0) return;
     if (!await utils.confirmDialog({ title: 'Clone Events', message: `Clone ${ids.length} event(s)?`, confirmText: 'Clone', danger: false })) return;
     try {
-      for (const id of ids) {
+      const result = await utils.runBatchOperation(ids, async (id) => {
         const src = STATE.allEvents.find(e => e.id === id);
-        if (!src) continue;
-        await STATE.client.from('events').insert([{
+        if (!src) throw new Error('Event not found');
+        const { error } = await STATE.client.from('events').insert([{
           event_name: src.event_name + ' (Copy)',
           event_date: src.event_date,
           year: src.year,
@@ -10199,8 +10239,9 @@ const eventsModule = {
           capacity: src.capacity || null,
           event_status: 'draft'
         }]);
-      }
-      utils.showToast(`${ids.length} event(s) cloned`, 'success');
+        if (error) throw error;
+      }, 'Cloning events');
+      utils.showToast(`${result.succeeded.length} event(s) cloned`, 'success');
       this.clearEventSelection();
       await this.loadEvents();
     } catch (e) {
@@ -10211,16 +10252,12 @@ const eventsModule = {
   async bulkSetStatus(status) {
     const ids = Array.from(this._selectedEvents);
     if (ids.length === 0) return;
-    try {
-      for (const id of ids) {
-        await STATE.client.from('events').update({ event_status: status }).eq('id', id);
-      }
-      utils.showToast(`${ids.length} event(s) set to ${status}`, 'success');
-      this.clearEventSelection();
-      await this.loadEvents();
-    } catch (e) {
-      utils.showToast('Error updating status: ' + e.message, 'error');
-    }
+    await utils.runBatchOperation(ids, async (id) => {
+      const { error } = await STATE.client.from('events').update({ event_status: status }).eq('id', id);
+      if (error) throw error;
+    }, 'Setting event status');
+    this.clearEventSelection();
+    await this.loadEvents();
   },
 
   // ============================================
@@ -10250,19 +10287,15 @@ const eventsModule = {
     if (this._selectedEvents.size === 0) return;
     if (!await utils.confirmDialog({ title: 'Delete Events', message: `Delete ${this._selectedEvents.size} selected events? This cannot be undone.` })) return;
 
-    try {
-      for (const id of this._selectedEvents) {
-        await STATE.client.from('events').delete().eq('id', id);
-      }
-      utils.showToast(`Deleted ${this._selectedEvents.size} events`, 'success');
-      this._selectedEvents.clear();
-      this.updateBulkBar();
-      this._updateBulkBar();
-      await this.loadEvents();
-    } catch (error) {
-      console.error('Bulk delete error:', error);
-      utils.showToast('Error deleting events', 'error');
-    }
+    const ids = Array.from(this._selectedEvents);
+    await utils.runBatchOperation(ids, async (id) => {
+      const { error } = await STATE.client.from('events').delete().eq('id', id);
+      if (error) throw error;
+    }, 'Deleting events');
+    this._selectedEvents.clear();
+    this.updateBulkBar();
+    this._updateBulkBar();
+    await this.loadEvents();
   },
 
   bulkExportEvents() {
@@ -10702,6 +10735,47 @@ const eventsModule = {
     a.download = `events_export_${new Date().toISOString().split('T')[0]}.csv`;
     a.click(); URL.revokeObjectURL(a.href);
     utils.showToast('Events exported', 'success');
+  },
+
+  /**
+   * Export events to Excel format
+   */
+  exportEventsExcel() {
+    const events = STATE.allEvents || [];
+    if (events.length === 0) { utils.showToast('No events to export', 'warning'); return; }
+    const exportData = events.map(e => {
+      const cachedAttendees = this._eventAttendeeCounts[e.id];
+      return {
+        event_name: e.event_name || '',
+        year: e.year || '',
+        date: e.event_date || '',
+        venue: e.venue || '',
+        status: e.event_status || 'draft',
+        description: e.description || '',
+        attendees: cachedAttendees ? cachedAttendees.total : 0
+      };
+    });
+    utils.exportToExcel(exportData, `events_export_${new Date().toISOString().split('T')[0]}`);
+  },
+
+  /**
+   * Export events to printable PDF
+   */
+  exportEventsPDF() {
+    const events = STATE.allEvents || [];
+    if (events.length === 0) { utils.showToast('No events to export', 'warning'); return; }
+    const exportData = events.map(e => {
+      const cachedAttendees = this._eventAttendeeCounts[e.id];
+      return {
+        event_name: e.event_name || '',
+        year: e.year || '',
+        date: e.event_date || '',
+        venue: e.venue || '',
+        status: e.event_status || 'draft',
+        attendees: cachedAttendees ? cachedAttendees.total : 0
+      };
+    });
+    utils.exportToPrintablePDF(exportData, 'Events Report', { columns: ['event_name', 'year', 'date', 'venue', 'status', 'attendees'] });
   },
 
   // ============================================

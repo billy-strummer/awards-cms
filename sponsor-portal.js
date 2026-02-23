@@ -235,7 +235,7 @@ window.sponsorPortalModule = {
   },
 
   async deleteContract(id) {
-    if (!utils.confirm('Delete this contract? This cannot be undone.')) return;
+    if (!await utils.confirmDialog({ title: 'Delete Contract', message: 'Delete this contract? This cannot be undone.', confirmText: 'Delete', danger: true })) return;
     try {
       const { error } = await STATE.client.from('sponsor_contracts').delete().eq('id', id);
       if (error) throw error;

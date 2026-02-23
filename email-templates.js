@@ -15,7 +15,7 @@ const emailTemplatesModule = {
       await this.loadTemplates();
     } catch (error) {
       console.error('Error initializing email templates module:', error);
-      utils.showToast('Failed to load email templates: ' + error.message, 'error');
+      utils.showErrorWithRetry(error, 'loading email templates', () => this.initialize());
     } finally {
       utils.hideLoading();
     }
@@ -534,22 +534,24 @@ const emailTemplatesModule = {
     };
 
     try {
-      const { data, error } = await STATE.client
-        .from('email_templates')
-        .insert(templateData)
-        .select()
-        .single();
+      await utils.protectModalDuringSave('newTemplateModal', async () => {
+        const { data, error } = await STATE.client
+          .from('email_templates')
+          .insert(templateData)
+          .select()
+          .single();
 
-      if (error) throw error;
+        if (error) throw error;
 
-      utils.showToast('Template created successfully!', 'success');
-      bootstrap.Modal.getInstance(document.getElementById('newTemplateModal')).hide();
-      await this.loadTemplates();
+        utils.showToast('Template created successfully!', 'success');
+        bootstrap.Modal.getInstance(document.getElementById('newTemplateModal')).hide();
+        await this.loadTemplates();
 
-      // Auto-select the new template
-      if (data?.id) {
-        this.selectTemplate(data.id);
-      }
+        // Auto-select the new template
+        if (data?.id) {
+          this.selectTemplate(data.id);
+        }
+      });
     } catch (error) {
       console.error('Error creating template:', error);
       utils.showToast('Failed to create template: ' + error.message, 'error');

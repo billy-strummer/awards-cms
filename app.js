@@ -96,11 +96,13 @@ const reportsScheduler = {
     if (!name || !recipients) { utils.showToast('Fill in name and recipients', 'warning'); return; }
     const sections = Array.from(document.querySelectorAll('.rpt-section:checked')).map(cb => cb.value);
     if (sections.length === 0) { utils.showToast('Select at least one section', 'warning'); return; }
-    this._scheduledReports.push({ name, frequency, recipients, sections, active: true, created: new Date().toISOString() });
-    await this._saveScheduledReports();
-    utils.showToast('Report schedule created', 'success');
-    bootstrap.Modal.getInstance(document.getElementById('createScheduledReportModal'))?.hide();
-    this.loadReports();
+    await utils.protectModalDuringSave('createScheduledReportModal', async () => {
+      this._scheduledReports.push({ name, frequency, recipients, sections, active: true, created: new Date().toISOString() });
+      await this._saveScheduledReports();
+      utils.showToast('Report schedule created', 'success');
+      bootstrap.Modal.getInstance(document.getElementById('createScheduledReportModal'))?.hide();
+      this.loadReports();
+    });
   },
 
   previewReport(index) {
@@ -677,11 +679,6 @@ document.addEventListener('DOMContentLoaded', function() {
   }
 
   // --- Awards Filters ---
-  // Create debounced version of filter function
-  const debouncedAwardsFilter = utils.debounce(() => {
-    awardsModule.filterAwards();
-  }, 300);
-  
   const awardsYearFilter = document.getElementById('awardsYearFilterSelect');
   if (awardsYearFilter) awardsYearFilter.addEventListener('change', () => {
     awardsModule.filterAwards();
@@ -708,28 +705,12 @@ document.addEventListener('DOMContentLoaded', function() {
     awardsModule.filterAwards();
   });
 
-  const awardsSearchBox = document.getElementById('awardsSearchBox');
-  if (awardsSearchBox) awardsSearchBox.addEventListener('input', () => {
-    debouncedAwardsFilter();
-  });
-  
-  // --- Organisation Filters ---
-  const debouncedOrgFilter = utils.debounce(() => {
-    orgsModule.filterOrganisations();
-  }, 300);
+  // Note: awardsSearchBox debounced search is initialized via utils.initDebouncedSearch below
 
-  const orgSearchBox = document.getElementById('orgsSearchBox');
-  if (orgSearchBox) {
-    orgSearchBox.addEventListener('input', () => {
-      debouncedOrgFilter();
-    });
-  }
-  
+  // --- Organisation Filters ---
+  // Note: orgsSearchBox debounced search is initialized via utils.initDebouncedSearch below
+
   // --- Winners Filters ---
-  const debouncedWinnerFilter = utils.debounce(() => {
-    winnersModule.filterWinners();
-  }, 300);
-  
   const winnerYearFilter = document.getElementById('winnerYearFilterSelect');
   if (winnerYearFilter) winnerYearFilter.addEventListener('change', () => {
     winnersModule.filterWinners();
@@ -740,10 +721,7 @@ document.addEventListener('DOMContentLoaded', function() {
     winnersModule.filterWinners();
   });
 
-  const winnerSearchBox = document.getElementById('winnerSearchBox');
-  if (winnerSearchBox) winnerSearchBox.addEventListener('input', () => {
-    debouncedWinnerFilter();
-  });
+  // Note: winnerSearchBox debounced search is initialized via utils.initDebouncedSearch below
 
   // --- Tab Navigation ---
   // Load winners data when Winners tab is clicked (lazy loading)
@@ -1328,6 +1306,16 @@ document.addEventListener('DOMContentLoaded', function() {
   if (utils.initDebouncedSearch) {
     utils.initDebouncedSearch('awardsSearchBox', () => { if (window.awardsModule) awardsModule.filterAwards(); });
     utils.initDebouncedSearch('entriesSearchInput', () => { if (window.entriesModule) entriesModule.applyFilters(); });
+    utils.initDebouncedSearch('winnerSearchBox', () => { if (window.winnersModule) winnersModule.filterWinners(); });
+    utils.initDebouncedSearch('eventsSearchBox', () => { if (window.eventsModule) eventsModule.filterEvents(); });
+    utils.initDebouncedSearch('orgsSearchBox', () => { if (window.orgsModule) orgsModule.filterOrganisations(); });
+    utils.initDebouncedSearch('invoiceSearchBox', () => { if (window.paymentsModule) paymentsModule.filterInvoices(); });
+    utils.initDebouncedSearch('paymentSearchBox', () => { if (window.paymentsModule) paymentsModule.filterPayments(); });
+    utils.initDebouncedSearch('crmCompanySearch', () => { if (window.crmModule) crmModule.filterCompanies(); });
+    // Note: subscriberSearch is in a dynamic modal (email-lists.js), debounced search is attached there after modal creation
+    utils.initDebouncedSearch('campaignLogSearchInput', () => { if (window.emailBuilder) emailBuilder.searchCampaigns(document.getElementById('campaignLogSearchInput')?.value); });
+    utils.initDebouncedSearch('attendeeSearchFilter', () => { if (window.eventsModule) eventsModule.filterAttendeesList(); });
+    utils.initDebouncedSearch('checkInSearch', () => { if (window.eventsModule) eventsModule.filterCheckInList(); });
   }
 
   // ==========================================

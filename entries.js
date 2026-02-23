@@ -51,7 +51,7 @@ const entriesModule = {
 
     } catch (error) {
       console.error('Error initializing entries module:', error);
-      utils.showToast('Failed to load entries: ' + error.message, 'error');
+      utils.showErrorWithRetry(error, 'loading entries', () => this.initialize());
     } finally {
       utils.hideLoading();
     }
@@ -317,8 +317,24 @@ const entriesModule = {
       this._sortField = field;
       this._sortDir = 'asc';
     }
+    utils.saveSortState('entries', this._sortField, this._sortDir);
+    this._updateSortIndicators();
     this._currentPage = 1;
     this.applyFilters();
+  },
+
+  _updateSortIndicators() {
+    const icons = document.querySelectorAll('[data-sort-icon-entries]');
+    icons.forEach(icon => {
+      const field = icon.getAttribute('data-sort-icon-entries');
+      if (field === this._sortField) {
+        icon.className = this._sortDir === 'asc'
+          ? 'bi bi-caret-up-fill text-primary ms-1 small'
+          : 'bi bi-caret-down-fill text-primary ms-1 small';
+      } else {
+        icon.className = 'bi bi-arrow-down-up text-muted ms-1 small';
+      }
+    });
   },
 
   /**
@@ -419,6 +435,17 @@ const entriesModule = {
 
       return true;
     });
+
+    // If search query is active and no exact matches found, try fuzzy search
+    if (this.currentFilters.search && this.filteredEntries.length === 0) {
+      this.filteredEntries = utils.fuzzyFilter(this.allEntries, this.currentFilters.search, ['entry_title', 'company_name']);
+      // Also apply non-search filters to fuzzy results
+      if (this.currentFilters.status) this.filteredEntries = this.filteredEntries.filter(e => e.status === this.currentFilters.status);
+      if (this.currentFilters.award) this.filteredEntries = this.filteredEntries.filter(e => e.award_id === this.currentFilters.award);
+      if (this.currentFilters.year) this.filteredEntries = this.filteredEntries.filter(e => e.year === parseInt(this.currentFilters.year));
+      if (this.currentFilters.selfNom === 'self_nom') this.filteredEntries = this.filteredEntries.filter(e => e.is_self_nomination);
+      if (this.currentFilters.selfNom === 'standard') this.filteredEntries = this.filteredEntries.filter(e => !e.is_self_nomination);
+    }
 
     // Sort
     this.filteredEntries.sort((a, b) => {
@@ -792,32 +819,34 @@ const entriesModule = {
     }
 
     try {
-      const updateData = { status: newStatus };
+      await utils.protectModalDuringSave('entryDetailsModal', async () => {
+        const updateData = { status: newStatus };
 
-      // If shortlisting, also set the shortlisted flag and date
-      if (newStatus === 'shortlisted') {
-        updateData.is_shortlisted = true;
-        updateData.shortlisted_date = new Date().toISOString();
-      }
+        // If shortlisting, also set the shortlisted flag and date
+        if (newStatus === 'shortlisted') {
+          updateData.is_shortlisted = true;
+          updateData.shortlisted_date = new Date().toISOString();
+        }
 
-      const { error } = await STATE.client
-        .from('entries')
-        .update(updateData)
-        .eq('id', entryId);
+        const { error } = await STATE.client
+          .from('entries')
+          .update(updateData)
+          .eq('id', entryId);
 
-      if (error) throw error;
+        if (error) throw error;
 
-      utils.showToast(`Entry status updated to ${newStatus}`, 'success');
+        utils.showToast(`Entry status updated to ${newStatus}`, 'success');
 
-      // Close modal
-      const modal = bootstrap.Modal.getInstance(document.getElementById('entryDetailsModal'));
-      if (modal) {
-        modal.hide();
-      }
+        // Close modal
+        const modal = bootstrap.Modal.getInstance(document.getElementById('entryDetailsModal'));
+        if (modal) {
+          modal.hide();
+        }
 
-      // Reload entries
-      await this.loadEntries();
-      await this.loadStats();
+        // Reload entries
+        await this.loadEntries();
+        await this.loadStats();
+      });
 
     } catch (error) {
       console.error('Error updating entry status:', error);
@@ -830,52 +859,54 @@ const entriesModule = {
    */
   async updateEntryStatus(entryId) {
     try {
-      const newStatus = document.getElementById('newEntryStatus').value;
-      const notes = document.getElementById('statusChangeNotes').value;
+      await utils.protectModalDuringSave('entryDetailsModal', async () => {
+        const newStatus = document.getElementById('newEntryStatus').value;
+        const notes = document.getElementById('statusChangeNotes').value;
 
-      const updateData = { status: newStatus };
+        const updateData = { status: newStatus };
 
-      // If shortlisting, also set the shortlisted flag and date
-      if (newStatus === 'shortlisted') {
-        updateData.is_shortlisted = true;
-        updateData.shortlisted_date = new Date().toISOString();
-      }
+        // If shortlisting, also set the shortlisted flag and date
+        if (newStatus === 'shortlisted') {
+          updateData.is_shortlisted = true;
+          updateData.shortlisted_date = new Date().toISOString();
+        }
 
-      // Append notes to admin_notes if provided
-      if (notes) {
-        const timestamp = new Date().toLocaleString();
-        const noteEntry = `[${timestamp}] Status changed to ${newStatus}: ${notes}`;
+        // Append notes to admin_notes if provided
+        if (notes) {
+          const timestamp = new Date().toLocaleString();
+          const noteEntry = `[${timestamp}] Status changed to ${newStatus}: ${notes}`;
 
-        // Get current admin notes
-        const { data: entry } = await STATE.client
+          // Get current admin notes
+          const { data: entry } = await STATE.client
+            .from('entries')
+            .select('admin_notes')
+            .eq('id', entryId)
+            .single();
+
+          updateData.admin_notes = entry?.admin_notes
+            ? `${entry.admin_notes}\n\n${noteEntry}`
+            : noteEntry;
+        }
+
+        const { error } = await STATE.client
           .from('entries')
-          .select('admin_notes')
-          .eq('id', entryId)
-          .single();
+          .update(updateData)
+          .eq('id', entryId);
 
-        updateData.admin_notes = entry?.admin_notes
-          ? `${entry.admin_notes}\n\n${noteEntry}`
-          : noteEntry;
-      }
+        if (error) throw error;
 
-      const { error } = await STATE.client
-        .from('entries')
-        .update(updateData)
-        .eq('id', entryId);
+        utils.showToast('Entry status updated successfully', 'success');
 
-      if (error) throw error;
+        // Close modal
+        const modal = bootstrap.Modal.getInstance(document.getElementById('entryDetailsModal'));
+        if (modal) {
+          modal.hide();
+        }
 
-      utils.showToast('Entry status updated successfully', 'success');
-
-      // Close modal
-      const modal = bootstrap.Modal.getInstance(document.getElementById('entryDetailsModal'));
-      if (modal) {
-        modal.hide();
-      }
-
-      // Reload entries
-      await this.loadEntries();
-      await this.loadStats();
+        // Reload entries
+        await this.loadEntries();
+        await this.loadStats();
+      });
 
     } catch (error) {
       console.error('Error updating entry status:', error);
@@ -1148,6 +1179,7 @@ const entriesModule = {
       document.body.insertAdjacentHTML('beforeend', modalHtml);
       const modal = new bootstrap.Modal(document.getElementById('editEntryModal'));
       modal.show();
+      utils.initInlineValidation('editEntryForm');
       document.getElementById('editEntryModal').addEventListener('hidden.bs.modal', function() { this.remove(); });
 
     } catch (error) {
@@ -1189,17 +1221,19 @@ const entriesModule = {
     }
 
     try {
-      const { error } = await STATE.client
-        .from('entries')
-        .update(updateData)
-        .eq('id', entryId);
+      await utils.protectModalDuringSave('editEntryModal', async () => {
+        const { error } = await STATE.client
+          .from('entries')
+          .update(updateData)
+          .eq('id', entryId);
 
-      if (error) throw error;
+        if (error) throw error;
 
-      utils.showToast('Entry updated successfully', 'success');
-      bootstrap.Modal.getInstance(document.getElementById('editEntryModal')).hide();
-      await this.loadEntries();
-      await this.loadStats();
+        utils.showToast('Entry updated successfully', 'success');
+        bootstrap.Modal.getInstance(document.getElementById('editEntryModal')).hide();
+        await this.loadEntries();
+        await this.loadStats();
+      });
     } catch (error) {
       console.error('Error updating entry:', error);
       utils.showToast('Failed to update entry: ' + error.message, 'error');
@@ -1453,74 +1487,81 @@ const entriesModule = {
   },
 
   async executeBulkAction(actionType, value) {
-    const count = this.selectedEntryIds.size;
-    const ids = Array.from(this.selectedEntryIds);
+    try {
+      await utils.protectModalDuringSave('bulkActionsModal', async () => {
+        const count = this.selectedEntryIds.size;
+        const ids = Array.from(this.selectedEntryIds);
 
-    if (actionType === 'delete') {
-      if (!await utils.confirmDialog({ title: 'Delete Entries', message: `Are you sure you want to DELETE ${count} entries? This cannot be undone.` })) return;
+        if (actionType === 'delete') {
+          if (!await utils.confirmDialog({ title: 'Delete Entries', message: `Are you sure you want to DELETE ${count} entries? This cannot be undone.` })) return;
 
-      try {
-        const { error } = await STATE.client
-          .from('entries')
-          .delete()
-          .in('id', ids);
+          try {
+            const { error } = await STATE.client
+              .from('entries')
+              .delete()
+              .in('id', ids);
 
-        if (error) throw error;
+            if (error) throw error;
 
-        utils.showToast(`${count} entries deleted`, 'success');
-      } catch (error) {
-        console.error('Error bulk deleting:', error);
-        utils.showToast('Failed to delete entries: ' + error.message, 'error');
-        return;
-      }
-    } else if (actionType === 'status') {
-      if (!await utils.confirmDialog({ title: 'Change Entry Status', message: `Change status to "${value}" for ${count} entries?`, confirmText: 'Update', danger: false })) return;
+            utils.showToast(`${count} entries deleted`, 'success');
+          } catch (error) {
+            console.error('Error bulk deleting:', error);
+            utils.showToast('Failed to delete entries: ' + error.message, 'error');
+            return;
+          }
+        } else if (actionType === 'status') {
+          if (!await utils.confirmDialog({ title: 'Change Entry Status', message: `Change status to "${value}" for ${count} entries?`, confirmText: 'Update', danger: false })) return;
 
-      try {
-        const updateData = { status: value };
-        if (value === 'shortlisted') {
-          updateData.is_shortlisted = true;
-          updateData.shortlisted_date = new Date().toISOString();
+          try {
+            const updateData = { status: value };
+            if (value === 'shortlisted') {
+              updateData.is_shortlisted = true;
+              updateData.shortlisted_date = new Date().toISOString();
+            }
+
+            const { error } = await STATE.client
+              .from('entries')
+              .update(updateData)
+              .in('id', ids);
+
+            if (error) throw error;
+
+            utils.showToast(`${count} entries updated to ${value}`, 'success');
+          } catch (error) {
+            console.error('Error bulk status update:', error);
+            utils.showToast('Failed to update entries: ' + error.message, 'error');
+            return;
+          }
+        } else if (actionType === 'payment') {
+          if (!await utils.confirmDialog({ title: 'Change Payment Status', message: `Change payment status to "${value}" for ${count} entries?`, confirmText: 'Update', danger: false })) return;
+
+          try {
+            const { error } = await STATE.client
+              .from('entries')
+              .update({ payment_status: value })
+              .in('id', ids);
+
+            if (error) throw error;
+
+            utils.showToast(`${count} entries payment status updated to ${value}`, 'success');
+          } catch (error) {
+            console.error('Error bulk payment update:', error);
+            utils.showToast('Failed to update entries: ' + error.message, 'error');
+            return;
+          }
         }
 
-        const { error } = await STATE.client
-          .from('entries')
-          .update(updateData)
-          .in('id', ids);
-
-        if (error) throw error;
-
-        utils.showToast(`${count} entries updated to ${value}`, 'success');
-      } catch (error) {
-        console.error('Error bulk status update:', error);
-        utils.showToast('Failed to update entries: ' + error.message, 'error');
-        return;
-      }
-    } else if (actionType === 'payment') {
-      if (!await utils.confirmDialog({ title: 'Change Payment Status', message: `Change payment status to "${value}" for ${count} entries?`, confirmText: 'Update', danger: false })) return;
-
-      try {
-        const { error } = await STATE.client
-          .from('entries')
-          .update({ payment_status: value })
-          .in('id', ids);
-
-        if (error) throw error;
-
-        utils.showToast(`${count} entries payment status updated to ${value}`, 'success');
-      } catch (error) {
-        console.error('Error bulk payment update:', error);
-        utils.showToast('Failed to update entries: ' + error.message, 'error');
-        return;
-      }
+        // Close modal and reload
+        const modal = bootstrap.Modal.getInstance(document.getElementById('bulkActionsModal'));
+        if (modal) modal.hide();
+        this.selectedEntryIds.clear();
+        await this.loadEntries();
+        await this.loadStats();
+      });
+    } catch (error) {
+      console.error('Error executing bulk action:', error);
+      utils.showToast('Failed to execute bulk action: ' + error.message, 'error');
     }
-
-    // Close modal and reload
-    const modal = bootstrap.Modal.getInstance(document.getElementById('bulkActionsModal'));
-    if (modal) modal.hide();
-    this.selectedEntryIds.clear();
-    await this.loadEntries();
-    await this.loadStats();
   },
 
   /**

@@ -230,23 +230,29 @@ window.webhooksModule = {
     const url = document.getElementById('whUrl').value.trim();
     if (!name || !url) { utils.showToast('Name and URL are required', 'warning'); return; }
 
-    const events = Array.from(document.querySelectorAll('.wh-event-check:checked')).map(c => c.value);
-    const secret = document.getElementById('whSecret').value.trim() || crypto.randomUUID();
-    const is_active = document.getElementById('whActive').checked;
-    const now = new Date().toISOString();
+    try {
+      await utils.protectModalDuringSave('webhookModal', async () => {
+        const events = Array.from(document.querySelectorAll('.wh-event-check:checked')).map(c => c.value);
+        const secret = document.getElementById('whSecret').value.trim() || crypto.randomUUID();
+        const is_active = document.getElementById('whActive').checked;
+        const now = new Date().toISOString();
 
-    const record = { name, url, secret, events, is_active, updated_at: now };
-    let error;
-    if (id) {
-      ({ error } = await STATE.client.from('webhooks').update(record).eq('id', id));
-    } else {
-      ({ error } = await STATE.client.from('webhooks').insert({ ...record, created_at: now }));
+        const record = { name, url, secret, events, is_active, updated_at: now };
+        let error;
+        if (id) {
+          ({ error } = await STATE.client.from('webhooks').update(record).eq('id', id));
+        } else {
+          ({ error } = await STATE.client.from('webhooks').insert({ ...record, created_at: now }));
+        }
+        if (error) throw error;
+
+        bootstrap.Modal.getInstance(document.getElementById('webhookModal')).hide();
+        utils.showToast('Webhook saved', 'success');
+        this.renderWebhookManager();
+      });
+    } catch (error) {
+      utils.showToast('Save failed: ' + error.message, 'error');
     }
-    if (error) { utils.showToast('Save failed: ' + error.message, 'error'); return; }
-
-    bootstrap.Modal.getInstance(document.getElementById('webhookModal')).hide();
-    utils.showToast('Webhook saved', 'success');
-    this.renderWebhookManager();
   },
 
   async deleteWebhook(id) {

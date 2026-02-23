@@ -54,7 +54,7 @@ const paymentsModule = {
       utils.trackDataLoad('payments');
     } catch (error) {
       console.error('Error loading payments data:', error);
-      utils.showToast('Failed to load payments data', 'error');
+      utils.showErrorWithRetry(error, 'loading payments data', () => this.loadAllData());
     } finally {
       utils.hideLoading();
     }
@@ -91,7 +91,7 @@ const paymentsModule = {
 
     } catch (error) {
       console.error('Error loading invoices:', error);
-      utils.showToast('Failed to load invoices', 'error');
+      utils.showErrorWithRetry(error, 'loading invoices', () => this.loadInvoices());
     }
   },
 
@@ -121,6 +121,15 @@ const paymentsModule = {
       return true;
     });
 
+    // If search query is active and no exact matches found, try fuzzy search
+    if (search && this.currentInvoices.length === 0) {
+      this.currentInvoices = utils.fuzzyFilter(this.allInvoices, search, ['invoice_number', 'notes', 'description']);
+      // Also apply non-search filters to fuzzy results
+      if (status) this.currentInvoices = this.currentInvoices.filter(inv => inv.status === status || inv.payment_status === status);
+      if (orgId) this.currentInvoices = this.currentInvoices.filter(inv => inv.organisation_id === orgId);
+      if (month) this.currentInvoices = this.currentInvoices.filter(inv => (inv.invoice_date || '').startsWith(month));
+    }
+
     this._applySortInvoices();
     this.renderInvoices();
     this.updateStatistics();
@@ -138,14 +147,7 @@ const paymentsModule = {
     const pageInvoices = this.currentInvoices.slice(invStart, invEnd);
 
     if (this.currentInvoices.length === 0) {
-      tbody.innerHTML = `
-        <tr>
-          <td colspan="10" class="text-center py-5 text-muted">
-            <i class="bi bi-inbox display-4 d-block mb-2 opacity-25"></i>
-            No invoices found. Create your first invoice to get started!
-          </td>
-        </tr>
-      `;
+      utils.showEnhancedEmptyState('invoicesTableBody', 10, { icon: 'bi-receipt', message: 'No invoices found', description: 'Create your first invoice to get started' });
       return;
     }
 
@@ -286,6 +288,7 @@ const paymentsModule = {
         orgs.map(org => `<option value="${org.id}">${utils.escapeHtml(org.company_name)}</option>`).join('');
 
       modal.show();
+      utils.initInlineValidation('createInvoiceForm');
 
       // Draft recovery: check for a saved invoice draft
       const draft = utils.getFormDraft('invoice_new');
@@ -380,108 +383,110 @@ const paymentsModule = {
 
   async saveNewInvoice() {
     try {
-      utils.showLoading();
+      await utils.protectModalDuringSave('createInvoiceModal', async () => {
+        utils.showLoading();
 
-      const form = document.getElementById('createInvoiceForm');
-      if (!form.checkValidity()) {
-        form.reportValidity();
-        return;
-      }
+        const form = document.getElementById('createInvoiceForm');
+        if (!form.checkValidity()) {
+          form.reportValidity();
+          return;
+        }
 
-      const organisationId = document.getElementById('invoiceOrganisation').value;
-      const invoiceDate = document.getElementById('invoiceDate').value;
-      const dueDate = document.getElementById('invoiceDueDate').value;
-      const invoiceType = document.getElementById('invoiceType').value;
-      const packageType = document.getElementById('invoicePackageType').value;
-      const taxRate = parseFloat(document.getElementById('invoiceTaxRate').value) || 20;
-      const description = document.getElementById('invoiceDescription').value;
+        const organisationId = document.getElementById('invoiceOrganisation').value;
+        const invoiceDate = document.getElementById('invoiceDate').value;
+        const dueDate = document.getElementById('invoiceDueDate').value;
+        const invoiceType = document.getElementById('invoiceType').value;
+        const packageType = document.getElementById('invoicePackageType').value;
+        const taxRate = parseFloat(document.getElementById('invoiceTaxRate').value) || 20;
+        const description = document.getElementById('invoiceDescription').value;
 
-      const lineItemElements = document.querySelectorAll('.invoice-line-item');
-      const lineItems = Array.from(lineItemElements).map(el => {
-        const inputs = el.querySelectorAll('input');
-        const quantity = parseInt(inputs[2].value) || 1;
-        const unitPrice = parseFloat(inputs[3].value) || 0;
+        const lineItemElements = document.querySelectorAll('.invoice-line-item');
+        const lineItems = Array.from(lineItemElements).map(el => {
+          const inputs = el.querySelectorAll('input');
+          const quantity = parseInt(inputs[2].value) || 1;
+          const unitPrice = parseFloat(inputs[3].value) || 0;
 
-        return {
-          item_name: inputs[0].value,
-          description: inputs[1].value,
-          quantity: quantity,
-          unit_price: unitPrice,
-          line_total: quantity * unitPrice
-        };
+          return {
+            item_name: inputs[0].value,
+            description: inputs[1].value,
+            quantity: quantity,
+            unit_price: unitPrice,
+            line_total: quantity * unitPrice
+          };
+        });
+
+        if (lineItems.length === 0) {
+          utils.showToast('Please add at least one line item', 'warning');
+          return;
+        }
+
+        const subtotal = lineItems.reduce((sum, item) => sum + item.line_total, 0);
+        const discountPercentage = this.getDiscountPercentage();
+        const discountAmount = subtotal * (discountPercentage / 100);
+        const subtotalAfterDiscount = subtotal - discountAmount;
+        const taxAmount = subtotalAfterDiscount * (taxRate / 100);
+        const totalAmount = subtotalAfterDiscount + taxAmount;
+
+        // Generate invoice number
+        let invoiceNumber;
+        try {
+          const { data: invoiceNumberData, error: genError } = await STATE.client
+            .rpc('generate_invoice_number');
+          if (genError) throw genError;
+          invoiceNumber = invoiceNumberData;
+        } catch (e) {
+          // Fallback: generate client-side if RPC doesn't exist
+          const year = new Date().getFullYear();
+          const rand = Math.floor(Math.random() * 9000) + 1000;
+          invoiceNumber = `INV-${year}-${rand}`;
+        }
+
+        const { data: invoice, error: invoiceError } = await STATE.client
+          .from('invoices')
+          .insert({
+            invoice_number: invoiceNumber,
+            organisation_id: organisationId,
+            invoice_date: invoiceDate,
+            due_date: dueDate,
+            invoice_type: invoiceType,
+            package_type: packageType || null,
+            subtotal: subtotal,
+            discount_percentage: discountPercentage,
+            discount_amount: discountAmount,
+            tax_rate: taxRate,
+            tax_amount: taxAmount,
+            total_amount: totalAmount,
+            balance_due: totalAmount,
+            status: 'draft',
+            payment_status: 'unpaid',
+            description: description
+          })
+          .select()
+          .single();
+
+        if (invoiceError) throw invoiceError;
+
+        const lineItemsWithInvoiceId = lineItems.map(item => ({
+          ...item,
+          invoice_id: invoice.id
+        }));
+
+        const { error: lineItemsError } = await STATE.client
+          .from('invoice_line_items')
+          .insert(lineItemsWithInvoiceId);
+
+        if (lineItemsError) throw lineItemsError;
+
+        // Clear auto-save draft on successful save
+        utils.clearFormDraft('invoice_new');
+
+        bootstrap.Modal.getInstance(document.getElementById('createInvoiceModal')).hide();
+
+        utils.showToast(`Invoice ${invoiceNumber} created successfully!`, 'success');
+
+        await this.loadInvoices();
+        this.updateStatistics();
       });
-
-      if (lineItems.length === 0) {
-        utils.showToast('Please add at least one line item', 'warning');
-        return;
-      }
-
-      const subtotal = lineItems.reduce((sum, item) => sum + item.line_total, 0);
-      const discountPercentage = this.getDiscountPercentage();
-      const discountAmount = subtotal * (discountPercentage / 100);
-      const subtotalAfterDiscount = subtotal - discountAmount;
-      const taxAmount = subtotalAfterDiscount * (taxRate / 100);
-      const totalAmount = subtotalAfterDiscount + taxAmount;
-
-      // Generate invoice number
-      let invoiceNumber;
-      try {
-        const { data: invoiceNumberData, error: genError } = await STATE.client
-          .rpc('generate_invoice_number');
-        if (genError) throw genError;
-        invoiceNumber = invoiceNumberData;
-      } catch (e) {
-        // Fallback: generate client-side if RPC doesn't exist
-        const year = new Date().getFullYear();
-        const rand = Math.floor(Math.random() * 9000) + 1000;
-        invoiceNumber = `INV-${year}-${rand}`;
-      }
-
-      const { data: invoice, error: invoiceError } = await STATE.client
-        .from('invoices')
-        .insert({
-          invoice_number: invoiceNumber,
-          organisation_id: organisationId,
-          invoice_date: invoiceDate,
-          due_date: dueDate,
-          invoice_type: invoiceType,
-          package_type: packageType || null,
-          subtotal: subtotal,
-          discount_percentage: discountPercentage,
-          discount_amount: discountAmount,
-          tax_rate: taxRate,
-          tax_amount: taxAmount,
-          total_amount: totalAmount,
-          balance_due: totalAmount,
-          status: 'draft',
-          payment_status: 'unpaid',
-          description: description
-        })
-        .select()
-        .single();
-
-      if (invoiceError) throw invoiceError;
-
-      const lineItemsWithInvoiceId = lineItems.map(item => ({
-        ...item,
-        invoice_id: invoice.id
-      }));
-
-      const { error: lineItemsError } = await STATE.client
-        .from('invoice_line_items')
-        .insert(lineItemsWithInvoiceId);
-
-      if (lineItemsError) throw lineItemsError;
-
-      // Clear auto-save draft on successful save
-      utils.clearFormDraft('invoice_new');
-
-      bootstrap.Modal.getInstance(document.getElementById('createInvoiceModal')).hide();
-
-      utils.showToast(`Invoice ${invoiceNumber} created successfully!`, 'success');
-
-      await this.loadInvoices();
-      this.updateStatistics();
 
     } catch (error) {
       console.error('Error creating invoice:', error);
@@ -777,46 +782,48 @@ const paymentsModule = {
         return;
       }
 
-      utils.showLoading();
+      await utils.protectModalDuringSave('sendInvoiceModal', async () => {
+        utils.showLoading();
 
-      const recipientEmail = document.getElementById('sendInvoiceEmail').value;
-      const cc = document.getElementById('sendInvoiceCc').value;
-      const subject = document.getElementById('sendInvoiceSubject').value;
-      const message = document.getElementById('sendInvoiceMessage').value;
+        const recipientEmail = document.getElementById('sendInvoiceEmail').value;
+        const cc = document.getElementById('sendInvoiceCc').value;
+        const subject = document.getElementById('sendInvoiceSubject').value;
+        const message = document.getElementById('sendInvoiceMessage').value;
 
-      // Log communication in the database
-      const invoice = this.currentInvoices.find(i => i.id === this.currentSendInvoiceId);
+        // Log communication in the database
+        const invoice = this.currentInvoices.find(i => i.id === this.currentSendInvoiceId);
 
-      if (invoice) {
-        // Log to communications table
-        try {
-          await STATE.client.from('communications').insert({
-            organisation_id: invoice.organisation_id,
-            type: 'email',
-            subject: subject,
-            content: message,
-            direction: 'outbound',
-            status: 'sent',
-            created_at: new Date().toISOString()
-          });
-        } catch (commError) {
-          console.warn('Could not log communication:', commError);
+        if (invoice) {
+          // Log to communications table
+          try {
+            await STATE.client.from('communications').insert({
+              organisation_id: invoice.organisation_id,
+              type: 'email',
+              subject: subject,
+              content: message,
+              direction: 'outbound',
+              status: 'sent',
+              created_at: new Date().toISOString()
+            });
+          } catch (commError) {
+            console.warn('Could not log communication:', commError);
+          }
+
+          // Update invoice status to 'sent'
+          await STATE.client
+            .from('invoices')
+            .update({
+              status: 'sent',
+              sent_at: new Date().toISOString()
+            })
+            .eq('id', this.currentSendInvoiceId);
         }
 
-        // Update invoice status to 'sent'
-        await STATE.client
-          .from('invoices')
-          .update({
-            status: 'sent',
-            sent_at: new Date().toISOString()
-          })
-          .eq('id', this.currentSendInvoiceId);
-      }
+        bootstrap.Modal.getInstance(document.getElementById('sendInvoiceModal')).hide();
+        utils.showToast(`Invoice email prepared for ${recipientEmail}. Note: Email delivery requires SendGrid API configuration.`, 'success');
 
-      bootstrap.Modal.getInstance(document.getElementById('sendInvoiceModal')).hide();
-      utils.showToast(`Invoice email prepared for ${recipientEmail}. Note: Email delivery requires SendGrid API configuration.`, 'success');
-
-      await this.loadInvoices();
+        await this.loadInvoices();
+      });
 
     } catch (error) {
       console.error('Error sending invoice:', error);
@@ -847,7 +854,7 @@ const paymentsModule = {
       this.filterPayments();
     } catch (error) {
       console.error('Error loading payments:', error);
-      utils.showToast('Failed to load payments', 'error');
+      utils.showErrorWithRetry(error, 'loading payments', () => this.loadPayments());
     }
   },
 
@@ -873,6 +880,15 @@ const paymentsModule = {
       return true;
     });
 
+    // If search query is active and no exact matches found, try fuzzy search
+    if (search && this.currentPayments.length === 0) {
+      this.currentPayments = utils.fuzzyFilter(this.allPayments, search, ['payment_reference']);
+      // Also apply non-search filters to fuzzy results
+      if (method) this.currentPayments = this.currentPayments.filter(p => p.payment_method === method);
+      if (status) this.currentPayments = this.currentPayments.filter(p => p.status === status);
+      if (month) this.currentPayments = this.currentPayments.filter(p => (p.payment_date || '').startsWith(month));
+    }
+
     this.renderPayments();
     this.updateStatistics();
   },
@@ -896,14 +912,7 @@ const paymentsModule = {
     const pagePayments = this.currentPayments.slice(payStart, payEnd);
 
     if (this.currentPayments.length === 0) {
-      tbody.innerHTML = `
-        <tr>
-          <td colspan="8" class="text-center py-5 text-muted">
-            <i class="bi bi-inbox display-4 d-block mb-2 opacity-25"></i>
-            No payments recorded yet.
-          </td>
-        </tr>
-      `;
+      utils.showEnhancedEmptyState('paymentsTableBody', 8, { icon: 'bi-credit-card', message: 'No payments found', description: 'Payments will appear here once recorded' });
       return;
     }
 
@@ -1036,6 +1045,7 @@ const paymentsModule = {
       }
 
       modal.show();
+      utils.initInlineValidation('recordPaymentForm');
 
     } catch (error) {
       console.error('Error opening payment modal:', error);
@@ -1045,95 +1055,97 @@ const paymentsModule = {
 
   async savePaymentRecord() {
     try {
-      utils.showLoading();
+      await utils.protectModalDuringSave('recordPaymentModal', async () => {
+        utils.showLoading();
 
-      const form = document.getElementById('recordPaymentForm');
-      if (!form.checkValidity()) {
-        form.reportValidity();
-        return;
-      }
+        const form = document.getElementById('recordPaymentForm');
+        if (!form.checkValidity()) {
+          form.reportValidity();
+          return;
+        }
 
-      const organisationId = document.getElementById('paymentOrganisation').value;
-      const invoiceId = document.getElementById('paymentInvoice').value || null;
-      const amount = parseFloat(document.getElementById('paymentAmount').value);
-      const paymentDate = document.getElementById('paymentDate').value;
-      const paymentMethod = document.getElementById('paymentMethod').value;
-      const notes = document.getElementById('paymentNotes').value;
+        const organisationId = document.getElementById('paymentOrganisation').value;
+        const invoiceId = document.getElementById('paymentInvoice').value || null;
+        const amount = parseFloat(document.getElementById('paymentAmount').value);
+        const paymentDate = document.getElementById('paymentDate').value;
+        const paymentMethod = document.getElementById('paymentMethod').value;
+        const notes = document.getElementById('paymentNotes').value;
 
-      if (!organisationId) {
-        utils.showToast('Please select a company', 'warning');
-        return;
-      }
+        if (!organisationId) {
+          utils.showToast('Please select a company', 'warning');
+          return;
+        }
 
-      // Generate payment reference
-      let paymentReference;
-      try {
-        const { data: refData, error: refError } = await STATE.client.rpc('generate_payment_reference');
-        if (refError) throw refError;
-        paymentReference = refData;
-      } catch (e) {
-        // Fallback: generate client-side
-        const year = new Date().getFullYear();
-        const rand = Math.floor(Math.random() * 9000) + 1000;
-        paymentReference = `PAY-${year}-${rand}`;
-      }
+        // Generate payment reference
+        let paymentReference;
+        try {
+          const { data: refData, error: refError } = await STATE.client.rpc('generate_payment_reference');
+          if (refError) throw refError;
+          paymentReference = refData;
+        } catch (e) {
+          // Fallback: generate client-side
+          const year = new Date().getFullYear();
+          const rand = Math.floor(Math.random() * 9000) + 1000;
+          paymentReference = `PAY-${year}-${rand}`;
+        }
 
-      const { data: payment, error: paymentError } = await STATE.client
-        .from('payments')
-        .insert({
-          payment_reference: paymentReference,
-          invoice_id: invoiceId,
-          organisation_id: organisationId,
-          payment_date: paymentDate,
-          amount: amount,
-          payment_method: paymentMethod,
-          status: 'completed',
-          notes: notes
-        })
-        .select()
-        .single();
-
-      if (paymentError) throw paymentError;
-
-      // If linked to invoice, update invoice paid amount and status
-      if (invoiceId) {
-        const { data: invoice, error: invoiceError } = await STATE.client
-          .from('invoices')
-          .select('paid_amount, total_amount')
-          .eq('id', invoiceId)
+        const { data: payment, error: paymentError } = await STATE.client
+          .from('payments')
+          .insert({
+            payment_reference: paymentReference,
+            invoice_id: invoiceId,
+            organisation_id: organisationId,
+            payment_date: paymentDate,
+            amount: amount,
+            payment_method: paymentMethod,
+            status: 'completed',
+            notes: notes
+          })
+          .select()
           .single();
 
-        if (!invoiceError && invoice) {
-          const newPaidAmount = parseFloat(invoice.paid_amount || 0) + amount;
-          const totalAmount = parseFloat(invoice.total_amount || 0);
-          const balanceDue = Math.max(0, totalAmount - newPaidAmount);
+        if (paymentError) throw paymentError;
 
-          let paymentStatus = 'partial';
-          let status = 'sent';
-          if (newPaidAmount >= totalAmount) {
-            paymentStatus = 'paid';
-            status = 'paid';
-          }
-
-          await STATE.client
+        // If linked to invoice, update invoice paid amount and status
+        if (invoiceId) {
+          const { data: invoice, error: invoiceError } = await STATE.client
             .from('invoices')
-            .update({
-              paid_amount: newPaidAmount,
-              balance_due: balanceDue,
-              payment_status: paymentStatus,
-              status: status
-            })
-            .eq('id', invoiceId);
+            .select('paid_amount, total_amount')
+            .eq('id', invoiceId)
+            .single();
+
+          if (!invoiceError && invoice) {
+            const newPaidAmount = parseFloat(invoice.paid_amount || 0) + amount;
+            const totalAmount = parseFloat(invoice.total_amount || 0);
+            const balanceDue = Math.max(0, totalAmount - newPaidAmount);
+
+            let paymentStatus = 'partial';
+            let status = 'sent';
+            if (newPaidAmount >= totalAmount) {
+              paymentStatus = 'paid';
+              status = 'paid';
+            }
+
+            await STATE.client
+              .from('invoices')
+              .update({
+                paid_amount: newPaidAmount,
+                balance_due: balanceDue,
+                payment_status: paymentStatus,
+                status: status
+              })
+              .eq('id', invoiceId);
+          }
         }
-      }
 
-      bootstrap.Modal.getInstance(document.getElementById('recordPaymentModal')).hide();
+        bootstrap.Modal.getInstance(document.getElementById('recordPaymentModal')).hide();
 
-      utils.showToast(`Payment ${paymentReference} recorded successfully!`, 'success');
+        utils.showToast(`Payment ${paymentReference} recorded successfully!`, 'success');
 
-      await this.loadPayments();
-      await this.loadInvoices();
-      this.updateStatistics();
+        await this.loadPayments();
+        await this.loadInvoices();
+        this.updateStatistics();
+      });
 
     } catch (error) {
       console.error('Error recording payment:', error);
@@ -1262,6 +1274,7 @@ const paymentsModule = {
       this._invoiceSortField = field;
       this._invoiceSortDir = 'asc';
     }
+    utils.saveSortState('invoices', this._invoiceSortField, this._invoiceSortDir);
     this._applySortInvoices();
     this.renderInvoices();
   },
@@ -1342,6 +1355,80 @@ const paymentsModule = {
     link.click();
     document.body.removeChild(link);
     URL.revokeObjectURL(url);
+  },
+
+  /**
+   * Export invoices to Excel format
+   */
+  exportInvoicesExcel() {
+    const invoices = this.currentInvoices || [];
+    if (invoices.length === 0) { utils.showToast('No invoices to export', 'warning'); return; }
+    const exportData = invoices.map(inv => ({
+      invoice_number: inv.invoice_number || '',
+      organisation: inv.organisations?.company_name || '',
+      invoice_date: inv.invoice_date || '',
+      due_date: inv.due_date || '',
+      type: this.formatInvoiceType(inv.invoice_type),
+      total_amount: parseFloat(inv.total_amount || 0).toFixed(2),
+      paid_amount: parseFloat(inv.paid_amount || 0).toFixed(2),
+      balance_due: parseFloat(inv.balance_due || 0).toFixed(2),
+      status: inv.status || ''
+    }));
+    utils.exportToExcel(exportData, `invoices_export_${new Date().toISOString().split('T')[0]}`);
+  },
+
+  /**
+   * Export invoices to printable PDF
+   */
+  exportInvoicesPDF() {
+    const invoices = this.currentInvoices || [];
+    if (invoices.length === 0) { utils.showToast('No invoices to export', 'warning'); return; }
+    const exportData = invoices.map(inv => ({
+      invoice_number: inv.invoice_number || '',
+      organisation: inv.organisations?.company_name || '',
+      date: inv.invoice_date || '',
+      due_date: inv.due_date || '',
+      amount: parseFloat(inv.total_amount || 0).toFixed(2),
+      balance: parseFloat(inv.balance_due || 0).toFixed(2),
+      status: inv.status || ''
+    }));
+    utils.exportToPrintablePDF(exportData, 'Invoices Report', { columns: ['invoice_number', 'organisation', 'date', 'due_date', 'amount', 'balance', 'status'] });
+  },
+
+  /**
+   * Export payments to Excel format
+   */
+  exportPaymentsExcel() {
+    const payments = this.currentPayments || [];
+    if (payments.length === 0) { utils.showToast('No payments to export', 'warning'); return; }
+    const exportData = payments.map(p => ({
+      payment_reference: p.payment_reference || '',
+      payment_date: p.payment_date || '',
+      organisation: p.organisations?.company_name || '',
+      invoice: p.invoices?.invoice_number || '',
+      method: this.formatPaymentMethod(p.payment_method),
+      amount: parseFloat(p.amount || 0).toFixed(2),
+      status: p.status || ''
+    }));
+    utils.exportToExcel(exportData, `payments_export_${new Date().toISOString().split('T')[0]}`);
+  },
+
+  /**
+   * Export payments to printable PDF
+   */
+  exportPaymentsPDF() {
+    const payments = this.currentPayments || [];
+    if (payments.length === 0) { utils.showToast('No payments to export', 'warning'); return; }
+    const exportData = payments.map(p => ({
+      reference: p.payment_reference || '',
+      date: p.payment_date || '',
+      organisation: p.organisations?.company_name || '',
+      invoice: p.invoices?.invoice_number || '',
+      method: this.formatPaymentMethod(p.payment_method),
+      amount: parseFloat(p.amount || 0).toFixed(2),
+      status: p.status || ''
+    }));
+    utils.exportToPrintablePDF(exportData, 'Payments Report', { columns: ['reference', 'date', 'organisation', 'invoice', 'method', 'amount', 'status'] });
   },
 
   /* ==================================================== */
@@ -2021,11 +2108,12 @@ const paymentsModule = {
     if (!await utils.confirmDialog({ title: 'Bulk Status Update', message: `Update ${ids.length} invoice(s) to "${status}"?`, confirmText: 'Update', danger: false })) return;
     try {
       utils.showLoading();
-      for (const id of ids) {
-        await STATE.client.from('invoices').update({ status }).eq('id', id);
-      }
+      const result = await utils.runBatchOperation(ids, async (id) => {
+        const { error } = await STATE.client.from('invoices').update({ status }).eq('id', id);
+        if (error) throw error;
+      }, 'Updating invoices');
       this._selectedInvoiceIds.clear();
-      utils.showToast(`Updated ${ids.length} invoices to ${status}`, 'success');
+      utils.showToast(`${result.succeeded.length} invoice(s) updated to ${status}`, 'success');
       await this.loadInvoices();
       this.filterInvoices();
     } catch (err) {
@@ -2041,11 +2129,12 @@ const paymentsModule = {
     if (!await utils.confirmDialog({ title: 'Bulk Delete Invoices', message: `Delete ${ids.length} invoice(s)? This cannot be undone.`, confirmText: 'Delete All', danger: true })) return;
     try {
       utils.showLoading();
-      for (const id of ids) {
-        await STATE.client.from('invoices').delete().eq('id', id);
-      }
+      const result = await utils.runBatchOperation(ids, async (id) => {
+        const { error } = await STATE.client.from('invoices').delete().eq('id', id);
+        if (error) throw error;
+      }, 'Deleting invoices');
       this._selectedInvoiceIds.clear();
-      utils.showToast(`Deleted ${ids.length} invoices`, 'success');
+      utils.showToast(`${result.succeeded.length} invoice(s) deleted`, 'success');
       await this.loadInvoices();
       this.filterInvoices();
     } catch (err) {

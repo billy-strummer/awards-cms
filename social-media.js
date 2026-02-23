@@ -1170,91 +1170,92 @@ Vote now: {{website}}
     }
 
     try {
-      utils.showLoading();
+      await utils.protectModalDuringSave('bulkGenerateModal', async () => {
+        utils.showLoading();
 
-      // Get the award name
-      const awardSelect = document.getElementById('bulkAwardSelect');
-      const awardName = awardSelect.options[awardSelect.selectedIndex].text.trim();
+        // Get the award name
+        const awardSelect = document.getElementById('bulkAwardSelect');
+        const awardName = awardSelect.options[awardSelect.selectedIndex].text.trim();
 
-      // Fetch nominees/winners for this award from assignments
-      const statusFilter = templateType === 'winner' ? 'winner' : 'nominated';
-      const { data: assignments, error } = await STATE.client
-        .from('award_assignments')
-        .select(`
-          *,
-          organisations:organisation_id(id, company_name, logo_url, website)
-        `)
-        .eq('award_id', awardId)
-        .eq('status', statusFilter);
+        // Fetch nominees/winners for this award from assignments
+        const statusFilter = templateType === 'winner' ? 'winner' : 'nominated';
+        const { data: assignments, error } = await STATE.client
+          .from('award_assignments')
+          .select(`
+            *,
+            organisations:organisation_id(id, company_name, logo_url, website)
+          `)
+          .eq('award_id', awardId)
+          .eq('status', statusFilter);
 
-      if (error) throw error;
+        if (error) throw error;
 
-      if (!assignments || assignments.length === 0) {
-        utils.showToast(`No ${statusFilter} companies found for this award`, 'warning');
-        return;
-      }
+        if (!assignments || assignments.length === 0) {
+          utils.showToast(`No ${statusFilter} companies found for this award`, 'warning');
+          return;
+        }
 
-      const template = this.templates[templateType];
-      if (!template) {
-        utils.showToast('Invalid template type', 'error');
-        return;
-      }
+        const template = this.templates[templateType];
+        if (!template) {
+          utils.showToast('Invalid template type', 'error');
+          return;
+        }
 
-      const platforms = [];
-      if (document.getElementById('bulkPlatformTwitter').checked) platforms.push('twitter');
-      if (document.getElementById('bulkPlatformFacebook').checked) platforms.push('facebook');
-      if (document.getElementById('bulkPlatformInstagram').checked) platforms.push('instagram');
-      if (document.getElementById('bulkPlatformLinkedIn').checked) platforms.push('linkedin');
+        const platforms = [];
+        if (document.getElementById('bulkPlatformTwitter').checked) platforms.push('twitter');
+        if (document.getElementById('bulkPlatformFacebook').checked) platforms.push('facebook');
+        if (document.getElementById('bulkPlatformInstagram').checked) platforms.push('instagram');
+        if (document.getElementById('bulkPlatformLinkedIn').checked) platforms.push('linkedin');
 
-      if (platforms.length === 0) {
-        utils.showToast('Please select at least one platform', 'warning');
-        return;
-      }
+        if (platforms.length === 0) {
+          utils.showToast('Please select at least one platform', 'warning');
+          return;
+        }
 
-      const saveAs = document.getElementById('bulkSaveAs').value;
+        const saveAs = document.getElementById('bulkSaveAs').value;
 
-      // Generate posts for each company
-      const posts = assignments.map(assignment => {
-        const company = assignment.organisations;
-        if (!company) return null;
+        // Generate posts for each company
+        const posts = assignments.map(assignment => {
+          const company = assignment.organisations;
+          if (!company) return null;
 
-        return {
-          company_id: company.id,
-          award_id: awardId,
-          content: template.content,
-          template_type: templateType,
-          platforms: platforms,
-          image_url: company.logo_url || null,
-          add_logo_overlay: true,
-          status: saveAs,
-          created_at: new Date().toISOString()
-        };
-      }).filter(Boolean);
+          return {
+            company_id: company.id,
+            award_id: awardId,
+            content: template.content,
+            template_type: templateType,
+            platforms: platforms,
+            image_url: company.logo_url || null,
+            add_logo_overlay: true,
+            status: saveAs,
+            created_at: new Date().toISOString()
+          };
+        }).filter(Boolean);
 
-      if (posts.length === 0) {
-        utils.showToast('No valid posts to generate', 'warning');
-        return;
-      }
+        if (posts.length === 0) {
+          utils.showToast('No valid posts to generate', 'warning');
+          return;
+        }
 
-      const { error: insertError } = await STATE.client
-        .from('social_media_posts')
-        .insert(posts);
+        const { error: insertError } = await STATE.client
+          .from('social_media_posts')
+          .insert(posts);
 
-      if (insertError) throw insertError;
+        if (insertError) throw insertError;
 
-      // Close modal
-      const modal = bootstrap.Modal.getInstance(document.getElementById('bulkGenerateModal'));
-      if (modal) modal.hide();
+        // Close modal
+        const modal = bootstrap.Modal.getInstance(document.getElementById('bulkGenerateModal'));
+        if (modal) modal.hide();
 
-      utils.showToast(`Generated ${posts.length} posts as ${saveAs === 'draft' ? 'drafts' : 'scheduled'}`, 'success');
+        utils.showToast(`Generated ${posts.length} posts as ${saveAs === 'draft' ? 'drafts' : 'scheduled'}`, 'success');
 
-      // Refresh lists
-      await Promise.all([
-        this.loadScheduledPosts(),
-        this.loadDraftPosts(),
-        this.loadPublishedPosts()
-      ]);
-
+        // Refresh lists
+        await Promise.all([
+          this.loadScheduledPosts(),
+          this.loadDraftPosts(),
+          this.loadPublishedPosts()
+        ]);
+      });
     } catch (error) {
       console.error('Error bulk generating posts:', error);
       utils.showToast('Failed to generate posts: ' + error.message, 'error');

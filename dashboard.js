@@ -65,7 +65,7 @@ const dashboardModule = {
 
     } catch (error) {
       console.error('Error loading dashboard data:', error);
-      utils.showToast('Failed to load dashboard data', 'error');
+      utils.showErrorWithRetry(error, 'loading dashboard', () => this.loadAllData());
     } finally {
       utils.hideLoading();
     }
@@ -1869,7 +1869,7 @@ const dashboardModule = {
 
     } catch (error) {
       console.error('Error opening sales dashboard:', error);
-      utils.showToast('Failed to load sales data: ' + error.message, 'error');
+      utils.showErrorWithRetry(error, 'loading sales data', () => this.openSalesDashboard());
     }
   },
 
@@ -2328,7 +2328,7 @@ const dashboardModule = {
 
       const tbody = document.getElementById('summaryRecentAwardsTable');
       if (recentAwards.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="4" class="text-center text-muted py-4">No awards found</td></tr>';
+        utils.showEnhancedEmptyState('summaryRecentAwardsTable', 4, { icon: 'bi-trophy', message: 'No awards found', description: 'Awards will appear here once created' });
       } else {
         tbody.innerHTML = recentAwards.map(award => `
           <tr>
@@ -2419,7 +2419,7 @@ const dashboardModule = {
 
       const tbody = document.getElementById('summaryRecentOrgsTable');
       if (recentOrgs.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted py-4">No organisations found</td></tr>';
+        utils.showEnhancedEmptyState('summaryRecentOrgsTable', 5, { icon: 'bi-building', message: 'No organisations found', description: 'Organisations will appear here once added' });
       } else {
         tbody.innerHTML = recentOrgs.map(org => `
           <tr>
@@ -2511,7 +2511,7 @@ const dashboardModule = {
 
       const tbody = document.getElementById('summaryRecentWinnersTable');
       if (recentWinners.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="4" class="text-center text-muted py-4">No winners found</td></tr>';
+        utils.showEnhancedEmptyState('summaryRecentWinnersTable', 4, { icon: 'bi-star', message: 'No winners found', description: 'Winners will appear here once announced' });
       } else {
         tbody.innerHTML = recentWinners.map(winner => `
           <tr>
@@ -2592,7 +2592,7 @@ const dashboardModule = {
 
       const tbody = document.getElementById('summaryUpcomingEventsTable');
       if (upcoming.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted py-4">No upcoming events</td></tr>';
+        utils.showEnhancedEmptyState('summaryUpcomingEventsTable', 5, { icon: 'bi-calendar-event', message: 'No upcoming events', description: 'Events will appear here once scheduled' });
       } else {
         tbody.innerHTML = upcoming.map(event => `
           <tr>

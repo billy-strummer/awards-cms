@@ -33,7 +33,7 @@ const orgsModule = {
 async loadOrganisations() {
   try {
     utils.showLoading();
-    utils.showTableLoading('orgsTableBody', 10);
+    utils.showSkeletonLoading('orgsTableBody', 10);
     
     // Load all organisations using proper Supabase v2 pagination
     let allData = [];
@@ -132,6 +132,15 @@ async loadOrganisations() {
     // Initialize keyboard shortcuts
     this.initKeyboardShortcuts();
 
+    // Initialize inline validation for Add Company form when modal is shown
+    const addOrgModalEl = document.getElementById('addNewOrgModal');
+    if (addOrgModalEl && !addOrgModalEl._inlineValidationInit) {
+      addOrgModalEl._inlineValidationInit = true;
+      addOrgModalEl.addEventListener('shown.bs.modal', () => {
+        utils.initInlineValidation('addCompanyForm');
+      });
+    }
+
     // Subscribe to realtime changes
     this._subscribeToRealtimeChanges();
 
@@ -173,7 +182,7 @@ async loadOrganisations() {
   } catch (error) {
     console.error('Error loading organisations:', error);
     console.error('Error details:', error.details, error.hint, error.message);
-    utils.showToast('Failed to load organisations: ' + error.message, 'error');
+    utils.showErrorWithRetry(error, 'loading organisations', () => this.loadOrganisations());
     utils.showEmptyState('orgsTableBody', 10, 'Failed to load organisations', 'bi-exclamation-triangle');
   } finally {
     utils.hideLoading();
@@ -519,6 +528,18 @@ updateCountyFilterByRegion() {
     return true;
   });
 
+  // If search query is active and no exact matches found, try fuzzy search
+  if (search && STATE.filteredOrganisations.length === 0) {
+    STATE.filteredOrganisations = utils.fuzzyFilter(STATE.allOrganisations, search, ['company_name', 'contact_name', 'email']);
+    // Also apply non-search filters to fuzzy results
+    if (year) STATE.filteredOrganisations = STATE.filteredOrganisations.filter(o => !o.year || String(o.year) === String(year));
+    if (status && status !== 'all') STATE.filteredOrganisations = STATE.filteredOrganisations.filter(o => (o.status || 'prospect') === status);
+    if (sector) STATE.filteredOrganisations = STATE.filteredOrganisations.filter(o => o.sector === sector);
+    if (county) STATE.filteredOrganisations = STATE.filteredOrganisations.filter(o => o.county === county);
+    if (region) STATE.filteredOrganisations = STATE.filteredOrganisations.filter(o => o.region === region);
+    if (tier) STATE.filteredOrganisations = STATE.filteredOrganisations.filter(o => (o.tier || '') === tier);
+  }
+
   // Clear the missing field filter after applying it once
   this._filterMissingField = null;
 
@@ -576,37 +597,8 @@ updateCountyFilterByRegion() {
   const visibleColCount = 2 + Object.keys(colVisMap).filter(c => isColVisible(c)).length + (this._showPhoneColumn ? 1 : 0) + 1;
 
   if (totalFiltered === 0) {
-    // Build active filters summary
-    const activeFilters = [];
-    const year = document.getElementById('orgsYearFilter')?.value;
-    const sector = document.getElementById('orgsSectorFilter')?.value;
-    const region = document.getElementById('orgsRegionFilter')?.value;
-    const county = document.getElementById('orgsCountyFilter')?.value;
-    const status = document.getElementById('orgsStatusFilter')?.value;
-    const search = document.getElementById('orgsSearchBox')?.value;
-    if (year) activeFilters.push(`Year: <strong>${utils.escapeHtml(year)}</strong>`);
-    if (sector) activeFilters.push(`Sector: <strong>${utils.escapeHtml(sector)}</strong>`);
-    if (region) activeFilters.push(`Region: <strong>${utils.escapeHtml(region)}</strong>`);
-    if (county) activeFilters.push(`County: <strong>${utils.escapeHtml(county)}</strong>`);
-    if (status) activeFilters.push(`Status: <strong>${utils.escapeHtml(status)}</strong>`);
-    if (search) activeFilters.push(`Search: <strong>"${utils.escapeHtml(search)}"</strong>`);
-
-    const filterSummary = activeFilters.length > 0
-      ? `<p class="text-muted small mt-2 mb-2">Active filters: ${activeFilters.join(' &middot; ')}</p>
-         <button class="btn btn-sm btn-outline-primary" onclick="orgsModule.resetFilters()">
-           <i class="bi bi-x-circle me-1"></i>Clear all filters
-         </button>`
-      : '';
-
-    tbody.innerHTML = `
-      <tr>
-        <td colspan="${visibleColCount}" class="text-center py-5">
-          <i class="bi bi-inbox display-4 text-muted opacity-25"></i>
-          <p class="text-muted mt-3 mb-0">No organisations found</p>
-          ${filterSummary}
-        </td>
-      </tr>
-    `;
+    const hasActiveFilters = !!(document.getElementById('orgsYearFilter')?.value || document.getElementById('orgsSectorFilter')?.value || document.getElementById('orgsRegionFilter')?.value || document.getElementById('orgsCountyFilter')?.value || document.getElementById('orgsStatusFilter')?.value || document.getElementById('orgsSearchBox')?.value);
+    utils.showEnhancedEmptyState('orgsTableBody', visibleColCount, { icon: 'bi-building', message: 'No organisations found', description: 'Organisations will appear here once added', isFiltered: hasActiveFilters });
     this._renderPaginationControls(0, 1);
     return;
   }
@@ -2206,66 +2198,68 @@ updateCountyFilterByRegion() {
     }
 
     try {
-      uploadBtn.disabled = true;
-      utils.showLoading();
+      await utils.protectModalDuringSave('uploadCompanyImagesModal', async () => {
+        uploadBtn.disabled = true;
+        utils.showLoading();
 
-      let successCount = 0;
-      let errorCount = 0;
+        let successCount = 0;
+        let errorCount = 0;
 
-      for (const file of validFiles) {
-        try {
-          // Generate unique filename
-          const timestamp = Date.now();
-          const randomSuffix = Math.random().toString(36).substring(7);
-          const fileName = `company-images/${this.currentOrgIdForImages}/${timestamp}_${randomSuffix}_${file.name}`;
+        for (const file of validFiles) {
+          try {
+            // Generate unique filename
+            const timestamp = Date.now();
+            const randomSuffix = Math.random().toString(36).substring(7);
+            const fileName = `company-images/${this.currentOrgIdForImages}/${timestamp}_${randomSuffix}_${file.name}`;
 
-          // Upload file to Supabase Storage
-          const { data: uploadData, error: uploadError } = await STATE.client.storage
-            .from('media-gallery')
-            .upload(fileName, file);
+            // Upload file to Supabase Storage
+            const { data: uploadData, error: uploadError } = await STATE.client.storage
+              .from('media-gallery')
+              .upload(fileName, file);
 
-          if (uploadError) throw uploadError;
+            if (uploadError) throw uploadError;
 
-          // Get public URL
-          const { data: urlData } = STATE.client.storage
-            .from('media-gallery')
-            .getPublicUrl(fileName);
+            // Get public URL
+            const { data: urlData } = STATE.client.storage
+              .from('media-gallery')
+              .getPublicUrl(fileName);
 
-          // Insert record into organisation_images table
-          const { error: dbError } = await STATE.client
-            .from('organisation_images')
-            .insert([{
-              organisation_id: this.currentOrgIdForImages,
-              file_url: urlData.publicUrl,
-              title: title || file.name,
-              caption: caption || null,
-              display_order: successCount
-            }]);
+            // Insert record into organisation_images table
+            const { error: dbError } = await STATE.client
+              .from('organisation_images')
+              .insert([{
+                organisation_id: this.currentOrgIdForImages,
+                file_url: urlData.publicUrl,
+                title: title || file.name,
+                caption: caption || null,
+                display_order: successCount
+              }]);
 
-          if (dbError) throw dbError;
+            if (dbError) throw dbError;
 
-          successCount++;
+            successCount++;
 
-        } catch (error) {
-          console.error(`Error uploading ${file.name}:`, error);
-          errorCount++;
+          } catch (error) {
+            console.error(`Error uploading ${file.name}:`, error);
+            errorCount++;
+          }
         }
-      }
 
-      // Close modal
-      bootstrap.Modal.getInstance(document.getElementById('uploadCompanyImagesModal'))?.hide();
+        // Close modal
+        bootstrap.Modal.getInstance(document.getElementById('uploadCompanyImagesModal'))?.hide();
 
-      if (errorCount === 0) {
-        utils.showToast(`${successCount} image(s) uploaded successfully!`, 'success');
-      } else {
-        utils.showToast(`${successCount} succeeded, ${errorCount} failed. Check console for details.`, 'warning');
-      }
+        if (errorCount === 0) {
+          utils.showToast(`${successCount} image(s) uploaded successfully!`, 'success');
+        } else {
+          utils.showToast(`${successCount} succeeded, ${errorCount} failed. Check console for details.`, 'warning');
+        }
 
-      // Reload the profile to show new images
-      const org = STATE.allOrganisations.find(o => o.id === this.currentOrgIdForImages);
-      if (org) {
-        await this.openCompanyProfile(this.currentOrgIdForImages, org.company_name);
-      }
+        // Reload the profile to show new images
+        const org = STATE.allOrganisations.find(o => o.id === this.currentOrgIdForImages);
+        if (org) {
+          await this.openCompanyProfile(this.currentOrgIdForImages, org.company_name);
+        }
+      });
 
     } catch (error) {
       console.error('Error uploading company images:', error);
@@ -2368,69 +2362,70 @@ updateCountyFilterByRegion() {
    */
   async saveOrgChanges(orgId) {
     try {
-      utils.showLoading();
+      await utils.protectModalDuringSave('companyProfileModal', async () => {
+        utils.showLoading();
 
-      // Collect updated data from form fields
-      const updatedData = {
-        contact_name: document.getElementById('editContactName').value.trim(),
-        email: document.getElementById('editEmail').value.trim(),
-        contact_phone: document.getElementById('editPhone').value.trim(),
-        website: document.getElementById('editWebsite').value.trim(),
-        region: document.getElementById('editRegion').value,
-        address: document.getElementById('editAddress').value.trim(),
-        catchment_area: document.getElementById('editCatchmentArea').value.trim(),
-        // Extended fields
-        description: document.getElementById('editDescription')?.value.trim() || null,
-        achievements: document.getElementById('editAchievements')?.value.trim() || null,
-        company_size: document.getElementById('editCompanySize')?.value || null,
-        employee_count: document.getElementById('editEmployeeCount')?.value ? parseInt(document.getElementById('editEmployeeCount').value) : null,
-        year_founded: document.getElementById('editYearFounded')?.value ? parseInt(document.getElementById('editYearFounded').value) : null,
-        annual_revenue: document.getElementById('editAnnualRevenue')?.value ? parseFloat(document.getElementById('editAnnualRevenue').value) : null,
-        tier: document.getElementById('editTier')?.value || null,
-        linkedin_url: document.getElementById('editLinkedin')?.value.trim() || null,
-        twitter_url: document.getElementById('editTwitter')?.value.trim() || null,
-        facebook_url: document.getElementById('editFacebook')?.value.trim() || null,
-        instagram_url: document.getElementById('editInstagram')?.value.trim() || null
-      };
-
-      // Update in database
-      const { error } = await STATE.client
-        .from('organisations')
-        .update(updatedData)
-        .eq('id', orgId);
-
-      if (error) throw error;
-
-      // Update local state
-      const orgIndex = STATE.allOrganisations.findIndex(o => o.id === orgId);
-      if (orgIndex !== -1) {
-        STATE.allOrganisations[orgIndex] = {
-          ...STATE.allOrganisations[orgIndex],
-          ...updatedData
+        // Collect updated data from form fields
+        const updatedData = {
+          contact_name: document.getElementById('editContactName').value.trim(),
+          email: document.getElementById('editEmail').value.trim(),
+          contact_phone: document.getElementById('editPhone').value.trim(),
+          website: document.getElementById('editWebsite').value.trim(),
+          region: document.getElementById('editRegion').value,
+          address: document.getElementById('editAddress').value.trim(),
+          catchment_area: document.getElementById('editCatchmentArea').value.trim(),
+          // Extended fields
+          description: document.getElementById('editDescription')?.value.trim() || null,
+          achievements: document.getElementById('editAchievements')?.value.trim() || null,
+          company_size: document.getElementById('editCompanySize')?.value || null,
+          employee_count: document.getElementById('editEmployeeCount')?.value ? parseInt(document.getElementById('editEmployeeCount').value) : null,
+          year_founded: document.getElementById('editYearFounded')?.value ? parseInt(document.getElementById('editYearFounded').value) : null,
+          annual_revenue: document.getElementById('editAnnualRevenue')?.value ? parseFloat(document.getElementById('editAnnualRevenue').value) : null,
+          tier: document.getElementById('editTier')?.value || null,
+          linkedin_url: document.getElementById('editLinkedin')?.value.trim() || null,
+          twitter_url: document.getElementById('editTwitter')?.value.trim() || null,
+          facebook_url: document.getElementById('editFacebook')?.value.trim() || null,
+          instagram_url: document.getElementById('editInstagram')?.value.trim() || null
         };
-      }
 
-      // Update filtered organisations
-      const filteredIndex = STATE.filteredOrganisations.findIndex(o => o.id === orgId);
-      if (filteredIndex !== -1) {
-        STATE.filteredOrganisations[filteredIndex] = {
-          ...STATE.filteredOrganisations[filteredIndex],
-          ...updatedData
-        };
-      }
+        // Update in database
+        const { error } = await STATE.client
+          .from('organisations')
+          .update(updatedData)
+          .eq('id', orgId);
 
-      // Update current editing org
-      this.currentEditingOrg = { ...this.currentEditingOrg, ...updatedData };
-      this.originalOrgData = { ...this.currentEditingOrg };
+        if (error) throw error;
 
-      utils.showToast('Organisation updated successfully', 'success');
+        // Update local state
+        const orgIndex = STATE.allOrganisations.findIndex(o => o.id === orgId);
+        if (orgIndex !== -1) {
+          STATE.allOrganisations[orgIndex] = {
+            ...STATE.allOrganisations[orgIndex],
+            ...updatedData
+          };
+        }
 
-      // Refresh the profile view
-      await this.openCompanyProfile(orgId, this.currentEditingOrg.company_name);
+        // Update filtered organisations
+        const filteredIndex = STATE.filteredOrganisations.findIndex(o => o.id === orgId);
+        if (filteredIndex !== -1) {
+          STATE.filteredOrganisations[filteredIndex] = {
+            ...STATE.filteredOrganisations[filteredIndex],
+            ...updatedData
+          };
+        }
 
-      // Refresh the organisations table
-      this.renderOrganisations();
+        // Update current editing org
+        this.currentEditingOrg = { ...this.currentEditingOrg, ...updatedData };
+        this.originalOrgData = { ...this.currentEditingOrg };
 
+        utils.showToast('Organisation updated successfully', 'success');
+
+        // Refresh the profile view
+        await this.openCompanyProfile(orgId, this.currentEditingOrg.company_name);
+
+        // Refresh the organisations table
+        this.renderOrganisations();
+      });
     } catch (error) {
       console.error('Error saving organisation changes:', error);
       utils.showToast('Failed to save changes: ' + error.message, 'error');
@@ -2693,19 +2688,20 @@ updateCountyFilterByRegion() {
     };
 
     try {
-      utils.showLoading();
+      await utils.protectModalDuringSave('addNewOrgModal', async () => {
+        utils.showLoading();
 
-      const { error } = await STATE.client
-        .from('organisations')
-        .insert([companyData]);
+        const { error } = await STATE.client
+          .from('organisations')
+          .insert([companyData]);
 
-      if (error) throw error;
+        if (error) throw error;
 
-      utils.showToast('Company added successfully!', 'success');
-      bootstrap.Modal.getInstance(document.getElementById('addNewOrgModal'))?.hide();
-      form.reset();
-      await this.loadOrganisations();
-
+        utils.showToast('Company added successfully!', 'success');
+        bootstrap.Modal.getInstance(document.getElementById('addNewOrgModal'))?.hide();
+        form.reset();
+        await this.loadOrganisations();
+      });
     } catch (error) {
       console.error('Error saving new company:', error);
       utils.showToast('Error saving company: ' + error.message, 'error');
@@ -2769,6 +2765,9 @@ updateCountyFilterByRegion() {
       this.sortField = field;
       this.sortDirection = 'asc';
     }
+
+    utils.saveSortState('organisations', this.sortField, this.sortDirection);
+    this.updateSortIndicators();
 
     const dir = this.sortDirection === 'asc' ? 1 : -1;
 
@@ -3128,6 +3127,8 @@ updateCountyFilterByRegion() {
     STATE.filteredOrganisations = STATE.allOrganisations.filter(org => this.selectedOrgs.has(org.id));
     if (format === 'excel') {
       this.exportToExcel();
+    } else if (format === 'pdf') {
+      this.exportToPDF();
     } else {
       this.exportToCSV();
     }
@@ -5065,10 +5066,19 @@ updateCountyFilterByRegion() {
     if (action) filtered = filtered.filter(e => e.action === action);
     if (dateFrom) filtered = filtered.filter(e => (e.timestamp || e.created_at) >= dateFrom);
     if (dateTo) filtered = filtered.filter(e => (e.timestamp || e.created_at) <= dateTo + 'T23:59:59');
-    if (search) filtered = filtered.filter(e =>
-      (e.company_name || '').toLowerCase().includes(search) ||
-      (e.details || '').toLowerCase().includes(search)
-    );
+    if (search) {
+      filtered = filtered.filter(e =>
+        (e.company_name || '').toLowerCase().includes(search) ||
+        (e.details || '').toLowerCase().includes(search)
+      );
+      // Fuzzy search fallback
+      if (filtered.length === 0) {
+        filtered = utils.fuzzyFilter(this._cachedAuditLog, search, ['company_name', 'details']);
+        if (action) filtered = filtered.filter(e => e.action === action);
+        if (dateFrom) filtered = filtered.filter(e => (e.timestamp || e.created_at) >= dateFrom);
+        if (dateTo) filtered = filtered.filter(e => (e.timestamp || e.created_at) <= dateTo + 'T23:59:59');
+      }
+    }
 
     const container = document.getElementById('auditLogContent');
     if (container) container.innerHTML = this._renderAuditEntries(filtered);
@@ -5657,6 +5667,23 @@ updateCountyFilterByRegion() {
     a.click();
     window.URL.revokeObjectURL(url);
     utils.showToast(`Exported ${data.length} organisations to Excel`, 'success');
+  },
+
+  // PDF Export
+  exportToPDF() {
+    const data = STATE.filteredOrganisations;
+    if (data.length === 0) { utils.showToast('No organisations to export', 'warning'); return; }
+
+    const exportData = data.map(org => ({
+      company_name: org.company_name || '',
+      sector: org.sector || '',
+      county: org.county || '',
+      region: org.region || '',
+      contact_name: org.contact_name || '',
+      email: org.email || '',
+      status: org.status || 'prospect'
+    }));
+    utils.exportToPrintablePDF(exportData, 'Organisations Report', { columns: ['company_name', 'sector', 'county', 'region', 'contact_name', 'email', 'status'] });
   },
 
   _xmlEscape(str) {
@@ -7396,9 +7423,10 @@ updateCountyFilterByRegion() {
 
       this._showDynamicModal('Companies House Results', html, 'bi-bank', 'modal-lg');
     } catch (e) {
-      // Fallback to website search
-      window.open(`https://find-and-update.company-information.service.gov.uk/search?q=${encodeURIComponent(searchName)}`, '_blank');
-      utils.showToast('Opened Companies House search in new tab', 'info');
+      console.error('Companies House lookup failed:', e);
+      await utils.showErrorWithRetry('Failed to search Companies House', async () => {
+        await this.companiesHouseLookup(orgId);
+      });
     }
   },
 

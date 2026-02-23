@@ -341,7 +341,7 @@ window.reportingModule = {
         stored.push({ ...config, created_at: new Date().toISOString() });
         localStorage.setItem('bta_scheduled_reports', JSON.stringify(stored));
         utils.showToast('Report scheduled (stored locally — DB unavailable)', 'warning');
-      } catch (_) {}
+      } catch (_) { console.warn('Failed to save scheduled report:', _.message); }
       return false;
     }
   }

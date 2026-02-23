@@ -12,7 +12,7 @@
   <!-- Premium Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700;900&family=Montserrat:wght@300;400;600&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700;900&family=Montserrat:wght@300;400;500;600&display=swap" rel="stylesheet">
 
   <!-- Choices.js for searchable dropdown -->
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/choices.js@10.2.0/public/assets/styles/choices.min.css">
@@ -29,6 +29,8 @@
       --gold-dark: #B8941F;
     }
 
+    * { box-sizing: border-box; }
+
     body {
       background: #000000;
       min-height: 100vh;
@@ -38,6 +40,7 @@
       padding: 20px;
       position: relative;
       overflow-x: hidden;
+      font-family: 'Montserrat', sans-serif;
     }
 
     body::before,
@@ -66,7 +69,7 @@
     }
 
     .entry-container {
-      max-width: 700px;
+      max-width: 720px;
       width: 100%;
       position: relative;
       z-index: 1;
@@ -82,40 +85,39 @@
     }
 
     @keyframes slideIn {
-      from {
-        opacity: 0;
-        transform: translateY(20px);
-      }
-      to {
-        opacity: 1;
-        transform: translateY(0);
-      }
+      from { opacity: 0; transform: translateY(20px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
     }
 
     .card-header-custom {
       background: linear-gradient(135deg, #000000 0%, #1a1a1a 100%);
       color: var(--gold-color);
-      padding: 40px;
+      padding: 35px 40px;
       text-align: center;
       display: flex;
       align-items: center;
       justify-content: center;
-      gap: 30px;
+      gap: 25px;
       border-bottom: 3px solid var(--gold-color);
     }
 
     .card-header-custom img {
-      height: 120px;
+      height: 100px;
       width: auto;
       filter: drop-shadow(0 0 10px rgba(212, 175, 55, 0.5));
     }
 
     .card-header-custom h1 {
       font-family: 'Cinzel', serif;
-      font-size: 2.2rem;
+      font-size: 2rem;
       font-weight: 900;
       margin: 0;
-      line-height: 1.4;
+      line-height: 1.3;
       text-shadow: 0 2px 8px rgba(0,0,0,0.5);
       letter-spacing: 3px;
       text-transform: uppercase;
@@ -123,7 +125,7 @@
 
     .card-header-custom .subtitle {
       font-family: 'Montserrat', sans-serif;
-      font-size: 1rem;
+      font-size: 0.9rem;
       font-weight: 300;
       letter-spacing: 2px;
       margin-top: 5px;
@@ -134,55 +136,181 @@
     @media (max-width: 576px) {
       .card-header-custom {
         flex-direction: column;
-        gap: 20px;
-        padding: 30px 20px;
+        gap: 15px;
+        padding: 25px 20px;
       }
-      .card-header-custom h1 {
-        font-size: 1.5rem;
-        letter-spacing: 2px;
-      }
-      .card-header-custom .subtitle {
-        font-size: 0.85rem;
-        letter-spacing: 1px;
-      }
-      .card-header-custom img {
-        height: 80px;
-      }
+      .card-header-custom h1 { font-size: 1.4rem; letter-spacing: 2px; }
+      .card-header-custom .subtitle { font-size: 0.8rem; letter-spacing: 1px; }
+      .card-header-custom img { height: 70px; }
+      .form-section { padding: 30px 20px !important; }
+      .step-question { font-size: 1.3rem !important; }
+      .step-subtitle { font-size: 0.85rem !important; }
     }
 
+    /* Progress bar */
+    .progress-bar-wrapper {
+      padding: 20px 30px 10px;
+      background: #fafafa;
+    }
+
+    .progress-steps {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      position: relative;
+    }
+
+    .progress-steps::before {
+      content: '';
+      position: absolute;
+      top: 50%;
+      left: 0;
+      right: 0;
+      height: 2px;
+      background: #dee2e6;
+      transform: translateY(-50%);
+      z-index: 0;
+    }
+
+    .progress-track {
+      position: absolute;
+      top: 50%;
+      left: 0;
+      height: 2px;
+      background: var(--gold-color);
+      transform: translateY(-50%);
+      z-index: 1;
+      transition: width 0.4s ease;
+    }
+
+    .progress-dot {
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      background: #dee2e6;
+      border: 2px solid #ccc;
+      position: relative;
+      z-index: 2;
+      transition: all 0.3s;
+    }
+
+    .progress-dot.active {
+      background: var(--gold-color);
+      border-color: var(--gold-dark);
+      transform: scale(1.4);
+      box-shadow: 0 0 12px rgba(212, 175, 55, 0.6);
+    }
+
+    .progress-dot.completed {
+      background: var(--gold-dark);
+      border-color: var(--gold-color);
+    }
+
+    .step-label {
+      font-size: 0.65rem;
+      color: #999;
+      text-align: center;
+      margin-top: 6px;
+      font-weight: 500;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .step-label.active { color: var(--gold-dark); font-weight: 600; }
+    .step-label.completed { color: #666; }
+
+    .progress-step-wrap {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      min-width: 48px;
+    }
+
+    /* Form sections */
     .form-section {
-      padding: 50px 40px;
-      min-height: 400px;
+      padding: 40px;
+      min-height: 380px;
       display: flex;
       flex-direction: column;
       justify-content: center;
     }
 
     .step-question {
-      font-size: 1.8rem;
-      font-weight: 600;
+      font-family: 'Cinzel', serif;
+      font-size: 1.6rem;
+      font-weight: 700;
       color: #1a1a1a;
-      margin-bottom: 30px;
+      margin-bottom: 8px;
       text-align: center;
     }
 
-    .form-control-lg, .form-select-lg {
-      font-size: 1.1rem;
-      padding: 15px;
-      border-radius: 10px;
+    .step-subtitle {
+      font-size: 0.95rem;
+      color: #777;
+      text-align: center;
+      margin-bottom: 28px;
+      font-weight: 400;
     }
 
+    .form-step { display: none; }
+    .form-step.active { display: block; animation: fadeIn 0.35s ease-out; }
+
+    /* Form controls */
+    .form-control-lg, .form-select-lg {
+      font-size: 1.05rem;
+      padding: 14px 16px;
+      border-radius: 10px;
+      border: 2px solid #dee2e6;
+      transition: border-color 0.3s;
+    }
+
+    .form-control-lg:focus, .form-select-lg:focus {
+      border-color: var(--gold-color);
+      box-shadow: 0 0 0 3px rgba(212, 175, 55, 0.15);
+    }
+
+    textarea.form-control-lg {
+      min-height: 120px;
+      resize: vertical;
+    }
+
+    .char-count {
+      font-size: 0.8rem;
+      color: #999;
+      text-align: right;
+      margin-top: 4px;
+    }
+
+    .char-count.warn { color: #dc3545; }
+
+    .field-hint {
+      font-size: 0.82rem;
+      color: #888;
+      margin-top: 6px;
+      line-height: 1.4;
+    }
+
+    label.form-label {
+      font-weight: 600;
+      font-size: 0.9rem;
+      color: #333;
+      margin-bottom: 6px;
+    }
+
+    .required-star { color: #dc3545; }
+
+    /* Buttons */
     .btn-next, .btn-submit {
       background: linear-gradient(135deg, var(--gold-dark) 0%, var(--gold-color) 100%);
       border: none;
       color: #000000;
-      padding: 15px 50px;
-      font-size: 1.2rem;
+      padding: 14px 50px;
+      font-size: 1.1rem;
       font-weight: 700;
       border-radius: 10px;
       transition: all 0.3s;
       width: 100%;
-      margin-top: 30px;
+      margin-top: 25px;
       box-shadow: 0 4px 15px rgba(212, 175, 55, 0.4);
       text-transform: uppercase;
       letter-spacing: 1px;
@@ -194,12 +322,18 @@
       background: linear-gradient(135deg, var(--gold-color) 0%, var(--gold-light) 100%);
     }
 
+    .btn-next:disabled, .btn-submit:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+      transform: none;
+    }
+
     .btn-back {
       background: transparent;
       border: 2px solid var(--gold-color);
       color: var(--gold-dark);
-      padding: 12px 40px;
-      font-size: 1rem;
+      padding: 11px 40px;
+      font-size: 0.95rem;
       font-weight: 600;
       border-radius: 10px;
       transition: all 0.3s;
@@ -213,100 +347,193 @@
       border-color: var(--gold-dark);
     }
 
-    .progress-indicator {
-      display: flex;
-      justify-content: center;
-      gap: 8px;
+    /* Award category cards */
+    .sector-group {
       margin-bottom: 20px;
-      padding: 20px;
     }
 
-    .progress-dot {
-      width: 12px;
-      height: 12px;
-      border-radius: 50%;
-      background: #dee2e6;
-      transition: all 0.3s;
-      border: 1px solid #ccc;
-    }
-
-    .progress-dot.active {
-      background: var(--gold-color);
-      transform: scale(1.3);
-      box-shadow: 0 0 10px rgba(212, 175, 55, 0.6);
-      border-color: var(--gold-dark);
-    }
-
-    .progress-dot.completed {
-      background: var(--gold-dark);
-      border-color: var(--gold-color);
-    }
-
-    .form-step {
-      display: none;
-    }
-
-    .form-step.active {
-      display: block;
+    .sector-group-title {
+      font-family: 'Cinzel', serif;
+      font-size: 0.85rem;
+      font-weight: 700;
+      color: var(--gold-dark);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      padding: 8px 12px;
+      background: linear-gradient(135deg, #f8f6f0, #fff9e6);
+      border-left: 3px solid var(--gold-color);
+      margin-bottom: 8px;
+      border-radius: 0 6px 6px 0;
     }
 
     .award-option {
-      border: 2px solid #dee2e6;
-      padding: 15px;
+      border: 2px solid #e8e8e8;
+      padding: 12px 16px;
       border-radius: 10px;
-      margin-bottom: 10px;
+      margin-bottom: 6px;
       cursor: pointer;
-      transition: all 0.3s;
+      transition: all 0.25s;
       background: white;
+      display: flex;
+      align-items: center;
+      gap: 10px;
     }
 
     .award-option:hover {
       border-color: var(--gold-color);
-      background: var(--gold-light);
-      transform: translateX(5px);
+      background: #fffdf5;
+      transform: translateX(4px);
     }
 
     .award-option.selected {
       border-color: var(--gold-dark);
       background: linear-gradient(135deg, var(--gold-light) 0%, #fff9e6 100%);
-      box-shadow: 0 4px 12px rgba(212, 175, 55, 0.3);
+      box-shadow: 0 3px 12px rgba(212, 175, 55, 0.25);
     }
 
+    .award-option .award-check {
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      border: 2px solid #ccc;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      transition: all 0.25s;
+    }
+
+    .award-option.selected .award-check {
+      background: var(--gold-color);
+      border-color: var(--gold-dark);
+      color: #000;
+    }
+
+    .award-option .award-name {
+      font-size: 0.95rem;
+      font-weight: 500;
+      color: #333;
+    }
+
+    .award-option.selected .award-name {
+      font-weight: 600;
+      color: #1a1a1a;
+    }
+
+    /* Review section */
+    .review-section {
+      background: #fafafa;
+      border-radius: 12px;
+      padding: 24px;
+      border: 1px solid #eee;
+    }
+
+    .review-group {
+      margin-bottom: 16px;
+      padding-bottom: 16px;
+      border-bottom: 1px solid #eee;
+    }
+
+    .review-group:last-child {
+      margin-bottom: 0;
+      padding-bottom: 0;
+      border-bottom: none;
+    }
+
+    .review-group-title {
+      font-family: 'Cinzel', serif;
+      font-size: 0.8rem;
+      font-weight: 700;
+      color: var(--gold-dark);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-bottom: 10px;
+    }
+
+    .review-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      padding: 4px 0;
+      gap: 12px;
+    }
+
+    .review-label {
+      font-size: 0.85rem;
+      color: #777;
+      font-weight: 500;
+      min-width: 120px;
+      flex-shrink: 0;
+    }
+
+    .review-value {
+      font-size: 0.9rem;
+      color: #1a1a1a;
+      font-weight: 500;
+      text-align: right;
+      word-break: break-word;
+    }
+
+    .review-text-block {
+      font-size: 0.88rem;
+      color: #333;
+      line-height: 1.6;
+      margin-top: 6px;
+      background: white;
+      padding: 12px;
+      border-radius: 8px;
+      border: 1px solid #eee;
+      white-space: pre-wrap;
+    }
+
+    .review-edit-btn {
+      font-size: 0.78rem;
+      color: var(--gold-dark);
+      cursor: pointer;
+      text-decoration: underline;
+      font-weight: 600;
+    }
+
+    .review-edit-btn:hover { color: #000; }
+
+    /* Success */
     .success-message {
       text-align: center;
       padding: 50px 20px;
     }
 
     .success-icon {
-      font-size: 5rem;
+      font-size: 4.5rem;
       color: var(--gold-color);
       margin-bottom: 20px;
       text-shadow: 0 0 20px rgba(212, 175, 55, 0.5);
     }
 
-    /* Choices.js custom styling to match gold theme */
+    .success-ref {
+      display: inline-block;
+      background: linear-gradient(135deg, #000, #1a1a1a);
+      color: var(--gold-color);
+      padding: 10px 24px;
+      border-radius: 8px;
+      font-size: 1.2rem;
+      font-weight: 700;
+      letter-spacing: 2px;
+      margin-top: 10px;
+    }
+
+    /* Choices.js theme */
     .choices__inner {
       background: white;
       border: 2px solid #dee2e6;
       border-radius: 10px;
       padding: 10px 15px;
-      font-size: 1.1rem;
+      font-size: 1.05rem;
       min-height: 50px;
     }
 
-    .choices__input {
-      font-size: 1rem;
-      margin-bottom: 0;
-    }
-
-    .choices__input::placeholder {
-      color: #999;
-      font-style: italic;
-    }
-
-    .choices[data-type*=select-one] .choices__inner {
-      padding-bottom: 10px;
-    }
+    .choices__input { font-size: 1rem; margin-bottom: 0; }
+    .choices__input::placeholder { color: #999; font-style: italic; }
+    .choices[data-type*=select-one] .choices__inner { padding-bottom: 10px; }
 
     .choices__list--dropdown {
       border: 2px solid var(--gold-color);
@@ -325,12 +552,34 @@
       border-bottom: 1px solid var(--gold-color);
     }
 
-    .is-focused .choices__inner {
-      border-color: var(--gold-color);
+    .is-focused .choices__inner { border-color: var(--gold-color); }
+    .choices__list--single .choices__item { color: #1a1a1a; }
+
+    /* Terms checkbox */
+    .terms-check {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      margin-top: 20px;
+      padding: 14px;
+      background: #fafafa;
+      border-radius: 10px;
+      border: 1px solid #eee;
     }
 
-    .choices__list--single .choices__item {
-      color: #1a1a1a;
+    .terms-check input[type="checkbox"] {
+      width: 20px;
+      height: 20px;
+      margin-top: 2px;
+      accent-color: var(--gold-color);
+      flex-shrink: 0;
+    }
+
+    .terms-check label {
+      font-size: 0.85rem;
+      color: #555;
+      line-height: 1.5;
+      cursor: pointer;
     }
   </style>
 </head>
@@ -344,31 +593,28 @@
         <img src="BTA-LOGO-entry.jpg" alt="British Trade Awards Logo">
         <div>
           <h1>British Trade Awards</h1>
-          <div class="subtitle">Self-Nomination Enter Now!</div>
+          <div class="subtitle">Self-Nomination Entry Form</div>
         </div>
       </div>
 
-      <!-- Progress Indicator -->
-      <div class="progress-indicator" id="progressIndicator">
-        <div class="progress-dot active"></div>
-        <div class="progress-dot"></div>
-        <div class="progress-dot"></div>
-        <div class="progress-dot"></div>
-        <div class="progress-dot"></div>
-        <div class="progress-dot"></div>
-        <div class="progress-dot"></div>
+      <!-- Progress Bar -->
+      <div class="progress-bar-wrapper" id="progressWrapper">
+        <div class="progress-steps" id="progressSteps">
+          <div class="progress-track" id="progressTrack" style="width: 0%"></div>
+          <!-- Dots generated by JS -->
+        </div>
       </div>
 
       <!-- Form Steps -->
-      <form id="entryForm">
+      <form id="entryForm" novalidate>
 
-        <!-- Step 1: Sector -->
+        <!-- Step 1: Region -->
         <div class="form-step active" id="step1">
           <div class="form-section">
-            <h2 class="step-question">What sector are you in?</h2>
-            <select class="form-select form-select-lg" id="sector" required>
-              <option value="">Choose your sector...</option>
-              <!-- Will be populated from config.js -->
+            <h2 class="step-question">Where are you based?</h2>
+            <p class="step-subtitle">Select the county or city your business operates in</p>
+            <select class="form-select form-select-lg" id="region" required>
+              <option value="">Type to search or select...</option>
             </select>
             <button type="button" class="btn btn-next" onclick="entryFormApp.nextStep(1)">
               Next <i class="bi bi-arrow-right ms-2"></i>
@@ -376,13 +622,13 @@
           </div>
         </div>
 
-        <!-- Step 2: Region -->
+        <!-- Step 2: Sector -->
         <div class="form-step" id="step2">
           <div class="form-section">
-            <h2 class="step-question">Which region are you based in?</h2>
-            <select class="form-select form-select-lg" id="region" required>
-              <option value="">Type to search or select...</option>
-              <!-- Will be populated from config.js -->
+            <h2 class="step-question">What sector are you in?</h2>
+            <p class="step-subtitle">Choose the trade sector that best describes your work</p>
+            <select class="form-select form-select-lg" id="sector" required>
+              <option value="">Choose your sector...</option>
             </select>
             <button type="button" class="btn btn-next" onclick="entryFormApp.nextStep(2)">
               Next <i class="bi bi-arrow-right ms-2"></i>
@@ -396,9 +642,9 @@
         <!-- Step 3: Award Category -->
         <div class="form-step" id="step3">
           <div class="form-section">
-            <h2 class="step-question">Which award category?</h2>
-            <div id="awardsList" style="max-height: 400px; overflow-y: auto;">
-              <!-- Will be populated dynamically -->
+            <h2 class="step-question">Select your award category</h2>
+            <p class="step-subtitle" id="step3Subtitle">Choose the category that best fits your business</p>
+            <div id="awardsList" style="max-height: 420px; overflow-y: auto; padding-right: 4px;">
             </div>
             <button type="button" class="btn btn-next" onclick="entryFormApp.nextStep(3)" id="step3NextBtn" style="display: none;">
               Next <i class="bi bi-arrow-right ms-2"></i>
@@ -412,9 +658,42 @@
         <!-- Step 4: Company Name -->
         <div class="form-step" id="step4">
           <div class="form-section">
-            <h2 class="step-question">What is your company name?</h2>
-            <input type="text" class="form-control form-control-lg" id="companyName"
-              placeholder="Enter your company name" required>
+            <h2 class="step-question">Your company name</h2>
+            <p class="step-subtitle">Enter the registered or trading name of your business</p>
+            <div class="mb-3">
+              <label class="form-label" for="companyName">Company / Trading Name <span class="required-star">*</span></label>
+              <input type="text" class="form-control form-control-lg" id="companyName"
+                placeholder="e.g. Smith & Sons Roofing Ltd" required autocomplete="organization">
+            </div>
+            <div class="mb-3">
+              <label class="form-label" for="companyWebsite">Website <small class="text-muted">(optional)</small></label>
+              <input type="url" class="form-control form-control-lg" id="companyWebsite"
+                placeholder="https://www.yourcompany.co.uk" autocomplete="url">
+            </div>
+            <div class="mb-3">
+              <label class="form-label" for="yearsInField">Years in business <span class="required-star">*</span></label>
+              <select class="form-select form-select-lg" id="yearsInField" required>
+                <option value="">Select...</option>
+                <option value="Under 1 year">Under 1 year</option>
+                <option value="1-3 years">1-3 years</option>
+                <option value="4-9 years">4-9 years</option>
+                <option value="10-19 years">10-19 years</option>
+                <option value="20+ years">20+ years</option>
+              </select>
+            </div>
+            <div class="mb-3">
+              <label class="form-label" for="employeeCount">Number of employees <small class="text-muted">(optional)</small></label>
+              <select class="form-select form-select-lg" id="employeeCount">
+                <option value="">Select...</option>
+                <option value="Sole trader">Sole trader</option>
+                <option value="2-5">2-5</option>
+                <option value="6-10">6-10</option>
+                <option value="11-25">11-25</option>
+                <option value="26-50">26-50</option>
+                <option value="51-100">51-100</option>
+                <option value="100+">100+</option>
+              </select>
+            </div>
             <button type="button" class="btn btn-next" onclick="entryFormApp.nextStep(4)">
               Next <i class="bi bi-arrow-right ms-2"></i>
             </button>
@@ -424,16 +703,24 @@
           </div>
         </div>
 
-        <!-- Step 5: Years in Field -->
+        <!-- Step 5: About Your Entry -->
         <div class="form-step" id="step5">
           <div class="form-section">
-            <h2 class="step-question">Years of work in your field?</h2>
-            <select class="form-select form-select-lg" id="yearsInField" required>
-              <option value="">Select...</option>
-              <option value="1-3">1-3 years</option>
-              <option value="4-9">4-9 years</option>
-              <option value="10+">10+ years</option>
-            </select>
+            <h2 class="step-question">Tell us about your business</h2>
+            <p class="step-subtitle">Help us understand what makes your company stand out</p>
+            <div class="mb-3">
+              <label class="form-label" for="entryDescription">Brief description of your business <span class="required-star">*</span></label>
+              <textarea class="form-control form-control-lg" id="entryDescription" rows="3"
+                placeholder="Describe your business, the services you offer, and what sets you apart..." maxlength="1000"></textarea>
+              <div class="char-count" id="descCharCount">0 / 1,000</div>
+            </div>
+            <div class="mb-3">
+              <label class="form-label" for="whyShouldWin">Why should you win this award? <span class="required-star">*</span></label>
+              <textarea class="form-control form-control-lg" id="whyShouldWin" rows="4"
+                placeholder="Tell us about your achievements, quality of work, customer satisfaction, community impact..." maxlength="2000"></textarea>
+              <div class="char-count" id="whyCharCount">0 / 2,000</div>
+              <div class="field-hint"><i class="bi bi-lightbulb me-1"></i>Consider mentioning notable projects, customer feedback, certifications, or awards.</div>
+            </div>
             <button type="button" class="btn btn-next" onclick="entryFormApp.nextStep(5)">
               Next <i class="bi bi-arrow-right ms-2"></i>
             </button>
@@ -443,31 +730,29 @@
           </div>
         </div>
 
-        <!-- Step 6: Contact Information -->
+        <!-- Step 6: Supporting Information -->
         <div class="form-step" id="step6">
           <div class="form-section">
-            <h2 class="step-question">Your contact information</h2>
-            <fieldset>
-              <legend class="visually-hidden">Contact Information</legend>
-              <div class="mb-3">
-                <input type="text" class="form-control form-control-lg" id="contactName"
-                  placeholder="Your Name *" required>
-              </div>
-              <div class="mb-3">
-                <input type="text" class="form-control form-control-lg" id="contactPosition"
-                  placeholder="Position/Title">
-              </div>
-              <div class="mb-3">
-                <input type="email" class="form-control form-control-lg" id="contactEmail"
-                  placeholder="Email Address *" required>
-              </div>
-              <div class="mb-3">
-                <input type="tel" class="form-control form-control-lg" id="contactPhone"
-                  placeholder="Phone Number">
-              </div>
-            </fieldset>
+            <h2 class="step-question">Supporting information</h2>
+            <p class="step-subtitle">Optional details that strengthen your entry</p>
+            <div class="mb-3">
+              <label class="form-label" for="supportingInfo">Additional information <small class="text-muted">(optional)</small></label>
+              <textarea class="form-control form-control-lg" id="supportingInfo" rows="3"
+                placeholder="Links to reviews, case studies, press coverage, social media, or anything else you'd like us to see..." maxlength="1500"></textarea>
+              <div class="char-count" id="supportCharCount">0 / 1,500</div>
+            </div>
+            <div class="mb-3">
+              <label class="form-label" for="tradeBodies">Trade body memberships <small class="text-muted">(optional)</small></label>
+              <input type="text" class="form-control form-control-lg" id="tradeBodies"
+                placeholder="e.g. Federation of Master Builders, NICEIC, Gas Safe">
+            </div>
+            <div class="mb-3">
+              <label class="form-label" for="accreditations">Accreditations / Certifications <small class="text-muted">(optional)</small></label>
+              <input type="text" class="form-control form-control-lg" id="accreditations"
+                placeholder="e.g. ISO 9001, Constructionline, CHAS">
+            </div>
             <button type="button" class="btn btn-next" onclick="entryFormApp.nextStep(6)">
-              Review & Submit <i class="bi bi-arrow-right ms-2"></i>
+              Next <i class="bi bi-arrow-right ms-2"></i>
             </button>
             <button type="button" class="btn btn-back" onclick="entryFormApp.prevStep(6)">
               <i class="bi bi-arrow-left me-2"></i>Back
@@ -475,33 +760,78 @@
           </div>
         </div>
 
-        <!-- Step 7: Review & Submit -->
+        <!-- Step 7: Contact Information -->
         <div class="form-step" id="step7">
           <div class="form-section">
-            <h2 class="step-question">Review Your Entry</h2>
-            <div id="reviewContent" class="text-start" style="background: #f8f9fa; padding: 20px; border-radius: 10px;">
-              <!-- Will be populated dynamically -->
-            </div>
-            <button type="button" class="btn btn-submit" onclick="entryFormApp.submitEntry()">
-              <i class="bi bi-check-circle me-2"></i>Submit Entry
+            <h2 class="step-question">Your contact details</h2>
+            <p class="step-subtitle">We'll use these to keep you updated on your entry</p>
+            <fieldset>
+              <legend class="visually-hidden">Contact Information</legend>
+              <div class="mb-3">
+                <label class="form-label" for="contactName">Full name <span class="required-star">*</span></label>
+                <input type="text" class="form-control form-control-lg" id="contactName"
+                  placeholder="Your full name" required autocomplete="name">
+              </div>
+              <div class="mb-3">
+                <label class="form-label" for="contactPosition">Position / Title <small class="text-muted">(optional)</small></label>
+                <input type="text" class="form-control form-control-lg" id="contactPosition"
+                  placeholder="e.g. Managing Director, Owner" autocomplete="organization-title">
+              </div>
+              <div class="mb-3">
+                <label class="form-label" for="contactEmail">Email address <span class="required-star">*</span></label>
+                <input type="email" class="form-control form-control-lg" id="contactEmail"
+                  placeholder="you@yourcompany.co.uk" required autocomplete="email">
+              </div>
+              <div class="mb-3">
+                <label class="form-label" for="contactPhone">Phone number <span class="required-star">*</span></label>
+                <input type="tel" class="form-control form-control-lg" id="contactPhone"
+                  placeholder="e.g. 07700 900000" required autocomplete="tel">
+              </div>
+            </fieldset>
+            <button type="button" class="btn btn-next" onclick="entryFormApp.nextStep(7)">
+              Review Entry <i class="bi bi-arrow-right ms-2"></i>
             </button>
             <button type="button" class="btn btn-back" onclick="entryFormApp.prevStep(7)">
+              <i class="bi bi-arrow-left me-2"></i>Back
+            </button>
+          </div>
+        </div>
+
+        <!-- Step 8: Review & Submit -->
+        <div class="form-step" id="step8">
+          <div class="form-section">
+            <h2 class="step-question">Review your entry</h2>
+            <p class="step-subtitle">Please check all details before submitting</p>
+            <div id="reviewContent" class="review-section text-start">
+            </div>
+            <div class="terms-check" id="termsWrap">
+              <input type="checkbox" id="termsCheckbox">
+              <label for="termsCheckbox">
+                I confirm the information provided is accurate and I consent to being contacted by the British Trade Awards regarding this entry. I understand my entry will be reviewed by the judging panel.
+              </label>
+            </div>
+            <button type="button" class="btn btn-submit" id="submitBtn" onclick="entryFormApp.submitEntry()" disabled>
+              <i class="bi bi-trophy me-2"></i>Submit Entry
+            </button>
+            <button type="button" class="btn btn-back" onclick="entryFormApp.prevStep(8)">
               <i class="bi bi-arrow-left me-2"></i>Back to Edit
             </button>
           </div>
         </div>
 
-        <!-- Success Message (hidden initially) -->
+        <!-- Success Message -->
         <div class="form-step" id="stepSuccess">
           <div class="form-section success-message">
             <div class="success-icon">
-              <i class="bi bi-check-circle-fill"></i>
+              <i class="bi bi-trophy-fill"></i>
             </div>
-            <h2 class="mb-3">Entry Submitted Successfully!</h2>
-            <p class="text-muted">Thank you for your submission. We'll be in touch soon.</p>
-            <div class="mt-4">
-              <p><strong>Entry Reference:</strong> <span id="entryReference"></span></p>
+            <h2 class="mb-3" style="font-family:'Cinzel',serif; font-weight:700;">Entry Submitted!</h2>
+            <p class="text-muted mb-4">Thank you for entering the British Trade Awards. We'll be in touch soon with next steps.</p>
+            <div>
+              <p class="mb-1" style="font-size:0.9rem; color:#777;">Your Entry Reference</p>
+              <div class="success-ref" id="entryReference"></div>
             </div>
+            <p class="mt-4" style="font-size:0.85rem; color:#999;">A confirmation email has been sent to your email address.</p>
           </div>
         </div>
 
@@ -516,10 +846,10 @@
   <!-- Choices.js for searchable dropdown -->
   <script src="https://cdn.jsdelivr.net/npm/choices.js@10.2.0/public/assets/scripts/choices.min.js"></script>
 
-  <!-- Configuration -->
+  <!-- Configuration (provides SECTORS, REGIONS, SUPABASE_CONFIG) -->
   <script src="config.js"></script>
 
-  <!-- New Entry Form Logic -->
+  <!-- Entry Form Logic -->
   <script src="submit-entry.js"></script>
 
 </body>

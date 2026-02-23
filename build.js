@@ -156,7 +156,60 @@ async function build() {
     console.log('  HTML: rewrote index.html to use bundled app.min.js + app.min.css');
   }
 
-  // 4. Generate build manifest
+  // 4. Copy public-facing pages and their assets
+  // These standalone pages have their own JS/CSS (not part of the admin bundle)
+  const PUBLIC_PAGES = [
+    'submit-entry.html',
+    'submit-entry.js',
+    'vote.html',
+    'public-voting.html',
+    'award-nominees.html',
+    'company-profile.html',
+    'award_companies.html',
+    'judge-portal.html',
+    'judge-login.html',
+    'winners-portal.html',
+    'check-in.html',
+    'register.html',
+    'payment-success.html',
+    'payment-cancelled.html',
+    'upload-documents.html'
+  ];
+
+  // Also copy shared assets needed by public pages
+  const PUBLIC_ASSETS = [
+    'config.js',
+    'BTA-LOGO-entry.jpg',
+    'BTA-LOGO-no-date.jpg'
+  ];
+
+  const allPublicFiles = [...PUBLIC_PAGES, ...PUBLIC_ASSETS];
+  let copiedCount = 0;
+
+  allPublicFiles.forEach(file => {
+    const src = path.join(__dirname, file);
+    if (fs.existsSync(src)) {
+      fs.copyFileSync(src, path.join(DIST_DIR, file));
+      copiedCount++;
+    }
+  });
+
+  // Copy any JS files referenced by public pages that aren't in the bundle
+  const publicJsFiles = ['vote.js', 'public-voting.js', 'judge-portal.js', 'judge-login.js',
+    'winners-portal.js', 'check-in.js', 'register.js', 'upload-documents.js',
+    'company-profile.js', 'award-nominees.js', 'award_companies.js'];
+
+  publicJsFiles.forEach(file => {
+    const src = path.join(__dirname, file);
+    if (fs.existsSync(src)) {
+      fs.copyFileSync(src, path.join(DIST_DIR, file));
+      copiedCount++;
+    }
+  });
+
+  console.log(`  Public pages: copied ${copiedCount} files to dist/`);
+
+  // 5. Generate build manifest
   const manifest = {
     buildTime: new Date().toISOString(),
     version: '2.1.0',

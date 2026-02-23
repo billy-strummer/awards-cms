@@ -17,7 +17,7 @@ const winnersModule = {
   async loadWinners() {
     try {
       utils.showLoading();
-      utils.showTableLoading('winnersTableBody', 7);
+      utils.showSkeletonLoading('winnersTableBody', 7);
 
       // Paginated loading for large winner datasets
       let allData = [];
@@ -127,7 +127,7 @@ const winnersModule = {
 
     } catch (error) {
       console.error('Error loading winners:', error);
-      utils.showToast('Failed to load winners: ' + error.message, 'error');
+      utils.showErrorWithRetry(error, 'loading winners', () => this.loadWinners());
       utils.showEmptyState('winnersTableBody', 7, 'Failed to load winners', 'bi-exclamation-triangle');
     } finally {
       utils.hideLoading();
@@ -183,6 +183,14 @@ const winnersModule = {
       return true;
     });
 
+    // If search query is active and no exact matches found, try fuzzy search
+    if (search && STATE.filteredWinners.length === 0) {
+      STATE.filteredWinners = utils.fuzzyFilter(STATE.allWinners, search, ['winner_name']);
+      // Also apply non-search filters to fuzzy results
+      if (year) STATE.filteredWinners = STATE.filteredWinners.filter(w => String(w.awards?.year) === year);
+      if (award) STATE.filteredWinners = STATE.filteredWinners.filter(w => utils.formatAwardName(w.awards) === award);
+    }
+
     // Sort
     STATE.filteredWinners.sort((a, b) => {
       let aVal, bVal;
@@ -214,7 +222,24 @@ const winnersModule = {
       this._sortField = field;
       this._sortDir = 'asc';
     }
+    utils.saveSortState('winners', this._sortField, this._sortDir);
+    this._updateSortIndicators();
     this.filterWinners();
+  },
+
+  _updateSortIndicators() {
+    document.querySelectorAll('#winnersTableBody').forEach(() => {});
+    const icons = document.querySelectorAll('[data-sort-icon-winners]');
+    icons.forEach(icon => {
+      const field = icon.getAttribute('data-sort-icon-winners');
+      if (field === this._sortField) {
+        icon.className = this._sortDir === 'asc'
+          ? 'bi bi-caret-up-fill text-primary ms-1 small'
+          : 'bi bi-caret-down-fill text-primary ms-1 small';
+      } else {
+        icon.className = 'bi bi-arrow-down-up text-muted ms-1 small';
+      }
+    });
   },
 
   /**
@@ -234,7 +259,7 @@ const winnersModule = {
     const pageWinners = STATE.filteredWinners.slice(start, end);
 
     if (STATE.filteredWinners.length === 0) {
-      utils.showEmptyState('winnersTableBody', 7, 'No winners found');
+      utils.showEnhancedEmptyState('winnersTableBody', 7, { icon: 'bi-trophy', message: 'No winners found', description: 'Winners will appear here once confirmed', actionLabel: 'View Pipeline', actionOnclick: "document.querySelector('[data-section=\"winner-pipeline\"]')?.click()", isFiltered: STATE.filteredWinners.length === 0 && STATE.allWinners.length > 0 });
       return;
     }
 
@@ -535,42 +560,43 @@ const winnersModule = {
     }
     
     try {
-      uploadBtn.disabled = true;
-      progressDiv.classList.remove('d-none');
-      
-      // Generate unique filename
-      const timestamp = Date.now();
-      const fileName = `${this.currentWinnerId}/${this.currentMediaType}/${timestamp}_${file.name}`;
-      
-      // Upload file to Supabase Storage (v2 syntax)
-      const { data: uploadData, error: uploadError } = await STATE.client.storage
-        .from('winner-media')
-        .upload(fileName, file);
-      
-      if (uploadError) throw uploadError;
-      
-      // Get public URL (v2 syntax)
-      const { data: urlData } = STATE.client.storage
-        .from('winner-media')
-        .getPublicUrl(fileName);
-      
-      // Insert record into database (v2 syntax)
-      const { error: dbError } = await STATE.client
-        .from('winner_media')
-        .insert([{
-          winner_id: this.currentWinnerId,
-          media_type: this.currentMediaType,
-          file_url: urlData.publicUrl,
-          caption: caption || null
-        }]);
-      
-      if (dbError) throw dbError;
-      
-      // Close modal and reload
-      bootstrap.Modal.getInstance(document.getElementById('uploadMediaModal')).hide();
-      await this.loadWinners();
-      utils.showToast('Media uploaded successfully!', 'success');
-      
+      await utils.protectModalDuringSave('uploadMediaModal', async () => {
+        uploadBtn.disabled = true;
+        progressDiv.classList.remove('d-none');
+
+        // Generate unique filename
+        const timestamp = Date.now();
+        const fileName = `${this.currentWinnerId}/${this.currentMediaType}/${timestamp}_${file.name}`;
+
+        // Upload file to Supabase Storage (v2 syntax)
+        const { data: uploadData, error: uploadError } = await STATE.client.storage
+          .from('winner-media')
+          .upload(fileName, file);
+
+        if (uploadError) throw uploadError;
+
+        // Get public URL (v2 syntax)
+        const { data: urlData } = STATE.client.storage
+          .from('winner-media')
+          .getPublicUrl(fileName);
+
+        // Insert record into database (v2 syntax)
+        const { error: dbError } = await STATE.client
+          .from('winner_media')
+          .insert([{
+            winner_id: this.currentWinnerId,
+            media_type: this.currentMediaType,
+            file_url: urlData.publicUrl,
+            caption: caption || null
+          }]);
+
+        if (dbError) throw dbError;
+
+        // Close modal and reload
+        bootstrap.Modal.getInstance(document.getElementById('uploadMediaModal')).hide();
+        await this.loadWinners();
+        utils.showToast('Media uploaded successfully!', 'success');
+      });
     } catch (error) {
       console.error('Error uploading media:', error);
       utils.showToast('Error uploading media: ' + error.message, 'error');
@@ -643,20 +669,22 @@ const winnersModule = {
     }
     
     try {
-      utils.showLoading();
-      
-      // Supabase v2 syntax for delete
-      const { error } = await STATE.client
-        .from('winner_media')
-        .delete()
-        .eq('id', mediaId);
-      
-      if (error) throw error;
-      
-      await this.loadWinners();
-      bootstrap.Modal.getInstance(document.getElementById('viewMediaModal')).hide();
-      utils.showToast('Media deleted successfully!', 'success');
-      
+      await utils.protectModalDuringSave('viewMediaModal', async () => {
+        utils.showLoading();
+
+        // Supabase v2 syntax for delete
+        const { error } = await STATE.client
+          .from('winner_media')
+          .delete()
+          .eq('id', mediaId);
+
+        if (error) throw error;
+
+        await this.loadWinners();
+        bootstrap.Modal.getInstance(document.getElementById('viewMediaModal')).hide();
+        utils.showToast('Media deleted successfully!', 'success');
+      });
+
     } catch (error) {
       console.error('Error deleting media:', error);
       utils.showToast('Error deleting media: ' + error.message, 'error');
@@ -904,28 +932,30 @@ const winnersModule = {
     const format = document.getElementById('pressReleaseFormatSelect').value;
 
     try {
-      utils.showLoading();
+      await utils.protectModalDuringSave('pressReleaseExportModal', async () => {
+        utils.showLoading();
 
-      // Get selected winners with their media
-      const selectedWinnersData = this.pressReleaseState.allWinners.filter(w =>
-        this.pressReleaseState.selectedWinners.has(w.id)
-      );
+        // Get selected winners with their media
+        const selectedWinnersData = this.pressReleaseState.allWinners.filter(w =>
+          this.pressReleaseState.selectedWinners.has(w.id)
+        );
 
-      // Export based on format
-      switch (format) {
-        case 'csv':
-          await this.exportAsCSV(selectedWinnersData);
-          break;
-        case 'pdf':
-          await this.exportAsPDF(selectedWinnersData);
-          break;
-        case 'html':
-          await this.exportAsHTML(selectedWinnersData);
-          break;
-      }
+        // Export based on format
+        switch (format) {
+          case 'csv':
+            await this.exportAsCSV(selectedWinnersData);
+            break;
+          case 'pdf':
+            await this.exportAsPDF(selectedWinnersData);
+            break;
+          case 'html':
+            await this.exportAsHTML(selectedWinnersData);
+            break;
+        }
 
-      utils.showToast('Export complete!', 'success');
-      bootstrap.Modal.getInstance(document.getElementById('pressReleaseExportModal')).hide();
+        utils.showToast('Export complete!', 'success');
+        bootstrap.Modal.getInstance(document.getElementById('pressReleaseExportModal')).hide();
+      });
 
     } catch (error) {
       console.error('Error exporting press release:', error);
@@ -1408,66 +1438,68 @@ const winnersModule = {
     }
 
     try {
-      utils.showLoading();
+      await utils.protectModalDuringSave('certificateGeneratorModal', async () => {
+        utils.showLoading();
 
-      const brandColor = document.getElementById('brandColor').value;
-      const accentColor = document.getElementById('accentColor').value;
+        const brandColor = document.getElementById('brandColor').value;
+        const accentColor = document.getElementById('accentColor').value;
 
-      // Get selected winners
-      const selectedWinnersData = this.certificateState.allWinners.filter(w =>
-        this.certificateState.selectedWinners.has(w.id)
-      );
+        // Get selected winners
+        const selectedWinnersData = this.certificateState.allWinners.filter(w =>
+          this.certificateState.selectedWinners.has(w.id)
+        );
 
-      let generatedCount = 0;
+        let generatedCount = 0;
 
-      for (const winner of selectedWinnersData) {
-        const safeWinnerName = winner.winner_name.replace(/[^a-z0-9]/gi, '_').toLowerCase();
+        for (const winner of selectedWinnersData) {
+          const safeWinnerName = winner.winner_name.replace(/[^a-z0-9]/gi, '_').toLowerCase();
 
-        // Generate PDF Certificate
-        if (generateCert) {
-          await this.generateCertificatePDF(winner, brandColor, accentColor);
-          generatedCount++;
+          // Generate PDF Certificate
+          if (generateCert) {
+            await this.generateCertificatePDF(winner, brandColor, accentColor);
+            generatedCount++;
+          }
+
+          // Generate Shield
+          if (generateShield) {
+            await this.downloadSVGAsImage(
+              this.generateShieldSVG(winner, brandColor, accentColor),
+              `${safeWinnerName}_shield.png`,
+              400,
+              400
+            );
+            generatedCount++;
+          }
+
+          // Generate Email Banner
+          if (generateEmail) {
+            await this.downloadSVGAsImage(
+              this.generateEmailBannerSVG(winner, brandColor, accentColor),
+              `${safeWinnerName}_email_banner.png`,
+              600,
+              150
+            );
+            generatedCount++;
+          }
+
+          // Generate Web Banner
+          if (generateWeb) {
+            await this.downloadSVGAsImage(
+              this.generateWebBannerSVG(winner, brandColor, accentColor),
+              `${safeWinnerName}_web_banner.png`,
+              1200,
+              300
+            );
+            generatedCount++;
+          }
+
+          // Small delay between winners to avoid browser throttling
+          await new Promise(resolve => setTimeout(resolve, 500));
         }
 
-        // Generate Shield
-        if (generateShield) {
-          await this.downloadSVGAsImage(
-            this.generateShieldSVG(winner, brandColor, accentColor),
-            `${safeWinnerName}_shield.png`,
-            400,
-            400
-          );
-          generatedCount++;
-        }
-
-        // Generate Email Banner
-        if (generateEmail) {
-          await this.downloadSVGAsImage(
-            this.generateEmailBannerSVG(winner, brandColor, accentColor),
-            `${safeWinnerName}_email_banner.png`,
-            600,
-            150
-          );
-          generatedCount++;
-        }
-
-        // Generate Web Banner
-        if (generateWeb) {
-          await this.downloadSVGAsImage(
-            this.generateWebBannerSVG(winner, brandColor, accentColor),
-            `${safeWinnerName}_web_banner.png`,
-            1200,
-            300
-          );
-          generatedCount++;
-        }
-
-        // Small delay between winners to avoid browser throttling
-        await new Promise(resolve => setTimeout(resolve, 500));
-      }
-
-      utils.showToast(`Successfully generated ${generatedCount} assets for ${selectedWinnersData.length} winner(s)!`, 'success');
-      bootstrap.Modal.getInstance(document.getElementById('certificateGeneratorModal')).hide();
+        utils.showToast(`Successfully generated ${generatedCount} assets for ${selectedWinnersData.length} winner(s)!`, 'success');
+        bootstrap.Modal.getInstance(document.getElementById('certificateGeneratorModal')).hide();
+      });
 
     } catch (error) {
       console.error('Error generating assets:', error);
@@ -1828,15 +1860,16 @@ const winnersModule = {
     }
 
     try {
-      utils.showLoading();
+      await utils.protectModalDuringSave('mediaPackDownloadModal', async () => {
+        utils.showLoading();
 
-      const awardName = winner.awards?.award_name || winner.awards?.award_category || 'Award';
-      const year = winner.awards?.year || new Date().getFullYear();
-      const safeWinnerName = (winner.winner_name || 'winner').replace(/[^a-z0-9]/gi, '_').toLowerCase();
-      const photos = winner.winner_media?.filter(m => m.media_type === MEDIA_TYPES.PHOTO) || [];
+        const awardName = winner.awards?.award_name || winner.awards?.award_category || 'Award';
+        const year = winner.awards?.year || new Date().getFullYear();
+        const safeWinnerName = (winner.winner_name || 'winner').replace(/[^a-z0-9]/gi, '_').toLowerCase();
+        const photos = winner.winner_media?.filter(m => m.media_type === MEDIA_TYPES.PHOTO) || [];
 
-      // Build HTML media pack document
-      let html = `<!DOCTYPE html>
+        // Build HTML media pack document
+        let html = `<!DOCTYPE html>
 <html>
 <head>
   <meta charset="UTF-8">
@@ -1864,8 +1897,8 @@ const winnersModule = {
     <strong>Generated:</strong> ${new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'long', year: 'numeric' })}
   </div>`;
 
-      if (includePR) {
-        html += `
+        if (includePR) {
+          html += `
   <div class="section">
     <h2>Press Release</h2>
     <p><strong>${utils.escapeHtml(winner.winner_name)}</strong> has been named the winner of the <strong>${utils.escapeHtml(awardName)}</strong> at the ${year} awards ceremony.</p>
@@ -1873,19 +1906,19 @@ const winnersModule = {
     ${winner.winner_quote ? `<p>"${utils.escapeHtml(winner.winner_quote)}"</p>` : ''}
     ${winner.impact_statement ? `<p><strong>Impact:</strong> ${utils.escapeHtml(winner.impact_statement)}</p>` : ''}
   </div>`;
-      }
+        }
 
-      if (includeQuotes && winner.winner_quote) {
-        html += `
+        if (includeQuotes && winner.winner_quote) {
+          html += `
   <div class="section">
     <h2>Quotable Excerpts</h2>
     <div class="quote">"${utils.escapeHtml(winner.winner_quote)}"</div>
     <p class="text-muted">— ${utils.escapeHtml(winner.winner_name)}, ${utils.escapeHtml(awardName)} Winner ${year}</p>
   </div>`;
-      }
+        }
 
-      if (includePhotos && photos.length > 0) {
-        html += `
+        if (includePhotos && photos.length > 0) {
+          html += `
   <div class="section">
     <h2>Photo Assets</h2>
     <p>${photos.length} high-resolution photo(s) available.</p>
@@ -1898,10 +1931,10 @@ const winnersModule = {
       `).join('')}
     </div>
   </div>`;
-      }
+        }
 
-      if (includeGuidelines) {
-        html += `
+        if (includeGuidelines) {
+          html += `
   <div class="section guidelines">
     <h2>Brand Guidelines</h2>
     <ul>
@@ -1912,28 +1945,29 @@ const winnersModule = {
       <li>For any queries regarding usage, please contact the awards team</li>
     </ul>
   </div>`;
-      }
+        }
 
-      html += `
+        html += `
   <div class="footer">
     <p>This media pack was generated on ${new Date().toLocaleDateString('en-GB')}. For media enquiries, please contact the awards team.</p>
   </div>
 </body>
 </html>`;
 
-      // Download as HTML file
-      const blob = new Blob([html], { type: 'text/html' });
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = `media_pack_${safeWinnerName}_${year}.html`;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      URL.revokeObjectURL(url);
+        // Download as HTML file
+        const blob = new Blob([html], { type: 'text/html' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `media_pack_${safeWinnerName}_${year}.html`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
 
-      utils.showToast('Media pack downloaded!', 'success');
-      bootstrap.Modal.getInstance(document.getElementById('mediaPackDownloadModal')).hide();
+        utils.showToast('Media pack downloaded!', 'success');
+        bootstrap.Modal.getInstance(document.getElementById('mediaPackDownloadModal')).hide();
+      });
 
     } catch (error) {
       console.error('Error generating media pack:', error);
@@ -2622,6 +2656,56 @@ const winnersModule = {
     utils.exportToCSV(exportData, filename);
   },
 
+  /**
+   * Export filtered winners to Excel format
+   */
+  exportFilteredWinnersExcel() {
+    const filteredWinners = STATE.filteredWinners || [];
+    if (filteredWinners.length === 0) { utils.showToast('No winners to export', 'warning'); return; }
+    const exportData = filteredWinners.map(winner => {
+      const awardName = winner.awards?.award_name || winner.awards?.award_category || 'N/A';
+      const year = winner.awards?.year || 'N/A';
+      const photos = winner.winner_media?.filter(m => m.media_type === 'photo') || [];
+      const videos = winner.winner_media?.filter(m => m.media_type === 'video') || [];
+      const status = winner.winner_status || 'pending';
+      return {
+        winner_name: winner.winner_name || '',
+        award: awardName,
+        year: year,
+        status: status.charAt(0).toUpperCase() + status.slice(1),
+        score: winner.score || '',
+        photos: photos.length,
+        videos: videos.length,
+        impact_statement: winner.impact_statement || '',
+        judge_quote: winner.judge_quote || '',
+        announced_date: winner.announced_date || ''
+      };
+    });
+    utils.exportToExcel(exportData, `winners_export_${new Date().toISOString().split('T')[0]}`);
+  },
+
+  /**
+   * Export filtered winners to printable PDF
+   */
+  exportFilteredWinnersPDF() {
+    const filteredWinners = STATE.filteredWinners || [];
+    if (filteredWinners.length === 0) { utils.showToast('No winners to export', 'warning'); return; }
+    const exportData = filteredWinners.map(winner => {
+      const awardName = winner.awards?.award_name || winner.awards?.award_category || 'N/A';
+      const year = winner.awards?.year || 'N/A';
+      const status = winner.winner_status || 'pending';
+      return {
+        winner_name: winner.winner_name || '',
+        award: awardName,
+        year: year,
+        status: status.charAt(0).toUpperCase() + status.slice(1),
+        score: winner.score || '',
+        announced_date: winner.announced_date || ''
+      };
+    });
+    utils.exportToPrintablePDF(exportData, 'Winners Report', { columns: ['winner_name', 'award', 'year', 'status', 'score', 'announced_date'] });
+  },
+
   /* ==================================================== */
   /* IMPORT WINNERS (CSV) */
   /* ==================================================== */
@@ -3076,10 +3160,12 @@ const winnersModule = {
     if (!await utils.confirmDialog({ title: 'Delete Winners', message: `Delete ${this._selectedWinnerIds.size} selected winners? This cannot be undone.` })) return;
 
     try {
-      for (const id of this._selectedWinnerIds) {
-        await STATE.client.from('winners').delete().eq('id', id);
-      }
-      utils.showToast(`Deleted ${this._selectedWinnerIds.size} winners`, 'success');
+      const ids = [...this._selectedWinnerIds];
+      const result = await utils.runBatchOperation(ids, async (id) => {
+        const { error } = await STATE.client.from('winners').delete().eq('id', id);
+        if (error) throw error;
+      }, 'Deleting winners');
+      utils.showToast(`${result.succeeded.length} winner(s) deleted`, 'success');
       this._selectedWinnerIds.clear();
       this.updateWinnersBulkBar();
       await this.loadWinners();

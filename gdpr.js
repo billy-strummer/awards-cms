@@ -222,7 +222,7 @@ const gdprModule = {
       if (error) throw error;
 
       if (!data || data.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted py-3">No GDPR requests</td></tr>';
+        utils.showEmptyState('gdprRequestsTableBody', 6, 'No GDPR requests', 'bi-shield-check');
         return;
       }
 
@@ -250,7 +250,7 @@ const gdprModule = {
       `).join('');
 
     } catch (e) {
-      tbody.innerHTML = '<tr><td colspan="6" class="text-danger">Failed to load requests</td></tr>';
+      utils.showEmptyState('gdprRequestsTableBody', 6, 'Failed to load requests', 'bi-exclamation-triangle');
     }
   },
 

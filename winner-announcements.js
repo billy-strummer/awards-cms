@@ -193,12 +193,12 @@ window.winnerAnnouncementsModule = {
   ================================================ */
   async publishToWebsite(winnerIds, scheduledFor = null) {
     const now = new Date().toISOString();
-    for (const id of winnerIds) {
-      if (await this.checkEmbargo(id)) { console.warn(`Embargoed: ${id}`); continue; }
+    await utils.runBatchOperation(winnerIds, async (id) => {
+      if (await this.checkEmbargo(id)) { console.warn(`Embargoed: ${id}`); return; }
       const {error} = await STATE.client.from('winners').update({published:true, published_at:now}).eq('id',id);
       if (error) throw error;
       await this._logAnnouncement(id,'website',scheduledFor?'scheduled':'published',scheduledFor,scheduledFor?null:now);
-    }
+    }, 'Publishing winners');
   },
 
   /* ================================================
@@ -207,8 +207,8 @@ window.winnerAnnouncementsModule = {
   async sendWinnerEmails(winnerIds, templateId, scheduledFor = null) {
     const {data:tmpl,error:te} = await STATE.client.from('email_templates').select('*').eq('id',templateId).single();
     if (te) throw te;
-    for (const id of winnerIds) {
-      if (await this.checkEmbargo(id)) continue;
+    await utils.runBatchOperation(winnerIds, async (id) => {
+      if (await this.checkEmbargo(id)) return;
       const {data:w,error:we} = await STATE.client.from('winners')
         .select('*,awards:award_years(name,category),organisations(name,contact_email)').eq('id',id).single();
       if (we) throw we;
@@ -223,7 +223,7 @@ window.winnerAnnouncementsModule = {
         catch(e) { console.error('Email failed for',id,e); }
       }
       await this._logAnnouncement(id,'email',scheduledFor?'scheduled':'sent',scheduledFor,scheduledFor?null:new Date().toISOString());
-    }
+    }, 'Sending winner emails');
   },
 
   /* ================================================
@@ -231,8 +231,8 @@ window.winnerAnnouncementsModule = {
   ================================================ */
   async createSocialPosts(winnerIds, platforms, templateOverride = null, scheduledFor = null) {
     const tpl = templateOverride || "Congratulations to {company} for winning {award} at the British Trade Awards {year}! #BritishTradeAwards #Winner";
-    for (const id of winnerIds) {
-      if (await this.checkEmbargo(id)) continue;
+    await utils.runBatchOperation(winnerIds, async (id) => {
+      if (await this.checkEmbargo(id)) return;
       const {data:w,error} = await STATE.client.from('winners')
         .select('*,awards:award_years(name),organisations(name)').eq('id',id).single();
       if (error) throw error;
@@ -247,7 +247,7 @@ window.winnerAnnouncementsModule = {
       });
       if (ie) throw ie;
       await this._logAnnouncement(id,'social',scheduledFor?'scheduled':'draft',scheduledFor,null);
-    }
+    }, 'Creating social posts');
   },
 
   /* ================================================
@@ -281,10 +281,11 @@ window.winnerAnnouncementsModule = {
   ================================================ */
   async setEmbargo(winnerIds, embargoUntil) {
     const iso = new Date(embargoUntil).toISOString();
-    for (const id of winnerIds) {
+    await utils.runBatchOperation(winnerIds, async (id) => {
       this._embargoMap[id] = iso;
-      await STATE.client.from('winners').update({embargo_until:iso}).eq('id',id);
-    }
+      const {error} = await STATE.client.from('winners').update({embargo_until:iso}).eq('id',id);
+      if (error) throw error;
+    }, 'Setting embargo');
     utils.showToast(`Embargo set until ${new Date(iso).toLocaleString()} for ${winnerIds.length} winner(s).`, 'info');
   },
 

@@ -754,7 +754,7 @@ British Trade Awards Team
     } catch (error) {
       console.error('Error loading seasons:', error);
       const tbody = document.getElementById('seasonsTableBody');
-      if (tbody) tbody.innerHTML = '<tr><td colspan="8" class="text-center text-muted py-3">Could not load seasons. Run the migration SQL first.</td></tr>';
+      if (tbody) utils.showEmptyState('seasonsTableBody', 8, 'Could not load seasons. Run the migration SQL first.', 'bi-exclamation-triangle');
     }
   },
 
@@ -766,7 +766,7 @@ British Trade Awards Team
     if (!tbody) return;
 
     if (this.allSeasons.length === 0) {
-      tbody.innerHTML = '<tr><td colspan="10" class="text-center text-muted py-3">No seasons defined yet. Click "Add Season" to create one.</td></tr>';
+      utils.showEnhancedEmptyState('seasonsTableBody', 10, { icon: 'bi-calendar', message: 'No seasons defined yet', description: 'Click "Add Season" to create one' });
       return;
     }
 
@@ -826,6 +826,7 @@ British Trade Awards Team
 
     const modal = new bootstrap.Modal(document.getElementById('seasonFormModal'));
     modal.show();
+    utils.initInlineValidation('seasonForm');
   },
 
   /**
@@ -852,6 +853,7 @@ British Trade Awards Team
 
     const modal = new bootstrap.Modal(document.getElementById('seasonFormModal'));
     modal.show();
+    utils.initInlineValidation('seasonForm');
   },
 
   /**
@@ -893,36 +895,37 @@ British Trade Awards Team
     }
 
     try {
-      utils.showLoading();
+      await utils.protectModalDuringSave('seasonFormModal', async () => {
+        utils.showLoading();
 
-      // If setting as default, unset other defaults first
-      if (isDefault) {
-        await STATE.client
-          .from('award_seasons')
-          .update({ is_default: false })
-          .eq('is_default', true);
-      }
+        // If setting as default, unset other defaults first
+        if (isDefault) {
+          await STATE.client
+            .from('award_seasons')
+            .update({ is_default: false })
+            .eq('is_default', true);
+        }
 
-      let result;
-      if (id) {
-        result = await STATE.client
-          .from('award_seasons')
-          .update(seasonData)
-          .eq('id', id);
-      } else {
-        result = await STATE.client
-          .from('award_seasons')
-          .insert(seasonData);
-      }
+        let result;
+        if (id) {
+          result = await STATE.client
+            .from('award_seasons')
+            .update(seasonData)
+            .eq('id', id);
+        } else {
+          result = await STATE.client
+            .from('award_seasons')
+            .insert(seasonData);
+        }
 
-      if (result.error) throw result.error;
+        if (result.error) throw result.error;
 
-      const modal = bootstrap.Modal.getInstance(document.getElementById('seasonFormModal'));
-      if (modal) modal.hide();
+        const modal = bootstrap.Modal.getInstance(document.getElementById('seasonFormModal'));
+        if (modal) modal.hide();
 
-      utils.showToast(id ? 'Season updated!' : 'Season created!', 'success');
-      await this.loadSeasons();
-
+        utils.showToast(id ? 'Season updated!' : 'Season created!', 'success');
+        await this.loadSeasons();
+      });
     } catch (error) {
       console.error('Error saving season:', error);
       utils.showToast('Failed to save season: ' + error.message, 'error');

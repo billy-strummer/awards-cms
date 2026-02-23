@@ -2568,7 +2568,7 @@
                 </div>
                 <div class="col-md-2">
                   <label class="form-label">Search</label>
-                  <input type="text" class="form-control" id="entriesSearchInput" placeholder="Search entries..." onkeyup="entriesModule.searchEntries()">
+                  <input type="text" class="form-control" id="entriesSearchInput" placeholder="Search entries...">
                 </div>
               </div>
               <div class="row g-3 mt-1">
@@ -7644,7 +7644,7 @@ Available placeholders:
 
               <!-- Attendee Filters -->
               <div class="d-flex gap-2 mb-2 align-items-center">
-                <input type="text" class="form-control form-control-sm" id="attendeeSearchFilter" placeholder="Search name or company..." style="max-width:200px;" oninput="eventsModule.filterAttendeesList()">
+                <input type="text" class="form-control form-control-sm" id="attendeeSearchFilter" placeholder="Search name or company..." style="max-width:200px;">
                 <select class="form-select form-select-sm" id="attendeeStatusFilter" style="max-width:140px;" onchange="eventsModule.filterAttendeesList()">
                   <option value="">All Statuses</option>
                   <option value="attending">Attending</option>
@@ -7718,7 +7718,7 @@ Available placeholders:
               <div class="d-flex gap-2 mb-3">
                 <div class="input-group flex-grow-1">
                   <span class="input-group-text"><i class="bi bi-search"></i></span>
-                  <input type="text" class="form-control" id="checkInSearch" placeholder="Search guest name to check in..." oninput="eventsModule.filterCheckInList()">
+                  <input type="text" class="form-control" id="checkInSearch" placeholder="Search guest name to check in...">
                   <button class="btn btn-outline-success" onclick="eventsModule.checkInAll()" title="Check in all attending guests">
                     <i class="bi bi-check-all me-1"></i>Check In All
                   </button>

@@ -1943,17 +1943,18 @@ const awardsModule = {
 
     try {
       utils.showLoading();
-      let cloned = 0, skipped = 0;
+      let skipped = 0;
+      const awardIds = [...this.selectedAwards];
 
-      for (const awardId of this.selectedAwards) {
+      const result = await utils.runBatchOperation(awardIds, async (awardId) => {
         const award = STATE.allAwards.find(a => a.id === awardId);
-        if (!award) continue;
+        if (!award) throw new Error('Award not found');
 
         const { data: existing } = await STATE.client.from('awards')
           .select('id').eq('award_name', award.award_name)
           .eq('county', award.county).eq('year', targetYear).limit(1);
 
-        if (existing && existing.length > 0) { skipped++; continue; }
+        if (existing && existing.length > 0) { skipped++; return; }
 
         const { error } = await STATE.client.from('awards').insert([{
           award_name: award.award_name, county: award.county, sector: award.sector,
@@ -1962,11 +1963,11 @@ const awardsModule = {
           prev_year_2nd: award._runnerUpName || award.prev_year_2nd || null,
           prev_year_3rd: award.prev_year_3rd || null
         }]);
-        if (!error) cloned++;
-      }
+        if (error) throw error;
+      }, 'Cloning awards');
 
       this.selectedAwards.clear();
-      utils.showToast(`Cloned ${cloned} awards to ${targetYear}${skipped > 0 ? ` (${skipped} skipped as duplicates)` : ''}`, 'success');
+      utils.showToast(`Cloned ${result.succeeded.length} awards to ${targetYear}${skipped > 0 ? ` (${skipped} skipped as duplicates)` : ''}`, 'success');
       await this.loadAwards();
     } catch (error) {
       utils.showToast('Error: ' + error.message, 'error');

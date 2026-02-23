@@ -3974,7 +3974,7 @@ ${content}
 
     } catch (error) {
       console.error('Error loading campaign log:', error);
-      tbody.innerHTML = `<tr><td colspan="9" class="text-center text-danger py-3">Failed to load campaign log</td></tr>`;
+      utils.showEmptyState('campaignLogBody', 9, 'Failed to load campaign log', 'bi-exclamation-triangle');
     }
   },
 

@@ -1312,6 +1312,8 @@ document.addEventListener('DOMContentLoaded', function() {
     utils.initDebouncedSearch('crmCompanySearch', () => { if (window.crmModule) crmModule.filterCompanies(); });
     // Note: subscriberSearch is in a dynamic modal (email-lists.js), debounced search is attached there after modal creation
     utils.initDebouncedSearch('campaignLogSearchInput', () => { if (window.emailBuilder) emailBuilder.searchCampaigns(document.getElementById('campaignLogSearchInput')?.value); });
+    utils.initDebouncedSearch('attendeeSearchFilter', () => { if (window.eventsModule) eventsModule.filterAttendeesList(); });
+    utils.initDebouncedSearch('checkInSearch', () => { if (window.eventsModule) eventsModule.filterCheckInList(); });
   }
 
   // ==========================================

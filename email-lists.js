@@ -286,6 +286,7 @@ const emailListsModule = {
     document.body.insertAdjacentHTML('beforeend', modalHtml);
     const modal = new bootstrap.Modal(document.getElementById('createListModal'));
     modal.show();
+    utils.initInlineValidation('createListForm');
   },
 
   async saveList() {
@@ -306,15 +307,17 @@ const emailListsModule = {
     };
 
     try {
-      const { error } = await STATE.client
-        .from('email_lists')
-        .insert([listData]);
+      await utils.protectModalDuringSave('createListModal', async () => {
+        const { error } = await STATE.client
+          .from('email_lists')
+          .insert([listData]);
 
-      if (error) throw error;
+        if (error) throw error;
 
-      utils.showToast('Email list created successfully', 'success');
-      bootstrap.Modal.getInstance(document.getElementById('createListModal')).hide();
-      this.loadAllData();
+        utils.showToast('Email list created successfully', 'success');
+        bootstrap.Modal.getInstance(document.getElementById('createListModal')).hide();
+        this.loadAllData();
+      });
     } catch (error) {
       console.error('Error creating list:', error);
       utils.showToast('Error creating list: ' + error.message, 'error');
@@ -519,69 +522,70 @@ const emailListsModule = {
     const activeTab = document.querySelector('#importMethodTabs .nav-link.active').id;
 
     try {
-      document.getElementById('importProgress').style.display = 'block';
+      await utils.protectModalDuringSave('importModal', async () => {
+        document.getElementById('importProgress').style.display = 'block';
 
-      let subscribers = [];
+        let subscribers = [];
 
-      if (activeTab === 'csv-tab') {
-        subscribers = await this.parseCSV();
-      } else if (activeTab === 'manual-tab') {
-        subscribers = await this.parseManualEmails();
-      } else if (activeTab === 'crm-tab') {
-        subscribers = await this.importFromCRM();
-      }
+        if (activeTab === 'csv-tab') {
+          subscribers = await this.parseCSV();
+        } else if (activeTab === 'manual-tab') {
+          subscribers = await this.parseManualEmails();
+        } else if (activeTab === 'crm-tab') {
+          subscribers = await this.importFromCRM();
+        }
 
-      if (subscribers.length === 0) {
-        utils.showToast('No valid subscribers to import', 'warning');
-        document.getElementById('importProgress').style.display = 'none';
-        return;
-      }
+        if (subscribers.length === 0) {
+          utils.showToast('No valid subscribers to import', 'warning');
+          document.getElementById('importProgress').style.display = 'none';
+          return;
+        }
 
-      // Log import batch
-      const { data: batch } = await STATE.client
-        .from('email_import_batches')
-        .insert([{
-          file_name: activeTab.replace('-tab', '') + '-import-' + new Date().toISOString(),
-          total_records: subscribers.length,
-          imported: 0,
-          status: 'processing'
-        }])
-        .select()
-        .single();
-
-      // Insert subscribers (only columns that exist in the table)
-      const subscribersToInsert = subscribers.map(sub => ({
-        list_id: listId,
-        email: sub.email,
-        first_name: sub.first_name || null,
-        last_name: sub.last_name || null,
-        company_name: sub.company_name || null,
-        status: 'active'
-      }));
-
-      const skipDuplicates = document.getElementById('csvSkipDuplicates')?.checked;
-
-      const { data, error } = await STATE.client
-        .from('email_list_subscribers')
-        .insert(subscribersToInsert, { onConflict: skipDuplicates ? 'ignore' : undefined });
-
-      if (error) throw error;
-
-      // Update batch as completed
-      if (batch) {
-        await STATE.client
+        // Log import batch
+        const { data: batch } = await STATE.client
           .from('email_import_batches')
-          .update({
-            status: 'completed',
-            imported: subscribers.length
-          })
-          .eq('id', batch.id);
-      }
+          .insert([{
+            file_name: activeTab.replace('-tab', '') + '-import-' + new Date().toISOString(),
+            total_records: subscribers.length,
+            imported: 0,
+            status: 'processing'
+          }])
+          .select()
+          .single();
 
-      utils.showToast(`Successfully imported ${subscribers.length} subscribers`, 'success');
-      bootstrap.Modal.getInstance(document.getElementById('importModal')).hide();
-      this.loadAllData();
+        // Insert subscribers (only columns that exist in the table)
+        const subscribersToInsert = subscribers.map(sub => ({
+          list_id: listId,
+          email: sub.email,
+          first_name: sub.first_name || null,
+          last_name: sub.last_name || null,
+          company_name: sub.company_name || null,
+          status: 'active'
+        }));
 
+        const skipDuplicates = document.getElementById('csvSkipDuplicates')?.checked;
+
+        const { data, error } = await STATE.client
+          .from('email_list_subscribers')
+          .insert(subscribersToInsert, { onConflict: skipDuplicates ? 'ignore' : undefined });
+
+        if (error) throw error;
+
+        // Update batch as completed
+        if (batch) {
+          await STATE.client
+            .from('email_import_batches')
+            .update({
+              status: 'completed',
+              imported: subscribers.length
+            })
+            .eq('id', batch.id);
+        }
+
+        utils.showToast(`Successfully imported ${subscribers.length} subscribers`, 'success');
+        bootstrap.Modal.getInstance(document.getElementById('importModal')).hide();
+        this.loadAllData();
+      });
     } catch (error) {
       console.error('Import error:', error);
       utils.showToast('Error importing subscribers: ' + error.message, 'error');
@@ -1033,6 +1037,7 @@ const emailListsModule = {
     document.body.insertAdjacentHTML('beforeend', modalHtml);
     const modal = new bootstrap.Modal(document.getElementById('addSubscriberModal'));
     modal.show();
+    utils.initInlineValidation('addSubscriberForm');
   },
 
   /**
@@ -1052,40 +1057,42 @@ const emailListsModule = {
     }
 
     try {
-      const { error } = await STATE.client
-        .from('email_list_subscribers')
-        .insert({
-          list_id: listId,
-          email: email,
-          first_name: document.getElementById('subFirstName').value.trim() || null,
-          last_name: document.getElementById('subLastName').value.trim() || null,
-          company_name: document.getElementById('subCompanyName').value.trim() || null,
-          status: 'active',
-          source: 'manual'
-        });
+      await utils.protectModalDuringSave('addSubscriberModal', async () => {
+        const { error } = await STATE.client
+          .from('email_list_subscribers')
+          .insert({
+            list_id: listId,
+            email: email,
+            first_name: document.getElementById('subFirstName').value.trim() || null,
+            last_name: document.getElementById('subLastName').value.trim() || null,
+            company_name: document.getElementById('subCompanyName').value.trim() || null,
+            status: 'active',
+            source: 'manual'
+          });
 
-      if (error) {
-        if (error.message?.includes('duplicate') || error.code === '23505') {
-          utils.showToast('This email already exists in this list', 'warning');
-          return;
+        if (error) {
+          if (error.message?.includes('duplicate') || error.code === '23505') {
+            utils.showToast('This email already exists in this list', 'warning');
+            return;
+          }
+          throw error;
         }
-        throw error;
-      }
 
-      utils.showToast('Subscriber added successfully', 'success');
-      bootstrap.Modal.getInstance(document.getElementById('addSubscriberModal'))?.hide();
+        utils.showToast('Subscriber added successfully', 'success');
+        bootstrap.Modal.getInstance(document.getElementById('addSubscriberModal'))?.hide();
 
-      // Refresh the subscribers modal if it's open
-      const subModal = document.getElementById('subscribersModal');
-      if (subModal) {
-        const list = this.currentLists.find(l => l.id === listId);
-        if (list) {
-          bootstrap.Modal.getInstance(subModal)?.hide();
-          setTimeout(() => this.viewSubscribers(listId, list.list_name), 300);
+        // Refresh the subscribers modal if it's open
+        const subModal = document.getElementById('subscribersModal');
+        if (subModal) {
+          const list = this.currentLists.find(l => l.id === listId);
+          if (list) {
+            bootstrap.Modal.getInstance(subModal)?.hide();
+            setTimeout(() => this.viewSubscribers(listId, list.list_name), 300);
+          }
         }
-      }
 
-      this.loadAllData();
+        this.loadAllData();
+      });
     } catch (error) {
       console.error('Error adding subscriber:', error);
       utils.showToast('Error adding subscriber: ' + error.message, 'error');
@@ -1168,6 +1175,7 @@ const emailListsModule = {
     document.body.insertAdjacentHTML('beforeend', modalHtml);
     const modal = new bootstrap.Modal(document.getElementById('editListModal'));
     modal.show();
+    utils.initInlineValidation('editListForm');
   },
 
   /**
@@ -1181,24 +1189,26 @@ const emailListsModule = {
     }
 
     try {
-      const { error } = await STATE.client
-        .from('email_lists')
-        .update({
-          list_name: document.getElementById('editListName').value,
-          description: document.getElementById('editListDescription').value || null,
-          list_type: document.getElementById('editListType').value,
-          color: document.getElementById('editListColor').value,
-          icon: document.getElementById('editListIcon').value || null,
-          is_active: document.getElementById('editListActive').checked,
-          auto_clean: document.getElementById('editListAutoClean').checked
-        })
-        .eq('id', listId);
+      await utils.protectModalDuringSave('editListModal', async () => {
+        const { error } = await STATE.client
+          .from('email_lists')
+          .update({
+            list_name: document.getElementById('editListName').value,
+            description: document.getElementById('editListDescription').value || null,
+            list_type: document.getElementById('editListType').value,
+            color: document.getElementById('editListColor').value,
+            icon: document.getElementById('editListIcon').value || null,
+            is_active: document.getElementById('editListActive').checked,
+            auto_clean: document.getElementById('editListAutoClean').checked
+          })
+          .eq('id', listId);
 
-      if (error) throw error;
+        if (error) throw error;
 
-      utils.showToast('List updated successfully', 'success');
-      bootstrap.Modal.getInstance(document.getElementById('editListModal'))?.hide();
-      this.loadAllData();
+        utils.showToast('List updated successfully', 'success');
+        bootstrap.Modal.getInstance(document.getElementById('editListModal'))?.hide();
+        this.loadAllData();
+      });
     } catch (error) {
       console.error('Error updating list:', error);
       utils.showToast('Error updating list: ' + error.message, 'error');

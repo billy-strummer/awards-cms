@@ -67,6 +67,7 @@ window.ticketModule = {
     document.getElementById('ttEbDl').value = t ? (t.early_bird_deadline || '') : '';
     document.getElementById('ttTable').checked = t ? !!t.includes_table : false;
     new bootstrap.Modal(document.getElementById('ttModal')).show();
+    utils.initInlineValidation('ttModal');
   },
 
   async saveTicketType(eventId) {
@@ -82,13 +83,15 @@ window.ticketModule = {
     };
     if (!payload.name || isNaN(payload.price) || isNaN(payload.quantity)) { utils.showToast('Name, price and quantity are required.', 'warning'); return; }
     try {
-      utils.showLoading();
-      const { error } = id ? await STATE.client.from('event_ticket_types').update(payload).eq('id', id)
-        : await STATE.client.from('event_ticket_types').insert(payload);
-      if (error) throw error;
-      bootstrap.Modal.getInstance(document.getElementById('ttModal')).hide();
-      utils.showToast('Ticket type saved.', 'success');
-      this.renderTicketTypes(eventId);
+      await utils.protectModalDuringSave('ttModal', async () => {
+        utils.showLoading();
+        const { error } = id ? await STATE.client.from('event_ticket_types').update(payload).eq('id', id)
+          : await STATE.client.from('event_ticket_types').insert(payload);
+        if (error) throw error;
+        bootstrap.Modal.getInstance(document.getElementById('ttModal')).hide();
+        utils.showToast('Ticket type saved.', 'success');
+        this.renderTicketTypes(eventId);
+      });
     } catch (err) { utils.showToast('Save failed: ' + err.message, 'error'); } finally { utils.hideLoading(); }
   },
 

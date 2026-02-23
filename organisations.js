@@ -2198,66 +2198,68 @@ updateCountyFilterByRegion() {
     }
 
     try {
-      uploadBtn.disabled = true;
-      utils.showLoading();
+      await utils.protectModalDuringSave('uploadCompanyImagesModal', async () => {
+        uploadBtn.disabled = true;
+        utils.showLoading();
 
-      let successCount = 0;
-      let errorCount = 0;
+        let successCount = 0;
+        let errorCount = 0;
 
-      for (const file of validFiles) {
-        try {
-          // Generate unique filename
-          const timestamp = Date.now();
-          const randomSuffix = Math.random().toString(36).substring(7);
-          const fileName = `company-images/${this.currentOrgIdForImages}/${timestamp}_${randomSuffix}_${file.name}`;
+        for (const file of validFiles) {
+          try {
+            // Generate unique filename
+            const timestamp = Date.now();
+            const randomSuffix = Math.random().toString(36).substring(7);
+            const fileName = `company-images/${this.currentOrgIdForImages}/${timestamp}_${randomSuffix}_${file.name}`;
 
-          // Upload file to Supabase Storage
-          const { data: uploadData, error: uploadError } = await STATE.client.storage
-            .from('media-gallery')
-            .upload(fileName, file);
+            // Upload file to Supabase Storage
+            const { data: uploadData, error: uploadError } = await STATE.client.storage
+              .from('media-gallery')
+              .upload(fileName, file);
 
-          if (uploadError) throw uploadError;
+            if (uploadError) throw uploadError;
 
-          // Get public URL
-          const { data: urlData } = STATE.client.storage
-            .from('media-gallery')
-            .getPublicUrl(fileName);
+            // Get public URL
+            const { data: urlData } = STATE.client.storage
+              .from('media-gallery')
+              .getPublicUrl(fileName);
 
-          // Insert record into organisation_images table
-          const { error: dbError } = await STATE.client
-            .from('organisation_images')
-            .insert([{
-              organisation_id: this.currentOrgIdForImages,
-              file_url: urlData.publicUrl,
-              title: title || file.name,
-              caption: caption || null,
-              display_order: successCount
-            }]);
+            // Insert record into organisation_images table
+            const { error: dbError } = await STATE.client
+              .from('organisation_images')
+              .insert([{
+                organisation_id: this.currentOrgIdForImages,
+                file_url: urlData.publicUrl,
+                title: title || file.name,
+                caption: caption || null,
+                display_order: successCount
+              }]);
 
-          if (dbError) throw dbError;
+            if (dbError) throw dbError;
 
-          successCount++;
+            successCount++;
 
-        } catch (error) {
-          console.error(`Error uploading ${file.name}:`, error);
-          errorCount++;
+          } catch (error) {
+            console.error(`Error uploading ${file.name}:`, error);
+            errorCount++;
+          }
         }
-      }
 
-      // Close modal
-      bootstrap.Modal.getInstance(document.getElementById('uploadCompanyImagesModal'))?.hide();
+        // Close modal
+        bootstrap.Modal.getInstance(document.getElementById('uploadCompanyImagesModal'))?.hide();
 
-      if (errorCount === 0) {
-        utils.showToast(`${successCount} image(s) uploaded successfully!`, 'success');
-      } else {
-        utils.showToast(`${successCount} succeeded, ${errorCount} failed. Check console for details.`, 'warning');
-      }
+        if (errorCount === 0) {
+          utils.showToast(`${successCount} image(s) uploaded successfully!`, 'success');
+        } else {
+          utils.showToast(`${successCount} succeeded, ${errorCount} failed. Check console for details.`, 'warning');
+        }
 
-      // Reload the profile to show new images
-      const org = STATE.allOrganisations.find(o => o.id === this.currentOrgIdForImages);
-      if (org) {
-        await this.openCompanyProfile(this.currentOrgIdForImages, org.company_name);
-      }
+        // Reload the profile to show new images
+        const org = STATE.allOrganisations.find(o => o.id === this.currentOrgIdForImages);
+        if (org) {
+          await this.openCompanyProfile(this.currentOrgIdForImages, org.company_name);
+        }
+      });
 
     } catch (error) {
       console.error('Error uploading company images:', error);
@@ -5064,10 +5066,19 @@ updateCountyFilterByRegion() {
     if (action) filtered = filtered.filter(e => e.action === action);
     if (dateFrom) filtered = filtered.filter(e => (e.timestamp || e.created_at) >= dateFrom);
     if (dateTo) filtered = filtered.filter(e => (e.timestamp || e.created_at) <= dateTo + 'T23:59:59');
-    if (search) filtered = filtered.filter(e =>
-      (e.company_name || '').toLowerCase().includes(search) ||
-      (e.details || '').toLowerCase().includes(search)
-    );
+    if (search) {
+      filtered = filtered.filter(e =>
+        (e.company_name || '').toLowerCase().includes(search) ||
+        (e.details || '').toLowerCase().includes(search)
+      );
+      // Fuzzy search fallback
+      if (filtered.length === 0) {
+        filtered = utils.fuzzyFilter(this._cachedAuditLog, search, ['company_name', 'details']);
+        if (action) filtered = filtered.filter(e => e.action === action);
+        if (dateFrom) filtered = filtered.filter(e => (e.timestamp || e.created_at) >= dateFrom);
+        if (dateTo) filtered = filtered.filter(e => (e.timestamp || e.created_at) <= dateTo + 'T23:59:59');
+      }
+    }
 
     const container = document.getElementById('auditLogContent');
     if (container) container.innerHTML = this._renderAuditEntries(filtered);

@@ -280,16 +280,18 @@ const mediaGalleryModule = {
     const awardId = document.getElementById('editTagPhotoAward')?.value || null;
 
     try {
-      const { error } = await STATE.client
-        .from('media_items')
-        .update({ title, organisation_id: orgId, award_id: awardId })
-        .eq('id', photoId);
-      if (error) throw error;
+      await utils.protectModalDuringSave('editPhotoTagsModal', async () => {
+        const { error } = await STATE.client
+          .from('media_items')
+          .update({ title, organisation_id: orgId, award_id: awardId })
+          .eq('id', photoId);
+        if (error) throw error;
 
-      bootstrap.Modal.getInstance(document.getElementById('editPhotoTagsModal')).hide();
-      utils.showToast('Photo tags updated', 'success');
-      // Refresh if in untagged view
-      if (this.currentView === 'untagged-photos') await this.showUntaggedPhotos();
+        bootstrap.Modal.getInstance(document.getElementById('editPhotoTagsModal')).hide();
+        utils.showToast('Photo tags updated', 'success');
+        // Refresh if in untagged view
+        if (this.currentView === 'untagged-photos') await this.showUntaggedPhotos();
+      });
     } catch (err) {
       console.error('Error saving photo tags:', err);
       utils.showToast('Failed to save tags', 'error');
@@ -1105,123 +1107,124 @@ const mediaGalleryModule = {
    */
   async saveVideo() {
     try {
-      // Get form values
-      const sourceTypeEl = document.querySelector('input[name="videoSourceType"]:checked');
-      if (!sourceTypeEl) {
-        utils.showToast('Please select a video source type', 'warning');
-        return;
-      }
-      const sourceType = sourceTypeEl.value;
-      const title = document.getElementById('videoTitle').value.trim();
-      const description = document.getElementById('videoDescription').value.trim();
-      const eventId = document.getElementById('videoEventId').value;
+      await utils.protectModalDuringSave('addVideoModal', async () => {
+        // Get form values
+        const sourceTypeEl = document.querySelector('input[name="videoSourceType"]:checked');
+        if (!sourceTypeEl) {
+          utils.showToast('Please select a video source type', 'warning');
+          return;
+        }
+        const sourceType = sourceTypeEl.value;
+        const title = document.getElementById('videoTitle').value.trim();
+        const description = document.getElementById('videoDescription').value.trim();
+        const eventId = document.getElementById('videoEventId').value;
 
-      // Validation
-      if (!title) {
-        utils.showToast('Please enter a video title', 'warning');
-        return;
-      }
-
-      if (!eventId) {
-        utils.showToast('No event selected', 'error');
-        return;
-      }
-
-      let youtubeId = null;
-      let fileUrl = null;
-      let thumbnailUrl = null;
-
-      if (sourceType === 'youtube') {
-        // Extract YouTube ID
-        const youtubeInput = document.getElementById('videoYouTubeId').value.trim();
-        youtubeId = this.extractYouTubeId(youtubeInput);
-
-        if (!youtubeId) {
-          utils.showToast('Invalid YouTube URL or ID', 'warning');
+        // Validation
+        if (!title) {
+          utils.showToast('Please enter a video title', 'warning');
           return;
         }
 
-        // Set YouTube thumbnail
-        thumbnailUrl = `https://img.youtube.com/vi/${youtubeId}/hqdefault.jpg`;
-        fileUrl = `https://www.youtube.com/watch?v=${youtubeId}`;
-
-      } else {
-        // Handle file upload
-        const fileInput = document.getElementById('videoFileUpload');
-        if (!fileInput.files || !fileInput.files[0]) {
-          utils.showToast('Please select a video file', 'warning');
+        if (!eventId) {
+          utils.showToast('No event selected', 'error');
           return;
         }
 
-        const file = fileInput.files[0];
-        const fileName = `videos/${Date.now()}-${file.name.replace(/[^a-zA-Z0-9._-]/g, '_')}`;
+        let youtubeId = null;
+        let fileUrl = null;
+        let thumbnailUrl = null;
 
-        try {
-          const { data: uploadData, error: uploadError } = await STATE.client.storage
-            .from('media')
-            .upload(fileName, file, {
-              cacheControl: '3600',
-              upsert: false
-            });
+        if (sourceType === 'youtube') {
+          // Extract YouTube ID
+          const youtubeInput = document.getElementById('videoYouTubeId').value.trim();
+          youtubeId = this.extractYouTubeId(youtubeInput);
 
-          if (uploadError) throw uploadError;
+          if (!youtubeId) {
+            utils.showToast('Invalid YouTube URL or ID', 'warning');
+            return;
+          }
 
-          const { data: urlData } = STATE.client.storage
-            .from('media')
-            .getPublicUrl(fileName);
+          // Set YouTube thumbnail
+          thumbnailUrl = `https://img.youtube.com/vi/${youtubeId}/hqdefault.jpg`;
+          fileUrl = `https://www.youtube.com/watch?v=${youtubeId}`;
 
-          fileUrl = urlData.publicUrl;
-          thumbnailUrl = fileUrl; // Use video URL as placeholder thumbnail
-        } catch (uploadErr) {
-          console.error('File upload failed:', uploadErr);
-          utils.showToast('File upload failed. Please ensure the media storage bucket exists in Supabase.', 'error');
-          return;
+        } else {
+          // Handle file upload
+          const fileInput = document.getElementById('videoFileUpload');
+          if (!fileInput.files || !fileInput.files[0]) {
+            utils.showToast('Please select a video file', 'warning');
+            return;
+          }
+
+          const file = fileInput.files[0];
+          const fileName = `videos/${Date.now()}-${file.name.replace(/[^a-zA-Z0-9._-]/g, '_')}`;
+
+          try {
+            const { data: uploadData, error: uploadError } = await STATE.client.storage
+              .from('media')
+              .upload(fileName, file, {
+                cacheControl: '3600',
+                upsert: false
+              });
+
+            if (uploadError) throw uploadError;
+
+            const { data: urlData } = STATE.client.storage
+              .from('media')
+              .getPublicUrl(fileName);
+
+            fileUrl = urlData.publicUrl;
+            thumbnailUrl = fileUrl; // Use video URL as placeholder thumbnail
+          } catch (uploadErr) {
+            console.error('File upload failed:', uploadErr);
+            utils.showToast('File upload failed. Please ensure the media storage bucket exists in Supabase.', 'error');
+            return;
+          }
         }
-      }
 
-      // Use first selected org/award as the primary FK tag (for winner profile linking)
-      const primaryOrgId = this.videoTags.length > 0 ? this.videoTags[0].id : null;
-      const primaryAwardId = this.videoAwardTags.length > 0 ? this.videoAwardTags[0].id : null;
+        // Use first selected org/award as the primary FK tag (for winner profile linking)
+        const primaryOrgId = this.videoTags.length > 0 ? this.videoTags[0].id : null;
+        const primaryAwardId = this.videoAwardTags.length > 0 ? this.videoAwardTags[0].id : null;
 
-      // Also store full tags as JSON for multi-tag support (backward compatible)
-      const tagsObject = {
-        companies: this.videoTags.map(t => ({ id: t.id, name: t.name })),
-        awards: this.videoAwardTags.map(t => ({ id: t.id, name: t.name }))
-      };
+        // Also store full tags as JSON for multi-tag support (backward compatible)
+        const tagsObject = {
+          companies: this.videoTags.map(t => ({ id: t.id, name: t.name })),
+          awards: this.videoAwardTags.map(t => ({ id: t.id, name: t.name }))
+        };
 
-      // Prepare data for database
-      const videoData = {
-        event_id: eventId,
-        media_type: 'video',
-        title: title,
-        description: description || null,
-        file_url: fileUrl,
-        thumbnail_url: thumbnailUrl,
-        youtube_id: youtubeId,
-        organisation_id: primaryOrgId,
-        award_id: primaryAwardId,
-        tags: (this.videoTags.length > 0 || this.videoAwardTags.length > 0) ? JSON.stringify(tagsObject) : null,
-        status: 'published',
-        created_at: new Date().toISOString()
-      };
+        // Prepare data for database
+        const videoData = {
+          event_id: eventId,
+          media_type: 'video',
+          title: title,
+          description: description || null,
+          file_url: fileUrl,
+          thumbnail_url: thumbnailUrl,
+          youtube_id: youtubeId,
+          organisation_id: primaryOrgId,
+          award_id: primaryAwardId,
+          tags: (this.videoTags.length > 0 || this.videoAwardTags.length > 0) ? JSON.stringify(tagsObject) : null,
+          status: 'published',
+          created_at: new Date().toISOString()
+        };
 
-      // Insert into database
-      const { data, error } = await STATE.client
-        .from('media_items')
-        .insert([videoData])
-        .select();
+        // Insert into database
+        const { data, error } = await STATE.client
+          .from('media_items')
+          .insert([videoData])
+          .select();
 
-      if (error) throw error;
+        if (error) throw error;
 
-      utils.showToast('Video added successfully!', 'success');
+        utils.showToast('Video added successfully!', 'success');
 
-      // Close modal
-      const modal = bootstrap.Modal.getInstance(document.getElementById('addVideoModal'));
-      modal.hide();
+        // Close modal
+        const modal = bootstrap.Modal.getInstance(document.getElementById('addVideoModal'));
+        modal.hide();
 
-      // Reload videos
-      await this.loadVideosProduction();
-
+        // Reload videos
+        await this.loadVideosProduction();
+      });
     } catch (error) {
       console.error('Error saving video:', error);
       utils.showToast('Failed to save video: ' + error.message, 'error');
@@ -1349,28 +1352,29 @@ const mediaGalleryModule = {
 
   async saveVideoEdit(videoId) {
     try {
-      utils.showLoading();
+      await utils.protectModalDuringSave('editVideoModal', async () => {
+        utils.showLoading();
 
-      const title = document.getElementById('editVideoTitle').value.trim();
-      const description = document.getElementById('editVideoDescription').value.trim();
-      const status = document.getElementById('editVideoStatus').value;
+        const title = document.getElementById('editVideoTitle').value.trim();
+        const description = document.getElementById('editVideoDescription').value.trim();
+        const status = document.getElementById('editVideoStatus').value;
 
-      if (!title) {
-        utils.showToast('Title is required', 'warning');
-        return;
-      }
+        if (!title) {
+          utils.showToast('Title is required', 'warning');
+          return;
+        }
 
-      const { error } = await STATE.client
-        .from('media_items')
-        .update({ title, description, status })
-        .eq('id', videoId);
+        const { error } = await STATE.client
+          .from('media_items')
+          .update({ title, description, status })
+          .eq('id', videoId);
 
-      if (error) throw error;
+        if (error) throw error;
 
-      bootstrap.Modal.getInstance(document.getElementById('editVideoModal')).hide();
-      utils.showToast('Video updated successfully', 'success');
-      await this.loadVideosProduction();
-
+        bootstrap.Modal.getInstance(document.getElementById('editVideoModal')).hide();
+        utils.showToast('Video updated successfully', 'success');
+        await this.loadVideosProduction();
+      });
     } catch (error) {
       console.error('Error saving video edit:', error);
       utils.showToast('Failed to update video: ' + error.message, 'error');
@@ -1806,38 +1810,39 @@ const mediaGalleryModule = {
     }
 
     try {
-      utils.showLoading();
+      await utils.protectModalDuringSave('gallerySectionModal', async () => {
+        utils.showLoading();
 
-      const sectionData = {
-        event_id: this.currentEventId,
-        gallery_name: sectionName,
-        gallery_description: sectionDesc || null,
-        display_order: displayOrder
-      };
+        const sectionData = {
+          event_id: this.currentEventId,
+          gallery_name: sectionName,
+          gallery_description: sectionDesc || null,
+          display_order: displayOrder
+        };
 
-      let error;
+        let error;
 
-      if (sectionId) {
-        // Update
-        ({ error } = await STATE.client
-          .from('event_galleries')
-          .update(sectionData)
-          .eq('id', sectionId));
-      } else {
-        // Insert
-        ({ error } = await STATE.client
-          .from('event_galleries')
-          .insert([sectionData]));
-      }
+        if (sectionId) {
+          // Update
+          ({ error } = await STATE.client
+            .from('event_galleries')
+            .update(sectionData)
+            .eq('id', sectionId));
+        } else {
+          // Insert
+          ({ error } = await STATE.client
+            .from('event_galleries')
+            .insert([sectionData]));
+        }
 
-      if (error) throw error;
+        if (error) throw error;
 
-      utils.showToast(`Section ${sectionId ? 'updated' : 'added'} successfully!`, 'success');
+        utils.showToast(`Section ${sectionId ? 'updated' : 'added'} successfully!`, 'success');
 
-      // Close modal and reload
-      bootstrap.Modal.getInstance(document.getElementById('gallerySectionModal')).hide();
-      await this.onEventSelected(this.currentEventId);
-
+        // Close modal and reload
+        bootstrap.Modal.getInstance(document.getElementById('gallerySectionModal')).hide();
+        await this.onEventSelected(this.currentEventId);
+      });
     } catch (error) {
       console.error('Error saving section:', error);
       utils.showToast('Error saving section: ' + error.message, 'error');
@@ -2237,6 +2242,7 @@ const mediaGalleryModule = {
    */
   setSortBy(sortBy) {
     this.currentSortBy = sortBy;
+    utils.saveSortState('media_gallery', this.currentSortBy, 'asc');
     this.currentPage = 1;
     this.renderSectionPhotos(this.currentSectionName || 'Section');
   },
@@ -2421,26 +2427,28 @@ const mediaGalleryModule = {
     }
 
     try {
-      utils.showLoading();
-      const updateData = {};
-      if (orgVal === '__clear__') updateData.organisation_id = null;
-      else if (orgVal) updateData.organisation_id = orgVal;
-      if (awardVal === '__clear__') updateData.award_id = null;
-      else if (awardVal) updateData.award_id = awardVal;
+      await utils.protectModalDuringSave('bulkTagModal', async () => {
+        utils.showLoading();
+        const updateData = {};
+        if (orgVal === '__clear__') updateData.organisation_id = null;
+        else if (orgVal) updateData.organisation_id = orgVal;
+        if (awardVal === '__clear__') updateData.award_id = null;
+        else if (awardVal) updateData.award_id = awardVal;
 
-      const { error } = await STATE.client
-        .from('media_gallery')
-        .update(updateData)
-        .in('id', [...this.selectedPhotoIds]);
+        const { error } = await STATE.client
+          .from('media_gallery')
+          .update(updateData)
+          .in('id', [...this.selectedPhotoIds]);
 
-      if (error) throw error;
+        if (error) throw error;
 
-      bootstrap.Modal.getInstance(document.getElementById('bulkTagModal')).hide();
-      const tagCount = this.selectedPhotoIds.size;
-      utils.showToast(`${tagCount} photo(s) tagged successfully`, 'success');
-      this._logActivity('bulk_tag', null, `${tagCount} photos bulk tagged`);
-      this.selectedPhotoIds.clear();
-      await this.viewSectionPhotos(this.currentSectionId, this.currentSectionName);
+        bootstrap.Modal.getInstance(document.getElementById('bulkTagModal')).hide();
+        const tagCount = this.selectedPhotoIds.size;
+        utils.showToast(`${tagCount} photo(s) tagged successfully`, 'success');
+        this._logActivity('bulk_tag', null, `${tagCount} photos bulk tagged`);
+        this.selectedPhotoIds.clear();
+        await this.viewSectionPhotos(this.currentSectionId, this.currentSectionName);
+      });
     } catch (err) {
       console.error('Error bulk tagging:', err);
       utils.showToast('Error tagging photos: ' + err.message, 'error');
@@ -2748,56 +2756,57 @@ const mediaGalleryModule = {
     }
 
     try {
-      // Show progress
-      document.getElementById('dragDropProgress').classList.remove('d-none');
-      document.getElementById('dragDropUploadBtn').disabled = true;
+      await utils.protectModalDuringSave('dragDropPublishModal', async () => {
+        // Show progress
+        document.getElementById('dragDropProgress').classList.remove('d-none');
+        document.getElementById('dragDropUploadBtn').disabled = true;
 
-      let successCount = 0;
+        let successCount = 0;
 
-      for (const file of validFiles) {
-        const timestamp = Date.now();
-        const randomSuffix = Math.random().toString(36).substring(7);
-        const fileName = `gallery-sections/${this.currentSectionId}/${timestamp}_${randomSuffix}_${file.name}`;
+        for (const file of validFiles) {
+          const timestamp = Date.now();
+          const randomSuffix = Math.random().toString(36).substring(7);
+          const fileName = `gallery-sections/${this.currentSectionId}/${timestamp}_${randomSuffix}_${file.name}`;
 
-        // Upload to storage
-        const { error: uploadError } = await STATE.client.storage
-          .from('media-gallery')
-          .upload(fileName, file);
+          // Upload to storage
+          const { error: uploadError } = await STATE.client.storage
+            .from('media-gallery')
+            .upload(fileName, file);
 
-        if (uploadError) throw uploadError;
+          if (uploadError) throw uploadError;
 
-        // Get public URL
-        const { data: urlData } = STATE.client.storage
-          .from('media-gallery')
-          .getPublicUrl(fileName);
+          // Get public URL
+          const { data: urlData } = STATE.client.storage
+            .from('media-gallery')
+            .getPublicUrl(fileName);
 
-        // Insert into database
-        const { error: dbError } = await STATE.client
-          .from('media_gallery')
-          .insert([{
-            gallery_section_id: this.currentSectionId,
-            event_id: this.currentEventId,
-            file_url: urlData.publicUrl,
-            file_type: file.type,
-            title: file.name,
-            organisation_id: null,
-            award_id: null,
-            published: published
-          }]);
+          // Insert into database
+          const { error: dbError } = await STATE.client
+            .from('media_gallery')
+            .insert([{
+              gallery_section_id: this.currentSectionId,
+              event_id: this.currentEventId,
+              file_url: urlData.publicUrl,
+              file_type: file.type,
+              title: file.name,
+              organisation_id: null,
+              award_id: null,
+              published: published
+            }]);
 
-        if (dbError) throw dbError;
+          if (dbError) throw dbError;
 
-        successCount++;
-      }
+          successCount++;
+        }
 
-      utils.showToast(`${successCount} file(s) uploaded successfully!`, 'success');
-      this._logActivity('upload', null, `${successCount} files uploaded`);
+        utils.showToast(`${successCount} file(s) uploaded successfully!`, 'success');
+        this._logActivity('upload', null, `${successCount} files uploaded`);
 
-      // Close modal and reload
-      bootstrap.Modal.getInstance(document.getElementById('dragDropPublishModal')).hide();
+        // Close modal and reload
+        bootstrap.Modal.getInstance(document.getElementById('dragDropPublishModal')).hide();
 
-      await this.viewSectionPhotos(this.currentSectionId, this.currentSectionName);
-
+        await this.viewSectionPhotos(this.currentSectionId, this.currentSectionName);
+      });
     } catch (error) {
       console.error('Error uploading files:', error);
       utils.showToast('Error uploading files: ' + error.message, 'error');
@@ -3126,62 +3135,63 @@ const mediaGalleryModule = {
     }
 
     try {
-      utils.showLoading();
+      await utils.protectModalDuringSave('uploadSectionPhotosModal', async () => {
+        utils.showLoading();
 
-      let successCount = 0;
+        let successCount = 0;
 
-      for (const file of validFiles) {
-        const timestamp = Date.now();
-        const randomSuffix = Math.random().toString(36).substring(7);
-        const fileName = `gallery-sections/${this.currentSectionId}/${timestamp}_${randomSuffix}_${file.name}`;
+        for (const file of validFiles) {
+          const timestamp = Date.now();
+          const randomSuffix = Math.random().toString(36).substring(7);
+          const fileName = `gallery-sections/${this.currentSectionId}/${timestamp}_${randomSuffix}_${file.name}`;
 
-        // Upload to storage
-        const { error: uploadError } = await STATE.client.storage
-          .from('media-gallery')
-          .upload(fileName, file);
+          // Upload to storage
+          const { error: uploadError } = await STATE.client.storage
+            .from('media-gallery')
+            .upload(fileName, file);
 
-        if (uploadError) throw uploadError;
+          if (uploadError) throw uploadError;
 
-        // Get public URL
-        const { data: urlData } = STATE.client.storage
-          .from('media-gallery')
-          .getPublicUrl(fileName);
+          // Get public URL
+          const { data: urlData } = STATE.client.storage
+            .from('media-gallery')
+            .getPublicUrl(fileName);
 
-        // Prepare media record
-        const isVideo = file.type.startsWith('video/');
-        const mediaRecord = {
-          gallery_section_id: this.currentSectionId,
-          event_id: this.currentEventId,
-          file_url: urlData.publicUrl,
-          file_type: file.type,
-          title: title || file.name,
-          organisation_id: null,
-          award_id: null,
-          published: published
-        };
+          // Prepare media record
+          const isVideo = file.type.startsWith('video/');
+          const mediaRecord = {
+            gallery_section_id: this.currentSectionId,
+            event_id: this.currentEventId,
+            file_url: urlData.publicUrl,
+            file_type: file.type,
+            title: title || file.name,
+            organisation_id: null,
+            award_id: null,
+            published: published
+          };
 
-        // Add video_type only for videos
-        if (isVideo && videoType) {
-          mediaRecord.video_type = videoType;
+          // Add video_type only for videos
+          if (isVideo && videoType) {
+            mediaRecord.video_type = videoType;
+          }
+
+          // Insert into database
+          const { error: dbError } = await STATE.client
+            .from('media_gallery')
+            .insert([mediaRecord]);
+
+          if (dbError) throw dbError;
+
+          successCount++;
         }
 
-        // Insert into database
-        const { error: dbError } = await STATE.client
-          .from('media_gallery')
-          .insert([mediaRecord]);
+        utils.showToast(`${successCount} photo(s) uploaded successfully!`, 'success');
 
-        if (dbError) throw dbError;
+        // Close modal and reload
+        bootstrap.Modal.getInstance(document.getElementById('uploadSectionPhotosModal')).hide();
 
-        successCount++;
-      }
-
-      utils.showToast(`${successCount} photo(s) uploaded successfully!`, 'success');
-
-      // Close modal and reload
-      bootstrap.Modal.getInstance(document.getElementById('uploadSectionPhotosModal')).hide();
-
-      await this.viewSectionPhotos(this.currentSectionId, this.currentSectionName);
-
+        await this.viewSectionPhotos(this.currentSectionId, this.currentSectionName);
+      });
     } catch (error) {
       console.error('Error uploading photos:', error);
       utils.showToast('Error uploading photos: ' + error.message, 'error');
@@ -3232,31 +3242,32 @@ const mediaGalleryModule = {
     }
 
     try {
-      utils.showLoading();
+      await utils.protectModalDuringSave('youtubeVideoModal', async () => {
+        utils.showLoading();
 
-      // Insert into database
-      const { error } = await STATE.client
-        .from('media_gallery')
-        .insert([{
-          gallery_section_id: this.currentSectionId,
-          event_id: this.currentEventId,
-          file_url: cleanVideoId,
-          file_type: 'video/youtube',
-          title: title || 'YouTube Video',
-          organisation_id: null,
-          award_id: null,
-          published: published
-        }]);
+        // Insert into database
+        const { error } = await STATE.client
+          .from('media_gallery')
+          .insert([{
+            gallery_section_id: this.currentSectionId,
+            event_id: this.currentEventId,
+            file_url: cleanVideoId,
+            file_type: 'video/youtube',
+            title: title || 'YouTube Video',
+            organisation_id: null,
+            award_id: null,
+            published: published
+          }]);
 
-      if (error) throw error;
+        if (error) throw error;
 
-      utils.showToast('YouTube video added successfully!', 'success');
+        utils.showToast('YouTube video added successfully!', 'success');
 
-      // Close modal and reload
-      bootstrap.Modal.getInstance(document.getElementById('youtubeVideoModal')).hide();
+        // Close modal and reload
+        bootstrap.Modal.getInstance(document.getElementById('youtubeVideoModal')).hide();
 
-      await this.viewSectionPhotos(this.currentSectionId, this.currentSectionName);
-
+        await this.viewSectionPhotos(this.currentSectionId, this.currentSectionName);
+      });
     } catch (error) {
       console.error('Error adding YouTube video:', error);
       utils.showToast('Error adding video: ' + error.message, 'error');
@@ -3769,31 +3780,32 @@ const mediaGalleryModule = {
     const showOnCompanyPage = document.getElementById('tagPhotoShowCompany').checked;
 
     try {
-      utils.showLoading();
+      await utils.protectModalDuringSave('tagPhotoModal', async () => {
+        utils.showLoading();
 
-      const { error } = await STATE.client
-        .from('media_gallery')
-        .update({
-          organisation_id: orgId || null,
-          award_id: awardId || null,
-          caption: caption || null,
-          alt_text: altText || null,
-          photographer: photographer || null,
-          show_in_gallery: showInGallery,
-          show_on_winner_page: showOnWinnerPage,
-          show_on_company_page: showOnCompanyPage
-        })
-        .eq('id', this.currentMediaId);
+        const { error } = await STATE.client
+          .from('media_gallery')
+          .update({
+            organisation_id: orgId || null,
+            award_id: awardId || null,
+            caption: caption || null,
+            alt_text: altText || null,
+            photographer: photographer || null,
+            show_in_gallery: showInGallery,
+            show_on_winner_page: showOnWinnerPage,
+            show_on_company_page: showOnCompanyPage
+          })
+          .eq('id', this.currentMediaId);
 
-      if (error) throw error;
+        if (error) throw error;
 
-      utils.showToast('Photo saved successfully!', 'success');
+        utils.showToast('Photo saved successfully!', 'success');
 
-      // Close modal and reload
-      bootstrap.Modal.getInstance(document.getElementById('tagPhotoModal')).hide();
+        // Close modal and reload
+        bootstrap.Modal.getInstance(document.getElementById('tagPhotoModal')).hide();
 
-      await this.viewSectionPhotos(this.currentSectionId, this.currentSectionName);
-
+        await this.viewSectionPhotos(this.currentSectionId, this.currentSectionName);
+      });
     } catch (error) {
       console.error('Error saving photo:', error);
       utils.showToast('Error saving: ' + error.message, 'error');
@@ -4176,54 +4188,55 @@ const mediaGalleryModule = {
     const state = this._cropRotateState;
 
     try {
-      utils.showLoading();
+      await utils.protectModalDuringSave('cropRotateModal', async () => {
+        utils.showLoading();
 
-      // If crop is active, create a cropped canvas
-      let outputCanvas = canvas;
-      if (state.cropRect && state.cropRect.w > 10 && state.cropRect.h > 10) {
-        outputCanvas = document.createElement('canvas');
-        const crop = state.cropRect;
-        outputCanvas.width = crop.w;
-        outputCanvas.height = crop.h;
-        outputCanvas.getContext('2d').drawImage(canvas, crop.x, crop.y, crop.w, crop.h, 0, 0, crop.w, crop.h);
-      }
+        // If crop is active, create a cropped canvas
+        let outputCanvas = canvas;
+        if (state.cropRect && state.cropRect.w > 10 && state.cropRect.h > 10) {
+          outputCanvas = document.createElement('canvas');
+          const crop = state.cropRect;
+          outputCanvas.width = crop.w;
+          outputCanvas.height = crop.h;
+          outputCanvas.getContext('2d').drawImage(canvas, crop.x, crop.y, crop.w, crop.h, 0, 0, crop.w, crop.h);
+        }
 
-      // Convert canvas to blob
-      const blob = await new Promise(resolve => outputCanvas.toBlob(resolve, 'image/jpeg', 0.92));
-      if (!blob) throw new Error('Could not generate image');
+        // Convert canvas to blob
+        const blob = await new Promise(resolve => outputCanvas.toBlob(resolve, 'image/jpeg', 0.92));
+        if (!blob) throw new Error('Could not generate image');
 
-      // Upload to storage (new file, preserve original)
-      const timestamp = Date.now();
-      const randomSuffix = Math.random().toString(36).substring(7);
-      const fileName = `${timestamp}_${randomSuffix}_edited.jpg`;
-      const filePath = `${this.currentEventId}/${this.currentSectionId}/${fileName}`;
+        // Upload to storage (new file, preserve original)
+        const timestamp = Date.now();
+        const randomSuffix = Math.random().toString(36).substring(7);
+        const fileName = `${timestamp}_${randomSuffix}_edited.jpg`;
+        const filePath = `${this.currentEventId}/${this.currentSectionId}/${fileName}`;
 
-      const { error: uploadError } = await STATE.client.storage
-        .from('media-gallery')
-        .upload(filePath, blob, { contentType: 'image/jpeg' });
+        const { error: uploadError } = await STATE.client.storage
+          .from('media-gallery')
+          .upload(filePath, blob, { contentType: 'image/jpeg' });
 
-      if (uploadError) throw uploadError;
+        if (uploadError) throw uploadError;
 
-      const { data: { publicUrl } } = STATE.client.storage
-        .from('media-gallery')
-        .getPublicUrl(filePath);
+        const { data: { publicUrl } } = STATE.client.storage
+          .from('media-gallery')
+          .getPublicUrl(filePath);
 
-      // Update database record with new URL
-      const { error: updateError } = await STATE.client
-        .from('media_gallery')
-        .update({ file_url: publicUrl, file_type: 'image/jpeg', file_size: blob.size })
-        .eq('id', photoId);
+        // Update database record with new URL
+        const { error: updateError } = await STATE.client
+          .from('media_gallery')
+          .update({ file_url: publicUrl, file_type: 'image/jpeg', file_size: blob.size })
+          .eq('id', photoId);
 
-      if (updateError) throw updateError;
+        if (updateError) throw updateError;
 
-      bootstrap.Modal.getInstance(document.getElementById('cropRotateModal')).hide();
-      utils.showToast('Photo updated with crop/rotate changes!', 'success');
+        bootstrap.Modal.getInstance(document.getElementById('cropRotateModal')).hide();
+        utils.showToast('Photo updated with crop/rotate changes!', 'success');
 
-      // Log the activity
-      this._logActivity('crop_rotate', photoId, 'Photo cropped/rotated');
+        // Log the activity
+        this._logActivity('crop_rotate', photoId, 'Photo cropped/rotated');
 
-      await this.viewSectionPhotos(this.currentSectionId, this.currentSectionName);
-
+        await this.viewSectionPhotos(this.currentSectionId, this.currentSectionName);
+      });
     } catch (err) {
       console.error('Error saving crop/rotate:', err);
       utils.showToast('Error saving changes: ' + err.message, 'error');
@@ -5109,55 +5122,56 @@ const mediaGalleryModule = {
     }
 
     try {
-      utils.showLoading();
-      let taggedCount = 0;
+      await utils.protectModalDuringSave('autoTagModal', async () => {
+        utils.showLoading();
+        let taggedCount = 0;
 
-      for (const m of matched) {
-        const item = m.runningOrderItem;
-        const updateData = {};
+        for (const m of matched) {
+          const item = m.runningOrderItem;
+          const updateData = {};
 
-        // Set organisation_id from running order item
-        if (item.organisations?.id) {
-          updateData.organisation_id = item.organisations.id;
-        } else if (item.organisation_id) {
-          updateData.organisation_id = item.organisation_id;
-        }
+          // Set organisation_id from running order item
+          if (item.organisations?.id) {
+            updateData.organisation_id = item.organisations.id;
+          } else if (item.organisation_id) {
+            updateData.organisation_id = item.organisation_id;
+          }
 
-        // Set award_id from running order item
-        if (item.awards?.id) {
-          updateData.award_id = item.awards.id;
-        } else if (item.award_id) {
-          updateData.award_id = item.award_id;
-        }
+          // Set award_id from running order item
+          if (item.awards?.id) {
+            updateData.award_id = item.awards.id;
+          } else if (item.award_id) {
+            updateData.award_id = item.award_id;
+          }
 
-        if (Object.keys(updateData).length > 0) {
-          const { error } = await STATE.client
-            .from('media_gallery')
-            .update(updateData)
-            .eq('id', m.photo.id);
+          if (Object.keys(updateData).length > 0) {
+            const { error } = await STATE.client
+              .from('media_gallery')
+              .update(updateData)
+              .eq('id', m.photo.id);
 
-          if (error) {
-            console.error(`Error tagging photo ${m.photo.id}:`, error);
-          } else {
-            taggedCount++;
+            if (error) {
+              console.error(`Error tagging photo ${m.photo.id}:`, error);
+            } else {
+              taggedCount++;
+            }
           }
         }
-      }
 
-      utils.showToast(`Successfully tagged ${taggedCount} photos from running order!`, 'success');
+        utils.showToast(`Successfully tagged ${taggedCount} photos from running order!`, 'success');
 
-      // Close modal
-      bootstrap.Modal.getInstance(document.getElementById('autoTagModal')).hide();
+        // Close modal
+        bootstrap.Modal.getInstance(document.getElementById('autoTagModal')).hide();
 
-      // Reload current view
-      if (this.currentView === 'photos-production') {
-        await this.loadPhotosProduction();
-      } else if (this.currentSectionId) {
-        await this.viewSectionPhotos(this.currentSectionId, this.currentSectionName);
-      }
+        // Reload current view
+        if (this.currentView === 'photos-production') {
+          await this.loadPhotosProduction();
+        } else if (this.currentSectionId) {
+          await this.viewSectionPhotos(this.currentSectionId, this.currentSectionName);
+        }
 
-      this._autoTagMatches = null;
-
+        this._autoTagMatches = null;
+      });
     } catch (error) {
       console.error('Error executing auto-tag:', error);
       utils.showToast('Error applying tags: ' + error.message, 'error');
@@ -5250,43 +5264,44 @@ const mediaGalleryModule = {
     utils.showLoading();
 
     try {
-      for (const line of lines) {
-        const youtubeId = this.extractYouTubeId(line.trim());
-        if (!youtubeId) {
-          failCount++;
-          continue;
+      await utils.protectModalDuringSave('bulkYouTubeModal', async () => {
+        for (const line of lines) {
+          const youtubeId = this.extractYouTubeId(line.trim());
+          if (!youtubeId) {
+            failCount++;
+            continue;
+          }
+
+          const videoData = {
+            event_id: this.currentEventId,
+            media_type: 'video',
+            title: `Video ${youtubeId}`,
+            file_url: `https://www.youtube.com/watch?v=${youtubeId}`,
+            thumbnail_url: `https://img.youtube.com/vi/${youtubeId}/hqdefault.jpg`,
+            youtube_id: youtubeId,
+            organisation_id: primaryOrgId,
+            award_id: primaryAwardId,
+            tags: hasTags ? JSON.stringify(tagsObject) : null,
+            status: 'published',
+            created_at: new Date().toISOString()
+          };
+
+          const { error } = await STATE.client.from('media_items').insert([videoData]);
+          if (error) {
+            console.error('Error inserting video:', youtubeId, error);
+            failCount++;
+          } else {
+            successCount++;
+          }
         }
 
-        const videoData = {
-          event_id: this.currentEventId,
-          media_type: 'video',
-          title: `Video ${youtubeId}`,
-          file_url: `https://www.youtube.com/watch?v=${youtubeId}`,
-          thumbnail_url: `https://img.youtube.com/vi/${youtubeId}/hqdefault.jpg`,
-          youtube_id: youtubeId,
-          organisation_id: primaryOrgId,
-          award_id: primaryAwardId,
-          tags: hasTags ? JSON.stringify(tagsObject) : null,
-          status: 'published',
-          created_at: new Date().toISOString()
-        };
+        let msg = `${successCount} video(s) imported successfully!`;
+        if (failCount > 0) msg += ` ${failCount} failed.`;
+        utils.showToast(msg, failCount > 0 ? 'warning' : 'success');
 
-        const { error } = await STATE.client.from('media_items').insert([videoData]);
-        if (error) {
-          console.error('Error inserting video:', youtubeId, error);
-          failCount++;
-        } else {
-          successCount++;
-        }
-      }
-
-      let msg = `${successCount} video(s) imported successfully!`;
-      if (failCount > 0) msg += ` ${failCount} failed.`;
-      utils.showToast(msg, failCount > 0 ? 'warning' : 'success');
-
-      bootstrap.Modal.getInstance(document.getElementById('bulkYouTubeModal')).hide();
-      await this.loadVideosProduction();
-
+        bootstrap.Modal.getInstance(document.getElementById('bulkYouTubeModal')).hide();
+        await this.loadVideosProduction();
+      });
     } catch (error) {
       console.error('Bulk YouTube import error:', error);
       utils.showToast('Import failed: ' + error.message, 'error');
@@ -6491,21 +6506,23 @@ const mediaGalleryModule = {
   async _executeBulkMove(targetSectionId, targetName) {
     const photoIds = Array.from(this.selectedPhotoIds);
     try {
-      const { error } = await STATE.client
-        .from('media_gallery')
-        .update({ gallery_section_id: targetSectionId })
-        .in('id', photoIds);
+      await utils.protectModalDuringSave('bulkMoveSectionModal', async () => {
+        const { error } = await STATE.client
+          .from('media_gallery')
+          .update({ gallery_section_id: targetSectionId })
+          .in('id', photoIds);
 
-      if (error) throw error;
+        if (error) throw error;
 
-      bootstrap.Modal.getInstance(document.getElementById('bulkMoveSectionModal'))?.hide();
-      this.selectedPhotoIds.clear();
-      utils.showToast(`Moved ${photoIds.length} photo(s) to "${targetName}"`, 'success');
+        bootstrap.Modal.getInstance(document.getElementById('bulkMoveSectionModal'))?.hide();
+        this.selectedPhotoIds.clear();
+        utils.showToast(`Moved ${photoIds.length} photo(s) to "${targetName}"`, 'success');
 
-      // Reload current section
-      if (this.currentSectionId && this.currentSectionName) {
-        this.viewSectionPhotos(this.currentSectionId, this.currentSectionName);
-      }
+        // Reload current section
+        if (this.currentSectionId && this.currentSectionName) {
+          this.viewSectionPhotos(this.currentSectionId, this.currentSectionName);
+        }
+      });
     } catch (err) {
       utils.showToast('Error moving photos: ' + err.message, 'error');
     }
@@ -6603,62 +6620,64 @@ const mediaGalleryModule = {
     const maxSizeBytes = maxSizeMB * 1024 * 1024;
 
     try {
-      const btn = document.getElementById('uploadMediaGalleryBtn');
-      btn.disabled = true;
-      btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Uploading...';
-      document.getElementById('uploadFileProgress').classList.remove('d-none');
+      await utils.protectModalDuringSave('uploadMediaGalleryModal', async () => {
+        const btn = document.getElementById('uploadMediaGalleryBtn');
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Uploading...';
+        document.getElementById('uploadFileProgress').classList.remove('d-none');
 
-      let successCount = 0;
-      const files = Array.from(fileInput.files);
+        let successCount = 0;
+        const files = Array.from(fileInput.files);
 
-      for (const file of files) {
-        if (file.size > maxSizeBytes) {
-          utils.showToast(`Skipping ${file.name} (exceeds ${maxSizeMB}MB limit)`, 'warning');
-          continue;
+        for (const file of files) {
+          if (file.size > maxSizeBytes) {
+            utils.showToast(`Skipping ${file.name} (exceeds ${maxSizeMB}MB limit)`, 'warning');
+            continue;
+          }
+
+          const timestamp = Date.now();
+          const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
+          const fileName = `gallery/${eventId}/${timestamp}_${safeName}`;
+
+          const { error: uploadError } = await STATE.client.storage
+            .from('media')
+            .upload(fileName, file, { cacheControl: '3600', upsert: false });
+
+          if (uploadError) {
+            console.error('Upload error for', file.name, uploadError);
+            continue;
+          }
+
+          const { data: urlData } = STATE.client.storage
+            .from('media')
+            .getPublicUrl(fileName);
+
+          const { error: dbError } = await STATE.client
+            .from('media_gallery')
+            .insert([{
+              event_id: eventId,
+              file_url: urlData.publicUrl,
+              file_type: file.type,
+              title: title || file.name,
+              caption: caption || null,
+              published: true
+            }]);
+
+          if (dbError) {
+            console.error('DB error for', file.name, dbError);
+            continue;
+          }
+          successCount++;
         }
 
-        const timestamp = Date.now();
-        const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
-        const fileName = `gallery/${eventId}/${timestamp}_${safeName}`;
-
-        const { error: uploadError } = await STATE.client.storage
-          .from('media')
-          .upload(fileName, file, { cacheControl: '3600', upsert: false });
-
-        if (uploadError) {
-          console.error('Upload error for', file.name, uploadError);
-          continue;
+        if (successCount > 0) {
+          utils.showToast(`${successCount} file(s) uploaded successfully!`, 'success');
+          bootstrap.Modal.getInstance(document.getElementById('uploadMediaGalleryModal')).hide();
+          this.loadAllGalleries();
+        } else {
+          utils.showToast('No files were uploaded', 'error');
         }
-
-        const { data: urlData } = STATE.client.storage
-          .from('media')
-          .getPublicUrl(fileName);
-
-        const { error: dbError } = await STATE.client
-          .from('media_gallery')
-          .insert([{
-            event_id: eventId,
-            file_url: urlData.publicUrl,
-            file_type: file.type,
-            title: title || file.name,
-            caption: caption || null,
-            published: true
-          }]);
-
-        if (dbError) {
-          console.error('DB error for', file.name, dbError);
-          continue;
-        }
-        successCount++;
-      }
-
-      if (successCount > 0) {
-        utils.showToast(`${successCount} file(s) uploaded successfully!`, 'success');
-        bootstrap.Modal.getInstance(document.getElementById('uploadMediaGalleryModal')).hide();
-        this.loadAllGalleries();
-      } else {
-        utils.showToast('No files were uploaded', 'error');
-      }
+      });
     } catch (error) {
       console.error('Error uploading:', error);
       utils.showToast('Error uploading files: ' + error.message, 'error');
@@ -6722,18 +6741,20 @@ const mediaGalleryModule = {
     }
 
     try {
-      const { error } = await STATE.client
-        .from('media_gallery')
-        .update({
-          organisation_id: orgId,
-          award_id: awardId
-        })
-        .eq('id', this._currentTagMediaId);
+      await utils.protectModalDuringSave('tagMediaModal', async () => {
+        const { error } = await STATE.client
+          .from('media_gallery')
+          .update({
+            organisation_id: orgId,
+            award_id: awardId
+          })
+          .eq('id', this._currentTagMediaId);
 
-      if (error) throw error;
+        if (error) throw error;
 
-      utils.showToast('Tags saved successfully', 'success');
-      bootstrap.Modal.getInstance(document.getElementById('tagMediaModal')).hide();
+        utils.showToast('Tags saved successfully', 'success');
+        bootstrap.Modal.getInstance(document.getElementById('tagMediaModal')).hide();
+      });
     } catch (error) {
       console.error('Error saving tags:', error);
       utils.showToast('Error saving tags: ' + error.message, 'error');

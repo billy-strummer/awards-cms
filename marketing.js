@@ -228,6 +228,7 @@ const marketingModule = {
     document.body.insertAdjacentHTML('beforeend', modalHtml);
     const modal = new bootstrap.Modal(document.getElementById('bannerFormModal'));
     modal.show();
+    utils.initInlineValidation(document.getElementById('bannerForm'));
     document.getElementById('bannerFormModal').addEventListener('hidden.bs.modal', function() { this.remove(); });
   },
 
@@ -252,19 +253,21 @@ const marketingModule = {
     };
 
     try {
-      let error;
-      if (bannerId) {
-        bannerData.updated_at = new Date().toISOString();
-        ({ error } = await STATE.client.from('banners').update(bannerData).eq('id', bannerId));
-      } else {
-        ({ error } = await STATE.client.from('banners').insert([bannerData]));
-      }
+      await utils.protectModalDuringSave('bannerFormModal', async () => {
+        let error;
+        if (bannerId) {
+          bannerData.updated_at = new Date().toISOString();
+          ({ error } = await STATE.client.from('banners').update(bannerData).eq('id', bannerId));
+        } else {
+          ({ error } = await STATE.client.from('banners').insert([bannerData]));
+        }
 
-      if (error) throw error;
+        if (error) throw error;
 
-      utils.showToast(bannerId ? 'Banner updated successfully' : 'Banner created successfully', 'success');
-      bootstrap.Modal.getInstance(document.getElementById('bannerFormModal')).hide();
-      await this.loadBanners();
+        utils.showToast(bannerId ? 'Banner updated successfully' : 'Banner created successfully', 'success');
+        bootstrap.Modal.getInstance(document.getElementById('bannerFormModal')).hide();
+        await this.loadBanners();
+      });
     } catch (error) {
       console.error('Error saving banner:', error);
       utils.showToast('Failed to save banner: ' + error.message, 'error');
@@ -551,6 +554,7 @@ const marketingModule = {
     document.body.insertAdjacentHTML('beforeend', modalHtml);
     const modal = new bootstrap.Modal(document.getElementById('sponsorFormModal'));
     modal.show();
+    utils.initInlineValidation(document.getElementById('sponsorForm'));
     document.getElementById('sponsorFormModal').addEventListener('hidden.bs.modal', function() { this.remove(); });
   },
 
@@ -576,19 +580,21 @@ const marketingModule = {
     };
 
     try {
-      let error;
-      if (sponsorId) {
-        sponsorData.updated_at = new Date().toISOString();
-        ({ error } = await STATE.client.from('sponsors').update(sponsorData).eq('id', sponsorId));
-      } else {
-        ({ error } = await STATE.client.from('sponsors').insert([sponsorData]));
-      }
+      await utils.protectModalDuringSave('sponsorFormModal', async () => {
+        let error;
+        if (sponsorId) {
+          sponsorData.updated_at = new Date().toISOString();
+          ({ error } = await STATE.client.from('sponsors').update(sponsorData).eq('id', sponsorId));
+        } else {
+          ({ error } = await STATE.client.from('sponsors').insert([sponsorData]));
+        }
 
-      if (error) throw error;
+        if (error) throw error;
 
-      utils.showToast(sponsorId ? 'Sponsor updated successfully' : 'Sponsor created successfully', 'success');
-      bootstrap.Modal.getInstance(document.getElementById('sponsorFormModal')).hide();
-      await this.loadSponsors();
+        utils.showToast(sponsorId ? 'Sponsor updated successfully' : 'Sponsor created successfully', 'success');
+        bootstrap.Modal.getInstance(document.getElementById('sponsorFormModal')).hide();
+        await this.loadSponsors();
+      });
     } catch (error) {
       console.error('Error saving sponsor:', error);
       utils.showToast('Failed to save sponsor: ' + error.message, 'error');

@@ -262,7 +262,7 @@ const crmModule = {
 
     } catch (error) {
       console.error('Error loading communications:', error);
-      utils.showToast('Error loading communications', 'error');
+      utils.showErrorWithRetry(error, 'loading communications', () => this.loadCommunications());
     }
   },
 
@@ -420,7 +420,7 @@ const crmModule = {
 
     } catch (error) {
       console.error('Error loading deals:', error);
-      utils.showToast('Error loading deals', 'error');
+      utils.showErrorWithRetry(error, 'loading deals', () => this.loadDeals());
     }
   },
 
@@ -569,7 +569,7 @@ const crmModule = {
 
     } catch (error) {
       console.error('Error loading meetings:', error);
-      utils.showToast('Error loading meetings', 'error');
+      utils.showErrorWithRetry(error, 'loading meetings', () => this.loadMeetings());
     }
   },
 
@@ -696,7 +696,7 @@ const crmModule = {
 
     } catch (error) {
       console.error('Error loading segments:', error);
-      utils.showToast('Error loading segments', 'error');
+      utils.showErrorWithRetry(error, 'loading segments', () => this.loadSegments());
     }
   },
 
@@ -913,6 +913,7 @@ const crmModule = {
     // Show modal
     const modal = new bootstrap.Modal(document.getElementById('logCommunicationModal'));
     modal.show();
+    utils.initInlineValidation('logCommunicationForm');
 
     } catch (error) {
       console.error('Error opening communication modal:', error);
@@ -942,14 +943,16 @@ const crmModule = {
     };
 
     try {
-      const { error } = await STATE.client
-        .from('communications')
-        .insert([communicationData]);
+      await utils.protectModalDuringSave('logCommunicationModal', async () => {
+        const { error } = await STATE.client
+          .from('communications')
+          .insert([communicationData]);
 
-      if (error) throw error;
+        if (error) throw error;
 
-      utils.showToast('Communication logged successfully', 'success');
-      bootstrap.Modal.getInstance(document.getElementById('logCommunicationModal')).hide();
+        utils.showToast('Communication logged successfully', 'success');
+        bootstrap.Modal.getInstance(document.getElementById('logCommunicationModal')).hide();
+      });
       this.loadCommunications();
     } catch (error) {
       console.error('Error saving communication:', error);
@@ -1073,6 +1076,7 @@ const crmModule = {
 
     const modal = new bootstrap.Modal(document.getElementById('createDealModal'));
     modal.show();
+    utils.initInlineValidation('createDealForm');
 
     document.getElementById('createDealModal').addEventListener('hidden.bs.modal', function() {
       this.remove();
@@ -1105,14 +1109,16 @@ const crmModule = {
     };
 
     try {
-      const { error } = await STATE.client
-        .from('deals')
-        .insert([dealData]);
+      await utils.protectModalDuringSave('createDealModal', async () => {
+        const { error } = await STATE.client
+          .from('deals')
+          .insert([dealData]);
 
-      if (error) throw error;
+        if (error) throw error;
 
-      utils.showToast('Deal created successfully', 'success');
-      bootstrap.Modal.getInstance(document.getElementById('createDealModal')).hide();
+        utils.showToast('Deal created successfully', 'success');
+        bootstrap.Modal.getInstance(document.getElementById('createDealModal')).hide();
+      });
       this.loadDeals();
     } catch (error) {
       console.error('Error creating deal:', error);
@@ -1299,6 +1305,7 @@ const crmModule = {
 
       const modal = new bootstrap.Modal(document.getElementById('editCommunicationModal'));
       modal.show();
+      utils.initInlineValidation('editCommunicationForm');
       document.getElementById('editCommunicationModal').addEventListener('hidden.bs.modal', function() { this.remove(); });
     } catch (error) {
       console.error('Error loading communication for edit:', error);
@@ -1325,15 +1332,17 @@ const crmModule = {
     };
 
     try {
-      const { error } = await STATE.client
-        .from('communications')
-        .update(updateData)
-        .eq('id', commId);
+      await utils.protectModalDuringSave('editCommunicationModal', async () => {
+        const { error } = await STATE.client
+          .from('communications')
+          .update(updateData)
+          .eq('id', commId);
 
-      if (error) throw error;
+        if (error) throw error;
 
-      utils.showToast('Communication updated successfully', 'success');
-      bootstrap.Modal.getInstance(document.getElementById('editCommunicationModal')).hide();
+        utils.showToast('Communication updated successfully', 'success');
+        bootstrap.Modal.getInstance(document.getElementById('editCommunicationModal')).hide();
+      });
       this.loadCommunications();
     } catch (error) {
       console.error('Error updating communication:', error);
@@ -1573,6 +1582,7 @@ const crmModule = {
       document.body.insertAdjacentHTML('beforeend', modalHtml);
       const modal = new bootstrap.Modal(document.getElementById('editDealModal'));
       modal.show();
+      utils.initInlineValidation('editDealForm');
       document.getElementById('editDealModal').addEventListener('hidden.bs.modal', function() { this.remove(); });
     } catch (error) {
       console.error('Error loading deal for edit:', error);
@@ -1601,15 +1611,17 @@ const crmModule = {
     };
 
     try {
-      const { error } = await STATE.client
-        .from('deals')
-        .update(updateData)
-        .eq('id', dealId);
+      await utils.protectModalDuringSave('editDealModal', async () => {
+        const { error } = await STATE.client
+          .from('deals')
+          .update(updateData)
+          .eq('id', dealId);
 
-      if (error) throw error;
+        if (error) throw error;
 
-      utils.showToast('Deal updated successfully', 'success');
-      bootstrap.Modal.getInstance(document.getElementById('editDealModal')).hide();
+        utils.showToast('Deal updated successfully', 'success');
+        bootstrap.Modal.getInstance(document.getElementById('editDealModal')).hide();
+      });
       this.loadDeals();
     } catch (error) {
       console.error('Error updating deal:', error);
@@ -1840,6 +1852,7 @@ const crmModule = {
 
       const modal = new bootstrap.Modal(document.getElementById('editMeetingModal'));
       modal.show();
+      utils.initInlineValidation('editMeetingForm');
       document.getElementById('editMeetingModal').addEventListener('hidden.bs.modal', function() { this.remove(); });
     } catch (error) {
       console.error('Error loading meeting for edit:', error);
@@ -1875,15 +1888,17 @@ const crmModule = {
     };
 
     try {
-      const { error } = await STATE.client
-        .from('meeting_notes')
-        .update(updateData)
-        .eq('id', meetingId);
+      await utils.protectModalDuringSave('editMeetingModal', async () => {
+        const { error } = await STATE.client
+          .from('meeting_notes')
+          .update(updateData)
+          .eq('id', meetingId);
 
-      if (error) throw error;
+        if (error) throw error;
 
-      utils.showToast('Meeting updated successfully', 'success');
-      bootstrap.Modal.getInstance(document.getElementById('editMeetingModal')).hide();
+        utils.showToast('Meeting updated successfully', 'success');
+        bootstrap.Modal.getInstance(document.getElementById('editMeetingModal')).hide();
+      });
       this.loadMeetings();
     } catch (error) {
       console.error('Error updating meeting:', error);
@@ -2467,6 +2482,7 @@ const crmModule = {
       document.body.insertAdjacentHTML('beforeend', modalHtml);
       const modal = new bootstrap.Modal(document.getElementById('createMeetingNoteModal'));
       modal.show();
+      utils.initInlineValidation('createMeetingNoteForm');
       document.getElementById('createMeetingNoteModal').addEventListener('hidden.bs.modal', function() { this.remove(); });
     } catch (error) {
       console.error('Error opening meeting note form:', error);
@@ -2501,11 +2517,13 @@ const crmModule = {
     };
 
     try {
-      const { error } = await STATE.client.from('meeting_notes').insert(data);
-      if (error) throw error;
+      await utils.protectModalDuringSave('createMeetingNoteModal', async () => {
+        const { error } = await STATE.client.from('meeting_notes').insert(data);
+        if (error) throw error;
 
-      utils.showToast('Meeting note created successfully', 'success');
-      bootstrap.Modal.getInstance(document.getElementById('createMeetingNoteModal')).hide();
+        utils.showToast('Meeting note created successfully', 'success');
+        bootstrap.Modal.getInstance(document.getElementById('createMeetingNoteModal')).hide();
+      });
       this.loadMeetings();
     } catch (error) {
       console.error('Error saving meeting note:', error);
@@ -2593,16 +2611,18 @@ const crmModule = {
     if (checked.length === 0) { utils.showToast('Please select at least one segment', 'warning'); return; }
 
     try {
-      const assignments = [...checked].map(cb => ({
-        organisation_id: orgId,
-        segment_id: cb.value
-      }));
+      await utils.protectModalDuringSave('assignSegmentsModal', async () => {
+        const assignments = [...checked].map(cb => ({
+          organisation_id: orgId,
+          segment_id: cb.value
+        }));
 
-      const { error } = await STATE.client.from('organisation_segments').upsert(assignments, { onConflict: 'organisation_id,segment_id' });
-      if (error) throw error;
+        const { error } = await STATE.client.from('organisation_segments').upsert(assignments, { onConflict: 'organisation_id,segment_id' });
+        if (error) throw error;
 
-      utils.showToast(`Company assigned to ${assignments.length} segment(s)`, 'success');
-      bootstrap.Modal.getInstance(document.getElementById('assignSegmentsModal')).hide();
+        utils.showToast(`Company assigned to ${assignments.length} segment(s)`, 'success');
+        bootstrap.Modal.getInstance(document.getElementById('assignSegmentsModal')).hide();
+      });
       this.loadSegments();
     } catch (error) {
       console.error('Error assigning segments:', error);
@@ -2689,11 +2709,13 @@ const crmModule = {
     };
 
     try {
-      const { error } = await STATE.client.from('contact_segments').insert(data);
-      if (error) throw error;
+      await utils.protectModalDuringSave('createSegmentModal', async () => {
+        const { error } = await STATE.client.from('contact_segments').insert(data);
+        if (error) throw error;
 
-      utils.showToast('Segment created successfully', 'success');
-      bootstrap.Modal.getInstance(document.getElementById('createSegmentModal')).hide();
+        utils.showToast('Segment created successfully', 'success');
+        bootstrap.Modal.getInstance(document.getElementById('createSegmentModal')).hide();
+      });
       this.loadSegments();
     } catch (error) {
       console.error('Error creating segment:', error);
@@ -2741,6 +2763,7 @@ const crmModule = {
       this._crmSortField = field;
       this._crmSortDir = 'asc';
     }
+    utils.saveSortState('crm_communications', this._crmSortField, this._crmSortDir);
     const sorted = [...(this._communications || [])].sort((a, b) => {
       let aVal, bVal;
       if (field === 'company') {
@@ -2769,6 +2792,7 @@ const crmModule = {
       this._dealSortField = field;
       this._dealSortDir = 'asc';
     }
+    utils.saveSortState('crm_deals', this._dealSortField, this._dealSortDir);
     const sorted = [...(this._deals || [])].sort((a, b) => {
       let aVal, bVal;
       if (field === 'company') {
@@ -2800,6 +2824,7 @@ const crmModule = {
       this._meetingSortField = field;
       this._meetingSortDir = 'asc';
     }
+    utils.saveSortState('crm_meetings', this._meetingSortField, this._meetingSortDir);
     const sorted = [...(this._meetings || [])].sort((a, b) => {
       let aVal, bVal;
       if (field === 'company') {

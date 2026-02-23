@@ -820,9 +820,7 @@ const eventsModule = {
     this.renderDietarySummary(attendees);
 
     if (attendees.length === 0) {
-      tbody.innerHTML = `<tr><td colspan="8" class="text-center py-4 text-muted">
-        <i class="bi bi-people display-4 d-block mb-2 opacity-25"></i>
-        No attendees yet. Click "Add Attendee" to start tracking RSVPs.</td></tr>`;
+      utils.showEnhancedEmptyState('attendeesTableBody', 8, { icon: 'bi-people', message: 'No attendees yet', description: 'Click "Add Attendee" to start tracking RSVPs' });
       return;
     }
 
@@ -940,12 +938,21 @@ const eventsModule = {
     const statusFilter = document.getElementById('attendeeStatusFilter')?.value || '';
     const typeFilter = document.getElementById('attendeeTypeFilter')?.value || '';
 
-    return attendees.filter(a => {
+    let filtered = attendees.filter(a => {
       if (search && !(a.name || '').toLowerCase().includes(search) && !(a.email || '').toLowerCase().includes(search)) return false;
       if (statusFilter && a.status !== statusFilter) return false;
       if (typeFilter && (a.guestType || 'guest') !== typeFilter) return false;
       return true;
     });
+
+    // Fuzzy search fallback
+    if (search && filtered.length === 0) {
+      filtered = utils.fuzzyFilter(attendees, search, ['name', 'email']);
+      if (statusFilter) filtered = filtered.filter(a => a.status === statusFilter);
+      if (typeFilter) filtered = filtered.filter(a => (a.guestType || 'guest') === typeFilter);
+    }
+
+    return filtered;
   },
 
   filterAttendeesList() {
@@ -1806,7 +1813,7 @@ const eventsModule = {
     if (countEl) countEl.textContent = waitlist.filter(w => !w.promoted).length;
 
     if (waitlist.length === 0) {
-      container.innerHTML = '<tr><td colspan="6" class="text-center text-muted py-3">No one on the waitlist</td></tr>';
+      utils.showEmptyState('waitlistTableBody', 6, 'No one on the waitlist', 'bi-person-slash');
       return;
     }
 
@@ -2205,7 +2212,7 @@ const eventsModule = {
     const categories = ['Venue', 'Catering', 'AV/Production', 'Entertainment', 'Trophies/Awards', 'Print/Stationery', 'Transport', 'Staffing', 'Marketing', 'Gifts/Swag', 'Other'];
 
     if (items.length === 0) {
-      container.innerHTML = '<tr><td colspan="7" class="text-center text-muted py-3">No budget items. Click "Add Item" to start tracking.</td></tr>';
+      utils.showEnhancedEmptyState('budgetTableBody', 7, { icon: 'bi-calculator', message: 'No budget items', description: 'Click "Add Item" to start tracking' });
       return;
     }
 
@@ -2402,7 +2409,7 @@ const eventsModule = {
     if (countEl) countEl.textContent = vendors.length;
 
     if (vendors.length === 0) {
-      container.innerHTML = '<tr><td colspan="7" class="text-center text-muted py-3">No vendors/suppliers added yet</td></tr>';
+      utils.showEmptyState('vendorsTableBody', 7, 'No vendors/suppliers added yet', 'bi-briefcase');
       return;
     }
 

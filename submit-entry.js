@@ -284,7 +284,7 @@ window.entryFormApp = {
         itemSelectText: '',
         shouldSort: false,
         searchResultLimit: 100,
-        allowHTML: false
+        allowHTML: true
       });
     }
   },

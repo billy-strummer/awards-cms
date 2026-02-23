@@ -358,14 +358,13 @@ window.entryFormApp = {
       return;
     }
 
-    const isSmall = SMALL_COUNTIES.some(c => c.toLowerCase() === region.toLowerCase());
     const subtitle = document.getElementById('step3Subtitle');
     if (subtitle) {
       subtitle.textContent = `${sectorCategories.length} categories available for ${this.toTitleCase(sector)} in ${region}`;
     }
 
-    awardsList.innerHTML = sectorCategories.map(cat => `
-      <div class="award-option" onclick="entryFormApp.selectCategory('${this.escapeHtml(cat)}', this)" role="button" tabindex="0"
+    awardsList.innerHTML = sectorCategories.map((cat, idx) => `
+      <div class="award-option" data-category-index="${idx}" role="button" tabindex="0"
            onkeydown="if(event.key==='Enter')this.click()">
         <div class="award-check">
           <i class="bi bi-check" style="display:none; font-size:14px; font-weight:900;"></i>
@@ -373,6 +372,14 @@ window.entryFormApp = {
         <span class="award-name">${this.escapeHtml(cat)}</span>
       </div>
     `).join('');
+
+    // Attach click handlers via data attributes to avoid inline JS escaping issues
+    awardsList.querySelectorAll('.award-option').forEach(opt => {
+      opt.addEventListener('click', () => {
+        const idx = parseInt(opt.dataset.categoryIndex);
+        this.selectCategory(sectorCategories[idx], opt);
+      });
+    });
 
     // Reset selection
     this.selectedAwardCategory = null;

@@ -276,6 +276,7 @@ window.entryFormApp = {
     if (typeof Choices !== 'undefined') {
       this.regionChoicesInstance = new Choices('#region', {
         searchEnabled: true,
+        searchFloor: 1,
         searchPlaceholderValue: 'Type county or city name...',
         itemSelectText: '',
         shouldSort: false,

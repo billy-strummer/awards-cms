@@ -3,8 +3,8 @@
 /* Uses exact sectors, categories & regions from CMS    */
 /* ==================================================== */
 
-// Initialize Supabase using shared config
-const supabase = window.supabase.createClient(
+// Initialize Supabase client (named supabaseClient to avoid conflict with CDN's window.supabase)
+const supabaseClient = window.supabase.createClient(
   window.SUPABASE_CONFIG.url,
   window.SUPABASE_CONFIG.anonKey
 );
@@ -647,7 +647,7 @@ const entryFormApp = {
       // 1. Find or create organisation
       let organisationId = null;
 
-      const { data: existingOrgs, error: searchError } = await supabase
+      const { data: existingOrgs, error: searchError } = await supabaseClient
         .from('organisations')
         .select('id')
         .ilike('company_name', this.formData.companyName)
@@ -681,7 +681,7 @@ const entryFormApp = {
       let awardId = null;
       const currentYear = new Date().getFullYear();
 
-      const { data: matchingAwards, error: awardError } = await supabase
+      const { data: matchingAwards, error: awardError } = await supabaseClient
         .from('awards')
         .select('id')
         .eq('award_name', this.formData.awardCategory)
@@ -732,7 +732,7 @@ const entryFormApp = {
         year: currentYear
       };
 
-      const { data: entry, error: entryError } = await supabase
+      const { data: entry, error: entryError } = await supabaseClient
         .from('entries')
         .insert(entryPayload)
         .select()
@@ -742,7 +742,7 @@ const entryFormApp = {
 
       // 6. Try sending confirmation email (non-blocking)
       try {
-        await supabase.functions.invoke('send-entry-confirmation', {
+        await supabaseClient.functions.invoke('send-entry-confirmation', {
           body: { entryId: entry.id }
         });
       } catch (emailErr) {
@@ -774,7 +774,7 @@ const entryFormApp = {
   async generateEntryNumber() {
     try {
       const currentYear = new Date().getFullYear();
-      const { data, error } = await supabase
+      const { data, error } = await supabaseClient
         .from('entries')
         .select('entry_number')
         .like('entry_number', `${currentYear}-%`)

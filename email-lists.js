@@ -883,6 +883,8 @@ const emailListsModule = {
       document.body.insertAdjacentHTML('beforeend', modalHtml);
       const modal = new bootstrap.Modal(document.getElementById('subscribersModal'));
       modal.show();
+      // Attach debounced search after dynamic modal is in the DOM
+      utils.initDebouncedSearch('subscriberSearch', () => this.filterSubscriberTable());
       document.getElementById('subscribersModal').addEventListener('hidden.bs.modal', function() { this.remove(); });
 
     } catch (error) {

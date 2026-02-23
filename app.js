@@ -1310,7 +1310,7 @@ document.addEventListener('DOMContentLoaded', function() {
     utils.initDebouncedSearch('invoiceSearchBox', () => { if (window.paymentsModule) paymentsModule.filterInvoices(); });
     utils.initDebouncedSearch('paymentSearchBox', () => { if (window.paymentsModule) paymentsModule.filterPayments(); });
     utils.initDebouncedSearch('crmCompanySearch', () => { if (window.crmModule) crmModule.filterCompanies(); });
-    utils.initDebouncedSearch('subscriberSearch', () => { if (window.emailListsModule) emailListsModule.filterSubscriberTable(); });
+    // Note: subscriberSearch is in a dynamic modal (email-lists.js), debounced search is attached there after modal creation
     utils.initDebouncedSearch('campaignLogSearchInput', () => { if (window.emailBuilder) emailBuilder.searchCampaigns(document.getElementById('campaignLogSearchInput')?.value); });
   }
 

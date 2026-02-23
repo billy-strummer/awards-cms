@@ -2,9 +2,11 @@
 /* COMPREHENSIVE ENTRY SUBMISSION FORM                  */
 /* Uses exact sectors, categories & regions from CMS    */
 /* ==================================================== */
+(function() {
+'use strict';
 
-// Initialize Supabase client (named supabaseClient to avoid conflict with CDN's window.supabase)
-const supabaseClient = window.supabase.createClient(
+// Initialize Supabase client
+var db = window.supabase.createClient(
   window.SUPABASE_CONFIG.url,
   window.SUPABASE_CONFIG.anonKey
 );
@@ -13,7 +15,7 @@ const supabaseClient = window.supabase.createClient(
 // AWARD CATEGORIES (mirrors award-categories-config.js)
 // =====================================================
 
-const STANDARD_CATEGORIES = {
+var STANDARD_CATEGORIES = {
   'BUILDING & CONSTRUCTION': [
     'Brickwork & Masonry Company',
     'Drainage Company',
@@ -86,7 +88,7 @@ const STANDARD_CATEGORIES = {
   ]
 };
 
-const SMALL_CATEGORIES = {
+var SMALL_CATEGORIES = {
   'BUILDING & CONSTRUCTION': [
     'Brickwork & Masonry Company',
     'Drainage Company',
@@ -141,7 +143,7 @@ const SMALL_CATEGORIES = {
   ]
 };
 
-const SMALL_COUNTIES = ['Ceredigion', 'Herefordshire', 'Isle of Wight', 'Rutland'];
+var SMALL_COUNTIES = ['Ceredigion', 'Herefordshire', 'Isle of Wight', 'Rutland'];
 
 // =====================================================
 // Lightweight toast for public pages
@@ -168,7 +170,8 @@ function showPublicToast(msg, type = 'warning') {
 // MAIN APPLICATION
 // =====================================================
 
-const entryFormApp = {
+// Expose entryFormApp globally for onclick handlers in HTML
+window.entryFormApp = {
   currentStep: 1,
   totalSteps: 8,
   formData: {},
@@ -647,7 +650,7 @@ const entryFormApp = {
       // 1. Find or create organisation
       let organisationId = null;
 
-      const { data: existingOrgs, error: searchError } = await supabaseClient
+      const { data: existingOrgs, error: searchError } = await db
         .from('organisations')
         .select('id')
         .ilike('company_name', this.formData.companyName)
@@ -681,7 +684,7 @@ const entryFormApp = {
       let awardId = null;
       const currentYear = new Date().getFullYear();
 
-      const { data: matchingAwards, error: awardError } = await supabaseClient
+      const { data: matchingAwards, error: awardError } = await db
         .from('awards')
         .select('id')
         .eq('award_name', this.formData.awardCategory)
@@ -732,7 +735,7 @@ const entryFormApp = {
         year: currentYear
       };
 
-      const { data: entry, error: entryError } = await supabaseClient
+      const { data: entry, error: entryError } = await db
         .from('entries')
         .insert(entryPayload)
         .select()
@@ -742,7 +745,7 @@ const entryFormApp = {
 
       // 6. Try sending confirmation email (non-blocking)
       try {
-        await supabaseClient.functions.invoke('send-entry-confirmation', {
+        await db.functions.invoke('send-entry-confirmation', {
           body: { entryId: entry.id }
         });
       } catch (emailErr) {
@@ -774,7 +777,7 @@ const entryFormApp = {
   async generateEntryNumber() {
     try {
       const currentYear = new Date().getFullYear();
-      const { data, error } = await supabaseClient
+      const { data, error } = await db
         .from('entries')
         .select('entry_number')
         .like('entry_number', `${currentYear}-%`)
@@ -812,7 +815,12 @@ const entryFormApp = {
   }
 };
 
+// Alias for convenience
+var entryFormApp = window.entryFormApp;
+
 // Initialize on page load
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', function() {
   entryFormApp.initialize();
 });
+
+})(); // end IIFE

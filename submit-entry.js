@@ -153,13 +153,15 @@ function showPublicToast(msg, type = 'warning') {
   if (!container) {
     container = document.createElement('div');
     container.id = 'publicToastContainer';
-    container.style.cssText = 'position:fixed;top:20px;right:20px;z-index:99999;max-width:400px;';
+    container.setAttribute('role', 'alert');
+    container.setAttribute('aria-live', 'polite');
+    container.style.cssText = 'position:fixed;bottom:20px;left:50%;transform:translateX(-50%);z-index:99999;max-width:400px;width:calc(100% - 40px);';
     document.body.appendChild(container);
   }
   const colors = { warning: '#ffc107', error: '#dc3545', success: '#28a745', info: '#17a2b8' };
   const textColors = { warning: '#000', error: '#fff', success: '#fff', info: '#fff' };
   const toast = document.createElement('div');
-  toast.style.cssText = `background:${colors[type] || colors.warning};color:${textColors[type] || '#000'};padding:12px 20px;margin-bottom:8px;border-radius:8px;box-shadow:0 4px 12px rgba(0,0,0,.15);font-size:14px;opacity:0;transition:opacity .3s;font-family:'Montserrat',sans-serif;`;
+  toast.style.cssText = `background:${colors[type] || colors.warning};color:${textColors[type] || '#000'};padding:12px 20px;margin-bottom:8px;border-radius:8px;box-shadow:0 4px 12px rgba(0,0,0,.15);font-size:14px;opacity:0;transition:opacity .3s;font-family:'Montserrat',sans-serif;text-align:center;`;
   toast.textContent = msg;
   container.appendChild(toast);
   requestAnimationFrame(() => toast.style.opacity = '1');
@@ -252,7 +254,7 @@ window.entryFormApp = {
     const counties = window.REGIONS.filter(r => !cities.includes(r));
     const cityList = window.REGIONS.filter(r => cities.includes(r));
 
-    let html = '<option value="">Type to search or select...</option>';
+    let html = '';
 
     if (counties.length > 0) {
       html += '<optgroup label="Counties">';
@@ -276,10 +278,12 @@ window.entryFormApp = {
     if (typeof Choices !== 'undefined') {
       this.regionChoicesInstance = new Choices('#region', {
         searchEnabled: true,
+        searchFloor: 1,
         searchPlaceholderValue: 'Type county or city name...',
         itemSelectText: '',
         shouldSort: false,
-        searchResultLimit: 100
+        searchResultLimit: 100,
+        allowHTML: false
       });
     }
   },
@@ -437,8 +441,12 @@ window.entryFormApp = {
 
     dots.forEach((dot, i) => {
       dot.classList.remove('active', 'completed');
+      dot.removeAttribute('aria-current');
       if (i < stepNum - 1) dot.classList.add('completed');
-      else if (i === stepNum - 1) dot.classList.add('active');
+      else if (i === stepNum - 1) {
+        dot.classList.add('active');
+        dot.setAttribute('aria-current', 'step');
+      }
     });
 
     labels.forEach((label, i) => {
@@ -661,7 +669,7 @@ window.entryFormApp = {
       if (existingOrgs && existingOrgs.length > 0) {
         organisationId = existingOrgs[0].id;
       } else {
-        const { data: newOrg, error: orgError } = await supabase
+        const { data: newOrg, error: orgError } = await db
           .from('organisations')
           .insert({
             company_name: this.formData.companyName,

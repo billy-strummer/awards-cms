@@ -278,6 +278,7 @@ const eventsModule = {
     // Show modal
     const modal = new bootstrap.Modal(document.getElementById('cloneEventModal'));
     modal.show();
+    utils.initInlineValidation('cloneEventForm');
   },
 
   /**
@@ -10202,10 +10203,11 @@ const eventsModule = {
     if (ids.length === 0) return;
     if (!await utils.confirmDialog({ title: 'Delete Events', message: `Delete ${ids.length} event(s)? This cannot be undone.` })) return;
     try {
-      for (const id of ids) {
-        await STATE.client.from('events').delete().eq('id', id);
-      }
-      utils.showToast(`${ids.length} event(s) deleted`, 'success');
+      const result = await utils.runBatchOperation(ids, async (id) => {
+        const { error } = await STATE.client.from('events').delete().eq('id', id);
+        if (error) throw error;
+      }, 'Deleting events');
+      utils.showToast(`${result.succeeded.length} event(s) deleted`, 'success');
       this.clearEventSelection();
       await this.loadEvents();
     } catch (e) {
@@ -10218,10 +10220,10 @@ const eventsModule = {
     if (ids.length === 0) return;
     if (!await utils.confirmDialog({ title: 'Clone Events', message: `Clone ${ids.length} event(s)?`, confirmText: 'Clone', danger: false })) return;
     try {
-      for (const id of ids) {
+      const result = await utils.runBatchOperation(ids, async (id) => {
         const src = STATE.allEvents.find(e => e.id === id);
-        if (!src) continue;
-        await STATE.client.from('events').insert([{
+        if (!src) throw new Error('Event not found');
+        const { error } = await STATE.client.from('events').insert([{
           event_name: src.event_name + ' (Copy)',
           event_date: src.event_date,
           year: src.year,
@@ -10230,8 +10232,9 @@ const eventsModule = {
           capacity: src.capacity || null,
           event_status: 'draft'
         }]);
-      }
-      utils.showToast(`${ids.length} event(s) cloned`, 'success');
+        if (error) throw error;
+      }, 'Cloning events');
+      utils.showToast(`${result.succeeded.length} event(s) cloned`, 'success');
       this.clearEventSelection();
       await this.loadEvents();
     } catch (e) {

@@ -208,6 +208,13 @@ const crmModule = {
       );
     }
 
+    // If search query is active and no exact matches found, try fuzzy search
+    if (searchVal && filtered.length === 0) {
+      filtered = utils.fuzzyFilter(this.allCompanies, searchVal, ['company_name', 'contact_name', 'email']);
+      // Also apply non-search filters to fuzzy results
+      if (segmentVal) filtered = filtered.filter(c => c.segments && c.segments.split(',').map(s => s.trim()).includes(segmentVal));
+    }
+
     this.renderCompaniesTable(filtered);
   },
 

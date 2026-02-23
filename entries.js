@@ -51,7 +51,7 @@ const entriesModule = {
 
     } catch (error) {
       console.error('Error initializing entries module:', error);
-      utils.showToast('Failed to load entries: ' + error.message, 'error');
+      utils.showErrorWithRetry(error, 'loading entries', () => this.initialize());
     } finally {
       utils.hideLoading();
     }
@@ -435,6 +435,17 @@ const entriesModule = {
 
       return true;
     });
+
+    // If search query is active and no exact matches found, try fuzzy search
+    if (this.currentFilters.search && this.filteredEntries.length === 0) {
+      this.filteredEntries = utils.fuzzyFilter(this.allEntries, this.currentFilters.search, ['entry_title', 'company_name']);
+      // Also apply non-search filters to fuzzy results
+      if (this.currentFilters.status) this.filteredEntries = this.filteredEntries.filter(e => e.status === this.currentFilters.status);
+      if (this.currentFilters.award) this.filteredEntries = this.filteredEntries.filter(e => e.award_id === this.currentFilters.award);
+      if (this.currentFilters.year) this.filteredEntries = this.filteredEntries.filter(e => e.year === parseInt(this.currentFilters.year));
+      if (this.currentFilters.selfNom === 'self_nom') this.filteredEntries = this.filteredEntries.filter(e => e.is_self_nomination);
+      if (this.currentFilters.selfNom === 'standard') this.filteredEntries = this.filteredEntries.filter(e => !e.is_self_nomination);
+    }
 
     // Sort
     this.filteredEntries.sort((a, b) => {

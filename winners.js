@@ -3152,10 +3152,12 @@ const winnersModule = {
     if (!await utils.confirmDialog({ title: 'Delete Winners', message: `Delete ${this._selectedWinnerIds.size} selected winners? This cannot be undone.` })) return;
 
     try {
-      for (const id of this._selectedWinnerIds) {
-        await STATE.client.from('winners').delete().eq('id', id);
-      }
-      utils.showToast(`Deleted ${this._selectedWinnerIds.size} winners`, 'success');
+      const ids = [...this._selectedWinnerIds];
+      const result = await utils.runBatchOperation(ids, async (id) => {
+        const { error } = await STATE.client.from('winners').delete().eq('id', id);
+        if (error) throw error;
+      }, 'Deleting winners');
+      utils.showToast(`${result.succeeded.length} winner(s) deleted`, 'success');
       this._selectedWinnerIds.clear();
       this.updateWinnersBulkBar();
       await this.loadWinners();

@@ -2764,6 +2764,9 @@ updateCountyFilterByRegion() {
       this.sortDirection = 'asc';
     }
 
+    utils.saveSortState('organisations', this.sortField, this.sortDirection);
+    this.updateSortIndicators();
+
     const dir = this.sortDirection === 'asc' ? 1 : -1;
 
     STATE.filteredOrganisations.sort((a, b) => {

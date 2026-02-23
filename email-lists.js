@@ -836,7 +836,7 @@ const emailListsModule = {
 
                 <!-- Search & Filter -->
                 <div class="d-flex gap-2 mb-3">
-                  <input type="text" class="form-control form-control-sm" id="subscriberSearch" placeholder="Search by email or name..." oninput="emailListsModule.filterSubscriberTable()">
+                  <input type="text" class="form-control form-control-sm" id="subscriberSearch" placeholder="Search by email or name...">
                   <select class="form-select form-select-sm" id="subscriberStatusFilter" style="width: 150px;" onchange="emailListsModule.filterSubscriberTable()">
                     <option value="all">All Status</option>
                     <option value="active">Active</option>

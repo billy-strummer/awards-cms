@@ -427,10 +427,10 @@
               <table class="table table-hover align-middle">
                 <thead class="table-light">
                   <tr>
-                    <th><i class="bi bi-calendar3 me-1"></i>Year</th>
-                    <th class="text-center"><i class="bi bi-trophy me-1"></i># Awards</th>
-                    <th class="text-center"><i class="bi bi-people me-1"></i># Nominees</th>
-                    <th class="text-center"><i class="bi bi-file-earmark-text me-1"></i># Nominations</th>
+                    <th scope="col"><i class="bi bi-calendar3 me-1"></i>Year</th>
+                    <th scope="col" class="text-center"><i class="bi bi-trophy me-1"></i># Awards</th>
+                    <th scope="col" class="text-center"><i class="bi bi-people me-1"></i># Nominees</th>
+                    <th scope="col" class="text-center"><i class="bi bi-file-earmark-text me-1"></i># Nominations</th>
                   </tr>
                 </thead>
                 <tbody id="awardsYearSummaryBody">
@@ -1084,13 +1084,13 @@
               <table class="table table-hover">
                 <thead>
                   <tr>
-                    <th>Order #</th>
-                    <th>Company</th>
-                    <th>Items Purchased</th>
-                    <th>Date</th>
-                    <th>Amount</th>
-                    <th>Status</th>
-                    <th>Actions</th>
+                    <th scope="col">Order #</th>
+                    <th scope="col">Company</th>
+                    <th scope="col">Items Purchased</th>
+                    <th scope="col">Date</th>
+                    <th scope="col">Amount</th>
+                    <th scope="col">Status</th>
+                    <th scope="col">Actions</th>
                   </tr>
                 </thead>
                 <tbody id="recentOrdersTableBody">
@@ -1134,11 +1134,11 @@
               <table class="table table-hover">
                 <thead id="topCompaniesTableHead">
                   <tr>
-                    <th width="60">#</th>
-                    <th>Company Name</th>
-                    <th>Email</th>
-                    <th>Website</th>
-                    <th>Region</th>
+                    <th scope="col" width="60">#</th>
+                    <th scope="col">Company Name</th>
+                    <th scope="col">Email</th>
+                    <th scope="col">Website</th>
+                    <th scope="col">Region</th>
                   </tr>
                 </thead>
                 <tbody id="topCompaniesTableBody">
@@ -1821,6 +1821,7 @@
                 <ul class="dropdown-menu">
                   <li><a class="dropdown-item" href="#" onclick="orgsModule.exportToCSV()"><i class="bi bi-filetype-csv text-success me-2"></i>Export CSV</a></li>
                   <li><a class="dropdown-item" href="#" onclick="orgsModule.exportToExcel()"><i class="bi bi-file-earmark-spreadsheet text-primary me-2"></i>Export Excel (.xlsx)</a></li>
+                  <li><a class="dropdown-item" href="#" onclick="event.preventDefault(); orgsModule.exportToPDF()"><i class="bi bi-file-pdf text-danger me-2"></i>Print / PDF</a></li>
                 </ul>
               </div>
               <button class="btn btn-sm btn-outline-secondary" id="togglePhoneColBtn" onclick="orgsModule.togglePhoneColumn()" title="Toggle Phone Column">
@@ -1902,50 +1903,50 @@
           <table class="table table-hover table-sm mb-0 align-middle">
             <thead class="table-light">
               <tr>
-                <th style="width: 2%;" class="text-center">
+                <th scope="col" style="width: 2%;" class="text-center">
                   <input type="checkbox" class="form-check-input" id="selectAllOrgs"
-                         onchange="orgsModule.toggleSelectAll()">
+                         aria-label="Select all organisations" onchange="orgsModule.toggleSelectAll()">
                 </th>
-                <th style="width: 14%; cursor: pointer;" class="fw-semibold" onclick="orgsModule.sortBy('company')">
+                <th scope="col" style="width: 14%; cursor: pointer;" class="fw-semibold" onclick="orgsModule.sortBy('company')">
                   Company Name
                   <i class="bi bi-arrow-down-up text-muted ms-1 small" data-sort-icon="company"></i>
                 </th>
-                <th style="width: 8%; cursor: pointer;" onclick="orgsModule.sortBy('sector')">
+                <th scope="col" style="width: 8%; cursor: pointer;" onclick="orgsModule.sortBy('sector')">
                   Sector <i class="bi bi-arrow-down-up text-muted ms-1 small" data-sort-icon="sector"></i>
                 </th>
-                <th style="width: 8%; cursor: pointer;" onclick="orgsModule.sortBy('county')">
+                <th scope="col" style="width: 8%; cursor: pointer;" onclick="orgsModule.sortBy('county')">
                   County <i class="bi bi-arrow-down-up text-muted ms-1 small" data-sort-icon="county"></i>
                 </th>
-                <th style="width: 8%; cursor: pointer;" onclick="orgsModule.sortBy('contact')">
+                <th scope="col" style="width: 8%; cursor: pointer;" onclick="orgsModule.sortBy('contact')">
                   Contact <i class="bi bi-arrow-down-up text-muted ms-1 small" data-sort-icon="contact"></i>
                 </th>
-                <th style="width: 10%;">Email</th>
-                <th style="width: 5%; cursor: pointer;" onclick="orgsModule.sortBy('tier')">
+                <th scope="col" style="width: 10%;">Email</th>
+                <th scope="col" style="width: 5%; cursor: pointer;" onclick="orgsModule.sortBy('tier')">
                   Tier <i class="bi bi-arrow-down-up text-muted ms-1 small" data-sort-icon="tier"></i>
                 </th>
-                <th style="width: 10%;">Tags</th>
-                <th style="width: 7%; cursor: pointer;" onclick="orgsModule.sortBy('region')">
+                <th scope="col" style="width: 10%;">Tags</th>
+                <th scope="col" style="width: 7%; cursor: pointer;" onclick="orgsModule.sortBy('region')">
                   Region <i class="bi bi-arrow-down-up text-muted ms-1 small" data-sort-icon="region"></i>
                 </th>
-                <th style="width: 6%; cursor: pointer;" onclick="orgsModule.sortBy('status')">
+                <th scope="col" style="width: 6%; cursor: pointer;" onclick="orgsModule.sortBy('status')">
                   Status <i class="bi bi-arrow-down-up text-muted ms-1 small" data-sort-icon="status"></i>
                 </th>
-                <th style="width: 4%; cursor: pointer; text-align: center;" onclick="orgsModule.sortBy('awards')">
+                <th scope="col" style="width: 4%; cursor: pointer; text-align: center;" onclick="orgsModule.sortBy('awards')">
                   <i class="bi bi-trophy" title="Awards Count"></i> <i class="bi bi-arrow-down-up text-muted ms-1 small" data-sort-icon="awards"></i>
                 </th>
-                <th style="width: 6%; display: none;" id="phoneColHeader" onclick="orgsModule.sortBy('phone')" class="cursor-pointer">
+                <th scope="col" style="width: 6%; display: none;" id="phoneColHeader" onclick="orgsModule.sortBy('phone')" class="cursor-pointer">
                   Phone <i class="bi bi-arrow-down-up text-muted ms-1 small" data-sort-icon="phone"></i>
                 </th>
-                <th style="width: 6%; cursor: pointer; text-align: center;" onclick="orgsModule.sortBy('updated')">
+                <th scope="col" style="width: 6%; cursor: pointer; text-align: center;" onclick="orgsModule.sortBy('updated')">
                   Updated <i class="bi bi-arrow-down-up text-muted ms-1 small" data-sort-icon="updated"></i>
                 </th>
-                <th style="width: 6%; text-align: center;" title="Last Contacted">
+                <th scope="col" style="width: 6%; text-align: center;" title="Last Contacted">
                   <i class="bi bi-envelope-check" title="Last Contacted"></i>
                 </th>
-                <th style="width: 3%; text-align: center;" title="Health Status">
+                <th scope="col" style="width: 3%; text-align: center;" title="Health Status">
                   <i class="bi bi-heart-pulse" title="Health"></i>
                 </th>
-                <th style="width: 5%;" class="text-center">Actions</th>
+                <th scope="col" style="width: 5%;" class="text-center">Actions</th>
               </tr>
             </thead>
             <tbody id="orgsTableBody">
@@ -2282,6 +2283,7 @@
             <ul class="dropdown-menu">
               <li><a class="dropdown-item" href="#" onclick="orgsModule.bulkExport('csv')"><i class="bi bi-filetype-csv text-success me-2"></i>Export CSV</a></li>
               <li><a class="dropdown-item" href="#" onclick="orgsModule.bulkExport('excel')"><i class="bi bi-file-earmark-spreadsheet text-primary me-2"></i>Export Excel</a></li>
+              <li><a class="dropdown-item" href="#" onclick="event.preventDefault(); orgsModule.bulkExport('pdf')"><i class="bi bi-file-pdf text-danger me-2"></i>Print / PDF</a></li>
             </ul>
           </div>
           <button class="btn btn-sm btn-outline-info" onclick="orgsModule.showOrgComparison()" title="Compare selected (2-4)">
@@ -2845,7 +2847,7 @@
                   <div class="row g-3">
                     <div class="col-md-6">
                       <div class="form-check card p-3" style="cursor: pointer;">
-                        <input class="form-check-input" type="radio" name="videoSourceType" id="sourceTypeYouTube" value="youtube" checked onchange="mediaGalleryModule.toggleVideoSourceFields('youtube')">
+                        <input class="form-check-input" type="radio" name="videoSourceType" id="sourceTypeYouTube" value="youtube" checked aria-label="Source type YouTube" onchange="mediaGalleryModule.toggleVideoSourceFields('youtube')">
                         <label class="form-check-label w-100" for="sourceTypeYouTube" style="cursor: pointer;">
                           <i class="bi bi-youtube text-danger fs-4 d-block mb-2"></i>
                           <strong>YouTube Link</strong>
@@ -2855,7 +2857,7 @@
                     </div>
                     <div class="col-md-6">
                       <div class="form-check card p-3" style="cursor: pointer;">
-                        <input class="form-check-input" type="radio" name="videoSourceType" id="sourceTypeUpload" value="upload" onchange="mediaGalleryModule.toggleVideoSourceFields('upload')">
+                        <input class="form-check-input" type="radio" name="videoSourceType" id="sourceTypeUpload" value="upload" aria-label="Source type upload" onchange="mediaGalleryModule.toggleVideoSourceFields('upload')">
                         <label class="form-check-label w-100" for="sourceTypeUpload" style="cursor: pointer;">
                           <i class="bi bi-cloud-upload text-primary fs-4 d-block mb-2"></i>
                           <strong>Upload Video File</strong>
@@ -3310,9 +3312,9 @@
                 <table class="table table-sm table-hover">
                   <thead class="table-light">
                     <tr>
-                      <th>Event</th><th>Year</th><th class="text-end">Ticket Revenue</th>
-                      <th class="text-end">Budget</th><th class="text-end">Actual Costs</th>
-                      <th class="text-end">Net P&L</th><th class="text-center">Status</th>
+                      <th scope="col">Event</th><th scope="col">Year</th><th scope="col" class="text-end">Ticket Revenue</th>
+                      <th scope="col" class="text-end">Budget</th><th scope="col" class="text-end">Actual Costs</th>
+                      <th scope="col" class="text-end">Net P&L</th><th scope="col" class="text-center">Status</th>
                     </tr>
                   </thead>
                   <tbody id="financialBreakdownBody">
@@ -3659,10 +3661,10 @@
               <table class="table table-sm table-hover">
                 <thead>
                   <tr>
-                    <th>Status</th>
-                    <th class="text-center">Count</th>
-                    <th>Percentage</th>
-                    <th>Visual</th>
+                    <th scope="col">Status</th>
+                    <th scope="col" class="text-center">Count</th>
+                    <th scope="col">Percentage</th>
+                    <th scope="col">Visual</th>
                   </tr>
                 </thead>
                 <tbody id="reportsPipelineTable">
@@ -3911,7 +3913,7 @@
                       <!-- Platform-Specific Content -->
                       <div class="mb-3">
                         <div class="form-check">
-                          <input class="form-check-input" type="checkbox" id="smPlatformOverrides" onchange="socialMediaModule.togglePlatformOverrides()">
+                          <input class="form-check-input" type="checkbox" id="smPlatformOverrides" aria-label="Enable platform overrides" onchange="socialMediaModule.togglePlatformOverrides()">
                           <label class="form-check-label" for="smPlatformOverrides">
                             <i class="bi bi-sliders me-1"></i>Customise content per platform
                           </label>
@@ -3959,7 +3961,7 @@
                         <div class="row g-3">
                           <div class="col-md-6">
                             <div class="form-check">
-                              <input class="form-check-input" type="radio" name="imageSource" id="imageCompanyLogo" value="company_logo" checked onchange="socialMediaModule.updateImagePreview()">
+                              <input class="form-check-input" type="radio" name="imageSource" id="imageCompanyLogo" value="company_logo" checked aria-label="Use company logo" onchange="socialMediaModule.updateImagePreview()">
                               <label class="form-check-label" for="imageCompanyLogo">
                                 Company Logo
                               </label>
@@ -3967,7 +3969,7 @@
                           </div>
                           <div class="col-md-6">
                             <div class="form-check">
-                              <input class="form-check-input" type="radio" name="imageSource" id="imageCustom" value="custom" onchange="socialMediaModule.updateImagePreview()">
+                              <input class="form-check-input" type="radio" name="imageSource" id="imageCustom" value="custom" aria-label="Use custom image" onchange="socialMediaModule.updateImagePreview()">
                               <label class="form-check-label" for="imageCustom">
                                 Upload Custom Image
                               </label>
@@ -3986,7 +3988,7 @@
                         <!-- Add British Trade Awards Logo Overlay -->
                         <div class="mt-3">
                           <div class="form-check">
-                            <input class="form-check-input" type="checkbox" id="smAddLogoOverlay" checked onchange="socialMediaModule.updateImagePreview()">
+                            <input class="form-check-input" type="checkbox" id="smAddLogoOverlay" checked aria-label="Add logo overlay" onchange="socialMediaModule.updateImagePreview()">
                             <label class="form-check-label" for="smAddLogoOverlay">
                               <i class="bi bi-badge-tm me-1"></i>Add British Trade Awards Logo Overlay
                             </label>
@@ -4003,7 +4005,7 @@
                         <div class="row g-2">
                           <div class="col-md-3">
                             <div class="form-check">
-                              <input class="form-check-input" type="checkbox" id="platformTwitter" checked>
+                              <input class="form-check-input" type="checkbox" id="platformTwitter" aria-label="Post to Twitter" checked>
                               <label class="form-check-label" for="platformTwitter">
                                 <i class="bi bi-twitter-x text-info me-1"></i>X
                               </label>
@@ -4011,7 +4013,7 @@
                           </div>
                           <div class="col-md-3">
                             <div class="form-check">
-                              <input class="form-check-input" type="checkbox" id="platformFacebook" checked>
+                              <input class="form-check-input" type="checkbox" id="platformFacebook" aria-label="Post to Facebook" checked>
                               <label class="form-check-label" for="platformFacebook">
                                 <i class="bi bi-facebook text-primary me-1"></i>Facebook
                               </label>
@@ -4019,7 +4021,7 @@
                           </div>
                           <div class="col-md-3">
                             <div class="form-check">
-                              <input class="form-check-input" type="checkbox" id="platformInstagram" checked>
+                              <input class="form-check-input" type="checkbox" id="platformInstagram" aria-label="Post to Instagram" checked>
                               <label class="form-check-label" for="platformInstagram">
                                 <i class="bi bi-instagram text-danger me-1"></i>Instagram
                               </label>
@@ -4027,7 +4029,7 @@
                           </div>
                           <div class="col-md-3">
                             <div class="form-check">
-                              <input class="form-check-input" type="checkbox" id="platformLinkedIn" checked>
+                              <input class="form-check-input" type="checkbox" id="platformLinkedIn" aria-label="Post to LinkedIn" checked>
                               <label class="form-check-label" for="platformLinkedIn">
                                 <i class="bi bi-linkedin text-info me-1"></i>LinkedIn
                               </label>
@@ -4635,7 +4637,7 @@
                       <!-- A/B Testing Toggle -->
                       <div class="mb-3">
                         <div class="form-check form-switch">
-                          <input class="form-check-input" type="checkbox" id="abTestToggle" onchange="emailBuilder.toggleABTest()">
+                          <input class="form-check-input" type="checkbox" id="abTestToggle" aria-label="Enable A/B testing" onchange="emailBuilder.toggleABTest()">
                           <label class="form-check-label small" for="abTestToggle">A/B Test Subject Line</label>
                         </div>
                       </div>
@@ -4695,9 +4697,9 @@
                       <!-- Send Mode Toggle -->
                       <div class="mb-3">
                         <div class="btn-group btn-group-sm w-100" role="group">
-                          <input type="radio" class="btn-check" name="sendMode" id="sendModeNow" value="now" checked onchange="emailBuilder.toggleScheduler()">
+                          <input type="radio" class="btn-check" name="sendMode" id="sendModeNow" value="now" checked aria-label="Send now" onchange="emailBuilder.toggleScheduler()">
                           <label class="btn btn-outline-secondary" for="sendModeNow"><i class="bi bi-send me-1"></i>Send Now</label>
-                          <input type="radio" class="btn-check" name="sendMode" id="sendModeScheduled" value="scheduled" onchange="emailBuilder.toggleScheduler()">
+                          <input type="radio" class="btn-check" name="sendMode" id="sendModeScheduled" value="scheduled" aria-label="Send scheduled" onchange="emailBuilder.toggleScheduler()">
                           <label class="btn btn-outline-secondary" for="sendModeScheduled"><i class="bi bi-clock me-1"></i>Schedule</label>
                         </div>
                       </div>
@@ -4854,7 +4856,7 @@
                   <div class="d-flex justify-content-between align-items-center mb-3">
                     <h6 class="mb-0"><i class="bi bi-journal-text me-2"></i>Campaign Log</h6>
                     <div class="d-flex gap-2 align-items-center">
-                      <input type="text" class="form-control form-control-sm" id="campaignLogSearchInput" placeholder="Search campaigns..." style="width: 180px;" oninput="emailBuilder.searchCampaigns(this.value)">
+                      <input type="text" class="form-control form-control-sm" id="campaignLogSearchInput" placeholder="Search campaigns..." style="width: 180px;">
                       <select class="form-select form-select-sm" id="campaignLogFilter" style="width: auto;" onchange="emailBuilder.campaignLogPage = 0; emailBuilder.loadCampaignLog()">
                         <option value="all">All Campaigns</option>
                         <option value="Sent">Sent</option>
@@ -4874,15 +4876,15 @@
                     <table class="table table-sm table-hover mb-0" id="campaignLogTable">
                       <thead>
                         <tr>
-                          <th>Campaign</th>
-                          <th>Subject</th>
-                          <th>Status</th>
-                          <th>Recipients</th>
-                          <th>Opened</th>
-                          <th>Clicked</th>
-                          <th>Bounced</th>
-                          <th>Sent / Scheduled</th>
-                          <th>Actions</th>
+                          <th scope="col">Campaign</th>
+                          <th scope="col">Subject</th>
+                          <th scope="col">Status</th>
+                          <th scope="col">Recipients</th>
+                          <th scope="col">Opened</th>
+                          <th scope="col">Clicked</th>
+                          <th scope="col">Bounced</th>
+                          <th scope="col">Sent / Scheduled</th>
+                          <th scope="col">Actions</th>
                         </tr>
                       </thead>
                       <tbody id="campaignLogBody">
@@ -5065,7 +5067,7 @@
                 <div class="row g-3 align-items-end">
                   <div class="col-md-3">
                     <label class="form-label small fw-bold">Search</label>
-                    <input type="text" class="form-control form-control-sm" id="invoiceSearchBox" placeholder="Invoice #, company..." oninput="paymentsModule.filterInvoices()">
+                    <input type="text" class="form-control form-control-sm" id="invoiceSearchBox" placeholder="Invoice #, company...">
                   </div>
                   <div class="col-md-3">
                     <label class="form-label small fw-bold">Status</label>
@@ -5119,16 +5121,16 @@
                   <table class="table table-hover table-striped align-middle">
                     <thead class="table-light">
                       <tr>
-                        <th style="cursor:pointer" onclick="paymentsModule.sortInvoices('invoice_number')">Invoice #</th>
-                        <th style="cursor:pointer" onclick="paymentsModule.sortInvoices('org_name')">Organisation</th>
-                        <th style="cursor:pointer" onclick="paymentsModule.sortInvoices('invoice_date')">Date</th>
-                        <th style="cursor:pointer" onclick="paymentsModule.sortInvoices('due_date')">Due Date</th>
-                        <th>Type</th>
-                        <th style="cursor:pointer" onclick="paymentsModule.sortInvoices('total_amount')">Amount</th>
-                        <th>Paid</th>
-                        <th style="cursor:pointer" onclick="paymentsModule.sortInvoices('balance_due')">Balance</th>
-                        <th style="cursor:pointer" onclick="paymentsModule.sortInvoices('status')">Status</th>
-                        <th>Actions</th>
+                        <th scope="col" style="cursor:pointer" onclick="paymentsModule.sortInvoices('invoice_number')">Invoice #</th>
+                        <th scope="col" style="cursor:pointer" onclick="paymentsModule.sortInvoices('org_name')">Organisation</th>
+                        <th scope="col" style="cursor:pointer" onclick="paymentsModule.sortInvoices('invoice_date')">Date</th>
+                        <th scope="col" style="cursor:pointer" onclick="paymentsModule.sortInvoices('due_date')">Due Date</th>
+                        <th scope="col">Type</th>
+                        <th scope="col" style="cursor:pointer" onclick="paymentsModule.sortInvoices('total_amount')">Amount</th>
+                        <th scope="col">Paid</th>
+                        <th scope="col" style="cursor:pointer" onclick="paymentsModule.sortInvoices('balance_due')">Balance</th>
+                        <th scope="col" style="cursor:pointer" onclick="paymentsModule.sortInvoices('status')">Status</th>
+                        <th scope="col">Actions</th>
                       </tr>
                     </thead>
                     <tbody id="invoicesTableBody">
@@ -5178,7 +5180,7 @@
                 <div class="row g-3 align-items-end">
                   <div class="col-md-3">
                     <label class="form-label small fw-bold">Search</label>
-                    <input type="text" class="form-control form-control-sm" id="paymentSearchBox" placeholder="Reference, company..." oninput="paymentsModule.filterPayments()">
+                    <input type="text" class="form-control form-control-sm" id="paymentSearchBox" placeholder="Reference, company...">
                   </div>
                   <div class="col-md-2">
                     <label class="form-label small fw-bold">Payment Method</label>
@@ -5233,14 +5235,14 @@
                   <table class="table table-hover table-striped align-middle">
                     <thead class="table-light">
                       <tr>
-                        <th>Reference</th>
-                        <th>Date</th>
-                        <th>Organisation</th>
-                        <th>Invoice</th>
-                        <th>Method</th>
-                        <th>Amount</th>
-                        <th>Status</th>
-                        <th>Actions</th>
+                        <th scope="col">Reference</th>
+                        <th scope="col">Date</th>
+                        <th scope="col">Organisation</th>
+                        <th scope="col">Invoice</th>
+                        <th scope="col">Method</th>
+                        <th scope="col">Amount</th>
+                        <th scope="col">Status</th>
+                        <th scope="col">Actions</th>
                       </tr>
                     </thead>
                     <tbody id="paymentsTableBody">
@@ -5424,7 +5426,7 @@
                   </div>
                   <div class="col-md-4">
                     <label class="form-label small fw-bold">Search</label>
-                    <input type="text" class="form-control form-control-sm" id="crmCompanySearch" placeholder="Search companies..." oninput="crmModule.filterCompanies()">
+                    <input type="text" class="form-control form-control-sm" id="crmCompanySearch" placeholder="Search companies...">
                   </div>
                   <div class="col-md-4 d-flex align-items-end">
                     <button class="btn btn-primary btn-sm w-100" onclick="crmModule.openCompanyDetails()">
@@ -5440,14 +5442,14 @@
                   <table class="table table-hover table-striped align-middle">
                     <thead class="table-light">
                       <tr>
-                        <th>Company</th>
-                        <th>Segments</th>
-                        <th>Communications</th>
-                        <th>Active Deals</th>
-                        <th>Pipeline Value</th>
-                        <th>Last Contact</th>
-                        <th>Follow-ups</th>
-                        <th>Actions</th>
+                        <th scope="col">Company</th>
+                        <th scope="col">Segments</th>
+                        <th scope="col">Communications</th>
+                        <th scope="col">Active Deals</th>
+                        <th scope="col">Pipeline Value</th>
+                        <th scope="col">Last Contact</th>
+                        <th scope="col">Follow-ups</th>
+                        <th scope="col">Actions</th>
                       </tr>
                     </thead>
                     <tbody id="companiesCrmTableBody">
@@ -5516,14 +5518,14 @@
                   <table class="table table-hover table-striped align-middle">
                     <thead class="table-light">
                       <tr>
-                        <th>Date</th>
-                        <th>Type</th>
-                        <th>Company</th>
-                        <th>Contact</th>
-                        <th>Subject</th>
-                        <th>Regarding</th>
-                        <th>Follow-up</th>
-                        <th>Actions</th>
+                        <th scope="col">Date</th>
+                        <th scope="col">Type</th>
+                        <th scope="col">Company</th>
+                        <th scope="col">Contact</th>
+                        <th scope="col">Subject</th>
+                        <th scope="col">Regarding</th>
+                        <th scope="col">Follow-up</th>
+                        <th scope="col">Actions</th>
                       </tr>
                     </thead>
                     <tbody id="communicationsTableBody">
@@ -5627,15 +5629,15 @@
                   <table class="table table-hover table-striped align-middle">
                     <thead class="table-light">
                       <tr>
-                        <th>Deal Name</th>
-                        <th>Company</th>
-                        <th>Type</th>
-                        <th>Stage</th>
-                        <th>Value</th>
-                        <th>Probability</th>
-                        <th>Expected Close</th>
-                        <th>Status</th>
-                        <th>Actions</th>
+                        <th scope="col">Deal Name</th>
+                        <th scope="col">Company</th>
+                        <th scope="col">Type</th>
+                        <th scope="col">Stage</th>
+                        <th scope="col">Value</th>
+                        <th scope="col">Probability</th>
+                        <th scope="col">Expected Close</th>
+                        <th scope="col">Status</th>
+                        <th scope="col">Actions</th>
                       </tr>
                     </thead>
                     <tbody id="dealsTableBody">
@@ -5686,14 +5688,14 @@
                   <table class="table table-hover table-striped align-middle">
                     <thead class="table-light">
                       <tr>
-                        <th>Date</th>
-                        <th>Meeting Title</th>
-                        <th>Company</th>
-                        <th>Type</th>
-                        <th>Duration</th>
-                        <th>Attendees</th>
-                        <th>Follow-up</th>
-                        <th>Actions</th>
+                        <th scope="col">Date</th>
+                        <th scope="col">Meeting Title</th>
+                        <th scope="col">Company</th>
+                        <th scope="col">Type</th>
+                        <th scope="col">Duration</th>
+                        <th scope="col">Attendees</th>
+                        <th scope="col">Follow-up</th>
+                        <th scope="col">Actions</th>
                       </tr>
                     </thead>
                     <tbody id="meetingsTableBody">
@@ -5885,16 +5887,16 @@
                   <table class="table table-sm table-hover align-middle">
                     <thead class="table-light">
                       <tr>
-                        <th>Season Name</th>
-                        <th>Year</th>
-                        <th>Status</th>
-                        <th>Entries</th>
-                        <th>Nominees</th>
-                        <th>Judging</th>
-                        <th>Voting</th>
-                        <th>Winners</th>
-                        <th>Default</th>
-                        <th class="text-center">Actions</th>
+                        <th scope="col">Season Name</th>
+                        <th scope="col">Year</th>
+                        <th scope="col">Status</th>
+                        <th scope="col">Entries</th>
+                        <th scope="col">Nominees</th>
+                        <th scope="col">Judging</th>
+                        <th scope="col">Voting</th>
+                        <th scope="col">Winners</th>
+                        <th scope="col">Default</th>
+                        <th scope="col" class="text-center">Actions</th>
                       </tr>
                     </thead>
                     <tbody id="seasonsTableBody">
@@ -6013,13 +6015,13 @@
                 <p class="text-muted mb-3">Set automatic backup reminders</p>
 
                 <div class="form-check mb-2">
-                  <input class="form-check-input" type="checkbox" id="weeklyBackup" onchange="settingsModule.updateBackupSettings()">
+                  <input class="form-check-input" type="checkbox" id="weeklyBackup" aria-label="Enable weekly backup" onchange="settingsModule.updateBackupSettings()">
                   <label class="form-check-label" for="weeklyBackup">
                     Weekly backup reminder
                   </label>
                 </div>
                 <div class="form-check mb-2">
-                  <input class="form-check-input" type="checkbox" id="monthlyBackup" onchange="settingsModule.updateBackupSettings()" checked>
+                  <input class="form-check-input" type="checkbox" id="monthlyBackup" aria-label="Enable monthly backup" onchange="settingsModule.updateBackupSettings()" checked>
                   <label class="form-check-label" for="monthlyBackup">
                     Monthly backup reminder
                   </label>
@@ -6148,11 +6150,11 @@ Available placeholders:
                   <table class="table table-sm table-hover">
                     <thead class="sticky-top bg-white">
                       <tr>
-                        <th width="150">Timestamp</th>
-                        <th width="80">Action</th>
-                        <th width="100">Entity</th>
-                        <th>Description</th>
-                        <th width="120">User</th>
+                        <th scope="col" width="150">Timestamp</th>
+                        <th scope="col" width="80">Action</th>
+                        <th scope="col" width="100">Entity</th>
+                        <th scope="col">Description</th>
+                        <th scope="col" width="120">User</th>
                       </tr>
                     </thead>
                     <tbody id="auditLogTableBody">
@@ -6499,7 +6501,7 @@ Available placeholders:
               </div>
               <div class="col-12">
                 <div class="form-check">
-                  <input class="form-check-input" type="checkbox" id="seasonFormDefault">
+                  <input class="form-check-input" type="checkbox" id="seasonFormDefault" aria-label="Set as default season">
                   <label class="form-check-label" for="seasonFormDefault">Set as default season</label>
                 </div>
               </div>
@@ -7423,7 +7425,7 @@ Available placeholders:
 
             <div class="mb-3">
               <div class="form-check">
-                <input class="form-check-input" type="checkbox" id="cloneGallerySections" checked>
+                <input class="form-check-input" type="checkbox" id="cloneGallerySections" aria-label="Clone gallery sections" checked>
                 <label class="form-check-label" for="cloneGallerySections">
                   <strong>Clone Gallery Sections</strong>
                 </label>
@@ -7665,14 +7667,14 @@ Available placeholders:
                 <table class="table table-sm table-hover">
                   <thead>
                     <tr>
-                      <th>Name</th>
-                      <th>Email</th>
-                      <th>Type</th>
-                      <th>RSVP</th>
-                      <th>+1s</th>
-                      <th>Dietary</th>
-                      <th>Notes</th>
-                      <th width="120" class="text-center">Actions</th>
+                      <th scope="col">Name</th>
+                      <th scope="col">Email</th>
+                      <th scope="col">Type</th>
+                      <th scope="col">RSVP</th>
+                      <th scope="col">+1s</th>
+                      <th scope="col">Dietary</th>
+                      <th scope="col">Notes</th>
+                      <th scope="col" width="120" class="text-center">Actions</th>
                     </tr>
                   </thead>
                   <tbody id="attendeesTableBody">
@@ -7730,11 +7732,11 @@ Available placeholders:
                 <table class="table table-sm">
                   <thead>
                     <tr>
-                      <th>Guest</th>
-                      <th>Type</th>
-                      <th>Status</th>
-                      <th>Check-In Time</th>
-                      <th class="text-center" width="120">Action</th>
+                      <th scope="col">Guest</th>
+                      <th scope="col">Type</th>
+                      <th scope="col">Status</th>
+                      <th scope="col">Check-In Time</th>
+                      <th scope="col" class="text-center" width="120">Action</th>
                     </tr>
                   </thead>
                   <tbody id="checkInTableBody">
@@ -7883,7 +7885,7 @@ Available placeholders:
               <div class="table-responsive">
                 <table class="table table-sm table-hover">
                   <thead>
-                    <tr><th>Name</th><th>Email</th><th>Phone</th><th>Added</th><th>Status</th><th width="120" class="text-center">Actions</th></tr>
+                    <tr><th scope="col">Name</th><th scope="col">Email</th><th scope="col">Phone</th><th scope="col">Added</th><th scope="col">Status</th><th scope="col" width="120" class="text-center">Actions</th></tr>
                   </thead>
                   <tbody id="waitlistTableBody">
                     <!-- Populated by JS -->
@@ -7973,7 +7975,7 @@ Available placeholders:
               <div class="table-responsive">
                 <table class="table table-sm table-hover">
                   <thead>
-                    <tr><th>Item</th><th>Category</th><th>Estimated</th><th>Actual</th><th>Variance</th><th>Status</th><th width="100" class="text-center">Actions</th></tr>
+                    <tr><th scope="col">Item</th><th scope="col">Category</th><th scope="col">Estimated</th><th scope="col">Actual</th><th scope="col">Variance</th><th scope="col">Status</th><th scope="col" width="100" class="text-center">Actions</th></tr>
                   </thead>
                   <tbody id="budgetTableBody">
                     <!-- Populated by JS -->
@@ -8002,7 +8004,7 @@ Available placeholders:
               <div class="table-responsive">
                 <table class="table table-sm table-hover">
                   <thead>
-                    <tr><th>Contact</th><th>Category</th><th>Email</th><th>Phone</th><th>Cost</th><th>Status</th><th width="100" class="text-center">Actions</th></tr>
+                    <tr><th scope="col">Contact</th><th scope="col">Category</th><th scope="col">Email</th><th scope="col">Phone</th><th scope="col">Cost</th><th scope="col">Status</th><th scope="col" width="100" class="text-center">Actions</th></tr>
                   </thead>
                   <tbody id="vendorsTableBody">
                     <!-- Populated by JS -->
@@ -8219,7 +8221,7 @@ Available placeholders:
             </div>
             <div class="mb-3">
               <div class="form-check">
-                <input class="form-check-input" type="checkbox" id="sectionPhotosPublished" checked>
+                <input class="form-check-input" type="checkbox" id="sectionPhotosPublished" aria-label="Set photos as published" checked>
                 <label class="form-check-label" for="sectionPhotosPublished">
                   <strong>Publish immediately</strong>
                 </label>
@@ -8269,7 +8271,7 @@ Available placeholders:
             </div>
             <div class="mb-3">
               <div class="form-check">
-                <input class="form-check-input" type="checkbox" id="youtubeVideoPublished" checked>
+                <input class="form-check-input" type="checkbox" id="youtubeVideoPublished" aria-label="Set video as published" checked>
                 <label class="form-check-label" for="youtubeVideoPublished">
                   <strong>Publish immediately</strong>
                 </label>
@@ -8396,13 +8398,13 @@ Available placeholders:
         <div class="modal-body">
           <p>You're about to upload <strong id="dragDropFileCountText"></strong>. Should these be published immediately?</p>
           <div class="form-check mb-2">
-            <input class="form-check-input" type="radio" name="dragDropPublish" id="dragDropPublished" value="true" checked>
+            <input class="form-check-input" type="radio" name="dragDropPublish" id="dragDropPublished" value="true" checked aria-label="Set as published">
             <label class="form-check-label" for="dragDropPublished">
               <strong><i class="bi bi-eye me-1"></i>Published</strong> - Visible immediately
             </label>
           </div>
           <div class="form-check">
-            <input class="form-check-input" type="radio" name="dragDropPublish" id="dragDropUnpublished" value="false">
+            <input class="form-check-input" type="radio" name="dragDropPublish" id="dragDropUnpublished" value="false" aria-label="Set as unpublished">
             <label class="form-check-label" for="dragDropUnpublished">
               <strong><i class="bi bi-eye-slash me-1"></i>Unpublished (Draft)</strong> - You can publish later
             </label>
@@ -9159,11 +9161,11 @@ in recognition of excellence
   </div>
 
   <!-- Keyboard Shortcuts Help Modal -->
-  <div class="modal fade" id="shortcutsHelpModal" tabindex="-1">
+  <div class="modal fade" id="shortcutsHelpModal" tabindex="-1" aria-labelledby="shortcutsHelpTitle">
     <div class="modal-dialog">
       <div class="modal-content">
         <div class="modal-header">
-          <h5 class="modal-title"><i class="bi bi-keyboard me-2"></i>Keyboard Shortcuts</h5>
+          <h5 class="modal-title" id="shortcutsHelpTitle"><i class="bi bi-keyboard me-2"></i>Keyboard Shortcuts</h5>
           <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
         </div>
         <div class="modal-body">
@@ -9192,7 +9194,7 @@ in recognition of excellence
   </div>
 
   <!-- Confirmation Dialog Modal -->
-  <div class="modal fade" id="confirmDialogModal" tabindex="-1" aria-hidden="true">
+  <div class="modal fade" id="confirmDialogModal" tabindex="-1" aria-labelledby="confirmDialogTitle" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
       <div class="modal-content">
         <div class="modal-header">
@@ -9323,10 +9325,10 @@ in recognition of excellence
                     <table class="table table-sm table-hover mb-0">
                       <thead class="sticky-top bg-light">
                         <tr>
-                          <th>Date</th>
-                          <th>Company</th>
-                          <th>Method</th>
-                          <th class="text-end">Amount</th>
+                          <th scope="col">Date</th>
+                          <th scope="col">Company</th>
+                          <th scope="col">Method</th>
+                          <th scope="col" class="text-end">Amount</th>
                         </tr>
                       </thead>
                       <tbody id="salesRecentPaymentsTable">
@@ -9355,10 +9357,10 @@ in recognition of excellence
                     <table class="table table-sm table-hover mb-0">
                       <thead class="sticky-top bg-light">
                         <tr>
-                          <th>Invoice #</th>
-                          <th>Company</th>
-                          <th>Due Date</th>
-                          <th class="text-end">Amount</th>
+                          <th scope="col">Invoice #</th>
+                          <th scope="col">Company</th>
+                          <th scope="col">Due Date</th>
+                          <th scope="col" class="text-end">Amount</th>
                         </tr>
                       </thead>
                       <tbody id="salesPendingInvoicesTable">
@@ -9489,10 +9491,10 @@ in recognition of excellence
                 <table class="table table-hover mb-0">
                   <thead class="table-light">
                     <tr>
-                      <th>Award Name</th>
-                      <th>Category</th>
-                      <th>Status</th>
-                      <th>Created</th>
+                      <th scope="col">Award Name</th>
+                      <th scope="col">Category</th>
+                      <th scope="col">Status</th>
+                      <th scope="col">Created</th>
                     </tr>
                   </thead>
                   <tbody id="summaryRecentAwardsTable">
@@ -9594,11 +9596,11 @@ in recognition of excellence
                 <table class="table table-hover mb-0">
                   <thead class="table-light">
                     <tr>
-                      <th>Company Name</th>
-                      <th>Sector</th>
-                      <th>Region</th>
-                      <th>Awards Won</th>
-                      <th>Joined</th>
+                      <th scope="col">Company Name</th>
+                      <th scope="col">Sector</th>
+                      <th scope="col">Region</th>
+                      <th scope="col">Awards Won</th>
+                      <th scope="col">Joined</th>
                     </tr>
                   </thead>
                   <tbody id="summaryRecentOrgsTable">
@@ -9700,10 +9702,10 @@ in recognition of excellence
                 <table class="table table-hover mb-0">
                   <thead class="table-light">
                     <tr>
-                      <th>Organisation</th>
-                      <th>Award</th>
-                      <th>Year</th>
-                      <th>Status</th>
+                      <th scope="col">Organisation</th>
+                      <th scope="col">Award</th>
+                      <th scope="col">Year</th>
+                      <th scope="col">Status</th>
                     </tr>
                   </thead>
                   <tbody id="summaryRecentWinnersTable">
@@ -9805,11 +9807,11 @@ in recognition of excellence
                 <table class="table table-hover mb-0">
                   <thead class="table-light">
                     <tr>
-                      <th>Event Name</th>
-                      <th>Date</th>
-                      <th>Location</th>
-                      <th>Capacity</th>
-                      <th>Status</th>
+                      <th scope="col">Event Name</th>
+                      <th scope="col">Date</th>
+                      <th scope="col">Location</th>
+                      <th scope="col">Capacity</th>
+                      <th scope="col">Status</th>
                     </tr>
                   </thead>
                   <tbody id="summaryUpcomingEventsTable">
@@ -10057,14 +10059,14 @@ in recognition of excellence
                 <table class="table table-hover mb-0">
                   <thead class="table-light">
                     <tr>
-                      <th>Company</th>
-                      <th>Sector</th>
-                      <th class="text-center">Status</th>
-                      <th class="text-center">Operational</th>
-                      <th class="text-center">Category Match</th>
-                      <th class="text-center">Reputation</th>
-                      <th>AI Findings</th>
-                      <th class="text-center">Actions</th>
+                      <th scope="col">Company</th>
+                      <th scope="col">Sector</th>
+                      <th scope="col" class="text-center">Status</th>
+                      <th scope="col" class="text-center">Operational</th>
+                      <th scope="col" class="text-center">Category Match</th>
+                      <th scope="col" class="text-center">Reputation</th>
+                      <th scope="col">AI Findings</th>
+                      <th scope="col" class="text-center">Actions</th>
                     </tr>
                   </thead>
                   <tbody id="vettingResultsTableBody">

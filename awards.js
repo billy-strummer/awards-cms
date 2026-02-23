@@ -110,7 +110,7 @@ const awardsModule = {
 
     } catch (error) {
       console.error('Error loading awards:', error);
-      utils.showToast('Failed to load awards: ' + error.message, 'error');
+      utils.showErrorWithRetry(error, 'loading awards', () => this.loadAwards());
       utils.showEmptyState('awardsTableBody', 10, 'Failed to load awards', 'bi-exclamation-triangle');
     } finally {
       utils.hideLoading();
@@ -426,6 +426,17 @@ const awardsModule = {
 
       return true;
     });
+
+    // If search query is active and no exact matches found, try fuzzy search
+    if (search && STATE.filteredAwards.length === 0) {
+      STATE.filteredAwards = utils.fuzzyFilter(STATE.allAwards, search, ['award_name', 'county']);
+      // Also apply non-search filters to fuzzy results
+      if (year) STATE.filteredAwards = STATE.filteredAwards.filter(a => { let ay = (typeof a.year === 'string' && a.year.includes('-')) ? a.year.split('-')[0] : a.year; return String(ay) === String(year); });
+      if (status) STATE.filteredAwards = STATE.filteredAwards.filter(a => a.status?.toLowerCase() === status.toLowerCase());
+      if (sector) STATE.filteredAwards = STATE.filteredAwards.filter(a => a.sector === sector);
+      if (county) STATE.filteredAwards = STATE.filteredAwards.filter(a => a.county === county);
+      if (region) STATE.filteredAwards = STATE.filteredAwards.filter(a => a._actualRegion === region);
+    }
 
     this.applySorting();
     this.renderAwards();
@@ -1121,61 +1132,63 @@ const awardsModule = {
     }
 
     try {
-      utils.showLoading();
+      await utils.protectModalDuringSave('awardFormModal', async () => {
+        utils.showLoading();
 
-      // Duplicate prevention: check for same award_name + county + year
-      {
-        let query = STATE.client
-          .from('awards')
-          .select('id')
-          .eq('award_name', awardData.award_name)
-          .eq('county', awardData.county)
-          .eq('year', awardData.year);
-        if (id) query = query.neq('id', id);
+        // Duplicate prevention: check for same award_name + county + year
+        {
+          let query = STATE.client
+            .from('awards')
+            .select('id')
+            .eq('award_name', awardData.award_name)
+            .eq('county', awardData.county)
+            .eq('year', awardData.year);
+          if (id) query = query.neq('id', id);
 
-        const { data: existing } = await query.limit(1);
+          const { data: existing } = await query.limit(1);
 
-        if (existing && existing.length > 0) {
-          utils.hideLoading();
-          utils.showToast(`An award "${awardData.award_name}" already exists for ${awardData.county} in ${awardData.year}`, 'error');
-          return;
+          if (existing && existing.length > 0) {
+            utils.hideLoading();
+            utils.showToast(`An award "${awardData.award_name}" already exists for ${awardData.county} in ${awardData.year}`, 'error');
+            return;
+          }
         }
-      }
 
-      let error;
-      if (id) {
-        // Update existing
-        ({ error } = await STATE.client
-          .from('awards')
-          .update(awardData)
-          .eq('id', id));
-      } else {
-        // Create new
-        ({ error } = await STATE.client
-          .from('awards')
-          .insert(awardData));
-      }
+        let error;
+        if (id) {
+          // Update existing
+          ({ error } = await STATE.client
+            .from('awards')
+            .update(awardData)
+            .eq('id', id));
+        } else {
+          // Create new
+          ({ error } = await STATE.client
+            .from('awards')
+            .insert(awardData));
+        }
 
-      if (error) throw error;
+        if (error) throw error;
 
-      // Clear auto-save draft on successful save
-      if (id) {
-        utils.clearFormDraft('award_edit_' + id);
-      } else {
-        utils.clearFormDraft('award_new');
-      }
+        // Clear auto-save draft on successful save
+        if (id) {
+          utils.clearFormDraft('award_edit_' + id);
+        } else {
+          utils.clearFormDraft('award_new');
+        }
 
-      // Close modal
-      const modal = bootstrap.Modal.getInstance(document.getElementById('awardFormModal'));
-      if (modal) modal.hide();
+        // Close modal
+        const modal = bootstrap.Modal.getInstance(document.getElementById('awardFormModal'));
+        if (modal) modal.hide();
 
-      // Audit trail
-      this._logAwardAudit(id || 'new', id ? 'updated' : 'created', awardData.award_name,
-        id ? `Award updated: ${awardData.award_name} (${awardData.county}, ${awardData.year})` :
-        `Award created: ${awardData.award_name} (${awardData.county}, ${awardData.year})`);
+        // Audit trail
+        this._logAwardAudit(id || 'new', id ? 'updated' : 'created', awardData.award_name,
+          id ? `Award updated: ${awardData.award_name} (${awardData.county}, ${awardData.year})` :
+          `Award created: ${awardData.award_name} (${awardData.county}, ${awardData.year})`);
 
-      utils.showToast(id ? 'Award updated successfully!' : 'Award created successfully!', 'success');
-      await this.loadAwards();
+        utils.showToast(id ? 'Award updated successfully!' : 'Award created successfully!', 'success');
+        await this.loadAwards();
+      });
 
     } catch (error) {
       console.error('Error saving award:', error);

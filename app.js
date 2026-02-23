@@ -1307,6 +1307,11 @@ document.addEventListener('DOMContentLoaded', function() {
     utils.initDebouncedSearch('winnerSearchBox', () => { if (window.winnersModule) winnersModule.filterWinners(); });
     utils.initDebouncedSearch('eventsSearchBox', () => { if (window.eventsModule) eventsModule.filterEvents(); });
     utils.initDebouncedSearch('orgsSearchBox', () => { if (window.orgsModule) orgsModule.filterOrganisations(); });
+    utils.initDebouncedSearch('invoiceSearchBox', () => { if (window.paymentsModule) paymentsModule.filterInvoices(); });
+    utils.initDebouncedSearch('paymentSearchBox', () => { if (window.paymentsModule) paymentsModule.filterPayments(); });
+    utils.initDebouncedSearch('crmCompanySearch', () => { if (window.crmModule) crmModule.filterCompanies(); });
+    utils.initDebouncedSearch('subscriberSearch', () => { if (window.emailListsModule) emailListsModule.filterSubscriberTable(); });
+    utils.initDebouncedSearch('campaignLogSearchInput', () => { if (window.emailBuilder) emailBuilder.searchCampaigns(document.getElementById('campaignLogSearchInput')?.value); });
   }
 
   // ==========================================

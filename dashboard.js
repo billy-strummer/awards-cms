@@ -2328,7 +2328,7 @@ const dashboardModule = {
 
       const tbody = document.getElementById('summaryRecentAwardsTable');
       if (recentAwards.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="4" class="text-center text-muted py-4">No awards found</td></tr>';
+        utils.showEnhancedEmptyState('summaryRecentAwardsTable', 4, { icon: 'bi-trophy', message: 'No awards found', description: 'Awards will appear here once created' });
       } else {
         tbody.innerHTML = recentAwards.map(award => `
           <tr>

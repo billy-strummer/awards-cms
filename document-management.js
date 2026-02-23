@@ -86,6 +86,7 @@ window.documentModule = {
         </table>
       </div>`;
 
+    this._allDocuments = unified;
     this._attachLibraryListeners(unified);
   },
 
@@ -121,12 +122,26 @@ window.documentModule = {
       const q = (search?.value||'').toLowerCase();
       const cat = catFilter?.value||'';
       const st = stFilter?.value||'';
-      document.querySelectorAll('#docLibraryTable tbody tr[data-id]').forEach(row => {
+      const rows = document.querySelectorAll('#docLibraryTable tbody tr[data-id]');
+      let visibleCount = 0;
+      rows.forEach(row => {
         const match = (!q || row.dataset.name.toLowerCase().includes(q))
           && (!cat || row.dataset.category === cat)
           && (!st || row.dataset.status === st);
         row.style.display = match ? '' : 'none';
+        if (match) visibleCount++;
       });
+
+      // If search query is active and no exact matches found, try fuzzy search
+      if (q && visibleCount === 0 && this._allDocuments) {
+        let fuzzyResults = utils.fuzzyFilter(this._allDocuments, q, ['title', 'file_name', 'category']);
+        if (cat) fuzzyResults = fuzzyResults.filter(d => d.category === cat);
+        if (st) fuzzyResults = fuzzyResults.filter(d => (d.status || 'draft') === st);
+        const fuzzyIds = new Set(fuzzyResults.map(d => String(d.id)));
+        rows.forEach(row => {
+          row.style.display = fuzzyIds.has(row.dataset.id) ? '' : 'none';
+        });
+      }
     };
     search?.addEventListener('input', filter);
     catFilter?.addEventListener('change', filter);

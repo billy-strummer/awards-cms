@@ -280,7 +280,8 @@ window.entryFormApp = {
         searchPlaceholderValue: 'Type county or city name...',
         itemSelectText: '',
         shouldSort: false,
-        searchResultLimit: 100
+        searchResultLimit: 100,
+        allowHTML: false
       });
     }
   },
@@ -662,7 +663,7 @@ window.entryFormApp = {
       if (existingOrgs && existingOrgs.length > 0) {
         organisationId = existingOrgs[0].id;
       } else {
-        const { data: newOrg, error: orgError } = await supabase
+        const { data: newOrg, error: orgError } = await db
           .from('organisations')
           .insert({
             company_name: this.formData.companyName,

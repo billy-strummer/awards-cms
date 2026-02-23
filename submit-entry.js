@@ -1,5 +1,6 @@
 /* ==================================================== */
-/* STREAMLINED ENTRY SUBMISSION FORM */
+/* COMPREHENSIVE ENTRY SUBMISSION FORM                  */
+/* Uses exact sectors, categories & regions from CMS    */
 /* ==================================================== */
 
 // Initialize Supabase using shared config
@@ -8,7 +9,143 @@ const supabase = window.supabase.createClient(
   window.SUPABASE_CONFIG.anonKey
 );
 
-// Lightweight toast for public pages (replaces alert())
+// =====================================================
+// AWARD CATEGORIES (mirrors award-categories-config.js)
+// =====================================================
+
+const STANDARD_CATEGORIES = {
+  'BUILDING & CONSTRUCTION': [
+    'Brickwork & Masonry Company',
+    'Drainage Company',
+    'Extension Company',
+    'General Building Company',
+    'Groundworks & Foundations Company',
+    'Guttering Company',
+    'Loft Conversion Company',
+    'Maintenance Services',
+    'New Build Company',
+    'Roofing Company',
+    'Structural Engineers',
+    'Structural Steelworks'
+  ],
+  'MECHANICAL, ELECTRICAL & PLUMBING': [
+    'Air-Conditioning & Ventilation Company',
+    'Electrical Company',
+    'Heating Company',
+    'Plumbing Company',
+    'Underfloor Heating Company'
+  ],
+  'CARPENTRY & JOINERY': [
+    'Cabinet Maker',
+    'Carpentry Company',
+    'Joinery Company',
+    'Staircase Specialist',
+    'Timber Windows Installer'
+  ],
+  'INTERIOR FIT-OUT & FINISHING': [
+    'Bathroom Installer',
+    'Carpet Fitters',
+    'Curtains & Blinds Installer',
+    'Drylining Company',
+    'Flooring Installer',
+    'Home Office Installer',
+    'Interior Refurbishment Company',
+    'Kitchen Installer',
+    'Painting & Decorating Company',
+    'Plastering Company',
+    'Screeding Company',
+    'Tiling Installer'
+  ],
+  'OUTDOOR & LANDSCAPING': [
+    'Decking Company',
+    'Driveway & Paving Company',
+    'Fencing Installer',
+    'Gardening Services',
+    'Garden Outbuilding Company',
+    'Landscaping & Garden Design Company',
+    'Outdoor Lighting & Electrical Company',
+    'Tree Surgery Services'
+  ],
+  'ENERGY, TECH & SUSTAINABILITY': [
+    'EV Charger Installer',
+    'Insulation & Energy Efficiency Company',
+    'PV Installer',
+    'Renewable Energy Specialist',
+    'Security System Installer',
+    'Smart Home & Automation Company'
+  ],
+  'SPECIALIST TRADES': [
+    'Asbestos Removal Specialist',
+    'Locksmith',
+    'Pest Control Company',
+    'Rendering Company',
+    'Scaffolding Company',
+    'Shop Fitting Company',
+    'Swimming Pool & Hot Tub Company',
+    'Window & Door Installer'
+  ]
+};
+
+const SMALL_CATEGORIES = {
+  'BUILDING & CONSTRUCTION': [
+    'Brickwork & Masonry Company',
+    'Drainage Company',
+    'Extension Company',
+    'General Building Company',
+    'Groundworks & Foundations Company',
+    'Guttering Company',
+    'Loft Conversion Company',
+    'Maintenance Services',
+    'New Build Company',
+    'Roofing Company'
+  ],
+  'MECHANICAL, ELECTRICAL & PLUMBING': [
+    'Air-Conditioning & Ventilation Company',
+    'Electrical Company',
+    'Plumbing & Heating Company'
+  ],
+  'CARPENTRY & JOINERY': [
+    'Carpentry & Joinery Company',
+    'Timber Windows Installer'
+  ],
+  'INTERIOR FIT-OUT & FINISHING': [
+    'Bathroom Installer',
+    'Carpet Fitters',
+    'Flooring Installer',
+    'Interior Refurbishment Company',
+    'Kitchen Installer',
+    'Painting & Decorating Company',
+    'Plastering Company',
+    'Tiling Installer'
+  ],
+  'OUTDOOR & LANDSCAPING': [
+    'Driveway & Paving Company',
+    'Fencing Installer',
+    'Gardening Services',
+    'Landscaping & Garden Design Company',
+    'Tree Surgery Services'
+  ],
+  'ENERGY, TECH & SUSTAINABILITY': [
+    'EV Charger Installer',
+    'Insulation & Energy Efficiency Company',
+    'PV Installer',
+    'Renewable Energy Specialist',
+    'Security Systems Installer'
+  ],
+  'SPECIALIST TRADES': [
+    'Locksmith',
+    'Pest Control Company',
+    'Rendering Company',
+    'Scaffolding Company',
+    'Window & Door Installer'
+  ]
+};
+
+const SMALL_COUNTIES = ['Ceredigion', 'Herefordshire', 'Isle of Wight', 'Rutland'];
+
+// =====================================================
+// Lightweight toast for public pages
+// =====================================================
 function showPublicToast(msg, type = 'warning') {
   let container = document.getElementById('publicToastContainer');
   if (!container) {
@@ -18,61 +155,81 @@ function showPublicToast(msg, type = 'warning') {
     document.body.appendChild(container);
   }
   const colors = { warning: '#ffc107', error: '#dc3545', success: '#28a745', info: '#17a2b8' };
+  const textColors = { warning: '#000', error: '#fff', success: '#fff', info: '#fff' };
   const toast = document.createElement('div');
-  toast.style.cssText = `background:${colors[type] || colors.warning};color:${type === 'warning' ? '#000' : '#fff'};padding:12px 20px;margin-bottom:8px;border-radius:8px;box-shadow:0 4px 12px rgba(0,0,0,.15);font-size:14px;opacity:0;transition:opacity .3s;`;
+  toast.style.cssText = `background:${colors[type] || colors.warning};color:${textColors[type] || '#000'};padding:12px 20px;margin-bottom:8px;border-radius:8px;box-shadow:0 4px 12px rgba(0,0,0,.15);font-size:14px;opacity:0;transition:opacity .3s;font-family:'Montserrat',sans-serif;`;
   toast.textContent = msg;
   container.appendChild(toast);
   requestAnimationFrame(() => toast.style.opacity = '1');
   setTimeout(() => { toast.style.opacity = '0'; setTimeout(() => toast.remove(), 300); }, 4000);
 }
 
+// =====================================================
+// MAIN APPLICATION
+// =====================================================
+
 const entryFormApp = {
   currentStep: 1,
-  totalSteps: 7,
+  totalSteps: 8,
   formData: {},
-  selectedAwardId: null,
+  selectedAwardCategory: null,
+  selectedSector: null,
+  regionChoicesInstance: null,
 
-  /**
-   * Initialize form
-   */
+  // Step labels for progress bar
+  stepLabels: ['Region', 'Sector', 'Category', 'Company', 'About', 'Extra', 'Contact', 'Review'],
+
+  // --------------------------------------------------
+  // Initialize
+  // --------------------------------------------------
   async initialize() {
-    console.log('Initializing entry form...');
-
-    // Populate sectors from config
-    this.populateSectors();
-
-    // Populate regions from config
+    this.buildProgressBar();
     this.populateRegions();
+    this.populateSectors();
+    this.setupCharCounters();
+    this.setupTermsCheckbox();
+    this.updateProgressIndicator(1);
   },
 
-  /**
-   * Convert sector to title case for display only
-   */
-  toTitleCase(str) {
-    return str.toLowerCase().replace(/\b\w/g, char => char.toUpperCase());
+  // --------------------------------------------------
+  // Build progress bar dots from stepLabels
+  // --------------------------------------------------
+  buildProgressBar() {
+    const container = document.getElementById('progressSteps');
+    // Keep the track element
+    const track = document.getElementById('progressTrack');
+    container.innerHTML = '';
+    container.appendChild(track);
+
+    this.stepLabels.forEach((label, i) => {
+      const wrap = document.createElement('div');
+      wrap.className = 'progress-step-wrap';
+      wrap.innerHTML = `
+        <div class="progress-dot" data-step="${i + 1}"></div>
+        <div class="step-label" data-step="${i + 1}">${label}</div>
+      `;
+      container.appendChild(wrap);
+    });
   },
 
-  /**
-   * Populate sectors dropdown from config
-   */
+  // --------------------------------------------------
+  // Populate sectors dropdown from config.js SECTORS
+  // --------------------------------------------------
   populateSectors() {
     const sectorSelect = document.getElementById('sector');
     if (!window.SECTORS || window.SECTORS.length === 0) {
       console.warn('No sectors found in config');
       return;
     }
-
-    // Display in Title Case but keep value as ALL CAPS for database compatibility
     const options = window.SECTORS.map(sector =>
       `<option value="${this.escapeHtml(sector)}">${this.escapeHtml(this.toTitleCase(sector))}</option>`
     ).join('');
-
     sectorSelect.innerHTML = '<option value="">Choose your sector...</option>' + options;
   },
 
-  /**
-   * Populate regions dropdown from config with grouped counties and cities
-   */
+  // --------------------------------------------------
+  // Populate regions dropdown from config.js REGIONS
+  // --------------------------------------------------
   populateRegions() {
     const regionSelect = document.getElementById('region');
     if (!window.REGIONS || window.REGIONS.length === 0) {
@@ -80,26 +237,30 @@ const entryFormApp = {
       return;
     }
 
-    // Split regions into counties and cities for this form only
-    const cities = ['Belfast', 'Birmingham', 'Bournemouth', 'Bradford', 'Brighton & Hove', 'Bristol', 'Cardiff', 'Coventry', 'Edinburgh', 'Glasgow', 'Hull', 'Leeds', 'Leicester', 'Liverpool', 'Manchester', 'Newcastle upon Tyne', 'Nottingham', 'Sheffield', 'Southampton'];
+    // Known cities list for grouping
+    const cities = [
+      'Birmingham', 'Bournemouth', 'Bradford', 'Brighton & Hove', 'Bristol',
+      'Cardiff', 'Coventry', 'Edinburgh', 'Glasgow', 'Leeds', 'Leicester',
+      'Liverpool', 'London North', 'London South', 'London East', 'London West',
+      'Manchester', 'Middlesbrough', 'Newcastle', 'Nottingham', 'Sheffield',
+      'Southampton', 'Swansea'
+    ];
 
-    const counties = window.REGIONS.filter(region => !cities.includes(region));
-    const cityList = window.REGIONS.filter(region => cities.includes(region));
+    const counties = window.REGIONS.filter(r => !cities.includes(r));
+    const cityList = window.REGIONS.filter(r => cities.includes(r));
 
     let html = '<option value="">Type to search or select...</option>';
 
-    // Counties optgroup
     if (counties.length > 0) {
-      html += '<optgroup label="Counties A-Z">';
+      html += '<optgroup label="Counties">';
       counties.forEach(county => {
         html += `<option value="${this.escapeHtml(county)}">${this.escapeHtml(county)}</option>`;
       });
       html += '</optgroup>';
     }
 
-    // Cities optgroup
     if (cityList.length > 0) {
-      html += '<optgroup label="Cities A-Z">';
+      html += '<optgroup label="Cities">';
       cityList.forEach(city => {
         html += `<option value="${this.escapeHtml(city)}">${this.escapeHtml(city)}</option>`;
       });
@@ -108,11 +269,11 @@ const entryFormApp = {
 
     regionSelect.innerHTML = html;
 
-    // Initialize Choices.js for searchable dropdown
+    // Initialize Choices.js
     if (typeof Choices !== 'undefined') {
-      new Choices('#region', {
+      this.regionChoicesInstance = new Choices('#region', {
         searchEnabled: true,
-        searchPlaceholderValue: 'Type county or city here...',
+        searchPlaceholderValue: 'Type county or city name...',
         itemSelectText: '',
         shouldSort: false,
         searchResultLimit: 100
@@ -120,171 +281,271 @@ const entryFormApp = {
     }
   },
 
-  /**
-   * Go to next step
-   */
-  async nextStep(currentStepNum) {
-    // Validate current step
-    if (!this.validateStep(currentStepNum)) {
-      return;
-    }
+  // --------------------------------------------------
+  // Setup character counters on textareas
+  // --------------------------------------------------
+  setupCharCounters() {
+    const counters = [
+      { field: 'entryDescription', display: 'descCharCount', max: 1000 },
+      { field: 'whyShouldWin', display: 'whyCharCount', max: 2000 },
+      { field: 'supportingInfo', display: 'supportCharCount', max: 1500 }
+    ];
 
-    // Save current step data
-    this.saveStepData(currentStepNum);
-
-    // Load next step content if needed
-    if (currentStepNum === 2) {
-      await this.loadAwards();
-    }
-
-    if (currentStepNum === 6) {
-      this.showReview();
-    }
-
-    // Move to next step
-    const nextStep = currentStepNum + 1;
-    this.goToStep(nextStep);
-  },
-
-  /**
-   * Go to previous step
-   */
-  prevStep(currentStepNum) {
-    const prevStep = currentStepNum - 1;
-    this.goToStep(prevStep);
-  },
-
-  /**
-   * Navigate to specific step
-   */
-  goToStep(stepNum) {
-    // Hide all steps
-    document.querySelectorAll('.form-step').forEach(step => {
-      step.classList.remove('active');
-    });
-
-    // Show target step
-    document.getElementById(`step${stepNum}`).classList.add('active');
-
-    // Update progress indicator
-    this.updateProgressIndicator(stepNum);
-
-    // Update current step
-    this.currentStep = stepNum;
-
-    // Scroll to top
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  },
-
-  /**
-   * Update progress indicator
-   */
-  updateProgressIndicator(stepNum) {
-    const dots = document.querySelectorAll('.progress-dot');
-    dots.forEach((dot, index) => {
-      dot.classList.remove('active', 'completed');
-      if (index < stepNum - 1) {
-        dot.classList.add('completed');
-      } else if (index === stepNum - 1) {
-        dot.classList.add('active');
+    counters.forEach(({ field, display, max }) => {
+      const el = document.getElementById(field);
+      const counter = document.getElementById(display);
+      if (el && counter) {
+        el.addEventListener('input', () => {
+          const len = el.value.length;
+          counter.textContent = `${len.toLocaleString()} / ${max.toLocaleString()}`;
+          counter.classList.toggle('warn', len > max * 0.9);
+        });
       }
     });
   },
 
-  /**
-   * Validate current step
-   */
+  // --------------------------------------------------
+  // Setup terms checkbox to enable/disable submit
+  // --------------------------------------------------
+  setupTermsCheckbox() {
+    const checkbox = document.getElementById('termsCheckbox');
+    const submitBtn = document.getElementById('submitBtn');
+    if (checkbox && submitBtn) {
+      checkbox.addEventListener('change', () => {
+        submitBtn.disabled = !checkbox.checked;
+      });
+    }
+  },
+
+  // --------------------------------------------------
+  // Get categories for a given region
+  // --------------------------------------------------
+  getCategoriesForRegion(region) {
+    const isSmall = SMALL_COUNTIES.some(c => c.toLowerCase() === region.toLowerCase());
+    return isSmall ? SMALL_CATEGORIES : STANDARD_CATEGORIES;
+  },
+
+  // --------------------------------------------------
+  // Build award category list for selected sector + region
+  // --------------------------------------------------
+  buildCategoryList() {
+    const awardsList = document.getElementById('awardsList');
+    const region = this.formData.region || '';
+    const sector = this.formData.sector || '';
+
+    if (!region || !sector) {
+      awardsList.innerHTML = '<div class="alert alert-warning">Please complete the previous steps first.</div>';
+      return;
+    }
+
+    const categories = this.getCategoriesForRegion(region);
+    const sectorCategories = categories[sector] || [];
+
+    if (sectorCategories.length === 0) {
+      awardsList.innerHTML = `
+        <div class="alert alert-warning">
+          <i class="bi bi-exclamation-triangle me-2"></i>
+          No award categories found for <strong>${this.escapeHtml(this.toTitleCase(sector))}</strong> in <strong>${this.escapeHtml(region)}</strong>.
+        </div>`;
+      return;
+    }
+
+    const isSmall = SMALL_COUNTIES.some(c => c.toLowerCase() === region.toLowerCase());
+    const subtitle = document.getElementById('step3Subtitle');
+    if (subtitle) {
+      subtitle.textContent = `${sectorCategories.length} categories available for ${this.toTitleCase(sector)} in ${region}`;
+    }
+
+    awardsList.innerHTML = sectorCategories.map(cat => `
+      <div class="award-option" onclick="entryFormApp.selectCategory('${this.escapeHtml(cat)}', this)" role="button" tabindex="0"
+           onkeydown="if(event.key==='Enter')this.click()">
+        <div class="award-check">
+          <i class="bi bi-check" style="display:none; font-size:14px; font-weight:900;"></i>
+        </div>
+        <span class="award-name">${this.escapeHtml(cat)}</span>
+      </div>
+    `).join('');
+
+    // Reset selection
+    this.selectedAwardCategory = null;
+    document.getElementById('step3NextBtn').style.display = 'none';
+  },
+
+  // --------------------------------------------------
+  // Select an award category
+  // --------------------------------------------------
+  selectCategory(categoryName, element) {
+    document.querySelectorAll('.award-option').forEach(opt => {
+      opt.classList.remove('selected');
+      const icon = opt.querySelector('.bi-check');
+      if (icon) icon.style.display = 'none';
+    });
+
+    element.classList.add('selected');
+    const icon = element.querySelector('.bi-check');
+    if (icon) icon.style.display = 'block';
+
+    this.selectedAwardCategory = categoryName;
+    document.getElementById('step3NextBtn').style.display = 'block';
+  },
+
+  // --------------------------------------------------
+  // Navigation
+  // --------------------------------------------------
+  async nextStep(currentStepNum) {
+    if (!this.validateStep(currentStepNum)) return;
+    this.saveStepData(currentStepNum);
+
+    // Build category list after sector is selected (step 2)
+    if (currentStepNum === 2) {
+      this.buildCategoryList();
+    }
+
+    // Build review before showing step 8
+    if (currentStepNum === 7) {
+      this.showReview();
+    }
+
+    this.goToStep(currentStepNum + 1);
+  },
+
+  prevStep(currentStepNum) {
+    this.goToStep(currentStepNum - 1);
+  },
+
+  goToStep(stepNum) {
+    document.querySelectorAll('.form-step').forEach(s => s.classList.remove('active'));
+    const target = document.getElementById(`step${stepNum}`);
+    if (target) {
+      target.classList.add('active');
+    }
+    this.updateProgressIndicator(stepNum);
+    this.currentStep = stepNum;
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  },
+
+  // --------------------------------------------------
+  // Update progress bar
+  // --------------------------------------------------
+  updateProgressIndicator(stepNum) {
+    const dots = document.querySelectorAll('.progress-dot');
+    const labels = document.querySelectorAll('.step-label');
+    const track = document.getElementById('progressTrack');
+
+    dots.forEach((dot, i) => {
+      dot.classList.remove('active', 'completed');
+      if (i < stepNum - 1) dot.classList.add('completed');
+      else if (i === stepNum - 1) dot.classList.add('active');
+    });
+
+    labels.forEach((label, i) => {
+      label.classList.remove('active', 'completed');
+      if (i < stepNum - 1) label.classList.add('completed');
+      else if (i === stepNum - 1) label.classList.add('active');
+    });
+
+    // Track width
+    if (track && this.totalSteps > 1) {
+      const pct = ((stepNum - 1) / (this.totalSteps - 1)) * 100;
+      track.style.width = pct + '%';
+    }
+
+    // Hide progress on success
+    const wrapper = document.getElementById('progressWrapper');
+    if (wrapper) {
+      wrapper.style.display = stepNum > this.totalSteps ? 'none' : '';
+    }
+  },
+
+  // --------------------------------------------------
+  // Validation
+  // --------------------------------------------------
   validateStep(stepNum) {
     switch (stepNum) {
-      case 1: // Sector
-        const sector = document.getElementById('sector').value;
-        if (!sector) {
-          showPublicToast('Please select a sector');
-          return false;
-        }
-        return true;
-
-      case 2: // Region
+      case 1: {
         const region = document.getElementById('region').value;
-        if (!region) {
-          showPublicToast('Please select a region');
-          return false;
-        }
+        if (!region) { showPublicToast('Please select your county or city'); return false; }
         return true;
-
-      case 3: // Award Category
-        if (!this.selectedAwardId) {
-          showPublicToast('Please select an award category');
-          return false;
-        }
+      }
+      case 2: {
+        const sector = document.getElementById('sector').value;
+        if (!sector) { showPublicToast('Please select a sector'); return false; }
         return true;
-
-      case 4: // Company Name
-        const companyName = document.getElementById('companyName').value.trim();
-        if (!companyName) {
-          showPublicToast('Please enter your company name');
-          return false;
-        }
+      }
+      case 3: {
+        if (!this.selectedAwardCategory) { showPublicToast('Please select an award category'); return false; }
         return true;
-
-      case 5: // Years in Field
-        const yearsInField = document.getElementById('yearsInField').value;
-        if (!yearsInField) {
-          showPublicToast('Please select years in field');
-          return false;
-        }
+      }
+      case 4: {
+        const name = document.getElementById('companyName').value.trim();
+        if (!name) { showPublicToast('Please enter your company name'); return false; }
+        if (name.length < 2) { showPublicToast('Company name must be at least 2 characters'); return false; }
+        const years = document.getElementById('yearsInField').value;
+        if (!years) { showPublicToast('Please select years in business'); return false; }
         return true;
-
-      case 6: // Contact Info
+      }
+      case 5: {
+        const desc = document.getElementById('entryDescription').value.trim();
+        if (!desc) { showPublicToast('Please provide a description of your business'); return false; }
+        if (desc.length < 20) { showPublicToast('Please provide a more detailed description (at least 20 characters)'); return false; }
+        const why = document.getElementById('whyShouldWin').value.trim();
+        if (!why) { showPublicToast('Please tell us why you should win this award'); return false; }
+        if (why.length < 20) { showPublicToast('Please provide more detail on why you should win (at least 20 characters)'); return false; }
+        return true;
+      }
+      case 6: {
+        // All fields optional - always valid
+        return true;
+      }
+      case 7: {
         const contactName = document.getElementById('contactName').value.trim();
         const contactEmail = document.getElementById('contactEmail').value.trim();
-        if (!contactName) {
-          showPublicToast('Please enter your name');
-          return false;
-        }
-        if (!contactEmail) {
-          showPublicToast('Please enter your email address');
-          return false;
-        }
-        if (!this.validateEmail(contactEmail)) {
-          showPublicToast('Please enter a valid email address');
-          return false;
-        }
+        const contactPhone = document.getElementById('contactPhone').value.trim();
+        if (!contactName) { showPublicToast('Please enter your name'); return false; }
+        if (!contactEmail) { showPublicToast('Please enter your email address'); return false; }
+        if (!this.validateEmail(contactEmail)) { showPublicToast('Please enter a valid email address'); return false; }
+        if (!contactPhone) { showPublicToast('Please enter your phone number'); return false; }
         return true;
-
+      }
       default:
         return true;
     }
   },
 
-  /**
-   * Validate email format
-   */
   validateEmail(email) {
     return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
   },
 
-  /**
-   * Save step data to formData object
-   */
+  // --------------------------------------------------
+  // Save step data
+  // --------------------------------------------------
   saveStepData(stepNum) {
     switch (stepNum) {
       case 1:
-        this.formData.sector = document.getElementById('sector').value;
-        break;
-      case 2:
         this.formData.region = document.getElementById('region').value;
         break;
+      case 2:
+        this.formData.sector = document.getElementById('sector').value;
+        break;
       case 3:
-        this.formData.awardId = this.selectedAwardId;
+        this.formData.awardCategory = this.selectedAwardCategory;
         break;
       case 4:
         this.formData.companyName = document.getElementById('companyName').value.trim();
+        this.formData.companyWebsite = document.getElementById('companyWebsite').value.trim();
+        this.formData.yearsInField = document.getElementById('yearsInField').value;
+        this.formData.employeeCount = document.getElementById('employeeCount').value;
         break;
       case 5:
-        this.formData.yearsInField = document.getElementById('yearsInField').value;
+        this.formData.entryDescription = document.getElementById('entryDescription').value.trim();
+        this.formData.whyShouldWin = document.getElementById('whyShouldWin').value.trim();
         break;
       case 6:
+        this.formData.supportingInfo = document.getElementById('supportingInfo').value.trim();
+        this.formData.tradeBodies = document.getElementById('tradeBodies').value.trim();
+        this.formData.accreditations = document.getElementById('accreditations').value.trim();
+        break;
+      case 7:
         this.formData.contactName = document.getElementById('contactName').value.trim();
         this.formData.contactPosition = document.getElementById('contactPosition').value.trim();
         this.formData.contactEmail = document.getElementById('contactEmail').value.trim();
@@ -293,146 +554,97 @@ const entryFormApp = {
     }
   },
 
-  /**
-   * Load awards based on selected sector and region
-   */
-  async loadAwards() {
-    const awardsList = document.getElementById('awardsList');
-    awardsList.innerHTML = `
-      <div class="text-center py-4">
-        <div class="spinner-border text-primary" role="status">
-          <span class="visually-hidden">Loading...</span>
-        </div>
-        <p class="mt-2 text-muted">Loading award categories...</p>
-      </div>
-    `;
-
-    try {
-      // Fetch active awards filtered by sector and county
-      let query = supabase
-        .from('awards')
-        .select('id, award_name, sector, year, county, status')
-        .eq('status', 'Active');
-
-      // Filter by selected sector
-      if (this.formData.sector) {
-        query = query.eq('sector', this.formData.sector);
-      }
-
-      // Filter by selected county/city
-      if (this.formData.region) {
-        query = query.eq('county', this.formData.region);
-      }
-
-      const { data: awards, error } = await query.order('award_name');
-
-      if (error) throw error;
-
-      if (!awards || awards.length === 0) {
-        awardsList.innerHTML = `
-          <div class="alert alert-warning">
-            <i class="bi bi-exclamation-triangle me-2"></i>
-            No awards found for ${this.formData.sector || 'selected sector'} in ${this.formData.region || 'selected region'}. Please check your selections.
-          </div>
-        `;
-        return;
-      }
-
-      let filteredAwards = awards;
-
-      // Render awards as selectable options
-      awardsList.innerHTML = filteredAwards.map(award => `
-        <div class="award-option" onclick="entryFormApp.selectAward('${award.id}', this)">
-          <h5 class="mb-1">${this.escapeHtml(award.award_name || 'Award')}</h5>
-          ${award.year ? `<p class="text-muted small mb-2"><i class="bi bi-calendar3"></i> ${award.year}</p>` : ''}
-        </div>
-      `).join('');
-
-    } catch (error) {
-      console.error('Error loading awards:', error);
-      awardsList.innerHTML = `
-        <div class="alert alert-danger">
-          <i class="bi bi-exclamation-circle me-2"></i>
-          Error loading awards: ${error.message}
-        </div>
-      `;
-    }
-  },
-
-  /**
-   * Select an award
-   */
-  selectAward(awardId, element) {
-    // Remove selection from all awards
-    document.querySelectorAll('.award-option').forEach(opt => {
-      opt.classList.remove('selected');
-    });
-
-    // Select this award
-    element.classList.add('selected');
-    this.selectedAwardId = awardId;
-
-    // Show next button
-    document.getElementById('step3NextBtn').style.display = 'block';
-  },
-
-  /**
-   * Show review before submission
-   */
+  // --------------------------------------------------
+  // Show review
+  // --------------------------------------------------
   showReview() {
+    const d = this.formData;
     const reviewContent = document.getElementById('reviewContent');
 
-    // Find selected award name
-    let awardName = 'N/A';
-    const selectedAward = document.querySelector('.award-option.selected h5');
-    if (selectedAward) {
-      awardName = selectedAward.textContent;
-    }
+    const row = (label, value) => value
+      ? `<div class="review-row"><span class="review-label">${label}</span><span class="review-value">${this.escapeHtml(value)}</span></div>`
+      : '';
+
+    const textBlock = (text) => text
+      ? `<div class="review-text-block">${this.escapeHtml(text)}</div>`
+      : '<div class="review-text-block" style="color:#999; font-style:italic;">Not provided</div>';
 
     reviewContent.innerHTML = `
-      <div class="mb-3">
-        <strong>Sector:</strong> ${this.escapeHtml(this.formData.sector || 'N/A')}
+      <div class="review-group">
+        <div class="review-group-title">
+          Award Details
+          <span class="review-edit-btn float-end" onclick="entryFormApp.goToStep(1)">Edit</span>
+        </div>
+        ${row('Region', d.region)}
+        ${row('Sector', this.toTitleCase(d.sector || ''))}
+        ${row('Category', d.awardCategory)}
       </div>
-      <div class="mb-3">
-        <strong>Region:</strong> ${this.escapeHtml(this.formData.region || 'N/A')}
+
+      <div class="review-group">
+        <div class="review-group-title">
+          Company Information
+          <span class="review-edit-btn float-end" onclick="entryFormApp.goToStep(4)">Edit</span>
+        </div>
+        ${row('Company Name', d.companyName)}
+        ${row('Website', d.companyWebsite)}
+        ${row('Years in Business', d.yearsInField)}
+        ${row('Employees', d.employeeCount)}
       </div>
-      <div class="mb-3">
-        <strong>Award Category:</strong> ${this.escapeHtml(awardName)}
+
+      <div class="review-group">
+        <div class="review-group-title">
+          About Your Entry
+          <span class="review-edit-btn float-end" onclick="entryFormApp.goToStep(5)">Edit</span>
+        </div>
+        <div class="review-row"><span class="review-label">Description</span></div>
+        ${textBlock(d.entryDescription)}
+        <div class="review-row mt-2"><span class="review-label">Why You Should Win</span></div>
+        ${textBlock(d.whyShouldWin)}
       </div>
-      <div class="mb-3">
-        <strong>Company Name:</strong> ${this.escapeHtml(this.formData.companyName || 'N/A')}
+
+      ${(d.supportingInfo || d.tradeBodies || d.accreditations) ? `
+      <div class="review-group">
+        <div class="review-group-title">
+          Supporting Information
+          <span class="review-edit-btn float-end" onclick="entryFormApp.goToStep(6)">Edit</span>
+        </div>
+        ${d.supportingInfo ? `<div class="review-row"><span class="review-label">Additional Info</span></div>${textBlock(d.supportingInfo)}` : ''}
+        ${row('Trade Bodies', d.tradeBodies)}
+        ${row('Accreditations', d.accreditations)}
       </div>
-      <div class="mb-3">
-        <strong>Years in Field:</strong> ${this.escapeHtml(this.formData.yearsInField || 'N/A')}
-      </div>
-      <hr>
-      <div class="mb-3">
-        <strong>Contact Name:</strong> ${this.escapeHtml(this.formData.contactName || 'N/A')}
-      </div>
-      <div class="mb-3">
-        <strong>Position:</strong> ${this.escapeHtml(this.formData.contactPosition || 'N/A')}
-      </div>
-      <div class="mb-3">
-        <strong>Email:</strong> ${this.escapeHtml(this.formData.contactEmail || 'N/A')}
-      </div>
-      <div class="mb-3">
-        <strong>Phone:</strong> ${this.escapeHtml(this.formData.contactPhone || 'N/A')}
+      ` : ''}
+
+      <div class="review-group">
+        <div class="review-group-title">
+          Contact Details
+          <span class="review-edit-btn float-end" onclick="entryFormApp.goToStep(7)">Edit</span>
+        </div>
+        ${row('Name', d.contactName)}
+        ${row('Position', d.contactPosition)}
+        ${row('Email', d.contactEmail)}
+        ${row('Phone', d.contactPhone)}
       </div>
     `;
+
+    // Reset terms checkbox
+    const checkbox = document.getElementById('termsCheckbox');
+    const submitBtn = document.getElementById('submitBtn');
+    if (checkbox) checkbox.checked = false;
+    if (submitBtn) submitBtn.disabled = true;
   },
 
-  /**
-   * Submit the entry
-   */
+  // --------------------------------------------------
+  // Submit entry to Supabase
+  // --------------------------------------------------
   async submitEntry() {
+    const submitBtn = document.getElementById('submitBtn');
+    const originalText = submitBtn.innerHTML;
+
     try {
-      // Show loading
-      const submitBtn = document.querySelector('.btn-submit');
-      const originalText = submitBtn.innerHTML;
       submitBtn.disabled = true;
       submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Submitting...';
 
-      // Check if company exists or create new one
+      // 1. Find or create organisation
       let organisationId = null;
 
       const { data: existingOrgs, error: searchError } = await supabase
@@ -446,7 +658,6 @@ const entryFormApp = {
       if (existingOrgs && existingOrgs.length > 0) {
         organisationId = existingOrgs[0].id;
       } else {
-        // Create new organisation
         const { data: newOrg, error: orgError } = await supabase
           .from('organisations')
           .insert({
@@ -456,6 +667,7 @@ const entryFormApp = {
             email: this.formData.contactEmail,
             contact_name: this.formData.contactName,
             contact_phone: this.formData.contactPhone || null,
+            website: this.formData.companyWebsite || null,
             status: 'active'
           })
           .select()
@@ -465,81 +677,100 @@ const entryFormApp = {
         organisationId = newOrg.id;
       }
 
-      // Generate entry number
+      // 2. Find matching award in database (by category name, sector, region)
+      let awardId = null;
+      const currentYear = new Date().getFullYear();
+
+      const { data: matchingAwards, error: awardError } = await supabase
+        .from('awards')
+        .select('id')
+        .eq('award_name', this.formData.awardCategory)
+        .eq('sector', this.formData.sector)
+        .eq('county', this.formData.region)
+        .eq('status', 'Active')
+        .order('year', { ascending: false })
+        .limit(1);
+
+      if (awardError) throw awardError;
+
+      if (matchingAwards && matchingAwards.length > 0) {
+        awardId = matchingAwards[0].id;
+      }
+      // If no matching award record exists, we still create the entry
+      // with the category stored in the title. Admin can link later.
+
+      // 3. Generate entry number
       const entryNumber = await this.generateEntryNumber();
 
-      // Create entry
+      // 4. Build supporting info string
+      const supportParts = [];
+      if (this.formData.supportingInfo) supportParts.push(this.formData.supportingInfo);
+      if (this.formData.tradeBodies) supportParts.push('Trade Bodies: ' + this.formData.tradeBodies);
+      if (this.formData.accreditations) supportParts.push('Accreditations: ' + this.formData.accreditations);
+      if (this.formData.companyWebsite) supportParts.push('Website: ' + this.formData.companyWebsite);
+      if (this.formData.employeeCount) supportParts.push('Employees: ' + this.formData.employeeCount);
+      const supportingInformation = supportParts.join('\n\n');
+
+      // 5. Create entry
+      const entryPayload = {
+        entry_number: entryNumber,
+        organisation_id: organisationId,
+        award_id: awardId,
+        entry_title: `${this.formData.companyName} - ${this.formData.awardCategory}`,
+        entry_description: this.formData.entryDescription,
+        why_should_win: this.formData.whyShouldWin,
+        supporting_information: supportingInformation || null,
+        contact_name: this.formData.contactName,
+        contact_email: this.formData.contactEmail,
+        contact_phone: this.formData.contactPhone || null,
+        contact_position: this.formData.contactPosition || null,
+        status: 'submitted',
+        payment_status: 'pending',
+        submission_date: new Date().toISOString(),
+        allow_public_voting: false,
+        is_self_nomination: true,
+        year: currentYear
+      };
+
       const { data: entry, error: entryError } = await supabase
         .from('entries')
-        .insert({
-          entry_number: entryNumber,
-          organisation_id: organisationId,
-          award_id: this.formData.awardId,
-          entry_title: `${this.formData.companyName} - ${this.formData.sector}`,
-          contact_name: this.formData.contactName,
-          contact_email: this.formData.contactEmail,
-          contact_phone: this.formData.contactPhone || null,
-          contact_position: this.formData.contactPosition || null,
-          status: 'submitted',
-          payment_status: 'pending',
-          submission_date: new Date().toISOString(),
-          allow_public_voting: false,
-          is_self_nomination: true,
-          year: new Date().getFullYear()
-        })
+        .insert(entryPayload)
         .select()
         .single();
 
       if (entryError) throw entryError;
 
-      // Send confirmation email
+      // 6. Try sending confirmation email (non-blocking)
       try {
-        const { data: emailData, error: emailError } = await supabase.functions.invoke(
-          'send-entry-confirmation',
-          {
-            body: { entryId: entry.id }
-          }
-        );
-
-        if (emailError) {
-          console.error('Email send failed:', emailError);
-          // Don't block the submission if email fails - entry is already created
-        } else {
-          console.log('Confirmation email sent:', emailData);
-        }
-      } catch (emailError) {
-        console.error('Email error:', emailError);
-        // Email failure doesn't affect the entry submission
+        await supabase.functions.invoke('send-entry-confirmation', {
+          body: { entryId: entry.id }
+        });
+      } catch (emailErr) {
+        console.error('Confirmation email failed:', emailErr);
       }
 
-      // Show success
+      // 7. Show success
       document.getElementById('entryReference').textContent = entryNumber;
-
-      // Hide all steps
-      document.querySelectorAll('.form-step').forEach(step => {
-        step.classList.remove('active');
-      });
-
-      // Show success step
+      document.querySelectorAll('.form-step').forEach(s => s.classList.remove('active'));
       document.getElementById('stepSuccess').classList.add('active');
 
-      // Scroll to top
+      // Hide progress bar
+      const wrapper = document.getElementById('progressWrapper');
+      if (wrapper) wrapper.style.display = 'none';
+
       window.scrollTo({ top: 0, behavior: 'smooth' });
 
     } catch (error) {
-      console.error('Error submitting entry:', error);
+      console.error('Submission error:', error);
       showPublicToast('Error submitting entry: ' + error.message, 'error');
-
-      // Re-enable button
-      const submitBtn = document.querySelector('.btn-submit');
       submitBtn.disabled = false;
-      submitBtn.innerHTML = '<i class="bi bi-check-circle me-2"></i>Submit Entry';
+      submitBtn.innerHTML = originalText;
     }
   },
 
-  /**
-   * Generate entry number
-   */
+  // --------------------------------------------------
+  // Generate sequential entry number
+  // --------------------------------------------------
   async generateEntryNumber() {
     try {
       const currentYear = new Date().getFullYear();
@@ -555,7 +786,7 @@ const entryFormApp = {
       let nextNumber = 1;
       if (data && data.length > 0) {
         const lastNumber = parseInt(data[0].entry_number.split('-')[1]);
-        nextNumber = lastNumber + 1;
+        if (!isNaN(lastNumber)) nextNumber = lastNumber + 1;
       }
 
       return `${currentYear}-${String(nextNumber).padStart(4, '0')}`;
@@ -565,9 +796,14 @@ const entryFormApp = {
     }
   },
 
-  /**
-   * Escape HTML to prevent XSS
-   */
+  // --------------------------------------------------
+  // Utilities
+  // --------------------------------------------------
+  toTitleCase(str) {
+    if (!str) return '';
+    return str.toLowerCase().replace(/\b\w/g, c => c.toUpperCase());
+  },
+
   escapeHtml(text) {
     if (!text) return '';
     const div = document.createElement('div');

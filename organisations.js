@@ -7423,9 +7423,10 @@ updateCountyFilterByRegion() {
 
       this._showDynamicModal('Companies House Results', html, 'bi-bank', 'modal-lg');
     } catch (e) {
-      // Fallback to website search
-      window.open(`https://find-and-update.company-information.service.gov.uk/search?q=${encodeURIComponent(searchName)}`, '_blank');
-      utils.showToast('Opened Companies House search in new tab', 'info');
+      console.error('Companies House lookup failed:', e);
+      await utils.showErrorWithRetry('Failed to search Companies House', async () => {
+        await this.companiesHouseLookup(orgId);
+      });
     }
   },
 

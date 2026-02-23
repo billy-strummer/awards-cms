@@ -96,11 +96,13 @@ const reportsScheduler = {
     if (!name || !recipients) { utils.showToast('Fill in name and recipients', 'warning'); return; }
     const sections = Array.from(document.querySelectorAll('.rpt-section:checked')).map(cb => cb.value);
     if (sections.length === 0) { utils.showToast('Select at least one section', 'warning'); return; }
-    this._scheduledReports.push({ name, frequency, recipients, sections, active: true, created: new Date().toISOString() });
-    await this._saveScheduledReports();
-    utils.showToast('Report schedule created', 'success');
-    bootstrap.Modal.getInstance(document.getElementById('createScheduledReportModal'))?.hide();
-    this.loadReports();
+    await utils.protectModalDuringSave('createScheduledReportModal', async () => {
+      this._scheduledReports.push({ name, frequency, recipients, sections, active: true, created: new Date().toISOString() });
+      await this._saveScheduledReports();
+      utils.showToast('Report schedule created', 'success');
+      bootstrap.Modal.getInstance(document.getElementById('createScheduledReportModal'))?.hide();
+      this.loadReports();
+    });
   },
 
   previewReport(index) {

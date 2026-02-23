@@ -175,6 +175,9 @@ const i18n = {
       return true;
     } catch (e) {
       console.error(`i18n: Failed to load locale "${locale}":`, e);
+      await utils.showErrorWithRetry(`Failed to load locale "${locale}"`, async () => {
+        await this.loadLocale(locale, url);
+      });
       return false;
     }
   },

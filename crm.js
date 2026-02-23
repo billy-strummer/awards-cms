@@ -2020,18 +2020,20 @@ const crmModule = {
     if (!await utils.confirmDialog({ title: 'Remove from Segment', message: 'Remove this company from the segment?', confirmText: 'Remove' })) return;
 
     try {
-      const { error } = await STATE.client
-        .from('organisation_segments')
-        .delete()
-        .eq('id', assignmentId);
+      await utils.protectModalDuringSave('viewSegmentCompaniesModal', async () => {
+        const { error } = await STATE.client
+          .from('organisation_segments')
+          .delete()
+          .eq('id', assignmentId);
 
-      if (error) throw error;
+        if (error) throw error;
 
-      utils.showToast('Company removed from segment', 'success');
-      // Refresh the segment companies view
-      bootstrap.Modal.getInstance(document.getElementById('viewSegmentCompaniesModal')).hide();
-      this.viewSegmentCompanies(segmentId, segmentName);
-      this.loadSegments();
+        utils.showToast('Company removed from segment', 'success');
+        // Refresh the segment companies view
+        bootstrap.Modal.getInstance(document.getElementById('viewSegmentCompaniesModal')).hide();
+        this.viewSegmentCompanies(segmentId, segmentName);
+        this.loadSegments();
+      });
     } catch (error) {
       console.error('Error removing from segment:', error);
       utils.showToast('Error removing company from segment', 'error');
@@ -2135,16 +2137,18 @@ const crmModule = {
     };
 
     try {
-      const { error } = await STATE.client
-        .from('contact_segments')
-        .update(updateData)
-        .eq('id', segmentId);
+      await utils.protectModalDuringSave('editSegmentModal', async () => {
+        const { error } = await STATE.client
+          .from('contact_segments')
+          .update(updateData)
+          .eq('id', segmentId);
 
-      if (error) throw error;
+        if (error) throw error;
 
-      utils.showToast('Segment updated successfully', 'success');
-      bootstrap.Modal.getInstance(document.getElementById('editSegmentModal')).hide();
-      this.loadSegments();
+        utils.showToast('Segment updated successfully', 'success');
+        bootstrap.Modal.getInstance(document.getElementById('editSegmentModal')).hide();
+        this.loadSegments();
+      });
     } catch (error) {
       console.error('Error updating segment:', error);
       utils.showToast('Error updating segment: ' + error.message, 'error');

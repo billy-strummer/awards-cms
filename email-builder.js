@@ -499,7 +499,7 @@ const emailBuilder = {
   /**
    * Update video thumbnail from YouTube/Vimeo URL
    */
-  updateVideoThumbnail(input) {
+  async updateVideoThumbnail(input) {
     const url = input.value.trim();
     if (!url) return;
     const videoId = input.getAttribute('data-video-id');
@@ -527,17 +527,19 @@ const emailBuilder = {
       // Fetch Vimeo thumbnail via oEmbed API
       if (link) link.href = `https://vimeo.com/${vimeoId}`;
       if (playBtn) playBtn.style.display = 'flex';
-      fetch(`https://vimeo.com/api/oembed.json?url=https://vimeo.com/${vimeoId}`)
-        .then(r => r.json())
-        .then(data => {
-          if (thumb && data.thumbnail_url) {
-            thumb.src = data.thumbnail_url.replace(/_\d+x\d+/, '_640x360');
-          }
-        })
-        .catch(() => {
-          // Fallback: use a generic video placeholder
-          if (thumb) thumb.alt = 'Vimeo Video';
+      try {
+        const r = await fetch(`https://vimeo.com/api/oembed.json?url=https://vimeo.com/${vimeoId}`);
+        const data = await r.json();
+        if (thumb && data.thumbnail_url) {
+          thumb.src = data.thumbnail_url.replace(/_\d+x\d+/, '_640x360');
+        }
+      } catch (err) {
+        // Fallback: use a generic video placeholder
+        if (thumb) thumb.alt = 'Vimeo Video';
+        await utils.showErrorWithRetry('Failed to load Vimeo thumbnail', async () => {
+          this.updateVideoThumbnail(input);
         });
+      }
       this.markUnsavedChanges();
       this.updatePreview();
     } else {

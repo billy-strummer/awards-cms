@@ -6265,6 +6265,7 @@ const mediaGalleryModule = {
             oembedTitle: response.ok ? (await response.json()).title : null
           });
         } catch (err) {
+          console.error(`Video validation failed for YouTube ID ${video.youtube_id}:`, err);
           results.push({
             ...video,
             status: 'error',

@@ -3863,7 +3863,7 @@ const eventsModule = {
                     <div class="input-group input-group-sm" style="width:200px;">
                       <span class="input-group-text"><i class="bi bi-search"></i></span>
                       <input type="text" class="form-control" id="roSearchInput" placeholder="Search items..."
-                             oninput="eventsModule.searchRunningOrder(this.value)">
+                             oninput="clearTimeout(eventsModule._roSearchTimer); eventsModule._roSearchTimer = setTimeout(() => eventsModule.searchRunningOrder(this.value), 300)">
                     </div>
                   </div>
                 </div>
@@ -10252,16 +10252,12 @@ const eventsModule = {
   async bulkSetStatus(status) {
     const ids = Array.from(this._selectedEvents);
     if (ids.length === 0) return;
-    try {
-      for (const id of ids) {
-        await STATE.client.from('events').update({ event_status: status }).eq('id', id);
-      }
-      utils.showToast(`${ids.length} event(s) set to ${status}`, 'success');
-      this.clearEventSelection();
-      await this.loadEvents();
-    } catch (e) {
-      utils.showToast('Error updating status: ' + e.message, 'error');
-    }
+    await utils.runBatchOperation(ids, async (id) => {
+      const { error } = await STATE.client.from('events').update({ event_status: status }).eq('id', id);
+      if (error) throw error;
+    }, 'Setting event status');
+    this.clearEventSelection();
+    await this.loadEvents();
   },
 
   // ============================================
@@ -10291,19 +10287,15 @@ const eventsModule = {
     if (this._selectedEvents.size === 0) return;
     if (!await utils.confirmDialog({ title: 'Delete Events', message: `Delete ${this._selectedEvents.size} selected events? This cannot be undone.` })) return;
 
-    try {
-      for (const id of this._selectedEvents) {
-        await STATE.client.from('events').delete().eq('id', id);
-      }
-      utils.showToast(`Deleted ${this._selectedEvents.size} events`, 'success');
-      this._selectedEvents.clear();
-      this.updateBulkBar();
-      this._updateBulkBar();
-      await this.loadEvents();
-    } catch (error) {
-      console.error('Bulk delete error:', error);
-      utils.showToast('Error deleting events', 'error');
-    }
+    const ids = Array.from(this._selectedEvents);
+    await utils.runBatchOperation(ids, async (id) => {
+      const { error } = await STATE.client.from('events').delete().eq('id', id);
+      if (error) throw error;
+    }, 'Deleting events');
+    this._selectedEvents.clear();
+    this.updateBulkBar();
+    this._updateBulkBar();
+    await this.loadEvents();
   },
 
   bulkExportEvents() {

@@ -1019,24 +1019,25 @@ const paymentsModule = {
       document.getElementById('recordPaymentForm').reset();
       document.getElementById('paymentDate').value = new Date().toISOString().split('T')[0];
 
-      const [orgsResult, invoicesResult] = await Promise.all([
-        STATE.client.from('organisations').select('id, company_name').order('company_name'),
-        STATE.client.from('invoices').select('id, invoice_number, organisation_id, total_amount, paid_amount, organisations(company_name)').neq('payment_status', 'paid').order('invoice_number')
-      ]);
+      // Use already-loaded data
+      const orgsData = (STATE.allOrganisations || [])
+        .map(o => ({ id: o.id, company_name: o.company_name }))
+        .sort((a, b) => (a.company_name || '').localeCompare(b.company_name || ''));
 
-      if (orgsResult.error) throw orgsResult.error;
-      if (invoicesResult.error) throw invoicesResult.error;
+      const unpaidInvoices = (this.allInvoices || [])
+        .filter(i => i.payment_status !== 'paid')
+        .sort((a, b) => (a.invoice_number || '').localeCompare(b.invoice_number || ''));
 
       const orgSelect = document.getElementById('paymentOrganisation');
       orgSelect.innerHTML = '<option value="">Select Company...</option>' +
-        orgsResult.data.map(org => `<option value="${org.id}">${utils.escapeHtml(org.company_name)}</option>`).join('');
+        orgsData.map(org => `<option value="${org.id}">${utils.escapeHtml(org.company_name)}</option>`).join('');
 
       const invoiceSelect = document.getElementById('paymentInvoice');
       invoiceSelect.innerHTML = '<option value="">None (General Payment)</option>' +
-        invoicesResult.data.map(inv => `<option value="${inv.id}">${inv.invoice_number} - ${inv.organisations?.company_name} (&pound;${parseFloat(inv.total_amount - inv.paid_amount).toFixed(2)} due)</option>`).join('');
+        unpaidInvoices.map(inv => `<option value="${inv.id}">${inv.invoice_number} - ${inv.organisations?.company_name} (&pound;${parseFloat(inv.total_amount - inv.paid_amount).toFixed(2)} due)</option>`).join('');
 
       if (invoiceId) {
-        const invoice = invoicesResult.data.find(i => i.id === invoiceId);
+        const invoice = unpaidInvoices.find(i => i.id === invoiceId);
         if (invoice) {
           invoiceSelect.value = invoiceId;
           orgSelect.value = invoice.organisation_id;
@@ -1896,12 +1897,20 @@ const paymentsModule = {
 
   async loadOrganisationsForFilters() {
     try {
-      const { data, error } = await STATE.client
-        .from('organisations')
-        .select('id, company_name')
-        .order('company_name', { ascending: true });
-
-      if (error) throw error;
+      // Use already-loaded organisations if available
+      let data;
+      if (STATE.allOrganisations && STATE.allOrganisations.length > 0) {
+        data = STATE.allOrganisations
+          .map(o => ({ id: o.id, company_name: o.company_name }))
+          .sort((a, b) => (a.company_name || '').localeCompare(b.company_name || ''));
+      } else {
+        const res = await STATE.client
+          .from('organisations')
+          .select('id, company_name')
+          .order('company_name', { ascending: true });
+        if (res.error) throw res.error;
+        data = res.data;
+      }
 
       this.currentOrganisations = data || [];
 

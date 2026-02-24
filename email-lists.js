@@ -55,30 +55,31 @@ const emailListsModule = {
   // ============================================
   async loadStats() {
     try {
-      // Get total lists count
-      const { count: totalLists } = await STATE.client
-        .from('email_lists')
-        .select('*', { count: 'exact', head: true });
+      // Compute from loaded lists (email_lists_with_stats view includes subscriber counts)
+      const lists = this.currentLists || [];
+      const totalLists = lists.length;
+      const totalSubscribers = lists.reduce((sum, l) => sum + (l.total_subscribers || 0), 0);
+      const activeSubscribers = lists.reduce((sum, l) => sum + (l.active_subscribers || 0), 0);
 
-      // Get total subscribers across all lists
-      const { data: subscribersData } = await STATE.client
-        .from('email_list_subscribers')
-        .select('id, status, emails_opened, emails_received');
+      // Average open rate still needs subscriber-level data; fetch only if lists exist
+      let avgOpenRate = 0;
+      if (totalSubscribers > 0) {
+        const { data: subscribersData } = await STATE.client
+          .from('email_list_subscribers')
+          .select('emails_opened, emails_received')
+          .gt('emails_received', 0);
 
-      const totalSubscribers = subscribersData?.length || 0;
-      const activeSubscribers = subscribersData?.filter(s => s.status === 'active').length || 0;
-
-      // Calculate average open rate
-      const subscribersWithEmails = subscribersData?.filter(s => s.emails_received > 0) || [];
-      const avgOpenRate = subscribersWithEmails.length > 0
-        ? Math.round(
-            (subscribersWithEmails.reduce((sum, s) => sum + (s.emails_opened / s.emails_received), 0)
-            / subscribersWithEmails.length) * 100
-          )
-        : 0;
+        const subs = subscribersData || [];
+        if (subs.length > 0) {
+          avgOpenRate = Math.round(
+            (subs.reduce((sum, s) => sum + (s.emails_opened / s.emails_received), 0)
+            / subs.length) * 100
+          );
+        }
+      }
 
       // Update UI
-      document.getElementById('emailListsTotalCount').textContent = totalLists || 0;
+      document.getElementById('emailListsTotalCount').textContent = totalLists;
       document.getElementById('emailListsTotalSubscribers').textContent = totalSubscribers;
       document.getElementById('emailListsActiveSubscribers').textContent = activeSubscribers;
       document.getElementById('emailListsAvgOpenRate').textContent = `${avgOpenRate}%`;
@@ -665,55 +666,44 @@ const emailListsModule = {
           }));
         },
         'sponsors': async () => {
-          const { data } = await STATE.client
-            .from('organisations')
-            .select('company_name, contact_email, contact_first_name, contact_last_name')
-            .eq('is_sponsor', true)
-            .not('contact_email', 'is', null);
-          return (data || []).map(org => ({
-            email: org.contact_email,
-            first_name: org.contact_first_name || '',
-            last_name: org.contact_last_name || '',
-            company_name: org.company_name || ''
-          }));
+          return (STATE.allOrganisations || [])
+            .filter(org => org.is_sponsor && org.contact_email)
+            .map(org => ({
+              email: org.contact_email,
+              first_name: org.contact_first_name || '',
+              last_name: org.contact_last_name || '',
+              company_name: org.company_name || ''
+            }));
         },
         'vip_contacts': async () => {
-          const { data } = await STATE.client
-            .from('organisations')
-            .select('company_name, contact_email, contact_first_name, contact_last_name')
-            .eq('vip', true)
-            .not('contact_email', 'is', null);
-          return (data || []).map(org => ({
-            email: org.contact_email,
-            first_name: org.contact_first_name || '',
-            last_name: org.contact_last_name || '',
-            company_name: org.company_name || ''
-          }));
+          return (STATE.allOrganisations || [])
+            .filter(org => org.vip && org.contact_email)
+            .map(org => ({
+              email: org.contact_email,
+              first_name: org.contact_first_name || '',
+              last_name: org.contact_last_name || '',
+              company_name: org.company_name || ''
+            }));
         },
         'industry_leaders': async () => {
-          const { data } = await STATE.client
-            .from('organisations')
-            .select('company_name, contact_email, contact_first_name, contact_last_name')
-            .eq('industry_leader', true)
-            .not('contact_email', 'is', null);
-          return (data || []).map(org => ({
-            email: org.contact_email,
-            first_name: org.contact_first_name || '',
-            last_name: org.contact_last_name || '',
-            company_name: org.company_name || ''
-          }));
+          return (STATE.allOrganisations || [])
+            .filter(org => org.industry_leader && org.contact_email)
+            .map(org => ({
+              email: org.contact_email,
+              first_name: org.contact_first_name || '',
+              last_name: org.contact_last_name || '',
+              company_name: org.company_name || ''
+            }));
         },
         'renewal_prospects': async () => {
-          const { data } = await STATE.client
-            .from('organisations')
-            .select('company_name, contact_email, contact_first_name, contact_last_name')
-            .not('contact_email', 'is', null);
-          return (data || []).map(org => ({
-            email: org.contact_email,
-            first_name: org.contact_first_name || '',
-            last_name: org.contact_last_name || '',
-            company_name: org.company_name || ''
-          }));
+          return (STATE.allOrganisations || [])
+            .filter(org => org.contact_email)
+            .map(org => ({
+              email: org.contact_email,
+              first_name: org.contact_first_name || '',
+              last_name: org.contact_last_name || '',
+              company_name: org.company_name || ''
+            }));
         }
       };
 

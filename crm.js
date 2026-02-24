@@ -677,20 +677,11 @@ const crmModule = {
 
       if (error) throw error;
 
-      // Get counts for each segment
-      const segmentsWithCounts = await Promise.all(
-        segments.map(async segment => {
-          const { count, error } = await STATE.client
-            .from('organisation_segments')
-            .select('*', { count: 'exact', head: true })
-            .eq('segment_id', segment.id);
-
-          return {
-            ...segment,
-            count: count || 0
-          };
-        })
-      );
+      // Use counts already fetched via the join
+      const segmentsWithCounts = segments.map(segment => ({
+        ...segment,
+        count: segment.organisation_segments?.[0]?.count || 0
+      }));
 
       this.renderSegments(segmentsWithCounts);
 
@@ -892,15 +883,14 @@ const crmModule = {
     // Add modal to page
     document.body.insertAdjacentHTML('beforeend', modalHtml);
 
-    // Load organisations for dropdown
-    const { data: orgs } = await STATE.client
-      .from('organisations')
-      .select('id, company_name')
-      .order('company_name');
+    // Use already-loaded organisations if available
+    const orgs = (STATE.allOrganisations || [])
+      .map(o => ({ id: o.id, company_name: o.company_name }))
+      .sort((a, b) => (a.company_name || '').localeCompare(b.company_name || ''));
 
     const orgSelect = document.getElementById('commOrganisation');
     orgSelect.innerHTML = '<option value="">Select company...</option>' +
-      (orgs || []).map(org => `<option value="${org.id}" ${org.id === organisationId ? 'selected' : ''}>${utils.escapeHtml(org.company_name)}</option>`).join('');
+      orgs.map(org => `<option value="${org.id}" ${org.id === organisationId ? 'selected' : ''}>${utils.escapeHtml(org.company_name)}</option>`).join('');
 
     // Show/hide follow-up date field
     document.getElementById('commFollowUp').addEventListener('change', function() {
@@ -1051,15 +1041,14 @@ const crmModule = {
 
     document.body.insertAdjacentHTML('beforeend', modalHtml);
 
-    // Load organisations for dropdown
-    const { data: orgs } = await STATE.client
-      .from('organisations')
-      .select('id, company_name')
-      .order('company_name');
+    // Use already-loaded organisations if available
+    const orgs = (STATE.allOrganisations || [])
+      .map(o => ({ id: o.id, company_name: o.company_name }))
+      .sort((a, b) => (a.company_name || '').localeCompare(b.company_name || ''));
 
     const orgSelect = document.getElementById('dealOrganisation');
     orgSelect.innerHTML = '<option value="">Select company...</option>' +
-      (orgs || []).map(org => `<option value="${org.id}" ${org.id === organisationId ? 'selected' : ''}>${utils.escapeHtml(org.company_name)}</option>`).join('');
+      orgs.map(org => `<option value="${org.id}" ${org.id === organisationId ? 'selected' : ''}>${utils.escapeHtml(org.company_name)}</option>`).join('');
 
     // If org is preselected, load contacts
     if (organisationId) {
@@ -2537,17 +2526,16 @@ const crmModule = {
 
   async assignSegments() {
     try {
-      // Load segments and organisations
-      const [segmentsRes, orgsRes] = await Promise.all([
-        STATE.client.from('contact_segments').select('*').order('segment_name'),
-        STATE.client.from('organisations').select('id, company_name').order('company_name')
-      ]);
+      // Load segments; use already-loaded organisations
+      const { data: segmentsData, error: segmentsError } = await STATE.client
+        .from('contact_segments').select('*').order('segment_name');
 
-      if (segmentsRes.error) throw segmentsRes.error;
-      if (orgsRes.error) throw orgsRes.error;
+      if (segmentsError) throw segmentsError;
 
-      const segments = segmentsRes.data || [];
-      const orgs = orgsRes.data || [];
+      const segments = segmentsData || [];
+      const orgs = (STATE.allOrganisations || [])
+        .map(o => ({ id: o.id, company_name: o.company_name }))
+        .sort((a, b) => (a.company_name || '').localeCompare(b.company_name || ''));
 
       const orgOptions = orgs.map(o =>
         `<option value="${o.id}">${utils.escapeHtml(o.company_name)}</option>`

@@ -20,7 +20,7 @@ window.calendarModule = {
 
       const [evR, seR, fuR, invR] = await Promise.all([
         STATE.client.from('events').select('id,event_name,event_date,venue').gte('event_date', start).lte('event_date', end),
-        STATE.client.from('award_seasons').select('id,season_name,entry_deadline,judging_deadline').or(`entry_deadline.gte.${start},judging_deadline.gte.${start}`),
+        STATE.client.from('award_seasons').select('id,name,entry_close_date,judging_close_date').or(`entry_close_date.gte.${start},judging_close_date.gte.${start}`),
         STATE.client.from('organisation_follow_ups').select('id,organisation_id,follow_up_date,note,completed').gte('follow_up_date', start).lte('follow_up_date', end),
         invQuery
       ]);
@@ -33,10 +33,10 @@ window.calendarModule = {
 
       (evR.data  || []).forEach(e => add(e.event_date && e.event_date.slice(0,10), { type:'ceremony',         color:'primary', label:e.event_name,                                detail:e.venue||'',                            ref:e }));
       (seR.data  || []).forEach(s => {
-        const ed = s.entry_deadline   && s.entry_deadline.slice(0,10);
-        const jd = s.judging_deadline && s.judging_deadline.slice(0,10);
-        if (ed && ed >= start && ed <= end) add(ed, { type:'entry_deadline',   color:'danger',  label:s.season_name+' \u2013 Entry Deadline',   detail:'', ref:s });
-        if (jd && jd >= start && jd <= end) add(jd, { type:'judging_deadline', color:'warning', label:s.season_name+' \u2013 Judging Deadline', detail:'', ref:s });
+        const ed = s.entry_close_date   && s.entry_close_date.slice(0,10);
+        const jd = s.judging_close_date && s.judging_close_date.slice(0,10);
+        if (ed && ed >= start && ed <= end) add(ed, { type:'entry_deadline',   color:'danger',  label:s.name+' \u2013 Entry Deadline',   detail:'', ref:s });
+        if (jd && jd >= start && jd <= end) add(jd, { type:'judging_deadline', color:'warning', label:s.name+' \u2013 Judging Deadline', detail:'', ref:s });
       });
       (fuR.data  || []).forEach(f => add(f.follow_up_date && f.follow_up_date.slice(0,10), { type:'followup', color:'success', label:f.note||'Follow-up', detail:f.completed?'Completed':'Pending', ref:f }));
       (invoiceData.data || []).forEach(i => add(i.due_date && i.due_date.slice(0,10), { type:'payment', color:'purple', label:`Invoice ${i.invoice_number||''} due`, detail:(i.organisations&&i.organisations.company_name)||'', ref:i }));
@@ -139,7 +139,7 @@ window.calendarModule = {
   },
 
   _buildVEvent(item) {
-    const ds  = item.ref && (item.ref.event_date||item.ref.entry_deadline||item.ref.judging_deadline||item.ref.follow_up_date||item.ref.due_date);
+    const ds  = item.ref && (item.ref.event_date||item.ref.entry_close_date||item.ref.judging_close_date||item.ref.follow_up_date||item.ref.due_date);
     const uid = `${item.type}-${item.ref&&item.ref.id?item.ref.id:Date.now()}@bta-cms`;
     return ['BEGIN:VEVENT', `UID:${uid}`, `DTSTART:${this._toICSDate(ds)}`, `DTEND:${this._toICSDate(ds,true)}`,
       `SUMMARY:${item.label}`,
@@ -181,12 +181,12 @@ window.calendarModule = {
   async exportDeadlinesICS() {
     try {
       const today = new Date().toISOString().slice(0,10);
-      const { data, error } = await STATE.client.from('award_seasons').select('*').or(`entry_deadline.gte.${today},judging_deadline.gte.${today}`);
+      const { data, error } = await STATE.client.from('award_seasons').select('*').or(`entry_close_date.gte.${today},judging_close_date.gte.${today}`);
       if (error) throw error;
       const items = [];
       (data||[]).forEach(s => {
-        if (s.entry_deadline   && s.entry_deadline   >= today) items.push({ type:'entry_deadline',   color:'danger',  label:s.season_name+' \u2013 Entry Deadline',   detail:'', ref:{...s, event_date:s.entry_deadline}   });
-        if (s.judging_deadline && s.judging_deadline >= today) items.push({ type:'judging_deadline', color:'warning', label:s.season_name+' \u2013 Judging Deadline', detail:'', ref:{...s, event_date:s.judging_deadline} });
+        if (s.entry_close_date   && s.entry_close_date   >= today) items.push({ type:'entry_deadline',   color:'danger',  label:s.name+' \u2013 Entry Deadline',   detail:'', ref:{...s, event_date:s.entry_close_date}   });
+        if (s.judging_close_date && s.judging_close_date >= today) items.push({ type:'judging_deadline', color:'warning', label:s.name+' \u2013 Judging Deadline', detail:'', ref:{...s, event_date:s.judging_close_date} });
       });
       this.exportICS(items);
     } catch (err) { utils.showToast('Failed to export deadlines: '+err.message,'error'); }
@@ -204,8 +204,8 @@ window.calendarModule = {
       const items = [];
       (evR.data  ||[]).forEach(e => items.push({ type:'ceremony',         color:'primary', label:e.event_name,                             detail:e.venue||'', ref:e }));
       (seR.data  ||[]).forEach(s => {
-        if (s.entry_deadline   && s.entry_deadline   >= today) items.push({ type:'entry_deadline',   color:'danger',  label:s.season_name+' \u2013 Entry Deadline',   detail:'', ref:{...s, event_date:s.entry_deadline}   });
-        if (s.judging_deadline && s.judging_deadline >= today) items.push({ type:'judging_deadline', color:'warning', label:s.season_name+' \u2013 Judging Deadline', detail:'', ref:{...s, event_date:s.judging_deadline} });
+        if (s.entry_close_date   && s.entry_close_date   >= today) items.push({ type:'entry_deadline',   color:'danger',  label:s.name+' \u2013 Entry Deadline',   detail:'', ref:{...s, event_date:s.entry_close_date}   });
+        if (s.judging_close_date && s.judging_close_date >= today) items.push({ type:'judging_deadline', color:'warning', label:s.name+' \u2013 Judging Deadline', detail:'', ref:{...s, event_date:s.judging_close_date} });
       });
       (fuR.data  ||[]).forEach(f => items.push({ type:'followup', color:'success', label:f.note||'Follow-up', detail:'', ref:{...f, event_date:f.follow_up_date} }));
       (invR.data ||[]).forEach(i => items.push({ type:'payment',  color:'purple',  label:`Invoice ${i.invoice_number||''} due`, detail:(i.organisations&&i.organisations.company_name)||'', ref:{...i, event_date:i.due_date} }));
@@ -224,7 +224,7 @@ window.calendarModule = {
       const end   = new Date(Date.now()+60*864e5).toISOString().slice(0,10);
       const [evR, seR, fuR, invR] = await Promise.all([
         STATE.client.from('events').select('id,event_name,event_date').gte('event_date',today).lte('event_date',end).order('event_date').limit(limit),
-        STATE.client.from('award_seasons').select('id,season_name,entry_deadline,judging_deadline').or(`entry_deadline.gte.${today},judging_deadline.gte.${today}`).limit(limit),
+        STATE.client.from('award_seasons').select('id,name,entry_close_date,judging_close_date').or(`entry_close_date.gte.${today},judging_close_date.gte.${today}`).limit(limit),
         STATE.client.from('organisation_follow_ups').select('id,note,follow_up_date').gte('follow_up_date',today).lte('follow_up_date',end).eq('completed',false).order('follow_up_date').limit(limit),
         STATE.client.from('invoices').select('id,invoice_number,due_date,organisations(company_name)').gte('due_date',today).lte('due_date',end).neq('status','paid').order('due_date').limit(limit)
       ]);
@@ -238,8 +238,8 @@ window.calendarModule = {
       const all = [];
       (evR.data  ||[]).forEach(e => all.push({ date:e.event_date,     color:'primary', label:e.event_name,                                                         icon:'bi-trophy'        }));
       (seR.data  ||[]).forEach(s => {
-        if (s.entry_deadline   && s.entry_deadline   >= today) all.push({ date:s.entry_deadline,   color:'danger',  label:s.season_name+' \u2013 Entry Deadline',   icon:'bi-pencil-square' });
-        if (s.judging_deadline && s.judging_deadline >= today) all.push({ date:s.judging_deadline, color:'warning', label:s.season_name+' \u2013 Judging Deadline', icon:'bi-person-check'  });
+        if (s.entry_close_date   && s.entry_close_date   >= today) all.push({ date:s.entry_close_date,   color:'danger',  label:s.name+' \u2013 Entry Deadline',   icon:'bi-pencil-square' });
+        if (s.judging_close_date && s.judging_close_date >= today) all.push({ date:s.judging_close_date, color:'warning', label:s.name+' \u2013 Judging Deadline', icon:'bi-person-check'  });
       });
       (fuR.data  ||[]).forEach(f => all.push({ date:f.follow_up_date, color:'success', label:f.note||'Follow-up',                                                  icon:'bi-bell'          }));
       (invoiceData.data ||[]).forEach(i => { const org=(i.organisations&&i.organisations.company_name)||''; all.push({ date:i.due_date, color:'purple', label:`Invoice ${i.invoice_number||''} due${org?' \u2013 '+org:''}`, icon:'bi-receipt' }); });

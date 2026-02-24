@@ -173,7 +173,7 @@ const mediaGalleryModule = {
           ${untagged.map(photo => `
             <div class="col-md-3">
               <div class="card h-100">
-                <img src="${photo.media_url}" class="card-img-top" alt="${photo.caption || 'Photo'}"
+                <img src="${photo.file_url}" class="card-img-top" alt="${photo.caption || 'Photo'}"
                      style="height: 200px; object-fit: cover;">
                 <div class="card-body">
                   <p class="small mb-1">
@@ -223,9 +223,13 @@ const mediaGalleryModule = {
         .single();
       if (error) throw error;
 
-      // Load orgs and awards for dropdowns
-      const { data: orgs } = await STATE.client.from('organisations').select('id, company_name').order('company_name');
-      const { data: awards } = await STATE.client.from('awards').select('id, award_name').order('award_name');
+      // Use already-loaded orgs and awards for dropdowns
+      const orgs = (STATE.allOrganisations || [])
+        .map(o => ({ id: o.id, company_name: o.company_name }))
+        .sort((a, b) => (a.company_name || '').localeCompare(b.company_name || ''));
+      const awards = (STATE.allAwards || [])
+        .map(a => ({ id: a.id, award_name: a.award_name }))
+        .sort((a, b) => (a.award_name || '').localeCompare(b.award_name || ''));
 
       const html = `
         <div class="modal fade" id="editPhotoTagsModal" tabindex="-1">
@@ -1685,17 +1689,27 @@ const mediaGalleryModule = {
    */
   async loadSectionPhotoCounts(sections) {
     try {
-      for (const section of sections) {
-        const { count, error } = await STATE.client
-          .from('media_gallery')
-          .select('*', { count: 'exact', head: true })
-          .eq('gallery_section_id', section.id);
+      const sectionIds = sections.map(s => s.id);
 
+      // Single batch query instead of N+1 loop
+      const { data: items, error } = await STATE.client
+        .from('media_gallery')
+        .select('gallery_section_id')
+        .in('gallery_section_id', sectionIds);
+
+      // Count per section in memory
+      const countsBySection = {};
+      (items || []).forEach(item => {
+        countsBySection[item.gallery_section_id] = (countsBySection[item.gallery_section_id] || 0) + 1;
+      });
+
+      sections.forEach(section => {
+        const count = countsBySection[section.id] || 0;
         const badge = document.getElementById(`photoCount_${section.id}`);
         if (badge) {
-          badge.innerHTML = `<i class="bi bi-camera me-1"></i>${error ? '?' : count || 0} photos`;
+          badge.innerHTML = `<i class="bi bi-camera me-1"></i>${error ? '?' : count} photos`;
         }
-      }
+      });
     } catch (err) {
       console.warn('Error loading section counts:', err);
     }
@@ -3466,17 +3480,18 @@ const mediaGalleryModule = {
       display_order: index
     }));
 
-    // Update each photo's display_order
-    for (const update of updates) {
-      const { error } = await STATE.client
-        .from('media_gallery')
-        .update({ display_order: update.display_order })
-        .eq('id', update.id);
+    // Batch update display_order using Promise.all instead of sequential loop
+    const results = await Promise.all(
+      updates.map(update =>
+        STATE.client
+          .from('media_gallery')
+          .update({ display_order: update.display_order })
+          .eq('id', update.id)
+      )
+    );
 
-      if (error) {
-        throw error;
-      }
-    }
+    const errorResult = results.find(res => res.error);
+    if (errorResult) throw errorResult.error;
   },
 
   /**

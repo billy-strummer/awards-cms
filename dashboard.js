@@ -121,14 +121,14 @@ const dashboardModule = {
     if (!tbody) return;
 
     try {
-      // Fetch awards, assignments, and entries in parallel
-      const [awardsRes, assignmentsRes, entriesRes] = await Promise.all([
-        STATE.client.from('awards').select('id, year'),
+      // Use already-loaded awards; fetch only assignments and entries (not in global state)
+      const awards = STATE.allAwards || [];
+
+      const [assignmentsRes, entriesRes] = await Promise.all([
         STATE.client.from('award_assignments').select('award_id, status'),
         STATE.client.from('entries').select('id, award_id')
       ]);
 
-      const awards = awardsRes.data || [];
       const assignments = assignmentsRes.data || [];
       const entries = entriesRes.data || [];
 
@@ -219,28 +219,15 @@ const dashboardModule = {
    */
   async updateExtendedStats() {
     try {
-      // Get events count
-      const { count: events, error: eventsError } = await STATE.client
-        .from('events')
-        .select('*', { count: 'exact', head: true });
-
-      if (!eventsError) {
-        document.getElementById('totalEvents').textContent = events || 0;
-      }
+      // Compute from loaded events data so counts match the events table
+      const events = STATE.allEvents || [];
+      document.getElementById('totalEvents').textContent = events.length;
 
       // Get upcoming events count (next 30 days)
       const today = new Date().toISOString().split('T')[0];
       const futureDate = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
-
-      const { count: upcomingCount, error: upcomingError } = await STATE.client
-        .from('events')
-        .select('*', { count: 'exact', head: true })
-        .gte('event_date', today)
-        .lte('event_date', futureDate);
-
-      if (!upcomingError) {
-        document.getElementById('upcomingEvents').textContent = upcomingCount || 0;
-      }
+      const upcomingCount = events.filter(e => e.event_date && e.event_date >= today && e.event_date <= futureDate).length;
+      document.getElementById('upcomingEvents').textContent = upcomingCount;
     } catch (error) {
       console.error('Error loading extended stats:', error);
     }
@@ -314,16 +301,12 @@ const dashboardModule = {
         const today = new Date().toISOString().split('T')[0];
         const futureDate = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
 
-        const { data: upcoming, error } = await STATE.client
-          .from('events')
-          .select('*')
-          .gte('event_date', today)
-          .lte('event_date', futureDate)
-          .order('event_date', { ascending: true});
+        // Use already-loaded events data
+        const upcoming = (STATE.allEvents || [])
+          .filter(e => e.event_date && e.event_date >= today && e.event_date <= futureDate)
+          .sort((a, b) => (a.event_date || '').localeCompare(b.event_date || ''));
 
-        if (error) throw error;
-
-        if (upcoming && upcoming.length > 0) {
+        if (upcoming.length > 0) {
           utils.showToast(`${upcoming.length} event(s) in the next 30 days`, 'info');
         } else {
           utils.showToast('No upcoming events in the next 30 days', 'info');
@@ -343,24 +326,31 @@ const dashboardModule = {
 
     setTimeout(async () => {
       try {
-        let pending, error;
-        ({ data: pending, error } = await STATE.client
-          .from('invoices')
-          .select('id, invoice_number, total_amount, organisations(company_name)')
-          .in('payment_status', ['pending', 'unpaid'])
-          .eq('status', 'sent')
-          .order('created_at', { ascending: false }));
-
-        if (error && (error.message?.includes('relationship') || error.message?.includes('schema cache'))) {
+        // Use paymentsModule.allInvoices if loaded, else fallback to DB
+        let pending;
+        if (typeof paymentsModule !== 'undefined' && paymentsModule.allInvoices && paymentsModule.allInvoices.length > 0) {
+          pending = paymentsModule.allInvoices.filter(i =>
+            ['pending', 'unpaid'].includes(i.payment_status) && i.status === 'sent'
+          ).sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+        } else {
+          let error;
           ({ data: pending, error } = await STATE.client
             .from('invoices')
-            .select('id, invoice_number, total_amount')
+            .select('id, invoice_number, total_amount, organisations(company_name)')
             .in('payment_status', ['pending', 'unpaid'])
             .eq('status', 'sent')
             .order('created_at', { ascending: false }));
-        }
 
-        if (error) throw error;
+          if (error && (error.message?.includes('relationship') || error.message?.includes('schema cache'))) {
+            ({ data: pending, error } = await STATE.client
+              .from('invoices')
+              .select('id, invoice_number, total_amount')
+              .in('payment_status', ['pending', 'unpaid'])
+              .eq('status', 'sent')
+              .order('created_at', { ascending: false }));
+          }
+          if (error) throw error;
+        }
 
         if (pending && pending.length > 0) {
           const totalValue = pending.reduce((sum, inv) => sum + parseFloat(inv.total_amount || 0), 0);
@@ -415,47 +405,38 @@ const dashboardModule = {
         });
       }
 
-      // Get recent awards (last 10)
-      const { data: recentAwards } = await STATE.client
-        .from('awards')
-        .select('*')
-        .order('created_at', { ascending: false })
-        .limit(5);
+      // Use in-memory data for awards, organisations, events
+      const recentAwards = [...(STATE.allAwards || [])]
+        .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
+        .slice(0, 5);
 
-      if (recentAwards) {
-        recentAwards.forEach(award => {
-          activities.push({
-            type: 'award',
-            icon: 'trophy',
-            color: 'primary',
-            title: 'New Award Added',
-            description: `${utils.formatAwardName(award)}`,
-            time: award.created_at
-          });
+      recentAwards.forEach(award => {
+        activities.push({
+          type: 'award',
+          icon: 'trophy',
+          color: 'primary',
+          title: 'New Award Added',
+          description: `${utils.formatAwardName(award)}`,
+          time: award.created_at
         });
-      }
+      });
 
-      // Get recent organisations (last 5)
-      const { data: recentOrgs } = await STATE.client
-        .from('organisations')
-        .select('*')
-        .order('created_at', { ascending: false })
-        .limit(3);
+      const recentOrgs = [...(STATE.allOrganisations || [])]
+        .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
+        .slice(0, 3);
 
-      if (recentOrgs) {
-        recentOrgs.forEach(org => {
-          activities.push({
-            type: 'organisation',
-            icon: 'building',
-            color: 'success',
-            title: 'New Organisation',
-            description: org.company_name || 'Unknown Company',
-            time: org.created_at
-          });
+      recentOrgs.forEach(org => {
+        activities.push({
+          type: 'organisation',
+          icon: 'building',
+          color: 'success',
+          title: 'New Organisation',
+          description: org.company_name || 'Unknown Company',
+          time: org.created_at
         });
-      }
+      });
 
-      // Get recent media uploads (last 5)
+      // Media not in global state — query DB
       const { data: recentMedia } = await STATE.client
         .from('media_gallery')
         .select('*')
@@ -475,25 +456,20 @@ const dashboardModule = {
         });
       }
 
-      // Get recent events (last 3)
-      const { data: recentEvents } = await STATE.client
-        .from('events')
-        .select('*')
-        .order('created_at', { ascending: false })
-        .limit(2);
+      const recentEvents = [...(STATE.allEvents || [])]
+        .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
+        .slice(0, 2);
 
-      if (recentEvents) {
-        recentEvents.forEach(event => {
-          activities.push({
-            type: 'event',
-            icon: 'calendar-event',
-            color: 'purple',
-            title: 'Event Created',
-            description: event.event_name || 'Unnamed Event',
-            time: event.created_at
-          });
+      recentEvents.forEach(event => {
+        activities.push({
+          type: 'event',
+          icon: 'calendar-event',
+          color: 'purple',
+          title: 'Event Created',
+          description: event.event_name || 'Unnamed Event',
+          time: event.created_at
         });
-      }
+      });
 
       // Sort all activities by time (most recent first)
       activities.sort((a, b) => new Date(b.time) - new Date(a.time));
@@ -587,15 +563,13 @@ const dashboardModule = {
         });
       }
 
-      // Check for upcoming events (next 7 days)
+      // Check for upcoming events (next 7 days) — use already-loaded STATE.allEvents
       const today = new Date().toISOString().split('T')[0];
       const nextWeek = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
 
-      const { count: upcomingCount } = await STATE.client
-        .from('events')
-        .select('*', { count: 'exact', head: true })
-        .gte('event_date', today)
-        .lte('event_date', nextWeek);
+      const upcomingCount = (STATE.allEvents || []).filter(e =>
+        e.event_date && e.event_date >= today && e.event_date <= nextWeek
+      ).length;
 
       if (upcomingCount > 0) {
         notifications.push({
@@ -874,38 +848,17 @@ const dashboardModule = {
    * Get companies by award count
    */
   async getCompaniesByAwardCount() {
-    const { data: winners, error } = await STATE.client
-      .from('award_assignments')
-      .select('organisation_id, organisations(company_name), created_at')
-      .eq('status', 'winner');
-
-    if (error) throw error;
-
-    // Group by organisation and count awards
-    const orgMap = {};
-    winners?.forEach(w => {
-      if (w.organisation_id && w.organisations) {
-        if (!orgMap[w.organisation_id]) {
-          orgMap[w.organisation_id] = {
-            company_name: w.organisations.company_name,
-            award_count: 0,
-            first_win: w.created_at,
-            latest_win: w.created_at
-          };
-        }
-        orgMap[w.organisation_id].award_count++;
-        if (new Date(w.created_at) < new Date(orgMap[w.organisation_id].first_win)) {
-          orgMap[w.organisation_id].first_win = w.created_at;
-        }
-        if (new Date(w.created_at) > new Date(orgMap[w.organisation_id].latest_win)) {
-          orgMap[w.organisation_id].latest_win = w.created_at;
-        }
-      }
-    });
-
-    return Object.values(orgMap)
-      .sort((a, b) => b.award_count - a.award_count)
-      .slice(0, 5);
+    // Use already-loaded organisations with awards_count
+    return (STATE.allOrganisations || [])
+      .filter(o => o.awards_count > 0)
+      .sort((a, b) => (b.awards_count || 0) - (a.awards_count || 0))
+      .slice(0, 5)
+      .map(o => ({
+        company_name: o.company_name,
+        award_count: o.awards_count || 0,
+        first_win: o.created_at,
+        latest_win: o.updated_at || o.created_at
+      }));
   },
 
   /**
@@ -1461,20 +1414,17 @@ const dashboardModule = {
 
       this.renderGrowthBadge('totalWinnersGrowth', currentYearWinners, lastYearWinners);
 
-      // Events growth
-      const { data: currentYearEvents } = await STATE.client
-        .from('events')
-        .select('id', { count: 'exact' })
-        .gte('created_at', `${currentYear}-01-01`)
-        .lte('created_at', `${currentYear}-12-31`);
+      // Events growth (use already-loaded STATE.allEvents)
+      const allEvents = STATE.allEvents || [];
+      const currentYearEventsCount = allEvents.filter(e =>
+        new Date(e.created_at).getFullYear() === currentYear
+      ).length;
 
-      const { data: lastYearEvents } = await STATE.client
-        .from('events')
-        .select('id', { count: 'exact' })
-        .gte('created_at', `${lastYear}-01-01`)
-        .lte('created_at', `${lastYear}-12-31`);
+      const lastYearEventsCount = allEvents.filter(e =>
+        new Date(e.created_at).getFullYear() === lastYear
+      ).length;
 
-      this.renderGrowthBadge('totalEventsGrowth', currentYearEvents?.length || 0, lastYearEvents?.length || 0);
+      this.renderGrowthBadge('totalEventsGrowth', currentYearEventsCount, lastYearEventsCount);
 
     } catch (error) {
       console.error('Error updating growth indicators:', error);
@@ -1551,10 +1501,10 @@ const dashboardModule = {
         level: orgCompletionRate >= 80 ? 'high' : orgCompletionRate >= 50 ? 'medium' : 'low'
       });
 
-      // Tagged media
+      // Tagged media (only fetch columns needed for counting)
       const { data: allMedia } = await STATE.client
         .from('media_gallery')
-        .select('*');
+        .select('id, organisation_id, award_id');
 
       const totalMedia = allMedia?.length || 0;
       const taggedMedia = allMedia?.filter(m => m.organisation_id || m.award_id).length || 0;
@@ -1602,17 +1552,15 @@ const dashboardModule = {
 
     try {
       const today = new Date();
+      const todayStr = today.toISOString().split('T')[0];
       const futureDate = new Date(Date.now() + 60 * 24 * 60 * 60 * 1000); // Next 60 days
+      const futureDateStr = futureDate.toISOString().split('T')[0];
 
-      const { data: upcomingEvents, error } = await STATE.client
-        .from('events')
-        .select('*')
-        .gte('event_date', today.toISOString().split('T')[0])
-        .lte('event_date', futureDate.toISOString().split('T')[0])
-        .order('event_date', { ascending: true })
-        .limit(5);
-
-      if (error) throw error;
+      // Use already-loaded STATE.allEvents
+      const upcomingEvents = (STATE.allEvents || [])
+        .filter(e => e.event_date && e.event_date >= todayStr && e.event_date <= futureDateStr)
+        .sort((a, b) => new Date(a.event_date) - new Date(b.event_date))
+        .slice(0, 5);
 
       if (!upcomingEvents || upcomingEvents.length === 0) {
         container.innerHTML = `
@@ -1878,14 +1826,20 @@ const dashboardModule = {
    */
   async loadSalesData() {
     try {
-      // Load data in parallel
-      await Promise.all([
-        this.loadSalesSummary(),
-        this.loadRecentPayments(),
-        this.loadPendingInvoices(),
-        this.loadPaymentMethodBreakdown(),
-        this.loadOrderTypeBreakdown()
+      // Fetch invoices and payments once, then pass to sub-functions
+      const [invoicesRes, paymentsRes] = await Promise.all([
+        STATE.client.from('invoices').select('*, organisations(company_name)').order('created_at', { ascending: false }),
+        STATE.client.from('payments').select('*, organisations(company_name)').order('payment_date', { ascending: false })
       ]);
+
+      const allInvoices = invoicesRes.data || [];
+      const allPayments = paymentsRes.data || [];
+
+      this.loadSalesSummary(allInvoices, allPayments);
+      this.loadRecentPayments(allPayments);
+      this.loadPendingInvoices(allInvoices);
+      this.loadPaymentMethodBreakdown(allPayments);
+      this.loadOrderTypeBreakdown(allInvoices);
 
     } catch (error) {
       console.error('Error loading sales data:', error);
@@ -1896,22 +1850,8 @@ const dashboardModule = {
   /**
    * Load Sales Summary Statistics
    */
-  async loadSalesSummary() {
+  loadSalesSummary(invoices, payments) {
     try {
-      // Get all invoices
-      const { data: invoices, error: invoicesError } = await STATE.client
-        .from('invoices')
-        .select('total_amount, paid_amount, balance_due, payment_status');
-
-      if (invoicesError) throw invoicesError;
-
-      // Get all payments
-      const { data: payments, error: paymentsError } = await STATE.client
-        .from('payments')
-        .select('amount');
-
-      if (paymentsError) throw paymentsError;
-
       // Calculate statistics
       const totalRevenue = payments?.reduce((sum, p) => sum + parseFloat(p.amount || 0), 0) || 0;
       const totalOrders = invoices?.length || 0;
@@ -1939,21 +1879,12 @@ const dashboardModule = {
   /**
    * Load Recent Payments
    */
-  async loadRecentPayments() {
+  loadRecentPayments(allPayments) {
     const tbody = document.getElementById('salesRecentPaymentsTable');
     if (!tbody) return;
 
     try {
-      const { data: payments, error } = await STATE.client
-        .from('payments')
-        .select(`
-          *,
-          organisations(company_name)
-        `)
-        .order('payment_date', { ascending: false })
-        .limit(20);
-
-      if (error) throw error;
+      const payments = allPayments.slice(0, 20);
 
       if (!payments || payments.length === 0) {
         tbody.innerHTML = `
@@ -1999,22 +1930,15 @@ const dashboardModule = {
   /**
    * Load Pending Invoices
    */
-  async loadPendingInvoices() {
+  loadPendingInvoices(allInvoices) {
     const tbody = document.getElementById('salesPendingInvoicesTable');
     if (!tbody) return;
 
     try {
-      const { data: invoices, error } = await STATE.client
-        .from('invoices')
-        .select(`
-          *,
-          organisations(company_name)
-        `)
-        .in('payment_status', ['unpaid', 'partial'])
-        .order('due_date', { ascending: true })
-        .limit(20);
-
-      if (error) throw error;
+      const invoices = allInvoices
+        .filter(i => i.payment_status === 'unpaid' || i.payment_status === 'partial')
+        .sort((a, b) => new Date(a.due_date || 0) - new Date(b.due_date || 0))
+        .slice(0, 20);
 
       if (!invoices || invoices.length === 0) {
         tbody.innerHTML = `
@@ -2062,17 +1986,11 @@ const dashboardModule = {
   /**
    * Load Payment Method Breakdown
    */
-  async loadPaymentMethodBreakdown() {
+  loadPaymentMethodBreakdown(payments) {
     const container = document.getElementById('salesPaymentMethodsBreakdown');
     if (!container) return;
 
     try {
-      const { data: payments, error } = await STATE.client
-        .from('payments')
-        .select('payment_method, amount');
-
-      if (error) throw error;
-
       if (!payments || payments.length === 0) {
         container.innerHTML = '<div class="text-center text-muted">No payment data available</div>';
         return;
@@ -2124,17 +2042,11 @@ const dashboardModule = {
   /**
    * Load Order Type Breakdown
    */
-  async loadOrderTypeBreakdown() {
+  loadOrderTypeBreakdown(invoices) {
     const container = document.getElementById('salesOrderTypeBreakdown');
     if (!container) return;
 
     try {
-      const { data: invoices, error } = await STATE.client
-        .from('invoices')
-        .select('invoice_type, total_amount');
-
-      if (error) throw error;
-
       if (!invoices || invoices.length === 0) {
         container.innerHTML = '<div class="text-center text-muted">No invoice data available</div>';
         return;
@@ -2381,17 +2293,9 @@ const dashboardModule = {
     try {
       const orgs = STATE.allOrganisations || [];
 
-      // Get winners count
-      const { data: winners } = await STATE.client
-        .from('award_assignments')
-        .select('organisation_id')
-        .eq('status', 'winner')
-        .not('organisation_id', 'is', null);
-
-      const uniqueWinners = new Set(winners?.map(w => w.organisation_id) || []);
-
-      // Summary statistics
+      // Use already-loaded data — awards_count is computed during org load
       const totalOrgs = orgs.length;
+      const winnersCount = orgs.filter(o => o.awards_count > 0).length;
       const sectors = [...new Set(orgs.map(o => o.sector).filter(s => s))];
 
       // New this month
@@ -2400,17 +2304,9 @@ const dashboardModule = {
       const newThisMonth = orgs.filter(o => o.created_at && new Date(o.created_at) >= thisMonth).length;
 
       document.getElementById('summaryTotalOrgs').textContent = totalOrgs;
-      document.getElementById('summaryOrgWinners').textContent = uniqueWinners.size;
+      document.getElementById('summaryOrgWinners').textContent = winnersCount;
       document.getElementById('summaryOrgSectors').textContent = sectors.length;
       document.getElementById('summaryOrgNewMonth').textContent = newThisMonth;
-
-      // Get award counts for organisations
-      const orgAwardCounts = {};
-      winners?.forEach(w => {
-        if (w.organisation_id) {
-          orgAwardCounts[w.organisation_id] = (orgAwardCounts[w.organisation_id] || 0) + 1;
-        }
-      });
 
       // Recent organisations table
       const recentOrgs = [...orgs]
@@ -2426,7 +2322,7 @@ const dashboardModule = {
             <td>${utils.escapeHtml(org.company_name || 'Untitled')}</td>
             <td>${utils.escapeHtml(org.sector || 'N/A')}</td>
             <td>${utils.escapeHtml(org.region || 'N/A')}</td>
-            <td><span class="badge bg-primary">${orgAwardCounts[org.id] || 0}</span></td>
+            <td><span class="badge bg-primary">${org.awards_count || 0}</span></td>
             <td>${org.created_at ? new Date(org.created_at).toLocaleDateString() : 'N/A'}</td>
           </tr>
         `).join('');
@@ -2471,34 +2367,26 @@ const dashboardModule = {
     modal.show();
 
     try {
-      // Get winners data
-      const { data: winners } = await STATE.client
-        .from('award_assignments')
-        .select(`
-          *,
-          organisations (company_name),
-          awards (award_name)
-        `)
-        .eq('status', 'winner')
-        .order('award_year', { ascending: false });
+      // Use already-loaded winners data (from winners table, consistent with Winners tab)
+      const winners = [...(STATE.allWinners || [])]
+        .sort((a, b) => (b.award_year || 0) - (a.award_year || 0));
 
-      const totalWinners = winners?.length || 0;
+      const totalWinners = winners.length;
 
       // This year's winners
       const currentYear = new Date().getFullYear();
-      const winnersThisYear = winners?.filter(w => w.award_year === currentYear).length || 0;
+      const winnersThisYear = winners.filter(w => w.award_year === currentYear).length;
 
-      // Multi-award winners
-      const orgWinCounts = {};
-      winners?.forEach(w => {
-        if (w.organisation_id) {
-          orgWinCounts[w.organisation_id] = (orgWinCounts[w.organisation_id] || 0) + 1;
-        }
+      // Multi-award winners (group by winner_name)
+      const nameWinCounts = {};
+      winners.forEach(w => {
+        const key = w.winner_name || w.organisation_id || 'unknown';
+        nameWinCounts[key] = (nameWinCounts[key] || 0) + 1;
       });
-      const multiWinners = Object.values(orgWinCounts).filter(count => count >= 2).length;
+      const multiWinners = Object.values(nameWinCounts).filter(count => count >= 2).length;
 
       // Average per year
-      const years = [...new Set(winners?.map(w => w.award_year).filter(y => y) || [])];
+      const years = [...new Set(winners.map(w => w.award_year).filter(y => y))];
       const avgPerYear = years.length > 0 ? Math.round(totalWinners / years.length) : 0;
 
       document.getElementById('summaryTotalWinners').textContent = totalWinners;
@@ -2507,7 +2395,7 @@ const dashboardModule = {
       document.getElementById('summaryAvgWinnersYear').textContent = avgPerYear;
 
       // Recent winners table
-      const recentWinners = (winners || []).slice(0, 10);
+      const recentWinners = winners.slice(0, 10);
 
       const tbody = document.getElementById('summaryRecentWinnersTable');
       if (recentWinners.length === 0) {
@@ -2515,8 +2403,8 @@ const dashboardModule = {
       } else {
         tbody.innerHTML = recentWinners.map(winner => `
           <tr>
-            <td>${utils.escapeHtml(winner.organisations?.company_name || 'N/A')}</td>
-            <td>${utils.escapeHtml(winner.awards?.award_name || 'N/A')}</td>
+            <td>${utils.escapeHtml(winner.winner_name || 'N/A')}</td>
+            <td>${utils.escapeHtml(utils.formatAwardName(winner.awards) || 'N/A')}</td>
             <td>${winner.award_year || 'N/A'}</td>
             <td><span class="badge bg-success">Winner</span></td>
           </tr>
@@ -2525,7 +2413,7 @@ const dashboardModule = {
 
       // Winners by year
       const yearCounts = {};
-      winners?.forEach(w => {
+      winners.forEach(w => {
         const year = w.award_year || 'Unknown';
         yearCounts[year] = (yearCounts[year] || 0) + 1;
       });
@@ -2563,13 +2451,11 @@ const dashboardModule = {
     modal.show();
 
     try {
-      // Get events data
-      const { data: events } = await STATE.client
-        .from('events')
-        .select('*')
-        .order('event_date', { ascending: false });
+      // Use already-loaded events data
+      const events = [...(STATE.allEvents || [])]
+        .sort((a, b) => new Date(b.event_date || 0) - new Date(a.event_date || 0));
 
-      const totalEvents = events?.length || 0;
+      const totalEvents = events.length;
       const today = new Date().toISOString().split('T')[0];
       const futureDate = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
 
@@ -2651,29 +2537,18 @@ const dashboardModule = {
     // Load media statistics using the media gallery module's function
     if (typeof mediaGalleryModule !== 'undefined' && mediaGalleryModule.loadMediaStatistics) {
       try {
-        // Get stats from Supabase
-        const { count: totalPhotos } = await STATE.client
+        // Single query for all media stats instead of 4 separate queries
+        const { data: mediaItems } = await STATE.client
           .from('media_items')
-          .select('*', { count: 'exact', head: true })
-          .eq('media_type', 'image');
+          .select('media_type, organisation_id, award_id, event_id');
 
-        const { count: totalVideos } = await STATE.client
-          .from('media_items')
-          .select('*', { count: 'exact', head: true })
-          .eq('media_type', 'video');
-
-        const { count: untaggedPhotos } = await STATE.client
-          .from('media_items')
-          .select('*', { count: 'exact', head: true })
-          .eq('media_type', 'image')
-          .or('organisation_id.is.null,award_id.is.null');
-
-        const { data: eventsWithMedia } = await STATE.client
-          .from('media_items')
-          .select('event_id')
-          .not('event_id', 'is', null);
-
-        const uniqueEvents = new Set(eventsWithMedia?.map(m => m.event_id));
+        const items = mediaItems || [];
+        const totalPhotos = items.filter(m => m.media_type === 'image').length;
+        const totalVideos = items.filter(m => m.media_type === 'video').length;
+        const untaggedPhotos = items.filter(m =>
+          m.media_type === 'image' && (!m.organisation_id || !m.award_id)
+        ).length;
+        const uniqueEvents = new Set(items.filter(m => m.event_id).map(m => m.event_id));
 
         // Update modal elements
         document.getElementById('modalTotalPhotosCount').textContent = totalPhotos || 0;
@@ -2708,19 +2583,14 @@ const dashboardModule = {
   // ============================================
   async updateCountyCoverage() {
     try {
-      // Get county counts from awards (which counties have award data)
-      const { data: awards } = await STATE.client
-        .from('awards')
-        .select('county');
+      // Use already-loaded awards data
+      const awards = STATE.allAwards || [];
+      const awardData = STATE.allAwards || [];
 
-      // Get county counts from organisations (via award_assignments → awards)
+      // award_assignments not in global state — query DB
       const { data: assignments } = await STATE.client
         .from('award_assignments')
         .select('award_id, organisation_id');
-
-      const { data: awardData } = await STATE.client
-        .from('awards')
-        .select('id, county');
 
       // Build county → org count map
       const awardCountyMap = {};
@@ -2752,10 +2622,8 @@ const dashboardModule = {
         countyOrgCounts[county] = orgSet.size;
       });
 
-      // Also count orgs imported via CSV (stored in catchment_area)
-      const { data: orgsWithCounty } = await STATE.client
-        .from('organisations')
-        .select('id, catchment_area');
+      // Also count orgs imported via CSV (stored in catchment_area) — use loaded data
+      const orgsWithCounty = STATE.allOrganisations || [];
 
       const csvOrgCounts = {};
       (orgsWithCounty || []).forEach(org => {
@@ -2862,12 +2730,9 @@ const dashboardModule = {
     if (!geoWidget && !topWidget) return;
 
     try {
-      // Get orgs with their county info
-      const { data: orgs } = await STATE.client
-        .from('organisations')
-        .select('id, catchment_area, status');
-
-      const activeOrgs = (orgs || []).filter(o => o.status !== 'archived');
+      // Use already-loaded organisations data
+      const orgs = STATE.allOrganisations || [];
+      const activeOrgs = orgs.filter(o => o.status !== 'archived');
       const totalOrgs = activeOrgs.length;
 
       // England counties, Scotland regions, Wales areas, Cities

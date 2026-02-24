@@ -10058,22 +10058,32 @@ const eventsModule = {
     if (uncached.length === 0) return;
 
     try {
-      for (const eventId of uncached) {
-        // Get award counts for this event
-        const { data: awards, error } = await STATE.client
-          .from('awards')
-          .select('id, winner_confirmed')
-          .eq('event_id', eventId);
+      // Batch query instead of N+1 loop
+      const { data: allAwards, error } = await STATE.client
+        .from('awards')
+        .select('id, event_id, winner_confirmed')
+        .in('event_id', uncached);
 
-        if (error) continue;
+      if (error) {
+        console.warn('Error loading award counts:', error);
+        return;
+      }
 
-        const total = awards ? awards.length : 0;
-        const confirmed = awards ? awards.filter(a => a.winner_confirmed === true).length : 0;
-        const winners = confirmed; // winners = confirmed presentations
+      // Group by event_id in memory
+      const awardsByEvent = {};
+      (allAwards || []).forEach(award => {
+        if (!awardsByEvent[award.event_id]) awardsByEvent[award.event_id] = [];
+        awardsByEvent[award.event_id].push(award);
+      });
+
+      uncached.forEach(eventId => {
+        const awards = awardsByEvent[eventId] || [];
+        const total = awards.length;
+        const confirmed = awards.filter(a => a.winner_confirmed === true).length;
+        const winners = confirmed;
 
         this._eventAwardCounts[eventId] = { total, confirmed, winners };
 
-        // Update DOM if cells exist
         const awardCell = document.getElementById(`awardCount_${eventId}`);
         if (awardCell && total > 0) {
           awardCell.innerHTML = `<span class="badge bg-success" title="${confirmed} confirmed">${confirmed}/${total}</span>`;
@@ -10082,7 +10092,7 @@ const eventsModule = {
         if (winnerCell && winners > 0) {
           winnerCell.innerHTML = `<span class="badge bg-info">${winners}</span>`;
         }
-      }
+      });
     } catch (err) {
       console.warn('Error loading award counts:', err);
     }

@@ -124,7 +124,7 @@ Vote now: {{website}}
   async loadAwards() {
     const { data: awards, error } = await STATE.client
       .from('awards')
-      .select('id, award_name, category')
+      .select('id, award_name, award_category')
       .eq('is_active', true)
       .order('award_name');
 

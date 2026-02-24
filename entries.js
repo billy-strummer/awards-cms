@@ -153,28 +153,12 @@ const entriesModule = {
    */
   async loadStats() {
     try {
-      // Total entries
-      const { count: totalCount } = await STATE.client
-        .from('entries')
-        .select('*', { count: 'exact', head: true });
-
-      // Pending review (submitted or under_review)
-      const { count: pendingCount } = await STATE.client
-        .from('entries')
-        .select('*', { count: 'exact', head: true })
-        .in('status', ['submitted', 'under_review']);
-
-      // Shortlisted
-      const { count: shortlistedCount } = await STATE.client
-        .from('entries')
-        .select('*', { count: 'exact', head: true })
-        .eq('status', 'shortlisted');
-
-      // Winners
-      const { count: winnerCount } = await STATE.client
-        .from('entries')
-        .select('*', { count: 'exact', head: true })
-        .eq('status', 'winner');
+      // Compute stats from loaded entries so cards always match the table
+      const entries = this.allEntries || [];
+      const totalCount = entries.length;
+      const pendingCount = entries.filter(e => e.status === 'submitted' || e.status === 'under_review').length;
+      const shortlistedCount = entries.filter(e => e.status === 'shortlisted').length;
+      const winnerCount = entries.filter(e => e.status === 'winner').length;
 
       // Update UI
       document.getElementById('totalEntriesCount').textContent = totalCount || 0;

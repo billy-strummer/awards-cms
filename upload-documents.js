@@ -44,11 +44,11 @@ const uploadApp = {
       return;
     }
 
-    // Load entry details
-    await this.loadEntryDetails();
-
-    // Setup upload zone
+    // Setup upload zone immediately so it works while entry details load
     this.setupUploadZone();
+
+    // Load entry details (don't block the upload zone)
+    await this.loadEntryDetails();
   },
 
   /**
@@ -56,13 +56,11 @@ const uploadApp = {
    */
   async loadEntryDetails() {
     try {
+      // First fetch the entry without joins (avoids issues if anon role
+      // lacks SELECT on related tables like award_years)
       const { data: entry, error } = await supabase
         .from('entries')
-        .select(`
-          *,
-          organisations(company_name),
-          awards:award_years(award_name)
-        `)
+        .select('*')
         .eq('entry_number', this.entryId)
         .single();
 
@@ -75,6 +73,36 @@ const uploadApp = {
 
       this.entryData = entry;
 
+      // Optionally enrich with organisation and award names
+      let companyName = 'N/A';
+      let awardName = 'N/A';
+
+      if (entry.organisation_id) {
+        try {
+          const { data: org } = await supabase
+            .from('organisations')
+            .select('company_name')
+            .eq('id', entry.organisation_id)
+            .single();
+          if (org) companyName = org.company_name;
+        } catch (e) {
+          console.warn('Could not load organisation:', e);
+        }
+      }
+
+      if (entry.award_id) {
+        try {
+          const { data: award } = await supabase
+            .from('award_years')
+            .select('award_name')
+            .eq('id', entry.award_id)
+            .single();
+          if (award) awardName = award.award_name;
+        } catch (e) {
+          console.warn('Could not load award:', e);
+        }
+      }
+
       // Display entry information
       document.getElementById('entryDetails').innerHTML = `
         <table class="table table-sm table-borderless mb-0">
@@ -84,15 +112,15 @@ const uploadApp = {
           </tr>
           <tr>
             <td class="text-muted">Company:</td>
-            <td><strong>${entry.organisations?.company_name || 'N/A'}</strong></td>
+            <td><strong>${companyName}</strong></td>
           </tr>
           <tr>
             <td class="text-muted">Award:</td>
-            <td>${entry.awards?.award_name || 'N/A'}</td>
+            <td>${awardName}</td>
           </tr>
           <tr>
             <td class="text-muted">Contact:</td>
-            <td>${entry.contact_name} (${entry.contact_email})</td>
+            <td>${entry.contact_name || 'N/A'} ${entry.contact_email ? '(' + entry.contact_email + ')' : ''}</td>
           </tr>
         </table>
       `;
@@ -102,7 +130,7 @@ const uploadApp = {
 
     } catch (error) {
       console.error('Error loading entry:', error);
-      this.showError('Failed to load entry details: ' + error.message);
+      this.showError('Failed to load entry details. ' + (error.message || 'Please check your upload link and try again.'));
     }
   },
 
@@ -145,18 +173,31 @@ const uploadApp = {
     const uploadZone = document.getElementById('uploadZone');
     const fileInput = document.getElementById('fileInput');
     const uploadButton = document.getElementById('uploadButton');
+    const browseBtn = document.getElementById('browseButton');
 
-    // Click to browse
-    uploadZone.addEventListener('click', () => {
+    // Click anywhere in the zone to browse files
+    uploadZone.addEventListener('click', (e) => {
+      // Prevent re-triggering if the click came from the file input itself
+      if (e.target === fileInput) return;
       fileInput.click();
     });
+
+    // Explicit browse button (better for mobile)
+    if (browseBtn) {
+      browseBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        fileInput.click();
+      });
+    }
 
     // File selection
     fileInput.addEventListener('change', (e) => {
       this.handleFiles(e.target.files);
+      // Reset so the same file can be re-selected
+      fileInput.value = '';
     });
 
-    // Drag & drop
+    // Drag & drop (desktop only, harmless on mobile)
     uploadZone.addEventListener('dragover', (e) => {
       e.preventDefault();
       uploadZone.classList.add('dragover');

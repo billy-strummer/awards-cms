@@ -227,6 +227,39 @@
       color: var(--gold-color);
       margin-bottom: 20px;
     }
+
+    /* Mobile / Tablet adjustments */
+    @media (max-width: 768px) {
+      .card-header-custom {
+        padding: 25px 20px;
+      }
+
+      .card-header-custom h1 {
+        font-size: 1.4rem;
+      }
+
+      .upload-section {
+        padding: 20px;
+      }
+
+      .upload-zone {
+        padding: 30px 20px;
+      }
+
+      .upload-icon {
+        font-size: 3rem;
+      }
+
+      .file-item {
+        padding: 12px;
+        font-size: 0.9rem;
+      }
+
+      .btn-upload {
+        font-size: 1rem;
+        padding: 12px 30px;
+      }
+    }
   </style>
 </head>
 <body>
@@ -272,8 +305,12 @@
         <!-- Drag & Drop Upload Zone -->
         <div class="upload-zone" id="uploadZone">
           <div class="upload-icon"><i class="bi bi-cloud-upload"></i></div>
-          <h4>Drag & Drop Files Here</h4>
-          <p class="text-muted">or click to browse</p>
+          <h4 class="d-none d-md-block">Drag & Drop Files Here</h4>
+          <h4 class="d-md-none">Tap to Select Files</h4>
+          <p class="text-muted d-none d-md-block">or click to browse</p>
+          <button type="button" class="btn btn-outline-dark mt-2" id="browseButton">
+            <i class="bi bi-folder2-open me-2"></i>Browse Files
+          </button>
           <input type="file" id="fileInput" multiple hidden accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.jpg,.jpeg,.png,.gif">
         </div>
 

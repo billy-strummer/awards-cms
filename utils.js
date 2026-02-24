@@ -224,13 +224,26 @@ const utils = {
    */
   confirmDialog({ title = 'Confirm', message = 'Are you sure?', confirmText = 'Delete', danger = true } = {}) {
     return new Promise((resolve) => {
+      const dlg = document.getElementById('confirmDialogModal');
       document.getElementById('confirmDialogTitle').textContent = title;
       document.getElementById('confirmDialogBody').innerHTML = message;
       const okBtn = document.getElementById('confirmDialogOk');
       okBtn.textContent = confirmText;
       okBtn.className = danger ? 'btn btn-danger' : 'btn btn-primary';
 
-      const modal = new bootstrap.Modal(document.getElementById('confirmDialogModal'));
+      // Ensure confirm dialog appears above any other open modals (e.g. fullscreen table plan)
+      const openModals = document.querySelectorAll('.modal.show');
+      if (openModals.length > 0) {
+        const topZ = Math.max(...[...document.querySelectorAll('.modal.show, .modal-backdrop.show')].map(el => parseInt(getComputedStyle(el).zIndex) || 1050));
+        dlg.style.zIndex = topZ + 10;
+        dlg.addEventListener('shown.bs.modal', () => {
+          const backdrop = dlg.nextElementSibling?.classList?.contains('modal-backdrop') ? dlg.nextElementSibling
+            : document.querySelector('.modal-backdrop:last-of-type');
+          if (backdrop) backdrop.style.zIndex = topZ + 5;
+        }, { once: true });
+      }
+
+      const modal = new bootstrap.Modal(dlg);
 
       const onConfirm = () => {
         cleanup();
@@ -243,11 +256,12 @@ const utils = {
       };
       const cleanup = () => {
         okBtn.removeEventListener('click', onConfirm);
-        document.getElementById('confirmDialogModal').removeEventListener('hidden.bs.modal', onDismiss);
+        dlg.removeEventListener('hidden.bs.modal', onDismiss);
+        dlg.style.zIndex = '';
       };
 
       okBtn.addEventListener('click', onConfirm);
-      document.getElementById('confirmDialogModal').addEventListener('hidden.bs.modal', onDismiss);
+      dlg.addEventListener('hidden.bs.modal', onDismiss);
       modal.show();
     });
   },

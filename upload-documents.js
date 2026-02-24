@@ -2,6 +2,12 @@
 /* UPLOAD DOCUMENTS - File Upload Handler */
 /* ==================================================== */
 
+// Initialize Supabase client for this public page
+const supabase = window.supabase.createClient(
+  SUPABASE_CONFIG.url,
+  SUPABASE_CONFIG.anonKey
+);
+
 function showPublicToast(msg, type = 'warning') {
   let container = document.getElementById('publicToastContainer');
   if (!container) {

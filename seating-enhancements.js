@@ -6,7 +6,8 @@
  */
 window.seatingEnhancements = {
   _undoStack: [], _redoStack: [], _sections: [],
-  _vipFilterOn: false, _seatPopup: null, _kbBound: false,
+  _vipFilterOn: false, _seatPopup: null, _seatTooltip: null, _kbBound: false,
+  _slSort: 'table',
 
   init() {
     const em = window.eventsModule;
@@ -57,11 +58,13 @@ window.seatingEnhancements = {
         if (guest) {
           dot.classList.add('occupied');
           dot.textContent = (guest.guest_name||'?')[0].toUpperCase();
-          dot.title = `${guest.guest_name}${guest.company_name?' ('+guest.company_name+')':''} — Seat ${sn}`;
+          dot.title = '';
           if (guest.is_vip) dot.classList.add('se-vip-dot');
+          dot.addEventListener('mouseenter', () => this._showSeatTooltip(dot, guest, sn));
+          dot.addEventListener('mouseleave', () => this._hideSeatTooltip());
         } else { dot.textContent = sn; dot.title = `Seat ${sn} (empty)`; }
         dot.onclick = (e) => {
-          e.stopPropagation(); this._closeSeatPopup();
+          e.stopPropagation(); this._closeSeatPopup(); this._hideSeatTooltip();
           guest ? this._showOccupiedPopup(em, dot, table, guest, sn)
                 : this._showEmptyPopup(em, dot, table, sn);
         };
@@ -128,6 +131,23 @@ window.seatingEnhancements = {
   },
 
   _closeSeatPopup() { if(this._seatPopup){this._seatPopup.remove(); this._seatPopup=null;} },
+
+  _showSeatTooltip(anchor, guest, seatNum) {
+    this._hideSeatTooltip();
+    const tip = document.createElement('div');
+    tip.className = 'se-seat-tooltip';
+    tip.innerHTML = `<div class="se-tip-name">${utils.escapeHtml(guest.guest_name)}</div>
+      ${guest.company_name ? `<div class="se-tip-company">${utils.escapeHtml(guest.company_name)}</div>` : ''}
+      <div class="se-tip-seat">Seat ${seatNum}${guest.is_vip ? ' &bull; <span class="text-warning">VIP</span>' : ''}</div>`;
+    document.body.appendChild(tip);
+    this._seatTooltip = tip;
+    const r = anchor.getBoundingClientRect();
+    const tipW = tip.offsetWidth, tipH = tip.offsetHeight;
+    tip.style.left = (r.left + window.scrollX + r.width / 2 - tipW / 2) + 'px';
+    tip.style.top = (r.top + window.scrollY - tipH - 8) + 'px';
+  },
+
+  _hideSeatTooltip() { if (this._seatTooltip) { this._seatTooltip.remove(); this._seatTooltip = null; } },
 
   // === 2. VIP MARKING ===
   async _toggleVip(em, assignment) {
@@ -271,6 +291,250 @@ window.seatingEnhancements = {
     document.body.appendChild(ov);
   },
 
+  // === 6. SEATING LIST ===
+  showSeatingList() {
+    const em = window.eventsModule;
+    const totalSeated = (em.tables || []).reduce((s, t) => s + (t.assignments?.length || 0), 0);
+    const totalSeats = (em.tables || []).reduce((s, t) => s + (t.total_seats || 0), 0);
+    const unassigned = (em.unassignedGuests || []).length;
+
+    const ov = document.createElement('div');
+    ov.id = 'seSeatingListOverlay';
+    ov.style.cssText = 'position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.6);display:flex;align-items:center;justify-content:center';
+    ov.onclick = e => { if (e.target === ov) ov.remove(); };
+    ov.innerHTML = `<div class="se-sl-modal">
+      <div class="d-flex justify-content-between align-items-center mb-3">
+        <h5 class="mb-0"><i class="bi bi-list-columns-reverse me-2"></i>Seating List</h5>
+        <div class="d-flex gap-2 align-items-center">
+          <span class="badge bg-primary">${totalSeated} seated</span>
+          <span class="badge bg-secondary">${totalSeats} total seats</span>
+          ${unassigned > 0 ? `<span class="badge bg-warning text-dark">${unassigned} unassigned</span>` : ''}
+          <button class="btn btn-sm btn-outline-primary" onclick="seatingEnhancements.printSeatingList()" title="Print Seating List"><i class="bi bi-printer me-1"></i>Print</button>
+          <button class="btn btn-sm btn-outline-secondary" onclick="document.getElementById('seSeatingListOverlay').remove()"><i class="bi bi-x-lg"></i></button>
+        </div>
+      </div>
+      <div class="d-flex gap-1 mb-3">
+        <button class="btn btn-sm ${this._slSort === 'table' ? 'btn-dark' : 'btn-outline-secondary'}" onclick="seatingEnhancements._setSlSort('table')"><i class="bi bi-grid-3x3-gap me-1"></i>By Table</button>
+        <button class="btn btn-sm ${this._slSort === 'company' ? 'btn-dark' : 'btn-outline-secondary'}" onclick="seatingEnhancements._setSlSort('company')"><i class="bi bi-building me-1"></i>By Company A-Z</button>
+      </div>
+      <div id="seSlContent">${this._renderSlContent()}</div>
+    </div>`;
+    document.body.appendChild(ov);
+  },
+
+  _setSlSort(mode) {
+    this._slSort = mode;
+    const container = document.getElementById('seSlContent');
+    if (container) container.innerHTML = this._renderSlContent();
+    // Update toggle button styles
+    const overlay = document.getElementById('seSeatingListOverlay');
+    if (overlay) {
+      overlay.querySelectorAll('.d-flex.gap-1.mb-3 .btn').forEach(btn => {
+        const isTable = btn.textContent.includes('Table');
+        const active = (isTable && mode === 'table') || (!isTable && mode === 'company');
+        btn.className = `btn btn-sm ${active ? 'btn-dark' : 'btn-outline-secondary'}`;
+      });
+    }
+  },
+
+  _renderSlContent() {
+    const em = window.eventsModule;
+    const tables = (em.tables || []).slice().sort((a, b) => (a.table_number || 0) - (b.table_number || 0));
+
+    if (this._slSort === 'company') return this._renderSlByCompany(tables);
+    return this._renderSlByTable(tables);
+  },
+
+  _renderSlByTable(tables) {
+    if (!tables.length) return '<p class="text-muted text-center">No tables created yet.</p>';
+    return tables.map(t => {
+      const assignments = (t.assignments || []).slice().sort((a, b) => (a.seat_number || 999) - (b.seat_number || 999));
+      const label = t.table_name || 'Table ' + t.table_number;
+      const capClass = assignments.length >= t.total_seats ? 'bg-success' : assignments.length > 0 ? 'bg-primary' : 'bg-secondary';
+      const byCompany = {};
+      assignments.forEach(a => {
+        const key = a.company_name || '__none__';
+        if (!byCompany[key]) byCompany[key] = [];
+        byCompany[key].push(a);
+      });
+      const companyKeys = Object.keys(byCompany).sort((a, b) => {
+        if (a === '__none__') return 1; if (b === '__none__') return -1;
+        return a.localeCompare(b);
+      });
+      const guestsHtml = assignments.length > 0
+        ? companyKeys.map(key => {
+            const guests = byCompany[key];
+            const companyLabel = key !== '__none__' ? utils.escapeHtml(key) : '<em class="text-muted">No Company</em>';
+            return `<div class="se-sl-company mb-1">
+              <div class="se-sl-company-label">${companyLabel} <small class="text-muted">(${guests.length})</small></div>
+              ${guests.map(a => `<div class="se-sl-guest">
+                <span class="se-sl-guest-name">${utils.escapeHtml(a.guest_name)}</span>
+                ${a.seat_number ? `<span class="se-sl-seat">Seat ${a.seat_number}</span>` : ''}
+                ${a.is_vip ? '<span class="badge bg-warning text-dark" style="font-size:0.6rem">VIP</span>' : ''}
+              </div>`).join('')}
+            </div>`;
+          }).join('')
+        : '<div class="text-muted text-center py-2 fst-italic small">No guests assigned</div>';
+
+      return `<div class="se-sl-table">
+        <div class="se-sl-table-header">
+          <span><i class="bi bi-circle-fill me-2" style="font-size:0.5rem;color:${assignments.length >= t.total_seats ? '#198754' : assignments.length > 0 ? '#0d6efd' : '#adb5bd'}"></i>${utils.escapeHtml(label)}</span>
+          <span class="badge ${capClass}">${assignments.length}/${t.total_seats}</span>
+        </div>
+        <div class="se-sl-table-body">${guestsHtml}</div>
+      </div>`;
+    }).join('');
+  },
+
+  _renderSlByCompany(tables) {
+    // Collect all assignments with their table info
+    const all = [];
+    tables.forEach(t => {
+      const label = t.table_name || 'Table ' + t.table_number;
+      (t.assignments || []).forEach(a => all.push({ ...a, _tableLabel: label, _tableNum: t.table_number }));
+    });
+    if (!all.length) return '<p class="text-muted text-center">No guests assigned yet.</p>';
+
+    // Group by company
+    const byCompany = {};
+    all.forEach(a => {
+      const key = a.company_name || '__none__';
+      if (!byCompany[key]) byCompany[key] = [];
+      byCompany[key].push(a);
+    });
+    const companyKeys = Object.keys(byCompany).sort((a, b) => {
+      if (a === '__none__') return 1; if (b === '__none__') return -1;
+      return a.localeCompare(b);
+    });
+
+    return companyKeys.map(key => {
+      const guests = byCompany[key].sort((a, b) => (a._tableNum || 0) - (b._tableNum || 0));
+      const companyLabel = key !== '__none__' ? utils.escapeHtml(key) : 'No Company';
+      const companyClass = key !== '__none__' ? '' : ' fst-italic text-muted';
+
+      return `<div class="se-sl-table">
+        <div class="se-sl-table-header">
+          <span><i class="bi bi-building me-2" style="font-size:0.65rem;color:#6c757d"></i><span class="${companyClass}">${companyLabel}</span></span>
+          <span class="badge bg-secondary">${guests.length} guest${guests.length !== 1 ? 's' : ''}</span>
+        </div>
+        <div class="se-sl-table-body">
+          ${guests.map(a => `<div class="se-sl-guest">
+            <span class="se-sl-guest-name">${utils.escapeHtml(a.guest_name)}</span>
+            ${a.is_vip ? '<span class="badge bg-warning text-dark" style="font-size:0.6rem">VIP</span>' : ''}
+            <span class="se-sl-seat">${utils.escapeHtml(a._tableLabel)}${a.seat_number ? ', Seat ' + a.seat_number : ''}</span>
+          </div>`).join('')}
+        </div>
+      </div>`;
+    }).join('');
+  },
+
+  printSeatingList() {
+    const em = window.eventsModule;
+    const esc = s => utils.escapeHtml(s || '');
+    const eventName = em.currentEventNameTablePlan || 'Event';
+    const dateStr = new Date().toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+    const tables = (em.tables || []).slice().sort((a, b) => (a.table_number || 0) - (b.table_number || 0));
+    const totalSeated = tables.reduce((s, t) => s + (t.assignments?.length || 0), 0);
+    const totalSeats = tables.reduce((s, t) => s + (t.total_seats || 0), 0);
+    const sortLabel = this._slSort === 'company' ? 'By Company' : 'By Table';
+
+    let bodyHtml = '';
+    if (this._slSort === 'company') {
+      // Group all assignments by company
+      const all = [];
+      tables.forEach(t => {
+        const label = t.table_name || 'Table ' + t.table_number;
+        (t.assignments || []).forEach(a => all.push({ ...a, _tableLabel: label, _tableNum: t.table_number }));
+      });
+      const byCompany = {};
+      all.forEach(a => { const key = a.company_name || '__none__'; if (!byCompany[key]) byCompany[key] = []; byCompany[key].push(a); });
+      const companyKeys = Object.keys(byCompany).sort((a, b) => { if (a === '__none__') return 1; if (b === '__none__') return -1; return a.localeCompare(b); });
+
+      bodyHtml = companyKeys.map(key => {
+        const guests = byCompany[key].sort((a, b) => (a._tableNum || 0) - (b._tableNum || 0));
+        const companyLabel = key !== '__none__' ? esc(key) : '<em>No Company</em>';
+        const rows = guests.map(a => `<tr>
+          <td style="font-weight:600">${esc(a.guest_name)}${a.is_vip ? ' <span style="background:#ffc107;color:#000;font-size:7pt;padding:1px 5px;border-radius:3px;font-weight:700">VIP</span>' : ''}</td>
+          <td style="color:#555">${esc(a._tableLabel)}</td>
+          <td style="text-align:center;color:#888">${a.seat_number || '-'}</td>
+          <td style="font-size:8pt;color:#888">${esc(a.dietary_requirements)}</td>
+        </tr>`).join('');
+        return `<div style="border:1px solid #dee2e6;border-radius:6px;margin-bottom:12px;page-break-inside:avoid;overflow:hidden">
+          <div style="background:#1a1a2e;color:#fff;padding:6px 12px;display:flex;justify-content:space-between;align-items:center">
+            <strong>${companyLabel}</strong>
+            <span style="font-size:8pt;opacity:.7">${guests.length} guest${guests.length !== 1 ? 's' : ''}</span>
+          </div>
+          <table style="width:100%;border-collapse:collapse;font-size:9pt">
+            <thead><tr style="background:#f8f9fa">
+              <th style="padding:4px 8px;font-size:7pt;text-transform:uppercase;color:#666;border-bottom:1px solid #dee2e6">Guest</th>
+              <th style="padding:4px 8px;font-size:7pt;text-transform:uppercase;color:#666;border-bottom:1px solid #dee2e6">Table</th>
+              <th style="padding:4px 8px;font-size:7pt;text-transform:uppercase;color:#666;border-bottom:1px solid #dee2e6;width:40px;text-align:center">Seat</th>
+              <th style="padding:4px 8px;font-size:7pt;text-transform:uppercase;color:#666;border-bottom:1px solid #dee2e6">Dietary</th>
+            </tr></thead>
+            <tbody>${rows}</tbody>
+          </table>
+        </div>`;
+      }).join('');
+    } else {
+      bodyHtml = tables.map(t => {
+        const assignments = (t.assignments || []).slice().sort((a, b) => (a.seat_number || 999) - (b.seat_number || 999));
+        const label = t.table_name || 'Table ' + t.table_number;
+        const rows = assignments.length > 0
+          ? assignments.map((a, i) => `<tr>
+              <td style="width:30px;text-align:center;color:#888">${a.seat_number || (i + 1)}</td>
+              <td style="font-weight:600">${esc(a.guest_name)}${a.is_vip ? ' <span style="background:#ffc107;color:#000;font-size:7pt;padding:1px 5px;border-radius:3px;font-weight:700">VIP</span>' : ''}</td>
+              <td style="color:#555">${esc(a.company_name)}</td>
+              <td style="font-size:8pt;color:#888">${esc(a.dietary_requirements)}</td>
+            </tr>`).join('')
+          : '<tr><td colspan="4" style="text-align:center;color:#aaa;font-style:italic;padding:8px">No guests assigned</td></tr>';
+
+        return `<div style="border:1px solid #dee2e6;border-radius:6px;margin-bottom:12px;page-break-inside:avoid;overflow:hidden">
+          <div style="background:#1a1a2e;color:#fff;padding:6px 12px;display:flex;justify-content:space-between;align-items:center">
+            <strong>${esc(label)}</strong>
+            <span style="font-size:8pt;opacity:.7">${assignments.length}/${t.total_seats} seats</span>
+          </div>
+          <table style="width:100%;border-collapse:collapse;font-size:9pt">
+            <thead><tr style="background:#f8f9fa">
+              <th style="padding:4px 8px;font-size:7pt;text-transform:uppercase;color:#666;border-bottom:1px solid #dee2e6;width:30px">#</th>
+              <th style="padding:4px 8px;font-size:7pt;text-transform:uppercase;color:#666;border-bottom:1px solid #dee2e6">Guest</th>
+              <th style="padding:4px 8px;font-size:7pt;text-transform:uppercase;color:#666;border-bottom:1px solid #dee2e6">Company</th>
+              <th style="padding:4px 8px;font-size:7pt;text-transform:uppercase;color:#666;border-bottom:1px solid #dee2e6">Dietary</th>
+            </tr></thead>
+            <tbody>${rows}</tbody>
+          </table>
+        </div>`;
+      }).join('');
+    }
+
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) { utils.showToast('Please allow popups to open the print view', 'warning'); return; }
+    printWindow.document.write(`<!DOCTYPE html><html><head><title>Seating List - ${esc(eventName)}</title>
+      <style>
+        @page { size: A4 portrait; margin: 15mm 12mm; }
+        * { margin:0; padding:0; box-sizing:border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; color: #1a1a2e; font-size: 10pt; line-height: 1.4; }
+        table td, table th { padding: 4px 8px; }
+        table tr:not(:last-child) td { border-bottom: 1px solid #f0f0f0; }
+        .toolbar { position:fixed;top:0;left:0;right:0;z-index:100;background:#1a1a2e;color:#fff;padding:10px 20px;display:flex;align-items:center;justify-content:space-between }
+        .toolbar button { background:#0d6efd;color:#fff;border:none;padding:8px 20px;border-radius:6px;font-weight:600;cursor:pointer;font-size:10pt }
+        .toolbar button:hover { background:#0b5ed7 }
+        @media print { .toolbar { display:none } .content { margin-top:0 !important; padding:0 !important } body { -webkit-print-color-adjust:exact; print-color-adjust:exact } }
+        .content { margin-top:56px; padding:20px }
+      </style></head><body>
+      <div class="toolbar"><div><strong>Seating List</strong> &mdash; ${esc(eventName)} &mdash; ${sortLabel}</div><div><button onclick="window.print()">Print / Save as PDF</button></div></div>
+      <div class="content">
+        <div style="text-align:center;margin-bottom:20px">
+          <h1 style="font-size:20pt;margin-bottom:4px">Seating List</h1>
+          <div style="color:#0d6efd;font-size:13pt;font-weight:600">${esc(eventName)}</div>
+          <div style="color:#888;font-size:9pt;margin-top:4px">${dateStr} &mdash; ${totalSeated}/${totalSeats} seated &mdash; Sorted ${sortLabel}</div>
+        </div>
+        ${bodyHtml}
+        <div style="margin-top:16px;padding-top:8px;border-top:1px solid #e9ecef;font-size:7.5pt;color:#aaa;text-align:center">${esc(eventName)} &mdash; Seating List &mdash; Generated ${dateStr}</div>
+      </div></body></html>`);
+    printWindow.document.close();
+    utils.showToast('Seating list opened — use Print / Save as PDF', 'success');
+  },
+
   // === 7. PLACE CARDS ===
   generatePlaceCards() {
     const em=window.eventsModule, cards=[];
@@ -367,6 +631,7 @@ window.seatingEnhancements = {
     if(!tb||tb.querySelector('.se-injected')) return;
     const f=document.createElement('span'); f.className='se-injected d-contents';
     f.innerHTML=`<div class="vr"></div>
+      <button class="btn btn-sm btn-outline-secondary" onclick="seatingEnhancements.showSeatingList()" title="Seating List"><i class="bi bi-list-columns-reverse me-1"></i>Seating List</button>
       <div class="btn-group btn-group-sm"><button class="btn btn-sm btn-outline-secondary dropdown-toggle" data-bs-toggle="dropdown" data-bs-display="static"><i class="bi bi-layers me-1"></i>Sections</button>
         <ul class="dropdown-menu">
           <li><a class="dropdown-item" href="#" onclick="seatingEnhancements.addSection('VIP Area','#ffc107');return false"><i class="bi bi-star-fill me-2" style="color:#ffc107;"></i>VIP Area</a></li>
@@ -401,7 +666,22 @@ window.seatingEnhancements = {
       .btn-xs{font-size:.72rem;padding:2px 8px}
       .se-tbl-icon{pointer-events:none}
       .d-contents{display:contents}
-      .se-section{transition:opacity .2s}`;
+      .se-section{transition:opacity .2s}
+      .se-seat-tooltip{position:absolute;z-index:10001;background:#1a1a2e;color:#fff;border-radius:8px;padding:8px 12px;pointer-events:none;white-space:nowrap;box-shadow:0 4px 16px rgba(0,0,0,.3);animation:seTipIn .15s ease}
+      .se-seat-tooltip::after{content:'';position:absolute;top:100%;left:50%;transform:translateX(-50%);border:5px solid transparent;border-top-color:#1a1a2e}
+      .se-tip-name{font-weight:600;font-size:.82rem}
+      .se-tip-company{font-size:.72rem;color:#a0aec0}
+      .se-tip-seat{font-size:.68rem;color:#8899aa;margin-top:2px}
+      @keyframes seTipIn{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:translateY(0)}}
+      .se-sl-modal{background:#fff;border-radius:16px;padding:24px;width:700px;max-width:90vw;max-height:85vh;overflow-y:auto}
+      .se-sl-table{margin-bottom:16px;border:1px solid #e9ecef;border-radius:10px;overflow:hidden}
+      .se-sl-table-header{display:flex;justify-content:space-between;align-items:center;padding:10px 14px;background:#f8f9fa;font-weight:600;font-size:.88rem;border-bottom:1px solid #e9ecef}
+      .se-sl-table-body{padding:8px 14px}
+      .se-sl-company{margin-bottom:4px}
+      .se-sl-company-label{font-size:.76rem;font-weight:600;color:#6c757d;padding:3px 0;border-bottom:1px dotted #e9ecef;margin-bottom:2px}
+      .se-sl-guest{display:flex;align-items:center;gap:8px;padding:4px 0 4px 8px;font-size:.82rem}
+      .se-sl-guest-name{font-weight:500}
+      .se-sl-seat{font-size:.7rem;color:#6c757d;margin-left:auto}`;
     document.head.appendChild(s);
   }
 };

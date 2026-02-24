@@ -70,13 +70,13 @@ window.winnerAnnouncementsModule = {
       try {
         const yr = new Date().getFullYear();
         const {data,error} = await STATE.client.from('winners')
-          .select('id,winner_name,year,awards:award_years(name),organisations(name)').eq('year',yr);
+          .select('id,winner_name,year,awards:award_years(award_name,award_category),organisations(company_name)').eq('year',yr);
         if (error) throw error;
         rows = (data||[]).map(w => `<tr>
           <td><input class="form-check-input winner-chk" type="checkbox" value="${w.id}" data-name="${utils.escapeHtml(w.winner_name)}"></td>
           <td>${utils.escapeHtml(w.winner_name)}</td>
-          <td>${utils.escapeHtml(w.awards?.name||'-')}</td>
-          <td>${utils.escapeHtml(w.organisations?.name||'-')}</td>
+          <td>${utils.escapeHtml(w.awards?.award_name||'-')}</td>
+          <td>${utils.escapeHtml(w.organisations?.company_name||'-')}</td>
         </tr>`).join('') || '<tr><td colspan="4" class="text-muted text-center py-3">No winners found</td></tr>';
       } catch(e) { rows = `<tr><td colspan="4" class="text-danger py-2">${utils.escapeHtml(e.message)}</td></tr>`; }
       return `<h6>Select Winners to Announce</h6>
@@ -195,7 +195,7 @@ window.winnerAnnouncementsModule = {
     const now = new Date().toISOString();
     await utils.runBatchOperation(winnerIds, async (id) => {
       if (await this.checkEmbargo(id)) { console.warn(`Embargoed: ${id}`); return; }
-      const {error} = await STATE.client.from('winners').update({published:true, published_at:now}).eq('id',id);
+      const {error} = await STATE.client.from('winners').update({is_published:true, published_at:now}).eq('id',id);
       if (error) throw error;
       await this._logAnnouncement(id,'website',scheduledFor?'scheduled':'published',scheduledFor,scheduledFor?null:now);
     }, 'Publishing winners');
@@ -210,14 +210,14 @@ window.winnerAnnouncementsModule = {
     await utils.runBatchOperation(winnerIds, async (id) => {
       if (await this.checkEmbargo(id)) return;
       const {data:w,error:we} = await STATE.client.from('winners')
-        .select('*,awards:award_years(name,category),organisations(name,contact_email)').eq('id',id).single();
+        .select('*,awards:award_years(award_name,award_category),organisations(company_name,email)').eq('id',id).single();
       if (we) throw we;
-      const vars = {'{winner_name}':w.winner_name||'','{award_name}':w.awards?.name||'',
-        '{category}':w.awards?.category||'','{organisation}':w.organisations?.name||'',
+      const vars = {'{winner_name}':w.winner_name||'','{award_name}':w.awards?.award_name||'',
+        '{category}':w.awards?.award_category||'','{organisation}':w.organisations?.company_name||'',
         '{year}':String(w.year||new Date().getFullYear())};
       const sub = Object.entries(vars).reduce((s,[k,v])=>s.replaceAll(k,v), tmpl.subject||'');
       const body = Object.entries(vars).reduce((s,[k,v])=>s.replaceAll(k,v), tmpl.body||'');
-      const to = w.organisations?.contact_email;
+      const to = w.organisations?.email;
       if (to) {
         try { await fetch('/api/resend-email.js',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({to,subject:sub,html:body})}); }
         catch(e) { console.error('Email failed for',id,e); }
@@ -234,11 +234,11 @@ window.winnerAnnouncementsModule = {
     await utils.runBatchOperation(winnerIds, async (id) => {
       if (await this.checkEmbargo(id)) return;
       const {data:w,error} = await STATE.client.from('winners')
-        .select('*,awards:award_years(name),organisations(name)').eq('id',id).single();
+        .select('*,awards:award_years(award_name),organisations(company_name)').eq('id',id).single();
       if (error) throw error;
       const content = tpl
-        .replace('{company}', w.organisations?.name||w.winner_name||'')
-        .replace('{award}', w.awards?.name||'')
+        .replace('{company}', w.organisations?.company_name||w.winner_name||'')
+        .replace('{award}', w.awards?.award_name||'')
         .replace('{year}', String(w.year||new Date().getFullYear()));
       const {error:ie} = await STATE.client.from('social_media_posts').insert({
         company_id:w.organisation_id, award_id:w.award_id, content,
@@ -331,11 +331,11 @@ window.winnerAnnouncementsModule = {
   async generatePressRelease(winnerIds) {
     try {
       const {data,error} = await STATE.client.from('winners')
-        .select('*,awards:award_years(name,category),organisations(name)').in('id',winnerIds);
+        .select('*,awards:award_years(award_name,award_category),organisations(company_name)').in('id',winnerIds);
       if (error) throw error;
       const byCategory = {};
       for (const w of (data||[])) {
-        const cat = w.awards?.category||w.awards?.name||'General';
+        const cat = w.awards?.award_category||w.awards?.award_name||'General';
         if (!byCategory[cat]) byCategory[cat] = [];
         byCategory[cat].push(w);
       }
@@ -350,7 +350,7 @@ window.winnerAnnouncementsModule = {
         html += `<h2 style="font-size:1.2rem;margin-top:1.5rem;color:#1a4f9c">${utils.escapeHtml(cat)}</h2><ul>`;
         for (const w of winners) {
           html += `<li><strong>${utils.escapeHtml(w.winner_name)}</strong>`;
-          if (w.organisations?.name && w.organisations.name !== w.winner_name) html += ` (${utils.escapeHtml(w.organisations.name)})`;
+          if (w.organisations?.company_name && w.organisations.company_name !== w.winner_name) html += ` (${utils.escapeHtml(w.organisations.company_name)})`;
           html += `</li>`;
         }
         html += `</ul>`;

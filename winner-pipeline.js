@@ -190,8 +190,9 @@ window.winnerPipelineModule = {
         .insert({ winner_name: entry.entry_title, award_id: awardId, organisation_id: entry.organisation_id, year });
       if (wErr && !wErr.message.includes('duplicate')) throw wErr;
 
+      const positionInt = position === 'winner' ? 1 : position === 'runner_up' ? 2 : 3;
       const { error: aaErr } = await STATE.client.from('award_assignments')
-        .update({ status: 'winner', winner_position: position })
+        .update({ status: 'winner', winner_position: positionInt })
         .eq('award_id', awardId).eq('organisation_id', entry.organisation_id);
       if (aaErr) throw aaErr;
 

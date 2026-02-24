@@ -173,7 +173,7 @@ const mediaGalleryModule = {
           ${untagged.map(photo => `
             <div class="col-md-3">
               <div class="card h-100">
-                <img src="${photo.media_url}" class="card-img-top" alt="${photo.caption || 'Photo'}"
+                <img src="${photo.file_url}" class="card-img-top" alt="${photo.caption || 'Photo'}"
                      style="height: 200px; object-fit: cover;">
                 <div class="card-body">
                   <p class="small mb-1">

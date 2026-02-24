@@ -65,24 +65,38 @@ serve(async (req) => {
 
     // Build fallback template if none found in database
     const emailTemplate = template || {
-      subject: 'British Trade Awards - Entry Received ({ENTRY_NUMBER})',
+      subject: 'Entry Received - {ENTRY_NUMBER} | British Trade Awards',
       body: `Dear {CONTACT_NAME},
 
-Thank you for submitting your entry to the British Trade Awards!
+Thank you for entering the British Trade Awards. We are pleased to confirm that your entry has been received and is now being processed.
 
-Entry Details:
-- Entry Number: {ENTRY_NUMBER}
+Your Entry Details:
+- Entry Reference: {ENTRY_NUMBER}
 - Company: {COMPANY_NAME}
-- Award Category: {AWARD_NAME}
+- Category: {AWARD_NAME}
 - Sector: {SECTOR}
 - Region: {REGION}
 
-What happens next:
-Your entry will be reviewed by our judging panel. We will be in touch with further details.
+What Happens Next:
+1. Our team will review your entry to ensure all details are complete.
+2. You may upload any supporting documents (case studies, images, testimonials or other materials) using the link below.
+3. Shortlisted entries will be assessed by our independent judging panel.
+4. Winners will be announced at the awards ceremony.
 
-If you have any questions, please contact us at {CONTACT_EMAIL}
+Upload Supporting Documents:
+{UPLOAD_LINK}
 
-Best regards,
+Accepted formats: PDF, Word, Excel, JPG, PNG (max 10MB per file)
+
+Key Dates:
+- Entry Deadline: {DEADLINE_DATE}
+- Winners Announced: {ANNOUNCEMENT_DATE}
+
+Please keep your entry reference number safe for future correspondence.
+
+If you have any questions about your entry or the awards process, please contact us at {CONTACT_EMAIL}
+
+Kind regards,
 The British Trade Awards Team`,
       id: null
     }

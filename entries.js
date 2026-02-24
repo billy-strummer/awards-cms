@@ -61,12 +61,20 @@ const entriesModule = {
    * Load filter dropdown options
    */
   async loadFilterOptions() {
-    // Load awards for filter
-    const { data: awards } = await STATE.client
-      .from('awards')
-      .select('id, award_name')
-      .eq('status', 'Active')
-      .order('award_name');
+    // Use already-loaded awards if available, otherwise fetch
+    let awards;
+    if (STATE.allAwards && STATE.allAwards.length > 0) {
+      awards = STATE.allAwards
+        .filter(a => a.status === 'Active')
+        .sort((a, b) => (a.award_name || '').localeCompare(b.award_name || ''));
+    } else {
+      const { data } = await STATE.client
+        .from('awards')
+        .select('id, award_name')
+        .eq('status', 'Active')
+        .order('award_name');
+      awards = data;
+    }
 
     const awardFilter = document.getElementById('entriesAwardFilter');
     if (awards && awards.length > 0) {
@@ -74,15 +82,21 @@ const entriesModule = {
         awards.map(award => `<option value="${award.id}">${utils.escapeHtml(award.award_name)}</option>`).join('');
     }
 
-    // Load years for filter
-    const { data: years } = await STATE.client
-      .from('entries')
-      .select('year')
-      .order('year', { ascending: false });
+    // Years will be populated after entries load (see initialize)
+    // For now, try to derive from allEntries if available, otherwise fetch
+    let uniqueYears;
+    if (this.allEntries && this.allEntries.length > 0) {
+      uniqueYears = [...new Set(this.allEntries.map(e => e.year).filter(Boolean))].sort((a, b) => b - a);
+    } else {
+      const { data: years } = await STATE.client
+        .from('entries')
+        .select('year')
+        .order('year', { ascending: false });
+      uniqueYears = years ? [...new Set(years.map(y => y.year))] : [];
+    }
 
     const yearFilter = document.getElementById('entriesYearFilter');
-    if (years && years.length > 0) {
-      const uniqueYears = [...new Set(years.map(y => y.year))];
+    if (uniqueYears.length > 0) {
       yearFilter.innerHTML = '<option value="">All Years</option>' +
         uniqueYears.map(year => `<option value="${year}">${year}</option>`).join('');
     }

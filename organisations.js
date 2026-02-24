@@ -201,13 +201,8 @@ async loadOrganisations() {
     try {
       const totalCount = STATE.allOrganisations.length;
 
-      // Count unique organisations with award assignments
-      const { data: assignments } = await STATE.client
-        .from('award_assignments')
-        .select('organisation_id');
-
-      const uniqueOrgIds = new Set(assignments?.map(a => a.organisation_id) || []);
-      const activeNominees = uniqueOrgIds.size;
+      // Count organisations with award assignments (already computed during load)
+      const activeNominees = STATE.allOrganisations.filter(o => o.awards_count > 0).length;
 
       // New this month
       const now = new Date();
@@ -786,14 +781,9 @@ updateCountyFilterByRegion() {
     }, 10);
 
     try {
-      // Fetch organisation details with related awards
-      const { data: org, error: orgError } = await STATE.client
-        .from('organisations')
-        .select('*')
-        .eq('id', orgId)
-        .single();
-      
-      if (orgError) throw orgError;
+      // Use already-loaded org data from STATE
+      const org = STATE.allOrganisations.find(o => o.id === orgId);
+      if (!org) throw new Error('Organisation not found');
       
       // Fetch related awards through award_assignments using explicit FK
       const { data: assignments, error: awardsError } = await STATE.client
@@ -2423,8 +2413,9 @@ updateCountyFilterByRegion() {
         // Refresh the profile view
         await this.openCompanyProfile(orgId, this.currentEditingOrg.company_name);
 
-        // Refresh the organisations table
+        // Refresh the organisations table and stats
         this.renderOrganisations();
+        this.calculateDashboardStats();
       });
     } catch (error) {
       console.error('Error saving organisation changes:', error);
@@ -6764,8 +6755,24 @@ updateCountyFilterByRegion() {
       if (fOrg) fOrg.status = 'nominee';
     });
 
-    for (const id of toPromote) {
-      await this._logAudit(id, 'auto_status_promotion', { from: 'prospect/entrant', to: 'nominee', reason: 'Assigned to award' });
+    // Batch audit log inserts instead of sequential loop
+    try {
+      const performedBy = await this._getCurrentUserEmail();
+      const auditLogs = toPromote.map(id => {
+        const org = STATE.allOrganisations.find(o => o.id === id);
+        return {
+          org_id: id,
+          company_name: org?.company_name || '',
+          action: 'auto_status_promotion',
+          details: JSON.stringify({ from: 'prospect/entrant', to: 'nominee', reason: 'Assigned to award' }),
+          performed_by: performedBy
+        };
+      });
+      if (auditLogs.length > 0) {
+        await STATE.client.from('org_audit_log').insert(auditLogs);
+      }
+    } catch (e) {
+      console.warn('Failed to batch write audit logs:', e.message);
     }
 
     utils.showToast(`${toPromote.length} org(s) auto-promoted to "nominee"`, 'info');

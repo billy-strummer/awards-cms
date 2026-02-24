@@ -666,55 +666,44 @@ const emailListsModule = {
           }));
         },
         'sponsors': async () => {
-          const { data } = await STATE.client
-            .from('organisations')
-            .select('company_name, contact_email, contact_first_name, contact_last_name')
-            .eq('is_sponsor', true)
-            .not('contact_email', 'is', null);
-          return (data || []).map(org => ({
-            email: org.contact_email,
-            first_name: org.contact_first_name || '',
-            last_name: org.contact_last_name || '',
-            company_name: org.company_name || ''
-          }));
+          return (STATE.allOrganisations || [])
+            .filter(org => org.is_sponsor && org.contact_email)
+            .map(org => ({
+              email: org.contact_email,
+              first_name: org.contact_first_name || '',
+              last_name: org.contact_last_name || '',
+              company_name: org.company_name || ''
+            }));
         },
         'vip_contacts': async () => {
-          const { data } = await STATE.client
-            .from('organisations')
-            .select('company_name, contact_email, contact_first_name, contact_last_name')
-            .eq('vip', true)
-            .not('contact_email', 'is', null);
-          return (data || []).map(org => ({
-            email: org.contact_email,
-            first_name: org.contact_first_name || '',
-            last_name: org.contact_last_name || '',
-            company_name: org.company_name || ''
-          }));
+          return (STATE.allOrganisations || [])
+            .filter(org => org.vip && org.contact_email)
+            .map(org => ({
+              email: org.contact_email,
+              first_name: org.contact_first_name || '',
+              last_name: org.contact_last_name || '',
+              company_name: org.company_name || ''
+            }));
         },
         'industry_leaders': async () => {
-          const { data } = await STATE.client
-            .from('organisations')
-            .select('company_name, contact_email, contact_first_name, contact_last_name')
-            .eq('industry_leader', true)
-            .not('contact_email', 'is', null);
-          return (data || []).map(org => ({
-            email: org.contact_email,
-            first_name: org.contact_first_name || '',
-            last_name: org.contact_last_name || '',
-            company_name: org.company_name || ''
-          }));
+          return (STATE.allOrganisations || [])
+            .filter(org => org.industry_leader && org.contact_email)
+            .map(org => ({
+              email: org.contact_email,
+              first_name: org.contact_first_name || '',
+              last_name: org.contact_last_name || '',
+              company_name: org.company_name || ''
+            }));
         },
         'renewal_prospects': async () => {
-          const { data } = await STATE.client
-            .from('organisations')
-            .select('company_name, contact_email, contact_first_name, contact_last_name')
-            .not('contact_email', 'is', null);
-          return (data || []).map(org => ({
-            email: org.contact_email,
-            first_name: org.contact_first_name || '',
-            last_name: org.contact_last_name || '',
-            company_name: org.company_name || ''
-          }));
+          return (STATE.allOrganisations || [])
+            .filter(org => org.contact_email)
+            .map(org => ({
+              email: org.contact_email,
+              first_name: org.contact_first_name || '',
+              last_name: org.contact_last_name || '',
+              company_name: org.company_name || ''
+            }));
         }
       };
 

@@ -29,11 +29,9 @@ const settingsModule = {
       document.getElementById('systemOrgsCount').textContent = STATE.allOrganisations?.length || 0;
       document.getElementById('systemWinnersCount').textContent = STATE.allWinners?.length || 0;
 
-      // Get events count
-      const { count: eventsCount } = await STATE.client
-        .from('events')
-        .select('*', { count: 'exact', head: true });
-      document.getElementById('systemEventsCount').textContent = eventsCount || 0;
+      // Use already-loaded events data
+      const eventsCount = STATE.allEvents?.length || 0;
+      document.getElementById('systemEventsCount').textContent = eventsCount;
 
       // Get media count
       const { count: mediaCount } = await STATE.client

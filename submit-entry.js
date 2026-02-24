@@ -672,7 +672,10 @@ window.entryFormApp = {
         .ilike('company_name', this.formData.companyName)
         .limit(1);
 
-      if (searchError) throw searchError;
+      if (searchError) {
+        console.error('Organisation lookup failed:', searchError);
+        throw new Error('Could not search for existing company. Please try again.');
+      }
 
       if (existingOrgs && existingOrgs.length > 0) {
         organisationId = existingOrgs[0].id;
@@ -692,7 +695,10 @@ window.entryFormApp = {
           .select()
           .single();
 
-        if (orgError) throw orgError;
+        if (orgError) {
+          console.error('Organisation creation failed:', orgError);
+          throw new Error('Could not save company details. Please try again.');
+        }
         organisationId = newOrg.id;
       }
 
@@ -710,7 +716,10 @@ window.entryFormApp = {
         .order('year', { ascending: false })
         .limit(1);
 
-      if (awardError) throw awardError;
+      if (awardError) {
+        console.error('Award lookup failed:', awardError);
+        // Non-fatal: continue without linking to an award record
+      }
 
       if (matchingAwards && matchingAwards.length > 0) {
         awardId = matchingAwards[0].id;
@@ -747,7 +756,6 @@ window.entryFormApp = {
         payment_status: 'pending',
         submission_date: new Date().toISOString(),
         allow_public_voting: false,
-        is_self_nomination: true,
         year: currentYear
       };
 
@@ -757,7 +765,17 @@ window.entryFormApp = {
         .select()
         .single();
 
-      if (entryError) throw entryError;
+      if (entryError) {
+        console.error('Entry creation failed:', entryError);
+        throw new Error('Could not save your entry. Please try again or contact support.');
+      }
+
+      // Mark as self-nomination (non-blocking - column may not exist yet)
+      try {
+        await db.from('entries').update({ is_self_nomination: true }).eq('id', entry.id);
+      } catch (e) {
+        console.warn('Could not set is_self_nomination flag:', e.message);
+      }
 
       // 6. Try sending confirmation email (non-blocking)
       try {

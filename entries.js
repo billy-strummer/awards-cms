@@ -733,49 +733,33 @@ const entriesModule = {
                 </div>
               ` : ''}
 
-              <!-- Status Change Section -->
+              <!-- Admin Notes Input -->
               <div class="card">
                 <div class="card-header bg-light">
-                  <h6 class="mb-0"><i class="bi bi-gear me-2"></i>Change Status</h6>
+                  <h6 class="mb-0"><i class="bi bi-sticky me-2"></i>Add Note (optional)</h6>
                 </div>
                 <div class="card-body">
-                  <div class="row">
-                    <div class="col-md-6">
-                      <label class="form-label">New Status</label>
-                      <select class="form-select" id="newEntryStatus">
-                        <option value="draft" ${entry.status === 'draft' ? 'selected' : ''}>Draft</option>
-                        <option value="submitted" ${entry.status === 'submitted' ? 'selected' : ''}>Submitted</option>
-                        <option value="under_review" ${entry.status === 'under_review' ? 'selected' : ''}>Under Review</option>
-                        <option value="shortlisted" ${entry.status === 'shortlisted' ? 'selected' : ''}>Shortlisted</option>
-                        <option value="winner" ${entry.status === 'winner' ? 'selected' : ''}>Winner</option>
-                        <option value="rejected" ${entry.status === 'rejected' ? 'selected' : ''}>Rejected</option>
-                      </select>
-                    </div>
-                    <div class="col-md-6">
-                      <label class="form-label">Notes (optional)</label>
-                      <input type="text" class="form-control" id="statusChangeNotes" placeholder="Add a note about this status change">
-                    </div>
-                  </div>
+                  <input type="text" class="form-control" id="statusChangeNotes" placeholder="Add a note about this status change (saved with any action below)">
                 </div>
               </div>
 
             </div>
-            <div class="modal-footer">
-              <button type="button" class="btn btn-outline-info" onclick="entriesModule.openUploadLink('${entry.entry_number}')">
+            <div class="modal-footer d-flex flex-wrap gap-1">
+              <button type="button" class="btn btn-outline-info me-auto" onclick="entriesModule.openUploadLink('${entry.entry_number}')">
                 <i class="bi bi-paperclip me-2"></i>View Upload Link
               </button>
               <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-              <button type="button" class="btn btn-danger" onclick="entriesModule.quickStatusChange('${entry.id}', 'rejected')">
-                <i class="bi bi-x-circle me-2"></i>Reject
+              <button type="button" class="btn btn-danger" onclick="entriesModule.quickStatusChange('${entry.id}', 'rejected')" ${entry.status === 'rejected' ? 'disabled' : ''}>
+                <i class="bi bi-x-circle me-1"></i>Reject
               </button>
-              <button type="button" class="btn btn-warning" onclick="entriesModule.quickStatusChange('${entry.id}', 'under_review')">
-                <i class="bi bi-eye me-2"></i>Under Review
+              <button type="button" class="btn btn-warning" onclick="entriesModule.quickStatusChange('${entry.id}', 'under_review')" ${entry.status === 'under_review' ? 'disabled' : ''}>
+                <i class="bi bi-eye me-1"></i>Under Review
               </button>
-              <button type="button" class="btn btn-success" onclick="entriesModule.quickStatusChange('${entry.id}', 'shortlisted')">
-                <i class="bi bi-check-circle me-2"></i>Approve/Shortlist
+              <button type="button" class="btn btn-success" onclick="entriesModule.quickStatusChange('${entry.id}', 'shortlisted')" ${entry.status === 'shortlisted' ? 'disabled' : ''}>
+                <i class="bi bi-check-circle me-1"></i>Shortlist
               </button>
-              <button type="button" class="btn btn-primary" onclick="entriesModule.updateEntryStatus('${entry.id}')">
-                <i class="bi bi-save me-2"></i>Save Status Change
+              <button type="button" class="btn btn-primary" onclick="entriesModule.quickStatusChange('${entry.id}', 'winner')" ${entry.status === 'winner' ? 'disabled' : ''}>
+                <i class="bi bi-trophy me-1"></i>Winner
               </button>
             </div>
           </div>
@@ -809,12 +793,13 @@ const entriesModule = {
     const statusLabels = {
       'rejected': 'Reject',
       'under_review': 'move to Under Review',
-      'shortlisted': 'Approve and Shortlist'
+      'shortlisted': 'Approve and Shortlist',
+      'winner': 'mark as Winner'
     };
 
     const label = statusLabels[newStatus] || 'change status';
 
-    if (!await utils.confirmDialog({ title: 'Change Entry Status', message: `Are you sure you want to ${label} this entry?`, confirmText: 'Confirm', danger: false })) {
+    if (!await utils.confirmDialog({ title: 'Change Entry Status', message: `Are you sure you want to ${label} this entry?`, confirmText: 'Confirm', danger: newStatus === 'rejected' })) {
       return;
     }
 
@@ -828,6 +813,24 @@ const entriesModule = {
           updateData.shortlisted_date = new Date().toISOString();
         }
 
+        // Pick up any notes from the notes field
+        const notesEl = document.getElementById('statusChangeNotes');
+        const notes = notesEl ? notesEl.value.trim() : '';
+        if (notes) {
+          const timestamp = new Date().toLocaleString();
+          const noteEntry = `[${timestamp}] Status changed to ${newStatus}: ${notes}`;
+
+          const { data: entry } = await STATE.client
+            .from('entries')
+            .select('admin_notes')
+            .eq('id', entryId)
+            .single();
+
+          updateData.admin_notes = entry?.admin_notes
+            ? `${entry.admin_notes}\n\n${noteEntry}`
+            : noteEntry;
+        }
+
         const { error } = await STATE.client
           .from('entries')
           .update(updateData)
@@ -835,7 +838,8 @@ const entriesModule = {
 
         if (error) throw error;
 
-        utils.showToast(`Entry status updated to ${newStatus}`, 'success');
+        const displayStatus = newStatus === 'under_review' ? 'Under Review' : newStatus.charAt(0).toUpperCase() + newStatus.slice(1);
+        utils.showToast(`Entry status updated to ${displayStatus}`, 'success');
 
         // Close modal
         const modal = bootstrap.Modal.getInstance(document.getElementById('entryDetailsModal'));

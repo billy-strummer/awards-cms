@@ -39,24 +39,28 @@ BEGIN
     RETURN jsonb_build_object('success', false, 'error', 'No contact email on entry');
   END IF;
 
-  -- Fetch organisation (use direct variable assignment to avoid unassigned record issues)
+  -- Use direct columns from entry first (migration 030+)
+  v_award_name := COALESCE(v_entry.award_category, '');
+  v_sector := COALESCE(v_entry.sector, '');
+  v_region := COALESCE(v_entry.region, '');
+
+  -- Fetch organisation for company name
   IF v_entry.organisation_id IS NOT NULL THEN
-    SELECT company_name, sector, region
-      INTO v_company_name, v_sector, v_region
+    SELECT company_name INTO v_company_name
       FROM organisations WHERE id = v_entry.organisation_id;
   END IF;
-  v_sector := COALESCE(v_sector, '');
-  v_region := COALESCE(v_region, '');
 
-  -- Fetch award if linked (override sector/region with award values if available)
-  IF v_entry.award_id IS NOT NULL THEN
-    SELECT award_name, sector, county
-      INTO v_award_name, v_sector, v_region
-      FROM awards WHERE id = v_entry.award_id;
+  -- If direct columns are empty, try award record
+  IF (v_award_name = '' OR v_sector = '' OR v_region = '') AND v_entry.award_id IS NOT NULL THEN
+    SELECT
+      COALESCE(NULLIF(v_award_name, ''), award_name),
+      COALESCE(NULLIF(v_sector, ''), sector),
+      COALESCE(NULLIF(v_region, ''), county)
+    INTO v_award_name, v_sector, v_region
+    FROM award_years WHERE id = v_entry.award_id;
   END IF;
-  v_award_name := COALESCE(v_award_name, '');
 
-  -- Fallback: extract award name from entry title if not set via award record
+  -- Last resort: extract award name from entry title
   IF v_award_name = '' THEN
     IF v_entry.entry_title LIKE '%-%' THEN
       v_award_name := TRIM(SUBSTRING(v_entry.entry_title FROM POSITION(' - ' IN v_entry.entry_title) + 3));

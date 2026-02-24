@@ -761,7 +761,10 @@ window.entryFormApp = {
         supporting_information: supportingInformation || null,
         contact_phone: this.formData.contactPhone || null,
         contact_position: this.formData.contactPosition || null,
-        year: currentYear
+        year: currentYear,
+        award_category: this.formData.awardCategory || null,
+        sector: this.formData.sector || null,
+        region: this.formData.region || null
       };
 
       let entry = null;

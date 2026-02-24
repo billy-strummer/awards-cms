@@ -7462,7 +7462,10 @@ const eventsModule = {
                     </button>
                     <small class="text-muted" id="tpZoomLevel">100%</small>
                     <div class="vr"></div>
-                    <small class="text-muted"><i class="bi bi-arrows-move me-1"></i>Drag tables to position. Drop guests onto tables to assign.</small>
+                    <button class="btn btn-sm btn-outline-danger" onclick="eventsModule.resetCanvas()" title="Reset Canvas">
+                      <i class="bi bi-arrow-counterclockwise me-1"></i>Reset
+                    </button>
+                    <small class="text-muted"><i class="bi bi-arrows-move me-1"></i>Drag to position. Drop guests onto tables.</small>
                   </div>
 
                   <!-- Canvas (the room) -->
@@ -8494,9 +8497,20 @@ const eventsModule = {
             </select>
           </div>
         </div>
-        <button class="btn btn-sm btn-primary mb-3" onclick="eventsModule.saveTableProperties('${table.id}')">
+        <button class="btn btn-sm btn-primary mb-2" onclick="eventsModule.saveTableProperties('${table.id}')">
           <i class="bi bi-check-lg me-1"></i>Save Changes
         </button>
+        <div class="d-flex gap-2 mb-2">
+          <button class="btn btn-sm btn-outline-secondary flex-fill" onclick="eventsModule.duplicateTable('${table.id}')">
+            <i class="bi bi-copy me-1"></i>Duplicate
+          </button>
+          <button class="btn btn-sm btn-outline-warning flex-fill" onclick="eventsModule.clearTable('${table.id}')" ${assignedCount === 0 ? 'disabled' : ''}>
+            <i class="bi bi-eraser me-1"></i>Clear All
+          </button>
+          <button class="btn btn-sm btn-outline-danger flex-fill" onclick="eventsModule.deleteTable('${table.id}')">
+            <i class="bi bi-trash me-1"></i>Delete
+          </button>
+        </div>
         <hr>
         ${orgPickerHtml}
         <div class="d-flex justify-content-between align-items-center mb-2">
@@ -8514,19 +8528,6 @@ const eventsModule = {
               </span>
             </div>
           `).join('') : '<p class="text-muted small text-center mt-3">Click a company above or drag guests from the left panel</p>'}
-        </div>
-        <hr>
-        <div class="d-flex gap-2 mb-2">
-          <button class="btn btn-sm btn-outline-secondary flex-fill" onclick="eventsModule.duplicateTable('${table.id}')">
-            <i class="bi bi-copy me-1"></i>Duplicate
-          </button>
-          <button class="btn btn-sm btn-outline-warning flex-fill" onclick="eventsModule.clearTable('${table.id}')" ${assignedCount === 0 ? 'disabled' : ''}>
-            <i class="bi bi-eraser me-1"></i>Clear
-          </button>
-        </div>
-        <button class="btn btn-sm btn-outline-danger w-100" onclick="eventsModule.deleteTable('${table.id}')">
-          <i class="bi bi-trash me-1"></i>Delete Table
-        </button>
       </div>
     `;
 
@@ -9698,6 +9699,79 @@ const eventsModule = {
     } catch (error) {
       console.error('Error duplicating table:', error);
       utils.showToast('Failed to duplicate table', 'error');
+    }
+  },
+
+  // ---- RESET CANVAS (remove all tables, fixtures, assignments) ----
+
+  async resetCanvas() {
+    const tableCount = this.tables.length;
+    const fixtureCount = this.roomFixtures.length;
+    const seatedCount = this.tables.reduce((s, t) => s + (t.assignments?.length || 0), 0);
+    if (tableCount === 0 && fixtureCount === 0) {
+      utils.showToast('Canvas is already empty', 'info');
+      return;
+    }
+
+    const parts = [];
+    if (tableCount > 0) parts.push(`${tableCount} table(s)`);
+    if (seatedCount > 0) parts.push(`${seatedCount} seated guest(s)`);
+    if (fixtureCount > 0) parts.push(`${fixtureCount} room element(s)`);
+
+    if (!await utils.confirmDialog({
+      title: 'Reset Canvas',
+      message: `This will remove ${parts.join(', ')} from the canvas. All guest assignments will be cleared.<br><br>This cannot be undone.`,
+      confirmText: 'Reset Everything'
+    })) return;
+
+    try {
+      // Delete all assignments first
+      if (seatedCount > 0) {
+        const tableIds = this.tables.map(t => t.id);
+        const { error: clearErr } = await STATE.client
+          .from('table_assignments')
+          .delete()
+          .in('table_id', tableIds);
+        if (clearErr) throw clearErr;
+      }
+
+      // Delete all tables
+      if (tableCount > 0) {
+        const { error: tabErr } = await STATE.client
+          .from('event_tables')
+          .delete()
+          .eq('event_id', this.currentEventIdTablePlan);
+        if (tabErr) throw tabErr;
+      }
+
+      // Delete all fixtures
+      if (fixtureCount > 0) {
+        for (const f of this.roomFixtures) {
+          try {
+            await STATE.client.from('event_room_fixtures').delete().eq('id', f.id);
+          } catch (e) { /* continue */ }
+        }
+        this.roomFixtures = [];
+        this._saveFixturesToLocalStorage();
+      }
+
+      this._selectedTableId = null;
+      this._selectedFixtureId = null;
+      this.closeTableDetail();
+      utils.showToast('Canvas reset', 'success');
+      await this.loadTablePlan();
+      this.renderUnassignedGuests();
+      this.renderCanvasTables();
+      this._updateHeaderBadges();
+
+      // Show setup panel again
+      const setup = document.getElementById('tpSetupPanel');
+      const guests = document.getElementById('tpGuestsPanel');
+      if (setup) setup.style.display = 'block';
+      if (guests) guests.style.display = 'none';
+    } catch (error) {
+      console.error('Error resetting canvas:', error);
+      utils.showToast('Failed to reset canvas', 'error');
     }
   },
 

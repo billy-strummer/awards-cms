@@ -231,18 +231,6 @@ const utils = {
       okBtn.textContent = confirmText;
       okBtn.className = danger ? 'btn btn-danger' : 'btn btn-primary';
 
-      // Ensure confirm dialog appears above any other open modals (e.g. fullscreen table plan)
-      const openModals = document.querySelectorAll('.modal.show');
-      if (openModals.length > 0) {
-        const topZ = Math.max(...[...document.querySelectorAll('.modal.show, .modal-backdrop.show')].map(el => parseInt(getComputedStyle(el).zIndex) || 1050));
-        dlg.style.zIndex = topZ + 10;
-        dlg.addEventListener('shown.bs.modal', () => {
-          const backdrop = dlg.nextElementSibling?.classList?.contains('modal-backdrop') ? dlg.nextElementSibling
-            : document.querySelector('.modal-backdrop:last-of-type');
-          if (backdrop) backdrop.style.zIndex = topZ + 5;
-        }, { once: true });
-      }
-
       const modal = new bootstrap.Modal(dlg);
 
       const onConfirm = () => {
@@ -257,8 +245,19 @@ const utils = {
       const cleanup = () => {
         okBtn.removeEventListener('click', onConfirm);
         dlg.removeEventListener('hidden.bs.modal', onDismiss);
-        dlg.style.zIndex = '';
       };
+
+      // Elevate confirm dialog + its backdrop above any already-open modals
+      dlg.addEventListener('shown.bs.modal', () => {
+        dlg.style.zIndex = '10100';
+        const backdrops = document.querySelectorAll('.modal-backdrop');
+        if (backdrops.length > 0) {
+          backdrops[backdrops.length - 1].style.zIndex = '10099';
+        }
+      }, { once: true });
+      dlg.addEventListener('hidden.bs.modal', () => {
+        dlg.style.zIndex = '';
+      }, { once: true });
 
       okBtn.addEventListener('click', onConfirm);
       dlg.addEventListener('hidden.bs.modal', onDismiss);

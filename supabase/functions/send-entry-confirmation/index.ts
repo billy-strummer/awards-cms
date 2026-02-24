@@ -34,8 +34,7 @@ serve(async (req) => {
       .from('entries')
       .select(`
         *,
-        organisations(company_name, website),
-        awards(award_name, sector, county)
+        organisations(company_name, website, sector, region)
       `)
       .eq('id', entryId)
       .single()
@@ -43,31 +42,78 @@ serve(async (req) => {
     if (entryError) throw entryError
     if (!entry) throw new Error('Entry not found')
 
+    // Try to get linked award data if award_id exists
+    let awardData = null
+    if (entry.award_id) {
+      const { data: award } = await supabaseClient
+        .from('awards')
+        .select('award_name, sector, county')
+        .eq('id', entry.award_id)
+        .single()
+      awardData = award
+    }
+
     // Fetch the active confirmation email template
-    const { data: template, error: templateError } = await supabaseClient
+    const { data: template } = await supabaseClient
       .from('email_templates')
       .select('*')
       .eq('template_type', 'confirmation')
       .eq('is_active', true)
-      .eq('is_default', true)
+      .order('is_default', { ascending: false })
+      .limit(1)
       .single()
 
-    if (templateError || !template) {
-      console.error('Email template not found, using default')
-      // Fallback to basic template if none found in database
-      throw new Error('No active confirmation email template found')
+    // Build fallback template if none found in database
+    const emailTemplate = template || {
+      subject: 'Entry Received - {ENTRY_NUMBER} | British Trade Awards',
+      body: `Dear {CONTACT_NAME},
+
+Thank you for entering the British Trade Awards. We are pleased to confirm that your entry has been received and is now being processed.
+
+Your Entry Details:
+- Entry Reference: {ENTRY_NUMBER}
+- Company: {COMPANY_NAME}
+- Category: {AWARD_NAME}
+- Sector: {SECTOR}
+- Region: {REGION}
+
+What Happens Next:
+1. Our team will review your entry to ensure all details are complete.
+2. You may upload any supporting documents (case studies, images, testimonials or other materials) using the link below.
+3. Shortlisted entries will be assessed by our independent judging panel.
+4. Winners will be announced at the awards ceremony.
+
+Upload Supporting Documents:
+{UPLOAD_LINK}
+
+Accepted formats: PDF, Word, Excel, JPG, PNG (max 10MB per file)
+
+Key Dates:
+- Entry Deadline: {DEADLINE_DATE}
+- Winners Announced: {ANNOUNCEMENT_DATE}
+
+Please keep your entry reference number safe for future correspondence.
+
+If you have any questions about your entry or the awards process, please contact us at {CONTACT_EMAIL}
+
+Kind regards,
+The British Trade Awards Team`,
+      id: null
     }
 
-    // Prepare placeholder data
-    const uploadLink = `${Deno.env.get('PUBLIC_SITE_URL')}/upload-documents.html?entry=${entry.entry_number}`
+    // Extract award category from entry_title (format: "Company - Category")
+    const categoryFromTitle = entry.entry_title ? entry.entry_title.split(' - ').slice(1).join(' - ') : ''
+
+    // Prepare placeholder data — use award data if linked, fall back to org/entry data
+    const uploadLink = `${Deno.env.get('PUBLIC_SITE_URL') || ''}/upload-documents.html?entry=${entry.entry_number}`
 
     const placeholderData = {
-      ENTRY_NUMBER: entry.entry_number,
-      CONTACT_NAME: entry.contact_name,
-      COMPANY_NAME: entry.organisations?.company_name || 'Your Company',
-      AWARD_NAME: entry.awards?.award_name || 'Award Category',
-      SECTOR: entry.awards?.sector || 'Your Sector',
-      REGION: entry.awards?.county || 'Your Region',
+      ENTRY_NUMBER: entry.entry_number || '',
+      CONTACT_NAME: entry.contact_name || '',
+      COMPANY_NAME: entry.organisations?.company_name || '',
+      AWARD_NAME: awardData?.award_name || categoryFromTitle || '',
+      SECTOR: awardData?.sector || entry.organisations?.sector || '',
+      REGION: awardData?.county || entry.organisations?.region || '',
       UPLOAD_LINK: uploadLink,
       DEADLINE_DATE: Deno.env.get('ENTRY_DEADLINE_DATE') || 'TBA',
       ANNOUNCEMENT_DATE: Deno.env.get('WINNER_ANNOUNCEMENT_DATE') || 'TBA',
@@ -75,8 +121,8 @@ serve(async (req) => {
     }
 
     // Replace placeholders in subject and body
-    let emailSubject = template.subject
-    let emailBody = template.body
+    let emailSubject = emailTemplate.subject
+    let emailBody = emailTemplate.body
 
     Object.entries(placeholderData).forEach(([key, value]) => {
       const placeholder = `{${key}}`
@@ -115,18 +161,15 @@ serve(async (req) => {
 
     console.log('Email sent successfully:', emailResult)
 
-    // Log the email in database (optional)
+    // Log the email in database
     await supabaseClient
       .from('email_log')
       .insert({
         recipient_email: entry.contact_email,
-        template_id: template.id,
-        template_key: 'ENTRY_CONFIRMATION',
+        template_id: emailTemplate.id || null,
         subject: emailSubject,
-        sent_at: new Date().toISOString(),
         status: 'sent'
       })
-      .select()
 
     return new Response(
       JSON.stringify({

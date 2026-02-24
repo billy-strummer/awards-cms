@@ -37,38 +37,38 @@ INSERT INTO email_templates (
 ) VALUES (
   'Entry Confirmation',
   'confirmation',
-  'British Trade Awards - Entry Received ({ENTRY_NUMBER})',
+  'Entry Received - {ENTRY_NUMBER} | British Trade Awards',
   'Dear {CONTACT_NAME},
 
-Thank you for submitting your entry to the British Trade Awards!
+Thank you for entering the British Trade Awards. We are pleased to confirm that your entry has been received and is now being processed.
 
-Entry Details:
-- Entry Number: {ENTRY_NUMBER}
+Your Entry Details:
+- Entry Reference: {ENTRY_NUMBER}
 - Company: {COMPANY_NAME}
-- Award Category: {AWARD_NAME}
+- Category: {AWARD_NAME}
 - Sector: {SECTOR}
 - Region: {REGION}
 
-Next Steps:
-To complete your entry, please upload your supporting documents using the link below:
+What Happens Next:
+1. Our team will review your entry to ensure all details are complete.
+2. You may upload any supporting documents (case studies, images, testimonials or other materials) using the link below.
+3. Shortlisted entries will be assessed by our independent judging panel.
+4. Winners will be announced at the awards ceremony.
 
+Upload Supporting Documents:
 {UPLOAD_LINK}
 
-What to upload:
-- Supporting documents (PDF, Word, Excel)
-- Images (JPG, PNG)
-- Case studies or presentations
-- Any other relevant materials
+Accepted formats: PDF, Word, Excel, JPG, PNG (max 10MB per file)
 
-Maximum file size: 10MB per file
-
-Important Dates:
+Key Dates:
 - Entry Deadline: {DEADLINE_DATE}
 - Winners Announced: {ANNOUNCEMENT_DATE}
 
-If you have any questions, please contact us at {CONTACT_EMAIL}
+Please keep your entry reference number safe for future correspondence.
 
-Best regards,
+If you have any questions about your entry or the awards process, please contact us at {CONTACT_EMAIL}
+
+Kind regards,
 The British Trade Awards Team',
   true,
   true,
@@ -89,26 +89,27 @@ INSERT INTO email_templates (
 ) VALUES (
   'Document Upload Reminder',
   'reminder',
-  'Reminder: Upload Supporting Documents - {ENTRY_NUMBER}',
+  'Supporting Documents Reminder - {ENTRY_NUMBER} | British Trade Awards',
   'Dear {CONTACT_NAME},
 
-This is a friendly reminder that we have not yet received your supporting documents for entry {ENTRY_NUMBER}.
+We wanted to let you know that we have not yet received any supporting documents for your British Trade Awards entry.
 
-To complete your entry submission, please upload your documents using this link:
+- Entry Reference: {ENTRY_NUMBER}
+- Company: {COMPANY_NAME}
+- Category: {AWARD_NAME}
 
+While supporting documents are not mandatory, they can significantly strengthen your entry. Case studies, project images, client testimonials and accreditation certificates all help our judges assess your work.
+
+You can upload your documents here:
 {UPLOAD_LINK}
 
-Entry Details:
-- Company: {COMPANY_NAME}
-- Award: {AWARD_NAME}
+Accepted formats: PDF, Word, Excel, JPG, PNG (max 10MB per file)
 
-Deadline: {DEADLINE_DATE}
+The deadline for all entries and supporting materials is {DEADLINE_DATE}.
 
-If you have already uploaded your documents, please disregard this reminder.
+If you have already uploaded your documents, please disregard this message. If you need any assistance, please contact us at {CONTACT_EMAIL}
 
-If you need assistance, please contact us at {CONTACT_EMAIL}
-
-Best regards,
+Kind regards,
 The British Trade Awards Team',
   true,
   false,
@@ -129,24 +130,23 @@ INSERT INTO email_templates (
 ) VALUES (
   'Entry Approved/Shortlisted',
   'approval',
-  'Congratulations! Your Entry Has Been Shortlisted - {ENTRY_NUMBER}',
+  'You Have Been Shortlisted - {ENTRY_NUMBER} | British Trade Awards',
   'Dear {CONTACT_NAME},
 
-We are delighted to inform you that your entry has been shortlisted for the British Trade Awards!
+Congratulations! We are delighted to inform you that {COMPANY_NAME} has been shortlisted in the {AWARD_NAME} category at the British Trade Awards.
 
-Entry Details:
-- Entry Number: {ENTRY_NUMBER}
+- Entry Reference: {ENTRY_NUMBER}
 - Company: {COMPANY_NAME}
-- Award Category: {AWARD_NAME}
+- Category: {AWARD_NAME}
 
-What happens next:
-Your entry will now be reviewed by our panel of expert judges. Winners will be announced on {ANNOUNCEMENT_DATE}.
+What Happens Next:
+Your entry will now be assessed by our independent panel of judges. The judging process evaluates the quality of work, customer service, innovation and overall contribution to the trade industry.
 
-We will be in touch with further details about the awards ceremony.
+Winners will be announced on {ANNOUNCEMENT_DATE}. We will be in touch with further details about the awards ceremony in due course.
 
-Congratulations once again on this achievement!
+This is a fantastic achievement and a testament to the quality of your work. Well done to you and your team.
 
-Best regards,
+Kind regards,
 The British Trade Awards Team',
   true,
   false,
@@ -167,23 +167,22 @@ INSERT INTO email_templates (
 ) VALUES (
   'Entry Not Shortlisted',
   'rejection',
-  'British Trade Awards Update - {ENTRY_NUMBER}',
+  'Your Entry Update - {ENTRY_NUMBER} | British Trade Awards',
   'Dear {CONTACT_NAME},
 
-Thank you for taking the time to submit your entry to the British Trade Awards.
+Thank you for entering {COMPANY_NAME} into the {AWARD_NAME} category at the British Trade Awards.
 
-Entry Details:
-- Entry Number: {ENTRY_NUMBER}
+- Entry Reference: {ENTRY_NUMBER}
 - Company: {COMPANY_NAME}
-- Award Category: {AWARD_NAME}
+- Category: {AWARD_NAME}
 
-After careful consideration by our panel of judges, we regret to inform you that your entry has not been selected for the shortlist on this occasion.
+After careful consideration by our judging panel, we regret to inform you that your entry has not been selected for the shortlist on this occasion.
 
-We received an exceptionally high number of entries this year, making the selection process extremely competitive.
+We received an exceptionally high standard of entries this year, making the selection process extremely competitive. Not being shortlisted is in no way a reflection on the quality of your business or the work you do.
 
-We encourage you to enter again next year and wish you every success in the future.
+We would very much welcome an entry from you again next year and wish you continued success.
 
-Best regards,
+Kind regards,
 The British Trade Awards Team',
   true,
   false,

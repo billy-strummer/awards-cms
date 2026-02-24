@@ -254,7 +254,7 @@ window.entryFormApp = {
     const counties = window.REGIONS.filter(r => !cities.includes(r));
     const cityList = window.REGIONS.filter(r => cities.includes(r));
 
-    let html = '';
+    let html = '<option value="" placeholder>Type your county or city...</option>';
 
     if (counties.length > 0) {
       html += '<optgroup label="Counties">';
@@ -280,10 +280,11 @@ window.entryFormApp = {
         searchEnabled: true,
         searchFloor: 1,
         searchPlaceholderValue: 'Type county or city name...',
+        placeholderValue: 'Type your county or city...',
         itemSelectText: '',
         shouldSort: false,
         searchResultLimit: 100,
-        allowHTML: false
+        allowHTML: true
       });
     }
   },
@@ -357,14 +358,13 @@ window.entryFormApp = {
       return;
     }
 
-    const isSmall = SMALL_COUNTIES.some(c => c.toLowerCase() === region.toLowerCase());
     const subtitle = document.getElementById('step3Subtitle');
     if (subtitle) {
       subtitle.textContent = `${sectorCategories.length} categories available for ${this.toTitleCase(sector)} in ${region}`;
     }
 
-    awardsList.innerHTML = sectorCategories.map(cat => `
-      <div class="award-option" onclick="entryFormApp.selectCategory('${this.escapeHtml(cat)}', this)" role="button" tabindex="0"
+    awardsList.innerHTML = sectorCategories.map((cat, idx) => `
+      <div class="award-option" data-category-index="${idx}" role="button" tabindex="0"
            onkeydown="if(event.key==='Enter')this.click()">
         <div class="award-check">
           <i class="bi bi-check" style="display:none; font-size:14px; font-weight:900;"></i>
@@ -372,6 +372,14 @@ window.entryFormApp = {
         <span class="award-name">${this.escapeHtml(cat)}</span>
       </div>
     `).join('');
+
+    // Attach click handlers via data attributes to avoid inline JS escaping issues
+    awardsList.querySelectorAll('.award-option').forEach(opt => {
+      opt.addEventListener('click', () => {
+        const idx = parseInt(opt.dataset.categoryIndex);
+        this.selectCategory(sectorCategories[idx], opt);
+      });
+    });
 
     // Reset selection
     this.selectedAwardCategory = null;
@@ -664,7 +672,10 @@ window.entryFormApp = {
         .ilike('company_name', this.formData.companyName)
         .limit(1);
 
-      if (searchError) throw searchError;
+      if (searchError) {
+        console.error('Organisation lookup failed:', searchError);
+        throw new Error('Could not search for existing company. Please try again.');
+      }
 
       if (existingOrgs && existingOrgs.length > 0) {
         organisationId = existingOrgs[0].id;
@@ -684,7 +695,10 @@ window.entryFormApp = {
           .select()
           .single();
 
-        if (orgError) throw orgError;
+        if (orgError) {
+          console.error('Organisation creation failed:', orgError);
+          throw new Error('Could not save company details. Please try again.');
+        }
         organisationId = newOrg.id;
       }
 
@@ -702,7 +716,10 @@ window.entryFormApp = {
         .order('year', { ascending: false })
         .limit(1);
 
-      if (awardError) throw awardError;
+      if (awardError) {
+        console.error('Award lookup failed:', awardError);
+        // Non-fatal: continue without linking to an award record
+      }
 
       if (matchingAwards && matchingAwards.length > 0) {
         awardId = matchingAwards[0].id;
@@ -739,7 +756,6 @@ window.entryFormApp = {
         payment_status: 'pending',
         submission_date: new Date().toISOString(),
         allow_public_voting: false,
-        is_self_nomination: true,
         year: currentYear
       };
 
@@ -749,7 +765,17 @@ window.entryFormApp = {
         .select()
         .single();
 
-      if (entryError) throw entryError;
+      if (entryError) {
+        console.error('Entry creation failed:', entryError);
+        throw new Error('Could not save your entry. Please try again or contact support.');
+      }
+
+      // Mark as self-nomination (non-blocking - column may not exist yet)
+      try {
+        await db.from('entries').update({ is_self_nomination: true }).eq('id', entry.id);
+      } catch (e) {
+        console.warn('Could not set is_self_nomination flag:', e.message);
+      }
 
       // 6. Try sending confirmation email (non-blocking)
       try {

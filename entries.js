@@ -392,9 +392,10 @@ const entriesModule = {
     try { localStorage.setItem('entriesFilters', JSON.stringify(this.currentFilters)); } catch(e) { console.warn('Failed to save entry filters:', e.message); }
 
     this.filteredEntries = this.allEntries.filter(entry => {
-      // Status filter
-      if (this.currentFilters.status && entry.status !== this.currentFilters.status) {
-        return false;
+      // Status filter (supports comma-separated values, e.g. "submitted,under_review")
+      if (this.currentFilters.status) {
+        const statuses = this.currentFilters.status.split(',');
+        if (!statuses.includes(entry.status)) return false;
       }
 
       // Award filter

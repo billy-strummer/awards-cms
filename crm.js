@@ -677,20 +677,11 @@ const crmModule = {
 
       if (error) throw error;
 
-      // Get counts for each segment
-      const segmentsWithCounts = await Promise.all(
-        segments.map(async segment => {
-          const { count, error } = await STATE.client
-            .from('organisation_segments')
-            .select('*', { count: 'exact', head: true })
-            .eq('segment_id', segment.id);
-
-          return {
-            ...segment,
-            count: count || 0
-          };
-        })
-      );
+      // Use counts already fetched via the join
+      const segmentsWithCounts = segments.map(segment => ({
+        ...segment,
+        count: segment.organisation_segments?.[0]?.count || 0
+      }));
 
       this.renderSegments(segmentsWithCounts);
 

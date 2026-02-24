@@ -219,28 +219,15 @@ const dashboardModule = {
    */
   async updateExtendedStats() {
     try {
-      // Get events count
-      const { count: events, error: eventsError } = await STATE.client
-        .from('events')
-        .select('*', { count: 'exact', head: true });
-
-      if (!eventsError) {
-        document.getElementById('totalEvents').textContent = events || 0;
-      }
+      // Compute from loaded events data so counts match the events table
+      const events = STATE.allEvents || [];
+      document.getElementById('totalEvents').textContent = events.length;
 
       // Get upcoming events count (next 30 days)
       const today = new Date().toISOString().split('T')[0];
       const futureDate = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
-
-      const { count: upcomingCount, error: upcomingError } = await STATE.client
-        .from('events')
-        .select('*', { count: 'exact', head: true })
-        .gte('event_date', today)
-        .lte('event_date', futureDate);
-
-      if (!upcomingError) {
-        document.getElementById('upcomingEvents').textContent = upcomingCount || 0;
-      }
+      const upcomingCount = events.filter(e => e.event_date && e.event_date >= today && e.event_date <= futureDate).length;
+      document.getElementById('upcomingEvents').textContent = upcomingCount;
     } catch (error) {
       console.error('Error loading extended stats:', error);
     }

@@ -739,35 +739,72 @@ window.entryFormApp = {
       if (this.formData.employeeCount) supportParts.push('Employees: ' + this.formData.employeeCount);
       const supportingInformation = supportParts.join('\n\n');
 
-      // 5. Create entry
+      // 5. Create entry (use only base-schema columns to avoid errors
+      //    if migration 010 hasn't been applied yet)
       const entryPayload = {
         entry_number: entryNumber,
         organisation_id: organisationId,
         award_id: awardId,
         entry_title: `${this.formData.companyName} - ${this.formData.awardCategory}`,
         entry_description: this.formData.entryDescription,
-        why_should_win: this.formData.whyShouldWin,
-        supporting_information: supportingInformation || null,
         contact_name: this.formData.contactName,
         contact_email: this.formData.contactEmail,
-        contact_phone: this.formData.contactPhone || null,
-        contact_position: this.formData.contactPosition || null,
         status: 'submitted',
         payment_status: 'pending',
         submission_date: new Date().toISOString(),
-        allow_public_voting: false,
+        allow_public_voting: false
+      };
+
+      // Try inserting with extended columns first (migration 010+)
+      const extendedFields = {
+        why_should_win: this.formData.whyShouldWin,
+        supporting_information: supportingInformation || null,
+        contact_phone: this.formData.contactPhone || null,
+        contact_position: this.formData.contactPosition || null,
         year: currentYear
       };
 
-      const { data: entry, error: entryError } = await db
+      let entry = null;
+      let insertError = null;
+
+      // Attempt full insert (with extended columns)
+      const fullPayload = Object.assign({}, entryPayload, extendedFields);
+      const { data: fullEntry, error: fullError } = await db
         .from('entries')
-        .insert(entryPayload)
+        .insert(fullPayload)
         .select()
         .single();
 
-      if (entryError) {
-        console.error('Entry creation failed:', entryError);
-        throw new Error('Could not save your entry. Please try again or contact support.');
+      if (!fullError) {
+        entry = fullEntry;
+      } else {
+        console.warn('Full insert failed (likely missing columns), trying base columns:', fullError.message);
+        // Fallback: insert with base columns only, then concat extra info into entry_description
+        const fallbackDescription = [
+          this.formData.entryDescription,
+          this.formData.whyShouldWin ? '\n\nWhy we should win:\n' + this.formData.whyShouldWin : '',
+          supportingInformation ? '\n\nSupporting information:\n' + supportingInformation : ''
+        ].join('');
+        entryPayload.entry_description = fallbackDescription;
+
+        const { data: baseEntry, error: baseError } = await db
+          .from('entries')
+          .insert(entryPayload)
+          .select()
+          .single();
+
+        if (baseError) {
+          console.error('Entry creation failed:', baseError);
+          throw new Error('Could not save your entry. Please try again or contact support.');
+        }
+        entry = baseEntry;
+
+        // Try setting extended fields as a non-blocking update
+        try {
+          await db.from('entries').update(extendedFields).eq('id', entry.id);
+        } catch (e) {
+          console.warn('Could not set extended entry fields:', e.message);
+        }
       }
 
       // Mark as self-nomination (non-blocking - column may not exist yet)

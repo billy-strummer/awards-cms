@@ -7,6 +7,7 @@
 window.seatingEnhancements = {
   _undoStack: [], _redoStack: [], _sections: [],
   _vipFilterOn: false, _seatPopup: null, _seatTooltip: null, _kbBound: false,
+  _slSort: 'table',
 
   init() {
     const em = window.eventsModule;
@@ -293,16 +294,63 @@ window.seatingEnhancements = {
   // === 6. SEATING LIST ===
   showSeatingList() {
     const em = window.eventsModule;
-    const tables = (em.tables || []).slice().sort((a, b) => (a.table_number || 0) - (b.table_number || 0));
-    const totalSeated = tables.reduce((s, t) => s + (t.assignments?.length || 0), 0);
-    const totalSeats = tables.reduce((s, t) => s + (t.total_seats || 0), 0);
+    const totalSeated = (em.tables || []).reduce((s, t) => s + (t.assignments?.length || 0), 0);
+    const totalSeats = (em.tables || []).reduce((s, t) => s + (t.total_seats || 0), 0);
     const unassigned = (em.unassignedGuests || []).length;
 
-    const tablesHtml = tables.map(t => {
+    const ov = document.createElement('div');
+    ov.id = 'seSeatingListOverlay';
+    ov.style.cssText = 'position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.6);display:flex;align-items:center;justify-content:center';
+    ov.onclick = e => { if (e.target === ov) ov.remove(); };
+    ov.innerHTML = `<div class="se-sl-modal">
+      <div class="d-flex justify-content-between align-items-center mb-3">
+        <h5 class="mb-0"><i class="bi bi-list-columns-reverse me-2"></i>Seating List</h5>
+        <div class="d-flex gap-2 align-items-center">
+          <span class="badge bg-primary">${totalSeated} seated</span>
+          <span class="badge bg-secondary">${totalSeats} total seats</span>
+          ${unassigned > 0 ? `<span class="badge bg-warning text-dark">${unassigned} unassigned</span>` : ''}
+          <button class="btn btn-sm btn-outline-primary" onclick="seatingEnhancements.printSeatingList()" title="Print Seating List"><i class="bi bi-printer me-1"></i>Print</button>
+          <button class="btn btn-sm btn-outline-secondary" onclick="document.getElementById('seSeatingListOverlay').remove()"><i class="bi bi-x-lg"></i></button>
+        </div>
+      </div>
+      <div class="d-flex gap-1 mb-3">
+        <button class="btn btn-sm ${this._slSort === 'table' ? 'btn-dark' : 'btn-outline-secondary'}" onclick="seatingEnhancements._setSlSort('table')"><i class="bi bi-grid-3x3-gap me-1"></i>By Table</button>
+        <button class="btn btn-sm ${this._slSort === 'company' ? 'btn-dark' : 'btn-outline-secondary'}" onclick="seatingEnhancements._setSlSort('company')"><i class="bi bi-building me-1"></i>By Company A-Z</button>
+      </div>
+      <div id="seSlContent">${this._renderSlContent()}</div>
+    </div>`;
+    document.body.appendChild(ov);
+  },
+
+  _setSlSort(mode) {
+    this._slSort = mode;
+    const container = document.getElementById('seSlContent');
+    if (container) container.innerHTML = this._renderSlContent();
+    // Update toggle button styles
+    const overlay = document.getElementById('seSeatingListOverlay');
+    if (overlay) {
+      overlay.querySelectorAll('.d-flex.gap-1.mb-3 .btn').forEach(btn => {
+        const isTable = btn.textContent.includes('Table');
+        const active = (isTable && mode === 'table') || (!isTable && mode === 'company');
+        btn.className = `btn btn-sm ${active ? 'btn-dark' : 'btn-outline-secondary'}`;
+      });
+    }
+  },
+
+  _renderSlContent() {
+    const em = window.eventsModule;
+    const tables = (em.tables || []).slice().sort((a, b) => (a.table_number || 0) - (b.table_number || 0));
+
+    if (this._slSort === 'company') return this._renderSlByCompany(tables);
+    return this._renderSlByTable(tables);
+  },
+
+  _renderSlByTable(tables) {
+    if (!tables.length) return '<p class="text-muted text-center">No tables created yet.</p>';
+    return tables.map(t => {
       const assignments = (t.assignments || []).slice().sort((a, b) => (a.seat_number || 999) - (b.seat_number || 999));
       const label = t.table_name || 'Table ' + t.table_number;
       const capClass = assignments.length >= t.total_seats ? 'bg-success' : assignments.length > 0 ? 'bg-primary' : 'bg-secondary';
-      // Group assignments by company
       const byCompany = {};
       assignments.forEach(a => {
         const key = a.company_name || '__none__';
@@ -310,8 +358,7 @@ window.seatingEnhancements = {
         byCompany[key].push(a);
       });
       const companyKeys = Object.keys(byCompany).sort((a, b) => {
-        if (a === '__none__') return 1;
-        if (b === '__none__') return -1;
+        if (a === '__none__') return 1; if (b === '__none__') return -1;
         return a.localeCompare(b);
       });
       const guestsHtml = assignments.length > 0
@@ -337,25 +384,48 @@ window.seatingEnhancements = {
         <div class="se-sl-table-body">${guestsHtml}</div>
       </div>`;
     }).join('');
+  },
 
-    const ov = document.createElement('div');
-    ov.id = 'seSeatingListOverlay';
-    ov.style.cssText = 'position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.6);display:flex;align-items:center;justify-content:center';
-    ov.onclick = e => { if (e.target === ov) ov.remove(); };
-    ov.innerHTML = `<div class="se-sl-modal">
-      <div class="d-flex justify-content-between align-items-center mb-3">
-        <h5 class="mb-0"><i class="bi bi-list-columns-reverse me-2"></i>Seating List</h5>
-        <div class="d-flex gap-2 align-items-center">
-          <span class="badge bg-primary">${totalSeated} seated</span>
-          <span class="badge bg-secondary">${totalSeats} total seats</span>
-          ${unassigned > 0 ? `<span class="badge bg-warning text-dark">${unassigned} unassigned</span>` : ''}
-          <button class="btn btn-sm btn-outline-primary" onclick="seatingEnhancements.printSeatingList()" title="Print Seating List"><i class="bi bi-printer me-1"></i>Print</button>
-          <button class="btn btn-sm btn-outline-secondary" onclick="document.getElementById('seSeatingListOverlay').remove()"><i class="bi bi-x-lg"></i></button>
+  _renderSlByCompany(tables) {
+    // Collect all assignments with their table info
+    const all = [];
+    tables.forEach(t => {
+      const label = t.table_name || 'Table ' + t.table_number;
+      (t.assignments || []).forEach(a => all.push({ ...a, _tableLabel: label, _tableNum: t.table_number }));
+    });
+    if (!all.length) return '<p class="text-muted text-center">No guests assigned yet.</p>';
+
+    // Group by company
+    const byCompany = {};
+    all.forEach(a => {
+      const key = a.company_name || '__none__';
+      if (!byCompany[key]) byCompany[key] = [];
+      byCompany[key].push(a);
+    });
+    const companyKeys = Object.keys(byCompany).sort((a, b) => {
+      if (a === '__none__') return 1; if (b === '__none__') return -1;
+      return a.localeCompare(b);
+    });
+
+    return companyKeys.map(key => {
+      const guests = byCompany[key].sort((a, b) => (a._tableNum || 0) - (b._tableNum || 0));
+      const companyLabel = key !== '__none__' ? utils.escapeHtml(key) : 'No Company';
+      const companyClass = key !== '__none__' ? '' : ' fst-italic text-muted';
+
+      return `<div class="se-sl-table">
+        <div class="se-sl-table-header">
+          <span><i class="bi bi-building me-2" style="font-size:0.65rem;color:#6c757d"></i><span class="${companyClass}">${companyLabel}</span></span>
+          <span class="badge bg-secondary">${guests.length} guest${guests.length !== 1 ? 's' : ''}</span>
         </div>
-      </div>
-      <div class="se-sl-tables">${tablesHtml || '<p class="text-muted text-center">No tables created yet.</p>'}</div>
-    </div>`;
-    document.body.appendChild(ov);
+        <div class="se-sl-table-body">
+          ${guests.map(a => `<div class="se-sl-guest">
+            <span class="se-sl-guest-name">${utils.escapeHtml(a.guest_name)}</span>
+            ${a.is_vip ? '<span class="badge bg-warning text-dark" style="font-size:0.6rem">VIP</span>' : ''}
+            <span class="se-sl-seat">${utils.escapeHtml(a._tableLabel)}${a.seat_number ? ', Seat ' + a.seat_number : ''}</span>
+          </div>`).join('')}
+        </div>
+      </div>`;
+    }).join('');
   },
 
   printSeatingList() {
@@ -366,35 +436,75 @@ window.seatingEnhancements = {
     const tables = (em.tables || []).slice().sort((a, b) => (a.table_number || 0) - (b.table_number || 0));
     const totalSeated = tables.reduce((s, t) => s + (t.assignments?.length || 0), 0);
     const totalSeats = tables.reduce((s, t) => s + (t.total_seats || 0), 0);
+    const sortLabel = this._slSort === 'company' ? 'By Company' : 'By Table';
 
-    const tablesHtml = tables.map(t => {
-      const assignments = (t.assignments || []).slice().sort((a, b) => (a.seat_number || 999) - (b.seat_number || 999));
-      const label = t.table_name || 'Table ' + t.table_number;
-      const rows = assignments.length > 0
-        ? assignments.map((a, i) => `<tr>
-            <td style="width:30px;text-align:center;color:#888">${a.seat_number || (i + 1)}</td>
-            <td style="font-weight:600">${esc(a.guest_name)}${a.is_vip ? ' <span style="background:#ffc107;color:#000;font-size:7pt;padding:1px 5px;border-radius:3px;font-weight:700">VIP</span>' : ''}</td>
-            <td style="color:#555">${esc(a.company_name)}</td>
-            <td style="font-size:8pt;color:#888">${esc(a.dietary_requirements)}</td>
-          </tr>`).join('')
-        : '<tr><td colspan="4" style="text-align:center;color:#aaa;font-style:italic;padding:8px">No guests assigned</td></tr>';
+    let bodyHtml = '';
+    if (this._slSort === 'company') {
+      // Group all assignments by company
+      const all = [];
+      tables.forEach(t => {
+        const label = t.table_name || 'Table ' + t.table_number;
+        (t.assignments || []).forEach(a => all.push({ ...a, _tableLabel: label, _tableNum: t.table_number }));
+      });
+      const byCompany = {};
+      all.forEach(a => { const key = a.company_name || '__none__'; if (!byCompany[key]) byCompany[key] = []; byCompany[key].push(a); });
+      const companyKeys = Object.keys(byCompany).sort((a, b) => { if (a === '__none__') return 1; if (b === '__none__') return -1; return a.localeCompare(b); });
 
-      return `<div style="border:1px solid #dee2e6;border-radius:6px;margin-bottom:12px;page-break-inside:avoid;overflow:hidden">
-        <div style="background:#1a1a2e;color:#fff;padding:6px 12px;display:flex;justify-content:space-between;align-items:center">
-          <strong>${esc(label)}</strong>
-          <span style="font-size:8pt;opacity:.7">${assignments.length}/${t.total_seats} seats</span>
-        </div>
-        <table style="width:100%;border-collapse:collapse;font-size:9pt">
-          <thead><tr style="background:#f8f9fa">
-            <th style="padding:4px 8px;font-size:7pt;text-transform:uppercase;color:#666;border-bottom:1px solid #dee2e6;width:30px">#</th>
-            <th style="padding:4px 8px;font-size:7pt;text-transform:uppercase;color:#666;border-bottom:1px solid #dee2e6">Guest</th>
-            <th style="padding:4px 8px;font-size:7pt;text-transform:uppercase;color:#666;border-bottom:1px solid #dee2e6">Company</th>
-            <th style="padding:4px 8px;font-size:7pt;text-transform:uppercase;color:#666;border-bottom:1px solid #dee2e6">Dietary</th>
-          </tr></thead>
-          <tbody>${rows}</tbody>
-        </table>
-      </div>`;
-    }).join('');
+      bodyHtml = companyKeys.map(key => {
+        const guests = byCompany[key].sort((a, b) => (a._tableNum || 0) - (b._tableNum || 0));
+        const companyLabel = key !== '__none__' ? esc(key) : '<em>No Company</em>';
+        const rows = guests.map(a => `<tr>
+          <td style="font-weight:600">${esc(a.guest_name)}${a.is_vip ? ' <span style="background:#ffc107;color:#000;font-size:7pt;padding:1px 5px;border-radius:3px;font-weight:700">VIP</span>' : ''}</td>
+          <td style="color:#555">${esc(a._tableLabel)}</td>
+          <td style="text-align:center;color:#888">${a.seat_number || '-'}</td>
+          <td style="font-size:8pt;color:#888">${esc(a.dietary_requirements)}</td>
+        </tr>`).join('');
+        return `<div style="border:1px solid #dee2e6;border-radius:6px;margin-bottom:12px;page-break-inside:avoid;overflow:hidden">
+          <div style="background:#1a1a2e;color:#fff;padding:6px 12px;display:flex;justify-content:space-between;align-items:center">
+            <strong>${companyLabel}</strong>
+            <span style="font-size:8pt;opacity:.7">${guests.length} guest${guests.length !== 1 ? 's' : ''}</span>
+          </div>
+          <table style="width:100%;border-collapse:collapse;font-size:9pt">
+            <thead><tr style="background:#f8f9fa">
+              <th style="padding:4px 8px;font-size:7pt;text-transform:uppercase;color:#666;border-bottom:1px solid #dee2e6">Guest</th>
+              <th style="padding:4px 8px;font-size:7pt;text-transform:uppercase;color:#666;border-bottom:1px solid #dee2e6">Table</th>
+              <th style="padding:4px 8px;font-size:7pt;text-transform:uppercase;color:#666;border-bottom:1px solid #dee2e6;width:40px;text-align:center">Seat</th>
+              <th style="padding:4px 8px;font-size:7pt;text-transform:uppercase;color:#666;border-bottom:1px solid #dee2e6">Dietary</th>
+            </tr></thead>
+            <tbody>${rows}</tbody>
+          </table>
+        </div>`;
+      }).join('');
+    } else {
+      bodyHtml = tables.map(t => {
+        const assignments = (t.assignments || []).slice().sort((a, b) => (a.seat_number || 999) - (b.seat_number || 999));
+        const label = t.table_name || 'Table ' + t.table_number;
+        const rows = assignments.length > 0
+          ? assignments.map((a, i) => `<tr>
+              <td style="width:30px;text-align:center;color:#888">${a.seat_number || (i + 1)}</td>
+              <td style="font-weight:600">${esc(a.guest_name)}${a.is_vip ? ' <span style="background:#ffc107;color:#000;font-size:7pt;padding:1px 5px;border-radius:3px;font-weight:700">VIP</span>' : ''}</td>
+              <td style="color:#555">${esc(a.company_name)}</td>
+              <td style="font-size:8pt;color:#888">${esc(a.dietary_requirements)}</td>
+            </tr>`).join('')
+          : '<tr><td colspan="4" style="text-align:center;color:#aaa;font-style:italic;padding:8px">No guests assigned</td></tr>';
+
+        return `<div style="border:1px solid #dee2e6;border-radius:6px;margin-bottom:12px;page-break-inside:avoid;overflow:hidden">
+          <div style="background:#1a1a2e;color:#fff;padding:6px 12px;display:flex;justify-content:space-between;align-items:center">
+            <strong>${esc(label)}</strong>
+            <span style="font-size:8pt;opacity:.7">${assignments.length}/${t.total_seats} seats</span>
+          </div>
+          <table style="width:100%;border-collapse:collapse;font-size:9pt">
+            <thead><tr style="background:#f8f9fa">
+              <th style="padding:4px 8px;font-size:7pt;text-transform:uppercase;color:#666;border-bottom:1px solid #dee2e6;width:30px">#</th>
+              <th style="padding:4px 8px;font-size:7pt;text-transform:uppercase;color:#666;border-bottom:1px solid #dee2e6">Guest</th>
+              <th style="padding:4px 8px;font-size:7pt;text-transform:uppercase;color:#666;border-bottom:1px solid #dee2e6">Company</th>
+              <th style="padding:4px 8px;font-size:7pt;text-transform:uppercase;color:#666;border-bottom:1px solid #dee2e6">Dietary</th>
+            </tr></thead>
+            <tbody>${rows}</tbody>
+          </table>
+        </div>`;
+      }).join('');
+    }
 
     const printWindow = window.open('', '_blank');
     if (!printWindow) { utils.showToast('Please allow popups to open the print view', 'warning'); return; }
@@ -411,14 +521,14 @@ window.seatingEnhancements = {
         @media print { .toolbar { display:none } .content { margin-top:0 !important; padding:0 !important } body { -webkit-print-color-adjust:exact; print-color-adjust:exact } }
         .content { margin-top:56px; padding:20px }
       </style></head><body>
-      <div class="toolbar"><div><strong>Seating List</strong> &mdash; ${esc(eventName)}</div><div><button onclick="window.print()">Print / Save as PDF</button></div></div>
+      <div class="toolbar"><div><strong>Seating List</strong> &mdash; ${esc(eventName)} &mdash; ${sortLabel}</div><div><button onclick="window.print()">Print / Save as PDF</button></div></div>
       <div class="content">
         <div style="text-align:center;margin-bottom:20px">
           <h1 style="font-size:20pt;margin-bottom:4px">Seating List</h1>
           <div style="color:#0d6efd;font-size:13pt;font-weight:600">${esc(eventName)}</div>
-          <div style="color:#888;font-size:9pt;margin-top:4px">${dateStr} &mdash; ${totalSeated}/${totalSeats} seated</div>
+          <div style="color:#888;font-size:9pt;margin-top:4px">${dateStr} &mdash; ${totalSeated}/${totalSeats} seated &mdash; Sorted ${sortLabel}</div>
         </div>
-        ${tablesHtml}
+        ${bodyHtml}
         <div style="margin-top:16px;padding-top:8px;border-top:1px solid #e9ecef;font-size:7.5pt;color:#aaa;text-align:center">${esc(eventName)} &mdash; Seating List &mdash; Generated ${dateStr}</div>
       </div></body></html>`);
     printWindow.document.close();

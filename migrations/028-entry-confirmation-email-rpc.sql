@@ -105,7 +105,7 @@ BEGIN
     || '<li style="margin-bottom:8px;">Winners will be announced at the awards ceremony.</li>'
     || '</ol>'
     || '<p>Please keep your entry reference number <strong>' || COALESCE(v_entry.entry_number, '') || '</strong> safe for future correspondence.</p>'
-    || '<p>If you have any questions, please contact us at <a href="mailto:awards@britishtrade.org" style="color:#0d6efd;">awards@britishtrade.org</a></p>'
+    || '<p>If you have any questions, please contact us at <a href="mailto:awards@britishtradeawards.com" style="color:#0d6efd;">awards@britishtradeawards.com</a></p>'
     || '<p style="margin-top:24px;">Kind regards,<br><strong>The British Trade Awards Team</strong></p>'
     || '</div>'
     -- Footer

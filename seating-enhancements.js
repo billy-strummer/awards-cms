@@ -349,12 +349,80 @@ window.seatingEnhancements = {
           <span class="badge bg-primary">${totalSeated} seated</span>
           <span class="badge bg-secondary">${totalSeats} total seats</span>
           ${unassigned > 0 ? `<span class="badge bg-warning text-dark">${unassigned} unassigned</span>` : ''}
+          <button class="btn btn-sm btn-outline-primary" onclick="seatingEnhancements.printSeatingList()" title="Print Seating List"><i class="bi bi-printer me-1"></i>Print</button>
           <button class="btn btn-sm btn-outline-secondary" onclick="document.getElementById('seSeatingListOverlay').remove()"><i class="bi bi-x-lg"></i></button>
         </div>
       </div>
       <div class="se-sl-tables">${tablesHtml || '<p class="text-muted text-center">No tables created yet.</p>'}</div>
     </div>`;
     document.body.appendChild(ov);
+  },
+
+  printSeatingList() {
+    const em = window.eventsModule;
+    const esc = s => utils.escapeHtml(s || '');
+    const eventName = em.currentEventNameTablePlan || 'Event';
+    const dateStr = new Date().toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+    const tables = (em.tables || []).slice().sort((a, b) => (a.table_number || 0) - (b.table_number || 0));
+    const totalSeated = tables.reduce((s, t) => s + (t.assignments?.length || 0), 0);
+    const totalSeats = tables.reduce((s, t) => s + (t.total_seats || 0), 0);
+
+    const tablesHtml = tables.map(t => {
+      const assignments = (t.assignments || []).slice().sort((a, b) => (a.seat_number || 999) - (b.seat_number || 999));
+      const label = t.table_name || 'Table ' + t.table_number;
+      const rows = assignments.length > 0
+        ? assignments.map((a, i) => `<tr>
+            <td style="width:30px;text-align:center;color:#888">${a.seat_number || (i + 1)}</td>
+            <td style="font-weight:600">${esc(a.guest_name)}${a.is_vip ? ' <span style="background:#ffc107;color:#000;font-size:7pt;padding:1px 5px;border-radius:3px;font-weight:700">VIP</span>' : ''}</td>
+            <td style="color:#555">${esc(a.company_name)}</td>
+            <td style="font-size:8pt;color:#888">${esc(a.dietary_requirements)}</td>
+          </tr>`).join('')
+        : '<tr><td colspan="4" style="text-align:center;color:#aaa;font-style:italic;padding:8px">No guests assigned</td></tr>';
+
+      return `<div style="border:1px solid #dee2e6;border-radius:6px;margin-bottom:12px;page-break-inside:avoid;overflow:hidden">
+        <div style="background:#1a1a2e;color:#fff;padding:6px 12px;display:flex;justify-content:space-between;align-items:center">
+          <strong>${esc(label)}</strong>
+          <span style="font-size:8pt;opacity:.7">${assignments.length}/${t.total_seats} seats</span>
+        </div>
+        <table style="width:100%;border-collapse:collapse;font-size:9pt">
+          <thead><tr style="background:#f8f9fa">
+            <th style="padding:4px 8px;font-size:7pt;text-transform:uppercase;color:#666;border-bottom:1px solid #dee2e6;width:30px">#</th>
+            <th style="padding:4px 8px;font-size:7pt;text-transform:uppercase;color:#666;border-bottom:1px solid #dee2e6">Guest</th>
+            <th style="padding:4px 8px;font-size:7pt;text-transform:uppercase;color:#666;border-bottom:1px solid #dee2e6">Company</th>
+            <th style="padding:4px 8px;font-size:7pt;text-transform:uppercase;color:#666;border-bottom:1px solid #dee2e6">Dietary</th>
+          </tr></thead>
+          <tbody>${rows}</tbody>
+        </table>
+      </div>`;
+    }).join('');
+
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) { utils.showToast('Please allow popups to open the print view', 'warning'); return; }
+    printWindow.document.write(`<!DOCTYPE html><html><head><title>Seating List - ${esc(eventName)}</title>
+      <style>
+        @page { size: A4 portrait; margin: 15mm 12mm; }
+        * { margin:0; padding:0; box-sizing:border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; color: #1a1a2e; font-size: 10pt; line-height: 1.4; }
+        table td, table th { padding: 4px 8px; }
+        table tr:not(:last-child) td { border-bottom: 1px solid #f0f0f0; }
+        .toolbar { position:fixed;top:0;left:0;right:0;z-index:100;background:#1a1a2e;color:#fff;padding:10px 20px;display:flex;align-items:center;justify-content:space-between }
+        .toolbar button { background:#0d6efd;color:#fff;border:none;padding:8px 20px;border-radius:6px;font-weight:600;cursor:pointer;font-size:10pt }
+        .toolbar button:hover { background:#0b5ed7 }
+        @media print { .toolbar { display:none } .content { margin-top:0 !important; padding:0 !important } body { -webkit-print-color-adjust:exact; print-color-adjust:exact } }
+        .content { margin-top:56px; padding:20px }
+      </style></head><body>
+      <div class="toolbar"><div><strong>Seating List</strong> &mdash; ${esc(eventName)}</div><div><button onclick="window.print()">Print / Save as PDF</button></div></div>
+      <div class="content">
+        <div style="text-align:center;margin-bottom:20px">
+          <h1 style="font-size:20pt;margin-bottom:4px">Seating List</h1>
+          <div style="color:#0d6efd;font-size:13pt;font-weight:600">${esc(eventName)}</div>
+          <div style="color:#888;font-size:9pt;margin-top:4px">${dateStr} &mdash; ${totalSeated}/${totalSeats} seated</div>
+        </div>
+        ${tablesHtml}
+        <div style="margin-top:16px;padding-top:8px;border-top:1px solid #e9ecef;font-size:7.5pt;color:#aaa;text-align:center">${esc(eventName)} &mdash; Seating List &mdash; Generated ${dateStr}</div>
+      </div></body></html>`);
+    printWindow.document.close();
+    utils.showToast('Seating list opened — use Print / Save as PDF', 'success');
   },
 
   // === 7. PLACE CARDS ===

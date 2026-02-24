@@ -7677,7 +7677,7 @@ const eventsModule = {
           }
           let guestQuery = STATE.client
             .from('event_guests')
-            .select('id, guest_name, guest_email, organisation_id, guest_type, plus_ones, rsvp_status')
+            .select('id, guest_name, guest_email, organisation_id, guest_type, plus_ones, rsvp_status, dietary_requirements')
             .eq('event_id', this.currentEventIdTablePlan)
             .eq('rsvp_status', 'confirmed');
 
@@ -7703,7 +7703,8 @@ const eventsModule = {
                 company_name: orgMap[g.organisation_id] || null,
                 guest_type: g.guest_type || 'guest',
                 plus_ones: g.plus_ones || 0,
-                rsvp_status: g.rsvp_status
+                rsvp_status: g.rsvp_status,
+                dietary_requirements: g.dietary_requirements || null
               }));
           } else {
             this.unassignedGuests = [];
@@ -8571,13 +8572,24 @@ const eventsModule = {
     }
 
     try {
+      // Calculate taken seat numbers to auto-assign
+      const takenSeats = new Set((table.assignments || []).map(a => a.seat_number).filter(Boolean));
+      const nextSeat = () => {
+        for (let s = 1; s <= table.total_seats + 10; s++) {
+          if (!takenSeats.has(s)) { takenSeats.add(s); return s; }
+        }
+        return null;
+      };
+
       const assignments = toAssign.map(g => ({
         event_id: this.currentEventIdTablePlan,
         table_id: tableId,
         guest_id: g.guest_id || g.id,
         guest_name: g.guest_name,
         organisation_id: g.organisation_id || null,
-        company_name: g.company_name || null
+        company_name: g.company_name || null,
+        seat_number: nextSeat(),
+        dietary_requirements: g.dietary_requirements || null
       }));
 
       const { error } = await STATE.client
@@ -8592,13 +8604,7 @@ const eventsModule = {
       this.renderUnassignedGuests();
       this.renderCanvasTables();
       this.showTableDetail(tableId);
-
-      // Update header badges
-      const totalSeated = this.tables.reduce((sum, t) => sum + (t.assignments?.length || 0), 0);
-      const seatedBadge = document.getElementById('tpSeatedBadge');
-      const unassignedBadge = document.getElementById('tpUnassignedBadge');
-      if (seatedBadge) seatedBadge.textContent = totalSeated + ' seated';
-      if (unassignedBadge) unassignedBadge.textContent = this.unassignedGuests.length + ' unassigned';
+      this._updateHeaderBadges();
 
     } catch (error) {
       console.error('Error assigning org to table:', error);
@@ -8617,6 +8623,14 @@ const eventsModule = {
     const name = document.getElementById('tpEditName')?.value?.trim() || null;
     const seats = parseInt(document.getElementById('tpEditSeats')?.value) || 8;
     const shape = document.getElementById('tpEditShape')?.value || 'round';
+
+    // Validate seat count vs assigned guests
+    const table = this.tables.find(t => t.id === tableId);
+    const assignedCount = table?.assignments?.length || 0;
+    if (seats < assignedCount) {
+      utils.showToast(`Cannot reduce to ${seats} seats — ${assignedCount} guest(s) already assigned. Remove guests first.`, 'warning');
+      return;
+    }
 
     try {
       const { error } = await STATE.client
@@ -8703,6 +8717,15 @@ const eventsModule = {
 
     const assignedCount = table.assignments?.length || 0;
 
+    // Calculate taken seat numbers to auto-assign next available
+    const takenSeats = new Set((table.assignments || []).map(a => a.seat_number).filter(Boolean));
+    const _nextSeat = (offset) => {
+      for (let s = 1; s <= table.total_seats + offset + 10; s++) {
+        if (!takenSeats.has(s)) { takenSeats.add(s); return s; }
+      }
+      return null;
+    };
+
     if (this.draggedGuestIsCompany && this.draggedCompanyGuests.length > 0) {
       // Bulk assign all company guests
       const availableSeats = table.total_seats - assignedCount;
@@ -8712,13 +8735,15 @@ const eventsModule = {
         return;
       }
       try {
-        const rows = toAssign.map(g => ({
+        const rows = toAssign.map((g, i) => ({
           event_id: this.currentEventIdTablePlan,
           table_id: tableId,
           guest_id: g.guest_id || g.id,
           guest_name: g.guest_name,
           organisation_id: g.organisation_id || null,
-          company_name: g.company_name || null
+          company_name: g.company_name || null,
+          seat_number: _nextSeat(i),
+          dietary_requirements: g.dietary_requirements || null
         }));
         const { error } = await STATE.client.from('table_assignments').insert(rows);
         if (error) throw error;
@@ -8730,6 +8755,7 @@ const eventsModule = {
         this.renderUnassignedGuests();
         this.renderCanvasTables();
         if (this._selectedTableId === tableId) this.showTableDetail(tableId);
+        this._updateHeaderBadges();
       } catch (error) {
         console.error('Error assigning company guests:', error);
         utils.showToast('Failed to assign guests', 'error');
@@ -8741,6 +8767,9 @@ const eventsModule = {
         return;
       }
       try {
+        // Look up full guest data for dietary info
+        const fullGuest = this.unassignedGuests.find(g =>
+          (g.guest_id || g.id) === this.draggedGuestData.guest_id);
         const { error } = await STATE.client
           .from('table_assignments')
           .insert([{
@@ -8749,7 +8778,9 @@ const eventsModule = {
             guest_id: this.draggedGuestData.guest_id,
             guest_name: this.draggedGuestData.guest_name,
             organisation_id: this.draggedGuestData.organisation_id || null,
-            company_name: this.draggedGuestData.company_name || null
+            company_name: this.draggedGuestData.company_name || null,
+            seat_number: _nextSeat(0),
+            dietary_requirements: fullGuest?.dietary_requirements || null
           }]);
         if (error) throw error;
         utils.showToast('Guest assigned to table', 'success');
@@ -8757,6 +8788,7 @@ const eventsModule = {
         this.renderUnassignedGuests();
         this.renderCanvasTables();
         if (this._selectedTableId === tableId) this.showTableDetail(tableId);
+        this._updateHeaderBadges();
       } catch (error) {
         console.error('Error assigning guest:', error);
         utils.showToast('Failed to assign guest', 'error');
@@ -8814,9 +8846,23 @@ const eventsModule = {
   },
 
   async deleteTable(tableId) {
-    if (!await utils.confirmDialog({ title: 'Delete Table', message: 'Delete this table? All seated guests will be unassigned.' })) return;
+    const table = this.tables.find(t => t.id === tableId);
+    const assignedCount = table?.assignments?.length || 0;
+    const msg = assignedCount > 0
+      ? `Delete this table? ${assignedCount} seated guest(s) will be unassigned.`
+      : 'Delete this table?';
+    if (!await utils.confirmDialog({ title: 'Delete Table', message: msg })) return;
 
     try {
+      // Remove all assignments first to avoid orphaned records
+      if (assignedCount > 0) {
+        const { error: clearError } = await STATE.client
+          .from('table_assignments')
+          .delete()
+          .eq('table_id', tableId);
+        if (clearError) throw clearError;
+      }
+
       const { error } = await STATE.client
         .from('event_tables')
         .delete()
@@ -8828,6 +8874,7 @@ const eventsModule = {
       await this.loadTablePlan();
       this.renderUnassignedGuests();
       this.renderCanvasTables();
+      this._updateHeaderBadges();
     } catch (error) {
       console.error('Error deleting table:', error);
       utils.showToast('Failed to delete table', 'error');
@@ -8847,10 +8894,19 @@ const eventsModule = {
       this.renderUnassignedGuests();
       this.renderCanvasTables();
       if (this._selectedTableId) this.showTableDetail(this._selectedTableId);
+      this._updateHeaderBadges();
     } catch (error) {
       console.error('Error removing guest:', error);
       utils.showToast('Failed to remove guest', 'error');
     }
+  },
+
+  _updateHeaderBadges() {
+    const totalSeated = this.tables.reduce((sum, t) => sum + (t.assignments?.length || 0), 0);
+    const seatedBadge = document.getElementById('tpSeatedBadge');
+    const unassignedBadge = document.getElementById('tpUnassignedBadge');
+    if (seatedBadge) seatedBadge.textContent = totalSeated + ' seated';
+    if (unassignedBadge) unassignedBadge.textContent = this.unassignedGuests.length + ' unassigned';
   },
 
   saveTablePlan() {
@@ -8911,6 +8967,15 @@ const eventsModule = {
           let targetTable = bestTable.availableSeats > 0 ? bestTable : tablesWithSpace.find(t => t.availableSeats > 0);
           if (!targetTable) break;
 
+          // Auto-assign next available seat number
+          if (!targetTable._takenSeats) {
+            targetTable._takenSeats = new Set((targetTable.assignments || []).map(a => a.seat_number).filter(Boolean));
+          }
+          let seatNum = null;
+          for (let s = 1; s <= targetTable.total_seats + 10; s++) {
+            if (!targetTable._takenSeats.has(s)) { seatNum = s; targetTable._takenSeats.add(s); break; }
+          }
+
           const { error } = await STATE.client
             .from('table_assignments')
             .insert([{
@@ -8919,7 +8984,9 @@ const eventsModule = {
               guest_id: guest.guest_id || guest.id,
               guest_name: guest.guest_name,
               organisation_id: guest.organisation_id || null,
-              company_name: guest.company_name || null
+              company_name: guest.company_name || null,
+              seat_number: seatNum,
+              dietary_requirements: guest.dietary_requirements || null
             }]);
 
           if (!error) {
@@ -8934,6 +9001,7 @@ const eventsModule = {
       this.renderUnassignedGuests();
       this.renderCanvasTables();
       if (this._selectedTableId) this.showTableDetail(this._selectedTableId);
+      this._updateHeaderBadges();
 
     } catch (error) {
       console.error('Error auto-assigning guests:', error);
@@ -9653,6 +9721,7 @@ const eventsModule = {
       this.renderUnassignedGuests();
       this.renderCanvasTables();
       if (this._selectedTableId === tableId) this.showTableDetail(tableId);
+      this._updateHeaderBadges();
     } catch (error) {
       console.error('Error clearing table:', error);
       utils.showToast('Failed to clear table', 'error');

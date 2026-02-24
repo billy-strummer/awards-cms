@@ -816,11 +816,22 @@ window.entryFormApp = {
 
       // 6. Try sending confirmation email (non-blocking)
       try {
-        await db.functions.invoke('send-entry-confirmation', {
-          body: { entryId: entry.id }
-        });
+        const { data: emailData, error: emailError } = await db.functions.invoke(
+          'send-entry-confirmation',
+          { body: { entryId: entry.id } }
+        );
+        if (emailError) {
+          console.error('Confirmation email error:', emailError);
+          showPublicToast('Entry saved but confirmation email could not be sent. Check your inbox or contact support.', 'warning');
+        } else if (emailData && emailData.error) {
+          console.error('Confirmation email function error:', emailData.error);
+          showPublicToast('Entry saved but confirmation email could not be sent. Check your inbox or contact support.', 'warning');
+        } else {
+          console.log('Confirmation email sent successfully');
+        }
       } catch (emailErr) {
         console.error('Confirmation email failed:', emailErr);
+        showPublicToast('Entry saved but confirmation email could not be sent.', 'warning');
       }
 
       // 7. Show success

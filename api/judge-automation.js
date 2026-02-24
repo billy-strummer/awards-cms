@@ -343,7 +343,7 @@ async function generateAllShortlists(topN = 5) {
 async function sendJudgeAssignmentEmail(judge, entry) {
   try {
     await resend.emails.send({
-      from: process.env.FROM_EMAIL || 'awards@britishtrade.com',
+      from: process.env.FROM_EMAIL || 'awards@britishtradeawards.com',
       to: judge.email,
       subject: `Judge Assignment: ${entry.awards?.award_name || 'British Trade Awards'}`,
       html: `
@@ -376,7 +376,7 @@ async function sendShortlistNotificationEmail(entry) {
     if (!toEmail) return;
 
     await resend.emails.send({
-      from: process.env.FROM_EMAIL || 'awards@britishtrade.com',
+      from: process.env.FROM_EMAIL || 'awards@britishtradeawards.com',
       to: toEmail,
       subject: `Congratulations! You've been shortlisted - ${entry.awards?.award_name || 'British Trade Awards'}`,
       html: `

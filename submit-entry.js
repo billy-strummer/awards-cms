@@ -761,7 +761,10 @@ window.entryFormApp = {
         supporting_information: supportingInformation || null,
         contact_phone: this.formData.contactPhone || null,
         contact_position: this.formData.contactPosition || null,
-        year: currentYear
+        year: currentYear,
+        award_category: this.formData.awardCategory || null,
+        sector: this.formData.sector || null,
+        region: this.formData.region || null
       };
 
       let entry = null;
@@ -814,11 +817,11 @@ window.entryFormApp = {
         console.warn('Could not set is_self_nomination flag:', e.message);
       }
 
-      // 6. Try sending confirmation email (non-blocking)
+      // 6. Try sending confirmation email via database RPC (non-blocking)
       try {
-        const { data: emailData, error: emailError } = await db.functions.invoke(
-          'send-entry-confirmation',
-          { body: { entryId: entry.id } }
+        const { data: emailData, error: emailError } = await db.rpc(
+          'send_entry_confirmation_email',
+          { p_entry_id: entry.id }
         );
         if (emailError) {
           console.error('Confirmation email error:', emailError);

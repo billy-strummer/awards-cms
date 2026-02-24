@@ -15,7 +15,7 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_KEY
 );
 
-const FROM_EMAIL = process.env.FROM_EMAIL || 'awards@britishtrade.com';
+const FROM_EMAIL = process.env.FROM_EMAIL || 'awards@britishtradeawards.com';
 const FROM_NAME = process.env.FROM_NAME || 'British Trade Awards';
 
 /**

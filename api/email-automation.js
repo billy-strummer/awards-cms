@@ -359,7 +359,7 @@ async function sendTemplateEmail(templateKey, toEmail, variables) {
 
     await resend.emails.send({
       to: toEmail,
-      from: process.env.FROM_EMAIL || 'awards@britishtrade.com',
+      from: process.env.FROM_EMAIL || 'awards@britishtradeawards.com',
       subject: subject,
       html: html
     });

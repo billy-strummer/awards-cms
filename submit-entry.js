@@ -254,7 +254,7 @@ window.entryFormApp = {
     const counties = window.REGIONS.filter(r => !cities.includes(r));
     const cityList = window.REGIONS.filter(r => cities.includes(r));
 
-    let html = '<option value="">Select your county or city</option>';
+    let html = '<option value="" placeholder>Select your county or city</option>';
 
     if (counties.length > 0) {
       html += '<optgroup label="Counties">';
@@ -280,7 +280,8 @@ window.entryFormApp = {
         searchEnabled: true,
         searchFloor: 1,
         searchPlaceholderValue: 'Type to search...',
-        placeholderValue: '',
+        placeholder: true,
+        placeholderValue: 'Select your county or city',
         itemSelectText: '',
         shouldSort: false,
         searchResultLimit: 100,

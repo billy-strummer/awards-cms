@@ -733,33 +733,40 @@ const entriesModule = {
                 </div>
               ` : ''}
 
-              <!-- Admin Notes Input -->
+              <!-- Status Change Section -->
               <div class="card">
                 <div class="card-header bg-light">
-                  <h6 class="mb-0"><i class="bi bi-sticky me-2"></i>Add Note (optional)</h6>
+                  <h6 class="mb-0"><i class="bi bi-gear me-2"></i>Change Status</h6>
                 </div>
                 <div class="card-body">
-                  <input type="text" class="form-control" id="statusChangeNotes" placeholder="Add a note about this status change (saved with any action below)">
+                  <div class="row g-2">
+                    <div class="col-md-6">
+                      <label class="form-label">Status</label>
+                      <select class="form-select" id="newEntryStatus">
+                        <option value="draft" ${entry.status === 'draft' ? 'selected' : ''}>Draft</option>
+                        <option value="submitted" ${entry.status === 'submitted' ? 'selected' : ''}>Submitted</option>
+                        <option value="under_review" ${entry.status === 'under_review' ? 'selected' : ''}>Under Review</option>
+                        <option value="shortlisted" ${entry.status === 'shortlisted' ? 'selected' : ''}>Shortlisted</option>
+                        <option value="winner" ${entry.status === 'winner' ? 'selected' : ''}>Winner</option>
+                        <option value="rejected" ${entry.status === 'rejected' ? 'selected' : ''}>Rejected</option>
+                      </select>
+                    </div>
+                    <div class="col-md-6">
+                      <label class="form-label">Notes (optional)</label>
+                      <input type="text" class="form-control" id="statusChangeNotes" placeholder="Add a note about this change">
+                    </div>
+                  </div>
                 </div>
               </div>
 
             </div>
-            <div class="modal-footer d-flex flex-wrap gap-1">
+            <div class="modal-footer">
               <button type="button" class="btn btn-outline-info me-auto" onclick="entriesModule.openUploadLink('${entry.entry_number}')">
                 <i class="bi bi-paperclip me-2"></i>View Upload Link
               </button>
               <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-              <button type="button" class="btn btn-danger" onclick="entriesModule.quickStatusChange('${entry.id}', 'rejected')" ${entry.status === 'rejected' ? 'disabled' : ''}>
-                <i class="bi bi-x-circle me-1"></i>Reject
-              </button>
-              <button type="button" class="btn btn-warning" onclick="entriesModule.quickStatusChange('${entry.id}', 'under_review')" ${entry.status === 'under_review' ? 'disabled' : ''}>
-                <i class="bi bi-eye me-1"></i>Under Review
-              </button>
-              <button type="button" class="btn btn-success" onclick="entriesModule.quickStatusChange('${entry.id}', 'shortlisted')" ${entry.status === 'shortlisted' ? 'disabled' : ''}>
-                <i class="bi bi-check-circle me-1"></i>Shortlist
-              </button>
-              <button type="button" class="btn btn-primary" onclick="entriesModule.quickStatusChange('${entry.id}', 'winner')" ${entry.status === 'winner' ? 'disabled' : ''}>
-                <i class="bi bi-trophy me-1"></i>Winner
+              <button type="button" class="btn btn-primary" onclick="entriesModule.updateEntryStatus('${entry.id}')">
+                <i class="bi bi-check-lg me-1"></i>Save &amp; Confirm
               </button>
             </div>
           </div>

@@ -15,14 +15,13 @@ CREATE OR REPLACE FUNCTION send_entry_confirmation_email(p_entry_id UUID)
 RETURNS JSONB AS $$
 DECLARE
   v_entry RECORD;
-  v_org RECORD;
-  v_award RECORD;
   v_subject TEXT;
   v_html TEXT;
   v_award_name TEXT;
   v_sector TEXT;
   v_region TEXT;
   v_result JSONB;
+  v_company_name TEXT := '';
 BEGIN
   -- Fetch entry
   SELECT * INTO v_entry FROM entries WHERE id = p_entry_id;
@@ -40,27 +39,31 @@ BEGIN
     RETURN jsonb_build_object('success', false, 'error', 'No contact email on entry');
   END IF;
 
-  -- Fetch organisation
+  -- Fetch organisation (use direct variable assignment to avoid unassigned record issues)
   IF v_entry.organisation_id IS NOT NULL THEN
-    SELECT * INTO v_org FROM organisations WHERE id = v_entry.organisation_id;
+    SELECT company_name, sector, region
+      INTO v_company_name, v_sector, v_region
+      FROM organisations WHERE id = v_entry.organisation_id;
   END IF;
+  v_sector := COALESCE(v_sector, '');
+  v_region := COALESCE(v_region, '');
 
-  -- Fetch award if linked
+  -- Fetch award if linked (override sector/region with award values if available)
   IF v_entry.award_id IS NOT NULL THEN
-    SELECT * INTO v_award FROM awards WHERE id = v_entry.award_id;
+    SELECT award_name, sector, county
+      INTO v_award_name, v_sector, v_region
+      FROM awards WHERE id = v_entry.award_id;
   END IF;
+  v_award_name := COALESCE(v_award_name, '');
 
-  -- Build display values
-  v_award_name := COALESCE(
-    v_award.award_name,
-    CASE WHEN v_entry.entry_title LIKE '%-%'
-      THEN TRIM(SUBSTRING(v_entry.entry_title FROM POSITION(' - ' IN v_entry.entry_title) + 3))
-      ELSE v_entry.entry_title
-    END,
-    ''
-  );
-  v_sector := COALESCE(v_award.sector, v_org.sector, '');
-  v_region := COALESCE(v_award.county, v_org.region, '');
+  -- Fallback: extract award name from entry title if not set via award record
+  IF v_award_name = '' THEN
+    IF v_entry.entry_title LIKE '%-%' THEN
+      v_award_name := TRIM(SUBSTRING(v_entry.entry_title FROM POSITION(' - ' IN v_entry.entry_title) + 3));
+    ELSE
+      v_award_name := COALESCE(v_entry.entry_title, '');
+    END IF;
+  END IF;
 
   -- Build subject
   v_subject := 'Entry Received - ' || COALESCE(v_entry.entry_number, '') || ' | British Trade Awards';
@@ -84,7 +87,7 @@ BEGIN
     || '<h3 style="margin:0 0 12px;color:#1a237e;font-size:16px;">Your Entry Details</h3>'
     || '<table style="width:100%;font-size:14px;border-collapse:collapse;">'
     || '<tr><td style="padding:4px 8px;color:#6c757d;width:120px;">Reference:</td><td style="padding:4px 8px;font-weight:600;">' || COALESCE(v_entry.entry_number, 'N/A') || '</td></tr>'
-    || '<tr><td style="padding:4px 8px;color:#6c757d;">Company:</td><td style="padding:4px 8px;">' || COALESCE(v_org.company_name, '') || '</td></tr>'
+    || '<tr><td style="padding:4px 8px;color:#6c757d;">Company:</td><td style="padding:4px 8px;">' || COALESCE(v_company_name, '') || '</td></tr>'
     || '<tr><td style="padding:4px 8px;color:#6c757d;">Category:</td><td style="padding:4px 8px;">' || v_award_name || '</td></tr>';
 
   IF v_sector != '' THEN

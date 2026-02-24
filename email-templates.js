@@ -45,6 +45,20 @@ const emailTemplatesModule = {
   /**
    * Render templates list
    */
+  // Group definitions: map template_type to a workflow group
+  templateGroups: {
+    'Entry Submissions': { types: ['confirmation', 'reminder'], icon: 'bi-pencil-square' },
+    'Judging & Results': { types: ['approval', 'rejection'], icon: 'bi-trophy' },
+    'General': { types: ['general', 'notification', 'invite'], icon: 'bi-megaphone' }
+  },
+
+  getGroupForType(type) {
+    for (const [groupName, config] of Object.entries(this.templateGroups)) {
+      if (config.types.includes(type)) return groupName;
+    }
+    return 'Other';
+  },
+
   renderTemplatesList() {
     const container = document.getElementById('templatesList');
 
@@ -58,22 +72,61 @@ const emailTemplatesModule = {
       return;
     }
 
-    container.innerHTML = this.templates.map(template => `
-      <a href="#" class="list-group-item list-group-item-action ${this.currentTemplate?.id === template.id ? 'active' : ''}"
-         onclick="emailTemplatesModule.selectTemplate('${template.id}'); return false;">
-        <div class="d-flex justify-content-between align-items-start">
-          <div>
-            <strong>${template.template_name}</strong>
-            <br>
-            <small class="text-muted">${template.template_type}</small>
-          </div>
-          <div>
-            ${template.is_active ? '<span class="badge bg-success">Active</span>' : '<span class="badge bg-secondary">Inactive</span>'}
-            ${template.is_default ? '<span class="badge bg-primary ms-1">Default</span>' : ''}
-          </div>
+    // Group templates by workflow stage
+    const grouped = {};
+    this.templates.forEach(template => {
+      const group = this.getGroupForType(template.template_type);
+      if (!grouped[group]) grouped[group] = [];
+      grouped[group].push(template);
+    });
+
+    // Render with group headers in a defined order
+    const groupOrder = ['Entry Submissions', 'Judging & Results', 'General', 'Other'];
+    let html = '';
+
+    groupOrder.forEach(groupName => {
+      const templates = grouped[groupName];
+      if (!templates || templates.length === 0) return;
+
+      const config = this.templateGroups[groupName] || { icon: 'bi-folder' };
+      html += `
+        <div class="list-group-item bg-light py-2 px-3" style="font-size: 0.75rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: #6c757d; border-bottom: 2px solid #dee2e6;">
+          <i class="${config.icon} me-1"></i>${groupName}
         </div>
-      </a>
-    `).join('');
+      `;
+
+      html += templates.map(template => `
+        <a href="#" class="list-group-item list-group-item-action ${this.currentTemplate?.id === template.id ? 'active' : ''}"
+           onclick="emailTemplatesModule.selectTemplate('${template.id}'); return false;">
+          <div class="d-flex justify-content-between align-items-start">
+            <div>
+              <strong>${template.template_name || template.name || 'Untitled'}</strong>
+              <br>
+              <small class="${this.currentTemplate?.id === template.id ? 'text-white-50' : 'text-muted'}">${this.getTypeLabel(template.template_type)}</small>
+            </div>
+            <div>
+              ${template.is_active ? '<span class="badge bg-success">Active</span>' : '<span class="badge bg-secondary">Inactive</span>'}
+              ${template.is_default ? '<span class="badge bg-primary ms-1">Default</span>' : ''}
+            </div>
+          </div>
+        </a>
+      `).join('');
+    });
+
+    container.innerHTML = html;
+  },
+
+  getTypeLabel(type) {
+    const labels = {
+      'confirmation': 'Confirmation',
+      'reminder': 'Reminder',
+      'approval': 'Approval / Shortlisted',
+      'rejection': 'Not Shortlisted',
+      'general': 'General',
+      'notification': 'Notification',
+      'invite': 'Invitation'
+    };
+    return labels[type] || type || '';
   },
 
   /**

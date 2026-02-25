@@ -2121,7 +2121,7 @@ const eventsModule = {
   async getBudget(eventId) {
     try {
       const [{ data: budgetRow }, { data: items }] = await Promise.all([
-        STATE.client.from('event_budgets').select('*').eq('event_id', eventId).single(),
+        STATE.client.from('event_budgets').select('*').eq('event_id', eventId).maybeSingle(),
         STATE.client.from('event_budget_items').select('*').eq('event_id', eventId).order('created_at')
       ]);
       return { totalBudget: budgetRow?.total_budget || 0, items: items || [] };
@@ -10318,9 +10318,9 @@ const eventsModule = {
     if (uncached.length === 0) return;
 
     try {
-      // Batch query instead of N+1 loop
+      // Batch query instead of N+1 loop — use award_years which has event_id + winner_confirmed
       const { data: allAwards, error } = await STATE.client
-        .from('awards')
+        .from('award_years')
         .select('id, event_id, winner_confirmed')
         .in('event_id', uncached);
 

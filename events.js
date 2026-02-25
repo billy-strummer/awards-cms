@@ -8802,7 +8802,7 @@ const eventsModule = {
           ${table.assignments && table.assignments.length > 0 ? table.assignments.map(a => `
             <div class="seated-guest">
               <div style="min-width:0;">
-                <div class="fw-medium">${utils.escapeHtml(a.guest_name)}${a.guest_type && a.guest_type !== 'guest' ? ` <span class="badge bg-${a.guest_type === 'vip' ? 'warning text-dark' : a.guest_type === 'speaker' ? 'primary' : a.guest_type === 'sponsor' ? 'info' : 'secondary'}" style="font-size:0.55rem; padding:1px 4px;">${a.guest_type.toUpperCase()}</span>` : ''}</div>
+                <div class="fw-medium">${utils.escapeHtml(a.guest_name)}${a.is_vip ? ' <span class="badge bg-warning text-dark" style="font-size:0.55rem; padding:1px 4px;">VIP</span>' : ''}</div>
                 ${a.company_name ? `<small class="text-muted">${utils.escapeHtml(a.company_name)}</small>` : ''}
                 ${a.dietary_requirements ? `<small class="text-warning d-block" style="font-size:0.7rem;"><i class="bi bi-egg-fried me-1"></i>${utils.escapeHtml(a.dietary_requirements)}</small>` : ''}
               </div>
@@ -9279,6 +9279,7 @@ const eventsModule = {
               organisation_id: guest.organisation_id || null,
               company_name: guest.company_name || null,
               seat_number: seatNum,
+              is_vip: guest.guest_type === 'vip' || guest.guest_type === 'sponsor' || guest.guest_type === 'speaker',
               dietary_requirements: guest.dietary_requirements || null
             }]);
 

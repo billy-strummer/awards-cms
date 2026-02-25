@@ -8528,6 +8528,7 @@ const eventsModule = {
               </span>
             </div>
           `).join('') : '<p class="text-muted small text-center mt-3">Click a company above or drag guests from the left panel</p>'}
+        </div>
       </div>
     `;
 

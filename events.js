@@ -763,8 +763,20 @@ const eventsModule = {
     const notesEl = document.getElementById('eventQuickNotes');
     if (notesEl) notesEl.value = await this._getEventNotes(eventId);
 
-    const modal = new bootstrap.Modal(document.getElementById('attendeesModal'));
+    const modalEl = document.getElementById('attendeesModal');
+    const modal = new bootstrap.Modal(modalEl);
     modal.show();
+
+    // Refresh table plan unassigned guests when modal closes (attendees may have changed)
+    modalEl.addEventListener('hidden.bs.modal', () => {
+      if (this.currentEventIdTablePlan) {
+        this.loadTablePlan().then(() => {
+          this.renderUnassignedGuests();
+          this.renderCanvasTables();
+          this._updateHeaderBadges();
+        }).catch(() => {});
+      }
+    }, { once: true });
   },
 
   /**
@@ -6644,7 +6656,30 @@ const eventsModule = {
         (orgs || []).forEach(o => { orgsMap[o.id] = o.company_name; });
       }
 
-      // 4. Build the merged list: award + winner info
+      // 4. Look up guest contacts per org (for recipient_collecting)
+      let guestByOrg = {};
+      if (orgIds.length > 0) {
+        try {
+          const { data: eg } = await STATE.client
+            .from('event_guests')
+            .select('guest_name, organisation_id')
+            .eq('event_id', event.id)
+            .eq('rsvp_status', 'confirmed')
+            .in('organisation_id', orgIds);
+          (eg || []).forEach(g => { if (g.organisation_id && !guestByOrg[g.organisation_id]) guestByOrg[g.organisation_id] = g.guest_name; });
+        } catch (e) { /* event_guests may not exist */ }
+        try {
+          const { data: ea } = await STATE.client
+            .from('event_attendees')
+            .select('attendee_name, organisation_id')
+            .eq('event_id', event.id)
+            .in('rsvp_status', ['attending', 'confirmed'])
+            .in('organisation_id', orgIds);
+          (ea || []).forEach(a => { if (a.organisation_id && !guestByOrg[a.organisation_id]) guestByOrg[a.organisation_id] = a.attendee_name; });
+        } catch (e) { /* event_attendees may not exist */ }
+      }
+
+      // 5. Build the merged list: award + winner info
       const existingAwardIds = new Set(this.runningOrderItems.map(i => i.award_id).filter(Boolean));
       const assignmentsByAward = {};
       (assignments || []).forEach(a => {
@@ -6656,6 +6691,7 @@ const eventsModule = {
         const winners = assignmentsByAward[award.id] || [];
         const topWinner = winners[0];
         const orgName = topWinner ? (orgsMap[topWinner.organisation_id] || 'Unknown') : null;
+        const recipientName = topWinner ? (guestByOrg[topWinner.organisation_id] || null) : null;
         const alreadyInRO = existingAwardIds.has(award.id);
         return {
           awardId: award.id,
@@ -6665,6 +6701,7 @@ const eventsModule = {
           hasWinner: winners.length > 0,
           winnerName: orgName,
           winnerOrgId: topWinner?.organisation_id || null,
+          recipientName,
           alreadyInRO
         };
       });
@@ -6830,6 +6867,7 @@ const eventsModule = {
           item_name: row.awardName,
           award_name: row.awardName,
           display_name: row.winnerName || 'TBC',
+          recipient_collecting: row.recipientName || row.winnerName || 'TBC',
           award_number: awardNum,
           display_order: order,
           section: section,

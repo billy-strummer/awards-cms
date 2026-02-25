@@ -1238,6 +1238,18 @@ const eventsModule = {
     const event = STATE.allEvents.find(e => e.id === eventId);
     if (!event) return;
 
+    // Merge localStorage fallback for ticket settings (columns may not exist in DB)
+    if (event.ticket_price === undefined && event.ticket_url === undefined) {
+      try {
+        const stored = localStorage.getItem(`bta_ticket_settings_${eventId}`);
+        if (stored) {
+          const s = JSON.parse(stored);
+          event.ticket_price = s.ticket_price;
+          event.ticket_url = s.ticket_url;
+        }
+      } catch (e) { /* ignore */ }
+    }
+
     const attendees = await this.getAttendees(eventId);
     const ticketsSold = attendees.filter(a => a.status === 'attending').length;
     const price = event.ticket_price || 0;
@@ -1377,17 +1389,18 @@ const eventsModule = {
         .update({ ticket_price: price, ticket_url: url })
         .eq('id', eventId);
       if (error) throw error;
-
-      // Update local state
-      const event = STATE.allEvents.find(e => e.id === eventId);
-      if (event) { event.ticket_price = price; event.ticket_url = url; }
-
-      this.renderTicketsTab(eventId);
-      utils.showToast('Ticket settings saved', 'success');
-    } catch (error) {
-      console.error('Error saving ticket settings:', error);
-      utils.showToast('Failed to save ticket settings', 'error');
+    } catch (dbError) {
+      // Column may not exist – fall back to localStorage (matches pattern used by budgets, vendors, etc.)
+      console.warn('DB update for ticket settings failed, using localStorage:', dbError);
+      localStorage.setItem(`bta_ticket_settings_${eventId}`, JSON.stringify({ ticket_price: price, ticket_url: url }));
     }
+
+    // Update local state
+    const event = STATE.allEvents.find(e => e.id === eventId);
+    if (event) { event.ticket_price = price; event.ticket_url = url; }
+
+    this.renderTicketsTab(eventId);
+    utils.showToast('Ticket settings saved', 'success');
   },
 
   copyTicketUrl() {

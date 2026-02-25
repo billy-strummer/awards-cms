@@ -11748,8 +11748,12 @@ const eventsModule = {
         .order('created_at', { ascending: true });
       if (error) throw error;
       return (data && data.length > 0) ? data.map(m => ({
-        id: m.id, label: m.label, done: m.done, category: m.category,
-        custom: m.custom || false, completedAt: m.completed_at
+        id: m.milestone_id || m.id,
+        label: m.label || m.title || '',
+        done: m.done ?? m.is_completed ?? false,
+        category: m.category || 'General',
+        custom: m.custom ?? m.is_custom ?? false,
+        completedAt: m.completed_at || null
       })) : this._getDefaultMilestones();
     } catch (e) {
       const stored = localStorage.getItem(this._milestonesKey(eventId));
@@ -11762,8 +11766,10 @@ const eventsModule = {
       await STATE.client.from('event_milestones').delete().eq('event_id', eventId);
       if (milestones.length > 0) {
         const rows = milestones.map(m => ({
-          event_id: eventId, milestone_id: m.id, label: m.label,
-          done: m.done, category: m.category, custom: m.custom || false,
+          event_id: eventId, milestone_id: m.id,
+          title: m.label || m.title || '',
+          is_completed: m.done ?? m.is_completed ?? false,
+          is_custom: m.custom ?? m.is_custom ?? false,
           completed_at: m.completedAt || null
         }));
         const { error } = await STATE.client.from('event_milestones').insert(rows);

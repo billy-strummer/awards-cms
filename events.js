@@ -7319,14 +7319,14 @@ const eventsModule = {
           <div class="modal-content">
             <!-- Header -->
             <div class="modal-header py-2" style="background: #1a1a2e; color: white;">
-              <div class="d-flex align-items-center gap-3">
-                <h5 class="modal-title mb-0">
-                  <i class="bi bi-grid-3x3-gap me-2"></i>Table Plan - ${utils.escapeHtml(this.currentEventNameTablePlan)}
+              <div class="d-flex align-items-center gap-2" style="min-width: 0; overflow: hidden;">
+                <h5 class="modal-title mb-0 text-truncate" style="font-size: 1rem;">
+                  <i class="bi bi-grid-3x3-gap me-2"></i>${utils.escapeHtml(this.currentEventNameTablePlan)}
                 </h5>
                 <span class="badge bg-info" id="tpSeatedBadge">${totalSeated} seated</span>
                 <span class="badge bg-warning text-dark" id="tpUnassignedBadge">${totalGuests} unassigned</span>
               </div>
-              <div class="d-flex align-items-center gap-2">
+              <div class="d-flex align-items-center gap-1 flex-shrink-0">
                 <button class="btn btn-sm btn-outline-light" onclick="eventsModule.autoAssignGuests()" title="Auto Assign">
                   <i class="bi bi-magic me-1"></i>Auto Assign
                 </button>
@@ -7492,6 +7492,12 @@ const eventsModule = {
       </div>
 
       <style>
+        /* === LAYOUT CONTAINMENT — prevent modal from overflowing viewport === */
+        #tablePlanModal .modal-dialog { max-width: 100vw !important; overflow: hidden !important; }
+        #tablePlanModal .modal-content { overflow: hidden !important; max-width: 100vw !important; }
+        #tablePlanModal .modal-header { overflow: hidden; flex-wrap: wrap; gap: 0.5rem; }
+        #tablePlanModal .modal-body { overflow: hidden !important; padding: 0 !important; }
+
         /* Sidebar guest styles */
         .tp-sidebar .company-group { margin-bottom: 4px; }
         .tp-sidebar .company-header {

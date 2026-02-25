@@ -546,7 +546,8 @@
         console.error('Registration error:', err);
         alert('Registration failed: ' + err.message);
         btn.disabled = false;
-        btn.innerHTML = '<i class="bi bi-check-circle me-1"></i><span id="submitBtnText">Confirm Registration</span>';
+        const btnText = document.getElementById('submitBtnText');
+        if (btnText) btnText.textContent = 'Confirm Registration';
       }
     }
 

@@ -7444,9 +7444,9 @@ const eventsModule = {
                 </div>
 
                 <!-- Main Canvas Area -->
-                <div class="flex-grow-1 d-flex flex-column position-relative">
+                <div class="flex-grow-1 d-flex flex-column position-relative" style="min-width: 0; overflow: hidden;">
                   <!-- Canvas Toolbar -->
-                  <div class="d-flex align-items-center gap-2 p-2 border-bottom bg-white">
+                  <div class="d-flex align-items-center gap-2 p-2 border-bottom bg-white" style="flex-wrap: wrap;">
                     <button class="btn btn-sm btn-primary" onclick="eventsModule.addNewTable()">
                       <i class="bi bi-plus-circle me-1"></i>Add Table
                     </button>

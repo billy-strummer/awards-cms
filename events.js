@@ -2121,7 +2121,7 @@ const eventsModule = {
   async getBudget(eventId) {
     try {
       const [{ data: budgetRow }, { data: items }] = await Promise.all([
-        STATE.client.from('event_budgets').select('*').eq('event_id', eventId).single(),
+        STATE.client.from('event_budgets').select('*').eq('event_id', eventId).maybeSingle(),
         STATE.client.from('event_budget_items').select('*').eq('event_id', eventId).order('created_at')
       ]);
       return { totalBudget: budgetRow?.total_budget || 0, items: items || [] };
@@ -7462,6 +7462,9 @@ const eventsModule = {
                     </button>
                     <small class="text-muted" id="tpZoomLevel">100%</small>
                     <div class="vr"></div>
+                    <button class="btn btn-sm btn-outline-info" onclick="eventsModule.showTableIndex()" title="Table Index">
+                      <i class="bi bi-card-list me-1"></i>Index
+                    </button>
                     <button class="btn btn-sm btn-outline-danger" onclick="eventsModule.resetCanvas()" title="Reset Canvas">
                       <i class="bi bi-arrow-counterclockwise me-1"></i>Reset
                     </button>
@@ -9589,6 +9592,113 @@ const eventsModule = {
 
   // ---- STATS SUMMARY ----
 
+  showTableIndex() {
+    const existing = document.getElementById('tpIndexOverlay');
+    if (existing) existing.remove();
+
+    // Build index: for each table, group assignments by company
+    const tableRows = this.tables
+      .sort((a, b) => a.table_number - b.table_number)
+      .map(t => {
+        const assignments = t.assignments || [];
+        if (assignments.length === 0) {
+          return `<div class="tp-idx-table">
+            <div class="tp-idx-table-header">
+              <span><strong>${t.table_name ? utils.escapeHtml(t.table_name) : 'Table ' + t.table_number}</strong></span>
+              <span class="text-muted">0 / ${t.total_seats} seats</span>
+            </div>
+            <div class="tp-idx-table-body text-muted fst-italic" style="font-size:0.8rem;">Empty</div>
+          </div>`;
+        }
+
+        // Group by company
+        const byCompany = {};
+        assignments.forEach(a => {
+          const co = a.company_name || 'No Company';
+          if (!byCompany[co]) byCompany[co] = [];
+          byCompany[co].push(a.guest_name);
+        });
+
+        const companyHtml = Object.entries(byCompany)
+          .sort((a, b) => b[1].length - a[1].length)
+          .map(([company, guests]) => `
+            <div class="tp-idx-company">
+              <div class="tp-idx-company-label">${utils.escapeHtml(company)} (${guests.length})</div>
+              ${guests.map(g => `<div class="tp-idx-guest">${utils.escapeHtml(g)}</div>`).join('')}
+            </div>
+          `).join('');
+
+        return `<div class="tp-idx-table">
+          <div class="tp-idx-table-header">
+            <span><strong>${t.table_name ? utils.escapeHtml(t.table_name) : 'Table ' + t.table_number}</strong></span>
+            <span class="${assignments.length >= t.total_seats ? 'text-danger' : 'text-muted'}">${assignments.length} / ${t.total_seats} seats</span>
+          </div>
+          <div class="tp-idx-table-body">${companyHtml}</div>
+        </div>`;
+      }).join('');
+
+    // Company cross-reference: which tables is each company spread across?
+    const companyTables = {};
+    this.tables.forEach(t => {
+      (t.assignments || []).forEach(a => {
+        const co = a.company_name || 'No Company';
+        if (!companyTables[co]) companyTables[co] = { count: 0, tables: new Set() };
+        companyTables[co].count++;
+        companyTables[co].tables.add(t.table_name || 'Table ' + t.table_number);
+      });
+    });
+    const companyRefHtml = Object.entries(companyTables)
+      .sort((a, b) => b[1].count - a[1].count)
+      .map(([co, data]) => `
+        <tr>
+          <td style="font-size:0.82rem;">${utils.escapeHtml(co)}</td>
+          <td class="text-center" style="font-size:0.82rem;">${data.count}</td>
+          <td style="font-size:0.82rem;">${[...data.tables].join(', ')}</td>
+        </tr>
+      `).join('');
+
+    document.body.insertAdjacentHTML('beforeend', `
+      <div id="tpIndexOverlay" style="position:fixed; inset:0; z-index:9999; background:rgba(0,0,0,0.6); display:flex; align-items:center; justify-content:center;" onclick="if(event.target===this)this.remove();">
+        <div style="background:white; border-radius:16px; padding:24px; width:700px; max-width:92vw; max-height:85vh; overflow-y:auto; box-shadow:0 20px 60px rgba(0,0,0,0.3);">
+          <div class="d-flex justify-content-between align-items-center mb-3">
+            <h5 class="mb-0"><i class="bi bi-card-list me-2"></i>Table Index</h5>
+            <button class="btn btn-sm btn-outline-secondary" onclick="document.getElementById('tpIndexOverlay').remove()"><i class="bi bi-x-lg"></i></button>
+          </div>
+
+          <!-- Tab nav -->
+          <ul class="nav nav-tabs nav-fill mb-3" role="tablist">
+            <li class="nav-item"><a class="nav-link active" data-bs-toggle="tab" href="#tpIdxByTable">By Table</a></li>
+            <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#tpIdxByCompany">By Company</a></li>
+          </ul>
+
+          <div class="tab-content">
+            <!-- By Table tab -->
+            <div class="tab-pane fade show active" id="tpIdxByTable">
+              ${tableRows}
+            </div>
+
+            <!-- By Company tab -->
+            <div class="tab-pane fade" id="tpIdxByCompany">
+              <table class="table table-sm table-hover">
+                <thead><tr><th>Company</th><th class="text-center">Guests</th><th>Tables</th></tr></thead>
+                <tbody>${companyRefHtml || '<tr><td colspan="3" class="text-muted text-center">No guests assigned yet</td></tr>'}</tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <style>
+        .tp-idx-table { border: 1px solid #e9ecef; border-radius: 10px; overflow: hidden; margin-bottom: 10px; }
+        .tp-idx-table-header { display: flex; justify-content: space-between; align-items: center; padding: 8px 14px; background: #f8f9fa; font-size: 0.88rem; border-bottom: 1px solid #e9ecef; }
+        .tp-idx-table-body { padding: 8px 14px; }
+        .tp-idx-company { margin-bottom: 6px; }
+        .tp-idx-company-label { font-size: 0.78rem; font-weight: 600; color: #0d6efd; padding: 2px 0; border-bottom: 1px dotted #e9ecef; margin-bottom: 2px; }
+        .tp-idx-guest { font-size: 0.8rem; padding: 2px 0 2px 10px; color: #495057; }
+      </style>
+    `);
+  },
+
   showTablePlanStats() {
     const totalTables = this.tables.length;
     const totalSeats = this.tables.reduce((s, t) => s + t.total_seats, 0);
@@ -10208,9 +10318,9 @@ const eventsModule = {
     if (uncached.length === 0) return;
 
     try {
-      // Batch query instead of N+1 loop
+      // Batch query instead of N+1 loop — use award_years which has event_id + winner_confirmed
       const { data: allAwards, error } = await STATE.client
-        .from('awards')
+        .from('award_years')
         .select('id, event_id, winner_confirmed')
         .in('event_id', uncached);
 

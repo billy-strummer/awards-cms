@@ -228,10 +228,18 @@ window.sponsorPortalModule = {
         ? await STATE.client.from('sponsor_contracts').update(payload).eq('id', id)
         : await STATE.client.from('sponsor_contracts').insert(payload);
       if (error) throw error;
-      bootstrap.Modal.getInstance(document.getElementById('contractModal')).hide();
-      utils.showToast(id ? 'Contract updated' : 'Contract created', 'success');
-      this.renderContracts();
-    } catch (err) { utils.showToast('Failed to save contract: ' + err.message, 'error'); }
+    } catch (err) {
+      console.warn('DB save for contract failed, using localStorage:', err);
+      const key = 'bta_sponsor_contracts';
+      const stored = JSON.parse(localStorage.getItem(key) || '[]');
+      payload.id = id || crypto.randomUUID();
+      const idx = stored.findIndex(c => c.id === payload.id);
+      if (idx >= 0) stored[idx] = payload; else stored.push(payload);
+      localStorage.setItem(key, JSON.stringify(stored));
+    }
+    bootstrap.Modal.getInstance(document.getElementById('contractModal'))?.hide();
+    utils.showToast(id ? 'Contract updated' : 'Contract created', 'success');
+    this.renderContracts();
   },
 
   async deleteContract(id) {

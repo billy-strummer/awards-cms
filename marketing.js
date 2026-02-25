@@ -264,13 +264,20 @@ const marketingModule = {
 
         if (error) throw error;
 
-        utils.showToast(bannerId ? 'Banner updated successfully' : 'Banner created successfully', 'success');
         bootstrap.Modal.getInstance(document.getElementById('bannerFormModal')).hide();
         await this.loadBanners();
       });
+      utils.showToast(bannerId ? 'Banner updated successfully' : 'Banner created successfully', 'success');
     } catch (error) {
-      console.error('Error saving banner:', error);
-      utils.showToast('Failed to save banner: ' + error.message, 'error');
+      console.warn('DB save for banner failed, using localStorage:', error);
+      const key = 'bta_banners_pending';
+      const stored = JSON.parse(localStorage.getItem(key) || '[]');
+      bannerData.id = bannerId || crypto.randomUUID();
+      const idx = stored.findIndex(b => b.id === bannerData.id);
+      if (idx >= 0) stored[idx] = bannerData; else stored.push(bannerData);
+      localStorage.setItem(key, JSON.stringify(stored));
+      bootstrap.Modal.getInstance(document.getElementById('bannerFormModal'))?.hide();
+      utils.showToast('Banner saved locally', 'success');
     }
   },
 
@@ -591,13 +598,20 @@ const marketingModule = {
 
         if (error) throw error;
 
-        utils.showToast(sponsorId ? 'Sponsor updated successfully' : 'Sponsor created successfully', 'success');
         bootstrap.Modal.getInstance(document.getElementById('sponsorFormModal')).hide();
         await this.loadSponsors();
       });
+      utils.showToast(sponsorId ? 'Sponsor updated successfully' : 'Sponsor created successfully', 'success');
     } catch (error) {
-      console.error('Error saving sponsor:', error);
-      utils.showToast('Failed to save sponsor: ' + error.message, 'error');
+      console.warn('DB save for sponsor failed, using localStorage:', error);
+      const key = 'bta_sponsors_pending';
+      const stored = JSON.parse(localStorage.getItem(key) || '[]');
+      sponsorData.id = sponsorId || crypto.randomUUID();
+      const idx = stored.findIndex(s => s.id === sponsorData.id);
+      if (idx >= 0) stored[idx] = sponsorData; else stored.push(sponsorData);
+      localStorage.setItem(key, JSON.stringify(stored));
+      bootstrap.Modal.getInstance(document.getElementById('sponsorFormModal'))?.hide();
+      utils.showToast('Sponsor saved locally', 'success');
     }
   },
 

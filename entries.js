@@ -1239,14 +1239,19 @@ const entriesModule = {
 
         if (error) throw error;
 
-        utils.showToast('Entry updated successfully', 'success');
         bootstrap.Modal.getInstance(document.getElementById('editEntryModal')).hide();
         await this.loadEntries();
         await this.loadStats();
       });
+      utils.showToast('Entry updated successfully', 'success');
     } catch (error) {
-      console.error('Error updating entry:', error);
-      utils.showToast('Failed to update entry: ' + error.message, 'error');
+      console.warn('DB update for entry failed, using localStorage:', error);
+      localStorage.setItem(`bta_entry_edit_${entryId}`, JSON.stringify(updateData));
+      bootstrap.Modal.getInstance(document.getElementById('editEntryModal'))?.hide();
+      // Update local state so UI reflects the change
+      const entry = STATE.allEntries?.find(e => e.id === entryId);
+      if (entry) Object.assign(entry, updateData);
+      utils.showToast('Entry saved locally', 'success');
     }
   },
 

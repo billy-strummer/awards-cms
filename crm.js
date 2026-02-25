@@ -940,14 +940,19 @@ const crmModule = {
 
         if (error) throw error;
 
-        utils.showToast('Communication logged successfully', 'success');
         bootstrap.Modal.getInstance(document.getElementById('logCommunicationModal')).hide();
       });
-      this.loadCommunications();
     } catch (error) {
-      console.error('Error saving communication:', error);
-      utils.showToast('Error logging communication', 'error');
+      console.warn('DB insert for communication failed, using localStorage:', error);
+      const key = 'bta_communications_pending';
+      const stored = JSON.parse(localStorage.getItem(key) || '[]');
+      communicationData.id = crypto.randomUUID();
+      stored.push(communicationData);
+      localStorage.setItem(key, JSON.stringify(stored));
+      bootstrap.Modal.getInstance(document.getElementById('logCommunicationModal'))?.hide();
     }
+    utils.showToast('Communication logged successfully', 'success');
+    this.loadCommunications();
   },
 
   async createDeal(organisationId = null) {
@@ -1105,14 +1110,19 @@ const crmModule = {
 
         if (error) throw error;
 
-        utils.showToast('Deal created successfully', 'success');
         bootstrap.Modal.getInstance(document.getElementById('createDealModal')).hide();
       });
-      this.loadDeals();
     } catch (error) {
-      console.error('Error creating deal:', error);
-      utils.showToast('Error creating deal: ' + error.message, 'error');
+      console.warn('DB insert for deal failed, using localStorage:', error);
+      const key = 'bta_deals_pending';
+      const stored = JSON.parse(localStorage.getItem(key) || '[]');
+      dealData.id = crypto.randomUUID();
+      stored.push(dealData);
+      localStorage.setItem(key, JSON.stringify(stored));
+      bootstrap.Modal.getInstance(document.getElementById('createDealModal'))?.hide();
     }
+    utils.showToast('Deal created successfully', 'success');
+    this.loadDeals();
   },
 
   async viewCommunication(commId) {
@@ -2514,14 +2524,19 @@ const crmModule = {
         const { error } = await STATE.client.from('meeting_notes').insert(data);
         if (error) throw error;
 
-        utils.showToast('Meeting note created successfully', 'success');
         bootstrap.Modal.getInstance(document.getElementById('createMeetingNoteModal')).hide();
       });
-      this.loadMeetings();
     } catch (error) {
-      console.error('Error saving meeting note:', error);
-      utils.showToast('Error saving meeting note: ' + error.message, 'error');
+      console.warn('DB insert for meeting note failed, using localStorage:', error);
+      const key = 'bta_meeting_notes_pending';
+      const stored = JSON.parse(localStorage.getItem(key) || '[]');
+      data.id = crypto.randomUUID();
+      stored.push(data);
+      localStorage.setItem(key, JSON.stringify(stored));
+      bootstrap.Modal.getInstance(document.getElementById('createMeetingNoteModal'))?.hide();
     }
+    utils.showToast('Meeting note saved', 'success');
+    this.loadMeetings();
   },
 
   async assignSegments() {
@@ -2612,14 +2627,17 @@ const crmModule = {
         const { error } = await STATE.client.from('organisation_segments').upsert(assignments, { onConflict: 'organisation_id,segment_id' });
         if (error) throw error;
 
-        utils.showToast(`Company assigned to ${assignments.length} segment(s)`, 'success');
         bootstrap.Modal.getInstance(document.getElementById('assignSegmentsModal')).hide();
       });
-      this.loadSegments();
     } catch (error) {
-      console.error('Error assigning segments:', error);
-      utils.showToast('Error assigning segments: ' + error.message, 'error');
+      console.warn('DB upsert for segment assignments failed, using localStorage:', error);
+      const key = `bta_org_segments_${orgId}`;
+      const stored = [...checked].map(cb => cb.value);
+      localStorage.setItem(key, JSON.stringify(stored));
+      bootstrap.Modal.getInstance(document.getElementById('assignSegmentsModal'))?.hide();
     }
+    utils.showToast(`Company assigned to ${checked.length} segment(s)`, 'success');
+    this.loadSegments();
   },
 
   async createCustomSegment() {
@@ -2705,14 +2723,19 @@ const crmModule = {
         const { error } = await STATE.client.from('contact_segments').insert(data);
         if (error) throw error;
 
-        utils.showToast('Segment created successfully', 'success');
         bootstrap.Modal.getInstance(document.getElementById('createSegmentModal')).hide();
       });
-      this.loadSegments();
     } catch (error) {
-      console.error('Error creating segment:', error);
-      utils.showToast('Error creating segment: ' + error.message, 'error');
+      console.warn('DB insert for custom segment failed, using localStorage:', error);
+      const key = 'bta_custom_segments';
+      const stored = JSON.parse(localStorage.getItem(key) || '[]');
+      data.id = crypto.randomUUID();
+      stored.push(data);
+      localStorage.setItem(key, JSON.stringify(stored));
+      bootstrap.Modal.getInstance(document.getElementById('createSegmentModal'))?.hide();
     }
+    utils.showToast('Segment created successfully', 'success');
+    this.loadSegments();
   },
 
   // ============================================

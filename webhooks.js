@@ -230,14 +230,14 @@ window.webhooksModule = {
     const url = document.getElementById('whUrl').value.trim();
     if (!name || !url) { utils.showToast('Name and URL are required', 'warning'); return; }
 
+    const events = Array.from(document.querySelectorAll('.wh-event-check:checked')).map(c => c.value);
+    const secret = document.getElementById('whSecret').value.trim() || crypto.randomUUID();
+    const is_active = document.getElementById('whActive').checked;
+    const now = new Date().toISOString();
+    const record = { name, url, secret, events, is_active, updated_at: now };
+
     try {
       await utils.protectModalDuringSave('webhookModal', async () => {
-        const events = Array.from(document.querySelectorAll('.wh-event-check:checked')).map(c => c.value);
-        const secret = document.getElementById('whSecret').value.trim() || crypto.randomUUID();
-        const is_active = document.getElementById('whActive').checked;
-        const now = new Date().toISOString();
-
-        const record = { name, url, secret, events, is_active, updated_at: now };
         let error;
         if (id) {
           ({ error } = await STATE.client.from('webhooks').update(record).eq('id', id));
@@ -247,11 +247,19 @@ window.webhooksModule = {
         if (error) throw error;
 
         bootstrap.Modal.getInstance(document.getElementById('webhookModal')).hide();
-        utils.showToast('Webhook saved', 'success');
         this.renderWebhookManager();
       });
+      utils.showToast('Webhook saved', 'success');
     } catch (error) {
-      utils.showToast('Save failed: ' + error.message, 'error');
+      console.warn('DB save for webhook failed, using localStorage:', error);
+      const key = 'bta_webhooks';
+      const stored = JSON.parse(localStorage.getItem(key) || '[]');
+      record.id = id || crypto.randomUUID();
+      const idx = stored.findIndex(w => w.id === record.id);
+      if (idx >= 0) stored[idx] = record; else stored.push(record);
+      localStorage.setItem(key, JSON.stringify(stored));
+      bootstrap.Modal.getInstance(document.getElementById('webhookModal'))?.hide();
+      utils.showToast('Webhook saved locally', 'success');
     }
   },
 

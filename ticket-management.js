@@ -89,10 +89,20 @@ window.ticketModule = {
           : await STATE.client.from('event_ticket_types').insert(payload);
         if (error) throw error;
         bootstrap.Modal.getInstance(document.getElementById('ttModal')).hide();
-        utils.showToast('Ticket type saved.', 'success');
         this.renderTicketTypes(eventId);
       });
-    } catch (err) { utils.showToast('Save failed: ' + err.message, 'error'); } finally { utils.hideLoading(); }
+      utils.showToast('Ticket type saved.', 'success');
+    } catch (err) {
+      console.warn('DB save for ticket type failed, using localStorage:', err);
+      const key = `bta_ticket_types_${eventId}`;
+      const stored = JSON.parse(localStorage.getItem(key) || '[]');
+      payload.id = id || crypto.randomUUID();
+      const idx = stored.findIndex(t => t.id === payload.id);
+      if (idx >= 0) stored[idx] = payload; else stored.push(payload);
+      localStorage.setItem(key, JSON.stringify(stored));
+      bootstrap.Modal.getInstance(document.getElementById('ttModal'))?.hide();
+      utils.showToast('Ticket type saved locally', 'success');
+    } finally { utils.hideLoading(); }
   },
 
   async deleteTicketType(id, eventId) {

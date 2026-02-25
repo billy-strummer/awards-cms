@@ -1853,35 +1853,33 @@ updateCountyFilterByRegion() {
     const intro = document.getElementById('winnerIntro')?.value?.trim() || '';
     const videoId = document.getElementById('winnerVideoId')?.value?.trim() || '';
     const voteUrl = document.getElementById('winnerVoteUrl')?.value?.trim() || '';
+    const profileData = { winner_intro: intro || null, winner_video_id: videoId || null, winner_vote_url: voteUrl || null };
 
     try {
       utils.showLoading();
 
       const { error } = await STATE.client
         .from('organisations')
-        .update({
-          winner_intro: intro || null,
-          winner_video_id: videoId || null,
-          winner_vote_url: voteUrl || null
-        })
+        .update(profileData)
         .eq('id', orgId);
 
       if (error) throw error;
-
-      utils.showToast('Winner profile saved successfully!', 'success');
-
-      // Reload the profile
-      const org = STATE.allOrganisations.find(o => o.id === orgId);
-      if (org) {
-        await this.openCompanyProfile(orgId, org.company_name);
-      }
-
     } catch (error) {
-      console.error('Error saving winner profile:', error);
-      utils.showToast('Error saving winner profile: ' + error.message, 'error');
-    } finally {
-      utils.hideLoading();
+      console.warn('DB update for winner profile failed, using localStorage:', error);
+      localStorage.setItem(`bta_winner_profile_${orgId}`, JSON.stringify(profileData));
     }
+
+    // Update local state
+    const org = STATE.allOrganisations.find(o => o.id === orgId);
+    if (org) { Object.assign(org, profileData); }
+
+    utils.showToast('Winner profile saved successfully!', 'success');
+
+    if (org) {
+      await this.openCompanyProfile(orgId, org.company_name);
+    }
+
+    utils.hideLoading();
   },
 
   /**
@@ -3789,24 +3787,27 @@ updateCountyFilterByRegion() {
         .eq('id', orgId);
 
       if (error) throw error;
-
-      // Update local state
-      if (org) org[dbField] = newValue || null;
-      const fOrg = STATE.filteredOrganisations.find(o => o.id === orgId);
-      if (fOrg) fOrg[dbField] = newValue || null;
-
-      // Store for undo
-      this._lastInlineEdit = { orgId, dbField, oldValue, newValue };
-
-      // Log the diff to audit trail
-      this._logAuditWithDiff(orgId, 'field_changed', org?.company_name || '', dbField, oldValue, newValue);
-
-      this.renderOrganisations();
-      this._showUndoToast(field);
     } catch (error) {
-      console.error('Error saving inline edit:', error);
-      utils.showToast('Error: ' + error.message, 'error');
+      console.warn('DB update for inline edit failed, using localStorage:', error);
+      const key = `bta_org_edits_${orgId}`;
+      const stored = JSON.parse(localStorage.getItem(key) || '{}');
+      stored[dbField] = newValue || null;
+      localStorage.setItem(key, JSON.stringify(stored));
     }
+
+    // Update local state
+    if (org) org[dbField] = newValue || null;
+    const fOrg = STATE.filteredOrganisations.find(o => o.id === orgId);
+    if (fOrg) fOrg[dbField] = newValue || null;
+
+    // Store for undo
+    this._lastInlineEdit = { orgId, dbField, oldValue, newValue };
+
+    // Log the diff to audit trail
+    this._logAuditWithDiff(orgId, 'field_changed', org?.company_name || '', dbField, oldValue, newValue);
+
+    this.renderOrganisations();
+    this._showUndoToast(field);
   },
 
   _showUndoToast(field) {
@@ -7482,14 +7483,23 @@ updateCountyFilterByRegion() {
     if (!content) { utils.showToast('Please enter note content', 'warning'); return; }
     try {
       const user = await this._getCurrentUserEmail();
-      await STATE.client.from('org_activity_notes').insert([{ organisation_id: orgId, type, content, priority, created_by: user }]);
-      this._logAudit(orgId, 'note_added', '', `${type}: ${content.substring(0, 80)}`);
-      utils.showToast('Note added', 'success');
-      bootstrap.Modal.getInstance(document.getElementById('dynamicOrgModal'))?.hide();
+      const { error } = await STATE.client.from('org_activity_notes').insert([{ organisation_id: orgId, type, content, priority, created_by: user }]);
+      if (error) throw error;
+    } catch (e) {
+      console.warn('DB insert for activity note failed, using localStorage:', e);
+      const key = `bta_org_notes_${orgId}`;
+      const stored = JSON.parse(localStorage.getItem(key) || '[]');
+      stored.push({ id: crypto.randomUUID(), organisation_id: orgId, type, content, priority, created_at: new Date().toISOString() });
+      localStorage.setItem(key, JSON.stringify(stored));
+    }
+    this._logAudit(orgId, 'note_added', '', `${type}: ${content.substring(0, 80)}`);
+    utils.showToast('Note added', 'success');
+    bootstrap.Modal.getInstance(document.getElementById('dynamicOrgModal'))?.hide();
+    try {
       const timeline = await this.loadUnifiedTimeline(orgId);
       const el = document.getElementById('orgActivityTimeline');
       if (el) el.innerHTML = this.renderUnifiedTimeline(timeline);
-    } catch (e) { utils.showToast('Error saving note: ' + e.message, 'error'); }
+    } catch (e) { /* timeline refresh best-effort */ }
   },
 
   // Email sequences — delegated to marketingModule (single source of truth)

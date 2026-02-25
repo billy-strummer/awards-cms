@@ -259,7 +259,7 @@ const winnersModule = {
     const pageWinners = STATE.filteredWinners.slice(start, end);
 
     if (STATE.filteredWinners.length === 0) {
-      utils.showEnhancedEmptyState('winnersTableBody', 7, { icon: 'bi-trophy', message: 'No winners found', description: 'Winners will appear here once confirmed', actionLabel: 'View Pipeline', actionOnclick: "document.querySelector('[data-section=\"winner-pipeline\"]')?.click()", isFiltered: STATE.filteredWinners.length === 0 && STATE.allWinners.length > 0 });
+      utils.showEnhancedEmptyState('winnersTableBody', 7, { icon: 'bi-trophy', message: 'No winners found', description: 'Winners will appear here once confirmed', actionLabel: 'View Pipeline', actionOnclick: "winnerPipelineModule.init()", isFiltered: STATE.filteredWinners.length === 0 && STATE.allWinners.length > 0 });
       return;
     }
 

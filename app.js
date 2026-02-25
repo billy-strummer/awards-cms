@@ -1225,7 +1225,7 @@ document.addEventListener('DOMContentLoaded', function() {
   const defaultTab = localStorage.getItem('defaultLandingTab');
   const startTab = hashTab || defaultTab;
   if (startTab) {
-    const tabBtn = document.querySelector(`[data-bs-target="#${startTab}Page"]`) || document.querySelector(`[data-bs-target="#${startTab}"]`);
+    const tabBtn = document.querySelector(`[data-bs-target="#${startTab}"]`);
     if (tabBtn) setTimeout(() => tabBtn.click(), 100);
   }
 
@@ -1291,7 +1291,7 @@ document.addEventListener('DOMContentLoaded', function() {
       if (tabContent) tabContent.parentElement.insertBefore(bc, tabContent);
     }
     const label = tabName.charAt(0).toUpperCase() + tabName.slice(1);
-    bc.innerHTML = `<ol class="breadcrumb mb-0 bg-transparent p-0"><li class="breadcrumb-item"><a href="#" onclick="event.preventDefault(); document.querySelector('[data-bs-target=\\'#dashboardPage\\']')?.click();">Dashboard</a></li><li class="breadcrumb-item active" aria-current="page">${label}</li></ol>`;
+    bc.innerHTML = `<ol class="breadcrumb mb-0 bg-transparent p-0"><li class="breadcrumb-item"><a href="#" onclick="event.preventDefault(); document.querySelector('[data-bs-target=\\'#dashboard\\']')?.click();">Dashboard</a></li><li class="breadcrumb-item active" aria-current="page">${label}</li></ol>`;
   };
 
   // ==========================================

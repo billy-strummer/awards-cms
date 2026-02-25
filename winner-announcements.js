@@ -280,7 +280,9 @@ window.winnerAnnouncementsModule = {
      6. EMBARGO MANAGEMENT
   ================================================ */
   async setEmbargo(winnerIds, embargoUntil) {
-    const iso = new Date(embargoUntil).toISOString();
+    const parsed = utils.safeDate(embargoUntil);
+    if (!parsed) { utils.showToast('Invalid embargo date', 'warning'); return; }
+    const iso = parsed.toISOString();
     await utils.runBatchOperation(winnerIds, async (id) => {
       this._embargoMap[id] = iso;
       const {error} = await STATE.client.from('winners').update({embargo_until:iso}).eq('id',id);

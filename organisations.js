@@ -4969,6 +4969,7 @@ updateCountyFilterByRegion() {
   },
 
   async deleteFollowUp(orgId, followUpId) {
+    if (!await utils.confirmDialog({ title: 'Delete Follow-Up', message: 'Delete this follow-up?', confirmText: 'Delete', danger: true })) return;
     try {
       const { error } = await STATE.client.from('organisation_follow_ups')
         .delete().eq('id', followUpId);

@@ -475,7 +475,7 @@ const dashboardModule = {
       });
 
       // Sort all activities by time (most recent first)
-      activities.sort((a, b) => new Date(b.time) - new Date(a.time));
+      activities.sort((a, b) => (new Date(b.time || 0)) - (new Date(a.time || 0)));
 
       // Take only the 10 most recent
       const recentActivities = activities.slice(0, 10);

@@ -1978,6 +1978,32 @@ const utils = {
     }
   },
 
+  /**
+   * Create a guard that prevents concurrent execution of an async function.
+   * Returns a wrapped function that no-ops if the previous call is still running.
+   */
+  asyncGuard(fn) {
+    let running = false;
+    return async function (...args) {
+      if (running) return;
+      running = true;
+      try {
+        return await fn.apply(this, args);
+      } finally {
+        running = false;
+      }
+    };
+  },
+
+  /**
+   * Safely parse a date string, returning null for invalid/missing values.
+   */
+  safeDate(val) {
+    if (!val) return null;
+    const d = new Date(val);
+    return isNaN(d.getTime()) ? null : d;
+  },
+
   /* ==================================================== */
   /* INLINE FORM VALIDATION (UX-3)                        */
   /* ==================================================== */

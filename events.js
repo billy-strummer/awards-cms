@@ -7441,7 +7441,7 @@ const eventsModule = {
 
                     <div class="p-2 border-bottom d-flex justify-content-between align-items-center">
                       <small class="fw-bold text-muted">UNASSIGNED GUESTS</small>
-                      <span class="badge bg-primary" id="tpUnassignedCount">${totalGuests}</span>
+                      <span class="badge bg-warning text-dark" id="tpUnassignedCount">${totalGuests}</span>
                     </div>
                     <div id="unassignedGuestsList" class="flex-grow-1 overflow-auto p-2">
                       <!-- Guests grouped by company rendered here -->
@@ -7464,10 +7464,13 @@ const eventsModule = {
                     <button class="btn btn-sm btn-outline-secondary" onclick="eventsModule.canvasZoom(-0.1)" title="Zoom Out">
                       <i class="bi bi-zoom-out"></i>
                     </button>
-                    <button class="btn btn-sm btn-outline-secondary" onclick="eventsModule.canvasZoom(0, true)" title="Reset Zoom">
+                    <button class="btn btn-sm btn-outline-secondary" onclick="eventsModule.canvasZoom(0, true)" title="Reset Zoom (100%)">
+                      <i class="bi bi-aspect-ratio"></i>
+                    </button>
+                    <small class="text-muted" id="tpZoomLevel" style="cursor:pointer; user-select:none;" onclick="eventsModule.canvasZoom(0, true)" title="Click to reset zoom">100%</small>
+                    <button class="btn btn-sm btn-outline-secondary" onclick="eventsModule.toggleCanvasFullscreen()" title="Fullscreen" id="tpFullscreenBtn">
                       <i class="bi bi-arrows-fullscreen"></i>
                     </button>
-                    <small class="text-muted" id="tpZoomLevel">100%</small>
                     <div class="vr"></div>
                     <button class="btn btn-sm btn-outline-info" onclick="eventsModule.showTableIndex()" title="Table Index">
                       <i class="bi bi-card-list me-1"></i>Index
@@ -7488,18 +7491,21 @@ const eventsModule = {
                   </div>
 
                   <!-- Persistent Table Index Panel (bottom of canvas area) -->
-                  <div id="tpBottomIndex" style="display:none; border-top:2px solid #dee2e6; background:#fff; max-height:200px; min-height:0; flex-shrink:0; overflow:hidden; transition:max-height 0.3s ease;">
+                  <div id="tpBottomIndex" style="display:none; border-top:2px solid #dee2e6; background:#fff; height:200px; min-height:36px; max-height:70vh; flex-shrink:0; overflow:hidden; transition:margin-right 0.25s ease;">
+                    <div id="tpBottomIndexDragHandle" style="height:6px; cursor:ns-resize; background:linear-gradient(180deg, #dee2e6 0%, #f8f9fa 100%); display:flex; align-items:center; justify-content:center;">
+                      <div style="width:36px; height:3px; border-radius:2px; background:#adb5bd;"></div>
+                    </div>
                     <div class="d-flex align-items-center justify-content-between px-3 py-1 bg-light border-bottom" style="cursor:pointer;" onclick="eventsModule.toggleBottomIndex()">
-                      <small class="fw-bold text-muted"><i class="bi bi-card-list me-1"></i>TABLE INDEX <span id="tpBottomIndexCount" class="badge bg-primary ms-1">0</span></small>
+                      <small class="fw-bold text-muted"><i class="bi bi-card-list me-1"></i>TABLE INDEX <span id="tpBottomIndexCount" class="badge bg-info ms-1">0</span></small>
                       <i class="bi bi-chevron-down" id="tpBottomIndexChevron" style="transition:transform 0.3s;"></i>
                     </div>
-                    <div id="tpBottomIndexBody" class="overflow-auto" style="max-height:164px;">
+                    <div id="tpBottomIndexBody" class="overflow-auto" style="height:calc(100% - 36px);">
                       <table class="table table-sm table-hover mb-0" style="font-size:0.78rem;">
                         <thead class="table-light sticky-top">
                           <tr>
-                            <th style="width:30%">Table</th>
-                            <th style="width:25%">Guest</th>
-                            <th style="width:25%">Company</th>
+                            <th style="width:30%" class="tp-sortable" data-sort="table" onclick="eventsModule.sortBottomIndex('table')">Table <i class="bi bi-chevron-expand tp-sort-icon"></i></th>
+                            <th style="width:25%" class="tp-sortable" data-sort="guest" onclick="eventsModule.sortBottomIndex('guest')">Guest <i class="bi bi-chevron-expand tp-sort-icon"></i></th>
+                            <th style="width:25%" class="tp-sortable" data-sort="company" onclick="eventsModule.sortBottomIndex('company')">Company <i class="bi bi-chevron-expand tp-sort-icon"></i></th>
                             <th style="width:10%" class="text-center">Seat</th>
                             <th style="width:10%" class="text-center">VIP</th>
                           </tr>
@@ -7655,10 +7661,20 @@ const eventsModule = {
         #tpDetailPanel .seated-guest .remove-x { cursor: pointer; color: #dc3545; font-size: 1rem; }
         #tpDetailPanel .seated-guest .remove-x:hover { color: #a71d2a; }
 
+        /* Fullscreen canvas */
+        .d-flex.flex-column.flex-grow-1:fullscreen { background: #fff; }
+        .d-flex.flex-column.flex-grow-1:fullscreen #tpCanvasWrapper { flex: 1; }
+
         /* Bottom Table Index Panel */
         #tpBottomIndex { box-shadow: 0 -2px 8px rgba(0,0,0,0.08); transition: margin-right 0.25s ease; }
+        #tpBottomIndex.tp-resizing { transition: none !important; }
+        #tpBottomIndexDragHandle:hover { background: linear-gradient(180deg, #c6cbd1 0%, #e9ecef 100%) !important; }
         #tpBottomIndex .table { margin-bottom: 0; }
         #tpBottomIndex .table th { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.5px; color: #6c757d; padding: 4px 8px; }
+        #tpBottomIndex .table th.tp-sortable { cursor: pointer; user-select: none; white-space: nowrap; }
+        #tpBottomIndex .table th.tp-sortable:hover { color: #212529; background: #e2e6ea; }
+        #tpBottomIndex .table th.tp-sortable .tp-sort-icon { font-size: 0.65rem; opacity: 0.4; margin-left: 2px; }
+        #tpBottomIndex .table th.tp-sortable.sort-active .tp-sort-icon { opacity: 1; color: #0d6efd; }
         #tpBottomIndex .table td { padding: 3px 8px; vertical-align: middle; }
         #tpBottomIndex .table tbody tr:hover { background: #e7f3ff; }
       </style>
@@ -7672,6 +7688,7 @@ const eventsModule = {
     // Render after modal shows
     this.renderUnassignedGuests();
     this.renderCanvasTables();
+    this.initBottomIndexDrag();
 
     // Clean up
     document.getElementById('tablePlanModal').addEventListener('hidden.bs.modal', () => {
@@ -8061,9 +8078,26 @@ const eventsModule = {
     const canvas = document.getElementById('tpCanvas');
     if (!canvas) return;
 
-    canvas.style.transform = `scale(${this._canvasZoom})`;
+    const z = this._canvasZoom;
+    canvas.style.transform = `scale(${z})`;
+    // The canvas base size is always 2400x1600, transform-origin 0 0.
+    // We must size the sizer wrapper so the scrollable area matches the visual size.
+    let sizer = document.getElementById('tpCanvasSizer');
+    if (!sizer && canvas.parentElement) {
+      // First time: wrap canvas in a sizer div
+      sizer = document.createElement('div');
+      sizer.id = 'tpCanvasSizer';
+      sizer.style.position = 'relative';
+      sizer.style.overflow = 'visible';
+      canvas.parentElement.insertBefore(sizer, canvas);
+      sizer.appendChild(canvas);
+    }
+    if (sizer) {
+      sizer.style.width  = Math.round(2400 * z) + 'px';
+      sizer.style.height = Math.round(1600 * z) + 'px';
+    }
     const zoomLabel = document.getElementById('tpZoomLevel');
-    if (zoomLabel) zoomLabel.textContent = Math.round(this._canvasZoom * 100) + '%';
+    if (zoomLabel) zoomLabel.textContent = Math.round(z * 100) + '%';
 
     if (this.tables.length === 0 && this.roomFixtures.length === 0) {
       canvas.innerHTML = `
@@ -8134,8 +8168,70 @@ const eventsModule = {
     this._bottomIndexCollapsed = !this._bottomIndexCollapsed;
     const body = document.getElementById('tpBottomIndexBody');
     const chevron = document.getElementById('tpBottomIndexChevron');
-    if (body) body.style.display = this._bottomIndexCollapsed ? 'none' : '';
+    const panel = document.getElementById('tpBottomIndex');
+    if (this._bottomIndexCollapsed) {
+      if (body) body.style.display = 'none';
+      if (panel) panel.style.height = '36px';
+    } else {
+      if (body) body.style.display = '';
+      if (panel) panel.style.height = (this._bottomIndexHeight || 200) + 'px';
+    }
     if (chevron) chevron.style.transform = this._bottomIndexCollapsed ? 'rotate(180deg)' : '';
+  },
+
+  _bottomIndexHeight: 200,
+
+  initBottomIndexDrag() {
+    const handle = document.getElementById('tpBottomIndexDragHandle');
+    if (!handle) return;
+    handle.addEventListener('mousedown', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      const panel = document.getElementById('tpBottomIndex');
+      if (!panel || this._bottomIndexCollapsed) return;
+      panel.classList.add('tp-resizing');
+      const startY = e.clientY;
+      const startH = panel.offsetHeight;
+      const onMove = (ev) => {
+        const delta = startY - ev.clientY;
+        const newH = Math.max(60, Math.min(startH + delta, window.innerHeight * 0.7));
+        panel.style.height = newH + 'px';
+      };
+      const onUp = (ev) => {
+        document.removeEventListener('mousemove', onMove);
+        document.removeEventListener('mouseup', onUp);
+        panel.classList.remove('tp-resizing');
+        this._bottomIndexHeight = panel.offsetHeight;
+      };
+      document.addEventListener('mousemove', onMove);
+      document.addEventListener('mouseup', onUp);
+    });
+  },
+
+  _bottomIndexSort: { col: 'table', asc: true },
+
+  sortBottomIndex(col) {
+    if (this._bottomIndexSort.col === col) {
+      this._bottomIndexSort.asc = !this._bottomIndexSort.asc;
+    } else {
+      this._bottomIndexSort = { col, asc: true };
+    }
+    this.renderTableIndexPanel();
+  },
+
+  _updateBottomIndexSortIcons() {
+    const ths = document.querySelectorAll('#tpBottomIndex th.tp-sortable');
+    ths.forEach(th => {
+      const col = th.dataset.sort;
+      const icon = th.querySelector('.tp-sort-icon');
+      if (col === this._bottomIndexSort.col) {
+        th.classList.add('sort-active');
+        if (icon) icon.className = 'bi tp-sort-icon ' + (this._bottomIndexSort.asc ? 'bi-sort-down-alt' : 'bi-sort-down');
+      } else {
+        th.classList.remove('sort-active');
+        if (icon) icon.className = 'bi bi-chevron-expand tp-sort-icon';
+      }
+    });
   },
 
   _updateBottomIndexInset() {
@@ -8180,6 +8276,17 @@ const eventsModule = {
     panel.style.display = '';
     if (countBadge) countBadge.textContent = rows.length;
 
+    // Apply sort
+    const { col, asc } = this._bottomIndexSort;
+    const dir = asc ? 1 : -1;
+    rows.sort((a, b) => {
+      let va, vb;
+      if (col === 'table')   { va = a.tableNumber; vb = b.tableNumber; return (va - vb) * dir; }
+      if (col === 'guest')   { va = a.guestName.toLowerCase(); vb = b.guestName.toLowerCase(); }
+      if (col === 'company') { va = a.companyName.toLowerCase(); vb = b.companyName.toLowerCase(); }
+      return va < vb ? -dir : va > vb ? dir : 0;
+    });
+
     tbody.innerHTML = rows.map(r => `
       <tr>
         <td><strong>${r.tableName}</strong></td>
@@ -8189,6 +8296,8 @@ const eventsModule = {
         <td class="text-center">${r.isVip ? '<i class="bi bi-star-fill text-warning"></i>' : ''}</td>
       </tr>
     `).join('');
+
+    this._updateBottomIndexSortIcons();
   },
 
   // ==== ROOM FIXTURES (Stage, Photo Wall, AV Booth) ====
@@ -8449,6 +8558,28 @@ const eventsModule = {
       this._canvasZoom = Math.min(2, Math.max(0.3, this._canvasZoom + delta));
     }
     this.renderCanvasTables();
+  },
+
+  toggleCanvasFullscreen() {
+    // Target the canvas column (toolbar + wrapper + bottom index) for true fullscreen
+    const modal = document.getElementById('tablePlanModal');
+    const target = document.getElementById('tpCanvasWrapper')?.closest('.d-flex.flex-column.flex-grow-1');
+    if (!target) return;
+    if (document.fullscreenElement) {
+      document.exitFullscreen().catch(() => {});
+    } else {
+      (target.requestFullscreen || target.webkitRequestFullscreen || target.msRequestFullscreen).call(target).catch(() => {});
+    }
+    // Update icon on change
+    const updateIcon = () => {
+      const btn = document.getElementById('tpFullscreenBtn');
+      if (!btn) return;
+      const icon = btn.querySelector('i');
+      if (icon) {
+        icon.className = document.fullscreenElement ? 'bi bi-fullscreen-exit' : 'bi bi-arrows-fullscreen';
+      }
+    };
+    document.addEventListener('fullscreenchange', updateIcon, { once: true });
   },
 
   // ---- TABLE DRAGGING (repositioning on canvas) ----
@@ -9700,70 +9831,11 @@ const eventsModule = {
 
   // ---- STATS SUMMARY ----
 
+  _indexOverlaySort: { byTable: { col: 'table', asc: true }, byCompany: { col: 'guests', asc: false } },
+
   showTableIndex() {
     const existing = document.getElementById('tpIndexOverlay');
     if (existing) existing.remove();
-
-    // Build index: for each table, group assignments by company
-    const tableRows = this.tables
-      .sort((a, b) => a.table_number - b.table_number)
-      .map(t => {
-        const assignments = t.assignments || [];
-        if (assignments.length === 0) {
-          return `<div class="tp-idx-table">
-            <div class="tp-idx-table-header">
-              <span><strong>${t.table_name ? utils.escapeHtml(t.table_name) : 'Table ' + t.table_number}</strong></span>
-              <span class="text-muted">0 / ${t.total_seats} seats</span>
-            </div>
-            <div class="tp-idx-table-body text-muted fst-italic" style="font-size:0.8rem;">Empty</div>
-          </div>`;
-        }
-
-        // Group by company
-        const byCompany = {};
-        assignments.forEach(a => {
-          const co = a.company_name || 'No Company';
-          if (!byCompany[co]) byCompany[co] = [];
-          byCompany[co].push(a.guest_name);
-        });
-
-        const companyHtml = Object.entries(byCompany)
-          .sort((a, b) => b[1].length - a[1].length)
-          .map(([company, guests]) => `
-            <div class="tp-idx-company">
-              <div class="tp-idx-company-label">${utils.escapeHtml(company)} (${guests.length})</div>
-              ${guests.map(g => `<div class="tp-idx-guest">${utils.escapeHtml(g)}</div>`).join('')}
-            </div>
-          `).join('');
-
-        return `<div class="tp-idx-table">
-          <div class="tp-idx-table-header">
-            <span><strong>${t.table_name ? utils.escapeHtml(t.table_name) : 'Table ' + t.table_number}</strong></span>
-            <span class="${assignments.length >= t.total_seats ? 'text-danger' : 'text-muted'}">${assignments.length} / ${t.total_seats} seats</span>
-          </div>
-          <div class="tp-idx-table-body">${companyHtml}</div>
-        </div>`;
-      }).join('');
-
-    // Company cross-reference: which tables is each company spread across?
-    const companyTables = {};
-    this.tables.forEach(t => {
-      (t.assignments || []).forEach(a => {
-        const co = a.company_name || 'No Company';
-        if (!companyTables[co]) companyTables[co] = { count: 0, tables: new Set() };
-        companyTables[co].count++;
-        companyTables[co].tables.add(t.table_name || 'Table ' + t.table_number);
-      });
-    });
-    const companyRefHtml = Object.entries(companyTables)
-      .sort((a, b) => b[1].count - a[1].count)
-      .map(([co, data]) => `
-        <tr>
-          <td style="font-size:0.82rem;">${utils.escapeHtml(co)}</td>
-          <td class="text-center" style="font-size:0.82rem;">${data.count}</td>
-          <td style="font-size:0.82rem;">${[...data.tables].join(', ')}</td>
-        </tr>
-      `).join('');
 
     document.body.insertAdjacentHTML('beforeend', `
       <div id="tpIndexOverlay" style="position:fixed; inset:0; z-index:9999; background:rgba(0,0,0,0.6); display:flex; align-items:center; justify-content:center;" onclick="if(event.target===this)this.remove();">
@@ -9782,14 +9854,24 @@ const eventsModule = {
           <div class="tab-content">
             <!-- By Table tab -->
             <div class="tab-pane fade show active" id="tpIdxByTable">
-              ${tableRows}
+              <div class="d-flex gap-1 mb-2">
+                <small class="text-muted me-1 align-self-center">Sort by:</small>
+                <button class="btn btn-sm btn-outline-secondary tp-idx-sort-btn" data-tab="byTable" data-col="table" onclick="eventsModule.sortIndexOverlay('byTable','table')">Table <i class="bi bi-sort-down-alt tp-sort-icon"></i></button>
+                <button class="btn btn-sm btn-outline-secondary tp-idx-sort-btn" data-tab="byTable" data-col="seats" onclick="eventsModule.sortIndexOverlay('byTable','seats')">Seats <i class="bi bi-chevron-expand tp-sort-icon"></i></button>
+                <button class="btn btn-sm btn-outline-secondary tp-idx-sort-btn" data-tab="byTable" data-col="company" onclick="eventsModule.sortIndexOverlay('byTable','company')">Company <i class="bi bi-chevron-expand tp-sort-icon"></i></button>
+              </div>
+              <div id="tpIdxByTableContent"></div>
             </div>
 
             <!-- By Company tab -->
             <div class="tab-pane fade" id="tpIdxByCompany">
-              <table class="table table-sm table-hover">
-                <thead><tr><th>Company</th><th class="text-center">Guests</th><th>Tables</th></tr></thead>
-                <tbody>${companyRefHtml || '<tr><td colspan="3" class="text-muted text-center">No guests assigned yet</td></tr>'}</tbody>
+              <table class="table table-sm table-hover" id="tpIdxCompanyTable">
+                <thead><tr>
+                  <th class="tp-idx-co-sort" style="cursor:pointer; user-select:none;" onclick="eventsModule.sortIndexOverlay('byCompany','company')">Company <i class="bi bi-chevron-expand tp-sort-icon"></i></th>
+                  <th class="text-center tp-idx-co-sort" style="cursor:pointer; user-select:none;" onclick="eventsModule.sortIndexOverlay('byCompany','guests')">Guests <i class="bi bi-sort-down tp-sort-icon"></i></th>
+                  <th class="tp-idx-co-sort" style="cursor:pointer; user-select:none;" onclick="eventsModule.sortIndexOverlay('byCompany','tables')">Tables <i class="bi bi-chevron-expand tp-sort-icon"></i></th>
+                </tr></thead>
+                <tbody id="tpIdxCompanyBody"></tbody>
               </table>
             </div>
           </div>
@@ -9803,8 +9885,150 @@ const eventsModule = {
         .tp-idx-company { margin-bottom: 6px; }
         .tp-idx-company-label { font-size: 0.78rem; font-weight: 600; color: #0d6efd; padding: 2px 0; border-bottom: 1px dotted #e9ecef; margin-bottom: 2px; }
         .tp-idx-guest { font-size: 0.8rem; padding: 2px 0 2px 10px; color: #495057; }
+        .tp-idx-sort-btn.active { border-color: #0d6efd; color: #0d6efd; font-weight: 600; }
+        .tp-idx-sort-btn .tp-sort-icon { font-size: 0.7rem; margin-left: 2px; }
+        .tp-idx-co-sort:hover { background: #e2e6ea; }
+        .tp-idx-co-sort .tp-sort-icon { font-size: 0.65rem; opacity: 0.5; margin-left: 2px; }
+        .tp-idx-co-sort.sort-active .tp-sort-icon { opacity: 1; color: #0d6efd; }
       </style>
     `);
+
+    this._renderIndexByTable();
+    this._renderIndexByCompany();
+  },
+
+  sortIndexOverlay(tab, col) {
+    const s = this._indexOverlaySort[tab];
+    if (s.col === col) { s.asc = !s.asc; } else { s.col = col; s.asc = true; }
+    if (tab === 'byTable') this._renderIndexByTable();
+    else this._renderIndexByCompany();
+  },
+
+  _renderIndexByTable() {
+    const container = document.getElementById('tpIdxByTableContent');
+    if (!container) return;
+
+    const { col, asc } = this._indexOverlaySort.byTable;
+    const dir = asc ? 1 : -1;
+    const sorted = this.tables.slice().sort((a, b) => {
+      if (col === 'table') return (a.table_number - b.table_number) * dir;
+      if (col === 'seats') {
+        const aFill = (a.assignments?.length || 0) / (a.total_seats || 1);
+        const bFill = (b.assignments?.length || 0) / (b.total_seats || 1);
+        return (aFill - bFill) * dir;
+      }
+      if (col === 'company') {
+        const topCo = (t) => {
+          const a = t.assignments || [];
+          if (a.length === 0) return '';
+          const counts = {};
+          a.forEach(x => { const c = x.company_name || ''; counts[c] = (counts[c]||0)+1; });
+          return Object.entries(counts).sort((x,y) => y[1]-x[1])[0][0].toLowerCase();
+        };
+        const va = topCo(a), vb = topCo(b);
+        return va < vb ? -dir : va > vb ? dir : 0;
+      }
+      return 0;
+    });
+
+    container.innerHTML = sorted.map(t => {
+      const assignments = t.assignments || [];
+      if (assignments.length === 0) {
+        return `<div class="tp-idx-table">
+          <div class="tp-idx-table-header">
+            <span><strong>${t.table_name ? utils.escapeHtml(t.table_name) : 'Table ' + t.table_number}</strong></span>
+            <span class="text-muted">0 / ${t.total_seats} seats</span>
+          </div>
+          <div class="tp-idx-table-body text-muted fst-italic" style="font-size:0.8rem;">Empty</div>
+        </div>`;
+      }
+      const byCompany = {};
+      assignments.forEach(a => {
+        const co = a.company_name || 'No Company';
+        if (!byCompany[co]) byCompany[co] = [];
+        byCompany[co].push(a.guest_name);
+      });
+      const companyHtml = Object.entries(byCompany)
+        .sort((a, b) => b[1].length - a[1].length)
+        .map(([company, guests]) => `
+          <div class="tp-idx-company">
+            <div class="tp-idx-company-label">${utils.escapeHtml(company)} (${guests.length})</div>
+            ${guests.map(g => `<div class="tp-idx-guest">${utils.escapeHtml(g)}</div>`).join('')}
+          </div>
+        `).join('');
+      return `<div class="tp-idx-table">
+        <div class="tp-idx-table-header">
+          <span><strong>${t.table_name ? utils.escapeHtml(t.table_name) : 'Table ' + t.table_number}</strong></span>
+          <span class="${assignments.length >= t.total_seats ? 'text-danger' : 'text-muted'}">${assignments.length} / ${t.total_seats} seats</span>
+        </div>
+        <div class="tp-idx-table-body">${companyHtml}</div>
+      </div>`;
+    }).join('');
+
+    // Update sort button styles
+    document.querySelectorAll('.tp-idx-sort-btn[data-tab="byTable"]').forEach(btn => {
+      const c = btn.dataset.col;
+      const icon = btn.querySelector('.tp-sort-icon');
+      if (c === col) {
+        btn.classList.add('active');
+        if (icon) icon.className = 'bi tp-sort-icon ' + (asc ? 'bi-sort-down-alt' : 'bi-sort-down');
+      } else {
+        btn.classList.remove('active');
+        if (icon) icon.className = 'bi bi-chevron-expand tp-sort-icon';
+      }
+    });
+  },
+
+  _renderIndexByCompany() {
+    const tbody = document.getElementById('tpIdxCompanyBody');
+    if (!tbody) return;
+
+    // Build company data
+    const companyTables = {};
+    this.tables.forEach(t => {
+      (t.assignments || []).forEach(a => {
+        const co = a.company_name || 'No Company';
+        if (!companyTables[co]) companyTables[co] = { count: 0, tables: new Set() };
+        companyTables[co].count++;
+        companyTables[co].tables.add(t.table_name || 'Table ' + t.table_number);
+      });
+    });
+
+    const entries = Object.entries(companyTables);
+    const { col, asc } = this._indexOverlaySort.byCompany;
+    const dir = asc ? 1 : -1;
+    entries.sort((a, b) => {
+      if (col === 'company') { return a[0].toLowerCase() < b[0].toLowerCase() ? -dir : a[0].toLowerCase() > b[0].toLowerCase() ? dir : 0; }
+      if (col === 'guests') return (a[1].count - b[1].count) * dir;
+      if (col === 'tables') return (a[1].tables.size - b[1].tables.size) * dir;
+      return 0;
+    });
+
+    if (entries.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="3" class="text-muted text-center">No guests assigned yet</td></tr>';
+    } else {
+      tbody.innerHTML = entries.map(([co, data]) => `
+        <tr>
+          <td style="font-size:0.82rem;">${utils.escapeHtml(co)}</td>
+          <td class="text-center" style="font-size:0.82rem;">${data.count}</td>
+          <td style="font-size:0.82rem;">${[...data.tables].join(', ')}</td>
+        </tr>
+      `).join('');
+    }
+
+    // Update header icons
+    document.querySelectorAll('.tp-idx-co-sort').forEach(th => {
+      const c = th.textContent.trim().toLowerCase().split(' ')[0];
+      const colKey = c === 'company' ? 'company' : c === 'guests' ? 'guests' : 'tables';
+      const icon = th.querySelector('.tp-sort-icon');
+      if (colKey === col) {
+        th.classList.add('sort-active');
+        if (icon) icon.className = 'bi tp-sort-icon ' + (asc ? 'bi-sort-down-alt' : 'bi-sort-down');
+      } else {
+        th.classList.remove('sort-active');
+        if (icon) icon.className = 'bi bi-chevron-expand tp-sort-icon';
+      }
+    });
   },
 
   showTablePlanStats() {

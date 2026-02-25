@@ -2120,10 +2120,17 @@ const eventsModule = {
 
   async getBudget(eventId) {
     try {
-      const [{ data: budgetRow }, { data: items }] = await Promise.all([
-        STATE.client.from('event_budgets').select('*').eq('event_id', eventId).maybeSingle(),
-        STATE.client.from('event_budget_items').select('*').eq('event_id', eventId).order('created_at')
-      ]);
+      // Query separately so one table missing doesn't break the other
+      const { data: budgetRow, error: budgetErr } = await STATE.client
+        .from('event_budgets').select('*').eq('event_id', eventId).maybeSingle();
+      const { data: items, error: itemsErr } = await STATE.client
+        .from('event_budget_items').select('*').eq('event_id', eventId).order('created_at');
+
+      // If both tables errored (likely don't exist), fall back to localStorage
+      if (budgetErr && itemsErr) {
+        const stored = localStorage.getItem(this._budgetKey(eventId));
+        return stored ? JSON.parse(stored) : { totalBudget: 0, items: [] };
+      }
       return { totalBudget: budgetRow?.total_budget || 0, items: items || [] };
     } catch (e) {
       const stored = localStorage.getItem(this._budgetKey(eventId));
@@ -7480,6 +7487,29 @@ const eventsModule = {
                     </div>
                   </div>
 
+                  <!-- Persistent Table Index Panel (bottom of canvas area) -->
+                  <div id="tpBottomIndex" style="display:none; border-top:2px solid #dee2e6; background:#fff; max-height:200px; min-height:0; flex-shrink:0; overflow:hidden; transition:max-height 0.3s ease;">
+                    <div class="d-flex align-items-center justify-content-between px-3 py-1 bg-light border-bottom" style="cursor:pointer;" onclick="eventsModule.toggleBottomIndex()">
+                      <small class="fw-bold text-muted"><i class="bi bi-card-list me-1"></i>TABLE INDEX <span id="tpBottomIndexCount" class="badge bg-primary ms-1">0</span></small>
+                      <i class="bi bi-chevron-down" id="tpBottomIndexChevron" style="transition:transform 0.3s;"></i>
+                    </div>
+                    <div id="tpBottomIndexBody" class="overflow-auto" style="max-height:164px;">
+                      <table class="table table-sm table-hover mb-0" style="font-size:0.78rem;">
+                        <thead class="table-light sticky-top">
+                          <tr>
+                            <th style="width:30%">Table</th>
+                            <th style="width:25%">Guest</th>
+                            <th style="width:25%">Company</th>
+                            <th style="width:10%" class="text-center">Seat</th>
+                            <th style="width:10%" class="text-center">VIP</th>
+                          </tr>
+                        </thead>
+                        <tbody id="tpBottomIndexRows">
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+
                   <!-- Right Panel: Table Detail (overlays canvas when a table is selected) -->
                   <div id="tpDetailPanel" class="border-start bg-white shadow-lg" style="width: 300px; min-width: 300px; display: none; flex-direction: column; position: absolute; right: 0; top: 0; bottom: 0; z-index: 10;">
                     <div id="tpDetailContent">
@@ -7624,6 +7654,13 @@ const eventsModule = {
         #tpDetailPanel .seated-guest:hover { background: #e9ecef; }
         #tpDetailPanel .seated-guest .remove-x { cursor: pointer; color: #dc3545; font-size: 1rem; }
         #tpDetailPanel .seated-guest .remove-x:hover { color: #a71d2a; }
+
+        /* Bottom Table Index Panel */
+        #tpBottomIndex { box-shadow: 0 -2px 8px rgba(0,0,0,0.08); }
+        #tpBottomIndex .table { margin-bottom: 0; }
+        #tpBottomIndex .table th { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.5px; color: #6c757d; padding: 4px 8px; }
+        #tpBottomIndex .table td { padding: 3px 8px; vertical-align: middle; }
+        #tpBottomIndex .table tbody tr:hover { background: #e7f3ff; }
       </style>
     `;
 
@@ -8084,6 +8121,66 @@ const eventsModule = {
           </div>
         </div>`;
     }).join('');
+
+    // Keep bottom index panel in sync
+    this.renderTableIndexPanel();
+  },
+
+  // ==== BOTTOM TABLE INDEX PANEL ====
+
+  _bottomIndexCollapsed: false,
+
+  toggleBottomIndex() {
+    this._bottomIndexCollapsed = !this._bottomIndexCollapsed;
+    const body = document.getElementById('tpBottomIndexBody');
+    const chevron = document.getElementById('tpBottomIndexChevron');
+    if (body) body.style.display = this._bottomIndexCollapsed ? 'none' : '';
+    if (chevron) chevron.style.transform = this._bottomIndexCollapsed ? 'rotate(180deg)' : '';
+  },
+
+  renderTableIndexPanel() {
+    const panel = document.getElementById('tpBottomIndex');
+    const tbody = document.getElementById('tpBottomIndexRows');
+    const countBadge = document.getElementById('tpBottomIndexCount');
+    if (!panel || !tbody) return;
+
+    // Collect all assignments across all tables
+    const rows = [];
+    this.tables
+      .slice()
+      .sort((a, b) => a.table_number - b.table_number)
+      .forEach(t => {
+        const tableName = t.table_name ? utils.escapeHtml(t.table_name) : 'Table ' + t.table_number;
+        (t.assignments || []).forEach(a => {
+          rows.push({
+            tableName,
+            tableNumber: t.table_number,
+            guestName: a.guest_name || '',
+            companyName: a.company_name || '',
+            seatNumber: a.seat_number || '-',
+            isVip: a.is_vip
+          });
+        });
+      });
+
+    // Show/hide panel based on whether there are assignments
+    if (rows.length === 0) {
+      panel.style.display = 'none';
+      return;
+    }
+
+    panel.style.display = '';
+    if (countBadge) countBadge.textContent = rows.length;
+
+    tbody.innerHTML = rows.map(r => `
+      <tr>
+        <td><strong>${r.tableName}</strong></td>
+        <td>${utils.escapeHtml(r.guestName)}</td>
+        <td class="text-muted">${utils.escapeHtml(r.companyName)}</td>
+        <td class="text-center">${r.seatNumber}</td>
+        <td class="text-center">${r.isVip ? '<i class="bi bi-star-fill text-warning"></i>' : ''}</td>
+      </tr>
+    `).join('');
   },
 
   // ==== ROOM FIXTURES (Stage, Photo Wall, AV Booth) ====
@@ -10318,23 +10415,53 @@ const eventsModule = {
     if (uncached.length === 0) return;
 
     try {
-      // Batch query instead of N+1 loop — use award_years which has event_id + winner_confirmed
+      let awardsByEvent = {};
+
+      // Try querying award_years by event_id first (requires migration 018)
       const { data: allAwards, error } = await STATE.client
         .from('award_years')
         .select('id, event_id, winner_confirmed')
         .in('event_id', uncached);
 
-      if (error) {
-        console.warn('Error loading award counts:', error);
-        return;
-      }
+      if (!error && allAwards) {
+        (allAwards || []).forEach(award => {
+          if (!awardsByEvent[award.event_id]) awardsByEvent[award.event_id] = [];
+          awardsByEvent[award.event_id].push(award);
+        });
+      } else {
+        // Fallback: look up events to get years, then match award_years by year
+        const { data: events } = await STATE.client
+          .from('events')
+          .select('id, year')
+          .in('id', uncached);
 
-      // Group by event_id in memory
-      const awardsByEvent = {};
-      (allAwards || []).forEach(award => {
-        if (!awardsByEvent[award.event_id]) awardsByEvent[award.event_id] = [];
-        awardsByEvent[award.event_id].push(award);
-      });
+        if (events && events.length > 0) {
+          const years = [...new Set(events.map(e => e.year).filter(Boolean))];
+          if (years.length > 0) {
+            const { data: awards } = await STATE.client
+              .from('award_years')
+              .select('id, year')
+              .in('year', years);
+
+            // Map year back to event_id
+            const yearToEvents = {};
+            events.forEach(e => {
+              if (e.year) {
+                if (!yearToEvents[e.year]) yearToEvents[e.year] = [];
+                yearToEvents[e.year].push(e.id);
+              }
+            });
+
+            (awards || []).forEach(award => {
+              const eventIdsForYear = yearToEvents[award.year] || [];
+              eventIdsForYear.forEach(eid => {
+                if (!awardsByEvent[eid]) awardsByEvent[eid] = [];
+                awardsByEvent[eid].push(award);
+              });
+            });
+          }
+        }
+      }
 
       uncached.forEach(eventId => {
         const awards = awardsByEvent[eventId] || [];

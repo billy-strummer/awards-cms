@@ -984,6 +984,56 @@ const eventsModule = {
     document.getElementById('attendeePlusOnes').value = '0';
     document.getElementById('attendeeDietary').value = '';
     document.getElementById('attendeeNotes').value = '';
+    document.getElementById('attendeeOrg').value = '';
+    document.getElementById('attendeeOrgId').value = '';
+    document.getElementById('attendeeOrgResults').style.display = 'none';
+  },
+
+  _orgSearchTimeout: null,
+  async _searchOrgsForAttendee(term) {
+    const resultsEl = document.getElementById('attendeeOrgResults');
+    const orgIdEl = document.getElementById('attendeeOrgId');
+
+    // Clear previous selection when user types
+    orgIdEl.value = '';
+
+    if (!term || term.length < 2) {
+      resultsEl.style.display = 'none';
+      return;
+    }
+
+    clearTimeout(this._orgSearchTimeout);
+    this._orgSearchTimeout = setTimeout(async () => {
+      try {
+        const { data, error } = await STATE.client
+          .from('organisations')
+          .select('id, company_name')
+          .ilike('company_name', `%${term}%`)
+          .limit(10);
+        if (error) throw error;
+        if (!data || data.length === 0) {
+          resultsEl.innerHTML = '<div class="p-2 text-muted small">No organisations found</div>';
+          resultsEl.style.display = 'block';
+          return;
+        }
+        resultsEl.innerHTML = data.map(o => `
+          <div class="p-2 small" style="cursor:pointer;" onmouseover="this.style.background='#e3f2fd'" onmouseout="this.style.background=''"
+            onclick="eventsModule._selectOrgForAttendee('${o.id}', '${utils.escapeHtml(o.company_name).replace(/'/g, "\\'")}')">
+            <i class="bi bi-building me-1 text-muted"></i>${utils.escapeHtml(o.company_name)}
+          </div>
+        `).join('');
+        resultsEl.style.display = 'block';
+      } catch (e) {
+        console.error('Org search error:', e);
+        resultsEl.style.display = 'none';
+      }
+    }, 250);
+  },
+
+  _selectOrgForAttendee(orgId, orgName) {
+    document.getElementById('attendeeOrg').value = orgName;
+    document.getElementById('attendeeOrgId').value = orgId;
+    document.getElementById('attendeeOrgResults').style.display = 'none';
   },
 
   async addAttendee() {
@@ -995,6 +1045,7 @@ const eventsModule = {
     const plusOnes = parseInt(document.getElementById('attendeePlusOnes').value) || 0;
     const dietary = document.getElementById('attendeeDietary').value.trim();
     const notes = document.getElementById('attendeeNotes').value.trim();
+    const organisationId = document.getElementById('attendeeOrgId').value || null;
 
     if (!name) {
       utils.showToast('Please enter attendee name', 'warning');
@@ -1005,6 +1056,7 @@ const eventsModule = {
     attendees.push({
       id: `attendee_${Date.now()}`,
       name, email, status, guestType, plusOnes, dietary, notes,
+      organisation_id: organisationId,
       checkedIn: false,
       checkInTime: null,
       addedAt: new Date().toISOString()
@@ -1014,6 +1066,8 @@ const eventsModule = {
     document.getElementById('attendeeName').value = '';
     document.getElementById('attendeeEmail').value = '';
     document.getElementById('attendeeDietary').value = '';
+    document.getElementById('attendeeOrg').value = '';
+    document.getElementById('attendeeOrgId').value = '';
     document.getElementById('attendeeNotes').value = '';
     document.getElementById('attendeePlusOnes').value = '0';
     document.getElementById('addAttendeeForm').style.display = 'none';
@@ -4156,7 +4210,7 @@ const eventsModule = {
           *,
           organisations(company_name, logo_url),
           awards:award_years(award_name),
-          event_guests(guest_name, guest_email)
+          event_guests(guest_name, guest_email, dietary_requirements)
         `)
         .eq('event_id', this.currentEventIdRunningOrder)
         .order('display_order', { ascending: true }));
@@ -4242,6 +4296,7 @@ const eventsModule = {
         }
       }
       const recipientName = item.recipient_collecting || item.event_guests?.guest_name || item.display_name || 'TBC';
+      const recipientDietary = item.event_guests?.dietary_requirements || '';
       const awardName = item.award_name || item.item_name || (item.awards ? item.awards.award_name : 'Award TBC');
       const winnerName = item.display_name || (item.organisations ? item.organisations.company_name : 'TBC');
       const duration = item.duration_minutes || 3;
@@ -4395,6 +4450,7 @@ const eventsModule = {
             <div class="ro-recipient" style="width:120px;">
               <small class="text-muted" style="font-size:0.65rem;">Collecting:</small>
               <strong>${utils.escapeHtml(recipientName)}</strong>
+              ${recipientDietary ? `<small class="text-warning d-block" style="font-size:0.6rem;" title="${utils.escapeHtml(recipientDietary)}"><i class="bi bi-egg-fried"></i> ${utils.escapeHtml(recipientDietary)}</small>` : ''}
             </div>
             <div class="ro-status">
               <select onchange="eventsModule.setROItemStatus('${item.id}', this.value)" ${this.isPublished ? 'disabled' : ''}>
@@ -4499,6 +4555,7 @@ const eventsModule = {
           <div class="ro-recipient" style="width:120px;">
             <small class="text-muted" style="font-size:0.65rem;">Collecting:</small>
             <strong title="${utils.escapeHtml(recipientName)}">${utils.escapeHtml(recipientName)}</strong>
+            ${recipientDietary ? `<small class="text-warning d-block" style="font-size:0.6rem;" title="${utils.escapeHtml(recipientDietary)}"><i class="bi bi-egg-fried"></i> ${utils.escapeHtml(recipientDietary)}</small>` : ''}
           </div>
           <div class="ro-status">
             <select onchange="eventsModule.setROItemStatus('${item.id}', this.value)" ${this.isPublished ? 'disabled' : ''}>
@@ -8868,7 +8925,15 @@ const eventsModule = {
           ${table.assignments && table.assignments.length > 0 ? table.assignments.map(a => `
             <div class="seated-guest">
               <div style="min-width:0;">
-                <div class="fw-medium">${utils.escapeHtml(a.guest_name)}${a.is_vip ? ' <span class="badge bg-warning text-dark" style="font-size:0.55rem; padding:1px 4px;">VIP</span>' : ''}</div>
+                <div class="fw-medium">${utils.escapeHtml(a.guest_name)}${(() => {
+                  const gt = a.guest_type || (a.is_vip ? 'vip' : '');
+                  if (gt === 'vip') return ' <span class="badge bg-warning text-dark" style="font-size:0.55rem; padding:1px 4px;">VIP</span>';
+                  if (gt === 'speaker') return ' <span class="badge bg-info text-dark" style="font-size:0.55rem; padding:1px 4px;">SPEAKER</span>';
+                  if (gt === 'sponsor') return ' <span class="badge bg-success" style="font-size:0.55rem; padding:1px 4px;">SPONSOR</span>';
+                  if (gt === 'media') return ' <span class="badge bg-purple text-white" style="font-size:0.55rem; padding:1px 4px;">MEDIA</span>';
+                  if (gt === 'staff') return ' <span class="badge bg-secondary" style="font-size:0.55rem; padding:1px 4px;">STAFF</span>';
+                  return '';
+                })()}</div>
                 ${a.company_name ? `<small class="text-muted">${utils.escapeHtml(a.company_name)}</small>` : ''}
                 ${a.dietary_requirements ? `<small class="text-warning d-block" style="font-size:0.7rem;"><i class="bi bi-egg-fried me-1"></i>${utils.escapeHtml(a.dietary_requirements)}</small>` : ''}
               </div>
@@ -8942,6 +9007,7 @@ const eventsModule = {
         company_name: g.company_name || null,
         seat_number: nextSeat(),
         is_vip: g.guest_type === 'vip' || g.guest_type === 'sponsor' || g.guest_type === 'speaker',
+        guest_type: g.guest_type || 'guest',
         dietary_requirements: g.dietary_requirements || null
       }));
 
@@ -9098,6 +9164,7 @@ const eventsModule = {
           company_name: g.company_name || null,
           seat_number: _nextSeat(i),
           is_vip: g.guest_type === 'vip' || g.guest_type === 'sponsor' || g.guest_type === 'speaker',
+          guest_type: g.guest_type || 'guest',
           dietary_requirements: g.dietary_requirements || null
         }));
         const { error } = await STATE.client.from('table_assignments').insert(rows);
@@ -9136,6 +9203,7 @@ const eventsModule = {
             company_name: this.draggedGuestData.company_name || null,
             seat_number: _nextSeat(0),
             is_vip: fullGuest?.guest_type === 'vip' || fullGuest?.guest_type === 'sponsor' || fullGuest?.guest_type === 'speaker',
+            guest_type: fullGuest?.guest_type || 'guest',
             dietary_requirements: fullGuest?.dietary_requirements || null
           }]);
         if (error) throw error;
@@ -9343,6 +9411,7 @@ const eventsModule = {
               company_name: guest.company_name || null,
               seat_number: seatNum,
               is_vip: guest.guest_type === 'vip' || guest.guest_type === 'sponsor' || guest.guest_type === 'speaker',
+              guest_type: guest.guest_type || 'guest',
               dietary_requirements: guest.dietary_requirements || null
             }]);
 

@@ -227,6 +227,7 @@ const authModule = {
       
       STATE.currentUser = null;
       this.clearInactivityTimer();
+      this.stopHealthCheck();
 
       // Clean up background timers to prevent memory leaks
       if (typeof notificationsModule !== 'undefined' && notificationsModule._pollInterval) {
@@ -315,6 +316,60 @@ const authModule = {
 
     // Replay any pending localStorage items that were saved during DB failures
     utils.replayPendingQueues();
+
+    // Start periodic connection health check
+    this.startHealthCheck();
+  },
+
+  /**
+   * Periodic Supabase connection health check.
+   * Detects dropped connections during long sessions and updates the status indicator.
+   */
+  _healthCheckInterval: null,
+  _consecutiveFailures: 0,
+
+  startHealthCheck() {
+    this.stopHealthCheck();
+    this._consecutiveFailures = 0;
+    this._healthCheckInterval = setInterval(() => this._runHealthCheck(), 60000);
+    // Also check when tab becomes visible after being hidden
+    document.addEventListener('visibilitychange', this._onVisibilityChange);
+  },
+
+  stopHealthCheck() {
+    if (this._healthCheckInterval) {
+      clearInterval(this._healthCheckInterval);
+      this._healthCheckInterval = null;
+    }
+    document.removeEventListener('visibilitychange', this._onVisibilityChange);
+  },
+
+  _onVisibilityChange: function() {
+    if (!document.hidden && STATE.currentUser) {
+      authModule._runHealthCheck();
+    }
+  },
+
+  async _runHealthCheck() {
+    if (!STATE.currentUser || !STATE.client) return;
+    try {
+      const { error } = await STATE.client.from('cms_config').select('key', { head: true, count: 'exact' }).limit(1);
+      if (error) throw error;
+      if (this._consecutiveFailures > 0) {
+        this._consecutiveFailures = 0;
+        this.updateConnectionStatus(true);
+        utils.showToast('Connection restored', 'success');
+        utils.replayPendingQueues();
+      }
+    } catch (e) {
+      this._consecutiveFailures++;
+      if (this._consecutiveFailures >= 2) {
+        this.updateConnectionStatus(false);
+        if (this._consecutiveFailures === 2) {
+          utils.showToast('Connection to database lost. Changes will be saved locally until connection is restored.', 'warning');
+        }
+      }
+    }
   },
 
   /**

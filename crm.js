@@ -1166,19 +1166,19 @@ const crmModule = {
                   </div>
                   <div class="col-md-6">
                     <table class="table table-sm table-borderless">
-                      <tr><td class="text-muted">Company:</td><td><strong>${companyName}</strong></td></tr>
-                      <tr><td class="text-muted">Contact:</td><td>${contactName}</td></tr>
-                      ${contactEmail ? `<tr><td class="text-muted">Email:</td><td><a href="mailto:${contactEmail}">${contactEmail}</a></td></tr>` : ''}
+                      <tr><td class="text-muted">Company:</td><td><strong>${utils.escapeHtml(companyName)}</strong></td></tr>
+                      <tr><td class="text-muted">Contact:</td><td>${utils.escapeHtml(contactName)}</td></tr>
+                      ${contactEmail ? `<tr><td class="text-muted">Email:</td><td><a href="mailto:${utils.escapeHtml(contactEmail)}">${utils.escapeHtml(contactEmail)}</a></td></tr>` : ''}
                       <tr><td class="text-muted">Follow-up:</td><td>${comm.follow_up_required
                         ? `<span class="badge bg-warning text-dark"><i class="bi bi-calendar-check me-1"></i>${comm.follow_up_date ? new Date(comm.follow_up_date).toLocaleDateString() : 'ASAP'}</span>`
                         : '<span class="text-muted">None</span>'}</td></tr>
                     </table>
                   </div>
                 </div>
-                ${comm.subject ? `<div class="mb-3"><h6 class="text-muted">Subject</h6><p class="fw-bold mb-0">${comm.subject}</p></div>` : ''}
+                ${comm.subject ? `<div class="mb-3"><h6 class="text-muted">Subject</h6><p class="fw-bold mb-0">${utils.escapeHtml(comm.subject)}</p></div>` : ''}
                 <div class="mb-0">
                   <h6 class="text-muted">Message</h6>
-                  <div class="p-3 bg-light rounded" style="white-space: pre-wrap;">${comm.message}</div>
+                  <div class="p-3 bg-light rounded" style="white-space: pre-wrap;">${utils.escapeHtml(comm.message)}</div>
                 </div>
               </div>
               <div class="modal-footer">
@@ -1403,9 +1403,9 @@ const crmModule = {
                 <div class="row mb-3">
                   <div class="col-md-6">
                     <table class="table table-sm table-borderless">
-                      <tr><td class="text-muted">Deal Name:</td><td><strong>${deal.deal_name}</strong></td></tr>
-                      <tr><td class="text-muted">Company:</td><td>${companyName}</td></tr>
-                      <tr><td class="text-muted">Contact:</td><td>${contactName}</td></tr>
+                      <tr><td class="text-muted">Deal Name:</td><td><strong>${utils.escapeHtml(deal.deal_name)}</strong></td></tr>
+                      <tr><td class="text-muted">Company:</td><td>${utils.escapeHtml(companyName)}</td></tr>
+                      <tr><td class="text-muted">Contact:</td><td>${utils.escapeHtml(contactName)}</td></tr>
                       <tr><td class="text-muted">Created:</td><td>${createdDate}</td></tr>
                     </table>
                   </div>
@@ -1441,13 +1441,13 @@ const crmModule = {
                 ${deal.description ? `
                   <div class="mb-0">
                     <h6 class="text-muted">Description</h6>
-                    <div class="p-3 bg-light rounded" style="white-space: pre-wrap;">${deal.description}</div>
+                    <div class="p-3 bg-light rounded" style="white-space: pre-wrap;">${utils.escapeHtml(deal.description)}</div>
                   </div>
                 ` : ''}
                 ${deal.notes ? `
                   <div class="mt-3">
                     <h6 class="text-muted">Notes</h6>
-                    <div class="p-3 bg-light rounded" style="white-space: pre-wrap;">${deal.notes}</div>
+                    <div class="p-3 bg-light rounded" style="white-space: pre-wrap;">${utils.escapeHtml(deal.notes)}</div>
                   </div>
                 ` : ''}
               </div>
@@ -1684,7 +1684,7 @@ const crmModule = {
                 <div class="row mb-3">
                   <div class="col-md-6">
                     <table class="table table-sm table-borderless">
-                      <tr><td class="text-muted">Title:</td><td><strong>${meeting.meeting_title}</strong></td></tr>
+                      <tr><td class="text-muted">Title:</td><td><strong>${utils.escapeHtml(meeting.meeting_title)}</strong></td></tr>
                       <tr><td class="text-muted">Date:</td><td>${date} at ${time}</td></tr>
                       <tr><td class="text-muted">Type:</td><td>${this.getMeetingTypeBadge(meeting.meeting_type)}</td></tr>
                       <tr><td class="text-muted">Duration:</td><td>${meeting.duration_minutes ? meeting.duration_minutes + ' minutes' : 'N/A'}</td></tr>
@@ -1692,9 +1692,9 @@ const crmModule = {
                   </div>
                   <div class="col-md-6">
                     <table class="table table-sm table-borderless">
-                      <tr><td class="text-muted">Company:</td><td>${companyName}</td></tr>
-                      <tr><td class="text-muted">Related Deal:</td><td>${dealName}</td></tr>
-                      <tr><td class="text-muted">Location:</td><td>${meeting.location || 'N/A'}</td></tr>
+                      <tr><td class="text-muted">Company:</td><td>${utils.escapeHtml(companyName)}</td></tr>
+                      <tr><td class="text-muted">Related Deal:</td><td>${utils.escapeHtml(dealName)}</td></tr>
+                      <tr><td class="text-muted">Location:</td><td>${utils.escapeHtml(meeting.location || 'N/A')}</td></tr>
                       <tr><td class="text-muted">Follow-up:</td><td>${meeting.follow_up_required
                         ? `<span class="badge bg-warning text-dark"><i class="bi bi-calendar-check me-1"></i>${meeting.follow_up_date ? new Date(meeting.follow_up_date).toLocaleDateString() : 'ASAP'}</span>`
                         : '<span class="text-muted">None</span>'}</td></tr>
@@ -1705,20 +1705,20 @@ const crmModule = {
                   <div class="mb-3">
                     <h6 class="text-muted">Attendees</h6>
                     <div class="d-flex flex-wrap gap-2">
-                      ${attendeesList.map(a => `<span class="badge bg-light text-dark border"><i class="bi bi-person me-1"></i>${a}</span>`).join('')}
+                      ${attendeesList.map(a => `<span class="badge bg-light text-dark border"><i class="bi bi-person me-1"></i>${utils.escapeHtml(a)}</span>`).join('')}
                     </div>
                   </div>
                 ` : ''}
                 ${meeting.notes ? `
                   <div class="mb-3">
                     <h6 class="text-muted">Meeting Notes</h6>
-                    <div class="p-3 bg-light rounded" style="white-space: pre-wrap;">${meeting.notes}</div>
+                    <div class="p-3 bg-light rounded" style="white-space: pre-wrap;">${utils.escapeHtml(meeting.notes)}</div>
                   </div>
                 ` : ''}
                 ${meeting.action_items ? `
                   <div class="mb-0">
                     <h6 class="text-muted">Action Items</h6>
-                    <div class="p-3 bg-light rounded" style="white-space: pre-wrap;">${meeting.action_items}</div>
+                    <div class="p-3 bg-light rounded" style="white-space: pre-wrap;">${utils.escapeHtml(meeting.action_items)}</div>
                   </div>
                 ` : ''}
               </div>

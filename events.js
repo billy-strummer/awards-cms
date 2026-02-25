@@ -1148,7 +1148,7 @@ const eventsModule = {
     const ticketsSold = attendees.filter(a => a.status === 'attending').length;
     const price = event.ticket_price || 0;
     const capacity = event.capacity || 0;
-    const ticketData = this._getTicketData(eventId);
+    const ticketData = await this._getTicketData(eventId);
     const issuedCount = ticketData.tickets.filter(t => t.status === 'issued').length;
 
     const priceEl = document.getElementById('ticketPriceDisplay');
@@ -1361,7 +1361,7 @@ const eventsModule = {
     const attendee = attendees.find(a => a.id === attendeeId);
     if (!attendee || !event) return;
 
-    const ticketData = this._getTicketData(eventId);
+    const ticketData = await this._getTicketData(eventId);
     // Check if already issued
     if (ticketData.tickets.find(t => t.attendeeId === attendeeId)) {
       utils.showToast('Ticket already issued to this attendee', 'warning');
@@ -1392,7 +1392,7 @@ const eventsModule = {
     if (!event) return;
 
     const attendees = await this.getAttendees(eventId);
-    const ticketData = this._getTicketData(eventId);
+    const ticketData = await this._getTicketData(eventId);
     const alreadyIssued = new Set(ticketData.tickets.map(t => t.attendeeId));
 
     let eligible;
@@ -1439,7 +1439,7 @@ const eventsModule = {
   async revokeTicket(ticketId) {
     const eventId = document.getElementById('attendeesEventId').value;
     if (!await utils.confirmDialog({ title: 'Revoke Ticket', message: 'Revoke this ticket?', confirmText: 'Revoke' })) return;
-    const ticketData = this._getTicketData(eventId);
+    const ticketData = await this._getTicketData(eventId);
     const ticket = ticketData.tickets.find(t => t.id === ticketId);
     if (ticket) {
       ticket.status = 'revoked';
@@ -1450,10 +1450,10 @@ const eventsModule = {
     }
   },
 
-  resendTicket(ticketId) {
+  async resendTicket(ticketId) {
     const eventId = document.getElementById('attendeesEventId').value;
     const event = STATE.allEvents.find(e => e.id === eventId);
-    const ticketData = this._getTicketData(eventId);
+    const ticketData = await this._getTicketData(eventId);
     const ticket = ticketData.tickets.find(t => t.id === ticketId);
     if (!ticket || !ticket.attendeeEmail) {
       utils.showToast('No email address for this ticket holder', 'warning');
@@ -1472,10 +1472,10 @@ const eventsModule = {
     this._showEmailPreview(subject, body, [ticket.attendeeEmail], eventId);
   },
 
-  emailAllTickets() {
+  async emailAllTickets() {
     const eventId = document.getElementById('attendeesEventId').value;
     const event = STATE.allEvents.find(e => e.id === eventId);
-    const ticketData = this._getTicketData(eventId);
+    const ticketData = await this._getTicketData(eventId);
     const activeTickets = ticketData.tickets.filter(t => t.status === 'issued' && t.attendeeEmail);
 
     if (activeTickets.length === 0) {
@@ -1493,10 +1493,10 @@ const eventsModule = {
     this._showEmailPreview(subject, body, activeTickets.map(t => t.attendeeEmail), eventId);
   },
 
-  exportTicketsList() {
+  async exportTicketsList() {
     const eventId = document.getElementById('attendeesEventId').value;
     const event = STATE.allEvents.find(e => e.id === eventId);
-    const ticketData = this._getTicketData(eventId);
+    const ticketData = await this._getTicketData(eventId);
     if (ticketData.tickets.length === 0) { utils.showToast('No tickets to export', 'warning'); return; }
 
     const rows = ticketData.tickets.map(t => ({
@@ -1740,14 +1740,14 @@ const eventsModule = {
     }
   },
 
-  addToWaitlist() {
+  async addToWaitlist() {
     const eventId = document.getElementById('attendeesEventId').value;
     const name = prompt('Guest name:');
     if (!name || !name.trim()) return;
     const email = prompt('Email address:');
     const phone = prompt('Phone number (optional):');
 
-    const waitlist = this.getWaitlist(eventId);
+    const waitlist = await this.getWaitlist(eventId);
     waitlist.push({
       id: 'wl_' + Date.now(),
       name: name.trim(),
@@ -1757,7 +1757,7 @@ const eventsModule = {
       notified: false,
       promoted: false
     });
-    this._saveWaitlist(eventId, waitlist);
+    await this._saveWaitlist(eventId, waitlist);
     this.renderWaitlistTab(eventId);
     utils.showToast(`${name.trim()} added to waitlist`, 'success');
   },
@@ -1765,16 +1765,16 @@ const eventsModule = {
   async removeFromWaitlist(wlId) {
     const eventId = document.getElementById('attendeesEventId').value;
     if (!await utils.confirmDialog({ title: 'Remove from Waitlist', message: 'Remove from waitlist?', confirmText: 'Remove' })) return;
-    let waitlist = this.getWaitlist(eventId);
+    let waitlist = await this.getWaitlist(eventId);
     waitlist = waitlist.filter(w => w.id !== wlId);
-    this._saveWaitlist(eventId, waitlist);
+    await this._saveWaitlist(eventId, waitlist);
     this.renderWaitlistTab(eventId);
     utils.showToast('Removed from waitlist', 'success');
   },
 
   async promoteFromWaitlist(wlId) {
     const eventId = document.getElementById('attendeesEventId').value;
-    const waitlist = this.getWaitlist(eventId);
+    const waitlist = await this.getWaitlist(eventId);
     const person = waitlist.find(w => w.id === wlId);
     if (!person) return;
 
@@ -1798,17 +1798,17 @@ const eventsModule = {
     // Mark promoted on waitlist
     person.promoted = true;
     person.promotedAt = new Date().toISOString();
-    this._saveWaitlist(eventId, waitlist);
+    await this._saveWaitlist(eventId, waitlist);
 
     this.renderWaitlistTab(eventId);
     this.renderAttendees(eventId);
     utils.showToast(`${person.name} promoted to attendee list`, 'success');
   },
 
-  renderWaitlistTab(eventId) {
+  async renderWaitlistTab(eventId) {
     const container = document.getElementById('waitlistTableBody');
     if (!container) return;
-    const waitlist = this.getWaitlist(eventId);
+    const waitlist = await this.getWaitlist(eventId);
     const countEl = document.getElementById('waitlistCount');
     if (countEl) countEl.textContent = waitlist.filter(w => !w.promoted).length;
 
@@ -7741,40 +7741,73 @@ const eventsModule = {
           for (const t of this.tables) {
             (t.assignments || []).forEach(a => { if (a.guest_id) assignedGuestIds.add(a.guest_id); });
           }
-          let guestQuery = STATE.client
+
+          // Collect guests from event_guests (confirmed RSVPs)
+          let allGuests = [];
+          const guestResult = await STATE.client
             .from('event_guests')
             .select('id, guest_name, guest_email, organisation_id, guest_type, plus_ones, rsvp_status, dietary_requirements')
             .eq('event_id', this.currentEventIdTablePlan)
             .eq('rsvp_status', 'confirmed');
-
-          const guestResult = await guestQuery;
           if (!guestResult.error && guestResult.data) {
-            // Enrich with company name from organisations if possible
-            const orgIds = [...new Set(guestResult.data.filter(g => g.organisation_id).map(g => g.organisation_id))];
-            let orgMap = {};
-            if (orgIds.length > 0) {
-              const { data: orgs } = await STATE.client
-                .from('organisations')
-                .select('id, company_name')
-                .in('id', orgIds);
-              if (orgs) orgs.forEach(o => { orgMap[o.id] = o.company_name; });
-            }
-            this.unassignedGuests = guestResult.data
-              .filter(g => !assignedGuestIds.has(g.id))
-              .map(g => ({
-                guest_id: g.id,
-                guest_name: g.guest_name,
-                guest_email: g.guest_email,
-                organisation_id: g.organisation_id,
-                company_name: orgMap[g.organisation_id] || null,
-                guest_type: g.guest_type || 'guest',
-                plus_ones: g.plus_ones || 0,
-                rsvp_status: g.rsvp_status,
-                dietary_requirements: g.dietary_requirements || null
-              }));
-          } else {
-            this.unassignedGuests = [];
+            allGuests = guestResult.data.map(g => ({
+              guest_id: g.id,
+              guest_name: g.guest_name,
+              guest_email: g.guest_email,
+              organisation_id: g.organisation_id,
+              guest_type: g.guest_type || 'guest',
+              plus_ones: g.plus_ones || 0,
+              rsvp_status: g.rsvp_status,
+              dietary_requirements: g.dietary_requirements || null
+            }));
           }
+
+          // Also pull from event_attendees (status = 'attending') so attendees
+          // added via the Attendees modal appear in the table plan
+          try {
+            const attResult = await STATE.client
+              .from('event_attendees')
+              .select('id, attendee_name, attendee_email, organisation_id, guest_type, plus_ones, meal_preference')
+              .eq('event_id', this.currentEventIdTablePlan)
+              .eq('rsvp_status', 'attending');
+            if (!attResult.error && attResult.data) {
+              // Deduplicate: skip if same name+email already present from event_guests
+              const existingKeys = new Set(allGuests.map(g => (g.guest_name || '').toLowerCase() + '|' + (g.guest_email || '').toLowerCase()));
+              for (const a of attResult.data) {
+                const key = (a.attendee_name || '').toLowerCase() + '|' + (a.attendee_email || '').toLowerCase();
+                if (!existingKeys.has(key)) {
+                  existingKeys.add(key);
+                  allGuests.push({
+                    guest_id: a.id,
+                    guest_name: a.attendee_name || '',
+                    guest_email: a.attendee_email || '',
+                    organisation_id: a.organisation_id || null,
+                    guest_type: a.guest_type || 'guest',
+                    plus_ones: a.plus_ones || 0,
+                    rsvp_status: 'confirmed',
+                    dietary_requirements: a.meal_preference || null
+                  });
+                }
+              }
+            }
+          } catch (attErr) {
+            // event_attendees table may not exist — not fatal
+          }
+
+          // Enrich with company name from organisations if possible
+          const orgIds = [...new Set(allGuests.filter(g => g.organisation_id).map(g => g.organisation_id))];
+          let orgMap = {};
+          if (orgIds.length > 0) {
+            const { data: orgs } = await STATE.client
+              .from('organisations')
+              .select('id, company_name')
+              .in('id', orgIds);
+            if (orgs) orgs.forEach(o => { orgMap[o.id] = o.company_name; });
+          }
+
+          this.unassignedGuests = allGuests
+            .filter(g => !assignedGuestIds.has(g.guest_id))
+            .map(g => ({ ...g, company_name: orgMap[g.organisation_id] || null }));
         }
       } catch (rpcErr) {
         console.warn('Error loading unassigned guests:', rpcErr);

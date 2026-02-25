@@ -681,7 +681,9 @@ const utils = {
       { key: 'bta_meeting_notes_pending', table: 'meeting_notes' },
       { key: 'bta_email_templates_pending', table: 'email_templates' },
       { key: 'bta_email_lists_pending', table: 'email_lists' },
-      { key: 'bta_sponsors_pending', table: 'sponsors' }
+      { key: 'bta_sponsors_pending', table: 'sponsors' },
+      { key: 'bta_media_videos_pending', table: 'media_videos' },
+      { key: 'bta_banners_pending', table: 'banners' }
     ];
 
     for (const { key, table } of queues) {

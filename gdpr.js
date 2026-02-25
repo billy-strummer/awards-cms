@@ -328,12 +328,20 @@ const gdprModule = {
    * Delete all data for an entity
    */
   async _deleteEntityData(entityId) {
-    // Delete in correct order (children first)
-    await STATE.client.from('organisation_contacts').delete().eq('organisation_id', entityId);
-    await STATE.client.from('award_assignments').delete().eq('organisation_id', entityId);
-    await STATE.client.from('entries').delete().eq('organisation_id', entityId);
-    await STATE.client.from('organisation_images').delete().eq('organisation_id', entityId);
-    await STATE.client.from('organisations').delete().eq('id', entityId);
+    // Delete in correct order (children first) — abort on failure to prevent orphaned data
+    const tables = [
+      { table: 'organisation_contacts', col: 'organisation_id' },
+      { table: 'award_assignments', col: 'organisation_id' },
+      { table: 'entries', col: 'organisation_id' },
+      { table: 'organisation_images', col: 'organisation_id' },
+      { table: 'organisations', col: 'id' }
+    ];
+    for (const { table, col } of tables) {
+      const { error } = await STATE.client.from(table).delete().eq(col, entityId);
+      if (error) {
+        throw new Error(`Failed to delete from ${table}: ${error.message}`);
+      }
+    }
   },
 
   /**

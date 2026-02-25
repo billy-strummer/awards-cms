@@ -1110,7 +1110,7 @@ document.addEventListener('DOMContentLoaded', function() {
       }, 2000);
     });
 
-    STATE.client
+    window._cmsRealtimeChannel = STATE.client
       .channel('cms-realtime')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'awards' }, () => debouncedHandlers.awards())
       .on('postgres_changes', { event: '*', schema: 'public', table: 'winners' }, () => debouncedHandlers.winners())
@@ -1135,6 +1135,7 @@ document.addEventListener('DOMContentLoaded', function() {
     if (!STATE.client) return;
     try {
       const channel = STATE.client.channel('online-users');
+      window._presenceChannel = channel;
       channel.on('presence', { event: 'sync' }, () => {
         const state = channel.presenceState();
         const users = [];
@@ -1148,7 +1149,7 @@ document.addEventListener('DOMContentLoaded', function() {
       channel.subscribe(async (status) => {
         if (status === 'SUBSCRIBED') {
           await channel.track({
-            email: STATE.user?.email || 'unknown',
+            email: STATE.currentUser?.email || 'unknown',
             tab: document.querySelector('.nav-link.active')?.textContent?.trim() || 'Dashboard',
             online_at: new Date().toISOString()
           });

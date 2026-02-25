@@ -210,9 +210,10 @@ const authModule = {
 
   /**
    * Handle user logout
+   * @param {boolean} force - Skip confirmation dialog (used by inactivity timer)
    */
-  async handleLogout() {
-    if (!await utils.confirmDialog({ title: 'Logout', message: 'Are you sure you want to logout?', confirmText: 'Logout', danger: false })) {
+  async handleLogout(force = false) {
+    if (!force && !await utils.confirmDialog({ title: 'Logout', message: 'Are you sure you want to logout?', confirmText: 'Logout', danger: false })) {
       return;
     }
     
@@ -239,6 +240,26 @@ const authModule = {
       if (typeof emailBuilderModule !== 'undefined' && emailBuilderModule.autosaveTimer) {
         clearInterval(emailBuilderModule.autosaveTimer);
         emailBuilderModule.autosaveTimer = null;
+      }
+
+      // Clean up realtime channels to prevent resource leaks
+      if (STATE.client) {
+        if (window._cmsRealtimeChannel) {
+          STATE.client.removeChannel(window._cmsRealtimeChannel);
+          window._cmsRealtimeChannel = null;
+        }
+        if (window._presenceChannel) {
+          STATE.client.removeChannel(window._presenceChannel);
+          window._presenceChannel = null;
+        }
+        if (typeof notificationsModule !== 'undefined' && notificationsModule._realtimeChannel) {
+          STATE.client.removeChannel(notificationsModule._realtimeChannel);
+          notificationsModule._realtimeChannel = null;
+        }
+        if (typeof orgsModule !== 'undefined' && orgsModule._realtimeChannel) {
+          STATE.client.removeChannel(orgsModule._realtimeChannel);
+          orgsModule._realtimeChannel = null;
+        }
       }
 
       this.showLogin();
@@ -304,7 +325,7 @@ const authModule = {
     
     STATE.inactivityTimer = setTimeout(() => {
       utils.showToast('You have been logged out due to inactivity', 'warning');
-      this.handleLogout();
+      this.handleLogout(true);
     }, INACTIVITY_TIMEOUT);
   },
 

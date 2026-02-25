@@ -5251,7 +5251,8 @@ const eventsModule = {
     // Store current index for navigation
     this._backstageCurrentIdx = currentIdx;
 
-    // Start auto-refresh
+    // Start auto-refresh (clear any existing interval first)
+    if (this._roBackstageInterval) clearInterval(this._roBackstageInterval);
     this._roBackstageInterval = setInterval(() => this._refreshBackstageView(), 5000);
 
     document.getElementById('backstageViewModal').addEventListener('hidden.bs.modal', () => {

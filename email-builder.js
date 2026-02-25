@@ -4046,6 +4046,8 @@ ${content}
    * Setup autosave (saves to localStorage periodically)
    */
   setupAutosave() {
+    // Clear any existing timer to prevent duplicates
+    if (this.autosaveTimer) clearInterval(this.autosaveTimer);
     // Autosave to localStorage every 30 seconds if there are changes
     this.autosaveTimer = setInterval(() => {
       if (this.hasUnsavedChanges && this.blocks.length > 0) {

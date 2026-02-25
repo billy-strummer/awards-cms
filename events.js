@@ -7503,9 +7503,9 @@ const eventsModule = {
                       <table class="table table-sm table-hover mb-0" style="font-size:0.78rem;">
                         <thead class="table-light sticky-top">
                           <tr>
-                            <th style="width:30%">Table</th>
-                            <th style="width:25%">Guest</th>
-                            <th style="width:25%">Company</th>
+                            <th style="width:30%" class="tp-sortable" data-sort="table" onclick="eventsModule.sortBottomIndex('table')">Table <i class="bi bi-chevron-expand tp-sort-icon"></i></th>
+                            <th style="width:25%" class="tp-sortable" data-sort="guest" onclick="eventsModule.sortBottomIndex('guest')">Guest <i class="bi bi-chevron-expand tp-sort-icon"></i></th>
+                            <th style="width:25%" class="tp-sortable" data-sort="company" onclick="eventsModule.sortBottomIndex('company')">Company <i class="bi bi-chevron-expand tp-sort-icon"></i></th>
                             <th style="width:10%" class="text-center">Seat</th>
                             <th style="width:10%" class="text-center">VIP</th>
                           </tr>
@@ -7671,6 +7671,10 @@ const eventsModule = {
         #tpBottomIndexDragHandle:hover { background: linear-gradient(180deg, #c6cbd1 0%, #e9ecef 100%) !important; }
         #tpBottomIndex .table { margin-bottom: 0; }
         #tpBottomIndex .table th { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.5px; color: #6c757d; padding: 4px 8px; }
+        #tpBottomIndex .table th.tp-sortable { cursor: pointer; user-select: none; white-space: nowrap; }
+        #tpBottomIndex .table th.tp-sortable:hover { color: #212529; background: #e2e6ea; }
+        #tpBottomIndex .table th.tp-sortable .tp-sort-icon { font-size: 0.65rem; opacity: 0.4; margin-left: 2px; }
+        #tpBottomIndex .table th.tp-sortable.sort-active .tp-sort-icon { opacity: 1; color: #0d6efd; }
         #tpBottomIndex .table td { padding: 3px 8px; vertical-align: middle; }
         #tpBottomIndex .table tbody tr:hover { background: #e7f3ff; }
       </style>
@@ -8204,6 +8208,32 @@ const eventsModule = {
     });
   },
 
+  _bottomIndexSort: { col: 'table', asc: true },
+
+  sortBottomIndex(col) {
+    if (this._bottomIndexSort.col === col) {
+      this._bottomIndexSort.asc = !this._bottomIndexSort.asc;
+    } else {
+      this._bottomIndexSort = { col, asc: true };
+    }
+    this.renderTableIndexPanel();
+  },
+
+  _updateBottomIndexSortIcons() {
+    const ths = document.querySelectorAll('#tpBottomIndex th.tp-sortable');
+    ths.forEach(th => {
+      const col = th.dataset.sort;
+      const icon = th.querySelector('.tp-sort-icon');
+      if (col === this._bottomIndexSort.col) {
+        th.classList.add('sort-active');
+        if (icon) icon.className = 'bi tp-sort-icon ' + (this._bottomIndexSort.asc ? 'bi-sort-down-alt' : 'bi-sort-down');
+      } else {
+        th.classList.remove('sort-active');
+        if (icon) icon.className = 'bi bi-chevron-expand tp-sort-icon';
+      }
+    });
+  },
+
   _updateBottomIndexInset() {
     const idx = document.getElementById('tpBottomIndex');
     if (!idx) return;
@@ -8246,6 +8276,17 @@ const eventsModule = {
     panel.style.display = '';
     if (countBadge) countBadge.textContent = rows.length;
 
+    // Apply sort
+    const { col, asc } = this._bottomIndexSort;
+    const dir = asc ? 1 : -1;
+    rows.sort((a, b) => {
+      let va, vb;
+      if (col === 'table')   { va = a.tableNumber; vb = b.tableNumber; return (va - vb) * dir; }
+      if (col === 'guest')   { va = a.guestName.toLowerCase(); vb = b.guestName.toLowerCase(); }
+      if (col === 'company') { va = a.companyName.toLowerCase(); vb = b.companyName.toLowerCase(); }
+      return va < vb ? -dir : va > vb ? dir : 0;
+    });
+
     tbody.innerHTML = rows.map(r => `
       <tr>
         <td><strong>${r.tableName}</strong></td>
@@ -8255,6 +8296,8 @@ const eventsModule = {
         <td class="text-center">${r.isVip ? '<i class="bi bi-star-fill text-warning"></i>' : ''}</td>
       </tr>
     `).join('');
+
+    this._updateBottomIndexSortIcons();
   },
 
   // ==== ROOM FIXTURES (Stage, Photo Wall, AV Booth) ====

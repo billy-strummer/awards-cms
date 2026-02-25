@@ -8667,31 +8667,28 @@ const eventsModule = {
     const availableSeats = table.total_seats - assignedCount;
 
     // Build organisation picker — group unassigned guests by company, VIP first
-    const orgGroups = this._groupGuestsByCompany(this.unassignedGuests);
-    // Score each company: VIP/sponsor guests get priority
+    // _groupGuestsByCompany returns an array of { company_name, organisation_id, guests }
+    const orgGroupsArr = this._groupGuestsByCompany(this.unassignedGuests);
     const vipTypes = new Set(['vip', 'sponsor', 'speaker']);
-    const companyPriority = (key) => {
-      const grp = orgGroups[key];
-      if (!grp || key === '__none__') return 0;
-      const hasVip = grp.guests.some(g => vipTypes.has(g.guest_type));
-      return hasVip ? 2 : 1;
-    };
-    const companies = Object.keys(orgGroups)
-      .sort((a, b) => {
-        const pa = companyPriority(a), pb = companyPriority(b);
-        if (pa !== pb) return pb - pa; // VIP first
-        if (a === '__none__') return 1;
-        if (b === '__none__') return -1;
-        return a.localeCompare(b);
-      });
+    // Sort: VIP/sponsor companies first, then "No Company" last, then alphabetical
+    orgGroupsArr.sort((a, b) => {
+      const aHasVip = a.guests.some(g => vipTypes.has(g.guest_type));
+      const bHasVip = b.guests.some(g => vipTypes.has(g.guest_type));
+      const pa = !a.company_name ? 0 : aHasVip ? 2 : 1;
+      const pb = !b.company_name ? 0 : bHasVip ? 2 : 1;
+      if (pa !== pb) return pb - pa;
+      if (!a.company_name && b.company_name) return 1;
+      if (a.company_name && !b.company_name) return -1;
+      return (a.company_name || '').localeCompare(b.company_name || '');
+    });
 
-    const orgPickerHtml = availableSeats > 0 && companies.length > 0 ? `
+    const orgPickerHtml = availableSeats > 0 && orgGroupsArr.length > 0 ? `
       <div class="mb-2">
         <small class="fw-bold text-muted d-block mb-1">ASSIGN ORGANISATION</small>
         <input type="text" class="form-control form-control-sm mb-1" id="tpOrgSearch" placeholder="Search companies..." oninput="eventsModule._filterOrgPicker(this.value)">
         <div id="tpOrgPickerList" style="max-height: 180px; overflow-y: auto;">
-          ${companies.map(key => {
-            const grp = orgGroups[key];
+          ${orgGroupsArr.map(grp => {
+            const orgKey = grp.company_name || '__none__';
             const name = grp.company_name || 'No Company';
             const guestCount = grp.guests.length;
             const fitsAll = guestCount <= availableSeats;
@@ -8701,7 +8698,7 @@ const eventsModule = {
               onmouseover="this.style.background='#e3f2fd'"
               onmouseout="this.style.background='${hasVip ? '#fff8e1' : '#f8f9fa'}'"
               data-org-name="${utils.escapeHtml(name).toLowerCase()}"
-              onclick="eventsModule.assignOrgToTable('${table.id}', ${JSON.stringify(key).replace(/'/g, '\\x27')})">
+              onclick="eventsModule.assignOrgToTable('${table.id}', ${JSON.stringify(orgKey).replace(/'/g, '\\x27')})">
               <div>
                 <div class="fw-medium"><i class="bi bi-building me-1 text-muted"></i>${utils.escapeHtml(name)}${vipBadge}</div>
                 <small class="text-muted">${guestCount} guest${guestCount !== 1 ? 's' : ''}</small>

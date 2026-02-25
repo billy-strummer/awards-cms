@@ -7628,10 +7628,17 @@ Available placeholders:
                     </div>
                   </div>
                   <div class="row g-2">
-                    <div class="col-md-4">
+                    <div class="col-md-3">
+                      <div class="position-relative">
+                        <input type="text" class="form-control form-control-sm" id="attendeeOrg" placeholder="Organisation (type to search)" autocomplete="off" oninput="eventsModule._searchOrgsForAttendee(this.value)">
+                        <input type="hidden" id="attendeeOrgId">
+                        <div id="attendeeOrgResults" class="position-absolute w-100 bg-white border rounded shadow-sm" style="display:none; z-index:1050; max-height:150px; overflow-y:auto; top:100%;"></div>
+                      </div>
+                    </div>
+                    <div class="col-md-3">
                       <input type="text" class="form-control form-control-sm" id="attendeeDietary" placeholder="Dietary requirements (e.g. Vegetarian, Nut Allergy)">
                     </div>
-                    <div class="col-md-6">
+                    <div class="col-md-4">
                       <input type="text" class="form-control form-control-sm" id="attendeeNotes" placeholder="Notes (e.g. wheelchair access, sponsor contact)">
                     </div>
                     <div class="col-md-2">

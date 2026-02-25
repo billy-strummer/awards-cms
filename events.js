@@ -763,8 +763,20 @@ const eventsModule = {
     const notesEl = document.getElementById('eventQuickNotes');
     if (notesEl) notesEl.value = await this._getEventNotes(eventId);
 
-    const modal = new bootstrap.Modal(document.getElementById('attendeesModal'));
+    const modalEl = document.getElementById('attendeesModal');
+    const modal = new bootstrap.Modal(modalEl);
     modal.show();
+
+    // Refresh table plan unassigned guests when modal closes (attendees may have changed)
+    modalEl.addEventListener('hidden.bs.modal', () => {
+      if (this.currentEventIdTablePlan) {
+        this.loadTablePlan().then(() => {
+          this.renderUnassignedGuests();
+          this.renderCanvasTables();
+          this._updateHeaderBadges();
+        }).catch(() => {});
+      }
+    }, { once: true });
   },
 
   /**
@@ -972,6 +984,56 @@ const eventsModule = {
     document.getElementById('attendeePlusOnes').value = '0';
     document.getElementById('attendeeDietary').value = '';
     document.getElementById('attendeeNotes').value = '';
+    document.getElementById('attendeeOrg').value = '';
+    document.getElementById('attendeeOrgId').value = '';
+    document.getElementById('attendeeOrgResults').style.display = 'none';
+  },
+
+  _orgSearchTimeout: null,
+  async _searchOrgsForAttendee(term) {
+    const resultsEl = document.getElementById('attendeeOrgResults');
+    const orgIdEl = document.getElementById('attendeeOrgId');
+
+    // Clear previous selection when user types
+    orgIdEl.value = '';
+
+    if (!term || term.length < 2) {
+      resultsEl.style.display = 'none';
+      return;
+    }
+
+    clearTimeout(this._orgSearchTimeout);
+    this._orgSearchTimeout = setTimeout(async () => {
+      try {
+        const { data, error } = await STATE.client
+          .from('organisations')
+          .select('id, company_name')
+          .ilike('company_name', `%${term}%`)
+          .limit(10);
+        if (error) throw error;
+        if (!data || data.length === 0) {
+          resultsEl.innerHTML = '<div class="p-2 text-muted small">No organisations found</div>';
+          resultsEl.style.display = 'block';
+          return;
+        }
+        resultsEl.innerHTML = data.map(o => `
+          <div class="p-2 small" style="cursor:pointer;" onmouseover="this.style.background='#e3f2fd'" onmouseout="this.style.background=''"
+            onclick="eventsModule._selectOrgForAttendee('${o.id}', '${utils.escapeHtml(o.company_name).replace(/'/g, "\\'")}')">
+            <i class="bi bi-building me-1 text-muted"></i>${utils.escapeHtml(o.company_name)}
+          </div>
+        `).join('');
+        resultsEl.style.display = 'block';
+      } catch (e) {
+        console.error('Org search error:', e);
+        resultsEl.style.display = 'none';
+      }
+    }, 250);
+  },
+
+  _selectOrgForAttendee(orgId, orgName) {
+    document.getElementById('attendeeOrg').value = orgName;
+    document.getElementById('attendeeOrgId').value = orgId;
+    document.getElementById('attendeeOrgResults').style.display = 'none';
   },
 
   async addAttendee() {
@@ -983,6 +1045,7 @@ const eventsModule = {
     const plusOnes = parseInt(document.getElementById('attendeePlusOnes').value) || 0;
     const dietary = document.getElementById('attendeeDietary').value.trim();
     const notes = document.getElementById('attendeeNotes').value.trim();
+    const organisationId = document.getElementById('attendeeOrgId').value || null;
 
     if (!name) {
       utils.showToast('Please enter attendee name', 'warning');
@@ -993,6 +1056,7 @@ const eventsModule = {
     attendees.push({
       id: `attendee_${Date.now()}`,
       name, email, status, guestType, plusOnes, dietary, notes,
+      organisation_id: organisationId,
       checkedIn: false,
       checkInTime: null,
       addedAt: new Date().toISOString()
@@ -1002,6 +1066,8 @@ const eventsModule = {
     document.getElementById('attendeeName').value = '';
     document.getElementById('attendeeEmail').value = '';
     document.getElementById('attendeeDietary').value = '';
+    document.getElementById('attendeeOrg').value = '';
+    document.getElementById('attendeeOrgId').value = '';
     document.getElementById('attendeeNotes').value = '';
     document.getElementById('attendeePlusOnes').value = '0';
     document.getElementById('addAttendeeForm').style.display = 'none';
@@ -1148,7 +1214,7 @@ const eventsModule = {
     const ticketsSold = attendees.filter(a => a.status === 'attending').length;
     const price = event.ticket_price || 0;
     const capacity = event.capacity || 0;
-    const ticketData = this._getTicketData(eventId);
+    const ticketData = await this._getTicketData(eventId);
     const issuedCount = ticketData.tickets.filter(t => t.status === 'issued').length;
 
     const priceEl = document.getElementById('ticketPriceDisplay');
@@ -1361,7 +1427,7 @@ const eventsModule = {
     const attendee = attendees.find(a => a.id === attendeeId);
     if (!attendee || !event) return;
 
-    const ticketData = this._getTicketData(eventId);
+    const ticketData = await this._getTicketData(eventId);
     // Check if already issued
     if (ticketData.tickets.find(t => t.attendeeId === attendeeId)) {
       utils.showToast('Ticket already issued to this attendee', 'warning');
@@ -1392,7 +1458,7 @@ const eventsModule = {
     if (!event) return;
 
     const attendees = await this.getAttendees(eventId);
-    const ticketData = this._getTicketData(eventId);
+    const ticketData = await this._getTicketData(eventId);
     const alreadyIssued = new Set(ticketData.tickets.map(t => t.attendeeId));
 
     let eligible;
@@ -1439,7 +1505,7 @@ const eventsModule = {
   async revokeTicket(ticketId) {
     const eventId = document.getElementById('attendeesEventId').value;
     if (!await utils.confirmDialog({ title: 'Revoke Ticket', message: 'Revoke this ticket?', confirmText: 'Revoke' })) return;
-    const ticketData = this._getTicketData(eventId);
+    const ticketData = await this._getTicketData(eventId);
     const ticket = ticketData.tickets.find(t => t.id === ticketId);
     if (ticket) {
       ticket.status = 'revoked';
@@ -1450,10 +1516,10 @@ const eventsModule = {
     }
   },
 
-  resendTicket(ticketId) {
+  async resendTicket(ticketId) {
     const eventId = document.getElementById('attendeesEventId').value;
     const event = STATE.allEvents.find(e => e.id === eventId);
-    const ticketData = this._getTicketData(eventId);
+    const ticketData = await this._getTicketData(eventId);
     const ticket = ticketData.tickets.find(t => t.id === ticketId);
     if (!ticket || !ticket.attendeeEmail) {
       utils.showToast('No email address for this ticket holder', 'warning');
@@ -1472,10 +1538,10 @@ const eventsModule = {
     this._showEmailPreview(subject, body, [ticket.attendeeEmail], eventId);
   },
 
-  emailAllTickets() {
+  async emailAllTickets() {
     const eventId = document.getElementById('attendeesEventId').value;
     const event = STATE.allEvents.find(e => e.id === eventId);
-    const ticketData = this._getTicketData(eventId);
+    const ticketData = await this._getTicketData(eventId);
     const activeTickets = ticketData.tickets.filter(t => t.status === 'issued' && t.attendeeEmail);
 
     if (activeTickets.length === 0) {
@@ -1493,10 +1559,10 @@ const eventsModule = {
     this._showEmailPreview(subject, body, activeTickets.map(t => t.attendeeEmail), eventId);
   },
 
-  exportTicketsList() {
+  async exportTicketsList() {
     const eventId = document.getElementById('attendeesEventId').value;
     const event = STATE.allEvents.find(e => e.id === eventId);
-    const ticketData = this._getTicketData(eventId);
+    const ticketData = await this._getTicketData(eventId);
     if (ticketData.tickets.length === 0) { utils.showToast('No tickets to export', 'warning'); return; }
 
     const rows = ticketData.tickets.map(t => ({
@@ -1740,14 +1806,14 @@ const eventsModule = {
     }
   },
 
-  addToWaitlist() {
+  async addToWaitlist() {
     const eventId = document.getElementById('attendeesEventId').value;
     const name = prompt('Guest name:');
     if (!name || !name.trim()) return;
     const email = prompt('Email address:');
     const phone = prompt('Phone number (optional):');
 
-    const waitlist = this.getWaitlist(eventId);
+    const waitlist = await this.getWaitlist(eventId);
     waitlist.push({
       id: 'wl_' + Date.now(),
       name: name.trim(),
@@ -1757,7 +1823,7 @@ const eventsModule = {
       notified: false,
       promoted: false
     });
-    this._saveWaitlist(eventId, waitlist);
+    await this._saveWaitlist(eventId, waitlist);
     this.renderWaitlistTab(eventId);
     utils.showToast(`${name.trim()} added to waitlist`, 'success');
   },
@@ -1765,16 +1831,16 @@ const eventsModule = {
   async removeFromWaitlist(wlId) {
     const eventId = document.getElementById('attendeesEventId').value;
     if (!await utils.confirmDialog({ title: 'Remove from Waitlist', message: 'Remove from waitlist?', confirmText: 'Remove' })) return;
-    let waitlist = this.getWaitlist(eventId);
+    let waitlist = await this.getWaitlist(eventId);
     waitlist = waitlist.filter(w => w.id !== wlId);
-    this._saveWaitlist(eventId, waitlist);
+    await this._saveWaitlist(eventId, waitlist);
     this.renderWaitlistTab(eventId);
     utils.showToast('Removed from waitlist', 'success');
   },
 
   async promoteFromWaitlist(wlId) {
     const eventId = document.getElementById('attendeesEventId').value;
-    const waitlist = this.getWaitlist(eventId);
+    const waitlist = await this.getWaitlist(eventId);
     const person = waitlist.find(w => w.id === wlId);
     if (!person) return;
 
@@ -1798,17 +1864,17 @@ const eventsModule = {
     // Mark promoted on waitlist
     person.promoted = true;
     person.promotedAt = new Date().toISOString();
-    this._saveWaitlist(eventId, waitlist);
+    await this._saveWaitlist(eventId, waitlist);
 
     this.renderWaitlistTab(eventId);
     this.renderAttendees(eventId);
     utils.showToast(`${person.name} promoted to attendee list`, 'success');
   },
 
-  renderWaitlistTab(eventId) {
+  async renderWaitlistTab(eventId) {
     const container = document.getElementById('waitlistTableBody');
     if (!container) return;
-    const waitlist = this.getWaitlist(eventId);
+    const waitlist = await this.getWaitlist(eventId);
     const countEl = document.getElementById('waitlistCount');
     if (countEl) countEl.textContent = waitlist.filter(w => !w.promoted).length;
 
@@ -2167,7 +2233,7 @@ const eventsModule = {
   async renderBudgetTab(eventId) {
     const container = document.getElementById('budgetTableBody');
     if (!container) return;
-    const budget = this.getBudget(eventId);
+    const budget = await this.getBudget(eventId);
     const items = budget.items || [];
 
     const totalBudgetEl = document.getElementById('budgetTotalInput');
@@ -2241,9 +2307,9 @@ const eventsModule = {
     }).join('');
   },
 
-  saveBudgetTotal() {
+  async saveBudgetTotal() {
     const eventId = document.getElementById('attendeesEventId').value;
-    const budget = this.getBudget(eventId);
+    const budget = await this.getBudget(eventId);
     budget.totalBudget = parseFloat(document.getElementById('budgetTotalInput').value) || 0;
     this._saveBudget(eventId, budget);
     this.renderBudgetTab(eventId);
@@ -2290,9 +2356,9 @@ const eventsModule = {
 
   _editBudgetIdx: null,
 
-  editBudgetItem(idx) {
+  async editBudgetItem(idx) {
     const eventId = document.getElementById('attendeesEventId').value;
-    const budget = this.getBudget(eventId);
+    const budget = await this.getBudget(eventId);
     const item = budget.items[idx];
     if (!item) return;
 
@@ -2309,12 +2375,12 @@ const eventsModule = {
     }, 200);
   },
 
-  _saveBudgetItem() {
+  async _saveBudgetItem() {
     const eventId = document.getElementById('attendeesEventId').value;
     const name = document.getElementById('budgetItemName').value.trim();
     if (!name) { utils.showToast('Please enter an item name', 'warning'); return; }
 
-    const budget = this.getBudget(eventId);
+    const budget = await this.getBudget(eventId);
     const item = {
       name,
       category: document.getElementById('budgetItemCategory').value,
@@ -2339,17 +2405,17 @@ const eventsModule = {
   async deleteBudgetItem(idx) {
     if (!await utils.confirmDialog({ title: 'Delete Budget Item', message: 'Delete this budget item?' })) return;
     const eventId = document.getElementById('attendeesEventId').value;
-    const budget = this.getBudget(eventId);
+    const budget = await this.getBudget(eventId);
     budget.items.splice(idx, 1);
     this._saveBudget(eventId, budget);
     this.renderBudgetTab(eventId);
     utils.showToast('Budget item deleted', 'success');
   },
 
-  exportBudget() {
+  async exportBudget() {
     const eventId = document.getElementById('attendeesEventId').value;
     const event = STATE.allEvents.find(e => e.id === eventId);
-    const budget = this.getBudget(eventId);
+    const budget = await this.getBudget(eventId);
     if (budget.items.length === 0) { utils.showToast('No budget items to export', 'warning'); return; }
 
     const rows = budget.items.map(i => ({
@@ -2408,10 +2474,10 @@ const eventsModule = {
     }
   },
 
-  renderVendorsTab(eventId) {
+  async renderVendorsTab(eventId) {
     const container = document.getElementById('vendorsTableBody');
     if (!container) return;
-    const vendors = this.getVendors(eventId);
+    const vendors = await this.getVendors(eventId);
     const countEl = document.getElementById('vendorCount');
     if (countEl) countEl.textContent = vendors.length;
 
@@ -2480,9 +2546,9 @@ const eventsModule = {
 
   _editVendorIdx: null,
 
-  editVendor(idx) {
+  async editVendor(idx) {
     const eventId = document.getElementById('attendeesEventId').value;
-    const vendors = this.getVendors(eventId);
+    const vendors = await this.getVendors(eventId);
     const v = vendors[idx];
     if (!v) return;
 
@@ -2500,12 +2566,12 @@ const eventsModule = {
     }, 200);
   },
 
-  _saveVendor() {
+  async _saveVendor() {
     const eventId = document.getElementById('attendeesEventId').value;
     const name = document.getElementById('vendorName').value.trim();
     if (!name) { utils.showToast('Please enter a contact name', 'warning'); return; }
 
-    const vendors = this.getVendors(eventId);
+    const vendors = await this.getVendors(eventId);
     const vendor = {
       name,
       company: document.getElementById('vendorCompany').value.trim(),
@@ -2532,17 +2598,17 @@ const eventsModule = {
   async deleteVendor(idx) {
     if (!await utils.confirmDialog({ title: 'Remove Vendor', message: 'Remove this vendor?', confirmText: 'Remove' })) return;
     const eventId = document.getElementById('attendeesEventId').value;
-    const vendors = this.getVendors(eventId);
+    const vendors = await this.getVendors(eventId);
     vendors.splice(idx, 1);
     this._saveVendors(eventId, vendors);
     this.renderVendorsTab(eventId);
     utils.showToast('Vendor removed', 'success');
   },
 
-  exportVendors() {
+  async exportVendors() {
     const eventId = document.getElementById('attendeesEventId').value;
     const event = STATE.allEvents.find(e => e.id === eventId);
-    const vendors = this.getVendors(eventId);
+    const vendors = await this.getVendors(eventId);
     if (vendors.length === 0) { utils.showToast('No vendors to export', 'warning'); return; }
     const rows = vendors.map(v => ({
       'Name': v.name, 'Company': v.company || '', 'Category': v.category || '',
@@ -3504,8 +3570,8 @@ const eventsModule = {
     const attendees = await this.getAttendees(eventId);
     const attending = attendees.filter(a => a.status === 'attending');
     const sponsors = attendees.filter(a => a.guestType === 'sponsor');
-    const budget = this.getBudget(eventId);
-    const vendors = this.getVendors(eventId);
+    const budget = await this.getBudget(eventId);
+    const vendors = await this.getVendors(eventId);
     const data = this._getPostEventData(eventId);
 
     const totalRevenue = (event?.ticket_price || 0) * attending.length;
@@ -3588,7 +3654,7 @@ const eventsModule = {
     const eventId = document.getElementById('attendeesEventId').value;
     const event = STATE.allEvents.find(e => e.id === eventId);
     const attendees = await this.getAttendees(eventId);
-    const budget = this.getBudget(eventId);
+    const budget = await this.getBudget(eventId);
     const data = this._getPostEventData(eventId);
 
     const attending = attendees.filter(a => a.status === 'attending');
@@ -4144,7 +4210,7 @@ const eventsModule = {
           *,
           organisations(company_name, logo_url),
           awards:award_years(award_name),
-          event_guests(guest_name, guest_email)
+          event_guests(guest_name, guest_email, dietary_requirements)
         `)
         .eq('event_id', this.currentEventIdRunningOrder)
         .order('display_order', { ascending: true }));
@@ -4230,6 +4296,7 @@ const eventsModule = {
         }
       }
       const recipientName = item.recipient_collecting || item.event_guests?.guest_name || item.display_name || 'TBC';
+      const recipientDietary = item.event_guests?.dietary_requirements || '';
       const awardName = item.award_name || item.item_name || (item.awards ? item.awards.award_name : 'Award TBC');
       const winnerName = item.display_name || (item.organisations ? item.organisations.company_name : 'TBC');
       const duration = item.duration_minutes || 3;
@@ -4383,6 +4450,7 @@ const eventsModule = {
             <div class="ro-recipient" style="width:120px;">
               <small class="text-muted" style="font-size:0.65rem;">Collecting:</small>
               <strong>${utils.escapeHtml(recipientName)}</strong>
+              ${recipientDietary ? `<small class="text-warning d-block" style="font-size:0.6rem;" title="${utils.escapeHtml(recipientDietary)}"><i class="bi bi-egg-fried"></i> ${utils.escapeHtml(recipientDietary)}</small>` : ''}
             </div>
             <div class="ro-status">
               <select onchange="eventsModule.setROItemStatus('${item.id}', this.value)" ${this.isPublished ? 'disabled' : ''}>
@@ -4487,6 +4555,7 @@ const eventsModule = {
           <div class="ro-recipient" style="width:120px;">
             <small class="text-muted" style="font-size:0.65rem;">Collecting:</small>
             <strong title="${utils.escapeHtml(recipientName)}">${utils.escapeHtml(recipientName)}</strong>
+            ${recipientDietary ? `<small class="text-warning d-block" style="font-size:0.6rem;" title="${utils.escapeHtml(recipientDietary)}"><i class="bi bi-egg-fried"></i> ${utils.escapeHtml(recipientDietary)}</small>` : ''}
           </div>
           <div class="ro-status">
             <select onchange="eventsModule.setROItemStatus('${item.id}', this.value)" ${this.isPublished ? 'disabled' : ''}>
@@ -6212,16 +6281,44 @@ const eventsModule = {
     try {
       utils.showLoading();
 
-      // 1. Get confirmed RSVPs for this event
-      const { data: guests, error: gErr } = await STATE.client
-        .from('event_guests')
-        .select('id, organisation_id, guest_name, guest_email, guest_type')
-        .eq('event_id', eventId)
-        .eq('rsvp_status', 'confirmed');
-      if (gErr) throw gErr;
+      // 1. Get confirmed RSVPs from both event_guests and event_attendees
+      let guests = [];
+      try {
+        const { data: eg } = await STATE.client
+          .from('event_guests')
+          .select('id, organisation_id, guest_name, guest_email, guest_type')
+          .eq('event_id', eventId)
+          .eq('rsvp_status', 'confirmed');
+        if (eg) guests = eg;
+      } catch (e) { /* event_guests may not exist */ }
 
-      if (!guests || guests.length === 0) {
-        utils.showToast('No confirmed RSVPs found for this event', 'warning');
+      // Also pull from event_attendees (admin-added guests with status 'attending')
+      try {
+        const { data: ea } = await STATE.client
+          .from('event_attendees')
+          .select('id, organisation_id, attendee_name, attendee_email, guest_type')
+          .eq('event_id', eventId)
+          .in('rsvp_status', ['attending', 'confirmed']);
+        if (ea) {
+          const existingKeys = new Set(guests.map(g => (g.guest_name || '').toLowerCase() + '|' + (g.guest_email || '').toLowerCase()));
+          for (const a of ea) {
+            const key = (a.attendee_name || '').toLowerCase() + '|' + (a.attendee_email || '').toLowerCase();
+            if (!existingKeys.has(key)) {
+              existingKeys.add(key);
+              guests.push({
+                id: a.id,
+                organisation_id: a.organisation_id,
+                guest_name: a.attendee_name,
+                guest_email: a.attendee_email,
+                guest_type: a.guest_type
+              });
+            }
+          }
+        }
+      } catch (e) { /* event_attendees may not exist */ }
+
+      if (guests.length === 0) {
+        utils.showToast('No confirmed RSVPs or attending guests found for this event', 'warning');
         return;
       }
 
@@ -6616,7 +6713,30 @@ const eventsModule = {
         (orgs || []).forEach(o => { orgsMap[o.id] = o.company_name; });
       }
 
-      // 4. Build the merged list: award + winner info
+      // 4. Look up guest contacts per org (for recipient_collecting)
+      let guestByOrg = {};
+      if (orgIds.length > 0) {
+        try {
+          const { data: eg } = await STATE.client
+            .from('event_guests')
+            .select('guest_name, organisation_id')
+            .eq('event_id', event.id)
+            .eq('rsvp_status', 'confirmed')
+            .in('organisation_id', orgIds);
+          (eg || []).forEach(g => { if (g.organisation_id && !guestByOrg[g.organisation_id]) guestByOrg[g.organisation_id] = g.guest_name; });
+        } catch (e) { /* event_guests may not exist */ }
+        try {
+          const { data: ea } = await STATE.client
+            .from('event_attendees')
+            .select('attendee_name, organisation_id')
+            .eq('event_id', event.id)
+            .in('rsvp_status', ['attending', 'confirmed'])
+            .in('organisation_id', orgIds);
+          (ea || []).forEach(a => { if (a.organisation_id && !guestByOrg[a.organisation_id]) guestByOrg[a.organisation_id] = a.attendee_name; });
+        } catch (e) { /* event_attendees may not exist */ }
+      }
+
+      // 5. Build the merged list: award + winner info
       const existingAwardIds = new Set(this.runningOrderItems.map(i => i.award_id).filter(Boolean));
       const assignmentsByAward = {};
       (assignments || []).forEach(a => {
@@ -6628,6 +6748,7 @@ const eventsModule = {
         const winners = assignmentsByAward[award.id] || [];
         const topWinner = winners[0];
         const orgName = topWinner ? (orgsMap[topWinner.organisation_id] || 'Unknown') : null;
+        const recipientName = topWinner ? (guestByOrg[topWinner.organisation_id] || null) : null;
         const alreadyInRO = existingAwardIds.has(award.id);
         return {
           awardId: award.id,
@@ -6637,6 +6758,7 @@ const eventsModule = {
           hasWinner: winners.length > 0,
           winnerName: orgName,
           winnerOrgId: topWinner?.organisation_id || null,
+          recipientName,
           alreadyInRO
         };
       });
@@ -6802,6 +6924,7 @@ const eventsModule = {
           item_name: row.awardName,
           award_name: row.awardName,
           display_name: row.winnerName || 'TBC',
+          recipient_collecting: row.recipientName || row.winnerName || 'TBC',
           award_number: awardNum,
           display_order: order,
           section: section,
@@ -7729,53 +7852,84 @@ const eventsModule = {
         table.assignments = assignments || [];
       }
 
-      // Load unassigned guests (RPC may not exist, fall back to direct query)
+      // Load unassigned guests
       try {
-        const { data: unassigned, error: unassignedError } = await STATE.client
-          .rpc('get_unassigned_guests', { p_event_id: this.currentEventIdTablePlan });
-        if (!unassignedError && unassigned) {
-          this.unassignedGuests = unassigned;
-        } else {
-          // Fallback: query event_guests directly, exclude those already assigned
-          const assignedGuestIds = new Set();
-          for (const t of this.tables) {
-            (t.assignments || []).forEach(a => { if (a.guest_id) assignedGuestIds.add(a.guest_id); });
-          }
-          let guestQuery = STATE.client
+        const assignedGuestIds = new Set();
+        for (const t of this.tables) {
+          (t.assignments || []).forEach(a => { if (a.guest_id) assignedGuestIds.add(a.guest_id); });
+        }
+
+        // Collect guests from event_guests (confirmed RSVPs)
+        let allGuests = [];
+        try {
+          const guestResult = await STATE.client
             .from('event_guests')
             .select('id, guest_name, guest_email, organisation_id, guest_type, plus_ones, rsvp_status, dietary_requirements')
             .eq('event_id', this.currentEventIdTablePlan)
             .eq('rsvp_status', 'confirmed');
-
-          const guestResult = await guestQuery;
           if (!guestResult.error && guestResult.data) {
-            // Enrich with company name from organisations if possible
-            const orgIds = [...new Set(guestResult.data.filter(g => g.organisation_id).map(g => g.organisation_id))];
-            let orgMap = {};
-            if (orgIds.length > 0) {
-              const { data: orgs } = await STATE.client
-                .from('organisations')
-                .select('id, company_name')
-                .in('id', orgIds);
-              if (orgs) orgs.forEach(o => { orgMap[o.id] = o.company_name; });
-            }
-            this.unassignedGuests = guestResult.data
-              .filter(g => !assignedGuestIds.has(g.id))
-              .map(g => ({
-                guest_id: g.id,
-                guest_name: g.guest_name,
-                guest_email: g.guest_email,
-                organisation_id: g.organisation_id,
-                company_name: orgMap[g.organisation_id] || null,
-                guest_type: g.guest_type || 'guest',
-                plus_ones: g.plus_ones || 0,
-                rsvp_status: g.rsvp_status,
-                dietary_requirements: g.dietary_requirements || null
-              }));
-          } else {
-            this.unassignedGuests = [];
+            allGuests = guestResult.data.map(g => ({
+              guest_id: g.id,
+              guest_name: g.guest_name,
+              guest_email: g.guest_email,
+              organisation_id: g.organisation_id,
+              guest_type: g.guest_type || 'guest',
+              plus_ones: g.plus_ones || 0,
+              rsvp_status: g.rsvp_status,
+              dietary_requirements: g.dietary_requirements || null
+            }));
           }
+        } catch (egErr) {
+          // event_guests table may not exist — not fatal
         }
+
+        // Also pull from event_attendees (status = 'attending') so attendees
+        // added via the Attendees modal appear in the table plan
+        try {
+          const attResult = await STATE.client
+            .from('event_attendees')
+            .select('id, attendee_name, attendee_email, organisation_id, guest_type, plus_ones, meal_preference, notes')
+            .eq('event_id', this.currentEventIdTablePlan)
+            .in('rsvp_status', ['attending', 'confirmed']);
+          if (!attResult.error && attResult.data) {
+            // Deduplicate: skip if same name+email already present from event_guests
+            const existingKeys = new Set(allGuests.map(g => (g.guest_name || '').toLowerCase() + '|' + (g.guest_email || '').toLowerCase()));
+            for (const a of attResult.data) {
+              const key = (a.attendee_name || '').toLowerCase() + '|' + (a.attendee_email || '').toLowerCase();
+              if (!existingKeys.has(key)) {
+                existingKeys.add(key);
+                allGuests.push({
+                  guest_id: a.id,
+                  guest_name: a.attendee_name || '',
+                  guest_email: a.attendee_email || '',
+                  organisation_id: a.organisation_id || null,
+                  guest_type: a.guest_type || 'guest',
+                  plus_ones: a.plus_ones || 0,
+                  rsvp_status: 'confirmed',
+                  dietary_requirements: a.meal_preference || null,
+                  notes: a.notes || null
+                });
+              }
+            }
+          }
+        } catch (attErr) {
+          // event_attendees table may not exist — not fatal
+        }
+
+        // Enrich with company name from organisations if possible
+        const orgIds = [...new Set(allGuests.filter(g => g.organisation_id).map(g => g.organisation_id))];
+        let orgMap = {};
+        if (orgIds.length > 0) {
+          const { data: orgs } = await STATE.client
+            .from('organisations')
+            .select('id, company_name')
+            .in('id', orgIds);
+          if (orgs) orgs.forEach(o => { orgMap[o.id] = o.company_name; });
+        }
+
+        this.unassignedGuests = allGuests
+          .filter(g => !assignedGuestIds.has(g.guest_id))
+          .map(g => ({ ...g, company_name: orgMap[g.organisation_id] || null }));
       } catch (rpcErr) {
         console.warn('Error loading unassigned guests:', rpcErr);
         this.unassignedGuests = [];
@@ -8003,7 +8157,14 @@ const eventsModule = {
             <span class="badge bg-secondary">${group.guests.length}</span>
           </div>
           <div class="company-guests">
-            ${group.guests.map(guest => `
+            ${group.guests.map(guest => {
+              const typeBadge = guest.guest_type && guest.guest_type !== 'guest'
+                ? `<span class="badge bg-${guest.guest_type === 'vip' ? 'warning text-dark' : guest.guest_type === 'speaker' ? 'primary' : guest.guest_type === 'sponsor' ? 'info' : 'secondary'}" style="font-size:0.55rem; padding:1px 4px; margin-left:4px;">${guest.guest_type.toUpperCase()}</span>`
+                : '';
+              const dietaryIcon = guest.dietary_requirements
+                ? `<i class="bi bi-egg-fried text-warning ms-1" style="font-size:0.65rem;" title="${utils.escapeHtml(guest.dietary_requirements)}"></i>`
+                : '';
+              return `
               <div class="guest-chip"
                    draggable="true"
                    data-guest-id="${guest.guest_id}"
@@ -8014,9 +8175,10 @@ const eventsModule = {
                    ondragend="eventsModule.handleGuestDragEnd(event)">
                 <i class="bi bi-person-fill text-muted" style="font-size:0.75rem;"></i>
                 <span class="guest-name">${utils.escapeHtml(guest.guest_name)}</span>
+                ${typeBadge}${dietaryIcon}
                 ${guest.plus_ones > 0 ? `<span class="badge bg-info ms-auto" style="font-size:0.6rem;">+${guest.plus_ones}</span>` : ''}
-              </div>
-            `).join('')}
+              </div>`;
+            }).join('')}
           </div>
         </div>`;
     }).join('');
@@ -8667,31 +8829,28 @@ const eventsModule = {
     const availableSeats = table.total_seats - assignedCount;
 
     // Build organisation picker — group unassigned guests by company, VIP first
-    const orgGroups = this._groupGuestsByCompany(this.unassignedGuests);
-    // Score each company: VIP/sponsor guests get priority
+    // _groupGuestsByCompany returns an array of { company_name, organisation_id, guests }
+    const orgGroupsArr = this._groupGuestsByCompany(this.unassignedGuests);
     const vipTypes = new Set(['vip', 'sponsor', 'speaker']);
-    const companyPriority = (key) => {
-      const grp = orgGroups[key];
-      if (!grp || key === '__none__') return 0;
-      const hasVip = grp.guests.some(g => vipTypes.has(g.guest_type));
-      return hasVip ? 2 : 1;
-    };
-    const companies = Object.keys(orgGroups)
-      .sort((a, b) => {
-        const pa = companyPriority(a), pb = companyPriority(b);
-        if (pa !== pb) return pb - pa; // VIP first
-        if (a === '__none__') return 1;
-        if (b === '__none__') return -1;
-        return a.localeCompare(b);
-      });
+    // Sort: VIP/sponsor companies first, then "No Company" last, then alphabetical
+    orgGroupsArr.sort((a, b) => {
+      const aHasVip = a.guests.some(g => vipTypes.has(g.guest_type));
+      const bHasVip = b.guests.some(g => vipTypes.has(g.guest_type));
+      const pa = !a.company_name ? 0 : aHasVip ? 2 : 1;
+      const pb = !b.company_name ? 0 : bHasVip ? 2 : 1;
+      if (pa !== pb) return pb - pa;
+      if (!a.company_name && b.company_name) return 1;
+      if (a.company_name && !b.company_name) return -1;
+      return (a.company_name || '').localeCompare(b.company_name || '');
+    });
 
-    const orgPickerHtml = availableSeats > 0 && companies.length > 0 ? `
+    const orgPickerHtml = availableSeats > 0 && orgGroupsArr.length > 0 ? `
       <div class="mb-2">
         <small class="fw-bold text-muted d-block mb-1">ASSIGN ORGANISATION</small>
         <input type="text" class="form-control form-control-sm mb-1" id="tpOrgSearch" placeholder="Search companies..." oninput="eventsModule._filterOrgPicker(this.value)">
         <div id="tpOrgPickerList" style="max-height: 180px; overflow-y: auto;">
-          ${companies.map(key => {
-            const grp = orgGroups[key];
+          ${orgGroupsArr.map(grp => {
+            const orgKey = grp.company_name || '__none__';
             const name = grp.company_name || 'No Company';
             const guestCount = grp.guests.length;
             const fitsAll = guestCount <= availableSeats;
@@ -8701,7 +8860,7 @@ const eventsModule = {
               onmouseover="this.style.background='#e3f2fd'"
               onmouseout="this.style.background='${hasVip ? '#fff8e1' : '#f8f9fa'}'"
               data-org-name="${utils.escapeHtml(name).toLowerCase()}"
-              onclick="eventsModule.assignOrgToTable('${table.id}', ${JSON.stringify(key).replace(/'/g, '\\x27')})">
+              onclick="eventsModule.assignOrgToTable('${table.id}', ${JSON.stringify(orgKey).replace(/'/g, '\\x27')})">
               <div>
                 <div class="fw-medium"><i class="bi bi-building me-1 text-muted"></i>${utils.escapeHtml(name)}${vipBadge}</div>
                 <small class="text-muted">${guestCount} guest${guestCount !== 1 ? 's' : ''}</small>
@@ -8765,9 +8924,18 @@ const eventsModule = {
         <div class="flex-grow-1 overflow-auto">
           ${table.assignments && table.assignments.length > 0 ? table.assignments.map(a => `
             <div class="seated-guest">
-              <div>
-                <div class="fw-medium">${utils.escapeHtml(a.guest_name)}</div>
+              <div style="min-width:0;">
+                <div class="fw-medium">${utils.escapeHtml(a.guest_name)}${(() => {
+                  const gt = a.guest_type || (a.is_vip ? 'vip' : '');
+                  if (gt === 'vip') return ' <span class="badge bg-warning text-dark" style="font-size:0.55rem; padding:1px 4px;">VIP</span>';
+                  if (gt === 'speaker') return ' <span class="badge bg-info text-dark" style="font-size:0.55rem; padding:1px 4px;">SPEAKER</span>';
+                  if (gt === 'sponsor') return ' <span class="badge bg-success" style="font-size:0.55rem; padding:1px 4px;">SPONSOR</span>';
+                  if (gt === 'media') return ' <span class="badge bg-purple text-white" style="font-size:0.55rem; padding:1px 4px;">MEDIA</span>';
+                  if (gt === 'staff') return ' <span class="badge bg-secondary" style="font-size:0.55rem; padding:1px 4px;">STAFF</span>';
+                  return '';
+                })()}</div>
                 ${a.company_name ? `<small class="text-muted">${utils.escapeHtml(a.company_name)}</small>` : ''}
+                ${a.dietary_requirements ? `<small class="text-warning d-block" style="font-size:0.7rem;"><i class="bi bi-egg-fried me-1"></i>${utils.escapeHtml(a.dietary_requirements)}</small>` : ''}
               </div>
               <span class="remove-x" onclick="eventsModule.removeGuestFromTable('${a.id}')" title="Remove">
                 <i class="bi bi-x-circle-fill"></i>
@@ -8838,6 +9006,8 @@ const eventsModule = {
         organisation_id: g.organisation_id || null,
         company_name: g.company_name || null,
         seat_number: nextSeat(),
+        is_vip: g.guest_type === 'vip' || g.guest_type === 'sponsor' || g.guest_type === 'speaker',
+        guest_type: g.guest_type || 'guest',
         dietary_requirements: g.dietary_requirements || null
       }));
 
@@ -8993,6 +9163,8 @@ const eventsModule = {
           organisation_id: g.organisation_id || null,
           company_name: g.company_name || null,
           seat_number: _nextSeat(i),
+          is_vip: g.guest_type === 'vip' || g.guest_type === 'sponsor' || g.guest_type === 'speaker',
+          guest_type: g.guest_type || 'guest',
           dietary_requirements: g.dietary_requirements || null
         }));
         const { error } = await STATE.client.from('table_assignments').insert(rows);
@@ -9030,6 +9202,8 @@ const eventsModule = {
             organisation_id: this.draggedGuestData.organisation_id || null,
             company_name: this.draggedGuestData.company_name || null,
             seat_number: _nextSeat(0),
+            is_vip: fullGuest?.guest_type === 'vip' || fullGuest?.guest_type === 'sponsor' || fullGuest?.guest_type === 'speaker',
+            guest_type: fullGuest?.guest_type || 'guest',
             dietary_requirements: fullGuest?.dietary_requirements || null
           }]);
         if (error) throw error;
@@ -9236,6 +9410,8 @@ const eventsModule = {
               organisation_id: guest.organisation_id || null,
               company_name: guest.company_name || null,
               seat_number: seatNum,
+              is_vip: guest.guest_type === 'vip' || guest.guest_type === 'sponsor' || guest.guest_type === 'speaker',
+              guest_type: guest.guest_type || 'guest',
               dietary_requirements: guest.dietary_requirements || null
             }]);
 
@@ -11242,20 +11418,20 @@ const eventsModule = {
   // ============================================
   // FINANCIAL OVERVIEW - ALL EVENTS
   // ============================================
-  renderFinancialOverview() {
+  async renderFinancialOverview() {
     const events = STATE.allEvents || [];
     if (events.length === 0) return;
 
     const rows = [];
     let grandRevenue = 0, grandBudget = 0, grandCosts = 0;
 
-    events.forEach(e => {
+    for (const e of events) {
       const cachedAttendees = this._eventAttendeeCounts[e.id];
       const attending = cachedAttendees ? cachedAttendees.attending : 0;
       const price = parseFloat(e.ticket_price) || 0;
       const revenue = price * attending;
 
-      const budget = this.getBudget(e.id);
+      const budget = await this.getBudget(e.id);
       const totalBudget = parseFloat(budget.totalBudget) || 0;
       const actualCosts = budget.items ? budget.items.reduce((s, i) => s + (parseFloat(i.actual) || 0), 0) : 0;
       const netPL = revenue - actualCosts;
@@ -11265,7 +11441,7 @@ const eventsModule = {
       grandCosts += actualCosts;
 
       rows.push({ event: e, revenue, totalBudget, actualCosts, netPL });
-    });
+    }
 
     const grandNet = grandRevenue - grandCosts;
     const margin = grandRevenue > 0 ? Math.round(grandNet / grandRevenue * 100) : 0;
@@ -11322,19 +11498,20 @@ const eventsModule = {
     }
   },
 
-  exportFinancialSummary() {
+  async exportFinancialSummary() {
     const events = STATE.allEvents || [];
     if (events.length === 0) { utils.showToast('No events', 'warning'); return; }
 
-    const csvRows = events.map(e => {
+    const csvRows = [];
+    for (const e of events) {
       const cachedAttendees = this._eventAttendeeCounts[e.id];
       const attending = cachedAttendees ? cachedAttendees.attending : 0;
       const revenue = (parseFloat(e.ticket_price) || 0) * attending;
-      const budget = this.getBudget(e.id);
+      const budget = await this.getBudget(e.id);
       const totalBudget = parseFloat(budget.totalBudget) || 0;
       const actualCosts = budget.items ? budget.items.reduce((s, i) => s + (parseFloat(i.actual) || 0), 0) : 0;
 
-      return {
+      csvRows.push({
         'Event': e.event_name || '',
         'Year': e.year || '',
         'Date': e.event_date || '',
@@ -11346,8 +11523,8 @@ const eventsModule = {
         'Actual Costs': actualCosts,
         'Net P&L': revenue - actualCosts,
         'Budget Remaining': totalBudget - actualCosts
-      };
-    });
+      });
+    }
 
     utils.exportToCSV(csvRows, `financial_summary_all_events_${new Date().toISOString().split('T')[0]}.csv`);
     utils.showToast('Financial summary exported', 'success');
@@ -11656,7 +11833,7 @@ const eventsModule = {
       if (error) throw error;
 
       // Copy budget template
-      const budget = this.getBudget(eventId);
+      const budget = await this.getBudget(eventId);
       if (budget.items && budget.items.length > 0 && data && data[0]) {
         const newBudget = {
           totalBudget: budget.totalBudget,
@@ -11666,7 +11843,7 @@ const eventsModule = {
       }
 
       // Copy vendors template
-      const vendors = this.getVendors(eventId);
+      const vendors = await this.getVendors(eventId);
       if (vendors.length > 0 && data && data[0]) {
         const newVendors = vendors.map(v => ({ ...v, status: 'Pending', cost: '' }));
         this._saveVendors(data[0].id, newVendors);

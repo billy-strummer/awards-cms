@@ -2167,7 +2167,7 @@ const eventsModule = {
   async renderBudgetTab(eventId) {
     const container = document.getElementById('budgetTableBody');
     if (!container) return;
-    const budget = this.getBudget(eventId);
+    const budget = await this.getBudget(eventId);
     const items = budget.items || [];
 
     const totalBudgetEl = document.getElementById('budgetTotalInput');
@@ -2241,9 +2241,9 @@ const eventsModule = {
     }).join('');
   },
 
-  saveBudgetTotal() {
+  async saveBudgetTotal() {
     const eventId = document.getElementById('attendeesEventId').value;
-    const budget = this.getBudget(eventId);
+    const budget = await this.getBudget(eventId);
     budget.totalBudget = parseFloat(document.getElementById('budgetTotalInput').value) || 0;
     this._saveBudget(eventId, budget);
     this.renderBudgetTab(eventId);
@@ -2290,9 +2290,9 @@ const eventsModule = {
 
   _editBudgetIdx: null,
 
-  editBudgetItem(idx) {
+  async editBudgetItem(idx) {
     const eventId = document.getElementById('attendeesEventId').value;
-    const budget = this.getBudget(eventId);
+    const budget = await this.getBudget(eventId);
     const item = budget.items[idx];
     if (!item) return;
 
@@ -2309,12 +2309,12 @@ const eventsModule = {
     }, 200);
   },
 
-  _saveBudgetItem() {
+  async _saveBudgetItem() {
     const eventId = document.getElementById('attendeesEventId').value;
     const name = document.getElementById('budgetItemName').value.trim();
     if (!name) { utils.showToast('Please enter an item name', 'warning'); return; }
 
-    const budget = this.getBudget(eventId);
+    const budget = await this.getBudget(eventId);
     const item = {
       name,
       category: document.getElementById('budgetItemCategory').value,
@@ -2339,17 +2339,17 @@ const eventsModule = {
   async deleteBudgetItem(idx) {
     if (!await utils.confirmDialog({ title: 'Delete Budget Item', message: 'Delete this budget item?' })) return;
     const eventId = document.getElementById('attendeesEventId').value;
-    const budget = this.getBudget(eventId);
+    const budget = await this.getBudget(eventId);
     budget.items.splice(idx, 1);
     this._saveBudget(eventId, budget);
     this.renderBudgetTab(eventId);
     utils.showToast('Budget item deleted', 'success');
   },
 
-  exportBudget() {
+  async exportBudget() {
     const eventId = document.getElementById('attendeesEventId').value;
     const event = STATE.allEvents.find(e => e.id === eventId);
-    const budget = this.getBudget(eventId);
+    const budget = await this.getBudget(eventId);
     if (budget.items.length === 0) { utils.showToast('No budget items to export', 'warning'); return; }
 
     const rows = budget.items.map(i => ({
@@ -2408,10 +2408,10 @@ const eventsModule = {
     }
   },
 
-  renderVendorsTab(eventId) {
+  async renderVendorsTab(eventId) {
     const container = document.getElementById('vendorsTableBody');
     if (!container) return;
-    const vendors = this.getVendors(eventId);
+    const vendors = await this.getVendors(eventId);
     const countEl = document.getElementById('vendorCount');
     if (countEl) countEl.textContent = vendors.length;
 
@@ -2480,9 +2480,9 @@ const eventsModule = {
 
   _editVendorIdx: null,
 
-  editVendor(idx) {
+  async editVendor(idx) {
     const eventId = document.getElementById('attendeesEventId').value;
-    const vendors = this.getVendors(eventId);
+    const vendors = await this.getVendors(eventId);
     const v = vendors[idx];
     if (!v) return;
 
@@ -2500,12 +2500,12 @@ const eventsModule = {
     }, 200);
   },
 
-  _saveVendor() {
+  async _saveVendor() {
     const eventId = document.getElementById('attendeesEventId').value;
     const name = document.getElementById('vendorName').value.trim();
     if (!name) { utils.showToast('Please enter a contact name', 'warning'); return; }
 
-    const vendors = this.getVendors(eventId);
+    const vendors = await this.getVendors(eventId);
     const vendor = {
       name,
       company: document.getElementById('vendorCompany').value.trim(),
@@ -2532,17 +2532,17 @@ const eventsModule = {
   async deleteVendor(idx) {
     if (!await utils.confirmDialog({ title: 'Remove Vendor', message: 'Remove this vendor?', confirmText: 'Remove' })) return;
     const eventId = document.getElementById('attendeesEventId').value;
-    const vendors = this.getVendors(eventId);
+    const vendors = await this.getVendors(eventId);
     vendors.splice(idx, 1);
     this._saveVendors(eventId, vendors);
     this.renderVendorsTab(eventId);
     utils.showToast('Vendor removed', 'success');
   },
 
-  exportVendors() {
+  async exportVendors() {
     const eventId = document.getElementById('attendeesEventId').value;
     const event = STATE.allEvents.find(e => e.id === eventId);
-    const vendors = this.getVendors(eventId);
+    const vendors = await this.getVendors(eventId);
     if (vendors.length === 0) { utils.showToast('No vendors to export', 'warning'); return; }
     const rows = vendors.map(v => ({
       'Name': v.name, 'Company': v.company || '', 'Category': v.category || '',
@@ -3504,8 +3504,8 @@ const eventsModule = {
     const attendees = await this.getAttendees(eventId);
     const attending = attendees.filter(a => a.status === 'attending');
     const sponsors = attendees.filter(a => a.guestType === 'sponsor');
-    const budget = this.getBudget(eventId);
-    const vendors = this.getVendors(eventId);
+    const budget = await this.getBudget(eventId);
+    const vendors = await this.getVendors(eventId);
     const data = this._getPostEventData(eventId);
 
     const totalRevenue = (event?.ticket_price || 0) * attending.length;
@@ -3588,7 +3588,7 @@ const eventsModule = {
     const eventId = document.getElementById('attendeesEventId').value;
     const event = STATE.allEvents.find(e => e.id === eventId);
     const attendees = await this.getAttendees(eventId);
-    const budget = this.getBudget(eventId);
+    const budget = await this.getBudget(eventId);
     const data = this._getPostEventData(eventId);
 
     const attending = attendees.filter(a => a.status === 'attending');
@@ -11272,20 +11272,20 @@ const eventsModule = {
   // ============================================
   // FINANCIAL OVERVIEW - ALL EVENTS
   // ============================================
-  renderFinancialOverview() {
+  async renderFinancialOverview() {
     const events = STATE.allEvents || [];
     if (events.length === 0) return;
 
     const rows = [];
     let grandRevenue = 0, grandBudget = 0, grandCosts = 0;
 
-    events.forEach(e => {
+    for (const e of events) {
       const cachedAttendees = this._eventAttendeeCounts[e.id];
       const attending = cachedAttendees ? cachedAttendees.attending : 0;
       const price = parseFloat(e.ticket_price) || 0;
       const revenue = price * attending;
 
-      const budget = this.getBudget(e.id);
+      const budget = await this.getBudget(e.id);
       const totalBudget = parseFloat(budget.totalBudget) || 0;
       const actualCosts = budget.items ? budget.items.reduce((s, i) => s + (parseFloat(i.actual) || 0), 0) : 0;
       const netPL = revenue - actualCosts;
@@ -11295,7 +11295,7 @@ const eventsModule = {
       grandCosts += actualCosts;
 
       rows.push({ event: e, revenue, totalBudget, actualCosts, netPL });
-    });
+    }
 
     const grandNet = grandRevenue - grandCosts;
     const margin = grandRevenue > 0 ? Math.round(grandNet / grandRevenue * 100) : 0;
@@ -11352,19 +11352,20 @@ const eventsModule = {
     }
   },
 
-  exportFinancialSummary() {
+  async exportFinancialSummary() {
     const events = STATE.allEvents || [];
     if (events.length === 0) { utils.showToast('No events', 'warning'); return; }
 
-    const csvRows = events.map(e => {
+    const csvRows = [];
+    for (const e of events) {
       const cachedAttendees = this._eventAttendeeCounts[e.id];
       const attending = cachedAttendees ? cachedAttendees.attending : 0;
       const revenue = (parseFloat(e.ticket_price) || 0) * attending;
-      const budget = this.getBudget(e.id);
+      const budget = await this.getBudget(e.id);
       const totalBudget = parseFloat(budget.totalBudget) || 0;
       const actualCosts = budget.items ? budget.items.reduce((s, i) => s + (parseFloat(i.actual) || 0), 0) : 0;
 
-      return {
+      csvRows.push({
         'Event': e.event_name || '',
         'Year': e.year || '',
         'Date': e.event_date || '',
@@ -11376,8 +11377,8 @@ const eventsModule = {
         'Actual Costs': actualCosts,
         'Net P&L': revenue - actualCosts,
         'Budget Remaining': totalBudget - actualCosts
-      };
-    });
+      });
+    }
 
     utils.exportToCSV(csvRows, `financial_summary_all_events_${new Date().toISOString().split('T')[0]}.csv`);
     utils.showToast('Financial summary exported', 'success');
@@ -11686,7 +11687,7 @@ const eventsModule = {
       if (error) throw error;
 
       // Copy budget template
-      const budget = this.getBudget(eventId);
+      const budget = await this.getBudget(eventId);
       if (budget.items && budget.items.length > 0 && data && data[0]) {
         const newBudget = {
           totalBudget: budget.totalBudget,
@@ -11696,7 +11697,7 @@ const eventsModule = {
       }
 
       // Copy vendors template
-      const vendors = this.getVendors(eventId);
+      const vendors = await this.getVendors(eventId);
       if (vendors.length > 0 && data && data[0]) {
         const newVendors = vendors.map(v => ({ ...v, status: 'Pending', cost: '' }));
         this._saveVendors(data[0].id, newVendors);

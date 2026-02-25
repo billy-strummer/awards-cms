@@ -1720,8 +1720,8 @@ const eventsModule = {
   _showEmailPreview(subject, body, recipients, eventId) {
     const recipientStr = recipients.length > 3 ? `${recipients.slice(0, 3).join(', ')} + ${recipients.length - 3} more` : recipients.join(', ');
     const html = `
-      <div class="modal fade" id="emailPreviewModal" tabindex="-1">
-        <div class="modal-dialog modal-lg">
+      <div class="modal fade" id="emailPreviewModal" tabindex="-1" style="z-index:1070;">
+        <div class="modal-dialog modal-lg" style="max-width:700px;">
           <div class="modal-content">
             <div class="modal-header bg-primary text-white">
               <h5 class="modal-title"><i class="bi bi-envelope me-2"></i>Send Invitation Email</h5>
@@ -1761,7 +1761,13 @@ const eventsModule = {
     if (old) old.remove();
     document.body.insertAdjacentHTML('beforeend', html);
     this._emailRecipients = recipients;
-    const modal = new bootstrap.Modal(document.getElementById('emailPreviewModal'));
+    const emailModalEl = document.getElementById('emailPreviewModal');
+    const modal = new bootstrap.Modal(emailModalEl);
+    // Ensure backdrop stacks above the attendees modal
+    emailModalEl.addEventListener('shown.bs.modal', () => {
+      const backdrop = document.querySelector('.modal-backdrop:last-child');
+      if (backdrop) backdrop.style.zIndex = '1065';
+    });
     modal.show();
   },
 

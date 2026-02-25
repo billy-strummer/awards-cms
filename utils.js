@@ -773,7 +773,8 @@ const utils = {
   },
 
   startFreshnessTimer() {
-    setInterval(() => {
+    if (this._freshnessTimerId) clearInterval(this._freshnessTimerId);
+    this._freshnessTimerId = setInterval(() => {
       Object.keys(this._dataTimestamps).forEach(key => this._updateFreshnessIndicator(key));
     }, 60000); // Update every minute
   },

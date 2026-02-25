@@ -1214,7 +1214,7 @@ document.addEventListener('DOMContentLoaded', function() {
   // Restore tab from URL hash when hash changes
   window.addEventListener('hashchange', () => {
     const hash = window.location.hash.replace('#', '');
-    if (hash) {
+    if (hash && /^[a-zA-Z0-9_-]+$/.test(hash)) {
       const tabBtn = document.querySelector(`[data-bs-target="#${hash}"]`);
       if (tabBtn) tabBtn.click();
     }
@@ -1224,7 +1224,7 @@ document.addEventListener('DOMContentLoaded', function() {
   const hashTab = window.location.hash.replace('#', '');
   const defaultTab = localStorage.getItem('defaultLandingTab');
   const startTab = hashTab || defaultTab;
-  if (startTab) {
+  if (startTab && /^[a-zA-Z0-9_-]+$/.test(startTab)) {
     const tabBtn = document.querySelector(`[data-bs-target="#${startTab}"]`);
     if (tabBtn) setTimeout(() => tabBtn.click(), 100);
   }
@@ -1300,7 +1300,7 @@ document.addEventListener('DOMContentLoaded', function() {
   if (utils.initCommandPalette) utils.initCommandPalette();
   if (utils.initScrollToTop) utils.initScrollToTop();
   if (utils.initKeyboardShortcutHelp) utils.initKeyboardShortcutHelp();
-  if (utils.startFreshnessTimer) utils.startFreshnessTimer();
+  // Note: startFreshnessTimer() already called in STEP 15 above
 
   // Initialize debounced search for main search boxes
   if (utils.initDebouncedSearch) {

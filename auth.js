@@ -226,6 +226,21 @@ const authModule = {
       
       STATE.currentUser = null;
       this.clearInactivityTimer();
+
+      // Clean up background timers to prevent memory leaks
+      if (typeof notificationsModule !== 'undefined' && notificationsModule._pollInterval) {
+        clearInterval(notificationsModule._pollInterval);
+        notificationsModule._pollInterval = null;
+      }
+      if (utils._freshnessTimerId) {
+        clearInterval(utils._freshnessTimerId);
+        utils._freshnessTimerId = null;
+      }
+      if (typeof emailBuilderModule !== 'undefined' && emailBuilderModule.autosaveTimer) {
+        clearInterval(emailBuilderModule.autosaveTimer);
+        emailBuilderModule.autosaveTimer = null;
+      }
+
       this.showLogin();
       utils.showToast('Logged out successfully', 'success');
       

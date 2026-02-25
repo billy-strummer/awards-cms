@@ -276,6 +276,9 @@ const authModule = {
     
     // Load initial data
     dashboardModule.loadAllData();
+
+    // Replay any pending localStorage items that were saved during DB failures
+    utils.replayPendingQueues();
   },
 
   /**

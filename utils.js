@@ -665,6 +665,54 @@ const utils = {
     }
   },
 
+  /* ==================================================== */
+  /* PENDING QUEUE REPLAY (offline fallback sync)         */
+  /* ==================================================== */
+
+  /**
+   * Replay pending localStorage items back to Supabase on app load.
+   * Call this after authentication is confirmed and STATE.client is available.
+   */
+  async replayPendingQueues() {
+    if (!STATE?.client) return;
+    const queues = [
+      { key: 'bta_communications_pending', table: 'communications' },
+      { key: 'bta_deals_pending', table: 'deals' },
+      { key: 'bta_meeting_notes_pending', table: 'meeting_notes' },
+      { key: 'bta_email_templates_pending', table: 'email_templates' },
+      { key: 'bta_email_lists_pending', table: 'email_lists' },
+      { key: 'bta_sponsors_pending', table: 'sponsors' }
+    ];
+
+    for (const { key, table } of queues) {
+      try {
+        const stored = JSON.parse(localStorage.getItem(key) || '[]');
+        if (stored.length === 0) continue;
+
+        let synced = 0;
+        const remaining = [];
+        for (const item of stored) {
+          const { error } = await STATE.client.from(table).insert([item]);
+          if (error) {
+            remaining.push(item);
+          } else {
+            synced++;
+          }
+        }
+        if (synced > 0) {
+          console.log(`Synced ${synced} pending ${table} items to database`);
+        }
+        if (remaining.length > 0) {
+          localStorage.setItem(key, JSON.stringify(remaining));
+        } else {
+          localStorage.removeItem(key);
+        }
+      } catch (e) {
+        console.warn(`Failed to replay pending queue ${key}:`, e);
+      }
+    }
+  },
+
   /**
    * Format full award display name
    * e.g. "Berkshire's Best Loft Conversion Company 2026"

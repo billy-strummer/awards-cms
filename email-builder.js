@@ -2225,30 +2225,30 @@ ${content}
         <h6 class="mb-3">Drag content to template:</h6>
 
         <!-- Company Logo -->
-        <div class="content-item mb-3" draggable="true" data-content-type="logo" data-content-value="${org.logo_url || ''}" style="cursor: move; padding: 10px; border: 1px solid #dee2e6; border-radius: 5px; background: white;">
+        <div class="content-item mb-3" draggable="true" data-content-type="logo" data-content-value="${utils.escapeHtml(org.logo_url || '')}" style="cursor: move; padding: 10px; border: 1px solid #dee2e6; border-radius: 5px; background: white;">
           <strong>📦 Company Logo</strong><br>
-          ${org.logo_url ? `<img src="${org.logo_url}" style="max-width: 100px; max-height: 50px; margin-top: 5px;">` : '<small class="text-muted">No logo available</small>'}
+          ${org.logo_url ? `<img src="${utils.escapeHtml(org.logo_url)}" style="max-width: 100px; max-height: 50px; margin-top: 5px;">` : '<small class="text-muted">No logo available</small>'}
         </div>
 
         <!-- Company Bio -->
         <div class="content-item mb-3" draggable="true" data-content-type="bio" data-content-value="${utils.escapeHtml(org.description || '')}" style="cursor: move; padding: 10px; border: 1px solid #dee2e6; border-radius: 5px; background: white;">
           <strong>📝 Company Bio</strong><br>
-          <small class="text-muted">${org.description ? org.description.substring(0, 100) + '...' : 'No bio available'}</small>
+          <small class="text-muted">${org.description ? utils.escapeHtml(org.description.substring(0, 100)) + '...' : 'No bio available'}</small>
         </div>
 
         <!-- Company Website -->
-        <div class="content-item mb-3" draggable="true" data-content-type="website" data-content-value="${org.website || ''}" style="cursor: move; padding: 10px; border: 1px solid #dee2e6; border-radius: 5px; background: white;">
+        <div class="content-item mb-3" draggable="true" data-content-type="website" data-content-value="${utils.escapeHtml(org.website || '')}" style="cursor: move; padding: 10px; border: 1px solid #dee2e6; border-radius: 5px; background: white;">
           <strong>🔗 Website</strong><br>
-          <small>${org.website || 'No website'}</small>
+          <small>${utils.escapeHtml(org.website || 'No website')}</small>
         </div>
 
         <!-- Company Images -->
         ${companyImages.length > 0 ? `
           <h6 class="mb-2 mt-3">📸 Images (${companyImages.length})</h6>
           ${companyImages.slice(0, 10).map(img => `
-            <div class="content-item mb-2" draggable="true" data-content-type="image" data-content-value="${img.file_url}" style="cursor: move; padding: 8px; border: 1px solid #dee2e6; border-radius: 5px; background: white;">
-              <img src="${img.file_url}" style="width: 100%; height: 80px; object-fit: cover; border-radius: 3px;">
-              <small class="d-block mt-1 text-muted">${img.title || 'Untitled'}</small>
+            <div class="content-item mb-2" draggable="true" data-content-type="image" data-content-value="${utils.escapeHtml(img.file_url)}" style="cursor: move; padding: 8px; border: 1px solid #dee2e6; border-radius: 5px; background: white;">
+              <img src="${utils.escapeHtml(img.file_url)}" style="width: 100%; height: 80px; object-fit: cover; border-radius: 3px;">
+              <small class="d-block mt-1 text-muted">${utils.escapeHtml(img.title || 'Untitled')}</small>
             </div>
           `).join('')}
         ` : '<p class="text-muted"><small>No images in gallery</small></p>'}
@@ -2329,13 +2329,13 @@ ${content}
     switch (contentType) {
       case 'logo':
         if (contentValue) {
-          zone.innerHTML = `<img src="${contentValue}" alt="Company Logo" style="max-width: 200px; height: auto; border: none;">`;
+          zone.innerHTML = `<img src="${utils.escapeHtml(contentValue)}" alt="Company Logo" style="max-width: 200px; height: auto; border: none;">`;
         }
         break;
 
       case 'image':
         if (contentValue) {
-          zone.innerHTML = `<img src="${contentValue}" style="width: 100%; max-width: 600px; height: auto; display: block; border: none;">`;
+          zone.innerHTML = `<img src="${utils.escapeHtml(contentValue)}" style="width: 100%; max-width: 600px; height: auto; display: block; border: none;">`;
         }
         break;
 
@@ -2343,8 +2343,8 @@ ${content}
         if (contentValue) {
           zone.innerHTML = `
             <p style="font-family: Gotham, 'Helvetica Neue', Helvetica, Arial, sans-serif; color: #111829; font-size: 16px; line-height: 28px; text-align: center">
-              <span style="font-size: 22px; color: #5c0f76">Vote for ${this.selectedCompany?.company_name || '{{company_name}}'}</span><br><br>
-              ${contentValue}
+              <span style="font-size: 22px; color: #5c0f76">Vote for ${utils.escapeHtml(this.selectedCompany?.company_name || '{{company_name}}')}</span><br><br>
+              ${utils.escapeHtml(contentValue)}
             </p>
           `;
         }
@@ -2352,9 +2352,10 @@ ${content}
 
       case 'website':
         if (contentValue) {
+          const safeUrl = utils.escapeHtml(contentValue);
           zone.innerHTML = `
             <p style="color: #ffffff; font-size: 14px; font-family: Gotham, 'Helvetica Neue', Helvetica, Arial, sans-serif; padding: 20px; text-align: center;">
-              <a href="${contentValue}" style="color: #ffffff; text-decoration: none; font-family: Gotham, 'Helvetica Neue', Helvetica, Arial, sans-serif;" target="blank">${contentValue.replace('https://', '').replace('http://', '')}</a>
+              <a href="${safeUrl}" style="color: #ffffff; text-decoration: none; font-family: Gotham, 'Helvetica Neue', Helvetica, Arial, sans-serif;" target="blank">${utils.escapeHtml(contentValue.replace('https://', '').replace('http://', ''))}</a>
             </p>
           `;
         }

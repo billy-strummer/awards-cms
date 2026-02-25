@@ -1074,14 +1074,14 @@ const entriesModule = {
                           <label class="form-label">Award</label>
                           <select class="form-select" id="editEntryAward">
                             <option value="">Select award...</option>
-                            ${(awards || []).map(a => `<option value="${a.id}" ${a.id === entry.award_id ? 'selected' : ''}>${a.award_name}</option>`).join('')}
+                            ${(awards || []).map(a => `<option value="${a.id}" ${a.id === entry.award_id ? 'selected' : ''}>${utils.escapeHtml(a.award_name)}</option>`).join('')}
                           </select>
                         </div>
                         <div class="col-md-6 mb-3">
                           <label class="form-label">Organisation</label>
                           <select class="form-select" id="editEntryOrg">
                             <option value="">Select organisation...</option>
-                            ${(orgs || []).map(o => `<option value="${o.id}" ${o.id === entry.organisation_id ? 'selected' : ''}>${o.company_name}</option>`).join('')}
+                            ${(orgs || []).map(o => `<option value="${o.id}" ${o.id === entry.organisation_id ? 'selected' : ''}>${utils.escapeHtml(o.company_name)}</option>`).join('')}
                           </select>
                         </div>
                       </div>
@@ -1607,8 +1607,8 @@ const entriesModule = {
               </div>
               <div class="modal-body">
                 <div class="mb-3">
-                  <h6>${companyName}</h6>
-                  <p class="text-muted small mb-3">${entry.entry_title}</p>
+                  <h6>${utils.escapeHtml(companyName)}</h6>
+                  <p class="text-muted small mb-3">${utils.escapeHtml(entry.entry_title)}</p>
 
                   <div class="alert ${entry.allow_public_voting ? 'alert-success' : 'alert-warning'}">
                     <i class="bi ${entry.allow_public_voting ? 'bi-check-circle' : 'bi-exclamation-triangle'} me-2"></i>

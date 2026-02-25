@@ -11,6 +11,7 @@ const a11yModule = {
   init() {
     this.addSkipLink();
     this.enhanceButtons();
+    this.enhanceClickableElements();
     this.enhanceTables();
     this.enhanceModals();
     this.setupKeyboardNav();
@@ -56,6 +57,25 @@ const a11yModule = {
     // Add role="button" to anchors acting as buttons
     document.querySelectorAll('a[onclick]:not([role])').forEach(a => {
       a.setAttribute('role', 'button');
+    });
+  },
+
+  /**
+   * Make non-button clickable elements (divs/spans with onclick) keyboard-accessible
+   */
+  enhanceClickableElements() {
+    document.querySelectorAll('div[onclick]:not([role]), span[onclick]:not([role])').forEach(el => {
+      el.setAttribute('role', 'button');
+      if (!el.hasAttribute('tabindex')) el.setAttribute('tabindex', '0');
+      if (!el._a11yKeyHandler) {
+        el._a11yKeyHandler = true;
+        el.addEventListener('keydown', (e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            el.click();
+          }
+        });
+      }
     });
   },
 
@@ -198,6 +218,7 @@ const a11yModule = {
    */
   refresh() {
     this.enhanceButtons();
+    this.enhanceClickableElements();
     this.enhanceTables();
     this.enhanceModals();
     this.setupFocusManagement();

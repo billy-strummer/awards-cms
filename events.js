@@ -7319,14 +7319,14 @@ const eventsModule = {
           <div class="modal-content">
             <!-- Header -->
             <div class="modal-header py-2" style="background: #1a1a2e; color: white;">
-              <div class="d-flex align-items-center gap-3">
-                <h5 class="modal-title mb-0">
-                  <i class="bi bi-grid-3x3-gap me-2"></i>Table Plan - ${utils.escapeHtml(this.currentEventNameTablePlan)}
+              <div class="d-flex align-items-center gap-2" style="min-width: 0; overflow: hidden;">
+                <h5 class="modal-title mb-0 text-truncate" style="font-size: 1rem;">
+                  <i class="bi bi-grid-3x3-gap me-2"></i>${utils.escapeHtml(this.currentEventNameTablePlan)}
                 </h5>
                 <span class="badge bg-info" id="tpSeatedBadge">${totalSeated} seated</span>
                 <span class="badge bg-warning text-dark" id="tpUnassignedBadge">${totalGuests} unassigned</span>
               </div>
-              <div class="d-flex align-items-center gap-2">
+              <div class="d-flex align-items-center gap-1 flex-shrink-0">
                 <button class="btn btn-sm btn-outline-light" onclick="eventsModule.autoAssignGuests()" title="Auto Assign">
                   <i class="bi bi-magic me-1"></i>Auto Assign
                 </button>
@@ -7349,10 +7349,10 @@ const eventsModule = {
             </div>
 
             <div class="modal-body p-0">
-              <div class="d-flex" style="height: calc(100vh - 56px);">
+              <div class="d-flex" style="height: calc(100vh - 56px); overflow: hidden;">
 
                 <!-- Left Sidebar -->
-                <div class="tp-sidebar border-end bg-light" style="width: 300px; min-width: 300px; display: flex; flex-direction: column;">
+                <div class="tp-sidebar border-end bg-light" style="width: 260px; min-width: 260px; display: flex; flex-direction: column;">
 
                   <!-- Room Setup Panel -->
                   <div id="tpSetupPanel" style="display: ${hasTables ? 'none' : 'block'};">
@@ -7444,9 +7444,9 @@ const eventsModule = {
                 </div>
 
                 <!-- Main Canvas Area -->
-                <div class="flex-grow-1 d-flex flex-column">
+                <div class="flex-grow-1 d-flex flex-column position-relative" style="min-width: 0; overflow: hidden;">
                   <!-- Canvas Toolbar -->
-                  <div class="d-flex align-items-center gap-2 p-2 border-bottom bg-white">
+                  <div class="d-flex align-items-center gap-2 p-2 border-bottom bg-white" style="flex-wrap: wrap;">
                     <button class="btn btn-sm btn-primary" onclick="eventsModule.addNewTable()">
                       <i class="bi bi-plus-circle me-1"></i>Add Table
                     </button>
@@ -7476,12 +7476,12 @@ const eventsModule = {
                       <!-- Tables rendered here as absolutely positioned elements -->
                     </div>
                   </div>
-                </div>
 
-                <!-- Right Panel: Table Detail (shown when a table is selected) -->
-                <div id="tpDetailPanel" class="border-start bg-white" style="width: 320px; min-width: 320px; display: none; flex-direction: column;">
-                  <div id="tpDetailContent">
-                    <!-- Filled when a table is clicked -->
+                  <!-- Right Panel: Table Detail (overlays canvas when a table is selected) -->
+                  <div id="tpDetailPanel" class="border-start bg-white shadow-lg" style="width: 300px; min-width: 300px; display: none; flex-direction: column; position: absolute; right: 0; top: 0; bottom: 0; z-index: 10;">
+                    <div id="tpDetailContent">
+                      <!-- Filled when a table is clicked -->
+                    </div>
                   </div>
                 </div>
 
@@ -7492,6 +7492,12 @@ const eventsModule = {
       </div>
 
       <style>
+        /* === LAYOUT CONTAINMENT — prevent modal from overflowing viewport === */
+        #tablePlanModal .modal-dialog { max-width: 100vw !important; overflow: hidden !important; }
+        #tablePlanModal .modal-content { overflow: hidden !important; max-width: 100vw !important; }
+        #tablePlanModal .modal-header { overflow: hidden; flex-wrap: wrap; gap: 0.5rem; }
+        #tablePlanModal .modal-body { overflow: hidden !important; padding: 0 !important; }
+
         /* Sidebar guest styles */
         .tp-sidebar .company-group { margin-bottom: 4px; }
         .tp-sidebar .company-header {

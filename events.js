@@ -2120,10 +2120,17 @@ const eventsModule = {
 
   async getBudget(eventId) {
     try {
-      const [{ data: budgetRow }, { data: items }] = await Promise.all([
-        STATE.client.from('event_budgets').select('*').eq('event_id', eventId).maybeSingle(),
-        STATE.client.from('event_budget_items').select('*').eq('event_id', eventId).order('created_at')
-      ]);
+      // Query separately so one table missing doesn't break the other
+      const { data: budgetRow, error: budgetErr } = await STATE.client
+        .from('event_budgets').select('*').eq('event_id', eventId).maybeSingle();
+      const { data: items, error: itemsErr } = await STATE.client
+        .from('event_budget_items').select('*').eq('event_id', eventId).order('created_at');
+
+      // If both tables errored (likely don't exist), fall back to localStorage
+      if (budgetErr && itemsErr) {
+        const stored = localStorage.getItem(this._budgetKey(eventId));
+        return stored ? JSON.parse(stored) : { totalBudget: 0, items: [] };
+      }
       return { totalBudget: budgetRow?.total_budget || 0, items: items || [] };
     } catch (e) {
       const stored = localStorage.getItem(this._budgetKey(eventId));
@@ -10318,23 +10325,53 @@ const eventsModule = {
     if (uncached.length === 0) return;
 
     try {
-      // Batch query instead of N+1 loop — use award_years which has event_id + winner_confirmed
+      let awardsByEvent = {};
+
+      // Try querying award_years by event_id first (requires migration 018)
       const { data: allAwards, error } = await STATE.client
         .from('award_years')
         .select('id, event_id, winner_confirmed')
         .in('event_id', uncached);
 
-      if (error) {
-        console.warn('Error loading award counts:', error);
-        return;
-      }
+      if (!error && allAwards) {
+        (allAwards || []).forEach(award => {
+          if (!awardsByEvent[award.event_id]) awardsByEvent[award.event_id] = [];
+          awardsByEvent[award.event_id].push(award);
+        });
+      } else {
+        // Fallback: look up events to get years, then match award_years by year
+        const { data: events } = await STATE.client
+          .from('events')
+          .select('id, year')
+          .in('id', uncached);
 
-      // Group by event_id in memory
-      const awardsByEvent = {};
-      (allAwards || []).forEach(award => {
-        if (!awardsByEvent[award.event_id]) awardsByEvent[award.event_id] = [];
-        awardsByEvent[award.event_id].push(award);
-      });
+        if (events && events.length > 0) {
+          const years = [...new Set(events.map(e => e.year).filter(Boolean))];
+          if (years.length > 0) {
+            const { data: awards } = await STATE.client
+              .from('award_years')
+              .select('id, year')
+              .in('year', years);
+
+            // Map year back to event_id
+            const yearToEvents = {};
+            events.forEach(e => {
+              if (e.year) {
+                if (!yearToEvents[e.year]) yearToEvents[e.year] = [];
+                yearToEvents[e.year].push(e.id);
+              }
+            });
+
+            (awards || []).forEach(award => {
+              const eventIdsForYear = yearToEvents[award.year] || [];
+              eventIdsForYear.forEach(eid => {
+                if (!awardsByEvent[eid]) awardsByEvent[eid] = [];
+                awardsByEvent[eid].push(award);
+              });
+            });
+          }
+        }
+      }
 
       uncached.forEach(eventId => {
         const awards = awardsByEvent[eventId] || [];

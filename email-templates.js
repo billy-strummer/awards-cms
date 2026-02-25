@@ -595,7 +595,7 @@ const emailTemplatesModule = {
 
         if (error) throw error;
 
-        bootstrap.Modal.getInstance(document.getElementById('newTemplateModal')).hide();
+        bootstrap.Modal.getInstance(document.getElementById('newTemplateModal'))?.hide();
         await this.loadTemplates();
 
         // Auto-select the new template

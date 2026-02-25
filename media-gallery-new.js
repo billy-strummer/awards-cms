@@ -291,7 +291,7 @@ const mediaGalleryModule = {
           .eq('id', photoId);
         if (error) throw error;
 
-        bootstrap.Modal.getInstance(document.getElementById('editPhotoTagsModal')).hide();
+        bootstrap.Modal.getInstance(document.getElementById('editPhotoTagsModal'))?.hide();
         utils.showToast('Photo tags updated', 'success');
         // Refresh if in untagged view
         if (this.currentView === 'untagged-photos') await this.showUntaggedPhotos();
@@ -1380,7 +1380,7 @@ const mediaGalleryModule = {
 
         if (error) throw error;
 
-        bootstrap.Modal.getInstance(document.getElementById('editVideoModal')).hide();
+        bootstrap.Modal.getInstance(document.getElementById('editVideoModal'))?.hide();
         utils.showToast('Video updated successfully', 'success');
         await this.loadVideosProduction();
       });
@@ -1857,7 +1857,7 @@ const mediaGalleryModule = {
         if (error) throw error;
 
         // Close modal and reload
-        bootstrap.Modal.getInstance(document.getElementById('gallerySectionModal')).hide();
+        bootstrap.Modal.getInstance(document.getElementById('gallerySectionModal'))?.hide();
         await this.onEventSelected(this.currentEventId);
       });
       utils.showToast(`Section ${sectionId ? 'updated' : 'added'} successfully!`, 'success');
@@ -2467,7 +2467,7 @@ const mediaGalleryModule = {
 
         if (error) throw error;
 
-        bootstrap.Modal.getInstance(document.getElementById('bulkTagModal')).hide();
+        bootstrap.Modal.getInstance(document.getElementById('bulkTagModal'))?.hide();
         const tagCount = this.selectedPhotoIds.size;
         utils.showToast(`${tagCount} photo(s) tagged successfully`, 'success');
         this._logActivity('bulk_tag', null, `${tagCount} photos bulk tagged`);
@@ -2607,7 +2607,7 @@ const mediaGalleryModule = {
     const group = this._duplicateGroups[groupIdx].photos;
     // Select all except the first one (keep original, select potential duplicates)
     group.slice(1).forEach(p => this.selectedPhotoIds.add(p.id));
-    bootstrap.Modal.getInstance(document.getElementById('duplicatesModal')).hide();
+    bootstrap.Modal.getInstance(document.getElementById('duplicatesModal'))?.hide();
     this.renderSectionPhotos(this.currentSectionName || 'Section');
     utils.showToast(`Selected ${group.length - 1} potential duplicate(s) for review. First photo kept as original.`, 'info');
   },
@@ -2828,7 +2828,7 @@ const mediaGalleryModule = {
         this._logActivity('upload', null, `${successCount} files uploaded`);
 
         // Close modal and reload
-        bootstrap.Modal.getInstance(document.getElementById('dragDropPublishModal')).hide();
+        bootstrap.Modal.getInstance(document.getElementById('dragDropPublishModal'))?.hide();
 
         await this.viewSectionPhotos(this.currentSectionId, this.currentSectionName);
       });
@@ -3213,7 +3213,7 @@ const mediaGalleryModule = {
         utils.showToast(`${successCount} photo(s) uploaded successfully!`, 'success');
 
         // Close modal and reload
-        bootstrap.Modal.getInstance(document.getElementById('uploadSectionPhotosModal')).hide();
+        bootstrap.Modal.getInstance(document.getElementById('uploadSectionPhotosModal'))?.hide();
 
         await this.viewSectionPhotos(this.currentSectionId, this.currentSectionName);
       });
@@ -3289,7 +3289,7 @@ const mediaGalleryModule = {
         utils.showToast('YouTube video added successfully!', 'success');
 
         // Close modal and reload
-        bootstrap.Modal.getInstance(document.getElementById('youtubeVideoModal')).hide();
+        bootstrap.Modal.getInstance(document.getElementById('youtubeVideoModal'))?.hide();
 
         await this.viewSectionPhotos(this.currentSectionId, this.currentSectionName);
       });
@@ -3823,7 +3823,7 @@ const mediaGalleryModule = {
         if (error) throw error;
 
         // Close modal and reload
-        bootstrap.Modal.getInstance(document.getElementById('tagPhotoModal')).hide();
+        bootstrap.Modal.getInstance(document.getElementById('tagPhotoModal'))?.hide();
 
         await this.viewSectionPhotos(this.currentSectionId, this.currentSectionName);
       });
@@ -3971,7 +3971,7 @@ const mediaGalleryModule = {
       return;
     }
     // Close the full view modal
-    bootstrap.Modal.getInstance(document.getElementById('viewPhotoFullModal')).hide();
+    bootstrap.Modal.getInstance(document.getElementById('viewPhotoFullModal'))?.hide();
     // Open tag modal
     await this.tagPhoto(this.currentMediaId);
   },
@@ -3985,7 +3985,7 @@ const mediaGalleryModule = {
       return;
     }
     // Close the full view modal
-    bootstrap.Modal.getInstance(document.getElementById('viewPhotoFullModal')).hide();
+    bootstrap.Modal.getInstance(document.getElementById('viewPhotoFullModal'))?.hide();
     // Delete photo
     await this.deletePhoto(this.currentMediaId);
   },
@@ -4254,7 +4254,7 @@ const mediaGalleryModule = {
 
         if (updateError) throw updateError;
 
-        bootstrap.Modal.getInstance(document.getElementById('cropRotateModal')).hide();
+        bootstrap.Modal.getInstance(document.getElementById('cropRotateModal'))?.hide();
         utils.showToast('Photo updated with crop/rotate changes!', 'success');
 
         // Log the activity
@@ -4389,7 +4389,7 @@ const mediaGalleryModule = {
               `}
             </div>
             <div class="modal-footer">
-              <button class="btn btn-outline-danger btn-sm" onclick="(async()=>{if(!await utils.confirmDialog({title:'Clear Logs',message:'Clear all activity logs?',confirmText:'Clear',danger:true}))return;try{await STATE.client.from('cms_audit_logs').delete().eq('entity','media_gallery');} catch(e){localStorage.removeItem('mediaGalleryActivityLog');}bootstrap.Modal.getInstance(document.getElementById('activityLogModal')).hide();utils.showToast('Activity log cleared','success');})()">
+              <button class="btn btn-outline-danger btn-sm" onclick="(async()=>{if(!await utils.confirmDialog({title:'Clear Logs',message:'Clear all activity logs?',confirmText:'Clear',danger:true}))return;try{await STATE.client.from('cms_audit_logs').delete().eq('entity','media_gallery');} catch(e){localStorage.removeItem('mediaGalleryActivityLog');}bootstrap.Modal.getInstance(document.getElementById('activityLogModal'))?.hide();utils.showToast('Activity log cleared','success');})()">
                 <i class="bi bi-trash me-1"></i>Clear Log
               </button>
               <button class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
@@ -5186,7 +5186,7 @@ const mediaGalleryModule = {
         utils.showToast(`Successfully tagged ${taggedCount} photos from running order!`, 'success');
 
         // Close modal
-        bootstrap.Modal.getInstance(document.getElementById('autoTagModal')).hide();
+        bootstrap.Modal.getInstance(document.getElementById('autoTagModal'))?.hide();
 
         // Reload current view
         if (this.currentView === 'photos-production') {
@@ -5324,7 +5324,7 @@ const mediaGalleryModule = {
         if (failCount > 0) msg += ` ${failCount} failed.`;
         utils.showToast(msg, failCount > 0 ? 'warning' : 'success');
 
-        bootstrap.Modal.getInstance(document.getElementById('bulkYouTubeModal')).hide();
+        bootstrap.Modal.getInstance(document.getElementById('bulkYouTubeModal'))?.hide();
         await this.loadVideosProduction();
       });
     } catch (error) {
@@ -5930,7 +5930,7 @@ const mediaGalleryModule = {
 
     // Reuse bulk import logic
     document.getElementById('bulkYouTubeUrls').value = input;
-    bootstrap.Modal.getInstance(document.getElementById('playlistSyncModal')).hide();
+    bootstrap.Modal.getInstance(document.getElementById('playlistSyncModal'))?.hide();
     await this.saveBulkYouTube();
   },
 
@@ -6698,7 +6698,7 @@ const mediaGalleryModule = {
 
         if (successCount > 0) {
           utils.showToast(`${successCount} file(s) uploaded successfully!`, 'success');
-          bootstrap.Modal.getInstance(document.getElementById('uploadMediaGalleryModal')).hide();
+          bootstrap.Modal.getInstance(document.getElementById('uploadMediaGalleryModal'))?.hide();
           this.loadAllGalleries();
         } else {
           utils.showToast('No files were uploaded', 'error');
@@ -6778,7 +6778,7 @@ const mediaGalleryModule = {
 
         if (error) throw error;
 
-        bootstrap.Modal.getInstance(document.getElementById('tagMediaModal')).hide();
+        bootstrap.Modal.getInstance(document.getElementById('tagMediaModal'))?.hide();
       });
       utils.showToast('Tags saved successfully', 'success');
     } catch (error) {

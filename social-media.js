@@ -101,43 +101,55 @@ Vote now: {{website}}
   },
 
   async loadCompanies() {
-    const { data: companies, error } = await STATE.client
-      .from('organisations')
-      .select('id, company_name, logo_url, website')
-      .eq('status', 'active')
-      .order('company_name');
-
-    if (error) throw error;
-
     const select = document.getElementById('smCompanySelect');
-    select.innerHTML = '<option value="">Select company...</option>';
-    (companies || []).forEach(company => {
-      const option = document.createElement('option');
-      option.value = company.id;
-      option.textContent = company.company_name;
-      option.dataset.logo = company.logo_url || '';
-      option.dataset.website = company.website || '';
-      select.appendChild(option);
-    });
+    if (!select) return;
+    try {
+      const { data: companies, error } = await STATE.client
+        .from('organisations')
+        .select('id, company_name, logo_url, website')
+        .eq('status', 'active')
+        .order('company_name');
+
+      if (error) throw error;
+
+      select.innerHTML = '<option value="">Select company...</option>';
+      (companies || []).forEach(company => {
+        const option = document.createElement('option');
+        option.value = company.id;
+        option.textContent = company.company_name;
+        option.dataset.logo = company.logo_url || '';
+        option.dataset.website = company.website || '';
+        select.appendChild(option);
+      });
+    } catch (err) {
+      console.warn('Failed to load companies:', err);
+      select.innerHTML = '<option value="">Failed to load companies</option>';
+    }
   },
 
   async loadAwards() {
-    const { data: awards, error } = await STATE.client
-      .from('awards')
-      .select('id, award_name, award_category')
-      .eq('is_active', true)
-      .order('award_name');
-
-    if (error) throw error;
-
     const select = document.getElementById('smAwardSelect');
-    select.innerHTML = '<option value="">Select award...</option>';
-    (awards || []).forEach(award => {
-      const option = document.createElement('option');
-      option.value = award.id;
-      option.textContent = award.award_name;
-      select.appendChild(option);
-    });
+    if (!select) return;
+    try {
+      const { data: awards, error } = await STATE.client
+        .from('awards')
+        .select('id, award_name, award_category')
+        .eq('is_active', true)
+        .order('award_name');
+
+      if (error) throw error;
+
+      select.innerHTML = '<option value="">Select award...</option>';
+      (awards || []).forEach(award => {
+        const option = document.createElement('option');
+        option.value = award.id;
+        option.textContent = award.award_name;
+        select.appendChild(option);
+      });
+    } catch (err) {
+      console.warn('Failed to load awards:', err);
+      select.innerHTML = '<option value="">Failed to load awards</option>';
+    }
   },
 
   selectTemplate(templateKey, event) {

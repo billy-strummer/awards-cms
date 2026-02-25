@@ -10,12 +10,15 @@ const dashboardModule = {
     try {
       utils.showLoading();
 
-      // Load awards, organisations and winners in parallel
-      await Promise.all([
+      // Load awards, organisations and winners in parallel (allSettled so partial data still loads)
+      const [awardsRes, orgsRes, winnersRes] = await Promise.allSettled([
         awardsModule.loadAwards(),
         orgsModule.loadOrganisations(),
         winnersModule.loadWinners()
       ]);
+      if (awardsRes.status === 'rejected') console.warn('Failed to load awards:', awardsRes.reason);
+      if (orgsRes.status === 'rejected') console.warn('Failed to load organisations:', orgsRes.reason);
+      if (winnersRes.status === 'rejected') console.warn('Failed to load winners:', winnersRes.reason);
 
       // Update dashboard stats
       await this.updateStats();
@@ -1058,12 +1061,13 @@ const dashboardModule = {
    */
   async loadCharts() {
     try {
-      await Promise.all([
+      const results = await Promise.allSettled([
         this.renderWinnersYearChart(),
         this.renderCategoryChart(),
         this.renderSectorChart(),
         this.renderRegionChart()
       ]);
+      results.forEach((r, i) => { if (r.status === 'rejected') console.warn(`Chart ${i} failed:`, r.reason); });
     } catch (error) {
       console.error('Error loading charts:', error);
     }

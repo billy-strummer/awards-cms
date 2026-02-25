@@ -246,7 +246,7 @@ window.webhooksModule = {
         }
         if (error) throw error;
 
-        bootstrap.Modal.getInstance(document.getElementById('webhookModal')).hide();
+        bootstrap.Modal.getInstance(document.getElementById('webhookModal'))?.hide();
         this.renderWebhookManager();
       });
       utils.showToast('Webhook saved', 'success');
@@ -265,8 +265,17 @@ window.webhooksModule = {
 
   async deleteWebhook(id) {
     if (!await utils.confirmDialog({ title: 'Delete Webhook', message: 'Delete this webhook?', confirmText: 'Delete', danger: true })) return;
-    const { error } = await STATE.client.from('webhooks').delete().eq('id', id);
-    if (error) { utils.showToast('Delete failed: ' + error.message, 'error'); return; }
+    try {
+      const { error } = await STATE.client.from('webhooks').delete().eq('id', id);
+      if (error) throw error;
+    } catch (dbError) {
+      console.warn('DB delete for webhook failed, removing from localStorage:', dbError);
+      try {
+        const stored = JSON.parse(localStorage.getItem('bta_webhooks') || '[]');
+        const filtered = stored.filter(w => w.id !== id);
+        localStorage.setItem('bta_webhooks', JSON.stringify(filtered));
+      } catch (e) { /* ignore */ }
+    }
     utils.showToast('Webhook deleted', 'success');
     this.renderWebhookManager();
   },

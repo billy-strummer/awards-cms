@@ -480,7 +480,7 @@ const paymentsModule = {
         // Clear auto-save draft on successful save
         utils.clearFormDraft('invoice_new');
 
-        bootstrap.Modal.getInstance(document.getElementById('createInvoiceModal')).hide();
+        bootstrap.Modal.getInstance(document.getElementById('createInvoiceModal'))?.hide();
 
         utils.showToast(`Invoice ${invoiceNumber} created successfully!`, 'success');
 
@@ -583,7 +583,7 @@ const paymentsModule = {
 
       // Wire up footer buttons
       document.getElementById('viewInvoiceRecordPaymentBtn').onclick = () => {
-        bootstrap.Modal.getInstance(document.getElementById('viewInvoiceModal')).hide();
+        bootstrap.Modal.getInstance(document.getElementById('viewInvoiceModal'))?.hide();
         this.recordPaymentForInvoice(invoiceId);
       };
 
@@ -819,7 +819,7 @@ const paymentsModule = {
             .eq('id', this.currentSendInvoiceId);
         }
 
-        bootstrap.Modal.getInstance(document.getElementById('sendInvoiceModal')).hide();
+        bootstrap.Modal.getInstance(document.getElementById('sendInvoiceModal'))?.hide();
         utils.showToast(`Invoice email prepared for ${recipientEmail}. Note: Email delivery requires SendGrid API configuration.`, 'success');
 
         await this.loadInvoices();
@@ -1139,7 +1139,7 @@ const paymentsModule = {
           }
         }
 
-        bootstrap.Modal.getInstance(document.getElementById('recordPaymentModal')).hide();
+        bootstrap.Modal.getInstance(document.getElementById('recordPaymentModal'))?.hide();
 
         utils.showToast(`Payment ${paymentReference} recorded successfully!`, 'success');
 

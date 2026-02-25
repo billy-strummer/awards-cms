@@ -88,7 +88,7 @@ window.ticketModule = {
         const { error } = id ? await STATE.client.from('event_ticket_types').update(payload).eq('id', id)
           : await STATE.client.from('event_ticket_types').insert(payload);
         if (error) throw error;
-        bootstrap.Modal.getInstance(document.getElementById('ttModal')).hide();
+        bootstrap.Modal.getInstance(document.getElementById('ttModal'))?.hide();
         this.renderTicketTypes(eventId);
       });
       utils.showToast('Ticket type saved.', 'success');

@@ -155,7 +155,7 @@ window.notificationsModule = {
 
   async notifyWinnerConfirmed(teamEmails, winnerId) {
     const emails = Array.isArray(teamEmails) ? teamEmails : [teamEmails];
-    await Promise.all(emails.map(e => this._insert(e, 'winner_confirmed', 'Winner Confirmed',
+    await Promise.allSettled(emails.map(e => this._insert(e, 'winner_confirmed', 'Winner Confirmed',
       `Winner entry #${winnerId} has been confirmed. Congratulations!`, `#winners?id=${winnerId}`)));
   },
 

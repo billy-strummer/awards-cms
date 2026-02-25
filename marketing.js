@@ -264,7 +264,7 @@ const marketingModule = {
 
         if (error) throw error;
 
-        bootstrap.Modal.getInstance(document.getElementById('bannerFormModal')).hide();
+        bootstrap.Modal.getInstance(document.getElementById('bannerFormModal'))?.hide();
         await this.loadBanners();
       });
       utils.showToast(bannerId ? 'Banner updated successfully' : 'Banner created successfully', 'success');
@@ -598,7 +598,7 @@ const marketingModule = {
 
         if (error) throw error;
 
-        bootstrap.Modal.getInstance(document.getElementById('sponsorFormModal')).hide();
+        bootstrap.Modal.getInstance(document.getElementById('sponsorFormModal'))?.hide();
         await this.loadSponsors();
       });
       utils.showToast(sponsorId ? 'Sponsor updated successfully' : 'Sponsor created successfully', 'success');

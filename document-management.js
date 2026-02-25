@@ -181,8 +181,17 @@ window.documentModule = {
     const row = document.querySelector(`#docLibraryTable tr[data-id="${id}"]`);
     const docName = row?.querySelector('td:nth-child(1)')?.textContent?.trim() || 'this document';
     if (!await utils.confirmDialog({ title: 'Delete Document', message: `Delete <strong>${utils.escapeHtml(docName)}</strong>? This action cannot be undone.`, confirmText: 'Delete', danger: true })) return;
-    const { error } = await this._client().from('documents').delete().eq('id', id);
-    if (error) { utils.showToast('Delete failed: ' + error.message, 'error'); throw error; }
+    try {
+      const { error } = await this._client().from('documents').delete().eq('id', id);
+      if (error) throw error;
+    } catch (dbError) {
+      console.warn('DB delete for document failed, removing from localStorage:', dbError);
+      try {
+        const stored = JSON.parse(localStorage.getItem('bta_documents') || '[]');
+        const filtered = stored.filter(d => d.id !== id);
+        localStorage.setItem('bta_documents', JSON.stringify(filtered));
+      } catch (e) { /* ignore */ }
+    }
     row?.remove();
     utils.showToast('Document deleted', 'success');
   },

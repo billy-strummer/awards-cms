@@ -593,7 +593,7 @@ const winnersModule = {
         if (dbError) throw dbError;
 
         // Close modal and reload
-        bootstrap.Modal.getInstance(document.getElementById('uploadMediaModal')).hide();
+        bootstrap.Modal.getInstance(document.getElementById('uploadMediaModal'))?.hide();
         await this.loadWinners();
         utils.showToast('Media uploaded successfully!', 'success');
       });
@@ -681,7 +681,7 @@ const winnersModule = {
         if (error) throw error;
 
         await this.loadWinners();
-        bootstrap.Modal.getInstance(document.getElementById('viewMediaModal')).hide();
+        bootstrap.Modal.getInstance(document.getElementById('viewMediaModal'))?.hide();
         utils.showToast('Media deleted successfully!', 'success');
       });
 
@@ -954,7 +954,7 @@ const winnersModule = {
         }
 
         utils.showToast('Export complete!', 'success');
-        bootstrap.Modal.getInstance(document.getElementById('pressReleaseExportModal')).hide();
+        bootstrap.Modal.getInstance(document.getElementById('pressReleaseExportModal'))?.hide();
       });
 
     } catch (error) {
@@ -1498,7 +1498,7 @@ const winnersModule = {
         }
 
         utils.showToast(`Successfully generated ${generatedCount} assets for ${selectedWinnersData.length} winner(s)!`, 'success');
-        bootstrap.Modal.getInstance(document.getElementById('certificateGeneratorModal')).hide();
+        bootstrap.Modal.getInstance(document.getElementById('certificateGeneratorModal'))?.hide();
       });
 
     } catch (error) {
@@ -1966,7 +1966,7 @@ const winnersModule = {
         URL.revokeObjectURL(url);
 
         utils.showToast('Media pack downloaded!', 'success');
-        bootstrap.Modal.getInstance(document.getElementById('mediaPackDownloadModal')).hide();
+        bootstrap.Modal.getInstance(document.getElementById('mediaPackDownloadModal'))?.hide();
       });
 
     } catch (error) {
@@ -2113,7 +2113,7 @@ const winnersModule = {
       }
 
       utils.showToast(`Winner package downloaded! ${generatedCount} file(s) generated.`, 'success');
-      bootstrap.Modal.getInstance(document.getElementById('winnerPackageDownloadModal')).hide();
+      bootstrap.Modal.getInstance(document.getElementById('winnerPackageDownloadModal'))?.hide();
 
     } catch (error) {
       console.error('Error generating winner package:', error);
@@ -2892,7 +2892,7 @@ const winnersModule = {
         }
       }
 
-      bootstrap.Modal.getInstance(document.getElementById('importWinnersModal')).hide();
+      bootstrap.Modal.getInstance(document.getElementById('importWinnersModal'))?.hide();
       await this.loadWinners();
 
       if (errorCount > 0) {

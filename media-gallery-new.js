@@ -603,7 +603,7 @@ const mediaGalleryModule = {
 
     } catch (error) {
       console.error('Error loading photos production:', error);
-      container.innerHTML = `<div class="alert alert-danger"><i class="bi bi-exclamation-triangle me-2"></i>Error loading photos: ${error.message}</div>`;
+      container.innerHTML = `<div class="alert alert-danger"><i class="bi bi-exclamation-triangle me-2"></i>Error loading photos: ${utils.escapeHtml(error.message)}</div>`;
     }
   },
 
@@ -5895,7 +5895,7 @@ const mediaGalleryModule = {
         </button>`;
       previewEl.innerHTML = '';
     } catch (error) {
-      statusEl.innerHTML = `<div class="alert alert-danger">Error: ${error.message}</div>`;
+      statusEl.innerHTML = `<div class="alert alert-danger">Error: ${utils.escapeHtml(error.message)}</div>`;
     }
   },
 
@@ -6012,7 +6012,7 @@ const mediaGalleryModule = {
           </ul>
         ` : ''}`;
     } catch (error) {
-      previewEl.innerHTML = `<div class="alert alert-danger">Error: ${error.message}</div>`;
+      previewEl.innerHTML = `<div class="alert alert-danger">Error: ${utils.escapeHtml(error.message)}</div>`;
     }
   },
 
@@ -6236,7 +6236,7 @@ const mediaGalleryModule = {
           </div>
         </div>`;
     } catch (error) {
-      resultEl.innerHTML = `<div class="alert alert-danger">Error: ${error.message}</div>`;
+      resultEl.innerHTML = `<div class="alert alert-danger">Error: ${utils.escapeHtml(error.message)}</div>`;
     }
   },
 
@@ -6353,7 +6353,7 @@ const mediaGalleryModule = {
       }
 
     } catch (error) {
-      statusEl.innerHTML = `<div class="alert alert-danger">Error: ${error.message}</div>`;
+      statusEl.innerHTML = `<div class="alert alert-danger">Error: ${utils.escapeHtml(error.message)}</div>`;
     }
   },
 

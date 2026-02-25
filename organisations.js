@@ -2869,6 +2869,7 @@ updateCountyFilterByRegion() {
     const presetEl = document.getElementById('orgsFilterPreset');
     if (presetEl) presetEl.value = '';
     this._filterMissingField = null;
+    this._selectedTagFilters = [];
     this.updateCountyFilterByRegion();
     try { localStorage.removeItem('orgsFilters'); } catch (e) { /* ignore */ }
     this.filterOrganisations();
@@ -4629,8 +4630,8 @@ updateCountyFilterByRegion() {
     }
     // Restore page size if saved
     if (preset.pageSize) this._pageSize = preset.pageSize;
-    // Restore tag filters if saved
-    if (preset.tagFilters) this._selectedTagFilters = [...preset.tagFilters];
+    // Restore tag filters if saved (clear if not present in preset)
+    this._selectedTagFilters = preset.tagFilters ? [...preset.tagFilters] : [];
     this.filterOrganisations();
     utils.showToast(`View "${name}" loaded`, 'success');
   },

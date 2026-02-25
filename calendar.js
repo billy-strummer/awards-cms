@@ -40,7 +40,10 @@ window.calendarModule = {
       });
       (fuR.data  || []).forEach(f => add(f.follow_up_date && f.follow_up_date.slice(0,10), { type:'followup', color:'success', label:f.note||'Follow-up', detail:f.completed?'Completed':'Pending', ref:f }));
       (invoiceData.data || []).forEach(i => add(i.due_date && i.due_date.slice(0,10), { type:'payment', color:'purple', label:`Invoice ${i.invoice_number||''} due`, detail:(i.organisations&&i.organisations.company_name)||'', ref:i }));
-    } catch (err) { console.error('Calendar fetch error:', err); }
+    } catch (err) {
+      console.error('Calendar fetch error:', err);
+      utils.showToast('Failed to load calendar data', 'warning');
+    }
 
     return items;
   },

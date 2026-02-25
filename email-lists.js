@@ -43,7 +43,7 @@ const emailListsModule = {
         <div class="col-12">
           <div class="alert alert-danger">
             <i class="bi bi-exclamation-triangle me-2"></i>
-            Error loading email lists: ${error.message}
+            Error loading email lists: ${utils.escapeHtml(error.message)}
           </div>
         </div>
       `;

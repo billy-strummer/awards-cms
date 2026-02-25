@@ -7349,10 +7349,10 @@ const eventsModule = {
             </div>
 
             <div class="modal-body p-0">
-              <div class="d-flex" style="height: calc(100vh - 56px);">
+              <div class="d-flex" style="height: calc(100vh - 56px); overflow: hidden;">
 
                 <!-- Left Sidebar -->
-                <div class="tp-sidebar border-end bg-light" style="width: 300px; min-width: 300px; display: flex; flex-direction: column;">
+                <div class="tp-sidebar border-end bg-light" style="width: 260px; min-width: 260px; display: flex; flex-direction: column;">
 
                   <!-- Room Setup Panel -->
                   <div id="tpSetupPanel" style="display: ${hasTables ? 'none' : 'block'};">
@@ -7444,7 +7444,7 @@ const eventsModule = {
                 </div>
 
                 <!-- Main Canvas Area -->
-                <div class="flex-grow-1 d-flex flex-column">
+                <div class="flex-grow-1 d-flex flex-column position-relative">
                   <!-- Canvas Toolbar -->
                   <div class="d-flex align-items-center gap-2 p-2 border-bottom bg-white">
                     <button class="btn btn-sm btn-primary" onclick="eventsModule.addNewTable()">
@@ -7476,12 +7476,12 @@ const eventsModule = {
                       <!-- Tables rendered here as absolutely positioned elements -->
                     </div>
                   </div>
-                </div>
 
-                <!-- Right Panel: Table Detail (shown when a table is selected) -->
-                <div id="tpDetailPanel" class="border-start bg-white" style="width: 320px; min-width: 320px; display: none; flex-direction: column;">
-                  <div id="tpDetailContent">
-                    <!-- Filled when a table is clicked -->
+                  <!-- Right Panel: Table Detail (overlays canvas when a table is selected) -->
+                  <div id="tpDetailPanel" class="border-start bg-white shadow-lg" style="width: 300px; min-width: 300px; display: none; flex-direction: column; position: absolute; right: 0; top: 0; bottom: 0; z-index: 10;">
+                    <div id="tpDetailContent">
+                      <!-- Filled when a table is clicked -->
+                    </div>
                   </div>
                 </div>
 

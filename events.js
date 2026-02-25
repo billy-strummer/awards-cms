@@ -1720,8 +1720,8 @@ const eventsModule = {
   _showEmailPreview(subject, body, recipients, eventId) {
     const recipientStr = recipients.length > 3 ? `${recipients.slice(0, 3).join(', ')} + ${recipients.length - 3} more` : recipients.join(', ');
     const html = `
-      <div class="modal fade" id="emailPreviewModal" tabindex="-1">
-        <div class="modal-dialog modal-lg">
+      <div class="modal fade" id="emailPreviewModal" tabindex="-1" style="z-index:1070;">
+        <div class="modal-dialog modal-lg" style="max-width:700px;">
           <div class="modal-content">
             <div class="modal-header bg-primary text-white">
               <h5 class="modal-title"><i class="bi bi-envelope me-2"></i>Send Invitation Email</h5>
@@ -1761,7 +1761,13 @@ const eventsModule = {
     if (old) old.remove();
     document.body.insertAdjacentHTML('beforeend', html);
     this._emailRecipients = recipients;
-    const modal = new bootstrap.Modal(document.getElementById('emailPreviewModal'));
+    const emailModalEl = document.getElementById('emailPreviewModal');
+    const modal = new bootstrap.Modal(emailModalEl);
+    // Ensure backdrop stacks above the attendees modal
+    emailModalEl.addEventListener('shown.bs.modal', () => {
+      const backdrop = document.querySelector('.modal-backdrop:last-child');
+      if (backdrop) backdrop.style.zIndex = '1065';
+    });
     modal.show();
   },
 
@@ -2474,7 +2480,12 @@ const eventsModule = {
         .eq('event_id', eventId)
         .order('created_at', { ascending: true });
       if (error) throw error;
-      return data || [];
+      return (data || []).map(v => ({
+        ...v,
+        name: v.name || v.contact_name || v.contactName || '',
+        category: v.category || v.vendor_type || v.type || 'Other',
+        status: v.status || 'pending'
+      }));
     } catch (e) {
       const stored = localStorage.getItem(this._vendorsKey(eventId));
       return stored ? JSON.parse(stored) : [];
@@ -2487,12 +2498,13 @@ const eventsModule = {
       if (vendors.length > 0) {
         const rows = vendors.map(v => ({
           event_id: eventId,
-          contact_name: v.contact_name || v.contactName,
+          contact_name: v.name || v.contact_name || v.contactName,
           company: v.company,
           email: v.email,
           phone: v.phone,
-          vendor_type: v.type || v.vendor_type,
+          vendor_type: v.category || v.type || v.vendor_type,
           cost: v.cost || 0,
+          status: v.status || 'pending',
           notes: v.notes
         }));
         await STATE.client.from('event_vendors').insert(rows);
@@ -11736,8 +11748,12 @@ const eventsModule = {
         .order('created_at', { ascending: true });
       if (error) throw error;
       return (data && data.length > 0) ? data.map(m => ({
-        id: m.id, label: m.label, done: m.done, category: m.category,
-        custom: m.custom || false, completedAt: m.completed_at
+        id: m.milestone_id || m.id,
+        label: m.label || m.title || '',
+        done: m.done ?? m.is_completed ?? false,
+        category: m.category || 'General',
+        custom: m.custom ?? m.is_custom ?? false,
+        completedAt: m.completed_at || null
       })) : this._getDefaultMilestones();
     } catch (e) {
       const stored = localStorage.getItem(this._milestonesKey(eventId));
@@ -11750,8 +11766,10 @@ const eventsModule = {
       await STATE.client.from('event_milestones').delete().eq('event_id', eventId);
       if (milestones.length > 0) {
         const rows = milestones.map(m => ({
-          event_id: eventId, milestone_id: m.id, label: m.label,
-          done: m.done, category: m.category, custom: m.custom || false,
+          event_id: eventId, milestone_id: m.id,
+          title: m.label || m.title || '',
+          is_completed: m.done ?? m.is_completed ?? false,
+          is_custom: m.custom ?? m.is_custom ?? false,
           completed_at: m.completedAt || null
         }));
         const { error } = await STATE.client.from('event_milestones').insert(rows);

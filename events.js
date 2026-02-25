@@ -7464,10 +7464,13 @@ const eventsModule = {
                     <button class="btn btn-sm btn-outline-secondary" onclick="eventsModule.canvasZoom(-0.1)" title="Zoom Out">
                       <i class="bi bi-zoom-out"></i>
                     </button>
-                    <button class="btn btn-sm btn-outline-secondary" onclick="eventsModule.canvasZoom(0, true)" title="Reset Zoom">
+                    <button class="btn btn-sm btn-outline-secondary" onclick="eventsModule.canvasZoom(0, true)" title="Reset Zoom (100%)">
+                      <i class="bi bi-aspect-ratio"></i>
+                    </button>
+                    <small class="text-muted" id="tpZoomLevel" style="cursor:pointer; user-select:none;" onclick="eventsModule.canvasZoom(0, true)" title="Click to reset zoom">100%</small>
+                    <button class="btn btn-sm btn-outline-secondary" onclick="eventsModule.toggleCanvasFullscreen()" title="Fullscreen" id="tpFullscreenBtn">
                       <i class="bi bi-arrows-fullscreen"></i>
                     </button>
-                    <small class="text-muted" id="tpZoomLevel">100%</small>
                     <div class="vr"></div>
                     <button class="btn btn-sm btn-outline-info" onclick="eventsModule.showTableIndex()" title="Table Index">
                       <i class="bi bi-card-list me-1"></i>Index
@@ -7657,6 +7660,10 @@ const eventsModule = {
         #tpDetailPanel .seated-guest:hover { background: #e9ecef; }
         #tpDetailPanel .seated-guest .remove-x { cursor: pointer; color: #dc3545; font-size: 1rem; }
         #tpDetailPanel .seated-guest .remove-x:hover { color: #a71d2a; }
+
+        /* Fullscreen canvas */
+        .d-flex.flex-column.flex-grow-1:fullscreen { background: #fff; }
+        .d-flex.flex-column.flex-grow-1:fullscreen #tpCanvasWrapper { flex: 1; }
 
         /* Bottom Table Index Panel */
         #tpBottomIndex { box-shadow: 0 -2px 8px rgba(0,0,0,0.08); transition: margin-right 0.25s ease; }
@@ -8067,9 +8074,26 @@ const eventsModule = {
     const canvas = document.getElementById('tpCanvas');
     if (!canvas) return;
 
-    canvas.style.transform = `scale(${this._canvasZoom})`;
+    const z = this._canvasZoom;
+    canvas.style.transform = `scale(${z})`;
+    // The canvas base size is always 2400x1600, transform-origin 0 0.
+    // We must size the sizer wrapper so the scrollable area matches the visual size.
+    let sizer = document.getElementById('tpCanvasSizer');
+    if (!sizer && canvas.parentElement) {
+      // First time: wrap canvas in a sizer div
+      sizer = document.createElement('div');
+      sizer.id = 'tpCanvasSizer';
+      sizer.style.position = 'relative';
+      sizer.style.overflow = 'visible';
+      canvas.parentElement.insertBefore(sizer, canvas);
+      sizer.appendChild(canvas);
+    }
+    if (sizer) {
+      sizer.style.width  = Math.round(2400 * z) + 'px';
+      sizer.style.height = Math.round(1600 * z) + 'px';
+    }
     const zoomLabel = document.getElementById('tpZoomLevel');
-    if (zoomLabel) zoomLabel.textContent = Math.round(this._canvasZoom * 100) + '%';
+    if (zoomLabel) zoomLabel.textContent = Math.round(z * 100) + '%';
 
     if (this.tables.length === 0 && this.roomFixtures.length === 0) {
       canvas.innerHTML = `
@@ -8491,6 +8515,28 @@ const eventsModule = {
       this._canvasZoom = Math.min(2, Math.max(0.3, this._canvasZoom + delta));
     }
     this.renderCanvasTables();
+  },
+
+  toggleCanvasFullscreen() {
+    // Target the canvas column (toolbar + wrapper + bottom index) for true fullscreen
+    const modal = document.getElementById('tablePlanModal');
+    const target = document.getElementById('tpCanvasWrapper')?.closest('.d-flex.flex-column.flex-grow-1');
+    if (!target) return;
+    if (document.fullscreenElement) {
+      document.exitFullscreen().catch(() => {});
+    } else {
+      (target.requestFullscreen || target.webkitRequestFullscreen || target.msRequestFullscreen).call(target).catch(() => {});
+    }
+    // Update icon on change
+    const updateIcon = () => {
+      const btn = document.getElementById('tpFullscreenBtn');
+      if (!btn) return;
+      const icon = btn.querySelector('i');
+      if (icon) {
+        icon.className = document.fullscreenElement ? 'bi bi-fullscreen-exit' : 'bi bi-arrows-fullscreen';
+      }
+    };
+    document.addEventListener('fullscreenchange', updateIcon, { once: true });
   },
 
   // ---- TABLE DRAGGING (repositioning on canvas) ----

@@ -6693,7 +6693,7 @@ updateCountyFilterByRegion() {
   @media print { body { padding: 0; } }
 </style>
 </head><body>
-  ${org.logo_url ? `<img src="${org.logo_url}" class="logo" alt="">` : ''}
+  ${org.logo_url ? `<img src="${utils.escapeHtml(org.logo_url)}" class="logo" alt="">` : ''}
   <h1>${utils.escapeHtml(org.company_name)}</h1>
   <h2>Contact Information</h2>
   <div class="grid">

@@ -5807,7 +5807,7 @@ const eventsModule = {
       const time = item.scheduled_time || '';
       const name = item.award_name || 'TBC';
       const cue = item.cue_notes || '-';
-      const breakLabel = isBreak ? ` [${(item.item_type || 'break').toUpperCase()}]` : '';
+      const breakLabel = isBreak ? ` [${utils.escapeHtml((item.item_type || 'break').toUpperCase())}]` : '';
 
       rows += `<tr${isBreak ? ' style="background:#e3f2fd;"' : ''}>
         <td style="text-align:center; font-weight:bold;">${isBreak ? '-' : presNum}</td>
@@ -9991,7 +9991,7 @@ const eventsModule = {
       const pct = table.total_seats > 0 ? Math.round(assigned / table.total_seats * 100) : 0;
       const barColor = assigned >= table.total_seats ? '#dc3545' : assigned >= table.total_seats * 0.75 ? '#fd7e14' : '#0d6efd';
       const shapeIcon = table.shape === 'rectangular' ? 'bi-square' : 'bi-circle';
-      const label = table.table_name ? `${table.table_name}` : `Table ${table.table_number}`;
+      const label = table.table_name ? utils.escapeHtml(table.table_name) : `Table ${utils.escapeHtml(String(table.table_number || ''))}`;
 
       const guestsHtml = (table.assignments || []).map(a => `
         <div style="padding:6px 12px; border-bottom:1px solid rgba(255,255,255,0.08); display:flex; justify-content:space-between; align-items:center;">

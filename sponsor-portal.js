@@ -29,7 +29,7 @@ window.sponsorPortalModule = {
           <div class="col-md-4"><div class="card h-100"><div class="card-body text-center">
             ${s.logo_url ? `<img src="${utils.escapeHtml(s.logo_url)}" alt="Logo" class="mb-3" style="max-height:80px;max-width:160px;object-fit:contain;">` : '<i class="bi bi-building display-4 text-muted d-block mb-3"></i>'}
             <h5 class="mb-1">${utils.escapeHtml(s.name)}</h5>
-            <span class="badge bg-${tier.badge} mb-2">${s.tier} Sponsor</span>
+            <span class="badge bg-${tier.badge} mb-2">${utils.escapeHtml(s.tier)} Sponsor</span>
             <p class="small text-muted mb-0">${utils.escapeHtml(s.description || '')}</p>
           </div></div></div>
           <div class="col-md-4"><div class="card h-100"><div class="card-body">

@@ -6212,16 +6212,44 @@ const eventsModule = {
     try {
       utils.showLoading();
 
-      // 1. Get confirmed RSVPs for this event
-      const { data: guests, error: gErr } = await STATE.client
-        .from('event_guests')
-        .select('id, organisation_id, guest_name, guest_email, guest_type')
-        .eq('event_id', eventId)
-        .eq('rsvp_status', 'confirmed');
-      if (gErr) throw gErr;
+      // 1. Get confirmed RSVPs from both event_guests and event_attendees
+      let guests = [];
+      try {
+        const { data: eg } = await STATE.client
+          .from('event_guests')
+          .select('id, organisation_id, guest_name, guest_email, guest_type')
+          .eq('event_id', eventId)
+          .eq('rsvp_status', 'confirmed');
+        if (eg) guests = eg;
+      } catch (e) { /* event_guests may not exist */ }
 
-      if (!guests || guests.length === 0) {
-        utils.showToast('No confirmed RSVPs found for this event', 'warning');
+      // Also pull from event_attendees (admin-added guests with status 'attending')
+      try {
+        const { data: ea } = await STATE.client
+          .from('event_attendees')
+          .select('id, organisation_id, attendee_name, attendee_email, guest_type')
+          .eq('event_id', eventId)
+          .in('rsvp_status', ['attending', 'confirmed']);
+        if (ea) {
+          const existingKeys = new Set(guests.map(g => (g.guest_name || '').toLowerCase() + '|' + (g.guest_email || '').toLowerCase()));
+          for (const a of ea) {
+            const key = (a.attendee_name || '').toLowerCase() + '|' + (a.attendee_email || '').toLowerCase();
+            if (!existingKeys.has(key)) {
+              existingKeys.add(key);
+              guests.push({
+                id: a.id,
+                organisation_id: a.organisation_id,
+                guest_name: a.attendee_name,
+                guest_email: a.attendee_email,
+                guest_type: a.guest_type
+              });
+            }
+          }
+        }
+      } catch (e) { /* event_attendees may not exist */ }
+
+      if (guests.length === 0) {
+        utils.showToast('No confirmed RSVPs or attending guests found for this event', 'warning');
         return;
       }
 
@@ -8876,8 +8904,7 @@ const eventsModule = {
         company_name: g.company_name || null,
         seat_number: nextSeat(),
         is_vip: g.guest_type === 'vip' || g.guest_type === 'sponsor' || g.guest_type === 'speaker',
-        dietary_requirements: g.dietary_requirements || null,
-        notes: g.notes || null
+        dietary_requirements: g.dietary_requirements || null
       }));
 
       const { error } = await STATE.client
@@ -9033,8 +9060,7 @@ const eventsModule = {
           company_name: g.company_name || null,
           seat_number: _nextSeat(i),
           is_vip: g.guest_type === 'vip' || g.guest_type === 'sponsor' || g.guest_type === 'speaker',
-          dietary_requirements: g.dietary_requirements || null,
-          notes: g.notes || null
+          dietary_requirements: g.dietary_requirements || null
         }));
         const { error } = await STATE.client.from('table_assignments').insert(rows);
         if (error) throw error;
@@ -9072,8 +9098,7 @@ const eventsModule = {
             company_name: this.draggedGuestData.company_name || null,
             seat_number: _nextSeat(0),
             is_vip: fullGuest?.guest_type === 'vip' || fullGuest?.guest_type === 'sponsor' || fullGuest?.guest_type === 'speaker',
-            dietary_requirements: fullGuest?.dietary_requirements || null,
-            notes: fullGuest?.notes || null
+            dietary_requirements: fullGuest?.dietary_requirements || null
           }]);
         if (error) throw error;
         utils.showToast('Guest assigned to table', 'success');

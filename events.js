@@ -9831,70 +9831,11 @@ const eventsModule = {
 
   // ---- STATS SUMMARY ----
 
+  _indexOverlaySort: { byTable: { col: 'table', asc: true }, byCompany: { col: 'guests', asc: false } },
+
   showTableIndex() {
     const existing = document.getElementById('tpIndexOverlay');
     if (existing) existing.remove();
-
-    // Build index: for each table, group assignments by company
-    const tableRows = this.tables
-      .sort((a, b) => a.table_number - b.table_number)
-      .map(t => {
-        const assignments = t.assignments || [];
-        if (assignments.length === 0) {
-          return `<div class="tp-idx-table">
-            <div class="tp-idx-table-header">
-              <span><strong>${t.table_name ? utils.escapeHtml(t.table_name) : 'Table ' + t.table_number}</strong></span>
-              <span class="text-muted">0 / ${t.total_seats} seats</span>
-            </div>
-            <div class="tp-idx-table-body text-muted fst-italic" style="font-size:0.8rem;">Empty</div>
-          </div>`;
-        }
-
-        // Group by company
-        const byCompany = {};
-        assignments.forEach(a => {
-          const co = a.company_name || 'No Company';
-          if (!byCompany[co]) byCompany[co] = [];
-          byCompany[co].push(a.guest_name);
-        });
-
-        const companyHtml = Object.entries(byCompany)
-          .sort((a, b) => b[1].length - a[1].length)
-          .map(([company, guests]) => `
-            <div class="tp-idx-company">
-              <div class="tp-idx-company-label">${utils.escapeHtml(company)} (${guests.length})</div>
-              ${guests.map(g => `<div class="tp-idx-guest">${utils.escapeHtml(g)}</div>`).join('')}
-            </div>
-          `).join('');
-
-        return `<div class="tp-idx-table">
-          <div class="tp-idx-table-header">
-            <span><strong>${t.table_name ? utils.escapeHtml(t.table_name) : 'Table ' + t.table_number}</strong></span>
-            <span class="${assignments.length >= t.total_seats ? 'text-danger' : 'text-muted'}">${assignments.length} / ${t.total_seats} seats</span>
-          </div>
-          <div class="tp-idx-table-body">${companyHtml}</div>
-        </div>`;
-      }).join('');
-
-    // Company cross-reference: which tables is each company spread across?
-    const companyTables = {};
-    this.tables.forEach(t => {
-      (t.assignments || []).forEach(a => {
-        const co = a.company_name || 'No Company';
-        if (!companyTables[co]) companyTables[co] = { count: 0, tables: new Set() };
-        companyTables[co].count++;
-        companyTables[co].tables.add(t.table_name || 'Table ' + t.table_number);
-      });
-    });
-    const companyRefHtml = Object.entries(companyTables)
-      .sort((a, b) => b[1].count - a[1].count)
-      .map(([co, data]) => `
-        <tr>
-          <td style="font-size:0.82rem;">${utils.escapeHtml(co)}</td>
-          <td class="text-center" style="font-size:0.82rem;">${data.count}</td>
-          <td style="font-size:0.82rem;">${[...data.tables].join(', ')}</td>
-        </tr>
-      `).join('');
 
     document.body.insertAdjacentHTML('beforeend', `
       <div id="tpIndexOverlay" style="position:fixed; inset:0; z-index:9999; background:rgba(0,0,0,0.6); display:flex; align-items:center; justify-content:center;" onclick="if(event.target===this)this.remove();">
@@ -9913,14 +9854,24 @@ const eventsModule = {
           <div class="tab-content">
             <!-- By Table tab -->
             <div class="tab-pane fade show active" id="tpIdxByTable">
-              ${tableRows}
+              <div class="d-flex gap-1 mb-2">
+                <small class="text-muted me-1 align-self-center">Sort by:</small>
+                <button class="btn btn-sm btn-outline-secondary tp-idx-sort-btn" data-tab="byTable" data-col="table" onclick="eventsModule.sortIndexOverlay('byTable','table')">Table <i class="bi bi-sort-down-alt tp-sort-icon"></i></button>
+                <button class="btn btn-sm btn-outline-secondary tp-idx-sort-btn" data-tab="byTable" data-col="seats" onclick="eventsModule.sortIndexOverlay('byTable','seats')">Seats <i class="bi bi-chevron-expand tp-sort-icon"></i></button>
+                <button class="btn btn-sm btn-outline-secondary tp-idx-sort-btn" data-tab="byTable" data-col="company" onclick="eventsModule.sortIndexOverlay('byTable','company')">Company <i class="bi bi-chevron-expand tp-sort-icon"></i></button>
+              </div>
+              <div id="tpIdxByTableContent"></div>
             </div>
 
             <!-- By Company tab -->
             <div class="tab-pane fade" id="tpIdxByCompany">
-              <table class="table table-sm table-hover">
-                <thead><tr><th>Company</th><th class="text-center">Guests</th><th>Tables</th></tr></thead>
-                <tbody>${companyRefHtml || '<tr><td colspan="3" class="text-muted text-center">No guests assigned yet</td></tr>'}</tbody>
+              <table class="table table-sm table-hover" id="tpIdxCompanyTable">
+                <thead><tr>
+                  <th class="tp-idx-co-sort" style="cursor:pointer; user-select:none;" onclick="eventsModule.sortIndexOverlay('byCompany','company')">Company <i class="bi bi-chevron-expand tp-sort-icon"></i></th>
+                  <th class="text-center tp-idx-co-sort" style="cursor:pointer; user-select:none;" onclick="eventsModule.sortIndexOverlay('byCompany','guests')">Guests <i class="bi bi-sort-down tp-sort-icon"></i></th>
+                  <th class="tp-idx-co-sort" style="cursor:pointer; user-select:none;" onclick="eventsModule.sortIndexOverlay('byCompany','tables')">Tables <i class="bi bi-chevron-expand tp-sort-icon"></i></th>
+                </tr></thead>
+                <tbody id="tpIdxCompanyBody"></tbody>
               </table>
             </div>
           </div>
@@ -9934,8 +9885,150 @@ const eventsModule = {
         .tp-idx-company { margin-bottom: 6px; }
         .tp-idx-company-label { font-size: 0.78rem; font-weight: 600; color: #0d6efd; padding: 2px 0; border-bottom: 1px dotted #e9ecef; margin-bottom: 2px; }
         .tp-idx-guest { font-size: 0.8rem; padding: 2px 0 2px 10px; color: #495057; }
+        .tp-idx-sort-btn.active { border-color: #0d6efd; color: #0d6efd; font-weight: 600; }
+        .tp-idx-sort-btn .tp-sort-icon { font-size: 0.7rem; margin-left: 2px; }
+        .tp-idx-co-sort:hover { background: #e2e6ea; }
+        .tp-idx-co-sort .tp-sort-icon { font-size: 0.65rem; opacity: 0.5; margin-left: 2px; }
+        .tp-idx-co-sort.sort-active .tp-sort-icon { opacity: 1; color: #0d6efd; }
       </style>
     `);
+
+    this._renderIndexByTable();
+    this._renderIndexByCompany();
+  },
+
+  sortIndexOverlay(tab, col) {
+    const s = this._indexOverlaySort[tab];
+    if (s.col === col) { s.asc = !s.asc; } else { s.col = col; s.asc = true; }
+    if (tab === 'byTable') this._renderIndexByTable();
+    else this._renderIndexByCompany();
+  },
+
+  _renderIndexByTable() {
+    const container = document.getElementById('tpIdxByTableContent');
+    if (!container) return;
+
+    const { col, asc } = this._indexOverlaySort.byTable;
+    const dir = asc ? 1 : -1;
+    const sorted = this.tables.slice().sort((a, b) => {
+      if (col === 'table') return (a.table_number - b.table_number) * dir;
+      if (col === 'seats') {
+        const aFill = (a.assignments?.length || 0) / (a.total_seats || 1);
+        const bFill = (b.assignments?.length || 0) / (b.total_seats || 1);
+        return (aFill - bFill) * dir;
+      }
+      if (col === 'company') {
+        const topCo = (t) => {
+          const a = t.assignments || [];
+          if (a.length === 0) return '';
+          const counts = {};
+          a.forEach(x => { const c = x.company_name || ''; counts[c] = (counts[c]||0)+1; });
+          return Object.entries(counts).sort((x,y) => y[1]-x[1])[0][0].toLowerCase();
+        };
+        const va = topCo(a), vb = topCo(b);
+        return va < vb ? -dir : va > vb ? dir : 0;
+      }
+      return 0;
+    });
+
+    container.innerHTML = sorted.map(t => {
+      const assignments = t.assignments || [];
+      if (assignments.length === 0) {
+        return `<div class="tp-idx-table">
+          <div class="tp-idx-table-header">
+            <span><strong>${t.table_name ? utils.escapeHtml(t.table_name) : 'Table ' + t.table_number}</strong></span>
+            <span class="text-muted">0 / ${t.total_seats} seats</span>
+          </div>
+          <div class="tp-idx-table-body text-muted fst-italic" style="font-size:0.8rem;">Empty</div>
+        </div>`;
+      }
+      const byCompany = {};
+      assignments.forEach(a => {
+        const co = a.company_name || 'No Company';
+        if (!byCompany[co]) byCompany[co] = [];
+        byCompany[co].push(a.guest_name);
+      });
+      const companyHtml = Object.entries(byCompany)
+        .sort((a, b) => b[1].length - a[1].length)
+        .map(([company, guests]) => `
+          <div class="tp-idx-company">
+            <div class="tp-idx-company-label">${utils.escapeHtml(company)} (${guests.length})</div>
+            ${guests.map(g => `<div class="tp-idx-guest">${utils.escapeHtml(g)}</div>`).join('')}
+          </div>
+        `).join('');
+      return `<div class="tp-idx-table">
+        <div class="tp-idx-table-header">
+          <span><strong>${t.table_name ? utils.escapeHtml(t.table_name) : 'Table ' + t.table_number}</strong></span>
+          <span class="${assignments.length >= t.total_seats ? 'text-danger' : 'text-muted'}">${assignments.length} / ${t.total_seats} seats</span>
+        </div>
+        <div class="tp-idx-table-body">${companyHtml}</div>
+      </div>`;
+    }).join('');
+
+    // Update sort button styles
+    document.querySelectorAll('.tp-idx-sort-btn[data-tab="byTable"]').forEach(btn => {
+      const c = btn.dataset.col;
+      const icon = btn.querySelector('.tp-sort-icon');
+      if (c === col) {
+        btn.classList.add('active');
+        if (icon) icon.className = 'bi tp-sort-icon ' + (asc ? 'bi-sort-down-alt' : 'bi-sort-down');
+      } else {
+        btn.classList.remove('active');
+        if (icon) icon.className = 'bi bi-chevron-expand tp-sort-icon';
+      }
+    });
+  },
+
+  _renderIndexByCompany() {
+    const tbody = document.getElementById('tpIdxCompanyBody');
+    if (!tbody) return;
+
+    // Build company data
+    const companyTables = {};
+    this.tables.forEach(t => {
+      (t.assignments || []).forEach(a => {
+        const co = a.company_name || 'No Company';
+        if (!companyTables[co]) companyTables[co] = { count: 0, tables: new Set() };
+        companyTables[co].count++;
+        companyTables[co].tables.add(t.table_name || 'Table ' + t.table_number);
+      });
+    });
+
+    const entries = Object.entries(companyTables);
+    const { col, asc } = this._indexOverlaySort.byCompany;
+    const dir = asc ? 1 : -1;
+    entries.sort((a, b) => {
+      if (col === 'company') { return a[0].toLowerCase() < b[0].toLowerCase() ? -dir : a[0].toLowerCase() > b[0].toLowerCase() ? dir : 0; }
+      if (col === 'guests') return (a[1].count - b[1].count) * dir;
+      if (col === 'tables') return (a[1].tables.size - b[1].tables.size) * dir;
+      return 0;
+    });
+
+    if (entries.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="3" class="text-muted text-center">No guests assigned yet</td></tr>';
+    } else {
+      tbody.innerHTML = entries.map(([co, data]) => `
+        <tr>
+          <td style="font-size:0.82rem;">${utils.escapeHtml(co)}</td>
+          <td class="text-center" style="font-size:0.82rem;">${data.count}</td>
+          <td style="font-size:0.82rem;">${[...data.tables].join(', ')}</td>
+        </tr>
+      `).join('');
+    }
+
+    // Update header icons
+    document.querySelectorAll('.tp-idx-co-sort').forEach(th => {
+      const c = th.textContent.trim().toLowerCase().split(' ')[0];
+      const colKey = c === 'company' ? 'company' : c === 'guests' ? 'guests' : 'tables';
+      const icon = th.querySelector('.tp-sort-icon');
+      if (colKey === col) {
+        th.classList.add('sort-active');
+        if (icon) icon.className = 'bi tp-sort-icon ' + (asc ? 'bi-sort-down-alt' : 'bi-sort-down');
+      } else {
+        th.classList.remove('sort-active');
+        if (icon) icon.className = 'bi bi-chevron-expand tp-sort-icon';
+      }
+    });
   },
 
   showTablePlanStats() {

@@ -7488,12 +7488,15 @@ const eventsModule = {
                   </div>
 
                   <!-- Persistent Table Index Panel (bottom of canvas area) -->
-                  <div id="tpBottomIndex" style="display:none; border-top:2px solid #dee2e6; background:#fff; max-height:200px; min-height:0; flex-shrink:0; overflow:hidden; transition:max-height 0.3s ease;">
+                  <div id="tpBottomIndex" style="display:none; border-top:2px solid #dee2e6; background:#fff; height:200px; min-height:36px; max-height:70vh; flex-shrink:0; overflow:hidden; transition:margin-right 0.25s ease;">
+                    <div id="tpBottomIndexDragHandle" style="height:6px; cursor:ns-resize; background:linear-gradient(180deg, #dee2e6 0%, #f8f9fa 100%); display:flex; align-items:center; justify-content:center;">
+                      <div style="width:36px; height:3px; border-radius:2px; background:#adb5bd;"></div>
+                    </div>
                     <div class="d-flex align-items-center justify-content-between px-3 py-1 bg-light border-bottom" style="cursor:pointer;" onclick="eventsModule.toggleBottomIndex()">
                       <small class="fw-bold text-muted"><i class="bi bi-card-list me-1"></i>TABLE INDEX <span id="tpBottomIndexCount" class="badge bg-primary ms-1">0</span></small>
                       <i class="bi bi-chevron-down" id="tpBottomIndexChevron" style="transition:transform 0.3s;"></i>
                     </div>
-                    <div id="tpBottomIndexBody" class="overflow-auto" style="max-height:164px;">
+                    <div id="tpBottomIndexBody" class="overflow-auto" style="height:calc(100% - 36px);">
                       <table class="table table-sm table-hover mb-0" style="font-size:0.78rem;">
                         <thead class="table-light sticky-top">
                           <tr>
@@ -7657,6 +7660,8 @@ const eventsModule = {
 
         /* Bottom Table Index Panel */
         #tpBottomIndex { box-shadow: 0 -2px 8px rgba(0,0,0,0.08); transition: margin-right 0.25s ease; }
+        #tpBottomIndex.tp-resizing { transition: none !important; }
+        #tpBottomIndexDragHandle:hover { background: linear-gradient(180deg, #c6cbd1 0%, #e9ecef 100%) !important; }
         #tpBottomIndex .table { margin-bottom: 0; }
         #tpBottomIndex .table th { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.5px; color: #6c757d; padding: 4px 8px; }
         #tpBottomIndex .table td { padding: 3px 8px; vertical-align: middle; }
@@ -7672,6 +7677,7 @@ const eventsModule = {
     // Render after modal shows
     this.renderUnassignedGuests();
     this.renderCanvasTables();
+    this.initBottomIndexDrag();
 
     // Clean up
     document.getElementById('tablePlanModal').addEventListener('hidden.bs.modal', () => {
@@ -8134,8 +8140,44 @@ const eventsModule = {
     this._bottomIndexCollapsed = !this._bottomIndexCollapsed;
     const body = document.getElementById('tpBottomIndexBody');
     const chevron = document.getElementById('tpBottomIndexChevron');
-    if (body) body.style.display = this._bottomIndexCollapsed ? 'none' : '';
+    const panel = document.getElementById('tpBottomIndex');
+    if (this._bottomIndexCollapsed) {
+      if (body) body.style.display = 'none';
+      if (panel) panel.style.height = '36px';
+    } else {
+      if (body) body.style.display = '';
+      if (panel) panel.style.height = (this._bottomIndexHeight || 200) + 'px';
+    }
     if (chevron) chevron.style.transform = this._bottomIndexCollapsed ? 'rotate(180deg)' : '';
+  },
+
+  _bottomIndexHeight: 200,
+
+  initBottomIndexDrag() {
+    const handle = document.getElementById('tpBottomIndexDragHandle');
+    if (!handle) return;
+    handle.addEventListener('mousedown', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      const panel = document.getElementById('tpBottomIndex');
+      if (!panel || this._bottomIndexCollapsed) return;
+      panel.classList.add('tp-resizing');
+      const startY = e.clientY;
+      const startH = panel.offsetHeight;
+      const onMove = (ev) => {
+        const delta = startY - ev.clientY;
+        const newH = Math.max(60, Math.min(startH + delta, window.innerHeight * 0.7));
+        panel.style.height = newH + 'px';
+      };
+      const onUp = (ev) => {
+        document.removeEventListener('mousemove', onMove);
+        document.removeEventListener('mouseup', onUp);
+        panel.classList.remove('tp-resizing');
+        this._bottomIndexHeight = panel.offsetHeight;
+      };
+      document.addEventListener('mousemove', onMove);
+      document.addEventListener('mouseup', onUp);
+    });
   },
 
   _updateBottomIndexInset() {

@@ -7729,21 +7729,16 @@ const eventsModule = {
         table.assignments = assignments || [];
       }
 
-      // Load unassigned guests (RPC may not exist, fall back to direct query)
+      // Load unassigned guests
       try {
-        const { data: unassigned, error: unassignedError } = await STATE.client
-          .rpc('get_unassigned_guests', { p_event_id: this.currentEventIdTablePlan });
-        if (!unassignedError && unassigned) {
-          this.unassignedGuests = unassigned;
-        } else {
-          // Fallback: query event_guests directly, exclude those already assigned
-          const assignedGuestIds = new Set();
-          for (const t of this.tables) {
-            (t.assignments || []).forEach(a => { if (a.guest_id) assignedGuestIds.add(a.guest_id); });
-          }
+        const assignedGuestIds = new Set();
+        for (const t of this.tables) {
+          (t.assignments || []).forEach(a => { if (a.guest_id) assignedGuestIds.add(a.guest_id); });
+        }
 
-          // Collect guests from event_guests (confirmed RSVPs)
-          let allGuests = [];
+        // Collect guests from event_guests (confirmed RSVPs)
+        let allGuests = [];
+        try {
           const guestResult = await STATE.client
             .from('event_guests')
             .select('id, guest_name, guest_email, organisation_id, guest_type, plus_ones, rsvp_status, dietary_requirements')
@@ -7761,54 +7756,57 @@ const eventsModule = {
               dietary_requirements: g.dietary_requirements || null
             }));
           }
+        } catch (egErr) {
+          // event_guests table may not exist — not fatal
+        }
 
-          // Also pull from event_attendees (status = 'attending') so attendees
-          // added via the Attendees modal appear in the table plan
-          try {
-            const attResult = await STATE.client
-              .from('event_attendees')
-              .select('id, attendee_name, attendee_email, organisation_id, guest_type, plus_ones, meal_preference')
-              .eq('event_id', this.currentEventIdTablePlan)
-              .eq('rsvp_status', 'attending');
-            if (!attResult.error && attResult.data) {
-              // Deduplicate: skip if same name+email already present from event_guests
-              const existingKeys = new Set(allGuests.map(g => (g.guest_name || '').toLowerCase() + '|' + (g.guest_email || '').toLowerCase()));
-              for (const a of attResult.data) {
-                const key = (a.attendee_name || '').toLowerCase() + '|' + (a.attendee_email || '').toLowerCase();
-                if (!existingKeys.has(key)) {
-                  existingKeys.add(key);
-                  allGuests.push({
-                    guest_id: a.id,
-                    guest_name: a.attendee_name || '',
-                    guest_email: a.attendee_email || '',
-                    organisation_id: a.organisation_id || null,
-                    guest_type: a.guest_type || 'guest',
-                    plus_ones: a.plus_ones || 0,
-                    rsvp_status: 'confirmed',
-                    dietary_requirements: a.meal_preference || null
-                  });
-                }
+        // Also pull from event_attendees (status = 'attending') so attendees
+        // added via the Attendees modal appear in the table plan
+        try {
+          const attResult = await STATE.client
+            .from('event_attendees')
+            .select('id, attendee_name, attendee_email, organisation_id, guest_type, plus_ones, meal_preference, notes')
+            .eq('event_id', this.currentEventIdTablePlan)
+            .in('rsvp_status', ['attending', 'confirmed']);
+          if (!attResult.error && attResult.data) {
+            // Deduplicate: skip if same name+email already present from event_guests
+            const existingKeys = new Set(allGuests.map(g => (g.guest_name || '').toLowerCase() + '|' + (g.guest_email || '').toLowerCase()));
+            for (const a of attResult.data) {
+              const key = (a.attendee_name || '').toLowerCase() + '|' + (a.attendee_email || '').toLowerCase();
+              if (!existingKeys.has(key)) {
+                existingKeys.add(key);
+                allGuests.push({
+                  guest_id: a.id,
+                  guest_name: a.attendee_name || '',
+                  guest_email: a.attendee_email || '',
+                  organisation_id: a.organisation_id || null,
+                  guest_type: a.guest_type || 'guest',
+                  plus_ones: a.plus_ones || 0,
+                  rsvp_status: 'confirmed',
+                  dietary_requirements: a.meal_preference || null,
+                  notes: a.notes || null
+                });
               }
             }
-          } catch (attErr) {
-            // event_attendees table may not exist — not fatal
           }
-
-          // Enrich with company name from organisations if possible
-          const orgIds = [...new Set(allGuests.filter(g => g.organisation_id).map(g => g.organisation_id))];
-          let orgMap = {};
-          if (orgIds.length > 0) {
-            const { data: orgs } = await STATE.client
-              .from('organisations')
-              .select('id, company_name')
-              .in('id', orgIds);
-            if (orgs) orgs.forEach(o => { orgMap[o.id] = o.company_name; });
-          }
-
-          this.unassignedGuests = allGuests
-            .filter(g => !assignedGuestIds.has(g.guest_id))
-            .map(g => ({ ...g, company_name: orgMap[g.organisation_id] || null }));
+        } catch (attErr) {
+          // event_attendees table may not exist — not fatal
         }
+
+        // Enrich with company name from organisations if possible
+        const orgIds = [...new Set(allGuests.filter(g => g.organisation_id).map(g => g.organisation_id))];
+        let orgMap = {};
+        if (orgIds.length > 0) {
+          const { data: orgs } = await STATE.client
+            .from('organisations')
+            .select('id, company_name')
+            .in('id', orgIds);
+          if (orgs) orgs.forEach(o => { orgMap[o.id] = o.company_name; });
+        }
+
+        this.unassignedGuests = allGuests
+          .filter(g => !assignedGuestIds.has(g.guest_id))
+          .map(g => ({ ...g, company_name: orgMap[g.organisation_id] || null }));
       } catch (rpcErr) {
         console.warn('Error loading unassigned guests:', rpcErr);
         this.unassignedGuests = [];
@@ -8036,7 +8034,14 @@ const eventsModule = {
             <span class="badge bg-secondary">${group.guests.length}</span>
           </div>
           <div class="company-guests">
-            ${group.guests.map(guest => `
+            ${group.guests.map(guest => {
+              const typeBadge = guest.guest_type && guest.guest_type !== 'guest'
+                ? `<span class="badge bg-${guest.guest_type === 'vip' ? 'warning text-dark' : guest.guest_type === 'speaker' ? 'primary' : guest.guest_type === 'sponsor' ? 'info' : 'secondary'}" style="font-size:0.55rem; padding:1px 4px; margin-left:4px;">${guest.guest_type.toUpperCase()}</span>`
+                : '';
+              const dietaryIcon = guest.dietary_requirements
+                ? `<i class="bi bi-egg-fried text-warning ms-1" style="font-size:0.65rem;" title="${utils.escapeHtml(guest.dietary_requirements)}"></i>`
+                : '';
+              return `
               <div class="guest-chip"
                    draggable="true"
                    data-guest-id="${guest.guest_id}"
@@ -8047,9 +8052,10 @@ const eventsModule = {
                    ondragend="eventsModule.handleGuestDragEnd(event)">
                 <i class="bi bi-person-fill text-muted" style="font-size:0.75rem;"></i>
                 <span class="guest-name">${utils.escapeHtml(guest.guest_name)}</span>
+                ${typeBadge}${dietaryIcon}
                 ${guest.plus_ones > 0 ? `<span class="badge bg-info ms-auto" style="font-size:0.6rem;">+${guest.plus_ones}</span>` : ''}
-              </div>
-            `).join('')}
+              </div>`;
+            }).join('')}
           </div>
         </div>`;
     }).join('');
@@ -8795,9 +8801,10 @@ const eventsModule = {
         <div class="flex-grow-1 overflow-auto">
           ${table.assignments && table.assignments.length > 0 ? table.assignments.map(a => `
             <div class="seated-guest">
-              <div>
-                <div class="fw-medium">${utils.escapeHtml(a.guest_name)}</div>
+              <div style="min-width:0;">
+                <div class="fw-medium">${utils.escapeHtml(a.guest_name)}${a.guest_type && a.guest_type !== 'guest' ? ` <span class="badge bg-${a.guest_type === 'vip' ? 'warning text-dark' : a.guest_type === 'speaker' ? 'primary' : a.guest_type === 'sponsor' ? 'info' : 'secondary'}" style="font-size:0.55rem; padding:1px 4px;">${a.guest_type.toUpperCase()}</span>` : ''}</div>
                 ${a.company_name ? `<small class="text-muted">${utils.escapeHtml(a.company_name)}</small>` : ''}
+                ${a.dietary_requirements ? `<small class="text-warning d-block" style="font-size:0.7rem;"><i class="bi bi-egg-fried me-1"></i>${utils.escapeHtml(a.dietary_requirements)}</small>` : ''}
               </div>
               <span class="remove-x" onclick="eventsModule.removeGuestFromTable('${a.id}')" title="Remove">
                 <i class="bi bi-x-circle-fill"></i>
@@ -8868,7 +8875,9 @@ const eventsModule = {
         organisation_id: g.organisation_id || null,
         company_name: g.company_name || null,
         seat_number: nextSeat(),
-        dietary_requirements: g.dietary_requirements || null
+        is_vip: g.guest_type === 'vip' || g.guest_type === 'sponsor' || g.guest_type === 'speaker',
+        dietary_requirements: g.dietary_requirements || null,
+        notes: g.notes || null
       }));
 
       const { error } = await STATE.client
@@ -9023,7 +9032,9 @@ const eventsModule = {
           organisation_id: g.organisation_id || null,
           company_name: g.company_name || null,
           seat_number: _nextSeat(i),
-          dietary_requirements: g.dietary_requirements || null
+          is_vip: g.guest_type === 'vip' || g.guest_type === 'sponsor' || g.guest_type === 'speaker',
+          dietary_requirements: g.dietary_requirements || null,
+          notes: g.notes || null
         }));
         const { error } = await STATE.client.from('table_assignments').insert(rows);
         if (error) throw error;
@@ -9060,7 +9071,9 @@ const eventsModule = {
             organisation_id: this.draggedGuestData.organisation_id || null,
             company_name: this.draggedGuestData.company_name || null,
             seat_number: _nextSeat(0),
-            dietary_requirements: fullGuest?.dietary_requirements || null
+            is_vip: fullGuest?.guest_type === 'vip' || fullGuest?.guest_type === 'sponsor' || fullGuest?.guest_type === 'speaker',
+            dietary_requirements: fullGuest?.dietary_requirements || null,
+            notes: fullGuest?.notes || null
           }]);
         if (error) throw error;
         utils.showToast('Guest assigned to table', 'success');

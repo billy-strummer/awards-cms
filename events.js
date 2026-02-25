@@ -2185,7 +2185,7 @@ const eventsModule = {
       const totalSeated = assignList.length;
       const totalSeats = tableList.reduce((s, t) => s + t.total_seats, 0);
 
-      win.document.write(`<!DOCTYPE html><html><head><title>Seating Chart - ${event.event_name}</title>
+      win.document.write(`<!DOCTYPE html><html><head><title>Seating Chart - ${utils.escapeHtml(event.event_name)}</title>
         <style>
           body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; margin: 0; background: #f0f2f5; }
           .header { background: linear-gradient(135deg, #1a1a2e, #16213e); color: white; padding: 30px; text-align: center; }

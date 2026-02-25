@@ -2480,7 +2480,12 @@ const eventsModule = {
         .eq('event_id', eventId)
         .order('created_at', { ascending: true });
       if (error) throw error;
-      return data || [];
+      return (data || []).map(v => ({
+        ...v,
+        name: v.name || v.contact_name || v.contactName || '',
+        category: v.category || v.vendor_type || v.type || 'Other',
+        status: v.status || 'pending'
+      }));
     } catch (e) {
       const stored = localStorage.getItem(this._vendorsKey(eventId));
       return stored ? JSON.parse(stored) : [];
@@ -2493,12 +2498,13 @@ const eventsModule = {
       if (vendors.length > 0) {
         const rows = vendors.map(v => ({
           event_id: eventId,
-          contact_name: v.contact_name || v.contactName,
+          contact_name: v.name || v.contact_name || v.contactName,
           company: v.company,
           email: v.email,
           phone: v.phone,
-          vendor_type: v.type || v.vendor_type,
+          vendor_type: v.category || v.type || v.vendor_type,
           cost: v.cost || 0,
+          status: v.status || 'pending',
           notes: v.notes
         }));
         await STATE.client.from('event_vendors').insert(rows);

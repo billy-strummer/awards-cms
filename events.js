@@ -7656,7 +7656,7 @@ const eventsModule = {
         #tpDetailPanel .seated-guest .remove-x:hover { color: #a71d2a; }
 
         /* Bottom Table Index Panel */
-        #tpBottomIndex { box-shadow: 0 -2px 8px rgba(0,0,0,0.08); }
+        #tpBottomIndex { box-shadow: 0 -2px 8px rgba(0,0,0,0.08); transition: margin-right 0.25s ease; }
         #tpBottomIndex .table { margin-bottom: 0; }
         #tpBottomIndex .table th { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.5px; color: #6c757d; padding: 4px 8px; }
         #tpBottomIndex .table td { padding: 3px 8px; vertical-align: middle; }
@@ -8138,6 +8138,14 @@ const eventsModule = {
     if (chevron) chevron.style.transform = this._bottomIndexCollapsed ? 'rotate(180deg)' : '';
   },
 
+  _updateBottomIndexInset() {
+    const idx = document.getElementById('tpBottomIndex');
+    if (!idx) return;
+    const detail = document.getElementById('tpDetailPanel');
+    const detailOpen = detail && detail.style.display === 'flex';
+    idx.style.marginRight = detailOpen ? '300px' : '0';
+  },
+
   renderTableIndexPanel() {
     const panel = document.getElementById('tpBottomIndex');
     const tbody = document.getElementById('tpBottomIndexRows');
@@ -8275,6 +8283,7 @@ const eventsModule = {
     this._selectedTableId = null;
     const panel = document.getElementById('tpDetailPanel');
     if (panel) panel.style.display = 'none';
+    this._updateBottomIndexInset();
 
     const el = event.currentTarget;
     this._fixtureDrag = {
@@ -8521,7 +8530,7 @@ const eventsModule = {
     if (!panel || !content) return;
 
     const table = this.tables.find(t => t.id === tableId);
-    if (!table) { panel.style.display = 'none'; return; }
+    if (!table) { panel.style.display = 'none'; this._updateBottomIndexInset(); return; }
 
     const assignedCount = table.assignments?.length || 0;
     const availableSeats = table.total_seats - assignedCount;
@@ -8639,6 +8648,7 @@ const eventsModule = {
     `;
 
     panel.style.display = 'flex';
+    this._updateBottomIndexInset();
   },
 
   /**
@@ -8724,6 +8734,7 @@ const eventsModule = {
     this._selectedTableId = null;
     const panel = document.getElementById('tpDetailPanel');
     if (panel) panel.style.display = 'none';
+    this._updateBottomIndexInset();
     this.renderCanvasTables();
   },
 

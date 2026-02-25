@@ -7441,7 +7441,7 @@ const eventsModule = {
 
                     <div class="p-2 border-bottom d-flex justify-content-between align-items-center">
                       <small class="fw-bold text-muted">UNASSIGNED GUESTS</small>
-                      <span class="badge bg-primary" id="tpUnassignedCount">${totalGuests}</span>
+                      <span class="badge bg-warning text-dark" id="tpUnassignedCount">${totalGuests}</span>
                     </div>
                     <div id="unassignedGuestsList" class="flex-grow-1 overflow-auto p-2">
                       <!-- Guests grouped by company rendered here -->
@@ -7496,7 +7496,7 @@ const eventsModule = {
                       <div style="width:36px; height:3px; border-radius:2px; background:#adb5bd;"></div>
                     </div>
                     <div class="d-flex align-items-center justify-content-between px-3 py-1 bg-light border-bottom" style="cursor:pointer;" onclick="eventsModule.toggleBottomIndex()">
-                      <small class="fw-bold text-muted"><i class="bi bi-card-list me-1"></i>TABLE INDEX <span id="tpBottomIndexCount" class="badge bg-primary ms-1">0</span></small>
+                      <small class="fw-bold text-muted"><i class="bi bi-card-list me-1"></i>TABLE INDEX <span id="tpBottomIndexCount" class="badge bg-info ms-1">0</span></small>
                       <i class="bi bi-chevron-down" id="tpBottomIndexChevron" style="transition:transform 0.3s;"></i>
                     </div>
                     <div id="tpBottomIndexBody" class="overflow-auto" style="height:calc(100% - 36px);">

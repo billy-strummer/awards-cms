@@ -7494,7 +7494,7 @@ Available placeholders:
           <!-- Stats Cards -->
           <div class="row g-3 mb-4">
             <div class="col-md-3">
-              <div class="card text-center">
+              <div class="card text-center" style="cursor:pointer; transition: box-shadow 0.15s, transform 0.15s;" onclick="eventsModule.filterByCard('attending')" onmouseover="this.style.boxShadow='0 4px 12px rgba(25,135,84,0.25)'; this.style.transform='translateY(-2px)'" onmouseout="this.style.boxShadow=''; this.style.transform=''">
                 <div class="card-body py-2">
                   <h3 class="mb-0 text-success" id="attendingCount">0</h3>
                   <small class="text-muted">Attending</small>
@@ -7502,7 +7502,7 @@ Available placeholders:
               </div>
             </div>
             <div class="col-md-3">
-              <div class="card text-center">
+              <div class="card text-center" style="cursor:pointer; transition: box-shadow 0.15s, transform 0.15s;" onclick="eventsModule.filterByCard('not_attending')" onmouseover="this.style.boxShadow='0 4px 12px rgba(220,53,69,0.25)'; this.style.transform='translateY(-2px)'" onmouseout="this.style.boxShadow=''; this.style.transform=''">
                 <div class="card-body py-2">
                   <h3 class="mb-0 text-danger" id="notAttendingCount">0</h3>
                   <small class="text-muted">Not Attending</small>
@@ -7510,7 +7510,7 @@ Available placeholders:
               </div>
             </div>
             <div class="col-md-3">
-              <div class="card text-center">
+              <div class="card text-center" style="cursor:pointer; transition: box-shadow 0.15s, transform 0.15s;" onclick="eventsModule.filterByCard('maybe')" onmouseover="this.style.boxShadow='0 4px 12px rgba(255,193,7,0.25)'; this.style.transform='translateY(-2px)'" onmouseout="this.style.boxShadow=''; this.style.transform=''">
                 <div class="card-body py-2">
                   <h3 class="mb-0 text-warning" id="maybeCount">0</h3>
                   <small class="text-muted">Maybe</small>
@@ -7518,7 +7518,7 @@ Available placeholders:
               </div>
             </div>
             <div class="col-md-3">
-              <div class="card text-center">
+              <div class="card text-center" style="cursor:pointer; transition: box-shadow 0.15s, transform 0.15s;" onclick="eventsModule.filterByCard('')" onmouseover="this.style.boxShadow='0 4px 12px rgba(13,202,240,0.25)'; this.style.transform='translateY(-2px)'" onmouseout="this.style.boxShadow=''; this.style.transform=''">
                 <div class="card-body py-2">
                   <h3 class="mb-0 text-info" id="totalAttendeesCount">0</h3>
                   <small class="text-muted">Total</small>

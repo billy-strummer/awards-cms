@@ -794,6 +794,7 @@ const eventsModule = {
     document.getElementById('notAttendingCount').textContent = notAttending;
     document.getElementById('maybeCount').textContent = maybe;
     document.getElementById('totalAttendeesCount').textContent = attendees.length;
+    this._highlightActiveCard(document.getElementById('attendeeStatusFilter')?.value || '');
 
     // Venue capacity tracker
     const event = STATE.allEvents.find(e => e.id === eventId);
@@ -970,6 +971,33 @@ const eventsModule = {
   filterAttendeesList() {
     const eventId = document.getElementById('attendeesEventId').value;
     this.renderAttendees(eventId);
+  },
+
+  filterByCard(status) {
+    const filterEl = document.getElementById('attendeeStatusFilter');
+    if (filterEl) {
+      // Toggle: if already showing this status, clear the filter
+      filterEl.value = filterEl.value === status ? '' : status;
+    }
+    // Switch to the Attendees tab if not already active
+    const tab = document.querySelector('#attendeesTab');
+    if (tab && !tab.classList.contains('show')) {
+      const tabLink = document.querySelector('a[href="#attendeesTab"]');
+      if (tabLink) tabLink.click();
+    }
+    this.filterAttendeesList();
+    // Highlight the active card
+    this._highlightActiveCard(filterEl?.value || '');
+  },
+
+  _highlightActiveCard(activeStatus) {
+    const cards = document.querySelectorAll('#attendeesModal .row.g-3.mb-4 .card');
+    const statusMap = ['attending', 'not_attending', 'maybe', ''];
+    cards.forEach((card, i) => {
+      const isActive = statusMap[i] === activeStatus;
+      card.style.outline = isActive ? '2px solid currentColor' : '';
+      card.style.outlineOffset = isActive ? '-1px' : '';
+    });
   },
 
   // ---- ADD / UPDATE / DELETE ATTENDEES ----

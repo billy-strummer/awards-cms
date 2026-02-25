@@ -2883,6 +2883,7 @@ updateCountyFilterByRegion() {
       utils.showToast('No organisations to export', 'warning');
       return;
     }
+    try {
 
     const csv = [
       'Company Name,Sector,County,Region,Contact Name,Email,Phone,Website,Status,Tier,Tags,Awards Count,Address,Catchment Area,Description,Engagement Score,Health Status,Last Contacted',
@@ -2922,6 +2923,10 @@ updateCountyFilterByRegion() {
     window.URL.revokeObjectURL(url);
 
     utils.showToast(`Exported ${data.length} organisations`, 'success');
+    } catch (err) {
+      console.error('Organisation CSV export failed:', err);
+      utils.showToast('Export failed: ' + err.message, 'error');
+    }
   },
 
   // ============================================

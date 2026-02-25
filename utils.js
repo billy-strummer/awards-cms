@@ -309,35 +309,41 @@ const utils = {
       return;
     }
 
-    // Get headers
-    const headers = Object.keys(data[0]);
-    
-    // Create CSV content
-    const csvContent = [
-      headers.join(','), // Header row
-      ...data.map(row => 
-        headers.map(header => {
-          const value = row[header] || '';
-          // Escape commas and quotes
-          return `"${String(value).replace(/"/g, '""')}"`;
-        }).join(',')
-      )
-    ].join('\n');
+    try {
+      // Get headers
+      const headers = Object.keys(data[0]);
 
-    // Create blob and download
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const link = document.createElement('a');
-    const url = URL.createObjectURL(blob);
-    
-    link.setAttribute('href', url);
-    link.setAttribute('download', filename);
-    link.style.visibility = 'hidden';
-    
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    
-    this.showToast(`Exported ${data.length} records`, 'success');
+      // Create CSV content
+      const csvContent = [
+        headers.join(','), // Header row
+        ...data.map(row =>
+          headers.map(header => {
+            const value = row[header] || '';
+            // Escape commas and quotes
+            return `"${String(value).replace(/"/g, '""')}"`;
+          }).join(',')
+        )
+      ].join('\n');
+
+      // Create blob and download
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const link = document.createElement('a');
+      const url = URL.createObjectURL(blob);
+
+      link.setAttribute('href', url);
+      link.setAttribute('download', filename);
+      link.style.visibility = 'hidden';
+
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+
+      this.showToast(`Exported ${data.length} records`, 'success');
+    } catch (err) {
+      console.error('CSV export failed:', err);
+      this.showToast('Export failed: ' + err.message, 'error');
+    }
   },
 
   /**
@@ -1432,32 +1438,39 @@ const utils = {
       this.showToast('No data to export', 'warning');
       return;
     }
-    const { columns, formatDates = true } = options;
-    const headers = columns || Object.keys(data[0]);
-    const headerLabels = headers.map(h => h.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase()));
 
-    let html = '<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel"><head><meta charset="UTF-8"></head><body><table>';
-    html += '<tr>' + headerLabels.map(h => `<th style="font-weight:bold;background:#4472C4;color:white;padding:8px">${this.escapeHtml(h)}</th>`).join('') + '</tr>';
-    data.forEach(row => {
-      html += '<tr>' + headers.map(header => {
-        let value = row[header] || '';
-        if (formatDates && typeof value === 'string' && /^\d{4}-\d{2}-\d{2}/.test(value)) {
-          value = this.formatDate(value);
-        }
-        return `<td style="padding:4px;border:1px solid #ddd">${this.escapeHtml(String(value))}</td>`;
-      }).join('') + '</tr>';
-    });
-    html += '</table></body></html>';
+    try {
+      const { columns, formatDates = true } = options;
+      const headers = columns || Object.keys(data[0]);
+      const headerLabels = headers.map(h => h.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase()));
 
-    const blob = new Blob([html], { type: 'application/vnd.ms-excel' });
-    const link = document.createElement('a');
-    link.href = URL.createObjectURL(blob);
-    link.download = `${filename}.xls`;
-    link.style.visibility = 'hidden';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    this.showToast(`Exported ${data.length} records to Excel`, 'success');
+      let html = '<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel"><head><meta charset="UTF-8"></head><body><table>';
+      html += '<tr>' + headerLabels.map(h => `<th style="font-weight:bold;background:#4472C4;color:white;padding:8px">${this.escapeHtml(h)}</th>`).join('') + '</tr>';
+      data.forEach(row => {
+        html += '<tr>' + headers.map(header => {
+          let value = row[header] || '';
+          if (formatDates && typeof value === 'string' && /^\d{4}-\d{2}-\d{2}/.test(value)) {
+            value = this.formatDate(value);
+          }
+          return `<td style="padding:4px;border:1px solid #ddd">${this.escapeHtml(String(value))}</td>`;
+        }).join('') + '</tr>';
+      });
+      html += '</table></body></html>';
+
+      const blob = new Blob([html], { type: 'application/vnd.ms-excel' });
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(blob);
+      link.download = `${filename}.xls`;
+      link.style.visibility = 'hidden';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(link.href);
+      this.showToast(`Exported ${data.length} records to Excel`, 'success');
+    } catch (err) {
+      console.error('Excel export failed:', err);
+      this.showToast('Export failed: ' + err.message, 'error');
+    }
   },
 
   /**
@@ -1471,40 +1484,50 @@ const utils = {
       this.showToast('No data to export', 'warning');
       return;
     }
-    const { columns, formatDates = true } = options;
-    const headers = columns || Object.keys(data[0]);
-    const headerLabels = headers.map(h => h.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase()));
 
-    const printWindow = window.open('', '_blank');
-    printWindow.document.write(`<!DOCTYPE html><html><head><title>${this.escapeHtml(title)}</title>
-      <style>
-        body{font-family:Arial,sans-serif;margin:20px;color:#333}
-        h1{font-size:18px;margin-bottom:4px}
-        .meta{color:#666;font-size:12px;margin-bottom:16px}
-        table{width:100%;border-collapse:collapse;font-size:12px}
-        th{background:#f8f9fa;font-weight:bold;text-align:left;padding:8px;border:1px solid #dee2e6}
-        td{padding:6px 8px;border:1px solid #dee2e6}
-        tr:nth-child(even){background:#f8f9fa}
-        .footer{margin-top:20px;font-size:10px;color:#999;text-align:center}
-        @media print{body{margin:0}.footer{position:fixed;bottom:10px;width:100%}}
-      </style>
-    </head><body>
-      <h1>${this.escapeHtml(title)}</h1>
-      <div class="meta">Generated: ${new Date().toLocaleDateString('en-GB')} at ${new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })} | ${data.length} records</div>
-      <table>
-        <thead><tr>${headerLabels.map(h => `<th>${this.escapeHtml(h)}</th>`).join('')}</tr></thead>
-        <tbody>${data.map(row => '<tr>' + headers.map(header => {
-          let value = row[header] || '';
-          if (formatDates && typeof value === 'string' && /^\d{4}-\d{2}-\d{2}/.test(value)) {
-            value = this.formatDate(value);
-          }
-          return `<td>${this.escapeHtml(String(value))}</td>`;
-        }).join('') + '</tr>').join('')}</tbody>
-      </table>
-      <div class="footer">Awards CMS Report</div>
-    </body></html>`);
-    printWindow.document.close();
-    setTimeout(() => printWindow.print(), 500);
+    try {
+      const { columns, formatDates = true } = options;
+      const headers = columns || Object.keys(data[0]);
+      const headerLabels = headers.map(h => h.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase()));
+
+      const printWindow = window.open('', '_blank');
+      if (!printWindow) {
+        this.showToast('Pop-up blocked. Please allow pop-ups for PDF export.', 'error');
+        return;
+      }
+      printWindow.document.write(`<!DOCTYPE html><html><head><title>${this.escapeHtml(title)}</title>
+        <style>
+          body{font-family:Arial,sans-serif;margin:20px;color:#333}
+          h1{font-size:18px;margin-bottom:4px}
+          .meta{color:#666;font-size:12px;margin-bottom:16px}
+          table{width:100%;border-collapse:collapse;font-size:12px}
+          th{background:#f8f9fa;font-weight:bold;text-align:left;padding:8px;border:1px solid #dee2e6}
+          td{padding:6px 8px;border:1px solid #dee2e6}
+          tr:nth-child(even){background:#f8f9fa}
+          .footer{margin-top:20px;font-size:10px;color:#999;text-align:center}
+          @media print{body{margin:0}.footer{position:fixed;bottom:10px;width:100%}}
+        </style>
+      </head><body>
+        <h1>${this.escapeHtml(title)}</h1>
+        <div class="meta">Generated: ${new Date().toLocaleDateString('en-GB')} at ${new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })} | ${data.length} records</div>
+        <table>
+          <thead><tr>${headerLabels.map(h => `<th>${this.escapeHtml(h)}</th>`).join('')}</tr></thead>
+          <tbody>${data.map(row => '<tr>' + headers.map(header => {
+            let value = row[header] || '';
+            if (formatDates && typeof value === 'string' && /^\d{4}-\d{2}-\d{2}/.test(value)) {
+              value = this.formatDate(value);
+            }
+            return `<td>${this.escapeHtml(String(value))}</td>`;
+          }).join('') + '</tr>').join('')}</tbody>
+        </table>
+        <div class="footer">Awards CMS Report</div>
+      </body></html>`);
+      printWindow.document.close();
+      setTimeout(() => printWindow.print(), 500);
+    } catch (err) {
+      console.error('PDF export failed:', err);
+      this.showToast('Export failed: ' + err.message, 'error');
+    }
   },
 
   /* ==================================================== */

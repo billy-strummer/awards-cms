@@ -296,27 +296,32 @@ const gdprModule = {
    * Export all data for an entity as JSON download
    */
   async _exportEntityData(entityId) {
-    const { data: org } = await STATE.client.from('organisations').select('*').eq('id', entityId).single();
-    const { data: contacts } = await STATE.client.from('organisation_contacts').select('*').eq('organisation_id', entityId);
-    const { data: assignments } = await STATE.client.from('award_assignments').select('*').eq('organisation_id', entityId);
-    const { data: entries } = await STATE.client.from('entries').select('*').eq('organisation_id', entityId);
+    try {
+      const { data: org } = await STATE.client.from('organisations').select('*').eq('id', entityId).single();
+      const { data: contacts } = await STATE.client.from('organisation_contacts').select('*').eq('organisation_id', entityId);
+      const { data: assignments } = await STATE.client.from('award_assignments').select('*').eq('organisation_id', entityId);
+      const { data: entries } = await STATE.client.from('entries').select('*').eq('organisation_id', entityId);
 
-    const exportData = {
-      exportDate: new Date().toISOString(),
-      type: 'GDPR Subject Access Request',
-      organisation: org,
-      contacts: contacts || [],
-      award_assignments: assignments || [],
-      entries: entries || []
-    };
+      const exportData = {
+        exportDate: new Date().toISOString(),
+        type: 'GDPR Subject Access Request',
+        organisation: org,
+        contacts: contacts || [],
+        award_assignments: assignments || [],
+        entries: entries || []
+      };
 
-    const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `gdpr_export_${entityId.slice(0, 8)}_${new Date().toISOString().split('T')[0]}.json`;
-    a.click();
-    URL.revokeObjectURL(url);
+      const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `gdpr_export_${entityId.slice(0, 8)}_${new Date().toISOString().split('T')[0]}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error('GDPR export failed:', err);
+      utils.showToast('Data export failed: ' + err.message, 'error');
+    }
   },
 
   /**

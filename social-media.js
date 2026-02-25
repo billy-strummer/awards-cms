@@ -365,6 +365,11 @@ Vote now: {{website}}
 
     if (!file) return;
 
+    const maxSize = 10 * 1024 * 1024; // 10MB
+    if (file.size > maxSize) { utils.showToast('Image too large. Maximum size is 10MB.', 'error'); return; }
+    const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+    if (!allowedTypes.includes(file.type)) { utils.showToast('Invalid file type. Please upload a JPEG, PNG, GIF, or WebP image.', 'error'); return; }
+
     try {
       utils.showLoading();
 

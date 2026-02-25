@@ -544,18 +544,26 @@ const winnersModule = {
     }
     
     const file = fileInput.files[0];
-    
+
     // Validate file type
     const validPhotoTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
     const validVideoTypes = ['video/mp4', 'video/quicktime', 'video/x-msvideo'];
-    
+
     if (this.currentMediaType === MEDIA_TYPES.PHOTO && !validPhotoTypes.includes(file.type)) {
       utils.showToast('Please select a valid image file (JPEG, PNG, GIF, WebP)', 'error');
       return;
     }
-    
+
     if (this.currentMediaType === MEDIA_TYPES.VIDEO && !validVideoTypes.includes(file.type)) {
       utils.showToast('Please select a valid video file (MP4, MOV, AVI)', 'error');
+      return;
+    }
+
+    // Validate file size
+    const maxSize = this.currentMediaType === MEDIA_TYPES.VIDEO ? 50 * 1024 * 1024 : 10 * 1024 * 1024;
+    if (file.size > maxSize) {
+      const maxMB = maxSize / (1024 * 1024);
+      utils.showToast(`File too large. Maximum size is ${maxMB}MB.`, 'error');
       return;
     }
     

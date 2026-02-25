@@ -68,6 +68,10 @@ window.sponsorPortalModule = {
   /* 2. ASSET UPLOAD */
   async uploadSponsorAsset(sponsorId, file) {
     if (!file) { utils.showToast('Please select a file first', 'warning'); return null; }
+    const maxSize = 10 * 1024 * 1024; // 10MB
+    if (file.size > maxSize) { utils.showToast('File too large. Maximum size is 10MB.', 'error'); return null; }
+    const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/svg+xml', 'application/pdf'];
+    if (!allowedTypes.includes(file.type)) { utils.showToast('Invalid file type. Please upload an image or PDF.', 'error'); return null; }
     try {
       const path = `${sponsorId}/${Date.now()}-${file.name.replace(/[^a-zA-Z0-9._-]/g, '_')}`;
       const { error: upErr } = await STATE.client.storage.from('sponsor-assets').upload(path, file, { upsert: true, contentType: file.type });

@@ -5,11 +5,14 @@
 const awardsModule = {
   selectedAwards: new Set(),
   currentSort: { column: 'award_name', direction: 'asc' },
+  _loading: false,
 
   /**
    * Load all awards from database
    */
   async loadAwards() {
+    if (this._loading) return;
+    this._loading = true;
     try {
       utils.showLoading();
       utils.showSkeletonLoading('awardsTableBody', 10);
@@ -114,6 +117,7 @@ const awardsModule = {
       utils.showEmptyState('awardsTableBody', 10, 'Failed to load awards', 'bi-exclamation-triangle');
     } finally {
       utils.hideLoading();
+      this._loading = false;
     }
   },
   /**

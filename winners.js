@@ -6,6 +6,7 @@ const winnersModule = {
   currentWinnerId: null,
   currentMediaType: null,
   _selectedWinnerIds: new Set(),
+  _loading: false,
   _currentPage: 1,
   _pageSize: 50,
   _sortField: 'created_at',
@@ -15,6 +16,8 @@ const winnersModule = {
    * Load all winners from database
    */
   async loadWinners() {
+    if (this._loading) return;
+    this._loading = true;
     try {
       utils.showLoading();
       utils.showSkeletonLoading('winnersTableBody', 7);
@@ -131,6 +134,7 @@ const winnersModule = {
       utils.showEmptyState('winnersTableBody', 7, 'Failed to load winners', 'bi-exclamation-triangle');
     } finally {
       utils.hideLoading();
+      this._loading = false;
     }
   },
 

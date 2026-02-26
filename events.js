@@ -3,10 +3,14 @@
 /* ==================================================== */
 
 const eventsModule = {
+  _loading: false,
+
   /**
    * Load all events from database
    */
   async loadEvents() {
+    if (this._loading) return;
+    this._loading = true;
     try {
       utils.showLoading();
       utils.showSkeletonLoading('eventsTableBody', 11);
@@ -65,6 +69,7 @@ const eventsModule = {
       utils.showEmptyState('eventsTableBody', 8, 'Failed to load events', 'bi-exclamation-triangle');
     } finally {
       utils.hideLoading();
+      this._loading = false;
     }
   },
 

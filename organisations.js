@@ -3,7 +3,8 @@
 /* ==================================================== */
 
 const orgsModule = {
-  
+  _loading: false,
+
   // ============================================
   // State management for bulk operations
   // ============================================
@@ -31,6 +32,8 @@ const orgsModule = {
  * ENHANCED: Now calculates dashboard stats
  */
 async loadOrganisations() {
+  if (this._loading) return;
+  this._loading = true;
   try {
     utils.showLoading();
     utils.showSkeletonLoading('orgsTableBody', 10);
@@ -186,6 +189,7 @@ async loadOrganisations() {
     utils.showEmptyState('orgsTableBody', 10, 'Failed to load organisations', 'bi-exclamation-triangle');
   } finally {
     utils.hideLoading();
+    this._loading = false;
   }
 },
       

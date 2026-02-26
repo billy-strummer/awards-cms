@@ -6,6 +6,7 @@ const entriesModule = {
   allEntries: [],
   filteredEntries: [],
   selectedEntryIds: new Set(),
+  _loading: false,
   _currentPage: 1,
   _pageSize: 50,
   _sortField: 'submission_date',
@@ -106,6 +107,8 @@ const entriesModule = {
    * Load all entries
    */
   async loadEntries() {
+    if (this._loading) return;
+    this._loading = true;
     try {
       // Paginated loading to handle large datasets
       let allData = [];
@@ -159,6 +162,8 @@ const entriesModule = {
     } catch (error) {
       console.error('Error loading entries:', error);
       throw error;
+    } finally {
+      this._loading = false;
     }
   },
 

@@ -6,6 +6,7 @@
 
 const { Resend } = require('resend');
 const { createClient } = require('@supabase/supabase-js');
+const { wrapEmail } = require('./email-header');
 require('dotenv').config();
 
 const resend = new Resend(process.env.RESEND_API_KEY);
@@ -20,51 +21,10 @@ const FROM_NAME = process.env.FROM_NAME || 'British Trade Awards';
 
 /**
  * Wrap email content in branded HTML template.
- * Uses tenant branding when available, falls back to BTA defaults.
+ * Delegates to shared email-header.js module.
  */
 function wrapEmailTemplate(subject, bodyHtml, preheader = '', branding = {}) {
-  const brandName    = branding.company_name    || FROM_NAME;
-  const primaryColor = branding.primary_color   || '#000000';
-  const secondaryColor = branding.secondary_color || '#1a1a1a';
-  const accentColor  = branding.accent_color    || '#D4AF37';
-  const logoUrl      = branding.logo_url        || '';
-  const contactEmail = branding.email_from      || branding.email_reply_to || '';
-  const websiteUrl   = branding.custom_domain   || '';
-
-  const esc = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
-
-  const headerContent = logoUrl
-    ? `<table cellpadding="0" cellspacing="0" border="0" style="margin:0 auto;"><tr>`
-      + `<td style="vertical-align:middle;padding-right:25px;"><img src="${esc(logoUrl)}" alt="${esc(brandName)}" style="height:80px;width:auto;display:block;"></td>`
-      + `<td style="vertical-align:middle;"><h1 style="color:${accentColor};margin:0;font-size:22px;font-family:Georgia,'Times New Roman',serif;letter-spacing:3px;text-transform:uppercase;line-height:1.3;">${esc(brandName)}</h1>`
-      + `<p style="color:${accentColor};margin:5px 0 0;font-size:12px;font-family:Arial,Helvetica,sans-serif;letter-spacing:2px;text-transform:uppercase;opacity:0.9;font-weight:300;">Self-Nomination Entry Confirmation</p></td>`
-      + `</tr></table>`
-    : `<h1 style="color:${accentColor};margin:0;font-size:24px;font-family:Georgia,'Times New Roman',serif;letter-spacing:3px;text-transform:uppercase;">${esc(brandName)}</h1>`
-      + `<p style="color:${accentColor};margin:8px 0 0;font-size:13px;letter-spacing:2px;text-transform:uppercase;opacity:0.9;">Self-Nomination Entry Confirmation</p>`;
-
-  const footerLinks = [
-    websiteUrl ? `<a href="https://${esc(websiteUrl)}" style="color:${accentColor};text-decoration:none;">${esc(websiteUrl)}</a>` : '',
-    contactEmail ? `<a href="mailto:${esc(contactEmail)}" style="color:${accentColor};text-decoration:none;">${esc(contactEmail)}</a>` : ''
-  ].filter(Boolean).join(' &nbsp;|&nbsp; ');
-
-  return `<!DOCTYPE html>
-<html lang="en">
-<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>${subject}</title>
-</head>
-<body style="margin:0;padding:0;background-color:#f4f4f7;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
-${preheader ? `<div style="display:none;max-height:0;overflow:hidden;">${preheader}</div>` : ''}
-<div style="max-width:600px;margin:0 auto;background:#ffffff;">
-  <div style="background:linear-gradient(135deg,${primaryColor} 0%,${secondaryColor} 100%);padding:28px 32px;text-align:center;border-bottom:3px solid ${accentColor};">
-    ${headerContent}
-  </div>
-  <div style="padding:32px;color:#333333;line-height:1.6;font-size:15px;">${bodyHtml}</div>
-  <div style="background:${secondaryColor};padding:24px 32px;text-align:center;font-size:12px;color:#999;">
-    <p style="margin:0;">${esc(brandName)}${footerLinks ? ' | ' + footerLinks : ''}</p>
-    <p style="margin:8px 0 0;"><a href="{{{unsubscribe_url}}}" style="color:#888;text-decoration:underline;">Unsubscribe</a> | <a href="{{{preferences_url}}}" style="color:#888;text-decoration:underline;">Email Preferences</a></p>
-  </div>
-</div>
-</body></html>`;
+  return wrapEmail(bodyHtml, branding, { subject, preheader });
 }
 
 /**

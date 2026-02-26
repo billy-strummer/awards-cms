@@ -1,12 +1,14 @@
 -- ============================================
 -- UPDATE EMAIL HEADER TO MATCH WEBSITE DESIGN
 -- ============================================
--- The confirmation email header currently stacks the logo
--- above the subtitle text (centered). The submit-entry.html
--- page shows them SIDE-BY-SIDE: logo on the left, brand name
--- + subtitle on the right.  This migration updates the
--- header HTML to replicate that layout using a table (for
--- broad email-client compatibility).
+-- CANONICAL SOURCE: api/email-header.js
+-- This SQL function mirrors the header built by buildEmailHeader()
+-- in api/email-header.js.  If you change the header design, update
+-- that JS module FIRST, then mirror the markup here.
+--
+-- Layout: logo on left, brand name + subtitle on right (side-by-side).
+-- Falls back to centred text when no logo is configured.
+-- All branding values come from the tenant_branding table.
 -- ============================================
 
 CREATE OR REPLACE FUNCTION send_entry_confirmation_email(p_entry_id UUID)

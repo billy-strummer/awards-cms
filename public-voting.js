@@ -83,7 +83,9 @@ const votingSystem = {
         .eq('is_public', true)
         .eq('allow_public_voting', true)
         .in('status', ['shortlisted', 'submitted'])
-        .order('public_votes', { ascending: false });
+        .neq('is_deleted', true)
+        .order('public_votes', { ascending: false })
+        .limit(500);
 
       if (error) throw error;
 
@@ -254,8 +256,24 @@ const votingSystem = {
    * Submit vote
    */
   async submitVote() {
+    // Prevent double-submit
+    if (this._submittingVote) return;
+    this._submittingVote = true;
     try {
       const voterName = sessionStorage.getItem('voterName') || '';
+
+      // Rate limit: max 10 votes per hour per email
+      const oneHourAgo = new Date(Date.now() - 3600000).toISOString();
+      const { count: recentVotes } = await supabase
+        .from('public_votes')
+        .select('id', { count: 'exact', head: true })
+        .eq('voter_email', this.voterEmail)
+        .gte('created_at', oneHourAgo);
+      if (recentVotes >= 10) {
+        showPublicToast('You have reached the voting limit. Please try again later.', 'warning');
+        this.closeVerificationModal();
+        return;
+      }
 
       // Check if already voted for this entry
       const { data: existingVote } = await supabase
@@ -271,7 +289,7 @@ const votingSystem = {
         return;
       }
 
-      // Insert vote
+      // Insert vote (DB UNIQUE constraint on entry_id+voter_email prevents race condition duplicates)
       const { error } = await supabase
         .from('public_votes')
         .insert([{
@@ -280,7 +298,7 @@ const votingSystem = {
           voter_name: voterName,
           voter_ip: await this.getIPAddress(),
           vote_value: 1,
-          email_verified: false, // Will be verified via email
+          email_verified: false,
           verification_token: this.generateToken(),
           verification_sent_at: new Date().toISOString()
         }]);
@@ -301,7 +319,13 @@ const votingSystem = {
 
     } catch (error) {
       console.error('Error submitting vote:', error);
-      showPublicToast('Failed to submit vote. Please try again.', 'error');
+      if (error?.code === '23505') {
+        showPublicToast('You have already voted for this entry!', 'warning');
+      } else {
+        showPublicToast('Failed to submit vote. Please try again.', 'error');
+      }
+    } finally {
+      this._submittingVote = false;
     }
   },
 

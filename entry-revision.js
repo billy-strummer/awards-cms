@@ -49,7 +49,7 @@ window.entryRevisionModule = {
   async renderRevisionHistory(entryId) {
     const { data: revisions, error } = await STATE.client
       .from('entry_revisions').select('*').eq('entry_id', entryId)
-      .order('created_at', { ascending: false });
+      .order('created_at', { ascending: false }).limit(100);
     if (error) return '<p class="text-danger">Could not load revision history.</p>';
     if (!revisions?.length) return '<p class="text-muted fst-italic">No revision history.</p>';
 

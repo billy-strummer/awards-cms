@@ -3997,6 +3997,12 @@ const eventsModule = {
                   <button class="btn btn-sm btn-outline-secondary" onclick="eventsModule.printRunningOrder()">
                     <i class="bi bi-printer me-1"></i>Print
                   </button>
+                  <button class="btn btn-sm btn-outline-secondary" onclick="eventsModule.exportWinnerCards()" title="Print winner cards - 2 per A4 portrait">
+                    <i class="bi bi-trophy me-1"></i>Winner Cards
+                  </button>
+                  <button class="btn btn-sm btn-outline-secondary" onclick="eventsModule.exportEnvelopeLabels()" title="Print envelope labels - 4 per A4 landscape">
+                    <i class="bi bi-envelope me-1"></i>Envelopes
+                  </button>
                   <button class="btn btn-sm btn-outline-warning" id="roUndoBtn" onclick="eventsModule.undoROReorder()" disabled title="Undo last reorder">
                     <i class="bi bi-arrow-counterclockwise me-1"></i>Undo
                   </button>
@@ -6732,6 +6738,142 @@ const eventsModule = {
     });
     const filename = `${this.currentEventName.replace(/[^a-z0-9]/gi, '_')}_running_order_${new Date().toISOString().split('T')[0]}.csv`;
     utils.exportToCSV(exportData, filename);
+  },
+
+  /**
+   * Export Winner Cards - 2 per A4 page, portrait orientation.
+   * Each card shows: "And the winner is...", Company Name, Recipient Collecting, Category/Award Name
+   */
+  exportWinnerCards() {
+    const awards = this.runningOrderItems.filter(item => (item.item_type || 'award') === 'award');
+    if (awards.length === 0) {
+      utils.showToast('No award items to export', 'warning');
+      return;
+    }
+
+    const cards = awards.map(item => ({
+      awardName: item.award_name || item.item_name || (item.awards ? item.awards.award_name : 'N/A'),
+      companyName: item.display_name || (item.organisations ? item.organisations.company_name : 'N/A'),
+      recipient: item.recipient_collecting || (item.event_guests ? item.event_guests.guest_name : 'TBC'),
+      sponsor: item.sponsor || ''
+    }));
+
+    let pages = '';
+    for (let i = 0; i < cards.length; i += 2) {
+      const card1 = cards[i];
+      const card2 = cards[i + 1];
+      pages += `<div class="page">
+        <div class="card">
+          <div class="card-header">${utils.escapeHtml(this.currentEventName)}</div>
+          <div class="card-category">${utils.escapeHtml(card1.awardName)}</div>
+          ${card1.sponsor ? `<div class="card-sponsor">Sponsored by ${utils.escapeHtml(card1.sponsor)}</div>` : ''}
+          <div class="card-divider"></div>
+          <div class="card-label">And the winner is&hellip;</div>
+          <div class="card-company">${utils.escapeHtml(card1.companyName)}</div>
+          <div class="card-recipient">Collected by: ${utils.escapeHtml(card1.recipient)}</div>
+        </div>
+        ${card2 ? `<div class="card">
+          <div class="card-header">${utils.escapeHtml(this.currentEventName)}</div>
+          <div class="card-category">${utils.escapeHtml(card2.awardName)}</div>
+          ${card2.sponsor ? `<div class="card-sponsor">Sponsored by ${utils.escapeHtml(card2.sponsor)}</div>` : ''}
+          <div class="card-divider"></div>
+          <div class="card-label">And the winner is&hellip;</div>
+          <div class="card-company">${utils.escapeHtml(card2.companyName)}</div>
+          <div class="card-recipient">Collected by: ${utils.escapeHtml(card2.recipient)}</div>
+        </div>` : '<div class="card empty"></div>'}
+      </div>`;
+    }
+
+    const html = `<!DOCTYPE html><html><head><meta charset="utf-8">
+      <title>Winner Cards - ${utils.escapeHtml(this.currentEventName)}</title>
+      <style>
+        @page { size: A4 portrait; margin: 10mm; }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: 'Georgia', 'Times New Roman', serif; color: #1a1a1a; }
+        .page { width: 190mm; height: 277mm; display: flex; flex-direction: column; gap: 10mm; page-break-after: always; padding: 0; }
+        .page:last-child { page-break-after: auto; }
+        .card { flex: 1; border: 2px solid #c9a94e; border-radius: 8px; padding: 25mm 20mm; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; position: relative; overflow: hidden; background: linear-gradient(135deg, #fffef5 0%, #fff9e6 100%); }
+        .card.empty { border: 2px dashed #ddd; background: transparent; }
+        .card-header { font-size: 11pt; color: #888; text-transform: uppercase; letter-spacing: 3px; margin-bottom: 8mm; }
+        .card-category { font-size: 18pt; font-weight: bold; color: #2c2c2c; margin-bottom: 4mm; line-height: 1.3; }
+        .card-sponsor { font-size: 10pt; color: #888; font-style: italic; margin-bottom: 6mm; }
+        .card-divider { width: 60mm; height: 1px; background: linear-gradient(90deg, transparent, #c9a94e, transparent); margin: 5mm 0; }
+        .card-label { font-size: 14pt; color: #c9a94e; font-style: italic; margin-bottom: 6mm; letter-spacing: 1px; }
+        .card-company { font-size: 26pt; font-weight: bold; color: #1a1a1a; margin-bottom: 6mm; line-height: 1.2; }
+        .card-recipient { font-size: 12pt; color: #555; }
+        @media print {
+          body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+          .page { height: 277mm; }
+        }
+      </style></head><body>${pages}
+      <script>window.onload=function(){window.print();};<\/script></body></html>`;
+
+    const w = window.open('', '_blank', 'width=800,height=1000');
+    if (w) { w.document.write(html); w.document.close(); }
+    else { utils.showToast('Please allow popups to print', 'warning'); }
+  },
+
+  /**
+   * Export Envelope Labels - 4 per A4 page, landscape orientation.
+   * Each label shows the category/award name for sticky envelope labels.
+   */
+  exportEnvelopeLabels() {
+    const awards = this.runningOrderItems.filter(item => (item.item_type || 'award') === 'award');
+    if (awards.length === 0) {
+      utils.showToast('No award items to export', 'warning');
+      return;
+    }
+
+    const labels = awards.map(item => ({
+      awardName: item.award_name || item.item_name || (item.awards ? item.awards.award_name : 'N/A'),
+      awardNumber: item.award_number || '',
+      sponsor: item.sponsor || ''
+    }));
+
+    let pages = '';
+    for (let i = 0; i < labels.length; i += 4) {
+      const batch = labels.slice(i, i + 4);
+      let cells = '';
+      for (let j = 0; j < 4; j++) {
+        const label = batch[j];
+        if (label) {
+          cells += `<div class="label">
+            <div class="label-number">${utils.escapeHtml(label.awardNumber)}</div>
+            <div class="label-name">${utils.escapeHtml(label.awardName)}</div>
+            ${label.sponsor ? `<div class="label-sponsor">Sponsored by ${utils.escapeHtml(label.sponsor)}</div>` : ''}
+          </div>`;
+        } else {
+          cells += '<div class="label empty"></div>';
+        }
+      }
+      pages += `<div class="page"><div class="grid">${cells}</div></div>`;
+    }
+
+    const html = `<!DOCTYPE html><html><head><meta charset="utf-8">
+      <title>Envelope Labels - ${utils.escapeHtml(this.currentEventName)}</title>
+      <style>
+        @page { size: A4 landscape; margin: 10mm; }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: Arial, Helvetica, sans-serif; color: #1a1a1a; }
+        .page { width: 277mm; height: 190mm; page-break-after: always; display: flex; align-items: center; justify-content: center; }
+        .page:last-child { page-break-after: auto; }
+        .grid { display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr; gap: 8mm; width: 100%; height: 100%; }
+        .label { border: 1.5px dashed #aaa; border-radius: 6px; padding: 10mm 12mm; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; }
+        .label.empty { border-color: #ddd; }
+        .label-number { font-size: 12pt; color: #888; font-weight: bold; margin-bottom: 4mm; letter-spacing: 1px; }
+        .label-name { font-size: 22pt; font-weight: bold; line-height: 1.3; color: #1a1a1a; }
+        .label-sponsor { font-size: 10pt; color: #777; font-style: italic; margin-top: 4mm; }
+        @media print {
+          body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+          .page { height: 190mm; }
+          .label { border-style: dashed; }
+        }
+      </style></head><body>${pages}
+      <script>window.onload=function(){window.print();};<\/script></body></html>`;
+
+    const w = window.open('', '_blank', 'width=1000,height=800');
+    if (w) { w.document.write(html); w.document.close(); }
+    else { utils.showToast('Please allow popups to print', 'warning'); }
   },
 
   // ========================================

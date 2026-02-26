@@ -122,12 +122,12 @@ window.brandingModule = {
     const sub = subtitle || 'Self-Nomination Entry Confirmation';
     return logoUrl
       ? `<table cellpadding="0" cellspacing="0" border="0" style="margin:0 auto;"><tr>`
-        + `<td style="vertical-align:middle;padding-right:25px;"><img src="${logoUrl}" alt="${brandName}" style="height:80px;width:auto;display:block;"></td>`
-        + `<td style="vertical-align:middle;"><h1 style="color:${accentColor};margin:0;font-size:22px;font-family:Georgia,'Times New Roman',serif;letter-spacing:3px;text-transform:uppercase;line-height:1.3;">${brandName}</h1>`
-        + `<p style="color:${accentColor};margin:5px 0 0;font-size:12px;font-family:Arial,Helvetica,sans-serif;letter-spacing:2px;text-transform:uppercase;opacity:0.9;font-weight:300;">${sub}</p></td>`
+        + `<td style="vertical-align:middle;padding-right:25px;"><img src="${logoUrl}" alt="${brandName}" style="height:100px;width:auto;display:block;"></td>`
+        + `<td style="vertical-align:middle;"><h1 style="color:${accentColor};margin:0;font-size:28px;font-family:Georgia,'Times New Roman',serif;font-weight:900;letter-spacing:3px;text-transform:uppercase;line-height:1.3;text-shadow:0 2px 8px rgba(0,0,0,0.5);">${brandName}</h1>`
+        + `<p style="color:${accentColor};margin:5px 0 0;font-size:14px;font-family:Arial,Helvetica,sans-serif;letter-spacing:2px;text-transform:uppercase;opacity:0.95;font-weight:300;">${sub}</p></td>`
         + `</tr></table>`
-      : `<h1 style="color:${accentColor};margin:0;font-size:24px;font-family:Georgia,'Times New Roman',serif;letter-spacing:3px;text-transform:uppercase;">${brandName}</h1>`
-        + `<p style="color:${accentColor};margin:8px 0 0;font-size:13px;letter-spacing:2px;text-transform:uppercase;opacity:0.9;">${sub}</p>`;
+      : `<h1 style="color:${accentColor};margin:0;font-size:28px;font-family:Georgia,'Times New Roman',serif;font-weight:900;letter-spacing:3px;text-transform:uppercase;text-shadow:0 2px 8px rgba(0,0,0,0.5);">${brandName}</h1>`
+        + `<p style="color:${accentColor};margin:5px 0 0;font-size:14px;font-family:Arial,Helvetica,sans-serif;letter-spacing:2px;text-transform:uppercase;opacity:0.95;font-weight:300;">${sub}</p>`;
   },
 
   getEmailStyles(tenantId, config = {}, { subtitle } = {}) {
@@ -139,7 +139,7 @@ window.brandingModule = {
     const logoUrl = this._esc(config.logo_url || '');
     const headerContent = this._buildEmailHeaderContent(config.logo_url ? logoUrl : '', c, a, subtitle);
     return {
-      css: `.email-header{background:linear-gradient(135deg,${p} 0%,${s} 100%);padding:28px 32px;text-align:center;border-bottom:3px solid ${a}}.email-header img{height:80px;width:auto}.email-btn{background:${a};color:#fff;padding:12px 28px;border-radius:4px;text-decoration:none;font-weight:bold;display:inline-block}.email-footer{background:${s};padding:16px 32px;font-size:12px;color:#999;text-align:center}`,
+      css: `.email-header{background:linear-gradient(135deg,${p} 0%,${s} 100%);padding:35px 40px;text-align:center;border-bottom:3px solid ${a}}.email-header img{height:100px;width:auto}.email-btn{background:${a};color:#fff;padding:12px 28px;border-radius:4px;text-decoration:none;font-weight:bold;display:inline-block}.email-footer{background:${s};padding:16px 32px;font-size:12px;color:#999;text-align:center}`,
       header: `<div class="email-header">${headerContent}</div>`,
       footer: `<div class="email-footer"><p style="margin:0;">${c}${r ? ' | <a href="mailto:' + r + '" style="color:' + a + ';text-decoration:none;">' + r + '</a>' : ''}</p></div>`
     };
@@ -196,8 +196,8 @@ window.brandingModule = {
     const logoUrl = this._esc(config.logo_url || '');
     const r = this._esc(config.email_reply_to || config.email_from || '');
     const headerContent = this._buildEmailHeaderContent(config.logo_url ? logoUrl : '', c, a);
-    return `<div style="max-width:360px;border-radius:8px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.12);font-family:Arial,Helvetica,sans-serif;">
-      <div style="background:linear-gradient(135deg,${p} 0%,${s} 100%);padding:20px 24px;text-align:center;border-bottom:3px solid ${a};">
+    return `<div style="max-width:360px;border-radius:16px;overflow:hidden;border:2px solid ${a};box-shadow:0 20px 60px rgba(212,175,55,0.3);font-family:Arial,Helvetica,sans-serif;">
+      <div style="background:linear-gradient(135deg,${p} 0%,${s} 100%);padding:24px 20px;text-align:center;border-bottom:3px solid ${a};">
         ${headerContent}
       </div>
       <div style="padding:20px 24px;font-size:13px;color:#333;line-height:1.5;">

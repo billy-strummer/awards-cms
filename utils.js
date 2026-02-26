@@ -4,6 +4,33 @@
 
 const utils = {
   /**
+   * Safely copy text to clipboard with fallback and error handling
+   */
+  copyToClipboard(text, successMsg = 'Copied to clipboard!') {
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(() => {
+        utils.showToast(successMsg, 'success');
+      }).catch(() => {
+        // Fallback for clipboard permission denied
+        utils._fallbackCopy(text, successMsg);
+      });
+    } else {
+      utils._fallbackCopy(text, successMsg);
+    }
+  },
+  _fallbackCopy(text, successMsg) {
+    try {
+      const ta = document.createElement('textarea');
+      ta.value = text; ta.style.position = 'fixed'; ta.style.opacity = '0';
+      document.body.appendChild(ta); ta.select(); document.execCommand('copy');
+      document.body.removeChild(ta);
+      utils.showToast(successMsg, 'success');
+    } catch (e) {
+      utils.showToast('Failed to copy to clipboard', 'error');
+    }
+  },
+
+  /**
    * Show a toast notification
    * @param {string} message - The message to display
    * @param {string} type - Type of notification: 'success', 'error', 'warning', 'info'
@@ -1823,7 +1850,11 @@ const utils = {
       return { message: 'Connection blocked by security policy. Please contact support.', type: 'error', isNetwork: true, canRetry: false };
     }
     if (msg.includes('401') || msg.includes('unauthorized')) {
-      return { message: 'Session expired. Please log in again.', type: 'warning', isNetwork: false, canRetry: false };
+      // Auto-logout on session expiry
+      if (typeof authModule !== 'undefined' && STATE.currentUser) {
+        setTimeout(() => authModule.handleLogout(true), 500);
+      }
+      return { message: 'Session expired. Logging you out...', type: 'warning', isNetwork: false, canRetry: false };
     }
     if (msg.includes('403') || msg.includes('forbidden')) {
       return { message: 'You do not have permission for this action.', type: 'error', isNetwork: false, canRetry: false };

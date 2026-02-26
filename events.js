@@ -150,6 +150,13 @@ const eventsModule = {
       return;
     }
 
+    // Validate form fields
+    const form = document.getElementById('eventForm');
+    if (form && !form.checkValidity()) {
+      form.reportValidity();
+      return;
+    }
+
     try {
       await utils.protectModalDuringSave('eventModal', async () => {
         utils.showLoading();
@@ -227,6 +234,10 @@ const eventsModule = {
    * Delete event
    */
   async deleteEvent(eventId, eventName) {
+    if (typeof rbacModule !== 'undefined' && !rbacModule.canPerform('delete')) {
+      utils.showToast('You do not have permission to delete events', 'error');
+      return;
+    }
     if (!await utils.confirmDialog({ title: 'Delete Event', message: `Are you sure you want to delete "${eventName}"?<br><br>Note: Media associated with this event will NOT be deleted, but will be unlinked from the event.` })) {
       return;
     }

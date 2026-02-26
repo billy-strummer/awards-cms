@@ -1229,6 +1229,15 @@ document.addEventListener('DOMContentLoaded', function() {
     }
   });
 
+  // Handle browser back/forward button navigation
+  window.addEventListener('popstate', () => {
+    const hash = window.location.hash.replace('#', '');
+    if (hash && /^[a-zA-Z0-9_-]+$/.test(hash)) {
+      const tabBtn = document.querySelector(`[data-bs-target="#${hash}"]`);
+      if (tabBtn) tabBtn.click();
+    }
+  });
+
   // Restore tab from URL or user preference (LOW-6: default landing tab)
   const hashTab = window.location.hash.replace('#', '');
   const defaultTab = localStorage.getItem('defaultLandingTab');
@@ -1339,11 +1348,12 @@ document.addEventListener('DOMContentLoaded', function() {
 // Warn user if they try to close the page with unsaved changes
 // (You can customize this logic based on your needs)
 window.addEventListener('beforeunload', (e) => {
-  // Only show warning if user is logged in
-  if (STATE.currentUser) {
-    // Uncomment if you want to warn on close
-    // e.preventDefault();
-    // e.returnValue = '';
+  // Warn if there's a save in progress or email builder has unsaved changes
+  const isSaving = document.querySelector('.btn:disabled .spinner-border');
+  const emailUnsaved = typeof emailBuilderModule !== 'undefined' && emailBuilderModule.hasUnsavedChanges && emailBuilderModule.blocks?.length > 0;
+  if (STATE.currentUser && (isSaving || emailUnsaved)) {
+    e.preventDefault();
+    e.returnValue = 'You have unsaved changes. Are you sure you want to leave?';
   }
 });
 

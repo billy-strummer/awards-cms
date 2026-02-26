@@ -1293,6 +1293,10 @@ const awardsModule = {
    * Bulk delete selected awards
    */
   async bulkDelete() {
+    if (typeof rbacModule !== 'undefined' && !rbacModule.canPerform('delete')) {
+      utils.showToast('You do not have permission to delete awards', 'error');
+      return;
+    }
     const count = this.selectedAwards.size;
     if (count === 0) return;
 
@@ -1453,6 +1457,10 @@ const awardsModule = {
    * Delete a single award
    */
   async deleteAward(awardId) {
+    if (typeof rbacModule !== 'undefined' && !rbacModule.canPerform('delete')) {
+      utils.showToast('You do not have permission to delete awards', 'error');
+      return;
+    }
     if (!await utils.confirmDialog({ title: 'Delete Award', message: 'Are you sure you want to delete this award? This action cannot be undone.' })) {
       return;
     }
@@ -1462,6 +1470,9 @@ const awardsModule = {
       
       const award = STATE.allAwards.find(a => a.id === awardId);
       if (award) utils.softDelete('awards', award);
+
+      // Clean up related records before deleting the award
+      await STATE.client.from('award_assignments').delete().eq('award_id', awardId);
 
       const { error } = await STATE.client
         .from('awards')

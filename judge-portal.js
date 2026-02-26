@@ -531,10 +531,18 @@ const judgePortal = {
     try {
       // Get scores from sliders
       const scores = {};
+      let validationFailed = false;
       this.scoringCriteria.forEach(criterion => {
         const slider = document.getElementById(criterion.id);
-        scores[criterion.id] = parseFloat(slider.value) || 0;
+        const val = parseFloat(slider.value) || 0;
+        // Enforce score bounds (0 to maxScore)
+        if (val < 0 || val > (criterion.maxScore || 10)) {
+          showPortalToast(`${criterion.name} score must be between 0 and ${criterion.maxScore || 10}`, 'error');
+          validationFailed = true;
+        }
+        scores[criterion.id] = Math.min(Math.max(val, 0), criterion.maxScore || 10);
       });
+      if (validationFailed) return;
 
       const totalScore = parseFloat(this.calculateTotalScore());
 

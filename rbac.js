@@ -58,21 +58,21 @@ const rbacModule = {
 
       const row = data?.[0];
       if (error || !row) {
-        // Default to admin if no role found (owner has full access)
-        this.currentRole = 'admin';
-        if (!error) console.log('No role found for user, defaulting to admin');
+        // Default to viewer (most restrictive) when no role found for safety
+        this.currentRole = 'viewer';
+        if (!error) console.log('No role found for user, defaulting to viewer');
       } else {
-        this.currentRole = row.role || 'admin';
+        this.currentRole = (row.role || 'viewer').toLowerCase();
       }
 
-      this.permissions = this.ROLES[this.currentRole] || this.ROLES.admin;
+      this.permissions = this.ROLES[this.currentRole] || this.ROLES.viewer;
       this.applyPermissions();
       console.log(`RBAC: User ${userEmail} has role "${this.currentRole}"`);
 
     } catch (e) {
       console.error('RBAC: Error loading role:', e);
-      this.currentRole = 'admin';
-      this.permissions = this.ROLES.admin;
+      this.currentRole = 'viewer';
+      this.permissions = this.ROLES.viewer;
       this.applyPermissions();
     }
   },

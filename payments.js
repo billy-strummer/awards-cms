@@ -1202,6 +1202,10 @@ const paymentsModule = {
   },
 
   async deletePayment(paymentId) {
+    if (typeof rbacModule !== 'undefined' && !rbacModule.canPerform('delete')) {
+      utils.showToast('You do not have permission to delete payments', 'error');
+      return;
+    }
     if (!await utils.confirmDialog({ title: 'Delete Payment', message: 'Are you sure you want to delete this payment record?' })) {
       return;
     }

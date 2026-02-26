@@ -27,10 +27,11 @@ const supabase = createClient(
  */
 async function createCheckoutSession(req, res) {
   try {
-    const { entryId, amount, description, email } = req.body;
+    const { entryId, entry_id, amount, description, email } = req.body;
+    const resolvedEntryId = entryId || entry_id;  // Accept both camelCase and snake_case
 
     // Validate inputs
-    if (!entryId || !amount) {
+    if (!resolvedEntryId || !amount) {
       return res.status(400).json({ error: 'Missing required fields' });
     }
 
@@ -38,7 +39,7 @@ async function createCheckoutSession(req, res) {
     const { data: entry, error: entryError } = await supabase
       .from('entries')
       .select('*')
-      .eq('id', entryId)
+      .eq('id', resolvedEntryId)
       .single();
 
     if (entryError || !entry) {
@@ -67,19 +68,19 @@ async function createCheckoutSession(req, res) {
       cancel_url: `${req.headers.origin}/submit-entry.html?cancelled=true`,
       customer_email: email || entry.contact_email,
       metadata: {
-        entry_id: entryId,
+        entry_id: resolvedEntryId,
         entry_number: entry.entry_number,
       },
     });
 
-    // Update entry with payment session ID
+    // Update entry with payment reference (use payment_intent for consistency with webhooks)
     await supabase
       .from('entries')
       .update({
-        payment_reference: session.id,
+        payment_reference: session.payment_intent || session.id,
         updated_at: new Date().toISOString()
       })
-      .eq('id', entryId);
+      .eq('id', resolvedEntryId);
 
     res.json({ id: session.id, url: session.url });
 

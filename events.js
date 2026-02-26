@@ -6820,12 +6820,20 @@ const eventsModule = {
    * Export Envelope Labels - 4 per A4 page, landscape orientation.
    * Each label shows the category/award name for sticky envelope labels.
    */
-  exportEnvelopeLabels() {
+  async exportEnvelopeLabels() {
     const awards = this.runningOrderItems.filter(item => (item.item_type || 'award') === 'award');
     if (awards.length === 0) {
       utils.showToast('No award items to export', 'warning');
       return;
     }
+
+    // Fetch logo from tenant branding
+    let logoUrl = '';
+    try {
+      const tenantId = window.multiTenancy?.getTenantId?.() || 'default';
+      const branding = await window.brandingModule?.loadBranding?.(tenantId);
+      logoUrl = branding?.logo_url || '';
+    } catch (e) { /* proceed without logo */ }
 
     const labels = awards.map((item, idx) => ({
       awardName: item.award_name || item.item_name || (item.awards ? item.awards.award_name : 'N/A'),
@@ -6843,6 +6851,7 @@ const eventsModule = {
         if (label) {
           cells += `<div class="label">
             <div class="label-number">${utils.escapeHtml(label.awardNumber)}</div>
+            ${logoUrl ? `<img class="label-logo" src="${utils.escapeHtml(logoUrl)}" alt="">` : ''}
             <div class="label-intro">${utils.escapeHtml(label.intro)}</div>
             <div class="label-name">${utils.escapeHtml(label.awardName)}</div>
             ${label.sponsor ? `<div class="label-sponsor">Sponsored by ${utils.escapeHtml(label.sponsor)}</div>` : ''}
@@ -6866,6 +6875,7 @@ const eventsModule = {
         .label { border: 1.5px dashed #aaa; border-radius: 6px; padding: 10mm 12mm; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; position: relative; }
         .label.empty { border-color: #ddd; }
         .label-number { position: absolute; top: 3mm; left: 4mm; font-size: 6pt; color: #bbb; font-weight: normal; letter-spacing: 0; }
+        .label-logo { max-height: 14mm; max-width: 50mm; object-fit: contain; margin-bottom: 3mm; filter: grayscale(1) contrast(1.2); }
         .label-intro { font-size: 13pt; font-style: italic; color: #555; margin-bottom: 3mm; }
         .label-name { font-size: 22pt; font-weight: bold; line-height: 1.3; color: #1a1a1a; }
         .label-sponsor { font-size: 10pt; color: #777; font-style: italic; margin-top: 4mm; }

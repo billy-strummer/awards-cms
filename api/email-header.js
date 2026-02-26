@@ -3,11 +3,9 @@
 /* Single source of truth for the branded email layout. */
 /* All email-sending paths import from this module.     */
 /*                                                      */
-/* Header/footer HTML is loaded from the email_templates */
-/* table (template_type = 'email_header'/'email_footer') */
-/* and branding placeholders are replaced at send time   */
-/* with values from the tenant_branding table.           */
-/* If no DB templates exist, hardcoded fallbacks are used.*/
+/* Header/footer are built from tenant_branding values. */
+/* The subtitle text changes per email type (e.g.       */
+/* "Self-Nomination Entry Confirmation").                */
 /* ==================================================== */
 
 const escHtml = (s) =>
@@ -30,63 +28,7 @@ function resolveBranding(branding = {}) {
 }
 
 /**
- * Replace branding placeholders in a template string.
- * Placeholders: {BRAND_NAME}, {PRIMARY_COLOR}, {SECONDARY_COLOR},
- *   {ACCENT_COLOR}, {LOGO_URL}, {CONTACT_EMAIL}, {WEBSITE_URL}
- */
-function replaceBrandingPlaceholders(html, branding = {}, { subtitle = '' } = {}) {
-  const b = resolveBranding(branding);
-  return html
-    .replace(/\{BRAND_NAME\}/g,      escHtml(b.brandName))
-    .replace(/\{PRIMARY_COLOR\}/g,    b.primaryColor)
-    .replace(/\{SECONDARY_COLOR\}/g,  b.secondaryColor)
-    .replace(/\{ACCENT_COLOR\}/g,     b.accentColor)
-    .replace(/\{LOGO_URL\}/g,         escHtml(b.logoUrl))
-    .replace(/\{CONTACT_EMAIL\}/g,    escHtml(b.contactEmail))
-    .replace(/\{WEBSITE_URL\}/g,      escHtml(b.websiteUrl))
-    .replace(/\{HEADER_SUBTITLE\}/g,  escHtml(subtitle || 'Self-Nomination Entry Confirmation'));
-}
-
-/* ---- DB-backed header/footer loading (cached) ---- */
-
-let _templateCache = null;
-let _templateCacheTime = 0;
-const TEMPLATE_CACHE_TTL = 5 * 60 * 1000; // 5 minutes
-
-/**
- * Load the active email_header and email_footer templates from the DB.
- * Returns { header: string|null, footer: string|null }.
- * Requires a Supabase client instance.
- */
-async function loadHeaderFooterTemplates(supabaseClient) {
-  const now = Date.now();
-  if (_templateCache && (now - _templateCacheTime) < TEMPLATE_CACHE_TTL) {
-    return _templateCache;
-  }
-  try {
-    const { data } = await supabaseClient
-      .from('email_templates')
-      .select('template_type, body')
-      .in('template_type', ['email_header', 'email_footer'])
-      .eq('is_active', true)
-      .order('is_default', { ascending: false });
-
-    const header = data?.find(t => t.template_type === 'email_header')?.body || null;
-    const footer = data?.find(t => t.template_type === 'email_footer')?.body || null;
-
-    _templateCache = { header, footer };
-    _templateCacheTime = now;
-    return _templateCache;
-  } catch (e) {
-    console.error('Failed to load header/footer templates:', e);
-    return _templateCache || { header: null, footer: null };
-  }
-}
-
-/* ---- Hardcoded fallbacks (used when no DB template exists) ---- */
-
-/**
- * Build the email header HTML block (fallback).
+ * Build the email header HTML block.
  * Logo present  → side-by-side (logo left, brand name + subtitle right)
  * No logo       → centred brand name + subtitle
  */
@@ -113,7 +55,7 @@ function buildEmailHeader(branding = {}, { subtitle = 'Self-Nomination Entry Con
 }
 
 /**
- * Build the email footer HTML block (fallback).
+ * Build the email footer HTML block.
  */
 function buildEmailFooter(branding = {}) {
   const b = resolveBranding(branding);
@@ -132,20 +74,13 @@ function buildEmailFooter(branding = {}) {
  * Wrap arbitrary body HTML in a complete branded email document.
  *
  * Options:
- *   subject    – email subject (used in <title>)
- *   preheader  – hidden preheader text
- *   headerHtml – raw header template from DB (branding placeholders will be replaced)
- *   footerHtml – raw footer template from DB (branding placeholders will be replaced)
- *
- * If headerHtml/footerHtml are not supplied, the hardcoded fallbacks are used.
+ *   subject   – email subject (used in <title>)
+ *   preheader – hidden preheader text
+ *   subtitle  – text shown below the brand name in the header
  */
-function wrapEmail(bodyContent, branding = {}, { subject = '', preheader = '', headerHtml = null, footerHtml = null, subtitle = '' } = {}) {
-  const resolvedHeader = headerHtml
-    ? replaceBrandingPlaceholders(headerHtml, branding, { subtitle })
-    : buildEmailHeader(branding, { subtitle: subtitle || 'Self-Nomination Entry Confirmation' });
-  const resolvedFooter = footerHtml
-    ? replaceBrandingPlaceholders(footerHtml, branding)
-    : buildEmailFooter(branding);
+function wrapEmail(bodyContent, branding = {}, { subject = '', preheader = '', subtitle = '' } = {}) {
+  const resolvedHeader = buildEmailHeader(branding, { subtitle: subtitle || 'Self-Nomination Entry Confirmation' });
+  const resolvedFooter = buildEmailFooter(branding);
 
   return `<!DOCTYPE html>
 <html lang="en">
@@ -175,8 +110,6 @@ function wrapEmail(bodyContent, branding = {}, { subject = '', preheader = '', h
 module.exports = {
   escHtml,
   resolveBranding,
-  replaceBrandingPlaceholders,
-  loadHeaderFooterTemplates,
   buildEmailHeader,
   buildEmailFooter,
   wrapEmail,

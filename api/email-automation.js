@@ -12,7 +12,7 @@
 
 const { createClient } = require('@supabase/supabase-js');
 const { Resend } = require('resend');
-const { wrapEmail, loadHeaderFooterTemplates } = require('./email-header');
+const { wrapEmail } = require('./email-header');
 
 const supabase = createClient(
   process.env.SUPABASE_URL,
@@ -64,17 +64,11 @@ const HEADER_SUBTITLES = {
 };
 
 /**
- * Email wrapper - loads header/footer templates from DB, then delegates
- * to shared email-header.js module.  Falls back to hardcoded header/footer
- * if no DB templates exist.
+ * Email wrapper - delegates to shared email-header.js module.
+ * Header/footer are built from branding; subtitle changes per email type.
  */
-async function wrapEmailTemplate(bodyContent, branding = {}, subtitle = '') {
-  const templates = await loadHeaderFooterTemplates(supabase);
-  return wrapEmail(bodyContent, branding, {
-    headerHtml: templates.header,
-    footerHtml: templates.footer,
-    subtitle,
-  });
+function wrapEmailTemplate(bodyContent, branding = {}, subtitle = '') {
+  return wrapEmail(bodyContent, branding, { subtitle });
 }
 
 /**

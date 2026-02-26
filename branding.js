@@ -130,14 +130,14 @@ window.brandingModule = {
         + `<p style="color:${accentColor};margin:8px 0 0;font-size:13px;letter-spacing:2px;text-transform:uppercase;opacity:0.9;">${sub}</p>`;
   },
 
-  getEmailStyles(tenantId, config = {}) {
+  getEmailStyles(tenantId, config = {}, { subtitle } = {}) {
     const p = config.primary_color   || '#000000';
     const s = config.secondary_color || '#1a1a1a';
     const a = config.accent_color    || '#D4AF37';
     const c = this._esc(config.company_name  || 'British Trade Awards');
     const r = this._esc(config.email_reply_to || config.email_from || '');
     const logoUrl = this._esc(config.logo_url || '');
-    const headerContent = this._buildEmailHeaderContent(config.logo_url ? logoUrl : '', c, a);
+    const headerContent = this._buildEmailHeaderContent(config.logo_url ? logoUrl : '', c, a, subtitle);
     return {
       css: `.email-header{background:linear-gradient(135deg,${p} 0%,${s} 100%);padding:28px 32px;text-align:center;border-bottom:3px solid ${a}}.email-header img{height:80px;width:auto}.email-btn{background:${a};color:#fff;padding:12px 28px;border-radius:4px;text-decoration:none;font-weight:bold;display:inline-block}.email-footer{background:${s};padding:16px 32px;font-size:12px;color:#999;text-align:center}`,
       header: `<div class="email-header">${headerContent}</div>`,

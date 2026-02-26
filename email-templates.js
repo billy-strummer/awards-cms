@@ -109,26 +109,18 @@ We would very much welcome an entry from you again next year and wish you contin
 Kind regards,
 The British Trade Awards Team`
     },
-    'Auto Email Header': {
-      subject: '(system)',
-      body: `<div style="background:linear-gradient(135deg,{PRIMARY_COLOR} 0%,{SECONDARY_COLOR} 100%);padding:28px 32px;text-align:center;border-bottom:3px solid {ACCENT_COLOR};">
-  <table cellpadding="0" cellspacing="0" border="0" style="margin:0 auto;"><tr>
-    <td style="vertical-align:middle;padding-right:25px;">
-      <img src="{LOGO_URL}" alt="{BRAND_NAME}" style="height:80px;width:auto;display:block;">
-    </td>
-    <td style="vertical-align:middle;">
-      <h1 style="color:{ACCENT_COLOR};margin:0;font-size:22px;font-family:Georgia,'Times New Roman',serif;letter-spacing:3px;text-transform:uppercase;line-height:1.3;">{BRAND_NAME}</h1>
-      <p style="color:{ACCENT_COLOR};margin:5px 0 0;font-size:12px;font-family:Arial,Helvetica,sans-serif;letter-spacing:2px;text-transform:uppercase;opacity:0.9;font-weight:300;">{HEADER_SUBTITLE}</p>
-    </td>
-  </tr></table>
-</div>`
-    },
-    'Auto Email Footer': {
-      subject: '(system)',
-      body: `<div style="background:{SECONDARY_COLOR};padding:24px 32px;text-align:center;font-size:12px;color:#999;">
-  <p style="margin:0;">{BRAND_NAME} | <a href="mailto:{CONTACT_EMAIL}" style="color:{ACCENT_COLOR};text-decoration:none;">{CONTACT_EMAIL}</a></p>
-</div>`
-    }
+  },
+
+  /**
+   * Header subtitle text per template type.
+   * These appear below the brand name in the email header.
+   */
+  _headerSubtitles: {
+    'confirmation': 'Self-Nomination Entry Confirmation',
+    'reminder':     'Document Upload Reminder',
+    'approval':     'Entry Approved/Shortlisted',
+    'rejection':    'Entry Not Shortlisted',
+    'general':      'Entry Approved',
   },
 
   /**
@@ -216,7 +208,6 @@ The British Trade Awards Team`
    */
   // Group definitions: map template_type to a workflow group
   templateGroups: {
-    'Auto Email Layout': { types: ['email_header', 'email_footer'], icon: 'bi-layout-text-window' },
     'Entry Submissions': { types: ['confirmation', 'reminder'], icon: 'bi-pencil-square' },
     'Judging & Results': { types: ['approval', 'rejection'], icon: 'bi-trophy' },
     'General': { types: ['general', 'notification', 'invite'], icon: 'bi-megaphone' }
@@ -232,7 +223,10 @@ The British Trade Awards Team`
   renderTemplatesList() {
     const container = document.getElementById('templatesList');
 
-    if (this.templates.length === 0) {
+    // Filter out system header/footer templates — those come from branding
+    const visible = this.templates.filter(t => !['email_header', 'email_footer'].includes(t.template_type));
+
+    if (visible.length === 0) {
       container.innerHTML = `
         <div class="text-center py-5 text-muted">
           <i class="bi bi-inbox display-4 d-block mb-2 opacity-25"></i>
@@ -244,14 +238,14 @@ The British Trade Awards Team`
 
     // Group templates by workflow stage
     const grouped = {};
-    this.templates.forEach(template => {
+    visible.forEach(template => {
       const group = this.getGroupForType(template.template_type);
       if (!grouped[group]) grouped[group] = [];
       grouped[group].push(template);
     });
 
     // Render with group headers in a defined order
-    const groupOrder = ['Auto Email Layout', 'Entry Submissions', 'Judging & Results', 'General', 'Other'];
+    const groupOrder = ['Entry Submissions', 'Judging & Results', 'General', 'Other'];
     let html = '';
 
     groupOrder.forEach(groupName => {
@@ -288,8 +282,6 @@ The British Trade Awards Team`
 
   getTypeLabel(type) {
     const labels = {
-      'email_header': 'Auto Header',
-      'email_footer': 'Auto Footer',
       'confirmation': 'Confirmation',
       'reminder': 'Reminder',
       'approval': 'Approval / Shortlisted',
@@ -349,8 +341,6 @@ The British Trade Awards Team`
           <div class="col-md-6">
             <label class="form-label">Template Type</label>
             <select class="form-select" id="templateType" required>
-              <option value="email_header" ${template.template_type === 'email_header' ? 'selected' : ''}>Auto Header</option>
-              <option value="email_footer" ${template.template_type === 'email_footer' ? 'selected' : ''}>Auto Footer</option>
               <option value="confirmation" ${template.template_type === 'confirmation' ? 'selected' : ''}>Confirmation</option>
               <option value="reminder" ${template.template_type === 'reminder' ? 'selected' : ''}>Reminder</option>
               <option value="approval" ${template.template_type === 'approval' ? 'selected' : ''}>Approval</option>
@@ -418,11 +408,9 @@ The British Trade Awards Team`
               <i class="bi bi-arrow-counterclockwise me-2"></i>Revert to Default
             </button>
           ` : ''}
-          ${!template.is_default ? `
-            <button type="button" class="btn btn-outline-danger ms-auto" onclick="emailTemplatesModule.deleteTemplate('${template.id}')">
-              <i class="bi bi-trash me-2"></i>Delete
-            </button>
-          ` : ''}
+          <button type="button" class="btn btn-outline-danger ms-auto" onclick="emailTemplatesModule.deleteTemplate('${template.id}')">
+            <i class="bi bi-trash me-2"></i>Delete
+          </button>
         </div>
       </form>
     `;
@@ -528,11 +516,13 @@ The British Trade Awards Team`
       previewBody = previewBody.replace(regex, sampleData[key]);
     });
 
-    // Get branded email header/footer
+    // Get branded email header/footer with subtitle matching the template type
     let emailHeader = '';
     let emailFooter = '';
+    const templateType = document.getElementById('templateType')?.value || this.currentTemplate?.template_type;
+    const subtitle = this._headerSubtitles[templateType] || '';
     if (typeof brandingModule !== 'undefined' && branding && Object.keys(branding).length) {
-      const styles = brandingModule.getEmailStyles(branding.tenant_id || 'default', branding);
+      const styles = brandingModule.getEmailStyles(branding.tenant_id || 'default', branding, { subtitle });
       emailHeader = styles.header;
       emailFooter = styles.footer;
     }
@@ -614,9 +604,11 @@ The British Trade Awards Team`
       testBody = testBody.replace(regex, sampleData[key]);
     });
 
-    // Wrap with branded header/footer if branding is configured
+    // Wrap with branded header/footer (subtitle matches template type)
+    const templateType = document.getElementById('templateType')?.value || this.currentTemplate?.template_type;
+    const subtitle = this._headerSubtitles[templateType] || '';
     if (typeof brandingModule !== 'undefined' && branding && Object.keys(branding).length) {
-      const styles = brandingModule.getEmailStyles(branding.tenant_id || 'default', branding);
+      const styles = brandingModule.getEmailStyles(branding.tenant_id || 'default', branding, { subtitle });
       testBody = `<style>${styles.css}</style>${styles.header}<div style="padding:24px 32px">${testBody}</div>${styles.footer}`;
     }
 
@@ -652,8 +644,11 @@ The British Trade Awards Team`
    */
   async deleteTemplate(templateId) {
     const template = (this.templates || []).find(t => t.id === templateId);
-    const templateName = template?.name || template?.subject || 'this template';
-    if (!await utils.confirmDialog({ title: 'Delete Template', message: `Delete <strong>${utils.escapeHtml(templateName)}</strong>? This action cannot be undone.`, confirmText: 'Delete', danger: true })) {
+    const templateName = template?.template_name || template?.name || template?.subject || 'this template';
+    const warningExtra = template?.is_default
+      ? '<br><br><em>This is a default template. You can re-create it later if needed.</em>'
+      : '';
+    if (!await utils.confirmDialog({ title: 'Delete Template', message: `Delete <strong>${utils.escapeHtml(templateName)}</strong>? This action cannot be undone.${warningExtra}`, confirmText: 'Delete', danger: true })) {
       return;
     }
 

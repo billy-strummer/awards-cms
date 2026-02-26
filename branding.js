@@ -86,9 +86,28 @@ window.brandingModule = {
       return data.publicUrl;
     } catch (e) {
       console.error('uploadLogo:', e);
+      // Fallback: convert to data URL if storage bucket doesn't exist
+      if (e.message && (e.message.includes('Bucket not found') || e.message.includes('bucket') || e.message.includes('not found') || e.statusCode === '404')) {
+        try {
+          const dataUrl = await this._fileToDataUrl(file);
+          utils.showToast('Logo set (run migration 038 to enable cloud storage).', 'warning');
+          return dataUrl;
+        } catch (fallbackErr) {
+          console.error('Data URL fallback failed:', fallbackErr);
+        }
+      }
       utils.showToast('Logo upload failed: ' + e.message, 'error');
       return null;
     }
+  },
+
+  _fileToDataUrl(file) {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result);
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
   },
 
   /* ---- Email Template Theming ---- */

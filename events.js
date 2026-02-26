@@ -4930,6 +4930,13 @@ const eventsModule = {
     const eventId = this.currentEventIdRunningOrder;
     if (!eventId) { utils.showToast('No event selected', 'warning'); return; }
 
+    // Build position options from current running order
+    const posOpts = this.runningOrderItems.map((item, idx) => {
+      const label = item.award_number ? `${item.award_number} — ` : '';
+      const name = utils.escapeHtml(item.award_name || item.display_name || 'Item ' + (idx + 1));
+      return `<option value="${idx + 1}">${label}${name}</option>`;
+    }).join('');
+
     const modalHtml = `
       <div class="modal fade" id="addSectionBreakModal" tabindex="-1">
         <div class="modal-dialog">
@@ -4940,6 +4947,13 @@ const eventsModule = {
             </div>
             <div class="modal-body">
               <form id="addSectionBreakForm">
+                <div class="mb-3">
+                  <label class="form-label">Position</label>
+                  <select class="form-select" id="breakPosition">
+                    <option value="end">At the end</option>
+                    ${posOpts ? '<optgroup label="Place after...">' + posOpts + '</optgroup>' : ''}
+                  </select>
+                </div>
                 <div class="row">
                   <div class="col-md-4 mb-3">
                     <label class="form-label">Type</label>
@@ -4998,9 +5012,17 @@ const eventsModule = {
       return;
     }
 
-    const nextOrder = this.runningOrderItems.length + 1;
-    const section = this.runningOrderItems.length > 0
-      ? (this.runningOrderItems[this.runningOrderItems.length - 1].section || 1)
+    // Determine insert position
+    const posValue = document.getElementById('breakPosition')?.value || 'end';
+    let insertAt = this.runningOrderItems.length; // default: end
+    if (posValue !== 'end') {
+      const afterIdx = parseInt(posValue);
+      if (!isNaN(afterIdx) && afterIdx >= 0) insertAt = afterIdx;
+    }
+
+    const nextOrder = insertAt + 1;
+    const section = insertAt > 0 && this.runningOrderItems[insertAt - 1]
+      ? (this.runningOrderItems[insertAt - 1].section || 1)
       : 1;
 
     const entryData = {
@@ -5020,18 +5042,27 @@ const eventsModule = {
     try {
       const { error } = await STATE.client.from('running_order').insert([entryData]);
       if (error) throw error;
+
+      // If not appending at end, reorder all items after the insert position
+      if (posValue !== 'end') {
+        const itemsToShift = this.runningOrderItems.slice(insertAt);
+        for (let i = 0; i < itemsToShift.length; i++) {
+          await STATE.client.from('running_order').update({ display_order: insertAt + 2 + i }).eq('id', itemsToShift[i].id);
+        }
+      }
       await this.loadRunningOrder();
     } catch (error) {
       console.warn('DB insert for section break failed, using localStorage:', error);
       const key = `bta_running_order_${this.currentEventIdRunningOrder}`;
       const stored = JSON.parse(localStorage.getItem(key) || '[]');
       entryData.id = crypto.randomUUID();
-      stored.push(entryData);
+      stored.splice(insertAt, 0, entryData);
       localStorage.setItem(key, JSON.stringify(stored));
       this.runningOrderItems = stored;
     }
     utils.showToast('Section break added', 'success');
     bootstrap.Modal.getInstance(document.getElementById('addSectionBreakModal'))?.hide();
+    this._roRecalcNumbers();
     this.renderRunningOrderItems();
   },
 
@@ -5652,6 +5683,8 @@ const eventsModule = {
   // TROPHY / AWARD TRACKING
   // ============================================
 
+  _trophyFilterStatus: null,
+
   renderTrophiesTab() {
     const container = document.getElementById('roTrophiesContent');
     if (!container) return;
@@ -5675,12 +5708,16 @@ const eventsModule = {
     statuses.forEach(s => counts[s.key] = 0);
     awardItems.forEach(i => counts[i.trophy_status || 'not_started']++);
 
+    const activeFilter = this._trophyFilterStatus;
     let html = `
-      <div class="d-flex gap-2 p-3 mb-3 border rounded bg-light flex-wrap">
+      <div class="d-flex gap-2 p-3 mb-3 border rounded bg-light flex-wrap align-items-center">
+        <button class="btn btn-sm ${!activeFilter ? 'btn-dark' : 'btn-outline-secondary'}" style="font-size:0.75rem;" onclick="eventsModule._trophyFilterStatus=null;eventsModule.renderTrophiesTab();">
+          <i class="bi bi-grid me-1"></i>All: ${awardItems.length}
+        </button>
         ${statuses.map(s => `
-          <span class="badge" style="background:${s.colour}; font-size:0.75rem;">
+          <button class="btn btn-sm" style="font-size:0.75rem; ${activeFilter === s.key ? 'background:' + s.colour + ';color:#fff;border-color:' + s.colour : 'background:transparent;color:' + s.colour + ';border:1px solid ' + s.colour};" onclick="eventsModule._trophyFilterStatus='${s.key}';eventsModule.renderTrophiesTab();">
             <i class="${s.icon} me-1"></i>${s.label}: ${counts[s.key]}
-          </span>
+          </button>
         `).join('')}
       </div>
       <table class="table table-sm table-hover mb-0" style="font-size:0.82rem;">
@@ -5696,7 +5733,15 @@ const eventsModule = {
         <tbody>
     `;
 
-    awardItems.forEach((item, idx) => {
+    const filteredItems = activeFilter
+      ? awardItems.filter(i => (i.trophy_status || 'not_started') === activeFilter)
+      : awardItems;
+
+    if (filteredItems.length === 0) {
+      html += `<tr><td colspan="5" class="text-center py-3 text-muted">No items match this filter</td></tr>`;
+    }
+
+    filteredItems.forEach((item, idx) => {
       const currentStatus = item.trophy_status || 'not_started';
       const statusInfo = statuses.find(s => s.key === currentStatus) || statuses[0];
       const opts = statuses.map(s =>
@@ -7322,25 +7367,43 @@ const eventsModule = {
 
   async _loadAwardsForManualEntry() {
     try {
-      const { data, error } = await STATE.client
+      // Try filtering by event_id first
+      let { data, error } = await STATE.client
         .from('award_years')
         .select('id, award_name, award_category, sector, event_id, winner_confirmed, prev_year_winner')
         .eq('event_id', this.currentEventIdRunningOrder)
         .order('sector', { ascending: true });
 
       if (error) throw error;
+
+      // If no awards linked to this event, load all active awards instead
+      if (!data || data.length === 0) {
+        const fallback = await STATE.client
+          .from('award_years')
+          .select('id, award_name, award_category, sector, event_id, winner_confirmed, prev_year_winner')
+          .eq('is_active', true)
+          .order('sector', { ascending: true });
+        if (!fallback.error && fallback.data) data = fallback.data;
+      }
+
       this._manualEntryAwards = data || [];
 
       // Populate sector dropdown with distinct sectors
       const sectors = [...new Set(this._manualEntryAwards.map(a => a.sector).filter(Boolean))].sort();
       const sectorSelect = document.getElementById('manualSectorFilter');
       if (sectorSelect) {
-        sectorSelect.innerHTML = '<option value="">-- Select Sector (' + sectors.length + ') --</option>' +
-          sectors.map(s => `<option value="${utils.escapeHtml(s)}">${utils.escapeHtml(s)}</option>`).join('');
+        if (sectors.length === 0) {
+          sectorSelect.innerHTML = '<option value="">No awards found</option>';
+        } else {
+          sectorSelect.innerHTML = '<option value="">-- Select Sector (' + sectors.length + ') --</option>' +
+            sectors.map(s => `<option value="${utils.escapeHtml(s)}">${utils.escapeHtml(s)}</option>`).join('');
+        }
       }
     } catch (err) {
       console.warn('Could not load awards for dropdown:', err);
-      // Dropdowns stay empty — user can still type manually
+      const sectorSelect = document.getElementById('manualSectorFilter');
+      if (sectorSelect) sectorSelect.innerHTML = '<option value="">Error loading awards</option>';
+      utils.showToast('Could not load awards for dropdown', 'warning');
     }
   },
 
@@ -7491,6 +7554,11 @@ const eventsModule = {
     const item = this.runningOrderItems.find(i => i.id === itemId);
     if (!item) { utils.showToast('Item not found', 'error'); return; }
 
+    // Resolve display values using same fallback logic as render
+    const resolvedAwardName = item.award_name || item.item_name || (item.awards ? item.awards.award_name : '');
+    const resolvedDisplayName = item.display_name || (item.organisations ? item.organisations.company_name : '');
+    const resolvedRecipient = item.recipient_collecting || (item.event_guests ? item.event_guests.guest_name : '');
+
     const modalHtml = `
       <div class="modal fade" id="editRunningOrderModal" tabindex="-1">
         <div class="modal-dialog">
@@ -7526,17 +7594,23 @@ const eventsModule = {
                     </select>
                   </div>
                 </div>
+                ${this._roSectionConfig.length > 0 ? `<div class="mb-3">
+                  <label class="form-label">Section / Act</label>
+                  <select class="form-select" id="editROSection">
+                    ${this._roSectionConfig.map(s => `<option value="${s.section}" ${(item.section || 1) === s.section ? 'selected' : ''}>${utils.escapeHtml(s.name || 'Section ' + s.section)}</option>`).join('')}
+                  </select>
+                </div>` : ''}
                 <div class="mb-3">
                   <label class="form-label">Award Name</label>
-                  <input type="text" class="form-control" id="editROAwardName" value="${utils.escapeHtml(item.award_name || '')}">
+                  <input type="text" class="form-control" id="editROAwardName" value="${utils.escapeHtml(resolvedAwardName)}">
                 </div>
                 <div class="mb-3">
                   <label class="form-label">Winner / Display Name</label>
-                  <input type="text" class="form-control" id="editRODisplayName" value="${utils.escapeHtml(item.display_name || '')}">
+                  <input type="text" class="form-control" id="editRODisplayName" value="${utils.escapeHtml(resolvedDisplayName)}">
                 </div>
                 <div class="mb-3">
                   <label class="form-label">Recipient Collecting</label>
-                  <input type="text" class="form-control" id="editRORecipient" value="${utils.escapeHtml(item.recipient_collecting || '')}">
+                  <input type="text" class="form-control" id="editRORecipient" value="${utils.escapeHtml(resolvedRecipient)}">
                 </div>
                 <div class="mb-3">
                   <label class="form-label">Sponsor / Presented By</label>
@@ -7608,6 +7682,8 @@ const eventsModule = {
       notes: document.getElementById('editRONotes').value || null,
       special_requirements: document.getElementById('editROSpecialReqs').value || null
     };
+    const sectionEl = document.getElementById('editROSection');
+    if (sectionEl) updateData.section = parseInt(sectionEl.value) || 1;
 
     try {
       let result = await STATE.client.from('running_order').update(updateData).eq('id', itemId);

@@ -6743,7 +6743,8 @@ const eventsModule = {
   /**
    * Export Winner Cards - 2 per A4 page, portrait orientation.
    * Page is cut in half; each half goes into an envelope.
-   * Shows: "And the winner is...", Company Name, Recipient Collecting
+   * 3 bordered boxes: narrow "And the winner is..." | large Company Name | large Recipient
+   * Award number in top-left corner for sorting reference.
    */
   exportWinnerCards() {
     const awards = this.runningOrderItems.filter(item => (item.item_type || 'award') === 'award');
@@ -6755,14 +6756,22 @@ const eventsModule = {
     const cards = awards.map(item => ({
       awardName: item.award_name || item.item_name || (item.awards ? item.awards.award_name : 'N/A'),
       companyName: item.display_name || (item.organisations ? item.organisations.company_name : 'N/A'),
-      recipient: item.recipient_collecting || (item.event_guests ? item.event_guests.guest_name : 'TBC')
+      recipient: item.recipient_collecting || (item.event_guests ? item.event_guests.guest_name : 'TBC'),
+      awardNumber: item.award_number || ''
     }));
 
     const renderCard = (card) => `<div class="card">
           <div class="card-inner">
-            <div class="card-label">And the winner is&hellip;</div>
-            <div class="card-company">${utils.escapeHtml(card.companyName)}</div>
-            <div class="card-recipient">${utils.escapeHtml(card.recipient)}</div>
+            <div class="box box-label">
+              <span class="card-number">${utils.escapeHtml(card.awardNumber)}</span>
+              <span class="label-text">And the winner is&hellip;</span>
+            </div>
+            <div class="box box-company">
+              <span>${utils.escapeHtml(card.companyName)}</span>
+            </div>
+            <div class="box box-recipient">
+              <span>${utils.escapeHtml(card.recipient)}</span>
+            </div>
           </div>
         </div>`;
 
@@ -6785,11 +6794,15 @@ const eventsModule = {
         body { font-family: 'Georgia', 'Times New Roman', serif; color: #1a1a1a; }
         .page { width: 210mm; height: 297mm; display: flex; flex-direction: column; page-break-after: always; position: relative; }
         .page:last-child { page-break-after: auto; }
-        .card { height: 148.5mm; width: 100%; display: flex; align-items: center; justify-content: center; padding: 15mm 20mm; }
-        .card-inner { border: 2.5pt solid #000; border-radius: 4px; width: 100%; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 15mm 20mm; }
-        .card-label { font-size: 18pt; font-style: italic; color: #444; margin-bottom: 10mm; letter-spacing: 1px; }
-        .card-company { font-size: 32pt; font-weight: bold; color: #000; margin-bottom: 8mm; line-height: 1.2; }
-        .card-recipient { font-size: 16pt; color: #333; }
+        .card { height: 148.5mm; width: 100%; padding: 8mm 15mm; }
+        .card-inner { width: 100%; height: 100%; display: flex; flex-direction: column; border: 2.5pt solid #000; }
+        .box { border-bottom: 2.5pt solid #000; display: flex; align-items: center; justify-content: center; text-align: center; padding: 3mm 10mm; }
+        .box:last-child { border-bottom: none; }
+        .box-label { height: auto; padding: 2.5mm 5mm; font-size: 14pt; font-style: italic; color: #444; letter-spacing: 1px; justify-content: center; position: relative; }
+        .card-number { position: absolute; top: 1mm; left: 2mm; font-size: 6pt; color: #bbb; font-family: Arial, sans-serif; font-style: normal; letter-spacing: 0; }
+        .label-text { }
+        .box-company { flex: 1; font-size: 32pt; font-weight: bold; color: #000; line-height: 1.2; }
+        .box-recipient { flex: 1; font-size: 20pt; color: #333; }
         .cut-line { position: absolute; top: 148.5mm; left: 0; right: 0; border-top: 1px dashed #ccc; }
         @media print {
           body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
@@ -6807,17 +6820,26 @@ const eventsModule = {
    * Export Envelope Labels - 4 per A4 page, landscape orientation.
    * Each label shows the category/award name for sticky envelope labels.
    */
-  exportEnvelopeLabels() {
+  async exportEnvelopeLabels() {
     const awards = this.runningOrderItems.filter(item => (item.item_type || 'award') === 'award');
     if (awards.length === 0) {
       utils.showToast('No award items to export', 'warning');
       return;
     }
 
-    const labels = awards.map(item => ({
+    // Fetch logo from tenant branding
+    let logoUrl = '';
+    try {
+      const tenantId = window.multiTenancy?.getTenantId?.() || 'default';
+      const branding = await window.brandingModule?.loadBranding?.(tenantId);
+      logoUrl = branding?.logo_url || '';
+    } catch (e) { /* proceed without logo */ }
+
+    const labels = awards.map((item, idx) => ({
       awardName: item.award_name || item.item_name || (item.awards ? item.awards.award_name : 'N/A'),
       awardNumber: item.award_number || '',
-      sponsor: item.sponsor || ''
+      sponsor: item.sponsor || '',
+      intro: idx === 0 ? 'Our first award is\u2026' : idx === awards.length - 1 ? 'Our final award is\u2026' : 'Our next award is\u2026'
     }));
 
     let pages = '';
@@ -6829,6 +6851,8 @@ const eventsModule = {
         if (label) {
           cells += `<div class="label">
             <div class="label-number">${utils.escapeHtml(label.awardNumber)}</div>
+            ${logoUrl ? `<img class="label-logo" src="${utils.escapeHtml(logoUrl)}" alt="">` : ''}
+            <div class="label-intro">${utils.escapeHtml(label.intro)}</div>
             <div class="label-name">${utils.escapeHtml(label.awardName)}</div>
             ${label.sponsor ? `<div class="label-sponsor">Sponsored by ${utils.escapeHtml(label.sponsor)}</div>` : ''}
           </div>`;
@@ -6848,9 +6872,11 @@ const eventsModule = {
         .page { width: 277mm; height: 190mm; page-break-after: always; display: flex; align-items: center; justify-content: center; }
         .page:last-child { page-break-after: auto; }
         .grid { display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr; gap: 8mm; width: 100%; height: 100%; }
-        .label { border: 1.5px dashed #aaa; border-radius: 6px; padding: 10mm 12mm; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; }
+        .label { border: 1.5px dashed #aaa; border-radius: 6px; padding: 10mm 12mm; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; position: relative; }
         .label.empty { border-color: #ddd; }
-        .label-number { font-size: 12pt; color: #888; font-weight: bold; margin-bottom: 4mm; letter-spacing: 1px; }
+        .label-number { position: absolute; top: 3mm; left: 4mm; font-size: 6pt; color: #bbb; font-weight: normal; letter-spacing: 0; }
+        .label-logo { max-height: 14mm; max-width: 50mm; object-fit: contain; margin-bottom: 3mm; filter: grayscale(1) contrast(1.2); }
+        .label-intro { font-size: 13pt; font-style: italic; color: #555; margin-bottom: 3mm; }
         .label-name { font-size: 22pt; font-weight: bold; line-height: 1.3; color: #1a1a1a; }
         .label-sponsor { font-size: 10pt; color: #777; font-style: italic; margin-top: 4mm; }
         @media print {

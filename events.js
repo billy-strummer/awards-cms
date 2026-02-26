@@ -6861,9 +6861,9 @@ const eventsModule = {
         .page { width: 277mm; height: 190mm; page-break-after: always; display: flex; align-items: center; justify-content: center; }
         .page:last-child { page-break-after: auto; }
         .grid { display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr; gap: 8mm; width: 100%; height: 100%; }
-        .label { border: 1.5px dashed #aaa; border-radius: 6px; padding: 10mm 12mm; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; }
+        .label { border: 1.5px dashed #aaa; border-radius: 6px; padding: 10mm 12mm; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; position: relative; }
         .label.empty { border-color: #ddd; }
-        .label-number { font-size: 12pt; color: #888; font-weight: bold; margin-bottom: 4mm; letter-spacing: 1px; }
+        .label-number { position: absolute; top: 3mm; left: 4mm; font-size: 6pt; color: #bbb; font-weight: normal; letter-spacing: 0; }
         .label-name { font-size: 22pt; font-weight: bold; line-height: 1.3; color: #1a1a1a; }
         .label-sponsor { font-size: 10pt; color: #777; font-style: italic; margin-top: 4mm; }
         @media print {

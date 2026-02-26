@@ -418,11 +418,9 @@ The British Trade Awards Team`
               <i class="bi bi-arrow-counterclockwise me-2"></i>Revert to Default
             </button>
           ` : ''}
-          ${!template.is_default ? `
-            <button type="button" class="btn btn-outline-danger ms-auto" onclick="emailTemplatesModule.deleteTemplate('${template.id}')">
-              <i class="bi bi-trash me-2"></i>Delete
-            </button>
-          ` : ''}
+          <button type="button" class="btn btn-outline-danger ms-auto" onclick="emailTemplatesModule.deleteTemplate('${template.id}')">
+            <i class="bi bi-trash me-2"></i>Delete
+          </button>
         </div>
       </form>
     `;
@@ -652,8 +650,14 @@ The British Trade Awards Team`
    */
   async deleteTemplate(templateId) {
     const template = (this.templates || []).find(t => t.id === templateId);
-    const templateName = template?.name || template?.subject || 'this template';
-    if (!await utils.confirmDialog({ title: 'Delete Template', message: `Delete <strong>${utils.escapeHtml(templateName)}</strong>? This action cannot be undone.`, confirmText: 'Delete', danger: true })) {
+    const templateName = template?.template_name || template?.name || template?.subject || 'this template';
+    const isSystem = ['email_header', 'email_footer'].includes(template?.template_type);
+    const warningExtra = isSystem
+      ? '<br><br><em>This is a system template. The built-in header/footer will be used automatically after deletion.</em>'
+      : template?.is_default
+        ? '<br><br><em>This is a default template. You can re-create it later if needed.</em>'
+        : '';
+    if (!await utils.confirmDialog({ title: 'Delete Template', message: `Delete <strong>${utils.escapeHtml(templateName)}</strong>? This action cannot be undone.${warningExtra}`, confirmText: 'Delete', danger: true })) {
       return;
     }
 

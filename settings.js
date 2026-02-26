@@ -8,20 +8,33 @@ const settingsModule = {
    */
   async init() {
     this.applyDensity();
-    await this.updateSystemInfo();
-    await this.loadSeasons();
+
+    // Initialize all sections independently so one failure doesn't block the rest
+    const safe = (fn) => fn().catch(e => console.error('Settings init error:', e));
+
+    await Promise.all([
+      safe(() => this.updateSystemInfo()),
+      safe(() => this.loadSeasons()),
+      safe(() => this.renderAuditLog()),
+      safe(() => {
+        if (typeof brandingModule !== 'undefined') {
+          const tenantId = (typeof multiTenancyModule !== 'undefined') ? multiTenancyModule.getTenantId() : 'default';
+          return brandingModule.renderBrandSettings(tenantId);
+        }
+        return Promise.resolve();
+      }),
+      safe(() => {
+        if (typeof gdprModule !== 'undefined') {
+          gdprModule.init();
+        }
+        return Promise.resolve();
+      })
+    ]);
+
     this.loadBackupSettings();
     this.checkBackupReminders();
-    this.renderAuditLog();
     this.renderUxSettings();
     this.renderCurrentUserRole();
-    if (typeof gdprModule !== 'undefined') {
-      gdprModule.init();
-    }
-    if (typeof brandingModule !== 'undefined') {
-      const tenantId = (typeof multiTenancyModule !== 'undefined') ? multiTenancyModule.getTenantId() : 'default';
-      brandingModule.renderBrandSettings(tenantId);
-    }
   },
 
   /**

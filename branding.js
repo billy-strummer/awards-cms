@@ -154,7 +154,14 @@ window.brandingModule = {
     const container = document.getElementById('brandingSettingsContainer');
     if (!container) { console.warn('brandingSettingsContainer not found'); return; }
 
-    const cur     = await this.loadBranding(tenantId);
+    let cur;
+    try {
+      cur = await this.loadBranding(tenantId);
+    } catch (e) {
+      console.error('renderBrandSettings failed:', e);
+      container.innerHTML = `<div class="alert alert-warning"><i class="bi bi-exclamation-triangle me-2"></i><strong>Branding:</strong> Could not load branding settings. The <code>tenant_branding</code> table may not exist yet. Check your Supabase migrations.</div>`;
+      return;
+    }
     const presets = this.getPresets();
     const fontOptions = [
       ['inherit', 'System Default'], ["'Segoe UI', sans-serif", 'Segoe UI'],

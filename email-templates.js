@@ -7,6 +7,155 @@ const emailTemplatesModule = {
   currentTemplate: null,
 
   /**
+   * Default template content for reverting edits.
+   * Keyed by template_name as defined in the schema seed data.
+   */
+  _defaultTemplates: {
+    'Entry Confirmation': {
+      subject: 'Entry Received - {ENTRY_NUMBER} | British Trade Awards',
+      body: `Dear {CONTACT_NAME},
+
+Thank you for entering the British Trade Awards. We are pleased to confirm that your entry has been received and is now being processed.
+
+Your Entry Details:
+- Entry Reference: {ENTRY_NUMBER}
+- Company: {COMPANY_NAME}
+- Category: {AWARD_NAME}
+- Sector: {SECTOR}
+- Region: {REGION}
+
+What Happens Next:
+1. Our team will review your entry to ensure all details are complete.
+2. You may upload any supporting documents (case studies, images, testimonials or other materials) using the link below.
+3. Shortlisted entries will be assessed by our independent judging panel.
+4. Winners will be announced at the awards ceremony.
+
+Upload Supporting Documents:
+{UPLOAD_LINK}
+
+Accepted formats: PDF, Word, Excel, JPG, PNG (max 10MB per file)
+
+Key Dates:
+- Entry Deadline: {DEADLINE_DATE}
+- Winners Announced: {ANNOUNCEMENT_DATE}
+
+Please keep your entry reference number safe for future correspondence.
+
+If you have any questions about your entry or the awards process, please contact us at {CONTACT_EMAIL}
+
+Kind regards,
+The British Trade Awards Team`
+    },
+    'Document Upload Reminder': {
+      subject: 'Supporting Documents Reminder - {ENTRY_NUMBER} | British Trade Awards',
+      body: `Dear {CONTACT_NAME},
+
+We wanted to let you know that we have not yet received any supporting documents for your British Trade Awards entry.
+
+- Entry Reference: {ENTRY_NUMBER}
+- Company: {COMPANY_NAME}
+- Category: {AWARD_NAME}
+
+While supporting documents are not mandatory, they can significantly strengthen your entry. Case studies, project images, client testimonials and accreditation certificates all help our judges assess your work.
+
+You can upload your documents here:
+{UPLOAD_LINK}
+
+Accepted formats: PDF, Word, Excel, JPG, PNG (max 10MB per file)
+
+The deadline for all entries and supporting materials is {DEADLINE_DATE}.
+
+If you have already uploaded your documents, please disregard this message. If you need any assistance, please contact us at {CONTACT_EMAIL}
+
+Kind regards,
+The British Trade Awards Team`
+    },
+    'Entry Approved/Shortlisted': {
+      subject: 'You Have Been Shortlisted - {ENTRY_NUMBER} | British Trade Awards',
+      body: `Dear {CONTACT_NAME},
+
+Congratulations! We are delighted to inform you that {COMPANY_NAME} has been shortlisted in the {AWARD_NAME} category at the British Trade Awards.
+
+- Entry Reference: {ENTRY_NUMBER}
+- Company: {COMPANY_NAME}
+- Category: {AWARD_NAME}
+
+What Happens Next:
+Your entry will now be assessed by our independent panel of judges. The judging process evaluates the quality of work, customer service, innovation and overall contribution to the trade industry.
+
+Winners will be announced on {ANNOUNCEMENT_DATE}. We will be in touch with further details about the awards ceremony in due course.
+
+This is a fantastic achievement and a testament to the quality of your work. Well done to you and your team.
+
+Kind regards,
+The British Trade Awards Team`
+    },
+    'Entry Not Shortlisted': {
+      subject: 'Your Entry Update - {ENTRY_NUMBER} | British Trade Awards',
+      body: `Dear {CONTACT_NAME},
+
+Thank you for entering {COMPANY_NAME} into the {AWARD_NAME} category at the British Trade Awards.
+
+- Entry Reference: {ENTRY_NUMBER}
+- Company: {COMPANY_NAME}
+- Category: {AWARD_NAME}
+
+After careful consideration by our judging panel, we regret to inform you that your entry has not been selected for the shortlist on this occasion.
+
+We received an exceptionally high standard of entries this year, making the selection process extremely competitive. Not being shortlisted is in no way a reflection on the quality of your business or the work you do.
+
+We would very much welcome an entry from you again next year and wish you continued success.
+
+Kind regards,
+The British Trade Awards Team`
+    }
+  },
+
+  /**
+   * Get sample data for preview/test, using saved placeholder defaults from Marketing > Placeholders
+   */
+  async _getSampleData() {
+    let defaults = null;
+    if (typeof marketingModule !== 'undefined' && marketingModule._placeholderDefaults) {
+      defaults = marketingModule._placeholderDefaults;
+    }
+    if (!defaults) {
+      try {
+        if (STATE.client) {
+          const { data } = await STATE.client.from('user_preferences').select('value').eq('key', 'emailPlaceholderDefaults').limit(1);
+          if (data?.[0]) defaults = JSON.parse(data[0].value);
+        }
+      } catch (_) {}
+    }
+    if (!defaults) {
+      try { defaults = JSON.parse(localStorage.getItem('emailPlaceholderDefaults') || 'null'); } catch (_) {}
+    }
+    return {
+      ENTRY_NUMBER: defaults?.ENTRY_NUMBER || 'BTA-2025-0001',
+      CONTACT_NAME: defaults?.CONTACT_NAME || 'John Smith',
+      COMPANY_NAME: defaults?.COMPANY_NAME || 'Acme Corporation Ltd',
+      AWARD_NAME: defaults?.AWARD_NAME || 'Export Excellence Award',
+      SECTOR: defaults?.SECTOR || 'Manufacturing',
+      REGION: defaults?.REGION || 'Greater London',
+      UPLOAD_LINK: defaults?.UPLOAD_LINK || 'https://yourdomain.com/upload-documents.html?entry=BTA-2025-0001',
+      DEADLINE_DATE: defaults?.DEADLINE_DATE || '31st December 2025',
+      ANNOUNCEMENT_DATE: defaults?.ANNOUNCEMENT_DATE || '15th February 2026',
+      CONTACT_EMAIL: defaults?.CONTACT_EMAIL || 'awards@britishtrade.org'
+    };
+  },
+
+  /**
+   * Get branding config for email styling
+   */
+  async _getBrandingConfig() {
+    try {
+      const tenantId = (typeof multiTenancyModule !== 'undefined') ? multiTenancyModule.getTenantId() : 'default';
+      if (typeof brandingModule !== 'undefined') return await brandingModule.loadBranding(tenantId);
+    } catch (_) {}
+    return {};
+  },
+
+  /**
    * Initialize Email Templates Module
    */
   async initialize() {
@@ -229,7 +378,7 @@ const emailTemplatesModule = {
         </div>
 
         <!-- Action Buttons -->
-        <div class="d-flex gap-2">
+        <div class="d-flex gap-2 flex-wrap">
           <button type="button" class="btn btn-primary" onclick="emailTemplatesModule.saveTemplate()">
             <i class="bi bi-save me-2"></i>Save Template
           </button>
@@ -239,6 +388,11 @@ const emailTemplatesModule = {
           <button type="button" class="btn btn-outline-info" onclick="emailTemplatesModule.sendTestEmail()">
             <i class="bi bi-envelope me-2"></i>Send Test
           </button>
+          ${this._defaultTemplates[template.template_name] ? `
+            <button type="button" class="btn btn-outline-warning" onclick="emailTemplatesModule.revertToDefault()">
+              <i class="bi bi-arrow-counterclockwise me-2"></i>Revert to Default
+            </button>
+          ` : ''}
           ${!template.is_default ? `
             <button type="button" class="btn btn-outline-danger ms-auto" onclick="emailTemplatesModule.deleteTemplate('${template.id}')">
               <i class="bi bi-trash me-2"></i>Delete
@@ -301,25 +455,42 @@ const emailTemplatesModule = {
   },
 
   /**
+   * Revert template body and subject to original default copy
+   */
+  async revertToDefault() {
+    if (!this.currentTemplate) return;
+
+    const defaults = this._defaultTemplates[this.currentTemplate.template_name];
+    if (!defaults) {
+      utils.showToast('No default copy available for this template', 'warning');
+      return;
+    }
+
+    if (!await utils.confirmDialog({
+      title: 'Revert to Default',
+      message: 'This will replace the current subject line and email body with the original default copy. Any edits you have made will be lost.<br><br>Are you sure you want to continue?',
+      confirmText: 'Revert',
+      danger: true
+    })) return;
+
+    const subjectEl = document.getElementById('templateSubject');
+    const bodyEl = document.getElementById('templateBody');
+    if (subjectEl) subjectEl.value = defaults.subject;
+    if (bodyEl) bodyEl.value = defaults.body;
+
+    utils.showToast('Template reverted to default. Click Save to persist.', 'info');
+  },
+
+  /**
    * Preview template with sample data
    */
-  previewTemplate() {
+  async previewTemplate() {
     const subject = document.getElementById('templateSubject').value;
     const body = document.getElementById('templateBody').value;
 
-    // Sample data for preview
-    const sampleData = {
-      ENTRY_NUMBER: 'BTA-2025-0001',
-      CONTACT_NAME: 'John Smith',
-      COMPANY_NAME: 'Acme Corporation Ltd',
-      AWARD_NAME: 'Export Excellence Award',
-      SECTOR: 'Manufacturing',
-      REGION: 'Greater London',
-      UPLOAD_LINK: 'https://yourdomain.com/upload-documents.html?entry=BTA-2025-0001',
-      DEADLINE_DATE: '31st December 2025',
-      ANNOUNCEMENT_DATE: '15th February 2026',
-      CONTACT_EMAIL: 'awards@britishtrade.org'
-    };
+    // Load saved placeholder defaults and branding
+    const sampleData = await this._getSampleData();
+    const branding = await this._getBrandingConfig();
 
     // Replace placeholders with sample data
     let previewSubject = subject;
@@ -331,6 +502,15 @@ const emailTemplatesModule = {
       previewSubject = previewSubject.replace(regex, sampleData[key]);
       previewBody = previewBody.replace(regex, sampleData[key]);
     });
+
+    // Get branded email header/footer
+    let emailHeader = '';
+    let emailFooter = '';
+    if (typeof brandingModule !== 'undefined' && branding && Object.keys(branding).length) {
+      const styles = brandingModule.getEmailStyles(branding.tenant_id || 'default', branding);
+      emailHeader = styles.header;
+      emailFooter = styles.footer;
+    }
 
     // Show preview modal
     const modalHtml = `
@@ -350,8 +530,12 @@ const emailTemplatesModule = {
               </div>
               <div>
                 <strong>Body:</strong>
-                <div class="p-3 bg-light rounded" style="white-space: pre-wrap; font-family: Arial, sans-serif; line-height: 1.6;">
-                  ${previewBody}
+                <div class="rounded overflow-hidden border">
+                  ${emailHeader}
+                  <div class="p-3" style="white-space: pre-wrap; font-family: Arial, sans-serif; line-height: 1.6;">
+                    ${previewBody}
+                  </div>
+                  ${emailFooter}
                 </div>
               </div>
             </div>
@@ -393,19 +577,9 @@ const emailTemplatesModule = {
     const subject = document.getElementById('templateSubject')?.value || this.currentTemplate.subject;
     const body = document.getElementById('templateBody')?.value || this.currentTemplate.body;
 
-    // Replace placeholders with sample data for test
-    const sampleData = {
-      ENTRY_NUMBER: 'BTA-2025-0001',
-      CONTACT_NAME: 'John Smith',
-      COMPANY_NAME: 'Acme Corporation Ltd',
-      AWARD_NAME: 'Export Excellence Award',
-      SECTOR: 'Manufacturing',
-      REGION: 'Greater London',
-      UPLOAD_LINK: 'https://example.com/upload',
-      DEADLINE_DATE: '31st December 2025',
-      ANNOUNCEMENT_DATE: '15th February 2026',
-      CONTACT_EMAIL: 'awards@britishtradeawards.com'
-    };
+    // Load saved placeholder defaults and branding
+    const sampleData = await this._getSampleData();
+    const branding = await this._getBrandingConfig();
 
     let testSubject = subject;
     let testBody = body;
@@ -415,6 +589,17 @@ const emailTemplatesModule = {
       testBody = testBody.replace(regex, sampleData[key]);
     });
 
+    // Wrap with branded header/footer if branding is configured
+    if (typeof brandingModule !== 'undefined' && branding && Object.keys(branding).length) {
+      const styles = brandingModule.getEmailStyles(branding.tenant_id || 'default', branding);
+      testBody = `<style>${styles.css}</style>${styles.header}<div style="padding:24px 32px">${testBody}</div>${styles.footer}`;
+    }
+
+    // Use branding email settings with fallbacks
+    const fromName = branding?.company_name || 'British Trade Awards';
+    const fromEmail = branding?.email_from || 'awards@britishtradeawards.com';
+    const replyTo = branding?.email_reply_to || branding?.email_from || 'awards@britishtradeawards.com';
+
     try {
       utils.showToast('Sending test email...', 'info');
 
@@ -422,9 +607,9 @@ const emailTemplatesModule = {
         p_to: email,
         p_subject: testSubject,
         p_html: testBody,
-        p_from_name: 'British Trade Awards',
-        p_from_email: 'awards@britishtradeawards.com',
-        p_reply_to: 'awards@britishtradeawards.com'
+        p_from_name: fromName,
+        p_from_email: fromEmail,
+        p_reply_to: replyTo
       });
 
       if (error) throw error;

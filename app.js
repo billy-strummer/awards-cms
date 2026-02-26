@@ -997,6 +997,31 @@ document.addEventListener('DOMContentLoaded', function() {
       console.log('📢 Marketing tab opened');
       if (typeof marketingModule !== 'undefined') {
         marketingModule.loadAllData();
+        // Load branding overview if branding subtab is active (default)
+        const brandingSubTab = document.getElementById('branding-subtab');
+        if (brandingSubTab && brandingSubTab.classList.contains('active')) {
+          marketingModule.loadBrandingOverview();
+        }
+      }
+    });
+  }
+
+  // Load branding overview when branding sub-tab is shown
+  const brandingSubTab = document.getElementById('branding-subtab');
+  if (brandingSubTab) {
+    brandingSubTab.addEventListener('shown.bs.tab', () => {
+      if (typeof marketingModule !== 'undefined') {
+        marketingModule.loadBrandingOverview();
+      }
+    });
+  }
+
+  // Load placeholder defaults when placeholders sub-tab is shown
+  const placeholdersSubTab = document.getElementById('placeholders-subtab');
+  if (placeholdersSubTab) {
+    placeholdersSubTab.addEventListener('shown.bs.tab', () => {
+      if (typeof marketingModule !== 'undefined') {
+        marketingModule.loadPlaceholderDefaults();
       }
     });
   }

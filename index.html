@@ -3740,7 +3740,17 @@
           <!-- Marketing Sub-Navigation -->
           <ul class="nav nav-pills mb-4" id="marketingSubTabs" role="tablist">
             <li class="nav-item" role="presentation">
-              <button class="nav-link active" id="banners-subtab" data-bs-toggle="pill" data-bs-target="#banners-content" type="button" role="tab">
+              <button class="nav-link active" id="branding-subtab" data-bs-toggle="pill" data-bs-target="#branding-overview-content" type="button" role="tab">
+                <i class="bi bi-palette me-2"></i>Branding
+              </button>
+            </li>
+            <li class="nav-item" role="presentation">
+              <button class="nav-link" id="placeholders-subtab" data-bs-toggle="pill" data-bs-target="#placeholders-content" type="button" role="tab">
+                <i class="bi bi-braces me-2"></i>Email Placeholders
+              </button>
+            </li>
+            <li class="nav-item" role="presentation">
+              <button class="nav-link" id="banners-subtab" data-bs-toggle="pill" data-bs-target="#banners-content" type="button" role="tab">
                 <i class="bi bi-file-image me-2"></i>Banners
               </button>
             </li>
@@ -3779,8 +3789,43 @@
           <!-- Marketing Sub-Tab Content -->
           <div class="tab-content" id="marketingSubTabContent">
 
+            <!-- Branding Overview Sub-Tab -->
+            <div class="tab-pane fade show active" id="branding-overview-content" role="tabpanel">
+              <div class="d-flex justify-content-between align-items-center mb-4">
+                <div>
+                  <h4><i class="bi bi-palette me-2"></i>Brand Identity</h4>
+                  <p class="text-muted mb-0">Your brand settings are the root source for all marketing materials, emails and public pages</p>
+                </div>
+                <button class="btn btn-outline-primary" onclick="document.getElementById('settings-tab').click(); setTimeout(() => document.getElementById('brandingSettingsContainer')?.scrollIntoView({behavior:'smooth'}), 300)">
+                  <i class="bi bi-pencil me-2"></i>Edit in Settings
+                </button>
+              </div>
+              <div id="brandingOverviewPanel">
+                <div class="text-center py-5 text-muted">
+                  <i class="bi bi-hourglass-split display-4 d-block mb-2 opacity-25"></i>
+                  Loading branding...
+                </div>
+              </div>
+            </div>
+
+            <!-- Email Placeholders Sub-Tab -->
+            <div class="tab-pane fade" id="placeholders-content" role="tabpanel">
+              <div class="d-flex justify-content-between align-items-center mb-4">
+                <div>
+                  <h4><i class="bi bi-braces me-2"></i>Email Placeholder Defaults</h4>
+                  <p class="text-muted mb-0">Configure the default values used in email template previews and test sends</p>
+                </div>
+              </div>
+              <div id="placeholdersPanel">
+                <div class="text-center py-5 text-muted">
+                  <i class="bi bi-hourglass-split display-4 d-block mb-2 opacity-25"></i>
+                  Loading placeholders...
+                </div>
+              </div>
+            </div>
+
             <!-- Banners Sub-Tab -->
-            <div class="tab-pane fade show active" id="banners-content" role="tabpanel">
+            <div class="tab-pane fade" id="banners-content" role="tabpanel">
               <div class="d-flex justify-content-between align-items-center mb-4">
                 <h4><i class="bi bi-file-image me-2"></i>Website Banners</h4>
                 <button class="btn btn-primary" onclick="marketingModule.openAddBannerModal()">

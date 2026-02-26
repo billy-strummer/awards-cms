@@ -12,6 +12,7 @@
 
 const { createClient } = require('@supabase/supabase-js');
 const { Resend } = require('resend');
+const { wrapEmail } = require('./email-header');
 
 const supabase = createClient(
   process.env.SUPABASE_URL,
@@ -49,76 +50,11 @@ async function loadTenantBranding() {
 }
 
 /**
- * Email wrapper - uses tenant branding from database for all emails.
- * Falls back to env vars and then to sensible defaults.
+ * Email wrapper - delegates to shared email-header.js module.
+ * Branding comes from tenant_branding table (loaded via loadTenantBranding).
  */
 function wrapEmailTemplate(bodyContent, branding = {}) {
-  const brandName = branding.company_name || process.env.FROM_NAME || 'British Trade Awards';
-  const accentColor = branding.accent_color || '#cc9900';
-  const secondaryColor = branding.secondary_color || '#1a1a1a';
-  const logoUrl = branding.logo_url || process.env.BTA_LOGO_URL || '';
-  const contactEmail = branding.email_from || branding.email_reply_to || process.env.FROM_EMAIL || '';
-  const websiteUrl = branding.custom_domain || '';
-
-  const escHtml = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
-
-  const logoBlock = logoUrl
-    ? `<img src="${escHtml(logoUrl)}" alt="${escHtml(brandName)}" style="max-width: 280px; height: auto; display: block; margin: 0 auto;">`
-    : `<h2 style="margin: 0; font-family: Georgia, 'Times New Roman', serif; font-size: 28px; color: #1a1a1a; letter-spacing: 1px;">${escHtml(brandName)}</h2>`;
-
-  let footerLinks = '';
-  if (websiteUrl) {
-    footerLinks += `<a href="https://${escHtml(websiteUrl)}" style="color: ${accentColor}; text-decoration: none;">${escHtml(websiteUrl)}</a>`;
-  }
-  if (contactEmail) {
-    if (footerLinks) footerLinks += ' &nbsp;|&nbsp; ';
-    footerLinks += `<a href="mailto:${escHtml(contactEmail)}" style="color: ${accentColor}; text-decoration: none;">${escHtml(contactEmail)}</a>`;
-  }
-
-  return `
-    <!DOCTYPE html>
-    <html lang="en">
-    <head>
-      <meta charset="UTF-8">
-      <meta name="viewport" content="width=device-width, initial-scale=1.0">
-      <meta http-equiv="X-UA-Compatible" content="IE=edge">
-    </head>
-    <body style="margin: 0; padding: 0; background-color: #f4f4f0; font-family: Arial, Helvetica, sans-serif;">
-      <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color: #f4f4f0;">
-        <tr>
-          <td align="center" style="padding: 30px 20px;">
-            <table width="600" cellpadding="0" cellspacing="0" border="0" style="background-color: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.08);">
-              <!-- Logo Header -->
-              <tr>
-                <td align="center" style="padding: 30px 40px; border-bottom: 2px solid ${accentColor};">
-                  ${logoBlock}
-                </td>
-              </tr>
-              <!-- Email Body -->
-              <tr>
-                <td style="padding: 0; font-family: Arial, Helvetica, sans-serif; font-size: 16px; line-height: 1.6; color: #333333;">
-                  ${bodyContent}
-                </td>
-              </tr>
-              <!-- Footer -->
-              <tr>
-                <td style="padding: 30px 40px; background-color: ${secondaryColor}; text-align: center;">
-                  <p style="margin: 0 0 8px 0; font-family: Arial, sans-serif; font-size: 14px; color: #ffffff;">
-                    &copy; ${new Date().getFullYear()} ${escHtml(brandName)}. All rights reserved.
-                  </p>
-                  ${footerLinks ? `<p style="margin: 0 0 8px 0; font-family: Arial, sans-serif; font-size: 12px; color: #aaaaaa;">${footerLinks}</p>` : ''}
-                  <p style="margin: 0; font-family: Arial, sans-serif; font-size: 11px; color: #888888;">
-                    <a href="{{unsubscribe_link}}" style="color: #888888; text-decoration: underline;">Unsubscribe</a>
-                  </p>
-                </td>
-              </tr>
-            </table>
-          </td>
-        </tr>
-      </table>
-    </body>
-    </html>
-  `;
+  return wrapEmail(bodyContent, branding);
 }
 
 /**

@@ -111,17 +111,36 @@ window.brandingModule = {
   },
 
   /* ---- Email Template Theming ---- */
+  /*
+   * Header/footer markup mirrors api/email-header.js (the single source
+   * of truth for Node back-end paths).  This browser-side copy exists
+   * only because we cannot require() a Node module in the browser.
+   * If you change the header design, update api/email-header.js FIRST,
+   * then mirror the change here.
+   */
+  _buildEmailHeaderContent(logoUrl, brandName, accentColor) {
+    return logoUrl
+      ? `<table cellpadding="0" cellspacing="0" border="0" style="margin:0 auto;"><tr>`
+        + `<td style="vertical-align:middle;padding-right:25px;"><img src="${logoUrl}" alt="${brandName}" style="height:80px;width:auto;display:block;"></td>`
+        + `<td style="vertical-align:middle;"><h1 style="color:${accentColor};margin:0;font-size:22px;font-family:Georgia,'Times New Roman',serif;letter-spacing:3px;text-transform:uppercase;line-height:1.3;">${brandName}</h1>`
+        + `<p style="color:${accentColor};margin:5px 0 0;font-size:12px;font-family:Arial,Helvetica,sans-serif;letter-spacing:2px;text-transform:uppercase;opacity:0.9;font-weight:300;">Self-Nomination Entry Confirmation</p></td>`
+        + `</tr></table>`
+      : `<h1 style="color:${accentColor};margin:0;font-size:24px;font-family:Georgia,'Times New Roman',serif;letter-spacing:3px;text-transform:uppercase;">${brandName}</h1>`
+        + `<p style="color:${accentColor};margin:8px 0 0;font-size:13px;letter-spacing:2px;text-transform:uppercase;opacity:0.9;">Self-Nomination Entry Confirmation</p>`;
+  },
+
   getEmailStyles(tenantId, config = {}) {
-    const p = config.primary_color || '#000000';
-    const a = config.accent_color  || '#D4AF37';
+    const p = config.primary_color   || '#000000';
+    const s = config.secondary_color || '#1a1a1a';
+    const a = config.accent_color    || '#D4AF37';
     const c = this._esc(config.company_name  || 'British Trade Awards');
     const r = this._esc(config.email_reply_to || config.email_from || '');
     const logoUrl = this._esc(config.logo_url || '');
-    const tagline = this._esc(config.tagline || '');
+    const headerContent = this._buildEmailHeaderContent(config.logo_url ? logoUrl : '', c, a);
     return {
-      css: `.email-header{background:${p};padding:24px 32px;text-align:center}.email-header img{max-height:60px}.email-btn{background:${a};color:#fff;padding:12px 28px;border-radius:4px;text-decoration:none;font-weight:bold;display:inline-block}.email-footer{background:#f4f4f4;padding:16px 32px;font-size:12px;color:#666;text-align:center}`,
-      header: `<div class="email-header">${config.logo_url ? `<img src="${logoUrl}" alt="${c} logo">` : `<h2 style="color:#fff;margin:0">${c}</h2>`}${config.tagline ? `<p style="color:rgba(255,255,255,.75);margin:8px 0 0;font-size:14px">${tagline}</p>` : ''}</div>`,
-      footer: `<div class="email-footer"><p>&copy; ${new Date().getFullYear()} ${c}. All rights reserved.</p>${r ? `<p>Questions? <a href="mailto:${r}">${r}</a></p>` : ''}</div>`
+      css: `.email-header{background:linear-gradient(135deg,${p} 0%,${s} 100%);padding:28px 32px;text-align:center;border-bottom:3px solid ${a}}.email-header img{height:80px;width:auto}.email-btn{background:${a};color:#fff;padding:12px 28px;border-radius:4px;text-decoration:none;font-weight:bold;display:inline-block}.email-footer{background:${s};padding:16px 32px;font-size:12px;color:#999;text-align:center}`,
+      header: `<div class="email-header">${headerContent}</div>`,
+      footer: `<div class="email-footer"><p style="margin:0;">${c}${r ? ' | <a href="mailto:' + r + '" style="color:' + a + ';text-decoration:none;">' + r + '</a>' : ''}</p></div>`
     };
   },
 

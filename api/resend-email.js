@@ -6,6 +6,7 @@
 
 const { Resend } = require('resend');
 const { createClient } = require('@supabase/supabase-js');
+const { wrapEmail } = require('./email-header');
 require('dotenv').config();
 
 const resend = new Resend(process.env.RESEND_API_KEY);
@@ -19,40 +20,11 @@ const FROM_EMAIL = process.env.FROM_EMAIL || 'awards@britishtradeawards.com';
 const FROM_NAME = process.env.FROM_NAME || 'British Trade Awards';
 
 /**
- * Wrap email content in BTA branded HTML template
+ * Wrap email content in branded HTML template.
+ * Delegates to shared email-header.js module.
  */
-function wrapEmailTemplate(subject, bodyHtml, preheader = '') {
-  return `<!DOCTYPE html>
-<html lang="en">
-<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>${subject}</title>
-<style>
-  body { margin: 0; padding: 0; background-color: #f4f4f7; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
-  .container { max-width: 600px; margin: 0 auto; background: #ffffff; }
-  .header { background: linear-gradient(135deg, #1a237e 0%, #0d47a1 100%); padding: 32px; text-align: center; }
-  .header h1 { color: #cc9900; margin: 0; font-size: 24px; }
-  .header p { color: #ffffff; margin: 8px 0 0; font-size: 14px; }
-  .body { padding: 32px; color: #333333; line-height: 1.6; font-size: 15px; }
-  .footer { background: #f8f9fa; padding: 24px 32px; text-align: center; font-size: 12px; color: #6c757d; }
-  .footer a { color: #0d6efd; text-decoration: none; }
-  .btn { display: inline-block; padding: 12px 28px; background: #cc9900; color: #ffffff; text-decoration: none; border-radius: 6px; font-weight: 600; margin: 16px 0; }
-</style>
-</head>
-<body>
-${preheader ? `<div style="display:none;max-height:0;overflow:hidden;">${preheader}</div>` : ''}
-<div class="container">
-  <div class="header">
-    <h1>British Trade Awards</h1>
-    <p>Celebrating Excellence in British Trade</p>
-  </div>
-  <div class="body">${bodyHtml}</div>
-  <div class="footer">
-    <p>British Trade Awards | <a href="https://britishtrade.com">britishtrade.com</a></p>
-    <p style="margin-top:8px;">You received this email because you are associated with the British Trade Awards.</p>
-    <p><a href="{{{unsubscribe_url}}}">Unsubscribe</a> | <a href="{{{preferences_url}}}">Email Preferences</a></p>
-  </div>
-</div>
-</body></html>`;
+function wrapEmailTemplate(subject, bodyHtml, preheader = '', branding = {}) {
+  return wrapEmail(bodyHtml, branding, { subject, preheader });
 }
 
 /**

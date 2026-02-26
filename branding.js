@@ -118,9 +118,17 @@ window.brandingModule = {
     const r = this._esc(config.email_reply_to || config.email_from || '');
     const logoUrl = this._esc(config.logo_url || '');
     const tagline = this._esc(config.tagline || '');
+    const headerContent = config.logo_url
+      ? `<table cellpadding="0" cellspacing="0" border="0" style="margin:0 auto;"><tr>`
+        + `<td style="vertical-align:middle;padding-right:25px;"><img src="${logoUrl}" alt="${c}" style="height:80px;width:auto;display:block;"></td>`
+        + `<td style="vertical-align:middle;"><h1 style="color:${a};margin:0;font-size:22px;font-family:Georgia,'Times New Roman',serif;letter-spacing:3px;text-transform:uppercase;line-height:1.3;">${c}</h1>`
+        + `<p style="color:${a};margin:5px 0 0;font-size:12px;font-family:Arial,Helvetica,sans-serif;letter-spacing:2px;text-transform:uppercase;opacity:0.9;font-weight:300;">Self-Nomination Entry Confirmation</p></td>`
+        + `</tr></table>`
+      : `<h1 style="color:${a};margin:0;font-size:24px;font-family:Georgia,'Times New Roman',serif;letter-spacing:3px;text-transform:uppercase;">${c}</h1>`
+        + `<p style="color:${a};margin:8px 0 0;font-size:13px;letter-spacing:2px;text-transform:uppercase;opacity:0.9;">Self-Nomination Entry Confirmation</p>`;
     return {
-      css: `.email-header{background:${p};padding:24px 32px;text-align:center}.email-header img{max-height:60px}.email-btn{background:${a};color:#fff;padding:12px 28px;border-radius:4px;text-decoration:none;font-weight:bold;display:inline-block}.email-footer{background:#f4f4f4;padding:16px 32px;font-size:12px;color:#666;text-align:center}`,
-      header: `<div class="email-header">${config.logo_url ? `<img src="${logoUrl}" alt="${c} logo">` : `<h2 style="color:#fff;margin:0">${c}</h2>`}${config.tagline ? `<p style="color:rgba(255,255,255,.75);margin:8px 0 0;font-size:14px">${tagline}</p>` : ''}</div>`,
+      css: `.email-header{background:linear-gradient(135deg,${p} 0%,#1a1a1a 100%);padding:28px 32px;border-bottom:3px solid ${a}}.email-header img{height:80px;width:auto}.email-btn{background:${a};color:#fff;padding:12px 28px;border-radius:4px;text-decoration:none;font-weight:bold;display:inline-block}.email-footer{background:#f4f4f4;padding:16px 32px;font-size:12px;color:#666;text-align:center}`,
+      header: `<div class="email-header">${headerContent}</div>`,
       footer: `<div class="email-footer"><p>&copy; ${new Date().getFullYear()} ${c}. All rights reserved.</p>${r ? `<p>Questions? <a href="mailto:${r}">${r}</a></p>` : ''}</div>`
     };
   },

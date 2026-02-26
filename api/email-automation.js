@@ -63,8 +63,13 @@ function wrapEmailTemplate(bodyContent, branding = {}) {
   const escHtml = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 
   const logoBlock = logoUrl
-    ? `<img src="${escHtml(logoUrl)}" alt="${escHtml(brandName)}" style="max-width: 280px; height: auto; display: block; margin: 0 auto;">`
-    : `<h2 style="margin: 0; font-family: Georgia, 'Times New Roman', serif; font-size: 28px; color: #1a1a1a; letter-spacing: 1px;">${escHtml(brandName)}</h2>`;
+    ? `<table cellpadding="0" cellspacing="0" border="0" style="margin:0 auto;"><tr>`
+      + `<td style="vertical-align:middle;padding-right:25px;"><img src="${escHtml(logoUrl)}" alt="${escHtml(brandName)}" style="height:80px;width:auto;display:block;"></td>`
+      + `<td style="vertical-align:middle;"><h1 style="color:${accentColor};margin:0;font-size:22px;font-family:Georgia,'Times New Roman',serif;letter-spacing:3px;text-transform:uppercase;line-height:1.3;">${escHtml(brandName)}</h1>`
+      + `<p style="color:${accentColor};margin:5px 0 0;font-size:12px;font-family:Arial,Helvetica,sans-serif;letter-spacing:2px;text-transform:uppercase;opacity:0.9;font-weight:300;">Self-Nomination Entry Confirmation</p></td>`
+      + `</tr></table>`
+    : `<h1 style="margin:0;font-family:Georgia,'Times New Roman',serif;font-size:24px;color:${accentColor};letter-spacing:3px;text-transform:uppercase;">${escHtml(brandName)}</h1>`
+      + `<p style="color:${accentColor};margin:8px 0 0;font-size:13px;letter-spacing:2px;text-transform:uppercase;opacity:0.9;">Self-Nomination Entry Confirmation</p>`;
 
   let footerLinks = '';
   if (websiteUrl) {
@@ -90,7 +95,7 @@ function wrapEmailTemplate(bodyContent, branding = {}) {
             <table width="600" cellpadding="0" cellspacing="0" border="0" style="background-color: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.08);">
               <!-- Logo Header -->
               <tr>
-                <td align="center" style="padding: 30px 40px; border-bottom: 2px solid ${accentColor};">
+                <td align="center" style="background: linear-gradient(135deg, ${branding.primary_color || '#000000'} 0%, ${secondaryColor} 100%); padding: 28px 32px; border-bottom: 3px solid ${accentColor};">
                   ${logoBlock}
                 </td>
               </tr>

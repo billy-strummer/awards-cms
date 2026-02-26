@@ -96,11 +96,13 @@ window.brandingModule = {
   getEmailStyles(tenantId, config = {}) {
     const p = config.primary_color || '#0d3b6e';
     const a = config.accent_color  || '#e8a020';
-    const c = config.company_name  || 'British Trade Awards';
-    const r = config.email_reply_to || config.email_from || '';
+    const c = this._esc(config.company_name  || 'British Trade Awards');
+    const r = this._esc(config.email_reply_to || config.email_from || '');
+    const logoUrl = this._esc(config.logo_url || '');
+    const tagline = this._esc(config.tagline || '');
     return {
       css: `.email-header{background:${p};padding:24px 32px;text-align:center}.email-header img{max-height:60px}.email-btn{background:${a};color:#fff;padding:12px 28px;border-radius:4px;text-decoration:none;font-weight:bold;display:inline-block}.email-footer{background:#f4f4f4;padding:16px 32px;font-size:12px;color:#666;text-align:center}`,
-      header: `<div class="email-header">${config.logo_url ? `<img src="${config.logo_url}" alt="${c} logo">` : `<h2 style="color:#fff;margin:0">${c}</h2>`}${config.tagline ? `<p style="color:rgba(255,255,255,.75);margin:8px 0 0;font-size:14px">${config.tagline}</p>` : ''}</div>`,
+      header: `<div class="email-header">${config.logo_url ? `<img src="${logoUrl}" alt="${c} logo">` : `<h2 style="color:#fff;margin:0">${c}</h2>`}${config.tagline ? `<p style="color:rgba(255,255,255,.75);margin:8px 0 0;font-size:14px">${tagline}</p>` : ''}</div>`,
       footer: `<div class="email-footer"><p>&copy; ${new Date().getFullYear()} ${c}. All rights reserved.</p>${r ? `<p>Questions? <a href="mailto:${r}">${r}</a></p>` : ''}</div>`
     };
   },
@@ -124,15 +126,20 @@ window.brandingModule = {
   },
 
   /* ---- Live Preview ---- */
+  _esc(str) {
+    return utils && utils.escapeHtml ? utils.escapeHtml(str) : String(str).replace(/[&<>"']/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' })[c]);
+  },
+
   renderPreview(config) {
     const p = config.primary_color   || '#0d3b6e';
     const s = config.secondary_color || '#1a6bb5';
     const a = config.accent_color    || '#e8a020';
     const f = config.font_family     || 'inherit';
-    const c = config.company_name    || 'Your Company';
-    const t = config.tagline         || 'Awards Programme';
+    const c = this._esc(config.company_name || 'Your Company');
+    const t = this._esc(config.tagline      || 'Awards Programme');
+    const logoUrl = this._esc(config.logo_url || '');
     const logoHtml = config.logo_url
-      ? `<img src="${config.logo_url}" alt="logo" style="height:36px;object-fit:contain">`
+      ? `<img src="${logoUrl}" alt="logo" style="height:36px;object-fit:contain">`
       : `<div style="width:36px;height:36px;background:rgba(255,255,255,.2);border-radius:4px"></div>`;
     return `<div class="branding-preview-card border rounded overflow-hidden shadow-sm" style="font-family:${f};max-width:360px">
       <div style="background:${p};padding:16px 20px;display:flex;align-items:center;gap:12px">${logoHtml}<div><div style="color:#fff;font-weight:700;font-size:15px">${c}</div><div style="color:rgba(255,255,255,.7);font-size:12px">${t}</div></div></div>
@@ -147,7 +154,14 @@ window.brandingModule = {
     const container = document.getElementById('brandingSettingsContainer');
     if (!container) { console.warn('brandingSettingsContainer not found'); return; }
 
-    const cur     = await this.loadBranding(tenantId);
+    let cur;
+    try {
+      cur = await this.loadBranding(tenantId);
+    } catch (e) {
+      console.error('renderBrandSettings failed:', e);
+      container.innerHTML = `<div class="alert alert-warning"><i class="bi bi-exclamation-triangle me-2"></i><strong>Branding:</strong> Could not load branding settings. The <code>tenant_branding</code> table may not exist yet. Check your Supabase migrations.</div>`;
+      return;
+    }
     const presets = this.getPresets();
     const fontOptions = [
       ['inherit', 'System Default'], ["'Segoe UI', sans-serif", 'Segoe UI'],
@@ -159,8 +173,9 @@ window.brandingModule = {
       `<li><a class="dropdown-item branding-preset-btn" href="#" data-preset='${JSON.stringify(p)}'>${p.name}</a></li>`
     ).join('');
 
+    const esc = v => this._esc(v);
     const field = (label, id, type, value, placeholder = '') =>
-      `<div class="mb-3"><label class="form-label">${label}</label><input type="${type}" class="form-control${type==='color'?' form-control-color':''}" id="${id}" value="${value}"${placeholder?` placeholder="${placeholder}"`:''} ${type==='color'?'style="width:100%"':''}></div>`;
+      `<div class="mb-3"><label class="form-label">${label}</label><input type="${type}" class="form-control${type==='color'?' form-control-color':''}" id="${id}" value="${esc(value)}"${placeholder?` placeholder="${placeholder}"`:''} ${type==='color'?'style="width:100%"':''}></div>`;
 
     container.innerHTML = `<div class="row g-4">
       <div class="col-lg-7"><div class="card"><div class="card-header d-flex justify-content-between align-items-center">
@@ -173,7 +188,7 @@ window.brandingModule = {
           ${field('Tagline','bf_tagline','text',cur.tagline||'')}
           <h6 class="text-muted fw-semibold mt-3 mb-3">Assets</h6>
           <div class="mb-3"><label class="form-label">Logo URL</label>
-            <div class="input-group"><input type="url" class="form-control" id="bf_logo_url" value="${cur.logo_url||''}" placeholder="https://...">
+            <div class="input-group"><input type="url" class="form-control" id="bf_logo_url" value="${esc(cur.logo_url||'')}" placeholder="https://...">
             <label class="btn btn-outline-secondary mb-0" for="bf_logo_file">Upload</label>
             <input type="file" id="bf_logo_file" class="d-none" accept="image/*"></div></div>
           ${field('Favicon URL','bf_favicon_url','url',cur.favicon_url||'','https://...')}
@@ -190,7 +205,7 @@ window.brandingModule = {
           ${field('Reply-To Address','bf_email_reply_to','email',cur.email_reply_to||'')}
           <h6 class="text-muted fw-semibold mt-3 mb-3">Domain</h6>
           <div class="mb-3"><label class="form-label">Custom Domain <span class="badge bg-secondary">Display only</span></label>
-            <input type="text" class="form-control" id="bf_custom_domain" value="${cur.custom_domain||''}" readonly>
+            <input type="text" class="form-control" id="bf_custom_domain" value="${esc(cur.custom_domain||'')}" readonly>
             <div class="form-text">Configure via DNS settings. Contact support to change.</div></div>
           <div class="d-flex gap-2 mt-4">
             <button type="submit" class="btn btn-primary">Save Branding</button>

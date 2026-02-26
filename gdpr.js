@@ -39,8 +39,6 @@ const gdprModule = {
               <select class="form-select" id="gdprEntityType" aria-label="Entity type">
                 <option value="organisation">Organisation</option>
                 <option value="contact">Contact</option>
-                <option value="entry">Entry</option>
-                <option value="attendee">Attendee</option>
               </select>
             </div>
             <div class="col-md-4">
@@ -105,8 +103,12 @@ const gdprModule = {
   },
 
   /**
-   * Search for an entity (org or contact) by name/email
+   * Escape special SQL LIKE/ILIKE wildcard characters in user input
    */
+  _escapeLike(str) {
+    return str.replace(/[%_\\]/g, '\\$&');
+  },
+
   async searchEntity() {
     const term = document.getElementById('gdprEntitySearch').value.trim();
     const entityType = document.getElementById('gdprEntityType').value;
@@ -117,20 +119,22 @@ const gdprModule = {
       return;
     }
 
+    const safeTerm = this._escapeLike(term);
+
     try {
       let data = [];
       if (entityType === 'organisation') {
         const { data: orgs } = await STATE.client
           .from('organisations')
           .select('id, company_name, email')
-          .or(`company_name.ilike.%${term}%,email.ilike.%${term}%`)
+          .or(`company_name.ilike.%${safeTerm}%,email.ilike.%${safeTerm}%`)
           .limit(10);
         data = (orgs || []).map(o => ({ id: o.id, label: `${o.company_name} (${o.email || 'no email'})` }));
       } else if (entityType === 'contact') {
         const { data: contacts } = await STATE.client
           .from('organisation_contacts')
           .select('id, first_name, last_name, email')
-          .or(`email.ilike.%${term}%,first_name.ilike.%${term}%,last_name.ilike.%${term}%`)
+          .or(`email.ilike.%${safeTerm}%,first_name.ilike.%${safeTerm}%,last_name.ilike.%${safeTerm}%`)
           .limit(10);
         data = (contacts || []).map(c => ({ id: c.id, label: `${c.first_name} ${c.last_name} (${c.email || 'no email'})` }));
       }
@@ -164,7 +168,7 @@ const gdprModule = {
    * Submit a GDPR request
    */
   async submitRequest() {
-    if (!rbacModule.guard('gdpr')) {
+    if (typeof rbacModule !== 'undefined' && !rbacModule.canAccess('settings')) {
       utils.showToast('You need admin permissions for GDPR actions', 'error');
       return;
     }
@@ -222,7 +226,7 @@ const gdprModule = {
       if (error) throw error;
 
       if (!data || data.length === 0) {
-        utils.showEmptyState('gdprRequestsTableBody', 6, 'No GDPR requests', 'bi-shield-check');
+        utils.showEmptyState('gdprRequestsTable', 6, 'No GDPR requests', 'bi-shield-check');
         return;
       }
 
@@ -250,7 +254,7 @@ const gdprModule = {
       `).join('');
 
     } catch (e) {
-      utils.showEmptyState('gdprRequestsTableBody', 6, 'Failed to load requests', 'bi-exclamation-triangle');
+      utils.showEmptyState('gdprRequestsTable', 6, 'Failed to load requests', 'bi-exclamation-triangle');
     }
   },
 

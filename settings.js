@@ -8,15 +8,56 @@ const settingsModule = {
    */
   async init() {
     this.applyDensity();
-    await this.updateSystemInfo();
-    await this.loadSeasons();
+
+    // Initialize all sections independently so one failure doesn't block the rest
+    const safe = (fn) => fn().catch(e => console.error('Settings init error:', e));
+
+    await Promise.all([
+      safe(() => this.updateSystemInfo()),
+      safe(() => this.loadSeasons()),
+      safe(() => this.renderAuditLog()),
+      safe(() => {
+        if (typeof brandingModule !== 'undefined') {
+          const tenantId = (typeof multiTenancyModule !== 'undefined') ? multiTenancyModule.getTenantId() : 'default';
+          return brandingModule.renderBrandSettings(tenantId);
+        }
+        return Promise.resolve();
+      }),
+      safe(() => {
+        if (typeof gdprModule !== 'undefined') {
+          gdprModule.init();
+        }
+        return Promise.resolve();
+      })
+    ]);
+
     this.loadBackupSettings();
     this.checkBackupReminders();
-    this.renderAuditLog();
     this.renderUxSettings();
-    if (typeof gdprModule !== 'undefined') {
-      gdprModule.init();
-    }
+    this.renderCurrentUserRole();
+  },
+
+  /**
+   * Display the current user's actual role from RBAC
+   */
+  renderCurrentUserRole() {
+    const label = document.getElementById('currentUserRoleLabel');
+    const alert = document.getElementById('currentUserRoleAlert');
+    if (!label || !alert) return;
+
+    const roleMap = {
+      super_admin: { text: 'Super Admin (Full Access)', alertClass: 'alert-success' },
+      admin:       { text: 'Administrator (Full Access)', alertClass: 'alert-success' },
+      editor:      { text: 'Editor (Content Management)', alertClass: 'alert-info' },
+      finance:     { text: 'Finance (Payments & Reports)', alertClass: 'alert-warning' },
+      viewer:      { text: 'Viewer (Read Only)', alertClass: 'alert-secondary' }
+    };
+
+    const currentRole = (typeof rbacModule !== 'undefined' && rbacModule.currentRole) ? rbacModule.currentRole : 'viewer';
+    const info = roleMap[currentRole] || { text: currentRole, alertClass: 'alert-secondary' };
+
+    label.textContent = info.text;
+    alert.className = 'alert ' + info.alertClass;
   },
 
   /**
@@ -47,6 +88,21 @@ const settingsModule = {
                           (mediaCount || 0);
       document.getElementById('totalRecords').textContent = totalRecords.toLocaleString();
 
+      // Check database connection status
+      const dbStatusEl = document.getElementById('systemDbStatus');
+      if (dbStatusEl) {
+        try {
+          const { error: pingError } = await STATE.client
+            .from('awards')
+            .select('id', { count: 'exact', head: true });
+          dbStatusEl.innerHTML = pingError
+            ? '<span class="badge bg-danger">Error</span>'
+            : '<span class="badge bg-success">Connected</span>';
+        } catch {
+          dbStatusEl.innerHTML = '<span class="badge bg-danger">Disconnected</span>';
+        }
+      }
+
       // Get last backup time from localStorage
       const lastBackup = localStorage.getItem('lastBackupTime');
       if (lastBackup) {
@@ -55,6 +111,8 @@ const settingsModule = {
       }
     } catch (error) {
       console.error('Error updating system info:', error);
+      const dbStatusEl = document.getElementById('systemDbStatus');
+      if (dbStatusEl) dbStatusEl.innerHTML = '<span class="badge bg-danger">Disconnected</span>';
     }
   },
 
@@ -62,43 +120,39 @@ const settingsModule = {
    * Export full database backup as JSON
    */
   async exportFullBackup() {
+    if (typeof rbacModule !== 'undefined' && !rbacModule.canAccess('settings')) {
+      utils.showToast('Admin permissions required for backup', 'error');
+      return;
+    }
+
     try {
       utils.showLoading();
 
       // Fetch all data from all tables
-      const [awards, organisations, winners, events, media, gallerySections, eventTemplates] = await Promise.all([
-        STATE.client.from('awards').select('*'),
-        STATE.client.from('organisations').select('*'),
-        STATE.client.from('winners').select('*'),
-        STATE.client.from('events').select('*'),
-        STATE.client.from('media_gallery').select('*'),
-        STATE.client.from('gallery_sections').select('*'),
-        STATE.client.from('event_templates').select('*')
-      ]);
+      const tableNames = [
+        'awards', 'organisations', 'winners', 'events',
+        'media_gallery', 'gallery_sections', 'event_templates',
+        'entries', 'organisation_contacts', 'award_assignments',
+        'award_seasons', 'organisation_images', 'organisation_notes',
+        'judge_scores', 'public_votes', 'invoices', 'payments',
+        'certificates', 'sponsors', 'email_templates'
+      ];
+      const results = await Promise.all(
+        tableNames.map(t => STATE.client.from(t).select('*').then(r => r, () => ({ data: [] })))
+      );
+
+      const tables = {};
+      const counts = {};
+      tableNames.forEach((name, i) => {
+        tables[name] = results[i].data || [];
+        counts[name] = tables[name].length;
+      });
 
       const backup = {
-        version: '1.0.0',
+        version: '1.2.0',
         exportDate: new Date().toISOString(),
-        tables: {
-          awards: awards.data || [],
-          organisations: organisations.data || [],
-          winners: winners.data || [],
-          events: events.data || [],
-          media_gallery: media.data || [],
-          gallery_sections: gallerySections.data || [],
-          event_templates: eventTemplates.data || []
-        },
-        metadata: {
-          totalRecords: {
-            awards: awards.data?.length || 0,
-            organisations: organisations.data?.length || 0,
-            winners: winners.data?.length || 0,
-            events: events.data?.length || 0,
-            media_gallery: media.data?.length || 0,
-            gallery_sections: gallerySections.data?.length || 0,
-            event_templates: eventTemplates.data?.length || 0
-          }
-        }
+        tables,
+        metadata: { totalRecords: counts }
       };
 
       // Create and download file
@@ -131,7 +185,7 @@ const settingsModule = {
    * Restore database from a JSON backup file
    */
   async restoreFromBackup() {
-    if (!rbacModule || !rbacModule.guard('settings')) {
+    if (typeof rbacModule !== 'undefined' && !rbacModule.canAccess('settings')) {
       utils.showToast('Admin permissions required for restore', 'error');
       return;
     }
@@ -155,7 +209,16 @@ const settingsModule = {
           return;
         }
 
-        const tableOrder = ['awards', 'organisations', 'winners', 'events', 'media_gallery', 'gallery_sections', 'event_templates'];
+        // Restore tables in dependency order (parents before children)
+        const tableOrder = [
+          'awards', 'organisations', 'events', 'event_templates',
+          'award_seasons', 'sponsors', 'email_templates',
+          'winners', 'media_gallery', 'gallery_sections',
+          'entries', 'organisation_contacts', 'award_assignments',
+          'organisation_images', 'organisation_notes',
+          'judge_scores', 'public_votes', 'invoices', 'payments',
+          'certificates'
+        ];
         let restored = 0;
 
         for (const table of tableOrder) {
@@ -265,6 +328,39 @@ const settingsModule = {
   },
 
   /**
+   * Export entries data to CSV
+   */
+  async exportEntriesCSV() {
+    try {
+      const { data: entries, error } = await STATE.client
+        .from('entries')
+        .select('*, organisations(company_name), awards:award_years(award_category)')
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+
+      if (!entries || entries.length === 0) {
+        utils.showToast('No entries data to export', 'warning');
+        return;
+      }
+
+      const exportData = entries.map(entry => ({
+        'Organisation': entry.organisations?.company_name || '',
+        'Award': entry.awards?.award_category || '',
+        'Status': entry.status || '',
+        'Year': entry.year || '',
+        'Submitted At': utils.formatDate(entry.created_at)
+      }));
+
+      const filename = `entries_export_${new Date().toISOString().split('T')[0]}.csv`;
+      utils.exportToCSV(exportData, filename);
+    } catch (error) {
+      console.error('Error exporting entries:', error);
+      utils.showToast('Failed to export entries', 'error');
+    }
+  },
+
+  /**
    * Load backup settings from localStorage
    */
   loadBackupSettings() {
@@ -326,262 +422,6 @@ const settingsModule = {
    */
   testBackupReminder() {
     utils.showToast('Backup reminder test: Your data should be backed up regularly!', 'info', 5000);
-  },
-
-  /* ==================================================== */
-  /* EMAIL TEMPLATES */
-  /* ==================================================== */
-
-  /**
-   * Default email templates
-   */
-  emailTemplates: {
-    winner_notification: {
-      subject: 'Congratulations! You\'ve Won the {award_category} Award',
-      body: `Dear {winner_name},
-
-Congratulations! We are delighted to inform you that {company_name} has been selected as the winner of the {award_category} award for {year}.
-
-This prestigious award recognizes your outstanding achievements and contributions to your industry. Your dedication and excellence have truly set you apart.
-
-Event Details:
-- Event: {event_name}
-- Date: {event_date}
-- Venue: {venue}
-
-We look forward to celebrating your success at the awards ceremony.
-
-Please confirm your attendance at your earliest convenience.
-
-Warm regards,
-British Trade Awards Team`
-    },
-    event_invitation: {
-      subject: 'You\'re Invited: {event_name}',
-      body: `Dear {winner_name},
-
-You are cordially invited to attend the {event_name}, taking place on {event_date} at {venue}.
-
-This prestigious event will bring together industry leaders, innovators, and award winners to celebrate excellence and achievement.
-
-Event Details:
-- Event: {event_name}
-- Date: {event_date}
-- Venue: {venue}
-- Year: {year}
-
-We would be honored by your presence at this special occasion.
-
-Please RSVP by confirming your attendance.
-
-Best regards,
-British Trade Awards Team`
-    },
-    certificate_email: {
-      subject: 'Your {year} {award_category} Award Certificate',
-      body: `Dear {winner_name},
-
-Attached is your official award certificate for winning the {award_category} award in {year}.
-
-This certificate commemorates your outstanding achievement and can be displayed proudly at your organization.
-
-Congratulations once again on this well-deserved recognition.
-
-If you have any questions or need additional copies, please don't hesitate to contact us.
-
-Best regards,
-British Trade Awards Team`
-    },
-    press_release: {
-      subject: 'Press Release: {company_name} Wins {award_category} Award',
-      body: `FOR IMMEDIATE RELEASE
-
-{company_name} Wins Prestigious {award_category} Award at {event_name}
-
-{venue}, {event_date} - {company_name} has been honored with the {award_category} award at the {event_name}, recognizing their exceptional performance and contributions to the industry.
-
-The {year} British Trade Awards celebrate excellence, innovation, and outstanding achievements across various sectors. {company_name}'s win in the {award_category} category highlights their commitment to excellence and industry leadership.
-
-"We are thrilled to recognize {company_name} with this prestigious award," said the Awards Committee. "Their achievements exemplify the very best of British trade and commerce."
-
-About the British Trade Awards:
-The British Trade Awards recognize and celebrate outstanding businesses and individuals who demonstrate excellence, innovation, and significant contributions to their industries.
-
-Contact:
-British Trade Awards Team
-[Contact Information]
-
-###`
-    },
-    custom: {
-      subject: '',
-      body: ''
-    }
-  },
-
-  /**
-   * Load selected email template
-   */
-  async loadEmailTemplate() {
-    const templateSelect = document.getElementById('emailTemplateSelect');
-    const selectedTemplate = templateSelect.value;
-
-    if (!selectedTemplate) {
-      document.getElementById('emailSubject').value = '';
-      document.getElementById('emailBody').value = '';
-      return;
-    }
-
-    let template;
-    try {
-      const { data, error } = await STATE.client
-        .from('user_preferences')
-        .select('value')
-        .eq('key', `email_template_${selectedTemplate}`)
-        .limit(1);
-      if (error) throw error;
-      if (data?.[0]?.value) {
-        template = typeof data[0].value === 'string' ? JSON.parse(data[0].value) : data[0].value;
-      }
-    } catch (e) {
-      // Fallback to localStorage
-      const savedTemplate = localStorage.getItem(`emailTemplate_${selectedTemplate}`);
-      if (savedTemplate) {
-        template = JSON.parse(savedTemplate);
-      }
-    }
-
-    // If no saved customisation found, use built-in default
-    if (!template) {
-      template = this.emailTemplates[selectedTemplate];
-    }
-
-    if (template) {
-      document.getElementById('emailSubject').value = template.subject || '';
-      document.getElementById('emailBody').value = template.body || '';
-    }
-  },
-
-  /**
-   * Save email template to localStorage
-   */
-  async saveEmailTemplate() {
-    const templateSelect = document.getElementById('emailTemplateSelect');
-    const selectedTemplate = templateSelect.value;
-
-    if (!selectedTemplate) {
-      utils.showToast('Please select a template first', 'warning');
-      return;
-    }
-
-    const subject = document.getElementById('emailSubject').value;
-    const body = document.getElementById('emailBody').value;
-
-    const template = { subject, body };
-    try {
-      const { error } = await STATE.client
-        .from('user_preferences')
-        .upsert({
-          key: `email_template_${selectedTemplate}`,
-          value: JSON.stringify(template),
-          user_email: STATE.currentUser?.email
-        }, { onConflict: 'key' });
-      if (error) throw error;
-    } catch (e) {
-      // Fallback to localStorage
-      localStorage.setItem(`emailTemplate_${selectedTemplate}`, JSON.stringify(template));
-    }
-
-    utils.showToast('Template saved successfully', 'success');
-  },
-
-  /**
-   * Reset email template to default
-   */
-  async resetEmailTemplate() {
-    const templateSelect = document.getElementById('emailTemplateSelect');
-    const selectedTemplate = templateSelect.value;
-
-    if (!selectedTemplate) {
-      utils.showToast('Please select a template first', 'warning');
-      return;
-    }
-
-    // Remove from Supabase, fall back to clearing localStorage
-    try {
-      const { error } = await STATE.client
-        .from('user_preferences')
-        .delete()
-        .eq('key', `email_template_${selectedTemplate}`);
-      if (error) throw error;
-    } catch (e) {
-      localStorage.removeItem(`emailTemplate_${selectedTemplate}`);
-    }
-
-    // Load default template
-    const template = this.emailTemplates[selectedTemplate];
-    if (template) {
-      document.getElementById('emailSubject').value = template.subject || '';
-      document.getElementById('emailBody').value = template.body || '';
-      utils.showToast('Template reset to default', 'success');
-    }
-  },
-
-  /**
-   * Preview email template with sample data
-   */
-  previewEmailTemplate() {
-    const subject = document.getElementById('emailSubject').value;
-    const body = document.getElementById('emailBody').value;
-
-    if (!subject && !body) {
-      utils.showToast('Template is empty', 'warning');
-      return;
-    }
-
-    // Sample data for preview
-    const sampleData = {
-      winner_name: 'John Smith',
-      award_category: 'Best Innovation Award',
-      company_name: 'Tech Innovations Ltd',
-      event_name: 'British Trade Awards 2024',
-      event_date: 'March 15, 2024',
-      year: '2024',
-      venue: 'London Hilton Hotel'
-    };
-
-    // Replace placeholders
-    let previewSubject = subject;
-    let previewBody = body;
-
-    Object.keys(sampleData).forEach(key => {
-      const placeholder = `{${key}}`;
-      const regex = new RegExp(placeholder.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g');
-      previewSubject = previewSubject.replace(regex, sampleData[key]);
-      previewBody = previewBody.replace(regex, sampleData[key]);
-    });
-
-    // Show in modal
-    document.getElementById('previewSubject').textContent = previewSubject;
-    document.getElementById('previewBody').textContent = previewBody;
-
-    const modal = new bootstrap.Modal(document.getElementById('emailTemplatePreviewModal'));
-    modal.show();
-  },
-
-  /**
-   * Replace placeholders in template with actual data
-   */
-  replaceTemplatePlaceholders(template, data) {
-    let result = template;
-
-    Object.keys(data).forEach(key => {
-      const placeholder = `{${key}}`;
-      const regex = new RegExp(placeholder.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g');
-      result = result.replace(regex, data[key] || '');
-    });
-
-    return result;
   },
 
   /* ==================================================== */
@@ -703,9 +543,9 @@ British Trade Awards Team
     tbody.innerHTML = filteredLogs.slice(0, 100).map(log => `
       <tr>
         <td><small>${utils.formatRelativeTime(log.timestamp)}</small></td>
-        <td>${actionBadges[log.action] || log.action}</td>
+        <td>${actionBadges[log.action] || `<span class="badge bg-secondary">${utils.escapeHtml(log.action)}</span>`}</td>
         <td>
-          <i class="bi bi-${entityIcons[log.entity] || 'file'} me-1"></i>${log.entity}
+          <i class="bi bi-${entityIcons[log.entity] || 'file'} me-1"></i>${utils.escapeHtml(log.entity || '')}
         </td>
         <td><small>${utils.escapeHtml(log.description)}</small></td>
         <td><small>${utils.escapeHtml(log.user)}</small></td>
@@ -752,7 +592,7 @@ British Trade Awards Team
     } catch (error) {
       console.error('Error loading seasons:', error);
       const tbody = document.getElementById('seasonsTableBody');
-      if (tbody) utils.showEmptyState('seasonsTableBody', 8, 'Could not load seasons. Run the migration SQL first.', 'bi-exclamation-triangle');
+      if (tbody) utils.showEmptyState('seasonsTableBody', 10, 'Could not load seasons. Run the migration SQL first.', 'bi-exclamation-triangle');
     }
   },
 

@@ -5865,6 +5865,9 @@
             <p class="section-subtitle">Manage system settings and data backups</p>
           </div>
 
+          <!-- Branding (rendered dynamically by brandingModule.renderBrandSettings) -->
+          <div id="brandingSettingsContainer" class="mb-4"></div>
+
           <!-- UX Preferences (rendered dynamically by settingsModule.renderUxSettings) -->
           <div id="uxSettingsContainer" class="mb-4"></div>
 
@@ -5944,6 +5947,9 @@
                     <button class="btn btn-outline-secondary btn-sm" onclick="dashboardModule.exportWinnersCSV()">
                       <i class="bi bi-download me-1"></i>Winners
                     </button>
+                    <button class="btn btn-outline-secondary btn-sm" onclick="settingsModule.exportEntriesCSV()">
+                      <i class="bi bi-download me-1"></i>Entries
+                    </button>
                     <button class="btn btn-outline-secondary btn-sm" onclick="settingsModule.exportEventsCSV()">
                       <i class="bi bi-download me-1"></i>Events
                     </button>
@@ -5983,7 +5989,7 @@
                   </div>
                   <div class="d-flex justify-content-between align-items-center py-2 border-bottom">
                     <span class="text-muted">Database Status</span>
-                    <span class="badge bg-success">Connected</span>
+                    <span id="systemDbStatus"><span class="badge bg-secondary">Checking...</span></span>
                   </div>
                   <div class="d-flex justify-content-between align-items-center py-2 border-bottom">
                     <span class="text-muted">Total Awards</span>
@@ -6031,74 +6037,6 @@
                 <button class="btn btn-outline-primary btn-sm mt-3" onclick="settingsModule.testBackupReminder()">
                   <i class="bi bi-bell me-1"></i>Test Reminder
                 </button>
-              </div>
-            </div>
-          </div>
-
-          <!-- Email Templates Section -->
-          <div class="row g-4 mt-4">
-            <div class="col-12">
-              <div class="content-card">
-                <h5 class="mb-3">
-                  <i class="bi bi-envelope-paper me-2"></i>Email Templates
-                </h5>
-                <p class="text-muted mb-4">Manage email templates for various communications</p>
-
-                <!-- Template Selection -->
-                <div class="row mb-4">
-                  <div class="col-md-6">
-                    <label class="form-label">Select Template</label>
-                    <select class="form-select" id="emailTemplateSelect" onchange="settingsModule.loadEmailTemplate()">
-                      <option value="">Choose a template...</option>
-                      <option value="winner_notification">Winner Notification</option>
-                      <option value="event_invitation">Event Invitation</option>
-                      <option value="certificate_email">Certificate Delivery</option>
-                      <option value="press_release">Press Release</option>
-                      <option value="custom">Custom Template</option>
-                    </select>
-                  </div>
-                  <div class="col-md-6">
-                    <label class="form-label">&nbsp;</label>
-                    <div class="d-flex gap-2">
-                      <button class="btn btn-outline-primary" onclick="settingsModule.previewEmailTemplate()">
-                        <i class="bi bi-eye me-1"></i>Preview
-                      </button>
-                      <button class="btn btn-outline-success" onclick="settingsModule.saveEmailTemplate()">
-                        <i class="bi bi-save me-1"></i>Save Template
-                      </button>
-                      <button class="btn btn-outline-secondary" onclick="settingsModule.resetEmailTemplate()">
-                        <i class="bi bi-arrow-counterclockwise me-1"></i>Reset
-                      </button>
-                    </div>
-                  </div>
-                </div>
-
-                <!-- Template Editor -->
-                <div class="row">
-                  <div class="col-md-12 mb-3">
-                    <label class="form-label">Subject Line</label>
-                    <input type="text" class="form-control" id="emailSubject" placeholder="Enter email subject...">
-                  </div>
-                  <div class="col-md-12 mb-3">
-                    <label class="form-label">Email Body</label>
-                    <textarea class="form-control" id="emailBody" rows="12" placeholder="Enter email template content...
-
-Available placeholders:
-- {winner_name} - Winner's name
-- {award_category} - Award category
-- {company_name} - Company name
-- {event_name} - Event name
-- {event_date} - Event date
-- {year} - Award year
-- {venue} - Event venue"></textarea>
-                  </div>
-                  <div class="col-md-12">
-                    <div class="alert alert-info">
-                      <i class="bi bi-info-circle me-2"></i>
-                      <strong>Placeholders:</strong> Use {winner_name}, {award_category}, {company_name}, {event_name}, {event_date}, {year}, {venue} in your template. They will be replaced with actual data when sending.
-                    </div>
-                  </div>
-                </div>
               </div>
             </div>
           </div>
@@ -6166,6 +6104,9 @@ Available placeholders:
               </div>
             </div>
           </div>
+
+          <!-- GDPR Compliance (rendered dynamically by gdprModule.renderGdprPanel) -->
+          <div id="gdprPanel" class="mt-4"></div>
 
           <!-- User Roles & Permissions Section -->
           <div class="row g-4 mt-4">
@@ -6242,11 +6183,11 @@ Available placeholders:
                   </div>
                 </div>
 
-                <!-- Current User Role -->
+                <!-- Current User Role (dynamic) -->
                 <div class="mt-4">
-                  <div class="alert alert-success">
+                  <div class="alert" id="currentUserRoleAlert">
                     <i class="bi bi-person-check me-2"></i>
-                    <strong>Your Current Role:</strong> Administrator (Full Access)
+                    <strong>Your Current Role:</strong> <span id="currentUserRoleLabel">Loading...</span>
                   </div>
                   <p class="small text-muted">
                     Note: User role management requires database authentication. Contact your system administrator to change user roles and permissions.

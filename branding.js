@@ -186,6 +186,30 @@ window.brandingModule = {
     </div>`;
   },
 
+  /* ---- Email Preview (for branding settings page) ---- */
+  renderEmailPreview(config) {
+    const p = config.primary_color   || '#000000';
+    const s = config.secondary_color || '#1a1a1a';
+    const a = config.accent_color    || '#D4AF37';
+    const c = this._esc(config.company_name || 'British Trade Awards');
+    const logoUrl = this._esc(config.logo_url || '');
+    const r = this._esc(config.email_reply_to || config.email_from || '');
+    const headerContent = this._buildEmailHeaderContent(config.logo_url ? logoUrl : '', c, a);
+    return `<div style="max-width:360px;border-radius:8px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.12);font-family:Arial,Helvetica,sans-serif;">
+      <div style="background:linear-gradient(135deg,${p} 0%,${s} 100%);padding:20px 24px;text-align:center;border-bottom:3px solid ${a};">
+        ${headerContent}
+      </div>
+      <div style="padding:20px 24px;font-size:13px;color:#333;line-height:1.5;">
+        <p style="margin:0 0 8px;font-weight:600;color:#1a1a1a;">Entry Confirmation</p>
+        <p style="margin:0 0 6px;">Dear Applicant,</p>
+        <p style="margin:0;color:#666;">Thank you for entering the ${c}. Your entry has been received...</p>
+      </div>
+      <div style="background:${s};padding:12px 24px;text-align:center;font-size:11px;color:#999;">
+        <p style="margin:0;">${c}${r ? ' | <a href="#" style="color:' + a + ';text-decoration:none;">' + r + '</a>' : ''}</p>
+      </div>
+    </div>`;
+  },
+
   /* ---- Settings Form ---- */
   async renderBrandSettings(tenantId) {
     const container = document.getElementById('brandingSettingsContainer');
@@ -250,9 +274,14 @@ window.brandingModule = {
             <button type="button" class="btn btn-outline-secondary" id="bf_preview_btn">Apply Preview</button>
           </div>
         </form></div></div></div>
-      <div class="col-lg-5"><div class="card"><div class="card-header"><h5 class="mb-0">Live Preview</h5></div>
-        <div class="card-body" id="bf_preview_panel">${this.renderPreview(cur)}</div>
-      </div></div>
+      <div class="col-lg-5">
+        <div class="card"><div class="card-header"><h5 class="mb-0">Live Preview</h5></div>
+          <div class="card-body" id="bf_preview_panel">${this.renderPreview(cur)}</div>
+        </div>
+        <div class="card mt-3"><div class="card-header"><h5 class="mb-0">Email Preview</h5></div>
+          <div class="card-body" id="bf_email_preview_panel">${this.renderEmailPreview(cur)}</div>
+        </div>
+      </div>
     </div>`;
 
     this._bindFormEvents(container, tenantId);
@@ -268,8 +297,11 @@ window.brandingModule = {
   },
 
   _refreshPreview() {
+    const config = this._collect();
     const panel = document.getElementById('bf_preview_panel');
-    if (panel) panel.innerHTML = this.renderPreview(this._collect());
+    if (panel) panel.innerHTML = this.renderPreview(config);
+    const emailPanel = document.getElementById('bf_email_preview_panel');
+    if (emailPanel) emailPanel.innerHTML = this.renderEmailPreview(config);
   },
 
   _bindFormEvents(container, tenantId) {

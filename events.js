@@ -6743,7 +6743,8 @@ const eventsModule = {
   /**
    * Export Winner Cards - 2 per A4 page, portrait orientation.
    * Page is cut in half; each half goes into an envelope.
-   * Shows: "And the winner is...", Company Name, Recipient Collecting
+   * 3 bordered boxes: narrow "And the winner is..." | large Company Name | large Recipient
+   * Award number in top-left corner for sorting reference.
    */
   exportWinnerCards() {
     const awards = this.runningOrderItems.filter(item => (item.item_type || 'award') === 'award');
@@ -6755,14 +6756,22 @@ const eventsModule = {
     const cards = awards.map(item => ({
       awardName: item.award_name || item.item_name || (item.awards ? item.awards.award_name : 'N/A'),
       companyName: item.display_name || (item.organisations ? item.organisations.company_name : 'N/A'),
-      recipient: item.recipient_collecting || (item.event_guests ? item.event_guests.guest_name : 'TBC')
+      recipient: item.recipient_collecting || (item.event_guests ? item.event_guests.guest_name : 'TBC'),
+      awardNumber: item.award_number || ''
     }));
 
     const renderCard = (card) => `<div class="card">
           <div class="card-inner">
-            <div class="card-label">And the winner is&hellip;</div>
-            <div class="card-company">${utils.escapeHtml(card.companyName)}</div>
-            <div class="card-recipient">${utils.escapeHtml(card.recipient)}</div>
+            <div class="card-number">${utils.escapeHtml(card.awardNumber)}</div>
+            <div class="box box-label">
+              <span>And the winner is&hellip;</span>
+            </div>
+            <div class="box box-company">
+              <span>${utils.escapeHtml(card.companyName)}</span>
+            </div>
+            <div class="box box-recipient">
+              <span>${utils.escapeHtml(card.recipient)}</span>
+            </div>
           </div>
         </div>`;
 
@@ -6785,11 +6794,14 @@ const eventsModule = {
         body { font-family: 'Georgia', 'Times New Roman', serif; color: #1a1a1a; }
         .page { width: 210mm; height: 297mm; display: flex; flex-direction: column; page-break-after: always; position: relative; }
         .page:last-child { page-break-after: auto; }
-        .card { height: 148.5mm; width: 100%; display: flex; align-items: center; justify-content: center; padding: 15mm 20mm; }
-        .card-inner { border: 2.5pt solid #000; border-radius: 4px; width: 100%; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 15mm 20mm; }
-        .card-label { font-size: 18pt; font-style: italic; color: #444; margin-bottom: 10mm; letter-spacing: 1px; }
-        .card-company { font-size: 32pt; font-weight: bold; color: #000; margin-bottom: 8mm; line-height: 1.2; }
-        .card-recipient { font-size: 16pt; color: #333; }
+        .card { height: 148.5mm; width: 100%; padding: 8mm 15mm; }
+        .card-inner { width: 100%; height: 100%; display: flex; flex-direction: column; position: relative; border: 2.5pt solid #000; }
+        .card-number { position: absolute; top: 3mm; left: 4mm; font-size: 10pt; color: #666; font-family: Arial, sans-serif; }
+        .box { border-bottom: 2.5pt solid #000; display: flex; align-items: center; justify-content: center; text-align: center; padding: 3mm 10mm; }
+        .box:last-child { border-bottom: none; }
+        .box-label { height: 20%; font-size: 16pt; font-style: italic; color: #444; letter-spacing: 1px; }
+        .box-company { flex: 1; font-size: 32pt; font-weight: bold; color: #000; line-height: 1.2; }
+        .box-recipient { flex: 1; font-size: 20pt; color: #333; }
         .cut-line { position: absolute; top: 148.5mm; left: 0; right: 0; border-top: 1px dashed #ccc; }
         @media print {
           body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }

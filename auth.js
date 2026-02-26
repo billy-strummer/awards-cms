@@ -313,7 +313,7 @@ const authModule = {
   /**
    * Show dashboard page
    */
-  showDashboard() {
+  async showDashboard() {
     this.hideSplash();
     document.getElementById('loginPage').style.display = 'none';
     document.getElementById('dashboardPage').style.display = 'block';

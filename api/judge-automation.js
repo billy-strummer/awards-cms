@@ -12,6 +12,8 @@
 const { createClient } = require('@supabase/supabase-js');
 const { Resend } = require('resend');
 
+const escHtml = (str) => String(str || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+
 const supabase = createClient(
   process.env.SUPABASE_URL,
   process.env.SUPABASE_SERVICE_KEY
@@ -348,12 +350,12 @@ async function sendJudgeAssignmentEmail(judge, entry) {
       subject: `Judge Assignment: ${entry.awards?.award_name || 'British Trade Awards'}`,
       html: `
         <h2>British Trade Awards - Judge Assignment</h2>
-        <p>Dear ${judge.full_name || judge.email},</p>
+        <p>Dear ${escHtml(judge.full_name || judge.email)},</p>
         <p>You have been assigned to judge the following entry:</p>
         <ul>
-          <li><strong>Award:</strong> ${entry.awards?.award_name || 'N/A'}</li>
-          <li><strong>Entry:</strong> ${entry.entry_number || entry.id}</li>
-          <li><strong>Category:</strong> ${entry.awards?.sector || 'N/A'}</li>
+          <li><strong>Award:</strong> ${escHtml(entry.awards?.award_name || 'N/A')}</li>
+          <li><strong>Entry:</strong> ${escHtml(entry.entry_number || entry.id)}</li>
+          <li><strong>Category:</strong> ${escHtml(entry.awards?.sector || 'N/A')}</li>
         </ul>
         <p>Please log in to the Judge Portal to begin scoring:</p>
         <p><a href="${APP_URL}/judge-portal.html" style="background:#0d6efd;color:#fff;padding:12px 24px;text-decoration:none;border-radius:6px;display:inline-block;">Open Judge Portal</a></p>
@@ -381,8 +383,8 @@ async function sendShortlistNotificationEmail(entry) {
       subject: `Congratulations! You've been shortlisted - ${entry.awards?.award_name || 'British Trade Awards'}`,
       html: `
         <h2>British Trade Awards - Shortlist Notification</h2>
-        <p>Dear ${entry.contact_name || 'Nominee'},</p>
-        <p>We are delighted to inform you that <strong>${entry.organisations?.company_name || 'your company'}</strong> has been shortlisted for the <strong>${entry.awards?.award_name || ''}</strong>.</p>
+        <p>Dear ${escHtml(entry.contact_name || 'Nominee')},</p>
+        <p>We are delighted to inform you that <strong>${escHtml(entry.organisations?.company_name || 'your company')}</strong> has been shortlisted for the <strong>${escHtml(entry.awards?.award_name || '')}</strong>.</p>
         <p>This is a significant achievement and recognises the outstanding work of your organisation.</p>
         <h3>Next Steps</h3>
         <ul>

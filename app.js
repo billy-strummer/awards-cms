@@ -1090,6 +1090,10 @@ document.addEventListener('DOMContentLoaded', function() {
   // Subscribe to changes on key tables so multi-user edits are visible
   function setupRealtimeSync() {
     if (!STATE.client) return;
+    // Guard against duplicate subscriptions
+    if (window._cmsRealtimeChannel) {
+      try { STATE.client.removeChannel(window._cmsRealtimeChannel); } catch (e) { /* ignore */ }
+    }
     const tables = [
       { table: 'awards', handler: () => { if (typeof awardsModule !== 'undefined' && STATE.allAwards.length > 0) awardsModule.loadAwards(); } },
       { table: 'winners', handler: () => { if (typeof winnersModule !== 'undefined' && STATE.allWinners.length > 0) winnersModule.loadWinners(); } },
@@ -1133,6 +1137,10 @@ document.addEventListener('DOMContentLoaded', function() {
 
   window._initPresence = function() {
     if (!STATE.client) return;
+    // Guard against duplicate presence subscriptions
+    if (window._presenceChannel) {
+      try { STATE.client.removeChannel(window._presenceChannel); } catch (e) { /* ignore */ }
+    }
     try {
       const channel = STATE.client.channel('online-users');
       window._presenceChannel = channel;

@@ -492,13 +492,15 @@ const entriesModule = {
     const checkbox = document.getElementById('selectAllEntries');
     const entryCheckboxes = document.querySelectorAll('.entry-checkbox');
 
+    if (checkbox.checked) {
+      // Select all filtered entries, not just current page
+      (this.filteredEntries || []).forEach(e => this.selectedEntryIds.add(e.id));
+    } else {
+      this.selectedEntryIds.clear();
+    }
+    // Update visible checkboxes to match
     entryCheckboxes.forEach(cb => {
       cb.checked = checkbox.checked;
-      if (checkbox.checked) {
-        this.selectedEntryIds.add(cb.value);
-      } else {
-        this.selectedEntryIds.delete(cb.value);
-      }
     });
   },
 

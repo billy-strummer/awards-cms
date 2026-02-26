@@ -351,10 +351,11 @@ async function sendTemplateEmail(templateKey, toEmail, variables) {
     let subject = template.subject;
     let html = template.template;
 
+    const escapeHtml = (str) => String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
     for (const [key, value] of Object.entries(variables)) {
       const regex = new RegExp(`{{${key}}}`, 'g');
       subject = subject.replace(regex, value || '');
-      html = html.replace(regex, value || '');
+      html = html.replace(regex, escapeHtml(value || ''));
     }
 
     await resend.emails.send({

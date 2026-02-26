@@ -2918,11 +2918,19 @@ const crmModule = {
 
   _downloadCSV(headers, rows, filename) {
     try {
-      let csv = headers.join(',') + '\n';
+      const sanitizeCell = (cell) => {
+        let str = String(cell);
+        // Prevent CSV formula injection
+        if (/^[=+\-@\t\r|]/.test(str)) {
+          str = "'" + str;
+        }
+        return `"${str.replace(/"/g, '""')}"`;
+      };
+      let csv = headers.map(sanitizeCell).join(',') + '\n';
       rows.forEach(row => {
-        csv += row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(',') + '\n';
+        csv += row.map(sanitizeCell).join(',') + '\n';
       });
-      const blob = new Blob([csv], { type: 'text/csv' });
+      const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;

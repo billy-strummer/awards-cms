@@ -11062,10 +11062,15 @@ const eventsModule = {
   },
 
   toggleSelectAll(checked) {
+    if (checked) {
+      // Select all filtered events, not just current page
+      (this.filteredEvents || STATE.allEvents || []).forEach(e => this._selectedEvents.add(e.id));
+    } else {
+      this._selectedEvents.clear();
+    }
+    // Update visible checkboxes to match
     document.querySelectorAll('.event-checkbox').forEach(cb => {
       cb.checked = checked;
-      if (checked) this._selectedEvents.add(cb.value);
-      else this._selectedEvents.delete(cb.value);
     });
     this._updateBulkBar();
     this.updateBulkBar();

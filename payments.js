@@ -420,12 +420,12 @@ const paymentsModule = {
           return;
         }
 
-        const subtotal = lineItems.reduce((sum, item) => sum + item.line_total, 0);
+        const subtotal = Math.round(lineItems.reduce((sum, item) => sum + item.line_total, 0) * 100) / 100;
         const discountPercentage = this.getDiscountPercentage();
-        const discountAmount = subtotal * (discountPercentage / 100);
-        const subtotalAfterDiscount = subtotal - discountAmount;
-        const taxAmount = subtotalAfterDiscount * (taxRate / 100);
-        const totalAmount = subtotalAfterDiscount + taxAmount;
+        const discountAmount = Math.round(subtotal * (discountPercentage / 100) * 100) / 100;
+        const subtotalAfterDiscount = Math.round((subtotal - discountAmount) * 100) / 100;
+        const taxAmount = Math.round(subtotalAfterDiscount * (taxRate / 100) * 100) / 100;
+        const totalAmount = Math.round((subtotalAfterDiscount + taxAmount) * 100) / 100;
 
         // Generate invoice number
         let invoiceNumber;
@@ -1077,6 +1077,11 @@ const paymentsModule = {
           return;
         }
 
+        if (isNaN(amount) || amount <= 0) {
+          utils.showToast('Please enter a valid payment amount', 'warning');
+          return;
+        }
+
         // Generate payment reference
         let paymentReference;
         try {
@@ -1338,8 +1343,12 @@ const paymentsModule = {
   _downloadCSV(headers, rows, filename) {
     try {
       const escapeCSV = (val) => {
-        const str = String(val);
-        if (str.includes(',') || str.includes('"') || str.includes('\n')) {
+        let str = String(val);
+        // Prevent CSV formula injection
+        if (/^[=+\-@\t\r|]/.test(str)) {
+          str = "'" + str;
+        }
+        if (str.includes(',') || str.includes('"') || str.includes('\n') || str.includes("'")) {
           return '"' + str.replace(/"/g, '""') + '"';
         }
         return str;
@@ -1347,7 +1356,7 @@ const paymentsModule = {
       const csvContent = [headers.map(escapeCSV).join(',')]
         .concat(rows.map(row => row.map(escapeCSV).join(',')))
         .join('\n');
-      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' });
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.setAttribute('href', url);

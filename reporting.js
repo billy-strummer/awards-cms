@@ -22,11 +22,17 @@ window.reportingModule = {
 
   _csv(rows) {
     if (!rows || !rows.length) return new Blob(['No data'], { type: 'text/csv' });
-    const hdr = Object.keys(rows[0]).join(',');
+    const sanitize = (v) => {
+      let s = String(v ?? '').replace(/"/g, '""');
+      // Prevent CSV formula injection
+      if (/^[=+\-@\t\r|]/.test(s)) { s = "'" + s; }
+      return /[,"\n']/.test(s) ? `"${s}"` : s;
+    };
+    const hdr = Object.keys(rows[0]).map(sanitize).join(',');
     const body = rows.map(r =>
-      Object.values(r).map(v => { const s = String(v ?? '').replace(/"/g, '""'); return /[,"\n]/.test(s) ? `"${s}"` : s; }).join(',')
+      Object.values(r).map(sanitize).join(',')
     ).join('\n');
-    return new Blob([hdr + '\n' + body], { type: 'text/csv' });
+    return new Blob(['\uFEFF' + hdr + '\n' + body], { type: 'text/csv;charset=utf-8;' });
   },
 
   _pdfHdr(doc, title) {
@@ -133,9 +139,9 @@ window.reportingModule = {
       });
       const rows = Object.values(map).map(j => ({
         judge_email: j.judge_email, entries_scored: j.scored,
-        avg_total: (j.t / j.scored).toFixed(1), avg_innovation: (j.inn / j.scored).toFixed(1),
-        avg_impact: (j.imp / j.scored).toFixed(1), avg_quality: (j.q / j.scored).toFixed(1),
-        avg_presentation: (j.p / j.scored).toFixed(1)
+        avg_total: j.scored > 0 ? (j.t / j.scored).toFixed(1) : '0.0', avg_innovation: j.scored > 0 ? (j.inn / j.scored).toFixed(1) : '0.0',
+        avg_impact: j.scored > 0 ? (j.imp / j.scored).toFixed(1) : '0.0', avg_quality: j.scored > 0 ? (j.q / j.scored).toFixed(1) : '0.0',
+        avg_presentation: j.scored > 0 ? (j.p / j.scored).toFixed(1) : '0.0'
       })).sort((a, b) => b.entries_scored - a.entries_scored);
       if (fmt === 'pdf') {
         const doc = new jspdf.jsPDF();
@@ -244,7 +250,7 @@ window.reportingModule = {
 
       doc.setFont('helvetica', 'bold'); doc.setFontSize(10); doc.text('Entries by Status', 14, y); y += 2;
       y = this._pdfTbl(doc, y, ['Status', 'Count', '%'],
-        Object.entries(statusCounts).map(([s, c]) => [s, c, ((c / entries.length) * 100).toFixed(1) + '%']),
+        Object.entries(statusCounts).map(([s, c]) => [s, c, entries.length > 0 ? ((c / entries.length) * 100).toFixed(1) + '%' : '0.0%']),
         { headStyles: { fillColor: [0, 102, 51] } });
 
       // Revenue page

@@ -3360,7 +3360,7 @@ const eventsModule = {
             </div>
             <div class="modal-footer">
               <button class="btn btn-outline-secondary" onclick="navigator.clipboard.writeText(document.getElementById('pressReleaseText').value); utils.showToast('Copied to clipboard','success')"><i class="bi bi-clipboard me-1"></i>Copy</button>
-              <button class="btn btn-primary" onclick="const b=new Blob([document.getElementById('pressReleaseText').value],{type:'text/plain'}); const a=document.createElement('a'); a.href=URL.createObjectURL(b); a.download='press_release_${event.event_name.replace(/[^a-z0-9]/gi, '_')}.txt'; a.click()"><i class="bi bi-download me-1"></i>Download .txt</button>
+              <button class="btn btn-primary" onclick="const b=new Blob([document.getElementById('pressReleaseText').value],{type:'text/plain'}); const a=document.createElement('a'); const u=URL.createObjectURL(b); a.href=u; a.download='press_release_${event.event_name.replace(/[^a-z0-9]/gi, '_')}.txt'; a.click(); setTimeout(()=>URL.revokeObjectURL(u),1000)"><i class="bi bi-download me-1"></i>Download .txt</button>
             </div>
           </div>
         </div>

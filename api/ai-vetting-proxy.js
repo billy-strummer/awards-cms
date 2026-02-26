@@ -19,13 +19,20 @@ async function vetCompany({ companyName, website, sector, county }) {
     throw new Error('ANTHROPIC_API_KEY not configured on the server');
   }
 
+  // Sanitise inputs to prevent prompt injection
+  const sanitise = (s) => String(s || '').replace(/[<>{}[\]]/g, '').substring(0, 200);
+  const safeCompany = sanitise(companyName);
+  const safeWebsite = sanitise(website) || 'Not provided';
+  const safeSector = sanitise(sector) || 'Not provided';
+  const safeCounty = sanitise(county) || 'Not provided';
+
   const prompt = `You are a business verification assistant for the British Trade Awards.
 
 Please verify the following nominated company:
-- Company Name: ${companyName}
-- Website: ${website || 'Not provided'}
-- Sector/Category: ${sector || 'Not provided'}
-- Region/County: ${county || 'Not provided'}
+- Company Name: ${safeCompany}
+- Website: ${safeWebsite}
+- Sector/Category: ${safeSector}
+- Region/County: ${safeCounty}
 
 Please assess:
 1. Is this company still operational and in business?

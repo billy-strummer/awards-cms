@@ -386,6 +386,8 @@ Vote now: {{website}}
       if (error) {
         // Fallback to local preview if storage bucket doesn't exist
         console.warn('Storage upload failed, using local preview:', error.message);
+        // Revoke any previous blob URL to prevent memory leak
+        if (this.uploadedImageUrl?.startsWith('blob:')) URL.revokeObjectURL(this.uploadedImageUrl);
         this.uploadedImageUrl = URL.createObjectURL(file);
       } else {
         // Get public URL

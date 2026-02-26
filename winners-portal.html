@@ -105,7 +105,8 @@
       const winnerId = params.get('id');
       const token = params.get('token');
 
-      if (!winnerId && !token) {
+      if (!token) {
+        // Require a token for access - plain ID is not sufficient
         document.getElementById('loadingState').classList.add('d-none');
         document.getElementById('errorState').classList.remove('d-none');
         return;
@@ -113,6 +114,8 @@
 
       try {
         let query = supabase.from('winners').select('*, awards:award_years(award_name, award_category, sector, county), organisations(company_name, logo_url)');
+        // Always require token for security; optionally also filter by ID
+        query = query.eq('access_token', token);
         if (winnerId) query = query.eq('id', winnerId);
 
         const { data, error } = await query.single();

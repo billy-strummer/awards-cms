@@ -207,6 +207,46 @@
 
 ---
 
+---
+
+## Verification Round (Commit `f91023a`)
+
+All 29 areas were systematically re-verified by reading the actual code. 12 additional issues were found and fixed:
+
+| Area | Verification | Issues Found & Fixed |
+|------|-------------|---------------------|
+| 1. Save Buttons | PARTIAL | Minor UX gap in offline path (not critical) |
+| 2. Missing Awaits | **FIXED** | `await` added to `replayPendingQueues()` in auth.js (2 locations) |
+| 3. localStorage | **FIXED** | try-catch added to column visibility localStorage calls |
+| 4. XSS/Injection | **FIXED** | 5 remaining votingUrl XSS in onclick attributes (awards, entries, orgs) |
+| 5. Search/Filters | PASS | No issues |
+| 6. Pagination | PASS | No issues |
+| 7. State Sync | PASS | No issues |
+| 8. Duplicate IDs | PARTIAL | 3 modal IDs duplicated between assignments-modals.html and index.html |
+| 9. Accessibility | **FIXED** | Stat card divs now have tabindex, role, keyboard handlers |
+| 10. File Uploads | PASS | No issues |
+| 11. Exports | **FIXED** | Empty data checks added to payments.js and crm.js CSV exports |
+| 12. Race Conditions | PASS | Loading guards correct; asyncGuard exists but unused (acceptable) |
+| 13. Date Parsing | **FIXED** | formatDate/formatRelativeTime now use safeDate() |
+| 14. Error Recovery | PASS | Global handler + try-catch on all critical ops |
+| 15. Connection Health | PASS | 60s ping, 2-failure threshold, recovery detection |
+| 16. Modals | PASS | Dynamic modals self-remove, static use { once: true } |
+| 17. Realtime | PASS | Guards verified on all 3 channel creation points |
+| 18. Bulk Operations | **FIXED** | Chunked operations (500/chunk) for API limit compliance |
+| 19. Numerics | PASS | Division guards and Math.round verified |
+| 20. Email Templates | PASS | HTML escaping verified; URLs intentionally unescaped for href |
+| 21. CSV/Export | PASS | Formula injection + UTF-8 BOM verified |
+| 22. Auth/Session | PASS | 401 auto-logout, forced logout, state cleanup all verified |
+| 23. RBAC | PASS | Default viewer role, delete guards all verified |
+| 24. Form Validation | PASS | checkValidity and NaN checks verified |
+| 25. Navigation | PASS | popstate and beforeunload verified |
+| 26. Stripe | PASS | Dual param names, payment_intent storage verified |
+| 27. Data Integrity | PASS | award_assignments cleanup before delete verified |
+| 28. Clipboard | **FIXED** | events.js migrated to utils.copyToClipboard() |
+| 29. Judge Portal | PASS | Score clamping verified |
+
+---
+
 ## Known Remaining Issues (Not Yet Fixed)
 
 These were identified during audits but require DB migrations or architectural changes:
@@ -219,3 +259,5 @@ These were identified during audits but require DB migrations or architectural c
 6. **Organisation merge deduplication** - Merging two orgs with same award creates duplicate assignments
 7. **Notifications module** - `init()` is never called anywhere; dead code with orphaned cleanup in auth.js
 8. **No maxlength on text inputs** - DB column limits may silently truncate long values
+9. **Duplicate modal IDs** - 3 modals (assignmentsModal, assignmentActionsModal, addCompanyModal) duplicated between assignments-modals.html and index.html
+10. **Remaining inline clipboard calls** - ~12 files still use raw `navigator.clipboard.writeText` instead of `utils.copyToClipboard()` (functional but lack fallback)

@@ -6,7 +6,7 @@
 
 const { Resend } = require('resend');
 const { createClient } = require('@supabase/supabase-js');
-const { wrapEmail, loadHeaderFooterTemplates } = require('./email-header');
+const { wrapEmail } = require('./email-header');
 require('dotenv').config();
 
 const resend = new Resend(process.env.RESEND_API_KEY);
@@ -35,17 +35,10 @@ const HEADER_SUBTITLES = {
 
 /**
  * Wrap email content in branded HTML template.
- * Loads header/footer from DB, then delegates to shared email-header.js.
+ * Header/footer are built from branding; subtitle changes per email type.
  */
-async function wrapEmailTemplate(subject, bodyHtml, preheader = '', branding = {}, subtitle = '') {
-  const templates = await loadHeaderFooterTemplates(supabase);
-  return wrapEmail(bodyHtml, branding, {
-    subject,
-    preheader,
-    headerHtml: templates.header,
-    footerHtml: templates.footer,
-    subtitle,
-  });
+function wrapEmailTemplate(subject, bodyHtml, preheader = '', branding = {}, subtitle = '') {
+  return wrapEmail(bodyHtml, branding, { subject, preheader, subtitle });
 }
 
 /**

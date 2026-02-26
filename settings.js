@@ -17,6 +17,10 @@ const settingsModule = {
     if (typeof gdprModule !== 'undefined') {
       gdprModule.init();
     }
+    if (typeof brandingModule !== 'undefined') {
+      const tenantId = (typeof multiTenancyModule !== 'undefined') ? multiTenancyModule.getTenantId() : 'default';
+      brandingModule.renderBrandSettings(tenantId);
+    }
   },
 
   /**

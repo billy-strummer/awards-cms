@@ -12,7 +12,7 @@
 
 const { createClient } = require('@supabase/supabase-js');
 const { Resend } = require('resend');
-const { wrapEmail } = require('./email-header');
+const { wrapEmail, loadHeaderFooterTemplates } = require('./email-header');
 
 const supabase = createClient(
   process.env.SUPABASE_URL,
@@ -50,11 +50,16 @@ async function loadTenantBranding() {
 }
 
 /**
- * Email wrapper - delegates to shared email-header.js module.
- * Branding comes from tenant_branding table (loaded via loadTenantBranding).
+ * Email wrapper - loads header/footer templates from DB, then delegates
+ * to shared email-header.js module.  Falls back to hardcoded header/footer
+ * if no DB templates exist.
  */
-function wrapEmailTemplate(bodyContent, branding = {}) {
-  return wrapEmail(bodyContent, branding);
+async function wrapEmailTemplate(bodyContent, branding = {}) {
+  const templates = await loadHeaderFooterTemplates(supabase);
+  return wrapEmail(bodyContent, branding, {
+    headerHtml: templates.header,
+    footerHtml: templates.footer,
+  });
 }
 
 /**
@@ -343,7 +348,7 @@ async function sendTemplateEmail(templateKey, toEmail, variables) {
     }
 
     // Wrap body content with branded email template
-    const html = wrapEmailTemplate(bodyContent, branding);
+    const html = await wrapEmailTemplate(bodyContent, branding);
 
     // Use branded from address
     const fromEmail = branding.email_from || process.env.FROM_EMAIL || 'awards@britishtradeawards.com';

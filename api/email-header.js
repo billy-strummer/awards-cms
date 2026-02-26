@@ -2,7 +2,12 @@
 /* SHARED EMAIL HEADER & WRAPPER                        */
 /* Single source of truth for the branded email layout. */
 /* All email-sending paths import from this module.     */
-/* Branding values come from the tenant_branding table. */
+/*                                                      */
+/* Header/footer HTML is loaded from the email_templates */
+/* table (template_type = 'email_header'/'email_footer') */
+/* and branding placeholders are replaced at send time   */
+/* with values from the tenant_branding table.           */
+/* If no DB templates exist, hardcoded fallbacks are used.*/
 /* ==================================================== */
 
 const escHtml = (s) =>
@@ -25,7 +30,62 @@ function resolveBranding(branding = {}) {
 }
 
 /**
- * Build the email header HTML block.
+ * Replace branding placeholders in a template string.
+ * Placeholders: {BRAND_NAME}, {PRIMARY_COLOR}, {SECONDARY_COLOR},
+ *   {ACCENT_COLOR}, {LOGO_URL}, {CONTACT_EMAIL}, {WEBSITE_URL}
+ */
+function replaceBrandingPlaceholders(html, branding = {}) {
+  const b = resolveBranding(branding);
+  return html
+    .replace(/\{BRAND_NAME\}/g,      escHtml(b.brandName))
+    .replace(/\{PRIMARY_COLOR\}/g,    b.primaryColor)
+    .replace(/\{SECONDARY_COLOR\}/g,  b.secondaryColor)
+    .replace(/\{ACCENT_COLOR\}/g,     b.accentColor)
+    .replace(/\{LOGO_URL\}/g,         escHtml(b.logoUrl))
+    .replace(/\{CONTACT_EMAIL\}/g,    escHtml(b.contactEmail))
+    .replace(/\{WEBSITE_URL\}/g,      escHtml(b.websiteUrl));
+}
+
+/* ---- DB-backed header/footer loading (cached) ---- */
+
+let _templateCache = null;
+let _templateCacheTime = 0;
+const TEMPLATE_CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+
+/**
+ * Load the active email_header and email_footer templates from the DB.
+ * Returns { header: string|null, footer: string|null }.
+ * Requires a Supabase client instance.
+ */
+async function loadHeaderFooterTemplates(supabaseClient) {
+  const now = Date.now();
+  if (_templateCache && (now - _templateCacheTime) < TEMPLATE_CACHE_TTL) {
+    return _templateCache;
+  }
+  try {
+    const { data } = await supabaseClient
+      .from('email_templates')
+      .select('template_type, body')
+      .in('template_type', ['email_header', 'email_footer'])
+      .eq('is_active', true)
+      .order('is_default', { ascending: false });
+
+    const header = data?.find(t => t.template_type === 'email_header')?.body || null;
+    const footer = data?.find(t => t.template_type === 'email_footer')?.body || null;
+
+    _templateCache = { header, footer };
+    _templateCacheTime = now;
+    return _templateCache;
+  } catch (e) {
+    console.error('Failed to load header/footer templates:', e);
+    return _templateCache || { header: null, footer: null };
+  }
+}
+
+/* ---- Hardcoded fallbacks (used when no DB template exists) ---- */
+
+/**
+ * Build the email header HTML block (fallback).
  * Logo present  → side-by-side (logo left, brand name + subtitle right)
  * No logo       → centred brand name + subtitle
  */
@@ -51,7 +111,7 @@ function buildEmailHeader(branding = {}) {
 }
 
 /**
- * Build the email footer HTML block.
+ * Build the email footer HTML block (fallback).
  */
 function buildEmailFooter(branding = {}) {
   const b = resolveBranding(branding);
@@ -68,9 +128,23 @@ function buildEmailFooter(branding = {}) {
 
 /**
  * Wrap arbitrary body HTML in a complete branded email document.
- * This is the single wrapper every sending path should use.
+ *
+ * Options:
+ *   subject    – email subject (used in <title>)
+ *   preheader  – hidden preheader text
+ *   headerHtml – raw header template from DB (branding placeholders will be replaced)
+ *   footerHtml – raw footer template from DB (branding placeholders will be replaced)
+ *
+ * If headerHtml/footerHtml are not supplied, the hardcoded fallbacks are used.
  */
-function wrapEmail(bodyContent, branding = {}, { subject = '', preheader = '' } = {}) {
+function wrapEmail(bodyContent, branding = {}, { subject = '', preheader = '', headerHtml = null, footerHtml = null } = {}) {
+  const resolvedHeader = headerHtml
+    ? replaceBrandingPlaceholders(headerHtml, branding)
+    : buildEmailHeader(branding);
+  const resolvedFooter = footerHtml
+    ? replaceBrandingPlaceholders(footerHtml, branding)
+    : buildEmailFooter(branding);
+
   return `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -85,9 +159,9 @@ function wrapEmail(bodyContent, branding = {}, { subject = '', preheader = '' } 
     <tr>
       <td align="center" style="padding:30px 20px;">
         <table width="600" cellpadding="0" cellspacing="0" border="0" style="background-color:#ffffff;border-radius:8px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.08);">
-          <tr><td>${buildEmailHeader(branding)}</td></tr>
+          <tr><td>${resolvedHeader}</td></tr>
           <tr><td style="padding:0;font-family:Arial,Helvetica,sans-serif;font-size:16px;line-height:1.6;color:#333333;">${bodyContent}</td></tr>
-          <tr><td>${buildEmailFooter(branding)}</td></tr>
+          <tr><td>${resolvedFooter}</td></tr>
         </table>
       </td>
     </tr>
@@ -99,6 +173,8 @@ function wrapEmail(bodyContent, branding = {}, { subject = '', preheader = '' } 
 module.exports = {
   escHtml,
   resolveBranding,
+  replaceBrandingPlaceholders,
+  loadHeaderFooterTemplates,
   buildEmailHeader,
   buildEmailFooter,
   wrapEmail,

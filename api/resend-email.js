@@ -6,7 +6,7 @@
 
 const { Resend } = require('resend');
 const { createClient } = require('@supabase/supabase-js');
-const { wrapEmail } = require('./email-header');
+const { wrapEmail, loadHeaderFooterTemplates } = require('./email-header');
 require('dotenv').config();
 
 const resend = new Resend(process.env.RESEND_API_KEY);
@@ -21,10 +21,16 @@ const FROM_NAME = process.env.FROM_NAME || 'British Trade Awards';
 
 /**
  * Wrap email content in branded HTML template.
- * Delegates to shared email-header.js module.
+ * Loads header/footer from DB, then delegates to shared email-header.js.
  */
-function wrapEmailTemplate(subject, bodyHtml, preheader = '', branding = {}) {
-  return wrapEmail(bodyHtml, branding, { subject, preheader });
+async function wrapEmailTemplate(subject, bodyHtml, preheader = '', branding = {}) {
+  const templates = await loadHeaderFooterTemplates(supabase);
+  return wrapEmail(bodyHtml, branding, {
+    subject,
+    preheader,
+    headerHtml: templates.header,
+    footerHtml: templates.footer,
+  });
 }
 
 /**
@@ -143,7 +149,7 @@ async function sendTemplatedEmail({ to, templateType, data }) {
     return { success: false, error: `Unknown template type: ${templateType}` };
   }
 
-  const html = wrapEmailTemplate(template.subject, template.body);
+  const html = await wrapEmailTemplate(template.subject, template.body);
   return sendEmail({ to, subject: template.subject, html, tags: [{ name: 'template', value: templateType }] });
 }
 
@@ -192,7 +198,7 @@ async function sendCampaignEmail(campaignId) {
           body = body.replace(/\{last_name\}/g, sub.last_name || '');
           body = body.replace(/\{email\}/g, sub.email || '');
 
-          const html = wrapEmailTemplate(campaign.subject, body);
+          const html = await wrapEmailTemplate(campaign.subject, body);
           return sendEmail({
             to: sub.email,
             subject: campaign.subject,
@@ -234,7 +240,7 @@ async function sendCampaignEmail(campaignId) {
  * Send a test email for previewing templates
  */
 async function sendTestEmail(to, subject, htmlContent) {
-  const html = wrapEmailTemplate(subject, htmlContent);
+  const html = await wrapEmailTemplate(subject, htmlContent);
   return sendEmail({ to, subject: `[TEST] ${subject}`, html });
 }
 

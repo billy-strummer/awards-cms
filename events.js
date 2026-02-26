@@ -6827,10 +6827,11 @@ const eventsModule = {
       return;
     }
 
-    const labels = awards.map(item => ({
+    const labels = awards.map((item, idx) => ({
       awardName: item.award_name || item.item_name || (item.awards ? item.awards.award_name : 'N/A'),
       awardNumber: item.award_number || '',
-      sponsor: item.sponsor || ''
+      sponsor: item.sponsor || '',
+      intro: idx === 0 ? 'Our first award is\u2026' : idx === awards.length - 1 ? 'Our final award is\u2026' : 'Our next award is\u2026'
     }));
 
     let pages = '';
@@ -6842,6 +6843,7 @@ const eventsModule = {
         if (label) {
           cells += `<div class="label">
             <div class="label-number">${utils.escapeHtml(label.awardNumber)}</div>
+            <div class="label-intro">${utils.escapeHtml(label.intro)}</div>
             <div class="label-name">${utils.escapeHtml(label.awardName)}</div>
             ${label.sponsor ? `<div class="label-sponsor">Sponsored by ${utils.escapeHtml(label.sponsor)}</div>` : ''}
           </div>`;
@@ -6864,6 +6866,7 @@ const eventsModule = {
         .label { border: 1.5px dashed #aaa; border-radius: 6px; padding: 10mm 12mm; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; position: relative; }
         .label.empty { border-color: #ddd; }
         .label-number { position: absolute; top: 3mm; left: 4mm; font-size: 6pt; color: #bbb; font-weight: normal; letter-spacing: 0; }
+        .label-intro { font-size: 13pt; font-style: italic; color: #555; margin-bottom: 3mm; }
         .label-name { font-size: 22pt; font-weight: bold; line-height: 1.3; color: #1a1a1a; }
         .label-sponsor { font-size: 10pt; color: #777; font-style: italic; margin-top: 4mm; }
         @media print {

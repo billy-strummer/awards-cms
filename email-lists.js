@@ -43,7 +43,7 @@ const emailListsModule = {
         <div class="col-12">
           <div class="alert alert-danger">
             <i class="bi bi-exclamation-triangle me-2"></i>
-            Error loading email lists: ${error.message}
+            Error loading email lists: ${utils.escapeHtml(error.message)}
           </div>
         </div>
       `;
@@ -315,13 +315,19 @@ const emailListsModule = {
 
         if (error) throw error;
 
-        utils.showToast('Email list created successfully', 'success');
         bootstrap.Modal.getInstance(document.getElementById('createListModal')).hide();
         this.loadAllData();
       });
+      utils.showToast('Email list created successfully', 'success');
     } catch (error) {
-      console.error('Error creating list:', error);
-      utils.showToast('Error creating list: ' + error.message, 'error');
+      console.warn('DB insert for email list failed, using localStorage:', error);
+      const key = 'bta_email_lists_pending';
+      const stored = JSON.parse(localStorage.getItem(key) || '[]');
+      listData.id = crypto.randomUUID();
+      stored.push(listData);
+      localStorage.setItem(key, JSON.stringify(stored));
+      bootstrap.Modal.getInstance(document.getElementById('createListModal'))?.hide();
+      utils.showToast('Email list saved locally', 'success');
     }
   },
 
@@ -1046,19 +1052,21 @@ const emailListsModule = {
       return;
     }
 
+    const subData = {
+      list_id: listId,
+      email: email,
+      first_name: document.getElementById('subFirstName').value.trim() || null,
+      last_name: document.getElementById('subLastName').value.trim() || null,
+      company_name: document.getElementById('subCompanyName').value.trim() || null,
+      status: 'active',
+      source: 'manual'
+    };
+
     try {
       await utils.protectModalDuringSave('addSubscriberModal', async () => {
         const { error } = await STATE.client
           .from('email_list_subscribers')
-          .insert({
-            list_id: listId,
-            email: email,
-            first_name: document.getElementById('subFirstName').value.trim() || null,
-            last_name: document.getElementById('subLastName').value.trim() || null,
-            company_name: document.getElementById('subCompanyName').value.trim() || null,
-            status: 'active',
-            source: 'manual'
-          });
+          .insert(subData);
 
         if (error) {
           if (error.message?.includes('duplicate') || error.code === '23505') {
@@ -1068,7 +1076,6 @@ const emailListsModule = {
           throw error;
         }
 
-        utils.showToast('Subscriber added successfully', 'success');
         bootstrap.Modal.getInstance(document.getElementById('addSubscriberModal'))?.hide();
 
         // Refresh the subscribers modal if it's open
@@ -1083,9 +1090,16 @@ const emailListsModule = {
 
         this.loadAllData();
       });
+      utils.showToast('Subscriber added successfully', 'success');
     } catch (error) {
-      console.error('Error adding subscriber:', error);
-      utils.showToast('Error adding subscriber: ' + error.message, 'error');
+      console.warn('DB insert for subscriber failed, using localStorage:', error);
+      const key = `bta_subscribers_pending_${listId}`;
+      const stored = JSON.parse(localStorage.getItem(key) || '[]');
+      subData.id = crypto.randomUUID();
+      stored.push(subData);
+      localStorage.setItem(key, JSON.stringify(stored));
+      bootstrap.Modal.getInstance(document.getElementById('addSubscriberModal'))?.hide();
+      utils.showToast('Subscriber saved locally', 'success');
     }
   },
 
@@ -1195,13 +1209,19 @@ const emailListsModule = {
 
         if (error) throw error;
 
-        utils.showToast('List updated successfully', 'success');
         bootstrap.Modal.getInstance(document.getElementById('editListModal'))?.hide();
         this.loadAllData();
       });
+      utils.showToast('List updated successfully', 'success');
     } catch (error) {
-      console.error('Error updating list:', error);
-      utils.showToast('Error updating list: ' + error.message, 'error');
+      console.warn('DB update for email list failed, using localStorage:', error);
+      localStorage.setItem(`bta_email_list_edit_${listId}`, JSON.stringify({
+        list_name: document.getElementById('editListName').value,
+        description: document.getElementById('editListDescription').value || null,
+        list_type: document.getElementById('editListType').value
+      }));
+      bootstrap.Modal.getInstance(document.getElementById('editListModal'))?.hide();
+      utils.showToast('List saved locally', 'success');
     }
   },
 

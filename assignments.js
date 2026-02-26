@@ -251,7 +251,7 @@ const assignmentsModule = {
       contentEl.innerHTML = `
         <div class="alert alert-danger">
           <i class="bi bi-exclamation-triangle me-2"></i>
-          Failed to load assignments: ${error.message}
+          Failed to load assignments: ${utils.escapeHtml(error.message)}
         </div>
       `;
     }
@@ -401,7 +401,7 @@ const assignmentsModule = {
     const cards = document.querySelectorAll('.available-company-card');
 
     cards.forEach(card => {
-      const companyName = card.getAttribute('data-company-name');
+      const companyName = (card.getAttribute('data-company-name') || '').toLowerCase();
       if (companyName.includes(search)) {
         card.style.display = 'block';
       } else {

@@ -210,9 +210,10 @@ const authModule = {
 
   /**
    * Handle user logout
+   * @param {boolean} force - Skip confirmation dialog (used by inactivity timer)
    */
-  async handleLogout() {
-    if (!await utils.confirmDialog({ title: 'Logout', message: 'Are you sure you want to logout?', confirmText: 'Logout', danger: false })) {
+  async handleLogout(force = false) {
+    if (!force && !await utils.confirmDialog({ title: 'Logout', message: 'Are you sure you want to logout?', confirmText: 'Logout', danger: false })) {
       return;
     }
     
@@ -226,6 +227,42 @@ const authModule = {
       
       STATE.currentUser = null;
       this.clearInactivityTimer();
+      this.stopHealthCheck();
+
+      // Clean up background timers to prevent memory leaks
+      if (typeof notificationsModule !== 'undefined' && notificationsModule._pollInterval) {
+        clearInterval(notificationsModule._pollInterval);
+        notificationsModule._pollInterval = null;
+      }
+      if (utils._freshnessTimerId) {
+        clearInterval(utils._freshnessTimerId);
+        utils._freshnessTimerId = null;
+      }
+      if (typeof emailBuilderModule !== 'undefined' && emailBuilderModule.autosaveTimer) {
+        clearInterval(emailBuilderModule.autosaveTimer);
+        emailBuilderModule.autosaveTimer = null;
+      }
+
+      // Clean up realtime channels to prevent resource leaks
+      if (STATE.client) {
+        if (window._cmsRealtimeChannel) {
+          STATE.client.removeChannel(window._cmsRealtimeChannel);
+          window._cmsRealtimeChannel = null;
+        }
+        if (window._presenceChannel) {
+          STATE.client.removeChannel(window._presenceChannel);
+          window._presenceChannel = null;
+        }
+        if (typeof notificationsModule !== 'undefined' && notificationsModule._realtimeChannel) {
+          STATE.client.removeChannel(notificationsModule._realtimeChannel);
+          notificationsModule._realtimeChannel = null;
+        }
+        if (typeof orgsModule !== 'undefined' && orgsModule._realtimeChannel) {
+          STATE.client.removeChannel(orgsModule._realtimeChannel);
+          orgsModule._realtimeChannel = null;
+        }
+      }
+
       this.showLogin();
       utils.showToast('Logged out successfully', 'success');
       
@@ -276,6 +313,63 @@ const authModule = {
     
     // Load initial data
     dashboardModule.loadAllData();
+
+    // Replay any pending localStorage items that were saved during DB failures
+    utils.replayPendingQueues();
+
+    // Start periodic connection health check
+    this.startHealthCheck();
+  },
+
+  /**
+   * Periodic Supabase connection health check.
+   * Detects dropped connections during long sessions and updates the status indicator.
+   */
+  _healthCheckInterval: null,
+  _consecutiveFailures: 0,
+
+  startHealthCheck() {
+    this.stopHealthCheck();
+    this._consecutiveFailures = 0;
+    this._healthCheckInterval = setInterval(() => this._runHealthCheck(), 60000);
+    // Also check when tab becomes visible after being hidden
+    document.addEventListener('visibilitychange', this._onVisibilityChange);
+  },
+
+  stopHealthCheck() {
+    if (this._healthCheckInterval) {
+      clearInterval(this._healthCheckInterval);
+      this._healthCheckInterval = null;
+    }
+    document.removeEventListener('visibilitychange', this._onVisibilityChange);
+  },
+
+  _onVisibilityChange: function() {
+    if (!document.hidden && STATE.currentUser) {
+      authModule._runHealthCheck();
+    }
+  },
+
+  async _runHealthCheck() {
+    if (!STATE.currentUser || !STATE.client) return;
+    try {
+      const { error } = await STATE.client.from('cms_config').select('key', { head: true, count: 'exact' }).limit(1);
+      if (error) throw error;
+      if (this._consecutiveFailures > 0) {
+        this._consecutiveFailures = 0;
+        this.updateConnectionStatus(true);
+        utils.showToast('Connection restored', 'success');
+        utils.replayPendingQueues();
+      }
+    } catch (e) {
+      this._consecutiveFailures++;
+      if (this._consecutiveFailures >= 2) {
+        this.updateConnectionStatus(false);
+        if (this._consecutiveFailures === 2) {
+          utils.showToast('Connection to database lost. Changes will be saved locally until connection is restored.', 'warning');
+        }
+      }
+    }
   },
 
   /**
@@ -286,7 +380,7 @@ const authModule = {
     
     STATE.inactivityTimer = setTimeout(() => {
       utils.showToast('You have been logged out due to inactivity', 'warning');
-      this.handleLogout();
+      this.handleLogout(true);
     }, INACTIVITY_TIMEOUT);
   },
 

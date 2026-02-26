@@ -1110,7 +1110,7 @@ document.addEventListener('DOMContentLoaded', function() {
       }, 2000);
     });
 
-    STATE.client
+    window._cmsRealtimeChannel = STATE.client
       .channel('cms-realtime')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'awards' }, () => debouncedHandlers.awards())
       .on('postgres_changes', { event: '*', schema: 'public', table: 'winners' }, () => debouncedHandlers.winners())
@@ -1135,6 +1135,7 @@ document.addEventListener('DOMContentLoaded', function() {
     if (!STATE.client) return;
     try {
       const channel = STATE.client.channel('online-users');
+      window._presenceChannel = channel;
       channel.on('presence', { event: 'sync' }, () => {
         const state = channel.presenceState();
         const users = [];
@@ -1148,7 +1149,7 @@ document.addEventListener('DOMContentLoaded', function() {
       channel.subscribe(async (status) => {
         if (status === 'SUBSCRIBED') {
           await channel.track({
-            email: STATE.user?.email || 'unknown',
+            email: STATE.currentUser?.email || 'unknown',
             tab: document.querySelector('.nav-link.active')?.textContent?.trim() || 'Dashboard',
             online_at: new Date().toISOString()
           });
@@ -1214,7 +1215,7 @@ document.addEventListener('DOMContentLoaded', function() {
   // Restore tab from URL hash when hash changes
   window.addEventListener('hashchange', () => {
     const hash = window.location.hash.replace('#', '');
-    if (hash) {
+    if (hash && /^[a-zA-Z0-9_-]+$/.test(hash)) {
       const tabBtn = document.querySelector(`[data-bs-target="#${hash}"]`);
       if (tabBtn) tabBtn.click();
     }
@@ -1224,7 +1225,7 @@ document.addEventListener('DOMContentLoaded', function() {
   const hashTab = window.location.hash.replace('#', '');
   const defaultTab = localStorage.getItem('defaultLandingTab');
   const startTab = hashTab || defaultTab;
-  if (startTab) {
+  if (startTab && /^[a-zA-Z0-9_-]+$/.test(startTab)) {
     const tabBtn = document.querySelector(`[data-bs-target="#${startTab}"]`);
     if (tabBtn) setTimeout(() => tabBtn.click(), 100);
   }
@@ -1300,7 +1301,7 @@ document.addEventListener('DOMContentLoaded', function() {
   if (utils.initCommandPalette) utils.initCommandPalette();
   if (utils.initScrollToTop) utils.initScrollToTop();
   if (utils.initKeyboardShortcutHelp) utils.initKeyboardShortcutHelp();
-  if (utils.startFreshnessTimer) utils.startFreshnessTimer();
+  // Note: startFreshnessTimer() already called in STEP 15 above
 
   // Initialize debounced search for main search boxes
   if (utils.initDebouncedSearch) {

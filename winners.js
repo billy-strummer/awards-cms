@@ -6,6 +6,7 @@ const winnersModule = {
   currentWinnerId: null,
   currentMediaType: null,
   _selectedWinnerIds: new Set(),
+  _loading: false,
   _currentPage: 1,
   _pageSize: 50,
   _sortField: 'created_at',
@@ -15,6 +16,8 @@ const winnersModule = {
    * Load all winners from database
    */
   async loadWinners() {
+    if (this._loading) return;
+    this._loading = true;
     try {
       utils.showLoading();
       utils.showSkeletonLoading('winnersTableBody', 7);
@@ -131,6 +134,7 @@ const winnersModule = {
       utils.showEmptyState('winnersTableBody', 7, 'Failed to load winners', 'bi-exclamation-triangle');
     } finally {
       utils.hideLoading();
+      this._loading = false;
     }
   },
 
@@ -544,18 +548,26 @@ const winnersModule = {
     }
     
     const file = fileInput.files[0];
-    
+
     // Validate file type
     const validPhotoTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
     const validVideoTypes = ['video/mp4', 'video/quicktime', 'video/x-msvideo'];
-    
+
     if (this.currentMediaType === MEDIA_TYPES.PHOTO && !validPhotoTypes.includes(file.type)) {
       utils.showToast('Please select a valid image file (JPEG, PNG, GIF, WebP)', 'error');
       return;
     }
-    
+
     if (this.currentMediaType === MEDIA_TYPES.VIDEO && !validVideoTypes.includes(file.type)) {
       utils.showToast('Please select a valid video file (MP4, MOV, AVI)', 'error');
+      return;
+    }
+
+    // Validate file size
+    const maxSize = this.currentMediaType === MEDIA_TYPES.VIDEO ? 50 * 1024 * 1024 : 10 * 1024 * 1024;
+    if (file.size > maxSize) {
+      const maxMB = maxSize / (1024 * 1024);
+      utils.showToast(`File too large. Maximum size is ${maxMB}MB.`, 'error');
       return;
     }
     
@@ -593,7 +605,7 @@ const winnersModule = {
         if (dbError) throw dbError;
 
         // Close modal and reload
-        bootstrap.Modal.getInstance(document.getElementById('uploadMediaModal')).hide();
+        bootstrap.Modal.getInstance(document.getElementById('uploadMediaModal'))?.hide();
         await this.loadWinners();
         utils.showToast('Media uploaded successfully!', 'success');
       });
@@ -681,7 +693,7 @@ const winnersModule = {
         if (error) throw error;
 
         await this.loadWinners();
-        bootstrap.Modal.getInstance(document.getElementById('viewMediaModal')).hide();
+        bootstrap.Modal.getInstance(document.getElementById('viewMediaModal'))?.hide();
         utils.showToast('Media deleted successfully!', 'success');
       });
 
@@ -954,7 +966,7 @@ const winnersModule = {
         }
 
         utils.showToast('Export complete!', 'success');
-        bootstrap.Modal.getInstance(document.getElementById('pressReleaseExportModal')).hide();
+        bootstrap.Modal.getInstance(document.getElementById('pressReleaseExportModal'))?.hide();
       });
 
     } catch (error) {
@@ -1498,7 +1510,7 @@ const winnersModule = {
         }
 
         utils.showToast(`Successfully generated ${generatedCount} assets for ${selectedWinnersData.length} winner(s)!`, 'success');
-        bootstrap.Modal.getInstance(document.getElementById('certificateGeneratorModal')).hide();
+        bootstrap.Modal.getInstance(document.getElementById('certificateGeneratorModal'))?.hide();
       });
 
     } catch (error) {
@@ -1966,7 +1978,7 @@ const winnersModule = {
         URL.revokeObjectURL(url);
 
         utils.showToast('Media pack downloaded!', 'success');
-        bootstrap.Modal.getInstance(document.getElementById('mediaPackDownloadModal')).hide();
+        bootstrap.Modal.getInstance(document.getElementById('mediaPackDownloadModal'))?.hide();
       });
 
     } catch (error) {
@@ -2113,7 +2125,7 @@ const winnersModule = {
       }
 
       utils.showToast(`Winner package downloaded! ${generatedCount} file(s) generated.`, 'success');
-      bootstrap.Modal.getInstance(document.getElementById('winnerPackageDownloadModal')).hide();
+      bootstrap.Modal.getInstance(document.getElementById('winnerPackageDownloadModal'))?.hide();
 
     } catch (error) {
       console.error('Error generating winner package:', error);
@@ -2892,7 +2904,7 @@ const winnersModule = {
         }
       }
 
-      bootstrap.Modal.getInstance(document.getElementById('importWinnersModal')).hide();
+      bootstrap.Modal.getInstance(document.getElementById('importWinnersModal'))?.hide();
       await this.loadWinners();
 
       if (errorCount > 0) {

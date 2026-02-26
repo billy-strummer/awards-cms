@@ -296,39 +296,52 @@ const gdprModule = {
    * Export all data for an entity as JSON download
    */
   async _exportEntityData(entityId) {
-    const { data: org } = await STATE.client.from('organisations').select('*').eq('id', entityId).single();
-    const { data: contacts } = await STATE.client.from('organisation_contacts').select('*').eq('organisation_id', entityId);
-    const { data: assignments } = await STATE.client.from('award_assignments').select('*').eq('organisation_id', entityId);
-    const { data: entries } = await STATE.client.from('entries').select('*').eq('organisation_id', entityId);
+    try {
+      const { data: org } = await STATE.client.from('organisations').select('*').eq('id', entityId).single();
+      const { data: contacts } = await STATE.client.from('organisation_contacts').select('*').eq('organisation_id', entityId);
+      const { data: assignments } = await STATE.client.from('award_assignments').select('*').eq('organisation_id', entityId);
+      const { data: entries } = await STATE.client.from('entries').select('*').eq('organisation_id', entityId);
 
-    const exportData = {
-      exportDate: new Date().toISOString(),
-      type: 'GDPR Subject Access Request',
-      organisation: org,
-      contacts: contacts || [],
-      award_assignments: assignments || [],
-      entries: entries || []
-    };
+      const exportData = {
+        exportDate: new Date().toISOString(),
+        type: 'GDPR Subject Access Request',
+        organisation: org,
+        contacts: contacts || [],
+        award_assignments: assignments || [],
+        entries: entries || []
+      };
 
-    const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `gdpr_export_${entityId.slice(0, 8)}_${new Date().toISOString().split('T')[0]}.json`;
-    a.click();
-    URL.revokeObjectURL(url);
+      const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `gdpr_export_${entityId.slice(0, 8)}_${new Date().toISOString().split('T')[0]}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error('GDPR export failed:', err);
+      utils.showToast('Data export failed: ' + err.message, 'error');
+    }
   },
 
   /**
    * Delete all data for an entity
    */
   async _deleteEntityData(entityId) {
-    // Delete in correct order (children first)
-    await STATE.client.from('organisation_contacts').delete().eq('organisation_id', entityId);
-    await STATE.client.from('award_assignments').delete().eq('organisation_id', entityId);
-    await STATE.client.from('entries').delete().eq('organisation_id', entityId);
-    await STATE.client.from('organisation_images').delete().eq('organisation_id', entityId);
-    await STATE.client.from('organisations').delete().eq('id', entityId);
+    // Delete in correct order (children first) — abort on failure to prevent orphaned data
+    const tables = [
+      { table: 'organisation_contacts', col: 'organisation_id' },
+      { table: 'award_assignments', col: 'organisation_id' },
+      { table: 'entries', col: 'organisation_id' },
+      { table: 'organisation_images', col: 'organisation_id' },
+      { table: 'organisations', col: 'id' }
+    ];
+    for (const { table, col } of tables) {
+      const { error } = await STATE.client.from(table).delete().eq(col, entityId);
+      if (error) {
+        throw new Error(`Failed to delete from ${table}: ${error.message}`);
+      }
+    }
   },
 
   /**

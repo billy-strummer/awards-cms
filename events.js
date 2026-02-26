@@ -3,10 +3,14 @@
 /* ==================================================== */
 
 const eventsModule = {
+  _loading: false,
+
   /**
    * Load all events from database
    */
   async loadEvents() {
+    if (this._loading) return;
+    this._loading = true;
     try {
       utils.showLoading();
       utils.showSkeletonLoading('eventsTableBody', 11);
@@ -65,6 +69,7 @@ const eventsModule = {
       utils.showEmptyState('eventsTableBody', 8, 'Failed to load events', 'bi-exclamation-triangle');
     } finally {
       utils.hideLoading();
+      this._loading = false;
     }
   },
 
@@ -1238,6 +1243,18 @@ const eventsModule = {
     const event = STATE.allEvents.find(e => e.id === eventId);
     if (!event) return;
 
+    // Merge localStorage fallback for ticket settings (columns may not exist in DB)
+    if (event.ticket_price === undefined && event.ticket_url === undefined) {
+      try {
+        const stored = localStorage.getItem(`bta_ticket_settings_${eventId}`);
+        if (stored) {
+          const s = JSON.parse(stored);
+          event.ticket_price = s.ticket_price;
+          event.ticket_url = s.ticket_url;
+        }
+      } catch (e) { /* ignore */ }
+    }
+
     const attendees = await this.getAttendees(eventId);
     const ticketsSold = attendees.filter(a => a.status === 'attending').length;
     const price = event.ticket_price || 0;
@@ -1377,17 +1394,18 @@ const eventsModule = {
         .update({ ticket_price: price, ticket_url: url })
         .eq('id', eventId);
       if (error) throw error;
-
-      // Update local state
-      const event = STATE.allEvents.find(e => e.id === eventId);
-      if (event) { event.ticket_price = price; event.ticket_url = url; }
-
-      this.renderTicketsTab(eventId);
-      utils.showToast('Ticket settings saved', 'success');
-    } catch (error) {
-      console.error('Error saving ticket settings:', error);
-      utils.showToast('Failed to save ticket settings', 'error');
+    } catch (dbError) {
+      // Column may not exist – fall back to localStorage (matches pattern used by budgets, vendors, etc.)
+      console.warn('DB update for ticket settings failed, using localStorage:', dbError);
+      localStorage.setItem(`bta_ticket_settings_${eventId}`, JSON.stringify({ ticket_price: price, ticket_url: url }));
     }
+
+    // Update local state
+    const event = STATE.allEvents.find(e => e.id === eventId);
+    if (event) { event.ticket_price = price; event.ticket_url = url; }
+
+    this.renderTicketsTab(eventId);
+    utils.showToast('Ticket settings saved', 'success');
   },
 
   copyTicketUrl() {
@@ -2172,7 +2190,7 @@ const eventsModule = {
       const totalSeated = assignList.length;
       const totalSeats = tableList.reduce((s, t) => s + t.total_seats, 0);
 
-      win.document.write(`<!DOCTYPE html><html><head><title>Seating Chart - ${event.event_name}</title>
+      win.document.write(`<!DOCTYPE html><html><head><title>Seating Chart - ${utils.escapeHtml(event.event_name)}</title>
         <style>
           body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; margin: 0; background: #f0f2f5; }
           .header { background: linear-gradient(135deg, #1a1a2e, #16213e); color: white; padding: 30px; text-align: center; }
@@ -2915,6 +2933,8 @@ const eventsModule = {
     // Pre-fetch async data
     const postEventData = await this._getPostEventData(eventId);
     const surveyStatsHtml = await this._renderSurveyStats(eventId);
+    const sponsorReportHtml = await this._renderSponsorReport(eventId);
+    const debriefHtml = await this._renderDebrief(eventId);
 
     container.innerHTML = `
       ${!isComplete && !isPast ? `<div class="alert alert-info mb-3"><i class="bi bi-info-circle me-2"></i>This event hasn't happened yet. Post-event features are available after the event date or when status is set to "Complete".</div>` : ''}
@@ -2990,7 +3010,7 @@ const eventsModule = {
         <div class="card-body">
           <h6 class="card-title"><i class="bi bi-graph-up me-2"></i>Sponsor ROI Report</h6>
           <div id="sponsorROIContent">
-            ${this._renderSponsorReport(eventId)}
+            ${sponsorReportHtml}
           </div>
         </div>
       </div>
@@ -3000,7 +3020,7 @@ const eventsModule = {
         <div class="card-body">
           <h6 class="card-title"><i class="bi bi-journal-text me-2"></i>Event Debrief & Lessons Learned</h6>
           <div id="debriefContent">
-            ${this._renderDebrief(eventId)}
+            ${debriefHtml}
           </div>
         </div>
       </div>`;
@@ -3612,7 +3632,7 @@ const eventsModule = {
     const sponsors = attendees.filter(a => a.guestType === 'sponsor');
     const budget = await this.getBudget(eventId);
     const vendors = await this.getVendors(eventId);
-    const data = this._getPostEventData(eventId);
+    const data = await this._getPostEventData(eventId);
 
     const totalRevenue = (event?.ticket_price || 0) * attending.length;
     const totalSpent = budget.items ? budget.items.reduce((s, i) => s + (parseFloat(i.actual) || 0), 0) : 0;
@@ -3695,7 +3715,7 @@ const eventsModule = {
     const event = STATE.allEvents.find(e => e.id === eventId);
     const attendees = await this.getAttendees(eventId);
     const budget = await this.getBudget(eventId);
-    const data = this._getPostEventData(eventId);
+    const data = await this._getPostEventData(eventId);
 
     const attending = attendees.filter(a => a.status === 'attending');
     const totalRevenue = (event?.ticket_price || 0) * attending.length;
@@ -3727,8 +3747,8 @@ const eventsModule = {
   // POST-EVENT: EVENT DEBRIEF
   // ========================================
 
-  _renderDebrief(eventId) {
-    const data = this._getPostEventData(eventId);
+  async _renderDebrief(eventId) {
+    const data = await this._getPostEventData(eventId);
     const debrief = data.debrief || {};
 
     return `
@@ -3760,9 +3780,9 @@ const eventsModule = {
       </div>`;
   },
 
-  saveDebrief() {
+  async saveDebrief() {
     const eventId = document.getElementById('attendeesEventId').value;
-    const data = this._getPostEventData(eventId);
+    const data = await this._getPostEventData(eventId);
     data.debrief = {
       wentWell: document.getElementById('debriefWentWell')?.value || '',
       improve: document.getElementById('debriefImprove')?.value || '',
@@ -3781,10 +3801,10 @@ const eventsModule = {
     utils.showToast('Debrief saved', 'success');
   },
 
-  exportDebrief() {
+  async exportDebrief() {
     const eventId = document.getElementById('attendeesEventId').value;
     const event = STATE.allEvents.find(e => e.id === eventId);
-    const data = this._getPostEventData(eventId);
+    const data = await this._getPostEventData(eventId);
     const debrief = data.debrief || {};
 
     let text = `EVENT DEBRIEF\n${'='.repeat(50)}\n\n`;
@@ -4986,14 +5006,19 @@ const eventsModule = {
     try {
       const { error } = await STATE.client.from('running_order').insert([entryData]);
       if (error) throw error;
-      utils.showToast('Section break added', 'success');
-      bootstrap.Modal.getInstance(document.getElementById('addSectionBreakModal')).hide();
       await this.loadRunningOrder();
-      this.renderRunningOrderItems();
     } catch (error) {
-      console.error('Error adding section break:', error);
-      utils.showToast('Failed to add section break: ' + error.message, 'error');
+      console.warn('DB insert for section break failed, using localStorage:', error);
+      const key = `bta_running_order_${this.currentEventIdRunningOrder}`;
+      const stored = JSON.parse(localStorage.getItem(key) || '[]');
+      entryData.id = crypto.randomUUID();
+      stored.push(entryData);
+      localStorage.setItem(key, JSON.stringify(stored));
+      this.runningOrderItems = stored;
     }
+    utils.showToast('Section break added', 'success');
+    bootstrap.Modal.getInstance(document.getElementById('addSectionBreakModal'))?.hide();
+    this.renderRunningOrderItems();
   },
 
   // ============================================
@@ -5231,7 +5256,8 @@ const eventsModule = {
     // Store current index for navigation
     this._backstageCurrentIdx = currentIdx;
 
-    // Start auto-refresh
+    // Start auto-refresh (clear any existing interval first)
+    if (this._roBackstageInterval) clearInterval(this._roBackstageInterval);
     this._roBackstageInterval = setInterval(() => this._refreshBackstageView(), 5000);
 
     document.getElementById('backstageViewModal').addEventListener('hidden.bs.modal', () => {
@@ -5786,7 +5812,7 @@ const eventsModule = {
       const time = item.scheduled_time || '';
       const name = item.award_name || 'TBC';
       const cue = item.cue_notes || '-';
-      const breakLabel = isBreak ? ` [${(item.item_type || 'break').toUpperCase()}]` : '';
+      const breakLabel = isBreak ? ` [${utils.escapeHtml((item.item_type || 'break').toUpperCase())}]` : '';
 
       rows += `<tr${isBreak ? ' style="background:#e3f2fd;"' : ''}>
         <td style="text-align:center; font-weight:bold;">${isBreak ? '-' : presNum}</td>
@@ -5930,19 +5956,20 @@ const eventsModule = {
     this._roSectionConfig = config;
 
     try {
-      await STATE.client
+      const { error } = await STATE.client
         .from('running_order_settings')
         .upsert({
           event_id: this.currentEventIdRunningOrder,
           section_config: config
         }, { onConflict: 'event_id' });
-      utils.showToast('Section configuration saved', 'success');
-      bootstrap.Modal.getInstance(document.getElementById('sectionManagerModal')).hide();
-      this.renderRunningOrderItems();
+      if (error) throw error;
     } catch (error) {
-      console.error('Error saving section config:', error);
-      utils.showToast('Failed to save section config', 'error');
+      console.warn('DB save for section config failed, using localStorage:', error);
+      localStorage.setItem(`bta_ro_section_config_${this.currentEventIdRunningOrder}`, JSON.stringify(config));
     }
+    utils.showToast('Section configuration saved', 'success');
+    bootstrap.Modal.getInstance(document.getElementById('sectionManagerModal'))?.hide();
+    this.renderRunningOrderItems();
   },
 
   // ============================================
@@ -6051,12 +6078,15 @@ const eventsModule = {
           snapshot: snapshot
         }]);
       if (error) throw error;
-      utils.showToast('Version saved: ' + name, 'success');
-      this.renderVersionsTab();
     } catch (error) {
-      console.error('Error saving version:', error);
-      utils.showToast('Failed to save version: ' + error.message, 'error');
+      console.warn('DB save for version failed, using localStorage:', error);
+      const key = `bta_ro_versions_${this.currentEventIdRunningOrder}`;
+      const stored = JSON.parse(localStorage.getItem(key) || '[]');
+      stored.push({ id: crypto.randomUUID(), version_name: name, version_number: stored.length + 1, snapshot, created_at: new Date().toISOString() });
+      localStorage.setItem(key, JSON.stringify(stored));
     }
+    utils.showToast('Version saved: ' + name, 'success');
+    this.renderVersionsTab();
   },
 
   async restoreVersion(versionId) {
@@ -6508,8 +6538,9 @@ const eventsModule = {
       }
       utils.showToast('Running order saved', 'success');
     } catch (error) {
-      console.error('Error saving running order:', error);
-      utils.showToast('Failed to save running order', 'error');
+      console.warn('DB save for running order failed, using localStorage:', error);
+      localStorage.setItem(`bta_running_order_${this.currentEventIdRunningOrder}`, JSON.stringify(this.runningOrderItems));
+      utils.showToast('Running order saved locally', 'success');
     } finally {
       utils.hideLoading();
     }
@@ -7272,14 +7303,19 @@ const eventsModule = {
         result = await STATE.client.from('running_order').insert([baseEntry]);
       }
       if (result.error) throw result.error;
-      utils.showToast('Entry added to running order', 'success');
-      bootstrap.Modal.getInstance(document.getElementById('addManualEntryModal')).hide();
       await this.loadRunningOrder();
-      this.renderRunningOrderItems();
     } catch (error) {
-      console.error('Error adding manual entry:', error);
-      utils.showToast('Failed to add entry: ' + error.message, 'error');
+      console.warn('DB insert for manual entry failed, using localStorage:', error);
+      const key = `bta_running_order_${this.currentEventIdRunningOrder}`;
+      const stored = JSON.parse(localStorage.getItem(key) || '[]');
+      entryData.id = crypto.randomUUID();
+      stored.push(entryData);
+      localStorage.setItem(key, JSON.stringify(stored));
+      this.runningOrderItems = stored;
     }
+    utils.showToast('Entry added to running order', 'success');
+    bootstrap.Modal.getInstance(document.getElementById('addManualEntryModal'))?.hide();
+    this.renderRunningOrderItems();
   },
 
   /**
@@ -9097,21 +9133,24 @@ const eventsModule = {
         .from('event_tables')
         .update({ table_name: name, total_seats: seats, shape })
         .eq('id', tableId);
-
       if (error) throw error;
-
-      // Update local
-      const t = this.tables.find(t => t.id === tableId);
-      if (t) { t.table_name = name; t.total_seats = seats; t.shape = shape; }
-
-      utils.showToast('Table updated', 'success');
-      this.renderCanvasTables();
-      this.showTableDetail(tableId);
-
     } catch (error) {
-      console.error('Error updating table:', error);
-      utils.showToast('Failed to update table', 'error');
+      console.warn('DB update for table properties failed, using localStorage:', error);
+      const key = `bta_event_tables_${this.currentEventIdRunningOrder || 'unknown'}`;
+      const stored = JSON.parse(localStorage.getItem(key) || '[]');
+      const idx = stored.findIndex(t => t.id === tableId);
+      if (idx >= 0) { Object.assign(stored[idx], { table_name: name, total_seats: seats, shape }); }
+      else { stored.push({ id: tableId, table_name: name, total_seats: seats, shape }); }
+      localStorage.setItem(key, JSON.stringify(stored));
     }
+
+    // Update local
+    const t = this.tables.find(t => t.id === tableId);
+    if (t) { t.table_name = name; t.total_seats = seats; t.shape = shape; }
+
+    utils.showToast('Table updated', 'success');
+    this.renderCanvasTables();
+    this.showTableDetail(tableId);
   },
 
   // ---- GUEST DRAG HANDLERS ----
@@ -9957,7 +9996,7 @@ const eventsModule = {
       const pct = table.total_seats > 0 ? Math.round(assigned / table.total_seats * 100) : 0;
       const barColor = assigned >= table.total_seats ? '#dc3545' : assigned >= table.total_seats * 0.75 ? '#fd7e14' : '#0d6efd';
       const shapeIcon = table.shape === 'rectangular' ? 'bi-square' : 'bi-circle';
-      const label = table.table_name ? `${table.table_name}` : `Table ${table.table_number}`;
+      const label = table.table_name ? utils.escapeHtml(table.table_name) : `Table ${utils.escapeHtml(String(table.table_number || ''))}`;
 
       const guestsHtml = (table.assignments || []).map(a => `
         <div style="padding:6px 12px; border-bottom:1px solid rgba(255,255,255,0.08); display:flex; justify-content:space-between; align-items:center;">

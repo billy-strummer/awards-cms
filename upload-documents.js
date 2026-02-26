@@ -25,6 +25,12 @@ function showPublicToast(msg, type = 'warning') {
   setTimeout(() => { toast.style.opacity = '0'; setTimeout(() => toast.remove(), 300); }, 4000);
 }
 
+// HTML escape helper for safe rendering
+function esc(str) {
+  if (!str) return '';
+  return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+
 const uploadApp = {
   entryId: null,
   entryData: null,
@@ -108,19 +114,19 @@ const uploadApp = {
         <table class="table table-sm table-borderless mb-0">
           <tr>
             <td class="text-muted" style="width: 120px;">Entry Number:</td>
-            <td><strong>${entry.entry_number}</strong></td>
+            <td><strong>${esc(entry.entry_number)}</strong></td>
           </tr>
           <tr>
             <td class="text-muted">Company:</td>
-            <td><strong>${companyName}</strong></td>
+            <td><strong>${esc(companyName)}</strong></td>
           </tr>
           <tr>
             <td class="text-muted">Award:</td>
-            <td>${awardName}</td>
+            <td>${esc(awardName)}</td>
           </tr>
           <tr>
             <td class="text-muted">Contact:</td>
-            <td>${entry.contact_name || 'N/A'} ${entry.contact_email ? '(' + entry.contact_email + ')' : ''}</td>
+            <td>${esc(entry.contact_name || 'N/A')} ${entry.contact_email ? '(' + esc(entry.contact_email) + ')' : ''}</td>
           </tr>
         </table>
       `;

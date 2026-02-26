@@ -155,7 +155,7 @@ window.notificationsModule = {
 
   async notifyWinnerConfirmed(teamEmails, winnerId) {
     const emails = Array.isArray(teamEmails) ? teamEmails : [teamEmails];
-    await Promise.all(emails.map(e => this._insert(e, 'winner_confirmed', 'Winner Confirmed',
+    await Promise.allSettled(emails.map(e => this._insert(e, 'winner_confirmed', 'Winner Confirmed',
       `Winner entry #${winnerId} has been confirmed. Congratulations!`, `#winners?id=${winnerId}`)));
   },
 
@@ -262,7 +262,9 @@ window.notificationsModule = {
   },
 
   _timeAgo(isoString) {
-    const diff = Math.floor((Date.now() - new Date(isoString)) / 1000);
+    const d = utils.safeDate(isoString);
+    if (!d) return '';
+    const diff = Math.floor((Date.now() - d) / 1000);
     if (diff < 60)    return 'Just now';
     if (diff < 3600)  return `${Math.floor(diff / 60)}m ago`;
     if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;

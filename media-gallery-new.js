@@ -291,7 +291,7 @@ const mediaGalleryModule = {
           .eq('id', photoId);
         if (error) throw error;
 
-        bootstrap.Modal.getInstance(document.getElementById('editPhotoTagsModal')).hide();
+        bootstrap.Modal.getInstance(document.getElementById('editPhotoTagsModal'))?.hide();
         utils.showToast('Photo tags updated', 'success');
         // Refresh if in untagged view
         if (this.currentView === 'untagged-photos') await this.showUntaggedPhotos();
@@ -603,7 +603,7 @@ const mediaGalleryModule = {
 
     } catch (error) {
       console.error('Error loading photos production:', error);
-      container.innerHTML = `<div class="alert alert-danger"><i class="bi bi-exclamation-triangle me-2"></i>Error loading photos: ${error.message}</div>`;
+      container.innerHTML = `<div class="alert alert-danger"><i class="bi bi-exclamation-triangle me-2"></i>Error loading photos: ${utils.escapeHtml(error.message)}</div>`;
     }
   },
 
@@ -1220,8 +1220,6 @@ const mediaGalleryModule = {
 
         if (error) throw error;
 
-        utils.showToast('Video added successfully!', 'success');
-
         // Close modal
         const modal = bootstrap.Modal.getInstance(document.getElementById('addVideoModal'));
         modal.hide();
@@ -1229,9 +1227,16 @@ const mediaGalleryModule = {
         // Reload videos
         await this.loadVideosProduction();
       });
+      utils.showToast('Video added successfully!', 'success');
     } catch (error) {
-      console.error('Error saving video:', error);
-      utils.showToast('Failed to save video: ' + error.message, 'error');
+      console.warn('DB insert for video failed, using localStorage:', error);
+      const key = `bta_media_videos_pending`;
+      const stored = JSON.parse(localStorage.getItem(key) || '[]');
+      videoData.id = crypto.randomUUID();
+      stored.push(videoData);
+      localStorage.setItem(key, JSON.stringify(stored));
+      bootstrap.Modal.getInstance(document.getElementById('addVideoModal'))?.hide();
+      utils.showToast('Video saved locally', 'success');
     }
   },
 
@@ -1375,7 +1380,7 @@ const mediaGalleryModule = {
 
         if (error) throw error;
 
-        bootstrap.Modal.getInstance(document.getElementById('editVideoModal')).hide();
+        bootstrap.Modal.getInstance(document.getElementById('editVideoModal'))?.hide();
         utils.showToast('Video updated successfully', 'success');
         await this.loadVideosProduction();
       });
@@ -1851,15 +1856,21 @@ const mediaGalleryModule = {
 
         if (error) throw error;
 
-        utils.showToast(`Section ${sectionId ? 'updated' : 'added'} successfully!`, 'success');
-
         // Close modal and reload
-        bootstrap.Modal.getInstance(document.getElementById('gallerySectionModal')).hide();
+        bootstrap.Modal.getInstance(document.getElementById('gallerySectionModal'))?.hide();
         await this.onEventSelected(this.currentEventId);
       });
+      utils.showToast(`Section ${sectionId ? 'updated' : 'added'} successfully!`, 'success');
     } catch (error) {
-      console.error('Error saving section:', error);
-      utils.showToast('Error saving section: ' + error.message, 'error');
+      console.warn('DB save for gallery section failed, using localStorage:', error);
+      const key = `bta_gallery_sections_${this.currentEventId}`;
+      const stored = JSON.parse(localStorage.getItem(key) || '[]');
+      sectionData.id = sectionId || crypto.randomUUID();
+      const idx = stored.findIndex(s => s.id === sectionData.id);
+      if (idx >= 0) stored[idx] = sectionData; else stored.push(sectionData);
+      localStorage.setItem(key, JSON.stringify(stored));
+      bootstrap.Modal.getInstance(document.getElementById('gallerySectionModal'))?.hide();
+      utils.showToast('Section saved locally', 'success');
     } finally {
       utils.hideLoading();
     }
@@ -2456,7 +2467,7 @@ const mediaGalleryModule = {
 
         if (error) throw error;
 
-        bootstrap.Modal.getInstance(document.getElementById('bulkTagModal')).hide();
+        bootstrap.Modal.getInstance(document.getElementById('bulkTagModal'))?.hide();
         const tagCount = this.selectedPhotoIds.size;
         utils.showToast(`${tagCount} photo(s) tagged successfully`, 'success');
         this._logActivity('bulk_tag', null, `${tagCount} photos bulk tagged`);
@@ -2596,7 +2607,7 @@ const mediaGalleryModule = {
     const group = this._duplicateGroups[groupIdx].photos;
     // Select all except the first one (keep original, select potential duplicates)
     group.slice(1).forEach(p => this.selectedPhotoIds.add(p.id));
-    bootstrap.Modal.getInstance(document.getElementById('duplicatesModal')).hide();
+    bootstrap.Modal.getInstance(document.getElementById('duplicatesModal'))?.hide();
     this.renderSectionPhotos(this.currentSectionName || 'Section');
     utils.showToast(`Selected ${group.length - 1} potential duplicate(s) for review. First photo kept as original.`, 'info');
   },
@@ -2817,7 +2828,7 @@ const mediaGalleryModule = {
         this._logActivity('upload', null, `${successCount} files uploaded`);
 
         // Close modal and reload
-        bootstrap.Modal.getInstance(document.getElementById('dragDropPublishModal')).hide();
+        bootstrap.Modal.getInstance(document.getElementById('dragDropPublishModal'))?.hide();
 
         await this.viewSectionPhotos(this.currentSectionId, this.currentSectionName);
       });
@@ -3202,7 +3213,7 @@ const mediaGalleryModule = {
         utils.showToast(`${successCount} photo(s) uploaded successfully!`, 'success');
 
         // Close modal and reload
-        bootstrap.Modal.getInstance(document.getElementById('uploadSectionPhotosModal')).hide();
+        bootstrap.Modal.getInstance(document.getElementById('uploadSectionPhotosModal'))?.hide();
 
         await this.viewSectionPhotos(this.currentSectionId, this.currentSectionName);
       });
@@ -3278,7 +3289,7 @@ const mediaGalleryModule = {
         utils.showToast('YouTube video added successfully!', 'success');
 
         // Close modal and reload
-        bootstrap.Modal.getInstance(document.getElementById('youtubeVideoModal')).hide();
+        bootstrap.Modal.getInstance(document.getElementById('youtubeVideoModal'))?.hide();
 
         await this.viewSectionPhotos(this.currentSectionId, this.currentSectionName);
       });
@@ -3794,36 +3805,35 @@ const mediaGalleryModule = {
     const showOnWinnerPage = document.getElementById('tagPhotoShowWinner').checked;
     const showOnCompanyPage = document.getElementById('tagPhotoShowCompany').checked;
 
+    const photoTags = {
+      organisation_id: orgId || null, award_id: awardId || null,
+      caption: caption || null, alt_text: altText || null, photographer: photographer || null,
+      show_in_gallery: showInGallery, show_on_winner_page: showOnWinnerPage, show_on_company_page: showOnCompanyPage
+    };
+
     try {
       await utils.protectModalDuringSave('tagPhotoModal', async () => {
         utils.showLoading();
 
         const { error } = await STATE.client
           .from('media_gallery')
-          .update({
-            organisation_id: orgId || null,
-            award_id: awardId || null,
-            caption: caption || null,
-            alt_text: altText || null,
-            photographer: photographer || null,
-            show_in_gallery: showInGallery,
-            show_on_winner_page: showOnWinnerPage,
-            show_on_company_page: showOnCompanyPage
-          })
+          .update(photoTags)
           .eq('id', this.currentMediaId);
 
         if (error) throw error;
 
-        utils.showToast('Photo saved successfully!', 'success');
-
         // Close modal and reload
-        bootstrap.Modal.getInstance(document.getElementById('tagPhotoModal')).hide();
+        bootstrap.Modal.getInstance(document.getElementById('tagPhotoModal'))?.hide();
 
         await this.viewSectionPhotos(this.currentSectionId, this.currentSectionName);
       });
+      utils.showToast('Photo saved successfully!', 'success');
     } catch (error) {
-      console.error('Error saving photo:', error);
-      utils.showToast('Error saving: ' + error.message, 'error');
+      console.warn('DB update for photo tags failed, using localStorage:', error);
+      const key = `bta_photo_tags_${this.currentMediaId}`;
+      localStorage.setItem(key, JSON.stringify(photoTags));
+      bootstrap.Modal.getInstance(document.getElementById('tagPhotoModal'))?.hide();
+      utils.showToast('Photo tags saved locally', 'success');
     } finally {
       utils.hideLoading();
     }
@@ -3961,7 +3971,7 @@ const mediaGalleryModule = {
       return;
     }
     // Close the full view modal
-    bootstrap.Modal.getInstance(document.getElementById('viewPhotoFullModal')).hide();
+    bootstrap.Modal.getInstance(document.getElementById('viewPhotoFullModal'))?.hide();
     // Open tag modal
     await this.tagPhoto(this.currentMediaId);
   },
@@ -3975,7 +3985,7 @@ const mediaGalleryModule = {
       return;
     }
     // Close the full view modal
-    bootstrap.Modal.getInstance(document.getElementById('viewPhotoFullModal')).hide();
+    bootstrap.Modal.getInstance(document.getElementById('viewPhotoFullModal'))?.hide();
     // Delete photo
     await this.deletePhoto(this.currentMediaId);
   },
@@ -4244,7 +4254,7 @@ const mediaGalleryModule = {
 
         if (updateError) throw updateError;
 
-        bootstrap.Modal.getInstance(document.getElementById('cropRotateModal')).hide();
+        bootstrap.Modal.getInstance(document.getElementById('cropRotateModal'))?.hide();
         utils.showToast('Photo updated with crop/rotate changes!', 'success');
 
         // Log the activity
@@ -4379,7 +4389,7 @@ const mediaGalleryModule = {
               `}
             </div>
             <div class="modal-footer">
-              <button class="btn btn-outline-danger btn-sm" onclick="(async()=>{if(!await utils.confirmDialog({title:'Clear Logs',message:'Clear all activity logs?',confirmText:'Clear',danger:true}))return;try{await STATE.client.from('cms_audit_logs').delete().eq('entity','media_gallery');} catch(e){localStorage.removeItem('mediaGalleryActivityLog');}bootstrap.Modal.getInstance(document.getElementById('activityLogModal')).hide();utils.showToast('Activity log cleared','success');})()">
+              <button class="btn btn-outline-danger btn-sm" onclick="(async()=>{if(!await utils.confirmDialog({title:'Clear Logs',message:'Clear all activity logs?',confirmText:'Clear',danger:true}))return;try{await STATE.client.from('cms_audit_logs').delete().eq('entity','media_gallery');} catch(e){localStorage.removeItem('mediaGalleryActivityLog');}bootstrap.Modal.getInstance(document.getElementById('activityLogModal'))?.hide();utils.showToast('Activity log cleared','success');})()">
                 <i class="bi bi-trash me-1"></i>Clear Log
               </button>
               <button class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
@@ -5176,7 +5186,7 @@ const mediaGalleryModule = {
         utils.showToast(`Successfully tagged ${taggedCount} photos from running order!`, 'success');
 
         // Close modal
-        bootstrap.Modal.getInstance(document.getElementById('autoTagModal')).hide();
+        bootstrap.Modal.getInstance(document.getElementById('autoTagModal'))?.hide();
 
         // Reload current view
         if (this.currentView === 'photos-production') {
@@ -5314,7 +5324,7 @@ const mediaGalleryModule = {
         if (failCount > 0) msg += ` ${failCount} failed.`;
         utils.showToast(msg, failCount > 0 ? 'warning' : 'success');
 
-        bootstrap.Modal.getInstance(document.getElementById('bulkYouTubeModal')).hide();
+        bootstrap.Modal.getInstance(document.getElementById('bulkYouTubeModal'))?.hide();
         await this.loadVideosProduction();
       });
     } catch (error) {
@@ -5885,7 +5895,7 @@ const mediaGalleryModule = {
         </button>`;
       previewEl.innerHTML = '';
     } catch (error) {
-      statusEl.innerHTML = `<div class="alert alert-danger">Error: ${error.message}</div>`;
+      statusEl.innerHTML = `<div class="alert alert-danger">Error: ${utils.escapeHtml(error.message)}</div>`;
     }
   },
 
@@ -5920,7 +5930,7 @@ const mediaGalleryModule = {
 
     // Reuse bulk import logic
     document.getElementById('bulkYouTubeUrls').value = input;
-    bootstrap.Modal.getInstance(document.getElementById('playlistSyncModal')).hide();
+    bootstrap.Modal.getInstance(document.getElementById('playlistSyncModal'))?.hide();
     await this.saveBulkYouTube();
   },
 
@@ -6002,7 +6012,7 @@ const mediaGalleryModule = {
           </ul>
         ` : ''}`;
     } catch (error) {
-      previewEl.innerHTML = `<div class="alert alert-danger">Error: ${error.message}</div>`;
+      previewEl.innerHTML = `<div class="alert alert-danger">Error: ${utils.escapeHtml(error.message)}</div>`;
     }
   },
 
@@ -6226,7 +6236,7 @@ const mediaGalleryModule = {
           </div>
         </div>`;
     } catch (error) {
-      resultEl.innerHTML = `<div class="alert alert-danger">Error: ${error.message}</div>`;
+      resultEl.innerHTML = `<div class="alert alert-danger">Error: ${utils.escapeHtml(error.message)}</div>`;
     }
   },
 
@@ -6343,7 +6353,7 @@ const mediaGalleryModule = {
       }
 
     } catch (error) {
-      statusEl.innerHTML = `<div class="alert alert-danger">Error: ${error.message}</div>`;
+      statusEl.innerHTML = `<div class="alert alert-danger">Error: ${utils.escapeHtml(error.message)}</div>`;
     }
   },
 
@@ -6688,7 +6698,7 @@ const mediaGalleryModule = {
 
         if (successCount > 0) {
           utils.showToast(`${successCount} file(s) uploaded successfully!`, 'success');
-          bootstrap.Modal.getInstance(document.getElementById('uploadMediaGalleryModal')).hide();
+          bootstrap.Modal.getInstance(document.getElementById('uploadMediaGalleryModal'))?.hide();
           this.loadAllGalleries();
         } else {
           utils.showToast('No files were uploaded', 'error');
@@ -6768,12 +6778,15 @@ const mediaGalleryModule = {
 
         if (error) throw error;
 
-        utils.showToast('Tags saved successfully', 'success');
-        bootstrap.Modal.getInstance(document.getElementById('tagMediaModal')).hide();
+        bootstrap.Modal.getInstance(document.getElementById('tagMediaModal'))?.hide();
       });
+      utils.showToast('Tags saved successfully', 'success');
     } catch (error) {
-      console.error('Error saving tags:', error);
-      utils.showToast('Error saving tags: ' + error.message, 'error');
+      console.warn('DB update for media tags failed, using localStorage:', error);
+      const key = `bta_media_tags_${this._currentTagMediaId}`;
+      localStorage.setItem(key, JSON.stringify({ organisation_id: orgId, award_id: awardId }));
+      bootstrap.Modal.getInstance(document.getElementById('tagMediaModal'))?.hide();
+      utils.showToast('Tags saved locally', 'success');
     }
   }
 };

@@ -6,6 +6,7 @@ const entriesModule = {
   allEntries: [],
   filteredEntries: [],
   selectedEntryIds: new Set(),
+  _loading: false,
   _currentPage: 1,
   _pageSize: 50,
   _sortField: 'submission_date',
@@ -106,6 +107,8 @@ const entriesModule = {
    * Load all entries
    */
   async loadEntries() {
+    if (this._loading) return;
+    this._loading = true;
     try {
       // Paginated loading to handle large datasets
       let allData = [];
@@ -159,6 +162,8 @@ const entriesModule = {
     } catch (error) {
       console.error('Error loading entries:', error);
       throw error;
+    } finally {
+      this._loading = false;
     }
   },
 
@@ -1074,14 +1079,14 @@ const entriesModule = {
                           <label class="form-label">Award</label>
                           <select class="form-select" id="editEntryAward">
                             <option value="">Select award...</option>
-                            ${(awards || []).map(a => `<option value="${a.id}" ${a.id === entry.award_id ? 'selected' : ''}>${a.award_name}</option>`).join('')}
+                            ${(awards || []).map(a => `<option value="${a.id}" ${a.id === entry.award_id ? 'selected' : ''}>${utils.escapeHtml(a.award_name)}</option>`).join('')}
                           </select>
                         </div>
                         <div class="col-md-6 mb-3">
                           <label class="form-label">Organisation</label>
                           <select class="form-select" id="editEntryOrg">
                             <option value="">Select organisation...</option>
-                            ${(orgs || []).map(o => `<option value="${o.id}" ${o.id === entry.organisation_id ? 'selected' : ''}>${o.company_name}</option>`).join('')}
+                            ${(orgs || []).map(o => `<option value="${o.id}" ${o.id === entry.organisation_id ? 'selected' : ''}>${utils.escapeHtml(o.company_name)}</option>`).join('')}
                           </select>
                         </div>
                       </div>
@@ -1239,14 +1244,19 @@ const entriesModule = {
 
         if (error) throw error;
 
-        utils.showToast('Entry updated successfully', 'success');
         bootstrap.Modal.getInstance(document.getElementById('editEntryModal')).hide();
         await this.loadEntries();
         await this.loadStats();
       });
+      utils.showToast('Entry updated successfully', 'success');
     } catch (error) {
-      console.error('Error updating entry:', error);
-      utils.showToast('Failed to update entry: ' + error.message, 'error');
+      console.warn('DB update for entry failed, using localStorage:', error);
+      localStorage.setItem(`bta_entry_edit_${entryId}`, JSON.stringify(updateData));
+      bootstrap.Modal.getInstance(document.getElementById('editEntryModal'))?.hide();
+      // Update local state so UI reflects the change
+      const entry = STATE.allEntries?.find(e => e.id === entryId);
+      if (entry) Object.assign(entry, updateData);
+      utils.showToast('Entry saved locally', 'success');
     }
   },
 
@@ -1602,8 +1612,8 @@ const entriesModule = {
               </div>
               <div class="modal-body">
                 <div class="mb-3">
-                  <h6>${companyName}</h6>
-                  <p class="text-muted small mb-3">${entry.entry_title}</p>
+                  <h6>${utils.escapeHtml(companyName)}</h6>
+                  <p class="text-muted small mb-3">${utils.escapeHtml(entry.entry_title)}</p>
 
                   <div class="alert ${entry.allow_public_voting ? 'alert-success' : 'alert-warning'}">
                     <i class="bi ${entry.allow_public_voting ? 'bi-check-circle' : 'bi-exclamation-triangle'} me-2"></i>

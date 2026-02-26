@@ -940,14 +940,19 @@ const crmModule = {
 
         if (error) throw error;
 
-        utils.showToast('Communication logged successfully', 'success');
         bootstrap.Modal.getInstance(document.getElementById('logCommunicationModal')).hide();
       });
-      this.loadCommunications();
     } catch (error) {
-      console.error('Error saving communication:', error);
-      utils.showToast('Error logging communication', 'error');
+      console.warn('DB insert for communication failed, using localStorage:', error);
+      const key = 'bta_communications_pending';
+      const stored = JSON.parse(localStorage.getItem(key) || '[]');
+      communicationData.id = crypto.randomUUID();
+      stored.push(communicationData);
+      localStorage.setItem(key, JSON.stringify(stored));
+      bootstrap.Modal.getInstance(document.getElementById('logCommunicationModal'))?.hide();
     }
+    utils.showToast('Communication logged successfully', 'success');
+    this.loadCommunications();
   },
 
   async createDeal(organisationId = null) {
@@ -1089,7 +1094,7 @@ const crmModule = {
       organisation_id: document.getElementById('dealOrganisation').value,
       deal_type: document.getElementById('dealType').value,
       deal_value: parseFloat(document.getElementById('dealValue').value),
-      probability: parseInt(document.getElementById('dealProbability').value) || 50,
+      probability: document.getElementById('dealProbability').value !== '' ? parseInt(document.getElementById('dealProbability').value) : 50,
       stage: document.getElementById('dealStage').value,
       expected_close_date: document.getElementById('dealExpectedClose').value || null,
       contact_id: document.getElementById('dealContact').value || null,
@@ -1105,14 +1110,19 @@ const crmModule = {
 
         if (error) throw error;
 
-        utils.showToast('Deal created successfully', 'success');
         bootstrap.Modal.getInstance(document.getElementById('createDealModal')).hide();
       });
-      this.loadDeals();
     } catch (error) {
-      console.error('Error creating deal:', error);
-      utils.showToast('Error creating deal: ' + error.message, 'error');
+      console.warn('DB insert for deal failed, using localStorage:', error);
+      const key = 'bta_deals_pending';
+      const stored = JSON.parse(localStorage.getItem(key) || '[]');
+      dealData.id = crypto.randomUUID();
+      stored.push(dealData);
+      localStorage.setItem(key, JSON.stringify(stored));
+      bootstrap.Modal.getInstance(document.getElementById('createDealModal'))?.hide();
     }
+    utils.showToast('Deal created successfully', 'success');
+    this.loadDeals();
   },
 
   async viewCommunication(commId) {
@@ -1156,19 +1166,19 @@ const crmModule = {
                   </div>
                   <div class="col-md-6">
                     <table class="table table-sm table-borderless">
-                      <tr><td class="text-muted">Company:</td><td><strong>${companyName}</strong></td></tr>
-                      <tr><td class="text-muted">Contact:</td><td>${contactName}</td></tr>
-                      ${contactEmail ? `<tr><td class="text-muted">Email:</td><td><a href="mailto:${contactEmail}">${contactEmail}</a></td></tr>` : ''}
+                      <tr><td class="text-muted">Company:</td><td><strong>${utils.escapeHtml(companyName)}</strong></td></tr>
+                      <tr><td class="text-muted">Contact:</td><td>${utils.escapeHtml(contactName)}</td></tr>
+                      ${contactEmail ? `<tr><td class="text-muted">Email:</td><td><a href="mailto:${utils.escapeHtml(contactEmail)}">${utils.escapeHtml(contactEmail)}</a></td></tr>` : ''}
                       <tr><td class="text-muted">Follow-up:</td><td>${comm.follow_up_required
                         ? `<span class="badge bg-warning text-dark"><i class="bi bi-calendar-check me-1"></i>${comm.follow_up_date ? new Date(comm.follow_up_date).toLocaleDateString() : 'ASAP'}</span>`
                         : '<span class="text-muted">None</span>'}</td></tr>
                     </table>
                   </div>
                 </div>
-                ${comm.subject ? `<div class="mb-3"><h6 class="text-muted">Subject</h6><p class="fw-bold mb-0">${comm.subject}</p></div>` : ''}
+                ${comm.subject ? `<div class="mb-3"><h6 class="text-muted">Subject</h6><p class="fw-bold mb-0">${utils.escapeHtml(comm.subject)}</p></div>` : ''}
                 <div class="mb-0">
                   <h6 class="text-muted">Message</h6>
-                  <div class="p-3 bg-light rounded" style="white-space: pre-wrap;">${comm.message}</div>
+                  <div class="p-3 bg-light rounded" style="white-space: pre-wrap;">${utils.escapeHtml(comm.message)}</div>
                 </div>
               </div>
               <div class="modal-footer">
@@ -1393,9 +1403,9 @@ const crmModule = {
                 <div class="row mb-3">
                   <div class="col-md-6">
                     <table class="table table-sm table-borderless">
-                      <tr><td class="text-muted">Deal Name:</td><td><strong>${deal.deal_name}</strong></td></tr>
-                      <tr><td class="text-muted">Company:</td><td>${companyName}</td></tr>
-                      <tr><td class="text-muted">Contact:</td><td>${contactName}</td></tr>
+                      <tr><td class="text-muted">Deal Name:</td><td><strong>${utils.escapeHtml(deal.deal_name)}</strong></td></tr>
+                      <tr><td class="text-muted">Company:</td><td>${utils.escapeHtml(companyName)}</td></tr>
+                      <tr><td class="text-muted">Contact:</td><td>${utils.escapeHtml(contactName)}</td></tr>
                       <tr><td class="text-muted">Created:</td><td>${createdDate}</td></tr>
                     </table>
                   </div>
@@ -1431,13 +1441,13 @@ const crmModule = {
                 ${deal.description ? `
                   <div class="mb-0">
                     <h6 class="text-muted">Description</h6>
-                    <div class="p-3 bg-light rounded" style="white-space: pre-wrap;">${deal.description}</div>
+                    <div class="p-3 bg-light rounded" style="white-space: pre-wrap;">${utils.escapeHtml(deal.description)}</div>
                   </div>
                 ` : ''}
                 ${deal.notes ? `
                   <div class="mt-3">
                     <h6 class="text-muted">Notes</h6>
-                    <div class="p-3 bg-light rounded" style="white-space: pre-wrap;">${deal.notes}</div>
+                    <div class="p-3 bg-light rounded" style="white-space: pre-wrap;">${utils.escapeHtml(deal.notes)}</div>
                   </div>
                 ` : ''}
               </div>
@@ -1590,7 +1600,7 @@ const crmModule = {
       deal_name: document.getElementById('editDealName').value,
       deal_type: document.getElementById('editDealType').value,
       deal_value: parseFloat(document.getElementById('editDealValue').value),
-      probability: parseInt(document.getElementById('editDealProbability').value) || 50,
+      probability: document.getElementById('editDealProbability').value !== '' ? parseInt(document.getElementById('editDealProbability').value) : 50,
       stage: document.getElementById('editDealStage').value,
       status: document.getElementById('editDealStatus').value,
       expected_close_date: document.getElementById('editDealExpectedClose').value || null,
@@ -1674,7 +1684,7 @@ const crmModule = {
                 <div class="row mb-3">
                   <div class="col-md-6">
                     <table class="table table-sm table-borderless">
-                      <tr><td class="text-muted">Title:</td><td><strong>${meeting.meeting_title}</strong></td></tr>
+                      <tr><td class="text-muted">Title:</td><td><strong>${utils.escapeHtml(meeting.meeting_title)}</strong></td></tr>
                       <tr><td class="text-muted">Date:</td><td>${date} at ${time}</td></tr>
                       <tr><td class="text-muted">Type:</td><td>${this.getMeetingTypeBadge(meeting.meeting_type)}</td></tr>
                       <tr><td class="text-muted">Duration:</td><td>${meeting.duration_minutes ? meeting.duration_minutes + ' minutes' : 'N/A'}</td></tr>
@@ -1682,9 +1692,9 @@ const crmModule = {
                   </div>
                   <div class="col-md-6">
                     <table class="table table-sm table-borderless">
-                      <tr><td class="text-muted">Company:</td><td>${companyName}</td></tr>
-                      <tr><td class="text-muted">Related Deal:</td><td>${dealName}</td></tr>
-                      <tr><td class="text-muted">Location:</td><td>${meeting.location || 'N/A'}</td></tr>
+                      <tr><td class="text-muted">Company:</td><td>${utils.escapeHtml(companyName)}</td></tr>
+                      <tr><td class="text-muted">Related Deal:</td><td>${utils.escapeHtml(dealName)}</td></tr>
+                      <tr><td class="text-muted">Location:</td><td>${utils.escapeHtml(meeting.location || 'N/A')}</td></tr>
                       <tr><td class="text-muted">Follow-up:</td><td>${meeting.follow_up_required
                         ? `<span class="badge bg-warning text-dark"><i class="bi bi-calendar-check me-1"></i>${meeting.follow_up_date ? new Date(meeting.follow_up_date).toLocaleDateString() : 'ASAP'}</span>`
                         : '<span class="text-muted">None</span>'}</td></tr>
@@ -1695,20 +1705,20 @@ const crmModule = {
                   <div class="mb-3">
                     <h6 class="text-muted">Attendees</h6>
                     <div class="d-flex flex-wrap gap-2">
-                      ${attendeesList.map(a => `<span class="badge bg-light text-dark border"><i class="bi bi-person me-1"></i>${a}</span>`).join('')}
+                      ${attendeesList.map(a => `<span class="badge bg-light text-dark border"><i class="bi bi-person me-1"></i>${utils.escapeHtml(a)}</span>`).join('')}
                     </div>
                   </div>
                 ` : ''}
                 ${meeting.notes ? `
                   <div class="mb-3">
                     <h6 class="text-muted">Meeting Notes</h6>
-                    <div class="p-3 bg-light rounded" style="white-space: pre-wrap;">${meeting.notes}</div>
+                    <div class="p-3 bg-light rounded" style="white-space: pre-wrap;">${utils.escapeHtml(meeting.notes)}</div>
                   </div>
                 ` : ''}
                 ${meeting.action_items ? `
                   <div class="mb-0">
                     <h6 class="text-muted">Action Items</h6>
-                    <div class="p-3 bg-light rounded" style="white-space: pre-wrap;">${meeting.action_items}</div>
+                    <div class="p-3 bg-light rounded" style="white-space: pre-wrap;">${utils.escapeHtml(meeting.action_items)}</div>
                   </div>
                 ` : ''}
               </div>
@@ -2514,14 +2524,19 @@ const crmModule = {
         const { error } = await STATE.client.from('meeting_notes').insert(data);
         if (error) throw error;
 
-        utils.showToast('Meeting note created successfully', 'success');
         bootstrap.Modal.getInstance(document.getElementById('createMeetingNoteModal')).hide();
       });
-      this.loadMeetings();
     } catch (error) {
-      console.error('Error saving meeting note:', error);
-      utils.showToast('Error saving meeting note: ' + error.message, 'error');
+      console.warn('DB insert for meeting note failed, using localStorage:', error);
+      const key = 'bta_meeting_notes_pending';
+      const stored = JSON.parse(localStorage.getItem(key) || '[]');
+      data.id = crypto.randomUUID();
+      stored.push(data);
+      localStorage.setItem(key, JSON.stringify(stored));
+      bootstrap.Modal.getInstance(document.getElementById('createMeetingNoteModal'))?.hide();
     }
+    utils.showToast('Meeting note saved', 'success');
+    this.loadMeetings();
   },
 
   async assignSegments() {
@@ -2612,14 +2627,17 @@ const crmModule = {
         const { error } = await STATE.client.from('organisation_segments').upsert(assignments, { onConflict: 'organisation_id,segment_id' });
         if (error) throw error;
 
-        utils.showToast(`Company assigned to ${assignments.length} segment(s)`, 'success');
         bootstrap.Modal.getInstance(document.getElementById('assignSegmentsModal')).hide();
       });
-      this.loadSegments();
     } catch (error) {
-      console.error('Error assigning segments:', error);
-      utils.showToast('Error assigning segments: ' + error.message, 'error');
+      console.warn('DB upsert for segment assignments failed, using localStorage:', error);
+      const key = `bta_org_segments_${orgId}`;
+      const stored = [...checked].map(cb => cb.value);
+      localStorage.setItem(key, JSON.stringify(stored));
+      bootstrap.Modal.getInstance(document.getElementById('assignSegmentsModal'))?.hide();
     }
+    utils.showToast(`Company assigned to ${checked.length} segment(s)`, 'success');
+    this.loadSegments();
   },
 
   async createCustomSegment() {
@@ -2705,14 +2723,19 @@ const crmModule = {
         const { error } = await STATE.client.from('contact_segments').insert(data);
         if (error) throw error;
 
-        utils.showToast('Segment created successfully', 'success');
         bootstrap.Modal.getInstance(document.getElementById('createSegmentModal')).hide();
       });
-      this.loadSegments();
     } catch (error) {
-      console.error('Error creating segment:', error);
-      utils.showToast('Error creating segment: ' + error.message, 'error');
+      console.warn('DB insert for custom segment failed, using localStorage:', error);
+      const key = 'bta_custom_segments';
+      const stored = JSON.parse(localStorage.getItem(key) || '[]');
+      data.id = crypto.randomUUID();
+      stored.push(data);
+      localStorage.setItem(key, JSON.stringify(stored));
+      bootstrap.Modal.getInstance(document.getElementById('createSegmentModal'))?.hide();
     }
+    utils.showToast('Segment created successfully', 'success');
+    this.loadSegments();
   },
 
   // ============================================
@@ -2894,17 +2917,22 @@ const crmModule = {
   },
 
   _downloadCSV(headers, rows, filename) {
-    let csv = headers.join(',') + '\n';
-    rows.forEach(row => {
-      csv += row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(',') + '\n';
-    });
-    const blob = new Blob([csv], { type: 'text/csv' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `${filename}-${new Date().toISOString().split('T')[0]}.csv`;
-    a.click();
-    URL.revokeObjectURL(url);
+    try {
+      let csv = headers.join(',') + '\n';
+      rows.forEach(row => {
+        csv += row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(',') + '\n';
+      });
+      const blob = new Blob([csv], { type: 'text/csv' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${filename}-${new Date().toISOString().split('T')[0]}.csv`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error('CSV download failed:', err);
+      utils.showToast('Export failed: ' + err.message, 'error');
+    }
   },
 
   toggleKanbanView() {

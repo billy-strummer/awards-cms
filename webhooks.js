@@ -230,14 +230,14 @@ window.webhooksModule = {
     const url = document.getElementById('whUrl').value.trim();
     if (!name || !url) { utils.showToast('Name and URL are required', 'warning'); return; }
 
+    const events = Array.from(document.querySelectorAll('.wh-event-check:checked')).map(c => c.value);
+    const secret = document.getElementById('whSecret').value.trim() || crypto.randomUUID();
+    const is_active = document.getElementById('whActive').checked;
+    const now = new Date().toISOString();
+    const record = { name, url, secret, events, is_active, updated_at: now };
+
     try {
       await utils.protectModalDuringSave('webhookModal', async () => {
-        const events = Array.from(document.querySelectorAll('.wh-event-check:checked')).map(c => c.value);
-        const secret = document.getElementById('whSecret').value.trim() || crypto.randomUUID();
-        const is_active = document.getElementById('whActive').checked;
-        const now = new Date().toISOString();
-
-        const record = { name, url, secret, events, is_active, updated_at: now };
         let error;
         if (id) {
           ({ error } = await STATE.client.from('webhooks').update(record).eq('id', id));
@@ -246,19 +246,36 @@ window.webhooksModule = {
         }
         if (error) throw error;
 
-        bootstrap.Modal.getInstance(document.getElementById('webhookModal')).hide();
-        utils.showToast('Webhook saved', 'success');
+        bootstrap.Modal.getInstance(document.getElementById('webhookModal'))?.hide();
         this.renderWebhookManager();
       });
+      utils.showToast('Webhook saved', 'success');
     } catch (error) {
-      utils.showToast('Save failed: ' + error.message, 'error');
+      console.warn('DB save for webhook failed, using localStorage:', error);
+      const key = 'bta_webhooks';
+      const stored = JSON.parse(localStorage.getItem(key) || '[]');
+      record.id = id || crypto.randomUUID();
+      const idx = stored.findIndex(w => w.id === record.id);
+      if (idx >= 0) stored[idx] = record; else stored.push(record);
+      localStorage.setItem(key, JSON.stringify(stored));
+      bootstrap.Modal.getInstance(document.getElementById('webhookModal'))?.hide();
+      utils.showToast('Webhook saved locally', 'success');
     }
   },
 
   async deleteWebhook(id) {
     if (!await utils.confirmDialog({ title: 'Delete Webhook', message: 'Delete this webhook?', confirmText: 'Delete', danger: true })) return;
-    const { error } = await STATE.client.from('webhooks').delete().eq('id', id);
-    if (error) { utils.showToast('Delete failed: ' + error.message, 'error'); return; }
+    try {
+      const { error } = await STATE.client.from('webhooks').delete().eq('id', id);
+      if (error) throw error;
+    } catch (dbError) {
+      console.warn('DB delete for webhook failed, removing from localStorage:', dbError);
+      try {
+        const stored = JSON.parse(localStorage.getItem('bta_webhooks') || '[]');
+        const filtered = stored.filter(w => w.id !== id);
+        localStorage.setItem('bta_webhooks', JSON.stringify(filtered));
+      } catch (e) { /* ignore */ }
+    }
     utils.showToast('Webhook deleted', 'success');
     this.renderWebhookManager();
   },

@@ -300,12 +300,12 @@ window.reportingModule = {
         <div class="modal fade" id="yearCompareModal" tabindex="-1">
           <div class="modal-dialog modal-lg"><div class="modal-content">
             <div class="modal-header bg-primary text-white">
-              <h5 class="modal-title"><i class="bi bi-bar-chart-line me-2"></i>Year Comparison: ${year1} vs ${year2}</h5>
+              <h5 class="modal-title"><i class="bi bi-bar-chart-line me-2"></i>Year Comparison: ${utils.escapeHtml(String(year1))} vs ${utils.escapeHtml(String(year2))}</h5>
               <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body">
               <table class="table table-bordered table-hover">
-                <thead class="table-dark"><tr><th>Metric</th><th class="text-end">${year1}</th><th class="text-end">${year2}</th><th class="text-end">Change</th></tr></thead>
+                <thead class="table-dark"><tr><th>Metric</th><th class="text-end">${utils.escapeHtml(String(year1))}</th><th class="text-end">${utils.escapeHtml(String(year2))}</th><th class="text-end">Change</th></tr></thead>
                 <tbody>${rows}</tbody>
               </table>
             </div>

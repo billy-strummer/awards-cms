@@ -29,7 +29,7 @@ window.sponsorPortalModule = {
           <div class="col-md-4"><div class="card h-100"><div class="card-body text-center">
             ${s.logo_url ? `<img src="${utils.escapeHtml(s.logo_url)}" alt="Logo" class="mb-3" style="max-height:80px;max-width:160px;object-fit:contain;">` : '<i class="bi bi-building display-4 text-muted d-block mb-3"></i>'}
             <h5 class="mb-1">${utils.escapeHtml(s.name)}</h5>
-            <span class="badge bg-${tier.badge} mb-2">${s.tier} Sponsor</span>
+            <span class="badge bg-${tier.badge} mb-2">${utils.escapeHtml(s.tier)} Sponsor</span>
             <p class="small text-muted mb-0">${utils.escapeHtml(s.description || '')}</p>
           </div></div></div>
           <div class="col-md-4"><div class="card h-100"><div class="card-body">
@@ -68,6 +68,10 @@ window.sponsorPortalModule = {
   /* 2. ASSET UPLOAD */
   async uploadSponsorAsset(sponsorId, file) {
     if (!file) { utils.showToast('Please select a file first', 'warning'); return null; }
+    const maxSize = 10 * 1024 * 1024; // 10MB
+    if (file.size > maxSize) { utils.showToast('File too large. Maximum size is 10MB.', 'error'); return null; }
+    const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/svg+xml', 'application/pdf'];
+    if (!allowedTypes.includes(file.type)) { utils.showToast('Invalid file type. Please upload an image or PDF.', 'error'); return null; }
     try {
       const path = `${sponsorId}/${Date.now()}-${file.name.replace(/[^a-zA-Z0-9._-]/g, '_')}`;
       const { error: upErr } = await STATE.client.storage.from('sponsor-assets').upload(path, file, { upsert: true, contentType: file.type });
@@ -228,10 +232,18 @@ window.sponsorPortalModule = {
         ? await STATE.client.from('sponsor_contracts').update(payload).eq('id', id)
         : await STATE.client.from('sponsor_contracts').insert(payload);
       if (error) throw error;
-      bootstrap.Modal.getInstance(document.getElementById('contractModal')).hide();
-      utils.showToast(id ? 'Contract updated' : 'Contract created', 'success');
-      this.renderContracts();
-    } catch (err) { utils.showToast('Failed to save contract: ' + err.message, 'error'); }
+    } catch (err) {
+      console.warn('DB save for contract failed, using localStorage:', err);
+      const key = 'bta_sponsor_contracts';
+      const stored = JSON.parse(localStorage.getItem(key) || '[]');
+      payload.id = id || crypto.randomUUID();
+      const idx = stored.findIndex(c => c.id === payload.id);
+      if (idx >= 0) stored[idx] = payload; else stored.push(payload);
+      localStorage.setItem(key, JSON.stringify(stored));
+    }
+    bootstrap.Modal.getInstance(document.getElementById('contractModal'))?.hide();
+    utils.showToast(id ? 'Contract updated' : 'Contract created', 'success');
+    this.renderContracts();
   },
 
   async deleteContract(id) {

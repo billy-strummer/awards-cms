@@ -72,8 +72,13 @@ window.brandingModule = {
 
   /* ---- Logo Upload ---- */
   async uploadLogo(tenantId, file) {
+    const maxSize = 5 * 1024 * 1024; // 5MB
+    if (file.size > maxSize) { utils.showToast('Logo file too large. Maximum size is 5MB.', 'error'); return null; }
+    const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/svg+xml'];
+    if (!allowedTypes.includes(file.type)) { utils.showToast('Invalid file type. Please upload an image file.', 'error'); return null; }
     try {
-      const path = `${tenantId}/logo-${Date.now()}.${file.name.split('.').pop()}`;
+      const ext = file.name.split('.').pop().toLowerCase().replace(/[^a-z0-9]/g, '');
+      const path = `${tenantId}/logo-${Date.now()}.${ext}`;
       const { error } = await STATE.client.storage
         .from('brand-assets').upload(path, file, { upsert: true, contentType: file.type });
       if (error) throw error;

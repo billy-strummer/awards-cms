@@ -5,11 +5,14 @@
 const awardsModule = {
   selectedAwards: new Set(),
   currentSort: { column: 'award_name', direction: 'asc' },
+  _loading: false,
 
   /**
    * Load all awards from database
    */
   async loadAwards() {
+    if (this._loading) return;
+    this._loading = true;
     try {
       utils.showLoading();
       utils.showSkeletonLoading('awardsTableBody', 10);
@@ -114,6 +117,7 @@ const awardsModule = {
       utils.showEmptyState('awardsTableBody', 10, 'Failed to load awards', 'bi-exclamation-triangle');
     } finally {
       utils.hideLoading();
+      this._loading = false;
     }
   },
   /**
@@ -1338,35 +1342,40 @@ const awardsModule = {
       return;
     }
 
-    const headers = ['Award Name', 'Category', 'County/City', 'Region', 'Sector', 'Year', 'Status', 'Nominees', 'Winner', 'Prev Year Winner'];
-    const rows = awards.map(a => {
-      const counts = a._assignmentCounts || { total: 0 };
-      return [
-        utils.formatAwardName(a),
-        a.award_name || '',
-        a.county || '',
-        a._actualRegion || '',
-        a.sector || '',
-        a.year || '',
-        a.status || '',
-        counts.total,
-        a._winnerName || '',
-        a.prev_year_winner || ''
-      ];
-    });
+    try {
+      const headers = ['Award Name', 'Category', 'County/City', 'Region', 'Sector', 'Year', 'Status', 'Nominees', 'Winner', 'Prev Year Winner'];
+      const rows = awards.map(a => {
+        const counts = a._assignmentCounts || { total: 0 };
+        return [
+          utils.formatAwardName(a),
+          a.award_name || '',
+          a.county || '',
+          a._actualRegion || '',
+          a.sector || '',
+          a.year || '',
+          a.status || '',
+          counts.total,
+          a._winnerName || '',
+          a.prev_year_winner || ''
+        ];
+      });
 
-    const csvContent = [headers, ...rows]
-      .map(row => row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(','))
-      .join('\n');
+      const csvContent = [headers, ...rows]
+        .map(row => row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(','))
+        .join('\n');
 
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const link = document.createElement('a');
-    link.href = URL.createObjectURL(blob);
-    link.download = `awards-export-${new Date().toISOString().split('T')[0]}.csv`;
-    link.click();
-    URL.revokeObjectURL(link.href);
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(blob);
+      link.download = `awards-export-${new Date().toISOString().split('T')[0]}.csv`;
+      link.click();
+      URL.revokeObjectURL(link.href);
 
-    utils.showToast(`Exported ${awards.length} awards`, 'success');
+      utils.showToast(`Exported ${awards.length} awards`, 'success');
+    } catch (err) {
+      console.error('Awards CSV export failed:', err);
+      utils.showToast('Export failed: ' + err.message, 'error');
+    }
   },
 
   /**

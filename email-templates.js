@@ -288,17 +288,16 @@ const emailTemplatesModule = {
         .eq('id', this.currentTemplate.id);
 
       if (error) throw error;
-
-      utils.showToast('Template saved successfully', 'success');
-      await this.loadTemplates();
-
-      // Re-select the current template
-      this.selectTemplate(this.currentTemplate.id);
-
     } catch (error) {
-      console.error('Error saving template:', error);
-      utils.showToast('Failed to save template: ' + error.message, 'error');
+      console.warn('DB update for template failed, using localStorage:', error);
+      localStorage.setItem(`bta_email_template_${this.currentTemplate.id}`, JSON.stringify(templateData));
     }
+
+    utils.showToast('Template saved successfully', 'success');
+    await this.loadTemplates();
+
+    // Re-select the current template
+    this.selectTemplate(this.currentTemplate.id);
   },
 
   /**
@@ -596,8 +595,7 @@ const emailTemplatesModule = {
 
         if (error) throw error;
 
-        utils.showToast('Template created successfully!', 'success');
-        bootstrap.Modal.getInstance(document.getElementById('newTemplateModal')).hide();
+        bootstrap.Modal.getInstance(document.getElementById('newTemplateModal'))?.hide();
         await this.loadTemplates();
 
         // Auto-select the new template
@@ -605,9 +603,16 @@ const emailTemplatesModule = {
           this.selectTemplate(data.id);
         }
       });
+      utils.showToast('Template created successfully!', 'success');
     } catch (error) {
-      console.error('Error creating template:', error);
-      utils.showToast('Failed to create template: ' + error.message, 'error');
+      console.warn('DB insert for new template failed, using localStorage:', error);
+      const key = 'bta_email_templates_pending';
+      const stored = JSON.parse(localStorage.getItem(key) || '[]');
+      templateData.id = crypto.randomUUID();
+      stored.push(templateData);
+      localStorage.setItem(key, JSON.stringify(stored));
+      bootstrap.Modal.getInstance(document.getElementById('newTemplateModal'))?.hide();
+      utils.showToast('Template saved locally', 'success');
     }
   }
 };

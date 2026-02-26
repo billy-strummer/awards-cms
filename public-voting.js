@@ -26,6 +26,12 @@ const supabase = window.supabase.createClient(
   window.SUPABASE_CONFIG.anonKey
 );
 
+// HTML escape helper for safe rendering
+function esc(str) {
+  if (!str) return '';
+  return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+
 const votingSystem = {
   allEntries: [],
   currentEntryId: null,
@@ -55,7 +61,7 @@ const votingSystem = {
 
       const filter = document.getElementById('awardFilter');
       filter.innerHTML = '<option value="">All Categories</option>' +
-        awards.map(a => `<option value="${a.id}">${a.award_name}</option>`).join('');
+        awards.map(a => `<option value="${esc(a.id)}">${esc(a.award_name)}</option>`).join('');
 
     } catch (error) {
       console.error('Error loading awards:', error);
@@ -131,21 +137,21 @@ const votingSystem = {
         <div class="row align-items-center">
           <div class="col-md-2 text-center">
             ${entry.organisations?.logo_url
-              ? `<img src="${entry.organisations.logo_url}" alt="${entry.organisations.company_name}" class="company-logo">`
+              ? `<img src="${esc(entry.organisations.logo_url)}" alt="${esc(entry.organisations.company_name)}" class="company-logo">`
               : `<div class="company-logo bg-light d-flex align-items-center justify-content-center">
                    <i class="bi bi-building fs-1 text-muted"></i>
                  </div>`
             }
           </div>
           <div class="col-md-7">
-            <h4 class="mb-2">${entry.organisations?.company_name || 'Unknown Company'}</h4>
+            <h4 class="mb-2">${esc(entry.organisations?.company_name || 'Unknown Company')}</h4>
             <p class="text-muted mb-2">
-              <i class="bi bi-award me-2"></i>${entry.awards?.award_name || 'Unknown Award'}
+              <i class="bi bi-award me-2"></i>${esc(entry.awards?.award_name || 'Unknown Award')}
             </p>
-            <h6>${entry.entry_title}</h6>
-            <p class="text-muted small">${entry.entry_description ? entry.entry_description.substring(0, 150) + '...' : ''}</p>
+            <h6>${esc(entry.entry_title)}</h6>
+            <p class="text-muted small">${entry.entry_description ? esc(entry.entry_description.substring(0, 150)) + '...' : ''}</p>
             ${entry.organisations?.website ?
-              `<a href="${entry.organisations.website}" target="_blank" class="btn btn-sm btn-outline-primary">
+              `<a href="${esc(entry.organisations.website)}" target="_blank" rel="noopener noreferrer" class="btn btn-sm btn-outline-primary">
                 <i class="bi bi-link-45deg me-1"></i>Visit Website
               </a>` : ''
             }
@@ -153,10 +159,10 @@ const votingSystem = {
           <div class="col-md-3 text-center">
             <div class="vote-count mb-3">
               <i class="bi bi-hand-thumbs-up me-2"></i>
-              ${entry.public_votes || 0} votes
+              ${parseInt(entry.public_votes) || 0} votes
             </div>
             <button class="vote-button ${entry.hasVoted ? 'btn btn-success' : ''}"
-                    onclick="votingSystem.vote('${entry.id}')"
+                    onclick="votingSystem.vote('${esc(entry.id)}')"
                     ${entry.hasVoted ? 'disabled' : ''}>
               ${entry.hasVoted
                 ? '<i class="bi bi-check-circle me-2"></i>Voted'

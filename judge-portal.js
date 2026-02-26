@@ -2,6 +2,12 @@
 /* JUDGE PORTAL - Judging Interface and Scoring */
 /* ==================================================== */
 
+// HTML escape helper for safe rendering
+function esc(str) {
+  if (!str) return '';
+  return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+
 // Lightweight toast for judge portal (replaces alert())
 function showPortalToast(msg, type = 'info') {
   let container = document.getElementById('portalToastContainer');
@@ -109,8 +115,8 @@ const judgePortal = {
    * Get display name — anonymised in blind mode
    */
   getCompanyDisplay(entry) {
-    if (this.blindMode) return this.anonymise(entry.organisations?.company_name || entry.id);
-    return entry.organisations?.company_name || 'Unknown';
+    if (this.blindMode) return esc(this.anonymise(entry.organisations?.company_name || entry.id));
+    return esc(entry.organisations?.company_name || 'Unknown');
   },
 
   /**
@@ -178,14 +184,14 @@ const judgePortal = {
 
     container.innerHTML = this.assignedEntries.map(entry => `
       <div class="entry-card ${entry.hasScored ? 'scored' : ''} ${this.currentEntry?.id === entry.id ? 'active' : ''}"
-           onclick="judgePortal.selectEntry('${entry.id}')">
+           onclick="judgePortal.selectEntry('${esc(entry.id)}')">
         <div class="d-flex justify-content-between align-items-start mb-2">
           <strong class="text-truncate">${this.getCompanyDisplay(entry)}</strong>
           ${entry.hasScored ? '<i class="bi bi-check-circle-fill text-success"></i>' : ''}
         </div>
-        <div class="small text-muted mb-1">${entry.awards?.award_name || ''}</div>
-        <div class="small text-truncate">${entry.entry_title}</div>
-        ${entry.hasScored ? `<div class="small text-success mt-2">Score: ${entry.myScore?.total_score || 0}/40</div>` : ''}
+        <div class="small text-muted mb-1">${esc(entry.awards?.award_name || '')}</div>
+        <div class="small text-truncate">${esc(entry.entry_title)}</div>
+        ${entry.hasScored ? `<div class="small text-success mt-2">Score: ${parseInt(entry.myScore?.total_score) || 0}/40</div>` : ''}
       </div>
     `).join('');
   },
@@ -215,14 +221,14 @@ const judgePortal = {
     // Same rendering logic as renderEntriesList but with filtered array
     container.innerHTML = entries.map(entry => `
       <div class="entry-card ${entry.hasScored ? 'scored' : ''} ${this.currentEntry?.id === entry.id ? 'active' : ''}"
-           onclick="judgePortal.selectEntry('${entry.id}')">
+           onclick="judgePortal.selectEntry('${esc(entry.id)}')">
         <div class="d-flex justify-content-between align-items-start mb-2">
           <strong class="text-truncate">${this.getCompanyDisplay(entry)}</strong>
           ${entry.hasScored ? '<i class="bi bi-check-circle-fill text-success"></i>' : ''}
         </div>
-        <div class="small text-muted mb-1">${entry.awards?.award_name || ''}</div>
-        <div class="small text-truncate">${entry.entry_title}</div>
-        ${entry.hasScored ? `<div class="small text-success mt-2">Score: ${entry.myScore?.total_score || 0}/40</div>` : ''}
+        <div class="small text-muted mb-1">${esc(entry.awards?.award_name || '')}</div>
+        <div class="small text-truncate">${esc(entry.entry_title)}</div>
+        ${entry.hasScored ? `<div class="small text-success mt-2">Score: ${parseInt(entry.myScore?.total_score) || 0}/40</div>` : ''}
       </div>
     `).join('');
   },
@@ -314,13 +320,13 @@ const judgePortal = {
       <!-- Entry Header -->
       <div class="d-flex justify-content-between align-items-start mb-4">
         <div>
-          <h3 class="mb-1">${this.currentEntry.entry_title}</h3>
+          <h3 class="mb-1">${esc(this.currentEntry.entry_title)}</h3>
           <p class="text-muted mb-0">
             ${companyDisplay}
-            | ${this.currentEntry.awards?.award_name || ''}
+            | ${esc(this.currentEntry.awards?.award_name || '')}
           </p>
         </div>
-        <span class="badge bg-primary">${this.currentEntry.entry_number}</span>
+        <span class="badge bg-primary">${esc(this.currentEntry.entry_number)}</span>
       </div>
 
       ${hasConflict ? `
@@ -340,14 +346,14 @@ const judgePortal = {
       <div class="mb-4">
         <h5>Entry Description</h5>
         <div class="p-3 bg-light rounded">
-          ${this.currentEntry.entry_description || 'No description provided'}
+          ${esc(this.currentEntry.entry_description || 'No description provided')}
         </div>
       </div>
 
       <div class="mb-4">
         <h5>Why Should They Win?</h5>
         <div class="p-3 bg-light rounded" style="max-height: 300px; overflow-y: auto;">
-          ${this.currentEntry.why_should_win || 'No submission provided'}
+          ${esc(this.currentEntry.why_should_win || 'No submission provided')}
         </div>
       </div>
 
@@ -355,7 +361,7 @@ const judgePortal = {
         <div class="mb-4">
           <h5>Supporting Information</h5>
           <div class="p-3 bg-light rounded" style="max-height: 200px; overflow-y: auto;">
-            ${this.currentEntry.supporting_information}
+            ${esc(this.currentEntry.supporting_information)}
           </div>
         </div>
       ` : ''}
@@ -386,19 +392,19 @@ const judgePortal = {
         <div class="mb-3">
           <label class="form-label">Strengths</label>
           <textarea class="form-control" id="feedbackStrengths" rows="3"
-                    placeholder="What are the key strengths of this entry?">${this.currentScore?.strengths || ''}</textarea>
+                    placeholder="What are the key strengths of this entry?">${esc(this.currentScore?.strengths || '')}</textarea>
         </div>
 
         <div class="mb-3">
           <label class="form-label">Areas for Improvement</label>
           <textarea class="form-control" id="feedbackWeaknesses" rows="3"
-                    placeholder="What could be improved?">${this.currentScore?.weaknesses || ''}</textarea>
+                    placeholder="What could be improved?">${esc(this.currentScore?.weaknesses || '')}</textarea>
         </div>
 
         <div class="mb-3">
           <label class="form-label">Additional Comments</label>
           <textarea class="form-control" id="feedbackComments" rows="4"
-                    placeholder="Any additional feedback or notes...">${this.currentScore?.comments || ''}</textarea>
+                    placeholder="Any additional feedback or notes...">${esc(this.currentScore?.comments || '')}</textarea>
         </div>
 
         <div class="mb-3">

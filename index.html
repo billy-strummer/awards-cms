@@ -6170,6 +6170,9 @@ Available placeholders:
             </div>
           </div>
 
+          <!-- GDPR Compliance (rendered dynamically by gdprModule.renderGdprPanel) -->
+          <div id="gdprPanel" class="mt-4"></div>
+
           <!-- User Roles & Permissions Section -->
           <div class="row g-4 mt-4">
             <div class="col-12">
@@ -6245,11 +6248,11 @@ Available placeholders:
                   </div>
                 </div>
 
-                <!-- Current User Role -->
+                <!-- Current User Role (dynamic) -->
                 <div class="mt-4">
-                  <div class="alert alert-success">
+                  <div class="alert" id="currentUserRoleAlert">
                     <i class="bi bi-person-check me-2"></i>
-                    <strong>Your Current Role:</strong> Administrator (Full Access)
+                    <strong>Your Current Role:</strong> <span id="currentUserRoleLabel">Loading...</span>
                   </div>
                   <p class="small text-muted">
                     Note: User role management requires database authentication. Contact your system administrator to change user roles and permissions.

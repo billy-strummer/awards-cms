@@ -14,6 +14,7 @@ const settingsModule = {
     this.checkBackupReminders();
     this.renderAuditLog();
     this.renderUxSettings();
+    this.renderCurrentUserRole();
     if (typeof gdprModule !== 'undefined') {
       gdprModule.init();
     }
@@ -21,6 +22,29 @@ const settingsModule = {
       const tenantId = (typeof multiTenancyModule !== 'undefined') ? multiTenancyModule.getTenantId() : 'default';
       brandingModule.renderBrandSettings(tenantId);
     }
+  },
+
+  /**
+   * Display the current user's actual role from RBAC
+   */
+  renderCurrentUserRole() {
+    const label = document.getElementById('currentUserRoleLabel');
+    const alert = document.getElementById('currentUserRoleAlert');
+    if (!label || !alert) return;
+
+    const roleMap = {
+      super_admin: { text: 'Super Admin (Full Access)', alertClass: 'alert-success' },
+      admin:       { text: 'Administrator (Full Access)', alertClass: 'alert-success' },
+      editor:      { text: 'Editor (Content Management)', alertClass: 'alert-info' },
+      finance:     { text: 'Finance (Payments & Reports)', alertClass: 'alert-warning' },
+      viewer:      { text: 'Viewer (Read Only)', alertClass: 'alert-secondary' }
+    };
+
+    const currentRole = (typeof rbacModule !== 'undefined' && rbacModule.currentRole) ? rbacModule.currentRole : 'viewer';
+    const info = roleMap[currentRole] || { text: currentRole, alertClass: 'alert-secondary' };
+
+    label.textContent = info.text;
+    alert.className = 'alert ' + info.alertClass;
   },
 
   /**
@@ -66,43 +90,36 @@ const settingsModule = {
    * Export full database backup as JSON
    */
   async exportFullBackup() {
+    if (typeof rbacModule !== 'undefined' && !rbacModule.canAccess('settings')) {
+      utils.showToast('Admin permissions required for backup', 'error');
+      return;
+    }
+
     try {
       utils.showLoading();
 
       // Fetch all data from all tables
-      const [awards, organisations, winners, events, media, gallerySections, eventTemplates] = await Promise.all([
-        STATE.client.from('awards').select('*'),
-        STATE.client.from('organisations').select('*'),
-        STATE.client.from('winners').select('*'),
-        STATE.client.from('events').select('*'),
-        STATE.client.from('media_gallery').select('*'),
-        STATE.client.from('gallery_sections').select('*'),
-        STATE.client.from('event_templates').select('*')
-      ]);
+      const tableNames = [
+        'awards', 'organisations', 'winners', 'events',
+        'media_gallery', 'gallery_sections', 'event_templates',
+        'entries', 'organisation_contacts', 'award_assignments'
+      ];
+      const results = await Promise.all(
+        tableNames.map(t => STATE.client.from(t).select('*').then(r => r, () => ({ data: [] })))
+      );
+
+      const tables = {};
+      const counts = {};
+      tableNames.forEach((name, i) => {
+        tables[name] = results[i].data || [];
+        counts[name] = tables[name].length;
+      });
 
       const backup = {
-        version: '1.0.0',
+        version: '1.1.0',
         exportDate: new Date().toISOString(),
-        tables: {
-          awards: awards.data || [],
-          organisations: organisations.data || [],
-          winners: winners.data || [],
-          events: events.data || [],
-          media_gallery: media.data || [],
-          gallery_sections: gallerySections.data || [],
-          event_templates: eventTemplates.data || []
-        },
-        metadata: {
-          totalRecords: {
-            awards: awards.data?.length || 0,
-            organisations: organisations.data?.length || 0,
-            winners: winners.data?.length || 0,
-            events: events.data?.length || 0,
-            media_gallery: media.data?.length || 0,
-            gallery_sections: gallerySections.data?.length || 0,
-            event_templates: eventTemplates.data?.length || 0
-          }
-        }
+        tables,
+        metadata: { totalRecords: counts }
       };
 
       // Create and download file
@@ -135,7 +152,7 @@ const settingsModule = {
    * Restore database from a JSON backup file
    */
   async restoreFromBackup() {
-    if (!rbacModule || !rbacModule.guard('settings')) {
+    if (typeof rbacModule !== 'undefined' && !rbacModule.canAccess('settings')) {
       utils.showToast('Admin permissions required for restore', 'error');
       return;
     }
@@ -159,7 +176,12 @@ const settingsModule = {
           return;
         }
 
-        const tableOrder = ['awards', 'organisations', 'winners', 'events', 'media_gallery', 'gallery_sections', 'event_templates'];
+        // Restore tables in dependency order (parents before children)
+        const tableOrder = [
+          'awards', 'organisations', 'events', 'event_templates',
+          'winners', 'media_gallery', 'gallery_sections',
+          'entries', 'organisation_contacts', 'award_assignments'
+        ];
         let restored = 0;
 
         for (const table of tableOrder) {
@@ -707,9 +729,9 @@ British Trade Awards Team
     tbody.innerHTML = filteredLogs.slice(0, 100).map(log => `
       <tr>
         <td><small>${utils.formatRelativeTime(log.timestamp)}</small></td>
-        <td>${actionBadges[log.action] || log.action}</td>
+        <td>${actionBadges[log.action] || `<span class="badge bg-secondary">${utils.escapeHtml(log.action)}</span>`}</td>
         <td>
-          <i class="bi bi-${entityIcons[log.entity] || 'file'} me-1"></i>${log.entity}
+          <i class="bi bi-${entityIcons[log.entity] || 'file'} me-1"></i>${utils.escapeHtml(log.entity || '')}
         </td>
         <td><small>${utils.escapeHtml(log.description)}</small></td>
         <td><small>${utils.escapeHtml(log.user)}</small></td>

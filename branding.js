@@ -124,15 +124,20 @@ window.brandingModule = {
   },
 
   /* ---- Live Preview ---- */
+  _esc(str) {
+    return utils && utils.escapeHtml ? utils.escapeHtml(str) : String(str).replace(/[&<>"']/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' })[c]);
+  },
+
   renderPreview(config) {
     const p = config.primary_color   || '#0d3b6e';
     const s = config.secondary_color || '#1a6bb5';
     const a = config.accent_color    || '#e8a020';
     const f = config.font_family     || 'inherit';
-    const c = config.company_name    || 'Your Company';
-    const t = config.tagline         || 'Awards Programme';
+    const c = this._esc(config.company_name || 'Your Company');
+    const t = this._esc(config.tagline      || 'Awards Programme');
+    const logoUrl = this._esc(config.logo_url || '');
     const logoHtml = config.logo_url
-      ? `<img src="${config.logo_url}" alt="logo" style="height:36px;object-fit:contain">`
+      ? `<img src="${logoUrl}" alt="logo" style="height:36px;object-fit:contain">`
       : `<div style="width:36px;height:36px;background:rgba(255,255,255,.2);border-radius:4px"></div>`;
     return `<div class="branding-preview-card border rounded overflow-hidden shadow-sm" style="font-family:${f};max-width:360px">
       <div style="background:${p};padding:16px 20px;display:flex;align-items:center;gap:12px">${logoHtml}<div><div style="color:#fff;font-weight:700;font-size:15px">${c}</div><div style="color:rgba(255,255,255,.7);font-size:12px">${t}</div></div></div>
@@ -159,8 +164,9 @@ window.brandingModule = {
       `<li><a class="dropdown-item branding-preset-btn" href="#" data-preset='${JSON.stringify(p)}'>${p.name}</a></li>`
     ).join('');
 
+    const esc = v => this._esc(v);
     const field = (label, id, type, value, placeholder = '') =>
-      `<div class="mb-3"><label class="form-label">${label}</label><input type="${type}" class="form-control${type==='color'?' form-control-color':''}" id="${id}" value="${value}"${placeholder?` placeholder="${placeholder}"`:''} ${type==='color'?'style="width:100%"':''}></div>`;
+      `<div class="mb-3"><label class="form-label">${label}</label><input type="${type}" class="form-control${type==='color'?' form-control-color':''}" id="${id}" value="${esc(value)}"${placeholder?` placeholder="${placeholder}"`:''} ${type==='color'?'style="width:100%"':''}></div>`;
 
     container.innerHTML = `<div class="row g-4">
       <div class="col-lg-7"><div class="card"><div class="card-header d-flex justify-content-between align-items-center">
@@ -173,7 +179,7 @@ window.brandingModule = {
           ${field('Tagline','bf_tagline','text',cur.tagline||'')}
           <h6 class="text-muted fw-semibold mt-3 mb-3">Assets</h6>
           <div class="mb-3"><label class="form-label">Logo URL</label>
-            <div class="input-group"><input type="url" class="form-control" id="bf_logo_url" value="${cur.logo_url||''}" placeholder="https://...">
+            <div class="input-group"><input type="url" class="form-control" id="bf_logo_url" value="${esc(cur.logo_url||'')}" placeholder="https://...">
             <label class="btn btn-outline-secondary mb-0" for="bf_logo_file">Upload</label>
             <input type="file" id="bf_logo_file" class="d-none" accept="image/*"></div></div>
           ${field('Favicon URL','bf_favicon_url','url',cur.favicon_url||'','https://...')}
@@ -190,7 +196,7 @@ window.brandingModule = {
           ${field('Reply-To Address','bf_email_reply_to','email',cur.email_reply_to||'')}
           <h6 class="text-muted fw-semibold mt-3 mb-3">Domain</h6>
           <div class="mb-3"><label class="form-label">Custom Domain <span class="badge bg-secondary">Display only</span></label>
-            <input type="text" class="form-control" id="bf_custom_domain" value="${cur.custom_domain||''}" readonly>
+            <input type="text" class="form-control" id="bf_custom_domain" value="${esc(cur.custom_domain||'')}" readonly>
             <div class="form-text">Configure via DNS settings. Contact support to change.</div></div>
           <div class="d-flex gap-2 mt-4">
             <button type="submit" class="btn btn-primary">Save Branding</button>

@@ -7,10 +7,11 @@ window.brandingModule = {
   /* ---- Presets ---- */
   getPresets() {
     return [
-      { id: 'classic-blue',  name: 'Classic Blue',   primary_color: '#0d3b6e', secondary_color: '#1a6bb5', accent_color: '#e8a020', font_family: 'Georgia, serif' },
-      { id: 'modern-dark',   name: 'Modern Dark',    primary_color: '#1a1a2e', secondary_color: '#16213e', accent_color: '#e94560', font_family: "'Segoe UI', sans-serif" },
-      { id: 'elegant-gold',  name: 'Elegant Gold',   primary_color: '#2c2c2c', secondary_color: '#4a4a4a', accent_color: '#c9a84c', font_family: "'Palatino Linotype', serif" },
-      { id: 'fresh-green',   name: 'Fresh Green',    primary_color: '#1b5e20', secondary_color: '#2e7d32', accent_color: '#ff8f00', font_family: "'Helvetica Neue', sans-serif" }
+      { id: 'bta-official',   name: 'BTA Official',   primary_color: '#000000', secondary_color: '#1a1a1a', accent_color: '#D4AF37', font_family: "'Montserrat', sans-serif" },
+      { id: 'classic-blue',   name: 'Classic Blue',    primary_color: '#0d3b6e', secondary_color: '#1a6bb5', accent_color: '#e8a020', font_family: 'Georgia, serif' },
+      { id: 'modern-dark',    name: 'Modern Dark',     primary_color: '#1a1a2e', secondary_color: '#16213e', accent_color: '#e94560', font_family: "'Segoe UI', sans-serif" },
+      { id: 'elegant-gold',   name: 'Elegant Gold',    primary_color: '#2c2c2c', secondary_color: '#4a4a4a', accent_color: '#c9a84c', font_family: "'Palatino Linotype', serif" },
+      { id: 'fresh-green',    name: 'Fresh Green',     primary_color: '#1b5e20', secondary_color: '#2e7d32', accent_color: '#ff8f00', font_family: "'Helvetica Neue', sans-serif" }
     ];
   },
 
@@ -30,14 +31,14 @@ window.brandingModule = {
         tenant_id:       tenantId,
         logo_url:        config.logo_url        || null,
         favicon_url:     config.favicon_url     || null,
-        primary_color:   config.primary_color   || '#0d3b6e',
-        secondary_color: config.secondary_color || '#1a6bb5',
-        accent_color:    config.accent_color    || '#e8a020',
+        primary_color:   config.primary_color   || '#000000',
+        secondary_color: config.secondary_color || '#1a1a1a',
+        accent_color:    config.accent_color    || '#D4AF37',
         company_name:    config.company_name    || '',
         tagline:         config.tagline         || '',
         email_from:      config.email_from      || '',
         email_reply_to:  config.email_reply_to  || '',
-        font_family:     config.font_family     || 'inherit',
+        font_family:     config.font_family     || "'Montserrat', sans-serif",
         updated_at:      new Date().toISOString()
       }, { onConflict: 'tenant_id' });
       if (error) throw error;
@@ -94,8 +95,8 @@ window.brandingModule = {
 
   /* ---- Email Template Theming ---- */
   getEmailStyles(tenantId, config = {}) {
-    const p = config.primary_color || '#0d3b6e';
-    const a = config.accent_color  || '#e8a020';
+    const p = config.primary_color || '#000000';
+    const a = config.accent_color  || '#D4AF37';
     const c = this._esc(config.company_name  || 'British Trade Awards');
     const r = this._esc(config.email_reply_to || config.email_from || '');
     const logoUrl = this._esc(config.logo_url || '');
@@ -116,12 +117,12 @@ window.brandingModule = {
       tagline:         d('tagline', ''),
       logo_url:        d('logo_url', ''),
       favicon_url:     d('favicon_url', ''),
-      primary_color:   d('primary_color', '#0d3b6e'),
-      secondary_color: d('secondary_color', '#1a6bb5'),
-      accent_color:    d('accent_color', '#e8a020'),
-      font_family:     d('font_family', 'inherit'),
+      primary_color:   d('primary_color', '#000000'),
+      secondary_color: d('secondary_color', '#1a1a1a'),
+      accent_color:    d('accent_color', '#D4AF37'),
+      font_family:     d('font_family', "'Montserrat', sans-serif"),
       custom_domain:   d('custom_domain', ''),
-      cssVars: `--brand-primary:${d('primary_color','#0d3b6e')};--brand-secondary:${d('secondary_color','#1a6bb5')};--brand-accent:${d('accent_color','#e8a020')};--brand-font:${d('font_family','inherit')}`
+      cssVars: `--brand-primary:${d('primary_color','#000000')};--brand-secondary:${d('secondary_color','#1a1a1a')};--brand-accent:${d('accent_color','#D4AF37')};--brand-font:${d('font_family',"'Montserrat', sans-serif")}`
     };
   },
 
@@ -131,12 +132,12 @@ window.brandingModule = {
   },
 
   renderPreview(config) {
-    const p = config.primary_color   || '#0d3b6e';
-    const s = config.secondary_color || '#1a6bb5';
-    const a = config.accent_color    || '#e8a020';
+    const p = config.primary_color   || '#000000';
+    const s = config.secondary_color || '#1a1a1a';
+    const a = config.accent_color    || '#D4AF37';
     const f = config.font_family     || 'inherit';
-    const c = this._esc(config.company_name || 'Your Company');
-    const t = this._esc(config.tagline      || 'Awards Programme');
+    const c = this._esc(config.company_name || 'British Trade Awards');
+    const t = this._esc(config.tagline      || 'Recognising Excellence in British Trade');
     const logoUrl = this._esc(config.logo_url || '');
     const logoHtml = config.logo_url
       ? `<img src="${logoUrl}" alt="logo" style="height:36px;object-fit:contain">`
@@ -164,10 +165,11 @@ window.brandingModule = {
     }
     const presets = this.getPresets();
     const fontOptions = [
+      ["'Montserrat', sans-serif", 'Montserrat'], ["'Cinzel', serif", 'Cinzel'],
       ['inherit', 'System Default'], ["'Segoe UI', sans-serif", 'Segoe UI'],
       ['Georgia, serif', 'Georgia'], ["'Palatino Linotype', serif", 'Palatino'],
       ["'Helvetica Neue', sans-serif", 'Helvetica Neue'], ["'Arial', sans-serif", 'Arial']
-    ].map(([v, l]) => `<option value="${v}" ${(cur.font_family||'inherit')===v?'selected':''}>${l}</option>`).join('');
+    ].map(([v, l]) => `<option value="${v}" ${(cur.font_family||"'Montserrat', sans-serif")===v?'selected':''}>${l}</option>`).join('');
 
     const presetItems = presets.map(p =>
       `<li><a class="dropdown-item branding-preset-btn" href="#" data-preset='${JSON.stringify(p)}'>${p.name}</a></li>`
@@ -194,9 +196,9 @@ window.brandingModule = {
           ${field('Favicon URL','bf_favicon_url','url',cur.favicon_url||'','https://...')}
           <h6 class="text-muted fw-semibold mt-3 mb-3">Colours</h6>
           <div class="row g-3 mb-3">
-            <div class="col-4"><label class="form-label">Primary</label><input type="color" class="form-control form-control-color w-100" id="bf_primary_color" value="${cur.primary_color||'#0d3b6e'}"></div>
-            <div class="col-4"><label class="form-label">Secondary</label><input type="color" class="form-control form-control-color w-100" id="bf_secondary_color" value="${cur.secondary_color||'#1a6bb5'}"></div>
-            <div class="col-4"><label class="form-label">Accent</label><input type="color" class="form-control form-control-color w-100" id="bf_accent_color" value="${cur.accent_color||'#e8a020'}"></div>
+            <div class="col-4"><label class="form-label">Primary</label><input type="color" class="form-control form-control-color w-100" id="bf_primary_color" value="${cur.primary_color||'#000000'}"></div>
+            <div class="col-4"><label class="form-label">Secondary</label><input type="color" class="form-control form-control-color w-100" id="bf_secondary_color" value="${cur.secondary_color||'#1a1a1a'}"></div>
+            <div class="col-4"><label class="form-label">Accent</label><input type="color" class="form-control form-control-color w-100" id="bf_accent_color" value="${cur.accent_color||'#D4AF37'}"></div>
           </div>
           <h6 class="text-muted fw-semibold mt-3 mb-3">Typography</h6>
           <div class="mb-3"><label class="form-label">Font Family</label><select class="form-select" id="bf_font_family">${fontOptions}</select></div>

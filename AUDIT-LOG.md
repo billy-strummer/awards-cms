@@ -261,3 +261,64 @@ These were identified during audits but require DB migrations or architectural c
 8. **No maxlength on text inputs** - DB column limits may silently truncate long values
 9. **Duplicate modal IDs** - 3 modals (assignmentsModal, assignmentActionsModal, addCompanyModal) duplicated between assignments-modals.html and index.html
 10. **Remaining inline clipboard calls** - ~12 files still use raw `navigator.clipboard.writeText` instead of `utils.copyToClipboard()` (functional but lack fallback)
+
+---
+
+## Deep Audit Round 2 (Commits `e149874`, `df1fc2a`, `24b9d72`)
+
+Comprehensive scan of 5 additional audit dimensions covering 30 new areas (Areas 30-59).
+
+### Areas Fixed
+
+**CRITICAL (3 commits):**
+
+| # | Area | Fix |
+|---|------|-----|
+| 30 | Unbounded queries | Added `.limit()` to 8 files: calendar.js, rate-limiting.js, entry-revision.js, document-management.js |
+| 36 | Vote race condition | Double-submit guard + unique constraint handling (23505) in both voting modules |
+| 37 | Vote rate limiting | Added 10 votes/hour/email limit in public-voting.js and nominee-voting.js |
+| 47 | Deleted entry voting | Added `.neq('is_deleted', true)` to entry query in public-voting.js |
+| 48 | Check-in auth | Added Supabase session check before guest list access in check-in.html |
+| 49 | Stripe price integrity | Added price validation check in register.html before Stripe redirect |
+| 50 | Payment verification | payment-success.html now verifies payment exists in DB before showing success |
+
+**HIGH (9 areas):**
+
+| # | Area | Fix |
+|---|------|-----|
+| 31 | Org delete orphans | organisations.js: Delete contacts, notes, follow-ups, images, custom_fields, documents |
+| 32 | Bulk invoice line items | payments.js: Delete invoice_line_items before invoice in bulk delete |
+| 38 | Discount > 100% | payments.js: Clamp discount to 0-100% |
+| 39 | Overpayment | payments.js: Warn on overpayment via console |
+| 40/41 | Judge scoring | judge-portal.js: Score bounds already validated; added conflict confirmation |
+| 42 | Event capacity | events.js: Clamp capacity to min 0 |
+| 43 | Timezone dates | awards.js: Parse all dates as UTC for phase calculation |
+| 44 | Merge cascade | organisations.js: Transfer entries, invoices, contacts, notes, follow-ups, images, documents |
+| 45 | Admin lockout | rbac.js: Added ensureAdminExists() to check admin count before demotion |
+| 46 | CRM probability | crm.js: Clamp deal_value >= 0, probability 0-100% on create and edit |
+| 51 | Judge portal auth | judge-portal.js: Prefer Supabase session over localStorage |
+| 56 | API auth | api/stripe-payment.js: JWT verification middleware; api/email-automation.js: auth check |
+
+**MEDIUM (6 areas):**
+
+| # | Area | Fix |
+|---|------|-----|
+| 33 | Blob URL leaks | events.js: revokeObjectURL after download; social-media.js: revoke before new |
+| 34 | Tooltip disposal | assignments.js: Dispose existing tooltips before creating new ones |
+| 53 | Winner portal | winners-portal.html: Require access_token, not just ID |
+| 55 | SRI hashes | index.html: Added integrity + crossorigin to Bootstrap CSS/JS CDN links |
+| 57 | Security headers | vercel.json: Added HSTS, X-Frame-Options, X-Content-Type-Options, Referrer-Policy |
+| 58 | Upload paths | upload-documents.js: Sanitise filenames to prevent path traversal |
+| 59 | AI prompt injection | api/ai-vetting-proxy.js: Sanitise inputs before prompt interpolation |
+
+### Remaining Items (Require DB/Architectural Changes)
+
+11. **DB UNIQUE constraint on public_votes(entry_id, voter_email)** - Client-side check added but DB constraint needed for true atomic protection
+12. **DB UNIQUE constraint on judge_assignments(award_id, judge_email)** - Prevents duplicate judge assignments
+13. **Server-side Stripe session creation** - Price currently validated client-side; should create session via server endpoint
+14. **CSP `unsafe-inline` and `unsafe-eval`** - Cannot remove without refactoring all inline event handlers to external JS
+15. **Supabase RLS policy audit** - All public pages rely on RLS for data isolation; needs manual review
+16. **OAuth token encryption at rest** - Social media tokens stored as plain text in DB
+17. **Event capacity enforcement on registration** - Capacity field validated but no attendee count check against capacity
+18. **Entry deadline enforcement** - No server-side check that entry submission is within deadline
+19. **Email verification before vote counting** - Votes insert with email_verified=false; need webhook to flip to true

@@ -50,15 +50,30 @@ async function loadTenantBranding() {
 }
 
 /**
+ * Map template keys to header subtitle text.
+ * These subtitles appear in the email header below the brand name.
+ */
+const HEADER_SUBTITLES = {
+  ENTRY_CONFIRMATION:     'Self-Nomination Entry Confirmation',
+  PAYMENT_REMINDER:       'Payment Reminder',
+  SHORTLIST_NOTIFICATION: 'Entry Approved/Shortlisted',
+  WINNER_ANNOUNCEMENT:    'Entry Approved',
+  JUDGE_ASSIGNMENT:       'Judging Assignment',
+  JUDGE_REMINDER:         'Judging Reminder',
+  DEADLINE_REMINDER:      'Document Upload Reminder',
+};
+
+/**
  * Email wrapper - loads header/footer templates from DB, then delegates
  * to shared email-header.js module.  Falls back to hardcoded header/footer
  * if no DB templates exist.
  */
-async function wrapEmailTemplate(bodyContent, branding = {}) {
+async function wrapEmailTemplate(bodyContent, branding = {}, subtitle = '') {
   const templates = await loadHeaderFooterTemplates(supabase);
   return wrapEmail(bodyContent, branding, {
     headerHtml: templates.header,
     footerHtml: templates.footer,
+    subtitle,
   });
 }
 
@@ -347,8 +362,9 @@ async function sendTemplateEmail(templateKey, toEmail, variables) {
       bodyContent = bodyContent.replace(regex, escapeHtml(value || ''));
     }
 
-    // Wrap body content with branded email template
-    const html = await wrapEmailTemplate(bodyContent, branding);
+    // Wrap body content with branded email template (dynamic subtitle per template type)
+    const subtitle = HEADER_SUBTITLES[templateKey] || '';
+    const html = await wrapEmailTemplate(bodyContent, branding, subtitle);
 
     // Use branded from address
     const fromEmail = branding.email_from || process.env.FROM_EMAIL || 'awards@britishtradeawards.com';

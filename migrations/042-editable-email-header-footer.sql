@@ -37,14 +37,14 @@ INSERT INTO email_templates (
     </td>
     <td style="vertical-align:middle;">
       <h1 style="color:{ACCENT_COLOR};margin:0;font-size:22px;font-family:Georgia,''Times New Roman'',serif;letter-spacing:3px;text-transform:uppercase;line-height:1.3;">{BRAND_NAME}</h1>
-      <p style="color:{ACCENT_COLOR};margin:5px 0 0;font-size:12px;font-family:Arial,Helvetica,sans-serif;letter-spacing:2px;text-transform:uppercase;opacity:0.9;font-weight:300;">Self-Nomination Entry Confirmation</p>
+      <p style="color:{ACCENT_COLOR};margin:5px 0 0;font-size:12px;font-family:Arial,Helvetica,sans-serif;letter-spacing:2px;text-transform:uppercase;opacity:0.9;font-weight:300;">{HEADER_SUBTITLE}</p>
     </td>
   </tr></table>
 </div>',
   true,
   true,
   'Branded header shown at the top of every automated email. Uses branding placeholders.',
-  ARRAY['BRAND_NAME', 'PRIMARY_COLOR', 'SECONDARY_COLOR', 'ACCENT_COLOR', 'LOGO_URL']
+  ARRAY['BRAND_NAME', 'PRIMARY_COLOR', 'SECONDARY_COLOR', 'ACCENT_COLOR', 'LOGO_URL', 'HEADER_SUBTITLE']
 ) ON CONFLICT (template_name) DO NOTHING;
 
 -- Email Footer template

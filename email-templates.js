@@ -118,7 +118,7 @@ The British Trade Awards Team`
     </td>
     <td style="vertical-align:middle;">
       <h1 style="color:{ACCENT_COLOR};margin:0;font-size:22px;font-family:Georgia,'Times New Roman',serif;letter-spacing:3px;text-transform:uppercase;line-height:1.3;">{BRAND_NAME}</h1>
-      <p style="color:{ACCENT_COLOR};margin:5px 0 0;font-size:12px;font-family:Arial,Helvetica,sans-serif;letter-spacing:2px;text-transform:uppercase;opacity:0.9;font-weight:300;">Self-Nomination Entry Confirmation</p>
+      <p style="color:{ACCENT_COLOR};margin:5px 0 0;font-size:12px;font-family:Arial,Helvetica,sans-serif;letter-spacing:2px;text-transform:uppercase;opacity:0.9;font-weight:300;">{HEADER_SUBTITLE}</p>
     </td>
   </tr></table>
 </div>`

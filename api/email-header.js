@@ -34,7 +34,7 @@ function resolveBranding(branding = {}) {
  * Placeholders: {BRAND_NAME}, {PRIMARY_COLOR}, {SECONDARY_COLOR},
  *   {ACCENT_COLOR}, {LOGO_URL}, {CONTACT_EMAIL}, {WEBSITE_URL}
  */
-function replaceBrandingPlaceholders(html, branding = {}) {
+function replaceBrandingPlaceholders(html, branding = {}, { subtitle = '' } = {}) {
   const b = resolveBranding(branding);
   return html
     .replace(/\{BRAND_NAME\}/g,      escHtml(b.brandName))
@@ -43,7 +43,8 @@ function replaceBrandingPlaceholders(html, branding = {}) {
     .replace(/\{ACCENT_COLOR\}/g,     b.accentColor)
     .replace(/\{LOGO_URL\}/g,         escHtml(b.logoUrl))
     .replace(/\{CONTACT_EMAIL\}/g,    escHtml(b.contactEmail))
-    .replace(/\{WEBSITE_URL\}/g,      escHtml(b.websiteUrl));
+    .replace(/\{WEBSITE_URL\}/g,      escHtml(b.websiteUrl))
+    .replace(/\{HEADER_SUBTITLE\}/g,  escHtml(subtitle || 'Self-Nomination Entry Confirmation'));
 }
 
 /* ---- DB-backed header/footer loading (cached) ---- */
@@ -89,8 +90,9 @@ async function loadHeaderFooterTemplates(supabaseClient) {
  * Logo present  → side-by-side (logo left, brand name + subtitle right)
  * No logo       → centred brand name + subtitle
  */
-function buildEmailHeader(branding = {}) {
+function buildEmailHeader(branding = {}, { subtitle = 'Self-Nomination Entry Confirmation' } = {}) {
   const b = resolveBranding(branding);
+  const safeSubtitle = escHtml(subtitle);
 
   const headerContent = b.logoUrl
     ? `<table cellpadding="0" cellspacing="0" border="0" style="margin:0 auto;"><tr>`
@@ -99,11 +101,11 @@ function buildEmailHeader(branding = {}) {
       + `</td>`
       + `<td style="vertical-align:middle;">`
       + `<h1 style="color:${b.accentColor};margin:0;font-size:22px;font-family:Georgia,'Times New Roman',serif;letter-spacing:3px;text-transform:uppercase;line-height:1.3;">${escHtml(b.brandName)}</h1>`
-      + `<p style="color:${b.accentColor};margin:5px 0 0;font-size:12px;font-family:Arial,Helvetica,sans-serif;letter-spacing:2px;text-transform:uppercase;opacity:0.9;font-weight:300;">Self-Nomination Entry Confirmation</p>`
+      + `<p style="color:${b.accentColor};margin:5px 0 0;font-size:12px;font-family:Arial,Helvetica,sans-serif;letter-spacing:2px;text-transform:uppercase;opacity:0.9;font-weight:300;">${safeSubtitle}</p>`
       + `</td>`
       + `</tr></table>`
     : `<h1 style="color:${b.accentColor};margin:0;font-size:24px;font-family:Georgia,'Times New Roman',serif;letter-spacing:3px;text-transform:uppercase;">${escHtml(b.brandName)}</h1>`
-      + `<p style="color:${b.accentColor};margin:8px 0 0;font-size:13px;letter-spacing:2px;text-transform:uppercase;opacity:0.9;">Self-Nomination Entry Confirmation</p>`;
+      + `<p style="color:${b.accentColor};margin:8px 0 0;font-size:13px;letter-spacing:2px;text-transform:uppercase;opacity:0.9;">${safeSubtitle}</p>`;
 
   return `<div style="background:linear-gradient(135deg,${b.primaryColor} 0%,${b.secondaryColor} 100%);padding:28px 32px;text-align:center;border-bottom:3px solid ${b.accentColor};">
     ${headerContent}
@@ -137,10 +139,10 @@ function buildEmailFooter(branding = {}) {
  *
  * If headerHtml/footerHtml are not supplied, the hardcoded fallbacks are used.
  */
-function wrapEmail(bodyContent, branding = {}, { subject = '', preheader = '', headerHtml = null, footerHtml = null } = {}) {
+function wrapEmail(bodyContent, branding = {}, { subject = '', preheader = '', headerHtml = null, footerHtml = null, subtitle = '' } = {}) {
   const resolvedHeader = headerHtml
-    ? replaceBrandingPlaceholders(headerHtml, branding)
-    : buildEmailHeader(branding);
+    ? replaceBrandingPlaceholders(headerHtml, branding, { subtitle })
+    : buildEmailHeader(branding, { subtitle: subtitle || 'Self-Nomination Entry Confirmation' });
   const resolvedFooter = footerHtml
     ? replaceBrandingPlaceholders(footerHtml, branding)
     : buildEmailFooter(branding);

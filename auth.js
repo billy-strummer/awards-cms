@@ -326,6 +326,15 @@ const authModule = {
     // Load initial data
     dashboardModule.loadAllData();
 
+    // Apply saved branding immediately
+    if (typeof brandingModule !== 'undefined') {
+      try {
+        const tenantId = (typeof multiTenancyModule !== 'undefined') ? multiTenancyModule.getTenantId() : 'default';
+        const config = await brandingModule.loadBranding(tenantId);
+        brandingModule.applyBranding(config);
+      } catch (e) { console.warn('Branding not applied:', e.message); }
+    }
+
     // Replay any pending localStorage items that were saved during DB failures
     await utils.replayPendingQueues();
 

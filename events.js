@@ -9253,13 +9253,23 @@ const eventsModule = {
         dietary_requirements: g.dietary_requirements || null
       }));
 
-      const { error } = await STATE.client
+      let { error } = await STATE.client
         .from('table_assignments')
         .insert(assignments);
 
-      if (error) throw error;
-
-      utils.showToast(`${toAssign.length} guest(s) assigned`, 'success');
+      // If batch fails (e.g. FK constraint), fall back to one-by-one
+      if (error) {
+        console.warn('Batch org-assign failed, trying one-by-one:', error.message);
+        let inserted = 0;
+        for (const row of assignments) {
+          const res = await STATE.client.from('table_assignments').insert([row]);
+          if (!res.error) inserted++;
+        }
+        if (inserted === 0) throw error;
+        utils.showToast(`${inserted} of ${assignments.length} guest(s) assigned${inserted < assignments.length ? ' (some failed)' : ''}`, inserted < assignments.length ? 'warning' : 'success');
+      } else {
+        utils.showToast(`${toAssign.length} guest(s) assigned`, 'success');
+      }
 
       await this.loadTablePlan();
       this.renderUnassignedGuests();
@@ -9412,9 +9422,24 @@ const eventsModule = {
           guest_type: g.guest_type || 'guest',
           dietary_requirements: g.dietary_requirements || null
         }));
-        const { error } = await STATE.client.from('table_assignments').insert(rows);
-        if (error) throw error;
-        utils.showToast(`${toAssign.length} guest(s) assigned to table`, 'success');
+        let { error } = await STATE.client.from('table_assignments').insert(rows);
+        // If batch fails (e.g. FK constraint), fall back to one-by-one
+        if (error) {
+          console.warn('Batch insert failed, trying one-by-one:', error.message);
+          let inserted = 0;
+          for (const row of rows) {
+            const res = await STATE.client.from('table_assignments').insert([row]);
+            if (!res.error) inserted++;
+          }
+          if (inserted === 0) throw error;
+          if (inserted < rows.length) {
+            utils.showToast(`${inserted} of ${rows.length} guest(s) assigned (some failed)`, 'warning');
+          } else {
+            utils.showToast(`${inserted} guest(s) assigned to table`, 'success');
+          }
+        } else {
+          utils.showToast(`${toAssign.length} guest(s) assigned to table`, 'success');
+        }
         if (toAssign.length < this.draggedCompanyGuests.length) {
           utils.showToast(`${this.draggedCompanyGuests.length - toAssign.length} guest(s) didn't fit - table full`, 'warning');
         }
@@ -9425,7 +9450,7 @@ const eventsModule = {
         this._updateHeaderBadges();
       } catch (error) {
         console.error('Error assigning company guests:', error);
-        utils.showToast('Failed to assign guests', 'error');
+        utils.showToast('Failed to assign guests: ' + (error.message || 'Unknown error'), 'error');
       }
     } else if (this.draggedGuestData) {
       // Single guest assign

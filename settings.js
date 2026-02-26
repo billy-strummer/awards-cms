@@ -16,12 +16,13 @@ const settingsModule = {
       safe(() => this.updateSystemInfo()),
       safe(() => this.loadSeasons()),
       safe(() => this.renderAuditLog()),
-      safe(() => {
+      safe(async () => {
         if (typeof brandingModule !== 'undefined') {
           const tenantId = (typeof multiTenancyModule !== 'undefined') ? multiTenancyModule.getTenantId() : 'default';
-          return brandingModule.renderBrandSettings(tenantId);
+          await brandingModule.renderBrandSettings(tenantId);
+          const config = await brandingModule.loadBranding(tenantId);
+          brandingModule.applyBranding(config);
         }
-        return Promise.resolve();
       }),
       safe(() => {
         if (typeof gdprModule !== 'undefined') {

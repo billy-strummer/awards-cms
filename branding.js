@@ -17,12 +17,10 @@ window.brandingModule = {
 
   /* ---- Load / Save ---- */
   async loadBranding(tenantId) {
-    try {
-      const { data, error } = await STATE.client
-        .from('tenant_branding').select('*').eq('tenant_id', tenantId).maybeSingle();
-      if (error) throw error;
-      return data || {};
-    } catch (e) { console.error('loadBranding:', e); return {}; }
+    const { data, error } = await STATE.client
+      .from('tenant_branding').select('*').eq('tenant_id', tenantId).maybeSingle();
+    if (error) throw error;
+    return data || {};
   },
 
   async saveBranding(tenantId, config) {

@@ -96,11 +96,13 @@ window.brandingModule = {
   getEmailStyles(tenantId, config = {}) {
     const p = config.primary_color || '#0d3b6e';
     const a = config.accent_color  || '#e8a020';
-    const c = config.company_name  || 'British Trade Awards';
-    const r = config.email_reply_to || config.email_from || '';
+    const c = this._esc(config.company_name  || 'British Trade Awards');
+    const r = this._esc(config.email_reply_to || config.email_from || '');
+    const logoUrl = this._esc(config.logo_url || '');
+    const tagline = this._esc(config.tagline || '');
     return {
       css: `.email-header{background:${p};padding:24px 32px;text-align:center}.email-header img{max-height:60px}.email-btn{background:${a};color:#fff;padding:12px 28px;border-radius:4px;text-decoration:none;font-weight:bold;display:inline-block}.email-footer{background:#f4f4f4;padding:16px 32px;font-size:12px;color:#666;text-align:center}`,
-      header: `<div class="email-header">${config.logo_url ? `<img src="${config.logo_url}" alt="${c} logo">` : `<h2 style="color:#fff;margin:0">${c}</h2>`}${config.tagline ? `<p style="color:rgba(255,255,255,.75);margin:8px 0 0;font-size:14px">${config.tagline}</p>` : ''}</div>`,
+      header: `<div class="email-header">${config.logo_url ? `<img src="${logoUrl}" alt="${c} logo">` : `<h2 style="color:#fff;margin:0">${c}</h2>`}${config.tagline ? `<p style="color:rgba(255,255,255,.75);margin:8px 0 0;font-size:14px">${tagline}</p>` : ''}</div>`,
       footer: `<div class="email-footer"><p>&copy; ${new Date().getFullYear()} ${c}. All rights reserved.</p>${r ? `<p>Questions? <a href="mailto:${r}">${r}</a></p>` : ''}</div>`
     };
   },

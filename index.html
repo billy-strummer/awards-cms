@@ -5947,6 +5947,9 @@
                     <button class="btn btn-outline-secondary btn-sm" onclick="dashboardModule.exportWinnersCSV()">
                       <i class="bi bi-download me-1"></i>Winners
                     </button>
+                    <button class="btn btn-outline-secondary btn-sm" onclick="settingsModule.exportEntriesCSV()">
+                      <i class="bi bi-download me-1"></i>Entries
+                    </button>
                     <button class="btn btn-outline-secondary btn-sm" onclick="settingsModule.exportEventsCSV()">
                       <i class="bi bi-download me-1"></i>Events
                     </button>
@@ -5986,7 +5989,7 @@
                   </div>
                   <div class="d-flex justify-content-between align-items-center py-2 border-bottom">
                     <span class="text-muted">Database Status</span>
-                    <span class="badge bg-success">Connected</span>
+                    <span id="systemDbStatus"><span class="badge bg-secondary">Checking...</span></span>
                   </div>
                   <div class="d-flex justify-content-between align-items-center py-2 border-bottom">
                     <span class="text-muted">Total Awards</span>

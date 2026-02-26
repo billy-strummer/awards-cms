@@ -75,6 +75,21 @@ const settingsModule = {
                           (mediaCount || 0);
       document.getElementById('totalRecords').textContent = totalRecords.toLocaleString();
 
+      // Check database connection status
+      const dbStatusEl = document.getElementById('systemDbStatus');
+      if (dbStatusEl) {
+        try {
+          const { error: pingError } = await STATE.client
+            .from('awards')
+            .select('id', { count: 'exact', head: true });
+          dbStatusEl.innerHTML = pingError
+            ? '<span class="badge bg-danger">Error</span>'
+            : '<span class="badge bg-success">Connected</span>';
+        } catch {
+          dbStatusEl.innerHTML = '<span class="badge bg-danger">Disconnected</span>';
+        }
+      }
+
       // Get last backup time from localStorage
       const lastBackup = localStorage.getItem('lastBackupTime');
       if (lastBackup) {
@@ -83,6 +98,8 @@ const settingsModule = {
       }
     } catch (error) {
       console.error('Error updating system info:', error);
+      const dbStatusEl = document.getElementById('systemDbStatus');
+      if (dbStatusEl) dbStatusEl.innerHTML = '<span class="badge bg-danger">Disconnected</span>';
     }
   },
 
@@ -102,7 +119,10 @@ const settingsModule = {
       const tableNames = [
         'awards', 'organisations', 'winners', 'events',
         'media_gallery', 'gallery_sections', 'event_templates',
-        'entries', 'organisation_contacts', 'award_assignments'
+        'entries', 'organisation_contacts', 'award_assignments',
+        'award_seasons', 'organisation_images', 'organisation_notes',
+        'judge_scores', 'public_votes', 'invoices', 'payments',
+        'certificates', 'sponsors', 'email_templates'
       ];
       const results = await Promise.all(
         tableNames.map(t => STATE.client.from(t).select('*').then(r => r, () => ({ data: [] })))
@@ -116,7 +136,7 @@ const settingsModule = {
       });
 
       const backup = {
-        version: '1.1.0',
+        version: '1.2.0',
         exportDate: new Date().toISOString(),
         tables,
         metadata: { totalRecords: counts }
@@ -179,8 +199,12 @@ const settingsModule = {
         // Restore tables in dependency order (parents before children)
         const tableOrder = [
           'awards', 'organisations', 'events', 'event_templates',
+          'award_seasons', 'sponsors', 'email_templates',
           'winners', 'media_gallery', 'gallery_sections',
-          'entries', 'organisation_contacts', 'award_assignments'
+          'entries', 'organisation_contacts', 'award_assignments',
+          'organisation_images', 'organisation_notes',
+          'judge_scores', 'public_votes', 'invoices', 'payments',
+          'certificates'
         ];
         let restored = 0;
 
@@ -287,6 +311,39 @@ const settingsModule = {
     } catch (error) {
       console.error('Error exporting media:', error);
       utils.showToast('Failed to export media gallery', 'error');
+    }
+  },
+
+  /**
+   * Export entries data to CSV
+   */
+  async exportEntriesCSV() {
+    try {
+      const { data: entries, error } = await STATE.client
+        .from('entries')
+        .select('*, organisations(company_name), awards:award_years(award_category)')
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+
+      if (!entries || entries.length === 0) {
+        utils.showToast('No entries data to export', 'warning');
+        return;
+      }
+
+      const exportData = entries.map(entry => ({
+        'Organisation': entry.organisations?.company_name || '',
+        'Award': entry.awards?.award_category || '',
+        'Status': entry.status || '',
+        'Year': entry.year || '',
+        'Submitted At': utils.formatDate(entry.created_at)
+      }));
+
+      const filename = `entries_export_${new Date().toISOString().split('T')[0]}.csv`;
+      utils.exportToCSV(exportData, filename);
+    } catch (error) {
+      console.error('Error exporting entries:', error);
+      utils.showToast('Failed to export entries', 'error');
     }
   },
 

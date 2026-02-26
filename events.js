@@ -6742,7 +6742,8 @@ const eventsModule = {
 
   /**
    * Export Winner Cards - 2 per A4 page, portrait orientation.
-   * Each card shows: "And the winner is...", Company Name, Recipient Collecting, Category/Award Name
+   * Page is cut in half; each half goes into an envelope.
+   * Shows: "And the winner is...", Company Name, Recipient Collecting
    */
   exportWinnerCards() {
     const awards = this.runningOrderItems.filter(item => (item.item_type || 'award') === 'award');
@@ -6754,56 +6755,45 @@ const eventsModule = {
     const cards = awards.map(item => ({
       awardName: item.award_name || item.item_name || (item.awards ? item.awards.award_name : 'N/A'),
       companyName: item.display_name || (item.organisations ? item.organisations.company_name : 'N/A'),
-      recipient: item.recipient_collecting || (item.event_guests ? item.event_guests.guest_name : 'TBC'),
-      sponsor: item.sponsor || ''
+      recipient: item.recipient_collecting || (item.event_guests ? item.event_guests.guest_name : 'TBC')
     }));
+
+    const renderCard = (card) => `<div class="card">
+          <div class="card-inner">
+            <div class="card-label">And the winner is&hellip;</div>
+            <div class="card-company">${utils.escapeHtml(card.companyName)}</div>
+            <div class="card-recipient">${utils.escapeHtml(card.recipient)}</div>
+          </div>
+        </div>`;
 
     let pages = '';
     for (let i = 0; i < cards.length; i += 2) {
       const card1 = cards[i];
       const card2 = cards[i + 1];
       pages += `<div class="page">
-        <div class="card">
-          <div class="card-header">${utils.escapeHtml(this.currentEventName)}</div>
-          <div class="card-category">${utils.escapeHtml(card1.awardName)}</div>
-          ${card1.sponsor ? `<div class="card-sponsor">Sponsored by ${utils.escapeHtml(card1.sponsor)}</div>` : ''}
-          <div class="card-divider"></div>
-          <div class="card-label">And the winner is&hellip;</div>
-          <div class="card-company">${utils.escapeHtml(card1.companyName)}</div>
-          <div class="card-recipient">Collected by: ${utils.escapeHtml(card1.recipient)}</div>
-        </div>
-        ${card2 ? `<div class="card">
-          <div class="card-header">${utils.escapeHtml(this.currentEventName)}</div>
-          <div class="card-category">${utils.escapeHtml(card2.awardName)}</div>
-          ${card2.sponsor ? `<div class="card-sponsor">Sponsored by ${utils.escapeHtml(card2.sponsor)}</div>` : ''}
-          <div class="card-divider"></div>
-          <div class="card-label">And the winner is&hellip;</div>
-          <div class="card-company">${utils.escapeHtml(card2.companyName)}</div>
-          <div class="card-recipient">Collected by: ${utils.escapeHtml(card2.recipient)}</div>
-        </div>` : '<div class="card empty"></div>'}
+        ${renderCard(card1)}
+        <div class="cut-line"></div>
+        ${card2 ? renderCard(card2) : '<div class="card"></div>'}
       </div>`;
     }
 
     const html = `<!DOCTYPE html><html><head><meta charset="utf-8">
       <title>Winner Cards - ${utils.escapeHtml(this.currentEventName)}</title>
       <style>
-        @page { size: A4 portrait; margin: 10mm; }
+        @page { size: A4 portrait; margin: 0; }
         * { box-sizing: border-box; margin: 0; padding: 0; }
         body { font-family: 'Georgia', 'Times New Roman', serif; color: #1a1a1a; }
-        .page { width: 190mm; height: 277mm; display: flex; flex-direction: column; gap: 10mm; page-break-after: always; padding: 0; }
+        .page { width: 210mm; height: 297mm; display: flex; flex-direction: column; page-break-after: always; position: relative; }
         .page:last-child { page-break-after: auto; }
-        .card { flex: 1; border: 2px solid #c9a94e; border-radius: 8px; padding: 25mm 20mm; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; position: relative; overflow: hidden; background: linear-gradient(135deg, #fffef5 0%, #fff9e6 100%); }
-        .card.empty { border: 2px dashed #ddd; background: transparent; }
-        .card-header { font-size: 11pt; color: #888; text-transform: uppercase; letter-spacing: 3px; margin-bottom: 8mm; }
-        .card-category { font-size: 18pt; font-weight: bold; color: #2c2c2c; margin-bottom: 4mm; line-height: 1.3; }
-        .card-sponsor { font-size: 10pt; color: #888; font-style: italic; margin-bottom: 6mm; }
-        .card-divider { width: 60mm; height: 1px; background: linear-gradient(90deg, transparent, #c9a94e, transparent); margin: 5mm 0; }
-        .card-label { font-size: 14pt; color: #c9a94e; font-style: italic; margin-bottom: 6mm; letter-spacing: 1px; }
-        .card-company { font-size: 26pt; font-weight: bold; color: #1a1a1a; margin-bottom: 6mm; line-height: 1.2; }
-        .card-recipient { font-size: 12pt; color: #555; }
+        .card { height: 148.5mm; width: 100%; display: flex; align-items: center; justify-content: center; padding: 15mm 20mm; }
+        .card-inner { border: 2.5pt solid #000; border-radius: 4px; width: 100%; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 15mm 20mm; }
+        .card-label { font-size: 18pt; font-style: italic; color: #444; margin-bottom: 10mm; letter-spacing: 1px; }
+        .card-company { font-size: 32pt; font-weight: bold; color: #000; margin-bottom: 8mm; line-height: 1.2; }
+        .card-recipient { font-size: 16pt; color: #333; }
+        .cut-line { position: absolute; top: 148.5mm; left: 0; right: 0; border-top: 1px dashed #ccc; }
         @media print {
           body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-          .page { height: 277mm; }
+          .cut-line { border-top: 1px dashed #ccc; }
         }
       </style></head><body>${pages}
       <script>window.onload=function(){window.print();};<\/script></body></html>`;

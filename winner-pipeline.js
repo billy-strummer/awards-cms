@@ -134,7 +134,7 @@ window.winnerPipelineModule = {
           </div></div>
         </div>`;
     } catch (err) {
-      container.innerHTML = `<div class="alert alert-danger">Failed to load panel: ${err.message}</div>`;
+      container.innerHTML = `<div class="alert alert-danger">Failed to load panel: ${utils.escapeHtml(err.message)}</div>`;
       utils.showToast('Deliberation panel error: ' + err.message, 'error');
     }
   },
@@ -282,7 +282,7 @@ window.winnerPipelineModule = {
           </div>
         </div>`;
     } catch (err) {
-      container.innerHTML = `<div class="alert alert-danger">Pipeline dashboard error: ${err.message}</div>`;
+      container.innerHTML = `<div class="alert alert-danger">Pipeline dashboard error: ${utils.escapeHtml(err.message)}</div>`;
       utils.showToast('Pipeline dashboard failed: ' + err.message, 'error');
     }
   },

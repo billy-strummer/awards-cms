@@ -108,6 +108,26 @@ We would very much welcome an entry from you again next year and wish you contin
 
 Kind regards,
 The British Trade Awards Team`
+    },
+    'Auto Email Header': {
+      subject: '(system)',
+      body: `<div style="background:linear-gradient(135deg,{PRIMARY_COLOR} 0%,{SECONDARY_COLOR} 100%);padding:28px 32px;text-align:center;border-bottom:3px solid {ACCENT_COLOR};">
+  <table cellpadding="0" cellspacing="0" border="0" style="margin:0 auto;"><tr>
+    <td style="vertical-align:middle;padding-right:25px;">
+      <img src="{LOGO_URL}" alt="{BRAND_NAME}" style="height:80px;width:auto;display:block;">
+    </td>
+    <td style="vertical-align:middle;">
+      <h1 style="color:{ACCENT_COLOR};margin:0;font-size:22px;font-family:Georgia,'Times New Roman',serif;letter-spacing:3px;text-transform:uppercase;line-height:1.3;">{BRAND_NAME}</h1>
+      <p style="color:{ACCENT_COLOR};margin:5px 0 0;font-size:12px;font-family:Arial,Helvetica,sans-serif;letter-spacing:2px;text-transform:uppercase;opacity:0.9;font-weight:300;">{HEADER_SUBTITLE}</p>
+    </td>
+  </tr></table>
+</div>`
+    },
+    'Auto Email Footer': {
+      subject: '(system)',
+      body: `<div style="background:{SECONDARY_COLOR};padding:24px 32px;text-align:center;font-size:12px;color:#999;">
+  <p style="margin:0;">{BRAND_NAME} | <a href="mailto:{CONTACT_EMAIL}" style="color:{ACCENT_COLOR};text-decoration:none;">{CONTACT_EMAIL}</a></p>
+</div>`
     }
   },
 
@@ -196,6 +216,7 @@ The British Trade Awards Team`
    */
   // Group definitions: map template_type to a workflow group
   templateGroups: {
+    'Auto Email Layout': { types: ['email_header', 'email_footer'], icon: 'bi-layout-text-window' },
     'Entry Submissions': { types: ['confirmation', 'reminder'], icon: 'bi-pencil-square' },
     'Judging & Results': { types: ['approval', 'rejection'], icon: 'bi-trophy' },
     'General': { types: ['general', 'notification', 'invite'], icon: 'bi-megaphone' }
@@ -230,7 +251,7 @@ The British Trade Awards Team`
     });
 
     // Render with group headers in a defined order
-    const groupOrder = ['Entry Submissions', 'Judging & Results', 'General', 'Other'];
+    const groupOrder = ['Auto Email Layout', 'Entry Submissions', 'Judging & Results', 'General', 'Other'];
     let html = '';
 
     groupOrder.forEach(groupName => {
@@ -267,6 +288,8 @@ The British Trade Awards Team`
 
   getTypeLabel(type) {
     const labels = {
+      'email_header': 'Auto Header',
+      'email_footer': 'Auto Footer',
       'confirmation': 'Confirmation',
       'reminder': 'Reminder',
       'approval': 'Approval / Shortlisted',
@@ -326,6 +349,8 @@ The British Trade Awards Team`
           <div class="col-md-6">
             <label class="form-label">Template Type</label>
             <select class="form-select" id="templateType" required>
+              <option value="email_header" ${template.template_type === 'email_header' ? 'selected' : ''}>Auto Header</option>
+              <option value="email_footer" ${template.template_type === 'email_footer' ? 'selected' : ''}>Auto Footer</option>
               <option value="confirmation" ${template.template_type === 'confirmation' ? 'selected' : ''}>Confirmation</option>
               <option value="reminder" ${template.template_type === 'reminder' ? 'selected' : ''}>Reminder</option>
               <option value="approval" ${template.template_type === 'approval' ? 'selected' : ''}>Approval</option>

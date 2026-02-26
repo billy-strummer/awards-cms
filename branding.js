@@ -118,15 +118,16 @@ window.brandingModule = {
    * If you change the header design, update api/email-header.js FIRST,
    * then mirror the change here.
    */
-  _buildEmailHeaderContent(logoUrl, brandName, accentColor) {
+  _buildEmailHeaderContent(logoUrl, brandName, accentColor, subtitle) {
+    const sub = subtitle || 'Self-Nomination Entry Confirmation';
     return logoUrl
       ? `<table cellpadding="0" cellspacing="0" border="0" style="margin:0 auto;"><tr>`
         + `<td style="vertical-align:middle;padding-right:25px;"><img src="${logoUrl}" alt="${brandName}" style="height:80px;width:auto;display:block;"></td>`
         + `<td style="vertical-align:middle;"><h1 style="color:${accentColor};margin:0;font-size:22px;font-family:Georgia,'Times New Roman',serif;letter-spacing:3px;text-transform:uppercase;line-height:1.3;">${brandName}</h1>`
-        + `<p style="color:${accentColor};margin:5px 0 0;font-size:12px;font-family:Arial,Helvetica,sans-serif;letter-spacing:2px;text-transform:uppercase;opacity:0.9;font-weight:300;">Self-Nomination Entry Confirmation</p></td>`
+        + `<p style="color:${accentColor};margin:5px 0 0;font-size:12px;font-family:Arial,Helvetica,sans-serif;letter-spacing:2px;text-transform:uppercase;opacity:0.9;font-weight:300;">${sub}</p></td>`
         + `</tr></table>`
       : `<h1 style="color:${accentColor};margin:0;font-size:24px;font-family:Georgia,'Times New Roman',serif;letter-spacing:3px;text-transform:uppercase;">${brandName}</h1>`
-        + `<p style="color:${accentColor};margin:8px 0 0;font-size:13px;letter-spacing:2px;text-transform:uppercase;opacity:0.9;">Self-Nomination Entry Confirmation</p>`;
+        + `<p style="color:${accentColor};margin:8px 0 0;font-size:13px;letter-spacing:2px;text-transform:uppercase;opacity:0.9;">${sub}</p>`;
   },
 
   getEmailStyles(tenantId, config = {}) {

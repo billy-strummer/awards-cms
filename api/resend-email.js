@@ -6,7 +6,7 @@
 
 const { Resend } = require('resend');
 const { createClient } = require('@supabase/supabase-js');
-const { wrapEmail } = require('./email-header');
+const { wrapEmail, loadHeaderFooterTemplates } = require('./email-header');
 require('dotenv').config();
 
 const resend = new Resend(process.env.RESEND_API_KEY);
@@ -20,11 +20,32 @@ const FROM_EMAIL = process.env.FROM_EMAIL || 'awards@britishtradeawards.com';
 const FROM_NAME = process.env.FROM_NAME || 'British Trade Awards';
 
 /**
- * Wrap email content in branded HTML template.
- * Delegates to shared email-header.js module.
+ * Map template types to header subtitle text.
+ * These subtitles appear in the email header below the brand name.
  */
-function wrapEmailTemplate(subject, bodyHtml, preheader = '', branding = {}) {
-  return wrapEmail(bodyHtml, branding, { subject, preheader });
+const HEADER_SUBTITLES = {
+  winner_notification:    'Entry Approved',
+  event_invitation:       'Event Invitation',
+  entry_confirmation:     'Self-Nomination Entry Confirmation',
+  payment_reminder:       'Payment Reminder',
+  shortlist_notification: 'Entry Approved/Shortlisted',
+  judge_assignment:       'Judging Assignment',
+  ticket_issued:          'Ticket Issued',
+};
+
+/**
+ * Wrap email content in branded HTML template.
+ * Loads header/footer from DB, then delegates to shared email-header.js.
+ */
+async function wrapEmailTemplate(subject, bodyHtml, preheader = '', branding = {}, subtitle = '') {
+  const templates = await loadHeaderFooterTemplates(supabase);
+  return wrapEmail(bodyHtml, branding, {
+    subject,
+    preheader,
+    headerHtml: templates.header,
+    footerHtml: templates.footer,
+    subtitle,
+  });
 }
 
 /**
@@ -143,7 +164,8 @@ async function sendTemplatedEmail({ to, templateType, data }) {
     return { success: false, error: `Unknown template type: ${templateType}` };
   }
 
-  const html = wrapEmailTemplate(template.subject, template.body);
+  const subtitle = HEADER_SUBTITLES[templateType] || '';
+  const html = await wrapEmailTemplate(template.subject, template.body, '', {}, subtitle);
   return sendEmail({ to, subject: template.subject, html, tags: [{ name: 'template', value: templateType }] });
 }
 
@@ -186,13 +208,13 @@ async function sendCampaignEmail(campaignId) {
       const batch = subscribers.slice(i, i + 10);
 
       const results = await Promise.allSettled(
-        batch.map(sub => {
+        batch.map(async sub => {
           let body = campaign.html_content || campaign.body || '';
           body = body.replace(/\{first_name\}/g, sub.first_name || '');
           body = body.replace(/\{last_name\}/g, sub.last_name || '');
           body = body.replace(/\{email\}/g, sub.email || '');
 
-          const html = wrapEmailTemplate(campaign.subject, body);
+          const html = await wrapEmailTemplate(campaign.subject, body);
           return sendEmail({
             to: sub.email,
             subject: campaign.subject,
@@ -234,7 +256,7 @@ async function sendCampaignEmail(campaignId) {
  * Send a test email for previewing templates
  */
 async function sendTestEmail(to, subject, htmlContent) {
-  const html = wrapEmailTemplate(subject, htmlContent);
+  const html = await wrapEmailTemplate(subject, htmlContent);
   return sendEmail({ to, subject: `[TEST] ${subject}`, html });
 }
 

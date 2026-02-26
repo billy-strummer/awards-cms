@@ -91,9 +91,14 @@ const judgePortal = {
   },
 
   /**
-   * Get judge from session (simplified - use proper auth in production)
+   * Get judge from session - uses Supabase auth session with localStorage fallback
    */
   getJudgeFromSession() {
+    // Prefer Supabase session if available (set by magic link or password login)
+    const session = supabase.auth?.getSession?.();
+    if (session?.data?.session?.user?.email) {
+      return session.data.session.user.email;
+    }
     return localStorage.getItem('judgeEmail') || null;
   },
 
@@ -552,8 +557,12 @@ const judgePortal = {
       const comments = document.getElementById('feedbackComments').value;
       const recommendation = document.getElementById('recommendation').value;
 
-      // Check for conflict
+      // Check for conflict - if declared, flag the score but still allow saving
       const hasConflict = document.getElementById('declareConflict')?.checked || false;
+      if (hasConflict && isComplete) {
+        const proceed = confirm('You have declared a conflict of interest. Your score will be flagged for review. Continue?');
+        if (!proceed) return;
+      }
 
       const scoreData = {
         entry_id: this.currentEntry.id,

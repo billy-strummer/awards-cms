@@ -453,15 +453,24 @@ const awardsModule = {
    * Get the current phase of an award based on dates
    */
   getAwardPhase(award) {
+    // Use UTC timestamps for consistent comparison across timezones
     const now = new Date();
+    const parseUTC = (d) => {
+      if (!d) return null;
+      // If date string has no timezone, treat as UTC by appending Z
+      const str = String(d);
+      if (!str.includes('T')) return new Date(str + 'T23:59:59Z');
+      if (!str.endsWith('Z') && !str.includes('+') && !str.includes('-', 10)) return new Date(str + 'Z');
+      return new Date(str);
+    };
     const dates = {
-      entryOpen: award.entry_open_date ? new Date(award.entry_open_date) : null,
-      entryClose: award.entry_close_date ? new Date(award.entry_close_date) : null,
-      judgingOpen: award.judging_open_date ? new Date(award.judging_open_date) : null,
-      judgingClose: award.judging_close_date ? new Date(award.judging_close_date) : null,
-      votingOpen: award.voting_open_date ? new Date(award.voting_open_date) : null,
-      votingClose: award.voting_close_date ? new Date(award.voting_close_date) : null,
-      winnersAnnouncement: award.winners_announcement_date ? new Date(award.winners_announcement_date) : null
+      entryOpen: parseUTC(award.entry_open_date),
+      entryClose: parseUTC(award.entry_close_date),
+      judgingOpen: parseUTC(award.judging_open_date),
+      judgingClose: parseUTC(award.judging_close_date),
+      votingOpen: parseUTC(award.voting_open_date),
+      votingClose: parseUTC(award.voting_close_date),
+      winnersAnnouncement: parseUTC(award.winners_announcement_date)
     };
 
     if (dates.winnersAnnouncement && now >= dates.winnersAnnouncement) {

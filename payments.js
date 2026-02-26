@@ -339,10 +339,14 @@ const paymentsModule = {
 
   getDiscountPercentage() {
     const discountSelect = document.getElementById('invoiceDiscount');
+    let val;
     if (discountSelect.value === 'custom') {
-      return parseFloat(document.getElementById('invoiceDiscountCustom').value) || 0;
+      val = parseFloat(document.getElementById('invoiceDiscountCustom').value) || 0;
+    } else {
+      val = parseFloat(discountSelect.value) || 0;
     }
-    return parseFloat(discountSelect.value) || 0;
+    // Clamp to 0-100% to prevent negative invoices
+    return Math.max(0, Math.min(100, val));
   },
 
   addInvoiceLineItem() {
@@ -1121,8 +1125,12 @@ const paymentsModule = {
             .single();
 
           if (!invoiceError && invoice) {
-            const newPaidAmount = parseFloat(invoice.paid_amount || 0) + amount;
             const totalAmount = parseFloat(invoice.total_amount || 0);
+            const newPaidAmount = parseFloat(invoice.paid_amount || 0) + amount;
+            // Warn if overpaying but allow it (e.g. credit notes)
+            if (newPaidAmount > totalAmount * 1.01) {
+              console.warn(`Overpayment: ${newPaidAmount} exceeds total ${totalAmount}`);
+            }
             const balanceDue = Math.max(0, totalAmount - newPaidAmount);
 
             let paymentStatus = 'partial';
@@ -2165,6 +2173,8 @@ const paymentsModule = {
     try {
       utils.showLoading();
       const result = await utils.runBatchOperation(ids, async (id) => {
+        // Delete line items first to prevent orphaned records
+        await STATE.client.from('invoice_line_items').delete().eq('invoice_id', id);
         const { error } = await STATE.client.from('invoices').delete().eq('id', id);
         if (error) throw error;
       }, 'Deleting invoices');

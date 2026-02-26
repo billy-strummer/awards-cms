@@ -180,6 +180,29 @@ const rbacModule = {
       return false;
     }
     return true;
+  },
+
+  /**
+   * Validate that at least one admin remains before changing a role.
+   * Call this before any role demotion to prevent admin lockout.
+   */
+  async ensureAdminExists(excludeEmail) {
+    try {
+      const { count, error } = await STATE.client
+        .from('user_roles')
+        .select('id', { count: 'exact', head: true })
+        .eq('role', 'super_admin')
+        .neq('email', excludeEmail);
+      if (error) throw error;
+      if (count === 0) {
+        utils.showToast('Cannot remove the last admin. At least one admin must remain.', 'error');
+        return false;
+      }
+      return true;
+    } catch (e) {
+      console.error('RBAC: Error checking admin count:', e);
+      return false;
+    }
   }
 };
 

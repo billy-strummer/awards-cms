@@ -626,10 +626,24 @@ async function logEmailFailure(templateKey, toEmail, error) {
  * API Endpoints
  */
 
-// POST /api/send-email
+// POST /api/send-email (requires authentication)
 async function sendEmailEndpoint(req, res) {
   try {
+    // Verify caller is authenticated
+    const authHeader = req.headers.authorization;
+    if (!authHeader?.startsWith('Bearer ')) {
+      return res.status(401).json({ error: 'Authentication required' });
+    }
+    const token = authHeader.replace('Bearer ', '');
+    const { data: { user }, error: authError } = await supabase.auth.getUser(token);
+    if (authError || !user) {
+      return res.status(401).json({ error: 'Invalid or expired token' });
+    }
+
     const { templateKey, toEmail, variables } = req.body;
+    if (!templateKey || !toEmail) {
+      return res.status(400).json({ error: 'Missing templateKey or toEmail' });
+    }
     const result = await sendTemplateEmail(templateKey, toEmail, variables);
     res.json({ success: result });
   } catch (error) {

@@ -3239,7 +3239,16 @@ updateCountyFilterByRegion() {
       const org = STATE.allOrganisations.find(o => o.id === orgId);
       if (org) utils.softDelete('organisations', org);
 
-      await STATE.client.from('award_assignments').delete().eq('organisation_id', orgId);
+      // Delete all child records to prevent orphaned data
+      await Promise.all([
+        STATE.client.from('award_assignments').delete().eq('organisation_id', orgId),
+        STATE.client.from('organisation_contacts').delete().eq('organisation_id', orgId),
+        STATE.client.from('organisation_notes').delete().eq('organisation_id', orgId),
+        STATE.client.from('organisation_follow_ups').delete().eq('organisation_id', orgId),
+        STATE.client.from('organisation_images').delete().eq('organisation_id', orgId),
+        STATE.client.from('organisation_custom_fields').delete().eq('organisation_id', orgId),
+        STATE.client.from('organisation_documents').delete().eq('organisation_id', orgId),
+      ]);
       const { error } = await STATE.client.from('organisations').delete().eq('id', orgId);
       if (error) throw error;
 
@@ -5325,8 +5334,17 @@ updateCountyFilterByRegion() {
       const { error } = await STATE.client.from('organisations').update(merged).eq('id', keepId);
       if (error) throw error;
 
-      // Move award_assignments from deleted org to keeper
-      await STATE.client.from('award_assignments').update({ organisation_id: keepId }).eq('organisation_id', deleteId);
+      // Transfer all related records from deleted org to keeper
+      await Promise.all([
+        STATE.client.from('award_assignments').update({ organisation_id: keepId }).eq('organisation_id', deleteId),
+        STATE.client.from('entries').update({ organisation_id: keepId }).eq('organisation_id', deleteId),
+        STATE.client.from('invoices').update({ organisation_id: keepId }).eq('organisation_id', deleteId),
+        STATE.client.from('organisation_contacts').update({ organisation_id: keepId }).eq('organisation_id', deleteId),
+        STATE.client.from('organisation_notes').update({ organisation_id: keepId }).eq('organisation_id', deleteId),
+        STATE.client.from('organisation_follow_ups').update({ organisation_id: keepId }).eq('organisation_id', deleteId),
+        STATE.client.from('organisation_images').update({ organisation_id: keepId }).eq('organisation_id', deleteId),
+        STATE.client.from('organisation_documents').update({ organisation_id: keepId }).eq('organisation_id', deleteId),
+      ]);
 
       // Merge tags
       const keeperTags = org1.tags || [];

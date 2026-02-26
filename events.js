@@ -142,7 +142,7 @@ const eventsModule = {
     const eventDate = document.getElementById('eventDate').value;
     const eventYear = document.getElementById('eventYear').value;
     const eventVenue = document.getElementById('eventVenue').value.trim();
-    const eventCapacity = document.getElementById('eventCapacity').value;
+    const eventCapacity = Math.max(0, parseInt(document.getElementById('eventCapacity').value) || 0);
     const eventDescription = document.getElementById('eventDescription').value.trim();
 
     if (!eventName) {

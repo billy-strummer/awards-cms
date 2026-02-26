@@ -58,21 +58,21 @@ const rbacModule = {
 
       const row = data?.[0];
       if (error || !row) {
-        // Default to admin if no role found (owner has full access)
-        this.currentRole = 'admin';
-        if (!error) console.log('No role found for user, defaulting to admin');
+        // Default to viewer (most restrictive) when no role found for safety
+        this.currentRole = 'viewer';
+        if (!error) console.log('No role found for user, defaulting to viewer');
       } else {
-        this.currentRole = row.role || 'admin';
+        this.currentRole = (row.role || 'viewer').toLowerCase();
       }
 
-      this.permissions = this.ROLES[this.currentRole] || this.ROLES.admin;
+      this.permissions = this.ROLES[this.currentRole] || this.ROLES.viewer;
       this.applyPermissions();
       console.log(`RBAC: User ${userEmail} has role "${this.currentRole}"`);
 
     } catch (e) {
       console.error('RBAC: Error loading role:', e);
-      this.currentRole = 'admin';
-      this.permissions = this.ROLES.admin;
+      this.currentRole = 'viewer';
+      this.permissions = this.ROLES.viewer;
       this.applyPermissions();
     }
   },
@@ -180,6 +180,29 @@ const rbacModule = {
       return false;
     }
     return true;
+  },
+
+  /**
+   * Validate that at least one admin remains before changing a role.
+   * Call this before any role demotion to prevent admin lockout.
+   */
+  async ensureAdminExists(excludeEmail) {
+    try {
+      const { count, error } = await STATE.client
+        .from('user_roles')
+        .select('id', { count: 'exact', head: true })
+        .eq('role', 'super_admin')
+        .neq('email', excludeEmail);
+      if (error) throw error;
+      if (count === 0) {
+        utils.showToast('Cannot remove the last admin. At least one admin must remain.', 'error');
+        return false;
+      }
+      return true;
+    } catch (e) {
+      console.error('RBAC: Error checking admin count:', e);
+      return false;
+    }
   }
 };
 

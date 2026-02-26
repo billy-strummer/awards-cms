@@ -175,7 +175,7 @@ window.calendarModule = {
   async exportAllEventsICS() {
     try {
       const today = new Date().toISOString().slice(0,10);
-      const { data, error } = await STATE.client.from('events').select('*').gte('event_date',today).order('event_date');
+      const { data, error } = await STATE.client.from('events').select('*').gte('event_date',today).order('event_date').limit(500);
       if (error) throw error;
       this.exportICS((data||[]).map(e=>({ type:'ceremony', color:'primary', label:e.event_name, detail:e.venue||'', ref:e })));
     } catch (err) { utils.showToast('Failed to export events: '+err.message,'error'); }
@@ -184,7 +184,7 @@ window.calendarModule = {
   async exportDeadlinesICS() {
     try {
       const today = new Date().toISOString().slice(0,10);
-      const { data, error } = await STATE.client.from('award_seasons').select('*').or(`entry_close_date.gte.${today},judging_close_date.gte.${today}`);
+      const { data, error } = await STATE.client.from('award_seasons').select('*').or(`entry_close_date.gte.${today},judging_close_date.gte.${today}`).limit(200);
       if (error) throw error;
       const items = [];
       (data||[]).forEach(s => {
@@ -199,10 +199,10 @@ window.calendarModule = {
     try {
       const today = new Date().toISOString().slice(0,10);
       const [evR, seR, fuR, invR] = await Promise.all([
-        STATE.client.from('events').select('*').gte('event_date',today),
-        STATE.client.from('award_seasons').select('*'),
-        STATE.client.from('organisation_follow_ups').select('*').gte('follow_up_date',today).eq('completed',false),
-        STATE.client.from('invoices').select('*,organisations(company_name)').gte('due_date',today).neq('status','paid')
+        STATE.client.from('events').select('*').gte('event_date',today).limit(500),
+        STATE.client.from('award_seasons').select('*').limit(200),
+        STATE.client.from('organisation_follow_ups').select('*').gte('follow_up_date',today).eq('completed',false).limit(500),
+        STATE.client.from('invoices').select('*,organisations(company_name)').gte('due_date',today).neq('status','paid').limit(1000)
       ]);
       const items = [];
       (evR.data  ||[]).forEach(e => items.push({ type:'ceremony',         color:'primary', label:e.event_name,                             detail:e.venue||'', ref:e }));

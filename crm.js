@@ -1093,8 +1093,8 @@ const crmModule = {
       deal_name: document.getElementById('dealName').value,
       organisation_id: document.getElementById('dealOrganisation').value,
       deal_type: document.getElementById('dealType').value,
-      deal_value: parseFloat(document.getElementById('dealValue').value),
-      probability: document.getElementById('dealProbability').value !== '' ? parseInt(document.getElementById('dealProbability').value) : 50,
+      deal_value: Math.max(0, parseFloat(document.getElementById('dealValue').value) || 0),
+      probability: Math.max(0, Math.min(100, document.getElementById('dealProbability').value !== '' ? parseInt(document.getElementById('dealProbability').value) : 50)),
       stage: document.getElementById('dealStage').value,
       expected_close_date: document.getElementById('dealExpectedClose').value || null,
       contact_id: document.getElementById('dealContact').value || null,
@@ -1599,8 +1599,8 @@ const crmModule = {
     const updateData = {
       deal_name: document.getElementById('editDealName').value,
       deal_type: document.getElementById('editDealType').value,
-      deal_value: parseFloat(document.getElementById('editDealValue').value),
-      probability: document.getElementById('editDealProbability').value !== '' ? parseInt(document.getElementById('editDealProbability').value) : 50,
+      deal_value: Math.max(0, parseFloat(document.getElementById('editDealValue').value) || 0),
+      probability: Math.max(0, Math.min(100, document.getElementById('editDealProbability').value !== '' ? parseInt(document.getElementById('editDealProbability').value) : 50)),
       stage: document.getElementById('editDealStage').value,
       status: document.getElementById('editDealStatus').value,
       expected_close_date: document.getElementById('editDealExpectedClose').value || null,
@@ -2889,8 +2889,13 @@ const crmModule = {
 
   exportCrmToCSV(type) {
     let data, filename, headers;
+    const checkEmpty = (arr, label) => {
+      if (!arr || arr.length === 0) { utils.showToast(`No ${label} to export`, 'warning'); return true; }
+      return false;
+    };
     if (type === 'communications') {
       data = this._communications || [];
+      if (checkEmpty(data, 'communications')) return;
       filename = 'crm-communications';
       headers = ['Date', 'Type', 'Company', 'Contact', 'Subject', 'Notes'];
       const rows = data.map(r => [
@@ -2899,6 +2904,7 @@ const crmModule = {
       this._downloadCSV(headers, rows, filename);
     } else if (type === 'deals') {
       data = this._deals || [];
+      if (checkEmpty(data, 'deals')) return;
       filename = 'crm-deals';
       headers = ['Deal Name', 'Company', 'Value', 'Stage', 'Probability', 'Expected Close', 'Created'];
       const rows = data.map(r => [
@@ -2907,6 +2913,7 @@ const crmModule = {
       this._downloadCSV(headers, rows, filename);
     } else if (type === 'meetings') {
       data = this._meetings || [];
+      if (checkEmpty(data, 'meetings')) return;
       filename = 'crm-meetings';
       headers = ['Date', 'Title', 'Company', 'Attendees', 'Location', 'Notes'];
       const rows = data.map(r => [
@@ -2918,11 +2925,19 @@ const crmModule = {
 
   _downloadCSV(headers, rows, filename) {
     try {
-      let csv = headers.join(',') + '\n';
+      const sanitizeCell = (cell) => {
+        let str = String(cell);
+        // Prevent CSV formula injection
+        if (/^[=+\-@\t\r|]/.test(str)) {
+          str = "'" + str;
+        }
+        return `"${str.replace(/"/g, '""')}"`;
+      };
+      let csv = headers.map(sanitizeCell).join(',') + '\n';
       rows.forEach(row => {
-        csv += row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(',') + '\n';
+        csv += row.map(sanitizeCell).join(',') + '\n';
       });
-      const blob = new Blob([csv], { type: 'text/csv' });
+      const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;

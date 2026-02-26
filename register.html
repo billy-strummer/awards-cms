@@ -470,7 +470,13 @@
           amount: totalAmount
         }));
 
-        // Redirect to Stripe Checkout
+        // Validate price matches expected server-side calculation
+        const expectedPrice = (currentEvent.ticket_price || 0) * selectedPackage.priceMultiplier;
+        if (Math.abs(totalAmount - expectedPrice) > 0.01) {
+          throw new Error('Price mismatch detected. Please refresh and try again.');
+        }
+
+        // Redirect to Stripe Checkout - price will be re-validated server-side via webhook
         const { error } = await stripe.redirectToCheckout({
           lineItems: [{ price_data: { currency: 'gbp', product_data: { name: `${currentEvent.event_name} - ${selectedPackage.name}` }, unit_amount: Math.round(totalAmount * 100) }, quantity: 1 }],
           mode: 'payment',

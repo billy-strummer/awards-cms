@@ -339,10 +339,14 @@ const paymentsModule = {
 
   getDiscountPercentage() {
     const discountSelect = document.getElementById('invoiceDiscount');
+    let val;
     if (discountSelect.value === 'custom') {
-      return parseFloat(document.getElementById('invoiceDiscountCustom').value) || 0;
+      val = parseFloat(document.getElementById('invoiceDiscountCustom').value) || 0;
+    } else {
+      val = parseFloat(discountSelect.value) || 0;
     }
-    return parseFloat(discountSelect.value) || 0;
+    // Clamp to 0-100% to prevent negative invoices
+    return Math.max(0, Math.min(100, val));
   },
 
   addInvoiceLineItem() {
@@ -420,12 +424,12 @@ const paymentsModule = {
           return;
         }
 
-        const subtotal = lineItems.reduce((sum, item) => sum + item.line_total, 0);
+        const subtotal = Math.round(lineItems.reduce((sum, item) => sum + item.line_total, 0) * 100) / 100;
         const discountPercentage = this.getDiscountPercentage();
-        const discountAmount = subtotal * (discountPercentage / 100);
-        const subtotalAfterDiscount = subtotal - discountAmount;
-        const taxAmount = subtotalAfterDiscount * (taxRate / 100);
-        const totalAmount = subtotalAfterDiscount + taxAmount;
+        const discountAmount = Math.round(subtotal * (discountPercentage / 100) * 100) / 100;
+        const subtotalAfterDiscount = Math.round((subtotal - discountAmount) * 100) / 100;
+        const taxAmount = Math.round(subtotalAfterDiscount * (taxRate / 100) * 100) / 100;
+        const totalAmount = Math.round((subtotalAfterDiscount + taxAmount) * 100) / 100;
 
         // Generate invoice number
         let invoiceNumber;
@@ -1077,6 +1081,11 @@ const paymentsModule = {
           return;
         }
 
+        if (isNaN(amount) || amount <= 0) {
+          utils.showToast('Please enter a valid payment amount', 'warning');
+          return;
+        }
+
         // Generate payment reference
         let paymentReference;
         try {
@@ -1116,8 +1125,12 @@ const paymentsModule = {
             .single();
 
           if (!invoiceError && invoice) {
-            const newPaidAmount = parseFloat(invoice.paid_amount || 0) + amount;
             const totalAmount = parseFloat(invoice.total_amount || 0);
+            const newPaidAmount = parseFloat(invoice.paid_amount || 0) + amount;
+            // Warn if overpaying but allow it (e.g. credit notes)
+            if (newPaidAmount > totalAmount * 1.01) {
+              console.warn(`Overpayment: ${newPaidAmount} exceeds total ${totalAmount}`);
+            }
             const balanceDue = Math.max(0, totalAmount - newPaidAmount);
 
             let paymentStatus = 'partial';
@@ -1197,6 +1210,10 @@ const paymentsModule = {
   },
 
   async deletePayment(paymentId) {
+    if (typeof rbacModule !== 'undefined' && !rbacModule.canPerform('delete')) {
+      utils.showToast('You do not have permission to delete payments', 'error');
+      return;
+    }
     if (!await utils.confirmDialog({ title: 'Delete Payment', message: 'Are you sure you want to delete this payment record?' })) {
       return;
     }
@@ -1306,6 +1323,10 @@ const paymentsModule = {
   /* ==================================================== */
 
   exportInvoicesCSV() {
+    if (!this.currentInvoices || this.currentInvoices.length === 0) {
+      utils.showToast('No invoices to export', 'warning');
+      return;
+    }
     const headers = ['Invoice #', 'Organisation', 'Date', 'Due Date', 'Type', 'Amount', 'Paid', 'Balance', 'Status'];
     const rows = this.currentInvoices.map(inv => [
       inv.invoice_number || '',
@@ -1322,6 +1343,10 @@ const paymentsModule = {
   },
 
   exportPaymentsCSV() {
+    if (!this.currentPayments || this.currentPayments.length === 0) {
+      utils.showToast('No payments to export', 'warning');
+      return;
+    }
     const headers = ['Reference', 'Date', 'Organisation', 'Invoice', 'Method', 'Amount', 'Status'];
     const rows = this.currentPayments.map(p => [
       p.payment_reference || '',
@@ -1338,8 +1363,12 @@ const paymentsModule = {
   _downloadCSV(headers, rows, filename) {
     try {
       const escapeCSV = (val) => {
-        const str = String(val);
-        if (str.includes(',') || str.includes('"') || str.includes('\n')) {
+        let str = String(val);
+        // Prevent CSV formula injection
+        if (/^[=+\-@\t\r|]/.test(str)) {
+          str = "'" + str;
+        }
+        if (str.includes(',') || str.includes('"') || str.includes('\n') || str.includes("'")) {
           return '"' + str.replace(/"/g, '""') + '"';
         }
         return str;
@@ -1347,7 +1376,7 @@ const paymentsModule = {
       const csvContent = [headers.map(escapeCSV).join(',')]
         .concat(rows.map(row => row.map(escapeCSV).join(',')))
         .join('\n');
-      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' });
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.setAttribute('href', url);
@@ -2144,6 +2173,8 @@ const paymentsModule = {
     try {
       utils.showLoading();
       const result = await utils.runBatchOperation(ids, async (id) => {
+        // Delete line items first to prevent orphaned records
+        await STATE.client.from('invoice_line_items').delete().eq('invoice_id', id);
         const { error } = await STATE.client.from('invoices').delete().eq('id', id);
         if (error) throw error;
       }, 'Deleting invoices');

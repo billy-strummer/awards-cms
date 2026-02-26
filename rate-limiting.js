@@ -99,7 +99,7 @@ window.rateLimitModule = {
     const hours = range === '24h' ? 24 : range === '7d' ? 168 : 720;
     const since = new Date(Date.now() - hours * 3600000).toISOString();
     try {
-      const { data: logs } = await STATE.client.from('api_request_logs').select('*').gte('created_at', since);
+      const { data: logs } = await STATE.client.from('api_request_logs').select('*').gte('created_at', since).limit(5000);
       const rows = logs || [];
       const total = rows.length;
       const errors = rows.filter(r => r.status_code >= 400).length;

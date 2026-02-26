@@ -615,7 +615,14 @@ document.addEventListener('DOMContentLoaded', function() {
   // --- Clickable Stat Cards ---
   // Cards with [data-stat-filter] attributes filter the data below them.
   // data-stat-filter = "filterId:value" or "callback:module.method"
-  document.addEventListener('click', function(e) {
+  // Make stat cards keyboard accessible
+  document.querySelectorAll('[data-stat-filter]').forEach(card => {
+    if (!card.hasAttribute('tabindex')) card.setAttribute('tabindex', '0');
+    if (!card.getAttribute('role')) card.setAttribute('role', 'button');
+    card.style.cursor = 'pointer';
+  });
+
+  function handleStatCardAction(e) {
     const card = e.target.closest('[data-stat-filter]');
     if (!card) return;
 
@@ -654,6 +661,13 @@ document.addEventListener('DOMContentLoaded', function() {
         el.value = value || '';
         el.dispatchEvent(new Event('change'));
       }
+    }
+  }
+  document.addEventListener('click', handleStatCardAction);
+  document.addEventListener('keydown', function(e) {
+    if (e.key === 'Enter' || e.key === ' ') {
+      const card = e.target.closest('[data-stat-filter]');
+      if (card) { e.preventDefault(); handleStatCardAction(e); }
     }
   });
 
@@ -1090,6 +1104,10 @@ document.addEventListener('DOMContentLoaded', function() {
   // Subscribe to changes on key tables so multi-user edits are visible
   function setupRealtimeSync() {
     if (!STATE.client) return;
+    // Guard against duplicate subscriptions
+    if (window._cmsRealtimeChannel) {
+      try { STATE.client.removeChannel(window._cmsRealtimeChannel); } catch (e) { /* ignore */ }
+    }
     const tables = [
       { table: 'awards', handler: () => { if (typeof awardsModule !== 'undefined' && STATE.allAwards.length > 0) awardsModule.loadAwards(); } },
       { table: 'winners', handler: () => { if (typeof winnersModule !== 'undefined' && STATE.allWinners.length > 0) winnersModule.loadWinners(); } },
@@ -1133,6 +1151,10 @@ document.addEventListener('DOMContentLoaded', function() {
 
   window._initPresence = function() {
     if (!STATE.client) return;
+    // Guard against duplicate presence subscriptions
+    if (window._presenceChannel) {
+      try { STATE.client.removeChannel(window._presenceChannel); } catch (e) { /* ignore */ }
+    }
     try {
       const channel = STATE.client.channel('online-users');
       window._presenceChannel = channel;
@@ -1214,6 +1236,15 @@ document.addEventListener('DOMContentLoaded', function() {
 
   // Restore tab from URL hash when hash changes
   window.addEventListener('hashchange', () => {
+    const hash = window.location.hash.replace('#', '');
+    if (hash && /^[a-zA-Z0-9_-]+$/.test(hash)) {
+      const tabBtn = document.querySelector(`[data-bs-target="#${hash}"]`);
+      if (tabBtn) tabBtn.click();
+    }
+  });
+
+  // Handle browser back/forward button navigation
+  window.addEventListener('popstate', () => {
     const hash = window.location.hash.replace('#', '');
     if (hash && /^[a-zA-Z0-9_-]+$/.test(hash)) {
       const tabBtn = document.querySelector(`[data-bs-target="#${hash}"]`);
@@ -1331,11 +1362,12 @@ document.addEventListener('DOMContentLoaded', function() {
 // Warn user if they try to close the page with unsaved changes
 // (You can customize this logic based on your needs)
 window.addEventListener('beforeunload', (e) => {
-  // Only show warning if user is logged in
-  if (STATE.currentUser) {
-    // Uncomment if you want to warn on close
-    // e.preventDefault();
-    // e.returnValue = '';
+  // Warn if there's a save in progress or email builder has unsaved changes
+  const isSaving = document.querySelector('.btn:disabled .spinner-border');
+  const emailUnsaved = typeof emailBuilderModule !== 'undefined' && emailBuilderModule.hasUnsavedChanges && emailBuilderModule.blocks?.length > 0;
+  if (STATE.currentUser && (isSaving || emailUnsaved)) {
+    e.preventDefault();
+    e.returnValue = 'You have unsaved changes. Are you sure you want to leave?';
   }
 });
 

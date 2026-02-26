@@ -232,7 +232,7 @@ window.documentModule = {
 
   async getVersionHistory(documentId) {
     const { data, error } = await this._client().from('document_versions')
-      .select('*').eq('document_id', documentId).order('version_number', { ascending: false });
+      .select('*').eq('document_id', documentId).order('version_number', { ascending: false }).limit(100);
     if (error) throw error;
     return data || [];
   },
@@ -260,7 +260,7 @@ window.documentModule = {
     const today = now.toISOString().split('T')[0];
     const { data, error } = await this._client().from('documents')
       .select('*').gte('expiry_date', today).lte('expiry_date', cutoff)
-      .order('expiry_date', { ascending: true });
+      .order('expiry_date', { ascending: true }).limit(500);
     if (error) throw error;
     return data || [];
   },

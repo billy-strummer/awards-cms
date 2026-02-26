@@ -260,8 +260,24 @@ const nomineeVoting = {
    * Submit vote
    */
   async submitVote() {
+    // Prevent double-submit
+    if (this._submittingVote) return;
+    this._submittingVote = true;
     try {
       const voterName = sessionStorage.getItem('voterName') || '';
+
+      // Rate limit: max 10 votes per hour per email
+      const oneHourAgo = new Date(Date.now() - 3600000).toISOString();
+      const { count: recentVotes } = await supabase
+        .from('public_votes')
+        .select('id', { count: 'exact', head: true })
+        .eq('voter_email', this.voterEmail)
+        .gte('created_at', oneHourAgo);
+      if (recentVotes >= 10) {
+        showPublicToast('You have reached the voting limit. Please try again later.', 'warning');
+        this.closeVerificationModal();
+        return;
+      }
 
       // Check if already voted for this entry
       const { data: existingVote } = await supabase
@@ -282,7 +298,7 @@ const nomineeVoting = {
       // Get IP address
       const ipAddress = await this.getIPAddress();
 
-      // Insert vote
+      // Insert vote (DB UNIQUE constraint on entry_id+voter_email prevents race condition duplicates)
       const { error } = await supabase
         .from('public_votes')
         .insert([{
@@ -317,7 +333,16 @@ const nomineeVoting = {
 
     } catch (error) {
       console.error('Error submitting vote:', error);
-      showPublicToast('Failed to submit vote. Please try again.', 'error');
+      // Handle unique constraint violation gracefully
+      if (error?.code === '23505') {
+        showPublicToast('You have already voted for this entry!', 'warning');
+        this.hasVoted = true;
+        this.updateVoteButton();
+      } else {
+        showPublicToast('Failed to submit vote. Please try again.', 'error');
+      }
+    } finally {
+      this._submittingVote = false;
     }
   },
 

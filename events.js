@@ -142,11 +142,18 @@ const eventsModule = {
     const eventDate = document.getElementById('eventDate').value;
     const eventYear = document.getElementById('eventYear').value;
     const eventVenue = document.getElementById('eventVenue').value.trim();
-    const eventCapacity = document.getElementById('eventCapacity').value;
+    const eventCapacity = Math.max(0, parseInt(document.getElementById('eventCapacity').value) || 0);
     const eventDescription = document.getElementById('eventDescription').value.trim();
 
     if (!eventName) {
       utils.showToast('Please enter an event name', 'warning');
+      return;
+    }
+
+    // Validate form fields
+    const form = document.getElementById('eventForm');
+    if (form && !form.checkValidity()) {
+      form.reportValidity();
       return;
     }
 
@@ -227,6 +234,10 @@ const eventsModule = {
    * Delete event
    */
   async deleteEvent(eventId, eventName) {
+    if (typeof rbacModule !== 'undefined' && !rbacModule.canPerform('delete')) {
+      utils.showToast('You do not have permission to delete events', 'error');
+      return;
+    }
     if (!await utils.confirmDialog({ title: 'Delete Event', message: `Are you sure you want to delete "${eventName}"?<br><br>Note: Media associated with this event will NOT be deleted, but will be unlinked from the event.` })) {
       return;
     }
@@ -1411,8 +1422,7 @@ const eventsModule = {
   copyTicketUrl() {
     const url = document.getElementById('ticketUrlInput').value;
     if (url) {
-      navigator.clipboard.writeText(url);
-      utils.showToast('Ticket URL copied to clipboard', 'success');
+      utils.copyToClipboard(url, 'Ticket URL copied to clipboard');
     }
   },
 
@@ -1633,16 +1643,14 @@ const eventsModule = {
 
   copyRegistrationLink() {
     const eventId = document.getElementById('attendeesEventId').value;
-    const url = `${this._getBaseUrl()}/register.html?event=${eventId}`;
-    navigator.clipboard.writeText(url);
-    utils.showToast('Registration link copied to clipboard', 'success');
+    const url = `${this._getBaseUrl()}/register.html?event=${encodeURIComponent(eventId)}`;
+    utils.copyToClipboard(url, 'Registration link copied to clipboard');
   },
 
   copyCheckInLink() {
     const eventId = document.getElementById('attendeesEventId').value;
-    const url = `${this._getBaseUrl()}/check-in.html?event=${eventId}`;
-    navigator.clipboard.writeText(url);
-    utils.showToast('Check-in scanner link copied to clipboard', 'success');
+    const url = `${this._getBaseUrl()}/check-in.html?event=${encodeURIComponent(eventId)}`;
+    utils.copyToClipboard(url, 'Check-in scanner link copied to clipboard');
   },
 
   launchCheckInScanner() {
@@ -3352,7 +3360,7 @@ const eventsModule = {
             </div>
             <div class="modal-footer">
               <button class="btn btn-outline-secondary" onclick="navigator.clipboard.writeText(document.getElementById('pressReleaseText').value); utils.showToast('Copied to clipboard','success')"><i class="bi bi-clipboard me-1"></i>Copy</button>
-              <button class="btn btn-primary" onclick="const b=new Blob([document.getElementById('pressReleaseText').value],{type:'text/plain'}); const a=document.createElement('a'); a.href=URL.createObjectURL(b); a.download='press_release_${event.event_name.replace(/[^a-z0-9]/gi, '_')}.txt'; a.click()"><i class="bi bi-download me-1"></i>Download .txt</button>
+              <button class="btn btn-primary" onclick="const b=new Blob([document.getElementById('pressReleaseText').value],{type:'text/plain'}); const a=document.createElement('a'); const u=URL.createObjectURL(b); a.href=u; a.download='press_release_${event.event_name.replace(/[^a-z0-9]/gi, '_')}.txt'; a.click(); setTimeout(()=>URL.revokeObjectURL(u),1000)"><i class="bi bi-download me-1"></i>Download .txt</button>
             </div>
           </div>
         </div>
@@ -11062,10 +11070,15 @@ const eventsModule = {
   },
 
   toggleSelectAll(checked) {
+    if (checked) {
+      // Select all filtered events, not just current page
+      (this.filteredEvents || STATE.allEvents || []).forEach(e => this._selectedEvents.add(e.id));
+    } else {
+      this._selectedEvents.clear();
+    }
+    // Update visible checkboxes to match
     document.querySelectorAll('.event-checkbox').forEach(cb => {
       cb.checked = checked;
-      if (checked) this._selectedEvents.add(cb.value);
-      else this._selectedEvents.delete(cb.value);
     });
     this._updateBulkBar();
     this.updateBulkBar();

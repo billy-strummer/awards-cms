@@ -4,6 +4,33 @@
 
 const utils = {
   /**
+   * Safely copy text to clipboard with fallback and error handling
+   */
+  copyToClipboard(text, successMsg = 'Copied to clipboard!') {
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(() => {
+        utils.showToast(successMsg, 'success');
+      }).catch(() => {
+        // Fallback for clipboard permission denied
+        utils._fallbackCopy(text, successMsg);
+      });
+    } else {
+      utils._fallbackCopy(text, successMsg);
+    }
+  },
+  _fallbackCopy(text, successMsg) {
+    try {
+      const ta = document.createElement('textarea');
+      ta.value = text; ta.style.position = 'fixed'; ta.style.opacity = '0';
+      document.body.appendChild(ta); ta.select(); document.execCommand('copy');
+      document.body.removeChild(ta);
+      utils.showToast(successMsg, 'success');
+    } catch (e) {
+      utils.showToast('Failed to copy to clipboard', 'error');
+    }
+  },
+
+  /**
    * Show a toast notification
    * @param {string} message - The message to display
    * @param {string} type - Type of notification: 'success', 'error', 'warning', 'info'
@@ -90,7 +117,8 @@ const utils = {
    */
   formatDate(dateString) {
     if (!dateString) return '-';
-    const date = new Date(dateString);
+    const date = this.safeDate ? this.safeDate(dateString) : new Date(dateString);
+    if (!date || isNaN(date.getTime())) return '-';
     return date.toLocaleDateString('en-GB', {
       day: '2-digit',
       month: 'short',
@@ -106,7 +134,8 @@ const utils = {
   formatRelativeTime(dateString) {
     if (!dateString) return '-';
 
-    const date = new Date(dateString);
+    const date = this.safeDate ? this.safeDate(dateString) : new Date(dateString);
+    if (!date || isNaN(date.getTime())) return '-';
     const now = new Date();
     const diffInSeconds = Math.floor((now - date) / 1000);
 
@@ -1285,7 +1314,8 @@ const utils = {
    */
   showColumnVisibilityDialog(tableId, columns) {
     const storageKey = `colVis_${tableId}`;
-    const saved = JSON.parse(localStorage.getItem(storageKey) || '{}');
+    let saved = {};
+    try { saved = JSON.parse(localStorage.getItem(storageKey) || '{}'); } catch (e) { /* private browsing */ }
 
     let html = '<div class="p-3"><h6>Show/Hide Columns</h6>';
     columns.forEach((col, i) => {
@@ -1309,9 +1339,10 @@ const utils = {
 
   _toggleColumn(tableId, colKey, visible) {
     const storageKey = `colVis_${tableId}`;
-    const saved = JSON.parse(localStorage.getItem(storageKey) || '{}');
+    let saved = {};
+    try { saved = JSON.parse(localStorage.getItem(storageKey) || '{}'); } catch (e) { /* private browsing */ }
     saved[colKey] = visible;
-    localStorage.setItem(storageKey, JSON.stringify(saved));
+    try { localStorage.setItem(storageKey, JSON.stringify(saved)); } catch (e) { /* private browsing */ }
 
     // Toggle column visibility via CSS class
     const table = document.getElementById(tableId) || document.querySelector(`#${tableId}`);
@@ -1326,7 +1357,8 @@ const utils = {
 
   applyColumnVisibility(tableId) {
     const storageKey = `colVis_${tableId}`;
-    const saved = JSON.parse(localStorage.getItem(storageKey) || '{}');
+    let saved = {};
+    try { saved = JSON.parse(localStorage.getItem(storageKey) || '{}'); } catch (e) { /* private browsing */ }
     Object.entries(saved).forEach(([colKey, visible]) => {
       if (!visible) this._toggleColumn(tableId, colKey, false);
     });
@@ -1823,7 +1855,11 @@ const utils = {
       return { message: 'Connection blocked by security policy. Please contact support.', type: 'error', isNetwork: true, canRetry: false };
     }
     if (msg.includes('401') || msg.includes('unauthorized')) {
-      return { message: 'Session expired. Please log in again.', type: 'warning', isNetwork: false, canRetry: false };
+      // Auto-logout on session expiry
+      if (typeof authModule !== 'undefined' && STATE.currentUser) {
+        setTimeout(() => authModule.handleLogout(true), 500);
+      }
+      return { message: 'Session expired. Logging you out...', type: 'warning', isNetwork: false, canRetry: false };
     }
     if (msg.includes('403') || msg.includes('forbidden')) {
       return { message: 'You do not have permission for this action.', type: 'error', isNetwork: false, canRetry: false };

@@ -104,57 +104,64 @@ async function sendEmail({ to, subject, html, text, replyTo, tags }) {
  * Send a templated email (winner notification, invite, etc.)
  */
 async function sendTemplatedEmail({ to, templateType, data }) {
+  // Escape user-provided values to prevent HTML injection in emails
+  const esc = (str) => String(str || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  const safeData = {};
+  for (const [key, value] of Object.entries(data || {})) {
+    safeData[key] = typeof value === 'string' ? esc(value) : value;
+  }
+  const d = safeData;
   const templates = {
     winner_notification: {
-      subject: `Congratulations! ${data.company_name} wins ${data.award_category}`,
+      subject: `Congratulations! ${d.company_name} wins ${d.award_category}`,
       body: `<h2>Congratulations!</h2>
-        <p>We are delighted to inform you that <strong>${data.company_name}</strong> has been selected as the winner of the <strong>${data.award_category}</strong> award for ${data.year}.</p>
+        <p>We are delighted to inform you that <strong>${d.company_name}</strong> has been selected as the winner of the <strong>${d.award_category}</strong> award for ${d.year}.</p>
         <p>This prestigious award recognizes your outstanding achievements and contributions to your industry.</p>
-        ${data.event_name ? `<h3>Event Details</h3><ul><li><strong>Event:</strong> ${data.event_name}</li><li><strong>Date:</strong> ${data.event_date}</li><li><strong>Venue:</strong> ${data.venue}</li></ul>` : ''}
+        ${d.event_name ? `<h3>Event Details</h3><ul><li><strong>Event:</strong> ${d.event_name}</li><li><strong>Date:</strong> ${d.event_date}</li><li><strong>Venue:</strong> ${d.venue}</li></ul>` : ''}
         <p>We look forward to celebrating your success!</p>
         <a href="${data.confirm_url || '#'}" class="btn">Confirm Attendance</a>`
     },
     event_invitation: {
-      subject: `You're Invited: ${data.event_name}`,
+      subject: `You're Invited: ${d.event_name}`,
       body: `<h2>You're Invited!</h2>
-        <p>You are cordially invited to attend the <strong>${data.event_name}</strong>.</p>
-        <ul><li><strong>Date:</strong> ${data.event_date}</li><li><strong>Venue:</strong> ${data.venue}</li></ul>
+        <p>You are cordially invited to attend the <strong>${d.event_name}</strong>.</p>
+        <ul><li><strong>Date:</strong> ${d.event_date}</li><li><strong>Venue:</strong> ${d.venue}</li></ul>
         <p>We would be honoured by your presence at this special occasion.</p>
         <a href="${data.rsvp_url || '#'}" class="btn">RSVP Now</a>`
     },
     entry_confirmation: {
-      subject: `Entry Received: ${data.award_category}`,
+      subject: `Entry Received: ${d.award_category}`,
       body: `<h2>Entry Confirmed</h2>
-        <p>Thank you for submitting your entry for the <strong>${data.award_category}</strong> award.</p>
-        <p><strong>Entry Reference:</strong> ${data.entry_number || 'N/A'}</p>
+        <p>Thank you for submitting your entry for the <strong>${d.award_category}</strong> award.</p>
+        <p><strong>Entry Reference:</strong> ${d.entry_number || 'N/A'}</p>
         <p>Our team will review your submission. You will be notified of progress updates.</p>`
     },
     payment_reminder: {
-      subject: `Payment Reminder: Invoice ${data.invoice_number}`,
+      subject: `Payment Reminder: Invoice ${d.invoice_number}`,
       body: `<h2>Payment Reminder</h2>
-        <p>This is a reminder that invoice <strong>${data.invoice_number}</strong> for <strong>&pound;${data.amount}</strong> is due on <strong>${data.due_date}</strong>.</p>
+        <p>This is a reminder that invoice <strong>${d.invoice_number}</strong> for <strong>&pound;${d.amount}</strong> is due on <strong>${d.due_date}</strong>.</p>
         <a href="${data.payment_url || '#'}" class="btn">Pay Now</a>`
     },
     shortlist_notification: {
-      subject: `Congratulations! You've Been Shortlisted for ${data.award_category}`,
+      subject: `Congratulations! You've Been Shortlisted for ${d.award_category}`,
       body: `<h2>You've Been Shortlisted!</h2>
-        <p>We are pleased to inform you that <strong>${data.company_name}</strong> has been shortlisted for the <strong>${data.award_category}</strong> award.</p>
+        <p>We are pleased to inform you that <strong>${d.company_name}</strong> has been shortlisted for the <strong>${d.award_category}</strong> award.</p>
         <p>The final winners will be announced at the awards ceremony.</p>`
     },
     judge_assignment: {
       subject: 'New Judging Assignment - British Trade Awards',
       body: `<h2>Judging Assignment</h2>
-        <p>You have been assigned <strong>${data.entry_count || 0}</strong> entries to judge for the British Trade Awards ${data.year}.</p>
-        <p>Please complete your scoring by <strong>${data.deadline || 'the deadline'}</strong>.</p>
+        <p>You have been assigned <strong>${d.entry_count || 0}</strong> entries to judge for the British Trade Awards ${d.year}.</p>
+        <p>Please complete your scoring by <strong>${d.deadline || 'the deadline'}</strong>.</p>
         <a href="${data.portal_url || '#'}" class="btn">Open Judge Portal</a>`
     },
     ticket_issued: {
-      subject: `Your Ticket: ${data.event_name}`,
+      subject: `Your Ticket: ${d.event_name}`,
       body: `<h2>Your Ticket</h2>
-        <p>Your ticket for <strong>${data.event_name}</strong> has been issued.</p>
-        <p><strong>Ticket Number:</strong> ${data.ticket_number}</p>
-        <p><strong>Date:</strong> ${data.event_date}</p>
-        <p><strong>Venue:</strong> ${data.venue}</p>
+        <p>Your ticket for <strong>${d.event_name}</strong> has been issued.</p>
+        <p><strong>Ticket Number:</strong> ${d.ticket_number}</p>
+        <p><strong>Date:</strong> ${d.event_date}</p>
+        <p><strong>Venue:</strong> ${d.venue}</p>
         <p>Please present this ticket at check-in.</p>`
     }
   };

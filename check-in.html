@@ -219,6 +219,13 @@
 
     // ---- INIT ----
     async function init() {
+      // Require authentication before accessing check-in
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        showError('Authentication required. Please <a href="index.html">log in</a> to access the check-in system.');
+        return;
+      }
+
       const params = new URLSearchParams(window.location.search);
       eventId = params.get('event');
 

@@ -453,15 +453,24 @@ const awardsModule = {
    * Get the current phase of an award based on dates
    */
   getAwardPhase(award) {
+    // Use UTC timestamps for consistent comparison across timezones
     const now = new Date();
+    const parseUTC = (d) => {
+      if (!d) return null;
+      // If date string has no timezone, treat as UTC by appending Z
+      const str = String(d);
+      if (!str.includes('T')) return new Date(str + 'T23:59:59Z');
+      if (!str.endsWith('Z') && !str.includes('+') && !str.includes('-', 10)) return new Date(str + 'Z');
+      return new Date(str);
+    };
     const dates = {
-      entryOpen: award.entry_open_date ? new Date(award.entry_open_date) : null,
-      entryClose: award.entry_close_date ? new Date(award.entry_close_date) : null,
-      judgingOpen: award.judging_open_date ? new Date(award.judging_open_date) : null,
-      judgingClose: award.judging_close_date ? new Date(award.judging_close_date) : null,
-      votingOpen: award.voting_open_date ? new Date(award.voting_open_date) : null,
-      votingClose: award.voting_close_date ? new Date(award.voting_close_date) : null,
-      winnersAnnouncement: award.winners_announcement_date ? new Date(award.winners_announcement_date) : null
+      entryOpen: parseUTC(award.entry_open_date),
+      entryClose: parseUTC(award.entry_close_date),
+      judgingOpen: parseUTC(award.judging_open_date),
+      judgingClose: parseUTC(award.judging_close_date),
+      votingOpen: parseUTC(award.voting_open_date),
+      votingClose: parseUTC(award.voting_close_date),
+      winnersAnnouncement: parseUTC(award.winners_announcement_date)
     };
 
     if (dates.winnersAnnouncement && now >= dates.winnersAnnouncement) {
@@ -821,7 +830,8 @@ const awardsModule = {
                 </thead>
                 <tbody>
                   ${votingEntries.map(entry => {
-                    const votingUrl = `${window.location.origin}/vote.html?entry=${entry.entry_number}`;
+                    const votingUrl = `${window.location.origin}/vote.html?entry=${encodeURIComponent(entry.entry_number)}`;
+                    const safeVotingUrl = utils.escapeHtml(votingUrl);
                     return `
                       <tr>
                         <td><span class="badge bg-primary">${utils.escapeHtml(entry.entry_number)}</span></td>
@@ -841,12 +851,12 @@ const awardsModule = {
                         </td>
                         <td>
                           <div class="input-group input-group-sm">
-                            <input type="text" class="form-control" value="${votingUrl}" readonly>
+                            <input type="text" class="form-control" value="${safeVotingUrl}" readonly>
                             <button class="btn btn-outline-primary" type="button"
-                              onclick="navigator.clipboard.writeText('${votingUrl}'); utils.showToast('Link copied!', 'success');">
+                              onclick="utils.copyToClipboard('${safeVotingUrl}', 'Link copied!')">
                               <i class="bi bi-clipboard"></i>
                             </button>
-                            <a href="${votingUrl}" target="_blank" class="btn btn-outline-success">
+                            <a href="${safeVotingUrl}" target="_blank" class="btn btn-outline-success">
                               <i class="bi bi-box-arrow-up-right"></i>
                             </a>
                           </div>
@@ -1293,6 +1303,10 @@ const awardsModule = {
    * Bulk delete selected awards
    */
   async bulkDelete() {
+    if (typeof rbacModule !== 'undefined' && !rbacModule.canPerform('delete')) {
+      utils.showToast('You do not have permission to delete awards', 'error');
+      return;
+    }
     const count = this.selectedAwards.size;
     if (count === 0) return;
 
@@ -1453,6 +1467,10 @@ const awardsModule = {
    * Delete a single award
    */
   async deleteAward(awardId) {
+    if (typeof rbacModule !== 'undefined' && !rbacModule.canPerform('delete')) {
+      utils.showToast('You do not have permission to delete awards', 'error');
+      return;
+    }
     if (!await utils.confirmDialog({ title: 'Delete Award', message: 'Are you sure you want to delete this award? This action cannot be undone.' })) {
       return;
     }
@@ -1462,6 +1480,9 @@ const awardsModule = {
       
       const award = STATE.allAwards.find(a => a.id === awardId);
       if (award) utils.softDelete('awards', award);
+
+      // Clean up related records before deleting the award
+      await STATE.client.from('award_assignments').delete().eq('award_id', awardId);
 
       const { error } = await STATE.client
         .from('awards')

@@ -25,20 +25,42 @@ const supabase = createClient(
  * Create Stripe Checkout Session
  * POST /api/create-checkout-session
  */
+/**
+ * Verify Supabase JWT from Authorization header
+ */
+async function verifyAuth(req, res) {
+  const authHeader = req.headers.authorization;
+  if (!authHeader?.startsWith('Bearer ')) {
+    res.status(401).json({ error: 'Authentication required' });
+    return null;
+  }
+  const token = authHeader.replace('Bearer ', '');
+  const { data: { user }, error } = await supabase.auth.getUser(token);
+  if (error || !user) {
+    res.status(401).json({ error: 'Invalid or expired token' });
+    return null;
+  }
+  return user;
+}
+
 async function createCheckoutSession(req, res) {
   try {
-    const { entryId, amount, description, email } = req.body;
+    const user = await verifyAuth(req, res);
+    if (!user) return;
+
+    const { entryId, entry_id, amount, description, email } = req.body;
+    const resolvedEntryId = entryId || entry_id;  // Accept both camelCase and snake_case
 
     // Validate inputs
-    if (!entryId || !amount) {
-      return res.status(400).json({ error: 'Missing required fields' });
+    if (!resolvedEntryId || !amount || typeof amount !== 'number' || amount <= 0) {
+      return res.status(400).json({ error: 'Missing or invalid required fields' });
     }
 
     // Get entry details from database
     const { data: entry, error: entryError } = await supabase
       .from('entries')
       .select('*')
-      .eq('id', entryId)
+      .eq('id', resolvedEntryId)
       .single();
 
     if (entryError || !entry) {
@@ -67,19 +89,19 @@ async function createCheckoutSession(req, res) {
       cancel_url: `${req.headers.origin}/submit-entry.html?cancelled=true`,
       customer_email: email || entry.contact_email,
       metadata: {
-        entry_id: entryId,
+        entry_id: resolvedEntryId,
         entry_number: entry.entry_number,
       },
     });
 
-    // Update entry with payment session ID
+    // Update entry with payment reference (use payment_intent for consistency with webhooks)
     await supabase
       .from('entries')
       .update({
-        payment_reference: session.id,
+        payment_reference: session.payment_intent || session.id,
         updated_at: new Date().toISOString()
       })
-      .eq('id', entryId);
+      .eq('id', resolvedEntryId);
 
     res.json({ id: session.id, url: session.url });
 

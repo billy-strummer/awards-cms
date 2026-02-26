@@ -229,6 +229,13 @@ const authModule = {
       this.clearInactivityTimer();
       this.stopHealthCheck();
 
+      // Clear cached data arrays to prevent data leakage after logout
+      STATE.allAwards = []; STATE.filteredAwards = [];
+      STATE.allOrganisations = []; STATE.filteredOrganisations = [];
+      STATE.allWinners = []; STATE.filteredWinners = [];
+      STATE.allEvents = [];
+      if (typeof entriesModule !== 'undefined') { entriesModule.allEntries = []; entriesModule.filteredEntries = []; }
+
       // Clean up background timers to prevent memory leaks
       if (typeof notificationsModule !== 'undefined' && notificationsModule._pollInterval) {
         clearInterval(notificationsModule._pollInterval);
@@ -272,7 +279,12 @@ const authModule = {
       
     } catch (error) {
       console.error('Logout error:', error);
-      utils.showToast('Logout failed: ' + error.message, 'error');
+      // Force logout even if signOut fails (e.g. network error)
+      STATE.currentUser = null;
+      this.clearInactivityTimer();
+      this.stopHealthCheck();
+      this.showLogin();
+      utils.showToast('Logged out (session may still be active on server)', 'warning');
     } finally {
       utils.hideLoading();
     }
@@ -315,7 +327,7 @@ const authModule = {
     dashboardModule.loadAllData();
 
     // Replay any pending localStorage items that were saved during DB failures
-    utils.replayPendingQueues();
+    await utils.replayPendingQueues();
 
     // Start periodic connection health check
     this.startHealthCheck();
@@ -359,7 +371,7 @@ const authModule = {
         this._consecutiveFailures = 0;
         this.updateConnectionStatus(true);
         utils.showToast('Connection restored', 'success');
-        utils.replayPendingQueues();
+        await utils.replayPendingQueues();
       }
     } catch (e) {
       this._consecutiveFailures++;

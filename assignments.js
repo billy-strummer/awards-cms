@@ -240,10 +240,14 @@ const assignmentsModule = {
       // Store available orgs for filtering
       this.availableOrgs = availableOrgs;
 
-      // Initialize Bootstrap tooltips for multi-category badges
+      // Dispose old tooltips before creating new ones to prevent memory leak
       setTimeout(() => {
         const tooltipTriggerList = document.querySelectorAll('[data-bs-toggle="tooltip"]');
-        [...tooltipTriggerList].map(tooltipTriggerEl => new bootstrap.Tooltip(tooltipTriggerEl));
+        [...tooltipTriggerList].forEach(el => {
+          const existing = bootstrap.Tooltip.getInstance(el);
+          if (existing) existing.dispose();
+        });
+        [...tooltipTriggerList].map(el => new bootstrap.Tooltip(el));
       }, 100);
 
     } catch (error) {

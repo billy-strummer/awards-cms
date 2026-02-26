@@ -32,13 +32,59 @@
       <a href="/" class="btn btn-gold px-4">Return to Dashboard</a>
     </div>
   </div>
+  <script src="config.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script>
-    const params = new URLSearchParams(window.location.search);
-    const entryId = params.get('entry');
-    if (entryId) {
-      document.getElementById('entryInfo').innerHTML =
-        '<p class="small text-muted">Entry reference: <strong>' + entryId.substring(0, 8) + '</strong></p>';
-    }
+    (async function() {
+      const params = new URLSearchParams(window.location.search);
+      const entryId = params.get('entry');
+      const sessionId = params.get('session_id');
+      const card = document.querySelector('.success-card');
+      const infoEl = document.getElementById('entryInfo');
+
+      // Verify payment actually occurred via Stripe session or DB record
+      if (sessionId || entryId) {
+        try {
+          const supabase = window.supabase.createClient(
+            window.SUPABASE_CONFIG.url, window.SUPABASE_CONFIG.anonKey
+          );
+          // Check if a payment record exists for this entry
+          if (entryId) {
+            const { data: payment } = await supabase
+              .from('payments')
+              .select('id, payment_reference, amount')
+              .eq('entry_id', entryId)
+              .order('created_at', { ascending: false })
+              .limit(1)
+              .single();
+            if (payment) {
+              const safeRef = document.createTextNode(payment.payment_reference || entryId.substring(0, 8));
+              const p = document.createElement('p');
+              p.className = 'small text-muted';
+              p.innerHTML = 'Payment reference: <strong></strong>';
+              p.querySelector('strong').appendChild(safeRef);
+              infoEl.appendChild(p);
+            } else {
+              // No verified payment found - show warning
+              card.querySelector('.success-icon').innerHTML = '<i class="bi bi-exclamation-triangle-fill"></i>';
+              card.querySelector('.success-icon').style.color = '#ffc107';
+              card.querySelector('h1').textContent = 'Payment Pending';
+              card.querySelector('p').textContent = 'Your payment is being processed. If you are not redirected, please contact support.';
+            }
+          }
+        } catch (e) {
+          // Graceful fallback
+          if (entryId) {
+            const safeRef = document.createTextNode(entryId.substring(0, 8));
+            const p = document.createElement('p');
+            p.className = 'small text-muted';
+            p.innerHTML = 'Entry reference: <strong></strong>';
+            p.querySelector('strong').appendChild(safeRef);
+            infoEl.appendChild(p);
+          }
+        }
+      }
+    })();
   </script>
 </body>
 </html>

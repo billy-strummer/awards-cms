@@ -1315,6 +1315,10 @@ const paymentsModule = {
   /* ==================================================== */
 
   exportInvoicesCSV() {
+    if (!this.currentInvoices || this.currentInvoices.length === 0) {
+      utils.showToast('No invoices to export', 'warning');
+      return;
+    }
     const headers = ['Invoice #', 'Organisation', 'Date', 'Due Date', 'Type', 'Amount', 'Paid', 'Balance', 'Status'];
     const rows = this.currentInvoices.map(inv => [
       inv.invoice_number || '',
@@ -1331,6 +1335,10 @@ const paymentsModule = {
   },
 
   exportPaymentsCSV() {
+    if (!this.currentPayments || this.currentPayments.length === 0) {
+      utils.showToast('No payments to export', 'warning');
+      return;
+    }
     const headers = ['Reference', 'Date', 'Organisation', 'Invoice', 'Method', 'Amount', 'Status'];
     const rows = this.currentPayments.map(p => [
       p.payment_reference || '',

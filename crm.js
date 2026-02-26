@@ -2889,8 +2889,13 @@ const crmModule = {
 
   exportCrmToCSV(type) {
     let data, filename, headers;
+    const checkEmpty = (arr, label) => {
+      if (!arr || arr.length === 0) { utils.showToast(`No ${label} to export`, 'warning'); return true; }
+      return false;
+    };
     if (type === 'communications') {
       data = this._communications || [];
+      if (checkEmpty(data, 'communications')) return;
       filename = 'crm-communications';
       headers = ['Date', 'Type', 'Company', 'Contact', 'Subject', 'Notes'];
       const rows = data.map(r => [
@@ -2899,6 +2904,7 @@ const crmModule = {
       this._downloadCSV(headers, rows, filename);
     } else if (type === 'deals') {
       data = this._deals || [];
+      if (checkEmpty(data, 'deals')) return;
       filename = 'crm-deals';
       headers = ['Deal Name', 'Company', 'Value', 'Stage', 'Probability', 'Expected Close', 'Created'];
       const rows = data.map(r => [
@@ -2907,6 +2913,7 @@ const crmModule = {
       this._downloadCSV(headers, rows, filename);
     } else if (type === 'meetings') {
       data = this._meetings || [];
+      if (checkEmpty(data, 'meetings')) return;
       filename = 'crm-meetings';
       headers = ['Date', 'Title', 'Company', 'Attendees', 'Location', 'Notes'];
       const rows = data.map(r => [

@@ -615,7 +615,14 @@ document.addEventListener('DOMContentLoaded', function() {
   // --- Clickable Stat Cards ---
   // Cards with [data-stat-filter] attributes filter the data below them.
   // data-stat-filter = "filterId:value" or "callback:module.method"
-  document.addEventListener('click', function(e) {
+  // Make stat cards keyboard accessible
+  document.querySelectorAll('[data-stat-filter]').forEach(card => {
+    if (!card.hasAttribute('tabindex')) card.setAttribute('tabindex', '0');
+    if (!card.getAttribute('role')) card.setAttribute('role', 'button');
+    card.style.cursor = 'pointer';
+  });
+
+  function handleStatCardAction(e) {
     const card = e.target.closest('[data-stat-filter]');
     if (!card) return;
 
@@ -654,6 +661,13 @@ document.addEventListener('DOMContentLoaded', function() {
         el.value = value || '';
         el.dispatchEvent(new Event('change'));
       }
+    }
+  }
+  document.addEventListener('click', handleStatCardAction);
+  document.addEventListener('keydown', function(e) {
+    if (e.key === 'Enter' || e.key === ' ') {
+      const card = e.target.closest('[data-stat-filter]');
+      if (card) { e.preventDefault(); handleStatCardAction(e); }
     }
   });
 

@@ -117,7 +117,8 @@ const utils = {
    */
   formatDate(dateString) {
     if (!dateString) return '-';
-    const date = new Date(dateString);
+    const date = this.safeDate ? this.safeDate(dateString) : new Date(dateString);
+    if (!date || isNaN(date.getTime())) return '-';
     return date.toLocaleDateString('en-GB', {
       day: '2-digit',
       month: 'short',
@@ -133,7 +134,8 @@ const utils = {
   formatRelativeTime(dateString) {
     if (!dateString) return '-';
 
-    const date = new Date(dateString);
+    const date = this.safeDate ? this.safeDate(dateString) : new Date(dateString);
+    if (!date || isNaN(date.getTime())) return '-';
     const now = new Date();
     const diffInSeconds = Math.floor((now - date) / 1000);
 
@@ -1312,7 +1314,8 @@ const utils = {
    */
   showColumnVisibilityDialog(tableId, columns) {
     const storageKey = `colVis_${tableId}`;
-    const saved = JSON.parse(localStorage.getItem(storageKey) || '{}');
+    let saved = {};
+    try { saved = JSON.parse(localStorage.getItem(storageKey) || '{}'); } catch (e) { /* private browsing */ }
 
     let html = '<div class="p-3"><h6>Show/Hide Columns</h6>';
     columns.forEach((col, i) => {
@@ -1336,9 +1339,10 @@ const utils = {
 
   _toggleColumn(tableId, colKey, visible) {
     const storageKey = `colVis_${tableId}`;
-    const saved = JSON.parse(localStorage.getItem(storageKey) || '{}');
+    let saved = {};
+    try { saved = JSON.parse(localStorage.getItem(storageKey) || '{}'); } catch (e) { /* private browsing */ }
     saved[colKey] = visible;
-    localStorage.setItem(storageKey, JSON.stringify(saved));
+    try { localStorage.setItem(storageKey, JSON.stringify(saved)); } catch (e) { /* private browsing */ }
 
     // Toggle column visibility via CSS class
     const table = document.getElementById(tableId) || document.querySelector(`#${tableId}`);
@@ -1353,7 +1357,8 @@ const utils = {
 
   applyColumnVisibility(tableId) {
     const storageKey = `colVis_${tableId}`;
-    const saved = JSON.parse(localStorage.getItem(storageKey) || '{}');
+    let saved = {};
+    try { saved = JSON.parse(localStorage.getItem(storageKey) || '{}'); } catch (e) { /* private browsing */ }
     Object.entries(saved).forEach(([colKey, visible]) => {
       if (!visible) this._toggleColumn(tableId, colKey, false);
     });

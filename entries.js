@@ -1518,16 +1518,23 @@ const entriesModule = {
         const count = this.selectedEntryIds.size;
         const ids = Array.from(this.selectedEntryIds);
 
+        // Chunk large operations to stay within API limits
+        const CHUNK_SIZE = 500;
+        const chunkedOperation = async (table, operation) => {
+          for (let i = 0; i < ids.length; i += CHUNK_SIZE) {
+            const chunk = ids.slice(i, i + CHUNK_SIZE);
+            const result = await operation(chunk);
+            if (result?.error) throw result.error;
+          }
+        };
+
         if (actionType === 'delete') {
           if (!await utils.confirmDialog({ title: 'Delete Entries', message: `Are you sure you want to DELETE ${count} entries? This cannot be undone.` })) return;
 
           try {
-            const { error } = await STATE.client
-              .from('entries')
-              .delete()
-              .in('id', ids);
-
-            if (error) throw error;
+            await chunkedOperation('entries', (chunk) =>
+              STATE.client.from('entries').delete().in('id', chunk)
+            );
 
             utils.showToast(`${count} entries deleted`, 'success');
           } catch (error) {
@@ -1602,7 +1609,8 @@ const entriesModule = {
         return;
       }
 
-      const votingUrl = `${window.location.origin}/vote.html?entry=${entry.entry_number}`;
+      const votingUrl = `${window.location.origin}/vote.html?entry=${encodeURIComponent(entry.entry_number)}`;
+      const safeVotingUrl = utils.escapeHtml(votingUrl);
       const companyName = entry.organisations?.company_name || 'Nominee';
 
       // Create modal HTML
@@ -1630,8 +1638,8 @@ const entriesModule = {
                 <div class="mb-3">
                   <label class="form-label fw-bold">Voting Link:</label>
                   <div class="input-group">
-                    <input type="text" class="form-control" value="${votingUrl}" id="votingLinkInput" readonly>
-                    <button class="btn btn-primary" onclick="entriesModule.copyVotingLink('${votingUrl}')">
+                    <input type="text" class="form-control" value="${safeVotingUrl}" id="votingLinkInput" readonly>
+                    <button class="btn btn-primary" onclick="utils.copyToClipboard('${safeVotingUrl}', 'Link copied!')">
                       <i class="bi bi-clipboard"></i> Copy
                     </button>
                   </div>
@@ -1674,7 +1682,7 @@ const entriesModule = {
               </div>
               <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-                <button type="button" class="btn btn-primary" onclick="entriesModule.openVotingLinkInNewTab('${votingUrl}')">
+                <button type="button" class="btn btn-primary" onclick="window.open('${safeVotingUrl}', '_blank')">
                   <i class="bi bi-box-arrow-up-right me-2"></i>Open Voting Page
                 </button>
               </div>

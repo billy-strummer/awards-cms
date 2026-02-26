@@ -821,7 +821,8 @@ const awardsModule = {
                 </thead>
                 <tbody>
                   ${votingEntries.map(entry => {
-                    const votingUrl = `${window.location.origin}/vote.html?entry=${entry.entry_number}`;
+                    const votingUrl = `${window.location.origin}/vote.html?entry=${encodeURIComponent(entry.entry_number)}`;
+                    const safeVotingUrl = utils.escapeHtml(votingUrl);
                     return `
                       <tr>
                         <td><span class="badge bg-primary">${utils.escapeHtml(entry.entry_number)}</span></td>
@@ -841,12 +842,12 @@ const awardsModule = {
                         </td>
                         <td>
                           <div class="input-group input-group-sm">
-                            <input type="text" class="form-control" value="${votingUrl}" readonly>
+                            <input type="text" class="form-control" value="${safeVotingUrl}" readonly>
                             <button class="btn btn-outline-primary" type="button"
-                              onclick="navigator.clipboard.writeText('${votingUrl}'); utils.showToast('Link copied!', 'success');">
+                              onclick="utils.copyToClipboard('${safeVotingUrl}', 'Link copied!')">
                               <i class="bi bi-clipboard"></i>
                             </button>
-                            <a href="${votingUrl}" target="_blank" class="btn btn-outline-success">
+                            <a href="${safeVotingUrl}" target="_blank" class="btn btn-outline-success">
                               <i class="bi bi-box-arrow-up-right"></i>
                             </a>
                           </div>

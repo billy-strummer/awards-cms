@@ -327,7 +327,7 @@ const authModule = {
     dashboardModule.loadAllData();
 
     // Replay any pending localStorage items that were saved during DB failures
-    utils.replayPendingQueues();
+    await utils.replayPendingQueues();
 
     // Start periodic connection health check
     this.startHealthCheck();
@@ -371,7 +371,7 @@ const authModule = {
         this._consecutiveFailures = 0;
         this.updateConnectionStatus(true);
         utils.showToast('Connection restored', 'success');
-        utils.replayPendingQueues();
+        await utils.replayPendingQueues();
       }
     } catch (e) {
       this._consecutiveFailures++;

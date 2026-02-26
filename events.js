@@ -1422,8 +1422,7 @@ const eventsModule = {
   copyTicketUrl() {
     const url = document.getElementById('ticketUrlInput').value;
     if (url) {
-      navigator.clipboard.writeText(url);
-      utils.showToast('Ticket URL copied to clipboard', 'success');
+      utils.copyToClipboard(url, 'Ticket URL copied to clipboard');
     }
   },
 
@@ -1644,16 +1643,14 @@ const eventsModule = {
 
   copyRegistrationLink() {
     const eventId = document.getElementById('attendeesEventId').value;
-    const url = `${this._getBaseUrl()}/register.html?event=${eventId}`;
-    navigator.clipboard.writeText(url);
-    utils.showToast('Registration link copied to clipboard', 'success');
+    const url = `${this._getBaseUrl()}/register.html?event=${encodeURIComponent(eventId)}`;
+    utils.copyToClipboard(url, 'Registration link copied to clipboard');
   },
 
   copyCheckInLink() {
     const eventId = document.getElementById('attendeesEventId').value;
-    const url = `${this._getBaseUrl()}/check-in.html?event=${eventId}`;
-    navigator.clipboard.writeText(url);
-    utils.showToast('Check-in scanner link copied to clipboard', 'success');
+    const url = `${this._getBaseUrl()}/check-in.html?event=${encodeURIComponent(eventId)}`;
+    utils.copyToClipboard(url, 'Check-in scanner link copied to clipboard');
   },
 
   launchCheckInScanner() {

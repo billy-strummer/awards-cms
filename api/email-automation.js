@@ -22,15 +22,58 @@ const supabase = createClient(
 const resend = new Resend(process.env.RESEND_API_KEY);
 
 /**
- * Email wrapper - provides consistent BTA branding for all emails
- * Logo URL should be set via LOGO_URL env var or defaults to BTA text header
+ * Load tenant branding from database (cached for 5 minutes)
  */
-const BTA_LOGO_URL = process.env.BTA_LOGO_URL || '';
+let _brandingCache = null;
+let _brandingCacheTime = 0;
+const BRANDING_CACHE_TTL = 5 * 60 * 1000; // 5 minutes
 
-function wrapEmailTemplate(bodyContent) {
-  const logoBlock = BTA_LOGO_URL
-    ? `<img src="${BTA_LOGO_URL}" alt="British Trade Awards" style="max-width: 280px; height: auto; display: block; margin: 0 auto;">`
-    : `<h2 style="margin: 0; font-family: Georgia, 'Times New Roman', serif; font-size: 28px; color: #1a1a1a; letter-spacing: 1px;">British Trade Awards</h2>`;
+async function loadTenantBranding() {
+  const now = Date.now();
+  if (_brandingCache && (now - _brandingCacheTime) < BRANDING_CACHE_TTL) {
+    return _brandingCache;
+  }
+  try {
+    const { data } = await supabase
+      .from('tenant_branding')
+      .select('*')
+      .eq('tenant_id', 'default')
+      .maybeSingle();
+    _brandingCache = data || {};
+    _brandingCacheTime = now;
+    return _brandingCache;
+  } catch (e) {
+    console.error('Failed to load tenant branding:', e);
+    return _brandingCache || {};
+  }
+}
+
+/**
+ * Email wrapper - uses tenant branding from database for all emails.
+ * Falls back to env vars and then to sensible defaults.
+ */
+function wrapEmailTemplate(bodyContent, branding = {}) {
+  const brandName = branding.company_name || process.env.FROM_NAME || 'British Trade Awards';
+  const accentColor = branding.accent_color || '#cc9900';
+  const secondaryColor = branding.secondary_color || '#1a1a1a';
+  const logoUrl = branding.logo_url || process.env.BTA_LOGO_URL || '';
+  const contactEmail = branding.email_from || branding.email_reply_to || process.env.FROM_EMAIL || '';
+  const websiteUrl = branding.custom_domain || '';
+
+  const escHtml = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+
+  const logoBlock = logoUrl
+    ? `<img src="${escHtml(logoUrl)}" alt="${escHtml(brandName)}" style="max-width: 280px; height: auto; display: block; margin: 0 auto;">`
+    : `<h2 style="margin: 0; font-family: Georgia, 'Times New Roman', serif; font-size: 28px; color: #1a1a1a; letter-spacing: 1px;">${escHtml(brandName)}</h2>`;
+
+  let footerLinks = '';
+  if (websiteUrl) {
+    footerLinks += `<a href="https://${escHtml(websiteUrl)}" style="color: ${accentColor}; text-decoration: none;">${escHtml(websiteUrl)}</a>`;
+  }
+  if (contactEmail) {
+    if (footerLinks) footerLinks += ' &nbsp;|&nbsp; ';
+    footerLinks += `<a href="mailto:${escHtml(contactEmail)}" style="color: ${accentColor}; text-decoration: none;">${escHtml(contactEmail)}</a>`;
+  }
 
   return `
     <!DOCTYPE html>
@@ -47,7 +90,7 @@ function wrapEmailTemplate(bodyContent) {
             <table width="600" cellpadding="0" cellspacing="0" border="0" style="background-color: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.08);">
               <!-- Logo Header -->
               <tr>
-                <td align="center" style="padding: 30px 40px; border-bottom: 2px solid #cc9900;">
+                <td align="center" style="padding: 30px 40px; border-bottom: 2px solid ${accentColor};">
                   ${logoBlock}
                 </td>
               </tr>
@@ -59,15 +102,11 @@ function wrapEmailTemplate(bodyContent) {
               </tr>
               <!-- Footer -->
               <tr>
-                <td style="padding: 30px 40px; background-color: #1a1a1a; text-align: center;">
+                <td style="padding: 30px 40px; background-color: ${secondaryColor}; text-align: center;">
                   <p style="margin: 0 0 8px 0; font-family: Arial, sans-serif; font-size: 14px; color: #ffffff;">
-                    &copy; ${new Date().getFullYear()} British Trade Awards. All rights reserved.
+                    &copy; ${new Date().getFullYear()} ${escHtml(brandName)}. All rights reserved.
                   </p>
-                  <p style="margin: 0 0 8px 0; font-family: Arial, sans-serif; font-size: 12px; color: #aaaaaa;">
-                    <a href="https://www.britishtradeawards.com" style="color: #cc9900; text-decoration: none;">britishtradeawards.com</a>
-                    &nbsp;|&nbsp;
-                    <a href="mailto:awards@britishtradeawards.com" style="color: #cc9900; text-decoration: none;">awards@britishtradeawards.com</a>
-                  </p>
+                  ${footerLinks ? `<p style="margin: 0 0 8px 0; font-family: Arial, sans-serif; font-size: 12px; color: #aaaaaa;">${footerLinks}</p>` : ''}
                   <p style="margin: 0; font-family: Arial, sans-serif; font-size: 11px; color: #888888;">
                     <a href="{{unsubscribe_link}}" style="color: #888888; text-decoration: underline;">Unsubscribe</a>
                   </p>
@@ -83,12 +122,14 @@ function wrapEmailTemplate(bodyContent) {
 }
 
 /**
- * Email Templates
+ * Email template body content (without wrapper).
+ * The wrapper is applied at send time using tenant branding.
+ * The {{brand_name}} placeholder is replaced with the tenant's company name.
  */
 const EMAIL_TEMPLATES = {
   ENTRY_CONFIRMATION: {
     subject: '✅ Entry Confirmed - {{entry_number}}',
-    template: wrapEmailTemplate(`
+    body: `
       <div style="padding: 30px 40px;">
         <h1 style="margin: 0 0 20px 0; font-family: Arial, sans-serif; font-size: 28px; color: #1a1a1a;">Entry Submitted Successfully!</h1>
         <p>Dear {{contact_name}},</p>
@@ -113,14 +154,14 @@ const EMAIL_TEMPLATES = {
         <p>You'll receive email updates at each stage of the process.</p>
 
         <p>Best of luck!</p>
-        <p><strong>British Trade Awards Team</strong></p>
+        <p><strong>{{brand_name}} Team</strong></p>
       </div>
-    `)
+    `
   },
 
   PAYMENT_REMINDER: {
     subject: '💳 Payment Pending - Entry {{entry_number}}',
-    template: wrapEmailTemplate(`
+    body: `
       <div style="padding: 30px 40px;">
         <h1 style="margin: 0 0 20px 0; font-family: Arial, sans-serif; font-size: 28px; color: #1a1a1a;">Payment Reminder</h1>
         <p>Dear {{contact_name}},</p>
@@ -142,17 +183,17 @@ const EMAIL_TEMPLATES = {
 
         <p>If you have any questions, please contact us.</p>
       </div>
-    `)
+    `
   },
 
   SHORTLIST_NOTIFICATION: {
     subject: '🌟 Congratulations - You\'ve Been Shortlisted!',
-    template: wrapEmailTemplate(`
+    body: `
       <div style="padding: 30px 40px;">
         <h1 style="margin: 0 0 20px 0; font-family: Arial, sans-serif; font-size: 28px; color: #1a1a1a;">🌟 You've Been Shortlisted!</h1>
         <p>Dear {{contact_name}},</p>
 
-        <p>We're delighted to inform you that <strong>{{company_name}}</strong> has been shortlisted for the <strong>{{award_name}}</strong> at the British Trade Awards!</p>
+        <p>We're delighted to inform you that <strong>{{company_name}}</strong> has been shortlisted for the <strong>{{award_name}}</strong> at the {{brand_name}}!</p>
 
         <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; border-radius: 12px; margin: 20px 0; text-align: center;">
           <h2 style="color: white; margin: 0;">Shortlisted</h2>
@@ -179,14 +220,14 @@ const EMAIL_TEMPLATES = {
         </table>
 
         <p>Congratulations once again!</p>
-        <p><strong>British Trade Awards Team</strong></p>
+        <p><strong>{{brand_name}} Team</strong></p>
       </div>
-    `)
+    `
   },
 
   WINNER_ANNOUNCEMENT: {
     subject: '🏆 WINNER - {{award_name}}!',
-    template: wrapEmailTemplate(`
+    body: `
       <div style="background: linear-gradient(135deg, #FFD700 0%, #FFA500 100%); padding: 40px; text-align: center;">
         <table width="100%" cellpadding="0" cellspacing="0" border="0">
           <tr>
@@ -205,9 +246,9 @@ const EMAIL_TEMPLATES = {
       <div style="padding: 30px 40px;">
         <p>Dear {{contact_name}},</p>
 
-        <p style="font-size: 18px;"><strong>Congratulations!</strong> We are thrilled to announce that <strong>{{company_name}}</strong> is the winner of the <strong>{{award_name}}</strong> at the British Trade Awards!</p>
+        <p style="font-size: 18px;"><strong>Congratulations!</strong> We are thrilled to announce that <strong>{{company_name}}</strong> is the winner of the <strong>{{award_name}}</strong> at the {{brand_name}}!</p>
 
-        <p>Your exceptional work has set the standard for excellence in British trade and business.</p>
+        <p>Your exceptional work has set the standard for excellence.</p>
 
         <div style="background: #fffbeb; border: 1px solid #fbbf24; border-radius: 8px; padding: 20px; margin: 25px 0;">
           <h3 style="margin-top: 0; color: #92400e;">Your Winner's Package Includes:</h3>
@@ -237,19 +278,19 @@ const EMAIL_TEMPLATES = {
 
         <p>We look forward to celebrating with you!</p>
 
-        <p><strong>British Trade Awards Team</strong></p>
+        <p><strong>{{brand_name}} Team</strong></p>
       </div>
-    `)
+    `
   },
 
   JUDGE_ASSIGNMENT: {
-    subject: '⚖️ New Judging Assignment - British Trade Awards',
-    template: wrapEmailTemplate(`
+    subject: '⚖️ New Judging Assignment - {{brand_name}}',
+    body: `
       <div style="padding: 30px 40px;">
         <h1 style="margin: 0 0 20px 0; font-family: Arial, sans-serif; font-size: 28px; color: #1a1a1a;">New Judging Assignment</h1>
         <p>Dear {{judge_name}},</p>
 
-        <p>You have been assigned {{entry_count}} new entries to judge for the British Trade Awards.</p>
+        <p>You have been assigned {{entry_count}} new entries to judge for the {{brand_name}}.</p>
 
         <p><strong>Judging Deadline:</strong> {{deadline}}</p>
 
@@ -272,12 +313,12 @@ const EMAIL_TEMPLATES = {
 
         <p>Thank you for your contribution to the awards!</p>
       </div>
-    `)
+    `
   },
 
   JUDGE_REMINDER: {
     subject: '⏰ Judging Deadline Reminder - {{days_left}} Days Left',
-    template: wrapEmailTemplate(`
+    body: `
       <div style="padding: 30px 40px;">
         <h1 style="margin: 0 0 20px 0; font-family: Arial, sans-serif; font-size: 28px; color: #1a1a1a;">Judging Deadline Approaching</h1>
         <p>Dear {{judge_name}},</p>
@@ -304,12 +345,12 @@ const EMAIL_TEMPLATES = {
 
         <p>Thank you for your time and expertise!</p>
       </div>
-    `)
+    `
   },
 
   DEADLINE_REMINDER: {
     subject: '⏰ Reminder: {{deadline_type}} Deadline in {{days_left}} Days',
-    template: wrapEmailTemplate(`
+    body: `
       <div style="padding: 30px 40px;">
         <h1 style="margin: 0 0 20px 0; font-family: Arial, sans-serif; font-size: 28px; color: #1a1a1a;">Deadline Reminder</h1>
         <p>Dear {{recipient_name}},</p>
@@ -333,12 +374,12 @@ const EMAIL_TEMPLATES = {
           </tr>
         </table>
       </div>
-    `)
+    `
   }
 };
 
 /**
- * Send email using template
+ * Send email using template with tenant branding
  */
 async function sendTemplateEmail(templateKey, toEmail, variables) {
   try {
@@ -347,22 +388,37 @@ async function sendTemplateEmail(templateKey, toEmail, variables) {
       throw new Error(`Template ${templateKey} not found`);
     }
 
+    // Load tenant branding
+    const branding = await loadTenantBranding();
+    const brandName = branding.company_name || process.env.FROM_NAME || 'British Trade Awards';
+
+    // Add brand_name to variables so templates can reference it
+    const allVariables = { brand_name: brandName, ...variables };
+
     // Replace variables in subject and body
     let subject = template.subject;
-    let html = template.template;
+    let bodyContent = template.body;
 
     const escapeHtml = (str) => String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
-    for (const [key, value] of Object.entries(variables)) {
+    for (const [key, value] of Object.entries(allVariables)) {
       const regex = new RegExp(`{{${key}}}`, 'g');
       subject = subject.replace(regex, value || '');
-      html = html.replace(regex, escapeHtml(value || ''));
+      bodyContent = bodyContent.replace(regex, escapeHtml(value || ''));
     }
+
+    // Wrap body content with branded email template
+    const html = wrapEmailTemplate(bodyContent, branding);
+
+    // Use branded from address
+    const fromEmail = branding.email_from || process.env.FROM_EMAIL || 'awards@britishtradeawards.com';
+    const fromAddress = `${brandName} <${fromEmail}>`;
 
     await resend.emails.send({
       to: toEmail,
-      from: process.env.FROM_EMAIL || 'awards@britishtradeawards.com',
+      from: fromAddress,
       subject: subject,
-      html: html
+      html: html,
+      ...(branding.email_reply_to ? { reply_to: branding.email_reply_to } : {})
     });
 
     // Log email sent

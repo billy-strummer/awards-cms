@@ -39,8 +39,6 @@ const gdprModule = {
               <select class="form-select" id="gdprEntityType" aria-label="Entity type">
                 <option value="organisation">Organisation</option>
                 <option value="contact">Contact</option>
-                <option value="entry">Entry</option>
-                <option value="attendee">Attendee</option>
               </select>
             </div>
             <div class="col-md-4">

@@ -6762,9 +6762,9 @@ const eventsModule = {
 
     const renderCard = (card) => `<div class="card">
           <div class="card-inner">
-            <div class="card-number">${utils.escapeHtml(card.awardNumber)}</div>
             <div class="box box-label">
-              <span>And the winner is&hellip;</span>
+              <span class="card-number">${utils.escapeHtml(card.awardNumber)}</span>
+              <span class="label-text">And the winner is&hellip;</span>
             </div>
             <div class="box box-company">
               <span>${utils.escapeHtml(card.companyName)}</span>
@@ -6795,11 +6795,12 @@ const eventsModule = {
         .page { width: 210mm; height: 297mm; display: flex; flex-direction: column; page-break-after: always; position: relative; }
         .page:last-child { page-break-after: auto; }
         .card { height: 148.5mm; width: 100%; padding: 8mm 15mm; }
-        .card-inner { width: 100%; height: 100%; display: flex; flex-direction: column; position: relative; border: 2.5pt solid #000; }
-        .card-number { position: absolute; top: 3mm; left: 4mm; font-size: 10pt; color: #666; font-family: Arial, sans-serif; }
+        .card-inner { width: 100%; height: 100%; display: flex; flex-direction: column; border: 2.5pt solid #000; }
         .box { border-bottom: 2.5pt solid #000; display: flex; align-items: center; justify-content: center; text-align: center; padding: 3mm 10mm; }
         .box:last-child { border-bottom: none; }
-        .box-label { height: 20%; font-size: 16pt; font-style: italic; color: #444; letter-spacing: 1px; }
+        .box-label { height: auto; padding: 2.5mm 5mm; font-size: 14pt; font-style: italic; color: #444; letter-spacing: 1px; justify-content: center; gap: 4mm; }
+        .card-number { font-size: 9pt; color: #999; font-family: Arial, sans-serif; font-style: normal; letter-spacing: 0; }
+        .label-text { }
         .box-company { flex: 1; font-size: 32pt; font-weight: bold; color: #000; line-height: 1.2; }
         .box-recipient { flex: 1; font-size: 20pt; color: #333; }
         .cut-line { position: absolute; top: 148.5mm; left: 0; right: 0; border-top: 1px dashed #ccc; }

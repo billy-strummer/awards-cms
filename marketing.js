@@ -654,6 +654,224 @@ const marketingModule = {
     modal.show();
   },
 
+  /* ==================================================== */
+  /* BRANDING OVERVIEW                                    */
+  /* ==================================================== */
+
+  async loadBrandingOverview() {
+    const container = document.getElementById('brandingOverviewPanel');
+    if (!container) return;
+
+    try {
+      const tenantId = (typeof multiTenancyModule !== 'undefined') ? multiTenancyModule.getTenantId() : 'default';
+      const config = typeof brandingModule !== 'undefined' ? await brandingModule.loadBranding(tenantId) : {};
+
+      const esc = v => utils.escapeHtml(v || '');
+      const logoHtml = config.logo_url
+        ? `<img src="${esc(config.logo_url)}" alt="Logo" style="max-height:80px;max-width:200px;object-fit:contain">`
+        : '<span class="text-muted fst-italic">No logo set</span>';
+
+      const colorSwatch = (label, color, defaultColor) => {
+        const c = color || defaultColor;
+        return `<div class="d-flex align-items-center gap-2 mb-2">
+          <div style="width:32px;height:32px;border-radius:6px;background:${c};border:1px solid #dee2e6"></div>
+          <div><small class="text-muted d-block">${label}</small><code>${c}</code></div>
+        </div>`;
+      };
+
+      container.innerHTML = `
+        <div class="row g-4">
+          <div class="col-lg-5">
+            <div class="card h-100">
+              <div class="card-header"><h5 class="mb-0">Live Preview</h5></div>
+              <div class="card-body d-flex align-items-center justify-content-center">
+                ${typeof brandingModule !== 'undefined' ? brandingModule.renderPreview(config) : '<span class="text-muted">Branding module not loaded</span>'}
+              </div>
+            </div>
+          </div>
+          <div class="col-lg-7">
+            <div class="row g-4">
+              <div class="col-md-6">
+                <div class="card h-100">
+                  <div class="card-header"><h6 class="mb-0"><i class="bi bi-building me-2"></i>Identity</h6></div>
+                  <div class="card-body">
+                    <div class="mb-3">${logoHtml}</div>
+                    <p class="mb-1"><strong>${esc(config.company_name) || '<span class="text-muted">Not set</span>'}</strong></p>
+                    <p class="text-muted small mb-0">${esc(config.tagline) || '<span class="fst-italic">No tagline</span>'}</p>
+                  </div>
+                </div>
+              </div>
+              <div class="col-md-6">
+                <div class="card h-100">
+                  <div class="card-header"><h6 class="mb-0"><i class="bi bi-palette me-2"></i>Colours</h6></div>
+                  <div class="card-body">
+                    ${colorSwatch('Primary', config.primary_color, '#000000')}
+                    ${colorSwatch('Secondary', config.secondary_color, '#1a1a1a')}
+                    ${colorSwatch('Accent', config.accent_color, '#D4AF37')}
+                  </div>
+                </div>
+              </div>
+              <div class="col-md-6">
+                <div class="card h-100">
+                  <div class="card-header"><h6 class="mb-0"><i class="bi bi-envelope me-2"></i>Email Settings</h6></div>
+                  <div class="card-body">
+                    <p class="mb-1"><small class="text-muted">From:</small> ${esc(config.email_from) || '<span class="text-muted fst-italic">Not set</span>'}</p>
+                    <p class="mb-0"><small class="text-muted">Reply-To:</small> ${esc(config.email_reply_to) || '<span class="text-muted fst-italic">Not set</span>'}</p>
+                  </div>
+                </div>
+              </div>
+              <div class="col-md-6">
+                <div class="card h-100">
+                  <div class="card-header"><h6 class="mb-0"><i class="bi bi-fonts me-2"></i>Typography</h6></div>
+                  <div class="card-body">
+                    <p class="mb-0" style="font-family:${config.font_family || 'inherit'}">${esc(config.font_family) || "'Montserrat', sans-serif"}</p>
+                    <small class="text-muted">Sample: The quick brown fox jumps over the lazy dog</small>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="alert alert-info mt-4 mb-0">
+          <i class="bi bi-info-circle me-2"></i>
+          <strong>How branding is used:</strong> These settings are automatically applied to email templates, campaign headers/footers, certificates, public pages, and event materials. Edit them in <a href="#" onclick="document.getElementById('settings-tab').click(); return false;">Settings</a> to update across the entire CMS.
+        </div>
+      `;
+    } catch (e) {
+      console.error('Failed to load branding overview:', e);
+      container.innerHTML = `<div class="alert alert-warning"><i class="bi bi-exclamation-triangle me-2"></i>Failed to load branding: ${utils.escapeHtml(e.message)}</div>`;
+    }
+  },
+
+  /* ==================================================== */
+  /* EMAIL PLACEHOLDER DEFAULTS                           */
+  /* ==================================================== */
+
+  _placeholderDefaults: null,
+
+  async loadPlaceholderDefaults() {
+    const container = document.getElementById('placeholdersPanel');
+    if (!container) return;
+
+    let defaults = {};
+    try {
+      if (STATE.client) {
+        const { data } = await STATE.client.from('user_preferences').select('value').eq('key', 'emailPlaceholderDefaults').limit(1);
+        if (data?.[0]) defaults = JSON.parse(data[0].value);
+      }
+    } catch (e) {
+      console.warn('Failed to load placeholder defaults from DB:', e.message);
+      try { defaults = JSON.parse(localStorage.getItem('emailPlaceholderDefaults') || '{}'); } catch (_) {}
+    }
+
+    let branding = {};
+    try {
+      const tenantId = (typeof multiTenancyModule !== 'undefined') ? multiTenancyModule.getTenantId() : 'default';
+      if (typeof brandingModule !== 'undefined') branding = await brandingModule.loadBranding(tenantId);
+    } catch (_) {}
+
+    this._placeholderDefaults = defaults;
+    const esc = v => utils.escapeHtml(v || '');
+
+    const placeholders = [
+      { key: 'UPLOAD_LINK', label: 'Upload Link', desc: 'URL where entrants upload supporting documents.', default: defaults.UPLOAD_LINK || 'https://yourdomain.com/upload-documents.html', type: 'global' },
+      { key: 'DEADLINE_DATE', label: 'Deadline Date', desc: 'Entry submission deadline.', default: defaults.DEADLINE_DATE || '31st December 2025', type: 'global' },
+      { key: 'ANNOUNCEMENT_DATE', label: 'Announcement Date', desc: 'Winners announcement date.', default: defaults.ANNOUNCEMENT_DATE || '15th February 2026', type: 'global' },
+      { key: 'CONTACT_EMAIL', label: 'Contact Email', desc: 'Awards contact email address. Linked to branding email settings.', default: defaults.CONTACT_EMAIL || branding.email_reply_to || branding.email_from || 'awards@britishtrade.org', type: 'global' },
+      { key: 'ENTRY_NUMBER', label: 'Entry Number', desc: 'Unique entry reference (e.g. BTA-2025-0001). Replaced per-entry when sending.', default: defaults.ENTRY_NUMBER || 'BTA-2025-0001', type: 'sample' },
+      { key: 'CONTACT_NAME', label: 'Contact Name', desc: 'Entrant contact name. Replaced per-entry when sending.', default: defaults.CONTACT_NAME || 'John Smith', type: 'sample' },
+      { key: 'COMPANY_NAME', label: 'Company Name', desc: 'Entrant company name. Replaced per-entry when sending.', default: defaults.COMPANY_NAME || 'Acme Corporation Ltd', type: 'sample' },
+      { key: 'AWARD_NAME', label: 'Award Name', desc: 'Award category name. Replaced per-entry when sending.', default: defaults.AWARD_NAME || 'Export Excellence Award', type: 'sample' },
+      { key: 'SECTOR', label: 'Sector', desc: 'Business sector. Replaced per-entry when sending.', default: defaults.SECTOR || 'Manufacturing', type: 'sample' },
+      { key: 'REGION', label: 'Region', desc: 'Geographic region. Replaced per-entry when sending.', default: defaults.REGION || 'Greater London', type: 'sample' }
+    ];
+
+    const globalPlaceholders = placeholders.filter(p => p.type === 'global');
+    const samplePlaceholders = placeholders.filter(p => p.type === 'sample');
+
+    container.innerHTML = `
+      <form id="placeholderDefaultsForm">
+        <div class="row g-4">
+          <div class="col-lg-6">
+            <div class="card">
+              <div class="card-header bg-primary text-white">
+                <h6 class="mb-0"><i class="bi bi-globe me-2"></i>Global Defaults</h6>
+              </div>
+              <div class="card-body">
+                <p class="text-muted small mb-3">These values are used as-is in all emails unless overridden per-entry.</p>
+                ${globalPlaceholders.map(p => `
+                  <div class="mb-3">
+                    <label class="form-label">${p.label} <code class="ms-1">{${p.key}}</code></label>
+                    <input type="text" class="form-control" id="ph_${p.key}" value="${esc(p.default)}" placeholder="${p.label}">
+                    <small class="form-text text-muted">${p.desc}</small>
+                  </div>
+                `).join('')}
+              </div>
+            </div>
+          </div>
+          <div class="col-lg-6">
+            <div class="card">
+              <div class="card-header bg-secondary text-white">
+                <h6 class="mb-0"><i class="bi bi-pencil-square me-2"></i>Preview Sample Data</h6>
+              </div>
+              <div class="card-body">
+                <p class="text-muted small mb-3">Sample values used when previewing or test-sending templates. Real values come from entry data.</p>
+                ${samplePlaceholders.map(p => `
+                  <div class="mb-3">
+                    <label class="form-label">${p.label} <code class="ms-1">{${p.key}}</code></label>
+                    <input type="text" class="form-control" id="ph_${p.key}" value="${esc(p.default)}" placeholder="${p.label}">
+                    <small class="form-text text-muted">${p.desc}</small>
+                  </div>
+                `).join('')}
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="d-flex gap-2 mt-4">
+          <button type="submit" class="btn btn-primary"><i class="bi bi-save me-2"></i>Save Placeholder Defaults</button>
+          <button type="button" class="btn btn-outline-secondary" onclick="marketingModule.resetPlaceholderDefaults()"><i class="bi bi-arrow-counterclockwise me-2"></i>Reset to Defaults</button>
+        </div>
+      </form>
+      <div class="card mt-4">
+        <div class="card-header"><h6 class="mb-0"><i class="bi bi-code-square me-2"></i>Quick Reference</h6></div>
+        <div class="card-body">
+          <p class="text-muted small mb-2">Copy and paste these placeholders into your email templates:</p>
+          <div class="d-flex flex-wrap gap-2">
+            ${placeholders.map(p => `<span class="badge bg-light text-dark border" style="cursor:pointer" onclick="navigator.clipboard.writeText('{${p.key}}'); utils.showToast('Copied {${p.key}}', 'success')">{${p.key}}</span>`).join('')}
+          </div>
+        </div>
+      </div>
+    `;
+
+    document.getElementById('placeholderDefaultsForm')?.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      await marketingModule.savePlaceholderDefaults();
+    });
+  },
+
+  async savePlaceholderDefaults() {
+    const keys = ['ENTRY_NUMBER', 'CONTACT_NAME', 'COMPANY_NAME', 'AWARD_NAME', 'SECTOR', 'REGION', 'UPLOAD_LINK', 'DEADLINE_DATE', 'ANNOUNCEMENT_DATE', 'CONTACT_EMAIL'];
+    const defaults = {};
+    keys.forEach(k => {
+      const el = document.getElementById('ph_' + k);
+      if (el && el.value.trim()) defaults[k] = el.value.trim();
+    });
+    try {
+      if (STATE.client) {
+        await STATE.client.from('user_preferences').upsert({ key: 'emailPlaceholderDefaults', value: JSON.stringify(defaults), updated_at: new Date().toISOString() }, { onConflict: 'key' });
+      }
+    } catch (e) { console.warn('Failed to save placeholder defaults to DB:', e.message); }
+    localStorage.setItem('emailPlaceholderDefaults', JSON.stringify(defaults));
+    this._placeholderDefaults = defaults;
+    utils.showToast('Placeholder defaults saved', 'success');
+  },
+
+  resetPlaceholderDefaults() {
+    const dv = { ENTRY_NUMBER: 'BTA-2025-0001', CONTACT_NAME: 'John Smith', COMPANY_NAME: 'Acme Corporation Ltd', AWARD_NAME: 'Export Excellence Award', SECTOR: 'Manufacturing', REGION: 'Greater London', UPLOAD_LINK: 'https://yourdomain.com/upload-documents.html', DEADLINE_DATE: '31st December 2025', ANNOUNCEMENT_DATE: '15th February 2026', CONTACT_EMAIL: 'awards@britishtrade.org' };
+    Object.entries(dv).forEach(([k, v]) => { const el = document.getElementById('ph_' + k); if (el) el.value = v; });
+    utils.showToast('Defaults reset. Click Save to persist.', 'info');
+  },
+
   // ============================================
   // EMAIL SEQUENCES (moved from Organisations)
   // ============================================

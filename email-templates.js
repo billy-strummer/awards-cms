@@ -7,6 +7,50 @@ const emailTemplatesModule = {
   currentTemplate: null,
 
   /**
+   * Get sample data for preview/test, using saved placeholder defaults from Marketing > Placeholders
+   */
+  async _getSampleData() {
+    let defaults = null;
+    if (typeof marketingModule !== 'undefined' && marketingModule._placeholderDefaults) {
+      defaults = marketingModule._placeholderDefaults;
+    }
+    if (!defaults) {
+      try {
+        if (STATE.client) {
+          const { data } = await STATE.client.from('user_preferences').select('value').eq('key', 'emailPlaceholderDefaults').limit(1);
+          if (data?.[0]) defaults = JSON.parse(data[0].value);
+        }
+      } catch (_) {}
+    }
+    if (!defaults) {
+      try { defaults = JSON.parse(localStorage.getItem('emailPlaceholderDefaults') || 'null'); } catch (_) {}
+    }
+    return {
+      ENTRY_NUMBER: defaults?.ENTRY_NUMBER || 'BTA-2025-0001',
+      CONTACT_NAME: defaults?.CONTACT_NAME || 'John Smith',
+      COMPANY_NAME: defaults?.COMPANY_NAME || 'Acme Corporation Ltd',
+      AWARD_NAME: defaults?.AWARD_NAME || 'Export Excellence Award',
+      SECTOR: defaults?.SECTOR || 'Manufacturing',
+      REGION: defaults?.REGION || 'Greater London',
+      UPLOAD_LINK: defaults?.UPLOAD_LINK || 'https://yourdomain.com/upload-documents.html?entry=BTA-2025-0001',
+      DEADLINE_DATE: defaults?.DEADLINE_DATE || '31st December 2025',
+      ANNOUNCEMENT_DATE: defaults?.ANNOUNCEMENT_DATE || '15th February 2026',
+      CONTACT_EMAIL: defaults?.CONTACT_EMAIL || 'awards@britishtrade.org'
+    };
+  },
+
+  /**
+   * Get branding config for email styling
+   */
+  async _getBrandingConfig() {
+    try {
+      const tenantId = (typeof multiTenancyModule !== 'undefined') ? multiTenancyModule.getTenantId() : 'default';
+      if (typeof brandingModule !== 'undefined') return await brandingModule.loadBranding(tenantId);
+    } catch (_) {}
+    return {};
+  },
+
+  /**
    * Initialize Email Templates Module
    */
   async initialize() {
@@ -303,23 +347,13 @@ const emailTemplatesModule = {
   /**
    * Preview template with sample data
    */
-  previewTemplate() {
+  async previewTemplate() {
     const subject = document.getElementById('templateSubject').value;
     const body = document.getElementById('templateBody').value;
 
-    // Sample data for preview
-    const sampleData = {
-      ENTRY_NUMBER: 'BTA-2025-0001',
-      CONTACT_NAME: 'John Smith',
-      COMPANY_NAME: 'Acme Corporation Ltd',
-      AWARD_NAME: 'Export Excellence Award',
-      SECTOR: 'Manufacturing',
-      REGION: 'Greater London',
-      UPLOAD_LINK: 'https://yourdomain.com/upload-documents.html?entry=BTA-2025-0001',
-      DEADLINE_DATE: '31st December 2025',
-      ANNOUNCEMENT_DATE: '15th February 2026',
-      CONTACT_EMAIL: 'awards@britishtrade.org'
-    };
+    // Load saved placeholder defaults and branding
+    const sampleData = await this._getSampleData();
+    const branding = await this._getBrandingConfig();
 
     // Replace placeholders with sample data
     let previewSubject = subject;
@@ -331,6 +365,15 @@ const emailTemplatesModule = {
       previewSubject = previewSubject.replace(regex, sampleData[key]);
       previewBody = previewBody.replace(regex, sampleData[key]);
     });
+
+    // Get branded email header/footer
+    let emailHeader = '';
+    let emailFooter = '';
+    if (typeof brandingModule !== 'undefined' && branding && Object.keys(branding).length) {
+      const styles = brandingModule.getEmailStyles(branding.tenant_id || 'default', branding);
+      emailHeader = styles.header;
+      emailFooter = styles.footer;
+    }
 
     // Show preview modal
     const modalHtml = `
@@ -350,8 +393,12 @@ const emailTemplatesModule = {
               </div>
               <div>
                 <strong>Body:</strong>
-                <div class="p-3 bg-light rounded" style="white-space: pre-wrap; font-family: Arial, sans-serif; line-height: 1.6;">
-                  ${previewBody}
+                <div class="rounded overflow-hidden border">
+                  ${emailHeader}
+                  <div class="p-3" style="white-space: pre-wrap; font-family: Arial, sans-serif; line-height: 1.6;">
+                    ${previewBody}
+                  </div>
+                  ${emailFooter}
                 </div>
               </div>
             </div>
@@ -393,19 +440,9 @@ const emailTemplatesModule = {
     const subject = document.getElementById('templateSubject')?.value || this.currentTemplate.subject;
     const body = document.getElementById('templateBody')?.value || this.currentTemplate.body;
 
-    // Replace placeholders with sample data for test
-    const sampleData = {
-      ENTRY_NUMBER: 'BTA-2025-0001',
-      CONTACT_NAME: 'John Smith',
-      COMPANY_NAME: 'Acme Corporation Ltd',
-      AWARD_NAME: 'Export Excellence Award',
-      SECTOR: 'Manufacturing',
-      REGION: 'Greater London',
-      UPLOAD_LINK: 'https://example.com/upload',
-      DEADLINE_DATE: '31st December 2025',
-      ANNOUNCEMENT_DATE: '15th February 2026',
-      CONTACT_EMAIL: 'awards@britishtradeawards.com'
-    };
+    // Load saved placeholder defaults and branding
+    const sampleData = await this._getSampleData();
+    const branding = await this._getBrandingConfig();
 
     let testSubject = subject;
     let testBody = body;
@@ -415,6 +452,17 @@ const emailTemplatesModule = {
       testBody = testBody.replace(regex, sampleData[key]);
     });
 
+    // Wrap with branded header/footer if branding is configured
+    if (typeof brandingModule !== 'undefined' && branding && Object.keys(branding).length) {
+      const styles = brandingModule.getEmailStyles(branding.tenant_id || 'default', branding);
+      testBody = `<style>${styles.css}</style>${styles.header}<div style="padding:24px 32px">${testBody}</div>${styles.footer}`;
+    }
+
+    // Use branding email settings with fallbacks
+    const fromName = branding?.company_name || 'British Trade Awards';
+    const fromEmail = branding?.email_from || 'awards@britishtradeawards.com';
+    const replyTo = branding?.email_reply_to || branding?.email_from || 'awards@britishtradeawards.com';
+
     try {
       utils.showToast('Sending test email...', 'info');
 
@@ -422,9 +470,9 @@ const emailTemplatesModule = {
         p_to: email,
         p_subject: testSubject,
         p_html: testBody,
-        p_from_name: 'British Trade Awards',
-        p_from_email: 'awards@britishtradeawards.com',
-        p_reply_to: 'awards@britishtradeawards.com'
+        p_from_name: fromName,
+        p_from_email: fromEmail,
+        p_reply_to: replyTo
       });
 
       if (error) throw error;

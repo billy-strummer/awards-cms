@@ -652,21 +652,6 @@ British Trade Awards Team
     modal.show();
   },
 
-  /**
-   * Replace placeholders in template with actual data
-   */
-  replaceTemplatePlaceholders(template, data) {
-    let result = template;
-
-    Object.keys(data).forEach(key => {
-      const placeholder = `{${key}}`;
-      const regex = new RegExp(placeholder.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g');
-      result = result.replace(regex, data[key] || '');
-    });
-
-    return result;
-  },
-
   /* ==================================================== */
   /* AUDIT LOG */
   /* ==================================================== */
@@ -835,7 +820,7 @@ British Trade Awards Team
     } catch (error) {
       console.error('Error loading seasons:', error);
       const tbody = document.getElementById('seasonsTableBody');
-      if (tbody) utils.showEmptyState('seasonsTableBody', 8, 'Could not load seasons. Run the migration SQL first.', 'bi-exclamation-triangle');
+      if (tbody) utils.showEmptyState('seasonsTableBody', 10, 'Could not load seasons. Run the migration SQL first.', 'bi-exclamation-triangle');
     }
   },
 

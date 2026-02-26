@@ -105,9 +105,6 @@ const gdprModule = {
   },
 
   /**
-   * Search for an entity (org or contact) by name/email
-   */
-  /**
    * Escape special SQL LIKE/ILIKE wildcard characters in user input
    */
   _escapeLike(str) {
@@ -173,7 +170,7 @@ const gdprModule = {
    * Submit a GDPR request
    */
   async submitRequest() {
-    if (!rbacModule.guard('gdpr')) {
+    if (typeof rbacModule !== 'undefined' && !rbacModule.canAccess('settings')) {
       utils.showToast('You need admin permissions for GDPR actions', 'error');
       return;
     }

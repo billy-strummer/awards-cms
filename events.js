@@ -6798,8 +6798,8 @@ const eventsModule = {
         .card-inner { width: 100%; height: 100%; display: flex; flex-direction: column; border: 2.5pt solid #000; }
         .box { border-bottom: 2.5pt solid #000; display: flex; align-items: center; justify-content: center; text-align: center; padding: 3mm 10mm; }
         .box:last-child { border-bottom: none; }
-        .box-label { height: auto; padding: 2.5mm 5mm; font-size: 14pt; font-style: italic; color: #444; letter-spacing: 1px; justify-content: center; gap: 4mm; }
-        .card-number { font-size: 9pt; color: #999; font-family: Arial, sans-serif; font-style: normal; letter-spacing: 0; }
+        .box-label { height: auto; padding: 2.5mm 5mm; font-size: 14pt; font-style: italic; color: #444; letter-spacing: 1px; justify-content: center; position: relative; }
+        .card-number { position: absolute; top: 1mm; left: 2mm; font-size: 6pt; color: #bbb; font-family: Arial, sans-serif; font-style: normal; letter-spacing: 0; }
         .label-text { }
         .box-company { flex: 1; font-size: 32pt; font-weight: bold; color: #000; line-height: 1.2; }
         .box-recipient { flex: 1; font-size: 20pt; color: #333; }

@@ -39,9 +39,9 @@ window.documentModule = {
     el.innerHTML = `<div class="text-center py-5"><div class="spinner-border text-primary"></div></div>`;
 
     const [docs, entryFiles, orgDocs] = await Promise.all([
-      this._client().from('documents').select('*').order('created_at', { ascending: false }),
-      this._client().from('entry_files').select('*').order('created_at', { ascending: false }),
-      this._client().from('organisation_documents').select('*').order('created_at', { ascending: false })
+      this._client().from('documents').select('*').order('created_at', { ascending: false }).limit(1000),
+      this._client().from('entry_files').select('*').order('created_at', { ascending: false }).limit(1000),
+      this._client().from('organisation_documents').select('*').order('created_at', { ascending: false }).limit(1000)
     ]);
 
     const unified = [

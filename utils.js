@@ -2370,7 +2370,109 @@ const actionRegistry = {
   }
 };
 
+// ============================================
+// API CLIENT — routes critical operations through /api/data-proxy
+// instead of making direct Supabase calls from the browser.
+// This keeps the Supabase service key server-side and enforces
+// server-side validation, rate limiting, and audit logging.
+// ============================================
+
+const apiClient = {
+  /**
+   * Get the current user's JWT for authenticating against API endpoints.
+   * @returns {Promise<string|null>}
+   */
+  async _getToken() {
+    if (!STATE.client) return null;
+    const { data } = await STATE.client.auth.getSession();
+    return data?.session?.access_token || null;
+  },
+
+  /**
+   * Call the /api/data-proxy endpoint.
+   * @param {Object} body - Request payload (table, operation, filters, etc.)
+   * @returns {Promise<Object>} Parsed JSON response
+   */
+  async _call(body) {
+    const token = await this._getToken();
+    if (!token) throw new Error('Not authenticated');
+
+    const res = await fetch('/api/data-proxy', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify(body)
+    });
+
+    const json = await res.json();
+    if (!res.ok) throw new Error(json.error || `API error ${res.status}`);
+    return json;
+  },
+
+  /**
+   * Select records via the server-side proxy.
+   * @param {string} table
+   * @param {Object} [options]
+   * @returns {Promise<{data: Array, count: number, page: number, pageSize: number, totalPages: number}>}
+   */
+  async select(table, options = {}) {
+    return this._call({
+      table,
+      operation: 'select',
+      select: options.select || '*',
+      filters: options.filters || {},
+      sort: options.sort || undefined,
+      page: options.page || 1,
+      pageSize: options.pageSize || 50
+    });
+  },
+
+  /**
+   * Count records via the server-side proxy.
+   * @param {string} table
+   * @param {Object} [filters]
+   * @returns {Promise<{count: number}>}
+   */
+  async count(table, filters = {}) {
+    return this._call({ table, operation: 'count', filters });
+  },
+
+  /**
+   * Insert records via the server-side proxy.
+   * @param {string} table
+   * @param {Object|Array} data
+   * @returns {Promise<{data: Array}>}
+   */
+  async insert(table, data) {
+    return this._call({ table, operation: 'insert', data });
+  },
+
+  /**
+   * Update a record via the server-side proxy.
+   * @param {string} table
+   * @param {string} id - Record ID
+   * @param {Object} data - Fields to update
+   * @returns {Promise<{data: Array}>}
+   */
+  async update(table, id, data) {
+    return this._call({ table, operation: 'update', id, data });
+  },
+
+  /**
+   * Delete a record via the server-side proxy.
+   * @param {string} table
+   * @param {string} id - Record ID
+   * @returns {Promise<{data: Array}>}
+   */
+  async delete(table, id) {
+    return this._call({ table, operation: 'delete', id });
+  }
+};
+
 // Export to window for global access
 window.utils = utils;
 window.serverQuery = serverQuery;
 window.actionRegistry = actionRegistry;
+window.apiClient = apiClient;

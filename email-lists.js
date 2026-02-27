@@ -30,7 +30,8 @@ const emailListsModule = {
       const { data: lists, error } = await STATE.client
         .from('email_lists_with_stats')
         .select('*')
-        .order('created_at', { ascending: false });
+        .order('created_at', { ascending: false })
+        .limit(500);
 
       if (error) throw error;
 

@@ -5,7 +5,7 @@
   "scripts": {
     "lint": "eslint *.js api/*.js --max-warnings 50",
     "lint:fix": "eslint *.js api/*.js --fix",
-    "test": "jest tests/",
+    "test": "jest tests/ --forceExit",
     "build": "node build.js"
   },
   "devDependencies": {

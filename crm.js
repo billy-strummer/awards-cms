@@ -79,7 +79,8 @@ const crmModule = {
       const { data: companies, error } = await STATE.client
         .from('organisations_with_crm_summary')
         .select('*')
-        .order('last_communication_date', { ascending: false, nullsFirst: false });
+        .order('last_communication_date', { ascending: false, nullsFirst: false })
+        .limit(1000);
 
       if (error) throw error;
 

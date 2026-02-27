@@ -141,7 +141,7 @@ window.webhooksModule = {
     if (!container) return;
     container.innerHTML = '<p class="text-muted">Loading webhooks...</p>';
 
-    const { data: hooks, error } = await STATE.client.from('webhooks').select('*').order('created_at', { ascending: false });
+    const { data: hooks, error } = await STATE.client.from('webhooks').select('*').order('created_at', { ascending: false }).limit(500);
     if (error) { container.innerHTML = '<p class="text-danger">Failed to load webhooks.</p>'; return; }
 
     const rows = (hooks || []).map(h => `

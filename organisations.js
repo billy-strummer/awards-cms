@@ -7519,7 +7519,7 @@ updateCountyFilterByRegion() {
   // ============================================
   async showMyTasks() {
     let followUps = [];
-    try { const { data } = await STATE.client.from('organisation_follow_ups').select('*').order('date', { ascending: true }); followUps = data || []; } catch (e) { console.warn('Could not load follow-ups:', e); }
+    try { const { data } = await STATE.client.from('organisation_follow_ups').select('*').order('date', { ascending: true }).limit(1000); followUps = data || []; } catch (e) { console.warn('Could not load follow-ups:', e); }
     const today = new Date().toISOString().split('T')[0];
     const overdue = followUps.filter(f => !f.done && f.date < today);
     const todayTasks = followUps.filter(f => !f.done && f.date === today);

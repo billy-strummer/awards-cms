@@ -118,22 +118,22 @@
             </button>
             <ul class="dropdown-menu dropdown-menu-end">
               <li><h6 class="dropdown-header">Test Data Management</h6></li>
-              <li><a class="dropdown-item" href="#" onclick="testDataManager.generateTestData()">
+              <li><a class="dropdown-item" href="#" data-action="testDataManager.generateTestData" data-prevent-default="true">
                 <i class="bi bi-plus-circle me-2"></i>Generate Test Data (30 Winners)
               </a></li>
-              <li><a class="dropdown-item text-danger" href="#" onclick="testDataManager.removeTestData()">
+              <li><a class="dropdown-item text-danger" href="#" data-action="testDataManager.removeTestData" data-prevent-default="true">
                 <i class="bi bi-trash me-2"></i>Remove Test Data
               </a></li>
               <li><hr class="dropdown-divider"></li>
               <li><h6 class="dropdown-header">Mock Orders</h6></li>
-              <li><a class="dropdown-item" href="#" onclick="testDataManager.generateMockOrder()">
+              <li><a class="dropdown-item" href="#" data-action="testDataManager.generateMockOrder" data-prevent-default="true">
                 <i class="bi bi-cart-plus me-2"></i>Create Mock Order
               </a></li>
-              <li><a class="dropdown-item text-danger" href="#" onclick="testDataManager.removeMockOrders()">
+              <li><a class="dropdown-item text-danger" href="#" data-action="testDataManager.removeMockOrders" data-prevent-default="true">
                 <i class="bi bi-cart-x me-2"></i>Remove Mock Orders
               </a></li>
               <li><hr class="dropdown-divider"></li>
-              <li><a class="dropdown-item" href="#" onclick="testDataManager.showTestDataInfo()">
+              <li><a class="dropdown-item" href="#" data-action="testDataManager.showTestDataInfo" data-prevent-default="true">
                 <i class="bi bi-info-circle me-2"></i>Test Data Info
               </a></li>
             </ul>
@@ -418,7 +418,7 @@
                 </h3>
                 <p class="text-muted small mb-0">Year-by-year breakdown of awards, nominees and nominations</p>
               </div>
-              <button class="btn btn-outline-primary btn-sm" onclick="dashboardModule.navigateToSection('awards')">
+              <button class="btn btn-outline-primary btn-sm" data-action="dashboardModule.navigateToSection" data-args='["awards"]'>
                 <i class="bi bi-arrow-right me-1"></i>View Awards
               </button>
             </div>
@@ -1045,7 +1045,7 @@
                   <h5 class="mb-0">
                     <i class="bi bi-calendar-week text-warning me-2"></i>Upcoming Deadlines
                   </h5>
-                  <button class="btn btn-sm btn-outline-primary" onclick="dashboardModule.navigateToSection('events')">
+                  <button class="btn btn-sm btn-outline-primary" data-action="dashboardModule.navigateToSection" data-args='["events"]'>
                     <i class="bi bi-calendar-plus me-1"></i>View All
                   </button>
                 </div>
@@ -1071,10 +1071,10 @@
                 <p class="text-muted small mb-0">Latest purchases and invoices</p>
               </div>
               <div class="btn-group btn-group-sm">
-                <button class="btn btn-primary" onclick="dashboardModule.openSalesDashboard()">
+                <button class="btn btn-primary" data-action="dashboardModule.openSalesDashboard">
                   <i class="bi bi-graph-up me-1"></i>Sales Dashboard
                 </button>
-                <button class="btn btn-outline-primary" onclick="dashboardModule.navigateToSection('payments')">
+                <button class="btn btn-outline-primary" data-action="dashboardModule.navigateToSection" data-args='["payments"]'>
                   <i class="bi bi-arrow-right me-1"></i>View All Orders
                 </button>
               </div>
@@ -1125,7 +1125,7 @@
                   </select>
                 </div>
               </div>
-              <button class="btn btn-outline-primary btn-sm" onclick="dashboardModule.navigateToSection('organisations')">
+              <button class="btn btn-outline-primary btn-sm" data-action="dashboardModule.navigateToSection" data-args='["organisations"]'>
                 <i class="bi bi-arrow-right me-1"></i>View All
               </button>
             </div>
@@ -1162,7 +1162,7 @@
                 </h3>
                 <p class="text-muted small mb-0">Trends and insights across all data</p>
               </div>
-              <button class="btn btn-outline-primary btn-sm" onclick="dashboardModule.refreshCharts()">
+              <button class="btn btn-outline-primary btn-sm" data-action="dashboardModule.refreshCharts">
                 <i class="bi bi-arrow-clockwise me-1"></i>Refresh
               </button>
             </div>
@@ -1230,7 +1230,7 @@
                     </h3>
                     <p class="text-muted small mb-0">Last 10 changes across all tabs</p>
                   </div>
-                  <button class="btn btn-outline-primary btn-sm" onclick="dashboardModule.refreshActivityFeed()">
+                  <button class="btn btn-outline-primary btn-sm" data-action="dashboardModule.refreshActivityFeed">
                     <i class="bi bi-arrow-clockwise me-1"></i>Refresh
                   </button>
                 </div>
@@ -1479,13 +1479,13 @@
               </div>
               <div class="d-flex gap-2">
                 <div class="btn-group btn-group-sm">
-                  <button class="btn btn-success" onclick="awardsModule.bulkSetStatus('Active')">
+                  <button class="btn btn-success" data-action="awardsModule.bulkSetStatus" data-args='["Active"]'>
                     <i class="bi bi-check-circle me-1"></i>Set Active
                   </button>
-                  <button class="btn btn-warning" onclick="awardsModule.bulkSetStatus('Archived')">
+                  <button class="btn btn-warning" data-action="awardsModule.bulkSetStatus" data-args='["Archived"]'>
                     <i class="bi bi-archive me-1"></i>Archive
                   </button>
-                  <button class="btn btn-secondary" onclick="awardsModule.bulkSetStatus('Draft')">
+                  <button class="btn btn-secondary" data-action="awardsModule.bulkSetStatus" data-args='["Draft"]'>
                     <i class="bi bi-file-earmark me-1"></i>Set Draft
                   </button>
                 </div>
@@ -1495,13 +1495,13 @@
                   </button>
                   <ul class="dropdown-menu" id="bulkSeasonDropdown"></ul>
                 </div>
-                <button class="btn btn-purple btn-sm" style="background:#6f42c1;color:#fff;border-color:#6f42c1;" onclick="awardsModule.bulkCloneSelected()">
+                <button class="btn btn-purple btn-sm" style="background:#6f42c1;color:#fff;border-color:#6f42c1;" data-action="awardsModule.bulkCloneSelected">
                   <i class="bi bi-copy me-1"></i>Clone Selected
                 </button>
-                <button class="btn btn-danger btn-sm" onclick="awardsModule.bulkDelete()">
+                <button class="btn btn-danger btn-sm" data-action="awardsModule.bulkDelete">
                   <i class="bi bi-trash me-1"></i>Delete Selected
                 </button>
-                <button class="btn btn-outline-secondary btn-sm" onclick="awardsModule.clearSelection()">
+                <button class="btn btn-outline-secondary btn-sm" data-action="awardsModule.clearSelection">
                   <i class="bi bi-x-lg me-1"></i>Clear
                 </button>
               </div>
@@ -1513,14 +1513,14 @@
                 <thead>
                   <tr>
                     <th scope="col" style="width: 3%;"><input type="checkbox" class="form-check-input" id="awardsSelectAll" onchange="awardsModule.toggleSelectAll(this.checked)" aria-label="Select all awards"></th>
-                    <th scope="col" style="width: 5%; cursor: pointer;" data-sort-field="year" onclick="awardsModule.sortBy('year')">Year <i class="bi bi-arrow-down-up text-muted ms-1 small" data-sort-icon="year"></i></th>
-                    <th scope="col" style="width: 22%; cursor: pointer;" data-sort-field="award_name" onclick="awardsModule.sortBy('award_name')">Award Name <i class="bi bi-arrow-down-up text-muted ms-1 small" data-sort-icon="award_name"></i></th>
-                    <th scope="col" style="width: 12%; cursor: pointer;" data-sort-field="county" onclick="awardsModule.sortBy('county')">County/City <i class="bi bi-arrow-down-up text-muted ms-1 small" data-sort-icon="county"></i></th>
-                    <th scope="col" style="width: 10%; cursor: pointer;" data-sort-field="sector" onclick="awardsModule.sortBy('sector')">Sector <i class="bi bi-arrow-down-up text-muted ms-1 small" data-sort-icon="sector"></i></th>
-                    <th scope="col" style="width: 7%; cursor: pointer;" data-sort-field="status" onclick="awardsModule.sortBy('status')">Status <i class="bi bi-arrow-down-up text-muted ms-1 small" data-sort-icon="status"></i></th>
-                    <th scope="col" style="width: 6%; cursor: pointer;" class="text-center" data-sort-field="nominees" onclick="awardsModule.sortBy('nominees')">Nominees <i class="bi bi-arrow-down-up text-muted ms-1 small" data-sort-icon="nominees"></i></th>
+                    <th scope="col" style="width: 5%; cursor: pointer;" data-sort-field="year" data-action="awardsModule.sortBy" data-args='["year"]'>Year <i class="bi bi-arrow-down-up text-muted ms-1 small" data-sort-icon="year"></i></th>
+                    <th scope="col" style="width: 22%; cursor: pointer;" data-sort-field="award_name" data-action="awardsModule.sortBy" data-args='["award_name"]'>Award Name <i class="bi bi-arrow-down-up text-muted ms-1 small" data-sort-icon="award_name"></i></th>
+                    <th scope="col" style="width: 12%; cursor: pointer;" data-sort-field="county" data-action="awardsModule.sortBy" data-args='["county"]'>County/City <i class="bi bi-arrow-down-up text-muted ms-1 small" data-sort-icon="county"></i></th>
+                    <th scope="col" style="width: 10%; cursor: pointer;" data-sort-field="sector" data-action="awardsModule.sortBy" data-args='["sector"]'>Sector <i class="bi bi-arrow-down-up text-muted ms-1 small" data-sort-icon="sector"></i></th>
+                    <th scope="col" style="width: 7%; cursor: pointer;" data-sort-field="status" data-action="awardsModule.sortBy" data-args='["status"]'>Status <i class="bi bi-arrow-down-up text-muted ms-1 small" data-sort-icon="status"></i></th>
+                    <th scope="col" style="width: 6%; cursor: pointer;" class="text-center" data-sort-field="nominees" data-action="awardsModule.sortBy" data-args='["nominees"]'>Nominees <i class="bi bi-arrow-down-up text-muted ms-1 small" data-sort-icon="nominees"></i></th>
                     <th scope="col" style="width: 7%;" class="text-center">Phase</th>
-                    <th scope="col" style="width: 14%; cursor: pointer;" data-sort-field="winner" onclick="awardsModule.sortBy('winner')">Winner <i class="bi bi-arrow-down-up text-muted ms-1 small" data-sort-icon="winner"></i></th>
+                    <th scope="col" style="width: 14%; cursor: pointer;" data-sort-field="winner" data-action="awardsModule.sortBy" data-args='["winner"]'>Winner <i class="bi bi-arrow-down-up text-muted ms-1 small" data-sort-icon="winner"></i></th>
                     <th scope="col" style="width: 6%;" class="text-center">Actions</th>
                   </tr>
                 </thead>

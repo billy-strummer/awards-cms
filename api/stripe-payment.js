@@ -290,51 +290,168 @@ async function handleChargeRefunded(charge) {
 }
 
 /**
- * Send entry confirmation email
+ * Load an active email template from the database by type.
+ * Returns { subject, body } or null if none found.
+ */
+async function loadTemplate(templateType) {
+  try {
+    const { data } = await supabase
+      .from('email_templates')
+      .select('subject, body')
+      .eq('template_type', templateType)
+      .eq('is_active', true)
+      .order('is_default', { ascending: false })
+      .limit(1)
+      .single();
+    return data;
+  } catch { return null; }
+}
+
+/**
+ * Load tenant branding for header/footer styling.
+ */
+async function loadBranding() {
+  try {
+    const { data } = await supabase
+      .from('tenant_branding')
+      .select('*')
+      .eq('tenant_id', 'default')
+      .maybeSingle();
+    return data || {};
+  } catch { return {}; }
+}
+
+/**
+ * Replace {PLACEHOLDER} tokens in a string with values from a data object.
+ */
+function replacePlaceholders(text, data) {
+  let result = text;
+  for (const [key, value] of Object.entries(data)) {
+    result = result.replace(new RegExp(`\\{${key}\\}`, 'g'), value || '');
+  }
+  return result;
+}
+
+/**
+ * Convert plain-text template body to styled HTML.
+ */
+function textToHtml(text) {
+  const escaped = text
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  const html = escaped
+    .replace(/\n\n/g, '</p><p style="margin:0 0 16px 0;">')
+    .replace(/\n/g, '<br>');
+  return `<div style="padding:30px 40px;"><p style="margin:0 0 16px 0;">${html}</p></div>`;
+}
+
+/**
+ * Header subtitle text per payment template type.
+ */
+const SUBTITLE_MAP = {
+  payment_confirmation: 'Self-Nomination Entry Confirmation',
+  payment_failed:       'Payment Reminder',
+  refund_confirmation:  'Refund Confirmation',
+};
+
+/**
+ * Send entry confirmation email (after successful payment).
+ * Loads editable template from CMS; falls back to hardcoded default.
  */
 async function sendEntryConfirmationEmail(entry) {
   if (!process.env.RESEND_API_KEY) { console.log('RESEND_API_KEY not set, skipping email'); return; }
   try {
-    const subject = `Entry Confirmed: ${entry.entry_number || 'Your Submission'} - British Trade Awards`;
-    const bodyContent = `<div style="padding: 30px 40px;">
-        <h2>Thank you for your entry!</h2>
-        <p>Your entry <strong>${entry.entry_number || ''}</strong> has been received and payment confirmed.</p>
-        <p><strong>Entry:</strong> ${entry.entry_title || ''}</p>
-        <p><strong>Contact:</strong> ${entry.contact_name || ''}</p>
-        <p>You can upload supporting documents at: <a href="${APP_URL}/upload-documents.html?entry=${entry.entry_number || entry.id}">Upload Documents</a></p>
-        <p>We will be in touch with next steps. Good luck!</p>
-      </div>`;
-    const html = wrapEmail(bodyContent, {}, { subject, subtitle: 'Self-Nomination Entry Confirmation' });
+    const branding = await loadBranding();
+    const contactEmail = branding.email_from || process.env.CONTACT_EMAIL || 'awards@britishtrade.org';
+    const uploadLink = `${APP_URL}/upload-documents.html?entry=${entry.entry_number || entry.id}`;
+
+    const placeholders = {
+      ENTRY_NUMBER: entry.entry_number || '',
+      CONTACT_NAME: entry.contact_name || '',
+      COMPANY_NAME: entry.company_name || '',
+      ENTRY_TITLE:  entry.entry_title || '',
+      UPLOAD_LINK:  uploadLink,
+      CONTACT_EMAIL: contactEmail,
+    };
+
+    const tpl = await loadTemplate('payment_confirmation');
+    let subject, bodyText;
+    if (tpl) {
+      subject  = replacePlaceholders(tpl.subject, placeholders);
+      bodyText = replacePlaceholders(tpl.body, placeholders);
+    } else {
+      subject  = `Entry Confirmed: ${entry.entry_number || 'Your Submission'} - British Trade Awards`;
+      bodyText = `Dear ${entry.contact_name || ''},\n\nThank you for your entry! Your entry ${entry.entry_number || ''} has been received and payment confirmed.\n\nEntry: ${entry.entry_title || ''}\n\nYou can upload supporting documents at:\n${uploadLink}\n\nWe will be in touch with next steps. Good luck!\n\nKind regards,\nThe British Trade Awards Team`;
+    }
+
+    const bodyHtml = textToHtml(bodyText);
+    const html = wrapEmail(bodyHtml, branding, { subject, subtitle: SUBTITLE_MAP.payment_confirmation });
     await resend.emails.send({ from: FROM_EMAIL, to: entry.contact_email, subject, html });
   } catch (e) { console.error('Error sending confirmation email:', e.message); }
 }
 
+/**
+ * Send payment failed email.
+ * Loads editable template from CMS; falls back to hardcoded default.
+ */
 async function sendPaymentFailedEmail(entry, errorMessage) {
   if (!process.env.RESEND_API_KEY) { console.log('RESEND_API_KEY not set, skipping email'); return; }
   try {
-    const subject = `Payment Issue: ${entry.entry_number || 'Your Entry'} - British Trade Awards`;
-    const bodyContent = `<div style="padding: 30px 40px;">
-        <h2>Payment Issue</h2>
-        <p>We were unable to process payment for entry <strong>${entry.entry_number || ''}</strong>.</p>
-        <p><strong>Reason:</strong> ${errorMessage || 'Unknown error'}</p>
-        <p>Please try again or contact us for assistance.</p>
-      </div>`;
-    const html = wrapEmail(bodyContent, {}, { subject, subtitle: 'Payment Reminder' });
+    const branding = await loadBranding();
+    const contactEmail = branding.email_from || process.env.CONTACT_EMAIL || 'awards@britishtrade.org';
+
+    const placeholders = {
+      ENTRY_NUMBER:  entry.entry_number || '',
+      CONTACT_NAME:  entry.contact_name || '',
+      COMPANY_NAME:  entry.company_name || '',
+      ERROR_MESSAGE: errorMessage || 'Unknown error',
+      CONTACT_EMAIL: contactEmail,
+    };
+
+    const tpl = await loadTemplate('payment_failed');
+    let subject, bodyText;
+    if (tpl) {
+      subject  = replacePlaceholders(tpl.subject, placeholders);
+      bodyText = replacePlaceholders(tpl.body, placeholders);
+    } else {
+      subject  = `Payment Issue: ${entry.entry_number || 'Your Entry'} - British Trade Awards`;
+      bodyText = `Dear ${entry.contact_name || ''},\n\nWe were unable to process payment for entry ${entry.entry_number || ''}.\n\nReason: ${errorMessage || 'Unknown error'}\n\nPlease try again or contact us for assistance at ${contactEmail}\n\nKind regards,\nThe British Trade Awards Team`;
+    }
+
+    const bodyHtml = textToHtml(bodyText);
+    const html = wrapEmail(bodyHtml, branding, { subject, subtitle: SUBTITLE_MAP.payment_failed });
     await resend.emails.send({ from: FROM_EMAIL, to: entry.contact_email, subject, html });
   } catch (e) { console.error('Error sending payment failed email:', e.message); }
 }
 
+/**
+ * Send refund confirmation email.
+ * Loads editable template from CMS; falls back to hardcoded default.
+ */
 async function sendRefundConfirmationEmail(entry) {
   if (!process.env.RESEND_API_KEY) { console.log('RESEND_API_KEY not set, skipping email'); return; }
   try {
-    const subject = `Refund Processed: ${entry.entry_number || 'Your Entry'} - British Trade Awards`;
-    const bodyContent = `<div style="padding: 30px 40px;">
-        <h2>Refund Confirmation</h2>
-        <p>A refund has been processed for entry <strong>${entry.entry_number || ''}</strong>.</p>
-        <p>The refund should appear on your statement within 5-10 business days.</p>
-        <p>If you have any questions, please contact us.</p>
-      </div>`;
-    const html = wrapEmail(bodyContent, {}, { subject, subtitle: 'Refund Confirmation' });
+    const branding = await loadBranding();
+    const contactEmail = branding.email_from || process.env.CONTACT_EMAIL || 'awards@britishtrade.org';
+
+    const placeholders = {
+      ENTRY_NUMBER:  entry.entry_number || '',
+      CONTACT_NAME:  entry.contact_name || '',
+      COMPANY_NAME:  entry.company_name || '',
+      CONTACT_EMAIL: contactEmail,
+    };
+
+    const tpl = await loadTemplate('refund_confirmation');
+    let subject, bodyText;
+    if (tpl) {
+      subject  = replacePlaceholders(tpl.subject, placeholders);
+      bodyText = replacePlaceholders(tpl.body, placeholders);
+    } else {
+      subject  = `Refund Processed: ${entry.entry_number || 'Your Entry'} - British Trade Awards`;
+      bodyText = `Dear ${entry.contact_name || ''},\n\nA refund has been processed for entry ${entry.entry_number || ''}.\n\nThe refund should appear on your statement within 5-10 business days.\n\nIf you have any questions, please contact us at ${contactEmail}\n\nKind regards,\nThe British Trade Awards Team`;
+    }
+
+    const bodyHtml = textToHtml(bodyText);
+    const html = wrapEmail(bodyHtml, branding, { subject, subtitle: SUBTITLE_MAP.refund_confirmation });
     await resend.emails.send({ from: FROM_EMAIL, to: entry.contact_email, subject, html });
   } catch (e) { console.error('Error sending refund email:', e.message); }
 }

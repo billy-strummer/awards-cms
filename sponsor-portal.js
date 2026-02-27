@@ -2,7 +2,7 @@
 /* SPONSOR PORTAL - Self-Service Sponsor Management     */
 /* ==================================================== */
 
-window.sponsorPortalModule = {
+const sponsorPortalModule = {
 
   TIERS: {
     Gold:   { badge: 'warning',   benefits: ['Logo on all event materials', 'Premium website placement', 'VIP table (10 seats)', 'Social media features', 'Post-event analytics report'] },
@@ -15,12 +15,14 @@ window.sponsorPortalModule = {
     const el = document.getElementById('sponsorDashboard');
     if (!el) return;
     try {
-      const [{ data: s, error }, stats, { data: contracts }] = await Promise.all([
-        STATE.client.from('sponsors').select('*').eq('id', sponsorId).single(),
+      const [sponsorResult, stats, contractsResult] = await Promise.all([
+        apiClient.select('sponsors', { select: '*', filters: { id: { eq: sponsorId } }, pageSize: 1 }),
         this.getImpressionStats(sponsorId),
-        STATE.client.from('sponsor_contracts').select('*').eq('sponsor_id', sponsorId).order('start_date', { ascending: false }).limit(1)
+        apiClient.select('sponsor_contracts', { select: '*', filters: { sponsor_id: { eq: sponsorId } }, sort: { column: 'start_date', ascending: false }, pageSize: 1 })
       ]);
-      if (error) throw error;
+      const s = sponsorResult.data?.[0];
+      if (!s) throw new Error('Sponsor not found');
+      const contracts = contractsResult.data || [];
       const tier = this.TIERS[s.tier] || this.TIERS.Bronze;
       const c    = contracts?.[0] || null;
       const roi  = await this.calculateROI(sponsorId);
@@ -77,7 +79,7 @@ window.sponsorPortalModule = {
       const { error: upErr } = await STATE.client.storage.from('sponsor-assets').upload(path, file, { upsert: true, contentType: file.type });
       if (upErr) throw upErr;
       const { data: urlData } = STATE.client.storage.from('sponsor-assets').getPublicUrl(path);
-      await STATE.client.from('sponsors').update({ logo_url: urlData.publicUrl }).eq('id', sponsorId);
+      await apiClient.update('sponsors', sponsorId, { logo_url: urlData.publicUrl });
       utils.showToast('Asset uploaded successfully', 'success');
       return urlData.publicUrl;
     } catch (err) {
@@ -90,15 +92,13 @@ window.sponsorPortalModule = {
   /* 3. IMPRESSION TRACKING */
   async trackImpression(sponsorId, page) {
     try {
-      await STATE.client.from('sponsor_impressions').insert({ sponsor_id: sponsorId, page: page || location.pathname, tracked_at: new Date().toISOString() });
+      await apiClient.insert('sponsor_impressions', { sponsor_id: sponsorId, page: page || location.pathname, tracked_at: new Date().toISOString() });
     } catch (err) { console.warn('trackImpression:', err); }
   },
 
   async getImpressionStats(sponsorId) {
     try {
-      const { data, error } = await STATE.client.from('sponsor_impressions').select('tracked_at, page').eq('sponsor_id', sponsorId);
-      if (error) throw error;
-      const rows = data || [];
+      const rows = await apiClient.selectAll('sponsor_impressions', { select: 'tracked_at, page', filters: { sponsor_id: { eq: sponsorId } } });
       const monthStart = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString();
       const byPage = {};
       rows.forEach(r => { byPage[r.page] = (byPage[r.page] || 0) + 1; });
@@ -114,8 +114,7 @@ window.sponsorPortalModule = {
     const el = document.getElementById('tierManagement');
     if (!el) return;
     try {
-      const { data: sponsors, error } = await STATE.client.from('sponsors').select('id, name, tier, is_active, display_order').order('display_order', { ascending: true });
-      if (error) throw error;
+      const sponsors = await apiClient.selectAll('sponsors', { select: 'id, name, tier, is_active, display_order', sort: { column: 'display_order', ascending: true } });
       const grouped = { Gold: [], Silver: [], Bronze: [] };
       (sponsors || []).forEach(s => { if (grouped[s.tier]) grouped[s.tier].push(s); });
       el.innerHTML = Object.entries(this.TIERS).map(([key, tier]) => `
@@ -148,8 +147,7 @@ window.sponsorPortalModule = {
     const newTier = prompt(`Change tier from ${currentTier} to: (${others.join(' / ')})`);
     if (!newTier || !this.TIERS[newTier]) { utils.showToast('Invalid tier selected', 'warning'); return; }
     try {
-      const { error } = await STATE.client.from('sponsors').update({ tier: newTier }).eq('id', sponsorId);
-      if (error) throw error;
+      await apiClient.update('sponsors', sponsorId, { tier: newTier });
       utils.showToast(`Tier updated to ${newTier}`, 'success');
       this.renderTierManagement();
     } catch (err) { utils.showToast('Failed to update tier: ' + err.message, 'error'); }
@@ -160,9 +158,7 @@ window.sponsorPortalModule = {
     const el = document.getElementById('sponsorContracts');
     if (!el) return;
     try {
-      const { data, error } = await STATE.client.from('sponsor_contracts').select('*, sponsors(name, tier)').order('start_date', { ascending: false });
-      if (error) throw error;
-      const rows = data || [];
+      const rows = await apiClient.selectAll('sponsor_contracts', { select: '*, sponsors(name, tier)', sort: { column: 'start_date', ascending: false } });
       el.innerHTML = `
         <div class="d-flex justify-content-between align-items-center mb-3">
           <h6 class="mb-0">Sponsor Contracts</h6>
@@ -200,8 +196,8 @@ window.sponsorPortalModule = {
   },
 
   async openContractModal(contract = null) {
-    const { data: sponsors } = await STATE.client.from('sponsors').select('id, name').eq('is_active', true).order('name');
-    const opts = (sponsors||[]).map(s => `<option value="${s.id}"${contract?.sponsor_id===s.id?' selected':''}>${utils.escapeHtml(s.name)}</option>`).join('');
+    const sponsors = await apiClient.selectAll('sponsors', { select: 'id, name', filters: { is_active: { eq: true } }, sort: { column: 'name', ascending: true } });
+    const opts = sponsors.map(s => `<option value="${s.id}"${contract?.sponsor_id===s.id?' selected':''}>${utils.escapeHtml(s.name)}</option>`).join('');
     document.getElementById('contractModalTitle').textContent = contract ? 'Edit Contract' : 'New Contract';
     document.getElementById('contractModalBody').innerHTML = `
       <input type="hidden" id="contractId" value="${contract?.id||''}">
@@ -228,10 +224,11 @@ window.sponsorPortalModule = {
       benefits:   document.getElementById('contractBenefits').value
     };
     try {
-      const { error } = id
-        ? await STATE.client.from('sponsor_contracts').update(payload).eq('id', id)
-        : await STATE.client.from('sponsor_contracts').insert(payload);
-      if (error) throw error;
+      if (id) {
+        await apiClient.update('sponsor_contracts', id, payload);
+      } else {
+        await apiClient.insert('sponsor_contracts', payload);
+      }
     } catch (err) {
       console.warn('DB save for contract failed, using localStorage:', err);
       const key = 'bta_sponsor_contracts';
@@ -249,8 +246,7 @@ window.sponsorPortalModule = {
   async deleteContract(id) {
     if (!await utils.confirmDialog({ title: 'Delete Contract', message: 'Delete this contract? This cannot be undone.', confirmText: 'Delete', danger: true })) return;
     try {
-      const { error } = await STATE.client.from('sponsor_contracts').delete().eq('id', id);
-      if (error) throw error;
+      await apiClient.delete('sponsor_contracts', id);
       utils.showToast('Contract deleted', 'success');
       this.renderContracts();
     } catch (err) { utils.showToast('Failed to delete contract: ' + err.message, 'error'); }
@@ -261,11 +257,9 @@ window.sponsorPortalModule = {
     const el = document.getElementById(containerId);
     if (!el) return;
     try {
-      let query = STATE.client.from('sponsors').select('id, name, logo_url, website, tier').eq('is_active', true).order('display_order', { ascending: true });
-      if (tier) query = query.eq('tier', tier);
-      const { data, error } = await query;
-      if (error) throw error;
-      const sponsors = data || [];
+      const filters = { is_active: { eq: true } };
+      if (tier) filters.tier = { eq: tier };
+      const sponsors = await apiClient.selectAll('sponsors', { select: 'id, name, logo_url, website, tier', filters, sort: { column: 'display_order', ascending: true } });
       if (!sponsors.length) { el.innerHTML = ''; return; }
       el.innerHTML = `
         <div class="sponsor-widget">
@@ -287,11 +281,11 @@ window.sponsorPortalModule = {
   /* 7. ROI CALCULATOR */
   async calculateROI(sponsorId) {
     try {
-      const [stats, { data: contracts }] = await Promise.all([
+      const [stats, contractsResult] = await Promise.all([
         this.getImpressionStats(sponsorId),
-        STATE.client.from('sponsor_contracts').select('amount').eq('sponsor_id', sponsorId).eq('status', 'Active').limit(1)
+        apiClient.select('sponsor_contracts', { select: 'amount', filters: { sponsor_id: { eq: sponsorId }, status: { eq: 'Active' } }, pageSize: 1 })
       ]);
-      const totalAmount      = parseFloat(contracts?.[0]?.amount || 0);
+      const totalAmount      = parseFloat(contractsResult.data?.[0]?.amount || 0);
       const totalImpressions = stats.total || 0;
       const estimatedClicks  = Math.round(totalImpressions * 0.025);
       const costPerImpression = totalImpressions > 0 ? `\u00a3${(totalAmount / totalImpressions).toFixed(4)}` : 'N/A';
@@ -303,3 +297,4 @@ window.sponsorPortalModule = {
     }
   }
 };
+ModuleRegistry.register('sponsorPortalModule', sponsorPortalModule);

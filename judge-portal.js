@@ -58,7 +58,7 @@ const judgePortal = {
 
     // Try to get judge details from database
     try {
-      const { data: judgeData } = await supabase
+      const { data: _judgeData } = await supabase
         .from('user_roles')
         .select('email, role')
         .eq('email', judgeEmail)
@@ -645,7 +645,7 @@ const judgePortal = {
 };
 
 // Export to window for global access
-window.judgePortal = judgePortal;
+ModuleRegistry.register('judgePortal', judgePortal);
 
 // Initialize on page load
 document.addEventListener('DOMContentLoaded', () => {

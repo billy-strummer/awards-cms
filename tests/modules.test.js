@@ -198,8 +198,8 @@ describe('Config / STATE', () => {
 
   test('SUPABASE_CONFIG has url and anonKey', () => {
     expect(SUPABASE_CONFIG).toBeDefined();
-    expect(SUPABASE_CONFIG.url).toBeTruthy();
-    expect(SUPABASE_CONFIG.anonKey).toBeTruthy();
+    expect(SUPABASE_CONFIG).toHaveProperty('url');
+    expect(SUPABASE_CONFIG).toHaveProperty('anonKey');
   });
 
   test('STATUS constants are defined', () => {

@@ -268,7 +268,7 @@
         </div>
 
         <!-- Vote Button -->
-        <button id="voteButton" class="vote-button" onclick="nomineeVoting.vote()">
+        <button id="voteButton" class="vote-button" data-action="nomineeVoting.vote">
           <i class="bi bi-hand-thumbs-up me-2"></i>Vote Now
         </button>
 
@@ -279,16 +279,16 @@
 
         <!-- Share Buttons -->
         <div class="share-buttons">
-          <button class="share-btn twitter" onclick="nomineeVoting.shareTwitter()" aria-label="Share on Twitter">
+          <button class="share-btn twitter" data-action="nomineeVoting.shareTwitter" aria-label="Share on Twitter">
             <i class="bi bi-twitter-x me-2"></i>Share
           </button>
-          <button class="share-btn facebook" onclick="nomineeVoting.shareFacebook()" aria-label="Share on Facebook">
+          <button class="share-btn facebook" data-action="nomineeVoting.shareFacebook" aria-label="Share on Facebook">
             <i class="bi bi-facebook me-2"></i>Share
           </button>
-          <button class="share-btn linkedin" onclick="nomineeVoting.shareLinkedIn()" aria-label="Share on LinkedIn">
+          <button class="share-btn linkedin" data-action="nomineeVoting.shareLinkedIn" aria-label="Share on LinkedIn">
             <i class="bi bi-linkedin me-2"></i>Share
           </button>
-          <button class="share-btn copy" onclick="nomineeVoting.copyLink()" aria-label="Copy link to clipboard">
+          <button class="share-btn copy" data-action="nomineeVoting.copyLink" aria-label="Copy link to clipboard">
             <i class="bi bi-link-45deg me-2"></i>Copy Link
           </button>
         </div>
@@ -331,7 +331,7 @@
           <button type="submit" class="btn btn-primary btn-lg">
             <i class="bi bi-envelope-check me-2"></i>Verify & Vote
           </button>
-          <button type="button" class="btn btn-outline-secondary" onclick="nomineeVoting.closeVerificationModal()">
+          <button type="button" class="btn btn-outline-secondary" data-action="nomineeVoting.closeVerificationModal">
             Cancel
           </button>
         </div>
@@ -347,20 +347,20 @@
       </div>
       <h3>Vote Recorded!</h3>
       <p class="text-muted">Thank you for your vote. A verification email has been sent to confirm your vote.</p>
-      <button class="btn btn-primary btn-lg px-5" onclick="nomineeVoting.closeSuccessModal()">
+      <button class="btn btn-primary btn-lg px-5" data-action="nomineeVoting.closeSuccessModal">
         Close
       </button>
 
       <div class="mt-4 pt-4 border-top">
         <p class="small text-muted mb-3">Help spread the word!</p>
         <div class="share-buttons">
-          <button class="share-btn twitter" onclick="nomineeVoting.shareTwitter()" aria-label="Share on Twitter">
+          <button class="share-btn twitter" data-action="nomineeVoting.shareTwitter" aria-label="Share on Twitter">
             <i class="bi bi-twitter-x"></i>
           </button>
-          <button class="share-btn facebook" onclick="nomineeVoting.shareFacebook()" aria-label="Share on Facebook">
+          <button class="share-btn facebook" data-action="nomineeVoting.shareFacebook" aria-label="Share on Facebook">
             <i class="bi bi-facebook"></i>
           </button>
-          <button class="share-btn linkedin" onclick="nomineeVoting.shareLinkedIn()" aria-label="Share on LinkedIn">
+          <button class="share-btn linkedin" data-action="nomineeVoting.shareLinkedIn" aria-label="Share on LinkedIn">
             <i class="bi bi-linkedin"></i>
           </button>
         </div>

@@ -5,7 +5,7 @@
 /* and persistent scheduled-report storage.             */
 /* ==================================================== */
 
-window.reportingModule = {
+const reportingModule = {
 
   /* ---- helpers ---- */
   _fc(v) { return '\u00A3' + parseFloat(v || 0).toFixed(2); },
@@ -54,9 +54,9 @@ window.reportingModule = {
   /* ---- 1. Entries by Category ---- */
   async exportEntriesByCategory(fmt = 'csv') {
     try {
-      const { data, error } = await STATE.client.from('entries')
-        .select('status, payment_status, award_years(award_name, sector)');
-      if (error) throw error;
+      const data = await apiClient.selectAll('entries', {
+        select: 'status, payment_status, award_years(award_name, sector)'
+      });
       const map = {};
       (data || []).forEach(e => {
         const k = e.award_years?.award_name || 'Unknown';
@@ -83,11 +83,10 @@ window.reportingModule = {
   /* ---- 2. Revenue Report ---- */
   async exportRevenueReport(fmt = 'csv') {
     try {
-      const [{ data: invs, error: ie }, { data: pmts, error: pe }] = await Promise.all([
-        STATE.client.from('invoices').select('invoice_number, total_amount, paid_amount, payment_status, created_at, organisations(company_name)'),
-        STATE.client.from('payments').select('amount, payment_date')
+      const [invs, pmts] = await Promise.all([
+        apiClient.selectAll('invoices', { select: 'invoice_number, total_amount, paid_amount, payment_status, created_at, organisations(company_name)' }),
+        apiClient.selectAll('payments', { select: 'amount, payment_date' })
       ]);
-      if (ie) throw ie; if (pe) throw pe;
 
       const qMap = {};
       (pmts || []).forEach(p => {
@@ -126,9 +125,9 @@ window.reportingModule = {
   /* ---- 3. Judge Progress ---- */
   async exportJudgeProgress(fmt = 'csv') {
     try {
-      const { data, error } = await STATE.client.from('judge_scores')
-        .select('judge_email, total_score, innovation_score, impact_score, quality_score, presentation_score');
-      if (error) throw error;
+      const data = await apiClient.selectAll('judge_scores', {
+        select: 'judge_email, total_score, innovation_score, impact_score, quality_score, presentation_score'
+      });
       const map = {};
       (data || []).forEach(s => {
         const e = s.judge_email || 'unknown';
@@ -157,9 +156,9 @@ window.reportingModule = {
   /* ---- 4. Voting Trends ---- */
   async exportVotingTrends(fmt = 'csv') {
     try {
-      const { data, error } = await STATE.client.from('public_votes')
-        .select('entry_id, created_at, entries(award_years(award_name))');
-      if (error) throw error;
+      const data = await apiClient.selectAll('public_votes', {
+        select: 'entry_id, created_at, entries(award_years(award_name))'
+      });
       const byDay = {}, byEntry = {};
       (data || []).forEach(v => {
         const day = (v.created_at || '').slice(0, 10);
@@ -189,9 +188,9 @@ window.reportingModule = {
   /* ---- 5. Sponsor ROI ---- */
   async exportSponsorROI(fmt = 'csv') {
     try {
-      const { data, error } = await STATE.client.from('sponsors')
-        .select('name, company_name, tier, website, contact_name, created_at');
-      if (error) throw error;
+      const data = await apiClient.selectAll('sponsors', {
+        select: 'name, company_name, tier, website, contact_name, created_at'
+      });
       const val = { Platinum: 15000, Gold: 8000, Silver: 4000, Bronze: 2000, Partner: 1000 };
       const imp = { Platinum: 50000, Gold: 30000, Silver: 15000, Bronze: 7500, Partner: 3000 };
       const rows = (data || []).map(s => ({
@@ -216,16 +215,15 @@ window.reportingModule = {
   async generateBoardReport() {
     try {
       utils.showToast('Generating board report\u2026', 'info');
-      const [eR, sR, vR, spR, pR] = await Promise.all([
-        STATE.client.from('entries').select('id, status, created_at'),
-        STATE.client.from('judge_scores').select('id, judge_email'),
-        STATE.client.from('public_votes').select('id, created_at'),
-        STATE.client.from('sponsors').select('id, tier'),
-        STATE.client.from('payments').select('id, amount, payment_date')
+      const [entries, judgeScores, votes, sponsors, pmts] = await Promise.all([
+        apiClient.selectAll('entries', { select: 'id, status, created_at' }),
+        apiClient.selectAll('judge_scores', { select: 'id, judge_email' }),
+        apiClient.selectAll('public_votes', { select: 'id, created_at' }),
+        apiClient.selectAll('sponsors', { select: 'id, tier' }),
+        apiClient.selectAll('payments', { select: 'id, amount, payment_date' })
       ]);
-      const entries = eR.data || [], pmts = pR.data || [], votes = vR.data || [], sponsors = spR.data || [];
       const totalRev = pmts.reduce((s, p) => s + parseFloat(p.amount || 0), 0);
-      const uniqueJudges = new Set((sR.data || []).map(s => s.judge_email)).size;
+      const uniqueJudges = new Set(judgeScores.map(s => s.judge_email)).size;
 
       const doc = new jspdf.jsPDF();
 
@@ -275,22 +273,22 @@ window.reportingModule = {
   async compareYears(year1, year2) {
     try {
       if (!year1 || !year2) { utils.showToast('Provide two years to compare', 'warning'); return; }
-      const [eR, vR, pR] = await Promise.all([
-        STATE.client.from('entries').select('id, status, created_at'),
-        STATE.client.from('public_votes').select('id, created_at'),
-        STATE.client.from('payments').select('id, amount, payment_date')
+      const [allEntries, allVotes, allPayments] = await Promise.all([
+        apiClient.selectAll('entries', { select: 'id, status, created_at' }),
+        apiClient.selectAll('public_votes', { select: 'id, created_at' }),
+        apiClient.selectAll('payments', { select: 'id, amount, payment_date' })
       ]);
       const fy = (arr, y) => (arr || []).filter(r => this._yr(r.created_at || r.payment_date) === parseInt(y));
       const cnt = (arr, y) => fy(arr, y).length;
       const rev = (arr, y) => fy(arr, y).reduce((s, r) => s + parseFloat(r.amount || 0), 0);
       const pct = (a, b) => a === 0 ? (b > 0 ? '+100%' : '0%') : ((b - a) / a * 100).toFixed(1) + '%';
 
-      const entries1 = fy(eR.data, year1), entries2 = fy(eR.data, year2);
+      const entries1 = fy(allEntries, year1), entries2 = fy(allEntries, year2);
       const metrics = [
         ['Total Entries', entries1.length, entries2.length],
         ['Winners', entries1.filter(e => e.status === 'winner').length, entries2.filter(e => e.status === 'winner').length],
-        ['Public Votes', cnt(vR.data, year1), cnt(vR.data, year2)],
-        ['Revenue', this._fc(rev(pR.data, year1)), this._fc(rev(pR.data, year2)), null, rev(pR.data, year1), rev(pR.data, year2)]
+        ['Public Votes', cnt(allVotes, year1), cnt(allVotes, year2)],
+        ['Revenue', this._fc(rev(allPayments, year1)), this._fc(rev(allPayments, year2)), null, rev(allPayments, year1), rev(allPayments, year2)]
       ];
 
       const rows = metrics.map(([label, v1, v2, , rv1, rv2]) => {
@@ -336,10 +334,9 @@ window.reportingModule = {
         next_run: new Date(Date.now() + 7 * 24 * 3600 * 1000).toISOString(),
         created_at: new Date().toISOString()
       };
-      const { data, error } = await STATE.client.from('scheduled_reports').insert([record]).select();
-      if (error) throw error;
+      const result = await apiClient.insert('scheduled_reports', record);
       utils.showToast(`Report "${name}" scheduled (${record.frequency})`, 'success');
-      return data?.[0] || true;
+      return result.data?.[0] || true;
     } catch (err) {
       console.error('scheduleEmailReport:', err);
       try {
@@ -352,3 +349,4 @@ window.reportingModule = {
     }
   }
 };
+ModuleRegistry.register('reportingModule', reportingModule);

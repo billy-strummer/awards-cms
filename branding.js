@@ -2,7 +2,7 @@
 /* BRANDING MODULE — White-label engine for tenant CMS  */
 /* ==================================================== */
 
-window.brandingModule = {
+const brandingModule = {
 
   /* ---- Presets ---- */
   getPresets() {
@@ -135,7 +135,7 @@ window.brandingModule = {
     const s = config.secondary_color || '#1a1a1a';
     const a = config.accent_color    || '#D4AF37';
     const c = this._esc(config.company_name  || 'British Trade Awards');
-    const r = this._esc(config.email_reply_to || config.email_from || '');
+    const _r = this._esc(config.email_reply_to || config.email_from || '');
     const logoUrl = this._esc(config.logo_url || '');
     const headerContent = this._buildEmailHeaderContent(config.logo_url ? logoUrl : '', c, a, subtitle);
     return {
@@ -339,3 +339,4 @@ window.brandingModule = {
     });
   }
 };
+ModuleRegistry.register('brandingModule', brandingModule);

@@ -2,7 +2,7 @@
 /* CALENDAR MODULE - ICS Export & Monthly Grid View   */
 /* ==================================================== */
 
-window.calendarModule = {
+const calendarModule = {
   _currentMonth: new Date().getMonth(),
   _currentYear:  new Date().getFullYear(),
   _dayItems: {},
@@ -16,30 +16,33 @@ window.calendarModule = {
     const add   = (key, item) => { if (!key) return; if (!items[key]) items[key] = []; items[key].push(item); };
 
     try {
-      let invQuery = STATE.client.from('invoices').select('id,invoice_number,due_date,total_amount,organisations(company_name)').gte('due_date', start).lte('due_date', end).neq('status', 'paid');
-
-      const [evR, seR, fuR, invR] = await Promise.all([
-        STATE.client.from('events').select('id,event_name,event_date,venue').gte('event_date', start).lte('event_date', end),
-        STATE.client.from('award_seasons').select('id,name,entry_close_date,judging_close_date').or(`entry_close_date.gte.${start},judging_close_date.gte.${start}`),
-        STATE.client.from('organisation_follow_ups').select('id,organisation_id,follow_up_date,note,completed').gte('follow_up_date', start).lte('follow_up_date', end),
-        invQuery
+      let invoiceData;
+      const [evData, seData, fuData] = await Promise.all([
+        apiClient.selectAll('events', { select: 'id,event_name,event_date,venue', filters: { event_date: { gte: start, lte: end } } }),
+        apiClient.selectAll('award_seasons', { select: 'id,name,entry_close_date,judging_close_date', filters: { or: `entry_close_date.gte.${start},judging_close_date.gte.${start}` } }),
+        apiClient.selectAll('organisation_follow_ups', { select: 'id,organisation_id,follow_up_date,note,completed', filters: { follow_up_date: { gte: start, lte: end } } })
       ]);
 
-      // Retry invoices without FK join if relationship missing
-      let invoiceData = invR;
-      if (invR.error && (invR.error.message?.includes('relationship') || invR.error.message?.includes('schema cache'))) {
-        invoiceData = await STATE.client.from('invoices').select('id,invoice_number,due_date,total_amount').gte('due_date', start).lte('due_date', end).neq('status', 'paid');
+      try {
+        invoiceData = await apiClient.selectAll('invoices', { select: 'id,invoice_number,due_date,total_amount,organisations(company_name)', filters: { due_date: { gte: start, lte: end }, status: { neq: 'paid' } } });
+      } catch (invErr) {
+        // Retry invoices without FK join if relationship missing
+        if (invErr.message?.includes('relationship') || invErr.message?.includes('schema cache')) {
+          invoiceData = await apiClient.selectAll('invoices', { select: 'id,invoice_number,due_date,total_amount', filters: { due_date: { gte: start, lte: end }, status: { neq: 'paid' } } });
+        } else {
+          throw invErr;
+        }
       }
 
-      (evR.data  || []).forEach(e => add(e.event_date && e.event_date.slice(0,10), { type:'ceremony',         color:'primary', label:e.event_name,                                detail:e.venue||'',                            ref:e }));
-      (seR.data  || []).forEach(s => {
+      (evData  || []).forEach(e => add(e.event_date && e.event_date.slice(0,10), { type:'ceremony',         color:'primary', label:e.event_name,                                detail:e.venue||'',                            ref:e }));
+      (seData  || []).forEach(s => {
         const ed = s.entry_close_date   && s.entry_close_date.slice(0,10);
         const jd = s.judging_close_date && s.judging_close_date.slice(0,10);
         if (ed && ed >= start && ed <= end) add(ed, { type:'entry_deadline',   color:'danger',  label:s.name+' \u2013 Entry Deadline',   detail:'', ref:s });
         if (jd && jd >= start && jd <= end) add(jd, { type:'judging_deadline', color:'warning', label:s.name+' \u2013 Judging Deadline', detail:'', ref:s });
       });
-      (fuR.data  || []).forEach(f => add(f.follow_up_date && f.follow_up_date.slice(0,10), { type:'followup', color:'success', label:f.note||'Follow-up', detail:f.completed?'Completed':'Pending', ref:f }));
-      (invoiceData.data || []).forEach(i => add(i.due_date && i.due_date.slice(0,10), { type:'payment', color:'purple', label:`Invoice ${i.invoice_number||''} due`, detail:(i.organisations&&i.organisations.company_name)||'', ref:i }));
+      (fuData  || []).forEach(f => add(f.follow_up_date && f.follow_up_date.slice(0,10), { type:'followup', color:'success', label:f.note||'Follow-up', detail:f.completed?'Completed':'Pending', ref:f }));
+      (invoiceData || []).forEach(i => add(i.due_date && i.due_date.slice(0,10), { type:'payment', color:'purple', label:`Invoice ${i.invoice_number||''} due`, detail:(i.organisations&&i.organisations.company_name)||'', ref:i }));
     } catch (err) {
       console.error('Calendar fetch error:', err);
       utils.showToast('Failed to load calendar data', 'warning');
@@ -166,8 +169,9 @@ window.calendarModule = {
 
   async exportEventICS(eventId) {
     try {
-      const { data, error } = await STATE.client.from('events').select('*').eq('id',eventId).single();
-      if (error) throw error;
+      const result = await apiClient.select('events', { select: '*', filters: { id: { eq: eventId } }, pageSize: 1 });
+      const data = result.data?.[0];
+      if (!data) throw new Error('Event not found');
       this.exportICS([{ type:'ceremony', color:'primary', label:data.event_name, detail:data.venue||'', ref:data }]);
     } catch (err) { utils.showToast('Failed to export event: '+err.message,'error'); }
   },
@@ -175,8 +179,7 @@ window.calendarModule = {
   async exportAllEventsICS() {
     try {
       const today = new Date().toISOString().slice(0,10);
-      const { data, error } = await STATE.client.from('events').select('*').gte('event_date',today).order('event_date').limit(500);
-      if (error) throw error;
+      const data = await apiClient.selectAll('events', { select: '*', filters: { event_date: { gte: today } }, sort: { column: 'event_date', ascending: true } });
       this.exportICS((data||[]).map(e=>({ type:'ceremony', color:'primary', label:e.event_name, detail:e.venue||'', ref:e })));
     } catch (err) { utils.showToast('Failed to export events: '+err.message,'error'); }
   },
@@ -184,8 +187,7 @@ window.calendarModule = {
   async exportDeadlinesICS() {
     try {
       const today = new Date().toISOString().slice(0,10);
-      const { data, error } = await STATE.client.from('award_seasons').select('*').or(`entry_close_date.gte.${today},judging_close_date.gte.${today}`).limit(200);
-      if (error) throw error;
+      const data = await apiClient.selectAll('award_seasons', { select: '*', filters: { or: `entry_close_date.gte.${today},judging_close_date.gte.${today}` } });
       const items = [];
       (data||[]).forEach(s => {
         if (s.entry_close_date   && s.entry_close_date   >= today) items.push({ type:'entry_deadline',   color:'danger',  label:s.name+' \u2013 Entry Deadline',   detail:'', ref:{...s, event_date:s.entry_close_date}   });
@@ -198,20 +200,25 @@ window.calendarModule = {
   async exportMyCalendarICS() {
     try {
       const today = new Date().toISOString().slice(0,10);
-      const [evR, seR, fuR, invR] = await Promise.all([
-        STATE.client.from('events').select('*').gte('event_date',today).limit(500),
-        STATE.client.from('award_seasons').select('*').limit(200),
-        STATE.client.from('organisation_follow_ups').select('*').gte('follow_up_date',today).eq('completed',false).limit(500),
-        STATE.client.from('invoices').select('*,organisations(company_name)').gte('due_date',today).neq('status','paid').limit(1000)
+      let invoiceData;
+      const [evData, seData, fuData] = await Promise.all([
+        apiClient.selectAll('events', { select: '*', filters: { event_date: { gte: today } } }),
+        apiClient.selectAll('award_seasons', { select: '*' }),
+        apiClient.selectAll('organisation_follow_ups', { select: '*', filters: { follow_up_date: { gte: today }, completed: { eq: false } } })
       ]);
+      try {
+        invoiceData = await apiClient.selectAll('invoices', { select: '*,organisations(company_name)', filters: { due_date: { gte: today }, status: { neq: 'paid' } } });
+      } catch (invErr) {
+        invoiceData = await apiClient.selectAll('invoices', { select: '*', filters: { due_date: { gte: today }, status: { neq: 'paid' } } });
+      }
       const items = [];
-      (evR.data  ||[]).forEach(e => items.push({ type:'ceremony',         color:'primary', label:e.event_name,                             detail:e.venue||'', ref:e }));
-      (seR.data  ||[]).forEach(s => {
+      (evData  ||[]).forEach(e => items.push({ type:'ceremony',         color:'primary', label:e.event_name,                             detail:e.venue||'', ref:e }));
+      (seData  ||[]).forEach(s => {
         if (s.entry_close_date   && s.entry_close_date   >= today) items.push({ type:'entry_deadline',   color:'danger',  label:s.name+' \u2013 Entry Deadline',   detail:'', ref:{...s, event_date:s.entry_close_date}   });
         if (s.judging_close_date && s.judging_close_date >= today) items.push({ type:'judging_deadline', color:'warning', label:s.name+' \u2013 Judging Deadline', detail:'', ref:{...s, event_date:s.judging_close_date} });
       });
-      (fuR.data  ||[]).forEach(f => items.push({ type:'followup', color:'success', label:f.note||'Follow-up', detail:'', ref:{...f, event_date:f.follow_up_date} }));
-      (invR.data ||[]).forEach(i => items.push({ type:'payment',  color:'purple',  label:`Invoice ${i.invoice_number||''} due`, detail:(i.organisations&&i.organisations.company_name)||'', ref:{...i, event_date:i.due_date} }));
+      (fuData  ||[]).forEach(f => items.push({ type:'followup', color:'success', label:f.note||'Follow-up', detail:'', ref:{...f, event_date:f.follow_up_date} }));
+      (invoiceData ||[]).forEach(i => items.push({ type:'payment',  color:'purple',  label:`Invoice ${i.invoice_number||''} due`, detail:(i.organisations&&i.organisations.company_name)||'', ref:{...i, event_date:i.due_date} }));
       this.exportICS(items);
     } catch (err) { utils.showToast('Failed to export calendar: '+err.message,'error'); }
   },
@@ -225,26 +232,32 @@ window.calendarModule = {
     try {
       const today = new Date().toISOString().slice(0,10);
       const end   = new Date(Date.now()+60*864e5).toISOString().slice(0,10);
-      const [evR, seR, fuR, invR] = await Promise.all([
-        STATE.client.from('events').select('id,event_name,event_date').gte('event_date',today).lte('event_date',end).order('event_date').limit(limit),
-        STATE.client.from('award_seasons').select('id,name,entry_close_date,judging_close_date').or(`entry_close_date.gte.${today},judging_close_date.gte.${today}`).limit(limit),
-        STATE.client.from('organisation_follow_ups').select('id,note,follow_up_date').gte('follow_up_date',today).lte('follow_up_date',end).eq('completed',false).order('follow_up_date').limit(limit),
-        STATE.client.from('invoices').select('id,invoice_number,due_date,organisations(company_name)').gte('due_date',today).lte('due_date',end).neq('status','paid').order('due_date').limit(limit)
+
+      let invoiceData;
+      const [evData, seData, fuData] = await Promise.all([
+        apiClient.select('events', { select: 'id,event_name,event_date', filters: { event_date: { gte: today, lte: end } }, sort: { column: 'event_date', ascending: true }, pageSize: limit }),
+        apiClient.selectAll('award_seasons', { select: 'id,name,entry_close_date,judging_close_date', filters: { or: `entry_close_date.gte.${today},judging_close_date.gte.${today}` } }),
+        apiClient.select('organisation_follow_ups', { select: 'id,note,follow_up_date', filters: { follow_up_date: { gte: today, lte: end }, completed: { eq: false } }, sort: { column: 'follow_up_date', ascending: true }, pageSize: limit }),
       ]);
 
-      // Retry invoices without FK join if relationship missing
-      let invoiceData = invR;
-      if (invR.error && (invR.error.message?.includes('relationship') || invR.error.message?.includes('schema cache'))) {
-        invoiceData = await STATE.client.from('invoices').select('id,invoice_number,due_date').gte('due_date',today).lte('due_date',end).neq('status','paid').order('due_date').limit(limit);
+      try {
+        invoiceData = await apiClient.select('invoices', { select: 'id,invoice_number,due_date,organisations(company_name)', filters: { due_date: { gte: today, lte: end }, status: { neq: 'paid' } }, sort: { column: 'due_date', ascending: true }, pageSize: limit });
+      } catch (invErr) {
+        // Retry invoices without FK join if relationship missing
+        if (invErr.message?.includes('relationship') || invErr.message?.includes('schema cache')) {
+          invoiceData = await apiClient.select('invoices', { select: 'id,invoice_number,due_date', filters: { due_date: { gte: today, lte: end }, status: { neq: 'paid' } }, sort: { column: 'due_date', ascending: true }, pageSize: limit });
+        } else {
+          throw invErr;
+        }
       }
 
       const all = [];
-      (evR.data  ||[]).forEach(e => all.push({ date:e.event_date,     color:'primary', label:e.event_name,                                                         icon:'bi-trophy'        }));
-      (seR.data  ||[]).forEach(s => {
+      (evData.data  ||[]).forEach(e => all.push({ date:e.event_date,     color:'primary', label:e.event_name,                                                         icon:'bi-trophy'        }));
+      (seData  ||[]).forEach(s => {
         if (s.entry_close_date   && s.entry_close_date   >= today) all.push({ date:s.entry_close_date,   color:'danger',  label:s.name+' \u2013 Entry Deadline',   icon:'bi-pencil-square' });
         if (s.judging_close_date && s.judging_close_date >= today) all.push({ date:s.judging_close_date, color:'warning', label:s.name+' \u2013 Judging Deadline', icon:'bi-person-check'  });
       });
-      (fuR.data  ||[]).forEach(f => all.push({ date:f.follow_up_date, color:'success', label:f.note||'Follow-up',                                                  icon:'bi-bell'          }));
+      (fuData.data  ||[]).forEach(f => all.push({ date:f.follow_up_date, color:'success', label:f.note||'Follow-up',                                                  icon:'bi-bell'          }));
       (invoiceData.data ||[]).forEach(i => { const org=(i.organisations&&i.organisations.company_name)||''; all.push({ date:i.due_date, color:'purple', label:`Invoice ${i.invoice_number||''} due${org?' \u2013 '+org:''}`, icon:'bi-receipt' }); });
 
       all.sort((a,b)=>a.date.localeCompare(b.date));
@@ -270,10 +283,7 @@ window.calendarModule = {
     try {
       const token  = (crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).slice(2)+Date.now().toString(36));
       const user   = STATE.currentUser || ((await STATE.client.auth.getUser()).data||{}).user;
-      const { data, error } = await STATE.client.from('calendar_feeds')
-        .insert({ token, user_id:user&&user.id||null, created_at:new Date().toISOString(), description:'British Trade Awards \u2013 Full Calendar Feed' })
-        .select('token').single();
-      if (error) throw error;
+      const { data } = await apiClient.insert('calendar_feeds', { token, user_id:user&&user.id||null, created_at:new Date().toISOString(), description:'British Trade Awards \u2013 Full Calendar Feed' });
       const url = `${window.location.origin}/api/calendar-feed?token=${(data&&data.token)||token}`;
       utils.showToast('Calendar feed URL generated. Copy it into your calendar app.','success');
       return url;
@@ -284,3 +294,4 @@ window.calendarModule = {
     }
   }
 };
+ModuleRegistry.register('calendarModule', calendarModule);

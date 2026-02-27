@@ -13,35 +13,21 @@ const assignmentsModule = {
    */
   async getAwardAssignments(awardId) {
     try {
-      console.log('Fetching assignments for award ID:', awardId);
-
-      const { data, error } = await STATE.client
-        .from('award_assignments')
-        .select(`
-          *,
-          organisations!award_assignments_organisation_id_fkey (*)
-        `)
-        .eq('award_id', awardId);
-
-      if (error) {
-        console.error('Database error loading assignments:', error);
-        throw error;
-      }
-
-      console.log('Found', data?.length || 0, 'assignments');
+      const data = await apiClient.selectAll('award_assignments', {
+        select: '*, organisations!award_assignments_organisation_id_fkey (*)',
+        filters: { award_id: awardId }
+      });
 
       // Get other nominations for each company
       const orgIds = data.map(a => a.organisation_id).filter(Boolean);
       if (orgIds.length > 0) {
-        const { data: otherAssignments } = await STATE.client
-          .from('award_assignments')
-          .select(`
-            organisation_id,
-            award_id,
-            awards:award_years!award_assignments_award_id_fkey (award_name, year)
-          `)
-          .in('organisation_id', orgIds)
-          .neq('award_id', awardId);
+        const otherAssignments = await apiClient.selectAll('award_assignments', {
+          select: 'organisation_id, award_id, awards:award_years!award_assignments_award_id_fkey (award_name, year)',
+          filters: {
+            organisation_id: { op: 'in', value: orgIds },
+            award_id: { op: 'neq', value: awardId }
+          }
+        });
 
         // Add other nominations info to each assignment
         data.forEach(assignment => {
@@ -120,8 +106,6 @@ const assignmentsModule = {
       const assignments = await this.getAwardAssignments(this.currentAwardId);
       this._cachedAssignments = assignments; // Cache for email feature
 
-      console.log('Loaded', assignments.length, 'assignments for award', this.currentAwardId);
-
       // Filter out assignments with missing organisations (deleted companies)
       const validAssignments = assignments.filter(a => {
         if (!a.organisations || !a.organisations.id) {
@@ -136,18 +120,16 @@ const assignmentsModule = {
       }
 
       // Load available organisations (only essential columns)
-      const { data: allOrgs, error: orgsError } = await STATE.client
-        .from('organisations')
-        .select('id, company_name, email, logo_url')
-        .order('company_name', { ascending: true });
-
-      if (orgsError) throw orgsError;
+      const allOrgs = await apiClient.selectAll('organisations', {
+        select: 'id, company_name, email, logo_url',
+        sort: { column: 'company_name', ascending: true }
+      });
 
       // Filter out already assigned organisations
       const assignedOrgIds = validAssignments.map(a => a.organisations.id);
       const availableOrgs = (allOrgs || []).filter(org => !assignedOrgIds.includes(org.id));
 
-      console.log(validAssignments.length, 'assigned,', availableOrgs.length, 'available');
+      // validAssignments.length assigned, availableOrgs.length available
 
       // Store all assignments for filtering
       this.allAssignments = validAssignments;
@@ -530,33 +512,24 @@ const assignmentsModule = {
       utils.showLoading();
 
       // Check if this assignment already exists (prevent duplicates)
-      const { data: existingAssignment, error: checkError } = await STATE.client
-        .from('award_assignments')
-        .select('id')
-        .eq('award_id', this.currentAwardId)
-        .eq('organisation_id', orgId)
-        .maybeSingle();
-
-      if (checkError) {
-        console.error('Error checking for existing assignment:', checkError);
-        throw checkError;
-      }
+      const { data: existingCheck } = await apiClient.select('award_assignments', {
+        select: 'id',
+        filters: { award_id: this.currentAwardId, organisation_id: orgId },
+        pageSize: 1
+      });
+      const existingAssignment = existingCheck?.[0] || null;
 
       if (existingAssignment) {
         utils.showToast(`${companyName} is already assigned to this award!`, 'warning');
         return;
       }
 
-      const { error } = await STATE.client
-        .from('award_assignments')
-        .insert([{
-          award_id: this.currentAwardId,
-          organisation_id: orgId,
-          status: 'nominated',
-          assigned_by: STATE.currentUser?.email
-        }]);
-
-      if (error) throw error;
+      await apiClient.insert('award_assignments', {
+        award_id: this.currentAwardId,
+        organisation_id: orgId,
+        status: 'nominated',
+        assigned_by: STATE.currentUser?.email
+      });
 
       utils.showToast(`${companyName} assigned successfully!`, 'success');
       await this.refreshAssignments();
@@ -588,13 +561,8 @@ const assignmentsModule = {
     try {
       utils.showLoading();
       
-      const { error } = await STATE.client
-        .from('award_assignments')
-        .delete()
-        .eq('id', assignmentId);
-      
-      if (error) throw error;
-      
+      await apiClient.delete('award_assignments', assignmentId);
+
       utils.showToast('Company removed from award', 'success');
       await this.refreshAssignments();
       
@@ -904,4 +872,4 @@ const assignmentsModule = {
 };
 
 // Export to window
-window.assignmentsModule = assignmentsModule;
+ModuleRegistry.register('assignmentsModule', assignmentsModule);

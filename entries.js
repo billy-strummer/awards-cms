@@ -19,8 +19,14 @@ const entriesModule = {
     selfNom: ''
   },
 
+  // Server-side pagination state
+  _serverPagination: false,
+  _pagination: { page: 1, totalPages: 1, count: 0, pageSize: 50 },
+  _fetchId: 0,
+
   /**
-   * Initialize Entries Module
+   * Initialize the Entries Module: load filters, entries, stats, and restore saved state.
+   * @returns {Promise<void>}
    */
   async initialize() {
     try {
@@ -59,7 +65,8 @@ const entriesModule = {
   },
 
   /**
-   * Load filter dropdown options
+   * Load filter dropdown options (awards and years) and populate their <select> elements.
+   * @returns {Promise<void>}
    */
   async loadFilterOptions() {
     // Use already-loaded awards if available, otherwise fetch
@@ -69,12 +76,12 @@ const entriesModule = {
         .filter(a => a.status === 'Active')
         .sort((a, b) => (a.award_name || '').localeCompare(b.award_name || ''));
     } else {
-      const { data } = await STATE.client
-        .from('awards')
-        .select('id, award_name')
-        .eq('status', 'Active')
-        .order('award_name');
-      awards = data;
+      const result = await apiClient.selectAll('awards', {
+        select: 'id, award_name',
+        filters: { status: { operator: 'eq', value: 'Active' } },
+        sort: { column: 'award_name', ascending: true }
+      });
+      awards = result;
     }
 
     const awardFilter = document.getElementById('entriesAwardFilter');
@@ -89,10 +96,10 @@ const entriesModule = {
     if (this.allEntries && this.allEntries.length > 0) {
       uniqueYears = [...new Set(this.allEntries.map(e => e.year).filter(Boolean))].sort((a, b) => b - a);
     } else {
-      const { data: years } = await STATE.client
-        .from('entries')
-        .select('year')
-        .order('year', { ascending: false });
+      const years = await apiClient.selectAll('entries', {
+        select: 'year',
+        sort: { column: 'year', ascending: false }
+      });
       uniqueYears = years ? [...new Set(years.map(y => y.year))] : [];
     }
 
@@ -104,48 +111,16 @@ const entriesModule = {
   },
 
   /**
-   * Load all entries
+   * Load all entries via the API proxy and populate local state.
+   * @returns {Promise<void>}
    */
   async loadEntries() {
     if (this._loading) return;
     this._loading = true;
     try {
-      // Paginated loading to handle large datasets
-      let allData = [];
-      let page = 0;
-      const pageSize = 1000;
-      let hasMore = true;
-
-      while (hasMore) {
-        const from = page * pageSize;
-        const to = from + pageSize - 1;
-
-        const { data, error } = await STATE.client
-          .from('entries')
-          .select(`
-            *,
-            organisations(company_name, logo_url),
-            award_years(award_name, sector, county)
-          `)
-          .order('submission_date', { ascending: false })
-          .range(from, to);
-
-        if (error) throw error;
-
-        if (!data || data.length === 0) {
-          hasMore = false;
-        } else {
-          allData = allData.concat(data);
-          page++;
-          if (data.length < pageSize) hasMore = false;
-        }
-      }
-
-      this.allEntries = allData;
-      if (typeof STATE !== 'undefined') { STATE.allEntries = allData; }
-      this.filteredEntries = [...this.allEntries];
-      this._currentPage = 1;
-      this.renderEntries();
+      // Enable server-side pagination and fetch first page
+      this._serverPagination = true;
+      await this._fetchPage(1);
 
       // Initialise reusable keyboard navigation (once)
       if (!this._keyboardNavInit) {
@@ -168,36 +143,116 @@ const entriesModule = {
   },
 
   /**
-   * Load statistics
+   * Build server-side filters from current filter state
+   */
+  _buildServerFilters() {
+    const filters = {};
+    if (this.currentFilters.status) {
+      // Status can be comma-separated (e.g., "submitted,under_review")
+      const statuses = this.currentFilters.status.split(',');
+      if (statuses.length === 1) {
+        filters.status = statuses[0];
+      } else {
+        filters.status = { op: 'in', value: statuses };
+      }
+    }
+    if (this.currentFilters.award) filters.award_id = this.currentFilters.award;
+    if (this.currentFilters.year) filters.year = parseInt(this.currentFilters.year);
+    if (this.currentFilters.selfNom === 'self_nom') filters.is_self_nomination = true;
+    if (this.currentFilters.selfNom === 'standard') filters.is_self_nomination = false;
+    return filters;
+  },
+
+  /**
+   * Fetch a specific page of entries from the server with current filters and sort.
+   * @param {number} page - 1-based page number
+   */
+  async _fetchPage(page) {
+    const fetchId = ++this._fetchId;
+    const filters = this._buildServerFilters();
+    const search = this.currentFilters.search?.trim();
+
+    const result = await apiClient.select('entries', {
+      select: '*, organisations(company_name, logo_url), award_years(award_name, sector, county)',
+      filters,
+      search: search ? { term: search, columns: ['entry_title', 'entry_number'] } : undefined,
+      sort: { column: this._sortField, ascending: this._sortDir === 'asc' },
+      page,
+      pageSize: this._pageSize
+    });
+
+    // Discard stale responses
+    if (fetchId !== this._fetchId) return;
+
+    const pageData = result.data || [];
+    this.allEntries = pageData;
+    if (typeof STATE !== 'undefined') { STATE.allEntries = pageData; }
+    this.filteredEntries = pageData;
+    this._currentPage = result.page;
+    this._pagination = { page: result.page, totalPages: result.totalPages, count: result.count, pageSize: result.pageSize };
+
+    this.renderEntries();
+  },
+
+  /**
+   * Navigate to a specific page (called from pagination controls)
+   */
+  async _goToPage(page) {
+    page = Math.max(1, Math.min(page, this._pagination.totalPages));
+    if (page === this._pagination.page) return;
+    try {
+      utils.showLoading();
+      await this._fetchPage(page);
+    } catch (error) {
+      console.error('Error navigating entries page:', error);
+      utils.showToast('Error loading page: ' + error.message, 'error');
+    } finally {
+      utils.hideLoading();
+    }
+  },
+
+  /**
+   * Compute and display entry statistics (total, pending, shortlisted, winners) from loaded data.
+   * @returns {Promise<void>}
    */
   async loadStats() {
     try {
-      // Compute stats from loaded entries so cards always match the table
-      const entries = this.allEntries || [];
-      const totalCount = entries.length;
-      const pendingCount = entries.filter(e => e.status === 'submitted' || e.status === 'under_review').length;
-      const shortlistedCount = entries.filter(e => e.status === 'shortlisted').length;
-      const winnerCount = entries.filter(e => e.status === 'winner').length;
-
-      // Update UI
-      document.getElementById('totalEntriesCount').textContent = totalCount || 0;
-      document.getElementById('pendingEntriesCount').textContent = pendingCount || 0;
-      document.getElementById('shortlistedEntriesCount').textContent = shortlistedCount || 0;
-      document.getElementById('winnerEntriesCount').textContent = winnerCount || 0;
-
+      if (this._serverPagination) {
+        // Use server-side count queries for accurate stats across all pages
+        const [total, pending, submitted, shortlisted, winner] = await Promise.all([
+          apiClient.count('entries'),
+          apiClient.count('entries', { status: 'under_review' }),
+          apiClient.count('entries', { status: 'submitted' }),
+          apiClient.count('entries', { status: 'shortlisted' }),
+          apiClient.count('entries', { status: 'winner' })
+        ]);
+        document.getElementById('totalEntriesCount').textContent = total.count || 0;
+        document.getElementById('pendingEntriesCount').textContent = (pending.count || 0) + (submitted.count || 0);
+        document.getElementById('shortlistedEntriesCount').textContent = shortlisted.count || 0;
+        document.getElementById('winnerEntriesCount').textContent = winner.count || 0;
+      } else {
+        // Client-side fallback
+        const entries = this.allEntries || [];
+        document.getElementById('totalEntriesCount').textContent = entries.length;
+        document.getElementById('pendingEntriesCount').textContent = entries.filter(e => e.status === 'submitted' || e.status === 'under_review').length;
+        document.getElementById('shortlistedEntriesCount').textContent = entries.filter(e => e.status === 'shortlisted').length;
+        document.getElementById('winnerEntriesCount').textContent = entries.filter(e => e.status === 'winner').length;
+      }
     } catch (error) {
       console.error('Error loading stats:', error);
     }
   },
 
   /**
-   * Render entries in table (with pagination)
+   * Render the filtered entries into the table body with client-side pagination.
    */
   renderEntries() {
     const tbody = document.getElementById('entriesTableBody');
     const countSpan = document.getElementById('entriesTableCount');
 
-    countSpan.textContent = this.filteredEntries.length;
+    // Use server total count when in server pagination mode
+    const displayCount = this._serverPagination ? this._pagination.count : this.filteredEntries.length;
+    countSpan.textContent = displayCount;
 
     if (this.filteredEntries.length === 0) {
       tbody.innerHTML = `
@@ -213,17 +268,22 @@ const entriesModule = {
       return;
     }
 
-    // Pagination
-    const totalPages = Math.ceil(this.filteredEntries.length / this._pageSize);
-    if (this._currentPage > totalPages) this._currentPage = totalPages;
-    const start = (this._currentPage - 1) * this._pageSize;
-    const end = start + this._pageSize;
-    const pageEntries = this.filteredEntries.slice(start, end);
+    // Server-side: data is already one page; client-side: slice locally
+    let pageEntries;
+    if (this._serverPagination) {
+      pageEntries = this.filteredEntries;
+    } else {
+      const totalPages = Math.ceil(this.filteredEntries.length / this._pageSize);
+      if (this._currentPage > totalPages) this._currentPage = totalPages;
+      const start = (this._currentPage - 1) * this._pageSize;
+      const end = start + this._pageSize;
+      pageEntries = this.filteredEntries.slice(start, end);
+    }
 
     tbody.innerHTML = pageEntries.map(entry => {
       const companyName = entry.organisations?.company_name || 'Unknown';
       const awardName = entry.award_years?.award_name || entry.award_category || 'Unknown';
-      const statusBadge = this.getStatusBadge(entry.status);
+      const _statusBadge = this.getStatusBadge(entry.status);
       const paymentBadge = this.getPaymentBadge(entry.payment_status);
       const selfNomBadge = entry.is_self_nomination
         ? '<span class="badge bg-info ms-2" title="Self-Nominated Entry"><i class="bi bi-person-raised-hand me-1"></i>Self-Nom</span>'
@@ -246,7 +306,7 @@ const entriesModule = {
           <td>${utils.escapeHtml(companyName)}</td>
           <td>${utils.escapeHtml(awardName)}</td>
           <td>
-            <div class="text-truncate" style="max-width: 250px;" title="${utils.escapeHtml(entry.entry_title)}">
+            <div class="text-truncate" style="max-width: 250px;" title="${(entry.entry_title || '').replace(/<[^>]*>/g, '').replace(/"/g, '&quot;')}">
               ${utils.escapeHtml(entry.entry_title)}
               ${selfNomBadge}
             </div>
@@ -285,27 +345,34 @@ const entriesModule = {
 
     // Render pagination controls
     const paginationEl = document.getElementById('entriesPagination');
-    if (paginationEl && totalPages > 1) {
-      let html = '<nav><ul class="pagination pagination-sm justify-content-center mt-3">';
-      html += `<li class="page-item ${this._currentPage <= 1 ? 'disabled' : ''}"><a class="page-link" href="#" onclick="event.preventDefault(); entriesModule.goToEntriesPage(${this._currentPage - 1})">Prev</a></li>`;
-      for (let i = 1; i <= totalPages; i++) {
-        if (i === 1 || i === totalPages || (i >= this._currentPage - 2 && i <= this._currentPage + 2)) {
-          html += `<li class="page-item ${i === this._currentPage ? 'active' : ''}"><a class="page-link" href="#" onclick="event.preventDefault(); entriesModule.goToEntriesPage(${i})">${i}</a></li>`;
-        } else if (i === this._currentPage - 3 || i === this._currentPage + 3) {
-          html += '<li class="page-item disabled"><span class="page-link">...</span></li>';
-        }
-      }
-      html += `<li class="page-item ${this._currentPage >= totalPages ? 'disabled' : ''}"><a class="page-link" href="#" onclick="event.preventDefault(); entriesModule.goToEntriesPage(${this._currentPage + 1})">Next</a></li>`;
-      html += '</ul></nav>';
-      html += `<div class="text-center text-muted small">Showing ${((this._currentPage-1)*this._pageSize)+1}-${Math.min(this._currentPage*this._pageSize, this.filteredEntries.length)} of ${this.filteredEntries.length}</div>`;
-      paginationEl.innerHTML = html;
+    if (this._serverPagination && paginationEl) {
+      // Use shared server-side pagination renderer
+      utils.renderServerPagination('entriesPagination', this._pagination, 'entriesModule._goToPage');
     } else if (paginationEl) {
-      paginationEl.innerHTML = '';
+      const totalPages = Math.ceil(this.filteredEntries.length / this._pageSize);
+      if (totalPages > 1) {
+        let html = '<nav><ul class="pagination pagination-sm justify-content-center mt-3">';
+        html += `<li class="page-item ${this._currentPage <= 1 ? 'disabled' : ''}"><a class="page-link" href="#" onclick="event.preventDefault(); entriesModule.goToEntriesPage(${this._currentPage - 1})">Prev</a></li>`;
+        for (let i = 1; i <= totalPages; i++) {
+          if (i === 1 || i === totalPages || (i >= this._currentPage - 2 && i <= this._currentPage + 2)) {
+            html += `<li class="page-item ${i === this._currentPage ? 'active' : ''}"><a class="page-link" href="#" onclick="event.preventDefault(); entriesModule.goToEntriesPage(${i})">${i}</a></li>`;
+          } else if (i === this._currentPage - 3 || i === this._currentPage + 3) {
+            html += '<li class="page-item disabled"><span class="page-link">...</span></li>';
+          }
+        }
+        html += `<li class="page-item ${this._currentPage >= totalPages ? 'disabled' : ''}"><a class="page-link" href="#" onclick="event.preventDefault(); entriesModule.goToEntriesPage(${this._currentPage + 1})">Next</a></li>`;
+        html += '</ul></nav>';
+        html += `<div class="text-center text-muted small">Showing ${((this._currentPage-1)*this._pageSize)+1}-${Math.min(this._currentPage*this._pageSize, this.filteredEntries.length)} of ${this.filteredEntries.length}</div>`;
+        paginationEl.innerHTML = html;
+      } else {
+        paginationEl.innerHTML = '';
+      }
     }
   },
 
   /**
-   * Go to a specific entries page
+   * Navigate to a specific page in the entries table.
+   * @param {number} page - The 1-based page number
    */
   goToEntriesPage(page) {
     const totalPages = Math.ceil(this.filteredEntries.length / this._pageSize);
@@ -313,6 +380,10 @@ const entriesModule = {
     this.renderEntries();
   },
 
+  /**
+   * Sort entries by the given field, toggling direction if already sorted by that field.
+   * @param {string} field - The field name to sort by
+   */
   sortEntries(field) {
     if (this._sortField === field) {
       this._sortDir = this._sortDir === 'asc' ? 'desc' : 'asc';
@@ -323,6 +394,13 @@ const entriesModule = {
     utils.saveSortState('entries', this._sortField, this._sortDir);
     this._updateSortIndicators();
     this._currentPage = 1;
+
+    // Server-side: re-fetch with new sort order
+    if (this._serverPagination) {
+      this._fetchPage(1).catch(err => console.error('Error sorting entries:', err));
+      return;
+    }
+
     this.applyFilters();
   },
 
@@ -341,7 +419,9 @@ const entriesModule = {
   },
 
   /**
-   * Get status badge HTML
+   * Get status badge HTML for an entry status.
+   * @param {string} status - The entry status value
+   * @returns {string} HTML string for the badge
    */
   getStatusBadge(status) {
     const badges = {
@@ -356,7 +436,9 @@ const entriesModule = {
   },
 
   /**
-   * Get payment badge HTML
+   * Get payment badge HTML for a payment status.
+   * @param {string} status - The payment status value
+   * @returns {string} HTML string for the badge
    */
   getPaymentBadge(status) {
     const badges = {
@@ -369,7 +451,7 @@ const entriesModule = {
   },
 
   /**
-   * Filter entries
+   * Read current filter values from the DOM and apply them.
    */
   filterEntries() {
     this.currentFilters.status = document.getElementById('entriesStatusFilter').value;
@@ -381,7 +463,7 @@ const entriesModule = {
   },
 
   /**
-   * Search entries
+   * Read the search input value and apply filters (including search).
    */
   searchEntries() {
     this.currentFilters.search = document.getElementById('entriesSearchInput').value.toLowerCase();
@@ -394,6 +476,16 @@ const entriesModule = {
   applyFilters() {
     try { localStorage.setItem('entriesFilters', JSON.stringify(this.currentFilters)); } catch(e) { console.warn('Failed to save entry filters:', e.message); }
 
+    // Server-side pagination: send filters to server and re-fetch page 1
+    if (this._serverPagination) {
+      this._fetchPage(1).catch(err => {
+        console.error('Error filtering entries:', err);
+        utils.showToast('Error filtering entries: ' + err.message, 'error');
+      });
+      return;
+    }
+
+    // Client-side fallback (used by tests and when data is pre-loaded)
     this.filteredEntries = this.allEntries.filter(entry => {
       // Status filter (supports comma-separated values, e.g. "submitted,under_review")
       if (this.currentFilters.status) {
@@ -522,27 +614,24 @@ const entriesModule = {
   },
 
   /**
-   * View entry details
+   * View entry details in a modal.
+   * @param {string} entryId - The entry UUID
+   * @returns {Promise<void>}
    */
   async viewEntry(entryId) {
     try {
-      const { data: entry, error } = await STATE.client
-        .from('entries')
-        .select(`
-          *,
-          organisations(*),
-          award_years(*),
-          entry_files(*),
-          judge_scores(*)
-        `)
-        .eq('id', entryId)
-        .single();
+      const result = await apiClient.select('entries', {
+        select: '*, organisations(*), award_years(*), entry_files(*), judge_scores(*)',
+        filters: { id: { operator: 'eq', value: entryId } },
+        pageSize: 1
+      });
 
-      if (error) throw error;
+      const entry = result.data && result.data[0];
+      if (!entry) throw new Error('Entry not found');
 
       utils.trackRecentlyViewed('entry', entryId, (entry.organisations?.company_name || 'Entry') + ' - ' + (entry.award_years?.award_name || entry.award_category || 'Award'));
 
-      // Show entry details modal (we'll create this next)
+      // Show entry details modal
       this.showEntryDetailsModal(entry);
 
     } catch (error) {
@@ -833,23 +922,19 @@ const entriesModule = {
           const timestamp = new Date().toLocaleString();
           const noteEntry = `[${timestamp}] Status changed to ${newStatus}: ${notes}`;
 
-          const { data: entry } = await STATE.client
-            .from('entries')
-            .select('admin_notes')
-            .eq('id', entryId)
-            .single();
+          const entryResult = await apiClient.select('entries', {
+            select: 'admin_notes',
+            filters: { id: { operator: 'eq', value: entryId } },
+            pageSize: 1
+          });
+          const entry = entryResult.data && entryResult.data[0];
 
           updateData.admin_notes = entry?.admin_notes
             ? `${entry.admin_notes}\n\n${noteEntry}`
             : noteEntry;
         }
 
-        const { error } = await STATE.client
-          .from('entries')
-          .update(updateData)
-          .eq('id', entryId);
-
-        if (error) throw error;
+        await apiClient.update('entries', entryId, updateData);
 
         const displayStatus = newStatus === 'under_review' ? 'Under Review' : newStatus.charAt(0).toUpperCase() + newStatus.slice(1);
         utils.showToast(`Entry status updated to ${displayStatus}`, 'success');
@@ -872,7 +957,9 @@ const entriesModule = {
   },
 
   /**
-   * Update entry status with custom notes
+   * Update entry status with custom notes from the modal form.
+   * @param {string} entryId - The entry UUID
+   * @returns {Promise<void>}
    */
   async updateEntryStatus(entryId) {
     try {
@@ -894,23 +981,19 @@ const entriesModule = {
           const noteEntry = `[${timestamp}] Status changed to ${newStatus}: ${notes}`;
 
           // Get current admin notes
-          const { data: entry } = await STATE.client
-            .from('entries')
-            .select('admin_notes')
-            .eq('id', entryId)
-            .single();
+          const entryResult = await apiClient.select('entries', {
+            select: 'admin_notes',
+            filters: { id: { operator: 'eq', value: entryId } },
+            pageSize: 1
+          });
+          const entry = entryResult.data && entryResult.data[0];
 
           updateData.admin_notes = entry?.admin_notes
             ? `${entry.admin_notes}\n\n${noteEntry}`
             : noteEntry;
         }
 
-        const { error } = await STATE.client
-          .from('entries')
-          .update(updateData)
-          .eq('id', entryId);
-
-        if (error) throw error;
+        await apiClient.update('entries', entryId, updateData);
 
         utils.showToast('Entry status updated successfully', 'success');
 
@@ -1019,33 +1102,31 @@ const entriesModule = {
   },
 
   /**
-   * Edit entry
+   * Open the edit-entry modal for a given entry.
+   * @param {string} entryId - The entry UUID
+   * @returns {Promise<void>}
    */
   async editEntry(entryId) {
     try {
-      const { data: entry, error } = await STATE.client
-        .from('entries')
-        .select(`
-          *,
-          organisations(id, company_name),
-          award_years(id, award_name)
-        `)
-        .eq('id', entryId)
-        .single();
+      const entryResult = await apiClient.select('entries', {
+        select: '*, organisations(id, company_name), award_years(id, award_name)',
+        filters: { id: { operator: 'eq', value: entryId } },
+        pageSize: 1
+      });
+      const entry = entryResult.data && entryResult.data[0];
+      if (!entry) throw new Error('Entry not found');
 
-      if (error) throw error;
-
-      // Load awards for dropdown
-      const { data: awards } = await STATE.client
-        .from('awards')
-        .select('id, award_name')
-        .order('award_name');
-
-      // Load organisations for dropdown
-      const { data: orgs } = await STATE.client
-        .from('organisations')
-        .select('id, company_name')
-        .order('company_name');
+      // Load awards and organisations for dropdowns (in parallel)
+      const [awards, orgs] = await Promise.all([
+        apiClient.selectAll('awards', {
+          select: 'id, award_name',
+          sort: { column: 'award_name', ascending: true }
+        }),
+        apiClient.selectAll('organisations', {
+          select: 'id, company_name',
+          sort: { column: 'company_name', ascending: true }
+        })
+      ]);
 
       const modalHtml = `
         <div class="modal fade" id="editEntryModal" tabindex="-1" data-bs-backdrop="static">
@@ -1239,12 +1320,7 @@ const entriesModule = {
 
     try {
       await utils.protectModalDuringSave('editEntryModal', async () => {
-        const { error } = await STATE.client
-          .from('entries')
-          .update(updateData)
-          .eq('id', entryId);
-
-        if (error) throw error;
+        await apiClient.update('entries', entryId, updateData);
 
         bootstrap.Modal.getInstance(document.getElementById('editEntryModal')).hide();
         await this.loadEntries();
@@ -1252,7 +1328,7 @@ const entriesModule = {
       });
       utils.showToast('Entry updated successfully', 'success');
     } catch (error) {
-      console.warn('DB update for entry failed, using localStorage:', error);
+      console.warn('API update for entry failed, using localStorage:', error);
       localStorage.setItem(`bta_entry_edit_${entryId}`, JSON.stringify(updateData));
       bootstrap.Modal.getInstance(document.getElementById('editEntryModal'))?.hide();
       // Update local state so UI reflects the change
@@ -1263,7 +1339,9 @@ const entriesModule = {
   },
 
   /**
-   * Delete entry
+   * Delete a single entry after confirmation.
+   * @param {string} entryId - The entry UUID
+   * @returns {Promise<void>}
    */
   async deleteEntry(entryId) {
     if (typeof rbacModule !== 'undefined' && !rbacModule.canPerform('delete')) {
@@ -1275,12 +1353,7 @@ const entriesModule = {
     }
 
     try {
-      const { error } = await STATE.client
-        .from('entries')
-        .delete()
-        .eq('id', entryId);
-
-      if (error) throw error;
+      await apiClient.delete('entries', entryId);
 
       utils.showToast('Entry deleted successfully', 'success');
       await this.loadEntries();
@@ -1512,6 +1585,12 @@ const entriesModule = {
     document.getElementById('bulkActionsModal').addEventListener('hidden.bs.modal', function() { this.remove(); });
   },
 
+  /**
+   * Execute a bulk action (status change, payment change, or delete) on selected entries.
+   * @param {string} actionType - One of 'delete', 'status', or 'payment'
+   * @param {string} [value] - The new status/payment value (not needed for delete)
+   * @returns {Promise<void>}
+   */
   async executeBulkAction(actionType, value) {
     try {
       await utils.protectModalDuringSave('bulkActionsModal', async () => {
@@ -1520,11 +1599,10 @@ const entriesModule = {
 
         // Chunk large operations to stay within API limits
         const CHUNK_SIZE = 500;
-        const chunkedOperation = async (table, operation) => {
+        const chunkedApiOperation = async (operationFn) => {
           for (let i = 0; i < ids.length; i += CHUNK_SIZE) {
             const chunk = ids.slice(i, i + CHUNK_SIZE);
-            const result = await operation(chunk);
-            if (result?.error) throw result.error;
+            await operationFn(chunk);
           }
         };
 
@@ -1532,8 +1610,8 @@ const entriesModule = {
           if (!await utils.confirmDialog({ title: 'Delete Entries', message: `Are you sure you want to DELETE ${count} entries? This cannot be undone.` })) return;
 
           try {
-            await chunkedOperation('entries', (chunk) =>
-              STATE.client.from('entries').delete().in('id', chunk)
+            await chunkedApiOperation((chunk) =>
+              apiClient.deleteByFilters('entries', { id: { operator: 'in', value: chunk } })
             );
 
             utils.showToast(`${count} entries deleted`, 'success');
@@ -1552,12 +1630,7 @@ const entriesModule = {
               updateData.shortlisted_date = new Date().toISOString();
             }
 
-            const { error } = await STATE.client
-              .from('entries')
-              .update(updateData)
-              .in('id', ids);
-
-            if (error) throw error;
+            await apiClient.updateByFilters('entries', { id: { operator: 'in', value: ids } }, updateData);
 
             utils.showToast(`${count} entries updated to ${value}`, 'success');
           } catch (error) {
@@ -1569,12 +1642,7 @@ const entriesModule = {
           if (!await utils.confirmDialog({ title: 'Change Payment Status', message: `Change payment status to "${value}" for ${count} entries?`, confirmText: 'Update', danger: false })) return;
 
           try {
-            const { error } = await STATE.client
-              .from('entries')
-              .update({ payment_status: value })
-              .in('id', ids);
-
-            if (error) throw error;
+            await apiClient.updateByFilters('entries', { id: { operator: 'in', value: ids } }, { payment_status: value });
 
             utils.showToast(`${count} entries payment status updated to ${value}`, 'success');
           } catch (error) {
@@ -1740,16 +1808,14 @@ const entriesModule = {
   },
 
   /**
-   * Toggle public voting for entry
+   * Toggle public voting for an entry.
+   * @param {string} entryId - The entry UUID
+   * @param {boolean} enabled - Whether public voting should be enabled
+   * @returns {Promise<void>}
    */
   async togglePublicVoting(entryId, enabled) {
     try {
-      const { error } = await STATE.client
-        .from('entries')
-        .update({ allow_public_voting: enabled })
-        .eq('id', entryId);
-
-      if (error) throw error;
+      await apiClient.update('entries', entryId, { allow_public_voting: enabled });
 
       // Update local data
       const entry = this.allEntries.find(e => e.id === entryId);
@@ -1771,16 +1837,14 @@ const entriesModule = {
   },
 
   /**
-   * Toggle public visibility for entry
+   * Toggle public visibility for an entry.
+   * @param {string} entryId - The entry UUID
+   * @param {boolean} isPublic - Whether the entry should be publicly visible
+   * @returns {Promise<void>}
    */
   async togglePublicVisibility(entryId, isPublic) {
     try {
-      const { error } = await STATE.client
-        .from('entries')
-        .update({ is_public: isPublic })
-        .eq('id', entryId);
-
-      if (error) throw error;
+      await apiClient.update('entries', entryId, { is_public: isPublic });
 
       // Update local data
       const entry = this.allEntries.find(e => e.id === entryId);
@@ -1868,10 +1932,15 @@ const entriesModule = {
   /* INLINE STATUS EDITING */
   /* ==================================================== */
 
+  /**
+   * Inline-update an entry's status from the table dropdown.
+   * @param {string} entryId - The entry UUID
+   * @param {string} newStatus - The new status value
+   * @returns {Promise<void>}
+   */
   async inlineUpdateEntryStatus(entryId, newStatus) {
     try {
-      const { error } = await STATE.client.from('entries').update({ status: newStatus }).eq('id', entryId);
-      if (error) throw error;
+      await apiClient.update('entries', entryId, { status: newStatus });
       // Update local state
       const entry = this.allEntries.find(e => e.id === entryId);
       if (entry) entry.status = newStatus;
@@ -1911,8 +1980,12 @@ const entriesModule = {
         utils.showLoading();
         let imported = 0;
         for (const record of records) {
-          const { error } = await STATE.client.from('entries').insert([record]);
-          if (!error) imported++;
+          try {
+            await apiClient.insert('entries', record);
+            imported++;
+          } catch (_insertErr) {
+            console.warn('Failed to import entry record:', _insertErr.message);
+          }
         }
         utils.showToast(`Imported ${imported} of ${records.length} entries`, 'success');
         await this.loadEntries();
@@ -1928,7 +2001,7 @@ const entriesModule = {
 };
 
 // Export to window
-window.entriesModule = entriesModule;
+ModuleRegistry.register('entriesModule', entriesModule);
 
 // Initialize when entries tab is shown
 document.addEventListener('DOMContentLoaded', () => {

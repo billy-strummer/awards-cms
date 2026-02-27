@@ -2,7 +2,7 @@
 /* DOCUMENT MANAGEMENT — British Trade Awards CMS       */
 /* ==================================================== */
 
-window.documentModule = {
+const documentModule = {
   BUCKET: 'documents',
   CATEGORIES: ['press_pack','certificate','contract','invoice','logo','photo','legal','compliance','other'],
   STATUSES: ['draft','pending_approval','approved','rejected','expired'],
@@ -23,7 +23,7 @@ window.documentModule = {
 
   async _uploadToStorage(file, category) {
     const path = this._storagePath(category, file.name);
-    const { data, error } = await this._client().storage.from(this.BUCKET).upload(path, file, { upsert: false });
+    const { _data, error } = await this._client().storage.from(this.BUCKET).upload(path, file, { upsert: false });
     if (error) throw error;
     const { data: urlData } = this._client().storage.from(this.BUCKET).getPublicUrl(path);
     return { path, url: urlData.publicUrl, size: file.size };
@@ -39,9 +39,9 @@ window.documentModule = {
     el.innerHTML = `<div class="text-center py-5"><div class="spinner-border text-primary"></div></div>`;
 
     const [docs, entryFiles, orgDocs] = await Promise.all([
-      this._client().from('documents').select('*').order('created_at', { ascending: false }),
-      this._client().from('entry_files').select('*').order('created_at', { ascending: false }),
-      this._client().from('organisation_documents').select('*').order('created_at', { ascending: false })
+      this._client().from('documents').select('*').order('created_at', { ascending: false }).limit(1000),
+      this._client().from('entry_files').select('*').order('created_at', { ascending: false }).limit(1000),
+      this._client().from('organisation_documents').select('*').order('created_at', { ascending: false }).limit(1000)
     ]);
 
     const unified = [
@@ -114,7 +114,7 @@ window.documentModule = {
     </tr>`;
   },
 
-  _attachLibraryListeners(unified) {
+  _attachLibraryListeners(_unified) {
     const search = document.getElementById('docSearch');
     const catFilter = document.getElementById('docCategoryFilter');
     const stFilter = document.getElementById('docStatusFilter');
@@ -387,3 +387,4 @@ window.documentModule = {
     return results;
   }
 };
+ModuleRegistry.register('documentModule', documentModule);

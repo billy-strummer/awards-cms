@@ -106,7 +106,7 @@ const nomineeVoting = {
    */
   async checkIfVoted() {
     try {
-      const { data, error } = await supabase
+      const { data, _error } = await supabase
         .from('public_votes')
         .select('id')
         .eq('entry_id', this.entryId)

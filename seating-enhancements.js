@@ -2,9 +2,9 @@
  * Seating Plan Enhancements — patches eventsModule with seat-level assignment,
  * VIP marking, floor sections, table notes, dietary summary, accessibility,
  * place cards, name tents, and undo/redo.
- * Requires: eventsModule, STATE.client, jsPDF, Bootstrap 5, utils
+ * Requires: eventsModule, apiClient, jsPDF, Bootstrap 5, utils
  */
-window.seatingEnhancements = {
+const seatingEnhancements = {
   _undoStack: [], _redoStack: [], _sections: [],
   _vipFilterOn: false, _seatPopup: null, _seatTooltip: null, _kbBound: false,
   _slSort: 'table',
@@ -40,7 +40,7 @@ window.seatingEnhancements = {
       (em.tables.find(t=>t.id===tId)?.assignments||[]).filter(a=>!before.has(a.id))
         .forEach(a => self._pushUndo({ type:'assign', data:{ ...a }}));
     };
-    console.log('seatingEnhancements initialised');
+    console.warn('seatingEnhancements initialised');
   },
 
   // === 1. SEAT-LEVEL ASSIGNMENT ===
@@ -115,14 +115,13 @@ window.seatingEnhancements = {
 
   async _assignToSeat(em, table, guestId, seatNum) {
     this._closeSeatPopup();
-    const g = em.unassignedGuests.find(g=>(g.guest_id||g.id)==guestId);
+    const g = em.unassignedGuests.find(g=>(g.guest_id||g.id)===guestId);
     if (!g) return;
     try {
       const row = { event_id:em.currentEventIdTablePlan, table_id:table.id,
         guest_id:g.guest_id||g.id, guest_name:g.guest_name,
         organisation_id:g.organisation_id||null, company_name:g.company_name||null, seat_number:seatNum };
-      const {error} = await STATE.client.from('table_assignments').insert([row]);
-      if (error) throw error;
+      await apiClient.insert('table_assignments', row);
       this._pushUndo({type:'assign', data:row});
       utils.showToast(`${g.guest_name} assigned to seat ${seatNum}`,'success');
       await em.loadTablePlan(); em.renderUnassignedGuests(); em.renderCanvasTables();
@@ -154,8 +153,7 @@ window.seatingEnhancements = {
     this._closeSeatPopup();
     try {
       const v = !assignment.is_vip;
-      const {error} = await STATE.client.from('table_assignments').update({is_vip:v}).eq('id',assignment.id);
-      if (error) throw error;
+      await apiClient.update('table_assignments', assignment.id, {is_vip:v});
       utils.showToast(v?'Marked as VIP':'VIP removed','success');
       await em.loadTablePlan(); em.renderCanvasTables(); em.renderUnassignedGuests();
       if (em._selectedTableId) em.showTableDetail(em._selectedTableId);
@@ -188,9 +186,7 @@ window.seatingEnhancements = {
   // === 3. FLOOR SECTIONS ===
   async loadSections(eventId) {
     try {
-      const {data,error} = await STATE.client.from('seating_sections').select('*').eq('event_id',eventId);
-      if (error && error.code!=='42P01') throw error;
-      this._sections = data||[];
+      this._sections = await apiClient.selectAll('seating_sections', { select: '*', filters: { event_id: { eq: eventId } } });
     } catch(e) { console.warn('Sections load:',e); this._sections=[]; }
   },
 
@@ -198,9 +194,8 @@ window.seatingEnhancements = {
     const em = window.eventsModule, eid = em.currentEventIdTablePlan;
     if (!eid) return;
     try {
-      const {error} = await STATE.client.from('seating_sections').insert([{
-        event_id:eid, name, color:color||'#6c757d', x:100, y:100, width:400, height:300 }]);
-      if (error) throw error;
+      await apiClient.insert('seating_sections', {
+        event_id:eid, name, color:color||'#6c757d', x:100, y:100, width:400, height:300 });
       await this.loadSections(eid); em.renderCanvasTables();
       utils.showToast(`Section "${name}" added`,'success');
     } catch(e) { console.error('Add section:',e); utils.showToast('Failed to add section','error'); }
@@ -231,7 +226,7 @@ window.seatingEnhancements = {
     const origSave = em.saveTableProperties.bind(em);
     em.saveTableProperties = async function(tid) {
       const n = document.getElementById('seNotesArea')?.value?.trim()||null;
-      try { await STATE.client.from('event_tables').update({notes:n}).eq('id',tid);
+      try { await apiClient.update('event_tables', tid, {notes:n});
         const t=em.tables.find(t=>t.id===tid); if(t)t.notes=n;
       } catch(e){/*proceed*/}
       await origSave(tid);
@@ -254,7 +249,7 @@ window.seatingEnhancements = {
     const t = em.tables.find(t=>t.id===tableId); if(!t) return;
     let n = (t.notes||'').replace('[ACCESSIBLE]','').trim();
     if (on) n = '[ACCESSIBLE] '+n;
-    try { await STATE.client.from('event_tables').update({notes:n.trim()||null}).eq('id',tableId);
+    try { await apiClient.update('event_tables', tableId, {notes:n.trim()||null});
       t.notes=n.trim()||null; em.renderCanvasTables();
       utils.showToast(on?'Table marked accessible':'Accessible removed','success');
     } catch(e) { utils.showToast('Failed to update','error'); }
@@ -596,8 +591,8 @@ window.seatingEnhancements = {
     const a=this._undoStack.pop(); if(!a){utils.showToast('Nothing to undo','info');return;}
     const em=window.eventsModule;
     try {
-      if(a.type==='assign') { await STATE.client.from('table_assignments').delete().eq('guest_id',a.data.guest_id).eq('table_id',a.data.table_id); this._redoStack.push(a); }
-      else if(a.type==='remove') { const{id,...row}=a.data; await STATE.client.from('table_assignments').insert([row]); this._redoStack.push(a); }
+      if(a.type==='assign') { await apiClient.deleteByFilters('table_assignments', { guest_id: { eq: a.data.guest_id }, table_id: { eq: a.data.table_id } }); this._redoStack.push(a); }
+      else if(a.type==='remove') { const{_id,...row}=a.data; await apiClient.insert('table_assignments', row); this._redoStack.push(a); }
       await em.loadTablePlan(); em.renderUnassignedGuests(); em.renderCanvasTables();
       if(em._selectedTableId) em.showTableDetail(em._selectedTableId);
       utils.showToast('Undone','success');
@@ -608,8 +603,8 @@ window.seatingEnhancements = {
     const a=this._redoStack.pop(); if(!a){utils.showToast('Nothing to redo','info');return;}
     const em=window.eventsModule;
     try {
-      if(a.type==='assign') { const{id,...row}=a.data; await STATE.client.from('table_assignments').insert([row]); this._undoStack.push(a); }
-      else if(a.type==='remove') { await STATE.client.from('table_assignments').delete().eq('id',a.data.id); this._undoStack.push(a); }
+      if(a.type==='assign') { const{_id,...row}=a.data; await apiClient.insert('table_assignments', row); this._undoStack.push(a); }
+      else if(a.type==='remove') { await apiClient.delete('table_assignments', a.data.id); this._undoStack.push(a); }
       await em.loadTablePlan(); em.renderUnassignedGuests(); em.renderCanvasTables();
       if(em._selectedTableId) em.showTableDetail(em._selectedTableId);
       utils.showToast('Redone','success');
@@ -685,3 +680,4 @@ window.seatingEnhancements = {
     document.head.appendChild(s);
   }
 };
+ModuleRegistry.register('seatingEnhancements', seatingEnhancements);

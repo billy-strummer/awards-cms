@@ -5,6 +5,11 @@
 const eventsModule = {
   _loading: false,
 
+  // Server-side pagination state
+  _serverPagination: false,
+  _srvPagination: { page: 1, totalPages: 1, count: 0, pageSize: 50 },
+  _srvFetchId: 0,
+
   /**
    * Load all events from database
    */
@@ -15,36 +20,9 @@ const eventsModule = {
       utils.showLoading();
       utils.showSkeletonLoading('eventsTableBody', 11);
 
-      // Paginated loading for large event datasets
-      let allData = [];
-      let evtPage = 0;
-      const evtPageSize = 1000;
-      let evtHasMore = true;
-
-      while (evtHasMore) {
-        const from = evtPage * evtPageSize;
-        const to = from + evtPageSize - 1;
-
-        const { data, error } = await STATE.client
-          .from('events')
-          .select('*')
-          .order('event_date', { ascending: false })
-          .range(from, to);
-
-        if (error) throw error;
-
-        if (!data || data.length === 0) {
-          evtHasMore = false;
-        } else {
-          allData = allData.concat(data);
-          evtPage++;
-          if (data.length < evtPageSize) evtHasMore = false;
-        }
-      }
-
-      STATE.allEvents = allData;
-      this.populateYearFilter();
-      this._eventAwardCounts = {}; // Clear cache on reload
+      // Populate year filter from constants
+      this._populateYearFilterFromConstants();
+      this._eventAwardCounts = {};
       this._eventAttendeeCounts = {};
 
       // Restore saved filters from localStorage
@@ -56,11 +34,14 @@ const eventsModule = {
         if (saved.eventStatus) document.getElementById('eventsEventStatusFilter').value = saved.eventStatus;
       } catch(e) { console.warn('Failed to restore event filters:', e.message); }
 
+      // Enable server-side pagination and fetch first page
+      this._serverPagination = true;
+      await this._srvFetchPage(1);
+
       this.updateEventStats();
-      this.filterEvents();
       this.renderFinancialOverview();
 
-      console.log(`✅ Loaded ${STATE.allEvents.length} events`);
+      console.warn(`Loaded events (page 1, total: ${this._srvPagination.count})`);
       utils.trackDataLoad('events');
 
     } catch (error) {
@@ -70,6 +51,83 @@ const eventsModule = {
     } finally {
       utils.hideLoading();
       this._loading = false;
+    }
+  },
+
+  /**
+   * Populate year filter from YEARS constant
+   */
+  _populateYearFilterFromConstants() {
+    const yearSelect = document.getElementById('eventsYearFilter');
+    if (yearSelect) {
+      yearSelect.innerHTML = '<option value="">All Years</option>' +
+        YEARS.map(y => `<option value="${y}">${y}</option>`).join('');
+    }
+  },
+
+  /**
+   * Build server-side filters from current DOM state
+   */
+  _buildEvtServerFilters() {
+    const filters = {};
+    const year = document.getElementById('eventsYearFilter')?.value;
+    const eventStatus = document.getElementById('eventsEventStatusFilter')?.value;
+
+    if (year) filters.year = parseInt(year);
+    if (eventStatus) filters.event_status = eventStatus;
+
+    // Time-based filters (upcoming/past) need date comparison
+    const timeStatus = document.getElementById('eventsStatusFilter')?.value;
+    const today = new Date().toISOString().split('T')[0];
+    if (timeStatus === 'upcoming') filters.event_date = { op: 'gte', value: today };
+    if (timeStatus === 'past') filters.event_date = { op: 'lt', value: today };
+
+    return filters;
+  },
+
+  /**
+   * Fetch a specific page of events from the server
+   */
+  async _srvFetchPage(page) {
+    const fetchId = ++this._srvFetchId;
+    const filters = this._buildEvtServerFilters();
+    const search = document.getElementById('eventsSearchBox')?.value?.trim();
+
+    const sortField = this._sortField || 'event_date';
+    const sortDir = this._sortDir || 'desc';
+
+    const result = await apiClient.select('events', {
+      filters,
+      search: search ? { term: search, columns: ['event_name', 'venue', 'description'] } : undefined,
+      sort: { column: sortField, ascending: sortDir === 'asc' },
+      page,
+      pageSize: this._evtPageSize || 50
+    });
+
+    if (fetchId !== this._srvFetchId) return;
+
+    const pageData = result.data || [];
+    STATE.allEvents = pageData;
+    this._srvPagination = { page: result.page, totalPages: result.totalPages, count: result.count, pageSize: result.pageSize };
+    this._lastFilteredEvents = pageData;
+
+    this.renderFilteredEvents(pageData);
+  },
+
+  /**
+   * Navigate to a specific page (called from pagination controls)
+   */
+  async _srvGoToPage(page) {
+    page = Math.max(1, Math.min(page, this._srvPagination.totalPages));
+    if (page === this._srvPagination.page) return;
+    try {
+      utils.showLoading();
+      await this._srvFetchPage(page);
+    } catch (error) {
+      console.error('Error navigating events page:', error);
+      utils.showToast('Error loading page: ' + error.message, 'error');
+    } finally {
+      utils.hideLoading();
     }
   },
 
@@ -173,26 +231,14 @@ const eventsModule = {
           event_status: eventStatus || 'draft'
         };
 
-        let error;
-
         if (eventId) {
           // Update existing event
-          ({ error } = await STATE.client
-            .from('events')
-            .update(eventData)
-            .eq('id', eventId));
-
-          if (error) throw error;
+          await apiClient.update('events', eventId, eventData);
 
         } else {
           // Insert new event
-          const { data: newEvent, error: insertError } = await STATE.client
-            .from('events')
-            .insert([eventData])
-            .select()
-            .single();
-
-          if (insertError) throw insertError;
+          const { data: insertedRows } = await apiClient.insert('events', eventData);
+          const newEvent = Array.isArray(insertedRows) ? insertedRows[0] : insertedRows;
 
           // Create gallery sections from template if available
           if (window._templateGallerySections && window._templateGallerySections.length > 0) {
@@ -203,12 +249,11 @@ const eventsModule = {
               display_order: index + 1
             }));
 
-            const { error: sectionsError } = await STATE.client
-              .from('event_galleries')
-              .insert(sections);
-
-            if (!sectionsError) {
-              console.log(`✅ Created ${sections.length} gallery sections from template`);
+            try {
+              await apiClient.insert('event_galleries', sections);
+              console.warn(`Created ${sections.length} gallery sections from template`);
+            } catch (galErr) {
+              console.warn('Failed to create gallery sections from template:', galErr.message);
             }
 
             // Clear template sections
@@ -249,12 +294,7 @@ const eventsModule = {
       const event = STATE.allEvents?.find(e => e.id === eventId);
       if (event) utils.softDelete('events', event);
 
-      const { error } = await STATE.client
-        .from('events')
-        .delete()
-        .eq('id', eventId);
-
-      if (error) throw error;
+      await apiClient.delete('events', eventId);
 
       utils.showToast('Event deleted. <a href="#" onclick="event.preventDefault(); utils.undoLastDelete(\'events\')">Undo</a>', 'info');
       await this.loadEvents();
@@ -319,7 +359,12 @@ const eventsModule = {
         utils.showLoading();
 
         // Step 1: Create new event (fetch source for capacity)
-        const { data: srcEvt } = await STATE.client.from('events').select('capacity').eq('id', sourceEventId).single();
+        const { data: srcEvtRows } = await apiClient.select('events', {
+          select: 'capacity',
+          filters: { id: sourceEventId },
+          pageSize: 1
+        });
+        const srcEvt = srcEvtRows?.[0] || null;
         const newEventData = {
           event_name: newEventName,
           event_date: newEventDate || null,
@@ -330,13 +375,8 @@ const eventsModule = {
           capacity: srcEvt?.capacity || null
         };
 
-        const { data: newEvent, error: eventError } = await STATE.client
-          .from('events')
-          .insert([newEventData])
-          .select()
-          .single();
-
-        if (eventError) throw eventError;
+        const { data: insertedEvents } = await apiClient.insert('events', newEventData);
+        const newEvent = Array.isArray(insertedEvents) ? insertedEvents[0] : insertedEvents;
 
         utils.showToast(`Event "${newEventName}" created successfully!`, 'success');
 
@@ -370,16 +410,13 @@ const eventsModule = {
   async cloneGallerySections(sourceEventId, newEventId) {
     try {
       // Get all gallery sections from source event
-      const { data: sections, error: sectionsError } = await STATE.client
-        .from('event_galleries')
-        .select('*')
-        .eq('event_id', sourceEventId)
-        .order('display_order', { ascending: true });
-
-      if (sectionsError) throw sectionsError;
+      const sections = await apiClient.selectAll('event_galleries', {
+        filters: { event_id: sourceEventId },
+        sort: { column: 'display_order', ascending: true }
+      });
 
       if (!sections || sections.length === 0) {
-        console.log('No gallery sections to clone');
+        console.warn('No gallery sections to clone');
         return;
       }
 
@@ -391,13 +428,9 @@ const eventsModule = {
         display_order: section.display_order
       }));
 
-      const { error: insertError } = await STATE.client
-        .from('event_galleries')
-        .insert(newSections);
+      await apiClient.insert('event_galleries', newSections);
 
-      if (insertError) throw insertError;
-
-      console.log(`✅ Cloned ${sections.length} gallery section(s)`);
+      console.warn(`Cloned ${sections.length} gallery section(s)`);
 
     } catch (error) {
       console.error('Error cloning gallery sections:', error);
@@ -415,11 +448,9 @@ const eventsModule = {
    */
   async loadTemplates() {
     try {
-      const { data, error } = await STATE.client
-        .from('event_templates')
-        .select('*')
-        .order('created_at', { ascending: false });
-      if (error) throw error;
+      const data = await apiClient.selectAll('event_templates', {
+        sort: { column: 'created_at', ascending: false }
+      });
       return data || [];
     } catch (e) {
       try {
@@ -437,12 +468,11 @@ const eventsModule = {
    */
   async saveTemplatesStorage(templates) {
     try {
-      await STATE.client.from('event_templates').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+      await apiClient.deleteByFilters('event_templates', { id_neq: '00000000-0000-0000-0000-000000000000' });
       if (templates.length > 0) {
-        const { error } = await STATE.client.from('event_templates').insert(
+        await apiClient.insert('event_templates',
           templates.map(t => ({ name: t.name, template_data: t, created_by: STATE.currentUser?.email }))
         );
-        if (error) throw error;
       }
     } catch (e) {
       try {
@@ -680,12 +710,10 @@ const eventsModule = {
    */
   async getAttendees(eventId) {
     try {
-      const { data, error } = await STATE.client
-        .from('event_attendees')
-        .select('*')
-        .eq('event_id', eventId)
-        .order('created_at', { ascending: true });
-      if (error) throw error;
+      const data = await apiClient.selectAll('event_attendees', {
+        filters: { event_id: eventId },
+        sort: { column: 'created_at', ascending: true }
+      });
       // Map DB column names to JS property names used by the UI
       return (data || []).map(row => ({
         id: row.id,
@@ -717,7 +745,7 @@ const eventsModule = {
   async saveAttendees(eventId, attendees) {
     try {
       // Delete existing and re-insert (simple upsert pattern)
-      await STATE.client.from('event_attendees').delete().eq('event_id', eventId);
+      await apiClient.deleteByFilters('event_attendees', { event_id: eventId });
       if (attendees.length > 0) {
         // Map JS property names to DB column names
         const rows = attendees.map(a => ({
@@ -734,8 +762,7 @@ const eventsModule = {
           organisation_id: a.organisation_id || null,
           table_number: a.table_number || null
         }));
-        const { error } = await STATE.client.from('event_attendees').insert(rows);
-        if (error) throw error;
+        await apiClient.insert('event_attendees', rows);
       }
     } catch (e) {
       console.error('Error saving attendees:', e);
@@ -1049,12 +1076,11 @@ const eventsModule = {
     clearTimeout(this._orgSearchTimeout);
     this._orgSearchTimeout = setTimeout(async () => {
       try {
-        const { data, error } = await STATE.client
-          .from('organisations')
-          .select('id, company_name')
-          .ilike('company_name', `%${term}%`)
-          .limit(10);
-        if (error) throw error;
+        const { data } = await apiClient.select('organisations', {
+          select: 'id, company_name',
+          filters: { company_name_ilike: `%${term}%` },
+          pageSize: 10
+        });
         if (!data || data.length === 0) {
           resultsEl.innerHTML = '<div class="p-2 text-muted small">No organisations found</div>';
           resultsEl.style.display = 'block';
@@ -1400,11 +1426,7 @@ const eventsModule = {
     const url = document.getElementById('ticketUrlInput').value.trim() || null;
 
     try {
-      const { error } = await STATE.client
-        .from('events')
-        .update({ ticket_price: price, ticket_url: url })
-        .eq('id', eventId);
-      if (error) throw error;
+      await apiClient.update('events', eventId, { ticket_price: price, ticket_url: url });
     } catch (dbError) {
       // Column may not exist – fall back to localStorage (matches pattern used by budgets, vendors, etc.)
       console.warn('DB update for ticket settings failed, using localStorage:', dbError);
@@ -1430,12 +1452,10 @@ const eventsModule = {
 
   async _getTicketData(eventId) {
     try {
-      const { data, error } = await STATE.client
-        .from('event_tickets')
-        .select('*')
-        .eq('event_id', eventId)
-        .order('created_at', { ascending: true });
-      if (error) throw error;
+      const data = await apiClient.selectAll('event_tickets', {
+        filters: { event_id: eventId },
+        sort: { column: 'created_at', ascending: true }
+      });
       return { tickets: data || [], settings: {} };
     } catch (e) {
       console.error('Error loading tickets from DB:', e);
@@ -1446,7 +1466,7 @@ const eventsModule = {
 
   async _saveTicketData(eventId, data) {
     try {
-      await STATE.client.from('event_tickets').delete().eq('event_id', eventId);
+      await apiClient.deleteByFilters('event_tickets', { event_id: eventId });
       if (data.tickets && data.tickets.length > 0) {
         const rows = data.tickets.map(t => ({
           event_id: eventId,
@@ -1460,7 +1480,7 @@ const eventsModule = {
           revoked_at: t.revokedAt || t.revoked_at || null,
           sent_at: t.sentAt || t.sent_at || null
         }));
-        await STATE.client.from('event_tickets').insert(rows);
+        await apiClient.insert('event_tickets', rows);
       }
     } catch (e) {
       console.error('Error saving tickets to DB:', e);
@@ -1841,12 +1861,10 @@ const eventsModule = {
 
   async getWaitlist(eventId) {
     try {
-      const { data, error } = await STATE.client
-        .from('event_waitlist')
-        .select('*')
-        .eq('event_id', eventId)
-        .order('created_at', { ascending: true });
-      if (error) throw error;
+      const data = await apiClient.selectAll('event_waitlist', {
+        filters: { event_id: eventId },
+        sort: { column: 'created_at', ascending: true }
+      });
       return data || [];
     } catch (e) {
       const stored = localStorage.getItem(this._waitlistKey(eventId));
@@ -1856,10 +1874,10 @@ const eventsModule = {
 
   async _saveWaitlist(eventId, waitlist) {
     try {
-      await STATE.client.from('event_waitlist').delete().eq('event_id', eventId);
+      await apiClient.deleteByFilters('event_waitlist', { event_id: eventId });
       if (waitlist.length > 0) {
         const rows = waitlist.map(w => ({ ...w, event_id: eventId }));
-        await STATE.client.from('event_waitlist').insert(rows);
+        await apiClient.insert('event_waitlist', rows);
       }
     } catch (e) {
       localStorage.setItem(this._waitlistKey(eventId), JSON.stringify(waitlist));
@@ -2158,20 +2176,17 @@ const eventsModule = {
 
   async _buildSeatingChartPage(win, event, eventId) {
     try {
-      const { data: tables } = await STATE.client
-        .from('event_tables')
-        .select('*')
-        .eq('event_id', eventId)
-        .eq('is_active', true)
-        .order('table_number');
+      const tables = await apiClient.selectAll('event_tables', {
+        filters: { event_id: eventId, is_active: true },
+        sort: { column: 'table_number', ascending: true }
+      });
 
-      const { data: assignments } = await STATE.client
-        .from('table_assignments')
-        .select('*')
-        .eq('event_id', eventId);
+      const assignments = await apiClient.selectAll('table_assignments', {
+        filters: { event_id: eventId }
+      });
 
-      const tableList = tables || [];
-      const assignList = assignments || [];
+      const tableList = Array.isArray(tables) ? tables : [];
+      const assignList = Array.isArray(assignments) ? assignments : [];
 
       const tableCards = tableList.map(t => {
         const seated = assignList.filter(a => a.table_id === t.id);
@@ -2247,10 +2262,25 @@ const eventsModule = {
   async getBudget(eventId) {
     try {
       // Query separately so one table missing doesn't break the other
-      const { data: budgetRow, error: budgetErr } = await STATE.client
-        .from('event_budgets').select('*').eq('event_id', eventId).maybeSingle();
-      const { data: items, error: itemsErr } = await STATE.client
-        .from('event_budget_items').select('*').eq('event_id', eventId).order('created_at');
+      let budgetRow = null;
+      let items = [];
+      let budgetErr = null;
+      let itemsErr = null;
+
+      try {
+        const { data: budgetRows } = await apiClient.select('event_budgets', {
+          filters: { event_id: eventId },
+          pageSize: 1
+        });
+        budgetRow = budgetRows?.[0] || null;
+      } catch (e) { budgetErr = e; }
+
+      try {
+        items = await apiClient.selectAll('event_budget_items', {
+          filters: { event_id: eventId },
+          sort: { column: 'created_at', ascending: true }
+        });
+      } catch (e) { itemsErr = e; }
 
       // If both tables errored (likely don't exist), fall back to localStorage
       if (budgetErr && itemsErr) {
@@ -2266,13 +2296,19 @@ const eventsModule = {
 
   async _saveBudget(eventId, budget) {
     try {
-      // Upsert budget total
-      await STATE.client.from('event_budgets').upsert({
-        event_id: eventId,
-        total_budget: budget.totalBudget || 0
-      }, { onConflict: 'event_id' });
+      // Upsert budget total — try update first, insert on failure
+      try {
+        await apiClient.updateByFilters('event_budgets', { event_id: eventId }, {
+          total_budget: budget.totalBudget || 0
+        });
+      } catch (upsertErr) {
+        await apiClient.insert('event_budgets', {
+          event_id: eventId,
+          total_budget: budget.totalBudget || 0
+        });
+      }
       // Replace items
-      await STATE.client.from('event_budget_items').delete().eq('event_id', eventId);
+      await apiClient.deleteByFilters('event_budget_items', { event_id: eventId });
       if (budget.items && budget.items.length > 0) {
         const rows = budget.items.map(item => ({
           event_id: eventId,
@@ -2282,7 +2318,7 @@ const eventsModule = {
           actual_amount: item.actualAmount || item.actual_amount || 0,
           notes: item.notes
         }));
-        await STATE.client.from('event_budget_items').insert(rows);
+        await apiClient.insert('event_budget_items', rows);
       }
     } catch (e) {
       console.error('Error saving budget to DB:', e);
@@ -2342,7 +2378,7 @@ const eventsModule = {
       netDisplay.className = `fw-bold ${netPL >= 0 ? 'text-success' : 'text-danger'}`;
     }
 
-    const categories = ['Venue', 'Catering', 'AV/Production', 'Entertainment', 'Trophies/Awards', 'Print/Stationery', 'Transport', 'Staffing', 'Marketing', 'Gifts/Swag', 'Other'];
+    const _categories = ['Venue', 'Catering', 'AV/Production', 'Entertainment', 'Trophies/Awards', 'Print/Stationery', 'Transport', 'Staffing', 'Marketing', 'Gifts/Swag', 'Other'];
 
     if (items.length === 0) {
       utils.showEnhancedEmptyState('budgetTableBody', 7, { icon: 'bi-calculator', message: 'No budget items', description: 'Click "Add Item" to start tracking' });
@@ -2377,7 +2413,7 @@ const eventsModule = {
   },
 
   addBudgetItem() {
-    const eventId = document.getElementById('attendeesEventId').value;
+    const _eventId = document.getElementById('attendeesEventId').value;
     const categories = ['Venue', 'Catering', 'AV/Production', 'Entertainment', 'Trophies/Awards', 'Print/Stationery', 'Transport', 'Staffing', 'Marketing', 'Gifts/Swag', 'Other'];
     const html = `
       <div class="modal fade" id="budgetItemModal" tabindex="-1">
@@ -2500,12 +2536,10 @@ const eventsModule = {
 
   async getVendors(eventId) {
     try {
-      const { data, error } = await STATE.client
-        .from('event_vendors')
-        .select('*')
-        .eq('event_id', eventId)
-        .order('created_at', { ascending: true });
-      if (error) throw error;
+      const data = await apiClient.selectAll('event_vendors', {
+        filters: { event_id: eventId },
+        sort: { column: 'created_at', ascending: true }
+      });
       return (data || []).map(v => ({
         ...v,
         name: v.name || v.contact_name || v.contactName || '',
@@ -2520,7 +2554,7 @@ const eventsModule = {
 
   async _saveVendors(eventId, vendors) {
     try {
-      await STATE.client.from('event_vendors').delete().eq('event_id', eventId);
+      await apiClient.deleteByFilters('event_vendors', { event_id: eventId });
       if (vendors.length > 0) {
         const rows = vendors.map(v => ({
           event_id: eventId,
@@ -2533,7 +2567,7 @@ const eventsModule = {
           status: v.status || 'pending',
           notes: v.notes
         }));
-        await STATE.client.from('event_vendors').insert(rows);
+        await apiClient.insert('event_vendors', rows);
       }
     } catch (e) {
       localStorage.setItem(this._vendorsKey(eventId), JSON.stringify(vendors));
@@ -2692,7 +2726,7 @@ const eventsModule = {
     const container = document.getElementById('specialReqsContent');
     if (!container) return;
     const attendees = (await this.getAttendees(eventId)).filter(a => a.status === 'attending');
-    const event = STATE.allEvents.find(e => e.id === eventId);
+    const _event = STATE.allEvents.find(e => e.id === eventId);
     const reqs = this._getSpecialReqs(eventId);
 
     // Accessibility summary
@@ -3644,7 +3678,7 @@ const eventsModule = {
 
     const totalRevenue = (event?.ticket_price || 0) * attending.length;
     const totalSpent = budget.items ? budget.items.reduce((s, i) => s + (parseFloat(i.actual) || 0), 0) : 0;
-    const sponsorVendors = vendors.filter(v => v.category === 'Sponsorship' || (v.notes || '').toLowerCase().includes('sponsor'));
+    const _sponsorVendors = vendors.filter(v => v.category === 'Sponsorship' || (v.notes || '').toLowerCase().includes('sponsor'));
 
     return `
       <div class="row g-3 mb-3">
@@ -3838,7 +3872,7 @@ const eventsModule = {
   // ========================================
 
   async exportPostEventPack() {
-    const eventId = document.getElementById('attendeesEventId').value;
+    const _eventId = document.getElementById('attendeesEventId').value;
     utils.showToast('Generating exports... check your downloads', 'info');
 
     // Export attendance report
@@ -4742,7 +4776,7 @@ const eventsModule = {
     }
   },
 
-  handleDragLeave(event) {
+  handleDragLeave(_event) {
     // No-op, visual cleanup handled by dragEnd
   },
 
@@ -4805,7 +4839,7 @@ const eventsModule = {
     }
   },
 
-  handleTouchEnd(event) {
+  handleTouchEnd(_event) {
     if (this.isPublished || !this._roTouchItem) return;
     clearTimeout(this._roTouchItem._touchTimeout);
     if (this._roTouchItem.classList.contains('dragging')) {
@@ -4889,7 +4923,7 @@ const eventsModule = {
       item.actual_time = new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
     }
     try {
-      await STATE.client.from('running_order').update({ status: newStatus, actual_time: item.actual_time || null }).eq('id', itemId);
+      await apiClient.update('running_order', itemId, { status: newStatus, actual_time: item.actual_time || null });
     } catch (error) {
       console.error('Error updating status:', error);
     }
@@ -4904,7 +4938,7 @@ const eventsModule = {
     if (!item) return;
     item.scheduled_time = time;
     try {
-      await STATE.client.from('running_order').update({ scheduled_time: time || null }).eq('id', itemId);
+      await apiClient.update('running_order', itemId, { scheduled_time: time || null });
     } catch (error) {
       console.error('Error updating time:', error);
     }
@@ -5040,14 +5074,13 @@ const eventsModule = {
     };
 
     try {
-      const { error } = await STATE.client.from('running_order').insert([entryData]);
-      if (error) throw error;
+      await apiClient.insert('running_order', entryData);
 
       // If not appending at end, reorder all items after the insert position
       if (posValue !== 'end') {
         const itemsToShift = this.runningOrderItems.slice(insertAt);
         for (let i = 0; i < itemsToShift.length; i++) {
-          await STATE.client.from('running_order').update({ display_order: insertAt + 2 + i }).eq('id', itemsToShift[i].id);
+          await apiClient.update('running_order', itemsToShift[i].id, { display_order: insertAt + 2 + i });
         }
       }
       await this.loadRunningOrder();
@@ -5076,13 +5109,18 @@ const eventsModule = {
   async setCeremonyStartTime(time) {
     this._roCeremonyStartTime = time || null;
     try {
-      await STATE.client
-        .from('running_order_settings')
-        .upsert({
+      try {
+        await apiClient.updateByFilters('running_order_settings', { event_id: this.currentEventIdRunningOrder }, {
+          ceremony_start_time: time || null,
+          auto_schedule: this._roAutoSchedule
+        });
+      } catch (upsertErr) {
+        await apiClient.insert('running_order_settings', {
           event_id: this.currentEventIdRunningOrder,
           ceremony_start_time: time || null,
           auto_schedule: this._roAutoSchedule
-        }, { onConflict: 'event_id' });
+        });
+      }
     } catch (error) {
       console.error('Error saving ceremony start time:', error);
     }
@@ -5097,13 +5135,18 @@ const eventsModule = {
   async toggleAutoSchedule(enabled) {
     this._roAutoSchedule = enabled;
     try {
-      await STATE.client
-        .from('running_order_settings')
-        .upsert({
+      try {
+        await apiClient.updateByFilters('running_order_settings', { event_id: this.currentEventIdRunningOrder }, {
+          ceremony_start_time: this._roCeremonyStartTime,
+          auto_schedule: enabled
+        });
+      } catch (upsertErr) {
+        await apiClient.insert('running_order_settings', {
           event_id: this.currentEventIdRunningOrder,
           ceremony_start_time: this._roCeremonyStartTime,
           auto_schedule: enabled
-        }, { onConflict: 'event_id' });
+        });
+      }
     } catch (error) {
       console.error('Error saving auto-schedule setting:', error);
     }
@@ -5140,9 +5183,7 @@ const eventsModule = {
     // Save to DB
     try {
       for (const item of this.runningOrderItems) {
-        await STATE.client.from('running_order')
-          .update({ scheduled_time: item.scheduled_time })
-          .eq('id', item.id);
+        await apiClient.update('running_order', item.id, { scheduled_time: item.scheduled_time });
       }
       utils.showToast('Times auto-scheduled from ' + this._roCeremonyStartTime, 'success');
     } catch (error) {
@@ -5187,8 +5228,7 @@ const eventsModule = {
     };
 
     try {
-      const { error } = await STATE.client.from('running_order').insert([newEntry]);
-      if (error) throw error;
+      await apiClient.insert('running_order', newEntry);
       utils.showToast('Item duplicated', 'success');
       await this.loadRunningOrder();
       this._roRecalcNumbers();
@@ -5326,7 +5366,7 @@ const eventsModule = {
     const items = this.runningOrderItems;
     const current = items[currentIdx];
     const next = items[currentIdx + 1] || null;
-    const prev = items[currentIdx - 1] || null;
+    const _prev = items[currentIdx - 1] || null;
 
     const completedCount = items.filter(i => i.status === 'completed').length;
     const totalCount = items.length;
@@ -5672,7 +5712,7 @@ const eventsModule = {
     if (!item) return;
     item[field] = value;
     try {
-      await STATE.client.from('running_order').update({ [field]: value }).eq('id', itemId);
+      await apiClient.update('running_order', itemId, { [field]: value });
     } catch (error) {
       console.error('Error updating checklist:', error);
     }
@@ -5772,7 +5812,7 @@ const eventsModule = {
     if (!item) return;
     item.trophy_status = status;
     try {
-      await STATE.client.from('running_order').update({ trophy_status: status }).eq('id', itemId);
+      await apiClient.update('running_order', itemId, { trophy_status: status });
       utils.showToast('Trophy status updated', 'success');
     } catch (error) {
       console.error('Error updating trophy status:', error);
@@ -5808,7 +5848,7 @@ const eventsModule = {
     `;
 
     let presNum = 0;
-    items.forEach((item, idx) => {
+    items.forEach((item, _idx) => {
       const isBreak = (item.item_type || 'award') !== 'award';
       if (!isBreak) presNum++;
       const awardName = item.award_name || 'TBC';
@@ -5848,7 +5888,7 @@ const eventsModule = {
 
     item.cue_notes = newCue || null;
     try {
-      await STATE.client.from('running_order').update({ cue_notes: newCue || null }).eq('id', itemId);
+      await apiClient.update('running_order', itemId, { cue_notes: newCue || null });
       utils.showToast('Cue note updated', 'success');
     } catch (error) {
       console.error('Error updating cue note:', error);
@@ -6160,10 +6200,7 @@ const eventsModule = {
       utils.showLoading();
 
       // Delete all current items
-      await STATE.client
-        .from('running_order')
-        .delete()
-        .eq('event_id', this.currentEventIdRunningOrder);
+      await apiClient.deleteByFilters('running_order', { event_id: this.currentEventIdRunningOrder });
 
       // Re-insert from snapshot
       const items = version.snapshot.map(item => ({
@@ -6172,10 +6209,7 @@ const eventsModule = {
       }));
 
       if (items.length > 0) {
-        const { error } = await STATE.client
-          .from('running_order')
-          .insert(items);
-        if (error) throw error;
+        await apiClient.insert('running_order', items);
       }
 
       utils.showToast(`Restored version: ${version.version_name}`, 'success');
@@ -6193,7 +6227,7 @@ const eventsModule = {
   async deleteVersion(versionId) {
     if (!await utils.confirmDialog({ title: 'Delete Version', message: 'Delete this saved version?' })) return;
     try {
-      await STATE.client.from('running_order_versions').delete().eq('id', versionId);
+      await apiClient.delete('running_order_versions', versionId);
       utils.showToast('Version deleted', 'success');
       this.renderVersionsTab();
     } catch (error) {
@@ -6226,7 +6260,7 @@ const eventsModule = {
     item.table_number = num;
 
     try {
-      await STATE.client.from('running_order').update({ table_number: num }).eq('id', itemId);
+      await apiClient.update('running_order', itemId, { table_number: num });
       utils.showToast(num ? `Assigned to Table ${num}` : 'Table assignment cleared', 'success');
     } catch (error) {
       console.error('Error assigning table:', error);
@@ -6289,7 +6323,7 @@ const eventsModule = {
 
     this._roPushUndo();
 
-    const orgKey = item.organisation_id || item.display_name;
+    const _orgKey = item.organisation_id || item.display_name;
     const groupId = item.organisation_id || `group_${Date.now()}`;
 
     // Find all items for this org
@@ -6307,7 +6341,7 @@ const eventsModule = {
     orgItems.forEach(i => { i.presentation_group = groupId; });
 
     // Move all grouped items to be adjacent (after the first one's position)
-    const firstIdx = this.runningOrderItems.indexOf(orgItems[0]);
+    const _firstIdx = this.runningOrderItems.indexOf(orgItems[0]);
     const others = orgItems.slice(1);
 
     // Remove others from their current positions
@@ -6329,9 +6363,7 @@ const eventsModule = {
     // Persist group IDs
     for (const oi of orgItems) {
       try {
-        await STATE.client.from('running_order')
-          .update({ presentation_group: groupId, display_order: oi.display_order, award_number: oi.award_number })
-          .eq('id', oi.id);
+        await apiClient.update('running_order', oi.id, { presentation_group: groupId, display_order: oi.display_order, award_number: oi.award_number });
       } catch (e) { console.error('Error grouping:', e); }
     }
 
@@ -6356,16 +6388,12 @@ const eventsModule = {
     if (remaining.length === 1) {
       remaining[0].presentation_group = null;
       try {
-        await STATE.client.from('running_order')
-          .update({ presentation_group: null })
-          .eq('id', remaining[0].id);
+        await apiClient.update('running_order', remaining[0].id, { presentation_group: null });
       } catch (e) { console.error('Error clearing last group member:', e); }
     }
 
     try {
-      await STATE.client.from('running_order')
-        .update({ presentation_group: null })
-        .eq('id', itemId);
+      await apiClient.update('running_order', itemId, { presentation_group: null });
     } catch (e) { console.error('Error splitting:', e); }
 
     this._roRecalcNumbers();
@@ -6389,9 +6417,7 @@ const eventsModule = {
 
     for (const m of members) {
       try {
-        await STATE.client.from('running_order')
-          .update({ presentation_group: null })
-          .eq('id', m.id);
+        await apiClient.update('running_order', m.id, { presentation_group: null });
       } catch (e) { console.error('Error splitting all:', e); }
     }
 
@@ -6413,21 +6439,19 @@ const eventsModule = {
       // 1. Get confirmed RSVPs from both event_guests and event_attendees
       let guests = [];
       try {
-        const { data: eg } = await STATE.client
-          .from('event_guests')
-          .select('id, organisation_id, guest_name, guest_email, guest_type')
-          .eq('event_id', eventId)
-          .eq('rsvp_status', 'confirmed');
+        const eg = await apiClient.selectAll('event_guests', {
+          select: 'id, organisation_id, guest_name, guest_email, guest_type',
+          filters: { event_id: eventId, rsvp_status: 'confirmed' }
+        });
         if (eg) guests = eg;
       } catch (e) { /* event_guests may not exist */ }
 
       // Also pull from event_attendees (admin-added guests with status 'attending')
       try {
-        const { data: ea } = await STATE.client
-          .from('event_attendees')
-          .select('id, organisation_id, attendee_name, attendee_email, guest_type')
-          .eq('event_id', eventId)
-          .in('rsvp_status', ['attending', 'confirmed']);
+        const ea = await apiClient.selectAll('event_attendees', {
+          select: 'id, organisation_id, attendee_name, attendee_email, guest_type',
+          filters: { event_id: eventId, rsvp_status_in: ['attending', 'confirmed'] }
+        });
         if (ea) {
           const existingKeys = new Set(guests.map(g => (g.guest_name || '').toLowerCase() + '|' + (g.guest_email || '').toLowerCase()));
           for (const a of ea) {
@@ -6453,13 +6477,12 @@ const eventsModule = {
 
       // 2. Get winner assignments for these organisations
       const orgIds = [...new Set(guests.map(g => g.organisation_id).filter(Boolean))];
-      let assignMap = {};
+      const assignMap = {};
       if (orgIds.length > 0) {
-        const { data: assigns } = await STATE.client
-          .from('award_assignments')
-          .select('award_id, organisation_id')
-          .in('organisation_id', orgIds)
-          .eq('status', 'winner');
+        const assigns = await apiClient.selectAll('award_assignments', {
+          select: 'award_id, organisation_id',
+          filters: { organisation_id_in: orgIds, status: 'winner' }
+        });
         (assigns || []).forEach(a => {
           if (!assignMap[a.organisation_id]) assignMap[a.organisation_id] = [];
           assignMap[a.organisation_id].push(a.award_id);
@@ -6468,22 +6491,22 @@ const eventsModule = {
 
       // 3. Get award names
       const allAwardIds = [...new Set(Object.values(assignMap).flat())];
-      let awardMap = {};
+      const awardMap = {};
       if (allAwardIds.length > 0) {
-        const { data: awards } = await STATE.client
-          .from('awards')
-          .select('id, award_name')
-          .in('id', allAwardIds);
+        const awards = await apiClient.selectAll('awards', {
+          select: 'id, award_name',
+          filters: { id_in: allAwardIds }
+        });
         (awards || []).forEach(a => { awardMap[a.id] = a.award_name; });
       }
 
       // 4. Get org names
-      let orgMap = {};
+      const orgMap = {};
       if (orgIds.length > 0) {
-        const { data: orgs } = await STATE.client
-          .from('organisations')
-          .select('id, company_name')
-          .in('id', orgIds);
+        const orgs = await apiClient.selectAll('organisations', {
+          select: 'id, company_name',
+          filters: { id_in: orgIds }
+        });
         (orgs || []).forEach(o => { orgMap[o.id] = o.company_name; });
       }
 
@@ -6523,8 +6546,10 @@ const eventsModule = {
             status: 'pending'
           };
 
-          const result = await STATE.client.from('running_order').insert([entry]);
-          if (result.error) {
+          try {
+            await apiClient.insert('running_order', entry);
+            added++;
+          } catch (insertErr) {
             // Schema cache fallback — try minimal columns
             const minimal = {
               event_id: eventId,
@@ -6532,11 +6557,12 @@ const eventsModule = {
               display_order: order,
               duration_minutes: 3
             };
-            const retry = await STATE.client.from('running_order').insert([minimal]);
-            if (!retry.error) added++;
-            else console.warn('Failed to insert RSVP entry:', retry.error.message);
-          } else {
-            added++;
+            try {
+              await apiClient.insert('running_order', minimal);
+              added++;
+            } catch (retryErr) {
+              console.warn('Failed to insert RSVP entry:', retryErr.message);
+            }
           }
         }
       }
@@ -6558,15 +6584,18 @@ const eventsModule = {
   async togglePublishMode() {
     try {
       const newPublishedState = !this.isPublished;
-      const { error } = await STATE.client
-        .from('running_order_settings')
-        .upsert({
+      try {
+        await apiClient.updateByFilters('running_order_settings', { event_id: this.currentEventIdRunningOrder }, {
+          is_published: newPublishedState,
+          published_at: newPublishedState ? new Date().toISOString() : null
+        });
+      } catch (upsertErr) {
+        await apiClient.insert('running_order_settings', {
           event_id: this.currentEventIdRunningOrder,
           is_published: newPublishedState,
           published_at: newPublishedState ? new Date().toISOString() : null
-        }, { onConflict: 'event_id' });
-
-      if (error) throw error;
+        });
+      }
       this.isPublished = newPublishedState;
       utils.showToast(newPublishedState ? 'Running order published and locked' : 'Running order unlocked for editing', 'success');
       document.getElementById('runningOrderModal').remove();
@@ -6584,16 +6613,12 @@ const eventsModule = {
     try {
       utils.showLoading();
       for (const item of this.runningOrderItems) {
-        const { error } = await STATE.client
-          .from('running_order')
-          .update({
-            display_order: item.display_order,
-            award_number: item.award_number,
-            presentation_group: item.presentation_group || null,
-            scheduled_time: item.scheduled_time || null
-          })
-          .eq('id', item.id);
-        if (error) throw error;
+        await apiClient.update('running_order', item.id, {
+          display_order: item.display_order,
+          award_number: item.award_number,
+          presentation_group: item.presentation_group || null,
+          scheduled_time: item.scheduled_time || null
+        });
       }
       utils.showToast('Running order saved', 'success');
     } catch (error) {
@@ -6738,8 +6763,7 @@ const eventsModule = {
   async deleteRunningOrderItem(itemId) {
     if (!await utils.confirmDialog({ title: 'Remove Item', message: 'Remove this item from the running order?', confirmText: 'Remove' })) return;
     try {
-      const { error } = await STATE.client.from('running_order').delete().eq('id', itemId);
-      if (error) throw error;
+      await apiClient.delete('running_order', itemId);
       utils.showToast('Item removed', 'success');
       await this.loadRunningOrder();
       this.renderRunningOrderItems();
@@ -6961,7 +6985,7 @@ const eventsModule = {
       }
 
       // 1. Load all awards for this event's year with their winner assignments
-      let awardsQuery = STATE.client
+      const awardsQuery = STATE.client
         .from('award_years')
         .select('id, award_name, award_category, sector')
         .eq('year', event.year)
@@ -6986,7 +7010,7 @@ const eventsModule = {
 
       // 3. Load organisation names for winners
       const orgIds = [...new Set((assignments || []).map(a => a.organisation_id).filter(Boolean))];
-      let orgsMap = {};
+      const orgsMap = {};
       if (orgIds.length > 0) {
         const { data: orgs } = await STATE.client
           .from('organisations')
@@ -6996,7 +7020,7 @@ const eventsModule = {
       }
 
       // 4. Look up guest contacts per org (for recipient_collecting)
-      let guestByOrg = {};
+      const guestByOrg = {};
       if (orgIds.length > 0) {
         try {
           const { data: eg } = await STATE.client
@@ -7214,21 +7238,27 @@ const eventsModule = {
           status: 'pending'
         };
 
-        let result = await STATE.client.from('running_order').insert([entryData]);
-        // Schema cache fallback
-        if (result.error && result.error.message && result.error.message.includes('schema cache')) {
-          const baseEntry = {
-            event_id: eventId,
-            item_name: row.awardName,
-            display_order: order,
-            duration_minutes: 3
-          };
-          result = await STATE.client.from('running_order').insert([baseEntry]);
-        }
-        if (result.error) {
-          console.warn('Failed to insert award:', row.awardName, result.error.message);
-        } else {
+        try {
+          await apiClient.insert('running_order', entryData);
           added++;
+        } catch (insertErr) {
+          // Schema cache fallback
+          if (insertErr.message && insertErr.message.includes('schema cache')) {
+            const baseEntry = {
+              event_id: eventId,
+              item_name: row.awardName,
+              display_order: order,
+              duration_minutes: 3
+            };
+            try {
+              await apiClient.insert('running_order', baseEntry);
+              added++;
+            } catch (retryErr) {
+              console.warn('Failed to insert award:', row.awardName, retryErr.message);
+            }
+          } else {
+            console.warn('Failed to insert award:', row.awardName, insertErr.message);
+          }
         }
       }
 
@@ -7519,19 +7549,23 @@ const eventsModule = {
     if (awardId) entryData.award_id = awardId;
 
     try {
-      let result = await STATE.client.from('running_order').insert([entryData]);
-      // If schema cache doesn't recognise extended columns, retry with base columns only
-      if (result.error && result.error.message && result.error.message.includes('schema cache')) {
-        console.warn('Schema cache miss on running_order, retrying with base columns');
-        const baseEntry = {
-          event_id: entryData.event_id,
-          item_name: awardName,
-          display_order: entryData.display_order,
-          duration_minutes: entryData.duration_minutes
-        };
-        result = await STATE.client.from('running_order').insert([baseEntry]);
+      try {
+        await apiClient.insert('running_order', entryData);
+      } catch (insertErr) {
+        // If schema cache doesn't recognise extended columns, retry with base columns only
+        if (insertErr.message && insertErr.message.includes('schema cache')) {
+          console.warn('Schema cache miss on running_order, retrying with base columns');
+          const baseEntry = {
+            event_id: entryData.event_id,
+            item_name: awardName,
+            display_order: entryData.display_order,
+            duration_minutes: entryData.duration_minutes
+          };
+          await apiClient.insert('running_order', baseEntry);
+        } else {
+          throw insertErr;
+        }
       }
-      if (result.error) throw result.error;
       await this.loadRunningOrder();
     } catch (error) {
       console.warn('DB insert for manual entry failed, using localStorage:', error);
@@ -7686,17 +7720,21 @@ const eventsModule = {
     if (sectionEl) updateData.section = parseInt(sectionEl.value) || 1;
 
     try {
-      let result = await STATE.client.from('running_order').update(updateData).eq('id', itemId);
-      // Fallback if schema cache doesn't know extended columns
-      if (result.error && result.error.message && result.error.message.includes('schema cache')) {
-        console.warn('Schema cache miss on running_order update, retrying with base columns');
-        const baseUpdate = {
-          item_name: awardName,
-          duration_minutes: updateData.duration_minutes
-        };
-        result = await STATE.client.from('running_order').update(baseUpdate).eq('id', itemId);
+      try {
+        await apiClient.update('running_order', itemId, updateData);
+      } catch (updateErr) {
+        // Fallback if schema cache doesn't know extended columns
+        if (updateErr.message && updateErr.message.includes('schema cache')) {
+          console.warn('Schema cache miss on running_order update, retrying with base columns');
+          const baseUpdate = {
+            item_name: awardName,
+            duration_minutes: updateData.duration_minutes
+          };
+          await apiClient.update('running_order', itemId, baseUpdate);
+        } else {
+          throw updateErr;
+        }
       }
-      if (result.error) throw result.error;
       utils.showToast('Item updated', 'success');
       bootstrap.Modal.getInstance(document.getElementById('editRunningOrderModal')).hide();
       await this.loadRunningOrder();
@@ -8236,7 +8274,7 @@ const eventsModule = {
 
         // Enrich with company name from organisations if possible
         const orgIds = [...new Set(allGuests.filter(g => g.organisation_id).map(g => g.organisation_id))];
-        let orgMap = {};
+        const orgMap = {};
         if (orgIds.length > 0) {
           const { data: orgs } = await STATE.client
             .from('organisations')
@@ -8377,7 +8415,7 @@ const eventsModule = {
       }
     } else if (layout === 'banquet') {
       // Two columns with aisle
-      const rows = Math.ceil(count / 2);
+      const _rows = Math.ceil(count / 2);
       const startX = 200;
       const startY = 100;
       const aisleWidth = spacing + 80;
@@ -8677,7 +8715,7 @@ const eventsModule = {
         const newH = Math.max(60, Math.min(startH + delta, window.innerHeight * 0.7));
         panel.style.height = newH + 'px';
       };
-      const onUp = (ev) => {
+      const onUp = (_ev) => {
         document.removeEventListener('mousemove', onMove);
         document.removeEventListener('mouseup', onUp);
         panel.classList.remove('tp-resizing');
@@ -9042,7 +9080,7 @@ const eventsModule = {
 
   toggleCanvasFullscreen() {
     // Target the canvas column (toolbar + wrapper + bottom index) for true fullscreen
-    const modal = document.getElementById('tablePlanModal');
+    const _modal = document.getElementById('tablePlanModal');
     const target = document.getElementById('tpCanvasWrapper')?.closest('.d-flex.flex-column.flex-grow-1');
     if (!target) return;
     if (document.fullscreenElement) {
@@ -9092,7 +9130,7 @@ const eventsModule = {
       this._tableDrag.el.style.top = newY + 'px';
     };
 
-    const onUp = async (e) => {
+    const onUp = async (_e) => {
       document.removeEventListener('mousemove', onMove);
       document.removeEventListener('mouseup', onUp);
       if (!this._tableDrag) return;
@@ -9329,7 +9367,7 @@ const eventsModule = {
         dietary_requirements: g.dietary_requirements || null
       }));
 
-      let { error } = await STATE.client
+      const { error } = await STATE.client
         .from('table_assignments')
         .insert(assignments);
 
@@ -9498,7 +9536,7 @@ const eventsModule = {
           guest_type: g.guest_type || 'guest',
           dietary_requirements: g.dietary_requirements || null
         }));
-        let { error } = await STATE.client.from('table_assignments').insert(rows);
+        const { error } = await STATE.client.from('table_assignments').insert(rows);
         // If batch fails (e.g. FK constraint), fall back to one-by-one
         if (error) {
           console.warn('Batch insert failed, trying one-by-one:', error.message);
@@ -9734,7 +9772,7 @@ const eventsModule = {
         for (const guest of group.guests) {
           if (assigned >= guestsToAssign) break;
           // Find table with space (prefer current bestTable)
-          let targetTable = bestTable.availableSeats > 0 ? bestTable : tablesWithSpace.find(t => t.availableSeats > 0);
+          const targetTable = bestTable.availableSeats > 0 ? bestTable : tablesWithSpace.find(t => t.availableSeats > 0);
           if (!targetTable) break;
 
           // Auto-assign next available seat number
@@ -10885,6 +10923,16 @@ const eventsModule = {
 
     try { localStorage.setItem('eventsFilters', JSON.stringify({ search, year, timeStatus, eventStatus })); } catch(e) { console.warn('Failed to save event filters:', e.message); }
 
+    // Server-side pagination: send filters to server and re-fetch page 1
+    if (this._serverPagination) {
+      this._srvFetchPage(1).catch(err => {
+        console.error('Error filtering events:', err);
+        utils.showToast('Error filtering events: ' + err.message, 'error');
+      });
+      return;
+    }
+
+    // Client-side fallback (used by tests and when data is pre-loaded)
     const today = new Date().toISOString().split('T')[0];
     const now = new Date();
     const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];
@@ -10903,10 +10951,8 @@ const eventsModule = {
       return true;
     });
 
-    // If search query is active and no exact matches found, try fuzzy search
     if (search && filtered.length === 0) {
       filtered = utils.fuzzyFilter(STATE.allEvents || [], search, ['event_name', 'venue', 'description']);
-      // Also apply non-search filters to fuzzy results
       if (year) filtered = filtered.filter(e => String(e.year) === year || (e.event_date && e.event_date.startsWith(year)));
       if (timeStatus === 'upcoming') filtered = filtered.filter(e => e.event_date && e.event_date >= today);
       if (timeStatus === 'past') filtered = filtered.filter(e => e.event_date && e.event_date < today);
@@ -10914,7 +10960,6 @@ const eventsModule = {
       if (eventStatus) filtered = filtered.filter(e => (e.event_status || 'draft') === eventStatus);
     }
 
-    // Sort
     filtered.sort((a, b) => {
       let aVal = a[this._sortField] || '';
       let bVal = b[this._sortField] || '';
@@ -10952,6 +10997,13 @@ const eventsModule = {
     }
     utils.saveSortState('events', this._sortField, this._sortDir);
     this._updateSortIndicators();
+
+    // Server-side: re-fetch with new sort order
+    if (this._serverPagination) {
+      this._srvFetchPage(1).catch(err => console.error('Error sorting events:', err));
+      return;
+    }
+
     this.filterEvents();
   },
 
@@ -10989,14 +11041,22 @@ const eventsModule = {
     const tbody = document.getElementById('eventsTableBody');
     const count = document.getElementById('eventsCount');
     if (!tbody) return;
-    if (count) count.textContent = events.length;
 
-    // Pagination
-    const totalPages = Math.ceil(events.length / (this._evtPageSize || 50));
-    if ((this._evtCurrentPage || 1) > totalPages) this._evtCurrentPage = totalPages || 1;
-    const pgStart = ((this._evtCurrentPage || 1) - 1) * (this._evtPageSize || 50);
-    const pgEnd = pgStart + (this._evtPageSize || 50);
-    const pageEvents = events.slice(pgStart, pgEnd);
+    // Use server total count when in server pagination mode
+    const displayCount = this._serverPagination ? this._srvPagination.count : events.length;
+    if (count) count.textContent = displayCount;
+
+    // Server-side: data is already one page; client-side: slice locally
+    let pageEvents;
+    if (this._serverPagination) {
+      pageEvents = events;
+    } else {
+      const totalPages = Math.ceil(events.length / (this._evtPageSize || 50));
+      if ((this._evtCurrentPage || 1) > totalPages) this._evtCurrentPage = totalPages || 1;
+      const pgStart = ((this._evtCurrentPage || 1) - 1) * (this._evtPageSize || 50);
+      const pgEnd = pgStart + (this._evtPageSize || 50);
+      pageEvents = events.slice(pgStart, pgEnd);
+    }
     this._lastFilteredEvents = events; // store for page navigation
 
     // Update last refreshed
@@ -11046,7 +11106,7 @@ const eventsModule = {
       }
 
       const evtStatus = event.event_status || 'draft';
-      const color = statusColors[evtStatus] || 'secondary';
+      const _color = statusColors[evtStatus] || 'secondary';
       const icon = statusIcons[evtStatus] || 'bi-circle';
 
       // Clickable status dropdown
@@ -11064,9 +11124,9 @@ const eventsModule = {
           </ul>
         </div>`;
 
-      const capacity = event.capacity || 0;
+      const _capacity = event.capacity || 0;
       const checked = this._selectedEvents.has(event.id) ? 'checked' : '';
-      const eName = utils.escapeHtml(event.event_name).replace(/'/g, "\\'");
+      const eName = (event.event_name || '').replace(/<[^>]*>/g, '').replace(/'/g, "\\'").replace(/"/g, '&quot;');
 
       // Award counts (from cache or placeholder)
       const awardData = this._eventAwardCounts?.[event.id] || { total: 0, confirmed: 0, winners: 0 };
@@ -11108,23 +11168,30 @@ const eventsModule = {
       const tableParent = tbody.closest('.table-responsive') || tbody.parentElement;
       if (tableParent) tableParent.after(paginationEl);
     }
-    if (totalPages > 1) {
-      const cp = this._evtCurrentPage || 1;
-      let html = '<nav><ul class="pagination pagination-sm justify-content-center mt-3">';
-      html += `<li class="page-item ${cp <= 1 ? 'disabled' : ''}"><a class="page-link" href="#" onclick="event.preventDefault(); eventsModule.goToEventsPage(${cp - 1})">Prev</a></li>`;
-      for (let i = 1; i <= totalPages; i++) {
-        if (i === 1 || i === totalPages || (i >= cp - 2 && i <= cp + 2)) {
-          html += `<li class="page-item ${i === cp ? 'active' : ''}"><a class="page-link" href="#" onclick="event.preventDefault(); eventsModule.goToEventsPage(${i})">${i}</a></li>`;
-        } else if (i === cp - 3 || i === cp + 3) {
-          html += '<li class="page-item disabled"><span class="page-link">...</span></li>';
+    if (this._serverPagination) {
+      utils.renderServerPagination('eventsPagination', this._srvPagination, 'eventsModule._srvGoToPage');
+    } else {
+      const totalPages = Math.ceil(events.length / (this._evtPageSize || 50));
+      if (totalPages > 1) {
+        const cp = this._evtCurrentPage || 1;
+        const pgStart = (cp - 1) * (this._evtPageSize || 50);
+        const pgEnd = pgStart + (this._evtPageSize || 50);
+        let html = '<nav><ul class="pagination pagination-sm justify-content-center mt-3">';
+        html += `<li class="page-item ${cp <= 1 ? 'disabled' : ''}"><a class="page-link" href="#" onclick="event.preventDefault(); eventsModule.goToEventsPage(${cp - 1})">Prev</a></li>`;
+        for (let i = 1; i <= totalPages; i++) {
+          if (i === 1 || i === totalPages || (i >= cp - 2 && i <= cp + 2)) {
+            html += `<li class="page-item ${i === cp ? 'active' : ''}"><a class="page-link" href="#" onclick="event.preventDefault(); eventsModule.goToEventsPage(${i})">${i}</a></li>`;
+          } else if (i === cp - 3 || i === cp + 3) {
+            html += '<li class="page-item disabled"><span class="page-link">...</span></li>';
+          }
         }
+        html += `<li class="page-item ${cp >= totalPages ? 'disabled' : ''}"><a class="page-link" href="#" onclick="event.preventDefault(); eventsModule.goToEventsPage(${cp + 1})">Next</a></li>`;
+        html += '</ul></nav>';
+        html += `<div class="text-center text-muted small">Showing ${pgStart+1}-${Math.min(pgEnd, events.length)} of ${events.length}</div>`;
+        paginationEl.innerHTML = html;
+      } else if (paginationEl) {
+        paginationEl.innerHTML = '';
       }
-      html += `<li class="page-item ${cp >= totalPages ? 'disabled' : ''}"><a class="page-link" href="#" onclick="event.preventDefault(); eventsModule.goToEventsPage(${cp + 1})">Next</a></li>`;
-      html += '</ul></nav>';
-      html += `<div class="text-center text-muted small">Showing ${pgStart+1}-${Math.min(pgEnd, events.length)} of ${events.length}</div>`;
-      paginationEl.innerHTML = html;
-    } else if (paginationEl) {
-      paginationEl.innerHTML = '';
     }
   },
 
@@ -11172,7 +11239,7 @@ const eventsModule = {
     if (uncached.length === 0) return;
 
     try {
-      let awardsByEvent = {};
+      const awardsByEvent = {};
 
       // Try querying award_years by event_id first (requires migration 018)
       const { data: allAwards, error } = await STATE.client
@@ -12297,7 +12364,7 @@ const eventsModule = {
 };
 
 // Export to window for global access
-window.eventsModule = eventsModule;
+ModuleRegistry.register('eventsModule', eventsModule);
 
 // Initialize seating enhancements (seat-level assignment, VIP, dietary, place cards, undo/redo)
 if (window.seatingEnhancements) window.seatingEnhancements.init();

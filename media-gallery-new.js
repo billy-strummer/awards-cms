@@ -1164,7 +1164,7 @@ const mediaGalleryModule = {
           const fileName = `videos/${Date.now()}-${file.name.replace(/[^a-zA-Z0-9._-]/g, '_')}`;
 
           try {
-            const { data: uploadData, error: uploadError } = await STATE.client.storage
+            const { data: _uploadData, error: uploadError } = await STATE.client.storage
               .from('media')
               .upload(fileName, file, {
                 cacheControl: '3600',
@@ -1213,7 +1213,7 @@ const mediaGalleryModule = {
         };
 
         // Insert into database
-        const { data, error } = await STATE.client
+        const { _data, error } = await STATE.client
           .from('media_items')
           .insert([videoData])
           .select();
@@ -1229,14 +1229,9 @@ const mediaGalleryModule = {
       });
       utils.showToast('Video added successfully!', 'success');
     } catch (error) {
-      console.warn('DB insert for video failed, using localStorage:', error);
-      const key = `bta_media_videos_pending`;
-      const stored = JSON.parse(localStorage.getItem(key) || '[]');
-      videoData.id = crypto.randomUUID();
-      stored.push(videoData);
-      localStorage.setItem(key, JSON.stringify(stored));
+      console.warn('DB insert for video failed:', error);
       bootstrap.Modal.getInstance(document.getElementById('addVideoModal'))?.hide();
-      utils.showToast('Video saved locally', 'success');
+      utils.showToast('Failed to save video: ' + error.message, 'error');
     }
   },
 
@@ -1862,15 +1857,9 @@ const mediaGalleryModule = {
       });
       utils.showToast(`Section ${sectionId ? 'updated' : 'added'} successfully!`, 'success');
     } catch (error) {
-      console.warn('DB save for gallery section failed, using localStorage:', error);
-      const key = `bta_gallery_sections_${this.currentEventId}`;
-      const stored = JSON.parse(localStorage.getItem(key) || '[]');
-      sectionData.id = sectionId || crypto.randomUUID();
-      const idx = stored.findIndex(s => s.id === sectionData.id);
-      if (idx >= 0) stored[idx] = sectionData; else stored.push(sectionData);
-      localStorage.setItem(key, JSON.stringify(stored));
+      console.warn('DB save for gallery section failed:', error);
       bootstrap.Modal.getInstance(document.getElementById('gallerySectionModal'))?.hide();
-      utils.showToast('Section saved locally', 'success');
+      utils.showToast('Failed to save section: ' + error.message, 'error');
     } finally {
       utils.hideLoading();
     }
@@ -2292,7 +2281,7 @@ const mediaGalleryModule = {
     let items = '';
     const maxVisible = 7;
     let start = Math.max(1, current - 3);
-    let end = Math.min(total, start + maxVisible - 1);
+    const end = Math.min(total, start + maxVisible - 1);
     if (end - start < maxVisible - 1) start = Math.max(1, end - maxVisible + 1);
 
     if (start > 1) {
@@ -2847,7 +2836,7 @@ const mediaGalleryModule = {
    */
   renderPhotoCard(photo) {
     const isImage = photo.file_type?.startsWith('image/');
-    const isVideo = photo.file_type?.startsWith('video/') && photo.file_type !== 'video/youtube';
+    const _isVideo = photo.file_type?.startsWith('video/') && photo.file_type !== 'video/youtube';
     const isYouTube = photo.file_type === 'video/youtube';
     const orgName = photo.organisations?.company_name || null;
     const awardName = photo.awards?.award_name || photo.awards?.award_category || null;
@@ -3383,7 +3372,7 @@ const mediaGalleryModule = {
   /**
    * Quick edit tag (open tag modal)
    */
-  async quickEditTag(photoId, type) {
+  async quickEditTag(photoId, _type) {
     await this.tagPhoto(photoId);
   },
 
@@ -3400,7 +3389,7 @@ const mediaGalleryModule = {
   /**
    * Handle photo drag over
    */
-  handlePhotoDragOver(e, photoId) {
+  handlePhotoDragOver(e, _photoId) {
     e.preventDefault();
     e.dataTransfer.dropEffect = 'move';
     return false;
@@ -3421,7 +3410,7 @@ const mediaGalleryModule = {
   /**
    * Handle photo drag leave
    */
-  handlePhotoDragLeave(e, photoId) {
+  handlePhotoDragLeave(e, _photoId) {
     e.currentTarget.style.borderColor = '';
     e.currentTarget.style.borderWidth = '';
     e.currentTarget.style.borderStyle = '';
@@ -4979,7 +4968,7 @@ const mediaGalleryModule = {
       </tr>`).join('');
 
     // Build match preview rows
-    const matchPreviewHtml = matched.map((m, idx) => {
+    const matchPreviewHtml = matched.map((m, _idx) => {
       const item = m.runningOrderItem;
       const orgName = item.organisations?.company_name || item.display_name || '-';
       const awardName = item.award_name || item.awards?.award_name || '-';
@@ -5752,7 +5741,7 @@ const mediaGalleryModule = {
     e.dataTransfer.effectAllowed = 'move';
   },
 
-  onVideoDragOver(e, videoId) {
+  onVideoDragOver(e, _videoId) {
     e.preventDefault();
     e.dataTransfer.dropEffect = 'move';
     const target = e.currentTarget;
@@ -6792,4 +6781,4 @@ const mediaGalleryModule = {
 };
 
 // Export to window for global access
-window.mediaGalleryModule = mediaGalleryModule;
+ModuleRegistry.register('mediaGalleryModule', mediaGalleryModule);

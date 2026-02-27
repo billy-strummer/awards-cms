@@ -56,7 +56,7 @@ const emailBuilder = {
     const palette = document.getElementById('blockPaletteSection');
     if (palette) palette.style.display = 'block';
     this.initialized = true;
-    console.log('✅ Email Builder initialized');
+    console.warn('✅ Email Builder initialized');
   },
 
   /**
@@ -73,7 +73,7 @@ const emailBuilder = {
         block.classList.add('dragging');
       });
 
-      block.addEventListener('dragend', (e) => {
+      block.addEventListener('dragend', (_e) => {
         block.classList.remove('dragging');
       });
     });
@@ -938,7 +938,7 @@ const emailBuilder = {
   /**
    * Handle HTML code block input
    */
-  onHtmlBlockInput(blockId) {
+  onHtmlBlockInput(_blockId) {
     this.updatePreview();
   },
 
@@ -1553,7 +1553,7 @@ ${content}
   customizeTemplateContent(templateType) {
     const textBlocks = this.canvas.querySelectorAll('[contenteditable="true"]');
 
-    console.log('Customizing template:', templateType, 'Found text blocks:', textBlocks.length);
+    console.warn('Customizing template:', templateType, 'Found text blocks:', textBlocks.length);
 
     switch (templateType) {
       case 'winner':
@@ -1618,7 +1618,7 @@ ${content}
         break;
     }
 
-    console.log('Template customization complete');
+    console.warn('Template customization complete');
 
     // Customize button text based on template
     const buttons = this.canvas.querySelectorAll('a[style*="background"]');
@@ -1906,7 +1906,7 @@ ${content}
   },
 
   async loadClientPromotionTemplate() {
-    console.log('Loading Client Promotion template...');
+    console.warn('Loading Client Promotion template...');
 
     // Update campaign settings
     const nameEl = document.getElementById('builderCampaignName');
@@ -2161,7 +2161,7 @@ ${content}
    */
   setPromotionMode(mode) {
     this.promotionMode = mode;
-    console.log('Promotion mode set to:', mode);
+    console.warn('Promotion mode set to:', mode);
 
     // Reload template if already loaded
     if (this.blocks.length > 0 && this.blocks[0].type === 'custom-html') {
@@ -2191,7 +2191,7 @@ ${content}
   async loadCompanyContent(orgId) {
     if (!orgId) return;
 
-    console.log('Loading content for company:', orgId);
+    console.warn('Loading content for company:', orgId);
 
     try {
       // Load company details
@@ -2285,7 +2285,7 @@ ${content}
         item.style.opacity = '0.5';
       });
 
-      item.addEventListener('dragend', (e) => {
+      item.addEventListener('dragend', (_e) => {
         item.style.opacity = '1';
       });
     });
@@ -2297,7 +2297,7 @@ ${content}
         zone.classList.add('drag-over');
       });
 
-      zone.addEventListener('dragleave', (e) => {
+      zone.addEventListener('dragleave', (_e) => {
         zone.classList.remove('drag-over');
       });
 
@@ -2324,7 +2324,7 @@ ${content}
    * Populate Drop Zone with Content
    */
   populateDropZone(zone, contentType, contentValue) {
-    console.log('Populating zone:', contentType, contentValue);
+    console.warn('Populating zone:', contentType, contentValue);
 
     switch (contentType) {
       case 'logo':
@@ -2705,7 +2705,7 @@ ${content}
     try {
       utils.showToast('Scheduling campaign...', 'info');
 
-      const { data, error } = await STATE.client
+      const { _data, error } = await STATE.client
         .from('email_campaigns')
         .insert({
           campaign_name: campaignName || subject,
@@ -2879,7 +2879,7 @@ ${content}
       if (campError) throw campError;
 
       // Try to load recipient-level logs
-      const { data: logs, error: logError } = await STATE.client
+      const { data: logs, error: _logError } = await STATE.client
         .from('email_campaign_recipients')
         .select('*')
         .eq('campaign_id', campaignId)
@@ -3776,7 +3776,7 @@ ${content}
       utils.showToast('Sending A/B test campaign...', 'info');
 
       // Send variant A first
-      const { data: dataA, error: errorA } = await STATE.client.rpc('send_campaign_emails', {
+      const { data: _dataA, error: errorA } = await STATE.client.rpc('send_campaign_emails', {
         p_list_id: listId,
         p_subject: subjectA,
         p_html: html,
@@ -3801,7 +3801,7 @@ ${content}
       }
 
       // Only send variant B if A succeeded
-      const { data: dataB, error: errorB } = await STATE.client.rpc('send_campaign_emails', {
+      const { data: _dataB, error: errorB } = await STATE.client.rpc('send_campaign_emails', {
         p_list_id: listId,
         p_subject: subjectB,
         p_html: html,
@@ -4197,4 +4197,4 @@ ${content}
 };
 
 // Export to window
-window.emailBuilder = emailBuilder;
+ModuleRegistry.register('emailBuilder', emailBuilder);

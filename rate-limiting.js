@@ -3,7 +3,7 @@
    Depends: STATE.client, Bootstrap 5, Chart.js, utils.showToast()  */
 /* ==================================================== */
 
-window.rateLimitModule = {
+const rateLimitModule = {
 
   _store: new Map(),   // sliding-window: `${endpoint}::${id}` → [timestamps]
   _alerts: new Map(),  // endpoint → maxPerMinute
@@ -20,7 +20,7 @@ window.rateLimitModule = {
     const cfg   = this._defaults[endpoint] || this._defaults['*'];
     const key   = `${endpoint}::${identifier}`;
     const now   = Date.now();
-    let ts      = (this._store.get(key) || []).filter(t => t > now - cfg.windowMs);
+    const ts      = (this._store.get(key) || []).filter(t => t > now - cfg.windowMs);
     const allowed = ts.length < cfg.max;
     if (allowed) { ts.push(now); this._store.set(key, ts); }
     return { allowed, remaining: Math.max(0, cfg.max - ts.length), resetAt: new Date((ts[0] || now) + cfg.windowMs) };
@@ -212,7 +212,7 @@ window.rateLimitModule = {
 
   async getAllowList() {
     if (!STATE?.client) return [];
-    const { data } = await STATE.client.from('ip_blocklist').select('*').order('created_at', { ascending: false });
+    const { data } = await STATE.client.from('ip_blocklist').select('*').order('created_at', { ascending: false }).limit(1000);
     return data || [];
   },
 
@@ -220,7 +220,7 @@ window.rateLimitModule = {
   async renderRateLimitConfig(containerId = 'rl-config-container') {
     const el = document.getElementById(containerId);
     if (!el) return;
-    const { data: configs } = STATE?.client ? await STATE.client.from('rate_limit_config').select('*').order('endpoint') : { data: [] };
+    const { data: configs } = STATE?.client ? await STATE.client.from('rate_limit_config').select('*').order('endpoint').limit(500) : { data: [] };
     el.innerHTML = `
       <div class="card p-3">
         <h6 class="mb-3">Rate Limit Configuration</h6>
@@ -281,3 +281,4 @@ window.rateLimitModule = {
     return sid;
   }
 };
+ModuleRegistry.register('rateLimitModule', rateLimitModule);

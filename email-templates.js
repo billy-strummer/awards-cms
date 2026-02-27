@@ -333,10 +333,8 @@ The British Trade Awards Team`
     }
     if (!defaults) {
       try {
-        if (STATE.client) {
-          const { data } = await STATE.client.from('user_preferences').select('value').eq('key', 'emailPlaceholderDefaults').limit(1);
-          if (data?.[0]) defaults = JSON.parse(data[0].value);
-        }
+        const result = await apiClient.select('user_preferences', { select: 'value', filters: { key: { eq: 'emailPlaceholderDefaults' } }, pageSize: 1 });
+        if (result.data?.[0]) defaults = JSON.parse(result.data[0].value);
       } catch (_) {}
     }
     if (!defaults) {
@@ -724,8 +722,9 @@ The British Trade Awards Team`
    * Save template
    */
   async saveTemplate() {
+    let templateData;
     try {
-      const templateData = {
+      templateData = {
         template_name: document.getElementById('templateName').value,
         template_type: document.getElementById('templateType').value,
         subject: document.getElementById('templateSubject').value,
@@ -1134,7 +1133,7 @@ The British Trade Awards Team`
 };
 
 // Export to window
-window.emailTemplatesModule = emailTemplatesModule;
+ModuleRegistry.register('emailTemplatesModule', emailTemplatesModule);
 
 // Initialize when email templates sub-tab is shown within Marketing
 document.addEventListener('DOMContentLoaded', () => {

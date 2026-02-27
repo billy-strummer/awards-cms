@@ -213,7 +213,7 @@ Vote now: {{website}}
       linkedinPreviewText: 'smLinkedInContent'
     };
 
-    let mainProcessed = this.processPlaceholders(mainContent);
+    const _mainProcessed = this.processPlaceholders(mainContent);
 
     for (const [previewId, overrideFieldId] of Object.entries(platformMap)) {
       const el = document.getElementById(previewId);
@@ -376,7 +376,7 @@ Vote now: {{website}}
       // Upload to Supabase storage
       const fileName = `social-media/${Date.now()}-${file.name.replace(/[^a-zA-Z0-9._-]/g, '_')}`;
 
-      const { data, error } = await STATE.client.storage
+      const { _data, error } = await STATE.client.storage
         .from('media')
         .upload(fileName, file, {
           cacheControl: '3600',
@@ -626,7 +626,7 @@ Vote now: {{website}}
         this.editingPostId = null;
         utils.showToast('Draft updated successfully!', 'success');
       } else {
-        const { data, error } = await STATE.client
+        const { _data, error } = await STATE.client
           .from('social_media_posts')
           .insert([draftData])
           .select();
@@ -1194,7 +1194,7 @@ Vote now: {{website}}
 
         // Get the award name
         const awardSelect = document.getElementById('bulkAwardSelect');
-        const awardName = awardSelect.options[awardSelect.selectedIndex].text.trim();
+        const _awardName = awardSelect.options[awardSelect.selectedIndex].text.trim();
 
         // Fetch nominees/winners for this award from assignments
         const statusFilter = templateType === 'winner' ? 'winner' : 'nominated';
@@ -1361,8 +1361,8 @@ Vote now: {{website}}
         const checkbox = document.getElementById(`platform${platform.charAt(0).toUpperCase() + platform.slice(1)}`);
         if (!checkbox || !checkbox.checked) continue;
 
-        const widthRatio = width / spec.width;
-        const heightRatio = height / spec.height;
+        const _widthRatio = width / spec.width;
+        const _heightRatio = height / spec.height;
 
         // Warn if image is significantly smaller than recommended or wrong aspect ratio
         if (width < spec.width * 0.5 || height < spec.height * 0.5) {
@@ -1374,7 +1374,7 @@ Vote now: {{website}}
             warnings.push(`<i class="bi bi-info-circle text-info me-1"></i>${spec.label}: Aspect ratio differs — your image is ${width}x${height}, recommended ${spec.width}x${spec.height}`);
           }
         }
-      };
+      }
 
       if (warnings.length > 0) {
         warningContainer.innerHTML = `
@@ -1543,3 +1543,4 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 });
+ModuleRegistry.register('socialMediaModule', socialMediaModule);

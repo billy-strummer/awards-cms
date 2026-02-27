@@ -15,7 +15,7 @@ const tenantModule = {
     await this.loadTenants();
     this.restoreLastTenant();
     this.renderTenantSwitcher();
-    console.log(`Multi-tenancy initialized (tenant: ${this._currentTenant?.name || 'default'})`);
+    console.warn(`Multi-tenancy initialized (tenant: ${this._currentTenant?.name || 'default'})`);
   },
 
   /**
@@ -105,9 +105,7 @@ const tenantModule = {
     // Reload data for new tenant context
     utils.showToast(`Switched to ${tenant.name}`, 'info');
 
-    if (typeof loadAllData === 'function') {
-      await loadAllData();
-    }
+    window.location.reload();
   },
 
   /**
@@ -304,4 +302,4 @@ const tenantModule = {
   }
 };
 
-window.tenantModule = tenantModule;
+ModuleRegistry.register('tenantModule', tenantModule);

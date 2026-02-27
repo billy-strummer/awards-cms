@@ -22,12 +22,12 @@ require('dotenv').config();
 const { createClient } = require('@supabase/supabase-js');
 const fs = require('fs');
 const path = require('path');
-const csv = require('csv-parser');
+const _csv = require('csv-parser');
 
 // CSV File Path Validation
 const csvFilePath = process.argv[2];
 const isDryRun = process.argv.includes('--dry-run');
-const skipBackup = process.argv.includes('--skip-backup');
+const _skipBackup = process.argv.includes('--skip-backup');
 
 if (!csvFilePath) {
   console.error('❌ Error: No CSV file path provided');
@@ -46,18 +46,23 @@ console.log(`\n📂 CSV File: ${path.basename(csvFilePath)}`);
 console.log(`🔍 Mode: ${isDryRun ? 'DRY RUN (preview only)' : 'LIVE IMPORT'}\n`);
 
 // Supabase Configuration
-const SUPABASE_URL = process.env.SUPABASE_URL || 'https://qdzyknercdqwhwijbcxf.supabase.co';
+const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY || process.env.SUPABASE_KEY;
+
+if (!SUPABASE_URL) {
+  console.error('❌ Error: SUPABASE_URL not found in environment variables');
+  process.exit(1);
+}
 
 if (!SUPABASE_KEY) {
   console.error('❌ Error: SUPABASE_KEY not found in environment variables');
   process.exit(1);
 }
 
-const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
+const _supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 
 // County to Region mapping - UPDATED WITH LONDON, SCOTLAND, WALES & CITIES
-const COUNTY_TO_REGION = {
+const _COUNTY_TO_REGION = {
   // East of England
   'Bedfordshire': 'East of England',
   'Cambridgeshire': 'East of England',

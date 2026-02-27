@@ -183,7 +183,7 @@
           <button type="submit" class="btn btn-primary btn-lg">
             <i class="bi bi-envelope-check me-2"></i>Verify & Vote
           </button>
-          <button type="button" class="btn btn-outline-secondary" onclick="votingSystem.closeVerificationModal()">
+          <button type="button" class="btn btn-outline-secondary" data-action="votingSystem.closeVerificationModal">
             Cancel
           </button>
         </div>
@@ -199,7 +199,7 @@
       </div>
       <h3>Vote Recorded!</h3>
       <p class="text-muted">Thank you for your vote. You should receive a confirmation email shortly.</p>
-      <button class="btn btn-primary" onclick="votingSystem.closeSuccessModal()">
+      <button class="btn btn-primary" data-action="votingSystem.closeSuccessModal">
         Continue Voting
       </button>
     </div>

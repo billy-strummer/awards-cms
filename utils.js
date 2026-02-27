@@ -212,7 +212,7 @@ const utils = {
     if (!text) return '';
     const div = document.createElement('div');
     div.textContent = text;
-    return div.innerHTML;
+    return div.innerHTML.replace(/"/g, '&quot;');
   },
 
   /**
@@ -441,7 +441,7 @@ const utils = {
    * @param {Function} [options.onEnter] - Called with (row, index) when Enter is pressed on a highlighted row
    * @param {Function} [options.onAdd] - Called when the add shortcut is triggered
    */
-  initTableKeyboardNav({ tableBodyId, searchBoxId, onEnter, onAdd }) {
+  initTableKeyboardNav({ tableBodyId, searchBoxId, onEnter, _onAdd }) {
     let selectedIdx = -1;
 
     const getRows = () => document.getElementById(tableBodyId)?.querySelectorAll('tr') || [];
@@ -731,7 +731,7 @@ const utils = {
           }
         }
         if (synced > 0) {
-          console.log(`Synced ${synced} pending ${table} items to database`);
+          console.warn(`Synced ${synced} pending ${table} items to database`);
         }
         if (remaining.length > 0) {
           localStorage.setItem(key, JSON.stringify(remaining));
@@ -1191,7 +1191,7 @@ const utils = {
     inputs.forEach(inp => inp.addEventListener('input', onChange));
 
     // Warn on close
-    const modalInstance = bootstrap.Modal.getInstance(modal) || new bootstrap.Modal(modal);
+    const _modalInstance = bootstrap.Modal.getInstance(modal) || new bootstrap.Modal(modal);
     modal.addEventListener('hide.bs.modal', (e) => {
       if (modal._formDirty && !modal._formSaved) {
         e.preventDefault();
@@ -2108,5 +2108,592 @@ const utils = {
   }
 };
 
+// ============================================
+// PAGINATION UI RENDERER
+// Reusable Bootstrap pagination controls for server-side paginated tables
+// ============================================
+
+/**
+ * Render pagination controls into a container element.
+ * @param {string} containerId - DOM element ID for the pagination container
+ * @param {Object} pagination - { page, totalPages, count, pageSize }
+ * @param {string} goToPageFn - Global function path to call, e.g. "awardsModule._goToPage"
+ */
+utils.renderServerPagination = function(containerId, pagination, goToPageFn) {
+  const el = document.getElementById(containerId);
+  if (!el) return;
+
+  const { page, totalPages, count, pageSize } = pagination;
+  if (!totalPages || totalPages <= 1) {
+    el.innerHTML = count
+      ? `<div class="text-center text-muted small mt-2">Showing all ${count} records</div>`
+      : '';
+    return;
+  }
+
+  let html = '<nav aria-label="Table pagination"><ul class="pagination pagination-sm justify-content-center mt-3 mb-1">';
+
+  // Previous button
+  html += `<li class="page-item ${page <= 1 ? 'disabled' : ''}">
+    <a class="page-link" href="#" onclick="event.preventDefault(); ${goToPageFn}(${page - 1})" aria-label="Previous">&laquo;</a></li>`;
+
+  // Page numbers with ellipsis
+  for (let i = 1; i <= totalPages; i++) {
+    if (i === 1 || i === totalPages || (i >= page - 2 && i <= page + 2)) {
+      html += `<li class="page-item ${i === page ? 'active' : ''}">
+        <a class="page-link" href="#" onclick="event.preventDefault(); ${goToPageFn}(${i})">${i}</a></li>`;
+    } else if (i === page - 3 || i === page + 3) {
+      html += '<li class="page-item disabled"><span class="page-link">&hellip;</span></li>';
+    }
+  }
+
+  // Next button
+  html += `<li class="page-item ${page >= totalPages ? 'disabled' : ''}">
+    <a class="page-link" href="#" onclick="event.preventDefault(); ${goToPageFn}(${page + 1})" aria-label="Next">&raquo;</a></li>`;
+
+  html += '</ul></nav>';
+
+  // Summary text
+  const from = ((page - 1) * pageSize) + 1;
+  const to = Math.min(page * pageSize, count);
+  html += `<div class="text-center text-muted small">Showing ${from}\u2013${to} of ${count} records (page ${page}/${totalPages})</div>`;
+
+  el.innerHTML = html;
+};
+
+// ============================================
+// SERVER-SIDE PAGINATION & FILTERING HELPER
+// Replaces "load everything then filter in JS" pattern
+// ============================================
+
+/**
+ * Reusable server-side query builder for Supabase.
+ * Builds queries with server-side filtering, sorting, and pagination
+ * so only the required page of data is transferred.
+ *
+ * Usage:
+ *   const result = await utils.serverQuery({
+ *     table: 'entries',
+ *     select: '*, organisations(company_name)',
+ *     filters: { status: 'submitted', year: 2026 },
+ *     search: { term: 'acme', columns: ['company_name', 'entry_title'] },
+ *     sort: { column: 'submission_date', ascending: false },
+ *     page: 1,
+ *     pageSize: 50
+ *   });
+ *   // Returns: { data: [...], count: 123, page: 1, pageSize: 50, totalPages: 3 }
+ */
+const serverQuery = {
+  /**
+   * Execute a paginated, filtered, sorted query against Supabase.
+   * @param {Object} options
+   * @param {string} options.table - Supabase table name
+   * @param {string} [options.select='*'] - Select clause
+   * @param {Object} [options.filters={}] - Key-value equality filters (null values skipped)
+   * @param {Object} [options.search] - { term: string, columns: string[] } for ilike search
+   * @param {Object} [options.sort] - { column: string, ascending: boolean }
+   * @param {number} [options.page=1] - Page number (1-based)
+   * @param {number} [options.pageSize=50] - Items per page
+   * @param {Array}  [options.customFilters] - Array of { method, args } for advanced filters
+   * @returns {Promise<{data: Array, count: number, page: number, pageSize: number, totalPages: number}>}
+   */
+  async execute(options) {
+    const {
+      table,
+      select = '*',
+      filters = {},
+      search = null,
+      sort = null,
+      page = 1,
+      pageSize = 50,
+      customFilters = []
+    } = options;
+
+    if (!STATE.client) throw new Error('Supabase client not initialized');
+
+    let query = STATE.client
+      .from(table)
+      .select(select, { count: 'exact' });
+
+    // Apply equality filters
+    for (const [key, value] of Object.entries(filters)) {
+      if (value !== null && value !== undefined && value !== '') {
+        query = query.eq(key, value);
+      }
+    }
+
+    // Apply search (OR across multiple columns using ilike)
+    if (search && search.term && search.columns && search.columns.length > 0) {
+      const searchTerm = `%${search.term}%`;
+      const orClause = search.columns.map(col => `${col}.ilike.${searchTerm}`).join(',');
+      query = query.or(orClause);
+    }
+
+    // Apply custom filters (e.g., .neq(), .in(), .gte(), etc.)
+    for (const cf of customFilters) {
+      if (cf.method && cf.args) {
+        query = query[cf.method](...cf.args);
+      }
+    }
+
+    // Apply sorting
+    if (sort && sort.column) {
+      query = query.order(sort.column, { ascending: sort.ascending !== false });
+    }
+
+    // Apply pagination
+    const from = (page - 1) * pageSize;
+    const to = from + pageSize - 1;
+    query = query.range(from, to);
+
+    const { data, error, count } = await query;
+    if (error) throw error;
+
+    return {
+      data: data || [],
+      count: count || 0,
+      page,
+      pageSize,
+      totalPages: Math.ceil((count || 0) / pageSize)
+    };
+  },
+
+  /**
+   * Load ALL records using server-side pagination (for modules that need full datasets).
+   * More efficient than the old while-loop pattern because it uses exact count
+   * to calculate total pages upfront.
+   * @param {Object} options - Same as execute but without page/pageSize
+   * @param {number} [batchSize=1000] - Records per batch
+   * @returns {Promise<Array>} All matching records
+   */
+  async loadAll(options, batchSize = 1000) {
+    if (!STATE.client) throw new Error('Supabase client not initialized');
+
+    const { table, select = '*', filters = {}, sort = null, customFilters = [] } = options;
+
+    // First, get the total count
+    let countQuery = STATE.client
+      .from(table)
+      .select(select, { count: 'exact', head: true });
+
+    for (const [key, value] of Object.entries(filters)) {
+      if (value !== null && value !== undefined && value !== '') {
+        countQuery = countQuery.eq(key, value);
+      }
+    }
+    for (const cf of customFilters) {
+      if (cf.method && cf.args) countQuery = countQuery[cf.method](...cf.args);
+    }
+
+    const { count, error: countError } = await countQuery;
+    if (countError) throw countError;
+    if (!count || count === 0) return [];
+
+    // Fetch in parallel batches
+    const totalPages = Math.ceil(count / batchSize);
+    const promises = [];
+    for (let page = 0; page < totalPages; page++) {
+      const from = page * batchSize;
+      const to = from + batchSize - 1;
+
+      let q = STATE.client.from(table).select(select).range(from, to);
+      for (const [key, value] of Object.entries(filters)) {
+        if (value !== null && value !== undefined && value !== '') q = q.eq(key, value);
+      }
+      for (const cf of customFilters) {
+        if (cf.method && cf.args) q = q[cf.method](...cf.args);
+      }
+      if (sort && sort.column) {
+        q = q.order(sort.column, { ascending: sort.ascending !== false });
+      }
+      promises.push(q);
+    }
+
+    const results = await Promise.all(promises);
+    let allData = [];
+    for (const result of results) {
+      if (result.error) throw result.error;
+      if (result.data) allData = allData.concat(result.data);
+    }
+
+    return allData;
+  }
+};
+
+// ============================================
+// EVENT DELEGATION SYSTEM
+// Replaces inline onclick= handlers with data-action attributes
+// Usage: <button data-action="moduleName.methodName" data-id="123">Click</button>
+// ============================================
+
+/**
+ * Centralized event delegation system.
+ * Listens for clicks on elements with [data-action] attributes
+ * and routes them to the appropriate module method.
+ *
+ * Supports:
+ *   data-action="moduleName.methodName"  - calls moduleName.methodName(element, event)
+ *   data-id="..."                        - passed as first arg if present
+ *   data-args='{"key":"value"}'          - JSON-parsed and spread as args
+ *   data-prevent-default="true"          - calls event.preventDefault()
+ *   data-stop-propagation="true"         - calls event.stopPropagation()
+ */
+const actionRegistry = {
+  _handlers: {},
+
+  /**
+   * Register a named action handler
+   * @param {string} name - Action name (e.g. "awards.create")
+   * @param {Function} handler - Handler function(element, event, ...args)
+   */
+  register(name, handler) {
+    this._handlers[name] = handler;
+  },
+
+  /**
+   * Resolve a dotted action name to a callable function.
+   * Walks window globals for "moduleName.methodName" patterns.
+   */
+  _resolve(actionName) {
+    // Check explicit registry first
+    if (this._handlers[actionName]) return this._handlers[actionName];
+
+    // Try dotted path on window (e.g. "awardsModule.openCreateModal")
+    const parts = actionName.split('.');
+    let obj = window;
+    for (let i = 0; i < parts.length - 1; i++) {
+      obj = obj[parts[i]];
+      if (!obj) return null;
+    }
+    const method = obj[parts[parts.length - 1]];
+    return typeof method === 'function' ? method.bind(obj) : null;
+  },
+
+  /**
+   * Initialize the global click delegation listener.
+   * Call once after DOM is ready.
+   */
+  init() {
+    document.addEventListener('click', (event) => {
+      const el = event.target.closest('[data-action]');
+      if (!el) return;
+
+      const actionName = el.getAttribute('data-action');
+      if (!actionName) return;
+
+      if (el.getAttribute('data-prevent-default') === 'true') {
+        event.preventDefault();
+      }
+      if (el.getAttribute('data-stop-propagation') === 'true') {
+        event.stopPropagation();
+      }
+
+      const handler = this._resolve(actionName);
+      if (!handler) {
+        console.warn(`[actionRegistry] No handler found for action: ${actionName}`);
+        return;
+      }
+
+      // Build arguments
+      const id = el.getAttribute('data-id');
+      const argsJson = el.getAttribute('data-args');
+      let extraArgs = [];
+      if (argsJson) {
+        try {
+          const parsed = JSON.parse(argsJson);
+          extraArgs = Array.isArray(parsed) ? parsed : [parsed];
+        } catch (_e) {
+          console.warn(`[actionRegistry] Invalid JSON in data-args for action "${actionName}":`, argsJson);
+          extraArgs = [];
+        }
+      }
+
+      if (id !== null && id !== undefined) {
+        handler(id, ...extraArgs, event);
+      } else if (extraArgs.length > 0) {
+        handler(...extraArgs, event);
+      } else {
+        handler(event);
+      }
+    });
+
+    // Also handle keyboard activation (Enter/Space) for non-button elements
+    document.addEventListener('keydown', (event) => {
+      if (event.key !== 'Enter' && event.key !== ' ') return;
+      const el = event.target.closest('[data-action]');
+      if (!el) return;
+      if (el.tagName === 'BUTTON' || el.tagName === 'A' || el.tagName === 'INPUT') return; // browser handles these
+      event.preventDefault();
+      el.click();
+    });
+
+    // Handle change events (select, checkbox, radio, file inputs)
+    document.addEventListener('change', (event) => {
+      const el = event.target.closest('[data-on-change]');
+      if (!el) return;
+      const actionName = el.getAttribute('data-on-change');
+      if (!actionName) return;
+      const handler = this._resolve(actionName);
+      if (!handler) return;
+      const id = el.getAttribute('data-id');
+      if (id) {
+        handler(id, el.value, event);
+      } else {
+        handler(el.value, event);
+      }
+    });
+
+    // Handle input events (text fields, ranges, etc.)
+    document.addEventListener('input', (event) => {
+      const el = event.target.closest('[data-on-input]');
+      if (!el) return;
+      const actionName = el.getAttribute('data-on-input');
+      if (!actionName) return;
+      const handler = this._resolve(actionName);
+      if (!handler) return;
+      handler(el.value, event);
+    });
+
+    // Handle submit events (forms)
+    document.addEventListener('submit', (event) => {
+      const form = event.target.closest('[data-on-submit]');
+      if (!form) return;
+      event.preventDefault();
+      const actionName = form.getAttribute('data-on-submit');
+      if (!actionName) return;
+      const handler = this._resolve(actionName);
+      if (!handler) return;
+      handler(event);
+    });
+  }
+};
+
+// ============================================
+// HELPER ACTIONS for data-action delegation
+// ============================================
+
+/**
+ * Utility actions exposed on window.utils for data-action handlers.
+ * These replace complex inline onclick/onchange handlers.
+ */
+Object.assign(utils, {
+  /** Toggle all collapse sections in an accordion */
+  toggleAccordion(accordionId) {
+    document.querySelectorAll(`#${accordionId} .collapse`).forEach(c => {
+      new bootstrap.Collapse(c, { toggle: true });
+    });
+  },
+
+  /** Navigate to a section and close a modal */
+  navigateAndCloseModal(sectionId) {
+    const args = JSON.parse(sectionId);
+    if (args.section && typeof dashboardModule !== 'undefined') {
+      dashboardModule.navigateToSection(args.section);
+    }
+    if (args.modal) {
+      const modalEl = document.getElementById(args.modal);
+      if (modalEl) bootstrap.Modal.getInstance(modalEl)?.hide();
+    }
+  }
+});
+
+// ============================================
+// API CLIENT — routes critical operations through /api/data-proxy
+// instead of making direct Supabase calls from the browser.
+// This keeps the Supabase service key server-side and enforces
+// server-side validation, rate limiting, and audit logging.
+// ============================================
+
+const apiClient = {
+  /**
+   * Get the current user's JWT for authenticating against API endpoints.
+   * @returns {Promise<string|null>}
+   */
+  async _getToken() {
+    if (!STATE.client) return null;
+    const { data } = await STATE.client.auth.getSession();
+    return data?.session?.access_token || null;
+  },
+
+  /**
+   * Call the /api/data-proxy endpoint.
+   * @param {Object} body - Request payload (table, operation, filters, etc.)
+   * @returns {Promise<Object>} Parsed JSON response
+   */
+  /** Request timeout in milliseconds */
+  TIMEOUT_MS: 30000,
+
+  /** Maximum retry attempts for transient failures */
+  MAX_RETRIES: 2,
+
+  async _call(body, attempt = 0) {
+    const token = await this._getToken();
+    if (!token) throw new Error('Not authenticated');
+
+    let res;
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), this.TIMEOUT_MS);
+
+      res = await fetch('/api/data-proxy', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify(body),
+        signal: controller.signal
+      });
+
+      clearTimeout(timeoutId);
+    } catch (err) {
+      // Retry on network/timeout errors (not on abort from user)
+      if (attempt < this.MAX_RETRIES && (err.name === 'AbortError' || err.name === 'TypeError')) {
+        const delay = Math.pow(2, attempt) * 1000; // 1s, 2s
+        await new Promise(r => setTimeout(r, delay));
+        return this._call(body, attempt + 1);
+      }
+      throw new Error(err.name === 'AbortError' ? 'Request timed out' : `Network error: ${err.message}`);
+    }
+
+    // Parse response safely — server may return non-JSON on 500s
+    let json;
+    try {
+      json = await res.json();
+    } catch (_parseErr) {
+      throw new Error(`API error ${res.status}: invalid response`);
+    }
+
+    // Retry on 429 (rate-limited) or 5xx server errors
+    if ((res.status === 429 || res.status >= 500) && attempt < this.MAX_RETRIES) {
+      const delay = Math.pow(2, attempt) * 1000;
+      await new Promise(r => setTimeout(r, delay));
+      return this._call(body, attempt + 1);
+    }
+
+    if (!res.ok) {
+      const errorMsg = json.error || json.message || (json.details && json.details[0]) || `API error ${res.status}`;
+      throw new Error(errorMsg);
+    }
+    return json;
+  },
+
+  /**
+   * Select records via the server-side proxy.
+   * @param {string} table
+   * @param {Object} [options]
+   * @returns {Promise<{data: Array, count: number, page: number, pageSize: number, totalPages: number}>}
+   */
+  async select(table, options = {}) {
+    return this._call({
+      table,
+      operation: 'select',
+      select: options.select || '*',
+      filters: options.filters || {},
+      search: options.search || undefined,
+      sort: options.sort || undefined,
+      page: options.page || 1,
+      pageSize: options.pageSize || 50
+    });
+  },
+
+  /**
+   * Count records via the server-side proxy.
+   * @param {string} table
+   * @param {Object} [filters]
+   * @returns {Promise<{count: number}>}
+   */
+  async count(table, filters = {}) {
+    return this._call({ table, operation: 'count', filters });
+  },
+
+  /**
+   * Insert records via the server-side proxy.
+   * @param {string} table
+   * @param {Object|Array} data
+   * @returns {Promise<{data: Array}>}
+   */
+  async insert(table, data) {
+    return this._call({ table, operation: 'insert', data });
+  },
+
+  /**
+   * Update a record via the server-side proxy.
+   * @param {string} table
+   * @param {string} id - Record ID
+   * @param {Object} data - Fields to update
+   * @returns {Promise<{data: Array}>}
+   */
+  async update(table, id, data) {
+    return this._call({ table, operation: 'update', id, data });
+  },
+
+  /**
+   * Update records matching filters via the server-side proxy.
+   * @param {string} table
+   * @param {Object} filters - Filter criteria to match rows
+   * @param {Object} data - Fields to update
+   * @returns {Promise<{data: Array}>}
+   */
+  async updateByFilters(table, filters, data) {
+    return this._call({ table, operation: 'update', filters, data });
+  },
+
+  /**
+   * Delete a record via the server-side proxy.
+   * @param {string} table
+   * @param {string} id - Record ID
+   * @returns {Promise<{data: Array}>}
+   */
+  async delete(table, id) {
+    return this._call({ table, operation: 'delete', id });
+  },
+
+  /**
+   * Delete records matching filters via the server-side proxy.
+   * @param {string} table
+   * @param {Object} filters - Filter criteria to match rows
+   * @returns {Promise<{data: Array}>}
+   */
+  async deleteByFilters(table, filters) {
+    return this._call({ table, operation: 'delete', filters });
+  },
+
+  /**
+   * Load all records from a table in batches via the proxy.
+   * Uses server-side pagination to fetch everything without loading it all at once.
+   * @param {string} table
+   * @param {Object} [options]
+   * @param {string} [options.select] - Column selection
+   * @param {Object} [options.filters] - Filter criteria
+   * @param {Object} [options.sort] - Sort config { column, ascending }
+   * @param {number} [options.batchSize] - Records per batch (default 1000)
+   * @returns {Promise<Array>} All matching records
+   */
+  async selectAll(table, options = {}) {
+    const batchSize = options.batchSize || 1000;
+    const allData = [];
+    let page = 1;
+    let totalPages = 1;
+
+    while (page <= totalPages) {
+      const result = await this.select(table, {
+        select: options.select || '*',
+        filters: options.filters || {},
+        sort: options.sort,
+        page,
+        pageSize: batchSize
+      });
+      allData.push(...(result.data || []));
+      totalPages = result.totalPages || 1;
+      page++;
+    }
+    return allData;
+  }
+};
+
 // Export to window for global access
-window.utils = utils;
+ModuleRegistry.register('utils', utils);
+ModuleRegistry.register('serverQuery', serverQuery);
+ModuleRegistry.register('actionRegistry', actionRegistry);
+ModuleRegistry.register('apiClient', apiClient);

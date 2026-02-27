@@ -343,14 +343,14 @@ const uploadApp = {
   /**
    * Upload single file
    */
-  async uploadFile(file, index) {
+  async uploadFile(file, _index) {
     // Generate unique filename with sanitised name to prevent path traversal
     const timestamp = Date.now();
     const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_').replace(/\.{2,}/g, '.');
     const filename = `${this.entryData.entry_number}/${timestamp}-${safeName}`;
 
     // Upload to Supabase Storage
-    const { data: uploadData, error: uploadError } = await supabase.storage
+    const { data: _uploadData, error: uploadError } = await supabase.storage
       .from('entry-files')
       .upload(filename, file, {
         cacheControl: '3600',

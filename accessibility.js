@@ -17,7 +17,7 @@ const a11yModule = {
     this.setupKeyboardNav();
     this.setupLiveRegion();
     this.setupFocusManagement();
-    console.log('Accessibility module initialized');
+    // Accessibility module initialized
   },
 
   /**
@@ -202,6 +202,7 @@ const a11yModule = {
 
   /**
    * Announce a message to screen readers
+   * @param {string} message - The message to announce
    */
   announce(message) {
     const region = document.getElementById('a11y-live-region');
@@ -248,6 +249,9 @@ const a11yModule = {
   /**
    * Announce dynamic content changes to screen readers (HIGH-8)
    * Call this after table renders, filter changes, CRUD operations, etc.
+   * @param {string} action - Type of action (e.g. 'load', 'filter', 'create', 'update', 'delete')
+   * @param {number} count - Number of records
+   * @param {string} moduleName - Name of the module (e.g. 'Awards', 'Organisations')
    */
   announceTableUpdate(action, count, moduleName) {
     const messages = {
@@ -265,10 +269,11 @@ const a11yModule = {
 
   /**
    * Announce navigation changes
+   * @param {string} tabName - The name of the tab navigated to
    */
   announceNavigation(tabName) {
     this.announce(`Navigated to ${tabName}`);
   }
 };
 
-window.a11yModule = a11yModule;
+ModuleRegistry.register('a11yModule', a11yModule);

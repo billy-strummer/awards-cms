@@ -47,6 +47,8 @@ const rbacModule = {
 
   /**
    * Load user role from database after login
+   * @param {string} userEmail - The email address of the user
+   * @returns {Promise<void>}
    */
   async loadUserRole(userEmail) {
     try {
@@ -60,14 +62,14 @@ const rbacModule = {
       if (error || !row) {
         // Default to viewer (most restrictive) when no role found for safety
         this.currentRole = 'viewer';
-        if (!error) console.log('No role found for user, defaulting to viewer');
+        if (!error) console.warn('No role found for user, defaulting to viewer');
       } else {
         this.currentRole = (row.role || 'viewer').toLowerCase();
       }
 
       this.permissions = this.ROLES[this.currentRole] || this.ROLES.viewer;
       this.applyPermissions();
-      console.log(`RBAC: User ${userEmail} has role "${this.currentRole}"`);
+      // Role loaded successfully
 
     } catch (e) {
       console.error('RBAC: Error loading role:', e);
@@ -79,6 +81,8 @@ const rbacModule = {
 
   /**
    * Check if user has access to a module
+   * @param {string} moduleName - Module identifier
+   * @returns {boolean} Whether access is allowed
    */
   canAccess(moduleName) {
     if (!this.permissions.modules) return false;
@@ -87,6 +91,8 @@ const rbacModule = {
 
   /**
    * Check if user can perform an action
+   * @param {string} action - Action identifier
+   * @returns {boolean} Whether the action is permitted
    */
   canPerform(action) {
     if (!this.permissions.actions) return false;
@@ -169,6 +175,9 @@ const rbacModule = {
 
   /**
    * Guard function - use before destructive operations
+   * @param {string} action - Action identifier to check
+   * @param {string} [moduleName] - Optional module to check access for
+   * @returns {boolean} Whether the operation is allowed
    */
   guard(action, moduleName) {
     if (moduleName && !this.canAccess(moduleName)) {
@@ -185,6 +194,8 @@ const rbacModule = {
   /**
    * Validate that at least one admin remains before changing a role.
    * Call this before any role demotion to prevent admin lockout.
+   * @param {string} excludeEmail - Email to exclude from the admin count check
+   * @returns {Promise<boolean>} Whether at least one admin would remain
    */
   async ensureAdminExists(excludeEmail) {
     try {
@@ -206,4 +217,4 @@ const rbacModule = {
   }
 };
 
-window.rbacModule = rbacModule;
+ModuleRegistry.register('rbacModule', rbacModule);

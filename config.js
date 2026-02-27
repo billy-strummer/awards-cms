@@ -3,10 +3,16 @@
 /* ==================================================== */
 
 // Supabase Configuration
-// NOTE: In production, use environment variables and a backend proxy
+// Credentials are injected via environment-specific meta tags or build-time
+// variables. In production, all data mutations route through /api/data-proxy
+// which uses SUPABASE_SERVICE_KEY server-side (never exposed to the browser).
 const SUPABASE_CONFIG = {
-  url: 'https://qdzyknercdqwhwijbcxf.supabase.co',
-  anonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFkenlrbmVyY2Rxd2h3aWpiY3hmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzA4NDAwODEsImV4cCI6MjA4NjQxNjA4MX0.ecs9dgUaOW607imlYFJeLhLHlC8YWybnEUPEHJeRrkY'
+  url: document.querySelector('meta[name="supabase-url"]')?.content
+    || window.__SUPABASE_URL__
+    || '',
+  anonKey: document.querySelector('meta[name="supabase-anon-key"]')?.content
+    || window.__SUPABASE_ANON_KEY__
+    || ''
 };
 
 // Status Constants
@@ -85,12 +91,52 @@ const STATE = {
   filteredEntries: []
 };
 
-// Export to window for global access
-window.SUPABASE_CONFIG = SUPABASE_CONFIG;
-window.STATUS = STATUS;
-window.MEDIA_TYPES = MEDIA_TYPES;
-window.INACTIVITY_TIMEOUT = INACTIVITY_TIMEOUT;
-window.YEARS = YEARS;
-window.SECTORS = SECTORS;
-window.REGIONS = REGIONS;
-window.STATE = STATE;
+// ============================================
+// MODULE REGISTRY — centralised module management
+// ============================================
+// All modules register here instead of assigning to window directly.
+// The registry proxies them onto window for backward compat and event
+// delegation (actionRegistry resolves "moduleName.method" via window).
+const ModuleRegistry = {
+  _modules: new Map(),
+
+  /**
+   * Register a module globally.
+   * @param {string} name - Module name (e.g. "awardsModule")
+   * @param {object} mod  - The module object
+   */
+  register(name, mod) {
+    this._modules.set(name, mod);
+    // Expose on window for actionRegistry + template resolution
+    if (typeof window !== 'undefined') window[name] = mod;
+    // Also on globalThis for Node.js/test environments
+    if (typeof globalThis !== 'undefined') globalThis[name] = mod;
+  },
+
+  /**
+   * Get a registered module.
+   * @param {string} name
+   * @returns {object|undefined}
+   */
+  get(name) {
+    return this._modules.get(name);
+  },
+
+  /** List all registered module names */
+  list() {
+    return [...this._modules.keys()];
+  }
+};
+
+// Register constants via the registry
+ModuleRegistry.register('SUPABASE_CONFIG', SUPABASE_CONFIG);
+ModuleRegistry.register('STATUS', STATUS);
+ModuleRegistry.register('MEDIA_TYPES', MEDIA_TYPES);
+ModuleRegistry.register('INACTIVITY_TIMEOUT', INACTIVITY_TIMEOUT);
+ModuleRegistry.register('YEARS', YEARS);
+ModuleRegistry.register('SECTORS', SECTORS);
+ModuleRegistry.register('REGIONS', REGIONS);
+ModuleRegistry.register('STATE', STATE);
+// Expose ModuleRegistry globally (works in both browser and Node/test)
+if (typeof globalThis !== 'undefined') globalThis.ModuleRegistry = ModuleRegistry;
+if (typeof window !== 'undefined') window.ModuleRegistry = ModuleRegistry;

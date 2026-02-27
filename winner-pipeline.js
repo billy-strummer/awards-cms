@@ -1,6 +1,6 @@
 /* WINNER PIPELINE MODULE - Shortlisting to Winner | British Trade Awards CMS */
 
-window.winnerPipelineModule = {
+const winnerPipelineModule = {
 
   /* -------------------------------------------------- */
   /* 1. SCORE AGGREGATION                               */
@@ -8,15 +8,10 @@ window.winnerPipelineModule = {
 
   async aggregateScores(awardId) {
     try {
-      const { data: entries, error: eErr } = await STATE.client
-        .from('entries').select('id, entry_title, organisation_id').eq('award_id', awardId);
-      if (eErr) throw eErr;
+      const entries = await apiClient.selectAll('entries', { select: 'id, entry_title, organisation_id', filters: { award_id: { eq: awardId } } });
       if (!entries?.length) return [];
 
-      const { data: scores, error: sErr } = await STATE.client
-        .from('judge_scores').select('entry_id, total_score')
-        .in('entry_id', entries.map(e => e.id)).eq('is_complete', true);
-      if (sErr) throw sErr;
+      const scores = await apiClient.selectAll('judge_scores', { select: 'entry_id, total_score', filters: { entry_id: { in: entries.map(e => e.id) }, is_complete: { eq: true } } });
 
       const grouped = {};
       (scores || []).forEach(s => {
@@ -78,10 +73,7 @@ window.winnerPipelineModule = {
     container.innerHTML = '<div class="text-center py-4"><div class="spinner-border text-primary"></div></div>';
 
     try {
-      const { data: shortlist, error: slErr } = await STATE.client
-        .from('shortlists').select('*, entries(id, entry_title, organisation_id)')
-        .eq('award_id', awardId).order('rank');
-      if (slErr) throw slErr;
+      const shortlist = await apiClient.selectAll('shortlists', { select: '*, entries(id, entry_title, organisation_id)', filters: { award_id: { eq: awardId } }, sort: { column: 'rank', ascending: true } });
 
       const esc = s => utils.escapeHtml ? utils.escapeHtml(s) : s;
       const userEmail = STATE.currentUser?.email || 'unknown@user';
@@ -141,9 +133,7 @@ window.winnerPipelineModule = {
 
   async promoteEntry(awardId, entryId, status) {
     try {
-      const { error } = await STATE.client.from('shortlists').update({ status })
-        .eq('award_id', awardId).eq('entry_id', entryId);
-      if (error) throw error;
+      await apiClient.updateByFilters('shortlists', { award_id: { eq: awardId }, entry_id: { eq: entryId } }, { status });
       utils.showToast(`Entry promoted to ${status}.`, 'success');
       await this.renderDeliberationPanel(awardId);
     } catch (err) {
@@ -163,9 +153,7 @@ window.winnerPipelineModule = {
     const note = document.getElementById('deliberationNoteText')?.value?.trim();
     if (!note) { utils.showToast('Note cannot be empty.', 'warning'); return; }
     try {
-      const { error } = await STATE.client.from('deliberation_notes')
-        .insert({ award_id: awardId, entry_id: entryId, user_email: userEmail, note });
-      if (error) throw error;
+      await apiClient.insert('deliberation_notes', { award_id: awardId, entry_id: entryId, user_email: userEmail, note });
       bootstrap.Modal.getInstance(document.getElementById('deliberationNoteModal'))?.hide();
       utils.showToast('Note saved.', 'success');
     } catch (err) {
@@ -181,32 +169,31 @@ window.winnerPipelineModule = {
     const label = position === 'winner' ? 'winner' : 'runner-up';
     if (!await utils.confirmDialog({ title: 'Confirm Winner', message: `Confirm this entry as ${label}? This will publish the entry and create a winner record.`, confirmText: 'Confirm', danger: false })) return;
     try {
-      const { data: entry, error: eErr } = await STATE.client
-        .from('entries').select('entry_title, organisation_id').eq('id', entryId).single();
-      if (eErr) throw eErr;
+      const entryResult = await apiClient.select('entries', { select: 'entry_title, organisation_id', filters: { id: { eq: entryId } }, pageSize: 1 });
+      const entry = entryResult.data?.[0];
+      if (!entry) throw new Error('Entry not found');
 
       const year = new Date().getFullYear();
-      const { error: wErr } = await STATE.client.from('winners')
-        .insert({ winner_name: entry.entry_title, award_id: awardId, organisation_id: entry.organisation_id, year });
-      if (wErr && !wErr.message.includes('duplicate')) throw wErr;
+      try {
+        await apiClient.insert('winners', { winner_name: entry.entry_title, award_id: awardId, organisation_id: entry.organisation_id, year });
+      } catch (wErr) {
+        if (!wErr.message.includes('duplicate')) throw wErr;
+      }
 
       const positionInt = position === 'winner' ? 1 : position === 'runner_up' ? 2 : 3;
-      const { error: aaErr } = await STATE.client.from('award_assignments')
-        .update({ status: 'winner', winner_position: positionInt })
-        .eq('award_id', awardId).eq('organisation_id', entry.organisation_id);
-      if (aaErr) throw aaErr;
+      await apiClient.updateByFilters('award_assignments', { award_id: { eq: awardId }, organisation_id: { eq: entry.organisation_id } }, { status: 'winner', winner_position: positionInt });
 
-      const { error: enErr } = await STATE.client.from('entries').update({ status: 'Published' }).eq('id', entryId);
-      if (enErr) throw enErr;
+      await apiClient.update('entries', entryId, { status: 'Published' });
 
       await this.promoteEntry(awardId, entryId, position);
 
-      const { error: logErr } = await STATE.client.from('activity_logs').insert({
-        action: 'winner_confirmed', entity_type: 'entry', entity_id: entryId,
-        details: JSON.stringify({ award_id: awardId, position, year }),
-        performed_by: STATE.currentUser?.email || 'system',
-      });
-      if (logErr) console.warn('Audit log failed:', logErr.message);
+      try {
+        await apiClient.insert('activity_logs', {
+          action: 'winner_confirmed', entity_type: 'entry', entity_id: entryId,
+          details: JSON.stringify({ award_id: awardId, position, year }),
+          performed_by: STATE.currentUser?.email || 'system',
+        });
+      } catch (logErr) { console.warn('Audit log failed:', logErr.message); }
 
       utils.showToast(`${label.charAt(0).toUpperCase() + label.slice(1)} confirmed and entry published.`, 'success');
     } catch (err) {
@@ -224,13 +211,10 @@ window.winnerPipelineModule = {
     container.innerHTML = '<div class="text-center py-4"><div class="spinner-border text-primary"></div></div>';
 
     try {
-      const { data: awards, error: aErr } = await STATE.client
-        .from('awards').select('id, award_name').eq('status', 'Active').order('award_name');
-      if (aErr) throw aErr;
+      const awards = await apiClient.selectAll('awards', { select: 'id, award_name', filters: { status: { eq: 'Active' } }, sort: { column: 'award_name', ascending: true } });
 
-      const { data: shortlists } = await STATE.client.from('shortlists').select('award_id, status');
-      const { data: scores } = await STATE.client.from('judge_scores')
-        .select('entry_id, entries(award_id)').eq('is_complete', true);
+      const shortlists = await apiClient.selectAll('shortlists', { select: 'award_id, status' });
+      const scores = await apiClient.selectAll('judge_scores', { select: 'entry_id, entries(award_id)', filters: { is_complete: { eq: true } } });
 
       const scoredAwards = new Set((scores || []).map(s => s.entries?.award_id).filter(Boolean));
       const slByAward = {};
@@ -335,3 +319,4 @@ window.winnerPipelineModule = {
     }
   },
 };
+ModuleRegistry.register('winnerPipelineModule', winnerPipelineModule);

@@ -2,7 +2,7 @@
 /* WEBHOOKS MODULE - Outbound Webhook / Integration Layer */
 /* ==================================================== */
 
-window.webhooksModule = {
+const webhooksModule = {
 
   EVENT_TYPES: [
     'entry.submitted', 'entry.approved', 'entry.rejected',
@@ -31,12 +31,10 @@ window.webhooksModule = {
   /* -------------------------------------------------- */
 
   async fireWebhook(eventType, payload) {
-    const { data: hooks, error } = await STATE.client
-      .from('webhooks')
-      .select('*')
-      .eq('is_active', true)
-      .contains('events', [eventType]);
-    if (error) { console.error('fireWebhook fetch error:', error); return; }
+    let hooks;
+    try {
+      hooks = await apiClient.selectAll('webhooks', { select: '*', filters: { is_active: { eq: true }, events: { contains: [eventType] } } });
+    } catch (err) { console.warn('fireWebhook fetch error:', err); return; }
 
     const envelope = { event: eventType, timestamp: new Date().toISOString(), data: payload };
 
@@ -58,14 +56,16 @@ window.webhooksModule = {
       responseBody = err.message;
     }
 
-    await STATE.client.from('webhook_logs').insert({
-      webhook_id: hook.id,
-      event_type: envelope.event,
-      payload: envelope,
-      response_status: responseStatus,
-      response_body: responseBody,
-      created_at: new Date().toISOString()
-    });
+    try {
+      await apiClient.insert('webhook_logs', {
+        webhook_id: hook.id,
+        event_type: envelope.event,
+        payload: envelope,
+        response_status: responseStatus,
+        response_body: responseBody,
+        created_at: new Date().toISOString()
+      });
+    } catch (logErr) { console.warn('Failed to log webhook delivery:', logErr); }
 
     return responseStatus;
   },
@@ -75,8 +75,12 @@ window.webhooksModule = {
   /* -------------------------------------------------- */
 
   async testWebhook(webhookId) {
-    const { data: hook, error } = await STATE.client.from('webhooks').select('*').eq('id', webhookId).single();
-    if (error || !hook) { utils.showToast('Webhook not found', 'error'); return; }
+    let hook;
+    try {
+      const result = await apiClient.select('webhooks', { select: '*', filters: { id: { eq: webhookId } }, pageSize: 1 });
+      hook = result.data?.[0];
+    } catch (_) {}
+    if (!hook) { utils.showToast('Webhook not found', 'error'); return; }
     const testEnvelope = { event: 'test', timestamp: new Date().toISOString(), data: { message: 'BTA test delivery', webhook_id: webhookId } };
     const status = await this._deliver(hook, testEnvelope);
     const ok = status >= 200 && status < 300;
@@ -88,20 +92,24 @@ window.webhooksModule = {
   /* -------------------------------------------------- */
 
   async retryFailedWebhooks() {
-    const { data: logs, error } = await STATE.client
-      .from('webhook_logs')
-      .select('*, webhooks(*)')
-      .lt('response_status', 200)
-      .or('response_status.gt.299,response_status.eq.0')
-      .lt('attempt_count', 3)
-      .order('created_at', { ascending: true });
-    if (error) { utils.showToast('Failed to load retry queue', 'error'); return; }
+    let logs;
+    try {
+      logs = await apiClient.selectAll('webhook_logs', {
+        select: '*, webhooks(*)',
+        filters: {
+          response_status: { lt: 200 },
+          or: 'response_status.gt.299,response_status.eq.0',
+          attempt_count: { lt: 3 }
+        },
+        sort: { column: 'created_at', ascending: true }
+      });
+    } catch (err) { utils.showToast('Failed to load retry queue', 'error'); return; }
 
     let retried = 0;
     for (const log of (logs || [])) {
       if (!log.webhooks) continue;
       const status = await this._deliver(log.webhooks, log.payload);
-      await STATE.client.from('webhook_logs').update({ attempt_count: (log.attempt_count || 1) + 1 }).eq('id', log.id);
+      try { await apiClient.update('webhook_logs', log.id, { attempt_count: (log.attempt_count || 1) + 1 }); } catch (_) {}
       if (status >= 200 && status < 300) retried++;
     }
     utils.showToast(`Retried ${logs.length} webhooks, ${retried} succeeded`, retried === logs.length ? 'success' : 'warning');
@@ -120,16 +128,20 @@ window.webhooksModule = {
   },
 
   async _createIntegrationWebhook(name, url, events, secret) {
-    const { data, error } = await STATE.client.from('webhooks').insert({
-      name, url, secret: secret || null,
-      events: events || this.EVENT_TYPES,
-      is_active: true,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString()
-    }).select().single();
-    if (error) { utils.showToast('Failed to create integration: ' + error.message, 'error'); return null; }
-    utils.showToast(`${name} webhook created`, 'success');
-    return data;
+    try {
+      const result = await apiClient.insert('webhooks', {
+        name, url, secret: secret || null,
+        events: events || this.EVENT_TYPES,
+        is_active: true,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      });
+      utils.showToast(`${name} webhook created`, 'success');
+      return result.data?.[0] || result.data;
+    } catch (err) {
+      utils.showToast('Failed to create integration: ' + err.message, 'error');
+      return null;
+    }
   },
 
   /* -------------------------------------------------- */
@@ -141,8 +153,10 @@ window.webhooksModule = {
     if (!container) return;
     container.innerHTML = '<p class="text-muted">Loading webhooks...</p>';
 
-    const { data: hooks, error } = await STATE.client.from('webhooks').select('*').order('created_at', { ascending: false });
-    if (error) { container.innerHTML = '<p class="text-danger">Failed to load webhooks.</p>'; return; }
+    let hooks;
+    try {
+      hooks = await apiClient.selectAll('webhooks', { select: '*', sort: { column: 'created_at', ascending: false } });
+    } catch (err) { container.innerHTML = '<p class="text-danger">Failed to load webhooks.</p>'; return; }
 
     const rows = (hooks || []).map(h => `
       <tr>
@@ -211,7 +225,8 @@ window.webhooksModule = {
     document.getElementById('webhookModalTitle').textContent = id ? 'Edit Webhook' : 'New Webhook';
 
     if (id) {
-      const { data: h } = await STATE.client.from('webhooks').select('*').eq('id', id).single();
+      const hResult = await apiClient.select('webhooks', { select: '*', filters: { id: { eq: id } }, pageSize: 1 });
+      const h = hResult.data?.[0];
       if (h) {
         document.getElementById('whId').value = h.id;
         document.getElementById('whName').value = h.name;
@@ -238,13 +253,11 @@ window.webhooksModule = {
 
     try {
       await utils.protectModalDuringSave('webhookModal', async () => {
-        let error;
         if (id) {
-          ({ error } = await STATE.client.from('webhooks').update(record).eq('id', id));
+          await apiClient.update('webhooks', id, record);
         } else {
-          ({ error } = await STATE.client.from('webhooks').insert({ ...record, created_at: now }));
+          await apiClient.insert('webhooks', { ...record, created_at: now });
         }
-        if (error) throw error;
 
         bootstrap.Modal.getInstance(document.getElementById('webhookModal'))?.hide();
         this.renderWebhookManager();
@@ -266,8 +279,7 @@ window.webhooksModule = {
   async deleteWebhook(id) {
     if (!await utils.confirmDialog({ title: 'Delete Webhook', message: 'Delete this webhook?', confirmText: 'Delete', danger: true })) return;
     try {
-      const { error } = await STATE.client.from('webhooks').delete().eq('id', id);
-      if (error) throw error;
+      await apiClient.delete('webhooks', id);
     } catch (dbError) {
       console.warn('DB delete for webhook failed, removing from localStorage:', dbError);
       try {
@@ -288,12 +300,11 @@ window.webhooksModule = {
     const container = document.getElementById('webhookLogsContainer') || document.getElementById('webhookManagerContainer');
     if (!container) return;
 
-    const { data: logs, error } = await STATE.client
-      .from('webhook_logs').select('*')
-      .eq('webhook_id', webhookId)
-      .order('created_at', { ascending: false })
-      .limit(50);
-    if (error) { utils.showToast('Failed to load logs', 'error'); return; }
+    let logs;
+    try {
+      const result = await apiClient.select('webhook_logs', { select: '*', filters: { webhook_id: { eq: webhookId } }, sort: { column: 'created_at', ascending: false }, pageSize: 50 });
+      logs = result.data || [];
+    } catch (err) { utils.showToast('Failed to load logs', 'error'); return; }
 
     const rows = (logs || []).map(l => {
       const ok = l.response_status >= 200 && l.response_status < 300;
@@ -319,3 +330,4 @@ window.webhooksModule = {
       </div>`}`;
   }
 };
+ModuleRegistry.register('webhooksModule', webhooksModule);

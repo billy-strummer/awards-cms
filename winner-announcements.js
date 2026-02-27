@@ -2,7 +2,7 @@
 /* WINNER ANNOUNCEMENTS MODULE - British Trade Awards CMS */
 /* ==================================================== */
 
-window.winnerAnnouncementsModule = {
+const winnerAnnouncementsModule = {
   _wizard: { step:1, selectedWinners:[], channels:[], scheduleAt:null, emailTemplateId:null, socialPlatforms:[], socialTemplate:null },
   _embargoMap: {},
 
@@ -12,12 +12,14 @@ window.winnerAnnouncementsModule = {
     if (el) { bootstrap.Modal.getInstance(el)?.hide(); el.remove(); }
   },
   async _logAnnouncement(winnerId, channel, status, scheduledFor, sentAt) {
-    await STATE.client.from('announcements').insert({
-      winner_id: winnerId, channel, status,
-      scheduled_for: scheduledFor || null,
-      sent_at: sentAt || null,
-      created_at: new Date().toISOString()
-    }).then(({error}) => { if (error) console.error('Announcement log error:', error); });
+    try {
+      await apiClient.insert('announcements', {
+        winner_id: winnerId, channel, status,
+        scheduled_for: scheduledFor || null,
+        sent_at: sentAt || null,
+        created_at: new Date().toISOString()
+      });
+    } catch (err) { console.error('Announcement log error:', err); }
   },
 
   /* ================================================
@@ -69,9 +71,10 @@ window.winnerAnnouncementsModule = {
       let rows = '';
       try {
         const yr = new Date().getFullYear();
-        const {data,error} = await STATE.client.from('winners')
-          .select('id,winner_name,year,awards:award_years(award_name,award_category),organisations(company_name)').eq('year',yr);
-        if (error) throw error;
+        const data = await apiClient.selectAll('winners', {
+          select: 'id,winner_name,year,awards:award_years(award_name,award_category),organisations(company_name)',
+          filters: { year: { eq: yr } }
+        });
         rows = (data||[]).map(w => `<tr>
           <td><input class="form-check-input winner-chk" type="checkbox" value="${w.id}" data-name="${utils.escapeHtml(w.winner_name)}"></td>
           <td>${utils.escapeHtml(w.winner_name)}</td>
@@ -106,7 +109,7 @@ window.winnerAnnouncementsModule = {
       if (channels.includes('email')) {
         let opts = '<option value="">-- Select template --</option>';
         try {
-          const {data} = await STATE.client.from('email_templates').select('id,name').eq('template_type','winner');
+          const data = await apiClient.selectAll('email_templates', { select: 'id,name', filters: { template_type: { eq: 'winner' } } });
           opts += (data||[]).map(t=>`<option value="${t.id}">${utils.escapeHtml(t.name)}</option>`).join('');
         } catch(_) { console.warn('Failed to load email templates:', _.message); }
         html += `<div class="mb-3"><label class="form-label fw-semibold">Email Template</label>
@@ -195,8 +198,7 @@ window.winnerAnnouncementsModule = {
     const now = new Date().toISOString();
     await utils.runBatchOperation(winnerIds, async (id) => {
       if (await this.checkEmbargo(id)) { console.warn(`Embargoed: ${id}`); return; }
-      const {error} = await STATE.client.from('winners').update({is_published:true, published_at:now}).eq('id',id);
-      if (error) throw error;
+      await apiClient.update('winners', id, {is_published:true, published_at:now});
       await this._logAnnouncement(id,'website',scheduledFor?'scheduled':'published',scheduledFor,scheduledFor?null:now);
     }, 'Publishing winners');
   },
@@ -205,13 +207,17 @@ window.winnerAnnouncementsModule = {
      3. EMAIL BLAST
   ================================================ */
   async sendWinnerEmails(winnerIds, templateId, scheduledFor = null) {
-    const {data:tmpl,error:te} = await STATE.client.from('email_templates').select('*').eq('id',templateId).single();
-    if (te) throw te;
+    const tmplResult = await apiClient.select('email_templates', { select: '*', filters: { id: { eq: templateId } }, pageSize: 1 });
+    const tmpl = tmplResult.data?.[0];
+    if (!tmpl) throw new Error('Email template not found');
     await utils.runBatchOperation(winnerIds, async (id) => {
       if (await this.checkEmbargo(id)) return;
-      const {data:w,error:we} = await STATE.client.from('winners')
-        .select('*,awards:award_years(award_name,award_category),organisations(company_name,email)').eq('id',id).single();
-      if (we) throw we;
+      const wResult = await apiClient.select('winners', {
+        select: '*,awards:award_years(award_name,award_category),organisations(company_name,email)',
+        filters: { id: { eq: id } }, pageSize: 1
+      });
+      const w = wResult.data?.[0];
+      if (!w) throw new Error('Winner not found');
       const vars = {'{winner_name}':w.winner_name||'','{award_name}':w.awards?.award_name||'',
         '{category}':w.awards?.award_category||'','{organisation}':w.organisations?.company_name||'',
         '{year}':String(w.year||new Date().getFullYear())};
@@ -233,19 +239,21 @@ window.winnerAnnouncementsModule = {
     const tpl = templateOverride || "Congratulations to {company} for winning {award} at the British Trade Awards {year}! #BritishTradeAwards #Winner";
     await utils.runBatchOperation(winnerIds, async (id) => {
       if (await this.checkEmbargo(id)) return;
-      const {data:w,error} = await STATE.client.from('winners')
-        .select('*,awards:award_years(award_name),organisations(company_name)').eq('id',id).single();
-      if (error) throw error;
+      const wResult = await apiClient.select('winners', {
+        select: '*,awards:award_years(award_name),organisations(company_name)',
+        filters: { id: { eq: id } }, pageSize: 1
+      });
+      const w = wResult.data?.[0];
+      if (!w) throw new Error('Winner not found');
       const content = tpl
         .replace('{company}', w.organisations?.company_name||w.winner_name||'')
         .replace('{award}', w.awards?.award_name||'')
         .replace('{year}', String(w.year||new Date().getFullYear()));
-      const {error:ie} = await STATE.client.from('social_media_posts').insert({
+      await apiClient.insert('social_media_posts', {
         company_id:w.organisation_id, award_id:w.award_id, content,
         template_type:'winner', platforms, status:scheduledFor?'scheduled':'draft',
         scheduled_for:scheduledFor||null, created_at:new Date().toISOString()
       });
-      if (ie) throw ie;
       await this._logAnnouncement(id,'social',scheduledFor?'scheduled':'draft',scheduledFor,null);
     }, 'Creating social posts');
   },
@@ -258,9 +266,10 @@ window.winnerAnnouncementsModule = {
     if (!el) return;
     el.innerHTML = '<p class="text-muted small">Loading...</p>';
     try {
-      const {data,error} = await STATE.client.from('announcements')
-        .select('*,winners(winner_name)').order('created_at',{ascending:false}).limit(200);
-      if (error) throw error;
+      const data = await apiClient.selectAll('announcements', {
+        select: '*,winners(winner_name)',
+        sort: { column: 'created_at', ascending: false }
+      });
       const badge = s => { const m={draft:'secondary',scheduled:'warning',sent:'success',published:'primary'}; return `<span class="badge bg-${m[s]||'secondary'}">${utils.escapeHtml(s)}</span>`; };
       const rows = (data||[]).map(a => `<tr>
         <td>${utils.escapeHtml(a.winners?.winner_name||a.winner_id)}</td>
@@ -285,8 +294,7 @@ window.winnerAnnouncementsModule = {
     const iso = parsed.toISOString();
     await utils.runBatchOperation(winnerIds, async (id) => {
       this._embargoMap[id] = iso;
-      const {error} = await STATE.client.from('winners').update({embargo_until:iso}).eq('id',id);
-      if (error) throw error;
+      await apiClient.update('winners', id, {embargo_until:iso});
     }, 'Setting embargo');
     utils.showToast(`Embargo set until ${new Date(iso).toLocaleString()} for ${winnerIds.length} winner(s).`, 'info');
   },
@@ -294,7 +302,8 @@ window.winnerAnnouncementsModule = {
   async checkEmbargo(winnerId) {
     if (this._embargoMap[winnerId]) return new Date(this._embargoMap[winnerId]) > new Date();
     try {
-      const {data} = await STATE.client.from('winners').select('embargo_until').eq('id',winnerId).single();
+      const result = await apiClient.select('winners', { select: 'embargo_until', filters: { id: { eq: winnerId } }, pageSize: 1 });
+      const data = result.data?.[0];
       if (data?.embargo_until) { this._embargoMap[winnerId] = data.embargo_until; return new Date(data.embargo_until) > new Date(); }
     } catch(_) { console.warn('Embargo check failed:', _.message); }
     return false;
@@ -332,9 +341,10 @@ window.winnerAnnouncementsModule = {
   ================================================ */
   async generatePressRelease(winnerIds) {
     try {
-      const {data,error} = await STATE.client.from('winners')
-        .select('*,awards:award_years(award_name,award_category),organisations(company_name)').in('id',winnerIds);
-      if (error) throw error;
+      const data = await apiClient.selectAll('winners', {
+        select: '*,awards:award_years(award_name,award_category),organisations(company_name)',
+        filters: { id: { in: winnerIds } }
+      });
       const byCategory = {};
       for (const w of (data||[])) {
         const cat = w.awards?.award_category||w.awards?.award_name||'General';
@@ -384,3 +394,4 @@ window.winnerAnnouncementsModule = {
     } catch(e) { utils.showToast('Press release error: ' + e.message, 'error'); }
   }
 };
+ModuleRegistry.register('winnerAnnouncementsModule', winnerAnnouncementsModule);

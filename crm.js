@@ -36,7 +36,7 @@ const crmModule = {
   // MAIN LOAD FUNCTION
   // ============================================
   async loadAllData() {
-    console.log('🎯 Loading CRM data...');
+    console.warn('🎯 Loading CRM data...');
     try {
       // Load data based on current sub-tab
       switch(this.currentSubTab) {
@@ -72,14 +72,15 @@ const crmModule = {
   // COMPANIES CRM VIEW
   // ============================================
   async loadCompanies() {
-    console.log('Loading companies CRM view...');
+    console.warn('Loading companies CRM view...');
 
     try {
       // Load organisations with CRM summary from view
       const { data: companies, error } = await STATE.client
         .from('organisations_with_crm_summary')
         .select('*')
-        .order('last_communication_date', { ascending: false, nullsFirst: false });
+        .order('last_communication_date', { ascending: false, nullsFirst: false })
+        .limit(1000);
 
       if (error) throw error;
 
@@ -222,7 +223,7 @@ const crmModule = {
   // COMMUNICATIONS LOG
   // ============================================
   async loadCommunications() {
-    console.log('Loading communications...');
+    console.warn('Loading communications...');
 
     // Read filter values from DOM
     const typeEl = document.getElementById('communicationTypeFilter');
@@ -362,7 +363,7 @@ const crmModule = {
   // DEAL PIPELINE
   // ============================================
   async loadDeals() {
-    console.log('Loading deals...');
+    console.warn('Loading deals...');
 
     try {
       let query = STATE.client
@@ -543,7 +544,7 @@ const crmModule = {
   // MEETINGS
   // ============================================
   async loadMeetings() {
-    console.log('Loading meetings...');
+    console.warn('Loading meetings...');
 
     try {
       let query = STATE.client
@@ -663,7 +664,7 @@ const crmModule = {
   // SEGMENTS
   // ============================================
   async loadSegments() {
-    console.log('Loading segments...');
+    console.warn('Loading segments...');
 
     try {
       // Load all segments with counts
@@ -780,7 +781,7 @@ const crmModule = {
   },
 
   async logCommunication(organisationId = null) {
-    console.log('Log communication for:', organisationId);
+    console.warn('Log communication for:', organisationId);
     try {
 
     // Create modal
@@ -956,7 +957,7 @@ const crmModule = {
   },
 
   async createDeal(organisationId = null) {
-    console.log('Create deal for:', organisationId);
+    console.warn('Create deal for:', organisationId);
 
     try {
     const modalHtml = `
@@ -1126,7 +1127,7 @@ const crmModule = {
   },
 
   async viewCommunication(commId) {
-    console.log('View communication:', commId);
+    console.warn('View communication:', commId);
 
     try {
       const { data: comm, error } = await STATE.client
@@ -1205,7 +1206,7 @@ const crmModule = {
   },
 
   async editCommunication(commId) {
-    console.log('Edit communication:', commId);
+    console.warn('Edit communication:', commId);
 
     try {
       const { data: comm, error } = await STATE.client
@@ -1371,7 +1372,7 @@ const crmModule = {
   },
 
   async viewDeal(dealId) {
-    console.log('View deal:', dealId);
+    console.warn('View deal:', dealId);
 
     try {
       const { data: deal, error } = await STATE.client
@@ -1475,7 +1476,7 @@ const crmModule = {
   },
 
   async editDeal(dealId) {
-    console.log('Edit deal:', dealId);
+    console.warn('Edit deal:', dealId);
 
     try {
       const { data: deal, error } = await STATE.client
@@ -1650,7 +1651,7 @@ const crmModule = {
   },
 
   async viewMeeting(meetingId) {
-    console.log('View meeting:', meetingId);
+    console.warn('View meeting:', meetingId);
 
     try {
       const { data: meeting, error } = await STATE.client
@@ -1746,7 +1747,7 @@ const crmModule = {
   },
 
   async editMeeting(meetingId) {
-    console.log('Edit meeting:', meetingId);
+    console.warn('Edit meeting:', meetingId);
 
     try {
       const { data: meeting, error } = await STATE.client
@@ -1927,7 +1928,7 @@ const crmModule = {
   },
 
   async viewSegmentCompanies(segmentId, segmentName) {
-    console.log('View companies in segment:', segmentName);
+    console.warn('View companies in segment:', segmentName);
 
     try {
       // Load companies in this segment
@@ -2040,7 +2041,7 @@ const crmModule = {
   },
 
   async editSegment(segmentId) {
-    console.log('Edit segment:', segmentId);
+    console.warn('Edit segment:', segmentId);
 
     try {
       const { data: segment, error } = await STATE.client
@@ -3009,4 +3010,5 @@ const crmModule = {
 // ============================================
 // INITIALIZATION
 // ============================================
-console.log('✅ CRM Module loaded');
+ModuleRegistry.register('crmModule', crmModule);
+console.warn('✅ CRM Module loaded');

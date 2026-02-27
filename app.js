@@ -134,7 +134,7 @@ const reportsScheduler = {
     this.loadReports();
   }
 };
-window.reportsScheduler = reportsScheduler;
+ModuleRegistry.register('reportsScheduler', reportsScheduler);
 
 // ============================================
 // REPORTS ANALYTICS MODULE
@@ -500,11 +500,11 @@ const reportsAnalytics = {
     }).join('');
   }
 };
-window.reportsAnalytics = reportsAnalytics;
+ModuleRegistry.register('reportsAnalytics', reportsAnalytics);
 
 // Wait for DOM to be fully loaded before initializing
 document.addEventListener('DOMContentLoaded', function() {
-  console.log('🚀 Initializing British Trade Awards Admin...');
+  console.warn('🚀 Initializing British Trade Awards Admin...');
   
   // ==========================================
   // STEP 1: Initialize Supabase
@@ -519,6 +519,11 @@ document.addEventListener('DOMContentLoaded', function() {
   if (typeof stripeFrontend !== 'undefined') stripeFrontend.init();
   if (typeof i18n !== 'undefined') i18n.init();
   if (typeof tenantModule !== 'undefined') tenantModule.init();
+
+  // ==========================================
+  // STEP 1c: Initialize event delegation system
+  // ==========================================
+  if (typeof actionRegistry !== 'undefined') actionRegistry.init();
 
   // ==========================================
   // STEP 2: Set up event listeners
@@ -931,7 +936,7 @@ document.addEventListener('DOMContentLoaded', function() {
         return event;
       }
     });
-    console.log('Sentry error monitoring initialized');
+    console.warn('Sentry error monitoring initialized');
   }
 
   // Global error handler
@@ -968,9 +973,9 @@ document.addEventListener('DOMContentLoaded', function() {
   // Pause/resume activity tracking when tab is hidden/visible
   document.addEventListener('visibilitychange', () => {
     if (document.hidden) {
-      console.log('👁️ Page hidden - pausing activity tracking');
+      console.warn('👁️ Page hidden - pausing activity tracking');
     } else {
-      console.log('👁️ Page visible - resuming activity tracking');
+      console.warn('👁️ Page visible - resuming activity tracking');
       if (STATE.currentUser) {
         authModule.resetInactivityTimer();
       }
@@ -984,7 +989,7 @@ document.addEventListener('DOMContentLoaded', function() {
   window.addEventListener('load', () => {
     const perfData = performance.timing;
     const pageLoadTime = perfData.loadEventEnd - perfData.navigationStart;
-    console.log(`📊 Page loaded in ${pageLoadTime}ms`);
+    console.warn(`📊 Page loaded in ${pageLoadTime}ms`);
   });
   
   // ==========================================
@@ -994,7 +999,7 @@ document.addEventListener('DOMContentLoaded', function() {
   const marketingTab = document.getElementById('marketing-tab');
   if (marketingTab) {
     marketingTab.addEventListener('shown.bs.tab', () => {
-      console.log('📢 Marketing tab opened');
+      console.warn('📢 Marketing tab opened');
       if (typeof marketingModule !== 'undefined') {
         marketingModule.loadAllData();
         // Load branding overview if branding subtab is active (default)
@@ -1030,7 +1035,7 @@ document.addEventListener('DOMContentLoaded', function() {
   const emailBuilderSubTab = document.getElementById('email-builder-subtab');
   if (emailBuilderSubTab) {
     emailBuilderSubTab.addEventListener('shown.bs.tab', () => {
-      console.log('✉️ Email Builder opened');
+      console.warn('✉️ Email Builder opened');
       if (typeof emailBuilder !== 'undefined' && !emailBuilder.initialized) {
         emailBuilder.init();
       }
@@ -1041,7 +1046,7 @@ document.addEventListener('DOMContentLoaded', function() {
   const emailListsSubTab = document.getElementById('email-lists-subtab');
   if (emailListsSubTab) {
     emailListsSubTab.addEventListener('shown.bs.tab', () => {
-      console.log('📧 Email Lists opened');
+      console.warn('📧 Email Lists opened');
       if (typeof emailListsModule !== 'undefined') {
         emailListsModule.loadAllData();
       }
@@ -1072,7 +1077,7 @@ document.addEventListener('DOMContentLoaded', function() {
   const paymentsTab = document.getElementById('payments-tab');
   if (paymentsTab) {
     paymentsTab.addEventListener('shown.bs.tab', () => {
-      console.log('💳 Payments tab opened');
+      console.warn('💳 Payments tab opened');
       if (typeof paymentsModule !== 'undefined') {
         paymentsModule.loadAllData();
       }
@@ -1083,7 +1088,7 @@ document.addEventListener('DOMContentLoaded', function() {
   const crmTab = document.getElementById('crm-tab');
   if (crmTab) {
     crmTab.addEventListener('shown.bs.tab', () => {
-      console.log('🎯 CRM tab opened');
+      console.warn('🎯 CRM tab opened');
       if (typeof crmModule !== 'undefined') {
         crmModule.loadAllData();
       }
@@ -1165,7 +1170,7 @@ document.addEventListener('DOMContentLoaded', function() {
       .on('postgres_changes', { event: '*', schema: 'public', table: 'communications' }, () => debouncedHandlers.communications())
       .on('postgres_changes', { event: '*', schema: 'public', table: 'deals' }, () => debouncedHandlers.deals())
       .subscribe((status) => {
-        if (status === 'SUBSCRIBED') console.log('Realtime subscriptions active');
+        if (status === 'SUBSCRIBED') console.warn('Realtime subscriptions active');
       });
   }
   // Delay realtime setup until after auth completes
@@ -1245,7 +1250,7 @@ document.addEventListener('DOMContentLoaded', function() {
       };
       const config = refreshMap[tabId];
       if (config && utils.isDataStale(config.key)) {
-        console.log('Auto-refreshing stale data for', config.key);
+        console.warn('Auto-refreshing stale data for', config.key);
         config.fn();
       }
 
@@ -1378,7 +1383,7 @@ document.addEventListener('DOMContentLoaded', function() {
   // ==========================================
   // INITIALIZATION COMPLETE
   // ==========================================
-  console.log('✅ Application initialized successfully');
+  console.warn('✅ Application initialized successfully');
 });
 
 // ==========================================
@@ -1405,13 +1410,13 @@ if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
     navigator.serviceWorker.register('/sw.js')
       .then(registration => {
-        console.log('✅ Service Worker registered:', registration);
+        console.warn('✅ Service Worker registered:', registration);
       })
       .catch(error => {
-        console.log('❌ Service Worker registration failed:', error);
+        console.warn('❌ Service Worker registration failed:', error);
       });
   });
 }
 */
 
-console.log('📱 British Trade Awards Admin - Version 2.0');
+console.warn('📱 British Trade Awards Admin - Version 2.0');

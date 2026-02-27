@@ -3,6 +3,17 @@
 /* Single source of truth for the branded email layout. */
 /* All email-sending paths import from this module.     */
 /*                                                      */
+/* IMPORTANT: Every outbound email MUST be wrapped with */
+/* wrapEmail() so that the branded header and footer    */
+/* are included. This applies to:                       */
+/*   - Templated emails (resend-email.js)               */
+/*   - Automated workflows (email-automation.js)        */
+/*   - Notification queue processing                    */
+/*   - Any future email-sending paths                   */
+/*                                                      */
+/* For Supabase Edge Functions (Deno), use the mirror   */
+/* module: supabase/functions/_shared/email-wrapper.ts  */
+/*                                                      */
 /* Header/footer are built from tenant_branding values. */
 /* The subtitle text changes per email type (e.g.       */
 /* "Self-Nomination Entry Confirmation").                */

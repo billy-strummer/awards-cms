@@ -254,7 +254,9 @@ async function sendTestEmail(to, subject, htmlContent) {
 }
 
 /**
- * Process the notification queue (called by cron)
+ * Process the notification queue (called by cron).
+ * Each queued notification is wrapped with the branded header & footer
+ * so every outbound email has a consistent look.
  */
 async function processNotificationQueue() {
   const { data: pending } = await supabase
@@ -268,15 +270,35 @@ async function processNotificationQueue() {
 
   if (!pending || pending.length === 0) return { processed: 0 };
 
+  // Load branding once for the whole batch
+  let branding = {};
+  try {
+    const { data } = await supabase
+      .from('tenant_branding')
+      .select('*')
+      .eq('tenant_id', 'default')
+      .maybeSingle();
+    branding = data || {};
+  } catch (_) { /* use defaults */ }
+
   let processed = 0;
 
   for (const notification of pending) {
     await supabase.from('notification_queue').update({ status: 'sending', attempts: notification.attempts + 1 }).eq('id', notification.id);
 
+    // Wrap the notification body with branded header & footer
+    const html = wrapEmailTemplate(
+      notification.subject,
+      notification.body,
+      '',
+      branding,
+      notification.template_key ? (HEADER_SUBTITLES[notification.template_key] || '') : ''
+    );
+
     const result = await sendEmail({
       to: notification.recipient_email,
       subject: notification.subject,
-      html: notification.body
+      html
     });
 
     if (result.success) {

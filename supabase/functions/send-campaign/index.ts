@@ -2,9 +2,12 @@
 // Supports two modes:
 //   - test: send a single test email
 //   - campaign: send to all active subscribers on a list
+//
+// ALL outbound emails are wrapped with the branded header & footer via wrapEmail().
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { wrapEmail, fetchBranding } from '../_shared/email-wrapper.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -31,6 +34,19 @@ serve(async (req) => {
     const fromEmail = Deno.env.get('FROM_EMAIL') || 'awards@britishtrade.org'
     const from = `${fromName || 'British Trade Awards'} <${fromEmail}>`
 
+    // Load tenant branding for header/footer wrapping
+    const supabase = createClient(
+      Deno.env.get('SUPABASE_URL') ?? '',
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+    )
+    const branding = await fetchBranding(supabase)
+
+    // Wrap the campaign HTML with branded header & footer
+    const wrappedHtml = wrapEmail(html, branding, {
+      subject,
+      subtitle: campaignName || 'Campaign',
+    })
+
     // Test mode: send to a single address
     if (mode === 'test') {
       if (!to) throw new Error('Recipient email is required for test mode')
@@ -41,7 +57,7 @@ serve(async (req) => {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${resendApiKey}`,
         },
-        body: JSON.stringify({ from, to: [to], subject: `[TEST] ${subject}`, html }),
+        body: JSON.stringify({ from, to: [to], subject: `[TEST] ${subject}`, html: wrappedHtml }),
       })
 
       const result = await response.json()
@@ -56,11 +72,6 @@ serve(async (req) => {
     // Campaign mode: send to all active subscribers on a list
     if (mode === 'campaign') {
       if (!listId) throw new Error('List ID is required for campaign mode')
-
-      const supabase = createClient(
-        Deno.env.get('SUPABASE_URL') ?? '',
-        Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
-      )
 
       // Fetch active subscribers
       const { data: subscribers, error: subError } = await supabase
@@ -85,8 +96,8 @@ serve(async (req) => {
 
         const promises = batch.map(async (sub) => {
           try {
-            // Personalise the HTML with subscriber data
-            let personalHtml = html
+            // Personalise the wrapped HTML with subscriber data
+            let personalHtml = wrappedHtml
               .replace(/\{\{contact_name\}\}/g, [sub.first_name, sub.last_name].filter(Boolean).join(' ') || 'there')
               .replace(/\{\{first_name\}\}/g, sub.first_name || '')
               .replace(/\{\{last_name\}\}/g, sub.last_name || '')

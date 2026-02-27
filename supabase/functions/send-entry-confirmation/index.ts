@@ -1,8 +1,10 @@
 // Supabase Edge Function: Send Entry Confirmation Email
-// This function is triggered when a new entry is submitted
+// This function is triggered when a new entry is submitted.
+// ALL outbound emails include the branded header & footer via wrapEmail().
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { wrapEmail, fetchBranding, textToHtml } from '../_shared/email-wrapper.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -107,7 +109,7 @@ The British Trade Awards Team`,
     // Prepare placeholder data — use award data if linked, fall back to org/entry data
     const uploadLink = `${Deno.env.get('PUBLIC_SITE_URL') || ''}/upload-documents.html?entry=${entry.entry_number}`
 
-    const placeholderData = {
+    const placeholderData: Record<string, string> = {
       ENTRY_NUMBER: entry.entry_number || '',
       CONTACT_NAME: entry.contact_name || '',
       COMPANY_NAME: entry.organisations?.company_name || '',
@@ -131,6 +133,16 @@ The British Trade Awards Team`,
       emailBody = emailBody.replace(regex, value)
     })
 
+    // Load tenant branding for header/footer
+    const branding = await fetchBranding(supabaseClient)
+
+    // Convert plain-text body to HTML and wrap with branded header & footer
+    const bodyHtml = textToHtml(emailBody)
+    const html = wrapEmail(bodyHtml, branding, {
+      subject: emailSubject,
+      subtitle: 'Self-Nomination Entry Confirmation',
+    })
+
     // Send email using Resend
     const resendApiKey = Deno.env.get('RESEND_API_KEY')
     if (!resendApiKey) {
@@ -147,9 +159,8 @@ The British Trade Awards Team`,
         from: Deno.env.get('FROM_EMAIL') || 'British Trade Awards <awards@britishtrade.org>',
         to: [entry.contact_email],
         subject: emailSubject,
+        html: html,
         text: emailBody,
-        // Optional: Add HTML version
-        // html: emailBody.replace(/\n/g, '<br>')
       }),
     })
 

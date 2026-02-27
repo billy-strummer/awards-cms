@@ -12,6 +12,7 @@
 const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 const { createClient } = require('@supabase/supabase-js');
 const { Resend } = require('resend');
+const { wrapEmail } = require('./email-header');
 const resend = new Resend(process.env.RESEND_API_KEY);
 const APP_URL = process.env.APP_URL || 'https://admin.britishtrade.com';
 const FROM_EMAIL = process.env.FROM_EMAIL || 'awards@britishtradeawards.com';
@@ -294,50 +295,47 @@ async function handleChargeRefunded(charge) {
 async function sendEntryConfirmationEmail(entry) {
   if (!process.env.RESEND_API_KEY) { console.log('RESEND_API_KEY not set, skipping email'); return; }
   try {
-    await resend.emails.send({
-      from: FROM_EMAIL,
-      to: entry.contact_email,
-      subject: `Entry Confirmed: ${entry.entry_number || 'Your Submission'} - British Trade Awards`,
-      html: `<h2>Thank you for your entry!</h2>
+    const subject = `Entry Confirmed: ${entry.entry_number || 'Your Submission'} - British Trade Awards`;
+    const bodyContent = `<div style="padding: 30px 40px;">
+        <h2>Thank you for your entry!</h2>
         <p>Your entry <strong>${entry.entry_number || ''}</strong> has been received and payment confirmed.</p>
         <p><strong>Entry:</strong> ${entry.entry_title || ''}</p>
         <p><strong>Contact:</strong> ${entry.contact_name || ''}</p>
         <p>You can upload supporting documents at: <a href="${APP_URL}/upload-documents.html?entry=${entry.entry_number || entry.id}">Upload Documents</a></p>
         <p>We will be in touch with next steps. Good luck!</p>
-        <p>British Trade Awards Team</p>`
-    });
+      </div>`;
+    const html = wrapEmail(bodyContent, {}, { subject, subtitle: 'Self-Nomination Entry Confirmation' });
+    await resend.emails.send({ from: FROM_EMAIL, to: entry.contact_email, subject, html });
   } catch (e) { console.error('Error sending confirmation email:', e.message); }
 }
 
 async function sendPaymentFailedEmail(entry, errorMessage) {
   if (!process.env.RESEND_API_KEY) { console.log('RESEND_API_KEY not set, skipping email'); return; }
   try {
-    await resend.emails.send({
-      from: FROM_EMAIL,
-      to: entry.contact_email,
-      subject: `Payment Issue: ${entry.entry_number || 'Your Entry'} - British Trade Awards`,
-      html: `<h2>Payment Issue</h2>
+    const subject = `Payment Issue: ${entry.entry_number || 'Your Entry'} - British Trade Awards`;
+    const bodyContent = `<div style="padding: 30px 40px;">
+        <h2>Payment Issue</h2>
         <p>We were unable to process payment for entry <strong>${entry.entry_number || ''}</strong>.</p>
         <p><strong>Reason:</strong> ${errorMessage || 'Unknown error'}</p>
         <p>Please try again or contact us for assistance.</p>
-        <p>British Trade Awards Team</p>`
-    });
+      </div>`;
+    const html = wrapEmail(bodyContent, {}, { subject, subtitle: 'Payment Reminder' });
+    await resend.emails.send({ from: FROM_EMAIL, to: entry.contact_email, subject, html });
   } catch (e) { console.error('Error sending payment failed email:', e.message); }
 }
 
 async function sendRefundConfirmationEmail(entry) {
   if (!process.env.RESEND_API_KEY) { console.log('RESEND_API_KEY not set, skipping email'); return; }
   try {
-    await resend.emails.send({
-      from: FROM_EMAIL,
-      to: entry.contact_email,
-      subject: `Refund Processed: ${entry.entry_number || 'Your Entry'} - British Trade Awards`,
-      html: `<h2>Refund Confirmation</h2>
+    const subject = `Refund Processed: ${entry.entry_number || 'Your Entry'} - British Trade Awards`;
+    const bodyContent = `<div style="padding: 30px 40px;">
+        <h2>Refund Confirmation</h2>
         <p>A refund has been processed for entry <strong>${entry.entry_number || ''}</strong>.</p>
         <p>The refund should appear on your statement within 5-10 business days.</p>
         <p>If you have any questions, please contact us.</p>
-        <p>British Trade Awards Team</p>`
-    });
+      </div>`;
+    const html = wrapEmail(bodyContent, {}, { subject, subtitle: 'Refund Confirmation' });
+    await resend.emails.send({ from: FROM_EMAIL, to: entry.contact_email, subject, html });
   } catch (e) { console.error('Error sending refund email:', e.message); }
 }
 

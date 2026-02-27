@@ -3,6 +3,17 @@
 /* Single source of truth for the branded email layout. */
 /* All email-sending paths import from this module.     */
 /*                                                      */
+/* IMPORTANT: Every outbound email MUST be wrapped with */
+/* wrapEmail() so that the branded header and footer    */
+/* are included. This applies to:                       */
+/*   - Templated emails (resend-email.js)               */
+/*   - Automated workflows (email-automation.js)        */
+/*   - Notification queue processing                    */
+/*   - Any future email-sending paths                   */
+/*                                                      */
+/* For Supabase Edge Functions (Deno), use the mirror   */
+/* module: supabase/functions/_shared/email-wrapper.ts  */
+/*                                                      */
 /* Header/footer are built from tenant_branding values. */
 /* The subtitle text changes per email type (e.g.       */
 /* "Self-Nomination Entry Confirmation").                */
@@ -65,13 +76,10 @@ function buildEmailHeader(branding = {}, { subtitle = 'Self-Nomination Entry Con
 function buildEmailFooter(branding = {}) {
   const b = resolveBranding(branding);
 
-  const footerLinks = [
-    b.websiteUrl   ? `<a href="https://${escHtml(b.websiteUrl)}" style="color:${b.accentColor};text-decoration:none;">${escHtml(b.websiteUrl)}</a>` : '',
-    b.contactEmail ? `<a href="mailto:${escHtml(b.contactEmail)}" style="color:${b.accentColor};text-decoration:none;">${escHtml(b.contactEmail)}</a>` : ''
-  ].filter(Boolean).join(' &nbsp;|&nbsp; ');
+  const domain = b.websiteUrl || 'britishtradeawards.com';
 
-  return `<div style="background:${b.secondaryColor};padding:24px 32px;text-align:center;font-size:12px;color:#999;">
-    <p style="margin:0;">${escHtml(b.brandName)}${footerLinks ? ' | ' + footerLinks : ''}</p>
+  return `<div style="background:${b.secondaryColor};padding:24px 32px;text-align:center;font-size:12px;color:${b.accentColor};">
+    <p style="margin:0;">&copy; ${escHtml(b.brandName)} | <a href="https://${escHtml(domain)}" style="color:${b.accentColor};text-decoration:none;">${escHtml(domain)}</a></p>
   </div>`;
 }
 

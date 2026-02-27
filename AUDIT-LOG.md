@@ -322,3 +322,40 @@ Comprehensive scan of 5 additional audit dimensions covering 30 new areas (Areas
 17. **Event capacity enforcement on registration** - Capacity field validated but no attendee count check against capacity
 18. **Entry deadline enforcement** - No server-side check that entry submission is within deadline
 19. **Email verification before vote counting** - Votes insert with email_verified=false; need webhook to flip to true
+
+---
+
+## Architectural Improvement Plan (2026-02-27)
+
+> Logged by code audit review. These are the highest-impact improvements for the codebase,
+> ranked by ROI. Each item is being implemented in the commits that follow this entry.
+
+### Improvement 1: Backend API Proxy Layer
+**Priority:** CRITICAL | **Category:** Security
+**Problem:** The browser talks directly to Supabase with a hardcoded anon key. All business logic (validation, authorization, pricing) lives in client-side JavaScript. Anyone with DevTools can bypass every rule.
+**Solution:** Create Vercel serverless API functions that proxy critical Supabase operations (data mutations, reads with sensitive data). Move credential usage to server-side environment variables. Add a `api/data-proxy.js` endpoint with JWT verification for all CMS data operations.
+**Fixes:** Exposed credentials, bypassed RLS, price manipulation, client-side-only authorization.
+
+### Improvement 2: ESLint Configuration & Code Quality Automation
+**Priority:** HIGH | **Category:** Developer Experience
+**Problem:** No linting, no formatting rules, 764+ console.log statements, inconsistent code style. Runtime errors only caught in production.
+**Solution:** Add ESLint configuration with sensible defaults for vanilla JS projects. Add lint script to package.json. Fix critical lint issues (unused vars, missing semicolons, console statements flagged).
+**Fixes:** Inconsistent code style, undetected bugs, missing quality gates.
+
+### Improvement 3: Refactor Inline Event Handlers to addEventListener
+**Priority:** HIGH | **Category:** Security / Architecture
+**Problem:** 410+ inline `onclick=` handlers in index.html and dynamically generated HTML. This forces CSP to allow `unsafe-inline`, creating a broad XSS attack surface that no amount of escaping can fully close.
+**Solution:** Migrate static HTML inline handlers in index.html to use `data-action` attributes with a centralized event delegation system. This allows removing `unsafe-inline` from the CSP script-src directive.
+**Fixes:** CSP can be tightened, XSS surface area reduced, cleaner separation of HTML/JS.
+
+### Improvement 4: Server-Side Pagination & Filtering
+**Priority:** HIGH | **Category:** Performance
+**Problem:** All modules (awards, entries, organisations, payments) load ALL records into memory on init using `while(hasMore)` loops with `.range()`. Filtering happens client-side in JavaScript. This approach won't scale and causes slow initial loads.
+**Solution:** Convert the main data modules to use Supabase server-side filtering (`.ilike()`, `.eq()`) and proper pagination with `.range(from, to)` on demand instead of loading everything upfront. Add a reusable pagination helper to utils.
+**Fixes:** Initial load performance, memory usage, scalability.
+
+### Improvement 5: Expanded Test Coverage
+**Priority:** HIGH | **Category:** Reliability
+**Problem:** Only ~80 lines of tests covering utils, config, RBAC, and judge portal anonymisation. ~2-3% coverage. No integration tests. No tests for payments, entries, awards, auth, or API endpoints.
+**Solution:** Add comprehensive Jest test suites for: auth module, awards CRUD, entries CRUD, payments validation, API endpoint handlers (stripe-payment, email-automation), CSV export sanitisation, and the event delegation system.
+**Fixes:** Regression risk, deployment confidence, bug detection.

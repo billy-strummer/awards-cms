@@ -263,9 +263,9 @@
           <!-- Stats Cards -->
           <div class="row g-4 mb-5">
             <div class="col-md-3">
-              <div class="stat-card stat-card-clickable" onclick="dashboardModule.navigateToSection('awards')" title="Click to view all awards">
+              <div class="stat-card stat-card-clickable" data-action="dashboardModule.navigateToSection" data-id="awards" title="Click to view all awards">
                 <button class="btn btn-sm btn-outline-primary position-absolute top-0 end-0 m-2"
-                        onclick="event.stopPropagation(); dashboardModule.openAwardsSummary();"
+                        data-action="dashboardModule.openAwardsSummary" data-stop-propagation="true"
                         title="View Awards Summary"
                         style="z-index: 10; padding: 0.25rem 0.5rem;">
                   <i class="bi bi-info-circle"></i>
@@ -282,7 +282,7 @@
             </div>
 
             <div class="col-md-3">
-              <div class="stat-card stat-card-clickable" onclick="dashboardModule.filterPendingAwards()" title="Click to view pending awards">
+              <div class="stat-card stat-card-clickable" data-action="dashboardModule.filterPendingAwards" title="Click to view pending awards">
                 <i class="bi bi-hourglass-split stat-card-icon text-warning"></i>
                 <h6>Pending Reviews</h6>
                 <div class="stat-value text-warning" id="pendingAwards">0</div>
@@ -295,9 +295,9 @@
             </div>
 
             <div class="col-md-3">
-              <div class="stat-card stat-card-clickable" onclick="dashboardModule.navigateToSection('organisations')" title="Click to view all organisations">
+              <div class="stat-card stat-card-clickable" data-action="dashboardModule.navigateToSection" data-id="organisations" title="Click to view all organisations">
                 <button class="btn btn-sm btn-outline-success position-absolute top-0 end-0 m-2"
-                        onclick="event.stopPropagation(); dashboardModule.openOrganisationsSummary();"
+                        data-action="dashboardModule.openOrganisationsSummary" data-stop-propagation="true"
                         title="View Organisations Summary"
                         style="z-index: 10; padding: 0.25rem 0.5rem;">
                   <i class="bi bi-info-circle"></i>
@@ -314,9 +314,9 @@
             </div>
 
             <div class="col-md-3">
-              <div class="stat-card stat-card-clickable" onclick="dashboardModule.navigateToSection('winners')" title="Click to view all winners">
+              <div class="stat-card stat-card-clickable" data-action="dashboardModule.navigateToSection" data-id="winners" title="Click to view all winners">
                 <button class="btn btn-sm btn-outline-info position-absolute top-0 end-0 m-2"
-                        onclick="event.stopPropagation(); dashboardModule.openWinnersSummary();"
+                        data-action="dashboardModule.openWinnersSummary" data-stop-propagation="true"
                         title="View Winners Summary"
                         style="z-index: 10; padding: 0.25rem 0.5rem;">
                   <i class="bi bi-info-circle"></i>
@@ -336,9 +336,9 @@
           <!-- Second Row of Stats -->
           <div class="row g-4 mb-5">
             <div class="col-md-3">
-              <div class="stat-card stat-card-clickable" onclick="dashboardModule.navigateToSection('events')" title="Click to view all events">
+              <div class="stat-card stat-card-clickable" data-action="dashboardModule.navigateToSection" data-id="events" title="Click to view all events">
                 <button class="btn btn-sm btn-outline-secondary position-absolute top-0 end-0 m-2"
-                        onclick="event.stopPropagation(); dashboardModule.openEventsSummary();"
+                        data-action="dashboardModule.openEventsSummary" data-stop-propagation="true"
                         title="View Events Summary"
                         style="z-index: 10; padding: 0.25rem 0.5rem;">
                   <i class="bi bi-info-circle"></i>
@@ -355,7 +355,7 @@
             </div>
 
             <div class="col-md-3">
-              <div class="stat-card stat-card-clickable" onclick="dashboardModule.showUpcomingEvents()" title="Click to view upcoming events">
+              <div class="stat-card stat-card-clickable" data-action="dashboardModule.showUpcomingEvents" title="Click to view upcoming events">
                 <i class="bi bi-calendar-check stat-card-icon text-success"></i>
                 <h6>Upcoming Events</h6>
                 <div class="stat-value text-success" id="upcomingEvents">0</div>
@@ -371,9 +371,9 @@
           <!-- Media Gallery & AI Vetting Cards -->
           <div class="row g-4 mb-5">
             <div class="col-md-3">
-              <div class="stat-card stat-card-clickable" onclick="dashboardModule.openMediaGallerySummary()" title="Click to view media gallery statistics">
+              <div class="stat-card stat-card-clickable" data-action="dashboardModule.openMediaGallerySummary" title="Click to view media gallery statistics">
                 <button class="btn btn-sm btn-outline-primary position-absolute top-0 end-0 m-2"
-                        onclick="event.stopPropagation(); dashboardModule.openMediaGallerySummary();"
+                        data-action="dashboardModule.openMediaGallerySummary" data-stop-propagation="true"
                         title="View Media Gallery Summary"
                         style="z-index: 10; padding: 0.25rem 0.5rem;">
                   <i class="bi bi-info-circle"></i>
@@ -390,9 +390,9 @@
             </div>
 
             <div class="col-md-3">
-              <div class="stat-card stat-card-clickable" onclick="aiVettingModule.openVettingModal()" title="Click to view AI vetting status">
+              <div class="stat-card stat-card-clickable" data-action="aiVettingModule.openVettingModal" title="Click to view AI vetting status">
                 <button class="btn btn-sm btn-outline-warning position-absolute top-0 end-0 m-2"
-                        onclick="event.stopPropagation(); aiVettingModule.openVettingModal();"
+                        data-action="aiVettingModule.openVettingModal" data-stop-propagation="true"
                         title="View AI Vetting Details"
                         style="z-index: 10; padding: 0.25rem 0.5rem;">
                   <i class="bi bi-info-circle"></i>
@@ -1272,23 +1272,23 @@
               <i class="bi bi-plus-lg"></i>
             </button>
             <div class="quick-actions-menu" id="quickActionsMenu" style="display: none;">
-              <div class="quick-action-item" onclick="dashboardModule.quickAddAward()">
+              <div class="quick-action-item" data-action="dashboardModule.quickAddAward">
                 <i class="bi bi-trophy-fill text-primary"></i>
                 <span>Add Award</span>
               </div>
-              <div class="quick-action-item" onclick="dashboardModule.quickAddOrganisation()">
+              <div class="quick-action-item" data-action="dashboardModule.quickAddOrganisation">
                 <i class="bi bi-building text-success"></i>
                 <span>Add Organisation</span>
               </div>
-              <div class="quick-action-item" onclick="dashboardModule.quickAddWinner()">
+              <div class="quick-action-item" data-action="dashboardModule.quickAddWinner">
                 <i class="bi bi-award text-info"></i>
                 <span>Add Winner</span>
               </div>
-              <div class="quick-action-item" onclick="dashboardModule.quickAddEvent()">
+              <div class="quick-action-item" data-action="dashboardModule.quickAddEvent">
                 <i class="bi bi-calendar-event text-purple"></i>
                 <span>Add Event</span>
               </div>
-              <div class="quick-action-item" onclick="dashboardModule.quickAddMedia()">
+              <div class="quick-action-item" data-action="dashboardModule.quickAddMedia">
                 <i class="bi bi-images text-warning"></i>
                 <span>Upload Media</span>
               </div>
@@ -1421,13 +1421,13 @@
         <select class="form-select form-select-sm" id="awardsSavedViewsList" onchange="if(this.value) awardsModule.loadSavedAwardsView(parseInt(this.value))">
           <option value="">No saved views</option>
         </select>
-        <button class="btn btn-outline-primary" onclick="awardsModule.saveCurrentAwardsView()" title="Save current filters as view">
+        <button class="btn btn-outline-primary" data-action="awardsModule.saveCurrentAwardsView" title="Save current filters as view">
           <i class="bi bi-bookmark-plus"></i>
         </button>
       </div>
     </div>
     <div class="col-md-1 d-flex align-items-end">
-      <button class="btn btn-outline-secondary btn-sm w-100" onclick="awardsModule.resetFilters()" title="Reset all filters">
+      <button class="btn btn-outline-secondary btn-sm w-100" data-action="awardsModule.resetFilters" title="Reset all filters">
         <i class="bi bi-x-circle"></i>
       </button>
     </div>
@@ -1440,7 +1440,7 @@
                 <i class="bi bi-list-ul me-2"></i>Awards List
               </h5>
               <div class="d-flex align-items-center gap-3">
-                <button class="btn btn-primary btn-sm" onclick="awardsModule.openCreateModal()">
+                <button class="btn btn-primary btn-sm" data-action="awardsModule.openCreateModal">
                   <i class="bi bi-plus-lg me-1"></i>Add Award
                 </button>
                 <div class="btn-group">
@@ -1448,21 +1448,21 @@
                     <i class="bi bi-download me-1"></i>Export
                   </button>
                   <ul class="dropdown-menu">
-                    <li><a class="dropdown-item" href="#" onclick="event.preventDefault(); awardsModule.exportAwards()"><i class="bi bi-filetype-csv text-success me-2"></i>Export CSV</a></li>
-                    <li><a class="dropdown-item" href="#" onclick="event.preventDefault(); awardsModule.exportAwardsExcel()"><i class="bi bi-file-earmark-spreadsheet text-primary me-2"></i>Export Excel</a></li>
-                    <li><a class="dropdown-item" href="#" onclick="event.preventDefault(); awardsModule.exportAwardsPDF()"><i class="bi bi-file-pdf text-danger me-2"></i>Print / PDF</a></li>
+                    <li><a class="dropdown-item" href="#" data-action="awardsModule.exportAwards" data-prevent-default="true"><i class="bi bi-filetype-csv text-success me-2"></i>Export CSV</a></li>
+                    <li><a class="dropdown-item" href="#" data-action="awardsModule.exportAwardsExcel" data-prevent-default="true"><i class="bi bi-file-earmark-spreadsheet text-primary me-2"></i>Export Excel</a></li>
+                    <li><a class="dropdown-item" href="#" data-action="awardsModule.exportAwardsPDF" data-prevent-default="true"><i class="bi bi-file-pdf text-danger me-2"></i>Print / PDF</a></li>
                   </ul>
                 </div>
-                <button class="btn btn-outline-info btn-sm" onclick="awardsModule.rolloverToNextYear()">
+                <button class="btn btn-outline-info btn-sm" data-action="awardsModule.rolloverToNextYear">
                   <i class="bi bi-arrow-repeat me-1"></i>Roll Over
                 </button>
-                <button class="btn btn-outline-success btn-sm" onclick="awardsModule.showVisualTimeline()" title="Timeline Overview">
+                <button class="btn btn-outline-success btn-sm" data-action="awardsModule.showVisualTimeline" title="Timeline Overview">
                   <i class="bi bi-calendar-range me-1"></i>Timeline
                 </button>
-                <button class="btn btn-outline-danger btn-sm" onclick="awardsModule.showDataQualityDashboard()" title="Data Quality">
+                <button class="btn btn-outline-danger btn-sm" data-action="awardsModule.showDataQualityDashboard" title="Data Quality">
                   <i class="bi bi-shield-check me-1"></i>Quality
                 </button>
-                <button class="btn btn-outline-warning btn-sm" onclick="awardsModule.showDuplicateDetection()" title="Find Duplicates">
+                <button class="btn btn-outline-warning btn-sm" data-action="awardsModule.showDuplicateDetection" title="Find Duplicates">
                   <i class="bi bi-files me-1"></i>Duplicates
                 </button>
                 <div class="badge bg-primary-subtle text-primary fs-6">

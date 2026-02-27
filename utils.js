@@ -2108,5 +2108,269 @@ const utils = {
   }
 };
 
+// ============================================
+// SERVER-SIDE PAGINATION & FILTERING HELPER
+// Replaces "load everything then filter in JS" pattern
+// ============================================
+
+/**
+ * Reusable server-side query builder for Supabase.
+ * Builds queries with server-side filtering, sorting, and pagination
+ * so only the required page of data is transferred.
+ *
+ * Usage:
+ *   const result = await utils.serverQuery({
+ *     table: 'entries',
+ *     select: '*, organisations(company_name)',
+ *     filters: { status: 'submitted', year: 2026 },
+ *     search: { term: 'acme', columns: ['company_name', 'entry_title'] },
+ *     sort: { column: 'submission_date', ascending: false },
+ *     page: 1,
+ *     pageSize: 50
+ *   });
+ *   // Returns: { data: [...], count: 123, page: 1, pageSize: 50, totalPages: 3 }
+ */
+const serverQuery = {
+  /**
+   * Execute a paginated, filtered, sorted query against Supabase.
+   * @param {Object} options
+   * @param {string} options.table - Supabase table name
+   * @param {string} [options.select='*'] - Select clause
+   * @param {Object} [options.filters={}] - Key-value equality filters (null values skipped)
+   * @param {Object} [options.search] - { term: string, columns: string[] } for ilike search
+   * @param {Object} [options.sort] - { column: string, ascending: boolean }
+   * @param {number} [options.page=1] - Page number (1-based)
+   * @param {number} [options.pageSize=50] - Items per page
+   * @param {Array}  [options.customFilters] - Array of { method, args } for advanced filters
+   * @returns {Promise<{data: Array, count: number, page: number, pageSize: number, totalPages: number}>}
+   */
+  async execute(options) {
+    const {
+      table,
+      select = '*',
+      filters = {},
+      search = null,
+      sort = null,
+      page = 1,
+      pageSize = 50,
+      customFilters = []
+    } = options;
+
+    if (!STATE.client) throw new Error('Supabase client not initialized');
+
+    let query = STATE.client
+      .from(table)
+      .select(select, { count: 'exact' });
+
+    // Apply equality filters
+    for (const [key, value] of Object.entries(filters)) {
+      if (value !== null && value !== undefined && value !== '') {
+        query = query.eq(key, value);
+      }
+    }
+
+    // Apply search (OR across multiple columns using ilike)
+    if (search && search.term && search.columns && search.columns.length > 0) {
+      const searchTerm = `%${search.term}%`;
+      const orClause = search.columns.map(col => `${col}.ilike.${searchTerm}`).join(',');
+      query = query.or(orClause);
+    }
+
+    // Apply custom filters (e.g., .neq(), .in(), .gte(), etc.)
+    for (const cf of customFilters) {
+      if (cf.method && cf.args) {
+        query = query[cf.method](...cf.args);
+      }
+    }
+
+    // Apply sorting
+    if (sort && sort.column) {
+      query = query.order(sort.column, { ascending: sort.ascending !== false });
+    }
+
+    // Apply pagination
+    const from = (page - 1) * pageSize;
+    const to = from + pageSize - 1;
+    query = query.range(from, to);
+
+    const { data, error, count } = await query;
+    if (error) throw error;
+
+    return {
+      data: data || [],
+      count: count || 0,
+      page,
+      pageSize,
+      totalPages: Math.ceil((count || 0) / pageSize)
+    };
+  },
+
+  /**
+   * Load ALL records using server-side pagination (for modules that need full datasets).
+   * More efficient than the old while-loop pattern because it uses exact count
+   * to calculate total pages upfront.
+   * @param {Object} options - Same as execute but without page/pageSize
+   * @param {number} [batchSize=1000] - Records per batch
+   * @returns {Promise<Array>} All matching records
+   */
+  async loadAll(options, batchSize = 1000) {
+    if (!STATE.client) throw new Error('Supabase client not initialized');
+
+    const { table, select = '*', filters = {}, sort = null, customFilters = [] } = options;
+
+    // First, get the total count
+    let countQuery = STATE.client
+      .from(table)
+      .select(select, { count: 'exact', head: true });
+
+    for (const [key, value] of Object.entries(filters)) {
+      if (value !== null && value !== undefined && value !== '') {
+        countQuery = countQuery.eq(key, value);
+      }
+    }
+    for (const cf of customFilters) {
+      if (cf.method && cf.args) countQuery = countQuery[cf.method](...cf.args);
+    }
+
+    const { count, error: countError } = await countQuery;
+    if (countError) throw countError;
+    if (!count || count === 0) return [];
+
+    // Fetch in parallel batches
+    const totalPages = Math.ceil(count / batchSize);
+    const promises = [];
+    for (let page = 0; page < totalPages; page++) {
+      const from = page * batchSize;
+      const to = from + batchSize - 1;
+
+      let q = STATE.client.from(table).select(select).range(from, to);
+      for (const [key, value] of Object.entries(filters)) {
+        if (value !== null && value !== undefined && value !== '') q = q.eq(key, value);
+      }
+      for (const cf of customFilters) {
+        if (cf.method && cf.args) q = q[cf.method](...cf.args);
+      }
+      if (sort && sort.column) {
+        q = q.order(sort.column, { ascending: sort.ascending !== false });
+      }
+      promises.push(q);
+    }
+
+    const results = await Promise.all(promises);
+    let allData = [];
+    for (const result of results) {
+      if (result.error) throw result.error;
+      if (result.data) allData = allData.concat(result.data);
+    }
+
+    return allData;
+  }
+};
+
+// ============================================
+// EVENT DELEGATION SYSTEM
+// Replaces inline onclick= handlers with data-action attributes
+// Usage: <button data-action="moduleName.methodName" data-id="123">Click</button>
+// ============================================
+
+/**
+ * Centralized event delegation system.
+ * Listens for clicks on elements with [data-action] attributes
+ * and routes them to the appropriate module method.
+ *
+ * Supports:
+ *   data-action="moduleName.methodName"  - calls moduleName.methodName(element, event)
+ *   data-id="..."                        - passed as first arg if present
+ *   data-args='{"key":"value"}'          - JSON-parsed and spread as args
+ *   data-prevent-default="true"          - calls event.preventDefault()
+ *   data-stop-propagation="true"         - calls event.stopPropagation()
+ */
+const actionRegistry = {
+  _handlers: {},
+
+  /**
+   * Register a named action handler
+   * @param {string} name - Action name (e.g. "awards.create")
+   * @param {Function} handler - Handler function(element, event, ...args)
+   */
+  register(name, handler) {
+    this._handlers[name] = handler;
+  },
+
+  /**
+   * Resolve a dotted action name to a callable function.
+   * Walks window globals for "moduleName.methodName" patterns.
+   */
+  _resolve(actionName) {
+    // Check explicit registry first
+    if (this._handlers[actionName]) return this._handlers[actionName];
+
+    // Try dotted path on window (e.g. "awardsModule.openCreateModal")
+    const parts = actionName.split('.');
+    let obj = window;
+    for (let i = 0; i < parts.length - 1; i++) {
+      obj = obj[parts[i]];
+      if (!obj) return null;
+    }
+    const method = obj[parts[parts.length - 1]];
+    return typeof method === 'function' ? method.bind(obj) : null;
+  },
+
+  /**
+   * Initialize the global click delegation listener.
+   * Call once after DOM is ready.
+   */
+  init() {
+    document.addEventListener('click', (event) => {
+      const el = event.target.closest('[data-action]');
+      if (!el) return;
+
+      const actionName = el.getAttribute('data-action');
+      if (!actionName) return;
+
+      if (el.getAttribute('data-prevent-default') === 'true') {
+        event.preventDefault();
+      }
+      if (el.getAttribute('data-stop-propagation') === 'true') {
+        event.stopPropagation();
+      }
+
+      const handler = this._resolve(actionName);
+      if (!handler) {
+        console.warn(`[actionRegistry] No handler found for action: ${actionName}`);
+        return;
+      }
+
+      // Build arguments
+      const id = el.getAttribute('data-id');
+      const argsJson = el.getAttribute('data-args');
+      let extraArgs = [];
+      if (argsJson) {
+        try { extraArgs = JSON.parse(argsJson); if (!Array.isArray(extraArgs)) extraArgs = [extraArgs]; } catch (e) { extraArgs = []; }
+      }
+
+      if (id !== null && id !== undefined) {
+        handler(id, ...extraArgs, event);
+      } else if (extraArgs.length > 0) {
+        handler(...extraArgs, event);
+      } else {
+        handler(event);
+      }
+    });
+
+    // Also handle keyboard activation (Enter/Space) for non-button elements
+    document.addEventListener('keydown', (event) => {
+      if (event.key !== 'Enter' && event.key !== ' ') return;
+      const el = event.target.closest('[data-action]');
+      if (!el) return;
+      if (el.tagName === 'BUTTON' || el.tagName === 'A' || el.tagName === 'INPUT') return; // browser handles these
+      event.preventDefault();
+      el.click();
+    });
+  }
+};
+
 // Export to window for global access
 window.utils = utils;
+window.serverQuery = serverQuery;
+window.actionRegistry = actionRegistry;

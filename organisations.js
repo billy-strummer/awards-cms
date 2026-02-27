@@ -37,37 +37,13 @@ async loadOrganisations() {
   try {
     utils.showLoading();
     utils.showSkeletonLoading('orgsTableBody', 10);
-    
-    // Load all organisations using proper Supabase v2 pagination
-    let allData = [];
-    let page = 0;
-    const pageSize = 1000;
-    let hasMore = true;
-    
-    while (hasMore) {
-      const from = page * pageSize;
-      const to = from + pageSize - 1;
-      
-      const { data, error } = await STATE.client
-        .from('organisations')
-        .select('*', { count: 'exact' })
-        .range(from, to)
-        .order('company_name', { ascending: true });
-      
-      if (error) throw error;
-      
-      if (!data || data.length === 0) {
-        hasMore = false;
-      } else {
-        allData = allData.concat(data);
-        page++;
-        // Page loaded
-        
-        if (data.length < pageSize) {
-          hasMore = false;
-        }
-      }
-    }
+
+    // Load all organisations using server-side pagination helper
+    const allData = await serverQuery.loadAll({
+      table: 'organisations',
+      select: '*',
+      sort: { column: 'company_name', ascending: true }
+    });
     
     // Load award assignments to get county/region/sector for each org
     const { data: assignments } = await STATE.client

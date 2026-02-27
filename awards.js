@@ -17,33 +17,10 @@ const awardsModule = {
       utils.showLoading();
       utils.showSkeletonLoading('awardsTableBody', 10);
 
-      let allData = [];
-      let page = 0;
-      const pageSize = 1000;
-      let hasMore = true;
-
-      while (hasMore) {
-        const from = page * pageSize;
-        const to = from + pageSize - 1;
-
-        const { data, error } = await STATE.client
-          .from('awards')
-          .select('*')
-          .range(from, to);
-
-        if (error) throw error;
-
-        if (!data || data.length === 0) {
-          hasMore = false;
-        } else {
-          allData = allData.concat(data);
-          page++;
-
-          if (data.length < pageSize) {
-            hasMore = false;
-          }
-        }
-      }
+      const allData = await serverQuery.loadAll({
+        table: 'awards',
+        select: '*'
+      });
 
       // Batch lookup regions for all counties in one query
       const uniqueCounties = [...new Set(allData.map(a => a.county).filter(Boolean))];

@@ -3,7 +3,25 @@
   "outputDirectory": "dist",
   "installCommand": "npm install",
   "framework": null,
+  "functions": {
+    "api/data-proxy.js": {
+      "maxDuration": 30
+    },
+    "api/stripe-payment.js": {
+      "maxDuration": 30
+    },
+    "api/email-automation.js": {
+      "maxDuration": 30
+    }
+  },
   "headers": [
+    {
+      "source": "/api/(.*)",
+      "headers": [
+        { "key": "Cache-Control", "value": "no-store, no-cache, must-revalidate" },
+        { "key": "X-Content-Type-Options", "value": "nosniff" }
+      ]
+    },
     {
       "source": "/(.*)",
       "headers": [

@@ -104,42 +104,21 @@ const entriesModule = {
   },
 
   /**
-   * Load all entries
+   * Load all entries using server-side pagination helper
    */
   async loadEntries() {
     if (this._loading) return;
     this._loading = true;
     try {
-      // Paginated loading to handle large datasets
-      let allData = [];
-      let page = 0;
-      const pageSize = 1000;
-      let hasMore = true;
-
-      while (hasMore) {
-        const from = page * pageSize;
-        const to = from + pageSize - 1;
-
-        const { data, error } = await STATE.client
-          .from('entries')
-          .select(`
-            *,
-            organisations(company_name, logo_url),
-            award_years(award_name, sector, county)
-          `)
-          .order('submission_date', { ascending: false })
-          .range(from, to);
-
-        if (error) throw error;
-
-        if (!data || data.length === 0) {
-          hasMore = false;
-        } else {
-          allData = allData.concat(data);
-          page++;
-          if (data.length < pageSize) hasMore = false;
-        }
-      }
+      const allData = await serverQuery.loadAll({
+        table: 'entries',
+        select: `
+          *,
+          organisations(company_name, logo_url),
+          award_years(award_name, sector, county)
+        `,
+        sort: { column: 'submission_date', ascending: false }
+      });
 
       this.allEntries = allData;
       if (typeof STATE !== 'undefined') { STATE.allEntries = allData; }

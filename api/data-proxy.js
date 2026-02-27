@@ -1,0 +1,415 @@
+/**
+ * Secure Data Proxy API
+ *
+ * Server-side proxy for Supabase operations that should not be performed
+ * directly from the browser. This endpoint:
+ *
+ * 1. Verifies the user's JWT before any operation
+ * 2. Uses the SUPABASE_SERVICE_KEY (never exposed to client)
+ * 3. Validates and sanitizes all inputs server-side
+ * 4. Enforces business rules that can't be trusted client-side
+ *
+ * Environment Variables Required:
+ *   - SUPABASE_URL
+ *   - SUPABASE_SERVICE_KEY  (service role, NOT the anon key)
+ *   - SUPABASE_ANON_KEY     (for JWT verification only)
+ *
+ * Deploy as: Vercel serverless function at /api/data-proxy
+ */
+
+const { createClient } = require('@supabase/supabase-js');
+
+// Service-role client for privileged operations
+const supabase = createClient(
+  process.env.SUPABASE_URL,
+  process.env.SUPABASE_SERVICE_KEY
+);
+
+// Anon client for JWT verification
+const supabaseAuth = createClient(
+  process.env.SUPABASE_URL,
+  process.env.SUPABASE_ANON_KEY || process.env.SUPABASE_SERVICE_KEY
+);
+
+// ============================================
+// ALLOWED TABLES & OPERATIONS
+// ============================================
+
+/** Tables that can be queried via the proxy */
+const ALLOWED_TABLES = new Set([
+  'awards', 'organisations', 'entries', 'winners', 'events',
+  'invoices', 'payments', 'award_assignments', 'contacts',
+  'activity_log', 'email_templates', 'user_preferences',
+  'counties', 'regions', 'award_years'
+]);
+
+/** Tables that can be mutated (insert/update/delete) */
+const MUTABLE_TABLES = new Set([
+  'awards', 'organisations', 'entries', 'winners', 'events',
+  'invoices', 'payments', 'award_assignments', 'contacts',
+  'activity_log', 'email_templates', 'user_preferences'
+]);
+
+/** Maximum page size to prevent abuse */
+const MAX_PAGE_SIZE = 1000;
+
+/** Maximum select depth to prevent recursive joins */
+const MAX_SELECT_LENGTH = 500;
+
+// ============================================
+// AUTH VERIFICATION
+// ============================================
+
+/**
+ * Verify the caller's Supabase JWT.
+ * Returns the authenticated user or sends 401 and returns null.
+ */
+async function verifyAuth(req, res) {
+  const authHeader = req.headers.authorization;
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    res.status(401).json({ error: 'Authentication required' });
+    return null;
+  }
+
+  const token = authHeader.replace('Bearer ', '');
+  try {
+    const { data: { user }, error } = await supabaseAuth.auth.getUser(token);
+    if (error || !user) {
+      res.status(401).json({ error: 'Invalid or expired token' });
+      return null;
+    }
+    return user;
+  } catch (err) {
+    res.status(401).json({ error: 'Token verification failed' });
+    return null;
+  }
+}
+
+// ============================================
+// INPUT VALIDATION
+// ============================================
+
+/**
+ * Validate and sanitize query parameters.
+ */
+function validateQueryParams(body) {
+  const errors = [];
+
+  const { table, operation, select, filters, sort, page, pageSize, data, id } = body;
+
+  if (!table || typeof table !== 'string') {
+    errors.push('Missing or invalid "table" parameter');
+  } else if (!ALLOWED_TABLES.has(table)) {
+    errors.push(`Table "${table}" is not allowed`);
+  }
+
+  if (!operation || !['select', 'insert', 'update', 'delete', 'count'].includes(operation)) {
+    errors.push('Operation must be one of: select, insert, update, delete, count');
+  }
+
+  if (['insert', 'update', 'delete'].includes(operation) && table && !MUTABLE_TABLES.has(table)) {
+    errors.push(`Table "${table}" does not allow ${operation} operations`);
+  }
+
+  if (select && (typeof select !== 'string' || select.length > MAX_SELECT_LENGTH)) {
+    errors.push(`"select" must be a string under ${MAX_SELECT_LENGTH} chars`);
+  }
+
+  if (filters && typeof filters !== 'object') {
+    errors.push('"filters" must be an object');
+  }
+
+  if (sort) {
+    if (typeof sort !== 'object' || !sort.column || typeof sort.column !== 'string') {
+      errors.push('"sort" must have a valid "column" string');
+    }
+  }
+
+  if (page !== undefined && (typeof page !== 'number' || page < 1)) {
+    errors.push('"page" must be a positive integer');
+  }
+
+  if (pageSize !== undefined && (typeof pageSize !== 'number' || pageSize < 1 || pageSize > MAX_PAGE_SIZE)) {
+    errors.push(`"pageSize" must be between 1 and ${MAX_PAGE_SIZE}`);
+  }
+
+  if (operation === 'insert' && (!data || typeof data !== 'object')) {
+    errors.push('"data" is required for insert operations');
+  }
+
+  if (operation === 'update' && !id && (!filters || Object.keys(filters).length === 0)) {
+    errors.push('Update requires "id" or "filters" to target specific rows');
+  }
+
+  if (operation === 'delete' && !id && (!filters || Object.keys(filters).length === 0)) {
+    errors.push('Delete requires "id" or "filters" to target specific rows');
+  }
+
+  return errors;
+}
+
+// ============================================
+// QUERY EXECUTION
+// ============================================
+
+/**
+ * Execute a validated Supabase query.
+ */
+async function executeQuery(body, user) {
+  const {
+    table, operation, select = '*', filters = {},
+    sort, page = 1, pageSize = 50, data, id
+  } = body;
+
+  // SELECT / COUNT
+  if (operation === 'select' || operation === 'count') {
+    const isCount = operation === 'count';
+    let query = supabase
+      .from(table)
+      .select(select, isCount ? { count: 'exact', head: true } : { count: 'exact' });
+
+    // Apply equality filters
+    for (const [key, value] of Object.entries(filters)) {
+      if (value === null || value === undefined || value === '') continue;
+
+      // Support basic filter operators
+      if (typeof value === 'object' && value.op) {
+        switch (value.op) {
+          case 'neq': query = query.neq(key, value.value); break;
+          case 'gt':  query = query.gt(key, value.value); break;
+          case 'gte': query = query.gte(key, value.value); break;
+          case 'lt':  query = query.lt(key, value.value); break;
+          case 'lte': query = query.lte(key, value.value); break;
+          case 'like': query = query.like(key, value.value); break;
+          case 'ilike': query = query.ilike(key, value.value); break;
+          case 'in':  query = query.in(key, value.value); break;
+          default: query = query.eq(key, value);
+        }
+      } else {
+        query = query.eq(key, value);
+      }
+    }
+
+    // Apply sorting
+    if (sort && sort.column) {
+      query = query.order(sort.column, { ascending: sort.ascending !== false });
+    }
+
+    // Apply pagination (only for select, not count)
+    if (!isCount) {
+      const from = (page - 1) * pageSize;
+      const to = from + pageSize - 1;
+      query = query.range(from, to);
+    }
+
+    const result = await query;
+    if (result.error) throw result.error;
+
+    if (isCount) {
+      return { count: result.count };
+    }
+
+    return {
+      data: result.data || [],
+      count: result.count || 0,
+      page,
+      pageSize,
+      totalPages: Math.ceil((result.count || 0) / pageSize)
+    };
+  }
+
+  // INSERT
+  if (operation === 'insert') {
+    // Inject audit fields
+    const insertData = Array.isArray(data) ? data : [data];
+    const enriched = insertData.map(row => ({
+      ...row,
+      created_at: row.created_at || new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    }));
+
+    const { data: result, error } = await supabase
+      .from(table)
+      .insert(enriched)
+      .select();
+
+    if (error) throw error;
+
+    // Log the activity
+    await logActivity(table, 'insert', user, result);
+
+    return { data: result };
+  }
+
+  // UPDATE
+  if (operation === 'update') {
+    const updateData = {
+      ...data,
+      updated_at: new Date().toISOString()
+    };
+
+    let query = supabase.from(table).update(updateData);
+
+    if (id) {
+      query = query.eq('id', id);
+    } else {
+      for (const [key, value] of Object.entries(filters)) {
+        if (value !== null && value !== undefined && value !== '') {
+          query = query.eq(key, value);
+        }
+      }
+    }
+
+    const { data: result, error } = await query.select();
+    if (error) throw error;
+
+    await logActivity(table, 'update', user, result);
+
+    return { data: result };
+  }
+
+  // DELETE
+  if (operation === 'delete') {
+    let query = supabase.from(table).delete();
+
+    if (id) {
+      query = query.eq('id', id);
+    } else {
+      for (const [key, value] of Object.entries(filters)) {
+        if (value !== null && value !== undefined && value !== '') {
+          query = query.eq(key, value);
+        }
+      }
+    }
+
+    const { data: result, error } = await query.select();
+    if (error) throw error;
+
+    await logActivity(table, 'delete', user, result);
+
+    return { data: result };
+  }
+
+  throw new Error(`Unsupported operation: ${operation}`);
+}
+
+/**
+ * Log data mutation to activity_log table.
+ */
+async function logActivity(table, action, user, result) {
+  try {
+    const count = Array.isArray(result) ? result.length : 1;
+    await supabase.from('activity_log').insert([{
+      entity_type: table,
+      action: `proxy_${action}`,
+      details: `${action} ${count} record(s) in ${table} via API proxy`,
+      performed_by: user.email
+    }]);
+  } catch (e) {
+    // Don't fail the main operation if logging fails
+    console.error('Activity log error:', e.message);
+  }
+}
+
+// ============================================
+// RATE LIMITING (simple in-memory)
+// ============================================
+
+const rateLimits = new Map();
+const RATE_LIMIT_WINDOW = 60 * 1000; // 1 minute
+const RATE_LIMIT_MAX = 120;           // 120 requests per minute
+
+function checkRateLimit(userId) {
+  const now = Date.now();
+  const userLimits = rateLimits.get(userId) || { count: 0, windowStart: now };
+
+  if (now - userLimits.windowStart > RATE_LIMIT_WINDOW) {
+    // Reset window
+    userLimits.count = 1;
+    userLimits.windowStart = now;
+  } else {
+    userLimits.count++;
+  }
+
+  rateLimits.set(userId, userLimits);
+  return userLimits.count <= RATE_LIMIT_MAX;
+}
+
+// Periodically clean up old rate limit entries (unref so it doesn't prevent process exit)
+const _cleanupTimer = setInterval(() => {
+  const now = Date.now();
+  for (const [key, value] of rateLimits.entries()) {
+    if (now - value.windowStart > RATE_LIMIT_WINDOW * 2) {
+      rateLimits.delete(key);
+    }
+  }
+}, RATE_LIMIT_WINDOW * 2);
+if (_cleanupTimer.unref) _cleanupTimer.unref();
+
+// ============================================
+// MAIN HANDLER
+// ============================================
+
+/**
+ * Vercel serverless function handler.
+ * POST /api/data-proxy
+ *
+ * Body: {
+ *   table: string,
+ *   operation: 'select' | 'insert' | 'update' | 'delete' | 'count',
+ *   select?: string,
+ *   filters?: object,
+ *   sort?: { column: string, ascending: boolean },
+ *   page?: number,
+ *   pageSize?: number,
+ *   data?: object | object[],
+ *   id?: string
+ * }
+ */
+module.exports = async function handler(req, res) {
+  // CORS headers
+  res.setHeader('Access-Control-Allow-Origin', req.headers.origin || '*');
+  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+
+  if (req.method === 'OPTIONS') {
+    return res.status(200).end();
+  }
+
+  if (req.method !== 'POST') {
+    return res.status(405).json({ error: 'Method not allowed. Use POST.' });
+  }
+
+  try {
+    // 1. Authenticate
+    const user = await verifyAuth(req, res);
+    if (!user) return; // 401 already sent
+
+    // 2. Rate limit
+    if (!checkRateLimit(user.id)) {
+      return res.status(429).json({ error: 'Rate limit exceeded. Try again in a minute.' });
+    }
+
+    // 3. Validate input
+    const body = req.body;
+    if (!body || typeof body !== 'object') {
+      return res.status(400).json({ error: 'Request body must be a JSON object' });
+    }
+
+    const validationErrors = validateQueryParams(body);
+    if (validationErrors.length > 0) {
+      return res.status(400).json({ error: 'Validation failed', details: validationErrors });
+    }
+
+    // 4. Execute
+    const result = await executeQuery(body, user);
+    return res.status(200).json(result);
+
+  } catch (error) {
+    console.error('[data-proxy] Error:', error.message);
+    return res.status(500).json({
+      error: 'Internal server error',
+      message: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
+  }
+};

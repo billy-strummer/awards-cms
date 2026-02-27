@@ -521,6 +521,11 @@ document.addEventListener('DOMContentLoaded', function() {
   if (typeof tenantModule !== 'undefined') tenantModule.init();
 
   // ==========================================
+  // STEP 1c: Initialize event delegation system
+  // ==========================================
+  if (typeof actionRegistry !== 'undefined') actionRegistry.init();
+
+  // ==========================================
   // STEP 2: Set up event listeners
   // ==========================================
 

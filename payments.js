@@ -66,17 +66,16 @@ const paymentsModule = {
 
   async loadInvoices() {
     try {
-      const { data, error } = await STATE.client
-        .from('invoices')
-        .select(`
+      const allData = await serverQuery.loadAll({
+        table: 'invoices',
+        select: `
           *,
           organisations (id, company_name, email, contact_phone)
-        `)
-        .order('created_at', { ascending: false });
+        `,
+        sort: { column: 'created_at', ascending: false }
+      });
 
-      if (error) throw error;
-
-      this.allInvoices = data || [];
+      this.allInvoices = allData;
       this.filterInvoices();
 
       // Initialise reusable keyboard navigation (once)

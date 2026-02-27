@@ -3,7 +3,10 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self' https://*.supabase.co; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net https://unpkg.com https://cdnjs.cloudflare.com https://js.stripe.com https://browser.sentry-cdn.com https://s3.tradingview.com; style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://unpkg.com https://cdnjs.cloudflare.com; img-src 'self' data: blob: https://*.supabase.co https://i.ytimg.com https://*.tile.openstreetmap.org; font-src 'self' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; connect-src 'self' https://*.supabase.co https://api.resend.com https://*.sentry.io wss://*.supabase.co https://*.tradingview.com wss://*.tradingview.com https://*.tradingview-widget.com wss://*.tradingview-widget.com https://www.youtube.com https://vimeo.com https://api.company-information.service.gov.uk https://*.stripe.com https://*.vercel-scripts.com https://*.vercel-insights.com https://cdn.jsdelivr.net https://unpkg.com https://cdnjs.cloudflare.com https://browser.sentry-cdn.com; frame-src 'self' https://js.stripe.com https://www.youtube.com https://s3.tradingview.com https://*.tradingview.com https://*.tradingview-widget.com; object-src 'none'; base-uri 'self'">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self' https://*.supabase.co; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://unpkg.com https://cdnjs.cloudflare.com https://js.stripe.com https://browser.sentry-cdn.com https://s3.tradingview.com; style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://unpkg.com https://cdnjs.cloudflare.com; img-src 'self' data: blob: https://*.supabase.co https://i.ytimg.com https://*.tile.openstreetmap.org; font-src 'self' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; connect-src 'self' https://*.supabase.co https://api.resend.com https://*.sentry.io wss://*.supabase.co https://*.tradingview.com wss://*.tradingview.com https://*.tradingview-widget.com wss://*.tradingview-widget.com https://www.youtube.com https://vimeo.com https://api.company-information.service.gov.uk https://*.stripe.com https://*.vercel-scripts.com https://*.vercel-insights.com https://cdn.jsdelivr.net https://unpkg.com https://cdnjs.cloudflare.com https://browser.sentry-cdn.com; frame-src 'self' https://js.stripe.com https://www.youtube.com https://s3.tradingview.com https://*.tradingview.com https://*.tradingview-widget.com; object-src 'none'; base-uri 'self'">
+  <!-- Supabase credentials — injected per environment, never hardcoded -->
+  <meta name="supabase-url" content="">
+  <meta name="supabase-anon-key" content="">
   <title>British Trade Awards Admin</title>
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='80' font-size='80'>🏆</text></svg>">
   
@@ -1602,11 +1605,11 @@
               </div>
               <div class="col">
                 <h6 class="text-muted mb-1 small">Overdue</h6>
-                <h3 class="mb-0 fw-bold text-danger" id="orgsOverdueCount" style="cursor:pointer" title="Click to view overdue follow-ups" onclick="orgsModule.showOverdueFollowUps();">0</h3>
+                <h3 class="mb-0 fw-bold text-danger" id="orgsOverdueCount" style="cursor:pointer" title="Click to view overdue follow-ups" data-action="orgsModule.showOverdueFollowUps">0</h3>
               </div>
               <div class="col">
                 <h6 class="text-muted mb-1 small">Due Soon</h6>
-                <h3 class="mb-0 fw-bold text-warning" id="orgsDueSoonCount" style="cursor:pointer" title="Click to view upcoming follow-ups" onclick="orgsModule.showOverdueFollowUps();">0</h3>
+                <h3 class="mb-0 fw-bold text-warning" id="orgsDueSoonCount" style="cursor:pointer" title="Click to view upcoming follow-ups" data-action="orgsModule.showOverdueFollowUps">0</h3>
               </div>
               <div class="col">
                 <h6 class="text-muted mb-1 small">Last Updated</h6>
@@ -1737,7 +1740,7 @@
 
           <!-- Reset + Actions -->
           <div class="col-auto d-flex align-items-end">
-            <button class="btn btn-outline-secondary btn-sm" onclick="orgsModule.resetFilters()" title="Reset all filters">
+            <button class="btn btn-outline-secondary btn-sm" data-action="orgsModule.resetFilters" title="Reset all filters">
               <i class="bi bi-x-circle"></i>
             </button>
           </div>
@@ -1795,10 +1798,10 @@
                       onchange="orgsModule.loadFilterPreset(this.value)">
                 <option value="">-- Saved Views --</option>
               </select>
-              <button class="btn btn-outline-primary btn-sm" onclick="orgsModule.saveFilterPreset()" title="Save current view (filters, sort, columns)">
+              <button class="btn btn-outline-primary btn-sm" data-action="orgsModule.saveFilterPreset" title="Save current view (filters, sort, columns)">
                 <i class="bi bi-bookmark-plus"></i>
               </button>
-              <button class="btn btn-outline-danger btn-sm" onclick="orgsModule.deleteFilterPreset()" title="Delete selected view">
+              <button class="btn btn-outline-danger btn-sm" data-action="orgsModule.deleteFilterPreset" title="Delete selected view">
                 <i class="bi bi-trash"></i>
               </button>
             </div>
@@ -1819,43 +1822,43 @@
                   <i class="bi bi-download me-1"></i>Export
                 </button>
                 <ul class="dropdown-menu">
-                  <li><a class="dropdown-item" href="#" onclick="orgsModule.exportToCSV()"><i class="bi bi-filetype-csv text-success me-2"></i>Export CSV</a></li>
-                  <li><a class="dropdown-item" href="#" onclick="orgsModule.exportToExcel()"><i class="bi bi-file-earmark-spreadsheet text-primary me-2"></i>Export Excel (.xlsx)</a></li>
+                  <li><a class="dropdown-item" href="#" data-action="orgsModule.exportToCSV"><i class="bi bi-filetype-csv text-success me-2"></i>Export CSV</a></li>
+                  <li><a class="dropdown-item" href="#" data-action="orgsModule.exportToExcel"><i class="bi bi-file-earmark-spreadsheet text-primary me-2"></i>Export Excel (.xlsx)</a></li>
                   <li><a class="dropdown-item" href="#" onclick="event.preventDefault(); orgsModule.exportToPDF()"><i class="bi bi-file-pdf text-danger me-2"></i>Print / PDF</a></li>
                 </ul>
               </div>
-              <button class="btn btn-sm btn-outline-secondary" id="togglePhoneColBtn" onclick="orgsModule.togglePhoneColumn()" title="Toggle Phone Column">
+              <button class="btn btn-sm btn-outline-secondary" id="togglePhoneColBtn" data-action="orgsModule.togglePhoneColumn" title="Toggle Phone Column">
                 <i class="bi bi-telephone"></i>
               </button>
-              <button class="btn btn-sm btn-outline-secondary" onclick="orgsModule.showColumnSettings()" title="Column Visibility Settings">
+              <button class="btn btn-sm btn-outline-secondary" data-action="orgsModule.showColumnSettings" title="Column Visibility Settings">
                 <i class="bi bi-layout-three-columns"></i>
               </button>
-              <button class="btn btn-sm btn-outline-warning" onclick="orgsModule.showDuplicateCheck()" title="Check Duplicates">
+              <button class="btn btn-sm btn-outline-warning" data-action="orgsModule.showDuplicateCheck" title="Check Duplicates">
                 <i class="bi bi-files"></i>
               </button>
-              <button class="btn btn-sm btn-outline-info" id="kanbanToggleBtn" onclick="orgsModule.toggleKanbanView()" title="Kanban Pipeline View">
+              <button class="btn btn-sm btn-outline-info" id="kanbanToggleBtn" data-action="orgsModule.toggleKanbanView" title="Kanban Pipeline View">
                 <i class="bi bi-kanban"></i>
               </button>
-              <button class="btn btn-sm btn-outline-success" id="mapToggleBtn" onclick="orgsModule.toggleMapView()" title="Interactive British Isles Map">
+              <button class="btn btn-sm btn-outline-success" id="mapToggleBtn" data-action="orgsModule.toggleMapView" title="Interactive British Isles Map">
                 <i class="bi bi-map"></i> Map
               </button>
-              <button class="btn btn-sm btn-outline-info" onclick="orgsModule.showAnalyticsDashboard()" title="Analytics & Reports">
+              <button class="btn btn-sm btn-outline-info" data-action="orgsModule.showAnalyticsDashboard" title="Analytics & Reports">
                 <i class="bi bi-bar-chart"></i>
               </button>
-              <button class="btn btn-sm btn-outline-danger" onclick="orgsModule.showDataQualityWizard()" title="Data Quality">
+              <button class="btn btn-sm btn-outline-danger" data-action="orgsModule.showDataQualityWizard" title="Data Quality">
                 <i class="bi bi-shield-check"></i>
               </button>
-              <button class="btn btn-sm btn-outline-dark" onclick="orgsModule.showGlobalAuditLog()" title="Audit Log">
+              <button class="btn btn-sm btn-outline-dark" data-action="orgsModule.showGlobalAuditLog" title="Audit Log">
                 <i class="bi bi-journal-text"></i>
               </button>
-              <button class="btn btn-sm btn-outline-secondary" onclick="orgsModule.showImportHistory()" title="Import History">
+              <button class="btn btn-sm btn-outline-secondary" data-action="orgsModule.showImportHistory" title="Import History">
                 <i class="bi bi-clock-history"></i>
               </button>
-              <button class="btn btn-sm btn-outline-secondary" onclick="orgsModule.showTagFilterModal()" title="Multi-Tag Filter">
+              <button class="btn btn-sm btn-outline-secondary" data-action="orgsModule.showTagFilterModal" title="Multi-Tag Filter">
                 <i class="bi bi-tags"></i>
               </button>
               <div class="vr mx-1"></div>
-              <button class="btn btn-sm btn-outline-info" onclick="orgsModule.showDuplicateDetectionDashboard()" title="Duplicate Detection Scan">
+              <button class="btn btn-sm btn-outline-info" data-action="orgsModule.showDuplicateDetectionDashboard" title="Duplicate Detection Scan">
                 <i class="bi bi-search"></i>
               </button>
             </div>
@@ -1875,7 +1878,7 @@
             <h6 class="mb-0 fw-semibold"><i class="bi bi-map me-2"></i>Organisation Map - British Isles</h6>
             <div class="d-flex gap-2 align-items-center">
               <span class="badge bg-primary" id="mapOrgCount">0</span>
-              <button class="btn btn-sm btn-outline-secondary" onclick="orgsModule.toggleMapView()"><i class="bi bi-x-lg"></i> Close Map</button>
+              <button class="btn btn-sm btn-outline-secondary" data-action="orgsModule.toggleMapView"><i class="bi bi-x-lg"></i> Close Map</button>
             </div>
           </div>
         </div>
@@ -1907,37 +1910,37 @@
                   <input type="checkbox" class="form-check-input" id="selectAllOrgs"
                          aria-label="Select all organisations" onchange="orgsModule.toggleSelectAll()">
                 </th>
-                <th scope="col" style="width: 14%; cursor: pointer;" class="fw-semibold" onclick="orgsModule.sortBy('company')">
+                <th scope="col" style="width: 14%; cursor: pointer;" class="fw-semibold" data-action="orgsModule.sortBy" data-args="[&quot;company&quot;]">
                   Company Name
                   <i class="bi bi-arrow-down-up text-muted ms-1 small" data-sort-icon="company"></i>
                 </th>
-                <th scope="col" style="width: 8%; cursor: pointer;" onclick="orgsModule.sortBy('sector')">
+                <th scope="col" style="width: 8%; cursor: pointer;" data-action="orgsModule.sortBy" data-args="[&quot;sector&quot;]">
                   Sector <i class="bi bi-arrow-down-up text-muted ms-1 small" data-sort-icon="sector"></i>
                 </th>
-                <th scope="col" style="width: 8%; cursor: pointer;" onclick="orgsModule.sortBy('county')">
+                <th scope="col" style="width: 8%; cursor: pointer;" data-action="orgsModule.sortBy" data-args="[&quot;county&quot;]">
                   County <i class="bi bi-arrow-down-up text-muted ms-1 small" data-sort-icon="county"></i>
                 </th>
-                <th scope="col" style="width: 8%; cursor: pointer;" onclick="orgsModule.sortBy('contact')">
+                <th scope="col" style="width: 8%; cursor: pointer;" data-action="orgsModule.sortBy" data-args="[&quot;contact&quot;]">
                   Contact <i class="bi bi-arrow-down-up text-muted ms-1 small" data-sort-icon="contact"></i>
                 </th>
                 <th scope="col" style="width: 10%;">Email</th>
-                <th scope="col" style="width: 5%; cursor: pointer;" onclick="orgsModule.sortBy('tier')">
+                <th scope="col" style="width: 5%; cursor: pointer;" data-action="orgsModule.sortBy" data-args="[&quot;tier&quot;]">
                   Tier <i class="bi bi-arrow-down-up text-muted ms-1 small" data-sort-icon="tier"></i>
                 </th>
                 <th scope="col" style="width: 10%;">Tags</th>
-                <th scope="col" style="width: 7%; cursor: pointer;" onclick="orgsModule.sortBy('region')">
+                <th scope="col" style="width: 7%; cursor: pointer;" data-action="orgsModule.sortBy" data-args="[&quot;region&quot;]">
                   Region <i class="bi bi-arrow-down-up text-muted ms-1 small" data-sort-icon="region"></i>
                 </th>
-                <th scope="col" style="width: 6%; cursor: pointer;" onclick="orgsModule.sortBy('status')">
+                <th scope="col" style="width: 6%; cursor: pointer;" data-action="orgsModule.sortBy" data-args="[&quot;status&quot;]">
                   Status <i class="bi bi-arrow-down-up text-muted ms-1 small" data-sort-icon="status"></i>
                 </th>
-                <th scope="col" style="width: 4%; cursor: pointer; text-align: center;" onclick="orgsModule.sortBy('awards')">
+                <th scope="col" style="width: 4%; cursor: pointer; text-align: center;" data-action="orgsModule.sortBy" data-args="[&quot;awards&quot;]">
                   <i class="bi bi-trophy" title="Awards Count"></i> <i class="bi bi-arrow-down-up text-muted ms-1 small" data-sort-icon="awards"></i>
                 </th>
-                <th scope="col" style="width: 6%; display: none;" id="phoneColHeader" onclick="orgsModule.sortBy('phone')" class="cursor-pointer">
+                <th scope="col" style="width: 6%; display: none;" id="phoneColHeader" data-action="orgsModule.sortBy" data-args="[&quot;phone&quot;]" class="cursor-pointer">
                   Phone <i class="bi bi-arrow-down-up text-muted ms-1 small" data-sort-icon="phone"></i>
                 </th>
-                <th scope="col" style="width: 6%; cursor: pointer; text-align: center;" onclick="orgsModule.sortBy('updated')">
+                <th scope="col" style="width: 6%; cursor: pointer; text-align: center;" data-action="orgsModule.sortBy" data-args="[&quot;updated&quot;]">
                   Updated <i class="bi bi-arrow-down-up text-muted ms-1 small" data-sort-icon="updated"></i>
                 </th>
                 <th scope="col" style="width: 6%; text-align: center;" title="Last Contacted">
@@ -2081,7 +2084,7 @@
           </div>
           <div class="modal-footer">
             <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-            <button type="button" class="btn btn-primary" onclick="orgsModule.saveNewCompany()">
+            <button type="button" class="btn btn-primary" data-action="orgsModule.saveNewCompany">
               <i class="bi bi-check-lg me-1"></i>Save Company
             </button>
           </div>
@@ -2165,7 +2168,7 @@
                 Supported columns: Company Name, Sector, Contact Name, Email, Phone, Website, Address, Catchment Area
               </div>
               <div class="d-flex gap-2 mb-3">
-                <button class="btn btn-sm btn-outline-secondary" id="importMergeModeBtn" onclick="orgsModule.toggleImportMergeMode()">
+                <button class="btn btn-sm btn-outline-secondary" id="importMergeModeBtn" data-action="orgsModule.toggleImportMergeMode">
                   <i class="bi bi-arrow-repeat me-1"></i>Merge Mode: OFF
                 </button>
                 <small class="text-muted align-self-center">When ON, duplicates will be updated with new data instead of skipped</small>
@@ -2179,7 +2182,7 @@
                 <label class="form-label fw-semibold">Or paste CSV content:</label>
                 <textarea class="form-control" id="csvPasteArea" rows="5"
                           placeholder="company_name,sector,email&#10;Acme Ltd,Manufacturing,info@acme.com&#10;..."></textarea>
-                <button class="btn btn-sm btn-outline-primary mt-2" onclick="orgsModule.parseCSVText()">
+                <button class="btn btn-sm btn-outline-primary mt-2" data-action="orgsModule.parseCSVText">
                   <i class="bi bi-clipboard-check me-1"></i>Parse Pasted Data
                 </button>
               </div>
@@ -2189,7 +2192,7 @@
             <div id="csvStep2" style="display: none;">
               <div class="d-flex justify-content-between align-items-center mb-3">
                 <h6 class="mb-0"><i class="bi bi-arrow-left-right me-2"></i>Map CSV Columns</h6>
-                <button class="btn btn-sm btn-outline-secondary" onclick="orgsModule.resetCSVImport()">
+                <button class="btn btn-sm btn-outline-secondary" data-action="orgsModule.resetCSVImport">
                   <i class="bi bi-arrow-counterclockwise me-1"></i>Start Over
                 </button>
               </div>
@@ -2220,7 +2223,7 @@
           </div>
           <div class="modal-footer">
             <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-            <button type="button" class="btn btn-primary" id="csvImportBtn" onclick="orgsModule.executeCSVImport()"
+            <button type="button" class="btn btn-primary" id="csvImportBtn" data-action="orgsModule.executeCSVImport"
                     disabled>
               <i class="bi bi-cloud-upload me-1"></i>Import <span id="csvImportBtnCount"></span> Organisations
             </button>
@@ -2244,14 +2247,14 @@
               <i class="bi bi-arrow-repeat me-1"></i>Status
             </button>
             <ul class="dropdown-menu">
-              <li><a class="dropdown-item" href="#" onclick="orgsModule.bulkStatusChange('prospect')"><i class="bi bi-eye text-secondary me-2"></i>Prospect</a></li>
-              <li><a class="dropdown-item" href="#" onclick="orgsModule.bulkStatusChange('entrant')"><i class="bi bi-pencil text-primary me-2"></i>Entrant</a></li>
-              <li><a class="dropdown-item" href="#" onclick="orgsModule.bulkStatusChange('nominee')"><i class="bi bi-person-check text-info me-2"></i>Nominee</a></li>
-              <li><a class="dropdown-item" href="#" onclick="orgsModule.bulkStatusChange('shortlisted')"><i class="bi bi-list-check text-warning me-2"></i>Shortlisted</a></li>
-              <li><a class="dropdown-item" href="#" onclick="orgsModule.bulkStatusChange('winner')"><i class="bi bi-trophy text-success me-2"></i>Winner</a></li>
-              <li><a class="dropdown-item" href="#" onclick="orgsModule.bulkStatusChange('sponsor')"><i class="bi bi-star text-purple me-2" style="color:#6f42c1;"></i>Sponsor</a></li>
+              <li><a class="dropdown-item" href="#" data-action="orgsModule.bulkStatusChange" data-args="[&quot;prospect&quot;]"><i class="bi bi-eye text-secondary me-2"></i>Prospect</a></li>
+              <li><a class="dropdown-item" href="#" data-action="orgsModule.bulkStatusChange" data-args="[&quot;entrant&quot;]"><i class="bi bi-pencil text-primary me-2"></i>Entrant</a></li>
+              <li><a class="dropdown-item" href="#" data-action="orgsModule.bulkStatusChange" data-args="[&quot;nominee&quot;]"><i class="bi bi-person-check text-info me-2"></i>Nominee</a></li>
+              <li><a class="dropdown-item" href="#" data-action="orgsModule.bulkStatusChange" data-args="[&quot;shortlisted&quot;]"><i class="bi bi-list-check text-warning me-2"></i>Shortlisted</a></li>
+              <li><a class="dropdown-item" href="#" data-action="orgsModule.bulkStatusChange" data-args="[&quot;winner&quot;]"><i class="bi bi-trophy text-success me-2"></i>Winner</a></li>
+              <li><a class="dropdown-item" href="#" data-action="orgsModule.bulkStatusChange" data-args="[&quot;sponsor&quot;]"><i class="bi bi-star text-purple me-2" style="color:#6f42c1;"></i>Sponsor</a></li>
               <li><hr class="dropdown-divider"></li>
-              <li><a class="dropdown-item text-danger" href="#" onclick="orgsModule.bulkStatusChange('archived')"><i class="bi bi-archive me-2"></i>Archive</a></li>
+              <li><a class="dropdown-item text-danger" href="#" data-action="orgsModule.bulkStatusChange" data-args="[&quot;archived&quot;]"><i class="bi bi-archive me-2"></i>Archive</a></li>
             </ul>
           </div>
           <div class="btn-group btn-group-sm">
@@ -2259,21 +2262,21 @@
               <i class="bi bi-pencil-square me-1"></i>Set Field
             </button>
             <ul class="dropdown-menu">
-              <li><a class="dropdown-item" href="#" onclick="orgsModule.showBulkFieldModal('sector')"><i class="bi bi-briefcase text-primary me-2"></i>Sector</a></li>
-              <li><a class="dropdown-item" href="#" onclick="orgsModule.showBulkFieldModal('region')"><i class="bi bi-geo-alt text-success me-2"></i>Region</a></li>
-              <li><a class="dropdown-item" href="#" onclick="orgsModule.showBulkFieldModal('tier')"><i class="bi bi-award text-warning me-2"></i>Tier</a></li>
+              <li><a class="dropdown-item" href="#" data-action="orgsModule.showBulkFieldModal" data-args="[&quot;sector&quot;]"><i class="bi bi-briefcase text-primary me-2"></i>Sector</a></li>
+              <li><a class="dropdown-item" href="#" data-action="orgsModule.showBulkFieldModal" data-args="[&quot;region&quot;]"><i class="bi bi-geo-alt text-success me-2"></i>Region</a></li>
+              <li><a class="dropdown-item" href="#" data-action="orgsModule.showBulkFieldModal" data-args="[&quot;tier&quot;]"><i class="bi bi-award text-warning me-2"></i>Tier</a></li>
             </ul>
           </div>
-          <button class="btn btn-sm btn-success" onclick="orgsModule.bulkFetchLogos()" title="Fetch logos for selected orgs with websites but no logo">
+          <button class="btn btn-sm btn-success" data-action="orgsModule.bulkFetchLogos" title="Fetch logos for selected orgs with websites but no logo">
             <i class="bi bi-image me-1"></i>Logos
           </button>
-          <button class="btn btn-sm btn-secondary" onclick="orgsModule.showBulkTagModal()" title="Add/remove tags for selected">
+          <button class="btn btn-sm btn-secondary" data-action="orgsModule.showBulkTagModal" title="Add/remove tags for selected">
             <i class="bi bi-tags me-1"></i>Tags
           </button>
-          <button class="btn btn-sm btn-info" onclick="orgsModule.showBulkAssignAwardModal()" title="Assign selected to an award">
+          <button class="btn btn-sm btn-info" data-action="orgsModule.showBulkAssignAwardModal" title="Assign selected to an award">
             <i class="bi bi-trophy me-1"></i>Assign Award
           </button>
-          <button class="btn btn-sm btn-primary" onclick="orgsModule.bulkEmail()">
+          <button class="btn btn-sm btn-primary" data-action="orgsModule.bulkEmail">
             <i class="bi bi-envelope me-1"></i>Email
           </button>
           <div class="btn-group btn-group-sm d-inline-block">
@@ -2281,24 +2284,24 @@
               <i class="bi bi-download me-1"></i>Export
             </button>
             <ul class="dropdown-menu">
-              <li><a class="dropdown-item" href="#" onclick="orgsModule.bulkExport('csv')"><i class="bi bi-filetype-csv text-success me-2"></i>Export CSV</a></li>
-              <li><a class="dropdown-item" href="#" onclick="orgsModule.bulkExport('excel')"><i class="bi bi-file-earmark-spreadsheet text-primary me-2"></i>Export Excel</a></li>
+              <li><a class="dropdown-item" href="#" data-action="orgsModule.bulkExport" data-args="[&quot;csv&quot;]"><i class="bi bi-filetype-csv text-success me-2"></i>Export CSV</a></li>
+              <li><a class="dropdown-item" href="#" data-action="orgsModule.bulkExport" data-args="[&quot;excel&quot;]"><i class="bi bi-file-earmark-spreadsheet text-primary me-2"></i>Export Excel</a></li>
               <li><a class="dropdown-item" href="#" onclick="event.preventDefault(); orgsModule.bulkExport('pdf')"><i class="bi bi-file-pdf text-danger me-2"></i>Print / PDF</a></li>
             </ul>
           </div>
-          <button class="btn btn-sm btn-outline-info" onclick="orgsModule.showOrgComparison()" title="Compare selected (2-4)">
+          <button class="btn btn-sm btn-outline-info" data-action="orgsModule.showOrgComparison" title="Compare selected (2-4)">
             <i class="bi bi-layout-split me-1"></i>Compare
           </button>
-          <button class="btn btn-sm btn-outline-secondary" onclick="orgsModule.showBulkCustomFieldModal()" title="Bulk edit custom field">
+          <button class="btn btn-sm btn-outline-secondary" data-action="orgsModule.showBulkCustomFieldModal" title="Bulk edit custom field">
             <i class="bi bi-input-cursor-text me-1"></i>Custom Field
           </button>
-          <button class="btn btn-sm btn-outline-warning" onclick="orgsModule.showMergeDuplicatesModal()" title="Merge selected organisations">
+          <button class="btn btn-sm btn-outline-warning" data-action="orgsModule.showMergeDuplicatesModal" title="Merge selected organisations">
             <i class="bi bi-intersect me-1"></i>Merge
           </button>
-          <button class="btn btn-sm btn-danger" onclick="orgsModule.bulkDelete()">
+          <button class="btn btn-sm btn-danger" data-action="orgsModule.bulkDelete">
             <i class="bi bi-archive me-1"></i>Archive
           </button>
-          <button class="btn btn-sm btn-outline-secondary" onclick="orgsModule.clearSelection()">
+          <button class="btn btn-sm btn-outline-secondary" data-action="orgsModule.clearSelection">
             <i class="bi bi-x-lg me-1"></i>Clear
           </button>
         </div>
@@ -2361,7 +2364,7 @@
                   <select class="form-select form-select-sm" id="winnersSavedViewsList" onchange="if(this.value) winnersModule.loadSavedWinnersView(parseInt(this.value))">
                     <option value="">No saved views</option>
                   </select>
-                  <button class="btn btn-outline-primary" onclick="winnersModule.saveCurrentWinnersView()" title="Save current filters as view">
+                  <button class="btn btn-outline-primary" data-action="winnersModule.saveCurrentWinnersView" title="Save current filters as view">
                     <i class="bi bi-bookmark-plus"></i>
                   </button>
                 </div>
@@ -2374,13 +2377,13 @@
             <div class="card-body py-2 d-flex align-items-center justify-content-between">
               <span><strong id="winnersBulkCount">0</strong> winners selected</span>
               <div class="btn-group btn-group-sm">
-                <button class="btn btn-outline-danger" onclick="winnersModule.bulkDeleteWinners()">
+                <button class="btn btn-outline-danger" data-action="winnersModule.bulkDeleteWinners">
                   <i class="bi bi-trash me-1"></i>Delete Selected
                 </button>
-                <button class="btn btn-outline-secondary" onclick="winnersModule.bulkExportWinners()">
+                <button class="btn btn-outline-secondary" data-action="winnersModule.bulkExportWinners">
                   <i class="bi bi-download me-1"></i>Export Selected
                 </button>
-                <button class="btn btn-outline-secondary" onclick="winnersModule.clearWinnerSelection()">
+                <button class="btn btn-outline-secondary" data-action="winnersModule.clearWinnerSelection">
                   <i class="bi bi-x-circle me-1"></i>Clear
                 </button>
               </div>
@@ -2394,16 +2397,16 @@
                 <i class="bi bi-list-ul me-2"></i>Winners List
               </h5>
               <div class="d-flex gap-2 align-items-center flex-wrap">
-                <button class="btn btn-info btn-sm" onclick="winnersModule.openYearComparison()">
+                <button class="btn btn-info btn-sm" data-action="winnersModule.openYearComparison">
                   <i class="bi bi-bar-chart-line me-1"></i>Year Comparison
                 </button>
-                <button class="btn btn-secondary btn-sm" onclick="winnersModule.bulkGenerateMediaPacks()">
+                <button class="btn btn-secondary btn-sm" data-action="winnersModule.bulkGenerateMediaPacks">
                   <i class="bi bi-newspaper me-1"></i>Bulk Media Packs
                 </button>
-                <button class="btn btn-primary btn-sm" onclick="winnersModule.bulkGenerateWinnerPackages()">
+                <button class="btn btn-primary btn-sm" data-action="winnersModule.bulkGenerateWinnerPackages">
                   <i class="bi bi-gift me-1"></i>Bulk Winner Packages
                 </button>
-                <button class="btn btn-success btn-sm" onclick="winnersModule.openImportWinners()">
+                <button class="btn btn-success btn-sm" data-action="winnersModule.openImportWinners">
                   <i class="bi bi-upload me-1"></i>Import CSV
                 </button>
                 <div class="btn-group btn-group-sm">
@@ -2427,11 +2430,11 @@
                 <thead>
                   <tr>
                     <th scope="col" style="width:35px"><input type="checkbox" class="form-check-input" id="selectAllWinners" onchange="winnersModule.toggleSelectAllWinners(this.checked)" aria-label="Select all winners"></th>
-                    <th scope="col" style="cursor: pointer;" data-sort-field="winner_name" onclick="winnersModule.sortWinners('winner_name')">Winner Name <i data-sort-icon-winners="winner_name" class="bi bi-arrow-down-up text-muted ms-1 small"></i></th>
-                    <th scope="col" style="cursor: pointer;" data-sort-field="award" onclick="winnersModule.sortWinners('award')">Award <i data-sort-icon-winners="award" class="bi bi-arrow-down-up text-muted ms-1 small"></i></th>
-                    <th scope="col" style="cursor: pointer;" data-sort-field="year" onclick="winnersModule.sortWinners('year')">Year <i data-sort-icon-winners="year" class="bi bi-arrow-down-up text-muted ms-1 small"></i></th>
+                    <th scope="col" style="cursor: pointer;" data-sort-field="winner_name" data-action="winnersModule.sortWinners" data-args="[&quot;winner_name&quot;]">Winner Name <i data-sort-icon-winners="winner_name" class="bi bi-arrow-down-up text-muted ms-1 small"></i></th>
+                    <th scope="col" style="cursor: pointer;" data-sort-field="award" data-action="winnersModule.sortWinners" data-args="[&quot;award&quot;]">Award <i data-sort-icon-winners="award" class="bi bi-arrow-down-up text-muted ms-1 small"></i></th>
+                    <th scope="col" style="cursor: pointer;" data-sort-field="year" data-action="winnersModule.sortWinners" data-args="[&quot;year&quot;]">Year <i data-sort-icon-winners="year" class="bi bi-arrow-down-up text-muted ms-1 small"></i></th>
                     <th scope="col">Media</th>
-                    <th scope="col" style="cursor: pointer;" data-sort-field="status" onclick="winnersModule.sortWinners('status')">Status <i data-sort-icon-winners="status" class="bi bi-arrow-down-up text-muted ms-1 small"></i></th>
+                    <th scope="col" style="cursor: pointer;" data-sort-field="status" data-action="winnersModule.sortWinners" data-args="[&quot;status&quot;]">Status <i data-sort-icon-winners="status" class="bi bi-arrow-down-up text-muted ms-1 small"></i></th>
                     <th scope="col" width="220" class="text-center">Actions</th>
                   </tr>
                 </thead>
@@ -2579,14 +2582,14 @@
                     <select class="form-select form-select-sm" id="entriesSavedViewsList" onchange="if(this.value) entriesModule.loadSavedEntriesView(parseInt(this.value))">
                       <option value="">No saved views</option>
                     </select>
-                    <button class="btn btn-outline-primary" onclick="entriesModule.saveCurrentEntriesView()" title="Save current filters as view">
+                    <button class="btn btn-outline-primary" data-action="entriesModule.saveCurrentEntriesView" title="Save current filters as view">
                       <i class="bi bi-bookmark-plus"></i>
                     </button>
                   </div>
                 </div>
               </div>
               <div class="mt-3 d-flex gap-2">
-                <button class="btn btn-sm btn-primary" onclick="entriesModule.openPublicFormLink()">
+                <button class="btn btn-sm btn-primary" data-action="entriesModule.openPublicFormLink">
                   <i class="bi bi-link-45deg me-1"></i>Get Public Entry Form Link
                 </button>
                 <div class="btn-group">
@@ -2599,7 +2602,7 @@
                     <li><a class="dropdown-item" href="#" onclick="event.preventDefault(); entriesModule.exportEntriesPDF()"><i class="bi bi-file-pdf text-danger me-2"></i>Print / PDF</a></li>
                   </ul>
                 </div>
-                <button class="btn btn-sm btn-outline-danger" onclick="entriesModule.bulkActions()">
+                <button class="btn btn-sm btn-outline-danger" data-action="entriesModule.bulkActions">
                   <i class="bi bi-list-check me-1"></i>Bulk Actions
                 </button>
               </div>
@@ -2620,14 +2623,14 @@
                     <th scope="col" style="width: 40px;">
                       <input type="checkbox" id="selectAllEntries" onchange="entriesModule.toggleSelectAll()" aria-label="Select all entries">
                     </th>
-                    <th scope="col" style="cursor:pointer" onclick="entriesModule.sortEntries('entry_number')">Entry # <i data-sort-icon-entries="entry_number" class="bi bi-arrow-down-up text-muted ms-1 small"></i></th>
-                    <th scope="col" style="cursor:pointer" onclick="entriesModule.sortEntries('company')">Company <i data-sort-icon-entries="company" class="bi bi-arrow-down-up text-muted ms-1 small"></i></th>
-                    <th scope="col" style="cursor:pointer" onclick="entriesModule.sortEntries('award')">Award <i data-sort-icon-entries="award" class="bi bi-arrow-down-up text-muted ms-1 small"></i></th>
+                    <th scope="col" style="cursor:pointer" data-action="entriesModule.sortEntries" data-args="[&quot;entry_number&quot;]">Entry # <i data-sort-icon-entries="entry_number" class="bi bi-arrow-down-up text-muted ms-1 small"></i></th>
+                    <th scope="col" style="cursor:pointer" data-action="entriesModule.sortEntries" data-args="[&quot;company&quot;]">Company <i data-sort-icon-entries="company" class="bi bi-arrow-down-up text-muted ms-1 small"></i></th>
+                    <th scope="col" style="cursor:pointer" data-action="entriesModule.sortEntries" data-args="[&quot;award&quot;]">Award <i data-sort-icon-entries="award" class="bi bi-arrow-down-up text-muted ms-1 small"></i></th>
                     <th scope="col">Entry Title</th>
-                    <th scope="col" style="cursor:pointer" onclick="entriesModule.sortEntries('status')">Status <i data-sort-icon-entries="status" class="bi bi-arrow-down-up text-muted ms-1 small"></i></th>
-                    <th scope="col" style="cursor:pointer" onclick="entriesModule.sortEntries('score')">Score <i data-sort-icon-entries="score" class="bi bi-arrow-down-up text-muted ms-1 small"></i></th>
+                    <th scope="col" style="cursor:pointer" data-action="entriesModule.sortEntries" data-args="[&quot;status&quot;]">Status <i data-sort-icon-entries="status" class="bi bi-arrow-down-up text-muted ms-1 small"></i></th>
+                    <th scope="col" style="cursor:pointer" data-action="entriesModule.sortEntries" data-args="[&quot;score&quot;]">Score <i data-sort-icon-entries="score" class="bi bi-arrow-down-up text-muted ms-1 small"></i></th>
                     <th scope="col">Payment</th>
-                    <th scope="col" style="cursor:pointer" onclick="entriesModule.sortEntries('submission_date')">Submitted <i data-sort-icon-entries="submission_date" class="bi bi-arrow-down-up text-muted ms-1 small"></i></th>
+                    <th scope="col" style="cursor:pointer" data-action="entriesModule.sortEntries" data-args="[&quot;submission_date&quot;]">Submitted <i data-sort-icon-entries="submission_date" class="bi bi-arrow-down-up text-muted ms-1 small"></i></th>
                     <th scope="col" style="width: 150px;">Actions</th>
                   </tr>
                 </thead>
@@ -2662,10 +2665,10 @@
               <p class="section-subtitle">Manage event photos and videos</p>
             </div>
             <div class="d-flex gap-2 align-items-center flex-wrap">
-              <button class="btn btn-sm btn-outline-warning" onclick="mediaGalleryModule.showFeaturedPhotosView()" title="Featured Photos">
+              <button class="btn btn-sm btn-outline-warning" data-action="mediaGalleryModule.showFeaturedPhotosView" title="Featured Photos">
                 <i class="bi bi-star-fill me-1"></i>Featured
               </button>
-              <button class="btn btn-sm btn-outline-secondary" onclick="mediaGalleryModule.showKeyboardShortcutsHelp()" title="Keyboard Shortcuts">
+              <button class="btn btn-sm btn-outline-secondary" data-action="mediaGalleryModule.showKeyboardShortcutsHelp" title="Keyboard Shortcuts">
                 <i class="bi bi-keyboard me-1"></i>Shortcuts
               </button>
               <div class="input-group input-group-sm" style="width:280px;">
@@ -2693,7 +2696,7 @@
             <!-- Event Contents View (hidden by default) -->
             <div id="eventContentsView" style="display: none;">
               <div class="mb-4">
-                <button class="btn btn-outline-secondary btn-sm" onclick="mediaGalleryModule.showEventsListView()">
+                <button class="btn btn-outline-secondary btn-sm" data-action="mediaGalleryModule.showEventsListView">
                   <i class="bi bi-arrow-left me-2"></i>Back to Events
                 </button>
                 <h3 class="mt-3" id="eventContentsTitle">Event Contents</h3>
@@ -2702,7 +2705,7 @@
               <div class="row g-4">
                 <!-- Photos Section Card -->
                 <div class="col-md-6">
-                  <div class="card h-100 border-primary" style="cursor: pointer;" onclick="mediaGalleryModule.openPhotosProduction()">
+                  <div class="card h-100 border-primary" style="cursor: pointer;" data-action="mediaGalleryModule.openPhotosProduction">
                     <div class="card-body text-center">
                       <i class="bi bi-camera-fill text-primary" style="font-size: 4rem;"></i>
                       <h4 class="mt-3">Photos</h4>
@@ -2720,7 +2723,7 @@
 
                 <!-- Videos Section Card -->
                 <div class="col-md-6">
-                  <div class="card h-100 border-danger" style="cursor: pointer;" onclick="mediaGalleryModule.openVideosProduction()">
+                  <div class="card h-100 border-danger" style="cursor: pointer;" data-action="mediaGalleryModule.openVideosProduction">
                     <div class="card-body text-center">
                       <i class="bi bi-play-btn-fill text-danger" style="font-size: 4rem;"></i>
                       <h4 class="mt-3">Videos</h4>
@@ -2741,7 +2744,7 @@
             <!-- Photos Production View (hidden by default) -->
             <div id="photosProductionView" style="display: none;">
               <div class="mb-4">
-                <button class="btn btn-outline-secondary btn-sm" onclick="mediaGalleryModule.showEventContentsView()">
+                <button class="btn btn-outline-secondary btn-sm" data-action="mediaGalleryModule.showEventContentsView">
                   <i class="bi bi-arrow-left me-2"></i>Back to Event Contents
                 </button>
                 <h3 class="mt-3">
@@ -2757,9 +2760,9 @@
                     <i class="bi bi-tools me-1"></i>Photo Tools
                   </button>
                   <ul class="dropdown-menu">
-                    <li><a class="dropdown-item" href="#" onclick="mediaGalleryModule.openWatermarkModal()"><i class="bi bi-droplet text-info me-2"></i>Watermark Photos</a></li>
-                    <li><a class="dropdown-item" href="#" onclick="mediaGalleryModule.openExportModal()"><i class="bi bi-box-arrow-up text-primary me-2"></i>Export for Social</a></li>
-                    <li><a class="dropdown-item" href="#" onclick="mediaGalleryModule.openComparisonModal()"><i class="bi bi-layout-split text-success me-2"></i>Event Comparison</a></li>
+                    <li><a class="dropdown-item" href="#" data-action="mediaGalleryModule.openWatermarkModal"><i class="bi bi-droplet text-info me-2"></i>Watermark Photos</a></li>
+                    <li><a class="dropdown-item" href="#" data-action="mediaGalleryModule.openExportModal"><i class="bi bi-box-arrow-up text-primary me-2"></i>Export for Social</a></li>
+                    <li><a class="dropdown-item" href="#" data-action="mediaGalleryModule.openComparisonModal"><i class="bi bi-layout-split text-success me-2"></i>Event Comparison</a></li>
                   </ul>
                 </div>
               </div>
@@ -2776,7 +2779,7 @@
             <!-- Videos Production View (hidden by default) -->
             <div id="videosProductionView" style="display: none;">
               <div class="mb-4">
-                <button class="btn btn-outline-secondary btn-sm" onclick="mediaGalleryModule.showEventContentsView()">
+                <button class="btn btn-outline-secondary btn-sm" data-action="mediaGalleryModule.showEventContentsView">
                   <i class="bi bi-arrow-left me-2"></i>Back to Event Contents
                 </button>
                 <h3 class="mt-3">
@@ -2787,13 +2790,13 @@
 
               <!-- Video Action Buttons -->
               <div class="mb-4 d-flex flex-wrap gap-2">
-                <button class="btn btn-primary" onclick="mediaGalleryModule.openAddVideoModal()">
+                <button class="btn btn-primary" data-action="mediaGalleryModule.openAddVideoModal">
                   <i class="bi bi-plus-circle me-2"></i>Add Video / YouTube Link
                 </button>
-                <button class="btn btn-outline-danger" onclick="mediaGalleryModule.openBulkYouTubeModal()">
+                <button class="btn btn-outline-danger" data-action="mediaGalleryModule.openBulkYouTubeModal">
                   <i class="bi bi-youtube me-2"></i>Bulk YouTube Import
                 </button>
-                <button class="btn btn-outline-info" onclick="mediaGalleryModule.openPlaylistSyncModal()">
+                <button class="btn btn-outline-info" data-action="mediaGalleryModule.openPlaylistSyncModal">
                   <i class="bi bi-collection-play me-2"></i>Playlist Import
                 </button>
                 <div class="btn-group btn-group-sm">
@@ -2801,12 +2804,12 @@
                     <i class="bi bi-tools me-1"></i>Tools
                   </button>
                   <ul class="dropdown-menu">
-                    <li><a class="dropdown-item" href="#" onclick="mediaGalleryModule.openYouTubeHealthCheck()"><i class="bi bi-heart-pulse text-danger me-2"></i>YouTube Link Checker</a></li>
-                    <li><a class="dropdown-item" href="#" onclick="mediaGalleryModule.openComparisonModal()"><i class="bi bi-layout-split text-success me-2"></i>Event Comparison</a></li>
-                    <li><a class="dropdown-item" href="#" onclick="mediaGalleryModule.openExportModal()"><i class="bi bi-box-arrow-up text-primary me-2"></i>Export for Social</a></li>
-                    <li><a class="dropdown-item" href="#" onclick="mediaGalleryModule.openWatermarkModal()"><i class="bi bi-droplet text-info me-2"></i>Watermark Photos</a></li>
+                    <li><a class="dropdown-item" href="#" data-action="mediaGalleryModule.openYouTubeHealthCheck"><i class="bi bi-heart-pulse text-danger me-2"></i>YouTube Link Checker</a></li>
+                    <li><a class="dropdown-item" href="#" data-action="mediaGalleryModule.openComparisonModal"><i class="bi bi-layout-split text-success me-2"></i>Event Comparison</a></li>
+                    <li><a class="dropdown-item" href="#" data-action="mediaGalleryModule.openExportModal"><i class="bi bi-box-arrow-up text-primary me-2"></i>Export for Social</a></li>
+                    <li><a class="dropdown-item" href="#" data-action="mediaGalleryModule.openWatermarkModal"><i class="bi bi-droplet text-info me-2"></i>Watermark Photos</a></li>
                     <li><hr class="dropdown-divider"></li>
-                    <li><a class="dropdown-item" href="#" onclick="mediaGalleryModule.toggleVideoReorderMode()"><i class="bi bi-sort-numeric-down text-warning me-2"></i>Reorder Videos</a></li>
+                    <li><a class="dropdown-item" href="#" data-action="mediaGalleryModule.toggleVideoReorderMode"><i class="bi bi-sort-numeric-down text-warning me-2"></i>Reorder Videos</a></li>
                   </ul>
                 </div>
               </div>
@@ -2917,7 +2920,7 @@
                     <select class="form-select" id="videoTagInput">
                       <option value="">Select a company...</option>
                     </select>
-                    <button class="btn btn-outline-secondary" type="button" onclick="mediaGalleryModule.addVideoTag()">
+                    <button class="btn btn-outline-secondary" type="button" data-action="mediaGalleryModule.addVideoTag">
                       <i class="bi bi-plus-circle me-1"></i>Add Company
                     </button>
                   </div>
@@ -2936,7 +2939,7 @@
                     <select class="form-select" id="videoAwardTagInput">
                       <option value="">Select an award...</option>
                     </select>
-                    <button class="btn btn-outline-secondary" type="button" onclick="mediaGalleryModule.addVideoAwardTag()">
+                    <button class="btn btn-outline-secondary" type="button" data-action="mediaGalleryModule.addVideoAwardTag">
                       <i class="bi bi-plus-circle me-1"></i>Add Award
                     </button>
                   </div>
@@ -2956,7 +2959,7 @@
             </div>
             <div class="modal-footer">
               <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-              <button type="button" class="btn btn-primary" onclick="mediaGalleryModule.saveVideo()">
+              <button type="button" class="btn btn-primary" data-action="mediaGalleryModule.saveVideo">
                 <i class="bi bi-save me-2"></i>Save Video
               </button>
             </div>
@@ -2992,7 +2995,7 @@
                     <select class="form-select" id="bulkVideoTagInput">
                       <option value="">Select company...</option>
                     </select>
-                    <button class="btn btn-outline-secondary" type="button" onclick="mediaGalleryModule.addVideoTag('bulk')"><i class="bi bi-plus"></i></button>
+                    <button class="btn btn-outline-secondary" type="button" data-action="mediaGalleryModule.addVideoTag" data-args="[&quot;bulk&quot;]"><i class="bi bi-plus"></i></button>
                   </div>
                   <div id="bulkVideoTagsContainer" class="d-flex flex-wrap gap-1 mt-1"></div>
                 </div>
@@ -3002,7 +3005,7 @@
                     <select class="form-select" id="bulkVideoAwardTagInput">
                       <option value="">Select award...</option>
                     </select>
-                    <button class="btn btn-outline-secondary" type="button" onclick="mediaGalleryModule.addVideoAwardTag('bulk')"><i class="bi bi-plus"></i></button>
+                    <button class="btn btn-outline-secondary" type="button" data-action="mediaGalleryModule.addVideoAwardTag" data-args="[&quot;bulk&quot;]"><i class="bi bi-plus"></i></button>
                   </div>
                   <div id="bulkVideoAwardTagsContainer" class="d-flex flex-wrap gap-1 mt-1"></div>
                 </div>
@@ -3010,7 +3013,7 @@
             </div>
             <div class="modal-footer">
               <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-              <button type="button" class="btn btn-danger" onclick="mediaGalleryModule.saveBulkYouTube()">
+              <button type="button" class="btn btn-danger" data-action="mediaGalleryModule.saveBulkYouTube">
                 <i class="bi bi-cloud-upload me-2"></i>Import All Videos
               </button>
             </div>
@@ -3035,7 +3038,7 @@
                 <label class="form-label">YouTube Playlist URL</label>
                 <div class="input-group">
                   <input type="text" class="form-control" id="playlistUrl" placeholder="https://www.youtube.com/playlist?list=PLxxxxxxxx">
-                  <button class="btn btn-info text-white" onclick="mediaGalleryModule.fetchPlaylistVideos()">
+                  <button class="btn btn-info text-white" data-action="mediaGalleryModule.fetchPlaylistVideos">
                     <i class="bi bi-search me-1"></i>Fetch
                   </button>
                 </div>
@@ -3045,7 +3048,7 @@
             </div>
             <div class="modal-footer">
               <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-              <button type="button" class="btn btn-info text-white" onclick="mediaGalleryModule.importPlaylistVideos()">
+              <button type="button" class="btn btn-info text-white" data-action="mediaGalleryModule.importPlaylistVideos">
                 <i class="bi bi-cloud-upload me-2"></i>Import Videos
               </button>
             </div>
@@ -3092,10 +3095,10 @@
                     <label class="form-label">Opacity: <span id="watermarkOpacityValue">30%</span></label>
                     <input type="range" class="form-range" id="watermarkOpacity" min="5" max="80" value="30" oninput="document.getElementById('watermarkOpacityValue').textContent = this.value + '%'">
                   </div>
-                  <button class="btn btn-outline-primary me-2" onclick="mediaGalleryModule.previewWatermark()">
+                  <button class="btn btn-outline-primary me-2" data-action="mediaGalleryModule.previewWatermark">
                     <i class="bi bi-eye me-1"></i>Preview
                   </button>
-                  <button class="btn btn-primary" onclick="mediaGalleryModule.applyWatermarks()">
+                  <button class="btn btn-primary" data-action="mediaGalleryModule.applyWatermarks">
                     <i class="bi bi-droplet me-1"></i>Apply & Download
                   </button>
                 </div>
@@ -3131,7 +3134,7 @@
                   <select class="form-select" id="exportOrgSelect">
                     <option value="">Select a company...</option>
                   </select>
-                  <button class="btn btn-outline-primary" onclick="mediaGalleryModule.previewExport()">
+                  <button class="btn btn-outline-primary" data-action="mediaGalleryModule.previewExport">
                     <i class="bi bi-search me-1"></i>Preview
                   </button>
                 </div>
@@ -3141,7 +3144,7 @@
             </div>
             <div class="modal-footer">
               <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-              <button type="button" class="btn btn-success" onclick="mediaGalleryModule.downloadExportPackage()">
+              <button type="button" class="btn btn-success" data-action="mediaGalleryModule.downloadExportPackage">
                 <i class="bi bi-download me-2"></i>Download Package
               </button>
             </div>
@@ -3178,7 +3181,7 @@
                   </select>
                 </div>
                 <div class="col-md-1 d-flex align-items-end">
-                  <button class="btn btn-primary w-100" onclick="mediaGalleryModule.runComparison()">
+                  <button class="btn btn-primary w-100" data-action="mediaGalleryModule.runComparison">
                     <i class="bi bi-arrow-left-right"></i>
                   </button>
                 </div>
@@ -3202,7 +3205,7 @@
                 <i class="bi bi-info-circle me-2"></i>Checks all YouTube video links in the system to verify they're still accessible. Detects deleted, private, or restricted videos.
               </div>
               <div class="text-center mb-3">
-                <button class="btn btn-warning btn-lg" onclick="mediaGalleryModule.runYouTubeHealthCheck()">
+                <button class="btn btn-warning btn-lg" data-action="mediaGalleryModule.runYouTubeHealthCheck">
                   <i class="bi bi-play-circle me-2"></i>Run Health Check
                 </button>
               </div>
@@ -3268,7 +3271,7 @@
 
           <!-- Financial Overview Panel (collapsible) -->
           <div class="card mb-4" id="eventsFinancialPanel">
-            <div class="card-header d-flex justify-content-between align-items-center py-2" style="cursor:pointer" onclick="document.getElementById('financialPanelBody').style.display = document.getElementById('financialPanelBody').style.display === 'none' ? 'block' : 'none'; this.querySelector('.bi-chevron-down, .bi-chevron-up').classList.toggle('bi-chevron-down'); this.querySelector('.bi-chevron-down, .bi-chevron-up').classList.toggle('bi-chevron-up');">
+            <div class="card-header d-flex justify-content-between align-items-center py-2" style="cursor:pointer" data-action="document.getElementById" data-args="[&quot;financialPanelBody').style.display = document.getElementById('financialPanelBody').style.display === 'none' ? 'block' : 'none'; this.querySelector('.bi-chevron-down, .bi-chevron-up').classList.toggle('bi-chevron-down'); this.querySelector('.bi-chevron-down, .bi-chevron-up').classList.toggle('bi-chevron-up&quot;]">
               <h6 class="mb-0"><i class="bi bi-cash-stack me-2"></i>Financial Overview - All Events</h6>
               <i class="bi bi-chevron-down"></i>
             </div>
@@ -3326,7 +3329,7 @@
                 </table>
               </div>
               <div class="text-end mt-2">
-                <button class="btn btn-sm btn-outline-secondary" onclick="eventsModule.exportFinancialSummary()"><i class="bi bi-download me-1"></i>Export Financial Report</button>
+                <button class="btn btn-sm btn-outline-secondary" data-action="eventsModule.exportFinancialSummary"><i class="bi bi-download me-1"></i>Export Financial Report</button>
               </div>
             </div>
           </div>
@@ -3382,20 +3385,20 @@
               </div>
               <div class="col-md-4 text-end">
                 <div class="d-flex gap-2 justify-content-end flex-wrap">
-                  <button class="btn btn-outline-secondary btn-sm" onclick="eventsModule.resetEventFilters()" title="Reset Filters">
+                  <button class="btn btn-outline-secondary btn-sm" data-action="eventsModule.resetEventFilters" title="Reset Filters">
                     <i class="bi bi-x-circle me-1"></i>Reset
                   </button>
                   <div class="vr mx-1"></div>
-                  <button class="btn btn-outline-info btn-sm" onclick="eventsModule.toggleEventsCalendar()" title="Calendar View">
+                  <button class="btn btn-outline-info btn-sm" data-action="eventsModule.toggleEventsCalendar" title="Calendar View">
                     <i class="bi bi-calendar-week"></i>
                   </button>
-                  <button class="btn btn-outline-secondary btn-sm" onclick="eventsModule.openTemplatesManager()" title="Event Templates">
+                  <button class="btn btn-outline-secondary btn-sm" data-action="eventsModule.openTemplatesManager" title="Event Templates">
                     <i class="bi bi-layout-text-sidebar"></i>
                   </button>
-                  <button class="btn btn-outline-secondary btn-sm" onclick="eventsModule.showImportAttendeesModal()" title="Import Attendees CSV">
+                  <button class="btn btn-outline-secondary btn-sm" data-action="eventsModule.showImportAttendeesModal" title="Import Attendees CSV">
                     <i class="bi bi-upload"></i>
                   </button>
-                  <button class="btn btn-primary btn-sm" onclick="eventsModule.openAddModal()">
+                  <button class="btn btn-primary btn-sm" data-action="eventsModule.openAddModal">
                     <i class="bi bi-plus-circle me-1"></i>Add Event
                   </button>
                 </div>
@@ -3408,11 +3411,11 @@
             <div class="d-flex justify-content-between align-items-center mb-3">
               <h5 class="mb-0"><i class="bi bi-calendar-week me-2"></i>Events Calendar</h5>
               <div class="d-flex gap-2 align-items-center">
-                <button class="btn btn-sm btn-outline-secondary" onclick="eventsModule.calendarPrev()" aria-label="Previous month"><i class="bi bi-chevron-left"></i></button>
+                <button class="btn btn-sm btn-outline-secondary" data-action="eventsModule.calendarPrev" aria-label="Previous month"><i class="bi bi-chevron-left"></i></button>
                 <span class="fw-semibold" id="eventsCalendarTitle">February 2026</span>
-                <button class="btn btn-sm btn-outline-secondary" onclick="eventsModule.calendarNext()" aria-label="Next month"><i class="bi bi-chevron-right"></i></button>
+                <button class="btn btn-sm btn-outline-secondary" data-action="eventsModule.calendarNext" aria-label="Next month"><i class="bi bi-chevron-right"></i></button>
                 <div class="vr mx-1"></div>
-                <button class="btn btn-sm btn-outline-secondary" onclick="eventsModule.hideEventsCalendar()"><i class="bi bi-x-lg"></i> Close</button>
+                <button class="btn btn-sm btn-outline-secondary" data-action="eventsModule.hideEventsCalendar"><i class="bi bi-x-lg"></i> Close</button>
               </div>
             </div>
             <div id="eventsCalendarGrid" class="row g-1"></div>
@@ -3423,13 +3426,13 @@
             <div class="card-body py-2 d-flex align-items-center justify-content-between">
               <span><strong id="eventsBulkCount">0</strong> events selected</span>
               <div class="btn-group btn-group-sm">
-                <button class="btn btn-outline-danger" onclick="eventsModule.bulkDeleteEvents()">
+                <button class="btn btn-outline-danger" data-action="eventsModule.bulkDeleteEvents">
                   <i class="bi bi-trash me-1"></i>Delete Selected
                 </button>
-                <button class="btn btn-outline-secondary" onclick="eventsModule.bulkExportEvents()">
+                <button class="btn btn-outline-secondary" data-action="eventsModule.bulkExportEvents">
                   <i class="bi bi-download me-1"></i>Export Selected
                 </button>
-                <button class="btn btn-outline-secondary" onclick="eventsModule.clearSelection()">
+                <button class="btn btn-outline-secondary" data-action="eventsModule.clearSelection">
                   <i class="bi bi-x-circle me-1"></i>Clear
                 </button>
               </div>
@@ -3463,10 +3466,10 @@
                 <thead>
                   <tr>
                     <th scope="col" style="width:35px"><input type="checkbox" class="form-check-input" id="selectAllEvents" onchange="eventsModule.toggleSelectAll(this.checked)" aria-label="Select all events"></th>
-                    <th scope="col" style="cursor:pointer" data-sort-field="event_name" onclick="eventsModule.sortEvents('event_name')">Event Name <i data-sort-icon-events="event_name" class="bi bi-arrow-down-up text-muted small"></i></th>
-                    <th scope="col" style="width:70px;cursor:pointer" data-sort-field="year" onclick="eventsModule.sortEvents('year')">Year <i data-sort-icon-events="year" class="bi bi-arrow-down-up text-muted small"></i></th>
-                    <th scope="col" style="width:100px;cursor:pointer" data-sort-field="event_date" onclick="eventsModule.sortEvents('event_date')">Date <i data-sort-icon-events="event_date" class="bi bi-arrow-down-up text-muted small"></i></th>
-                    <th scope="col" style="cursor:pointer" data-sort-field="venue" onclick="eventsModule.sortEvents('venue')">Venue <i data-sort-icon-events="venue" class="bi bi-arrow-down-up text-muted small"></i></th>
+                    <th scope="col" style="cursor:pointer" data-sort-field="event_name" data-action="eventsModule.sortEvents" data-args="[&quot;event_name&quot;]">Event Name <i data-sort-icon-events="event_name" class="bi bi-arrow-down-up text-muted small"></i></th>
+                    <th scope="col" style="width:70px;cursor:pointer" data-sort-field="year" data-action="eventsModule.sortEvents" data-args="[&quot;year&quot;]">Year <i data-sort-icon-events="year" class="bi bi-arrow-down-up text-muted small"></i></th>
+                    <th scope="col" style="width:100px;cursor:pointer" data-sort-field="event_date" data-action="eventsModule.sortEvents" data-args="[&quot;event_date&quot;]">Date <i data-sort-icon-events="event_date" class="bi bi-arrow-down-up text-muted small"></i></th>
+                    <th scope="col" style="cursor:pointer" data-sort-field="venue" data-action="eventsModule.sortEvents" data-args="[&quot;venue&quot;]">Venue <i data-sort-icon-events="venue" class="bi bi-arrow-down-up text-muted small"></i></th>
                     <th scope="col" style="width:70px" class="text-center" title="Attendees"><i class="bi bi-people me-1"></i>Att.</th>
                     <th scope="col" style="width:55px" class="text-center" title="VIP Guests"><i class="bi bi-star me-1"></i>VIP</th>
                     <th scope="col" style="width:70px" class="text-center" title="Award Presentations Confirmed"><i class="bi bi-trophy me-1"></i>Awards</th>
@@ -3495,7 +3498,7 @@
           <div id="eventsBulkActionsBar" class="position-fixed start-50 translate-middle-x bg-dark text-white rounded-pill px-4 py-2 shadow-lg d-flex align-items-center gap-3" style="display:none !important; bottom:30px; z-index:1050;">
             <span><strong id="eventsSelectedCount">0</strong> selected</span>
             <div class="vr bg-light mx-1"></div>
-            <button class="btn btn-sm btn-outline-light" onclick="eventsModule.bulkClone()"><i class="bi bi-files me-1"></i>Clone</button>
+            <button class="btn btn-sm btn-outline-light" data-action="eventsModule.bulkClone"><i class="bi bi-files me-1"></i>Clone</button>
             <div class="btn-group btn-group-sm">
               <button class="btn btn-outline-light btn-sm dropdown-toggle" data-bs-toggle="dropdown" data-bs-display="static">
                 <i class="bi bi-flag me-1"></i>Set Status
@@ -3507,15 +3510,15 @@
                 <li><a class="dropdown-item" href="#" onclick="event.preventDefault(); eventsModule.bulkSetStatus('complete')"><i class="bi bi-flag-fill text-primary me-2"></i>Complete</a></li>
               </ul>
             </div>
-            <button class="btn btn-sm btn-outline-danger" onclick="eventsModule.bulkDelete()"><i class="bi bi-trash me-1"></i>Delete</button>
-            <button class="btn btn-sm btn-outline-light" onclick="eventsModule.clearEventSelection()" aria-label="Clear selection"><i class="bi bi-x-lg"></i></button>
+            <button class="btn btn-sm btn-outline-danger" data-action="eventsModule.bulkDelete"><i class="bi bi-trash me-1"></i>Delete</button>
+            <button class="btn btn-sm btn-outline-light" data-action="eventsModule.clearEventSelection" aria-label="Clear selection"><i class="bi bi-x-lg"></i></button>
           </div>
 
         </div>
 
         <!-- Floating Action Button -->
         <div class="position-fixed" style="bottom:80px; right:30px; z-index:1040;">
-          <button class="btn btn-primary btn-lg rounded-circle shadow-lg" onclick="eventsModule.openAddModal()" title="Add Event" style="width:56px; height:56px;">
+          <button class="btn btn-primary btn-lg rounded-circle shadow-lg" data-action="eventsModule.openAddModal" title="Add Event" style="width:56px; height:56px;">
             <i class="bi bi-plus-lg"></i>
           </button>
         </div>
@@ -3542,7 +3545,7 @@
               <select id="reportsYearFilter" class="form-select form-select-sm" style="width:120px;" onchange="reportsAnalytics.filterByYear(this.value)">
                 <option value="all">All Years</option>
               </select>
-              <button class="btn btn-sm btn-outline-primary" onclick="reportsAnalytics.printSummaryReport()">
+              <button class="btn btn-sm btn-outline-primary" data-action="reportsAnalytics.printSummaryReport">
                 <i class="bi bi-printer me-1"></i>Print Report
               </button>
             </div>
@@ -3683,19 +3686,19 @@
             <p class="text-muted mb-3">Download reports in various formats</p>
 
             <div class="d-flex gap-2 flex-wrap">
-              <button class="btn btn-sm btn-outline-secondary" onclick="dashboardModule.exportAwardsCSV()">
+              <button class="btn btn-sm btn-outline-secondary" data-action="dashboardModule.exportAwardsCSV">
                 <i class="bi bi-download me-1"></i>Export Awards (CSV)
               </button>
-              <button class="btn btn-sm btn-outline-secondary" onclick="dashboardModule.exportOrganisationsCSV()">
+              <button class="btn btn-sm btn-outline-secondary" data-action="dashboardModule.exportOrganisationsCSV">
                 <i class="bi bi-download me-1"></i>Export Organisations (CSV)
               </button>
-              <button class="btn btn-sm btn-outline-secondary" onclick="dashboardModule.exportWinnersCSV()">
+              <button class="btn btn-sm btn-outline-secondary" data-action="dashboardModule.exportWinnersCSV">
                 <i class="bi bi-download me-1"></i>Export Winners (CSV)
               </button>
-              <button class="btn btn-sm btn-outline-secondary" onclick="settingsModule.exportEventsCSV()">
+              <button class="btn btn-sm btn-outline-secondary" data-action="settingsModule.exportEventsCSV">
                 <i class="bi bi-download me-1"></i>Export Events (CSV)
               </button>
-              <button class="btn btn-sm btn-outline-secondary" onclick="settingsModule.exportFullBackup()">
+              <button class="btn btn-sm btn-outline-secondary" data-action="settingsModule.exportFullBackup">
                 <i class="bi bi-download me-1"></i>Full Backup (JSON)
               </button>
             </div>
@@ -3707,7 +3710,7 @@
               <h5 class="mb-0">
                 <i class="bi bi-calendar2-week me-2"></i>Scheduled Reports
               </h5>
-              <button class="btn btn-primary btn-sm" onclick="reportsScheduler.showCreateReport()">
+              <button class="btn btn-primary btn-sm" data-action="reportsScheduler.showCreateReport">
                 <i class="bi bi-plus-circle me-2"></i>Create Report Schedule
               </button>
             </div>
@@ -3828,7 +3831,7 @@
             <div class="tab-pane fade" id="banners-content" role="tabpanel">
               <div class="d-flex justify-content-between align-items-center mb-4">
                 <h4><i class="bi bi-file-image me-2"></i>Website Banners</h4>
-                <button class="btn btn-primary" onclick="marketingModule.openAddBannerModal()">
+                <button class="btn btn-primary" data-action="marketingModule.openAddBannerModal">
                   <i class="bi bi-plus-lg me-2"></i>Add Banner
                 </button>
               </div>
@@ -3845,7 +3848,7 @@
             <div class="tab-pane fade" id="sponsors-content" role="tabpanel">
               <div class="d-flex justify-content-between align-items-center mb-4">
                 <h4><i class="bi bi-award me-2"></i>Sponsors & Partners</h4>
-                <button class="btn btn-primary" onclick="marketingModule.openAddSponsorModal()">
+                <button class="btn btn-primary" data-action="marketingModule.openAddSponsorModal">
                   <i class="bi bi-plus-lg me-2"></i>Add Sponsor
                 </button>
               </div>
@@ -3866,7 +3869,7 @@
                   <p class="text-muted mb-0">Automate and schedule posts across all platforms</p>
                 </div>
                 <div class="d-flex gap-2">
-                  <button class="btn btn-outline-primary" onclick="socialMediaModule.openBulkGenerateModal()">
+                  <button class="btn btn-outline-primary" data-action="socialMediaModule.openBulkGenerateModal">
                     <i class="bi bi-collection me-2"></i>Bulk Generate
                   </button>
                   <button class="btn btn-outline-secondary" onclick="socialMediaModule.loadAnalytics(); document.getElementById('analyticsSection').scrollIntoView({behavior:'smooth'})">
@@ -4103,16 +4106,16 @@
 
                       <!-- Action Buttons -->
                       <div class="d-flex gap-2">
-                        <button class="btn btn-primary" onclick="socialMediaModule.savePost('scheduled')">
+                        <button class="btn btn-primary" data-action="socialMediaModule.savePost" data-args="[&quot;scheduled&quot;]">
                           <i class="bi bi-clock-history me-2"></i>Schedule Post
                         </button>
-                        <button class="btn btn-success" onclick="socialMediaModule.savePost('immediate')">
+                        <button class="btn btn-success" data-action="socialMediaModule.savePost" data-args="[&quot;immediate&quot;]">
                           <i class="bi bi-send me-2"></i>Post Now
                         </button>
-                        <button class="btn btn-outline-secondary" onclick="socialMediaModule.saveDraft()">
+                        <button class="btn btn-outline-secondary" data-action="socialMediaModule.saveDraft">
                           <i class="bi bi-save me-2"></i>Save Draft
                         </button>
-                        <button class="btn btn-outline-danger" onclick="socialMediaModule.clearForm()">
+                        <button class="btn btn-outline-danger" data-action="socialMediaModule.clearForm">
                           <i class="bi bi-x-circle me-2"></i>Clear
                         </button>
                       </div>
@@ -4348,7 +4351,7 @@
                           <span class="badge bg-secondary">Not Connected</span>
                         </div>
                       </div>
-                      <button class="btn btn-outline-primary btn-sm w-100 mt-3" onclick="socialMediaModule.openPlatformSettings()">
+                      <button class="btn btn-outline-primary btn-sm w-100 mt-3" data-action="socialMediaModule.openPlatformSettings">
                         <i class="bi bi-gear me-2"></i>Configure Platforms
                       </button>
                     </div>
@@ -4436,7 +4439,7 @@
                     </div>
                     <div class="modal-footer">
                       <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                      <button type="button" class="btn btn-primary" onclick="socialMediaModule.bulkGenerate()">
+                      <button type="button" class="btn btn-primary" data-action="socialMediaModule.bulkGenerate">
                         <i class="bi bi-collection me-2"></i>Generate Posts
                       </button>
                     </div>
@@ -4459,7 +4462,7 @@
                   <div class="card">
                     <div class="card-header d-flex justify-content-between align-items-center">
                       <h5 class="mb-0">Templates</h5>
-                      <button class="btn btn-sm btn-primary" onclick="emailTemplatesModule.newTemplate()">
+                      <button class="btn btn-sm btn-primary" data-action="emailTemplatesModule.newTemplate">
                         <i class="bi bi-plus-circle me-1"></i>New
                       </button>
                     </div>
@@ -4572,16 +4575,16 @@
                       <div class="html-toolkit-group">
                         <label class="html-toolkit-label">Structure</label>
                         <div class="html-toolkit-grid">
-                          <button class="html-toolkit-btn" onclick="emailBuilder.insertHtmlSnippet('table-row')" title="Table Row with Padding">
+                          <button class="html-toolkit-btn" data-action="emailBuilder.insertHtmlSnippet" data-args="[&quot;table-row&quot;]" title="Table Row with Padding">
                             <i class="bi bi-table"></i> Padded Row
                           </button>
-                          <button class="html-toolkit-btn" onclick="emailBuilder.insertHtmlSnippet('two-column')" title="Two Column Layout">
+                          <button class="html-toolkit-btn" data-action="emailBuilder.insertHtmlSnippet" data-args="[&quot;two-column&quot;]" title="Two Column Layout">
                             <i class="bi bi-layout-split"></i> 2 Columns
                           </button>
-                          <button class="html-toolkit-btn" onclick="emailBuilder.insertHtmlSnippet('three-column')" title="Three Column Layout">
+                          <button class="html-toolkit-btn" data-action="emailBuilder.insertHtmlSnippet" data-args="[&quot;three-column&quot;]" title="Three Column Layout">
                             <i class="bi bi-layout-three-columns"></i> 3 Columns
                           </button>
-                          <button class="html-toolkit-btn" onclick="emailBuilder.insertHtmlSnippet('full-width-wrapper')" title="Full Width Container">
+                          <button class="html-toolkit-btn" data-action="emailBuilder.insertHtmlSnippet" data-args="[&quot;full-width-wrapper&quot;]" title="Full Width Container">
                             <i class="bi bi-aspect-ratio"></i> Container
                           </button>
                         </div>
@@ -4591,16 +4594,16 @@
                       <div class="html-toolkit-group">
                         <label class="html-toolkit-label">Spacing</label>
                         <div class="html-toolkit-grid">
-                          <button class="html-toolkit-btn" onclick="emailBuilder.insertHtmlSnippet('spacer-sm')" title="Small Spacer (10px)">
+                          <button class="html-toolkit-btn" data-action="emailBuilder.insertHtmlSnippet" data-args="[&quot;spacer-sm&quot;]" title="Small Spacer (10px)">
                             <i class="bi bi-distribute-vertical"></i> 10px
                           </button>
-                          <button class="html-toolkit-btn" onclick="emailBuilder.insertHtmlSnippet('spacer-md')" title="Medium Spacer (20px)">
+                          <button class="html-toolkit-btn" data-action="emailBuilder.insertHtmlSnippet" data-args="[&quot;spacer-md&quot;]" title="Medium Spacer (20px)">
                             <i class="bi bi-distribute-vertical"></i> 20px
                           </button>
-                          <button class="html-toolkit-btn" onclick="emailBuilder.insertHtmlSnippet('spacer-lg')" title="Large Spacer (40px)">
+                          <button class="html-toolkit-btn" data-action="emailBuilder.insertHtmlSnippet" data-args="[&quot;spacer-lg&quot;]" title="Large Spacer (40px)">
                             <i class="bi bi-distribute-vertical"></i> 40px
                           </button>
-                          <button class="html-toolkit-btn" onclick="emailBuilder.insertHtmlSnippet('divider')" title="Horizontal Line">
+                          <button class="html-toolkit-btn" data-action="emailBuilder.insertHtmlSnippet" data-args="[&quot;divider&quot;]" title="Horizontal Line">
                             <i class="bi bi-dash-lg"></i> Divider
                           </button>
                         </div>
@@ -4610,16 +4613,16 @@
                       <div class="html-toolkit-group">
                         <label class="html-toolkit-label">Content</label>
                         <div class="html-toolkit-grid">
-                          <button class="html-toolkit-btn" onclick="emailBuilder.insertHtmlSnippet('heading')" title="Heading">
+                          <button class="html-toolkit-btn" data-action="emailBuilder.insertHtmlSnippet" data-args="[&quot;heading&quot;]" title="Heading">
                             <i class="bi bi-type-h1"></i> Heading
                           </button>
-                          <button class="html-toolkit-btn" onclick="emailBuilder.insertHtmlSnippet('paragraph')" title="Paragraph">
+                          <button class="html-toolkit-btn" data-action="emailBuilder.insertHtmlSnippet" data-args="[&quot;paragraph&quot;]" title="Paragraph">
                             <i class="bi bi-text-paragraph"></i> Paragraph
                           </button>
-                          <button class="html-toolkit-btn" onclick="emailBuilder.insertHtmlSnippet('image')" title="Image">
+                          <button class="html-toolkit-btn" data-action="emailBuilder.insertHtmlSnippet" data-args="[&quot;image&quot;]" title="Image">
                             <i class="bi bi-image"></i> Image
                           </button>
-                          <button class="html-toolkit-btn" onclick="emailBuilder.insertHtmlSnippet('button')" title="CTA Button">
+                          <button class="html-toolkit-btn" data-action="emailBuilder.insertHtmlSnippet" data-args="[&quot;button&quot;]" title="CTA Button">
                             <i class="bi bi-cursor"></i> Button
                           </button>
                         </div>
@@ -4629,16 +4632,16 @@
                       <div class="html-toolkit-group">
                         <label class="html-toolkit-label">Style Helpers</label>
                         <div class="html-toolkit-grid">
-                          <button class="html-toolkit-btn" onclick="emailBuilder.insertHtmlSnippet('bg-section')" title="Background Color Section">
+                          <button class="html-toolkit-btn" data-action="emailBuilder.insertHtmlSnippet" data-args="[&quot;bg-section&quot;]" title="Background Color Section">
                             <i class="bi bi-palette"></i> BG Section
                           </button>
-                          <button class="html-toolkit-btn" onclick="emailBuilder.insertHtmlSnippet('link')" title="Styled Link">
+                          <button class="html-toolkit-btn" data-action="emailBuilder.insertHtmlSnippet" data-args="[&quot;link&quot;]" title="Styled Link">
                             <i class="bi bi-link-45deg"></i> Link
                           </button>
-                          <button class="html-toolkit-btn" onclick="emailBuilder.insertHtmlSnippet('bold-text')" title="Bold Text">
+                          <button class="html-toolkit-btn" data-action="emailBuilder.insertHtmlSnippet" data-args="[&quot;bold-text&quot;]" title="Bold Text">
                             <i class="bi bi-type-bold"></i> Bold
                           </button>
-                          <button class="html-toolkit-btn" onclick="emailBuilder.insertHtmlSnippet('preheader')" title="Hidden Preheader Text">
+                          <button class="html-toolkit-btn" data-action="emailBuilder.insertHtmlSnippet" data-args="[&quot;preheader&quot;]" title="Hidden Preheader Text">
                             <i class="bi bi-eye-slash"></i> Preheader
                           </button>
                         </div>
@@ -4648,16 +4651,16 @@
                       <div class="html-toolkit-group">
                         <label class="html-toolkit-label">Wrap Selection</label>
                         <div class="html-toolkit-grid">
-                          <button class="html-toolkit-btn" onclick="emailBuilder.wrapHtmlSelection('padding', '20px')" title="Add 20px Padding">
+                          <button class="html-toolkit-btn" data-action="emailBuilder.wrapHtmlSelection" data-args="[&quot;padding&quot;,&quot;20px&quot;]" title="Add 20px Padding">
                             <i class="bi bi-border-outer"></i> +Padding
                           </button>
-                          <button class="html-toolkit-btn" onclick="emailBuilder.wrapHtmlSelection('center')" title="Center Align">
+                          <button class="html-toolkit-btn" data-action="emailBuilder.wrapHtmlSelection" data-args="[&quot;center&quot;]" title="Center Align">
                             <i class="bi bi-text-center"></i> Center
                           </button>
-                          <button class="html-toolkit-btn" onclick="emailBuilder.wrapHtmlSelection('table-cell')" title="Wrap in Table Cell">
+                          <button class="html-toolkit-btn" data-action="emailBuilder.wrapHtmlSelection" data-args="[&quot;table-cell&quot;]" title="Wrap in Table Cell">
                             <i class="bi bi-grid-1x2"></i> Table Cell
                           </button>
-                          <button class="html-toolkit-btn" onclick="emailBuilder.wrapHtmlSelection('conditional')" title="Outlook Conditional">
+                          <button class="html-toolkit-btn" data-action="emailBuilder.wrapHtmlSelection" data-args="[&quot;conditional&quot;]" title="Outlook Conditional">
                             <i class="bi bi-envelope"></i> Outlook If
                           </button>
                         </div>
@@ -4764,16 +4767,16 @@
                       </div>
 
                       <div class="d-grid gap-2">
-                        <button class="btn btn-outline-info btn-sm" onclick="emailBuilder.sendTestEmail()">
+                        <button class="btn btn-outline-info btn-sm" data-action="emailBuilder.sendTestEmail">
                           <i class="bi bi-envelope-check me-1"></i>Send Test Email
                         </button>
-                        <button class="btn btn-warning btn-sm" id="btnSendCampaign" onclick="emailBuilder.sendCampaign()">
+                        <button class="btn btn-warning btn-sm" id="btnSendCampaign" data-action="emailBuilder.sendCampaign">
                           <i class="bi bi-send-fill me-1"></i>Send to List
                         </button>
-                        <button class="btn btn-primary btn-sm" id="btnScheduleCampaign" style="display: none;" onclick="emailBuilder.scheduleCampaign()">
+                        <button class="btn btn-primary btn-sm" id="btnScheduleCampaign" style="display: none;" data-action="emailBuilder.scheduleCampaign">
                           <i class="bi bi-clock-fill me-1"></i>Schedule Campaign
                         </button>
-                        <button class="btn btn-info btn-sm" id="btnABCampaign" style="display: none;" onclick="emailBuilder.sendABCampaign()">
+                        <button class="btn btn-info btn-sm" id="btnABCampaign" style="display: none;" data-action="emailBuilder.sendABCampaign">
                           <i class="bi bi-diagram-2 me-1"></i>Send A/B Test
                         </button>
                       </div>
@@ -4783,25 +4786,25 @@
 
                     <!-- Quick Actions -->
                     <div class="d-grid gap-2">
-                      <button class="btn btn-outline-warning btn-sm" onclick="emailBuilder.saveDraft()">
+                      <button class="btn btn-outline-warning btn-sm" data-action="emailBuilder.saveDraft">
                         <i class="bi bi-file-earmark me-1"></i>Save Draft
                       </button>
-                      <button class="btn btn-outline-secondary btn-sm" onclick="emailBuilder.exportHTML()">
+                      <button class="btn btn-outline-secondary btn-sm" data-action="emailBuilder.exportHTML">
                         <i class="bi bi-download me-1"></i>Export HTML
                       </button>
-                      <button class="btn btn-outline-secondary btn-sm" onclick="emailBuilder.copyHTMLToClipboard()">
+                      <button class="btn btn-outline-secondary btn-sm" data-action="emailBuilder.copyHTMLToClipboard">
                         <i class="bi bi-clipboard me-1"></i>Copy HTML
                       </button>
-                      <button class="btn btn-outline-secondary btn-sm" onclick="emailBuilder.exportPlainText()">
+                      <button class="btn btn-outline-secondary btn-sm" data-action="emailBuilder.exportPlainText">
                         <i class="bi bi-file-text me-1"></i>Plain Text
                       </button>
-                      <button class="btn btn-primary btn-sm" onclick="emailBuilder.saveTemplate()">
+                      <button class="btn btn-primary btn-sm" data-action="emailBuilder.saveTemplate">
                         <i class="bi bi-save me-1"></i>Save Template
                       </button>
-                      <button class="btn btn-outline-info btn-sm" onclick="emailBuilder.checkSpamScore()">
+                      <button class="btn btn-outline-info btn-sm" data-action="emailBuilder.checkSpamScore">
                         <i class="bi bi-shield-check me-1"></i>Spam Check
                       </button>
-                      <button class="btn btn-outline-secondary btn-sm" onclick="emailBuilder.clearCanvas()">
+                      <button class="btn btn-outline-secondary btn-sm" data-action="emailBuilder.clearCanvas">
                         <i class="bi bi-trash me-1"></i>Clear All
                       </button>
                     </div>
@@ -4836,10 +4839,10 @@
                       <h6 class="mb-0"><i class="bi bi-palette me-2"></i>Email Canvas</h6>
                       <div class="d-flex gap-2">
                         <div class="btn-group btn-group-sm" role="group">
-                          <button class="btn btn-outline-secondary" onclick="emailBuilder.undo()" title="Undo (Ctrl+Z)" aria-label="Undo">
+                          <button class="btn btn-outline-secondary" data-action="emailBuilder.undo" title="Undo (Ctrl+Z)" aria-label="Undo">
                             <i class="bi bi-arrow-counterclockwise"></i>
                           </button>
-                          <button class="btn btn-outline-secondary" onclick="emailBuilder.redo()" title="Redo (Ctrl+Y)" aria-label="Redo">
+                          <button class="btn btn-outline-secondary" data-action="emailBuilder.redo" title="Redo (Ctrl+Y)" aria-label="Redo">
                             <i class="bi bi-arrow-clockwise"></i>
                           </button>
                         </div>
@@ -4851,7 +4854,7 @@
                             <i class="bi bi-phone"></i>
                           </button>
                         </div>
-                        <button class="btn btn-outline-primary btn-sm" onclick="emailBuilder.openPreviewModal()">
+                        <button class="btn btn-outline-primary btn-sm" data-action="emailBuilder.openPreviewModal">
                           <i class="bi bi-eye me-1"></i>Preview
                         </button>
                       </div>
@@ -4912,7 +4915,7 @@
                         <option value="Failed">Failed</option>
                         <option value="Cancelled">Cancelled</option>
                       </select>
-                      <button class="btn btn-outline-secondary btn-sm" onclick="emailBuilder.loadCampaignLog()" title="Refresh">
+                      <button class="btn btn-outline-secondary btn-sm" data-action="emailBuilder.loadCampaignLog" title="Refresh">
                         <i class="bi bi-arrow-clockwise"></i>
                       </button>
                     </div>
@@ -4989,10 +4992,10 @@
               <div class="d-flex justify-content-between align-items-center mb-4">
                 <h4><i class="bi bi-list-ul me-2"></i>Email Lists</h4>
                 <div class="btn-group">
-                  <button class="btn btn-sm btn-primary" onclick="emailListsModule.openCreateListModal()">
+                  <button class="btn btn-sm btn-primary" data-action="emailListsModule.openCreateListModal">
                     <i class="bi bi-plus-lg me-1"></i>Create List
                   </button>
-                  <button class="btn btn-sm btn-outline-success" onclick="emailListsModule.openImportModal()">
+                  <button class="btn btn-sm btn-outline-success" data-action="emailListsModule.openImportModal">
                     <i class="bi bi-upload me-1"></i>Import
                   </button>
                 </div>
@@ -5014,7 +5017,7 @@
             <div class="tab-pane fade" id="email-sequences-content" role="tabpanel">
               <div class="d-flex justify-content-between align-items-center mb-4">
                 <h4><i class="bi bi-envelope-arrow-up me-2"></i>Email Sequences</h4>
-                <button class="btn btn-primary btn-sm" onclick="marketingModule.showCreateSequence()">
+                <button class="btn btn-primary btn-sm" data-action="marketingModule.showCreateSequence">
                   <i class="bi bi-plus-circle me-2"></i>Create New Sequence
                 </button>
               </div>
@@ -5140,7 +5143,7 @@
                   </div>
                   <div class="col-md-2">
                     <div class="d-flex gap-1">
-                      <button class="btn btn-primary btn-sm flex-grow-1" onclick="paymentsModule.createNewInvoice()">
+                      <button class="btn btn-primary btn-sm flex-grow-1" data-action="paymentsModule.createNewInvoice">
                         <i class="bi bi-plus-circle me-1"></i>Create Invoice
                       </button>
                       <div class="btn-group">
@@ -5153,7 +5156,7 @@
                           <li><a class="dropdown-item" href="#" onclick="event.preventDefault(); paymentsModule.exportInvoicesPDF()"><i class="bi bi-file-pdf text-danger me-2"></i>Print / PDF</a></li>
                         </ul>
                       </div>
-                      <button class="btn btn-outline-warning btn-sm" onclick="paymentsModule.sendOverdueReminders()" title="Send payment reminders to all overdue invoices">
+                      <button class="btn btn-outline-warning btn-sm" data-action="paymentsModule.sendOverdueReminders" title="Send payment reminders to all overdue invoices">
                         <i class="bi bi-bell me-1"></i>Reminders
                       </button>
                     </div>
@@ -5167,15 +5170,15 @@
                   <table class="table table-hover table-striped align-middle">
                     <thead class="table-light">
                       <tr>
-                        <th scope="col" style="cursor:pointer" onclick="paymentsModule.sortInvoices('invoice_number')">Invoice #</th>
-                        <th scope="col" style="cursor:pointer" onclick="paymentsModule.sortInvoices('org_name')">Organisation</th>
-                        <th scope="col" style="cursor:pointer" onclick="paymentsModule.sortInvoices('invoice_date')">Date</th>
-                        <th scope="col" style="cursor:pointer" onclick="paymentsModule.sortInvoices('due_date')">Due Date</th>
+                        <th scope="col" style="cursor:pointer" data-action="paymentsModule.sortInvoices" data-args="[&quot;invoice_number&quot;]">Invoice #</th>
+                        <th scope="col" style="cursor:pointer" data-action="paymentsModule.sortInvoices" data-args="[&quot;org_name&quot;]">Organisation</th>
+                        <th scope="col" style="cursor:pointer" data-action="paymentsModule.sortInvoices" data-args="[&quot;invoice_date&quot;]">Date</th>
+                        <th scope="col" style="cursor:pointer" data-action="paymentsModule.sortInvoices" data-args="[&quot;due_date&quot;]">Due Date</th>
                         <th scope="col">Type</th>
-                        <th scope="col" style="cursor:pointer" onclick="paymentsModule.sortInvoices('total_amount')">Amount</th>
+                        <th scope="col" style="cursor:pointer" data-action="paymentsModule.sortInvoices" data-args="[&quot;total_amount&quot;]">Amount</th>
                         <th scope="col">Paid</th>
-                        <th scope="col" style="cursor:pointer" onclick="paymentsModule.sortInvoices('balance_due')">Balance</th>
-                        <th scope="col" style="cursor:pointer" onclick="paymentsModule.sortInvoices('status')">Status</th>
+                        <th scope="col" style="cursor:pointer" data-action="paymentsModule.sortInvoices" data-args="[&quot;balance_due&quot;]">Balance</th>
+                        <th scope="col" style="cursor:pointer" data-action="paymentsModule.sortInvoices" data-args="[&quot;status&quot;]">Status</th>
                         <th scope="col">Actions</th>
                       </tr>
                     </thead>
@@ -5257,7 +5260,7 @@
                   </div>
                   <div class="col-md-3">
                     <div class="d-flex gap-1">
-                      <button class="btn btn-success btn-sm flex-grow-1" onclick="paymentsModule.recordNewPayment()">
+                      <button class="btn btn-success btn-sm flex-grow-1" data-action="paymentsModule.recordNewPayment">
                         <i class="bi bi-plus-circle me-1"></i>Record Payment
                       </button>
                       <div class="btn-group">
@@ -5332,7 +5335,7 @@
                     <input type="date" class="form-control" id="reportEndDate">
                   </div>
                   <div class="col-md-3 d-flex align-items-end">
-                    <button class="btn btn-primary w-100" onclick="paymentsModule.generateReport()">
+                    <button class="btn btn-primary w-100" data-action="paymentsModule.generateReport">
                       <i class="bi bi-file-earmark-bar-graph me-1"></i>Generate Report
                     </button>
                   </div>
@@ -5475,7 +5478,7 @@
                     <input type="text" class="form-control form-control-sm" id="crmCompanySearch" placeholder="Search companies...">
                   </div>
                   <div class="col-md-4 d-flex align-items-end">
-                    <button class="btn btn-primary btn-sm w-100" onclick="crmModule.openCompanyDetails()">
+                    <button class="btn btn-primary btn-sm w-100" data-action="crmModule.openCompanyDetails">
                       <i class="bi bi-plus-circle me-1"></i>Add Company Activity
                     </button>
                   </div>
@@ -5551,7 +5554,7 @@
                     </select>
                   </div>
                   <div class="col-md-3">
-                    <button class="btn btn-success btn-sm w-100" onclick="crmModule.logCommunication()">
+                    <button class="btn btn-success btn-sm w-100" data-action="crmModule.logCommunication">
                       <i class="bi bi-plus-circle me-1"></i>Log Communication
                     </button>
                   </div>
@@ -5662,7 +5665,7 @@
                     </select>
                   </div>
                   <div class="col-md-3">
-                    <button class="btn btn-primary btn-sm w-100" onclick="crmModule.createDeal()">
+                    <button class="btn btn-primary btn-sm w-100" data-action="crmModule.createDeal">
                       <i class="bi bi-plus-circle me-1"></i>Create Deal
                     </button>
                   </div>
@@ -5721,7 +5724,7 @@
                     <input type="month" class="form-control form-control-sm" id="meetingMonthFilter">
                   </div>
                   <div class="col-md-4">
-                    <button class="btn btn-primary btn-sm w-100" onclick="crmModule.createMeetingNote()">
+                    <button class="btn btn-primary btn-sm w-100" data-action="crmModule.createMeetingNote">
                       <i class="bi bi-plus-circle me-1"></i>Add Meeting Note
                     </button>
                   </div>
@@ -5838,10 +5841,10 @@
               <!-- Manage Segments -->
               <div class="content-card mt-4">
                 <h5 class="mb-3"><i class="bi bi-gear me-2"></i>Manage Segments</h5>
-                <button class="btn btn-primary btn-sm" onclick="crmModule.assignSegments()">
+                <button class="btn btn-primary btn-sm" data-action="crmModule.assignSegments">
                   <i class="bi bi-tags me-1"></i>Assign Company to Segments
                 </button>
-                <button class="btn btn-secondary btn-sm ms-2" onclick="crmModule.createCustomSegment()">
+                <button class="btn btn-secondary btn-sm ms-2" data-action="crmModule.createCustomSegment">
                   <i class="bi bi-plus-circle me-1"></i>Create Custom Segment
                 </button>
               </div>
@@ -5868,11 +5871,11 @@
                   <input type="text" class="form-control form-control-sm" style="width:150px;" id="segVal0" placeholder="Value...">
                 </div>
               </div>
-              <button class="btn btn-sm btn-outline-secondary mb-3" onclick="crmModule.addSegmentRule()"><i class="bi bi-plus me-1"></i>Add Rule</button>
+              <button class="btn btn-sm btn-outline-secondary mb-3" data-action="crmModule.addSegmentRule"><i class="bi bi-plus me-1"></i>Add Rule</button>
               <div class="d-flex gap-2 mb-3">
-                <button class="btn btn-sm btn-primary" onclick="crmModule.applySmartSegment()"><i class="bi bi-funnel me-1"></i>Apply Segment</button>
-                <button class="btn btn-sm btn-outline-success" onclick="crmModule.saveSmartSegment()"><i class="bi bi-save me-1"></i>Save Segment</button>
-                <button class="btn btn-sm btn-outline-secondary" onclick="crmModule.loadSmartSegments()"><i class="bi bi-folder-open me-1"></i>Load Saved</button>
+                <button class="btn btn-sm btn-primary" data-action="crmModule.applySmartSegment"><i class="bi bi-funnel me-1"></i>Apply Segment</button>
+                <button class="btn btn-sm btn-outline-success" data-action="crmModule.saveSmartSegment"><i class="bi bi-save me-1"></i>Save Segment</button>
+                <button class="btn btn-sm btn-outline-secondary" data-action="crmModule.loadSmartSegments"><i class="bi bi-folder-open me-1"></i>Load Saved</button>
               </div>
               <div id="smartSegmentResult"></div>
             </div>
@@ -5881,7 +5884,7 @@
             <div class="tab-pane fade" id="my-tasks-content" role="tabpanel">
               <div class="d-flex justify-content-between align-items-center mb-4">
                 <h4><i class="bi bi-person-check me-2"></i>My Tasks & Follow-ups</h4>
-                <button class="btn btn-sm btn-outline-primary" onclick="crmModule.refreshMyTasks()"><i class="bi bi-arrow-clockwise me-1"></i>Refresh</button>
+                <button class="btn btn-sm btn-outline-primary" data-action="crmModule.refreshMyTasks"><i class="bi bi-arrow-clockwise me-1"></i>Refresh</button>
               </div>
               <div id="myTasksContainer">
                 <div class="text-center py-5 text-muted">
@@ -5928,7 +5931,7 @@
                     </h5>
                     <p class="text-muted mb-0 small">Define key dates for each awards season. These can be applied to awards via the Add/Edit Award form.</p>
                   </div>
-                  <button class="btn btn-primary btn-sm" onclick="settingsModule.openSeasonModal()">
+                  <button class="btn btn-primary btn-sm" data-action="settingsModule.openSeasonModal">
                     <i class="bi bi-plus-lg me-1"></i>Add Season
                   </button>
                 </div>
@@ -5969,10 +5972,10 @@
                   <h6 class="mb-3">Full Database Backup</h6>
                   <p class="small text-muted mb-3">Export all data in JSON format for complete backup</p>
                   <div class="d-flex gap-2">
-                    <button class="btn btn-primary" onclick="settingsModule.exportFullBackup()">
+                    <button class="btn btn-primary" data-action="settingsModule.exportFullBackup">
                       <i class="bi bi-database-down me-2"></i>Download Full Backup
                     </button>
-                    <button class="btn btn-outline-warning" onclick="settingsModule.restoreFromBackup()">
+                    <button class="btn btn-outline-warning" data-action="settingsModule.restoreFromBackup">
                       <i class="bi bi-database-up me-2"></i>Restore from Backup
                     </button>
                   </div>
@@ -5983,22 +5986,22 @@
                   <h6 class="mb-3">Export Individual Tables</h6>
                   <p class="small text-muted mb-3">Export specific tables as CSV files</p>
                   <div class="d-flex gap-2 flex-wrap">
-                    <button class="btn btn-outline-secondary btn-sm" onclick="dashboardModule.exportAwardsCSV()">
+                    <button class="btn btn-outline-secondary btn-sm" data-action="dashboardModule.exportAwardsCSV">
                       <i class="bi bi-download me-1"></i>Awards
                     </button>
-                    <button class="btn btn-outline-secondary btn-sm" onclick="dashboardModule.exportOrganisationsCSV()">
+                    <button class="btn btn-outline-secondary btn-sm" data-action="dashboardModule.exportOrganisationsCSV">
                       <i class="bi bi-download me-1"></i>Organisations
                     </button>
-                    <button class="btn btn-outline-secondary btn-sm" onclick="dashboardModule.exportWinnersCSV()">
+                    <button class="btn btn-outline-secondary btn-sm" data-action="dashboardModule.exportWinnersCSV">
                       <i class="bi bi-download me-1"></i>Winners
                     </button>
-                    <button class="btn btn-outline-secondary btn-sm" onclick="settingsModule.exportEntriesCSV()">
+                    <button class="btn btn-outline-secondary btn-sm" data-action="settingsModule.exportEntriesCSV">
                       <i class="bi bi-download me-1"></i>Entries
                     </button>
-                    <button class="btn btn-outline-secondary btn-sm" onclick="settingsModule.exportEventsCSV()">
+                    <button class="btn btn-outline-secondary btn-sm" data-action="settingsModule.exportEventsCSV">
                       <i class="bi bi-download me-1"></i>Events
                     </button>
-                    <button class="btn btn-outline-secondary btn-sm" onclick="settingsModule.exportMediaCSV()">
+                    <button class="btn btn-outline-secondary btn-sm" data-action="settingsModule.exportMediaCSV">
                       <i class="bi bi-download me-1"></i>Media Gallery
                     </button>
                   </div>
@@ -6079,7 +6082,7 @@
                   </label>
                 </div>
 
-                <button class="btn btn-outline-primary btn-sm mt-3" onclick="settingsModule.testBackupReminder()">
+                <button class="btn btn-outline-primary btn-sm mt-3" data-action="settingsModule.testBackupReminder">
                   <i class="bi bi-bell me-1"></i>Test Reminder
                 </button>
               </div>
@@ -6098,10 +6101,10 @@
                     <p class="text-muted mb-0">Track all system changes and activities</p>
                   </div>
                   <div class="d-flex gap-2">
-                    <button class="btn btn-outline-secondary btn-sm" onclick="settingsModule.refreshAuditLog()">
+                    <button class="btn btn-outline-secondary btn-sm" data-action="settingsModule.refreshAuditLog">
                       <i class="bi bi-arrow-clockwise me-1"></i>Refresh
                     </button>
-                    <button class="btn btn-outline-danger btn-sm" onclick="settingsModule.clearAuditLog()">
+                    <button class="btn btn-outline-danger btn-sm" data-action="settingsModule.clearAuditLog">
                       <i class="bi bi-trash me-1"></i>Clear Log
                     </button>
                   </div>
@@ -6310,7 +6313,7 @@
           </div>
 
           <div class="d-flex justify-content-end mb-1">
-            <button class="btn btn-sm btn-outline-dark" id="btcToggleSidebar" onclick="btcModule.toggleSidebar()" title="Toggle sidebar panel">
+            <button class="btn btn-sm btn-outline-dark" id="btcToggleSidebar" data-action="btcModule.toggleSidebar" title="Toggle sidebar panel">
               <i class="bi bi-layout-sidebar-reverse me-1"></i>Toggle Panel
             </button>
           </div>
@@ -6497,7 +6500,7 @@
         </div>
         <div class="modal-footer">
           <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-          <button type="button" class="btn btn-info text-white" onclick="settingsModule.saveSeason()">
+          <button type="button" class="btn btn-info text-white" data-action="settingsModule.saveSeason">
             <i class="bi bi-check-lg me-1"></i>Save Season
           </button>
         </div>
@@ -6622,7 +6625,7 @@
         </div>
         <div class="modal-footer">
           <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-          <button type="button" class="btn btn-primary" onclick="awardsModule.saveAward()">
+          <button type="button" class="btn btn-primary" data-action="awardsModule.saveAward">
             <i class="bi bi-check-lg me-1"></i>Save Award
           </button>
         </div>
@@ -6741,7 +6744,7 @@
                 </div>
               </div>
               <div id="invoiceLineItems"></div>
-              <button type="button" class="btn btn-sm btn-outline-primary mt-2" onclick="paymentsModule.addInvoiceLineItem()">
+              <button type="button" class="btn btn-sm btn-outline-primary mt-2" data-action="paymentsModule.addInvoiceLineItem">
                 <i class="bi bi-plus-circle me-1"></i>Add Line Item
               </button>
             </div>
@@ -6753,7 +6756,7 @@
         </div>
         <div class="modal-footer">
           <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-          <button type="button" class="btn btn-success" onclick="paymentsModule.saveNewInvoice()">
+          <button type="button" class="btn btn-success" data-action="paymentsModule.saveNewInvoice">
             <i class="bi bi-check-lg me-1"></i>Create Invoice
           </button>
         </div>
@@ -6815,7 +6818,7 @@
         </div>
         <div class="modal-footer">
           <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-          <button type="button" class="btn btn-success" onclick="paymentsModule.savePaymentRecord()">
+          <button type="button" class="btn btn-success" data-action="paymentsModule.savePaymentRecord">
             <i class="bi bi-check-lg me-1"></i>Record Payment
           </button>
         </div>
@@ -6905,7 +6908,7 @@
         </div>
         <div class="modal-footer">
           <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-          <button type="button" class="btn btn-info text-white" onclick="paymentsModule.confirmSendInvoice()">
+          <button type="button" class="btn btn-info text-white" data-action="paymentsModule.confirmSendInvoice">
             <i class="bi bi-send me-1"></i>Send Invoice
           </button>
         </div>
@@ -6927,7 +6930,7 @@
         </div>
         <div class="modal-footer">
           <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-          <button type="button" class="btn btn-warning" onclick="paymentsModule.executeOverdueReminders()">
+          <button type="button" class="btn btn-warning" data-action="paymentsModule.executeOverdueReminders">
             <i class="bi bi-send me-1"></i>Send Reminders
           </button>
         </div>
@@ -6949,7 +6952,7 @@
           <p class="mb-3">Share this link for companies to submit entries:</p>
           <div class="input-group mb-3">
             <input type="text" class="form-control" id="publicFormLinkInput" readonly>
-            <button class="btn btn-primary" onclick="entriesModule.copyPublicFormLink()">
+            <button class="btn btn-primary" data-action="entriesModule.copyPublicFormLink">
               <i class="bi bi-clipboard me-1"></i>Copy
             </button>
           </div>
@@ -7061,7 +7064,7 @@
             <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
               <i class="bi bi-x-lg me-2"></i>Close
             </button>
-            <button type="button" class="btn btn-success" onclick="assignmentsModule.emailAllAssigned()">
+            <button type="button" class="btn btn-success" data-action="assignmentsModule.emailAllAssigned">
               <i class="bi bi-envelope me-2"></i>Email All Nominees
             </button>
           </div>
@@ -7122,7 +7125,7 @@
       </div>
       <div class="modal-footer">
         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-        <button type="button" class="btn btn-primary" onclick="assignmentsModule.addSelectedCompanies()">
+        <button type="button" class="btn btn-primary" data-action="assignmentsModule.addSelectedCompanies">
           <i class="bi bi-plus-lg me-2"></i>Add Selected (<span id="assignSelectedCount">0</span>)
         </button>
       </div>
@@ -7149,7 +7152,7 @@
             <div class="mb-3">
               <label for="uploadEventSelect" class="form-label">
                 Event *
-                <button type="button" class="btn btn-sm btn-link p-0 ms-2" onclick="mediaGalleryModule.showQuickAddEvent()">
+                <button type="button" class="btn btn-sm btn-link p-0 ms-2" data-action="mediaGalleryModule.showQuickAddEvent">
                   <i class="bi bi-plus-circle"></i> Add New Event
                 </button>
               </label>
@@ -7174,10 +7177,10 @@
                     </div>
                   </div>
                   <div class="d-flex gap-2">
-                    <button type="button" class="btn btn-sm btn-success" onclick="mediaGalleryModule.saveQuickEvent()">
+                    <button type="button" class="btn btn-sm btn-success" data-action="mediaGalleryModule.saveQuickEvent">
                       <i class="bi bi-check"></i> Create & Select
                     </button>
-                    <button type="button" class="btn btn-sm btn-secondary" onclick="mediaGalleryModule.cancelQuickAddEvent()">
+                    <button type="button" class="btn btn-sm btn-secondary" data-action="mediaGalleryModule.cancelQuickAddEvent">
                       Cancel
                     </button>
                   </div>
@@ -7205,7 +7208,7 @@
         </div>
         <div class="modal-footer">
           <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-          <button type="button" class="btn btn-primary" id="uploadMediaGalleryBtn" onclick="mediaGalleryModule.handleUpload()">
+          <button type="button" class="btn btn-primary" id="uploadMediaGalleryBtn" data-action="mediaGalleryModule.handleUpload">
             <i class="bi bi-upload me-2"></i>Upload
           </button>
         </div>
@@ -7243,7 +7246,7 @@
         </div>
         <div class="modal-footer">
           <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-          <button type="button" class="btn btn-primary" onclick="mediaGalleryModule.saveTags()">
+          <button type="button" class="btn btn-primary" data-action="mediaGalleryModule.saveTags">
             <i class="bi bi-save me-2"></i>Save Tags
           </button>
         </div>
@@ -7356,7 +7359,7 @@
         </div>
         <div class="modal-footer">
           <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-          <button type="button" class="btn btn-primary" id="saveEventBtn" onclick="eventsModule.saveEvent()">
+          <button type="button" class="btn btn-primary" id="saveEventBtn" data-action="eventsModule.saveEvent">
             <i class="bi bi-save me-2"></i>Add Event
           </button>
         </div>
@@ -7423,7 +7426,7 @@
         </div>
         <div class="modal-footer">
           <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-          <button type="button" class="btn btn-success" onclick="eventsModule.cloneEvent()">
+          <button type="button" class="btn btn-success" data-action="eventsModule.cloneEvent">
             <i class="bi bi-files me-1"></i>Clone Event
           </button>
         </div>
@@ -7459,19 +7462,19 @@
                   <i class="bi bi-download me-1"></i>Export
                 </button>
                 <ul class="dropdown-menu dropdown-menu-end">
-                  <li><a class="dropdown-item" href="#" onclick="eventsModule.exportAttendees()"><i class="bi bi-file-earmark-spreadsheet text-success me-2"></i>Export Attendees CSV</a></li>
-                  <li><a class="dropdown-item" href="#" onclick="eventsModule.exportDietarySummary()"><i class="bi bi-egg-fried text-warning me-2"></i>Export Dietary Report</a></li>
+                  <li><a class="dropdown-item" href="#" data-action="eventsModule.exportAttendees"><i class="bi bi-file-earmark-spreadsheet text-success me-2"></i>Export Attendees CSV</a></li>
+                  <li><a class="dropdown-item" href="#" data-action="eventsModule.exportDietarySummary"><i class="bi bi-egg-fried text-warning me-2"></i>Export Dietary Report</a></li>
                   <li><hr class="dropdown-divider"></li>
-                  <li><a class="dropdown-item" href="#" onclick="eventsModule.generateNameBadges()"><i class="bi bi-person-badge text-primary me-2"></i>Name Badges PDF</a></li>
-                  <li><a class="dropdown-item" href="#" onclick="eventsModule.generatePlaceCards()"><i class="bi bi-card-text text-info me-2"></i>Place Cards PDF</a></li>
+                  <li><a class="dropdown-item" href="#" data-action="eventsModule.generateNameBadges"><i class="bi bi-person-badge text-primary me-2"></i>Name Badges PDF</a></li>
+                  <li><a class="dropdown-item" href="#" data-action="eventsModule.generatePlaceCards"><i class="bi bi-card-text text-info me-2"></i>Place Cards PDF</a></li>
                   <li><hr class="dropdown-divider"></li>
-                  <li><a class="dropdown-item" href="#" onclick="eventsModule.openShareableSeatingChart()"><i class="bi bi-share text-purple me-2" style="color:#6f42c1;"></i>Shareable Seating Chart</a></li>
+                  <li><a class="dropdown-item" href="#" data-action="eventsModule.openShareableSeatingChart"><i class="bi bi-share text-purple me-2" style="color:#6f42c1;"></i>Shareable Seating Chart</a></li>
                 </ul>
               </div>
-              <button class="btn btn-outline-info btn-sm" onclick="eventsModule.sendBulkInvites()" title="Send invitation email to all guests">
+              <button class="btn btn-outline-info btn-sm" data-action="eventsModule.sendBulkInvites" title="Send invitation email to all guests">
                 <i class="bi bi-envelope me-1"></i>Send Invites
               </button>
-              <button class="btn btn-primary btn-sm" onclick="eventsModule.openAddAttendeeForm()">
+              <button class="btn btn-primary btn-sm" data-action="eventsModule.openAddAttendeeForm">
                 <i class="bi bi-person-plus me-1"></i>Add Attendee
               </button>
             </div>
@@ -7480,7 +7483,7 @@
           <!-- Stats Cards -->
           <div class="row g-3 mb-4">
             <div class="col-md-3">
-              <div class="card text-center" style="cursor:pointer; transition: box-shadow 0.15s, transform 0.15s;" onclick="eventsModule.filterByCard('attending')" onmouseover="this.style.boxShadow='0 4px 12px rgba(25,135,84,0.25)'; this.style.transform='translateY(-2px)'" onmouseout="this.style.boxShadow=''; this.style.transform=''">
+              <div class="card text-center" style="cursor:pointer; transition: box-shadow 0.15s, transform 0.15s;" data-action="eventsModule.filterByCard" data-args="[&quot;attending&quot;]" onmouseover="this.style.boxShadow='0 4px 12px rgba(25,135,84,0.25)'; this.style.transform='translateY(-2px)'" onmouseout="this.style.boxShadow=''; this.style.transform=''">
                 <div class="card-body py-2">
                   <h3 class="mb-0 text-success" id="attendingCount">0</h3>
                   <small class="text-muted">Attending</small>
@@ -7488,7 +7491,7 @@
               </div>
             </div>
             <div class="col-md-3">
-              <div class="card text-center" style="cursor:pointer; transition: box-shadow 0.15s, transform 0.15s;" onclick="eventsModule.filterByCard('not_attending')" onmouseover="this.style.boxShadow='0 4px 12px rgba(220,53,69,0.25)'; this.style.transform='translateY(-2px)'" onmouseout="this.style.boxShadow=''; this.style.transform=''">
+              <div class="card text-center" style="cursor:pointer; transition: box-shadow 0.15s, transform 0.15s;" data-action="eventsModule.filterByCard" data-args="[&quot;not_attending&quot;]" onmouseover="this.style.boxShadow='0 4px 12px rgba(220,53,69,0.25)'; this.style.transform='translateY(-2px)'" onmouseout="this.style.boxShadow=''; this.style.transform=''">
                 <div class="card-body py-2">
                   <h3 class="mb-0 text-danger" id="notAttendingCount">0</h3>
                   <small class="text-muted">Not Attending</small>
@@ -7496,7 +7499,7 @@
               </div>
             </div>
             <div class="col-md-3">
-              <div class="card text-center" style="cursor:pointer; transition: box-shadow 0.15s, transform 0.15s;" onclick="eventsModule.filterByCard('maybe')" onmouseover="this.style.boxShadow='0 4px 12px rgba(255,193,7,0.25)'; this.style.transform='translateY(-2px)'" onmouseout="this.style.boxShadow=''; this.style.transform=''">
+              <div class="card text-center" style="cursor:pointer; transition: box-shadow 0.15s, transform 0.15s;" data-action="eventsModule.filterByCard" data-args="[&quot;maybe&quot;]" onmouseover="this.style.boxShadow='0 4px 12px rgba(255,193,7,0.25)'; this.style.transform='translateY(-2px)'" onmouseout="this.style.boxShadow=''; this.style.transform=''">
                 <div class="card-body py-2">
                   <h3 class="mb-0 text-warning" id="maybeCount">0</h3>
                   <small class="text-muted">Maybe</small>
@@ -7504,7 +7507,7 @@
               </div>
             </div>
             <div class="col-md-3">
-              <div class="card text-center" style="cursor:pointer; transition: box-shadow 0.15s, transform 0.15s;" onclick="eventsModule.filterByCard('')" onmouseover="this.style.boxShadow='0 4px 12px rgba(13,202,240,0.25)'; this.style.transform='translateY(-2px)'" onmouseout="this.style.boxShadow=''; this.style.transform=''">
+              <div class="card text-center" style="cursor:pointer; transition: box-shadow 0.15s, transform 0.15s;" data-action="eventsModule.filterByCard" data-args="[&quot;&quot;]" onmouseover="this.style.boxShadow='0 4px 12px rgba(13,202,240,0.25)'; this.style.transform='translateY(-2px)'" onmouseout="this.style.boxShadow=''; this.style.transform=''">
                 <div class="card-body py-2">
                   <h3 class="mb-0 text-info" id="totalAttendeesCount">0</h3>
                   <small class="text-muted">Total</small>
@@ -7545,7 +7548,7 @@
               <div class="card-body py-2">
                 <div class="d-flex justify-content-between align-items-center mb-1">
                   <small class="fw-bold text-muted"><i class="bi bi-egg-fried me-1"></i>DIETARY SUMMARY (for caterers)</small>
-                  <button class="btn btn-sm btn-outline-secondary py-0" onclick="eventsModule.exportDietarySummary()" title="Export dietary report">
+                  <button class="btn btn-sm btn-outline-secondary py-0" data-action="eventsModule.exportDietarySummary" title="Export dietary report">
                     <i class="bi bi-download me-1"></i><small>Export</small>
                   </button>
                 </div>
@@ -7628,7 +7631,7 @@
                       <input type="text" class="form-control form-control-sm" id="attendeeNotes" placeholder="Notes (e.g. wheelchair access, sponsor contact)">
                     </div>
                     <div class="col-md-2">
-                      <button class="btn btn-sm btn-success w-100" onclick="eventsModule.addAttendee()">
+                      <button class="btn btn-sm btn-success w-100" data-action="eventsModule.addAttendee">
                         <i class="bi bi-plus-circle me-1"></i>Add
                       </button>
                     </div>
@@ -7713,11 +7716,11 @@
                 <div class="input-group flex-grow-1">
                   <span class="input-group-text"><i class="bi bi-search"></i></span>
                   <input type="text" class="form-control" id="checkInSearch" placeholder="Search guest name to check in...">
-                  <button class="btn btn-outline-success" onclick="eventsModule.checkInAll()" title="Check in all attending guests">
+                  <button class="btn btn-outline-success" data-action="eventsModule.checkInAll" title="Check in all attending guests">
                     <i class="bi bi-check-all me-1"></i>Check In All
                   </button>
                 </div>
-                <button class="btn btn-primary" onclick="eventsModule.launchCheckInScanner()" title="Open QR scanner on phone/tablet">
+                <button class="btn btn-primary" data-action="eventsModule.launchCheckInScanner" title="Open QR scanner on phone/tablet">
                   <i class="bi bi-qr-code-scan me-1"></i>Launch Scanner
                 </button>
               </div>
@@ -7794,13 +7797,13 @@
                     </div>
                     <div class="col-md-2">
                       <label class="form-label small">&nbsp;</label>
-                      <button class="btn btn-sm btn-primary w-100" onclick="eventsModule.saveTicketSettings()">
+                      <button class="btn btn-sm btn-primary w-100" data-action="eventsModule.saveTicketSettings">
                         <i class="bi bi-save me-1"></i>Save
                       </button>
                     </div>
                     <div class="col-md-2">
                       <label class="form-label small">&nbsp;</label>
-                      <button class="btn btn-sm btn-outline-secondary w-100" id="ticketUrlCopyBtn" onclick="eventsModule.copyTicketUrl()" style="display:none;">
+                      <button class="btn btn-sm btn-outline-secondary w-100" id="ticketUrlCopyBtn" data-action="eventsModule.copyTicketUrl" style="display:none;">
                         <i class="bi bi-link-45deg me-1"></i>Copy Link
                       </button>
                     </div>
@@ -7820,7 +7823,7 @@
                     </div>
                     <div class="col-md-4">
                       <label class="form-label small">&nbsp;</label>
-                      <button class="btn btn-sm btn-primary w-100" onclick="eventsModule.saveStripeKey()">
+                      <button class="btn btn-sm btn-primary w-100" data-action="eventsModule.saveStripeKey">
                         <i class="bi bi-save me-1"></i>Save Key
                       </button>
                     </div>
@@ -7836,7 +7839,7 @@
                       <label class="form-label small">Public Registration Page</label>
                       <div class="input-group input-group-sm">
                         <input type="text" class="form-control" id="registrationLinkDisplay" readonly>
-                        <button class="btn btn-outline-primary" onclick="eventsModule.copyRegistrationLink()">
+                        <button class="btn btn-outline-primary" data-action="eventsModule.copyRegistrationLink">
                           <i class="bi bi-clipboard me-1"></i>Copy
                         </button>
                       </div>
@@ -7846,7 +7849,7 @@
                       <label class="form-label small">Check-In Scanner Page</label>
                       <div class="input-group input-group-sm">
                         <input type="text" class="form-control" id="checkInLinkDisplay" readonly>
-                        <button class="btn btn-outline-primary" onclick="eventsModule.copyCheckInLink()">
+                        <button class="btn btn-outline-primary" data-action="eventsModule.copyCheckInLink">
                           <i class="bi bi-clipboard me-1"></i>Copy
                         </button>
                       </div>
@@ -7872,7 +7875,7 @@
                     <span class="badge bg-warning ms-2" id="waitlistCount">0</span> waiting</h6>
                   <small class="text-muted">When at capacity, add guests here. Promote to attendee list when space opens up.</small>
                 </div>
-                <button class="btn btn-sm btn-primary" onclick="eventsModule.addToWaitlist()">
+                <button class="btn btn-sm btn-primary" data-action="eventsModule.addToWaitlist">
                   <i class="bi bi-plus-circle me-1"></i>Add to Waitlist
                 </button>
               </div>
@@ -7893,10 +7896,10 @@
               <div class="d-flex justify-content-between align-items-center mb-3">
                 <h6 class="mb-0"><i class="bi bi-wallet2 me-2"></i>Event Budget</h6>
                 <div class="d-flex gap-2">
-                  <button class="btn btn-sm btn-outline-secondary" onclick="eventsModule.exportBudget()">
+                  <button class="btn btn-sm btn-outline-secondary" data-action="eventsModule.exportBudget">
                     <i class="bi bi-download me-1"></i>Export
                   </button>
-                  <button class="btn btn-sm btn-primary" onclick="eventsModule.addBudgetItem()">
+                  <button class="btn btn-sm btn-primary" data-action="eventsModule.addBudgetItem">
                     <i class="bi bi-plus-circle me-1"></i>Add Item
                   </button>
                 </div>
@@ -7987,10 +7990,10 @@
                   <small class="text-muted">Track all suppliers, contractors and service providers for this event</small>
                 </div>
                 <div class="d-flex gap-2">
-                  <button class="btn btn-sm btn-outline-secondary" onclick="eventsModule.exportVendors()">
+                  <button class="btn btn-sm btn-outline-secondary" data-action="eventsModule.exportVendors">
                     <i class="bi bi-download me-1"></i>Export
                   </button>
-                  <button class="btn btn-sm btn-primary" onclick="eventsModule.addVendor()">
+                  <button class="btn btn-sm btn-primary" data-action="eventsModule.addVendor">
                     <i class="bi bi-plus-circle me-1"></i>Add Vendor
                   </button>
                 </div>
@@ -8089,7 +8092,7 @@
         </div>
         <div class="modal-footer">
           <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-          <button type="button" class="btn btn-primary" id="uploadCompanyImagesBtn" onclick="orgsModule.uploadCompanyImages()">
+          <button type="button" class="btn btn-primary" id="uploadCompanyImagesBtn" data-action="orgsModule.uploadCompanyImages">
             <i class="bi bi-upload me-2"></i>Upload
           </button>
         </div>
@@ -8146,7 +8149,7 @@
         </div>
         <div class="modal-footer">
           <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-          <button type="button" class="btn btn-primary" id="saveGallerySectionBtn" onclick="mediaGalleryModule.saveGallerySection()">
+          <button type="button" class="btn btn-primary" id="saveGallerySectionBtn" data-action="mediaGalleryModule.saveGallerySection">
             <i class="bi bi-save me-2"></i>Save Section
           </button>
         </div>
@@ -8229,7 +8232,7 @@
         </div>
         <div class="modal-footer">
           <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-          <button type="button" class="btn btn-primary" id="uploadSectionPhotosBtn" onclick="mediaGalleryModule.uploadSectionPhotos()">
+          <button type="button" class="btn btn-primary" id="uploadSectionPhotosBtn" data-action="mediaGalleryModule.uploadSectionPhotos">
             <i class="bi bi-upload me-2"></i>Upload
           </button>
         </div>
@@ -8276,7 +8279,7 @@
         </div>
         <div class="modal-footer">
           <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-          <button type="button" class="btn btn-primary" id="addYouTubeVideoBtn" onclick="mediaGalleryModule.addYouTubeVideo()">
+          <button type="button" class="btn btn-primary" id="addYouTubeVideoBtn" data-action="mediaGalleryModule.addYouTubeVideo">
             <i class="bi bi-plus-circle me-2"></i>Add Video
           </button>
         </div>
@@ -8371,7 +8374,7 @@
         </div>
         <div class="modal-footer">
           <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-          <button type="button" class="btn btn-primary" onclick="mediaGalleryModule.savePhotoTags()">
+          <button type="button" class="btn btn-primary" data-action="mediaGalleryModule.savePhotoTags">
             <i class="bi bi-save me-2"></i>Save
           </button>
         </div>
@@ -8413,7 +8416,7 @@
         </div>
         <div class="modal-footer">
           <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-          <button type="button" class="btn btn-primary" id="dragDropUploadBtn" onclick="mediaGalleryModule.uploadDraggedFiles()">
+          <button type="button" class="btn btn-primary" id="dragDropUploadBtn" data-action="mediaGalleryModule.uploadDraggedFiles">
             <i class="bi bi-upload me-2"></i>Upload
           </button>
         </div>
@@ -8437,13 +8440,13 @@
           </div>
         </div>
         <div class="modal-footer">
-          <button type="button" class="btn btn-outline-info" id="cropRotateFromViewBtn" onclick="mediaGalleryModule.openCropRotate()">
+          <button type="button" class="btn btn-outline-info" id="cropRotateFromViewBtn" data-action="mediaGalleryModule.openCropRotate">
             <i class="bi bi-crop me-2"></i>Crop / Rotate
           </button>
-          <button type="button" class="btn btn-primary" id="tagPhotoFromViewBtn" onclick="mediaGalleryModule.tagPhotoFromView()">
+          <button type="button" class="btn btn-primary" id="tagPhotoFromViewBtn" data-action="mediaGalleryModule.tagPhotoFromView">
             <i class="bi bi-tag me-2"></i>Tag Photo
           </button>
-          <button type="button" class="btn btn-danger" id="deletePhotoFromViewBtn" onclick="mediaGalleryModule.deletePhotoFromView()">
+          <button type="button" class="btn btn-danger" id="deletePhotoFromViewBtn" data-action="mediaGalleryModule.deletePhotoFromView">
             <i class="bi bi-trash me-2"></i>Delete Photo
           </button>
           <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
@@ -8497,10 +8500,10 @@
                 <i class="bi bi-check2-square me-2"></i>Select Winners (<span id="selectedWinnersCount">0</span> selected)
               </h6>
               <div>
-                <button class="btn btn-sm btn-outline-primary" onclick="winnersModule.selectAllWinners()">
+                <button class="btn btn-sm btn-outline-primary" data-action="winnersModule.selectAllWinners">
                   <i class="bi bi-check-all me-1"></i>Select All
                 </button>
-                <button class="btn btn-sm btn-outline-secondary" onclick="winnersModule.deselectAllWinners()">
+                <button class="btn btn-sm btn-outline-secondary" data-action="winnersModule.deselectAllWinners">
                   <i class="bi bi-x-circle me-1"></i>Clear All
                 </button>
               </div>
@@ -8519,7 +8522,7 @@
           <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
             <i class="bi bi-x-lg me-1"></i>Cancel
           </button>
-          <button type="button" class="btn btn-success" onclick="winnersModule.exportPressRelease()">
+          <button type="button" class="btn btn-success" data-action="winnersModule.exportPressRelease">
             <i class="bi bi-download me-1"></i>Export Press Release
           </button>
         </div>
@@ -8633,10 +8636,10 @@ in recognition of excellence
                 <i class="bi bi-check2-square me-2"></i>Select Winners (<span id="selectedCertificateWinnersCount">0</span> selected)
               </h6>
               <div>
-                <button class="btn btn-sm btn-outline-primary" onclick="winnersModule.selectAllCertificateWinners()">
+                <button class="btn btn-sm btn-outline-primary" data-action="winnersModule.selectAllCertificateWinners">
                   <i class="bi bi-check-all me-1"></i>Select All
                 </button>
-                <button class="btn btn-sm btn-outline-secondary" onclick="winnersModule.deselectAllCertificateWinners()">
+                <button class="btn btn-sm btn-outline-secondary" data-action="winnersModule.deselectAllCertificateWinners">
                   <i class="bi bi-x-circle me-1"></i>Clear All
                 </button>
               </div>
@@ -8667,10 +8670,10 @@ in recognition of excellence
           <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
             <i class="bi bi-x-lg me-1"></i>Cancel
           </button>
-          <button type="button" class="btn btn-outline-primary" onclick="winnersModule.previewAssets()">
+          <button type="button" class="btn btn-outline-primary" data-action="winnersModule.previewAssets">
             <i class="bi bi-eye me-1"></i>Preview
           </button>
-          <button type="button" class="btn btn-primary" onclick="winnersModule.generateAssets()">
+          <button type="button" class="btn btn-primary" data-action="winnersModule.generateAssets">
             <i class="bi bi-download me-1"></i>Generate & Download
           </button>
         </div>
@@ -8703,7 +8706,7 @@ in recognition of excellence
               <div class="row" id="yearSelectionCheckboxes">
                 <!-- Populated by JavaScript -->
               </div>
-              <button class="btn btn-primary btn-sm mt-3" onclick="winnersModule.runYearComparison()">
+              <button class="btn btn-primary btn-sm mt-3" data-action="winnersModule.runYearComparison">
                 <i class="bi bi-search me-1"></i>Run Comparison
               </button>
             </div>
@@ -8795,7 +8798,7 @@ in recognition of excellence
           <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
             <i class="bi bi-x-lg me-1"></i>Close
           </button>
-          <button type="button" class="btn btn-info" onclick="winnersModule.exportYearComparison()">
+          <button type="button" class="btn btn-info" data-action="winnersModule.exportYearComparison">
             <i class="bi bi-download me-1"></i>Export Report (CSV)
           </button>
         </div>
@@ -8823,7 +8826,7 @@ in recognition of excellence
           <div class="card mb-4">
             <div class="card-header bg-light d-flex justify-content-between align-items-center">
               <h6 class="mb-0"><i class="bi bi-list-ul me-2"></i>Saved Templates (<span id="templatesCount">0</span>)</h6>
-              <button class="btn btn-primary btn-sm" onclick="eventsModule.openCreateTemplate()">
+              <button class="btn btn-primary btn-sm" data-action="eventsModule.openCreateTemplate">
                 <i class="bi bi-plus-circle me-1"></i>Create Template
               </button>
             </div>
@@ -8870,10 +8873,10 @@ in recognition of excellence
                   </div>
                 </div>
                 <div class="d-flex gap-2">
-                  <button type="button" class="btn btn-primary" onclick="eventsModule.saveTemplate()">
+                  <button type="button" class="btn btn-primary" data-action="eventsModule.saveTemplate">
                     <i class="bi bi-save me-1"></i>Save Template
                   </button>
-                  <button type="button" class="btn btn-secondary" onclick="eventsModule.cancelTemplateEdit()">
+                  <button type="button" class="btn btn-secondary" data-action="eventsModule.cancelTemplateEdit">
                     Cancel
                   </button>
                 </div>
@@ -8990,7 +8993,7 @@ in recognition of excellence
           <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
             <i class="bi bi-x-lg me-1"></i>Cancel
           </button>
-          <button type="button" class="btn btn-primary" onclick="winnersModule.generateMediaPackForWinner()">
+          <button type="button" class="btn btn-primary" data-action="winnersModule.generateMediaPackForWinner">
             <i class="bi bi-download me-1"></i>Download Media Pack
           </button>
         </div>
@@ -9098,7 +9101,7 @@ in recognition of excellence
           <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
             <i class="bi bi-x-lg me-1"></i>Cancel
           </button>
-          <button type="button" class="btn btn-primary" onclick="winnersModule.generateWinnerPackageForWinner()">
+          <button type="button" class="btn btn-primary" data-action="winnersModule.generateWinnerPackageForWinner">
             <i class="bi bi-download me-1"></i>Download Winner Package
           </button>
         </div>
@@ -9146,7 +9149,7 @@ in recognition of excellence
           <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
             <i class="bi bi-x-lg me-1"></i>Cancel
           </button>
-          <button type="button" class="btn btn-success" id="importWinnersBtn" disabled onclick="winnersModule.importWinners()">
+          <button type="button" class="btn btn-success" id="importWinnersBtn" disabled data-action="winnersModule.importWinners">
             <i class="bi bi-upload me-1"></i>Import Winners
           </button>
         </div>
@@ -9413,7 +9416,7 @@ in recognition of excellence
 
         </div>
         <div class="modal-footer">
-          <button type="button" class="btn btn-sm btn-outline-secondary" onclick="dashboardModule.exportSalesData()">
+          <button type="button" class="btn btn-sm btn-outline-secondary" data-action="dashboardModule.exportSalesData">
             <i class="bi bi-download me-1"></i>Export Report
           </button>
           <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
@@ -10026,21 +10029,21 @@ in recognition of excellence
           <!-- Action Buttons -->
           <div class="d-flex justify-content-between align-items-center mb-3">
             <div class="btn-group" role="group">
-              <button type="button" class="btn btn-outline-secondary btn-sm active" onclick="aiVettingModule.filterResults('all')">
+              <button type="button" class="btn btn-outline-secondary btn-sm active" data-action="aiVettingModule.filterResults" data-args="[&quot;all&quot;]">
                 All <span class="badge bg-secondary ms-1" id="filterAllCount">0</span>
               </button>
-              <button type="button" class="btn btn-outline-danger btn-sm" onclick="aiVettingModule.filterResults('flagged')">
+              <button type="button" class="btn btn-outline-danger btn-sm" data-action="aiVettingModule.filterResults" data-args="[&quot;flagged&quot;]">
                 Flagged <span class="badge bg-danger ms-1" id="filterFlaggedCount">0</span>
               </button>
-              <button type="button" class="btn btn-outline-success btn-sm" onclick="aiVettingModule.filterResults('verified')">
+              <button type="button" class="btn btn-outline-success btn-sm" data-action="aiVettingModule.filterResults" data-args="[&quot;verified&quot;]">
                 Verified <span class="badge bg-success ms-1" id="filterVerifiedCount">0</span>
               </button>
             </div>
             <div>
-              <button class="btn btn-warning btn-sm" onclick="aiVettingModule.runVetting()" id="runVettingBtn">
+              <button class="btn btn-warning btn-sm" data-action="aiVettingModule.runVetting" id="runVettingBtn">
                 <i class="bi bi-robot me-1"></i>Run AI Vetting
               </button>
-              <button class="btn btn-outline-secondary btn-sm" onclick="aiVettingModule.exportResults()">
+              <button class="btn btn-outline-secondary btn-sm" data-action="aiVettingModule.exportResults">
                 <i class="bi bi-download me-1"></i>Export
               </button>
             </div>

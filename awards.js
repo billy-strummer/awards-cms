@@ -9,6 +9,7 @@ const awardsModule = {
 
   /**
    * Load all awards from database
+   * @returns {Promise<void>}
    */
   async loadAwards() {
     if (this._loading) return;
@@ -17,19 +18,17 @@ const awardsModule = {
       utils.showLoading();
       utils.showSkeletonLoading('awardsTableBody', 10);
 
-      const allData = await serverQuery.loadAll({
-        table: 'awards',
-        select: '*'
-      });
+      const allData = await apiClient.selectAll('awards');
 
       // Batch lookup regions for all counties in one query
       const uniqueCounties = [...new Set(allData.map(a => a.county).filter(Boolean))];
       const countyRegionMap = {};
       if (uniqueCounties.length > 0) {
-        const { data: countyData } = await STATE.client
-          .from('counties')
-          .select('Name, regions(name)')
-          .in('Name', uniqueCounties);
+        const { data: countyData } = await apiClient.select('counties', {
+          select: 'Name, regions(name)',
+          filters: { Name: { op: 'in', value: uniqueCounties } },
+          pageSize: 1000
+        });
 
         (countyData || []).forEach(c => {
           countyRegionMap[c.Name] = c.regions?.name || null;
@@ -99,23 +98,26 @@ const awardsModule = {
   },
   /**
    * Load assignment counts for all awards
+   * @returns {Promise<void>}
    */
   async loadAssignmentCounts() {
     try {
-      let data, error;
-      ({ data, error } = await STATE.client
-        .from('award_assignments')
-        .select('award_id, status, winner_position, organisations(company_name)'));
-
-      // FK relationship missing - retry without joins
-      if (error && (error.message?.includes('relationship') || error.message?.includes('schema cache'))) {
-        console.warn('award_assignments FK relationships not found, loading without joins');
-        ({ data, error } = await STATE.client
-          .from('award_assignments')
-          .select('award_id, status, winner_position'));
+      let data;
+      try {
+        data = await apiClient.selectAll('award_assignments', {
+          select: 'award_id, status, winner_position, organisations(company_name)'
+        });
+      } catch (joinErr) {
+        // FK relationship missing - retry without joins
+        if (joinErr.message?.includes('relationship') || joinErr.message?.includes('schema cache')) {
+          console.warn('award_assignments FK relationships not found, loading without joins');
+          data = await apiClient.selectAll('award_assignments', {
+            select: 'award_id, status, winner_position'
+          });
+        } else {
+          throw joinErr;
+        }
       }
-
-      if (error) throw error;
 
       // Count assignments per award and track winners
       const counts = {};
@@ -163,6 +165,7 @@ const awardsModule = {
 
   /**
    * Populate year filter with all years found in data
+   * @returns {void}
    */
   populateYearFilter() {
     const yearSelect = document.getElementById('awardsYearFilterSelect');
@@ -186,7 +189,8 @@ const awardsModule = {
   },
 
   /**
-   * Populate filter dropdowns with unique values
+   * Populate filter dropdowns with unique values from loaded awards
+   * @returns {void}
    */
   populateFilters() {
     // Populate year filter (2026+)
@@ -224,6 +228,7 @@ const awardsModule = {
 
   /**
    * Update county dropdown based on selected region
+   * @returns {void}
    */
   updateCountyFilterByRegion() {
     const selectedRegion = document.getElementById('awardsRegionFilterSelect')?.value || '';
@@ -255,6 +260,8 @@ const awardsModule = {
 
   /**
    * Set status filter and trigger filtering
+   * @param {string} status - Status value to filter by
+   * @returns {void}
    */
   filterByStatus(status) {
     const statusSelect = document.getElementById('awardsStatusFilterSelect');
@@ -266,6 +273,8 @@ const awardsModule = {
 
   /**
    * Sort awards by column
+   * @param {string} column - Column name to sort by
+   * @returns {void}
    */
   sortBy(column) {
     // Toggle direction if same column clicked again
@@ -354,6 +363,7 @@ const awardsModule = {
 
   /**
    * Filter awards based on current filter values
+   * @returns {void}
    */
   filterAwards() {
     const year = document.getElementById('awardsYearFilterSelect').value;
@@ -428,6 +438,8 @@ const awardsModule = {
    */
   /**
    * Get the current phase of an award based on dates
+   * @param {Object} award - Award record with date fields
+   * @returns {{label: string, color: string, icon: string}} Phase information
    */
   getAwardPhase(award) {
     // Use UTC timestamps for consistent comparison across timezones
@@ -471,6 +483,10 @@ const awardsModule = {
     return { label: '-', color: 'light', icon: '' };
   },
 
+  /**
+   * Render the awards table from the current filtered dataset
+   * @returns {void}
+   */
   renderAwards() {
     const tbody = document.getElementById('awardsTableBody');
     const count = document.getElementById('awardsCount');
@@ -611,29 +627,20 @@ const awardsModule = {
       utils.showLoading();
 
       // Load nominees/assignments for this award
-      const { data: assignments, error: assignError } = await STATE.client
-        .from('award_assignments')
-        .select(`
-          *,
-          organisations (id, company_name)
-        `)
-        .eq('award_id', awardId)
-        .order('created_at', { ascending: false });
-
-      if (assignError) throw assignError;
+      const { data: assignments } = await apiClient.select('award_assignments', {
+        select: '*, organisations (id, company_name)',
+        filters: { award_id: awardId },
+        sort: { column: 'created_at', ascending: false },
+        pageSize: 1000
+      });
 
       // Load entries with voting enabled for this award
-      const { data: votingEntries, error: entriesError } = await STATE.client
-        .from('entries')
-        .select(`
-          *,
-          organisations (id, company_name)
-        `)
-        .eq('award_id', awardId)
-        .eq('allow_public_voting', true)
-        .order('vote_count', { ascending: false });
-
-      if (entriesError) throw entriesError;
+      const { data: votingEntries } = await apiClient.select('entries', {
+        select: '*, organisations (id, company_name)',
+        filters: { award_id: awardId, allow_public_voting: true },
+        sort: { column: 'vote_count', ascending: false },
+        pageSize: 1000
+      });
 
       // Create and show modal
       let modal = bootstrap.Modal.getInstance(document.getElementById('awardDetailsModal'));
@@ -859,7 +866,8 @@ const awardsModule = {
   },
 
   /**
-   * Update stats summary bar
+   * Update stats summary bar with current award counts
+   * @returns {void}
    */
   updateStats() {
     const awards = STATE.allAwards;
@@ -874,7 +882,8 @@ const awardsModule = {
   },
 
   /**
-   * Populate season dropdown in award form
+   * Populate season dropdown in the award form modal
+   * @returns {void}
    */
   populateSeasonDropdown() {
     const select = document.getElementById('awardFormSeason');
@@ -890,6 +899,7 @@ const awardsModule = {
 
   /**
    * Apply season dates when season dropdown changes
+   * @returns {void}
    */
   applySeasonDates() {
     const seasonId = document.getElementById('awardFormSeason').value;
@@ -911,7 +921,8 @@ const awardsModule = {
   },
 
   /**
-   * Open create award modal
+   * Open create award modal with empty form fields
+   * @returns {void}
    */
   openCreateModal() {
     document.getElementById('awardFormId').value = '';
@@ -983,7 +994,9 @@ const awardsModule = {
   },
 
   /**
-   * Open edit award modal
+   * Open edit award modal populated with existing award data
+   * @param {string} awardId - Award ID to edit
+   * @returns {void}
    */
   openEditModal(awardId) {
     const award = STATE.allAwards.find(a => a.id === awardId);
@@ -1057,7 +1070,8 @@ const awardsModule = {
 
   /**
    * Validate that dates are in chronological order
-   * Returns error message string or null if valid
+   * @param {Object} dates - Object with date field keys and date string values
+   * @returns {string|null} Error message string or null if valid
    */
   validateDates(dates) {
     const ordered = [
@@ -1085,7 +1099,8 @@ const awardsModule = {
   },
 
   /**
-   * Save award (create or update)
+   * Save award (create or update) from the form modal
+   * @returns {Promise<void>}
    */
   async saveAward() {
     const form = document.getElementById('awardForm');
@@ -1128,15 +1143,18 @@ const awardsModule = {
 
         // Duplicate prevention: check for same award_name + county + year
         {
-          let query = STATE.client
-            .from('awards')
-            .select('id')
-            .eq('award_name', awardData.award_name)
-            .eq('county', awardData.county)
-            .eq('year', awardData.year);
-          if (id) query = query.neq('id', id);
+          const dupeFilters = {
+            award_name: awardData.award_name,
+            county: awardData.county,
+            year: awardData.year
+          };
+          if (id) dupeFilters.id = { op: 'neq', value: id };
 
-          const { data: existing } = await query.limit(1);
+          const { data: existing } = await apiClient.select('awards', {
+            select: 'id',
+            filters: dupeFilters,
+            pageSize: 1
+          });
 
           if (existing && existing.length > 0) {
             utils.hideLoading();
@@ -1145,21 +1163,13 @@ const awardsModule = {
           }
         }
 
-        let error;
         if (id) {
           // Update existing
-          ({ error } = await STATE.client
-            .from('awards')
-            .update(awardData)
-            .eq('id', id));
+          await apiClient.update('awards', id, awardData);
         } else {
           // Create new
-          ({ error } = await STATE.client
-            .from('awards')
-            .insert(awardData));
+          await apiClient.insert('awards', awardData);
         }
-
-        if (error) throw error;
 
         // Clear auto-save draft on successful save
         if (id) {
@@ -1191,6 +1201,9 @@ const awardsModule = {
 
   /**
    * Toggle single award selection
+   * @param {string} awardId - Award ID
+   * @param {boolean} checked - Whether the checkbox is checked
+   * @returns {void}
    */
   toggleSelection(awardId, checked) {
     if (checked) {
@@ -1203,6 +1216,8 @@ const awardsModule = {
 
   /**
    * Toggle select all visible awards
+   * @param {boolean} checked - Whether to select or deselect all
+   * @returns {void}
    */
   toggleSelectAll(checked) {
     if (checked) {
@@ -1246,6 +1261,8 @@ const awardsModule = {
 
   /**
    * Bulk set status for selected awards
+   * @param {string} newStatus - New status to apply
+   * @returns {Promise<void>}
    */
   async bulkSetStatus(newStatus) {
     const count = this.selectedAwards.size;
@@ -1257,12 +1274,7 @@ const awardsModule = {
       utils.showLoading();
 
       const ids = [...this.selectedAwards];
-      const { error } = await STATE.client
-        .from('awards')
-        .update({ status: newStatus })
-        .in('id', ids);
-
-      if (error) throw error;
+      await Promise.all(ids.map(id => apiClient.update('awards', id, { status: newStatus })));
 
       utils.showToast(`${count} awards set to ${newStatus}`, 'success');
       this.selectedAwards.clear();
@@ -1277,7 +1289,8 @@ const awardsModule = {
   },
 
   /**
-   * Bulk delete selected awards
+   * Bulk delete selected awards and their assignments
+   * @returns {Promise<void>}
    */
   async bulkDelete() {
     if (typeof rbacModule !== 'undefined' && !rbacModule.canPerform('delete')) {
@@ -1296,20 +1309,12 @@ const awardsModule = {
       const ids = [...this.selectedAwards];
 
       // Delete assignments first
-      const { error: assignError } = await STATE.client
-        .from('award_assignments')
-        .delete()
-        .in('award_id', ids);
-
-      if (assignError) throw assignError;
+      await Promise.all(ids.map(id =>
+        apiClient.deleteByFilters('award_assignments', { award_id: id })
+      ));
 
       // Then delete awards
-      const { error } = await STATE.client
-        .from('awards')
-        .delete()
-        .in('id', ids);
-
-      if (error) throw error;
+      await Promise.all(ids.map(id => apiClient.delete('awards', id)));
 
       utils.showToast(`${count} awards deleted`, 'success');
       this.selectedAwards.clear();
@@ -1324,7 +1329,8 @@ const awardsModule = {
   },
 
   /**
-   * Export filtered awards to CSV
+   * Export filtered awards to CSV file download
+   * @returns {void}
    */
   exportAwards() {
     const awards = STATE.filteredAwards;
@@ -1441,7 +1447,9 @@ const awardsModule = {
   },
 
   /**
-   * Delete a single award
+   * Delete a single award and its assignments
+   * @param {string} awardId - Award ID to delete
+   * @returns {Promise<void>}
    */
   async deleteAward(awardId) {
     if (typeof rbacModule !== 'undefined' && !rbacModule.canPerform('delete')) {
@@ -1459,14 +1467,9 @@ const awardsModule = {
       if (award) utils.softDelete('awards', award);
 
       // Clean up related records before deleting the award
-      await STATE.client.from('award_assignments').delete().eq('award_id', awardId);
+      await apiClient.deleteByFilters('award_assignments', { award_id: awardId });
 
-      const { error } = await STATE.client
-        .from('awards')
-        .delete()
-        .eq('id', awardId);
-
-      if (error) throw error;
+      await apiClient.delete('awards', awardId);
 
       this._logAwardAudit(awardId, 'deleted', award?.award_name || '', `Award deleted: ${award?.award_name || 'Unknown'}`);
 
@@ -1483,6 +1486,7 @@ const awardsModule = {
 
   /**
    * Roll over awards from one year to the next as Draft
+   * @returns {Promise<void>}
    */
   async rolloverToNextYear() {
     // Determine source year from current filter or most common year
@@ -1533,11 +1537,13 @@ const awardsModule = {
 
       // Fetch previous year's winners from award_assignments
       const sourceAwardIds = awardsToRoll.map(a => a.id);
-      const { data: winnerData } = await STATE.client
-        .from('award_assignments')
-        .select('award_id, winner_position, organisations(company_name)')
-        .in('award_id', sourceAwardIds)
-        .eq('status', 'winner');
+      const winnerData = await apiClient.selectAll('award_assignments', {
+        select: 'award_id, winner_position, organisations(company_name)',
+        filters: {
+          award_id: { op: 'in', value: sourceAwardIds },
+          status: 'winner'
+        }
+      });
 
       // Build a lookup: award_id -> { 1: 'Company A', 2: 'Company B', 3: 'Company C' }
       const winnersMap = {};
@@ -1571,11 +1577,7 @@ const awardsModule = {
         };
       });
 
-      const { error } = await STATE.client
-        .from('awards')
-        .insert(newAwards);
-
-      if (error) throw error;
+      await apiClient.insert('awards', newAwards);
 
       const withWinners = newAwards.filter(a => a.prev_year_winner).length;
       let msg = `${newAwards.length} awards rolled over to ${targetYear} as Draft!`;
@@ -1641,6 +1643,8 @@ const awardsModule = {
 
   /**
    * Bulk apply season dates to all selected awards
+   * @param {string} seasonId - Season ID to apply dates from
+   * @returns {Promise<void>}
    */
   async bulkApplySeasonDates(seasonId) {
     const count = this.selectedAwards.size;
@@ -1667,12 +1671,7 @@ const awardsModule = {
         winners_announcement_date: season.winners_announcement_date || null
       };
 
-      const { error } = await STATE.client
-        .from('awards')
-        .update(dateUpdate)
-        .in('id', ids);
-
-      if (error) throw error;
+      await Promise.all(ids.map(id => apiClient.update('awards', id, dateUpdate)));
 
       utils.showToast(`Season dates applied to ${count} awards`, 'success');
       this.selectedAwards.clear();
@@ -1689,6 +1688,10 @@ const awardsModule = {
   // ============================================
   // FEATURE 1: AWARD DATA QUALITY DASHBOARD
   // ============================================
+  /**
+   * Display a modal with data quality metrics for all active awards
+   * @returns {void}
+   */
   showDataQualityDashboard() {
     const awards = STATE.allAwards;
     const active = awards.filter(a => (a.status || 'Draft').toLowerCase() !== 'archived');
@@ -1812,9 +1815,17 @@ const awardsModule = {
   // ============================================
   // FEATURE 2: AWARD AUDIT TRAIL
   // ============================================
+  /**
+   * Log an audit trail entry for an award action.
+   * @param {string} awardId - Award ID
+   * @param {string} action - Action performed (e.g. 'created', 'updated', 'deleted')
+   * @param {string} awardName - Award name for display
+   * @param {string} details - Human-readable description
+   * @returns {Promise<void>}
+   */
   async _logAwardAudit(awardId, action, awardName, details) {
     try {
-      await STATE.client.from('org_audit_log').insert([{
+      await apiClient.insert('org_audit_log', [{
         org_id: awardId,
         company_name: awardName,
         action: 'award_' + action,
@@ -1823,19 +1834,32 @@ const awardsModule = {
     } catch (e) { /* silent - audit is non-critical */ }
   },
 
+  /**
+   * Retrieve audit log entries for a specific award.
+   * @param {string} awardId - Award ID
+   * @returns {Promise<Array>} Audit log entries, newest first
+   */
   async getAwardAuditLog(awardId) {
     try {
-      const { data, error } = await STATE.client.from('org_audit_log')
-        .select('*')
-        .eq('org_id', awardId)
-        .ilike('action', 'award_%')
-        .order('created_at', { ascending: false })
-        .limit(50);
-      if (error) throw error;
+      const { data } = await apiClient.select('org_audit_log', {
+        select: '*',
+        filters: {
+          org_id: awardId,
+          action: { op: 'ilike', value: 'award_%' }
+        },
+        sort: { column: 'created_at', ascending: false },
+        pageSize: 50
+      });
       return data || [];
     } catch (e) { return []; }
   },
 
+  /**
+   * Show the audit log modal for a specific award.
+   * @param {string} awardId - Award ID
+   * @param {string} awardName - Award name for modal title
+   * @returns {Promise<void>}
+   */
   async showAwardAuditLog(awardId, awardName) {
     const log = await this.getAwardAuditLog(awardId);
 
@@ -1874,6 +1898,11 @@ const awardsModule = {
     this._showDynamicModal(`Audit Log: ${awardName || 'Award'}`, html, 'bi-journal-text');
   },
 
+  /**
+   * Format a date as a human-readable relative time string.
+   * @param {Date} date - Date to format
+   * @returns {string} Relative time (e.g. '5m ago', '2h ago')
+   */
   _timeAgo(date) {
     const seconds = Math.floor((Date.now() - date.getTime()) / 1000);
     if (seconds < 60) return 'just now';
@@ -1886,6 +1915,11 @@ const awardsModule = {
   // ============================================
   // FEATURE 3: CLONE / TEMPLATE AWARDS
   // ============================================
+  /**
+   * Clone an award to a target year as Draft.
+   * @param {string} awardId - Award ID to clone
+   * @returns {Promise<void>}
+   */
   async cloneAward(awardId) {
     const award = STATE.allAwards.find(a => a.id === awardId);
     if (!award) { utils.showToast('Award not found', 'error'); return; }
@@ -1897,9 +1931,11 @@ const awardsModule = {
       utils.showLoading();
 
       // Check for duplicate
-      const { data: existing } = await STATE.client.from('awards')
-        .select('id').eq('award_name', award.award_name)
-        .eq('county', award.county).eq('year', targetYear).limit(1);
+      const { data: existing } = await apiClient.select('awards', {
+        select: 'id',
+        filters: { award_name: award.award_name, county: award.county, year: targetYear },
+        pageSize: 1
+      });
 
       if (existing && existing.length > 0) {
         utils.hideLoading();
@@ -1925,8 +1961,7 @@ const awardsModule = {
         voting_close_date: null, winners_announcement_date: null
       };
 
-      const { error } = await STATE.client.from('awards').insert([cloneData]);
-      if (error) throw error;
+      await apiClient.insert('awards', [cloneData]);
 
       this._logAwardAudit(awardId, 'cloned', award.award_name, `Cloned to year ${targetYear}`);
       utils.showToast(`Award cloned to ${targetYear} as Draft`, 'success');
@@ -1939,6 +1974,10 @@ const awardsModule = {
     }
   },
 
+  /**
+   * Clone all selected awards to a target year.
+   * @returns {Promise<void>}
+   */
   async bulkCloneSelected() {
     const count = this.selectedAwards.size;
     if (count === 0) { utils.showToast('No awards selected', 'warning'); return; }
@@ -1957,20 +1996,21 @@ const awardsModule = {
         const award = STATE.allAwards.find(a => a.id === awardId);
         if (!award) throw new Error('Award not found');
 
-        const { data: existing } = await STATE.client.from('awards')
-          .select('id').eq('award_name', award.award_name)
-          .eq('county', award.county).eq('year', targetYear).limit(1);
+        const { data: existing } = await apiClient.select('awards', {
+          select: 'id',
+          filters: { award_name: award.award_name, county: award.county, year: targetYear },
+          pageSize: 1
+        });
 
         if (existing && existing.length > 0) { skipped++; return; }
 
-        const { error } = await STATE.client.from('awards').insert([{
+        await apiClient.insert('awards', [{
           award_name: award.award_name, county: award.county, sector: award.sector,
           year: targetYear, status: 'Draft', description: award.description,
           prev_year_winner: award._winnerName || award.prev_year_winner || null,
           prev_year_2nd: award._runnerUpName || award.prev_year_2nd || null,
           prev_year_3rd: award.prev_year_3rd || null
         }]);
-        if (error) throw error;
       }, 'Cloning awards');
 
       this.selectedAwards.clear();
@@ -1986,6 +2026,11 @@ const awardsModule = {
   // ============================================
   // FEATURE 5: VISUAL TIMELINE FOR AWARD DATES
   // ============================================
+  /**
+   * Show a visual timeline modal for a single award or an overview of filtered awards.
+   * @param {string} [awardId] - Optional award ID; if omitted shows multi-award overview
+   * @returns {void}
+   */
   showVisualTimeline(awardId) {
     const award = awardId ? STATE.allAwards.find(a => a.id === awardId) : null;
     const awards = award ? [award] : STATE.filteredAwards.filter(a => (a.status || 'Draft').toLowerCase() !== 'archived').slice(0, 30);
@@ -2083,6 +2128,10 @@ const awardsModule = {
   // ============================================
   // FEATURE 6: AWARD DUPLICATE DETECTION
   // ============================================
+  /**
+   * Scan loaded awards for exact and fuzzy duplicates and display results in a modal.
+   * @returns {void}
+   */
   showDuplicateDetection() {
     const dupeMap = new Map();
 
@@ -2168,6 +2217,12 @@ const awardsModule = {
     this._showDynamicModal('Award Duplicate Detection', html, 'bi-files', 'modal-lg');
   },
 
+  /**
+   * Compute the Levenshtein edit distance between two strings.
+   * @param {string} a - First string
+   * @param {string} b - Second string
+   * @returns {number} Edit distance
+   */
   _levenshtein(a, b) {
     const m = a.length, n = b.length;
     const dp = Array.from({ length: m + 1 }, () => Array(n + 1).fill(0));
@@ -2184,6 +2239,14 @@ const awardsModule = {
   // ============================================
   // SHARED DYNAMIC MODAL HELPER
   // ============================================
+  /**
+   * Create and show a dynamic Bootstrap modal with custom content.
+   * @param {string} title - Modal title text
+   * @param {string} bodyHtml - HTML content for the modal body
+   * @param {string} [icon] - Bootstrap icon class for the title
+   * @param {string} [sizeClass] - Bootstrap modal size class (e.g. 'modal-lg', 'modal-xl')
+   * @returns {void}
+   */
   _showDynamicModal(title, bodyHtml, icon, sizeClass) {
     document.getElementById('dynamicAwardModal')?.remove();
     const modalHtml = `<div class="modal fade" id="dynamicAwardModal" tabindex="-1">
@@ -2204,6 +2267,10 @@ const awardsModule = {
   /* SAVED FILTER VIEWS */
   /* ==================================================== */
 
+  /**
+   * Save the current filter state as a named view in localStorage.
+   * @returns {void}
+   */
   saveCurrentAwardsView() {
     const name = prompt('Enter a name for this view:');
     if (!name) return;
@@ -2224,6 +2291,10 @@ const awardsModule = {
     } catch(e) { utils.showToast('Failed to save view', 'warning'); }
   },
 
+  /**
+   * Render the saved views dropdown from localStorage.
+   * @returns {void}
+   */
   _renderSavedAwardsViews() {
     const el = document.getElementById('awardsSavedViewsList');
     if (!el) return;
@@ -2238,6 +2309,11 @@ const awardsModule = {
     } catch(e) { console.warn('Failed to render saved views:', e.message); }
   },
 
+  /**
+   * Load a saved filter view by index and apply its filters.
+   * @param {number} index - Index of the saved view in localStorage array
+   * @returns {void}
+   */
   loadSavedAwardsView(index) {
     try {
       const views = JSON.parse(localStorage.getItem('awardsSavedViews') || '[]');
@@ -2254,6 +2330,11 @@ const awardsModule = {
     } catch(e) { utils.showToast('Failed to load view', 'warning'); }
   },
 
+  /**
+   * Delete a saved filter view by index.
+   * @param {number} index - Index of the saved view to delete
+   * @returns {void}
+   */
   deleteSavedAwardsView(index) {
     try {
       const views = JSON.parse(localStorage.getItem('awardsSavedViews') || '[]');
@@ -2269,10 +2350,15 @@ const awardsModule = {
   /* INLINE STATUS EDITING */
   /* ==================================================== */
 
+  /**
+   * Inline-update the status of a single award from the table dropdown.
+   * @param {string} awardId - Award ID
+   * @param {string} newStatus - New status value
+   * @returns {Promise<void>}
+   */
   async inlineUpdateStatus(awardId, newStatus) {
     try {
-      const { error } = await STATE.client.from('awards').update({ status: newStatus }).eq('id', awardId);
-      if (error) throw error;
+      await apiClient.update('awards', awardId, { status: newStatus });
       // Update local state
       const award = STATE.allAwards.find(a => a.id === awardId);
       if (award) award.status = newStatus;

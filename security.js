@@ -15,7 +15,6 @@ const securityModule = {
     this._generateCsrfToken();
     this._setupCSP();
     this._patchInnerHTML();
-    console.log('Security module initialized');
   },
 
   // ==========================================
@@ -41,6 +40,7 @@ const securityModule = {
 
   /**
    * Get the current CSRF token
+   * @returns {string} The CSRF token
    */
   getCsrfToken() {
     return this._csrfToken;
@@ -48,6 +48,9 @@ const securityModule = {
 
   /**
    * Add CSRF token to fetch headers
+   * @param {string} url - The URL to fetch
+   * @param {RequestInit} options - Fetch options
+   * @returns {Promise<Response>} Fetch response
    */
   secureFetch(url, options = {}) {
     options.headers = options.headers || {};
@@ -70,7 +73,7 @@ const securityModule = {
       // Permissive CSP that still blocks inline event handlers from injected content
       cspMeta.content = [
         "default-src 'self' https://*.supabase.co",
-        "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net https://unpkg.com https://js.stripe.com https://browser.sentry-cdn.com https://s3.tradingview.com",
+        "script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://unpkg.com https://js.stripe.com https://browser.sentry-cdn.com https://s3.tradingview.com",
         "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://unpkg.com",
         "img-src 'self' data: blob: https://*.supabase.co https://i.ytimg.com https://*.tile.openstreetmap.org",
         "font-src 'self' https://cdn.jsdelivr.net",
@@ -90,6 +93,8 @@ const securityModule = {
   /**
    * Sanitize HTML — strips dangerous tags/attributes
    * Use this instead of innerHTML for user-generated content
+   * @param {string} html - Raw HTML string
+   * @returns {string} Escaped HTML safe for rendering
    */
   sanitizeHtml(html) {
     if (!html) return '';
@@ -100,6 +105,8 @@ const securityModule = {
 
   /**
    * Sanitize but allow basic formatting (b, i, a, br, p, ul, li)
+   * @param {string} html - Raw HTML string with rich formatting
+   * @returns {string} Sanitized HTML with only allowed tags/attributes
    */
   sanitizeRichHtml(html) {
     if (!html) return '';
@@ -242,6 +249,8 @@ const securityModule = {
 
   /**
    * Validate file and show toast on error
+   * @param {File} file - The file to validate
+   * @param {Object} options - Validation options
    * @returns {boolean} Whether file is valid
    */
   validateAndReport(file, options = {}) {

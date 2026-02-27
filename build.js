@@ -152,8 +152,21 @@ async function build() {
       '\n  <script src="app.min.js"></script>'
     );
 
+    // Inject Supabase environment variables into meta tags
+    const supabaseUrl = process.env.SUPABASE_URL || '';
+    const supabaseAnonKey = process.env.SUPABASE_ANON_KEY || '';
+    html = html.replace(
+      '<meta name="supabase-url" content="">',
+      `<meta name="supabase-url" content="${supabaseUrl}">`
+    );
+    html = html.replace(
+      '<meta name="supabase-anon-key" content="">',
+      `<meta name="supabase-anon-key" content="${supabaseAnonKey}">`
+    );
+
     fs.writeFileSync(path.join(DIST_DIR, 'index.html'), html);
     console.log('  HTML: rewrote index.html to use bundled app.min.js + app.min.css');
+    if (supabaseUrl) console.log('  Supabase: credentials injected from environment');
   }
 
   // 4. Copy public-facing pages and their assets

@@ -20,7 +20,8 @@ const entriesModule = {
   },
 
   /**
-   * Initialize Entries Module
+   * Initialize the Entries Module: load filters, entries, stats, and restore saved state.
+   * @returns {Promise<void>}
    */
   async initialize() {
     try {
@@ -59,7 +60,8 @@ const entriesModule = {
   },
 
   /**
-   * Load filter dropdown options
+   * Load filter dropdown options (awards and years) and populate their <select> elements.
+   * @returns {Promise<void>}
    */
   async loadFilterOptions() {
     // Use already-loaded awards if available, otherwise fetch
@@ -69,12 +71,12 @@ const entriesModule = {
         .filter(a => a.status === 'Active')
         .sort((a, b) => (a.award_name || '').localeCompare(b.award_name || ''));
     } else {
-      const { data } = await STATE.client
-        .from('awards')
-        .select('id, award_name')
-        .eq('status', 'Active')
-        .order('award_name');
-      awards = data;
+      const result = await apiClient.selectAll('awards', {
+        select: 'id, award_name',
+        filters: { status: { operator: 'eq', value: 'Active' } },
+        sort: { column: 'award_name', ascending: true }
+      });
+      awards = result;
     }
 
     const awardFilter = document.getElementById('entriesAwardFilter');
@@ -89,10 +91,10 @@ const entriesModule = {
     if (this.allEntries && this.allEntries.length > 0) {
       uniqueYears = [...new Set(this.allEntries.map(e => e.year).filter(Boolean))].sort((a, b) => b - a);
     } else {
-      const { data: years } = await STATE.client
-        .from('entries')
-        .select('year')
-        .order('year', { ascending: false });
+      const years = await apiClient.selectAll('entries', {
+        select: 'year',
+        sort: { column: 'year', ascending: false }
+      });
       uniqueYears = years ? [...new Set(years.map(y => y.year))] : [];
     }
 
@@ -104,19 +106,15 @@ const entriesModule = {
   },
 
   /**
-   * Load all entries using server-side pagination helper
+   * Load all entries via the API proxy and populate local state.
+   * @returns {Promise<void>}
    */
   async loadEntries() {
     if (this._loading) return;
     this._loading = true;
     try {
-      const allData = await serverQuery.loadAll({
-        table: 'entries',
-        select: `
-          *,
-          organisations(company_name, logo_url),
-          award_years(award_name, sector, county)
-        `,
+      const allData = await apiClient.selectAll('entries', {
+        select: '*, organisations(company_name, logo_url), award_years(award_name, sector, county)',
         sort: { column: 'submission_date', ascending: false }
       });
 
@@ -147,7 +145,8 @@ const entriesModule = {
   },
 
   /**
-   * Load statistics
+   * Compute and display entry statistics (total, pending, shortlisted, winners) from loaded data.
+   * @returns {Promise<void>}
    */
   async loadStats() {
     try {
@@ -170,7 +169,7 @@ const entriesModule = {
   },
 
   /**
-   * Render entries in table (with pagination)
+   * Render the filtered entries into the table body with client-side pagination.
    */
   renderEntries() {
     const tbody = document.getElementById('entriesTableBody');
@@ -284,7 +283,8 @@ const entriesModule = {
   },
 
   /**
-   * Go to a specific entries page
+   * Navigate to a specific page in the entries table.
+   * @param {number} page - The 1-based page number
    */
   goToEntriesPage(page) {
     const totalPages = Math.ceil(this.filteredEntries.length / this._pageSize);
@@ -292,6 +292,10 @@ const entriesModule = {
     this.renderEntries();
   },
 
+  /**
+   * Sort entries by the given field, toggling direction if already sorted by that field.
+   * @param {string} field - The field name to sort by
+   */
   sortEntries(field) {
     if (this._sortField === field) {
       this._sortDir = this._sortDir === 'asc' ? 'desc' : 'asc';
@@ -320,7 +324,9 @@ const entriesModule = {
   },
 
   /**
-   * Get status badge HTML
+   * Get status badge HTML for an entry status.
+   * @param {string} status - The entry status value
+   * @returns {string} HTML string for the badge
    */
   getStatusBadge(status) {
     const badges = {
@@ -335,7 +341,9 @@ const entriesModule = {
   },
 
   /**
-   * Get payment badge HTML
+   * Get payment badge HTML for a payment status.
+   * @param {string} status - The payment status value
+   * @returns {string} HTML string for the badge
    */
   getPaymentBadge(status) {
     const badges = {
@@ -348,7 +356,7 @@ const entriesModule = {
   },
 
   /**
-   * Filter entries
+   * Read current filter values from the DOM and apply them.
    */
   filterEntries() {
     this.currentFilters.status = document.getElementById('entriesStatusFilter').value;
@@ -360,7 +368,7 @@ const entriesModule = {
   },
 
   /**
-   * Search entries
+   * Read the search input value and apply filters (including search).
    */
   searchEntries() {
     this.currentFilters.search = document.getElementById('entriesSearchInput').value.toLowerCase();
@@ -501,27 +509,24 @@ const entriesModule = {
   },
 
   /**
-   * View entry details
+   * View entry details in a modal.
+   * @param {string} entryId - The entry UUID
+   * @returns {Promise<void>}
    */
   async viewEntry(entryId) {
     try {
-      const { data: entry, error } = await STATE.client
-        .from('entries')
-        .select(`
-          *,
-          organisations(*),
-          award_years(*),
-          entry_files(*),
-          judge_scores(*)
-        `)
-        .eq('id', entryId)
-        .single();
+      const result = await apiClient.select('entries', {
+        select: '*, organisations(*), award_years(*), entry_files(*), judge_scores(*)',
+        filters: { id: { operator: 'eq', value: entryId } },
+        pageSize: 1
+      });
 
-      if (error) throw error;
+      const entry = result.data && result.data[0];
+      if (!entry) throw new Error('Entry not found');
 
       utils.trackRecentlyViewed('entry', entryId, (entry.organisations?.company_name || 'Entry') + ' - ' + (entry.award_years?.award_name || entry.award_category || 'Award'));
 
-      // Show entry details modal (we'll create this next)
+      // Show entry details modal
       this.showEntryDetailsModal(entry);
 
     } catch (error) {
@@ -812,23 +817,19 @@ const entriesModule = {
           const timestamp = new Date().toLocaleString();
           const noteEntry = `[${timestamp}] Status changed to ${newStatus}: ${notes}`;
 
-          const { data: entry } = await STATE.client
-            .from('entries')
-            .select('admin_notes')
-            .eq('id', entryId)
-            .single();
+          const entryResult = await apiClient.select('entries', {
+            select: 'admin_notes',
+            filters: { id: { operator: 'eq', value: entryId } },
+            pageSize: 1
+          });
+          const entry = entryResult.data && entryResult.data[0];
 
           updateData.admin_notes = entry?.admin_notes
             ? `${entry.admin_notes}\n\n${noteEntry}`
             : noteEntry;
         }
 
-        const { error } = await STATE.client
-          .from('entries')
-          .update(updateData)
-          .eq('id', entryId);
-
-        if (error) throw error;
+        await apiClient.update('entries', entryId, updateData);
 
         const displayStatus = newStatus === 'under_review' ? 'Under Review' : newStatus.charAt(0).toUpperCase() + newStatus.slice(1);
         utils.showToast(`Entry status updated to ${displayStatus}`, 'success');
@@ -851,7 +852,9 @@ const entriesModule = {
   },
 
   /**
-   * Update entry status with custom notes
+   * Update entry status with custom notes from the modal form.
+   * @param {string} entryId - The entry UUID
+   * @returns {Promise<void>}
    */
   async updateEntryStatus(entryId) {
     try {
@@ -873,23 +876,19 @@ const entriesModule = {
           const noteEntry = `[${timestamp}] Status changed to ${newStatus}: ${notes}`;
 
           // Get current admin notes
-          const { data: entry } = await STATE.client
-            .from('entries')
-            .select('admin_notes')
-            .eq('id', entryId)
-            .single();
+          const entryResult = await apiClient.select('entries', {
+            select: 'admin_notes',
+            filters: { id: { operator: 'eq', value: entryId } },
+            pageSize: 1
+          });
+          const entry = entryResult.data && entryResult.data[0];
 
           updateData.admin_notes = entry?.admin_notes
             ? `${entry.admin_notes}\n\n${noteEntry}`
             : noteEntry;
         }
 
-        const { error } = await STATE.client
-          .from('entries')
-          .update(updateData)
-          .eq('id', entryId);
-
-        if (error) throw error;
+        await apiClient.update('entries', entryId, updateData);
 
         utils.showToast('Entry status updated successfully', 'success');
 
@@ -998,33 +997,31 @@ const entriesModule = {
   },
 
   /**
-   * Edit entry
+   * Open the edit-entry modal for a given entry.
+   * @param {string} entryId - The entry UUID
+   * @returns {Promise<void>}
    */
   async editEntry(entryId) {
     try {
-      const { data: entry, error } = await STATE.client
-        .from('entries')
-        .select(`
-          *,
-          organisations(id, company_name),
-          award_years(id, award_name)
-        `)
-        .eq('id', entryId)
-        .single();
+      const entryResult = await apiClient.select('entries', {
+        select: '*, organisations(id, company_name), award_years(id, award_name)',
+        filters: { id: { operator: 'eq', value: entryId } },
+        pageSize: 1
+      });
+      const entry = entryResult.data && entryResult.data[0];
+      if (!entry) throw new Error('Entry not found');
 
-      if (error) throw error;
-
-      // Load awards for dropdown
-      const { data: awards } = await STATE.client
-        .from('awards')
-        .select('id, award_name')
-        .order('award_name');
-
-      // Load organisations for dropdown
-      const { data: orgs } = await STATE.client
-        .from('organisations')
-        .select('id, company_name')
-        .order('company_name');
+      // Load awards and organisations for dropdowns (in parallel)
+      const [awards, orgs] = await Promise.all([
+        apiClient.selectAll('awards', {
+          select: 'id, award_name',
+          sort: { column: 'award_name', ascending: true }
+        }),
+        apiClient.selectAll('organisations', {
+          select: 'id, company_name',
+          sort: { column: 'company_name', ascending: true }
+        })
+      ]);
 
       const modalHtml = `
         <div class="modal fade" id="editEntryModal" tabindex="-1" data-bs-backdrop="static">
@@ -1218,12 +1215,7 @@ const entriesModule = {
 
     try {
       await utils.protectModalDuringSave('editEntryModal', async () => {
-        const { error } = await STATE.client
-          .from('entries')
-          .update(updateData)
-          .eq('id', entryId);
-
-        if (error) throw error;
+        await apiClient.update('entries', entryId, updateData);
 
         bootstrap.Modal.getInstance(document.getElementById('editEntryModal')).hide();
         await this.loadEntries();
@@ -1231,7 +1223,7 @@ const entriesModule = {
       });
       utils.showToast('Entry updated successfully', 'success');
     } catch (error) {
-      console.warn('DB update for entry failed, using localStorage:', error);
+      console.warn('API update for entry failed, using localStorage:', error);
       localStorage.setItem(`bta_entry_edit_${entryId}`, JSON.stringify(updateData));
       bootstrap.Modal.getInstance(document.getElementById('editEntryModal'))?.hide();
       // Update local state so UI reflects the change
@@ -1242,7 +1234,9 @@ const entriesModule = {
   },
 
   /**
-   * Delete entry
+   * Delete a single entry after confirmation.
+   * @param {string} entryId - The entry UUID
+   * @returns {Promise<void>}
    */
   async deleteEntry(entryId) {
     if (typeof rbacModule !== 'undefined' && !rbacModule.canPerform('delete')) {
@@ -1254,12 +1248,7 @@ const entriesModule = {
     }
 
     try {
-      const { error } = await STATE.client
-        .from('entries')
-        .delete()
-        .eq('id', entryId);
-
-      if (error) throw error;
+      await apiClient.delete('entries', entryId);
 
       utils.showToast('Entry deleted successfully', 'success');
       await this.loadEntries();
@@ -1491,6 +1480,12 @@ const entriesModule = {
     document.getElementById('bulkActionsModal').addEventListener('hidden.bs.modal', function() { this.remove(); });
   },
 
+  /**
+   * Execute a bulk action (status change, payment change, or delete) on selected entries.
+   * @param {string} actionType - One of 'delete', 'status', or 'payment'
+   * @param {string} [value] - The new status/payment value (not needed for delete)
+   * @returns {Promise<void>}
+   */
   async executeBulkAction(actionType, value) {
     try {
       await utils.protectModalDuringSave('bulkActionsModal', async () => {
@@ -1499,11 +1494,10 @@ const entriesModule = {
 
         // Chunk large operations to stay within API limits
         const CHUNK_SIZE = 500;
-        const chunkedOperation = async (table, operation) => {
+        const chunkedApiOperation = async (operationFn) => {
           for (let i = 0; i < ids.length; i += CHUNK_SIZE) {
             const chunk = ids.slice(i, i + CHUNK_SIZE);
-            const result = await operation(chunk);
-            if (result?.error) throw result.error;
+            await operationFn(chunk);
           }
         };
 
@@ -1511,8 +1505,8 @@ const entriesModule = {
           if (!await utils.confirmDialog({ title: 'Delete Entries', message: `Are you sure you want to DELETE ${count} entries? This cannot be undone.` })) return;
 
           try {
-            await chunkedOperation('entries', (chunk) =>
-              STATE.client.from('entries').delete().in('id', chunk)
+            await chunkedApiOperation((chunk) =>
+              apiClient.deleteByFilters('entries', { id: { operator: 'in', value: chunk } })
             );
 
             utils.showToast(`${count} entries deleted`, 'success');
@@ -1531,12 +1525,7 @@ const entriesModule = {
               updateData.shortlisted_date = new Date().toISOString();
             }
 
-            const { error } = await STATE.client
-              .from('entries')
-              .update(updateData)
-              .in('id', ids);
-
-            if (error) throw error;
+            await apiClient.updateByFilters('entries', { id: { operator: 'in', value: ids } }, updateData);
 
             utils.showToast(`${count} entries updated to ${value}`, 'success');
           } catch (error) {
@@ -1548,12 +1537,7 @@ const entriesModule = {
           if (!await utils.confirmDialog({ title: 'Change Payment Status', message: `Change payment status to "${value}" for ${count} entries?`, confirmText: 'Update', danger: false })) return;
 
           try {
-            const { error } = await STATE.client
-              .from('entries')
-              .update({ payment_status: value })
-              .in('id', ids);
-
-            if (error) throw error;
+            await apiClient.updateByFilters('entries', { id: { operator: 'in', value: ids } }, { payment_status: value });
 
             utils.showToast(`${count} entries payment status updated to ${value}`, 'success');
           } catch (error) {
@@ -1719,16 +1703,14 @@ const entriesModule = {
   },
 
   /**
-   * Toggle public voting for entry
+   * Toggle public voting for an entry.
+   * @param {string} entryId - The entry UUID
+   * @param {boolean} enabled - Whether public voting should be enabled
+   * @returns {Promise<void>}
    */
   async togglePublicVoting(entryId, enabled) {
     try {
-      const { error } = await STATE.client
-        .from('entries')
-        .update({ allow_public_voting: enabled })
-        .eq('id', entryId);
-
-      if (error) throw error;
+      await apiClient.update('entries', entryId, { allow_public_voting: enabled });
 
       // Update local data
       const entry = this.allEntries.find(e => e.id === entryId);
@@ -1750,16 +1732,14 @@ const entriesModule = {
   },
 
   /**
-   * Toggle public visibility for entry
+   * Toggle public visibility for an entry.
+   * @param {string} entryId - The entry UUID
+   * @param {boolean} isPublic - Whether the entry should be publicly visible
+   * @returns {Promise<void>}
    */
   async togglePublicVisibility(entryId, isPublic) {
     try {
-      const { error } = await STATE.client
-        .from('entries')
-        .update({ is_public: isPublic })
-        .eq('id', entryId);
-
-      if (error) throw error;
+      await apiClient.update('entries', entryId, { is_public: isPublic });
 
       // Update local data
       const entry = this.allEntries.find(e => e.id === entryId);
@@ -1847,10 +1827,15 @@ const entriesModule = {
   /* INLINE STATUS EDITING */
   /* ==================================================== */
 
+  /**
+   * Inline-update an entry's status from the table dropdown.
+   * @param {string} entryId - The entry UUID
+   * @param {string} newStatus - The new status value
+   * @returns {Promise<void>}
+   */
   async inlineUpdateEntryStatus(entryId, newStatus) {
     try {
-      const { error } = await STATE.client.from('entries').update({ status: newStatus }).eq('id', entryId);
-      if (error) throw error;
+      await apiClient.update('entries', entryId, { status: newStatus });
       // Update local state
       const entry = this.allEntries.find(e => e.id === entryId);
       if (entry) entry.status = newStatus;
@@ -1890,8 +1875,12 @@ const entriesModule = {
         utils.showLoading();
         let imported = 0;
         for (const record of records) {
-          const { error } = await STATE.client.from('entries').insert([record]);
-          if (!error) imported++;
+          try {
+            await apiClient.insert('entries', record);
+            imported++;
+          } catch (_insertErr) {
+            console.warn('Failed to import entry record:', _insertErr.message);
+          }
         }
         utils.showToast(`Imported ${imported} of ${records.length} entries`, 'success');
         await this.loadEntries();

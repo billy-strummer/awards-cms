@@ -3,10 +3,16 @@
 /* ==================================================== */
 
 // Supabase Configuration
-// NOTE: In production, use environment variables and a backend proxy
+// Credentials are injected via environment-specific meta tags or build-time
+// variables. In production, all data mutations route through /api/data-proxy
+// which uses SUPABASE_SERVICE_KEY server-side (never exposed to the browser).
 const SUPABASE_CONFIG = {
-  url: 'https://qdzyknercdqwhwijbcxf.supabase.co',
-  anonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFkenlrbmVyY2Rxd2h3aWpiY3hmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzA4NDAwODEsImV4cCI6MjA4NjQxNjA4MX0.ecs9dgUaOW607imlYFJeLhLHlC8YWybnEUPEHJeRrkY'
+  url: document.querySelector('meta[name="supabase-url"]')?.content
+    || window.__SUPABASE_URL__
+    || '',
+  anonKey: document.querySelector('meta[name="supabase-anon-key"]')?.content
+    || window.__SUPABASE_ANON_KEY__
+    || ''
 };
 
 // Status Constants

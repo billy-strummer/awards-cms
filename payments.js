@@ -21,6 +21,10 @@ const paymentsModule = {
   /* INITIALIZATION */
   /* ==================================================== */
 
+  /**
+   * Load all payments module data (invoices, payments, organisations) and restore filters.
+   * @returns {Promise<void>}
+   */
   async loadAllData() {
     try {
       utils.showLoading();
@@ -50,7 +54,7 @@ const paymentsModule = {
       } catch(e) { console.warn('Failed to restore payment filters:', e.message); }
 
       this.updateStatistics();
-      console.log('Payments data loaded');
+      console.warn('Payments data loaded');
       utils.trackDataLoad('payments');
     } catch (error) {
       console.error('Error loading payments data:', error);
@@ -64,14 +68,14 @@ const paymentsModule = {
   /* INVOICES */
   /* ==================================================== */
 
+  /**
+   * Load all invoices with related organisation data.
+   * @returns {Promise<void>}
+   */
   async loadInvoices() {
     try {
-      const allData = await serverQuery.loadAll({
-        table: 'invoices',
-        select: `
-          *,
-          organisations (id, company_name, email, contact_phone)
-        `,
+      const allData = await apiClient.selectAll('invoices', {
+        select: '*, organisations (id, company_name, email, contact_phone)',
         sort: { column: 'created_at', ascending: false }
       });
 
@@ -94,6 +98,9 @@ const paymentsModule = {
     }
   },
 
+  /**
+   * Filter the in-memory invoice list based on current UI filter values and re-render.
+   */
   filterInvoices() {
     this._invCurrentPage = 1;
     const search = (document.getElementById('invoiceSearchBox')?.value || '').trim().toLowerCase();
@@ -134,6 +141,9 @@ const paymentsModule = {
     this.updateStatistics();
   },
 
+  /**
+   * Render the current page of invoices into the table body and update pagination.
+   */
   renderInvoices() {
     const tbody = document.getElementById('invoicesTableBody');
     if (!tbody) return;
@@ -231,6 +241,11 @@ const paymentsModule = {
     }
   },
 
+  /**
+   * Return a human-readable label for an invoice type key.
+   * @param {string} type - Invoice type key (e.g. 'entry_fee', 'package')
+   * @returns {string} Formatted label
+   */
   formatInvoiceType(type) {
     const types = {
       entry_fee: 'Entry Fee',
@@ -242,6 +257,12 @@ const paymentsModule = {
     return types[type] || type;
   },
 
+  /**
+   * Return an HTML badge string for the given invoice/payment status.
+   * @param {string} status - Invoice status
+   * @param {string} paymentStatus - Payment status fallback
+   * @returns {string} HTML badge markup
+   */
   getInvoiceStatusBadge(status, paymentStatus) {
     const badges = {
       draft: '<span class="badge bg-secondary">Draft</span>',
@@ -256,6 +277,10 @@ const paymentsModule = {
     return badges[status] || badges[paymentStatus] || '<span class="badge bg-secondary">Unknown</span>';
   },
 
+  /**
+   * Open the create-invoice modal with a fresh form and organisation dropdown.
+   * @returns {Promise<void>}
+   */
   async createNewInvoice() {
     try {
       const modal = new bootstrap.Modal(document.getElementById('createInvoiceModal'));
@@ -275,12 +300,10 @@ const paymentsModule = {
       document.getElementById('customDiscountRow').style.display = 'none';
       document.getElementById('invoiceDiscountCustom').value = '';
 
-      const { data: orgs, error } = await STATE.client
-        .from('organisations')
-        .select('id, company_name')
-        .order('company_name');
-
-      if (error) throw error;
+      const orgs = await apiClient.selectAll('organisations', {
+        select: 'id, company_name',
+        sort: { column: 'company_name', ascending: true }
+      });
 
       const orgSelect = document.getElementById('invoiceOrganisation');
       orgSelect.innerHTML = '<option value="">Select Company...</option>' +
@@ -323,6 +346,9 @@ const paymentsModule = {
     }
   },
 
+  /**
+   * Toggle visibility of the custom discount input based on the discount dropdown value.
+   */
   handleDiscountChange() {
     const discountSelect = document.getElementById('invoiceDiscount');
     const customDiscountRow = document.getElementById('customDiscountRow');
@@ -336,6 +362,10 @@ const paymentsModule = {
     }
   },
 
+  /**
+   * Read the current discount percentage from the form, clamped to 0-100.
+   * @returns {number} Discount percentage
+   */
   getDiscountPercentage() {
     const discountSelect = document.getElementById('invoiceDiscount');
     let val;
@@ -348,6 +378,9 @@ const paymentsModule = {
     return Math.max(0, Math.min(100, val));
   },
 
+  /**
+   * Append a new blank line-item row to the invoice creation form.
+   */
   addInvoiceLineItem() {
     const container = document.getElementById('invoiceLineItems');
     const itemId = Date.now();
@@ -377,6 +410,10 @@ const paymentsModule = {
     container.insertAdjacentHTML('beforeend', itemHTML);
   },
 
+  /**
+   * Remove a line-item row from the invoice creation form.
+   * @param {number} itemId - The data-item-id of the row to remove
+   */
   removeInvoiceLineItem(itemId) {
     const item = document.querySelector(`[data-item-id="${itemId}"]`);
     if (item) {
@@ -384,6 +421,10 @@ const paymentsModule = {
     }
   },
 
+  /**
+   * Validate and save a new invoice along with its line items.
+   * @returns {Promise<void>}
+   */
   async saveNewInvoice() {
     try {
       await utils.protectModalDuringSave('createInvoiceModal', async () => {
@@ -444,9 +485,7 @@ const paymentsModule = {
           invoiceNumber = `INV-${year}-${rand}`;
         }
 
-        const { data: invoice, error: invoiceError } = await STATE.client
-          .from('invoices')
-          .insert({
+        const invoiceResult = await apiClient.insert('invoices', {
             invoice_number: invoiceNumber,
             organisation_id: organisationId,
             invoice_date: invoiceDate,
@@ -463,22 +502,16 @@ const paymentsModule = {
             status: 'draft',
             payment_status: 'unpaid',
             description: description
-          })
-          .select()
-          .single();
+          });
 
-        if (invoiceError) throw invoiceError;
+        const invoice = invoiceResult.data?.[0] || invoiceResult.data;
 
         const lineItemsWithInvoiceId = lineItems.map(item => ({
           ...item,
           invoice_id: invoice.id
         }));
 
-        const { error: lineItemsError } = await STATE.client
-          .from('invoice_line_items')
-          .insert(lineItemsWithInvoiceId);
-
-        if (lineItemsError) throw lineItemsError;
+        await apiClient.insert('invoice_line_items', lineItemsWithInvoiceId);
 
         // Clear auto-save draft on successful save
         utils.clearFormDraft('invoice_new');
@@ -510,15 +543,21 @@ const paymentsModule = {
       modal.show();
 
       // Load invoice with line items
-      const [invoiceResult, lineItemsResult] = await Promise.all([
-        STATE.client.from('invoices').select('*, organisations(id, company_name, email, contact_phone)').eq('id', invoiceId).single(),
-        STATE.client.from('invoice_line_items').select('*').eq('invoice_id', invoiceId).order('created_at')
+      const [invoiceData, lineItemsData] = await Promise.all([
+        apiClient.select('invoices', {
+          select: '*, organisations(id, company_name, email, contact_phone)',
+          filters: { id: invoiceId }
+        }),
+        apiClient.selectAll('invoice_line_items', {
+          select: '*',
+          filters: { invoice_id: invoiceId },
+          sort: { column: 'created_at', ascending: true }
+        })
       ]);
 
-      if (invoiceResult.error) throw invoiceResult.error;
-
-      const invoice = invoiceResult.data;
-      const lineItems = lineItemsResult.data || [];
+      const invoice = invoiceData.data?.[0];
+      if (!invoice) throw new Error('Invoice not found');
+      const lineItems = lineItemsData || [];
       utils.trackRecentlyViewed('invoice', invoiceId, 'Invoice ' + invoice.invoice_number);
 
       body.innerHTML = `
@@ -711,6 +750,11 @@ const paymentsModule = {
     }
   },
 
+  /**
+   * Delete an invoice and its line items after user confirmation.
+   * @param {string} invoiceId - The invoice ID to delete
+   * @returns {Promise<void>}
+   */
   async deleteInvoice(invoiceId) {
     if (!await utils.confirmDialog({ title: 'Delete Invoice', message: 'Are you sure you want to delete this invoice? This action cannot be undone.' })) {
       return;
@@ -724,14 +768,9 @@ const paymentsModule = {
       if (inv) utils.softDelete('invoices', inv);
 
       // Delete line items first
-      await STATE.client.from('invoice_line_items').delete().eq('invoice_id', invoiceId);
+      await apiClient.deleteByFilters('invoice_line_items', { invoice_id: invoiceId });
 
-      const { error } = await STATE.client
-        .from('invoices')
-        .delete()
-        .eq('id', invoiceId);
-
-      if (error) throw error;
+      await apiClient.delete('invoices', invoiceId);
 
       utils.showToast('Invoice deleted. <a href="#" onclick="event.preventDefault(); utils.undoLastDelete(\'invoices\')">Undo</a>', 'info');
       await this.loadInvoices();
@@ -799,7 +838,7 @@ const paymentsModule = {
         if (invoice) {
           // Log to communications table
           try {
-            await STATE.client.from('communications').insert({
+            await apiClient.insert('communications', {
               organisation_id: invoice.organisation_id,
               type: 'email',
               subject: subject,
@@ -813,13 +852,10 @@ const paymentsModule = {
           }
 
           // Update invoice status to 'sent'
-          await STATE.client
-            .from('invoices')
-            .update({
-              status: 'sent',
-              sent_at: new Date().toISOString()
-            })
-            .eq('id', this.currentSendInvoiceId);
+          await apiClient.update('invoices', this.currentSendInvoiceId, {
+            status: 'sent',
+            sent_at: new Date().toISOString()
+          });
         }
 
         bootstrap.Modal.getInstance(document.getElementById('sendInvoiceModal'))?.hide();
@@ -840,18 +876,16 @@ const paymentsModule = {
   /* PAYMENTS */
   /* ==================================================== */
 
+  /**
+   * Load all payments with related organisation and invoice data.
+   * @returns {Promise<void>}
+   */
   async loadPayments() {
     try {
-      const { data, error } = await STATE.client
-        .from('payments')
-        .select(`
-          *,
-          organisations (id, company_name),
-          invoices (invoice_number)
-        `)
-        .order('payment_date', { ascending: false });
-
-      if (error) throw error;
+      const data = await apiClient.selectAll('payments', {
+        select: '*, organisations (id, company_name), invoices (invoice_number)',
+        sort: { column: 'payment_date', ascending: false }
+      });
 
       this.allPayments = data || [];
       this.filterPayments();
@@ -861,6 +895,9 @@ const paymentsModule = {
     }
   },
 
+  /**
+   * Filter the in-memory payments list based on current UI filter values and re-render.
+   */
   filterPayments() {
     this._payCurrentPage = 1;
     const search = (document.getElementById('paymentSearchBox')?.value || '').trim().toLowerCase();
@@ -896,6 +933,9 @@ const paymentsModule = {
     this.updateStatistics();
   },
 
+  /**
+   * Set the payment month filter to the current month and re-filter.
+   */
   filterThisMonth() {
     const currentMonth = new Date().toISOString().slice(0, 7);
     const el = document.getElementById('paymentMonthFilter');
@@ -903,6 +943,9 @@ const paymentsModule = {
     this.filterPayments();
   },
 
+  /**
+   * Render the current page of payments into the table body and update pagination.
+   */
   renderPayments() {
     const tbody = document.getElementById('paymentsTableBody');
     if (!tbody) return;
@@ -983,6 +1026,11 @@ const paymentsModule = {
     }
   },
 
+  /**
+   * Return a human-readable label for a payment method key.
+   * @param {string} method - Payment method key (e.g. 'bank_transfer', 'card')
+   * @returns {string} Formatted label
+   */
   formatPaymentMethod(method) {
     const methods = {
       bank_transfer: 'Bank Transfer',
@@ -996,6 +1044,11 @@ const paymentsModule = {
     return methods[method] || method;
   },
 
+  /**
+   * Return an HTML badge string for the given payment status.
+   * @param {string} status - Payment status key
+   * @returns {string} HTML badge markup
+   */
   getPaymentStatusBadge(status) {
     const badges = {
       pending: '<span class="badge bg-warning">Pending</span>',
@@ -1007,14 +1060,28 @@ const paymentsModule = {
     return badges[status] || '<span class="badge bg-secondary">Unknown</span>';
   },
 
+  /**
+   * Open the record-payment modal without a pre-selected invoice.
+   * @returns {Promise<void>}
+   */
   async recordNewPayment() {
     await this.openPaymentRecordModal(null);
   },
 
+  /**
+   * Open the record-payment modal pre-filled for a specific invoice.
+   * @param {string} invoiceId - The invoice ID to record payment against
+   * @returns {Promise<void>}
+   */
   async recordPaymentForInvoice(invoiceId) {
     await this.openPaymentRecordModal(invoiceId);
   },
 
+  /**
+   * Open the record-payment modal, optionally pre-filled for a given invoice.
+   * @param {string|null} invoiceId - Optional invoice ID to pre-select
+   * @returns {Promise<void>}
+   */
   async openPaymentRecordModal(invoiceId) {
     try {
       const modal = new bootstrap.Modal(document.getElementById('recordPaymentModal'));
@@ -1057,6 +1124,10 @@ const paymentsModule = {
     }
   },
 
+  /**
+   * Validate and save a new payment record, updating the linked invoice if applicable.
+   * @returns {Promise<void>}
+   */
   async savePaymentRecord() {
     try {
       await utils.protectModalDuringSave('recordPaymentModal', async () => {
@@ -1098,9 +1169,7 @@ const paymentsModule = {
           paymentReference = `PAY-${year}-${rand}`;
         }
 
-        const { data: payment, error: paymentError } = await STATE.client
-          .from('payments')
-          .insert({
+        const paymentResult = await apiClient.insert('payments', {
             payment_reference: paymentReference,
             invoice_id: invoiceId,
             organisation_id: organisationId,
@@ -1109,45 +1178,44 @@ const paymentsModule = {
             payment_method: paymentMethod,
             status: 'completed',
             notes: notes
-          })
-          .select()
-          .single();
+          });
 
-        if (paymentError) throw paymentError;
+        const payment = paymentResult.data?.[0] || paymentResult.data;
 
         // If linked to invoice, update invoice paid amount and status
         if (invoiceId) {
-          const { data: invoice, error: invoiceError } = await STATE.client
-            .from('invoices')
-            .select('paid_amount, total_amount')
-            .eq('id', invoiceId)
-            .single();
+          try {
+            const invoiceResult = await apiClient.select('invoices', {
+              select: 'paid_amount, total_amount',
+              filters: { id: invoiceId }
+            });
 
-          if (!invoiceError && invoice) {
-            const totalAmount = parseFloat(invoice.total_amount || 0);
-            const newPaidAmount = parseFloat(invoice.paid_amount || 0) + amount;
-            // Warn if overpaying but allow it (e.g. credit notes)
-            if (newPaidAmount > totalAmount * 1.01) {
-              console.warn(`Overpayment: ${newPaidAmount} exceeds total ${totalAmount}`);
-            }
-            const balanceDue = Math.max(0, totalAmount - newPaidAmount);
+            const invoice = invoiceResult.data?.[0];
+            if (invoice) {
+              const totalAmount = parseFloat(invoice.total_amount || 0);
+              const newPaidAmount = parseFloat(invoice.paid_amount || 0) + amount;
+              // Warn if overpaying but allow it (e.g. credit notes)
+              if (newPaidAmount > totalAmount * 1.01) {
+                console.warn(`Overpayment: ${newPaidAmount} exceeds total ${totalAmount}`);
+              }
+              const balanceDue = Math.max(0, totalAmount - newPaidAmount);
 
-            let paymentStatus = 'partial';
-            let status = 'sent';
-            if (newPaidAmount >= totalAmount) {
-              paymentStatus = 'paid';
-              status = 'paid';
-            }
+              let paymentStatus = 'partial';
+              let status = 'sent';
+              if (newPaidAmount >= totalAmount) {
+                paymentStatus = 'paid';
+                status = 'paid';
+              }
 
-            await STATE.client
-              .from('invoices')
-              .update({
+              await apiClient.update('invoices', invoiceId, {
                 paid_amount: newPaidAmount,
                 balance_due: balanceDue,
                 payment_status: paymentStatus,
                 status: status
-              })
-              .eq('id', invoiceId);
+              });
+            }
+          } catch (invoiceUpdateError) {
+            console.warn('Failed to update linked invoice:', invoiceUpdateError.message);
           }
         }
 
@@ -1178,13 +1246,13 @@ const paymentsModule = {
       body.innerHTML = '<div class="text-center py-4"><div class="spinner-border" role="status"></div></div>';
       modal.show();
 
-      const { data: payment, error } = await STATE.client
-        .from('payments')
-        .select('*, organisations(id, company_name), invoices(invoice_number)')
-        .eq('id', paymentId)
-        .single();
+      const paymentResult = await apiClient.select('payments', {
+        select: '*, organisations(id, company_name), invoices(invoice_number)',
+        filters: { id: paymentId }
+      });
 
-      if (error) throw error;
+      const payment = paymentResult.data?.[0];
+      if (!payment) throw new Error('Payment not found');
 
       body.innerHTML = `
         <div class="mb-4">
@@ -1208,6 +1276,11 @@ const paymentsModule = {
     }
   },
 
+  /**
+   * Delete a payment record and reverse the linked invoice's paid amounts.
+   * @param {string} paymentId - The payment ID to delete
+   * @returns {Promise<void>}
+   */
   async deletePayment(paymentId) {
     if (typeof rbacModule !== 'undefined' && !rbacModule.canPerform('delete')) {
       utils.showToast('You do not have permission to delete payments', 'error');
@@ -1221,50 +1294,46 @@ const paymentsModule = {
       utils.showLoading();
 
       // Get payment details to reverse invoice update
-      const { data: payment } = await STATE.client
-        .from('payments')
-        .select('invoice_id, amount')
-        .eq('id', paymentId)
-        .single();
+      const paymentResult = await apiClient.select('payments', {
+        select: 'invoice_id, amount',
+        filters: { id: paymentId }
+      });
+      const payment = paymentResult.data?.[0];
 
-      const { error } = await STATE.client
-        .from('payments')
-        .delete()
-        .eq('id', paymentId);
-
-      if (error) throw error;
+      await apiClient.delete('payments', paymentId);
 
       // Reverse invoice paid amount if linked
       if (payment?.invoice_id) {
-        const { data: invoice } = await STATE.client
-          .from('invoices')
-          .select('paid_amount, total_amount')
-          .eq('id', payment.invoice_id)
-          .single();
+        try {
+          const invoiceResult = await apiClient.select('invoices', {
+            select: 'paid_amount, total_amount',
+            filters: { id: payment.invoice_id }
+          });
+          const invoice = invoiceResult.data?.[0];
 
-        if (invoice) {
-          const newPaidAmount = Math.max(0, parseFloat(invoice.paid_amount || 0) - parseFloat(payment.amount || 0));
-          const totalAmount = parseFloat(invoice.total_amount || 0);
-          const balanceDue = totalAmount - newPaidAmount;
+          if (invoice) {
+            const newPaidAmount = Math.max(0, parseFloat(invoice.paid_amount || 0) - parseFloat(payment.amount || 0));
+            const totalAmount = parseFloat(invoice.total_amount || 0);
+            const balanceDue = totalAmount - newPaidAmount;
 
-          let paymentStatus = 'unpaid';
-          let status = 'sent';
-          if (newPaidAmount > 0 && newPaidAmount < totalAmount) {
-            paymentStatus = 'partial';
-          } else if (newPaidAmount >= totalAmount) {
-            paymentStatus = 'paid';
-            status = 'paid';
-          }
+            let paymentStatus = 'unpaid';
+            let status = 'sent';
+            if (newPaidAmount > 0 && newPaidAmount < totalAmount) {
+              paymentStatus = 'partial';
+            } else if (newPaidAmount >= totalAmount) {
+              paymentStatus = 'paid';
+              status = 'paid';
+            }
 
-          await STATE.client
-            .from('invoices')
-            .update({
+            await apiClient.update('invoices', payment.invoice_id, {
               paid_amount: newPaidAmount,
               balance_due: balanceDue,
               payment_status: paymentStatus,
               status: status
-            })
-            .eq('id', payment.invoice_id);
+            });
+          }
+        } catch (invoiceUpdateError) {
+          console.warn('Failed to reverse invoice update:', invoiceUpdateError.message);
         }
       }
 
@@ -1284,6 +1353,10 @@ const paymentsModule = {
   /* SORTING */
   /* ==================================================== */
 
+  /**
+   * Toggle sort direction for invoices and re-render.
+   * @param {string} field - Column field name to sort by
+   */
   sortInvoices(field) {
     if (this._invoiceSortField === field) {
       this._invoiceSortDir = this._invoiceSortDir === 'asc' ? 'desc' : 'asc';
@@ -1321,6 +1394,9 @@ const paymentsModule = {
   /* CSV EXPORT */
   /* ==================================================== */
 
+  /**
+   * Export the current filtered invoices as a CSV download.
+   */
   exportInvoicesCSV() {
     if (!this.currentInvoices || this.currentInvoices.length === 0) {
       utils.showToast('No invoices to export', 'warning');
@@ -1341,6 +1417,9 @@ const paymentsModule = {
     this._downloadCSV(headers, rows, 'invoices_export.csv');
   },
 
+  /**
+   * Export the current filtered payments as a CSV download.
+   */
   exportPaymentsCSV() {
     if (!this.currentPayments || this.currentPayments.length === 0) {
       utils.showToast('No payments to export', 'warning');
@@ -1469,6 +1548,9 @@ const paymentsModule = {
   /* STATISTICS & REPORTING */
   /* ==================================================== */
 
+  /**
+   * Recalculate and update all statistics counters in the UI.
+   */
   updateStatistics() {
     const totalInvoices = this.currentInvoices.length;
     const paidInvoices = this.currentInvoices.filter(i => i.payment_status === 'paid').length;
@@ -1504,6 +1586,10 @@ const paymentsModule = {
     if (monthlyPaymentsEl) monthlyPaymentsEl.textContent = `\u00A3${monthlyTotal.toFixed(2)}`;
   },
 
+  /**
+   * Generate a financial report based on the selected type and date range.
+   * @returns {Promise<void>}
+   */
   async generateReport() {
     const reportType = document.getElementById('reportType').value;
     const startDate = document.getElementById('reportStartDate').value;
@@ -1558,6 +1644,13 @@ const paymentsModule = {
     }
   },
 
+  /**
+   * Build HTML for the revenue summary report.
+   * @param {Array} invoices - Filtered invoices
+   * @param {string} startDate - ISO date string
+   * @param {string} endDate - ISO date string
+   * @returns {string} HTML markup
+   */
   generateRevenueReport(invoices, startDate, endDate) {
     const totalInvoiced = invoices.reduce((sum, i) => sum + parseFloat(i.total_amount || 0), 0);
     const totalPaid = invoices.reduce((sum, i) => sum + parseFloat(i.paid_amount || 0), 0);
@@ -1595,6 +1688,11 @@ const paymentsModule = {
     `;
   },
 
+  /**
+   * Build HTML for the outstanding invoices report.
+   * @param {Array} invoices - Filtered invoices
+   * @returns {string} HTML markup
+   */
   generateOutstandingReport(invoices) {
     const outstanding = invoices.filter(i => parseFloat(i.balance_due || 0) > 0);
 
@@ -1629,6 +1727,12 @@ const paymentsModule = {
     `;
   },
 
+  /**
+   * Build HTML for the payment history report.
+   * @param {string} startDate - ISO date string
+   * @param {string} endDate - ISO date string
+   * @returns {string} HTML markup
+   */
   generatePaymentHistoryReport(startDate, endDate) {
     const filteredPayments = this.currentPayments.filter(p => {
       const paymentDate = p.payment_date;
@@ -1673,6 +1777,11 @@ const paymentsModule = {
     `;
   },
 
+  /**
+   * Build HTML for the revenue-by-organisation report.
+   * @param {Array} invoices - Filtered invoices
+   * @returns {string} HTML markup
+   */
   generateByOrganisationReport(invoices) {
     const byOrg = {};
     invoices.forEach(inv => {
@@ -1715,6 +1824,11 @@ const paymentsModule = {
     `;
   },
 
+  /**
+   * Build HTML for the revenue-by-package-type report.
+   * @param {Array} invoices - Filtered invoices
+   * @returns {string} HTML markup
+   */
   generateByPackageReport(invoices) {
     const packageInvoices = invoices.filter(i => i.invoice_type === 'package');
 
@@ -1756,6 +1870,11 @@ const paymentsModule = {
     `;
   },
 
+  /**
+   * Build HTML for the event/ticket revenue report.
+   * @param {Array} invoices - Filtered invoices
+   * @returns {string} HTML markup
+   */
   generateByEventReport(invoices) {
     // Group invoices by their related events (via entries/tickets)
     const eventInvoices = invoices.filter(i => i.invoice_type === 'tickets');
@@ -1817,6 +1936,9 @@ const paymentsModule = {
   /* OVERDUE REMINDERS */
   /* ==================================================== */
 
+  /**
+   * Open the overdue-reminders modal listing all overdue invoices.
+   */
   sendOverdueReminders() {
     const overdueInvoices = this.allInvoices.filter(inv => inv.status === 'overdue');
 
@@ -1874,12 +1996,20 @@ const paymentsModule = {
     modal.show();
   },
 
+  /**
+   * Check or uncheck all overdue reminder checkboxes.
+   * @param {boolean} checked - Whether to check or uncheck
+   */
   toggleAllOverdueCheckboxes(checked) {
     document.querySelectorAll('.overdue-reminder-check').forEach(cb => {
       cb.checked = checked;
     });
   },
 
+  /**
+   * Send reminder emails for all selected overdue invoices.
+   * @returns {Promise<void>}
+   */
   async executeOverdueReminders() {
     const checkboxes = document.querySelectorAll('.overdue-reminder-check:checked');
     const invoiceIds = Array.from(checkboxes).map(cb => cb.dataset.invoiceId);
@@ -1920,6 +2050,10 @@ const paymentsModule = {
   /* UTILITIES */
   /* ==================================================== */
 
+  /**
+   * Copy text to the clipboard and show a toast notification.
+   * @param {string} text - The text to copy
+   */
   copyToClipboard(text) {
     navigator.clipboard.writeText(text).then(() => {
       utils.showToast('Copied to clipboard: ' + text, 'success');
@@ -1928,6 +2062,10 @@ const paymentsModule = {
     });
   },
 
+  /**
+   * Load organisations for filter dropdowns. Uses cached data if available.
+   * @returns {Promise<void>}
+   */
   async loadOrganisationsForFilters() {
     try {
       // Use already-loaded organisations if available
@@ -1937,12 +2075,10 @@ const paymentsModule = {
           .map(o => ({ id: o.id, company_name: o.company_name }))
           .sort((a, b) => (a.company_name || '').localeCompare(b.company_name || ''));
       } else {
-        const res = await STATE.client
-          .from('organisations')
-          .select('id, company_name')
-          .order('company_name', { ascending: true });
-        if (res.error) throw res.error;
-        data = res.data;
+        data = await apiClient.selectAll('organisations', {
+          select: 'id, company_name',
+          sort: { column: 'company_name', ascending: true }
+        });
       }
 
       this.currentOrganisations = data || [];
@@ -1963,25 +2099,58 @@ const paymentsModule = {
   // ============================================
   _accountingConfig: {},
 
+  /**
+   * Load accounting integration config from the database or localStorage fallback.
+   * @returns {Promise<void>}
+   */
   async _loadAccountingConfig() {
     try {
-      if (typeof STATE !== 'undefined' && STATE.client) {
-        const { data } = await STATE.client.from('user_preferences').select('value').eq('key', 'orgAccountingConfig').limit(1);
-        if (data?.[0]) { this._accountingConfig = JSON.parse(data[0].value); return; }
+      if (typeof apiClient !== 'undefined') {
+        const result = await apiClient.select('user_preferences', {
+          select: 'value',
+          filters: { key: 'orgAccountingConfig' },
+          pageSize: 1
+        });
+        if (result.data?.[0]) { this._accountingConfig = JSON.parse(result.data[0].value); return; }
       }
     } catch (e) { console.warn('Failed to load accounting config from database:', e.message); }
     try { this._accountingConfig = JSON.parse(localStorage.getItem('orgAccountingConfig') || '{}'); } catch (e) { console.warn('Failed to parse accounting config from localStorage:', e.message); this._accountingConfig = {}; }
   },
 
+  /**
+   * Persist accounting integration config to the database and localStorage.
+   * @returns {Promise<void>}
+   */
   async _saveAccountingConfig() {
     try {
-      if (typeof STATE !== 'undefined' && STATE.client) {
-        await STATE.client.from('user_preferences').upsert({ key: 'orgAccountingConfig', value: JSON.stringify(this._accountingConfig), updated_at: new Date().toISOString() }, { onConflict: 'key' });
+      if (typeof apiClient !== 'undefined') {
+        const configValue = JSON.stringify(this._accountingConfig);
+        const existing = await apiClient.select('user_preferences', {
+          select: 'id',
+          filters: { key: 'orgAccountingConfig' },
+          pageSize: 1
+        });
+        if (existing.data && existing.data.length > 0) {
+          await apiClient.update('user_preferences', existing.data[0].id, {
+            value: configValue,
+            updated_at: new Date().toISOString()
+          });
+        } else {
+          await apiClient.insert('user_preferences', {
+            key: 'orgAccountingConfig',
+            value: configValue,
+            updated_at: new Date().toISOString()
+          });
+        }
       }
     } catch (e) { console.warn('Failed to save accounting config to database:', e.message); }
     localStorage.setItem('orgAccountingConfig', JSON.stringify(this._accountingConfig));
   },
 
+  /**
+   * Render the accounting integration settings panel.
+   * @returns {Promise<void>}
+   */
   async loadAccountingIntegration() {
     const container = document.getElementById('accountingIntegrationContainer');
     if (!container) return;
@@ -2071,10 +2240,15 @@ const paymentsModule = {
   /* INLINE INVOICE STATUS EDITING */
   /* ==================================================== */
 
+  /**
+   * Inline-update an invoice's status from the table dropdown.
+   * @param {string} invoiceId - The invoice ID to update
+   * @param {string} newStatus - The new status value
+   * @returns {Promise<void>}
+   */
   async inlineUpdateInvoiceStatus(invoiceId, newStatus) {
     try {
-      const { error } = await STATE.client.from('invoices').update({ status: newStatus }).eq('id', invoiceId);
-      if (error) throw error;
+      await apiClient.update('invoices', invoiceId, { status: newStatus });
       // Update local state
       const invoice = this.allInvoices.find(i => i.id === invoiceId);
       if (invoice) invoice.status = newStatus;
@@ -2089,18 +2263,31 @@ const paymentsModule = {
   /* PAGINATION & BULK ACTIONS */
   /* ==================================================== */
 
+  /**
+   * Navigate to a specific invoice list page.
+   * @param {number} page - Page number (1-based)
+   */
   goToInvoicePage(page) {
     const totalPages = Math.ceil(this.currentInvoices.length / this._invPageSize);
     this._invCurrentPage = Math.max(1, Math.min(page, totalPages));
     this.renderInvoices();
   },
 
+  /**
+   * Navigate to a specific payment list page.
+   * @param {number} page - Page number (1-based)
+   */
   goToPaymentPage(page) {
     const totalPages = Math.ceil(this.currentPayments.length / this._payPageSize);
     this._payCurrentPage = Math.max(1, Math.min(page, totalPages));
     this.renderPayments();
   },
 
+  /**
+   * Toggle selection of an individual invoice checkbox.
+   * @param {string} id - Invoice ID
+   * @param {boolean} checked - Whether the checkbox is checked
+   */
   toggleInvoiceSelect(id, checked) {
     if (checked) {
       this._selectedInvoiceIds.add(id);
@@ -2110,6 +2297,10 @@ const paymentsModule = {
     this._updateInvoiceBulkBar();
   },
 
+  /**
+   * Select or deselect all visible invoice checkboxes.
+   * @param {boolean} checked - Whether to check or uncheck all
+   */
   toggleAllInvoices(checked) {
     const checkboxes = document.querySelectorAll('.invoice-checkbox');
     checkboxes.forEach(cb => {
@@ -2144,6 +2335,11 @@ const paymentsModule = {
     }
   },
 
+  /**
+   * Update the status of all selected invoices in bulk.
+   * @param {string} status - The new status to apply
+   * @returns {Promise<void>}
+   */
   async bulkUpdateInvoiceStatus(status) {
     if (this._selectedInvoiceIds.size === 0) return;
     const ids = [...this._selectedInvoiceIds];
@@ -2151,8 +2347,7 @@ const paymentsModule = {
     try {
       utils.showLoading();
       const result = await utils.runBatchOperation(ids, async (id) => {
-        const { error } = await STATE.client.from('invoices').update({ status }).eq('id', id);
-        if (error) throw error;
+        await apiClient.update('invoices', id, { status });
       }, 'Updating invoices');
       this._selectedInvoiceIds.clear();
       utils.showToast(`${result.succeeded.length} invoice(s) updated to ${status}`, 'success');
@@ -2165,6 +2360,10 @@ const paymentsModule = {
     }
   },
 
+  /**
+   * Delete all selected invoices (and their line items) in bulk.
+   * @returns {Promise<void>}
+   */
   async bulkDeleteInvoices() {
     if (this._selectedInvoiceIds.size === 0) return;
     const ids = [...this._selectedInvoiceIds];
@@ -2173,9 +2372,8 @@ const paymentsModule = {
       utils.showLoading();
       const result = await utils.runBatchOperation(ids, async (id) => {
         // Delete line items first to prevent orphaned records
-        await STATE.client.from('invoice_line_items').delete().eq('invoice_id', id);
-        const { error } = await STATE.client.from('invoices').delete().eq('id', id);
-        if (error) throw error;
+        await apiClient.deleteByFilters('invoice_line_items', { invoice_id: id });
+        await apiClient.delete('invoices', id);
       }, 'Deleting invoices');
       this._selectedInvoiceIds.clear();
       utils.showToast(`${result.succeeded.length} invoice(s) deleted`, 'success');
@@ -2219,8 +2417,12 @@ const paymentsModule = {
         utils.showLoading();
         let imported = 0;
         for (const record of records) {
-          const { error } = await STATE.client.from('invoices').insert([record]);
-          if (!error) imported++;
+          try {
+            await apiClient.insert('invoices', record);
+            imported++;
+          } catch (insertErr) {
+            console.warn('Failed to import invoice record:', insertErr.message);
+          }
         }
         utils.showToast(`Imported ${imported} of ${records.length} invoices`, 'success');
         await this.loadInvoices();

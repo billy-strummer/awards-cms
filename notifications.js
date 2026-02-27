@@ -57,10 +57,11 @@ window.notificationsModule = {
   async _fetchAndRender() {
     if (!STATE.currentUser?.email) return;
     try {
-      const { data, error } = await STATE.client.from('notifications').select('*')
-        .eq('user_email', STATE.currentUser.email)
-        .order('created_at', { ascending: false }).limit(50);
-      if (error) throw error;
+      const { data } = await apiClient.select('notifications', {
+        filters: { user_email: STATE.currentUser.email },
+        sort: { column: 'created_at', ascending: false },
+        pageSize: 50
+      });
       this._unreadCount = (data || []).filter(n => !n.is_read).length;
       this._updateBadge();
     } catch (e) { console.error('Notifications fetch error:', e.message); }
@@ -72,10 +73,11 @@ window.notificationsModule = {
     panel.innerHTML = `<div class="text-center py-3 text-muted small">
       <span class="spinner-border spinner-border-sm"></span> Loading...</div>`;
     try {
-      const { data, error } = await STATE.client.from('notifications').select('*')
-        .eq('user_email', STATE.currentUser.email)
-        .order('created_at', { ascending: false }).limit(20);
-      if (error) throw error;
+      const { data } = await apiClient.select('notifications', {
+        filters: { user_email: STATE.currentUser.email },
+        sort: { column: 'created_at', ascending: false },
+        pageSize: 20
+      });
       const esc = s => (utils.escapeHtml ? utils.escapeHtml(s) : s);
       const icon = { judge_assigned:'bi-person-check text-primary', scores_due:'bi-clock-history text-warning',
         conflict_review:'bi-exclamation-triangle text-danger', shortlist_ready:'bi-list-stars text-success',
@@ -120,10 +122,9 @@ window.notificationsModule = {
   async _insert(userEmail, type, title, message, link = null) {
     try {
       if (!(await this._isPrefEnabled(userEmail, type))) return;
-      const { error } = await STATE.client.from('notifications').insert(
+      await apiClient.insert('notifications',
         { user_email: userEmail, type, title, message, link, is_read: false,
           created_at: new Date().toISOString() });
-      if (error) throw error;
     } catch (e) { console.error('Notification insert error:', e.message); }
   },
 
@@ -162,9 +163,9 @@ window.notificationsModule = {
   /* Mark read / dismiss */
   async markRead(notificationId) {
     try {
-      const { error } = await STATE.client.from('notifications').update({ is_read: true })
-        .eq('id', notificationId).eq('user_email', STATE.currentUser.email);
-      if (error) throw error;
+      await apiClient.updateByFilters('notifications',
+        { id: notificationId, user_email: STATE.currentUser.email },
+        { is_read: true });
       const el = document.getElementById(`notif-${notificationId}`);
       if (el) el.classList.remove('bg-light');
       if (this._unreadCount > 0) this._unreadCount--;
@@ -174,9 +175,9 @@ window.notificationsModule = {
 
   async markAllRead() {
     try {
-      const { error } = await STATE.client.from('notifications').update({ is_read: true })
-        .eq('user_email', STATE.currentUser.email).eq('is_read', false);
-      if (error) throw error;
+      await apiClient.updateByFilters('notifications',
+        { user_email: STATE.currentUser.email, is_read: false },
+        { is_read: true });
       this._unreadCount = 0;
       this._updateBadge();
       await this.renderNotificationDropdown();
@@ -188,9 +189,8 @@ window.notificationsModule = {
     try {
       const el = document.getElementById(`notif-${notificationId}`);
       const wasUnread = el?.classList.contains('bg-light');
-      const { error } = await STATE.client.from('notifications').delete()
-        .eq('id', notificationId).eq('user_email', STATE.currentUser.email);
-      if (error) throw error;
+      await apiClient.deleteByFilters('notifications',
+        { id: notificationId, user_email: STATE.currentUser.email });
       if (el) el.remove();
       if (wasUnread && this._unreadCount > 0) this._unreadCount--;
       this._updateBadge();
@@ -208,9 +208,12 @@ window.notificationsModule = {
 
   async _isPrefEnabled(userEmail, type) {
     try {
-      const { data } = await STATE.client.from('notification_preferences').select('enabled')
-        .eq('user_email', userEmail).eq('type', type).single();
-      return data ? data.enabled : true;
+      const { data } = await apiClient.select('notification_preferences', {
+        select: 'enabled',
+        filters: { user_email: userEmail, type },
+        pageSize: 1
+      });
+      return data?.[0] ? data[0].enabled : true;
     } catch { return true; }
   },
 
@@ -218,8 +221,11 @@ window.notificationsModule = {
     const email = STATE.currentUser.email;
     let prefs = {};
     try {
-      const { data } = await STATE.client.from('notification_preferences')
-        .select('type, enabled').eq('user_email', email);
+      const { data } = await apiClient.select('notification_preferences', {
+        select: 'type, enabled',
+        filters: { user_email: email },
+        pageSize: 100
+      });
       (data || []).forEach(p => { prefs[p.type] = p.enabled; });
     } catch (e) { console.error('Prefs load error:', e.message); }
 

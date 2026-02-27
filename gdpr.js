@@ -124,19 +124,19 @@ const gdprModule = {
     try {
       let data = [];
       if (entityType === 'organisation') {
-        const { data: orgs } = await STATE.client
-          .from('organisations')
-          .select('id, company_name, email')
-          .or(`company_name.ilike.%${safeTerm}%,email.ilike.%${safeTerm}%`)
-          .limit(10);
-        data = (orgs || []).map(o => ({ id: o.id, label: `${o.company_name} (${o.email || 'no email'})` }));
+        const result = await apiClient.select('organisations', {
+          select: 'id, company_name, email',
+          filters: { or: `company_name.ilike.%${safeTerm}%,email.ilike.%${safeTerm}%` },
+          pageSize: 10
+        });
+        data = (result.data || []).map(o => ({ id: o.id, label: `${o.company_name} (${o.email || 'no email'})` }));
       } else if (entityType === 'contact') {
-        const { data: contacts } = await STATE.client
-          .from('organisation_contacts')
-          .select('id, first_name, last_name, email')
-          .or(`email.ilike.%${safeTerm}%,first_name.ilike.%${safeTerm}%,last_name.ilike.%${safeTerm}%`)
-          .limit(10);
-        data = (contacts || []).map(c => ({ id: c.id, label: `${c.first_name} ${c.last_name} (${c.email || 'no email'})` }));
+        const result = await apiClient.select('organisation_contacts', {
+          select: 'id, first_name, last_name, email',
+          filters: { or: `email.ilike.%${safeTerm}%,first_name.ilike.%${safeTerm}%,last_name.ilike.%${safeTerm}%` },
+          pageSize: 10
+        });
+        data = (result.data || []).map(c => ({ id: c.id, label: `${c.first_name} ${c.last_name} (${c.email || 'no email'})` }));
       }
 
       if (data.length === 0) {

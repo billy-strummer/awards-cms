@@ -2507,6 +2507,17 @@ const apiClient = {
   },
 
   /**
+   * Update records matching filters via the server-side proxy.
+   * @param {string} table
+   * @param {Object} filters - Filter criteria to match rows
+   * @param {Object} data - Fields to update
+   * @returns {Promise<{data: Array}>}
+   */
+  async updateByFilters(table, filters, data) {
+    return this._call({ table, operation: 'update', filters, data });
+  },
+
+  /**
    * Delete a record via the server-side proxy.
    * @param {string} table
    * @param {string} id - Record ID
@@ -2514,6 +2525,48 @@ const apiClient = {
    */
   async delete(table, id) {
     return this._call({ table, operation: 'delete', id });
+  },
+
+  /**
+   * Delete records matching filters via the server-side proxy.
+   * @param {string} table
+   * @param {Object} filters - Filter criteria to match rows
+   * @returns {Promise<{data: Array}>}
+   */
+  async deleteByFilters(table, filters) {
+    return this._call({ table, operation: 'delete', filters });
+  },
+
+  /**
+   * Load all records from a table in batches via the proxy.
+   * Uses server-side pagination to fetch everything without loading it all at once.
+   * @param {string} table
+   * @param {Object} [options]
+   * @param {string} [options.select] - Column selection
+   * @param {Object} [options.filters] - Filter criteria
+   * @param {Object} [options.sort] - Sort config { column, ascending }
+   * @param {number} [options.batchSize] - Records per batch (default 1000)
+   * @returns {Promise<Array>} All matching records
+   */
+  async selectAll(table, options = {}) {
+    const batchSize = options.batchSize || 1000;
+    const allData = [];
+    let page = 1;
+    let totalPages = 1;
+
+    while (page <= totalPages) {
+      const result = await this.select(table, {
+        select: options.select || '*',
+        filters: options.filters || {},
+        sort: options.sort,
+        page,
+        pageSize: batchSize
+      });
+      allData.push(...(result.data || []));
+      totalPages = result.totalPages || 1;
+      page++;
+    }
+    return allData;
   }
 };
 

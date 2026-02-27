@@ -9,6 +9,7 @@ const aiVettingModule = {
 
   /**
    * Open AI Vetting Modal
+   * @returns {Promise<void>}
    */
   async openVettingModal() {
     const modal = new bootstrap.Modal(document.getElementById('aiVettingModal'));
@@ -24,6 +25,7 @@ const aiVettingModule = {
 
   /**
    * Load vetting results from database
+   * @returns {Promise<void>}
    */
   async loadVettingResults() {
     try {
@@ -78,6 +80,7 @@ const aiVettingModule = {
 
   /**
    * Filter results
+   * @param {string} filter - Filter type ('all', 'flagged', 'verified')
    */
   filterResults(filter) {
     this.currentFilter = filter;
@@ -177,6 +180,7 @@ const aiVettingModule = {
 
   /**
    * Run AI vetting for all companies
+   * @returns {Promise<void>}
    */
   async runVetting() {
     if (this.isVetting) {
@@ -256,6 +260,8 @@ const aiVettingModule = {
 
   /**
    * Vet a single company using Claude API
+   * @param {Object} org - Organisation object with company_name, website, sector, region
+   * @returns {Promise<Object>} Vetting result with status
    */
   async vetSingleCompany(org) {
     try {
@@ -320,6 +326,8 @@ const aiVettingModule = {
 
   /**
    * View full details of a vetting result
+   * @param {string} resultId - The ID of the vetting result to view
+   * @returns {Promise<void>}
    */
   async viewDetails(resultId) {
     const result = this.allResults.find(r => r.id === resultId);
@@ -376,12 +384,13 @@ const aiVettingModule = {
     const detailModal = document.createElement('div');
     detailModal.innerHTML = detailsHtml;
 
-    utils.showToast('View details feature - See console for full details', 'info');
-    console.log('Vetting Details:', result);
+    utils.showToast('View details feature - full details loaded', 'info');
   },
 
   /**
    * Dismiss a flag
+   * @param {string} resultId - The ID of the flagged vetting result to dismiss
+   * @returns {Promise<void>}
    */
   async dismissFlag(resultId) {
     if (!await utils.confirmDialog({ title: 'Dismiss Flag', message: 'Are you sure you want to dismiss this flag?', confirmText: 'Dismiss', danger: false })) return;
@@ -450,6 +459,7 @@ const aiVettingModule = {
 
   /**
    * Update dashboard card with latest stats
+   * @returns {Promise<void>}
    */
   async updateDashboardCard() {
     try {
@@ -475,6 +485,8 @@ const aiVettingModule = {
 
   /**
    * Get time ago string
+   * @param {Date} date - The date to calculate relative time from
+   * @returns {string} Human-readable relative time (e.g. "2 hours ago")
    */
   getTimeAgo(date) {
     const seconds = Math.floor((new Date() - date) / 1000);

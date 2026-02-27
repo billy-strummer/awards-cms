@@ -76,9 +76,7 @@ const settingsModule = {
       document.getElementById('systemEventsCount').textContent = eventsCount;
 
       // Get media count
-      const { count: mediaCount } = await STATE.client
-        .from('media_gallery')
-        .select('*', { count: 'exact', head: true });
+      const { count: mediaCount } = await apiClient.count('media_gallery');
       document.getElementById('systemMediaCount').textContent = mediaCount || 0;
 
       // Calculate total records
@@ -93,12 +91,8 @@ const settingsModule = {
       const dbStatusEl = document.getElementById('systemDbStatus');
       if (dbStatusEl) {
         try {
-          const { error: pingError } = await STATE.client
-            .from('awards')
-            .select('id', { count: 'exact', head: true });
-          dbStatusEl.innerHTML = pingError
-            ? '<span class="badge bg-danger">Error</span>'
-            : '<span class="badge bg-success">Connected</span>';
+          await apiClient.count('awards');
+          dbStatusEl.innerHTML = '<span class="badge bg-success">Connected</span>';
         } catch {
           dbStatusEl.innerHTML = '<span class="badge bg-danger">Disconnected</span>';
         }
@@ -139,13 +133,13 @@ const settingsModule = {
         'certificates', 'sponsors', 'email_templates'
       ];
       const results = await Promise.all(
-        tableNames.map(t => STATE.client.from(t).select('*').then(r => r, () => ({ data: [] })))
+        tableNames.map(t => apiClient.selectAll(t).then(data => data, () => []))
       );
 
       const tables = {};
       const counts = {};
       tableNames.forEach((name, i) => {
-        tables[name] = results[i].data || [];
+        tables[name] = results[i] || [];
         counts[name] = tables[name].length;
       });
 
@@ -259,12 +253,9 @@ const settingsModule = {
    */
   async exportEventsCSV() {
     try {
-      const { data: events, error } = await STATE.client
-        .from('events')
-        .select('*')
-        .order('event_date', { ascending: false });
-
-      if (error) throw error;
+      const events = await apiClient.selectAll('events', {
+        sort: { column: 'event_date', ascending: false }
+      });
 
       if (!events || events.length === 0) {
         utils.showToast('No events data to export', 'warning');
@@ -294,16 +285,10 @@ const settingsModule = {
    */
   async exportMediaCSV() {
     try {
-      const { data: media, error } = await STATE.client
-        .from('media_gallery')
-        .select(`
-          *,
-          organisations(company_name),
-          awards:award_years(award_category)
-        `)
-        .order('uploaded_at', { ascending: false });
-
-      if (error) throw error;
+      const media = await apiClient.selectAll('media_gallery', {
+        select: '*, organisations(company_name), awards:award_years(award_category)',
+        sort: { column: 'uploaded_at', ascending: false }
+      });
 
       if (!media || media.length === 0) {
         utils.showToast('No media data to export', 'warning');
@@ -333,12 +318,10 @@ const settingsModule = {
    */
   async exportEntriesCSV() {
     try {
-      const { data: entries, error } = await STATE.client
-        .from('entries')
-        .select('*, organisations(company_name), awards:award_years(award_category)')
-        .order('created_at', { ascending: false });
-
-      if (error) throw error;
+      const entries = await apiClient.selectAll('entries', {
+        select: '*, organisations(company_name), awards:award_years(award_category)',
+        sort: { column: 'created_at', ascending: false }
+      });
 
       if (!entries || entries.length === 0) {
         utils.showToast('No entries data to export', 'warning');
@@ -443,8 +426,7 @@ const settingsModule = {
     };
 
     try {
-      const { error } = await STATE.client.from('cms_audit_logs').insert(logEntry);
-      if (error) throw error;
+      await apiClient.insert('cms_audit_logs', logEntry);
     } catch (e) {
       // Fallback to localStorage
       const logs = JSON.parse(localStorage.getItem('audit_logs') || '[]');
@@ -458,12 +440,10 @@ const settingsModule = {
    */
   async getAuditLogs() {
     try {
-      const { data, error } = await STATE.client
-        .from('cms_audit_logs')
-        .select('*')
-        .order('created_at', { ascending: false })
-        .limit(500);
-      if (error) throw error;
+      const { data } = await apiClient.select('cms_audit_logs', {
+        sort: { column: 'created_at', ascending: false },
+        pageSize: 500
+      });
       return (data || []).map(log => ({
         id: log.id,
         timestamp: log.created_at,
@@ -563,7 +543,7 @@ const settingsModule = {
     }
 
     try {
-      await STATE.client.from('cms_audit_logs').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+      await apiClient.deleteByFilters('cms_audit_logs', { id: { op: 'neq', value: '00000000-0000-0000-0000-000000000000' } });
     } catch (e) {
       // ignore
     }
@@ -581,14 +561,11 @@ const settingsModule = {
    */
   async loadSeasons() {
     try {
-      const { data, error } = await STATE.client
-        .from('award_seasons')
-        .select('*')
-        .order('year', { ascending: false });
+      const allSeasons = await apiClient.selectAll('award_seasons', {
+        sort: { column: 'year', ascending: false }
+      });
 
-      if (error) throw error;
-
-      this.allSeasons = data || [];
+      this.allSeasons = allSeasons || [];
       this.renderSeasons();
     } catch (error) {
       console.error('Error loading seasons:', error);
@@ -739,25 +716,16 @@ const settingsModule = {
 
         // If setting as default, unset other defaults first
         if (isDefault) {
-          await STATE.client
-            .from('award_seasons')
-            .update({ is_default: false })
-            .eq('is_default', true);
+          await apiClient.updateByFilters('award_seasons',
+            { is_default: true },
+            { is_default: false });
         }
 
-        let result;
         if (id) {
-          result = await STATE.client
-            .from('award_seasons')
-            .update(seasonData)
-            .eq('id', id);
+          await apiClient.update('award_seasons', id, seasonData);
         } else {
-          result = await STATE.client
-            .from('award_seasons')
-            .insert(seasonData);
+          await apiClient.insert('award_seasons', seasonData);
         }
-
-        if (result.error) throw result.error;
 
         const modal = bootstrap.Modal.getInstance(document.getElementById('seasonFormModal'));
         if (modal) modal.hide();
@@ -781,11 +749,7 @@ const settingsModule = {
 
     try {
       utils.showLoading();
-      const { error } = await STATE.client
-        .from('award_seasons')
-        .delete()
-        .eq('id', seasonId);
-      if (error) throw error;
+      await apiClient.delete('award_seasons', seasonId);
 
       utils.showToast('Season deleted', 'success');
       await this.loadSeasons();
@@ -820,12 +784,9 @@ const settingsModule = {
         winners_announcement_date: season.winners_announcement_date
       };
 
-      const { error } = await STATE.client
-        .from('awards')
-        .update(updates)
-        .eq('year', season.year);
-
-      if (error) throw error;
+      await apiClient.updateByFilters('awards',
+        { year: season.year },
+        updates);
 
       utils.showToast(`Dates applied to all ${season.year} awards!`, 'success');
 

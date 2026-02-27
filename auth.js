@@ -9,9 +9,6 @@ const authModule = {
    */
   initSupabase() {
     try {
-      console.log('🔄 Initializing Supabase client...');
-      console.log('📍 Supabase URL:', SUPABASE_CONFIG.url);
-      
       // Check if supabase library is loaded
       if (typeof supabase === 'undefined') {
         throw new Error('Supabase library not loaded. Check your internet connection and script tags.');
@@ -23,7 +20,6 @@ const authModule = {
         SUPABASE_CONFIG.anonKey
       );
       
-      console.log('✅ Supabase client initialized successfully');
       this.updateConnectionStatus(true);
       
       // Test connection immediately
@@ -43,11 +39,10 @@ const authModule = {
 
   /**
    * Test Supabase connection
+   * @returns {Promise<void>}
    */
   async testConnection() {
     try {
-      console.log('🧪 Testing Supabase connection...');
-      
       // Try a simple query to test connectivity
       const { data, error } = await STATE.client
         .from('awards')
@@ -56,8 +51,6 @@ const authModule = {
       if (error) {
         console.warn('⚠️ Connection test warning:', error.message);
         // Don't show toast for this - it might just be empty table
-      } else {
-        console.log('✅ Supabase connection test successful');
       }
     } catch (error) {
       console.error('❌ Connection test failed:', error);
@@ -92,6 +85,7 @@ const authModule = {
 
   /**
    * Check for existing session on page load
+   * @returns {Promise<void>}
    */
   async checkSession() {
     try {
@@ -135,6 +129,7 @@ const authModule = {
 
   /**
    * Handle user login
+   * @returns {Promise<void>}
    */
   async handleLogin() {
     const email = document.getElementById('loginEmail').value.trim();
@@ -211,6 +206,7 @@ const authModule = {
   /**
    * Handle user logout
    * @param {boolean} force - Skip confirmation dialog (used by inactivity timer)
+   * @returns {Promise<void>}
    */
   async handleLogout(force = false) {
     if (!force && !await utils.confirmDialog({ title: 'Logout', message: 'Are you sure you want to logout?', confirmText: 'Logout', danger: false })) {
@@ -312,6 +308,7 @@ const authModule = {
 
   /**
    * Show dashboard page
+   * @returns {Promise<void>}
    */
   async showDashboard() {
     this.hideSplash();

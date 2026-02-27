@@ -64,7 +64,7 @@ const dashboardModule = {
       // Update tab count badges
       updateTabCounts();
 
-      console.log('✅ Dashboard data loaded');
+      console.warn('Dashboard data loaded');
 
     } catch (error) {
       console.error('Error loading dashboard data:', error);
@@ -127,13 +127,10 @@ const dashboardModule = {
       // Use already-loaded awards; fetch only assignments and entries (not in global state)
       const awards = STATE.allAwards || [];
 
-      const [assignmentsRes, entriesRes] = await Promise.all([
-        STATE.client.from('award_assignments').select('award_id, status'),
-        STATE.client.from('entries').select('id, award_id')
+      const [assignments, entries] = await Promise.all([
+        apiClient.selectAll('award_assignments', { select: 'award_id, status' }),
+        apiClient.selectAll('entries', { select: 'id, award_id' })
       ]);
-
-      const assignments = assignmentsRes.data || [];
-      const entries = entriesRes.data || [];
 
       // Build a map of award_id -> year
       const awardYearMap = {};
@@ -329,30 +326,39 @@ const dashboardModule = {
 
     setTimeout(async () => {
       try {
-        // Use paymentsModule.allInvoices if loaded, else fallback to DB
+        // Use paymentsModule.allInvoices if loaded, else fallback to API
         let pending;
         if (typeof paymentsModule !== 'undefined' && paymentsModule.allInvoices && paymentsModule.allInvoices.length > 0) {
           pending = paymentsModule.allInvoices.filter(i =>
             ['pending', 'unpaid'].includes(i.payment_status) && i.status === 'sent'
           ).sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
         } else {
-          let error;
-          ({ data: pending, error } = await STATE.client
-            .from('invoices')
-            .select('id, invoice_number, total_amount, organisations(company_name)')
-            .in('payment_status', ['pending', 'unpaid'])
-            .eq('status', 'sent')
-            .order('created_at', { ascending: false }));
-
-          if (error && (error.message?.includes('relationship') || error.message?.includes('schema cache'))) {
-            ({ data: pending, error } = await STATE.client
-              .from('invoices')
-              .select('id, invoice_number, total_amount')
-              .in('payment_status', ['pending', 'unpaid'])
-              .eq('status', 'sent')
-              .order('created_at', { ascending: false }));
+          try {
+            const result = await apiClient.selectAll('invoices', {
+              select: 'id, invoice_number, total_amount, organisations(company_name)',
+              filters: {
+                payment_status: { op: 'in', value: ['pending', 'unpaid'] },
+                status: 'sent'
+              },
+              sort: { column: 'created_at', ascending: false }
+            });
+            pending = result;
+          } catch (selectErr) {
+            // Fallback without join if relationship fails
+            if (selectErr.message?.includes('relationship') || selectErr.message?.includes('schema cache')) {
+              const result = await apiClient.selectAll('invoices', {
+                select: 'id, invoice_number, total_amount',
+                filters: {
+                  payment_status: { op: 'in', value: ['pending', 'unpaid'] },
+                  status: 'sent'
+                },
+                sort: { column: 'created_at', ascending: false }
+              });
+              pending = result;
+            } else {
+              throw selectErr;
+            }
           }
-          if (error) throw error;
         }
 
         if (pending && pending.length > 0) {
@@ -379,20 +385,26 @@ const dashboardModule = {
 
       // Get recent entries (last 5) - SELF-NOMINATIONS INCLUDED
       let recentEntries;
-      let entriesResult = await STATE.client
-        .from('entries')
-        .select('*, organisations(company_name), award_years(award_name)')
-        .order('created_at', { ascending: false })
-        .limit(5);
-
-      if (entriesResult.error && (entriesResult.error.message?.includes('relationship') || entriesResult.error.message?.includes('schema cache'))) {
-        entriesResult = await STATE.client
-          .from('entries')
-          .select('*')
-          .order('created_at', { ascending: false })
-          .limit(5);
+      try {
+        const entriesResult = await apiClient.select('entries', {
+          select: '*, organisations(company_name), award_years(award_name)',
+          sort: { column: 'created_at', ascending: false },
+          pageSize: 5
+        });
+        recentEntries = entriesResult.data;
+      } catch (entriesErr) {
+        // Fallback without join if relationship fails
+        if (entriesErr.message?.includes('relationship') || entriesErr.message?.includes('schema cache')) {
+          const entriesResult = await apiClient.select('entries', {
+            select: '*',
+            sort: { column: 'created_at', ascending: false },
+            pageSize: 5
+          });
+          recentEntries = entriesResult.data;
+        } else {
+          throw entriesErr;
+        }
       }
-      recentEntries = entriesResult.data;
 
       if (recentEntries) {
         recentEntries.forEach(entry => {
@@ -534,11 +546,10 @@ const dashboardModule = {
       const notifications = [];
 
       // Check for pending self-nominations needing approval
-      const { count: pendingEntries } = await STATE.client
-        .from('entries')
-        .select('*', { count: 'exact', head: true })
-        .eq('status', 'submitted')
-        .eq('is_self_nomination', true);
+      const { count: pendingEntries } = await apiClient.count('entries', {
+        status: 'submitted',
+        is_self_nomination: true
+      });
 
       if (pendingEntries > 0) {
         notifications.push({
@@ -616,24 +627,35 @@ const dashboardModule = {
       }
 
       // Check for pending/unpaid product sales (invoices)
-      let invoiceResult = await STATE.client
-        .from('invoices')
-        .select('id, invoice_number, total_amount, organisations(company_name)', { count: 'exact' })
-        .in('payment_status', ['pending', 'unpaid'])
-        .eq('status', 'sent')
-        .order('created_at', { ascending: false });
-
-      if (invoiceResult.error && (invoiceResult.error.message?.includes('relationship') || invoiceResult.error.message?.includes('schema cache'))) {
-        invoiceResult = await STATE.client
-          .from('invoices')
-          .select('id, invoice_number, total_amount', { count: 'exact' })
-          .in('payment_status', ['pending', 'unpaid'])
-          .eq('status', 'sent')
-          .order('created_at', { ascending: false });
+      let pendingInvoices;
+      try {
+        const invoiceResult = await apiClient.selectAll('invoices', {
+          select: 'id, invoice_number, total_amount, organisations(company_name)',
+          filters: {
+            payment_status: { op: 'in', value: ['pending', 'unpaid'] },
+            status: 'sent'
+          },
+          sort: { column: 'created_at', ascending: false }
+        });
+        pendingInvoices = invoiceResult;
+      } catch (invoiceErr) {
+        // Fallback without join if relationship fails
+        if (invoiceErr.message?.includes('relationship') || invoiceErr.message?.includes('schema cache')) {
+          const invoiceResult = await apiClient.selectAll('invoices', {
+            select: 'id, invoice_number, total_amount',
+            filters: {
+              payment_status: { op: 'in', value: ['pending', 'unpaid'] },
+              status: 'sent'
+            },
+            sort: { column: 'created_at', ascending: false }
+          });
+          pendingInvoices = invoiceResult;
+        } else {
+          throw invoiceErr;
+        }
       }
-      const { data: pendingInvoices, error: invoiceError } = invoiceResult;
 
-      if (!invoiceError && pendingInvoices && pendingInvoices.length > 0) {
+      if (pendingInvoices && pendingInvoices.length > 0) {
         const totalValue = pendingInvoices.reduce((sum, inv) => sum + parseFloat(inv.total_amount || 0), 0);
         notifications.push({
           type: 'warning',
@@ -868,11 +890,9 @@ const dashboardModule = {
    * Get companies by spending
    */
   async getCompaniesBySpending() {
-    const { data: payments, error } = await STATE.client
-      .from('payments')
-      .select('organisation_id, amount, payment_date, organisations(company_name)');
-
-    if (error) throw error;
+    const payments = await apiClient.selectAll('payments', {
+      select: 'organisation_id, amount, payment_date, organisations(company_name)'
+    });
 
     // Group by organisation and sum spending
     const orgMap = {};
@@ -1634,17 +1654,12 @@ const dashboardModule = {
 
     try {
       // Load recent invoices with line items
-      const { data: invoices, error } = await STATE.client
-        .from('invoices')
-        .select(`
-          *,
-          organisations(company_name),
-          invoice_line_items(item_name, quantity, unit_price, line_total)
-        `)
-        .order('created_at', { ascending: false })
-        .limit(10);
-
-      if (error) throw error;
+      const invoicesResult = await apiClient.select('invoices', {
+        select: '*, organisations(company_name), invoice_line_items(item_name, quantity, unit_price, line_total)',
+        sort: { column: 'created_at', ascending: false },
+        pageSize: 10
+      });
+      const invoices = invoicesResult.data;
 
       if (!invoices || invoices.length === 0) {
         tbody.innerHTML = `
@@ -1774,7 +1789,7 @@ const dashboardModule = {
    * View Order Details
    */
   viewOrderDetails(invoiceId) {
-    console.log('View order:', invoiceId);
+    console.warn('View order:', invoiceId);
     this.navigateToSection('payments');
     utils.showToast('Opening Payments tab...', 'info');
   },
@@ -1831,13 +1846,16 @@ const dashboardModule = {
   async loadSalesData() {
     try {
       // Fetch invoices and payments once, then pass to sub-functions
-      const [invoicesRes, paymentsRes] = await Promise.all([
-        STATE.client.from('invoices').select('*, organisations(company_name)').order('created_at', { ascending: false }),
-        STATE.client.from('payments').select('*, organisations(company_name)').order('payment_date', { ascending: false })
+      const [allInvoices, allPayments] = await Promise.all([
+        apiClient.selectAll('invoices', {
+          select: '*, organisations(company_name)',
+          sort: { column: 'created_at', ascending: false }
+        }),
+        apiClient.selectAll('payments', {
+          select: '*, organisations(company_name)',
+          sort: { column: 'payment_date', ascending: false }
+        })
       ]);
-
-      const allInvoices = invoicesRes.data || [];
-      const allPayments = paymentsRes.data || [];
 
       this.loadSalesSummary(allInvoices, allPayments);
       this.loadRecentPayments(allPayments);
@@ -2137,25 +2155,16 @@ const dashboardModule = {
       utils.showLoading();
 
       // Fetch comprehensive sales data
-      const { data: invoices, error: invoicesError } = await STATE.client
-        .from('invoices')
-        .select(`
-          *,
-          organisations(company_name)
-        `)
-        .order('created_at', { ascending: false });
-
-      if (invoicesError) throw invoicesError;
-
-      const { data: payments, error: paymentsError } = await STATE.client
-        .from('payments')
-        .select(`
-          *,
-          organisations(company_name)
-        `)
-        .order('payment_date', { ascending: false });
-
-      if (paymentsError) throw paymentsError;
+      const [invoices, payments] = await Promise.all([
+        apiClient.selectAll('invoices', {
+          select: '*, organisations(company_name)',
+          sort: { column: 'created_at', ascending: false }
+        }),
+        apiClient.selectAll('payments', {
+          select: '*, organisations(company_name)',
+          sort: { column: 'payment_date', ascending: false }
+        })
+      ]);
 
       // Create CSV content
       let csv = 'SALES REPORT\n';
@@ -2591,10 +2600,10 @@ const dashboardModule = {
       const awards = STATE.allAwards || [];
       const awardData = STATE.allAwards || [];
 
-      // award_assignments not in global state — query DB
-      const { data: assignments } = await STATE.client
-        .from('award_assignments')
-        .select('award_id, organisation_id');
+      // award_assignments not in global state — query API
+      const assignments = await apiClient.selectAll('award_assignments', {
+        select: 'award_id, organisation_id'
+      });
 
       // Build county → org count map
       const awardCountyMap = {};

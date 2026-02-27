@@ -46,8 +46,13 @@ console.log(`\n📂 CSV File: ${path.basename(csvFilePath)}`);
 console.log(`🔍 Mode: ${isDryRun ? 'DRY RUN (preview only)' : 'LIVE IMPORT'}\n`);
 
 // Supabase Configuration
-const SUPABASE_URL = process.env.SUPABASE_URL || 'https://qdzyknercdqwhwijbcxf.supabase.co';
+const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY || process.env.SUPABASE_KEY;
+
+if (!SUPABASE_URL) {
+  console.error('❌ Error: SUPABASE_URL not found in environment variables');
+  process.exit(1);
+}
 
 if (!SUPABASE_KEY) {
   console.error('❌ Error: SUPABASE_KEY not found in environment variables');

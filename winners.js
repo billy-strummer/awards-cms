@@ -14,6 +14,7 @@ const winnersModule = {
 
   /**
    * Load all winners from database
+   * @returns {Promise<void>}
    */
   async loadWinners() {
     if (this._loading) return;
@@ -22,57 +23,28 @@ const winnersModule = {
       utils.showLoading();
       utils.showSkeletonLoading('winnersTableBody', 7);
 
-      // Paginated loading for large winner datasets
-      let allData = [];
-      let page = 0;
-      const pageSize = 1000;
-      let hasMore = true;
-
-      // Detect if FK joins are available
+      // Try loading with FK joins first, fall back to plain select
+      let allData;
       let useJoins = true;
 
-      while (hasMore) {
-        const from = page * pageSize;
-        const to = from + pageSize - 1;
-
-        let data, error;
-        if (useJoins) {
-          ({ data, error } = await STATE.client
-            .from('winners')
-            .select(`
-              *,
-              awards:award_years!winners_award_id_fkey (*),
-              winner_media (*)
-            `)
-            .order('created_at', { ascending: false })
-            .range(from, to));
-
-          // FK relationship missing - retry without joins
-          if (error && (error.message?.includes('relationship') || error.message?.includes('schema cache'))) {
-            console.warn('Winners FK relationships not found, loading without joins');
-            useJoins = false;
-            ({ data, error } = await STATE.client
-              .from('winners')
-              .select('*')
-              .order('created_at', { ascending: false })
-              .range(from, to));
-          }
+      try {
+        allData = await apiClient.selectAll('winners', {
+          select: '*, awards:award_years!winners_award_id_fkey (*), winner_media (*)',
+          sort: { column: 'created_at', ascending: false },
+          batchSize: 1000
+        });
+      } catch (joinErr) {
+        // FK relationship missing - retry without joins
+        if (joinErr.message?.includes('relationship') || joinErr.message?.includes('schema cache')) {
+          console.warn('Winners FK relationships not found, loading without joins');
+          useJoins = false;
+          allData = await apiClient.selectAll('winners', {
+            select: '*',
+            sort: { column: 'created_at', ascending: false },
+            batchSize: 1000
+          });
         } else {
-          ({ data, error } = await STATE.client
-            .from('winners')
-            .select('*')
-            .order('created_at', { ascending: false })
-            .range(from, to));
-        }
-
-        if (error) throw error;
-
-        if (!data || data.length === 0) {
-          hasMore = false;
-        } else {
-          allData = allData.concat(data);
-          page++;
-          if (data.length < pageSize) hasMore = false;
+          throw joinErr;
         }
       }
 
@@ -82,13 +54,13 @@ const winnersModule = {
       const missingAwards = STATE.allWinners.filter(w => w.award_id && !w.awards);
       if (missingAwards.length > 0) {
         const awardIds = [...new Set(missingAwards.map(w => w.award_id))];
-        const { data: awardsData } = await STATE.client
-          .from('awards')
-          .select('*')
-          .in('id', awardIds);
-        if (awardsData) {
+        const awardsResult = await apiClient.selectAll('awards', {
+          select: '*',
+          filters: { id: { in: awardIds } }
+        });
+        if (awardsResult) {
           const awardsMap = {};
-          awardsData.forEach(a => { awardsMap[a.id] = a; });
+          awardsResult.forEach(a => { awardsMap[a.id] = a; });
           STATE.allWinners.forEach(w => {
             if (w.award_id && !w.awards && awardsMap[w.award_id]) {
               w.awards = awardsMap[w.award_id];
@@ -111,7 +83,7 @@ const winnersModule = {
 
       this.filterWinners();
 
-      console.log(`✅ Loaded ${STATE.allWinners.length} winners`);
+      console.warn(`Loaded ${STATE.allWinners.length} winners`);
 
       // Initialise reusable keyboard navigation (once)
       if (!this._keyboardNavInit) {
@@ -219,6 +191,10 @@ const winnersModule = {
     this.renderWinners();
   },
 
+  /**
+   * Sort winners by the given field, toggling direction if already sorted by that field
+   * @param {string} field - The field to sort by
+   */
   sortWinners(field) {
     if (this._sortField === field) {
       this._sortDir = this._sortDir === 'asc' ? 'desc' : 'asc';
@@ -388,6 +364,10 @@ const winnersModule = {
     }
   },
 
+  /**
+   * Navigate to a specific page of the winners table
+   * @param {number} page - Page number to navigate to
+   */
   goToPage(page) {
     const totalPages = Math.ceil(STATE.filteredWinners.length / this._pageSize);
     this._currentPage = Math.max(1, Math.min(page, totalPages));
@@ -396,6 +376,9 @@ const winnersModule = {
 
   /**
    * Show award placements (winner, 2nd, 3rd, nominees) for a given award
+   * @param {string} awardId - The award ID to show placements for
+   * @param {string} awardName - Display name of the award
+   * @returns {Promise<void>}
    */
   async showAwardPlacements(awardId, awardName) {
     if (!awardId) return;
@@ -415,23 +398,27 @@ const winnersModule = {
 
     try {
       // Load assignments for this award with organisation names
-      let data, error;
-      ({ data, error } = await STATE.client
-        .from('award_assignments')
-        .select('id, status, winner_position, organisations(company_name)')
-        .eq('award_id', awardId)
-        .order('winner_position', { ascending: true }));
-
-      // FK relationship missing - retry without joins
-      if (error && (error.message?.includes('relationship') || error.message?.includes('schema cache'))) {
-        ({ data, error } = await STATE.client
-          .from('award_assignments')
-          .select('id, status, winner_position, organisation_id')
-          .eq('award_id', awardId)
-          .order('winner_position', { ascending: true }));
+      let data;
+      try {
+        const result = await apiClient.selectAll('award_assignments', {
+          select: 'id, status, winner_position, organisations(company_name)',
+          filters: { award_id: awardId },
+          sort: { column: 'winner_position', ascending: true }
+        });
+        data = result;
+      } catch (joinErr) {
+        // FK relationship missing - retry without joins
+        if (joinErr.message?.includes('relationship') || joinErr.message?.includes('schema cache')) {
+          const result = await apiClient.selectAll('award_assignments', {
+            select: 'id, status, winner_position, organisation_id',
+            filters: { award_id: awardId },
+            sort: { column: 'winner_position', ascending: true }
+          });
+          data = result;
+        } else {
+          throw joinErr;
+        }
       }
-
-      if (error) throw error;
 
       if (!data || data.length === 0) {
         content.innerHTML = `
@@ -534,7 +521,8 @@ const winnersModule = {
   },
 
   /**
-   * Handle media upload
+   * Handle media upload for the current winner
+   * @returns {Promise<void>}
    */
   async handleUploadMedia() {
     const fileInput = document.getElementById('mediaFile');
@@ -592,17 +580,13 @@ const winnersModule = {
           .from('winner-media')
           .getPublicUrl(fileName);
 
-        // Insert record into database (v2 syntax)
-        const { error: dbError } = await STATE.client
-          .from('winner_media')
-          .insert([{
-            winner_id: this.currentWinnerId,
-            media_type: this.currentMediaType,
-            file_url: urlData.publicUrl,
-            caption: caption || null
-          }]);
-
-        if (dbError) throw dbError;
+        // Insert record into database via apiClient
+        await apiClient.insert('winner_media', {
+          winner_id: this.currentWinnerId,
+          media_type: this.currentMediaType,
+          file_url: urlData.publicUrl,
+          caption: caption || null
+        });
 
         // Close modal and reload
         bootstrap.Modal.getInstance(document.getElementById('uploadMediaModal'))?.hide();
@@ -684,13 +668,7 @@ const winnersModule = {
       await utils.protectModalDuringSave('viewMediaModal', async () => {
         utils.showLoading();
 
-        // Supabase v2 syntax for delete
-        const { error } = await STATE.client
-          .from('winner_media')
-          .delete()
-          .eq('id', mediaId);
-
-        if (error) throw error;
+        await apiClient.delete('winner_media', mediaId);
 
         await this.loadWinners();
         bootstrap.Modal.getInstance(document.getElementById('viewMediaModal'))?.hide();
@@ -721,13 +699,7 @@ const winnersModule = {
       const winner = STATE.allWinners?.find(w => w.id === winnerId);
       if (winner) utils.softDelete('winners', winner);
 
-      // Supabase v2 syntax for delete
-      const { error } = await STATE.client
-        .from('winners')
-        .delete()
-        .eq('id', winnerId);
-
-      if (error) throw error;
+      await apiClient.delete('winners', winnerId);
 
       await this.loadWinners();
       utils.showToast('Winner deleted. <a href="#" onclick="event.preventDefault(); utils.undoLastDelete(\'winners\')">Undo</a>', 'info');
@@ -761,16 +733,10 @@ const winnersModule = {
       utils.showLoading();
 
       // Load all winners with their media
-      const { data: winners, error } = await STATE.client
-        .from('winners')
-        .select(`
-          *,
-          awards:award_years!winners_award_id_fkey (*),
-          winner_media (*)
-        `)
-        .order('created_at', { ascending: false });
-
-      if (error) throw error;
+      const winners = await apiClient.selectAll('winners', {
+        select: '*, awards:award_years!winners_award_id_fkey (*), winner_media (*)',
+        sort: { column: 'created_at', ascending: false }
+      });
 
       this.pressReleaseState.allWinners = winners || [];
       this.pressReleaseState.filteredWinners = this.pressReleaseState.allWinners;
@@ -900,10 +866,11 @@ const winnersModule = {
 
   /**
    * Toggle photo selection (placeholder for now)
+   * @param {string} winnerId - Winner ID
+   * @param {string} photoId - Photo ID
    */
   togglePhotoSelection(winnerId, photoId) {
     // This will be used to track which photos to include
-    console.log(`Toggled photo ${photoId} for winner ${winnerId}`);
   },
 
   /**
@@ -1212,15 +1179,10 @@ const winnersModule = {
       utils.showLoading();
 
       // Load all winners with their awards
-      const { data: winners, error } = await STATE.client
-        .from('winners')
-        .select(`
-          *,
-          awards:award_years!winners_award_id_fkey (*)
-        `)
-        .order('created_at', { ascending: false });
-
-      if (error) throw error;
+      const winners = await apiClient.selectAll('winners', {
+        select: '*, awards:award_years!winners_award_id_fkey (*)',
+        sort: { column: 'created_at', ascending: false }
+      });
 
       this.certificateState.allWinners = winners || [];
       this.certificateState.filteredWinners = this.certificateState.allWinners;
@@ -2156,15 +2118,10 @@ const winnersModule = {
       utils.showLoading();
 
       // Load all winners with awards to get available years
-      const { data: winners, error } = await STATE.client
-        .from('winners')
-        .select(`
-          *,
-          awards:award_years!winners_award_id_fkey (*)
-        `)
-        .order('created_at', { ascending: false });
-
-      if (error) throw error;
+      const winners = await apiClient.selectAll('winners', {
+        select: '*, awards:award_years!winners_award_id_fkey (*)',
+        sort: { column: 'created_at', ascending: false }
+      });
 
       // Extract unique years
       const yearsSet = new Set();
@@ -2233,14 +2190,9 @@ const winnersModule = {
       const selectedYearsArray = Array.from(this.yearComparisonState.selectedYears).sort();
 
       // Load winners and awards for selected years
-      const { data: winners, error: winnersError } = await STATE.client
-        .from('winners')
-        .select(`
-          *,
-          awards:award_years!winners_award_id_fkey (*)
-        `);
-
-      if (winnersError) throw winnersError;
+      const winners = await apiClient.selectAll('winners', {
+        select: '*, awards:award_years!winners_award_id_fkey (*)'
+      });
 
       // Filter winners for selected years
       const filteredWinners = winners.filter(w =>
@@ -2248,11 +2200,9 @@ const winnersModule = {
       );
 
       // Load organisations to get sector information
-      const { data: orgs, error: orgsError } = await STATE.client
-        .from('organisations')
-        .select('*');
-
-      if (orgsError) throw orgsError;
+      const orgs = await apiClient.selectAll('organisations', {
+        select: '*'
+      });
 
       // Create organisation lookup map
       const orgMap = new Map(orgs.map(org => [org.id, org]));
@@ -2892,15 +2842,12 @@ const winnersModule = {
           continue;
         }
 
-        const { error } = await STATE.client
-          .from('winners')
-          .insert([winnerData]);
-
-        if (error) {
-          console.error('Error importing winner:', row.winner_name, error);
-          errorCount++;
-        } else {
+        try {
+          await apiClient.insert('winners', winnerData);
           successCount++;
+        } catch (insertErr) {
+          console.error('Error importing winner:', row.winner_name, insertErr);
+          errorCount++;
         }
       }
 
@@ -3105,15 +3052,13 @@ const winnersModule = {
 
   /**
    * Update winner status
+   * @param {string} winnerId - Winner ID to update
+   * @param {string} newStatus - New status value
+   * @returns {Promise<void>}
    */
   async updateWinnerStatus(winnerId, newStatus) {
     try {
-      const { error } = await STATE.client
-        .from('winners')
-        .update({ winner_status: newStatus })
-        .eq('id', winnerId);
-
-      if (error) throw error;
+      await apiClient.update('winners', winnerId, { winner_status: newStatus });
 
       // Update local state
       const winner = STATE.allWinners.find(w => w.id === winnerId);
@@ -3135,12 +3080,21 @@ const winnersModule = {
   // BULK OPERATIONS (table-level)
   // ============================================
 
+  /**
+   * Toggle selection state of a single winner in the table
+   * @param {string} winnerId - Winner ID
+   * @param {boolean} checked - Whether the winner is selected
+   */
   toggleWinnerSelect(winnerId, checked) {
     if (checked) this._selectedWinnerIds.add(winnerId);
     else this._selectedWinnerIds.delete(winnerId);
     this.updateWinnersBulkBar();
   },
 
+  /**
+   * Toggle selection of all visible winners in the table
+   * @param {boolean} checked - Whether all should be selected
+   */
   toggleSelectAllWinners(checked) {
     document.querySelectorAll('.winner-checkbox').forEach(cb => {
       cb.checked = checked;
@@ -3150,6 +3104,9 @@ const winnersModule = {
     this.updateWinnersBulkBar();
   },
 
+  /**
+   * Update the bulk action bar visibility and selected count
+   */
   updateWinnersBulkBar() {
     const bar = document.getElementById('winnersBulkBar');
     const count = document.getElementById('winnersBulkCount');
@@ -3159,6 +3116,9 @@ const winnersModule = {
     }
   },
 
+  /**
+   * Clear all winner selections and reset checkboxes
+   */
   clearWinnerSelection() {
     this._selectedWinnerIds.clear();
     document.querySelectorAll('.winner-checkbox').forEach(cb => cb.checked = false);
@@ -3167,6 +3127,10 @@ const winnersModule = {
     this.updateWinnersBulkBar();
   },
 
+  /**
+   * Delete all currently selected winners in bulk
+   * @returns {Promise<void>}
+   */
   async bulkDeleteWinners() {
     if (this._selectedWinnerIds.size === 0) return;
     if (!await utils.confirmDialog({ title: 'Delete Winners', message: `Delete ${this._selectedWinnerIds.size} selected winners? This cannot be undone.` })) return;
@@ -3174,8 +3138,7 @@ const winnersModule = {
     try {
       const ids = [...this._selectedWinnerIds];
       const result = await utils.runBatchOperation(ids, async (id) => {
-        const { error } = await STATE.client.from('winners').delete().eq('id', id);
-        if (error) throw error;
+        await apiClient.delete('winners', id);
       }, 'Deleting winners');
       utils.showToast(`${result.succeeded.length} winner(s) deleted`, 'success');
       this._selectedWinnerIds.clear();
@@ -3187,6 +3150,9 @@ const winnersModule = {
     }
   },
 
+  /**
+   * Export currently selected winners as CSV
+   */
   bulkExportWinners() {
     if (this._selectedWinnerIds.size === 0) return;
     const winners = (STATE.filteredWinners || STATE.allWinners || []).filter(w => this._selectedWinnerIds.has(w.id));
@@ -3211,6 +3177,9 @@ const winnersModule = {
   /* SAVED FILTER VIEWS */
   /* ==================================================== */
 
+  /**
+   * Save the current filter state as a named view in localStorage
+   */
   saveCurrentWinnersView() {
     const name = prompt('Enter a name for this view:');
     if (!name) return;
@@ -3242,6 +3211,10 @@ const winnersModule = {
     } catch(e) { console.warn('Failed to render saved views:', e.message); }
   },
 
+  /**
+   * Load a previously saved winners view by index
+   * @param {number} index - Index of the saved view in localStorage
+   */
   loadSavedWinnersView(index) {
     try {
       const views = JSON.parse(localStorage.getItem('winnersSavedViews') || '[]');
@@ -3255,6 +3228,10 @@ const winnersModule = {
     } catch(e) { utils.showToast('Failed to load view', 'warning'); }
   },
 
+  /**
+   * Delete a saved winners view by index
+   * @param {number} index - Index of the saved view to delete
+   */
   deleteSavedWinnersView(index) {
     try {
       const views = JSON.parse(localStorage.getItem('winnersSavedViews') || '[]');

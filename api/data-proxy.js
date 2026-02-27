@@ -40,14 +40,36 @@ const ALLOWED_TABLES = new Set([
   'awards', 'organisations', 'entries', 'winners', 'events',
   'invoices', 'payments', 'award_assignments', 'contacts',
   'activity_log', 'email_templates', 'user_preferences',
-  'counties', 'regions', 'award_years'
+  'counties', 'regions', 'award_years', 'judges', 'votes',
+  'email_lists', 'email_list_members', 'email_campaigns',
+  'sponsorship_packages', 'tickets', 'ticket_types',
+  'seating_tables', 'seating_assignments', 'documents',
+  'media', 'notifications', 'webhooks', 'tenant_branding',
+  'organisation_notes', 'organisation_documents',
+  'organisation_custom_fields', 'organisation_follow_ups',
+  'organisation_relationships', 'organisation_comms_log',
+  'org_audit_log', 'organisation_images', 'organisation_contacts',
+  'org_activity_notes', 'event_galleries',
+  'entry_revisions', 'winner_announcements', 'calendar_events',
+  'report_schedules'
 ]);
 
 /** Tables that can be mutated (insert/update/delete) */
 const MUTABLE_TABLES = new Set([
   'awards', 'organisations', 'entries', 'winners', 'events',
   'invoices', 'payments', 'award_assignments', 'contacts',
-  'activity_log', 'email_templates', 'user_preferences'
+  'activity_log', 'email_templates', 'user_preferences',
+  'judges', 'votes', 'email_lists', 'email_list_members',
+  'email_campaigns', 'sponsorship_packages', 'tickets',
+  'ticket_types', 'seating_tables', 'seating_assignments',
+  'documents', 'media', 'notifications', 'webhooks',
+  'tenant_branding', 'organisation_notes',
+  'organisation_documents', 'organisation_custom_fields',
+  'organisation_follow_ups', 'organisation_relationships',
+  'organisation_comms_log', 'org_audit_log',
+  'organisation_images', 'organisation_contacts',
+  'org_activity_notes', 'event_galleries', 'entry_revisions',
+  'winner_announcements', 'calendar_events', 'report_schedules'
 ]);
 
 /** Maximum page size to prevent abuse */

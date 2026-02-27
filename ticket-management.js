@@ -13,8 +13,7 @@ window.ticketModule = {
     if (!el) return;
     try {
       utils.showLoading();
-      const { data: types, error } = await STATE.client.from('event_ticket_types').select('*').eq('event_id', eventId).order('price');
-      if (error) throw error;
+      const types = await apiClient.selectAll('event_ticket_types', { select: '*', filters: { event_id: { eq: eventId } }, sort: { column: 'price', ascending: true } });
       const cards = (types || []).map(t => {
         const eb = t.early_bird_price && new Date(t.early_bird_deadline) > new Date()
           ? `<span class="badge bg-warning text-dark ms-1">EB &pound;${parseFloat(t.early_bird_price).toFixed(2)}</span>` : '';
@@ -85,9 +84,11 @@ window.ticketModule = {
     try {
       await utils.protectModalDuringSave('ttModal', async () => {
         utils.showLoading();
-        const { error } = id ? await STATE.client.from('event_ticket_types').update(payload).eq('id', id)
-          : await STATE.client.from('event_ticket_types').insert(payload);
-        if (error) throw error;
+        if (id) {
+          await apiClient.update('event_ticket_types', id, payload);
+        } else {
+          await apiClient.insert('event_ticket_types', payload);
+        }
         bootstrap.Modal.getInstance(document.getElementById('ttModal'))?.hide();
         this.renderTicketTypes(eventId);
       });
@@ -109,8 +110,7 @@ window.ticketModule = {
     if (!await utils.confirmDialog({ title: 'Delete Ticket Type', message: 'Delete this ticket type?', confirmText: 'Delete', danger: true })) return;
     try {
       utils.showLoading();
-      const { error } = await STATE.client.from('event_ticket_types').delete().eq('id', id);
-      if (error) throw error;
+      await apiClient.delete('event_ticket_types', id);
       utils.showToast('Deleted.', 'success');
       this.renderTicketTypes(eventId);
     } catch (err) { utils.showToast('Delete failed: ' + err.message, 'error'); } finally { utils.hideLoading(); }
@@ -125,10 +125,11 @@ window.ticketModule = {
     if (!el) return;
     try {
       utils.showLoading();
-      const [{ data: event }, { data: types }] = await Promise.all([
-        STATE.client.from('events').select('*').eq('id', eventId).single(),
-        STATE.client.from('event_ticket_types').select('*').eq('event_id', eventId).order('price')
+      const [eventResult, types] = await Promise.all([
+        apiClient.select('events', { select: '*', filters: { id: { eq: eventId } }, pageSize: 1 }),
+        apiClient.selectAll('event_ticket_types', { select: '*', filters: { event_id: { eq: eventId } }, sort: { column: 'price', ascending: true } })
       ]);
+      const event = eventResult.data?.[0];
       if (!event) { utils.showToast('Event not found.', 'error'); return; }
       const rows = (types || []).map(t => {
         const price = (t.early_bird_price && new Date(t.early_bird_deadline) > new Date()) ? t.early_bird_price : t.price;
@@ -185,9 +186,9 @@ window.ticketModule = {
   async generateETicket(ticketId) {
     try {
       utils.showLoading();
-      const { data: guest, error } = await STATE.client.from('event_guests')
-        .select('*, events(event_name, event_date, venue)').eq('id', ticketId).single();
-      if (error || !guest) throw new Error('Ticket not found');
+      const result = await apiClient.select('event_guests', { select: '*, events(event_name, event_date, venue)', filters: { id: { eq: ticketId } }, pageSize: 1 });
+      const guest = result.data?.[0];
+      if (!guest) throw new Error('Ticket not found');
       const { jsPDF } = window.jspdf;
       const doc = new jsPDF({ unit: 'mm', format: 'a5', orientation: 'portrait' });
       const ev = guest.events || {};
@@ -229,9 +230,9 @@ window.ticketModule = {
     if (!el) return;
     try {
       utils.showLoading();
-      const { data: g, error } = await STATE.client.from('event_guests')
-        .select('id, guest_name, dietary_requirements, notes').eq('id', guestId).single();
-      if (error || !g) throw new Error('Guest not found');
+      const result = await apiClient.select('event_guests', { select: 'id, guest_name, dietary_requirements, notes', filters: { id: { eq: guestId } }, pageSize: 1 });
+      const g = result.data?.[0];
+      if (!g) throw new Error('Guest not found');
       const dietOptions = ['None','Vegetarian','Vegan','Halal','Kosher','Gluten-free','Nut allergy','Dairy-free','Other']
         .map(o => `<option value="${o}" ${(g.dietary_requirements || 'None') === o ? 'selected' : ''}>${o}</option>`).join('');
       el.innerHTML = `<div class="card shadow-sm"><div class="card-header"><h6 class="mb-0">Dietary &amp; Accessibility — ${utils.escapeHtml(g.guest_name)}</h6></div>
@@ -249,10 +250,7 @@ window.ticketModule = {
     const notes = document.getElementById('gpNotes').value.trim();
     try {
       utils.showLoading();
-      const { error } = await STATE.client.from('event_guests')
-        .update({ dietary_requirements: dietary === 'None' ? null : dietary, notes, updated_at: new Date().toISOString() })
-        .eq('id', guestId);
-      if (error) throw error;
+      await apiClient.update('event_guests', guestId, { dietary_requirements: dietary === 'None' ? null : dietary, notes, updated_at: new Date().toISOString() });
       utils.showToast('Preferences saved.', 'success');
     } catch (err) { utils.showToast('Save failed: ' + err.message, 'error'); } finally { utils.hideLoading(); }
   },
@@ -266,9 +264,9 @@ window.ticketModule = {
     if (!el) return;
     try {
       utils.showLoading();
-      const [{ data: types }, { data: guests }] = await Promise.all([
-        STATE.client.from('event_ticket_types').select('*').eq('event_id', eventId),
-        STATE.client.from('event_guests').select('rsvp_status').eq('event_id', eventId)
+      const [types, guests] = await Promise.all([
+        apiClient.selectAll('event_ticket_types', { select: '*', filters: { event_id: { eq: eventId } } }),
+        apiClient.selectAll('event_guests', { select: 'rsvp_status', filters: { event_id: { eq: eventId } } })
       ]);
       const capacity = (types || []).reduce((s, t) => s + (t.quantity || 0), 0);
       const sold = (guests || []).filter(g => g.rsvp_status !== 'cancelled').length;
@@ -309,9 +307,7 @@ window.ticketModule = {
     if (!utils.isValidEmail(email)) { utils.showToast('Invalid email address.', 'warning'); return false; }
     try {
       utils.showLoading();
-      const { error } = await STATE.client.from('event_waitlist')
-        .insert({ event_id: eventId, email, name, status: 'waiting', created_at: new Date().toISOString() });
-      if (error) throw error;
+      await apiClient.insert('event_waitlist', { event_id: eventId, email, name, status: 'waiting', created_at: new Date().toISOString() });
       utils.showToast(`${name} added to waitlist.`, 'success');
       return true;
     } catch (err) { utils.showToast('Waitlist error: ' + err.message, 'error'); return false; } finally { utils.hideLoading(); }
@@ -320,20 +316,19 @@ window.ticketModule = {
   async processWaitlist(eventId) {
     try {
       utils.showLoading();
-      const [{ data: types }, { data: waitlist }, { data: guests }] = await Promise.all([
-        STATE.client.from('event_ticket_types').select('quantity').eq('event_id', eventId),
-        STATE.client.from('event_waitlist').select('*').eq('event_id', eventId).eq('status', 'waiting').order('created_at'),
-        STATE.client.from('event_guests').select('id').eq('event_id', eventId).neq('rsvp_status', 'cancelled')
+      const [types, waitlist, guests] = await Promise.all([
+        apiClient.selectAll('event_ticket_types', { select: 'quantity', filters: { event_id: { eq: eventId } } }),
+        apiClient.selectAll('event_waitlist', { select: '*', filters: { event_id: { eq: eventId }, status: { eq: 'waiting' } }, sort: { column: 'created_at', ascending: true } }),
+        apiClient.selectAll('event_guests', { select: 'id', filters: { event_id: { eq: eventId }, rsvp_status: { neq: 'cancelled' } } })
       ]);
       const capacity = (types || []).reduce((s, t) => s + (t.quantity || 0), 0);
       const available = Math.max(0, capacity - (guests || []).length);
       if (!available) { utils.showToast('No available spots.', 'info'); return; }
       if (!(waitlist || []).length) { utils.showToast('Waitlist is empty.', 'info'); return; }
       const toNotify = waitlist.slice(0, available);
-      const { error } = await STATE.client.from('event_waitlist')
-        .update({ status: 'notified', notified_at: new Date().toISOString() })
-        .in('id', toNotify.map(w => w.id));
-      if (error) throw error;
+      for (const w of toNotify) {
+        await apiClient.update('event_waitlist', w.id, { status: 'notified', notified_at: new Date().toISOString() });
+      }
       utils.showToast(`${toNotify.length} waitlist entrant(s) notified.`, 'success');
     } catch (err) { utils.showToast('Waitlist processing error: ' + err.message, 'error'); } finally { utils.hideLoading(); }
   },
@@ -346,12 +341,10 @@ window.ticketModule = {
     if (!await utils.confirmDialog({ title: 'Cancel Ticket', message: 'Cancel this ticket and issue a refund?', confirmText: 'Cancel & Refund', danger: true })) return;
     try {
       utils.showLoading();
-      const { data: guest, error: fetchErr } = await STATE.client.from('event_guests')
-        .select('id, guest_name, guest_email').eq('id', ticketId).single();
-      if (fetchErr || !guest) throw new Error('Ticket record not found');
-      const { error: updateErr } = await STATE.client.from('event_guests')
-        .update({ rsvp_status: 'cancelled', updated_at: new Date().toISOString() }).eq('id', ticketId);
-      if (updateErr) throw updateErr;
+      const guestResult = await apiClient.select('event_guests', { select: 'id, guest_name, guest_email', filters: { id: { eq: ticketId } }, pageSize: 1 });
+      const guest = guestResult.data?.[0];
+      if (!guest) throw new Error('Ticket record not found');
+      await apiClient.update('event_guests', ticketId, { rsvp_status: 'cancelled', updated_at: new Date().toISOString() });
       const res = await fetch('/api/stripe-payment.js', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ action: 'refund', ticketId, guestEmail: guest.guest_email, guestName: guest.guest_name })

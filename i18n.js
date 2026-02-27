@@ -133,11 +133,12 @@ const i18n = {
     const savedLocale = localStorage.getItem('bta_locale') || navigator.language?.split('-')[0] || 'en';
     this.setLocale(savedLocale);
 
-    console.log(`i18n initialized (locale: ${this._currentLocale})`);
+    // i18n initialized
   },
 
   /**
    * Get current locale
+   * @returns {string} Current locale code (e.g. 'en')
    */
   getLocale() {
     return this._currentLocale;
@@ -145,6 +146,7 @@ const i18n = {
 
   /**
    * Set the active locale
+   * @param {string} locale - Locale code to set (e.g. 'en', 'fr')
    */
   setLocale(locale) {
     if (!this._translations[locale]) {

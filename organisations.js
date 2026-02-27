@@ -46,19 +46,22 @@ async loadOrganisations() {
     });
     
     // Load award assignments to get county/region/sector for each org
-    const { data: assignments } = await STATE.client
-      .from('award_assignments')
-      .select('organisation_id, award_id');
-    
+    const assignmentResult = await apiClient.selectAll('award_assignments', {
+      select: 'organisation_id, award_id'
+    });
+    const assignments = assignmentResult;
+
     // Load awards with county
-    const { data: awards } = await STATE.client
-      .from('awards')
-      .select('id, county, sector, year');
-    
+    const awardResult = await apiClient.selectAll('awards', {
+      select: 'id, county, sector, year'
+    });
+    const awards = awardResult;
+
     // Load counties table to map county → region
-    const { data: counties } = await STATE.client
-      .from('counties')
-      .select('Name, regions(name)');
+    const countyResult = await apiClient.selectAll('counties', {
+      select: 'Name, regions(name)'
+    });
+    const counties = countyResult;
     
     // Create county → region lookup
     const countyToRegion = {};
@@ -3077,7 +3080,7 @@ updateCountyFilterByRegion() {
       }));
       // Insert in batches of 50
       for (let i = 0; i < commsRecords.length; i += 50) {
-        await STATE.client.from('organisation_comms_log').insert(commsRecords.slice(i, i + 50));
+        await apiClient.insert('organisation_comms_log', commsRecords.slice(i, i + 50));
       }
       // Log audit
       this._logAudit(null, 'bulk_email', '', `Bulk email campaign to ${selectedData.length} orgs: ${subject}`);
@@ -3217,16 +3220,15 @@ updateCountyFilterByRegion() {
 
       // Delete all child records to prevent orphaned data
       await Promise.all([
-        STATE.client.from('award_assignments').delete().eq('organisation_id', orgId),
-        STATE.client.from('organisation_contacts').delete().eq('organisation_id', orgId),
-        STATE.client.from('organisation_notes').delete().eq('organisation_id', orgId),
-        STATE.client.from('organisation_follow_ups').delete().eq('organisation_id', orgId),
-        STATE.client.from('organisation_images').delete().eq('organisation_id', orgId),
-        STATE.client.from('organisation_custom_fields').delete().eq('organisation_id', orgId),
-        STATE.client.from('organisation_documents').delete().eq('organisation_id', orgId),
+        apiClient.deleteByFilters('award_assignments', { organisation_id: orgId }),
+        apiClient.deleteByFilters('organisation_contacts', { organisation_id: orgId }),
+        apiClient.deleteByFilters('organisation_notes', { organisation_id: orgId }),
+        apiClient.deleteByFilters('organisation_follow_ups', { organisation_id: orgId }),
+        apiClient.deleteByFilters('organisation_images', { organisation_id: orgId }),
+        apiClient.deleteByFilters('organisation_custom_fields', { organisation_id: orgId }),
+        apiClient.deleteByFilters('organisation_documents', { organisation_id: orgId }),
       ]);
-      const { error } = await STATE.client.from('organisations').delete().eq('id', orgId);
-      if (error) throw error;
+      await apiClient.delete('organisations', orgId);
 
       STATE.allOrganisations = STATE.allOrganisations.filter(o => o.id !== orgId);
       STATE.filteredOrganisations = STATE.filteredOrganisations.filter(o => o.id !== orgId);
@@ -4357,8 +4359,8 @@ updateCountyFilterByRegion() {
                 }
               });
               if (Object.keys(updateData).length > 0) {
-                const { error } = await STATE.client.from('organisations').update(updateData).eq('id', existingOrg.id);
-                if (!error) mergeCount++;
+                await apiClient.update('organisations', existingOrg.id, updateData);
+                mergeCount++;
               }
             }
           } catch (e) { console.error('Merge error:', e); }
@@ -4370,7 +4372,7 @@ updateCountyFilterByRegion() {
       let contactCount = 0;
       if (hasContactFields) {
         // Reload orgs to get the new IDs
-        const { data: freshOrgs } = await STATE.client.from('organisations').select('id, company_name');
+        const freshOrgs = await apiClient.selectAll('organisations', { select: 'id, company_name' });
         const orgNameMap = {};
         (freshOrgs || []).forEach(o => { orgNameMap[(o.company_name || '').toLowerCase()] = o.id; });
 
@@ -4403,7 +4405,7 @@ updateCountyFilterByRegion() {
         if (contactRecords.length > 0) {
           for (let i = 0; i < contactRecords.length; i += 50) {
             try {
-              await STATE.client.from('organisation_contacts').insert(contactRecords.slice(i, i + 50));
+              await apiClient.insert('organisation_contacts', contactRecords.slice(i, i + 50));
               contactCount += contactRecords.slice(i, i + 50).length;
             } catch (e) { console.warn('Contact import batch error:', e.message); }
           }
@@ -4479,12 +4481,12 @@ updateCountyFilterByRegion() {
     if (!presetSelect) return;
     let presets = {};
     try {
-      const { data, error } = await STATE.client
-        .from('user_preferences')
-        .select('value')
-        .eq('key', 'orgsFilterPresets')
-        .limit(1);
-      if (error) throw error;
+      const result = await apiClient.select('user_preferences', {
+        select: 'value',
+        filters: { key: 'orgsFilterPresets' },
+        pageSize: 1
+      });
+      const data = result.data;
       if (data?.[0]?.value) {
         presets = typeof data[0].value === 'string' ? JSON.parse(data[0].value) : data[0].value;
       }
@@ -4505,14 +4507,13 @@ updateCountyFilterByRegion() {
       // Load existing presets from Supabase first
       let presets = {};
       try {
-        const { data, error } = await STATE.client
-          .from('user_preferences')
-          .select('value')
-          .eq('key', 'orgsFilterPresets')
-          .limit(1);
-        if (error) throw error;
-        if (data?.[0]?.value) {
-          presets = typeof data[0].value === 'string' ? JSON.parse(data[0].value) : data[0].value;
+        const result = await apiClient.select('user_preferences', {
+          select: 'value',
+          filters: { key: 'orgsFilterPresets' },
+          pageSize: 1
+        });
+        if (result.data?.[0]?.value) {
+          presets = typeof result.data[0].value === 'string' ? JSON.parse(result.data[0].value) : result.data[0].value;
         }
       } catch (fetchErr) {
         presets = JSON.parse(localStorage.getItem('orgsFilterPresets') || '{}');
@@ -4575,14 +4576,13 @@ updateCountyFilterByRegion() {
     if (!name) return;
     let presets = {};
     try {
-      const { data, error } = await STATE.client
-        .from('user_preferences')
-        .select('value')
-        .eq('key', 'orgsFilterPresets')
-        .limit(1);
-      if (error) throw error;
-      if (data?.[0]?.value) {
-        presets = typeof data[0].value === 'string' ? JSON.parse(data[0].value) : data[0].value;
+      const result = await apiClient.select('user_preferences', {
+        select: 'value',
+        filters: { key: 'orgsFilterPresets' },
+        pageSize: 1
+      });
+      if (result.data?.[0]?.value) {
+        presets = typeof result.data[0].value === 'string' ? JSON.parse(result.data[0].value) : result.data[0].value;
       }
     } catch (e) {
       // Fallback to localStorage
@@ -4635,14 +4635,13 @@ updateCountyFilterByRegion() {
       // Load existing presets from Supabase
       let presets = {};
       try {
-        const { data, error } = await STATE.client
-          .from('user_preferences')
-          .select('value')
-          .eq('key', 'orgsFilterPresets')
-          .limit(1);
-        if (error) throw error;
-        if (data?.[0]?.value) {
-          presets = typeof data[0].value === 'string' ? JSON.parse(data[0].value) : data[0].value;
+        const result = await apiClient.select('user_preferences', {
+          select: 'value',
+          filters: { key: 'orgsFilterPresets' },
+          pageSize: 1
+        });
+        if (result.data?.[0]?.value) {
+          presets = typeof result.data[0].value === 'string' ? JSON.parse(result.data[0].value) : result.data[0].value;
         }
       } catch (fetchErr) {
         presets = JSON.parse(localStorage.getItem('orgsFilterPresets') || '{}');
@@ -4753,19 +4752,18 @@ updateCountyFilterByRegion() {
 
     try {
       if (isPrimary) {
-        await STATE.client.from('organisation_contacts').update({ is_primary: false }).eq('organisation_id', orgId);
+        await apiClient.updateByFilters('organisation_contacts', { organisation_id: orgId }, { is_primary: false });
       }
-      const { error } = await STATE.client.from('organisation_contacts').insert([{
+      await apiClient.insert('organisation_contacts', {
         organisation_id: orgId, first_name: firstName || null, last_name: lastName || null,
         job_title: jobTitle || null, email: email || null, phone: phone || null,
         is_primary: isPrimary, receive_emails: receiveEmails
-      }]);
-      if (error) throw error;
+      });
       utils.showToast('Contact added', 'success');
       const org = STATE.allOrganisations.find(o => o.id === orgId);
       if (org) await this.openCompanyProfile(orgId, org.company_name);
     } catch (e) {
-      console.error('Error adding contact:', e);
+      console.warn('Error adding contact:', e);
       utils.showToast('Error: ' + e.message, 'error');
     }
   },
@@ -4773,8 +4771,7 @@ updateCountyFilterByRegion() {
   async deleteContact(orgId, contactId) {
     if (!await utils.confirmDialog({ title: 'Delete Contact', message: 'Delete this contact?' })) return;
     try {
-      const { error } = await STATE.client.from('organisation_contacts').delete().eq('id', contactId);
-      if (error) throw error;
+      await apiClient.delete('organisation_contacts', contactId);
       utils.showToast('Contact deleted', 'success');
       const org = STATE.allOrganisations.find(o => o.id === orgId);
       if (org) await this.openCompanyProfile(orgId, org.company_name);
@@ -4785,8 +4782,8 @@ updateCountyFilterByRegion() {
 
   async setPrimaryContact(orgId, contactId) {
     try {
-      await STATE.client.from('organisation_contacts').update({ is_primary: false }).eq('organisation_id', orgId);
-      await STATE.client.from('organisation_contacts').update({ is_primary: true }).eq('id', contactId);
+      await apiClient.updateByFilters('organisation_contacts', { organisation_id: orgId }, { is_primary: false });
+      await apiClient.update('organisation_contacts', contactId, { is_primary: true });
       utils.showToast('Primary contact updated', 'success');
       const org = STATE.allOrganisations.find(o => o.id === orgId);
       if (org) await this.openCompanyProfile(orgId, org.company_name);
@@ -4797,7 +4794,7 @@ updateCountyFilterByRegion() {
 
   async toggleContactEmails(orgId, contactId, value) {
     try {
-      await STATE.client.from('organisation_contacts').update({ receive_emails: value }).eq('id', contactId);
+      await apiClient.update('organisation_contacts', contactId, { receive_emails: value });
       utils.showToast(value ? 'Will receive emails' : 'Opted out of emails', 'success');
       const org = STATE.allOrganisations.find(o => o.id === orgId);
       if (org) await this.openCompanyProfile(orgId, org.company_name);
@@ -4811,15 +4808,13 @@ updateCountyFilterByRegion() {
   // ============================================
   async getCustomFields(orgId) {
     try {
-      const { data, error } = await STATE.client
-        .from('organisation_custom_fields')
-        .select('*')
-        .eq('organisation_id', orgId)
-        .order('field_name');
-      if (error) throw error;
-      const result = {};
-      (data || []).forEach(f => { result[f.field_name] = f.field_value; });
-      return result;
+      const result = await apiClient.selectAll('organisation_custom_fields', {
+        filters: { organisation_id: orgId },
+        sort: { column: 'field_name', ascending: true }
+      });
+      const fields = {};
+      (result || []).forEach(f => { fields[f.field_name] = f.field_value; });
+      return fields;
     } catch (e) {
       console.warn('Failed to read custom fields from Supabase:', e.message);
       return {};
@@ -4829,12 +4824,12 @@ updateCountyFilterByRegion() {
   async saveCustomField(orgId, fieldName, fieldValue) {
     try {
       if (fieldValue) {
+        // upsert not supported by apiClient — use STATE.client directly
         await STATE.client.from('organisation_custom_fields').upsert({
           organisation_id: orgId, field_name: fieldName, field_value: fieldValue, updated_at: new Date().toISOString()
         }, { onConflict: 'organisation_id,field_name' });
       } else {
-        await STATE.client.from('organisation_custom_fields').delete()
-          .eq('organisation_id', orgId).eq('field_name', fieldName);
+        await apiClient.deleteByFilters('organisation_custom_fields', { organisation_id: orgId, field_name: fieldName });
       }
       utils.showToast('Custom field saved', 'success');
     } catch (e) {
@@ -4876,11 +4871,10 @@ updateCountyFilterByRegion() {
 
       // Store in organisation_documents or fallback to localStorage
       try {
-        const { error } = await STATE.client.from('organisation_documents').insert([{
+        await apiClient.insert('organisation_documents', {
           organisation_id: orgId, file_url: urlData.publicUrl, title: docTitle || file.name,
           file_type: file.type, file_size: file.size
-        }]);
-        if (error) throw error;
+        });
       } catch (dbErr) {
         console.warn('Failed to save document to Supabase:', dbErr.message);
       }
@@ -4897,9 +4891,11 @@ updateCountyFilterByRegion() {
 
   async getDocuments(orgId) {
     try {
-      const { data, error } = await STATE.client.from('organisation_documents').select('*').eq('organisation_id', orgId).order('created_at', { ascending: false });
-      if (error) throw error;
-      return data || [];
+      const result = await apiClient.selectAll('organisation_documents', {
+        filters: { organisation_id: orgId },
+        sort: { column: 'created_at', ascending: false }
+      });
+      return result || [];
     } catch (e) {
       console.warn('Failed to read documents from Supabase:', e.message);
       return [];
@@ -4911,11 +4907,12 @@ updateCountyFilterByRegion() {
   // ============================================
   async getFollowUps(orgId) {
     try {
-      let query = STATE.client.from('organisation_follow_ups').select('*')
-        .order('follow_up_date', { ascending: true });
-      if (orgId) query = query.eq('organisation_id', orgId);
-      const { data, error } = await query;
-      if (error) throw error;
+      const filters = {};
+      if (orgId) filters.organisation_id = orgId;
+      const data = await apiClient.selectAll('organisation_follow_ups', {
+        filters,
+        sort: { column: 'follow_up_date', ascending: true }
+      });
       return (data || []).map(f => ({
         id: f.id, orgId: f.organisation_id, companyName: f.company_name,
         date: f.follow_up_date, note: f.note, done: f.completed, created: f.created_at
@@ -4939,8 +4936,7 @@ updateCountyFilterByRegion() {
         follow_up_date: date, note: note || null
       };
       if (assignee) insertData.assigned_to = assignee;
-      const { error } = await STATE.client.from('organisation_follow_ups').insert([insertData]);
-      if (error) throw error;
+      await apiClient.insert('organisation_follow_ups', insertData);
       utils.showToast('Follow-up scheduled' + (assignee ? ` (assigned to ${assignee})` : ''), 'success');
       if (org) this.openCompanyProfile(orgId, org.company_name);
     } catch (e) { utils.showToast('Error: ' + e.message, 'error'); }
@@ -4948,10 +4944,7 @@ updateCountyFilterByRegion() {
 
   async completeFollowUp(orgId, followUpId) {
     try {
-      const { error } = await STATE.client.from('organisation_follow_ups')
-        .update({ completed: true, completed_at: new Date().toISOString() })
-        .eq('id', followUpId);
-      if (error) throw error;
+      await apiClient.update('organisation_follow_ups', followUpId, { completed: true, completed_at: new Date().toISOString() });
       utils.showToast('Follow-up completed', 'success');
       const org = STATE.allOrganisations.find(o => o.id === orgId);
       if (org) this.openCompanyProfile(orgId, org.company_name);
@@ -4961,9 +4954,7 @@ updateCountyFilterByRegion() {
   async deleteFollowUp(orgId, followUpId) {
     if (!await utils.confirmDialog({ title: 'Delete Follow-Up', message: 'Delete this follow-up?', confirmText: 'Delete', danger: true })) return;
     try {
-      const { error } = await STATE.client.from('organisation_follow_ups')
-        .delete().eq('id', followUpId);
-      if (error) throw error;
+      await apiClient.delete('organisation_follow_ups', followUpId);
       utils.showToast('Follow-up deleted', 'success');
       const org = STATE.allOrganisations.find(o => o.id === orgId);
       if (org) this.openCompanyProfile(orgId, org.company_name);
@@ -5163,7 +5154,7 @@ updateCountyFilterByRegion() {
         const batch = updates.slice(i, i + 5);
         await Promise.all(batch.map(({ id, org, newTags }) => {
           if (org) org.tags = newTags;
-          return STATE.client.from('organisations').update({ tags: newTags }).eq('id', id);
+          return apiClient.update('organisations', id, { tags: newTags });
         }));
       }
       utils.showToast(`Tag "${tag}" added to ${updates.length} org(s)`, 'success');
@@ -5194,7 +5185,7 @@ updateCountyFilterByRegion() {
         const batch = updates.slice(i, i + 5);
         await Promise.all(batch.map(({ id, org, newTags }) => {
           if (org) org.tags = newTags;
-          return STATE.client.from('organisations').update({ tags: newTags }).eq('id', id);
+          return apiClient.update('organisations', id, { tags: newTags });
         }));
       }
       utils.showToast(`Tag "${tag}" removed from ${updates.length} org(s)`, 'success');
@@ -5211,7 +5202,10 @@ updateCountyFilterByRegion() {
 
     utils.showLoading();
     try {
-      const { data: awards } = await STATE.client.from('awards').select('id, award_name, county, sector, year').order('year', { ascending: false });
+      const awards = await apiClient.selectAll('awards', {
+        select: 'id, award_name, county, sector, year',
+        sort: { column: 'year', ascending: false }
+      });
       const html = `<p class="small text-muted">Assign <strong>${this.selectedOrgs.size}</strong> selected organisations to an award</p>
         <div class="mb-3">
           <label class="form-label fw-semibold">Select Award</label>
@@ -5307,29 +5301,28 @@ updateCountyFilterByRegion() {
     try {
       utils.showLoading();
       // Update the keeper with merged values
-      const { error } = await STATE.client.from('organisations').update(merged).eq('id', keepId);
-      if (error) throw error;
+      await apiClient.update('organisations', keepId, merged);
 
       // Transfer all related records from deleted org to keeper
       await Promise.all([
-        STATE.client.from('award_assignments').update({ organisation_id: keepId }).eq('organisation_id', deleteId),
-        STATE.client.from('entries').update({ organisation_id: keepId }).eq('organisation_id', deleteId),
-        STATE.client.from('invoices').update({ organisation_id: keepId }).eq('organisation_id', deleteId),
-        STATE.client.from('organisation_contacts').update({ organisation_id: keepId }).eq('organisation_id', deleteId),
-        STATE.client.from('organisation_notes').update({ organisation_id: keepId }).eq('organisation_id', deleteId),
-        STATE.client.from('organisation_follow_ups').update({ organisation_id: keepId }).eq('organisation_id', deleteId),
-        STATE.client.from('organisation_images').update({ organisation_id: keepId }).eq('organisation_id', deleteId),
-        STATE.client.from('organisation_documents').update({ organisation_id: keepId }).eq('organisation_id', deleteId),
+        apiClient.updateByFilters('award_assignments', { organisation_id: deleteId }, { organisation_id: keepId }),
+        apiClient.updateByFilters('entries', { organisation_id: deleteId }, { organisation_id: keepId }),
+        apiClient.updateByFilters('invoices', { organisation_id: deleteId }, { organisation_id: keepId }),
+        apiClient.updateByFilters('organisation_contacts', { organisation_id: deleteId }, { organisation_id: keepId }),
+        apiClient.updateByFilters('organisation_notes', { organisation_id: deleteId }, { organisation_id: keepId }),
+        apiClient.updateByFilters('organisation_follow_ups', { organisation_id: deleteId }, { organisation_id: keepId }),
+        apiClient.updateByFilters('organisation_images', { organisation_id: deleteId }, { organisation_id: keepId }),
+        apiClient.updateByFilters('organisation_documents', { organisation_id: deleteId }, { organisation_id: keepId }),
       ]);
 
       // Merge tags
       const keeperTags = org1.tags || [];
       const deletedTags = org2.tags || [];
       const mergedTags = [...new Set([...keeperTags, ...deletedTags])];
-      await STATE.client.from('organisations').update({ tags: mergedTags }).eq('id', keepId);
+      await apiClient.update('organisations', keepId, { tags: mergedTags });
 
       // Delete the other org
-      await STATE.client.from('organisations').delete().eq('id', deleteId);
+      await apiClient.delete('organisations', deleteId);
 
       utils.showToast('Organisations merged successfully', 'success');
       this.selectedOrgs.clear();

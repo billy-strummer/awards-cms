@@ -21,7 +21,7 @@ const dom = new JSDOM(`<!DOCTYPE html><html><body>
   <table><tbody id="awardsTableBody"></tbody></table>
   <table><tbody id="orgsTableBody"></tbody></table>
   <table><tbody id="winnersTableBody"></tbody></table>
-  <div id="eventsTableBody"></div>
+  <table><tbody id="eventsTableBody"></tbody></table>
   <table><tbody id="entriesTableBody"></tbody></table>
   <span id="awardsCount"></span>
   <span id="eventsCount">0</span>
@@ -38,9 +38,9 @@ const dom = new JSDOM(`<!DOCTYPE html><html><body>
   <div id="eventsLastRefreshed"></div>
   <div id="eventsPagination"></div>
   <input id="eventsSearchBox" value="" />
-  <select id="eventsYearFilter"><option value="">All Years</option></select>
-  <select id="eventsStatusFilter"><option value="">All</option></select>
-  <select id="eventsEventStatusFilter"><option value="">All</option></select>
+  <select id="eventsYearFilter"><option value="">All Years</option><option value="2025">2025</option><option value="2026">2026</option><option value="2027">2027</option></select>
+  <select id="eventsStatusFilter"><option value="">All</option><option value="upcoming">Upcoming</option><option value="past">Past</option><option value="this-month">This Month</option></select>
+  <select id="eventsEventStatusFilter"><option value="">All</option><option value="draft">Draft</option><option value="confirmed">Confirmed</option><option value="cancelled">Cancelled</option><option value="complete">Complete</option></select>
   <div id="eventsBulkActionsBar" style="display:none;"><span id="eventsSelectedCount">0</span></div>
   <div id="eventModalTitle"></div>
   <input id="eventId" value="" />
@@ -60,8 +60,8 @@ const dom = new JSDOM(`<!DOCTYPE html><html><body>
   <div id="notAttendingCount">0</div>
   <div id="maybeCount">0</div>
   <div id="totalAttendeesCount">0</div>
-  <select id="attendeeStatusFilter"><option value="">All</option></select>
-  <select id="attendeeTypeFilter"><option value="">All</option></select>
+  <select id="attendeeStatusFilter"><option value="">All</option><option value="attending">Attending</option><option value="not_attending">Not Attending</option><option value="maybe">Maybe</option></select>
+  <select id="attendeeTypeFilter"><option value="">All</option><option value="vip">VIP</option><option value="guest">Guest</option><option value="speaker">Speaker</option><option value="sponsor">Sponsor</option></select>
   <input id="attendeeSearchFilter" value="" />
   <div id="templateFormSection" class="d-none"></div>
   <form id="templateForm"></form>

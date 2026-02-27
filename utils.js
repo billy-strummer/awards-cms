@@ -212,7 +212,7 @@ const utils = {
     if (!text) return '';
     const div = document.createElement('div');
     div.textContent = text;
-    return div.innerHTML;
+    return div.innerHTML.replace(/"/g, '&quot;');
   },
 
   /**
@@ -441,7 +441,7 @@ const utils = {
    * @param {Function} [options.onEnter] - Called with (row, index) when Enter is pressed on a highlighted row
    * @param {Function} [options.onAdd] - Called when the add shortcut is triggered
    */
-  initTableKeyboardNav({ tableBodyId, searchBoxId, onEnter, onAdd }) {
+  initTableKeyboardNav({ tableBodyId, searchBoxId, onEnter, _onAdd }) {
     let selectedIdx = -1;
 
     const getRows = () => document.getElementById(tableBodyId)?.querySelectorAll('tr') || [];
@@ -731,7 +731,7 @@ const utils = {
           }
         }
         if (synced > 0) {
-          console.log(`Synced ${synced} pending ${table} items to database`);
+          console.warn(`Synced ${synced} pending ${table} items to database`);
         }
         if (remaining.length > 0) {
           localStorage.setItem(key, JSON.stringify(remaining));
@@ -1191,7 +1191,7 @@ const utils = {
     inputs.forEach(inp => inp.addEventListener('input', onChange));
 
     // Warn on close
-    const modalInstance = bootstrap.Modal.getInstance(modal) || new bootstrap.Modal(modal);
+    const _modalInstance = bootstrap.Modal.getInstance(modal) || new bootstrap.Modal(modal);
     modal.addEventListener('hide.bs.modal', (e) => {
       if (modal._formDirty && !modal._formSaved) {
         e.preventDefault();
@@ -2109,6 +2109,59 @@ const utils = {
 };
 
 // ============================================
+// PAGINATION UI RENDERER
+// Reusable Bootstrap pagination controls for server-side paginated tables
+// ============================================
+
+/**
+ * Render pagination controls into a container element.
+ * @param {string} containerId - DOM element ID for the pagination container
+ * @param {Object} pagination - { page, totalPages, count, pageSize }
+ * @param {string} goToPageFn - Global function path to call, e.g. "awardsModule._goToPage"
+ */
+utils.renderServerPagination = function(containerId, pagination, goToPageFn) {
+  const el = document.getElementById(containerId);
+  if (!el) return;
+
+  const { page, totalPages, count, pageSize } = pagination;
+  if (!totalPages || totalPages <= 1) {
+    el.innerHTML = count
+      ? `<div class="text-center text-muted small mt-2">Showing all ${count} records</div>`
+      : '';
+    return;
+  }
+
+  let html = '<nav aria-label="Table pagination"><ul class="pagination pagination-sm justify-content-center mt-3 mb-1">';
+
+  // Previous button
+  html += `<li class="page-item ${page <= 1 ? 'disabled' : ''}">
+    <a class="page-link" href="#" onclick="event.preventDefault(); ${goToPageFn}(${page - 1})" aria-label="Previous">&laquo;</a></li>`;
+
+  // Page numbers with ellipsis
+  for (let i = 1; i <= totalPages; i++) {
+    if (i === 1 || i === totalPages || (i >= page - 2 && i <= page + 2)) {
+      html += `<li class="page-item ${i === page ? 'active' : ''}">
+        <a class="page-link" href="#" onclick="event.preventDefault(); ${goToPageFn}(${i})">${i}</a></li>`;
+    } else if (i === page - 3 || i === page + 3) {
+      html += '<li class="page-item disabled"><span class="page-link">&hellip;</span></li>';
+    }
+  }
+
+  // Next button
+  html += `<li class="page-item ${page >= totalPages ? 'disabled' : ''}">
+    <a class="page-link" href="#" onclick="event.preventDefault(); ${goToPageFn}(${page + 1})" aria-label="Next">&raquo;</a></li>`;
+
+  html += '</ul></nav>';
+
+  // Summary text
+  const from = ((page - 1) * pageSize) + 1;
+  const to = Math.min(page * pageSize, count);
+  html += `<div class="text-center text-muted small">Showing ${from}\u2013${to} of ${count} records (page ${page}/${totalPages})</div>`;
+
+  el.innerHTML = html;
+};
+
+// ============================================
 // SERVER-SIDE PAGINATION & FILTERING HELPER
 // Replaces "load everything then filter in JS" pattern
 // ============================================
@@ -2373,8 +2426,76 @@ const actionRegistry = {
       event.preventDefault();
       el.click();
     });
+
+    // Handle change events (select, checkbox, radio, file inputs)
+    document.addEventListener('change', (event) => {
+      const el = event.target.closest('[data-on-change]');
+      if (!el) return;
+      const actionName = el.getAttribute('data-on-change');
+      if (!actionName) return;
+      const handler = this._resolve(actionName);
+      if (!handler) return;
+      const id = el.getAttribute('data-id');
+      if (id) {
+        handler(id, el.value, event);
+      } else {
+        handler(el.value, event);
+      }
+    });
+
+    // Handle input events (text fields, ranges, etc.)
+    document.addEventListener('input', (event) => {
+      const el = event.target.closest('[data-on-input]');
+      if (!el) return;
+      const actionName = el.getAttribute('data-on-input');
+      if (!actionName) return;
+      const handler = this._resolve(actionName);
+      if (!handler) return;
+      handler(el.value, event);
+    });
+
+    // Handle submit events (forms)
+    document.addEventListener('submit', (event) => {
+      const form = event.target.closest('[data-on-submit]');
+      if (!form) return;
+      event.preventDefault();
+      const actionName = form.getAttribute('data-on-submit');
+      if (!actionName) return;
+      const handler = this._resolve(actionName);
+      if (!handler) return;
+      handler(event);
+    });
   }
 };
+
+// ============================================
+// HELPER ACTIONS for data-action delegation
+// ============================================
+
+/**
+ * Utility actions exposed on window.utils for data-action handlers.
+ * These replace complex inline onclick/onchange handlers.
+ */
+Object.assign(utils, {
+  /** Toggle all collapse sections in an accordion */
+  toggleAccordion(accordionId) {
+    document.querySelectorAll(`#${accordionId} .collapse`).forEach(c => {
+      new bootstrap.Collapse(c, { toggle: true });
+    });
+  },
+
+  /** Navigate to a section and close a modal */
+  navigateAndCloseModal(sectionId) {
+    const args = JSON.parse(sectionId);
+    if (args.section && typeof dashboardModule !== 'undefined') {
+      dashboardModule.navigateToSection(args.section);
+    }
+    if (args.modal) {
+      const modalEl = document.getElementById(args.modal);
+      if (modalEl) bootstrap.Modal.getInstance(modalEl)?.hide();
+    }
+  }
+});
 
 // ============================================
 // API CLIENT — routes critical operations through /api/data-proxy
@@ -2469,6 +2590,7 @@ const apiClient = {
       operation: 'select',
       select: options.select || '*',
       filters: options.filters || {},
+      search: options.search || undefined,
       sort: options.sort || undefined,
       page: options.page || 1,
       pageSize: options.pageSize || 50
@@ -2571,7 +2693,7 @@ const apiClient = {
 };
 
 // Export to window for global access
-window.utils = utils;
-window.serverQuery = serverQuery;
-window.actionRegistry = actionRegistry;
-window.apiClient = apiClient;
+ModuleRegistry.register('utils', utils);
+ModuleRegistry.register('serverQuery', serverQuery);
+ModuleRegistry.register('actionRegistry', actionRegistry);
+ModuleRegistry.register('apiClient', apiClient);

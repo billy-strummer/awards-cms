@@ -2,7 +2,7 @@
 /* TICKET MANAGEMENT MODULE — British Trade Awards CMS  */
 /* ==================================================== */
 
-window.ticketModule = {
+const ticketModule = {
 
   /* -------------------------------------------------- */
   /* 1. TICKET TYPES CRUD                               */
@@ -359,3 +359,4 @@ window.ticketModule = {
     } catch (err) { utils.showToast('Refund error: ' + err.message, 'error'); } finally { utils.hideLoading(); }
   }
 };
+ModuleRegistry.register('ticketModule', ticketModule);

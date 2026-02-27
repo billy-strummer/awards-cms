@@ -4,7 +4,7 @@
  * place cards, name tents, and undo/redo.
  * Requires: eventsModule, apiClient, jsPDF, Bootstrap 5, utils
  */
-window.seatingEnhancements = {
+const seatingEnhancements = {
   _undoStack: [], _redoStack: [], _sections: [],
   _vipFilterOn: false, _seatPopup: null, _seatTooltip: null, _kbBound: false,
   _slSort: 'table',
@@ -115,7 +115,7 @@ window.seatingEnhancements = {
 
   async _assignToSeat(em, table, guestId, seatNum) {
     this._closeSeatPopup();
-    const g = em.unassignedGuests.find(g=>(g.guest_id||g.id)==guestId);
+    const g = em.unassignedGuests.find(g=>(g.guest_id||g.id)===guestId);
     if (!g) return;
     try {
       const row = { event_id:em.currentEventIdTablePlan, table_id:table.id,
@@ -592,7 +592,7 @@ window.seatingEnhancements = {
     const em=window.eventsModule;
     try {
       if(a.type==='assign') { await apiClient.deleteByFilters('table_assignments', { guest_id: { eq: a.data.guest_id }, table_id: { eq: a.data.table_id } }); this._redoStack.push(a); }
-      else if(a.type==='remove') { const{id,...row}=a.data; await apiClient.insert('table_assignments', row); this._redoStack.push(a); }
+      else if(a.type==='remove') { const{_id,...row}=a.data; await apiClient.insert('table_assignments', row); this._redoStack.push(a); }
       await em.loadTablePlan(); em.renderUnassignedGuests(); em.renderCanvasTables();
       if(em._selectedTableId) em.showTableDetail(em._selectedTableId);
       utils.showToast('Undone','success');
@@ -603,7 +603,7 @@ window.seatingEnhancements = {
     const a=this._redoStack.pop(); if(!a){utils.showToast('Nothing to redo','info');return;}
     const em=window.eventsModule;
     try {
-      if(a.type==='assign') { const{id,...row}=a.data; await apiClient.insert('table_assignments', row); this._undoStack.push(a); }
+      if(a.type==='assign') { const{_id,...row}=a.data; await apiClient.insert('table_assignments', row); this._undoStack.push(a); }
       else if(a.type==='remove') { await apiClient.delete('table_assignments', a.data.id); this._undoStack.push(a); }
       await em.loadTablePlan(); em.renderUnassignedGuests(); em.renderCanvasTables();
       if(em._selectedTableId) em.showTableDetail(em._selectedTableId);
@@ -680,3 +680,4 @@ window.seatingEnhancements = {
     document.head.appendChild(s);
   }
 };
+ModuleRegistry.register('seatingEnhancements', seatingEnhancements);

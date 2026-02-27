@@ -79,6 +79,98 @@ const MAX_PAGE_SIZE = 1000;
 const MAX_SELECT_LENGTH = 500;
 
 // ============================================
+// RBAC — Role-Based Access Control
+// ============================================
+
+/**
+ * Role hierarchy: super_admin > admin > editor > viewer
+ * Each role defines which tables it can read and write.
+ */
+const ROLE_PERMISSIONS = {
+  super_admin: { read: '*', write: '*' },
+  admin:       { read: '*', write: '*' },
+  editor: {
+    read: '*',
+    write: new Set([
+      'awards', 'organisations', 'entries', 'winners', 'events',
+      'award_assignments', 'contacts', 'email_templates',
+      'email_campaigns', 'media', 'organisation_notes',
+      'organisation_documents', 'organisation_contacts',
+      'org_activity_notes', 'event_galleries', 'entry_revisions',
+      'winner_announcements', 'calendar_events', 'user_preferences'
+    ])
+  },
+  viewer: {
+    read: '*',
+    write: new Set(['user_preferences'])
+  },
+  judge: {
+    read: new Set(['awards', 'award_years', 'entries', 'organisations', 'user_preferences']),
+    write: new Set(['user_preferences'])
+  },
+  marketing: {
+    read: '*',
+    write: new Set([
+      'email_templates', 'email_campaigns', 'email_lists',
+      'email_list_members', 'media', 'event_galleries',
+      'organisation_notes', 'user_preferences'
+    ])
+  },
+  finance: {
+    read: '*',
+    write: new Set([
+      'invoices', 'payments', 'sponsorship_packages',
+      'user_preferences'
+    ])
+  }
+};
+
+/** Read-only tables that no user role should mutate directly */
+const READ_ONLY_TABLES = new Set([
+  'activity_log', 'counties', 'regions'
+]);
+
+/**
+ * Fetch user role from user_preferences or a roles table.
+ * Falls back to 'viewer' if no role is found.
+ */
+async function getUserRole(userId) {
+  try {
+    const { data } = await supabase
+      .from('user_preferences')
+      .select('value')
+      .eq('user_id', userId)
+      .eq('key', 'role')
+      .maybeSingle();
+    return data?.value || 'viewer';
+  } catch {
+    return 'viewer';
+  }
+}
+
+/**
+ * Check if a user's role permits an operation on a table.
+ */
+function checkPermission(role, table, operation) {
+  const perms = ROLE_PERMISSIONS[role];
+  if (!perms) return false;
+
+  // Read-only tables block all writes regardless of role
+  if (['insert', 'update', 'delete'].includes(operation) && READ_ONLY_TABLES.has(table)) {
+    return role === 'super_admin'; // Only super_admin can override
+  }
+
+  if (['select', 'count'].includes(operation)) {
+    if (perms.read === '*') return true;
+    return perms.read.has(table);
+  }
+
+  // Write operations
+  if (perms.write === '*') return true;
+  return perms.write.has(table);
+}
+
+// ============================================
 // AUTH VERIFICATION
 // ============================================
 
@@ -117,7 +209,7 @@ async function verifyAuth(req, res) {
 function validateQueryParams(body) {
   const errors = [];
 
-  const { table, operation, select, filters, sort, page, pageSize, data, id } = body;
+  const { table, operation, select, filters, sort, page, pageSize, data, id, search } = body;
 
   if (!table || typeof table !== 'string') {
     errors.push('Missing or invalid "table" parameter');
@@ -155,6 +247,15 @@ function validateQueryParams(body) {
     errors.push(`"pageSize" must be between 1 and ${MAX_PAGE_SIZE}`);
   }
 
+  if (search !== undefined) {
+    if (typeof search !== 'object' || !search.term || typeof search.term !== 'string') {
+      errors.push('"search.term" must be a non-empty string');
+    }
+    if (!Array.isArray(search.columns) || search.columns.length === 0) {
+      errors.push('"search.columns" must be a non-empty array of column names');
+    }
+  }
+
   if (operation === 'insert' && (!data || typeof data !== 'object')) {
     errors.push('"data" is required for insert operations');
   }
@@ -180,7 +281,7 @@ function validateQueryParams(body) {
 async function executeQuery(body, user) {
   const {
     table, operation, select = '*', filters = {},
-    sort, page = 1, pageSize = 50, data, id
+    sort, page = 1, pageSize = 50, data, id, search
   } = body;
 
   // SELECT / COUNT
@@ -210,6 +311,15 @@ async function executeQuery(body, user) {
       } else {
         query = query.eq(key, value);
       }
+    }
+
+    // Apply full-text search (OR across multiple columns via ilike)
+    if (search && search.term && search.columns && search.columns.length > 0) {
+      const safeTerm = search.term.replace(/[%_\\]/g, c => '\\' + c);
+      const orClause = search.columns
+        .map(col => `${col}.ilike.%${safeTerm}%`)
+        .join(',');
+      query = query.or(orClause);
     }
 
     // Apply sorting
@@ -403,10 +513,17 @@ function checkRateLimit(userId) {
  * }
  */
 module.exports = async function handler(req, res) {
-  // CORS headers
-  res.setHeader('Access-Control-Allow-Origin', req.headers.origin || '*');
+  // CORS headers — restrict to known origins when configured
+  const allowedOrigins = (process.env.ALLOWED_ORIGINS || '')
+    .split(',').map(o => o.trim()).filter(Boolean);
+  const origin = req.headers.origin || '';
+  const corsOrigin = allowedOrigins.length === 0 || allowedOrigins.includes(origin)
+    ? (origin || '*')
+    : (allowedOrigins[0] || '');
+  res.setHeader('Access-Control-Allow-Origin', corsOrigin);
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  res.setHeader('Vary', 'Origin');
 
   if (req.method === 'OPTIONS') {
     return res.status(200).end();
@@ -437,7 +554,16 @@ module.exports = async function handler(req, res) {
       return res.status(400).json({ error: 'Validation failed', details: validationErrors });
     }
 
-    // 4. Execute
+    // 4. RBAC check
+    const role = await getUserRole(user.id);
+    if (!checkPermission(role, body.table, body.operation)) {
+      return res.status(403).json({
+        error: 'Forbidden',
+        message: `Role "${role}" cannot ${body.operation} on "${body.table}"`
+      });
+    }
+
+    // 5. Execute
     const result = await executeQuery(body, user);
     return res.status(200).json(result);
 

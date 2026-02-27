@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self' https://*.supabase.co; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://unpkg.com https://cdnjs.cloudflare.com https://js.stripe.com https://browser.sentry-cdn.com https://s3.tradingview.com; style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://unpkg.com https://cdnjs.cloudflare.com; img-src 'self' data: blob: https://*.supabase.co https://i.ytimg.com https://*.tile.openstreetmap.org; font-src 'self' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; connect-src 'self' https://*.supabase.co https://api.resend.com https://*.sentry.io wss://*.supabase.co https://*.tradingview.com wss://*.tradingview.com https://*.tradingview-widget.com wss://*.tradingview-widget.com https://www.youtube.com https://vimeo.com https://api.company-information.service.gov.uk https://*.stripe.com https://*.vercel-scripts.com https://*.vercel-insights.com https://cdn.jsdelivr.net https://unpkg.com https://cdnjs.cloudflare.com https://browser.sentry-cdn.com; frame-src 'self' https://js.stripe.com https://www.youtube.com https://s3.tradingview.com https://*.tradingview.com https://*.tradingview-widget.com; object-src 'none'; base-uri 'self'">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self' https://*.supabase.co; script-src 'self' https://cdn.jsdelivr.net https://unpkg.com https://cdnjs.cloudflare.com https://js.stripe.com https://browser.sentry-cdn.com https://s3.tradingview.com; style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://unpkg.com https://cdnjs.cloudflare.com; img-src 'self' data: blob: https://*.supabase.co https://i.ytimg.com https://*.tile.openstreetmap.org; font-src 'self' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; connect-src 'self' https://*.supabase.co https://api.resend.com https://*.sentry.io wss://*.supabase.co https://*.tradingview.com wss://*.tradingview.com https://*.tradingview-widget.com wss://*.tradingview-widget.com https://www.youtube.com https://vimeo.com https://api.company-information.service.gov.uk https://*.stripe.com https://*.vercel-scripts.com https://*.vercel-insights.com https://cdn.jsdelivr.net https://unpkg.com https://cdnjs.cloudflare.com https://browser.sentry-cdn.com; frame-src 'self' https://js.stripe.com https://www.youtube.com https://s3.tradingview.com https://*.tradingview.com https://*.tradingview-widget.com; object-src 'none'; base-uri 'self'">
   <!-- Supabase credentials — injected per environment, never hardcoded -->
   <meta name="supabase-url" content="">
   <meta name="supabase-anon-key" content="">
@@ -63,7 +63,7 @@
           
           <div id="loginError" class="alert alert-danger d-none" role="alert"></div>
           
-          <form id="loginForm" onsubmit="return false;">
+          <form id="loginForm" data-on-submit="authModule.handleLogin">
             <div class="mb-3">
               <label for="loginEmail" class="form-label">Email</label>
               <div class="input-group">
@@ -457,7 +457,7 @@
                 </h3>
                 <p class="text-muted small mb-0">All award types by size</p>
               </div>
-              <button class="btn btn-outline-secondary btn-sm" onclick="document.querySelectorAll('#catAccordion .collapse').forEach(c => { new bootstrap.Collapse(c, {toggle: true}) })">
+              <button class="btn btn-outline-secondary btn-sm" data-action="utils.toggleAccordion" data-id="catAccordion">
                 <i class="bi bi-arrows-expand me-1"></i>Toggle All
               </button>
             </div>
@@ -802,7 +802,7 @@
                 </h3>
                 <p class="text-muted small mb-0">All areas included in the awards programme</p>
               </div>
-              <button class="btn btn-outline-secondary btn-sm" onclick="document.querySelectorAll('#regionAccordion .collapse').forEach(c => { new bootstrap.Collapse(c, {toggle: true}) })">
+              <button class="btn btn-outline-secondary btn-sm" data-action="utils.toggleAccordion" data-id="regionAccordion">
                 <i class="bi bi-arrows-expand me-1"></i>Toggle All
               </button>
             </div>
@@ -1118,7 +1118,7 @@
                 <div class="d-flex align-items-center gap-2">
                   <label class="text-muted small mb-0">View by:</label>
                   <select class="form-select form-select-sm" id="topCompaniesMetric"
-                          onchange="dashboardModule.updateTopCompanies(this.value)" style="width: auto;">
+                          data-on-change="dashboardModule.updateTopCompanies" style="width: auto;">
                     <option value="most-active">Most Active</option>
                     <option value="top-spenders">Top Spenders</option>
                     <option value="most-awards">Most Awards Won</option>
@@ -1421,7 +1421,7 @@
     <div class="col-md-2">
       <label class="form-label small fw-semibold"><i class="bi bi-bookmark me-1"></i>Saved Views</label>
       <div class="input-group input-group-sm">
-        <select class="form-select form-select-sm" id="awardsSavedViewsList" onchange="if(this.value) awardsModule.loadSavedAwardsView(parseInt(this.value))">
+        <select class="form-select form-select-sm" id="awardsSavedViewsList" data-on-change="awardsModule.loadSavedAwardsView">
           <option value="">No saved views</option>
         </select>
         <button class="btn btn-outline-primary" data-action="awardsModule.saveCurrentAwardsView" title="Save current filters as view">
@@ -1515,7 +1515,7 @@
               <table class="table table-hover table-striped align-middle" aria-label="Awards list">
                 <thead>
                   <tr>
-                    <th scope="col" style="width: 3%;"><input type="checkbox" class="form-check-input" id="awardsSelectAll" onchange="awardsModule.toggleSelectAll(this.checked)" aria-label="Select all awards"></th>
+                    <th scope="col" style="width: 3%;"><input type="checkbox" class="form-check-input" id="awardsSelectAll" data-on-change="awardsModule.toggleSelectAll" aria-label="Select all awards"></th>
                     <th scope="col" style="width: 5%; cursor: pointer;" data-sort-field="year" data-action="awardsModule.sortBy" data-args='["year"]'>Year <i class="bi bi-arrow-down-up text-muted ms-1 small" data-sort-icon="year"></i></th>
                     <th scope="col" style="width: 22%; cursor: pointer;" data-sort-field="award_name" data-action="awardsModule.sortBy" data-args='["award_name"]'>Award Name <i class="bi bi-arrow-down-up text-muted ms-1 small" data-sort-icon="award_name"></i></th>
                     <th scope="col" style="width: 12%; cursor: pointer;" data-sort-field="county" data-action="awardsModule.sortBy" data-args='["county"]'>County/City <i class="bi bi-arrow-down-up text-muted ms-1 small" data-sort-icon="county"></i></th>
@@ -1581,19 +1581,19 @@
               </div>
               <div class="col">
                 <h6 class="text-muted mb-1 small">Missing Email</h6>
-                <h3 class="mb-0 fw-bold text-warning" id="orgsMissingEmail" style="cursor:pointer" title="Click to filter" onclick="document.getElementById('orgsSearchBox').value=''; orgsModule._filterMissingField='email'; orgsModule.filterOrganisations();">0</h3>
+                <h3 class="mb-0 fw-bold text-warning" id="orgsMissingEmail" style="cursor:pointer" title="Click to filter" data-action="orgsModule.filterByMissing" data-id="email">0</h3>
               </div>
               <div class="col">
                 <h6 class="text-muted mb-1 small">Missing Logo</h6>
-                <h3 class="mb-0 fw-bold text-warning" id="orgsMissingLogo" style="cursor:pointer" title="Click to filter" onclick="document.getElementById('orgsSearchBox').value=''; orgsModule._filterMissingField='logo_url'; orgsModule.filterOrganisations();">0</h3>
+                <h3 class="mb-0 fw-bold text-warning" id="orgsMissingLogo" style="cursor:pointer" title="Click to filter" data-action="orgsModule.filterByMissing" data-id="logo_url">0</h3>
               </div>
-              <div class="col" style="cursor:pointer" title="Click to filter sponsors" onclick="document.getElementById('orgsStatusFilter').value='sponsor'; orgsModule.filterOrganisations();">
+              <div class="col" style="cursor:pointer" title="Click to filter sponsors" data-action="orgsModule.filterByStatus" data-id="sponsor">
                 <h6 class="text-muted mb-1 small">Sponsors</h6>
                 <h3 class="mb-0 fw-bold text-purple" id="orgsSponsorCount" style="color:#6f42c1;">0</h3>
               </div>
               <div class="col">
                 <h6 class="text-muted mb-1 small">At Risk</h6>
-                <h3 class="mb-0 fw-bold text-danger" id="orgsAtRiskCount" style="cursor:pointer" title="Click to filter stale" onclick="document.getElementById('orgsDateFilter').value='stale'; orgsModule.filterOrganisations();">0</h3>
+                <h3 class="mb-0 fw-bold text-danger" id="orgsAtRiskCount" style="cursor:pointer" title="Click to filter stale" data-action="orgsModule.filterByDate" data-id="stale">0</h3>
               </div>
               <div class="col">
                 <h6 class="text-muted mb-1 small">Avg Engagement</h6>
@@ -1661,7 +1661,7 @@
               <i class="bi bi-calendar3 me-1"></i>Year
             </label>
             <select class="form-select form-select-sm" id="orgsYearFilter"
-                    onchange="orgsModule.filterOrganisations()">
+                    data-on-change="orgsModule.filterOrganisations">
               <option value="">All</option>
               <option value="2026" selected>2026</option>
               <option value="2025">2025</option>
@@ -1676,7 +1676,7 @@
               <i class="bi bi-briefcase me-1"></i>Sector
             </label>
             <select class="form-select form-select-sm" id="orgsSectorFilter"
-                    onchange="orgsModule.filterOrganisations()">
+                    data-on-change="orgsModule.filterOrganisations">
               <option value="">All</option>
             </select>
           </div>
@@ -1687,7 +1687,7 @@
               <i class="bi bi-geo-alt me-1"></i>Region
             </label>
             <select class="form-select form-select-sm" id="orgsRegionFilter"
-                    onchange="orgsModule.updateCountyFilterByRegion(); orgsModule.filterOrganisations();">
+                    data-on-change="orgsModule.updateCountyFilterByRegion">
               <option value="">All Regions</option>
             </select>
           </div>
@@ -1698,7 +1698,7 @@
               <i class="bi bi-pin-map me-1"></i>County/City
             </label>
             <select class="form-select form-select-sm" id="orgsCountyFilter"
-                    onchange="orgsModule.filterOrganisations()">
+                    data-on-change="orgsModule.filterOrganisations">
               <option value="">All Counties/Cities</option>
             </select>
           </div>
@@ -1709,7 +1709,7 @@
               <i class="bi bi-flag me-1"></i>Status
             </label>
             <select class="form-select form-select-sm" id="orgsStatusFilter"
-                    onchange="orgsModule.filterOrganisations()">
+                    data-on-change="orgsModule.filterOrganisations">
               <option value="">Active</option>
               <option value="prospect">Prospect</option>
               <option value="entrant">Entrant</option>
@@ -1729,7 +1729,7 @@
               <i class="bi bi-award me-1"></i>Tier
             </label>
             <select class="form-select form-select-sm" id="orgsTierFilter"
-                    onchange="orgsModule.filterOrganisations()">
+                    data-on-change="orgsModule.filterOrganisations">
               <option value="">All</option>
               <option value="Bronze">Bronze</option>
               <option value="Silver">Silver</option>
@@ -1754,7 +1754,7 @@
               <i class="bi bi-tags me-1"></i>Tag
             </label>
             <select class="form-select form-select-sm" id="orgsTagFilter"
-                    onchange="orgsModule.filterOrganisations()">
+                    data-on-change="orgsModule.filterOrganisations">
               <option value="">All Tags</option>
             </select>
           </div>
@@ -1765,7 +1765,7 @@
               <i class="bi bi-image me-1"></i>Logo
             </label>
             <select class="form-select form-select-sm" id="orgsLogoFilter"
-                    onchange="orgsModule.filterOrganisations()">
+                    data-on-change="orgsModule.filterOrganisations">
               <option value="">All</option>
               <option value="has">Has Logo</option>
               <option value="missing">No Logo</option>
@@ -1778,7 +1778,7 @@
               <i class="bi bi-clock-history me-1"></i>Added
             </label>
             <select class="form-select form-select-sm" id="orgsDateFilter"
-                    onchange="orgsModule.filterOrganisations()">
+                    data-on-change="orgsModule.filterOrganisations">
               <option value="">Any Time</option>
               <option value="7">Last 7 Days</option>
               <option value="30">Last 30 Days</option>
@@ -1795,7 +1795,7 @@
             </label>
             <div class="input-group input-group-sm">
               <select class="form-select form-select-sm" id="orgsFilterPreset"
-                      onchange="orgsModule.loadFilterPreset(this.value)">
+                      data-on-change="orgsModule.loadFilterPreset">
                 <option value="">-- Saved Views --</option>
               </select>
               <button class="btn btn-outline-primary btn-sm" data-action="orgsModule.saveFilterPreset" title="Save current view (filters, sort, columns)">
@@ -1824,7 +1824,7 @@
                 <ul class="dropdown-menu">
                   <li><a class="dropdown-item" href="#" data-action="orgsModule.exportToCSV"><i class="bi bi-filetype-csv text-success me-2"></i>Export CSV</a></li>
                   <li><a class="dropdown-item" href="#" data-action="orgsModule.exportToExcel"><i class="bi bi-file-earmark-spreadsheet text-primary me-2"></i>Export Excel (.xlsx)</a></li>
-                  <li><a class="dropdown-item" href="#" onclick="event.preventDefault(); orgsModule.exportToPDF()"><i class="bi bi-file-pdf text-danger me-2"></i>Print / PDF</a></li>
+                  <li><a class="dropdown-item" href="#" data-action="orgsModule.exportToPDF" data-prevent-default="true"><i class="bi bi-file-pdf text-danger me-2"></i>Print / PDF</a></li>
                 </ul>
               </div>
               <button class="btn btn-sm btn-outline-secondary" id="togglePhoneColBtn" data-action="orgsModule.togglePhoneColumn" title="Toggle Phone Column">
@@ -1908,7 +1908,7 @@
               <tr>
                 <th scope="col" style="width: 2%;" class="text-center">
                   <input type="checkbox" class="form-check-input" id="selectAllOrgs"
-                         aria-label="Select all organisations" onchange="orgsModule.toggleSelectAll()">
+                         aria-label="Select all organisations" data-on-change="orgsModule.toggleSelectAll">
                 </th>
                 <th scope="col" style="width: 14%; cursor: pointer;" class="fw-semibold" data-action="orgsModule.sortBy" data-args="[&quot;company&quot;]">
                   Company Name
@@ -1994,7 +1994,7 @@
               <div class="mb-3">
                 <label for="newCompanyName" class="form-label">Company Name *</label>
                 <input type="text" class="form-control" id="newCompanyName" required
-                       oninput="orgsModule._liveCheckDuplicate(this.value)">
+                       data-on-input="orgsModule._liveCheckDuplicate">
                 <div id="duplicateWarning" class="small text-warning mt-1" style="display:none;"></div>
               </div>
               <div class="row mb-3">
@@ -2176,7 +2176,7 @@
               <div class="mb-3">
                 <label for="csvFileInput" class="form-label fw-semibold">Select CSV File</label>
                 <input type="file" class="form-control" id="csvFileInput" accept=".csv,.txt"
-                       onchange="orgsModule.parseCSVFile(this)">
+                       data-on-change="orgsModule.parseCSVFile">
               </div>
               <div class="mb-3">
                 <label class="form-label fw-semibold">Or paste CSV content:</label>
@@ -2286,7 +2286,7 @@
             <ul class="dropdown-menu">
               <li><a class="dropdown-item" href="#" data-action="orgsModule.bulkExport" data-args="[&quot;csv&quot;]"><i class="bi bi-filetype-csv text-success me-2"></i>Export CSV</a></li>
               <li><a class="dropdown-item" href="#" data-action="orgsModule.bulkExport" data-args="[&quot;excel&quot;]"><i class="bi bi-file-earmark-spreadsheet text-primary me-2"></i>Export Excel</a></li>
-              <li><a class="dropdown-item" href="#" onclick="event.preventDefault(); orgsModule.bulkExport('pdf')"><i class="bi bi-file-pdf text-danger me-2"></i>Print / PDF</a></li>
+              <li><a class="dropdown-item" href="#" data-action="orgsModule.bulkExport" data-id="pdf" data-prevent-default="true"><i class="bi bi-file-pdf text-danger me-2"></i>Print / PDF</a></li>
             </ul>
           </div>
           <button class="btn btn-sm btn-outline-info" data-action="orgsModule.showOrgComparison" title="Compare selected (2-4)">
@@ -2361,7 +2361,7 @@
               <div class="col-md-3">
                 <label class="form-label small fw-semibold"><i class="bi bi-bookmark me-1"></i>Saved Views</label>
                 <div class="input-group input-group-sm">
-                  <select class="form-select form-select-sm" id="winnersSavedViewsList" onchange="if(this.value) winnersModule.loadSavedWinnersView(parseInt(this.value))">
+                  <select class="form-select form-select-sm" id="winnersSavedViewsList" data-on-change="winnersModule.loadSavedWinnersView">
                     <option value="">No saved views</option>
                   </select>
                   <button class="btn btn-outline-primary" data-action="winnersModule.saveCurrentWinnersView" title="Save current filters as view">
@@ -2414,9 +2414,9 @@
                     <i class="bi bi-download me-1"></i>Export
                   </button>
                   <ul class="dropdown-menu">
-                    <li><a class="dropdown-item" href="#" onclick="event.preventDefault(); winnersModule.exportFilteredWinnersCSV()"><i class="bi bi-filetype-csv text-success me-2"></i>Export CSV</a></li>
-                    <li><a class="dropdown-item" href="#" onclick="event.preventDefault(); winnersModule.exportFilteredWinnersExcel()"><i class="bi bi-file-earmark-spreadsheet text-primary me-2"></i>Export Excel</a></li>
-                    <li><a class="dropdown-item" href="#" onclick="event.preventDefault(); winnersModule.exportFilteredWinnersPDF()"><i class="bi bi-file-pdf text-danger me-2"></i>Print / PDF</a></li>
+                    <li><a class="dropdown-item" href="#" data-action="winnersModule.exportFilteredWinnersCSV" data-prevent-default="true"><i class="bi bi-filetype-csv text-success me-2"></i>Export CSV</a></li>
+                    <li><a class="dropdown-item" href="#" data-action="winnersModule.exportFilteredWinnersExcel" data-prevent-default="true"><i class="bi bi-file-earmark-spreadsheet text-primary me-2"></i>Export Excel</a></li>
+                    <li><a class="dropdown-item" href="#" data-action="winnersModule.exportFilteredWinnersPDF" data-prevent-default="true"><i class="bi bi-file-pdf text-danger me-2"></i>Print / PDF</a></li>
                   </ul>
                 </div>
                 <div class="badge bg-info-subtle text-info fs-6">
@@ -2429,7 +2429,7 @@
               <table class="table table-hover table-striped align-middle">
                 <thead>
                   <tr>
-                    <th scope="col" style="width:35px"><input type="checkbox" class="form-check-input" id="selectAllWinners" onchange="winnersModule.toggleSelectAllWinners(this.checked)" aria-label="Select all winners"></th>
+                    <th scope="col" style="width:35px"><input type="checkbox" class="form-check-input" id="selectAllWinners" data-on-change="winnersModule.toggleSelectAllWinners" aria-label="Select all winners"></th>
                     <th scope="col" style="cursor: pointer;" data-sort-field="winner_name" data-action="winnersModule.sortWinners" data-args="[&quot;winner_name&quot;]">Winner Name <i data-sort-icon-winners="winner_name" class="bi bi-arrow-down-up text-muted ms-1 small"></i></th>
                     <th scope="col" style="cursor: pointer;" data-sort-field="award" data-action="winnersModule.sortWinners" data-args="[&quot;award&quot;]">Award <i data-sort-icon-winners="award" class="bi bi-arrow-down-up text-muted ms-1 small"></i></th>
                     <th scope="col" style="cursor: pointer;" data-sort-field="year" data-action="winnersModule.sortWinners" data-args="[&quot;year&quot;]">Year <i data-sort-icon-winners="year" class="bi bi-arrow-down-up text-muted ms-1 small"></i></th>
@@ -2539,7 +2539,7 @@
               <div class="row g-3">
                 <div class="col-md-3">
                   <label class="form-label">Status Filter</label>
-                  <select class="form-select" id="entriesStatusFilter" onchange="entriesModule.filterEntries()">
+                  <select class="form-select" id="entriesStatusFilter" data-on-change="entriesModule.filterEntries">
                     <option value="">All Statuses</option>
                     <option value="draft">Draft</option>
                     <option value="submitted">Submitted</option>
@@ -2552,19 +2552,19 @@
                 </div>
                 <div class="col-md-3">
                   <label class="form-label">Award Category</label>
-                  <select class="form-select" id="entriesAwardFilter" onchange="entriesModule.filterEntries()">
+                  <select class="form-select" id="entriesAwardFilter" data-on-change="entriesModule.filterEntries">
                     <option value="">All Awards</option>
                   </select>
                 </div>
                 <div class="col-md-2">
                   <label class="form-label">Year</label>
-                  <select class="form-select" id="entriesYearFilter" onchange="entriesModule.filterEntries()">
+                  <select class="form-select" id="entriesYearFilter" data-on-change="entriesModule.filterEntries">
                     <option value="">All Years</option>
                   </select>
                 </div>
                 <div class="col-md-2">
                   <label class="form-label">Type</label>
-                  <select class="form-select" id="entriesSelfNomFilter" onchange="entriesModule.filterEntries()">
+                  <select class="form-select" id="entriesSelfNomFilter" data-on-change="entriesModule.filterEntries">
                     <option value="">All Entries</option>
                     <option value="self_nom">Self-Nominations</option>
                     <option value="standard">Standard Entries</option>
@@ -2579,7 +2579,7 @@
                 <div class="col-md-3">
                   <label class="form-label small fw-semibold"><i class="bi bi-bookmark me-1"></i>Saved Views</label>
                   <div class="input-group input-group-sm">
-                    <select class="form-select form-select-sm" id="entriesSavedViewsList" onchange="if(this.value) entriesModule.loadSavedEntriesView(parseInt(this.value))">
+                    <select class="form-select form-select-sm" id="entriesSavedViewsList" data-on-change="entriesModule.loadSavedEntriesView">
                       <option value="">No saved views</option>
                     </select>
                     <button class="btn btn-outline-primary" data-action="entriesModule.saveCurrentEntriesView" title="Save current filters as view">
@@ -2597,9 +2597,9 @@
                     <i class="bi bi-download me-1"></i>Export
                   </button>
                   <ul class="dropdown-menu">
-                    <li><a class="dropdown-item" href="#" onclick="event.preventDefault(); entriesModule.exportEntries()"><i class="bi bi-filetype-csv text-success me-2"></i>Export CSV</a></li>
-                    <li><a class="dropdown-item" href="#" onclick="event.preventDefault(); entriesModule.exportEntriesExcel()"><i class="bi bi-file-earmark-spreadsheet text-primary me-2"></i>Export Excel</a></li>
-                    <li><a class="dropdown-item" href="#" onclick="event.preventDefault(); entriesModule.exportEntriesPDF()"><i class="bi bi-file-pdf text-danger me-2"></i>Print / PDF</a></li>
+                    <li><a class="dropdown-item" href="#" data-action="entriesModule.exportEntries" data-prevent-default="true"><i class="bi bi-filetype-csv text-success me-2"></i>Export CSV</a></li>
+                    <li><a class="dropdown-item" href="#" data-action="entriesModule.exportEntriesExcel" data-prevent-default="true"><i class="bi bi-file-earmark-spreadsheet text-primary me-2"></i>Export Excel</a></li>
+                    <li><a class="dropdown-item" href="#" data-action="entriesModule.exportEntriesPDF" data-prevent-default="true"><i class="bi bi-file-pdf text-danger me-2"></i>Print / PDF</a></li>
                   </ul>
                 </div>
                 <button class="btn btn-sm btn-outline-danger" data-action="entriesModule.bulkActions">
@@ -2621,7 +2621,7 @@
                 <thead>
                   <tr>
                     <th scope="col" style="width: 40px;">
-                      <input type="checkbox" id="selectAllEntries" onchange="entriesModule.toggleSelectAll()" aria-label="Select all entries">
+                      <input type="checkbox" id="selectAllEntries" data-on-change="entriesModule.toggleSelectAll" aria-label="Select all entries">
                     </th>
                     <th scope="col" style="cursor:pointer" data-action="entriesModule.sortEntries" data-args="[&quot;entry_number&quot;]">Entry # <i data-sort-icon-entries="entry_number" class="bi bi-arrow-down-up text-muted ms-1 small"></i></th>
                     <th scope="col" style="cursor:pointer" data-action="entriesModule.sortEntries" data-args="[&quot;company&quot;]">Company <i data-sort-icon-entries="company" class="bi bi-arrow-down-up text-muted ms-1 small"></i></th>
@@ -2673,7 +2673,7 @@
               </button>
               <div class="input-group input-group-sm" style="width:280px;">
                 <span class="input-group-text"><i class="bi bi-building"></i></span>
-                <select class="form-select form-select-sm" id="mediaOrgFilter" onchange="mediaGalleryModule.viewOrgMedia(this.value)">
+                <select class="form-select form-select-sm" id="mediaOrgFilter" data-on-change="mediaGalleryModule.viewOrgMedia">
                   <option value="">View all media for org...</option>
                 </select>
               </div>
@@ -2851,7 +2851,7 @@
                   <div class="row g-3">
                     <div class="col-md-6">
                       <div class="form-check card p-3" style="cursor: pointer;">
-                        <input class="form-check-input" type="radio" name="videoSourceType" id="sourceTypeYouTube" value="youtube" checked aria-label="Source type YouTube" onchange="mediaGalleryModule.toggleVideoSourceFields('youtube')">
+                        <input class="form-check-input" type="radio" name="videoSourceType" id="sourceTypeYouTube" value="youtube" checked aria-label="Source type YouTube" data-on-change="mediaGalleryModule.toggleVideoSourceFields" data-id="youtube">
                         <label class="form-check-label w-100" for="sourceTypeYouTube" style="cursor: pointer;">
                           <i class="bi bi-youtube text-danger fs-4 d-block mb-2"></i>
                           <strong>YouTube Link</strong>
@@ -2861,7 +2861,7 @@
                     </div>
                     <div class="col-md-6">
                       <div class="form-check card p-3" style="cursor: pointer;">
-                        <input class="form-check-input" type="radio" name="videoSourceType" id="sourceTypeUpload" value="upload" aria-label="Source type upload" onchange="mediaGalleryModule.toggleVideoSourceFields('upload')">
+                        <input class="form-check-input" type="radio" name="videoSourceType" id="sourceTypeUpload" value="upload" aria-label="Source type upload" data-on-change="mediaGalleryModule.toggleVideoSourceFields" data-id="upload">
                         <label class="form-check-label w-100" for="sourceTypeUpload" style="cursor: pointer;">
                           <i class="bi bi-cloud-upload text-primary fs-4 d-block mb-2"></i>
                           <strong>Upload Video File</strong>
@@ -2878,7 +2878,7 @@
                     YouTube URL or Video ID <span class="text-danger">*</span>
                     <small class="text-muted d-block">Paste full URL or just the video ID</small>
                   </label>
-                  <input type="text" class="form-control" id="videoYouTubeId" placeholder="https://www.youtube.com/watch?v=dQw4w9WgXcQ or dQw4w9WgXcQ" oninput="mediaGalleryModule.previewYouTubeThumbnail()">
+                  <input type="text" class="form-control" id="videoYouTubeId" placeholder="https://www.youtube.com/watch?v=dQw4w9WgXcQ or dQw4w9WgXcQ" data-on-input="mediaGalleryModule.previewYouTubeThumbnail">
                   <div class="form-text">
                     <i class="bi bi-info-circle me-1"></i>We'll automatically extract the video ID
                   </div>
@@ -2983,7 +2983,7 @@
               </div>
               <div class="mb-3">
                 <label class="form-label">YouTube URLs / IDs (one per line)</label>
-                <textarea class="form-control" id="bulkYouTubeUrls" rows="8" placeholder="https://www.youtube.com/watch?v=VIDEO_ID_1&#10;https://www.youtube.com/watch?v=VIDEO_ID_2&#10;dQw4w9WgXcQ&#10;..." oninput="mediaGalleryModule.previewBulkYouTube()"></textarea>
+                <textarea class="form-control" id="bulkYouTubeUrls" rows="8" placeholder="https://www.youtube.com/watch?v=VIDEO_ID_1&#10;https://www.youtube.com/watch?v=VIDEO_ID_2&#10;dQw4w9WgXcQ&#10;..." data-on-input="mediaGalleryModule.previewBulkYouTube"></textarea>
               </div>
               <div id="bulkYouTubePreview" class="mb-3"></div>
               <hr>
@@ -3093,7 +3093,7 @@
                   </div>
                   <div class="mb-3">
                     <label class="form-label">Opacity: <span id="watermarkOpacityValue">30%</span></label>
-                    <input type="range" class="form-range" id="watermarkOpacity" min="5" max="80" value="30" oninput="document.getElementById('watermarkOpacityValue').textContent = this.value + '%'">
+                    <input type="range" class="form-range" id="watermarkOpacity" min="5" max="80" value="30" data-on-input="utils.updateSliderLabel" data-id="watermarkOpacityValue" data-args='{"suffix":"%"}'>
                   </div>
                   <button class="btn btn-outline-primary me-2" data-action="mediaGalleryModule.previewWatermark">
                     <i class="bi bi-eye me-1"></i>Preview
@@ -3355,7 +3355,7 @@
                 <label class="form-label small fw-semibold mb-1">
                   <i class="bi bi-calendar3 me-1"></i>Year
                 </label>
-                <select class="form-select form-select-sm" id="eventsYearFilter" onchange="eventsModule.filterEvents()">
+                <select class="form-select form-select-sm" id="eventsYearFilter" data-on-change="eventsModule.filterEvents">
                   <option value="">All Years</option>
                   <!-- Dynamically populated by eventsModule.populateYearFilter() -->
                 </select>
@@ -3364,7 +3364,7 @@
                 <label class="form-label small fw-semibold mb-1">
                   <i class="bi bi-funnel me-1"></i>Time
                 </label>
-                <select class="form-select form-select-sm" id="eventsStatusFilter" onchange="eventsModule.filterEvents()">
+                <select class="form-select form-select-sm" id="eventsStatusFilter" data-on-change="eventsModule.filterEvents">
                   <option value="">All Events</option>
                   <option value="upcoming">Upcoming</option>
                   <option value="past">Past</option>
@@ -3375,7 +3375,7 @@
                 <label class="form-label small fw-semibold mb-1">
                   <i class="bi bi-flag me-1"></i>Event Status
                 </label>
-                <select class="form-select form-select-sm" id="eventsEventStatusFilter" onchange="eventsModule.filterEvents()">
+                <select class="form-select form-select-sm" id="eventsEventStatusFilter" data-on-change="eventsModule.filterEvents">
                   <option value="">All Statuses</option>
                   <option value="draft">Draft</option>
                   <option value="confirmed">Confirmed</option>
@@ -3454,9 +3454,9 @@
                     <i class="bi bi-download me-1"></i>Export
                   </button>
                   <ul class="dropdown-menu">
-                    <li><a class="dropdown-item" href="#" onclick="event.preventDefault(); eventsModule.exportEventsCSV()"><i class="bi bi-filetype-csv text-success me-2"></i>Export CSV</a></li>
-                    <li><a class="dropdown-item" href="#" onclick="event.preventDefault(); eventsModule.exportEventsExcel()"><i class="bi bi-file-earmark-spreadsheet text-primary me-2"></i>Export Excel</a></li>
-                    <li><a class="dropdown-item" href="#" onclick="event.preventDefault(); eventsModule.exportEventsPDF()"><i class="bi bi-file-pdf text-danger me-2"></i>Print / PDF</a></li>
+                    <li><a class="dropdown-item" href="#" data-action="eventsModule.exportEventsCSV" data-prevent-default="true"><i class="bi bi-filetype-csv text-success me-2"></i>Export CSV</a></li>
+                    <li><a class="dropdown-item" href="#" data-action="eventsModule.exportEventsExcel" data-prevent-default="true"><i class="bi bi-file-earmark-spreadsheet text-primary me-2"></i>Export Excel</a></li>
+                    <li><a class="dropdown-item" href="#" data-action="eventsModule.exportEventsPDF" data-prevent-default="true"><i class="bi bi-file-pdf text-danger me-2"></i>Print / PDF</a></li>
                   </ul>
                 </div>
               </div>
@@ -3465,7 +3465,7 @@
               <table class="table table-hover">
                 <thead>
                   <tr>
-                    <th scope="col" style="width:35px"><input type="checkbox" class="form-check-input" id="selectAllEvents" onchange="eventsModule.toggleSelectAll(this.checked)" aria-label="Select all events"></th>
+                    <th scope="col" style="width:35px"><input type="checkbox" class="form-check-input" id="selectAllEvents" data-on-change="eventsModule.toggleSelectAll" aria-label="Select all events"></th>
                     <th scope="col" style="cursor:pointer" data-sort-field="event_name" data-action="eventsModule.sortEvents" data-args="[&quot;event_name&quot;]">Event Name <i data-sort-icon-events="event_name" class="bi bi-arrow-down-up text-muted small"></i></th>
                     <th scope="col" style="width:70px;cursor:pointer" data-sort-field="year" data-action="eventsModule.sortEvents" data-args="[&quot;year&quot;]">Year <i data-sort-icon-events="year" class="bi bi-arrow-down-up text-muted small"></i></th>
                     <th scope="col" style="width:100px;cursor:pointer" data-sort-field="event_date" data-action="eventsModule.sortEvents" data-args="[&quot;event_date&quot;]">Date <i data-sort-icon-events="event_date" class="bi bi-arrow-down-up text-muted small"></i></th>
@@ -3504,10 +3504,10 @@
                 <i class="bi bi-flag me-1"></i>Set Status
               </button>
               <ul class="dropdown-menu">
-                <li><a class="dropdown-item" href="#" onclick="event.preventDefault(); eventsModule.bulkSetStatus('draft')"><i class="bi bi-pencil text-secondary me-2"></i>Draft</a></li>
-                <li><a class="dropdown-item" href="#" onclick="event.preventDefault(); eventsModule.bulkSetStatus('confirmed')"><i class="bi bi-check-circle text-success me-2"></i>Confirmed</a></li>
-                <li><a class="dropdown-item" href="#" onclick="event.preventDefault(); eventsModule.bulkSetStatus('cancelled')"><i class="bi bi-x-circle text-danger me-2"></i>Cancelled</a></li>
-                <li><a class="dropdown-item" href="#" onclick="event.preventDefault(); eventsModule.bulkSetStatus('complete')"><i class="bi bi-flag-fill text-primary me-2"></i>Complete</a></li>
+                <li><a class="dropdown-item" href="#" data-action="eventsModule.bulkSetStatus" data-id="draft" data-prevent-default="true"><i class="bi bi-pencil text-secondary me-2"></i>Draft</a></li>
+                <li><a class="dropdown-item" href="#" data-action="eventsModule.bulkSetStatus" data-id="confirmed" data-prevent-default="true"><i class="bi bi-check-circle text-success me-2"></i>Confirmed</a></li>
+                <li><a class="dropdown-item" href="#" data-action="eventsModule.bulkSetStatus" data-id="cancelled" data-prevent-default="true"><i class="bi bi-x-circle text-danger me-2"></i>Cancelled</a></li>
+                <li><a class="dropdown-item" href="#" data-action="eventsModule.bulkSetStatus" data-id="complete" data-prevent-default="true"><i class="bi bi-flag-fill text-primary me-2"></i>Complete</a></li>
               </ul>
             </div>
             <button class="btn btn-sm btn-outline-danger" data-action="eventsModule.bulkDelete"><i class="bi bi-trash me-1"></i>Delete</button>
@@ -3542,7 +3542,7 @@
           <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
             <div class="d-flex gap-2 align-items-center">
               <label class="form-label mb-0 small fw-semibold text-muted">Year:</label>
-              <select id="reportsYearFilter" class="form-select form-select-sm" style="width:120px;" onchange="reportsAnalytics.filterByYear(this.value)">
+              <select id="reportsYearFilter" class="form-select form-select-sm" style="width:120px;" data-on-change="reportsAnalytics.filterByYear">
                 <option value="all">All Years</option>
               </select>
               <button class="btn btn-sm btn-outline-primary" data-action="reportsAnalytics.printSummaryReport">
@@ -3799,7 +3799,7 @@
                   <h4><i class="bi bi-palette me-2"></i>Brand Identity</h4>
                   <p class="text-muted mb-0">Your brand settings are the root source for all marketing materials, emails and public pages</p>
                 </div>
-                <button class="btn btn-outline-primary" onclick="document.getElementById('settings-tab').click(); setTimeout(() => document.getElementById('brandingSettingsContainer')?.scrollIntoView({behavior:'smooth'}), 300)">
+                <button class="btn btn-outline-primary" data-action="settingsModule.scrollToBranding">
                   <i class="bi bi-pencil me-2"></i>Edit in Settings
                 </button>
               </div>
@@ -3872,7 +3872,7 @@
                   <button class="btn btn-outline-primary" data-action="socialMediaModule.openBulkGenerateModal">
                     <i class="bi bi-collection me-2"></i>Bulk Generate
                   </button>
-                  <button class="btn btn-outline-secondary" onclick="socialMediaModule.loadAnalytics(); document.getElementById('analyticsSection').scrollIntoView({behavior:'smooth'})">
+                  <button class="btn btn-outline-secondary" data-action="socialMediaModule.loadAnalytics">
                     <i class="bi bi-graph-up me-2"></i>Analytics
                   </button>
                 </div>
@@ -3898,7 +3898,7 @@
                         <label class="form-label fw-bold">Post Template</label>
                         <div class="row g-3">
                           <div class="col-md-4">
-                            <div class="card template-card" onclick="socialMediaModule.selectTemplate('nominee', event)">
+                            <div class="card template-card" data-action="socialMediaModule.selectTemplate" data-id="nominee">
                               <div class="card-body text-center">
                                 <i class="bi bi-star text-warning fs-1 mb-2"></i>
                                 <h6>Nominee Announcement</h6>
@@ -3907,7 +3907,7 @@
                             </div>
                           </div>
                           <div class="col-md-4">
-                            <div class="card template-card" onclick="socialMediaModule.selectTemplate('winner', event)">
+                            <div class="card template-card" data-action="socialMediaModule.selectTemplate" data-id="winner">
                               <div class="card-body text-center">
                                 <i class="bi bi-trophy text-success fs-1 mb-2"></i>
                                 <h6>Winner Announcement</h6>
@@ -3916,7 +3916,7 @@
                             </div>
                           </div>
                           <div class="col-md-4">
-                            <div class="card template-card" onclick="socialMediaModule.selectTemplate('voting', event)">
+                            <div class="card template-card" data-action="socialMediaModule.selectTemplate" data-id="voting">
                               <div class="card-body text-center">
                                 <i class="bi bi-hand-thumbs-up text-primary fs-1 mb-2"></i>
                                 <h6>Voting Reminder</h6>
@@ -3933,7 +3933,7 @@
                           <label for="smCompanySelect" class="form-label">
                             Company/Nominee <span class="text-danger">*</span>
                           </label>
-                          <select class="form-select" id="smCompanySelect" onchange="socialMediaModule.updatePostPreview()">
+                          <select class="form-select" id="smCompanySelect" data-on-change="socialMediaModule.updatePostPreview">
                             <option value="">Select company...</option>
                           </select>
                         </div>
@@ -3941,7 +3941,7 @@
                           <label for="smAwardSelect" class="form-label">
                             Award Category <span class="text-danger">*</span>
                           </label>
-                          <select class="form-select" id="smAwardSelect" onchange="socialMediaModule.updatePostPreview()">
+                          <select class="form-select" id="smAwardSelect" data-on-change="socialMediaModule.updatePostPreview">
                             <option value="">Select award...</option>
                           </select>
                         </div>
@@ -3962,7 +3962,7 @@
                       <!-- Platform-Specific Content -->
                       <div class="mb-3">
                         <div class="form-check">
-                          <input class="form-check-input" type="checkbox" id="smPlatformOverrides" aria-label="Enable platform overrides" onchange="socialMediaModule.togglePlatformOverrides()">
+                          <input class="form-check-input" type="checkbox" id="smPlatformOverrides" aria-label="Enable platform overrides" data-on-change="socialMediaModule.togglePlatformOverrides">
                           <label class="form-check-label" for="smPlatformOverrides">
                             <i class="bi bi-sliders me-1"></i>Customise content per platform
                           </label>
@@ -3975,27 +3975,27 @@
                                 <i class="bi bi-twitter-x text-info me-1"></i>X
                                 <span class="text-muted">(280 chars)</span>
                               </label>
-                              <textarea class="form-control form-control-sm" id="smTwitterContent" rows="3" placeholder="Twitter-specific content..." oninput="socialMediaModule.updatePostPreview()"></textarea>
+                              <textarea class="form-control form-control-sm" id="smTwitterContent" rows="3" placeholder="Twitter-specific content..." data-on-input="socialMediaModule.updatePostPreview"></textarea>
                             </div>
                             <div class="col-md-6">
                               <label class="form-label small">
                                 <i class="bi bi-facebook text-primary me-1"></i>Facebook
                               </label>
-                              <textarea class="form-control form-control-sm" id="smFacebookContent" rows="3" placeholder="Facebook-specific content..." oninput="socialMediaModule.updatePostPreview()"></textarea>
+                              <textarea class="form-control form-control-sm" id="smFacebookContent" rows="3" placeholder="Facebook-specific content..." data-on-input="socialMediaModule.updatePostPreview"></textarea>
                             </div>
                             <div class="col-md-6">
                               <label class="form-label small">
                                 <i class="bi bi-instagram text-danger me-1"></i>Instagram
                                 <span class="text-muted">(2,200 chars)</span>
                               </label>
-                              <textarea class="form-control form-control-sm" id="smInstagramContent" rows="3" placeholder="Instagram-specific caption..." oninput="socialMediaModule.updatePostPreview()"></textarea>
+                              <textarea class="form-control form-control-sm" id="smInstagramContent" rows="3" placeholder="Instagram-specific caption..." data-on-input="socialMediaModule.updatePostPreview"></textarea>
                             </div>
                             <div class="col-md-6">
                               <label class="form-label small">
                                 <i class="bi bi-linkedin text-info me-1"></i>LinkedIn
                                 <span class="text-muted">(3,000 chars)</span>
                               </label>
-                              <textarea class="form-control form-control-sm" id="smLinkedInContent" rows="3" placeholder="LinkedIn-specific content..." oninput="socialMediaModule.updatePostPreview()"></textarea>
+                              <textarea class="form-control form-control-sm" id="smLinkedInContent" rows="3" placeholder="LinkedIn-specific content..." data-on-input="socialMediaModule.updatePostPreview"></textarea>
                             </div>
                           </div>
                           <small class="text-muted d-block mt-2">Leave blank to use the main post content above</small>
@@ -4010,7 +4010,7 @@
                         <div class="row g-3">
                           <div class="col-md-6">
                             <div class="form-check">
-                              <input class="form-check-input" type="radio" name="imageSource" id="imageCompanyLogo" value="company_logo" checked aria-label="Use company logo" onchange="socialMediaModule.updateImagePreview()">
+                              <input class="form-check-input" type="radio" name="imageSource" id="imageCompanyLogo" value="company_logo" checked aria-label="Use company logo" data-on-change="socialMediaModule.updateImagePreview">
                               <label class="form-check-label" for="imageCompanyLogo">
                                 Company Logo
                               </label>
@@ -4018,7 +4018,7 @@
                           </div>
                           <div class="col-md-6">
                             <div class="form-check">
-                              <input class="form-check-input" type="radio" name="imageSource" id="imageCustom" value="custom" aria-label="Use custom image" onchange="socialMediaModule.updateImagePreview()">
+                              <input class="form-check-input" type="radio" name="imageSource" id="imageCustom" value="custom" aria-label="Use custom image" data-on-change="socialMediaModule.updateImagePreview">
                               <label class="form-check-label" for="imageCustom">
                                 Upload Custom Image
                               </label>
@@ -4028,7 +4028,7 @@
 
                         <!-- Custom Image Upload -->
                         <div id="customImageUpload" class="mt-3" style="display: none;">
-                          <input type="file" class="form-control" id="smCustomImage" accept="image/*" onchange="socialMediaModule.handleImageUpload()">
+                          <input type="file" class="form-control" id="smCustomImage" accept="image/*" data-on-change="socialMediaModule.handleImageUpload">
                         </div>
 
                         <!-- Image Size Warnings -->
@@ -4037,7 +4037,7 @@
                         <!-- Add British Trade Awards Logo Overlay -->
                         <div class="mt-3">
                           <div class="form-check">
-                            <input class="form-check-input" type="checkbox" id="smAddLogoOverlay" checked aria-label="Add logo overlay" onchange="socialMediaModule.updateImagePreview()">
+                            <input class="form-check-input" type="checkbox" id="smAddLogoOverlay" checked aria-label="Add logo overlay" data-on-change="socialMediaModule.updateImagePreview">
                             <label class="form-check-label" for="smAddLogoOverlay">
                               <i class="bi bi-badge-tm me-1"></i>Add British Trade Awards Logo Overlay
                             </label>
@@ -4502,7 +4502,7 @@
                     <!-- Template Selector -->
                     <div class="mb-4">
                       <h6 class="mb-3"><i class="bi bi-layout-text-window-reverse me-2"></i>Email Template</h6>
-                      <select class="form-select" id="builderTemplateType" onchange="emailBuilder.loadTemplate(this.value)">
+                      <select class="form-select" id="builderTemplateType" data-on-change="emailBuilder.loadTemplate">
                         <option value="">Blank Canvas</option>
                         <option value="paste-html">📋 I Have HTML</option>
                         <option value="winner">🏆 Winner Announcement</option>
@@ -4680,24 +4680,24 @@
 
                       <div class="mb-3">
                         <label class="form-label small">Subject Line</label>
-                        <input type="text" class="form-control form-control-sm" id="builderSubject" placeholder="Congratulations {{company_name}}!" oninput="emailBuilder.updateSubjectCounter()">
+                        <input type="text" class="form-control form-control-sm" id="builderSubject" placeholder="Congratulations {{company_name}}!" data-on-input="emailBuilder.updateSubjectCounter">
                       </div>
 
                       <!-- A/B Testing Toggle -->
                       <div class="mb-3">
                         <div class="form-check form-switch">
-                          <input class="form-check-input" type="checkbox" id="abTestToggle" aria-label="Enable A/B testing" onchange="emailBuilder.toggleABTest()">
+                          <input class="form-check-input" type="checkbox" id="abTestToggle" aria-label="Enable A/B testing" data-on-change="emailBuilder.toggleABTest">
                           <label class="form-check-label small" for="abTestToggle">A/B Test Subject Line</label>
                         </div>
                       </div>
                       <div id="abTestSection" style="display: none;">
                         <div class="mb-2">
                           <label class="form-label small">Subject B (variant)</label>
-                          <input type="text" class="form-control form-control-sm" id="abVariantB" placeholder="Alternative subject line..." oninput="emailBuilder.abVariantB = this.value">
+                          <input type="text" class="form-control form-control-sm" id="abVariantB" placeholder="Alternative subject line..." data-on-input="emailBuilder.setAbVariantB">
                         </div>
                         <div class="mb-3">
                           <label class="form-label small">Split: <span id="abSplitLabel">50/50</span></label>
-                          <input type="range" class="form-range" id="abSplitPercent" min="10" max="90" step="10" value="50" oninput="document.getElementById('abSplitLabel').textContent = this.value + '/' + (100 - this.value)">
+                          <input type="range" class="form-range" id="abSplitPercent" min="10" max="90" step="10" value="50" data-on-input="emailBuilder.updateAbSplit">
                         </div>
                       </div>
 
@@ -4746,9 +4746,9 @@
                       <!-- Send Mode Toggle -->
                       <div class="mb-3">
                         <div class="btn-group btn-group-sm w-100" role="group">
-                          <input type="radio" class="btn-check" name="sendMode" id="sendModeNow" value="now" checked aria-label="Send now" onchange="emailBuilder.toggleScheduler()">
+                          <input type="radio" class="btn-check" name="sendMode" id="sendModeNow" value="now" checked aria-label="Send now" data-on-change="emailBuilder.toggleScheduler">
                           <label class="btn btn-outline-secondary" for="sendModeNow"><i class="bi bi-send me-1"></i>Send Now</label>
-                          <input type="radio" class="btn-check" name="sendMode" id="sendModeScheduled" value="scheduled" aria-label="Send scheduled" onchange="emailBuilder.toggleScheduler()">
+                          <input type="radio" class="btn-check" name="sendMode" id="sendModeScheduled" value="scheduled" aria-label="Send scheduled" data-on-change="emailBuilder.toggleScheduler">
                           <label class="btn btn-outline-secondary" for="sendModeScheduled"><i class="bi bi-clock me-1"></i>Schedule</label>
                         </div>
                       </div>
@@ -4847,10 +4847,10 @@
                           </button>
                         </div>
                         <div class="btn-group btn-group-sm" role="group">
-                          <button class="btn btn-outline-secondary active" onclick="emailBuilder.setViewMode('desktop', this)">
+                          <button class="btn btn-outline-secondary active" data-action="emailBuilder.setViewMode" data-id="desktop">
                             <i class="bi bi-display"></i>
                           </button>
-                          <button class="btn btn-outline-secondary" onclick="emailBuilder.setViewMode('mobile', this)">
+                          <button class="btn btn-outline-secondary" data-action="emailBuilder.setViewMode" data-id="mobile">
                             <i class="bi bi-phone"></i>
                           </button>
                         </div>
@@ -4880,10 +4880,10 @@
                         </h6>
                         <div class="d-flex align-items-center gap-2">
                           <div class="btn-group btn-group-sm" role="group">
-                            <button class="btn btn-outline-light btn-sm active" onclick="emailBuilder.setPreviewDevice('desktop', this)">
+                            <button class="btn btn-outline-light btn-sm active" data-action="emailBuilder.setPreviewDevice" data-id="desktop">
                               <i class="bi bi-display me-1"></i>Desktop
                             </button>
-                            <button class="btn btn-outline-light btn-sm" onclick="emailBuilder.setPreviewDevice('mobile', this)">
+                            <button class="btn btn-outline-light btn-sm" data-action="emailBuilder.setPreviewDevice" data-id="mobile">
                               <i class="bi bi-phone me-1"></i>Mobile
                             </button>
                           </div>
@@ -4906,7 +4906,7 @@
                     <h6 class="mb-0"><i class="bi bi-journal-text me-2"></i>Campaign Log</h6>
                     <div class="d-flex gap-2 align-items-center">
                       <input type="text" class="form-control form-control-sm" id="campaignLogSearchInput" placeholder="Search campaigns..." style="width: 180px;">
-                      <select class="form-select form-select-sm" id="campaignLogFilter" style="width: auto;" onchange="emailBuilder.campaignLogPage = 0; emailBuilder.loadCampaignLog()">
+                      <select class="form-select form-select-sm" id="campaignLogFilter" style="width: auto;" data-on-change="emailBuilder.resetAndLoadCampaignLog">
                         <option value="all">All Campaigns</option>
                         <option value="Sent">Sent</option>
                         <option value="Scheduled">Scheduled</option>
@@ -5120,7 +5120,7 @@
                   </div>
                   <div class="col-md-3">
                     <label class="form-label small fw-bold">Status</label>
-                    <select class="form-select form-select-sm" id="invoiceStatusFilter" onchange="paymentsModule.filterInvoices()">
+                    <select class="form-select form-select-sm" id="invoiceStatusFilter" data-on-change="paymentsModule.filterInvoices">
                       <option value="">All Statuses</option>
                       <option value="draft">Draft</option>
                       <option value="sent">Sent</option>
@@ -5133,13 +5133,13 @@
                   </div>
                   <div class="col-md-2">
                     <label class="form-label small fw-bold">Organisation</label>
-                    <select class="form-select form-select-sm" id="invoiceOrgFilter" onchange="paymentsModule.filterInvoices()">
+                    <select class="form-select form-select-sm" id="invoiceOrgFilter" data-on-change="paymentsModule.filterInvoices">
                       <option value="">All Organisations</option>
                     </select>
                   </div>
                   <div class="col-md-2">
                     <label class="form-label small fw-bold">Date Range</label>
-                    <input type="month" class="form-control form-control-sm" id="invoiceMonthFilter" onchange="paymentsModule.filterInvoices()">
+                    <input type="month" class="form-control form-control-sm" id="invoiceMonthFilter" data-on-change="paymentsModule.filterInvoices">
                   </div>
                   <div class="col-md-2">
                     <div class="d-flex gap-1">
@@ -5151,9 +5151,9 @@
                           <i class="bi bi-download me-1"></i>Export
                         </button>
                         <ul class="dropdown-menu">
-                          <li><a class="dropdown-item" href="#" onclick="event.preventDefault(); paymentsModule.exportInvoicesCSV()"><i class="bi bi-filetype-csv text-success me-2"></i>Export CSV</a></li>
-                          <li><a class="dropdown-item" href="#" onclick="event.preventDefault(); paymentsModule.exportInvoicesExcel()"><i class="bi bi-file-earmark-spreadsheet text-primary me-2"></i>Export Excel</a></li>
-                          <li><a class="dropdown-item" href="#" onclick="event.preventDefault(); paymentsModule.exportInvoicesPDF()"><i class="bi bi-file-pdf text-danger me-2"></i>Print / PDF</a></li>
+                          <li><a class="dropdown-item" href="#" data-action="paymentsModule.exportInvoicesCSV" data-prevent-default="true"><i class="bi bi-filetype-csv text-success me-2"></i>Export CSV</a></li>
+                          <li><a class="dropdown-item" href="#" data-action="paymentsModule.exportInvoicesExcel" data-prevent-default="true"><i class="bi bi-file-earmark-spreadsheet text-primary me-2"></i>Export Excel</a></li>
+                          <li><a class="dropdown-item" href="#" data-action="paymentsModule.exportInvoicesPDF" data-prevent-default="true"><i class="bi bi-file-pdf text-danger me-2"></i>Print / PDF</a></li>
                         </ul>
                       </div>
                       <button class="btn btn-outline-warning btn-sm" data-action="paymentsModule.sendOverdueReminders" title="Send payment reminders to all overdue invoices">
@@ -5233,7 +5233,7 @@
                   </div>
                   <div class="col-md-2">
                     <label class="form-label small fw-bold">Payment Method</label>
-                    <select class="form-select form-select-sm" id="paymentMethodFilter" onchange="paymentsModule.filterPayments()">
+                    <select class="form-select form-select-sm" id="paymentMethodFilter" data-on-change="paymentsModule.filterPayments">
                       <option value="">All Methods</option>
                       <option value="bank_transfer">Bank Transfer</option>
                       <option value="card">Card</option>
@@ -5246,7 +5246,7 @@
                   </div>
                   <div class="col-md-2">
                     <label class="form-label small fw-bold">Status</label>
-                    <select class="form-select form-select-sm" id="paymentStatusFilter" onchange="paymentsModule.filterPayments()">
+                    <select class="form-select form-select-sm" id="paymentStatusFilter" data-on-change="paymentsModule.filterPayments">
                       <option value="">All Statuses</option>
                       <option value="pending">Pending</option>
                       <option value="completed">Completed</option>
@@ -5256,7 +5256,7 @@
                   </div>
                   <div class="col-md-2">
                     <label class="form-label small fw-bold">Date Range</label>
-                    <input type="month" class="form-control form-control-sm" id="paymentMonthFilter" onchange="paymentsModule.filterPayments()">
+                    <input type="month" class="form-control form-control-sm" id="paymentMonthFilter" data-on-change="paymentsModule.filterPayments">
                   </div>
                   <div class="col-md-3">
                     <div class="d-flex gap-1">
@@ -5268,9 +5268,9 @@
                           <i class="bi bi-download me-1"></i>Export
                         </button>
                         <ul class="dropdown-menu">
-                          <li><a class="dropdown-item" href="#" onclick="event.preventDefault(); paymentsModule.exportPaymentsCSV()"><i class="bi bi-filetype-csv text-success me-2"></i>Export CSV</a></li>
-                          <li><a class="dropdown-item" href="#" onclick="event.preventDefault(); paymentsModule.exportPaymentsExcel()"><i class="bi bi-file-earmark-spreadsheet text-primary me-2"></i>Export Excel</a></li>
-                          <li><a class="dropdown-item" href="#" onclick="event.preventDefault(); paymentsModule.exportPaymentsPDF()"><i class="bi bi-file-pdf text-danger me-2"></i>Print / PDF</a></li>
+                          <li><a class="dropdown-item" href="#" data-action="paymentsModule.exportPaymentsCSV" data-prevent-default="true"><i class="bi bi-filetype-csv text-success me-2"></i>Export CSV</a></li>
+                          <li><a class="dropdown-item" href="#" data-action="paymentsModule.exportPaymentsExcel" data-prevent-default="true"><i class="bi bi-file-earmark-spreadsheet text-primary me-2"></i>Export Excel</a></li>
+                          <li><a class="dropdown-item" href="#" data-action="paymentsModule.exportPaymentsPDF" data-prevent-default="true"><i class="bi bi-file-pdf text-danger me-2"></i>Print / PDF</a></li>
                         </ul>
                       </div>
                     </div>
@@ -5469,7 +5469,7 @@
                 <div class="row g-3">
                   <div class="col-md-4">
                     <label class="form-label small fw-bold">Filter by Segment</label>
-                    <select class="form-select form-select-sm" id="crmSegmentFilter" onchange="crmModule.filterCompanies()">
+                    <select class="form-select form-select-sm" id="crmSegmentFilter" data-on-change="crmModule.filterCompanies">
                       <option value="">All Companies</option>
                     </select>
                   </div>
@@ -5523,7 +5523,7 @@
                 <div class="row g-3 align-items-end">
                   <div class="col-md-3">
                     <label class="form-label small fw-bold">Type</label>
-                    <select class="form-select form-select-sm" id="communicationTypeFilter" onchange="crmModule.loadCommunications()">
+                    <select class="form-select form-select-sm" id="communicationTypeFilter" data-on-change="crmModule.loadCommunications">
                       <option value="">All Types</option>
                       <option value="email">Email</option>
                       <option value="phone">Phone</option>
@@ -5535,7 +5535,7 @@
                   </div>
                   <div class="col-md-3">
                     <label class="form-label small fw-bold">Regarding</label>
-                    <select class="form-select form-select-sm" id="communicationRegardingFilter" onchange="crmModule.loadCommunications()">
+                    <select class="form-select form-select-sm" id="communicationRegardingFilter" data-on-change="crmModule.loadCommunications">
                       <option value="">All Topics</option>
                       <option value="sponsorship">Sponsorship</option>
                       <option value="award_application">Award Application</option>
@@ -5547,7 +5547,7 @@
                   </div>
                   <div class="col-md-3">
                     <label class="form-label small fw-bold">Follow-up Required</label>
-                    <select class="form-select form-select-sm" id="communicationFollowUpFilter" onchange="crmModule.loadCommunications()">
+                    <select class="form-select form-select-sm" id="communicationFollowUpFilter" data-on-change="crmModule.loadCommunications">
                       <option value="">All</option>
                       <option value="true">Yes</option>
                       <option value="false">No</option>
@@ -5631,7 +5631,7 @@
                 <div class="row g-3 align-items-end">
                   <div class="col-md-3">
                     <label class="form-label small fw-bold">Stage</label>
-                    <select class="form-select form-select-sm" id="dealStageFilter" onchange="crmModule.applyFilter('deals', 'stage', this.value || 'all')">
+                    <select class="form-select form-select-sm" id="dealStageFilter" data-on-change="crmModule.applyFilter" data-args='["deals","stage"]'>
                       <option value="">All Stages</option>
                       <option value="lead">Lead</option>
                       <option value="contacted">Contacted</option>
@@ -5644,7 +5644,7 @@
                   </div>
                   <div class="col-md-3">
                     <label class="form-label small fw-bold">Type</label>
-                    <select class="form-select form-select-sm" id="dealTypeFilter" onchange="crmModule.applyFilter('deals', 'type', this.value || 'all')">
+                    <select class="form-select form-select-sm" id="dealTypeFilter" data-on-change="crmModule.applyFilter" data-args='["deals","type"]'>
                       <option value="">All Types</option>
                       <option value="sponsorship">Sponsorship</option>
                       <option value="award_fee">Award Fee</option>
@@ -5656,7 +5656,7 @@
                   </div>
                   <div class="col-md-3">
                     <label class="form-label small fw-bold">Status</label>
-                    <select class="form-select form-select-sm" id="dealStatusFilter" onchange="crmModule.applyFilter('deals', 'status', this.value || 'all')">
+                    <select class="form-select form-select-sm" id="dealStatusFilter" data-on-change="crmModule.applyFilter" data-args='["deals","status"]'>
                       <option value="">All Statuses</option>
                       <option value="active">Active</option>
                       <option value="won">Won</option>
@@ -6070,13 +6070,13 @@
                 <p class="text-muted mb-3">Set automatic backup reminders</p>
 
                 <div class="form-check mb-2">
-                  <input class="form-check-input" type="checkbox" id="weeklyBackup" aria-label="Enable weekly backup" onchange="settingsModule.updateBackupSettings()">
+                  <input class="form-check-input" type="checkbox" id="weeklyBackup" aria-label="Enable weekly backup" data-on-change="settingsModule.updateBackupSettings">
                   <label class="form-check-label" for="weeklyBackup">
                     Weekly backup reminder
                   </label>
                 </div>
                 <div class="form-check mb-2">
-                  <input class="form-check-input" type="checkbox" id="monthlyBackup" aria-label="Enable monthly backup" onchange="settingsModule.updateBackupSettings()" checked>
+                  <input class="form-check-input" type="checkbox" id="monthlyBackup" aria-label="Enable monthly backup" data-on-change="settingsModule.updateBackupSettings" checked>
                   <label class="form-check-label" for="monthlyBackup">
                     Monthly backup reminder
                   </label>
@@ -6113,7 +6113,7 @@
                 <!-- Filter -->
                 <div class="row mb-3">
                   <div class="col-md-3">
-                    <select class="form-select form-select-sm" id="auditLogFilter" onchange="settingsModule.filterAuditLog()">
+                    <select class="form-select form-select-sm" id="auditLogFilter" data-on-change="settingsModule.filterAuditLog">
                       <option value="">All Actions</option>
                       <option value="create">Created</option>
                       <option value="update">Updated</option>
@@ -6121,7 +6121,7 @@
                     </select>
                   </div>
                   <div class="col-md-3">
-                    <select class="form-select form-select-sm" id="auditEntityFilter" onchange="settingsModule.filterAuditLog()">
+                    <select class="form-select form-select-sm" id="auditEntityFilter" data-on-change="settingsModule.filterAuditLog">
                       <option value="">All Entities</option>
                       <option value="award">Awards</option>
                       <option value="organisation">Organisations</option>
@@ -6266,48 +6266,48 @@
           <div class="content-card mb-1 py-2">
             <div class="d-flex flex-wrap gap-2 align-items-center">
               <span class="fw-semibold small me-2"><i class="bi bi-lightning-charge me-1"></i>Quick Switch:</span>
-              <button class="btn btn-sm btn-outline-warning btc-symbol-btn active" onclick="btcModule.switchSymbol('COINBASE:BTCUSD', this)">
+              <button class="btn btn-sm btn-outline-warning btc-symbol-btn active" data-action="btcModule.switchSymbol" data-id="COINBASE:BTCUSD">
                 <i class="bi bi-currency-bitcoin me-1"></i>BTC/USD
               </button>
-              <button class="btn btn-sm btn-outline-primary btc-symbol-btn" onclick="btcModule.switchSymbol('COINBASE:ETHUSD', this)">
+              <button class="btn btn-sm btn-outline-primary btc-symbol-btn" data-action="btcModule.switchSymbol" data-id="COINBASE:ETHUSD">
                 <i class="bi bi-diamond me-1"></i>ETH/USD
               </button>
-              <button class="btn btn-sm btn-outline-success btc-symbol-btn" onclick="btcModule.switchSymbol('FX:GBPUSD', this)">
+              <button class="btn btn-sm btn-outline-success btc-symbol-btn" data-action="btcModule.switchSymbol" data-id="FX:GBPUSD">
                 <i class="bi bi-currency-pound me-1"></i>GBP/USD
               </button>
-              <button class="btn btn-sm btn-outline-info btc-symbol-btn" onclick="btcModule.switchSymbol('FX:EURUSD', this)">
+              <button class="btn btn-sm btn-outline-info btc-symbol-btn" data-action="btcModule.switchSymbol" data-id="FX:EURUSD">
                 <i class="bi bi-currency-euro me-1"></i>EUR/USD
               </button>
-              <button class="btn btn-sm btn-outline-secondary btc-symbol-btn" onclick="btcModule.switchSymbol('TVC:GOLD', this)">
+              <button class="btn btn-sm btn-outline-secondary btc-symbol-btn" data-action="btcModule.switchSymbol" data-id="TVC:GOLD">
                 <i class="bi bi-gem me-1"></i>Gold
               </button>
-              <button class="btn btn-sm btn-outline-secondary btc-symbol-btn" onclick="btcModule.switchSymbol('SP:SPX', this)">
+              <button class="btn btn-sm btn-outline-secondary btc-symbol-btn" data-action="btcModule.switchSymbol" data-id="SP:SPX">
                 <i class="bi bi-graph-up me-1"></i>S&P 500
               </button>
               <div class="vr mx-2"></div>
               <span class="fw-semibold small me-1">Interval:</span>
               <div class="btn-group btn-group-sm">
-                <button class="btn btn-outline-secondary btc-interval-btn" onclick="btcModule.switchInterval('1', this)">1m</button>
-                <button class="btn btn-outline-secondary btc-interval-btn" onclick="btcModule.switchInterval('5', this)">5m</button>
-                <button class="btn btn-outline-secondary btc-interval-btn" onclick="btcModule.switchInterval('15', this)">15m</button>
-                <button class="btn btn-outline-secondary btc-interval-btn" onclick="btcModule.switchInterval('60', this)">1H</button>
-                <button class="btn btn-outline-secondary btc-interval-btn" onclick="btcModule.switchInterval('240', this)">4H</button>
-                <button class="btn btn-outline-secondary btc-interval-btn active" onclick="btcModule.switchInterval('D', this)">1D</button>
-                <button class="btn btn-outline-secondary btc-interval-btn" onclick="btcModule.switchInterval('W', this)">1W</button>
+                <button class="btn btn-outline-secondary btc-interval-btn" data-action="btcModule.switchInterval" data-id="1">1m</button>
+                <button class="btn btn-outline-secondary btc-interval-btn" data-action="btcModule.switchInterval" data-id="5">5m</button>
+                <button class="btn btn-outline-secondary btc-interval-btn" data-action="btcModule.switchInterval" data-id="15">15m</button>
+                <button class="btn btn-outline-secondary btc-interval-btn" data-action="btcModule.switchInterval" data-id="60">1H</button>
+                <button class="btn btn-outline-secondary btc-interval-btn" data-action="btcModule.switchInterval" data-id="240">4H</button>
+                <button class="btn btn-outline-secondary btc-interval-btn active" data-action="btcModule.switchInterval" data-id="D">1D</button>
+                <button class="btn btn-outline-secondary btc-interval-btn" data-action="btcModule.switchInterval" data-id="W">1W</button>
               </div>
               <div class="vr mx-2"></div>
               <span class="fw-semibold small me-1">Style:</span>
               <div class="btn-group btn-group-sm">
-                <button class="btn btn-outline-secondary btc-style-btn active" onclick="btcModule.switchStyle('1', this)" title="Candles" aria-label="Candles chart style"><i class="bi bi-bar-chart"></i></button>
-                <button class="btn btn-outline-secondary btc-style-btn" onclick="btcModule.switchStyle('2', this)" title="Line" aria-label="Line chart style"><i class="bi bi-graph-up"></i></button>
-                <button class="btn btn-outline-secondary btc-style-btn" onclick="btcModule.switchStyle('3', this)" title="Area" aria-label="Area chart style"><i class="bi bi-graph-down"></i></button>
-                <button class="btn btn-outline-secondary btc-style-btn" onclick="btcModule.switchStyle('0', this)" title="Bars" aria-label="Bars chart style"><i class="bi bi-bar-chart-steps"></i></button>
+                <button class="btn btn-outline-secondary btc-style-btn active" data-action="btcModule.switchStyle" data-id="1" title="Candles" aria-label="Candles chart style"><i class="bi bi-bar-chart"></i></button>
+                <button class="btn btn-outline-secondary btc-style-btn" data-action="btcModule.switchStyle" data-id="2" title="Line" aria-label="Line chart style"><i class="bi bi-graph-up"></i></button>
+                <button class="btn btn-outline-secondary btc-style-btn" data-action="btcModule.switchStyle" data-id="3" title="Area" aria-label="Area chart style"><i class="bi bi-graph-down"></i></button>
+                <button class="btn btn-outline-secondary btc-style-btn" data-action="btcModule.switchStyle" data-id="0" title="Bars" aria-label="Bars chart style"><i class="bi bi-bar-chart-steps"></i></button>
               </div>
               <div class="vr mx-2"></div>
               <span class="fw-semibold small me-1">Theme:</span>
               <div class="btn-group btn-group-sm">
-                <button class="btn btn-outline-dark btc-theme-btn active" onclick="btcModule.switchTheme('dark', this)" aria-label="Dark theme"><i class="bi bi-moon-fill"></i></button>
-                <button class="btn btn-outline-light border btc-theme-btn" onclick="btcModule.switchTheme('light', this)" aria-label="Light theme"><i class="bi bi-sun-fill"></i></button>
+                <button class="btn btn-outline-dark btc-theme-btn active" data-action="btcModule.switchTheme" data-id="dark" aria-label="Dark theme"><i class="bi bi-moon-fill"></i></button>
+                <button class="btn btn-outline-light border btc-theme-btn" data-action="btcModule.switchTheme" data-id="light" aria-label="Light theme"><i class="bi bi-sun-fill"></i></button>
               </div>
             </div>
           </div>
@@ -6555,7 +6555,7 @@
               </div>
               <div class="col-md-6">
                 <label for="awardFormSeason" class="form-label fw-semibold">Season</label>
-                <select class="form-select" id="awardFormSeason" onchange="awardsModule.applySeasonDates()">
+                <select class="form-select" id="awardFormSeason" data-on-change="awardsModule.applySeasonDates">
                   <option value="">Custom dates...</option>
                 </select>
                 <div class="form-text">Select a season to auto-fill dates, or set manually below</div>
@@ -6702,7 +6702,7 @@
               </div>
               <div class="col-md-3">
                 <label for="invoiceDiscount" class="form-label">Discount (%)</label>
-                <select class="form-select" id="invoiceDiscount" onchange="paymentsModule.handleDiscountChange()">
+                <select class="form-select" id="invoiceDiscount" data-on-change="paymentsModule.handleDiscountChange">
                   <option value="0">No Discount</option>
                   <option value="5">5%</option>
                   <option value="10">10%</option>
@@ -7619,7 +7619,7 @@
                   <div class="row g-2">
                     <div class="col-md-3">
                       <div class="position-relative">
-                        <input type="text" class="form-control form-control-sm" id="attendeeOrg" placeholder="Organisation (type to search)" autocomplete="off" oninput="eventsModule._searchOrgsForAttendee(this.value)">
+                        <input type="text" class="form-control form-control-sm" id="attendeeOrg" placeholder="Organisation (type to search)" autocomplete="off" data-on-input="eventsModule._searchOrgsForAttendee">
                         <input type="hidden" id="attendeeOrgId">
                         <div id="attendeeOrgResults" class="position-absolute w-100 bg-white border rounded shadow-sm" style="display:none; z-index:1050; max-height:150px; overflow-y:auto; top:100%;"></div>
                       </div>
@@ -7642,13 +7642,13 @@
               <!-- Attendee Filters -->
               <div class="d-flex gap-2 mb-2 align-items-center">
                 <input type="text" class="form-control form-control-sm" id="attendeeSearchFilter" placeholder="Search name or company..." style="max-width:200px;">
-                <select class="form-select form-select-sm" id="attendeeStatusFilter" style="max-width:140px;" onchange="eventsModule.filterAttendeesList()">
+                <select class="form-select form-select-sm" id="attendeeStatusFilter" style="max-width:140px;" data-on-change="eventsModule.filterAttendeesList">
                   <option value="">All Statuses</option>
                   <option value="attending">Attending</option>
                   <option value="not_attending">Not Attending</option>
                   <option value="maybe">Maybe</option>
                 </select>
-                <select class="form-select form-select-sm" id="attendeeTypeFilter" style="max-width:120px;" onchange="eventsModule.filterAttendeesList()">
+                <select class="form-select form-select-sm" id="attendeeTypeFilter" style="max-width:120px;" data-on-change="eventsModule.filterAttendeesList">
                   <option value="">All Types</option>
                   <option value="vip">VIP</option>
                   <option value="speaker">Speaker</option>
@@ -7913,7 +7913,7 @@
                       <label class="form-label small mb-1">Total Budget</label>
                       <div class="input-group input-group-sm">
                         <span class="input-group-text">&pound;</span>
-                        <input type="number" class="form-control text-center fw-bold" id="budgetTotalInput" step="0.01" min="0" placeholder="0.00" onchange="eventsModule.saveBudgetTotal()">
+                        <input type="number" class="form-control text-center fw-bold" id="budgetTotalInput" step="0.01" min="0" placeholder="0.00" data-on-change="eventsModule.saveBudgetTotal">
                       </div>
                     </div>
                   </div>
@@ -8035,7 +8035,7 @@
                     <div class="card-body">
                       <h6 class="card-title"><i class="bi bi-sticky me-2"></i>Event Notes</h6>
                       <textarea class="form-control mb-2" id="eventQuickNotes" rows="10" placeholder="Quick notes, reminders, important contacts..."></textarea>
-                      <button class="btn btn-sm btn-primary w-100" onclick="eventsModule._saveEventNotes(document.getElementById('attendeesEventId').value)"><i class="bi bi-save me-1"></i>Save Notes</button>
+                      <button class="btn btn-sm btn-primary w-100" data-action="eventsModule._saveEventNotes" data-id="attendeesEventId"><i class="bi bi-save me-1"></i>Save Notes</button>
                     </div>
                   </div>
                 </div>
@@ -8178,7 +8178,7 @@
           <form id="uploadSectionPhotosForm">
             <div class="mb-3">
               <label for="sectionPhotosFile" class="form-label">Select Files *</label>
-              <input type="file" class="form-control" id="sectionPhotosFile" accept="image/*,video/*" multiple required onchange="mediaGalleryModule.handleFilePreview(this)">
+              <input type="file" class="form-control" id="sectionPhotosFile" accept="image/*,video/*" multiple required data-on-change="mediaGalleryModule.handleFilePreview">
               <small class="text-muted">Select multiple files. Supported: Images (JPEG, PNG, GIF, WebP) and Videos (MP4, MOV, AVI, WebM). Max 4.5MB per file.</small>
             </div>
 
@@ -8475,7 +8475,7 @@
           <div class="row mb-4">
             <div class="col-md-6">
               <label class="form-label fw-bold">Filter by Year:</label>
-              <select class="form-select" id="pressReleaseYearFilter" onchange="winnersModule.filterPressReleaseWinners(this.value)">
+              <select class="form-select" id="pressReleaseYearFilter" data-on-change="winnersModule.filterPressReleaseWinners">
                 <option value="">All Years</option>
                 <option value="2025">2025</option>
                 <option value="2024">2024</option>
@@ -8550,7 +8550,7 @@
           <div class="row mb-4">
             <div class="col-md-6">
               <label class="form-label fw-bold">Filter by Year:</label>
-              <select class="form-select" id="certificateYearFilter" onchange="winnersModule.filterCertificateWinners(this.value)">
+              <select class="form-select" id="certificateYearFilter" data-on-change="winnersModule.filterCertificateWinners">
                 <option value="">All Years</option>
                 <option value="2025">2025</option>
                 <option value="2024">2024</option>
@@ -9130,7 +9130,7 @@ in recognition of excellence
           <!-- File Upload -->
           <div class="mb-4">
             <label for="importWinnersFile" class="form-label fw-bold">Select CSV File:</label>
-            <input class="form-control" type="file" id="importWinnersFile" accept=".csv" onchange="winnersModule.previewImportFile()">
+            <input class="form-control" type="file" id="importWinnersFile" accept=".csv" data-on-change="winnersModule.previewImportFile">
           </div>
 
           <!-- Preview -->
@@ -9522,7 +9522,7 @@ in recognition of excellence
         </div>
         <div class="modal-footer">
           <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-          <button type="button" class="btn btn-primary" onclick="dashboardModule.navigateToSection('awards'); bootstrap.Modal.getInstance(document.getElementById('awardsSummaryModal')).hide();">
+          <button type="button" class="btn btn-primary" data-action="utils.navigateAndCloseModal" data-id='{"section":"awards","modal":"awardsSummaryModal"}'>
             <i class="bi bi-trophy me-1"></i>View All Awards
           </button>
         </div>
@@ -9628,7 +9628,7 @@ in recognition of excellence
         </div>
         <div class="modal-footer">
           <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-          <button type="button" class="btn btn-success" onclick="dashboardModule.navigateToSection('organisations'); bootstrap.Modal.getInstance(document.getElementById('organisationsSummaryModal')).hide();">
+          <button type="button" class="btn btn-success" data-action="utils.navigateAndCloseModal" data-id='{"section":"organisations","modal":"organisationsSummaryModal"}'>
             <i class="bi bi-building me-1"></i>View All Organisations
           </button>
         </div>
@@ -9733,7 +9733,7 @@ in recognition of excellence
         </div>
         <div class="modal-footer">
           <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-          <button type="button" class="btn btn-info" onclick="dashboardModule.navigateToSection('winners'); bootstrap.Modal.getInstance(document.getElementById('winnersSummaryModal')).hide();">
+          <button type="button" class="btn btn-info" data-action="utils.navigateAndCloseModal" data-id='{"section":"winners","modal":"winnersSummaryModal"}'>
             <i class="bi bi-award me-1"></i>View All Winners
           </button>
         </div>
@@ -9839,7 +9839,7 @@ in recognition of excellence
         </div>
         <div class="modal-footer">
           <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-          <button type="button" class="btn" style="background-color: #6f42c1; color: white;" onclick="dashboardModule.navigateToSection('events'); bootstrap.Modal.getInstance(document.getElementById('eventsSummaryModal')).hide();">
+          <button type="button" class="btn" style="background-color: #6f42c1; color: white;" data-action="utils.navigateAndCloseModal" data-id='{"section":"events","modal":"eventsSummaryModal"}'>
             <i class="bi bi-calendar-event me-1"></i>View All Events
           </button>
         </div>
@@ -9891,7 +9891,7 @@ in recognition of excellence
             </div>
 
             <div class="col-md-6">
-              <div class="card bg-warning text-dark h-100" style="cursor: pointer;" onclick="mediaGalleryModule.showUntaggedPhotos(); bootstrap.Modal.getInstance(document.getElementById('mediaGallerySummaryModal')).hide();" title="Click to view untagged photos">
+              <div class="card bg-warning text-dark h-100" style="cursor: pointer;" data-action="mediaGalleryModule.showUntaggedPhotos"  data-args='{"closeModal":"mediaGallerySummaryModal"}' title="Click to view untagged photos">
                 <div class="card-body">
                   <div class="d-flex justify-content-between align-items-start">
                     <div>
@@ -9930,10 +9930,10 @@ in recognition of excellence
             </div>
             <div class="card-body">
               <div class="d-flex gap-2 flex-wrap">
-                <button class="btn btn-primary btn-sm" onclick="dashboardModule.navigateToSection('media-gallery'); bootstrap.Modal.getInstance(document.getElementById('mediaGallerySummaryModal')).hide();">
+                <button class="btn btn-primary btn-sm" data-action="utils.navigateAndCloseModal" data-id='{"section":"media-gallery","modal":"mediaGallerySummaryModal"}'>
                   <i class="bi bi-images me-1"></i>View Media Gallery
                 </button>
-                <button class="btn btn-warning btn-sm" onclick="mediaGalleryModule.showUntaggedPhotos(); bootstrap.Modal.getInstance(document.getElementById('mediaGallerySummaryModal')).hide();">
+                <button class="btn btn-warning btn-sm" data-action="mediaGalleryModule.showUntaggedPhotos"  data-args='{"closeModal":"mediaGallerySummaryModal"}'>
                   <i class="bi bi-tags me-1"></i>Tag Untagged Photos
                 </button>
               </div>
@@ -10284,7 +10284,7 @@ in recognition of excellence
         el.innerHTML = this._watchlistSymbols.map(s => {
           const isActive = s.symbol === this._symbol;
           return `<div class="d-flex align-items-center px-3 py-2 border-bottom ${isActive ? 'bg-primary bg-opacity-10' : ''}"
-                       style="cursor:pointer;" onclick="btcModule.switchSymbol('${s.symbol}', null); btcModule.renderWatchlist();"
+                       style="cursor:pointer;" data-action="btcModule.switchAndRenderWatchlist" data-id="${s.symbol}"
                        onmouseenter="this.style.backgroundColor='var(--bs-light)'" onmouseleave="this.style.backgroundColor='${isActive ? 'var(--bs-primary-bg-subtle)' : ''}'">
             <i class="bi ${s.icon} ${s.color} me-2"></i>
             <div class="flex-grow-1">
@@ -10301,7 +10301,7 @@ in recognition of excellence
         if (!el) return;
         el.innerHTML = this._marketData.map(m => `
           <div class="d-flex justify-content-between align-items-center py-2 px-1 border-bottom small"
-               style="cursor:pointer" onclick="btcModule.switchSymbol('${m.key}', null); btcModule.renderWatchlist();">
+               style="cursor:pointer" data-action="btcModule.switchAndRenderWatchlist" data-id="${m.key}">
             <span class="fw-semibold">${m.label}</span>
             <span class="badge bg-${m.color} bg-opacity-25 text-${m.color}">${m.key.split(':')[1]}</span>
           </div>

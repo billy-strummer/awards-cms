@@ -2,7 +2,7 @@
 /* SPONSOR PORTAL - Self-Service Sponsor Management     */
 /* ==================================================== */
 
-window.sponsorPortalModule = {
+const sponsorPortalModule = {
 
   TIERS: {
     Gold:   { badge: 'warning',   benefits: ['Logo on all event materials', 'Premium website placement', 'VIP table (10 seats)', 'Social media features', 'Post-event analytics report'] },
@@ -297,3 +297,4 @@ window.sponsorPortalModule = {
     }
   }
 };
+ModuleRegistry.register('sponsorPortalModule', sponsorPortalModule);

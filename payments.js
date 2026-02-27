@@ -828,7 +828,7 @@ const paymentsModule = {
         utils.showLoading();
 
         const recipientEmail = document.getElementById('sendInvoiceEmail').value;
-        const cc = document.getElementById('sendInvoiceCc').value;
+        const _cc = document.getElementById('sendInvoiceCc').value;
         const subject = document.getElementById('sendInvoiceSubject').value;
         const message = document.getElementById('sendInvoiceMessage').value;
 
@@ -1180,7 +1180,7 @@ const paymentsModule = {
             notes: notes
           });
 
-        const payment = paymentResult.data?.[0] || paymentResult.data;
+        const _payment = paymentResult.data?.[0] || paymentResult.data;
 
         // If linked to invoice, update invoice paid amount and status
         if (invoiceId) {
@@ -2437,4 +2437,4 @@ const paymentsModule = {
   }
 };
 
-window.paymentsModule = paymentsModule;
+ModuleRegistry.register('paymentsModule', paymentsModule);

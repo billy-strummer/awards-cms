@@ -398,4 +398,4 @@ const gdprModule = {
   }
 };
 
-window.gdprModule = gdprModule;
+ModuleRegistry.register('gdprModule', gdprModule);

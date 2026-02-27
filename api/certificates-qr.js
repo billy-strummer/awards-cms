@@ -150,7 +150,7 @@ async function generateWinnerCertificate(entryId, outputPath = null) {
     console.log(`✅ Certificate generated: ${filepath}`);
 
     // Upload to Supabase storage
-    const { data: uploadData, error: uploadError } = await supabase.storage
+    const { data: _uploadData, error: uploadError } = await supabase.storage
       .from('certificates')
       .upload(filename, fs.readFileSync(filepath), {
         contentType: 'application/pdf',
@@ -274,7 +274,7 @@ async function generateEventTicketQR(attendeeId, ticketType = 'standard') {
     const filename = `qr-ticket-${attendee.id}.png`;
     const buffer = Buffer.from(qrCodeDataURL.split(',')[1], 'base64');
 
-    const { data: uploadData, error: uploadError } = await supabase.storage
+    const { data: _uploadData, error: uploadError } = await supabase.storage
       .from('qr-codes')
       .upload(filename, buffer, {
         contentType: 'image/png',

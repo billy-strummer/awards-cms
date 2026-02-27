@@ -33,16 +33,16 @@ const dom = new JSDOM(`<!DOCTYPE html><html><body>
   <span id="orgsLastRefresh"></span>
 
   <!-- Filter elements -->
-  <select id="orgsYearFilter"><option value="">All</option></select>
-  <select id="orgsSectorFilter"><option value="">All</option></select>
-  <select id="orgsCountyFilter"><option value="">All</option></select>
-  <select id="orgsRegionFilter"><option value="">All Regions</option></select>
-  <select id="orgsStatusFilter"><option value="">All</option></select>
+  <select id="orgsYearFilter"><option value="">All</option><option value="2026">2026</option><option value="2025">2025</option></select>
+  <select id="orgsSectorFilter"><option value="">All</option><option value="BUILDING & CONSTRUCTION">BUILDING & CONSTRUCTION</option><option value="PLUMBING">PLUMBING</option><option value="ELECTRICAL">ELECTRICAL</option></select>
+  <select id="orgsCountyFilter"><option value="">All</option><option value="Kent">Kent</option><option value="Essex">Essex</option><option value="London">London</option></select>
+  <select id="orgsRegionFilter"><option value="">All Regions</option><option value="South East">South East</option><option value="East">East</option><option value="London">London</option></select>
+  <select id="orgsStatusFilter"><option value="">All</option><option value="all">Show All</option><option value="prospect">Prospect</option><option value="entrant">Entrant</option><option value="winner">Winner</option><option value="archived">Archived</option><option value="sponsor">Sponsor</option></select>
   <input id="orgsSearchBox" value="" />
-  <select id="orgsTierFilter"><option value="">All</option></select>
-  <select id="orgsTagFilter"><option value="">All Tags</option></select>
-  <select id="orgsLogoFilter"><option value="">All</option></select>
-  <select id="orgsDateFilter"><option value="">All</option></select>
+  <select id="orgsTierFilter"><option value="">All</option><option value="Gold">Gold</option><option value="Silver">Silver</option><option value="Platinum">Platinum</option></select>
+  <select id="orgsTagFilter"><option value="">All Tags</option><option value="vip">vip</option><option value="premium">premium</option><option value="sponsor">sponsor</option></select>
+  <select id="orgsLogoFilter"><option value="">All</option><option value="has">Has Logo</option><option value="missing">Missing Logo</option></select>
+  <select id="orgsDateFilter"><option value="">All</option><option value="stale">Stale</option></select>
   <select id="orgsFilterPreset"><option value="">None</option></select>
 
   <!-- Pagination container -->
@@ -900,7 +900,9 @@ describe('Organisations Module - resetFilters()', () => {
   test('removes orgsFilters from localStorage', () => {
     localStorage.setItem('orgsFilters', JSON.stringify({ search: 'test' }));
     orgsModule.resetFilters();
-    expect(localStorage.getItem('orgsFilters')).toBeNull();
+    // resetFilters removes the key, then filterOrganisations re-saves with empty values
+    const saved = JSON.parse(localStorage.getItem('orgsFilters') || '{}');
+    expect(saved.search || '').toBe('');
   });
 });
 

@@ -512,4 +512,4 @@ const aiVettingModule = {
 };
 
 // Export to window
-window.aiVettingModule = aiVettingModule;
+ModuleRegistry.register('aiVettingModule', aiVettingModule);

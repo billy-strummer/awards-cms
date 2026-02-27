@@ -2,7 +2,7 @@
 /* CALENDAR MODULE - ICS Export & Monthly Grid View   */
 /* ==================================================== */
 
-window.calendarModule = {
+const calendarModule = {
   _currentMonth: new Date().getMonth(),
   _currentYear:  new Date().getFullYear(),
   _dayItems: {},
@@ -294,3 +294,4 @@ window.calendarModule = {
     }
   }
 };
+ModuleRegistry.register('calendarModule', calendarModule);

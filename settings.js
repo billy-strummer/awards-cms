@@ -236,7 +236,7 @@ const settingsModule = {
         utils.showToast(`Restore complete: ${restored} records restored from backup (${backup.exportDate})`, 'success');
 
         // Reload data
-        if (typeof loadAllData === 'function') loadAllData();
+        window.location.reload();
 
       } catch (error) {
         console.error('Restore error:', error);
@@ -887,4 +887,4 @@ const settingsModule = {
 };
 
 // Export to window for global access
-window.settingsModule = settingsModule;
+ModuleRegistry.register('settingsModule', settingsModule);

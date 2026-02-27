@@ -30,7 +30,7 @@ const dom = new JSDOM(`<!DOCTYPE html><html><body>
   <span id="recentCommunicationsCount"></span>
   <span id="pendingFollowUpsCount"></span>
   <input id="crmCompanySearch" value="" />
-  <select id="crmSegmentFilter"><option value="">All Companies</option></select>
+  <select id="crmSegmentFilter"><option value="">All Companies</option><option value="Gold">Gold</option><option value="Silver">Silver</option><option value="VIP">VIP</option></select>
   <table><tbody id="companiesCrmTableBody"></tbody></table>
   <table><tbody id="communicationsTableBody"></tbody></table>
   <table><tbody id="dealsTableBody"></tbody></table>

@@ -1,6 +1,6 @@
 /* WINNER PIPELINE MODULE - Shortlisting to Winner | British Trade Awards CMS */
 
-window.winnerPipelineModule = {
+const winnerPipelineModule = {
 
   /* -------------------------------------------------- */
   /* 1. SCORE AGGREGATION                               */
@@ -319,3 +319,4 @@ window.winnerPipelineModule = {
     }
   },
 };
+ModuleRegistry.register('winnerPipelineModule', winnerPipelineModule);

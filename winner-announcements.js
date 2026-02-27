@@ -2,7 +2,7 @@
 /* WINNER ANNOUNCEMENTS MODULE - British Trade Awards CMS */
 /* ==================================================== */
 
-window.winnerAnnouncementsModule = {
+const winnerAnnouncementsModule = {
   _wizard: { step:1, selectedWinners:[], channels:[], scheduleAt:null, emailTemplateId:null, socialPlatforms:[], socialTemplate:null },
   _embargoMap: {},
 
@@ -394,3 +394,4 @@ window.winnerAnnouncementsModule = {
     } catch(e) { utils.showToast('Press release error: ' + e.message, 'error'); }
   }
 };
+ModuleRegistry.register('winnerAnnouncementsModule', winnerAnnouncementsModule);

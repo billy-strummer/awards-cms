@@ -2831,7 +2831,7 @@ const dashboardModule = {
 };
 
 // Export to window for global access
-window.dashboardModule = dashboardModule;
+ModuleRegistry.register('dashboardModule', dashboardModule);
 
 /**
  * Update tab count badges in the main navigation
@@ -2853,4 +2853,4 @@ function updateTabCounts() {
   const overdueCount = ((typeof paymentsModule !== 'undefined' && paymentsModule.allInvoices) || []).filter(i => i.status === 'overdue').length;
   setBadge('paymentsTabCount', overdueCount, overdueCount > 0 ? 'bg-danger' : 'bg-secondary');
 }
-window.updateTabCounts = updateTabCounts;
+ModuleRegistry.register('updateTabCounts', updateTabCounts);

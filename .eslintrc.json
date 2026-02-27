@@ -4,6 +4,7 @@
     "es2020": true
   },
   "globals": {
+    "ModuleRegistry": "readonly",
     "STATE": "readonly",
     "SUPABASE_CONFIG": "readonly",
     "STATUS": "readonly",
@@ -73,13 +74,13 @@
     "Choices": "readonly"
   },
   "parserOptions": {
-    "ecmaVersion": 2020,
+    "ecmaVersion": 2022,
     "sourceType": "script"
   },
   "rules": {
     "no-unused-vars": ["warn", { "argsIgnorePattern": "^_", "varsIgnorePattern": "^_" }],
     "no-undef": "error",
-    "no-redeclare": "error",
+    "no-redeclare": ["error", { "builtinGlobals": false }],
     "no-constant-condition": "warn",
     "no-dupe-keys": "error",
     "no-duplicate-case": "error",
@@ -99,10 +100,13 @@
   },
   "overrides": [
     {
-      "files": ["build.js", "check-schema.js", "diagnose.js", "scripts/**/*.js"],
+      "files": ["build.js", "check-schema.js", "diagnose.js", "bulk-csv-importer.js", "scripts/**/*.js"],
       "env": {
         "node": true,
         "browser": false
+      },
+      "rules": {
+        "no-console": "off"
       }
     },
     {

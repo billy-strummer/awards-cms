@@ -872,4 +872,4 @@ const assignmentsModule = {
 };
 
 // Export to window
-window.assignmentsModule = assignmentsModule;
+ModuleRegistry.register('assignmentsModule', assignmentsModule);

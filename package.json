@@ -3,7 +3,7 @@
     "node": "22.x"
   },
   "scripts": {
-    "lint": "eslint *.js api/*.js --max-warnings 50",
+    "lint": "eslint *.js api/*.js --max-warnings 0",
     "lint:fix": "eslint *.js api/*.js --fix",
     "test": "jest tests/ --forceExit",
     "build": "node build.js"

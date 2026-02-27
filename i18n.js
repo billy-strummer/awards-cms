@@ -276,4 +276,4 @@ const i18n = {
   }
 };
 
-window.i18n = i18n;
+ModuleRegistry.register('i18n', i18n);

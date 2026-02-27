@@ -91,12 +91,52 @@ const STATE = {
   filteredEntries: []
 };
 
-// Export to window for global access
-window.SUPABASE_CONFIG = SUPABASE_CONFIG;
-window.STATUS = STATUS;
-window.MEDIA_TYPES = MEDIA_TYPES;
-window.INACTIVITY_TIMEOUT = INACTIVITY_TIMEOUT;
-window.YEARS = YEARS;
-window.SECTORS = SECTORS;
-window.REGIONS = REGIONS;
-window.STATE = STATE;
+// ============================================
+// MODULE REGISTRY — centralised module management
+// ============================================
+// All modules register here instead of assigning to window directly.
+// The registry proxies them onto window for backward compat and event
+// delegation (actionRegistry resolves "moduleName.method" via window).
+const ModuleRegistry = {
+  _modules: new Map(),
+
+  /**
+   * Register a module globally.
+   * @param {string} name - Module name (e.g. "awardsModule")
+   * @param {object} mod  - The module object
+   */
+  register(name, mod) {
+    this._modules.set(name, mod);
+    // Expose on window for actionRegistry + template resolution
+    if (typeof window !== 'undefined') window[name] = mod;
+    // Also on globalThis for Node.js/test environments
+    if (typeof globalThis !== 'undefined') globalThis[name] = mod;
+  },
+
+  /**
+   * Get a registered module.
+   * @param {string} name
+   * @returns {object|undefined}
+   */
+  get(name) {
+    return this._modules.get(name);
+  },
+
+  /** List all registered module names */
+  list() {
+    return [...this._modules.keys()];
+  }
+};
+
+// Register constants via the registry
+ModuleRegistry.register('SUPABASE_CONFIG', SUPABASE_CONFIG);
+ModuleRegistry.register('STATUS', STATUS);
+ModuleRegistry.register('MEDIA_TYPES', MEDIA_TYPES);
+ModuleRegistry.register('INACTIVITY_TIMEOUT', INACTIVITY_TIMEOUT);
+ModuleRegistry.register('YEARS', YEARS);
+ModuleRegistry.register('SECTORS', SECTORS);
+ModuleRegistry.register('REGIONS', REGIONS);
+ModuleRegistry.register('STATE', STATE);
+// Expose ModuleRegistry globally (works in both browser and Node/test)
+if (typeof globalThis !== 'undefined') globalThis.ModuleRegistry = ModuleRegistry;
+if (typeof window !== 'undefined') window.ModuleRegistry = ModuleRegistry;

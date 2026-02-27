@@ -1,5 +1,5 @@
 /* NOTIFICATIONS MODULE — British Trade Awards CMS */
-window.notificationsModule = {
+const notificationsModule = {
   _pollInterval: null,
   _realtimeChannel: null,
   _unreadCount: 0,
@@ -219,7 +219,7 @@ window.notificationsModule = {
 
   async renderPreferences() {
     const email = STATE.currentUser.email;
-    let prefs = {};
+    const prefs = {};
     try {
       const { data } = await apiClient.select('notification_preferences', {
         select: 'type, enabled',
@@ -277,3 +277,4 @@ window.notificationsModule = {
     return `${Math.floor(diff / 86400)}d ago`;
   }
 };
+ModuleRegistry.register('notificationsModule', notificationsModule);

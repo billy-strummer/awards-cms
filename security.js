@@ -157,7 +157,7 @@ const securityModule = {
   _patchInnerHTML() {
     // In development, log innerHTML usage that might be XSS-vulnerable
     if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
-      console.info('Security: XSS monitoring active in development mode');
+      console.warn('Security: XSS monitoring active in development mode');
     }
   },
 
@@ -262,4 +262,4 @@ const securityModule = {
   }
 };
 
-window.securityModule = securityModule;
+ModuleRegistry.register('securityModule', securityModule);

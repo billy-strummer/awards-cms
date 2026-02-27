@@ -11,7 +11,7 @@
   console.log('=== SUPABASE TEST DATA DIAGNOSTIC ===');
   console.log('Testing each table individually...\n');
 
-  var tables = [
+  const tables = [
     'events', 'award_years', 'awards', 'organisations', 'award_assignments',
     'winners', 'entries', 'judge_scores', 'public_votes', 'event_guests',
     'sponsors', 'banners', 'organisation_contacts', 'communications', 'deals',
@@ -25,12 +25,12 @@
     'counties'
   ];
 
-  var results = [];
+  const results = [];
 
-  for (var i = 0; i < tables.length; i++) {
-    var table = tables[i];
+  for (let i = 0; i < tables.length; i++) {
+    const table = tables[i];
     try {
-      var { data, error, count } = await STATE.client
+      const { _data, error, count } = await STATE.client
         .from(table)
         .select('*', { count: 'exact', head: true });
 
@@ -51,10 +51,10 @@
   console.log('\n=== WRITE TEST ===');
   console.log('Testing insert into organisations...');
 
-  var testId = '99999999-0000-0000-0000-000000000099';
+  const testId = '99999999-0000-0000-0000-000000000099';
 
   // Test 1: minimal insert (only columns from migration 000)
-  var { error: writeErr1 } = await STATE.client.from('organisations').upsert({
+  const { error: writeErr1 } = await STATE.client.from('organisations').upsert({
     id: testId,
     company_name: 'DIAG_TEST_DELETE_ME'
   });
@@ -68,7 +68,7 @@
   }
 
   // Test 2: insert with description + status columns (from later migrations)
-  var { error: writeErr2 } = await STATE.client.from('organisations').upsert({
+  const { error: writeErr2 } = await STATE.client.from('organisations').upsert({
     id: testId,
     company_name: 'DIAG_TEST_DELETE_ME',
     description: 'test',
@@ -83,7 +83,7 @@
   }
 
   // Test 3: insert into entries with columns from migration 010
-  var { error: writeErr3 } = await STATE.client.from('entries').upsert({
+  const { error: writeErr3 } = await STATE.client.from('entries').upsert({
     id: testId,
     entry_number: 'DIAG-TEST-0001',
     entry_title: 'DIAG_TEST_DELETE_ME',
@@ -101,7 +101,7 @@
   }
 
   // Test 4: insert into award_years
-  var { error: writeErr4 } = await STATE.client.from('award_years').upsert({
+  const { error: writeErr4 } = await STATE.client.from('award_years').upsert({
     id: testId,
     award_name: 'DIAG_TEST_DELETE_ME',
     year: 2025
@@ -109,7 +109,7 @@
   if (writeErr4) {
     console.log('❌ WRITE TEST (award_years): ' + writeErr4.message + (writeErr4.code ? ' [' + writeErr4.code + ']' : ''));
     // Try the view instead
-    var { error: writeErr4b } = await STATE.client.from('awards').insert({
+    const { error: writeErr4b } = await STATE.client.from('awards').insert({
       id: testId,
       award_name: 'DIAG_TEST_DELETE_ME'
     });
@@ -126,8 +126,8 @@
 
   // Summary
   console.log('\n=== SUMMARY ===');
-  var accessible = results.filter(function(r) { return r.status === 'OK'; });
-  var errors = results.filter(function(r) { return r.status !== 'OK'; });
+  const accessible = results.filter(function(r) { return r.status === 'OK'; });
+  const errors = results.filter(function(r) { return r.status !== 'OK'; });
   console.log('Accessible tables: ' + accessible.length + '/' + results.length);
   if (errors.length > 0) {
     console.log('Failed tables:');

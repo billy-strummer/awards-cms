@@ -44,6 +44,9 @@ jobs:
           done
           echo "All API files pass syntax check"
 
+      - name: Lint JavaScript
+        run: npm run lint
+
       - name: Run tests
         run: npx jest tests/ --ci --coverage --forceExit
         env:

@@ -44,7 +44,7 @@ const authModule = {
   async testConnection() {
     try {
       // Try a simple query to test connectivity
-      const { data, error } = await STATE.client
+      const { _data, error } = await STATE.client
         .from('awards')
         .select('count', { count: 'exact', head: true });
       
@@ -423,4 +423,4 @@ const authModule = {
 };
 
 // Export to window for global access
-window.authModule = authModule;
+ModuleRegistry.register('authModule', authModule);

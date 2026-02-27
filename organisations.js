@@ -20,6 +20,11 @@ const orgsModule = {
   _currentPage: 1,
   _pageSize: 50,
 
+  // Server-side pagination state
+  _serverPagination: false,
+  _srvPagination: { page: 1, totalPages: 1, count: 0, pageSize: 50 },
+  _srvFetchId: 0,
+
   // Column visibility state (persistent via localStorage)
   _columnVisibility: (() => {
     try {
@@ -38,78 +43,8 @@ async loadOrganisations() {
     utils.showLoading();
     utils.showSkeletonLoading('orgsTableBody', 10);
 
-    // Load all organisations using server-side pagination helper
-    const allData = await serverQuery.loadAll({
-      table: 'organisations',
-      select: '*',
-      sort: { column: 'company_name', ascending: true }
-    });
-    
-    // Load award assignments to get county/region/sector for each org
-    const assignmentResult = await apiClient.selectAll('award_assignments', {
-      select: 'organisation_id, award_id'
-    });
-    const assignments = assignmentResult;
-
-    // Load awards with county
-    const awardResult = await apiClient.selectAll('awards', {
-      select: 'id, county, sector, year'
-    });
-    const awards = awardResult;
-
-    // Load counties table to map county → region
-    const countyResult = await apiClient.selectAll('counties', {
-      select: 'Name, regions(name)'
-    });
-    const counties = countyResult;
-    
-    // Create county → region lookup
-    const countyToRegion = {};
-    counties?.forEach(c => {
-      if (c.Name && c.regions?.name) {
-        countyToRegion[c.Name] = c.regions.name;
-      }
-    });
-    
-    // Create lookup maps
-    const orgAwardMap = {};      // org_id → first award_id (for county/region)
-    const orgAwardsCount = {};   // org_id → total assignments count
-    assignments?.forEach(a => {
-      if (!orgAwardMap[a.organisation_id]) {
-        orgAwardMap[a.organisation_id] = a.award_id;
-      }
-      orgAwardsCount[a.organisation_id] = (orgAwardsCount[a.organisation_id] || 0) + 1;
-    });
-
-    const awardMap = {};
-    awards?.forEach(a => {
-      awardMap[a.id] = a;
-    });
-
-    // Attach award data to organisations
-    // Priority: award-derived county > org's catchment_area (set by CSV import)
-    allData = allData.map(org => {
-      const awardId = orgAwardMap[org.id];
-      const award = awardMap[awardId];
-      const awardCounty = award?.county || null;
-      const county = awardCounty || org.catchment_area || null;
-      const region = county ? (countyToRegion[county] || org.region) : (org.region || null);
-
-      return {
-        ...org,
-        county: county,
-        region: region,
-        sector: award?.sector || org.sector || null,
-        year: award?.year || null,
-        awards_count: orgAwardsCount[org.id] || 0
-      };
-    });
-    
-    STATE.allOrganisations = allData;
-    STATE.filteredOrganisations = STATE.allOrganisations;
-
-    // Load last contacted dates for the table column
-    await this.loadLastContactedDates();
+    // Populate filter dropdowns from constants
+    this._populateFiltersFromConstants();
 
     // Initialize keyboard shortcuts
     this.initKeyboardShortcuts();
@@ -132,32 +67,22 @@ async loadOrganisations() {
     // Show overdue follow-up alert on page load
     this._showFollowUpAlert();
 
-    // Save current filter state in-memory before repopulating dropdowns
-    const savedFilters = {
-      year: document.getElementById('orgsYearFilter')?.value || '',
-      sector: document.getElementById('orgsSectorFilter')?.value || '',
-      region: document.getElementById('orgsRegionFilter')?.value || '',
-      county: document.getElementById('orgsCountyFilter')?.value || '',
-      status: document.getElementById('orgsStatusFilter')?.value || '',
-      search: document.getElementById('orgsSearchBox')?.value || ''
-    };
-
-    // Populate filter dropdowns (resets selections)
-    this.populateFilters();
-
-    // Restore filter state: prefer in-memory values, fall back to localStorage
+    // Restore filter state from localStorage
     const lsFilters = (() => { try { return JSON.parse(localStorage.getItem('orgsFilters') || '{}'); } catch (e) { return {}; } })();
-    document.getElementById('orgsYearFilter').value = savedFilters.year || lsFilters.year || '';
-    document.getElementById('orgsSectorFilter').value = savedFilters.sector || lsFilters.sector || '';
-    if (savedFilters.region || lsFilters.region) {
-      document.getElementById('orgsRegionFilter').value = savedFilters.region || lsFilters.region || '';
+    if (lsFilters.year) document.getElementById('orgsYearFilter').value = lsFilters.year;
+    if (lsFilters.sector) document.getElementById('orgsSectorFilter').value = lsFilters.sector;
+    if (lsFilters.region) {
+      document.getElementById('orgsRegionFilter').value = lsFilters.region;
       this.updateCountyFilterByRegion();
     }
-    document.getElementById('orgsCountyFilter').value = savedFilters.county || lsFilters.county || '';
-    document.getElementById('orgsStatusFilter').value = savedFilters.status || lsFilters.status || '';
-    document.getElementById('orgsSearchBox').value = savedFilters.search || lsFilters.search || '';
+    if (lsFilters.county) document.getElementById('orgsCountyFilter').value = lsFilters.county;
+    if (lsFilters.status) document.getElementById('orgsStatusFilter').value = lsFilters.status;
+    if (lsFilters.search) document.getElementById('orgsSearchBox').value = lsFilters.search;
 
-    this.filterOrganisations();
+    // Enable server-side pagination and fetch first page with active filters
+    this._serverPagination = true;
+    await this._srvFetchPage(1);
+
     this.populateSectorSuggestions();
     utils.trackDataLoad('organisations');
 
@@ -403,6 +328,160 @@ updateCountyFilterByRegion() {
 },
 
   /**
+   * Populate filter dropdowns from known constants
+   */
+  _populateFiltersFromConstants() {
+    const sectorSelect = document.getElementById('orgsSectorFilter');
+    if (sectorSelect) {
+      sectorSelect.innerHTML = '<option value="">All</option>' +
+        SECTORS.map(s => `<option value="${utils.escapeHtml(s)}">${utils.escapeHtml(s)}</option>`).join('');
+    }
+    const regionSelect = document.getElementById('orgsRegionFilter');
+    if (regionSelect) {
+      regionSelect.innerHTML = '<option value="">All Regions</option>' +
+        REGIONS.map(r => `<option value="${utils.escapeHtml(r)}">${utils.escapeHtml(r)}</option>`).join('');
+    }
+  },
+
+  /**
+   * Build server-side filters from current DOM filter state
+   */
+  _buildOrgServerFilters() {
+    const filters = {};
+    const status = document.getElementById('orgsStatusFilter')?.value;
+    const sector = document.getElementById('orgsSectorFilter')?.value;
+    const county = document.getElementById('orgsCountyFilter')?.value;
+    const region = document.getElementById('orgsRegionFilter')?.value;
+
+    if (status && status !== 'all') filters.status = status;
+    if (sector) filters.sector = sector;
+    if (county) filters.county = county;
+    if (region) filters.region = region;
+    return filters;
+  },
+
+  /**
+   * Fetch a specific page of organisations from the server
+   */
+  async _srvFetchPage(page) {
+    const fetchId = ++this._srvFetchId;
+    const filters = this._buildOrgServerFilters();
+    const search = document.getElementById('orgsSearchBox')?.value?.trim();
+
+    const sortCol = this.sortField || 'company_name';
+    const sortAsc = this.sortDirection === 'asc';
+
+    const result = await apiClient.select('organisations', {
+      filters,
+      search: search ? { term: search, columns: ['company_name', 'contact_name', 'email'] } : undefined,
+      sort: { column: sortCol, ascending: sortAsc },
+      page,
+      pageSize: this._pageSize
+    });
+
+    if (fetchId !== this._srvFetchId) return;
+
+    const pageData = result.data || [];
+
+    // Enrich page data with award assignments
+    await this._enrichOrgPageData(pageData);
+
+    STATE.allOrganisations = pageData;
+    STATE.filteredOrganisations = pageData;
+    this._srvPagination = { page: result.page, totalPages: result.totalPages, count: result.count, pageSize: result.pageSize };
+    this._currentPage = 1; // client-side pagination within the server page is not needed
+
+    this.renderOrganisations();
+  },
+
+  /**
+   * Enrich a page of organisation records with award/county/region data
+   */
+  async _enrichOrgPageData(orgs) {
+    if (!orgs.length) return;
+    const orgIds = orgs.map(o => o.id).filter(Boolean);
+
+    try {
+      // Batch lookup assignments for orgs on this page
+      const { data: assignments } = await apiClient.select('award_assignments', {
+        select: 'organisation_id, award_id',
+        filters: { organisation_id: { op: 'in', value: orgIds } },
+        pageSize: 1000
+      });
+
+      // Collect unique award IDs
+      const orgAwardMap = {};
+      const orgAwardsCount = {};
+      (assignments || []).forEach(a => {
+        if (!orgAwardMap[a.organisation_id]) orgAwardMap[a.organisation_id] = a.award_id;
+        orgAwardsCount[a.organisation_id] = (orgAwardsCount[a.organisation_id] || 0) + 1;
+      });
+
+      // Fetch award details for enrichment
+      const awardIds = [...new Set(Object.values(orgAwardMap))];
+      const awardMap = {};
+      if (awardIds.length > 0) {
+        const { data: awardData } = await apiClient.select('awards', {
+          select: 'id, county, sector, year',
+          filters: { id: { op: 'in', value: awardIds } },
+          pageSize: 1000
+        });
+        (awardData || []).forEach(a => { awardMap[a.id] = a; });
+      }
+
+      // Fetch county→region mapping
+      const uniqueCounties = [...new Set([
+        ...orgs.map(o => o.catchment_area).filter(Boolean),
+        ...Object.values(awardMap).map(a => a.county).filter(Boolean)
+      ])];
+      const countyToRegion = {};
+      if (uniqueCounties.length > 0) {
+        try {
+          const { data: countyData } = await apiClient.select('counties', {
+            select: 'Name, regions(name)',
+            filters: { Name: { op: 'in', value: uniqueCounties } },
+            pageSize: 1000
+          });
+          (countyData || []).forEach(c => {
+            if (c.Name && c.regions?.name) countyToRegion[c.Name] = c.regions.name;
+          });
+        } catch (_e) { /* counties table may not exist */ }
+      }
+
+      // Attach enriched data
+      orgs.forEach(org => {
+        const awardId = orgAwardMap[org.id];
+        const award = awardMap[awardId];
+        const awardCounty = award?.county || null;
+        org.county = awardCounty || org.catchment_area || org.county || null;
+        org.region = org.county ? (countyToRegion[org.county] || org.region || null) : (org.region || null);
+        org.sector = award?.sector || org.sector || null;
+        org.year = award?.year || org.year || null;
+        org.awards_count = orgAwardsCount[org.id] || 0;
+      });
+    } catch (err) {
+      console.warn('Failed to enrich org data:', err.message);
+    }
+  },
+
+  /**
+   * Navigate to a specific page (called from pagination controls)
+   */
+  async _srvGoToPage(page) {
+    page = Math.max(1, Math.min(page, this._srvPagination.totalPages));
+    if (page === this._srvPagination.page) return;
+    try {
+      utils.showLoading();
+      await this._srvFetchPage(page);
+    } catch (error) {
+      console.error('Error navigating orgs page:', error);
+      utils.showToast('Error loading page: ' + error.message, 'error');
+    } finally {
+      utils.hideLoading();
+    }
+  },
+
+  /**
    * Filter organisations based on all filters (Enhanced)
    */
   filterOrganisations() {
@@ -423,6 +502,16 @@ updateCountyFilterByRegion() {
     localStorage.setItem('orgsFilters', JSON.stringify({ year, sector, county, region, status, search, tier, tag, logoFilter, dateFilter }));
   } catch (e) { /* ignore */ }
 
+  // Server-side pagination: send filters to server and re-fetch page 1
+  if (this._serverPagination) {
+    this._srvFetchPage(1).catch(err => {
+      console.error('Error filtering organisations:', err);
+      utils.showToast('Error filtering organisations: ' + err.message, 'error');
+    });
+    return;
+  }
+
+  // Client-side fallback (used by tests and when data is pre-loaded)
   // Hide archived by default unless status filter is 'archived' or 'all'
   const showArchived = status === 'archived' || status === 'all';
 
@@ -537,18 +626,28 @@ updateCountyFilterByRegion() {
   const total = document.getElementById('orgsTotal');
   const lastRefresh = document.getElementById('orgsLastRefresh');
 
-  // Pagination calculations
-  const totalFiltered = STATE.filteredOrganisations.length;
-  const totalPages = Math.max(1, Math.ceil(totalFiltered / this._pageSize));
-  if (this._currentPage > totalPages) this._currentPage = totalPages;
-  if (this._currentPage < 1) this._currentPage = 1;
-  const startIdx = (this._currentPage - 1) * this._pageSize;
-  const endIdx = Math.min(startIdx + this._pageSize, totalFiltered);
-  const pageOrgs = STATE.filteredOrganisations.slice(startIdx, endIdx);
-
-  if (count) count.textContent = totalFiltered;
-  if (showing) showing.textContent = pageOrgs.length > 0 ? `${startIdx + 1}-${endIdx}` : '0';
-  if (total) total.textContent = STATE.allOrganisations.length;
+  // Server-side: data is already one page; client-side: slice locally
+  let pageOrgs, totalFiltered;
+  if (this._serverPagination) {
+    pageOrgs = STATE.filteredOrganisations;
+    totalFiltered = this._srvPagination.count;
+    const from = ((this._srvPagination.page - 1) * this._srvPagination.pageSize) + 1;
+    const to = Math.min(this._srvPagination.page * this._srvPagination.pageSize, totalFiltered);
+    if (count) count.textContent = totalFiltered;
+    if (showing) showing.textContent = pageOrgs.length > 0 ? `${from}-${to}` : '0';
+    if (total) total.textContent = totalFiltered;
+  } else {
+    totalFiltered = STATE.filteredOrganisations.length;
+    const totalPages = Math.max(1, Math.ceil(totalFiltered / this._pageSize));
+    if (this._currentPage > totalPages) this._currentPage = totalPages;
+    if (this._currentPage < 1) this._currentPage = 1;
+    const startIdx = (this._currentPage - 1) * this._pageSize;
+    const endIdx = Math.min(startIdx + this._pageSize, totalFiltered);
+    pageOrgs = STATE.filteredOrganisations.slice(startIdx, endIdx);
+    if (count) count.textContent = totalFiltered;
+    if (showing) showing.textContent = pageOrgs.length > 0 ? `${startIdx + 1}-${endIdx}` : '0';
+    if (total) total.textContent = STATE.allOrganisations.length;
+  }
   if (lastRefresh) lastRefresh.textContent = new Date().toLocaleTimeString('en-GB');
 
   // Column visibility helper
@@ -586,7 +685,7 @@ updateCountyFilterByRegion() {
   tbody.innerHTML = pageOrgs.map(org => {
     const isSelected = this.selectedOrgs.has(org.id);
     const awardsCount = org.awards_count || 0;
-    const escapedName = utils.escapeHtml(org.company_name || '').replace(/'/g, "\\'");
+    const escapedName = (org.company_name || '').replace(/<[^>]*>/g, '').replace(/'/g, "\\'").replace(/"/g, '&quot;');
     const tierColors = { 'Bronze': '#CD7F32', 'Silver': '#C0C0C0', 'Gold': '#FFD700', 'Platinum': '#E5E4E2' };
     const tierColor = tierColors[org.tier] || '';
     const updatedDate = org.updated_at || org.created_at;
@@ -708,7 +807,22 @@ updateCountyFilterByRegion() {
   }).join('');
 
     this.updateSortIndicators();
-    this._renderPaginationControls(totalFiltered, totalPages);
+
+    // Use server-side pagination controls when in server mode
+    if (this._serverPagination) {
+      // Create pagination container if needed
+      let pagEl = document.getElementById('orgsPagination');
+      if (!pagEl) {
+        pagEl = document.createElement('div');
+        pagEl.id = 'orgsPagination';
+        const footer = document.querySelector('#orgTableContainer .card-footer');
+        if (footer) footer.appendChild(pagEl);
+      }
+      utils.renderServerPagination('orgsPagination', this._srvPagination, 'orgsModule._srvGoToPage');
+    } else {
+      const totalPages = Math.max(1, Math.ceil(totalFiltered / this._pageSize));
+      this._renderPaginationControls(totalFiltered, totalPages);
+    }
 },
   /**
    * Open company profile modal
@@ -751,7 +865,7 @@ updateCountyFilterByRegion() {
     // Increase z-index when opened from another modal (e.g., assignments modal)
     // This ensures the company profile modal appears on top
     const modalElement = document.getElementById('companyProfileModal');
-    const backdrop = document.querySelector('.modal-backdrop');
+    const _backdrop = document.querySelector('.modal-backdrop');
 
     // Set higher z-index for modal and backdrop to appear above other modals
     setTimeout(() => {
@@ -1742,7 +1856,7 @@ updateCountyFilterByRegion() {
           const fileName = `logos/${orgId}/${timestamp}.${fileExt}`;
 
           // Upload to Supabase Storage
-          const { data: uploadData, error: uploadError } = await STATE.client.storage
+          const { data: _uploadData, error: uploadError } = await STATE.client.storage
             .from('organisation-logos')
             .upload(fileName, file, {
               cacheControl: '3600',
@@ -1922,7 +2036,7 @@ updateCountyFilterByRegion() {
 
       // Check dimensions of each image
       const validLogos = [];
-      let checkedCount = 0;
+      let checkedCount = 0; // eslint-disable-line no-unused-vars
 
       for (const media of imageMedia) {
         // Load image to check dimensions
@@ -2006,7 +2120,7 @@ updateCountyFilterByRegion() {
    * @param {string} fileUrl - URL of the selected image
    * @param {string} mediaId - Media ID
    */
-  async setLogoFromGallery(orgId, fileUrl, mediaId) {
+  async setLogoFromGallery(orgId, fileUrl, _mediaId) {
     try {
       utils.showLoading();
 
@@ -2046,7 +2160,7 @@ updateCountyFilterByRegion() {
    * @param {string} [websiteUrl] - Company website URL (optional, looked up from state)
    * @param {string} [companyName] - Company name (optional)
    */
-  async fetchLogoFromWebsite(orgId, websiteUrl, companyName) {
+  async fetchLogoFromWebsite(orgId, websiteUrl, _companyName) {
     try {
       // If no websiteUrl provided, look it up from state
       if (!websiteUrl) {
@@ -2056,7 +2170,7 @@ updateCountyFilterByRegion() {
           return;
         }
         websiteUrl = org.website;
-        companyName = org.company_name;
+        _companyName = org.company_name; // eslint-disable-line no-unused-vars
       }
 
       utils.showLoading('Fetching logo...');
@@ -2064,7 +2178,7 @@ updateCountyFilterByRegion() {
       // Clean up the website URL to get the domain
       let cleanUrl = websiteUrl.trim();
       if (!cleanUrl.startsWith('http')) cleanUrl = 'https://' + cleanUrl;
-      let domain = new URL(cleanUrl).hostname.replace(/^www\./, '');
+      const domain = new URL(cleanUrl).hostname.replace(/^www\./, '');
 
       // Try multiple logo services in order
       const logoServices = [
@@ -2185,7 +2299,7 @@ updateCountyFilterByRegion() {
             const fileName = `company-images/${this.currentOrgIdForImages}/${timestamp}_${randomSuffix}_${file.name}`;
 
             // Upload file to Supabase Storage
-            const { data: uploadData, error: uploadError } = await STATE.client.storage
+            const { data: _uploadData, error: uploadError } = await STATE.client.storage
               .from('media-gallery')
               .upload(fileName, file);
 
@@ -2317,7 +2431,7 @@ updateCountyFilterByRegion() {
    * Enable edit mode for organisation profile
    * @param {string} orgId - Organisation ID
    */
-  enableEditMode(orgId) {
+  enableEditMode(_orgId) {
     // Hide view elements and show edit elements
     document.querySelectorAll('.view-mode').forEach(el => el.style.display = 'none');
     document.querySelectorAll('.edit-mode').forEach(el => el.style.display = 'block');
@@ -3038,7 +3152,7 @@ updateCountyFilterByRegion() {
     const contactsByOrg = this._bulkEmailContacts || {};
 
     // Build full email list
-    let allEmails = selectedData.map(o => o.email);
+    const allEmails = selectedData.map(o => o.email);
     if (includeContacts) {
       Object.values(contactsByOrg).forEach(contacts => {
         contacts.forEach(c => { if (c.email && !allEmails.includes(c.email)) allEmails.push(c.email); });
@@ -3069,7 +3183,7 @@ updateCountyFilterByRegion() {
     // Log all communications to Supabase
     try {
       const templateId = document.getElementById('bulkEmailTemplate')?.value || 'custom';
-      const performedBy = await this._getCurrentUserEmail();
+      const _performedBy = await this._getCurrentUserEmail();
       const commsRecords = selectedData.map(org => ({
         organisation_id: org.id,
         template_id: templateId,
@@ -3596,7 +3710,7 @@ updateCountyFilterByRegion() {
     const org = STATE.allOrganisations.find(o => o.id === orgId) || {};
     const templates = this._emailTemplates;
 
-    let html = `<div class="list-group">
+    const html = `<div class="list-group">
       ${templates.map(t => {
         const subject = t.subject.replace(/{company_name}/g, org.company_name || '').replace(/{contact_name}/g, org.contact_name || 'Sir/Madam');
         const body = t.body.replace(/{company_name}/g, org.company_name || '').replace(/{contact_name}/g, org.contact_name || 'Sir/Madam');
@@ -3850,7 +3964,7 @@ updateCountyFilterByRegion() {
     }
   },
 
-  cancelInlineEdit(element, orgId) {
+  cancelInlineEdit(element, _orgId) {
     const td = element.closest('td');
     if (td) {
       td.classList.remove('inline-edit-active');
@@ -4344,7 +4458,6 @@ updateCountyFilterByRegion() {
       }
 
       // Handle merge mode: update existing records
-      let mergeCount = 0;
       if (mergeRows.length > 0) {
         for (const item of mergeRows) {
           try {
@@ -4360,7 +4473,6 @@ updateCountyFilterByRegion() {
               });
               if (Object.keys(updateData).length > 0) {
                 await apiClient.update('organisations', existingOrg.id, updateData);
-                mergeCount++;
               }
             }
           } catch (e) { console.error('Merge error:', e); }
@@ -4981,7 +5093,7 @@ updateCountyFilterByRegion() {
     const phone = org.contact_phone || '';
     const cleanPhone = phone.replace(/[^0-9+]/g, '');
 
-    let html = `<div class="mb-3"><strong>Phone:</strong> ${utils.escapeHtml(phone || 'No phone number')}</div>
+    const html = `<div class="mb-3"><strong>Phone:</strong> ${utils.escapeHtml(phone || 'No phone number')}</div>
     <h6 class="fw-semibold mb-2">SMS Templates</h6>
     <div class="list-group mb-3">
       ${this._smsTemplates.map(t => {
@@ -5011,7 +5123,7 @@ updateCountyFilterByRegion() {
     utils.showLoading();
     try {
       const log = await this.getAuditLog(null);
-      let html = `<div class="row g-2 mb-3">
+      const html = `<div class="row g-2 mb-3">
         <div class="col-md-3"><select class="form-select form-select-sm" id="auditActionFilter" onchange="orgsModule._filterAuditLog()">
           <option value="">All Actions</option>
           <option value="status_change">Status Change</option><option value="archived">Archived</option>
@@ -5262,7 +5374,7 @@ updateCountyFilterByRegion() {
 
     const fields = ['company_name', 'contact_name', 'email', 'contact_phone', 'website', 'sector', 'region', 'address', 'catchment_area', 'description', 'tier', 'status', 'logo_url'];
 
-    let html = `<div class="alert alert-warning small"><i class="bi bi-exclamation-triangle me-2"></i>Select which value to keep for each field. The other organisation will be deleted.</div>
+    const html = `<div class="alert alert-warning small"><i class="bi bi-exclamation-triangle me-2"></i>Select which value to keep for each field. The other organisation will be deleted.</div>
     <table class="table table-sm"><thead><tr><th>Field</th><th>Organisation A</th><th>Organisation B</th></tr></thead><tbody>
     ${fields.map(f => {
       const v1 = org1[f] || '';
@@ -5288,7 +5400,7 @@ updateCountyFilterByRegion() {
     const fields = ['company_name', 'contact_name', 'email', 'contact_phone', 'website', 'sector', 'region', 'address', 'catchment_area', 'description', 'tier', 'status', 'logo_url'];
 
     const merged = {};
-    let keepId = id1, deleteId = id2;
+    const keepId = id1, deleteId = id2;
     fields.forEach(f => {
       const radio = document.querySelector(`input[name="merge_${f}"]:checked`);
       if (radio?.value === 'b') {
@@ -6422,7 +6534,7 @@ updateCountyFilterByRegion() {
         })
         .subscribe((status) => {
           if (status === 'SUBSCRIBED') {
-            console.log('Organisations realtime: subscribed');
+            console.warn('Organisations realtime: subscribed');
           }
         });
     } catch (e) {
@@ -7096,7 +7208,7 @@ updateCountyFilterByRegion() {
         ${names.map(n => `<div class="list-group-item d-flex justify-content-between align-items-center">
           <div>
             <strong>${utils.escapeHtml(n)}</strong>
-            <div class="small text-muted">${Object.entries(views[n].filters).filter(([k,v]) => v).map(([k,v]) => `${k}: ${utils.escapeHtml(v)}`).join(', ') || 'No filters'}</div>
+            <div class="small text-muted">${Object.entries(views[n].filters).filter(([_k,v]) => v).map(([k,v]) => `${k}: ${utils.escapeHtml(v)}`).join(', ') || 'No filters'}</div>
           </div>
           <div class="d-flex gap-1">
             <button class="btn btn-sm btn-primary" onclick="orgsModule.loadView('${utils.escapeHtml(n).replace(/'/g, "\\'")}')"><i class="bi bi-box-arrow-in-right"></i></button>
@@ -7262,7 +7374,7 @@ updateCountyFilterByRegion() {
 
   _getSegmentRules() {
     const rules = [];
-    document.querySelectorAll('.segment-rule').forEach((el, i) => {
+    document.querySelectorAll('.segment-rule').forEach((el, _i) => {
       const field = el.querySelector('[id^="segField"]')?.value;
       const op = el.querySelector('[id^="segOp"]')?.value;
       const val = el.querySelector('[id^="segVal"]')?.value.trim();
@@ -7411,7 +7523,7 @@ updateCountyFilterByRegion() {
       const html = `
         <p class="small text-muted mb-3">Results for "<strong>${utils.escapeHtml(searchName)}</strong>" from Companies House</p>
         <div class="list-group">
-          ${items.map((c, idx) => `<div class="list-group-item">
+          ${items.map((c, _idx) => `<div class="list-group-item">
             <div class="d-flex justify-content-between">
               <div>
                 <strong>${utils.escapeHtml(c.title)}</strong>
@@ -7851,4 +7963,4 @@ updateCountyFilterByRegion() {
 };
 
 // Export to window for global access
-window.orgsModule = orgsModule;
+ModuleRegistry.register('orgsModule', orgsModule);

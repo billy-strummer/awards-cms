@@ -5,6 +5,11 @@
 const eventsModule = {
   _loading: false,
 
+  // Server-side pagination state
+  _serverPagination: false,
+  _srvPagination: { page: 1, totalPages: 1, count: 0, pageSize: 50 },
+  _srvFetchId: 0,
+
   /**
    * Load all events from database
    */
@@ -15,14 +20,9 @@ const eventsModule = {
       utils.showLoading();
       utils.showSkeletonLoading('eventsTableBody', 11);
 
-      // Paginated loading for large event datasets
-      const allData = await apiClient.selectAll('events', {
-        sort: { column: 'event_date', ascending: false }
-      });
-
-      STATE.allEvents = allData;
-      this.populateYearFilter();
-      this._eventAwardCounts = {}; // Clear cache on reload
+      // Populate year filter from constants
+      this._populateYearFilterFromConstants();
+      this._eventAwardCounts = {};
       this._eventAttendeeCounts = {};
 
       // Restore saved filters from localStorage
@@ -34,11 +34,14 @@ const eventsModule = {
         if (saved.eventStatus) document.getElementById('eventsEventStatusFilter').value = saved.eventStatus;
       } catch(e) { console.warn('Failed to restore event filters:', e.message); }
 
+      // Enable server-side pagination and fetch first page
+      this._serverPagination = true;
+      await this._srvFetchPage(1);
+
       this.updateEventStats();
-      this.filterEvents();
       this.renderFinancialOverview();
 
-      console.warn(`Loaded ${STATE.allEvents.length} events`);
+      console.warn(`Loaded events (page 1, total: ${this._srvPagination.count})`);
       utils.trackDataLoad('events');
 
     } catch (error) {
@@ -48,6 +51,83 @@ const eventsModule = {
     } finally {
       utils.hideLoading();
       this._loading = false;
+    }
+  },
+
+  /**
+   * Populate year filter from YEARS constant
+   */
+  _populateYearFilterFromConstants() {
+    const yearSelect = document.getElementById('eventsYearFilter');
+    if (yearSelect) {
+      yearSelect.innerHTML = '<option value="">All Years</option>' +
+        YEARS.map(y => `<option value="${y}">${y}</option>`).join('');
+    }
+  },
+
+  /**
+   * Build server-side filters from current DOM state
+   */
+  _buildEvtServerFilters() {
+    const filters = {};
+    const year = document.getElementById('eventsYearFilter')?.value;
+    const eventStatus = document.getElementById('eventsEventStatusFilter')?.value;
+
+    if (year) filters.year = parseInt(year);
+    if (eventStatus) filters.event_status = eventStatus;
+
+    // Time-based filters (upcoming/past) need date comparison
+    const timeStatus = document.getElementById('eventsStatusFilter')?.value;
+    const today = new Date().toISOString().split('T')[0];
+    if (timeStatus === 'upcoming') filters.event_date = { op: 'gte', value: today };
+    if (timeStatus === 'past') filters.event_date = { op: 'lt', value: today };
+
+    return filters;
+  },
+
+  /**
+   * Fetch a specific page of events from the server
+   */
+  async _srvFetchPage(page) {
+    const fetchId = ++this._srvFetchId;
+    const filters = this._buildEvtServerFilters();
+    const search = document.getElementById('eventsSearchBox')?.value?.trim();
+
+    const sortField = this._sortField || 'event_date';
+    const sortDir = this._sortDir || 'desc';
+
+    const result = await apiClient.select('events', {
+      filters,
+      search: search ? { term: search, columns: ['event_name', 'venue', 'description'] } : undefined,
+      sort: { column: sortField, ascending: sortDir === 'asc' },
+      page,
+      pageSize: this._evtPageSize || 50
+    });
+
+    if (fetchId !== this._srvFetchId) return;
+
+    const pageData = result.data || [];
+    STATE.allEvents = pageData;
+    this._srvPagination = { page: result.page, totalPages: result.totalPages, count: result.count, pageSize: result.pageSize };
+    this._lastFilteredEvents = pageData;
+
+    this.renderFilteredEvents(pageData);
+  },
+
+  /**
+   * Navigate to a specific page (called from pagination controls)
+   */
+  async _srvGoToPage(page) {
+    page = Math.max(1, Math.min(page, this._srvPagination.totalPages));
+    if (page === this._srvPagination.page) return;
+    try {
+      utils.showLoading();
+      await this._srvFetchPage(page);
+    } catch (error) {
+      console.error('Error navigating events page:', error);
+      utils.showToast('Error loading page: ' + error.message, 'error');
+    } finally {
+      utils.hideLoading();
     }
   },
 
@@ -2298,7 +2378,7 @@ const eventsModule = {
       netDisplay.className = `fw-bold ${netPL >= 0 ? 'text-success' : 'text-danger'}`;
     }
 
-    const categories = ['Venue', 'Catering', 'AV/Production', 'Entertainment', 'Trophies/Awards', 'Print/Stationery', 'Transport', 'Staffing', 'Marketing', 'Gifts/Swag', 'Other'];
+    const _categories = ['Venue', 'Catering', 'AV/Production', 'Entertainment', 'Trophies/Awards', 'Print/Stationery', 'Transport', 'Staffing', 'Marketing', 'Gifts/Swag', 'Other'];
 
     if (items.length === 0) {
       utils.showEnhancedEmptyState('budgetTableBody', 7, { icon: 'bi-calculator', message: 'No budget items', description: 'Click "Add Item" to start tracking' });
@@ -2333,7 +2413,7 @@ const eventsModule = {
   },
 
   addBudgetItem() {
-    const eventId = document.getElementById('attendeesEventId').value;
+    const _eventId = document.getElementById('attendeesEventId').value;
     const categories = ['Venue', 'Catering', 'AV/Production', 'Entertainment', 'Trophies/Awards', 'Print/Stationery', 'Transport', 'Staffing', 'Marketing', 'Gifts/Swag', 'Other'];
     const html = `
       <div class="modal fade" id="budgetItemModal" tabindex="-1">
@@ -2646,7 +2726,7 @@ const eventsModule = {
     const container = document.getElementById('specialReqsContent');
     if (!container) return;
     const attendees = (await this.getAttendees(eventId)).filter(a => a.status === 'attending');
-    const event = STATE.allEvents.find(e => e.id === eventId);
+    const _event = STATE.allEvents.find(e => e.id === eventId);
     const reqs = this._getSpecialReqs(eventId);
 
     // Accessibility summary
@@ -3598,7 +3678,7 @@ const eventsModule = {
 
     const totalRevenue = (event?.ticket_price || 0) * attending.length;
     const totalSpent = budget.items ? budget.items.reduce((s, i) => s + (parseFloat(i.actual) || 0), 0) : 0;
-    const sponsorVendors = vendors.filter(v => v.category === 'Sponsorship' || (v.notes || '').toLowerCase().includes('sponsor'));
+    const _sponsorVendors = vendors.filter(v => v.category === 'Sponsorship' || (v.notes || '').toLowerCase().includes('sponsor'));
 
     return `
       <div class="row g-3 mb-3">
@@ -3792,7 +3872,7 @@ const eventsModule = {
   // ========================================
 
   async exportPostEventPack() {
-    const eventId = document.getElementById('attendeesEventId').value;
+    const _eventId = document.getElementById('attendeesEventId').value;
     utils.showToast('Generating exports... check your downloads', 'info');
 
     // Export attendance report
@@ -4696,7 +4776,7 @@ const eventsModule = {
     }
   },
 
-  handleDragLeave(event) {
+  handleDragLeave(_event) {
     // No-op, visual cleanup handled by dragEnd
   },
 
@@ -4759,7 +4839,7 @@ const eventsModule = {
     }
   },
 
-  handleTouchEnd(event) {
+  handleTouchEnd(_event) {
     if (this.isPublished || !this._roTouchItem) return;
     clearTimeout(this._roTouchItem._touchTimeout);
     if (this._roTouchItem.classList.contains('dragging')) {
@@ -5286,7 +5366,7 @@ const eventsModule = {
     const items = this.runningOrderItems;
     const current = items[currentIdx];
     const next = items[currentIdx + 1] || null;
-    const prev = items[currentIdx - 1] || null;
+    const _prev = items[currentIdx - 1] || null;
 
     const completedCount = items.filter(i => i.status === 'completed').length;
     const totalCount = items.length;
@@ -5768,7 +5848,7 @@ const eventsModule = {
     `;
 
     let presNum = 0;
-    items.forEach((item, idx) => {
+    items.forEach((item, _idx) => {
       const isBreak = (item.item_type || 'award') !== 'award';
       if (!isBreak) presNum++;
       const awardName = item.award_name || 'TBC';
@@ -6243,7 +6323,7 @@ const eventsModule = {
 
     this._roPushUndo();
 
-    const orgKey = item.organisation_id || item.display_name;
+    const _orgKey = item.organisation_id || item.display_name;
     const groupId = item.organisation_id || `group_${Date.now()}`;
 
     // Find all items for this org
@@ -6261,7 +6341,7 @@ const eventsModule = {
     orgItems.forEach(i => { i.presentation_group = groupId; });
 
     // Move all grouped items to be adjacent (after the first one's position)
-    const firstIdx = this.runningOrderItems.indexOf(orgItems[0]);
+    const _firstIdx = this.runningOrderItems.indexOf(orgItems[0]);
     const others = orgItems.slice(1);
 
     // Remove others from their current positions
@@ -6397,7 +6477,7 @@ const eventsModule = {
 
       // 2. Get winner assignments for these organisations
       const orgIds = [...new Set(guests.map(g => g.organisation_id).filter(Boolean))];
-      let assignMap = {};
+      const assignMap = {};
       if (orgIds.length > 0) {
         const assigns = await apiClient.selectAll('award_assignments', {
           select: 'award_id, organisation_id',
@@ -6411,7 +6491,7 @@ const eventsModule = {
 
       // 3. Get award names
       const allAwardIds = [...new Set(Object.values(assignMap).flat())];
-      let awardMap = {};
+      const awardMap = {};
       if (allAwardIds.length > 0) {
         const awards = await apiClient.selectAll('awards', {
           select: 'id, award_name',
@@ -6421,7 +6501,7 @@ const eventsModule = {
       }
 
       // 4. Get org names
-      let orgMap = {};
+      const orgMap = {};
       if (orgIds.length > 0) {
         const orgs = await apiClient.selectAll('organisations', {
           select: 'id, company_name',
@@ -6905,7 +6985,7 @@ const eventsModule = {
       }
 
       // 1. Load all awards for this event's year with their winner assignments
-      let awardsQuery = STATE.client
+      const awardsQuery = STATE.client
         .from('award_years')
         .select('id, award_name, award_category, sector')
         .eq('year', event.year)
@@ -6930,7 +7010,7 @@ const eventsModule = {
 
       // 3. Load organisation names for winners
       const orgIds = [...new Set((assignments || []).map(a => a.organisation_id).filter(Boolean))];
-      let orgsMap = {};
+      const orgsMap = {};
       if (orgIds.length > 0) {
         const { data: orgs } = await STATE.client
           .from('organisations')
@@ -6940,7 +7020,7 @@ const eventsModule = {
       }
 
       // 4. Look up guest contacts per org (for recipient_collecting)
-      let guestByOrg = {};
+      const guestByOrg = {};
       if (orgIds.length > 0) {
         try {
           const { data: eg } = await STATE.client
@@ -8194,7 +8274,7 @@ const eventsModule = {
 
         // Enrich with company name from organisations if possible
         const orgIds = [...new Set(allGuests.filter(g => g.organisation_id).map(g => g.organisation_id))];
-        let orgMap = {};
+        const orgMap = {};
         if (orgIds.length > 0) {
           const { data: orgs } = await STATE.client
             .from('organisations')
@@ -8335,7 +8415,7 @@ const eventsModule = {
       }
     } else if (layout === 'banquet') {
       // Two columns with aisle
-      const rows = Math.ceil(count / 2);
+      const _rows = Math.ceil(count / 2);
       const startX = 200;
       const startY = 100;
       const aisleWidth = spacing + 80;
@@ -8635,7 +8715,7 @@ const eventsModule = {
         const newH = Math.max(60, Math.min(startH + delta, window.innerHeight * 0.7));
         panel.style.height = newH + 'px';
       };
-      const onUp = (ev) => {
+      const onUp = (_ev) => {
         document.removeEventListener('mousemove', onMove);
         document.removeEventListener('mouseup', onUp);
         panel.classList.remove('tp-resizing');
@@ -9000,7 +9080,7 @@ const eventsModule = {
 
   toggleCanvasFullscreen() {
     // Target the canvas column (toolbar + wrapper + bottom index) for true fullscreen
-    const modal = document.getElementById('tablePlanModal');
+    const _modal = document.getElementById('tablePlanModal');
     const target = document.getElementById('tpCanvasWrapper')?.closest('.d-flex.flex-column.flex-grow-1');
     if (!target) return;
     if (document.fullscreenElement) {
@@ -9050,7 +9130,7 @@ const eventsModule = {
       this._tableDrag.el.style.top = newY + 'px';
     };
 
-    const onUp = async (e) => {
+    const onUp = async (_e) => {
       document.removeEventListener('mousemove', onMove);
       document.removeEventListener('mouseup', onUp);
       if (!this._tableDrag) return;
@@ -9287,7 +9367,7 @@ const eventsModule = {
         dietary_requirements: g.dietary_requirements || null
       }));
 
-      let { error } = await STATE.client
+      const { error } = await STATE.client
         .from('table_assignments')
         .insert(assignments);
 
@@ -9456,7 +9536,7 @@ const eventsModule = {
           guest_type: g.guest_type || 'guest',
           dietary_requirements: g.dietary_requirements || null
         }));
-        let { error } = await STATE.client.from('table_assignments').insert(rows);
+        const { error } = await STATE.client.from('table_assignments').insert(rows);
         // If batch fails (e.g. FK constraint), fall back to one-by-one
         if (error) {
           console.warn('Batch insert failed, trying one-by-one:', error.message);
@@ -9692,7 +9772,7 @@ const eventsModule = {
         for (const guest of group.guests) {
           if (assigned >= guestsToAssign) break;
           // Find table with space (prefer current bestTable)
-          let targetTable = bestTable.availableSeats > 0 ? bestTable : tablesWithSpace.find(t => t.availableSeats > 0);
+          const targetTable = bestTable.availableSeats > 0 ? bestTable : tablesWithSpace.find(t => t.availableSeats > 0);
           if (!targetTable) break;
 
           // Auto-assign next available seat number
@@ -10843,6 +10923,16 @@ const eventsModule = {
 
     try { localStorage.setItem('eventsFilters', JSON.stringify({ search, year, timeStatus, eventStatus })); } catch(e) { console.warn('Failed to save event filters:', e.message); }
 
+    // Server-side pagination: send filters to server and re-fetch page 1
+    if (this._serverPagination) {
+      this._srvFetchPage(1).catch(err => {
+        console.error('Error filtering events:', err);
+        utils.showToast('Error filtering events: ' + err.message, 'error');
+      });
+      return;
+    }
+
+    // Client-side fallback (used by tests and when data is pre-loaded)
     const today = new Date().toISOString().split('T')[0];
     const now = new Date();
     const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];
@@ -10861,10 +10951,8 @@ const eventsModule = {
       return true;
     });
 
-    // If search query is active and no exact matches found, try fuzzy search
     if (search && filtered.length === 0) {
       filtered = utils.fuzzyFilter(STATE.allEvents || [], search, ['event_name', 'venue', 'description']);
-      // Also apply non-search filters to fuzzy results
       if (year) filtered = filtered.filter(e => String(e.year) === year || (e.event_date && e.event_date.startsWith(year)));
       if (timeStatus === 'upcoming') filtered = filtered.filter(e => e.event_date && e.event_date >= today);
       if (timeStatus === 'past') filtered = filtered.filter(e => e.event_date && e.event_date < today);
@@ -10872,7 +10960,6 @@ const eventsModule = {
       if (eventStatus) filtered = filtered.filter(e => (e.event_status || 'draft') === eventStatus);
     }
 
-    // Sort
     filtered.sort((a, b) => {
       let aVal = a[this._sortField] || '';
       let bVal = b[this._sortField] || '';
@@ -10910,6 +10997,13 @@ const eventsModule = {
     }
     utils.saveSortState('events', this._sortField, this._sortDir);
     this._updateSortIndicators();
+
+    // Server-side: re-fetch with new sort order
+    if (this._serverPagination) {
+      this._srvFetchPage(1).catch(err => console.error('Error sorting events:', err));
+      return;
+    }
+
     this.filterEvents();
   },
 
@@ -10947,14 +11041,22 @@ const eventsModule = {
     const tbody = document.getElementById('eventsTableBody');
     const count = document.getElementById('eventsCount');
     if (!tbody) return;
-    if (count) count.textContent = events.length;
 
-    // Pagination
-    const totalPages = Math.ceil(events.length / (this._evtPageSize || 50));
-    if ((this._evtCurrentPage || 1) > totalPages) this._evtCurrentPage = totalPages || 1;
-    const pgStart = ((this._evtCurrentPage || 1) - 1) * (this._evtPageSize || 50);
-    const pgEnd = pgStart + (this._evtPageSize || 50);
-    const pageEvents = events.slice(pgStart, pgEnd);
+    // Use server total count when in server pagination mode
+    const displayCount = this._serverPagination ? this._srvPagination.count : events.length;
+    if (count) count.textContent = displayCount;
+
+    // Server-side: data is already one page; client-side: slice locally
+    let pageEvents;
+    if (this._serverPagination) {
+      pageEvents = events;
+    } else {
+      const totalPages = Math.ceil(events.length / (this._evtPageSize || 50));
+      if ((this._evtCurrentPage || 1) > totalPages) this._evtCurrentPage = totalPages || 1;
+      const pgStart = ((this._evtCurrentPage || 1) - 1) * (this._evtPageSize || 50);
+      const pgEnd = pgStart + (this._evtPageSize || 50);
+      pageEvents = events.slice(pgStart, pgEnd);
+    }
     this._lastFilteredEvents = events; // store for page navigation
 
     // Update last refreshed
@@ -11004,7 +11106,7 @@ const eventsModule = {
       }
 
       const evtStatus = event.event_status || 'draft';
-      const color = statusColors[evtStatus] || 'secondary';
+      const _color = statusColors[evtStatus] || 'secondary';
       const icon = statusIcons[evtStatus] || 'bi-circle';
 
       // Clickable status dropdown
@@ -11022,9 +11124,9 @@ const eventsModule = {
           </ul>
         </div>`;
 
-      const capacity = event.capacity || 0;
+      const _capacity = event.capacity || 0;
       const checked = this._selectedEvents.has(event.id) ? 'checked' : '';
-      const eName = utils.escapeHtml(event.event_name).replace(/'/g, "\\'");
+      const eName = (event.event_name || '').replace(/<[^>]*>/g, '').replace(/'/g, "\\'").replace(/"/g, '&quot;');
 
       // Award counts (from cache or placeholder)
       const awardData = this._eventAwardCounts?.[event.id] || { total: 0, confirmed: 0, winners: 0 };
@@ -11066,23 +11168,30 @@ const eventsModule = {
       const tableParent = tbody.closest('.table-responsive') || tbody.parentElement;
       if (tableParent) tableParent.after(paginationEl);
     }
-    if (totalPages > 1) {
-      const cp = this._evtCurrentPage || 1;
-      let html = '<nav><ul class="pagination pagination-sm justify-content-center mt-3">';
-      html += `<li class="page-item ${cp <= 1 ? 'disabled' : ''}"><a class="page-link" href="#" onclick="event.preventDefault(); eventsModule.goToEventsPage(${cp - 1})">Prev</a></li>`;
-      for (let i = 1; i <= totalPages; i++) {
-        if (i === 1 || i === totalPages || (i >= cp - 2 && i <= cp + 2)) {
-          html += `<li class="page-item ${i === cp ? 'active' : ''}"><a class="page-link" href="#" onclick="event.preventDefault(); eventsModule.goToEventsPage(${i})">${i}</a></li>`;
-        } else if (i === cp - 3 || i === cp + 3) {
-          html += '<li class="page-item disabled"><span class="page-link">...</span></li>';
+    if (this._serverPagination) {
+      utils.renderServerPagination('eventsPagination', this._srvPagination, 'eventsModule._srvGoToPage');
+    } else {
+      const totalPages = Math.ceil(events.length / (this._evtPageSize || 50));
+      if (totalPages > 1) {
+        const cp = this._evtCurrentPage || 1;
+        const pgStart = (cp - 1) * (this._evtPageSize || 50);
+        const pgEnd = pgStart + (this._evtPageSize || 50);
+        let html = '<nav><ul class="pagination pagination-sm justify-content-center mt-3">';
+        html += `<li class="page-item ${cp <= 1 ? 'disabled' : ''}"><a class="page-link" href="#" onclick="event.preventDefault(); eventsModule.goToEventsPage(${cp - 1})">Prev</a></li>`;
+        for (let i = 1; i <= totalPages; i++) {
+          if (i === 1 || i === totalPages || (i >= cp - 2 && i <= cp + 2)) {
+            html += `<li class="page-item ${i === cp ? 'active' : ''}"><a class="page-link" href="#" onclick="event.preventDefault(); eventsModule.goToEventsPage(${i})">${i}</a></li>`;
+          } else if (i === cp - 3 || i === cp + 3) {
+            html += '<li class="page-item disabled"><span class="page-link">...</span></li>';
+          }
         }
+        html += `<li class="page-item ${cp >= totalPages ? 'disabled' : ''}"><a class="page-link" href="#" onclick="event.preventDefault(); eventsModule.goToEventsPage(${cp + 1})">Next</a></li>`;
+        html += '</ul></nav>';
+        html += `<div class="text-center text-muted small">Showing ${pgStart+1}-${Math.min(pgEnd, events.length)} of ${events.length}</div>`;
+        paginationEl.innerHTML = html;
+      } else if (paginationEl) {
+        paginationEl.innerHTML = '';
       }
-      html += `<li class="page-item ${cp >= totalPages ? 'disabled' : ''}"><a class="page-link" href="#" onclick="event.preventDefault(); eventsModule.goToEventsPage(${cp + 1})">Next</a></li>`;
-      html += '</ul></nav>';
-      html += `<div class="text-center text-muted small">Showing ${pgStart+1}-${Math.min(pgEnd, events.length)} of ${events.length}</div>`;
-      paginationEl.innerHTML = html;
-    } else if (paginationEl) {
-      paginationEl.innerHTML = '';
     }
   },
 
@@ -11130,7 +11239,7 @@ const eventsModule = {
     if (uncached.length === 0) return;
 
     try {
-      let awardsByEvent = {};
+      const awardsByEvent = {};
 
       // Try querying award_years by event_id first (requires migration 018)
       const { data: allAwards, error } = await STATE.client
@@ -12255,7 +12364,7 @@ const eventsModule = {
 };
 
 // Export to window for global access
-window.eventsModule = eventsModule;
+ModuleRegistry.register('eventsModule', eventsModule);
 
 // Initialize seating enhancements (seat-level assignment, VIP, dietary, place cards, undo/redo)
 if (window.seatingEnhancements) window.seatingEnhancements.init();

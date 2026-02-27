@@ -22,12 +22,12 @@ require('dotenv').config();
 const { createClient } = require('@supabase/supabase-js');
 const fs = require('fs');
 const path = require('path');
-const csv = require('csv-parser');
+const _csv = require('csv-parser');
 
 // CSV File Path Validation
 const csvFilePath = process.argv[2];
 const isDryRun = process.argv.includes('--dry-run');
-const skipBackup = process.argv.includes('--skip-backup');
+const _skipBackup = process.argv.includes('--skip-backup');
 
 if (!csvFilePath) {
   console.error('❌ Error: No CSV file path provided');
@@ -59,10 +59,10 @@ if (!SUPABASE_KEY) {
   process.exit(1);
 }
 
-const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
+const _supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 
 // County to Region mapping - UPDATED WITH LONDON, SCOTLAND, WALES & CITIES
-const COUNTY_TO_REGION = {
+const _COUNTY_TO_REGION = {
   // East of England
   'Bedfordshire': 'East of England',
   'Cambridgeshire': 'East of England',

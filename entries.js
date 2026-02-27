@@ -19,6 +19,11 @@ const entriesModule = {
     selfNom: ''
   },
 
+  // Server-side pagination state
+  _serverPagination: false,
+  _pagination: { page: 1, totalPages: 1, count: 0, pageSize: 50 },
+  _fetchId: 0,
+
   /**
    * Initialize the Entries Module: load filters, entries, stats, and restore saved state.
    * @returns {Promise<void>}
@@ -113,16 +118,9 @@ const entriesModule = {
     if (this._loading) return;
     this._loading = true;
     try {
-      const allData = await apiClient.selectAll('entries', {
-        select: '*, organisations(company_name, logo_url), award_years(award_name, sector, county)',
-        sort: { column: 'submission_date', ascending: false }
-      });
-
-      this.allEntries = allData;
-      if (typeof STATE !== 'undefined') { STATE.allEntries = allData; }
-      this.filteredEntries = [...this.allEntries];
-      this._currentPage = 1;
-      this.renderEntries();
+      // Enable server-side pagination and fetch first page
+      this._serverPagination = true;
+      await this._fetchPage(1);
 
       // Initialise reusable keyboard navigation (once)
       if (!this._keyboardNavInit) {
@@ -145,24 +143,101 @@ const entriesModule = {
   },
 
   /**
+   * Build server-side filters from current filter state
+   */
+  _buildServerFilters() {
+    const filters = {};
+    if (this.currentFilters.status) {
+      // Status can be comma-separated (e.g., "submitted,under_review")
+      const statuses = this.currentFilters.status.split(',');
+      if (statuses.length === 1) {
+        filters.status = statuses[0];
+      } else {
+        filters.status = { op: 'in', value: statuses };
+      }
+    }
+    if (this.currentFilters.award) filters.award_id = this.currentFilters.award;
+    if (this.currentFilters.year) filters.year = parseInt(this.currentFilters.year);
+    if (this.currentFilters.selfNom === 'self_nom') filters.is_self_nomination = true;
+    if (this.currentFilters.selfNom === 'standard') filters.is_self_nomination = false;
+    return filters;
+  },
+
+  /**
+   * Fetch a specific page of entries from the server with current filters and sort.
+   * @param {number} page - 1-based page number
+   */
+  async _fetchPage(page) {
+    const fetchId = ++this._fetchId;
+    const filters = this._buildServerFilters();
+    const search = this.currentFilters.search?.trim();
+
+    const result = await apiClient.select('entries', {
+      select: '*, organisations(company_name, logo_url), award_years(award_name, sector, county)',
+      filters,
+      search: search ? { term: search, columns: ['entry_title', 'entry_number'] } : undefined,
+      sort: { column: this._sortField, ascending: this._sortDir === 'asc' },
+      page,
+      pageSize: this._pageSize
+    });
+
+    // Discard stale responses
+    if (fetchId !== this._fetchId) return;
+
+    const pageData = result.data || [];
+    this.allEntries = pageData;
+    if (typeof STATE !== 'undefined') { STATE.allEntries = pageData; }
+    this.filteredEntries = pageData;
+    this._currentPage = result.page;
+    this._pagination = { page: result.page, totalPages: result.totalPages, count: result.count, pageSize: result.pageSize };
+
+    this.renderEntries();
+  },
+
+  /**
+   * Navigate to a specific page (called from pagination controls)
+   */
+  async _goToPage(page) {
+    page = Math.max(1, Math.min(page, this._pagination.totalPages));
+    if (page === this._pagination.page) return;
+    try {
+      utils.showLoading();
+      await this._fetchPage(page);
+    } catch (error) {
+      console.error('Error navigating entries page:', error);
+      utils.showToast('Error loading page: ' + error.message, 'error');
+    } finally {
+      utils.hideLoading();
+    }
+  },
+
+  /**
    * Compute and display entry statistics (total, pending, shortlisted, winners) from loaded data.
    * @returns {Promise<void>}
    */
   async loadStats() {
     try {
-      // Compute stats from loaded entries so cards always match the table
-      const entries = this.allEntries || [];
-      const totalCount = entries.length;
-      const pendingCount = entries.filter(e => e.status === 'submitted' || e.status === 'under_review').length;
-      const shortlistedCount = entries.filter(e => e.status === 'shortlisted').length;
-      const winnerCount = entries.filter(e => e.status === 'winner').length;
-
-      // Update UI
-      document.getElementById('totalEntriesCount').textContent = totalCount || 0;
-      document.getElementById('pendingEntriesCount').textContent = pendingCount || 0;
-      document.getElementById('shortlistedEntriesCount').textContent = shortlistedCount || 0;
-      document.getElementById('winnerEntriesCount').textContent = winnerCount || 0;
-
+      if (this._serverPagination) {
+        // Use server-side count queries for accurate stats across all pages
+        const [total, pending, submitted, shortlisted, winner] = await Promise.all([
+          apiClient.count('entries'),
+          apiClient.count('entries', { status: 'under_review' }),
+          apiClient.count('entries', { status: 'submitted' }),
+          apiClient.count('entries', { status: 'shortlisted' }),
+          apiClient.count('entries', { status: 'winner' })
+        ]);
+        document.getElementById('totalEntriesCount').textContent = total.count || 0;
+        document.getElementById('pendingEntriesCount').textContent = (pending.count || 0) + (submitted.count || 0);
+        document.getElementById('shortlistedEntriesCount').textContent = shortlisted.count || 0;
+        document.getElementById('winnerEntriesCount').textContent = winner.count || 0;
+      } else {
+        // Client-side fallback
+        const entries = this.allEntries || [];
+        document.getElementById('totalEntriesCount').textContent = entries.length;
+        document.getElementById('pendingEntriesCount').textContent = entries.filter(e => e.status === 'submitted' || e.status === 'under_review').length;
+        document.getElementById('shortlistedEntriesCount').textContent = entries.filter(e => e.status === 'shortlisted').length;
+        document.getElementById('winnerEntriesCount').textContent = entries.filter(e => e.status === 'winner').length;
+      }
     } catch (error) {
       console.error('Error loading stats:', error);
     }
@@ -175,7 +250,9 @@ const entriesModule = {
     const tbody = document.getElementById('entriesTableBody');
     const countSpan = document.getElementById('entriesTableCount');
 
-    countSpan.textContent = this.filteredEntries.length;
+    // Use server total count when in server pagination mode
+    const displayCount = this._serverPagination ? this._pagination.count : this.filteredEntries.length;
+    countSpan.textContent = displayCount;
 
     if (this.filteredEntries.length === 0) {
       tbody.innerHTML = `
@@ -191,17 +268,22 @@ const entriesModule = {
       return;
     }
 
-    // Pagination
-    const totalPages = Math.ceil(this.filteredEntries.length / this._pageSize);
-    if (this._currentPage > totalPages) this._currentPage = totalPages;
-    const start = (this._currentPage - 1) * this._pageSize;
-    const end = start + this._pageSize;
-    const pageEntries = this.filteredEntries.slice(start, end);
+    // Server-side: data is already one page; client-side: slice locally
+    let pageEntries;
+    if (this._serverPagination) {
+      pageEntries = this.filteredEntries;
+    } else {
+      const totalPages = Math.ceil(this.filteredEntries.length / this._pageSize);
+      if (this._currentPage > totalPages) this._currentPage = totalPages;
+      const start = (this._currentPage - 1) * this._pageSize;
+      const end = start + this._pageSize;
+      pageEntries = this.filteredEntries.slice(start, end);
+    }
 
     tbody.innerHTML = pageEntries.map(entry => {
       const companyName = entry.organisations?.company_name || 'Unknown';
       const awardName = entry.award_years?.award_name || entry.award_category || 'Unknown';
-      const statusBadge = this.getStatusBadge(entry.status);
+      const _statusBadge = this.getStatusBadge(entry.status);
       const paymentBadge = this.getPaymentBadge(entry.payment_status);
       const selfNomBadge = entry.is_self_nomination
         ? '<span class="badge bg-info ms-2" title="Self-Nominated Entry"><i class="bi bi-person-raised-hand me-1"></i>Self-Nom</span>'
@@ -224,7 +306,7 @@ const entriesModule = {
           <td>${utils.escapeHtml(companyName)}</td>
           <td>${utils.escapeHtml(awardName)}</td>
           <td>
-            <div class="text-truncate" style="max-width: 250px;" title="${utils.escapeHtml(entry.entry_title)}">
+            <div class="text-truncate" style="max-width: 250px;" title="${(entry.entry_title || '').replace(/<[^>]*>/g, '').replace(/"/g, '&quot;')}">
               ${utils.escapeHtml(entry.entry_title)}
               ${selfNomBadge}
             </div>
@@ -263,22 +345,28 @@ const entriesModule = {
 
     // Render pagination controls
     const paginationEl = document.getElementById('entriesPagination');
-    if (paginationEl && totalPages > 1) {
-      let html = '<nav><ul class="pagination pagination-sm justify-content-center mt-3">';
-      html += `<li class="page-item ${this._currentPage <= 1 ? 'disabled' : ''}"><a class="page-link" href="#" onclick="event.preventDefault(); entriesModule.goToEntriesPage(${this._currentPage - 1})">Prev</a></li>`;
-      for (let i = 1; i <= totalPages; i++) {
-        if (i === 1 || i === totalPages || (i >= this._currentPage - 2 && i <= this._currentPage + 2)) {
-          html += `<li class="page-item ${i === this._currentPage ? 'active' : ''}"><a class="page-link" href="#" onclick="event.preventDefault(); entriesModule.goToEntriesPage(${i})">${i}</a></li>`;
-        } else if (i === this._currentPage - 3 || i === this._currentPage + 3) {
-          html += '<li class="page-item disabled"><span class="page-link">...</span></li>';
-        }
-      }
-      html += `<li class="page-item ${this._currentPage >= totalPages ? 'disabled' : ''}"><a class="page-link" href="#" onclick="event.preventDefault(); entriesModule.goToEntriesPage(${this._currentPage + 1})">Next</a></li>`;
-      html += '</ul></nav>';
-      html += `<div class="text-center text-muted small">Showing ${((this._currentPage-1)*this._pageSize)+1}-${Math.min(this._currentPage*this._pageSize, this.filteredEntries.length)} of ${this.filteredEntries.length}</div>`;
-      paginationEl.innerHTML = html;
+    if (this._serverPagination && paginationEl) {
+      // Use shared server-side pagination renderer
+      utils.renderServerPagination('entriesPagination', this._pagination, 'entriesModule._goToPage');
     } else if (paginationEl) {
-      paginationEl.innerHTML = '';
+      const totalPages = Math.ceil(this.filteredEntries.length / this._pageSize);
+      if (totalPages > 1) {
+        let html = '<nav><ul class="pagination pagination-sm justify-content-center mt-3">';
+        html += `<li class="page-item ${this._currentPage <= 1 ? 'disabled' : ''}"><a class="page-link" href="#" onclick="event.preventDefault(); entriesModule.goToEntriesPage(${this._currentPage - 1})">Prev</a></li>`;
+        for (let i = 1; i <= totalPages; i++) {
+          if (i === 1 || i === totalPages || (i >= this._currentPage - 2 && i <= this._currentPage + 2)) {
+            html += `<li class="page-item ${i === this._currentPage ? 'active' : ''}"><a class="page-link" href="#" onclick="event.preventDefault(); entriesModule.goToEntriesPage(${i})">${i}</a></li>`;
+          } else if (i === this._currentPage - 3 || i === this._currentPage + 3) {
+            html += '<li class="page-item disabled"><span class="page-link">...</span></li>';
+          }
+        }
+        html += `<li class="page-item ${this._currentPage >= totalPages ? 'disabled' : ''}"><a class="page-link" href="#" onclick="event.preventDefault(); entriesModule.goToEntriesPage(${this._currentPage + 1})">Next</a></li>`;
+        html += '</ul></nav>';
+        html += `<div class="text-center text-muted small">Showing ${((this._currentPage-1)*this._pageSize)+1}-${Math.min(this._currentPage*this._pageSize, this.filteredEntries.length)} of ${this.filteredEntries.length}</div>`;
+        paginationEl.innerHTML = html;
+      } else {
+        paginationEl.innerHTML = '';
+      }
     }
   },
 
@@ -306,6 +394,13 @@ const entriesModule = {
     utils.saveSortState('entries', this._sortField, this._sortDir);
     this._updateSortIndicators();
     this._currentPage = 1;
+
+    // Server-side: re-fetch with new sort order
+    if (this._serverPagination) {
+      this._fetchPage(1).catch(err => console.error('Error sorting entries:', err));
+      return;
+    }
+
     this.applyFilters();
   },
 
@@ -381,6 +476,16 @@ const entriesModule = {
   applyFilters() {
     try { localStorage.setItem('entriesFilters', JSON.stringify(this.currentFilters)); } catch(e) { console.warn('Failed to save entry filters:', e.message); }
 
+    // Server-side pagination: send filters to server and re-fetch page 1
+    if (this._serverPagination) {
+      this._fetchPage(1).catch(err => {
+        console.error('Error filtering entries:', err);
+        utils.showToast('Error filtering entries: ' + err.message, 'error');
+      });
+      return;
+    }
+
+    // Client-side fallback (used by tests and when data is pre-loaded)
     this.filteredEntries = this.allEntries.filter(entry => {
       // Status filter (supports comma-separated values, e.g. "submitted,under_review")
       if (this.currentFilters.status) {
@@ -1896,7 +2001,7 @@ const entriesModule = {
 };
 
 // Export to window
-window.entriesModule = entriesModule;
+ModuleRegistry.register('entriesModule', entriesModule);
 
 // Initialize when entries tab is shown
 document.addEventListener('DOMContentLoaded', () => {

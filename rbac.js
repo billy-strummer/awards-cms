@@ -217,4 +217,4 @@ const rbacModule = {
   }
 };
 
-window.rbacModule = rbacModule;
+ModuleRegistry.register('rbacModule', rbacModule);

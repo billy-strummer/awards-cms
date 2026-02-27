@@ -12,7 +12,7 @@ const emailListsModule = {
   // MAIN LOAD FUNCTION
   // ============================================
   async loadAllData() {
-    console.log('📧 Loading email lists data...');
+    console.warn('📧 Loading email lists data...');
     try {
       await this.loadEmailLists();
       await this.loadStats();
@@ -573,7 +573,7 @@ const emailListsModule = {
 
         const skipDuplicates = document.getElementById('csvSkipDuplicates')?.checked;
 
-        const { data, error } = await STATE.client
+        const { _data, error } = await STATE.client
           .from('email_list_subscribers')
           .insert(subscribersToInsert, { onConflict: skipDuplicates ? 'ignore' : undefined });
 
@@ -641,7 +641,7 @@ const emailListsModule = {
       return [];
     }
 
-    const includeContacts = document.getElementById('crmIncludeContacts')?.checked;
+    const _includeContacts = document.getElementById('crmIncludeContacts')?.checked;
 
     try {
       // Map CRM segments to database queries
@@ -1284,4 +1284,5 @@ const emailListsModule = {
 // ============================================
 // INITIALIZATION
 // ============================================
-console.log('✅ Email Lists Module loaded');
+console.warn('✅ Email Lists Module loaded');
+ModuleRegistry.register('emailListsModule', emailListsModule);

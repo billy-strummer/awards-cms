@@ -20,7 +20,7 @@ const marketingModule = {
         this.loadBanners(),
         this.loadSponsors()
       ]);
-      console.log('✅ Marketing data loaded');
+      console.warn('✅ Marketing data loaded');
     } catch (error) {
       console.error('Error loading marketing data:', error);
       utils.showToast('Failed to load marketing data', 'error');
@@ -1005,4 +1005,4 @@ const marketingModule = {
 };
 
 // Export to window for global access
-window.marketingModule = marketingModule;
+ModuleRegistry.register('marketingModule', marketingModule);

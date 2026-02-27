@@ -5,7 +5,7 @@
 /* and persistent scheduled-report storage.             */
 /* ==================================================== */
 
-window.reportingModule = {
+const reportingModule = {
 
   /* ---- helpers ---- */
   _fc(v) { return '\u00A3' + parseFloat(v || 0).toFixed(2); },
@@ -349,3 +349,4 @@ window.reportingModule = {
     }
   }
 };
+ModuleRegistry.register('reportingModule', reportingModule);

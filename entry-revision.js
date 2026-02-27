@@ -1,6 +1,6 @@
 /* ENTRY REVISION MODULE - Revision & Resubmission Flow */
 
-window.entryRevisionModule = {
+const entryRevisionModule = {
 
   /* 1. REQUEST CHANGES */
   async requestChanges(entryId, feedback) {
@@ -322,9 +322,10 @@ window.entryRevisionModule = {
       if (rev?.status !== 'pending') return;
       await apiClient.update('entry_revisions', revisionId, { status: 'expired', updated_at: new Date().toISOString() });
       await apiClient.update('entries', entryId, { status: 'Expired', updated_at: new Date().toISOString() });
-      console.info(`Revision ${revisionId} / entry ${entryId} expired.`);
+      console.warn(`Revision ${revisionId} / entry ${entryId} expired.`);
     } catch (err) {
       console.warn('Expire revision failed:', err.message);
     }
   }
 };
+ModuleRegistry.register('entryRevisionModule', entryRevisionModule);

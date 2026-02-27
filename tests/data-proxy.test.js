@@ -40,21 +40,29 @@ function chainable(resolveWith = { data: [], error: null, count: 0 }) {
     or: mockOr.mockReturnThis(),
     order: mockOrder.mockReturnThis(),
     range: mockRange.mockReturnThis(),
+    maybeSingle: jest.fn(),
     then: (resolve) => resolve(resolveWith)
   };
   // Make all methods chainable by default
   Object.keys(obj).forEach(key => {
-    if (typeof obj[key] === 'function' && key !== 'then') {
+    if (typeof obj[key] === 'function' && key !== 'then' && key !== 'maybeSingle') {
       obj[key] = jest.fn(() => obj);
     }
   });
+  // maybeSingle resolves with the data directly
+  obj.maybeSingle = jest.fn(() => Promise.resolve(resolveWith));
   obj.then = (resolve) => resolve(resolveWith);
   return obj;
 }
 
 let currentChain;
 const mockFrom = jest.fn((table) => {
-  currentChain = chainable();
+  // Return admin role when querying user_preferences for RBAC
+  if (table === 'user_preferences') {
+    currentChain = chainable({ data: { value: 'admin' }, error: null, count: 1 });
+  } else {
+    currentChain = chainable();
+  }
   return currentChain;
 });
 

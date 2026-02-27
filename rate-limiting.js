@@ -3,7 +3,7 @@
    Depends: STATE.client, Bootstrap 5, Chart.js, utils.showToast()  */
 /* ==================================================== */
 
-window.rateLimitModule = {
+const rateLimitModule = {
 
   _store: new Map(),   // sliding-window: `${endpoint}::${id}` → [timestamps]
   _alerts: new Map(),  // endpoint → maxPerMinute
@@ -20,7 +20,7 @@ window.rateLimitModule = {
     const cfg   = this._defaults[endpoint] || this._defaults['*'];
     const key   = `${endpoint}::${identifier}`;
     const now   = Date.now();
-    let ts      = (this._store.get(key) || []).filter(t => t > now - cfg.windowMs);
+    const ts      = (this._store.get(key) || []).filter(t => t > now - cfg.windowMs);
     const allowed = ts.length < cfg.max;
     if (allowed) { ts.push(now); this._store.set(key, ts); }
     return { allowed, remaining: Math.max(0, cfg.max - ts.length), resetAt: new Date((ts[0] || now) + cfg.windowMs) };
@@ -281,3 +281,4 @@ window.rateLimitModule = {
     return sid;
   }
 };
+ModuleRegistry.register('rateLimitModule', rateLimitModule);

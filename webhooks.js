@@ -2,7 +2,7 @@
 /* WEBHOOKS MODULE - Outbound Webhook / Integration Layer */
 /* ==================================================== */
 
-window.webhooksModule = {
+const webhooksModule = {
 
   EVENT_TYPES: [
     'entry.submitted', 'entry.approved', 'entry.rejected',
@@ -330,3 +330,4 @@ window.webhooksModule = {
       </div>`}`;
   }
 };
+ModuleRegistry.register('webhooksModule', webhooksModule);

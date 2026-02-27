@@ -276,4 +276,4 @@ const a11yModule = {
   }
 };
 
-window.a11yModule = a11yModule;
+ModuleRegistry.register('a11yModule', a11yModule);

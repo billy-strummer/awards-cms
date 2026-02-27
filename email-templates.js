@@ -722,8 +722,9 @@ The British Trade Awards Team`
    * Save template
    */
   async saveTemplate() {
+    let templateData;
     try {
-      const templateData = {
+      templateData = {
         template_name: document.getElementById('templateName').value,
         template_type: document.getElementById('templateType').value,
         subject: document.getElementById('templateSubject').value,
@@ -1132,7 +1133,7 @@ The British Trade Awards Team`
 };
 
 // Export to window
-window.emailTemplatesModule = emailTemplatesModule;
+ModuleRegistry.register('emailTemplatesModule', emailTemplatesModule);
 
 // Initialize when email templates sub-tab is shown within Marketing
 document.addEventListener('DOMContentLoaded', () => {

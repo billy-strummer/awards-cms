@@ -6,7 +6,7 @@
 'use strict';
 
 // Initialize Supabase client
-var db = window.supabase.createClient(
+const db = window.supabase.createClient(
   window.SUPABASE_CONFIG.url,
   window.SUPABASE_CONFIG.anonKey
 );
@@ -15,7 +15,7 @@ var db = window.supabase.createClient(
 // AWARD CATEGORIES (mirrors award-categories-config.js)
 // =====================================================
 
-var STANDARD_CATEGORIES = {
+const STANDARD_CATEGORIES = {
   'BUILDING & CONSTRUCTION': [
     'Brickwork & Masonry Company',
     'Drainage Company',
@@ -88,7 +88,7 @@ var STANDARD_CATEGORIES = {
   ]
 };
 
-var SMALL_CATEGORIES = {
+const SMALL_CATEGORIES = {
   'BUILDING & CONSTRUCTION': [
     'Brickwork & Masonry Company',
     'Drainage Company',
@@ -143,7 +143,7 @@ var SMALL_CATEGORIES = {
   ]
 };
 
-var SMALL_COUNTIES = ['Ceredigion', 'Herefordshire', 'Isle of Wight', 'Rutland'];
+const SMALL_COUNTIES = ['Ceredigion', 'Herefordshire', 'Isle of Wight', 'Rutland'];
 
 // =====================================================
 // Lightweight toast for public pages
@@ -769,7 +769,7 @@ window.entryFormApp = {
       };
 
       let entry = null;
-      let insertError = null;
+      const _insertError = null;
 
       // Attempt full insert (with extended columns)
       const fullPayload = Object.assign({}, entryPayload, extendedFields);
@@ -831,7 +831,7 @@ window.entryFormApp = {
           console.error('Confirmation email function error:', emailData.error);
           showPublicToast('Entry saved but confirmation email could not be sent. Check your inbox or contact support.', 'warning');
         } else {
-          console.log('Confirmation email sent successfully');
+          console.warn('Confirmation email sent successfully');
         }
       } catch (emailErr) {
         console.error('Confirmation email failed:', emailErr);
@@ -902,7 +902,7 @@ window.entryFormApp = {
 };
 
 // Alias for convenience
-var entryFormApp = window.entryFormApp;
+const entryFormApp = window.entryFormApp;
 
 // Initialize on page load
 document.addEventListener('DOMContentLoaded', function() {

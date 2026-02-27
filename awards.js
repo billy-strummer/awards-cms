@@ -7,6 +7,11 @@ const awardsModule = {
   currentSort: { column: 'award_name', direction: 'asc' },
   _loading: false,
 
+  // Server-side pagination state
+  _serverPagination: false,
+  _pagination: { page: 1, totalPages: 1, count: 0, pageSize: 50 },
+  _fetchId: 0,
+
   /**
    * Load all awards from database
    * @returns {Promise<void>}
@@ -18,32 +23,10 @@ const awardsModule = {
       utils.showLoading();
       utils.showSkeletonLoading('awardsTableBody', 10);
 
-      const allData = await apiClient.selectAll('awards');
+      // Populate filter dropdowns from constants (no full dataset needed)
+      this._populateFiltersFromConstants();
 
-      // Batch lookup regions for all counties in one query
-      const uniqueCounties = [...new Set(allData.map(a => a.county).filter(Boolean))];
-      const countyRegionMap = {};
-      if (uniqueCounties.length > 0) {
-        const { data: countyData } = await apiClient.select('counties', {
-          select: 'Name, regions(name)',
-          filters: { Name: { op: 'in', value: uniqueCounties } },
-          pageSize: 1000
-        });
-
-        (countyData || []).forEach(c => {
-          countyRegionMap[c.Name] = c.regions?.name || null;
-        });
-      }
-
-      STATE.allAwards = allData.map(award => ({
-        ...award,
-        _actualRegion: award.county ? (countyRegionMap[award.county] || null) : null,
-        _countyName: award.county
-      }));
-
-      await this.loadAssignmentCounts();
-
-      // Save current filter state before repopulating dropdowns
+      // Restore saved filters from localStorage
       const lsAwardsFilters = (() => { try { return JSON.parse(localStorage.getItem('awardsFilters') || '{}'); } catch (e) { return {}; } })();
       const savedFilters = {
         year: document.getElementById('awardsYearFilterSelect')?.value || lsAwardsFilters.year || '',
@@ -54,11 +37,7 @@ const awardsModule = {
         search: document.getElementById('awardsSearchBox')?.value || lsAwardsFilters.search || ''
       };
 
-      STATE.filteredAwards = STATE.allAwards;
-
-      this.populateFilters();
-
-      // Restore filter state after repopulating
+      // Restore filter UI state
       document.getElementById('awardsYearFilterSelect').value = savedFilters.year;
       document.getElementById('awardsStatusFilterSelect').value = savedFilters.status;
       document.getElementById('awardsSectorFilterSelect').value = savedFilters.sector;
@@ -69,8 +48,9 @@ const awardsModule = {
       document.getElementById('awardsCountyFilterSelect').value = savedFilters.county;
       document.getElementById('awardsSearchBox').value = savedFilters.search;
 
-      this.updateStats();
-      this.filterAwards();
+      // Enable server-side pagination and fetch first page with active filters
+      this._serverPagination = true;
+      await this._fetchPage(1);
 
       // Initialise reusable keyboard navigation (once)
       if (!this._keyboardNavInit) {
@@ -94,6 +74,155 @@ const awardsModule = {
     } finally {
       utils.hideLoading();
       this._loading = false;
+    }
+  },
+
+  /**
+   * Populate filter dropdowns from known constants (no full dataset required)
+   */
+  _populateFiltersFromConstants() {
+    // Year filter
+    const yearSelect = document.getElementById('awardsYearFilterSelect');
+    if (yearSelect) {
+      yearSelect.innerHTML = '<option value="">All Years</option>' +
+        YEARS.map(y => `<option value="${y}">${y}</option>`).join('');
+    }
+    // Sector filter
+    const sectorSelect = document.getElementById('awardsSectorFilterSelect');
+    if (sectorSelect) {
+      sectorSelect.innerHTML = '<option value="">All Sectors</option>' +
+        SECTORS.map(s => `<option value="${s}">${utils.escapeHtml(s)}</option>`).join('');
+    }
+    // Region filter
+    const regionSelect = document.getElementById('awardsRegionFilterSelect');
+    if (regionSelect) {
+      regionSelect.innerHTML = '<option value="">All Regions</option>' +
+        REGIONS.map(r => `<option value="${r}">${utils.escapeHtml(r)}</option>`).join('');
+    }
+  },
+
+  /**
+   * Build server-side filters from current DOM filter state
+   */
+  _buildServerFilters() {
+    const filters = {};
+    const year = document.getElementById('awardsYearFilterSelect')?.value;
+    const status = document.getElementById('awardsStatusFilterSelect')?.value;
+    const sector = document.getElementById('awardsSectorFilterSelect')?.value;
+    const county = document.getElementById('awardsCountyFilterSelect')?.value;
+
+    if (year) filters.year = year;
+    if (status) filters.status = status;
+    if (sector) filters.sector = sector;
+    if (county) filters.county = county;
+
+    return filters;
+  },
+
+  /**
+   * Fetch a specific page of awards from the server with current filters and sort.
+   * @param {number} page - 1-based page number
+   */
+  async _fetchPage(page) {
+    const fetchId = ++this._fetchId;
+
+    const filters = this._buildServerFilters();
+    const search = document.getElementById('awardsSearchBox')?.value?.trim();
+
+    const result = await apiClient.select('awards', {
+      filters,
+      search: search ? { term: search, columns: ['award_name', 'county', 'sector', 'description'] } : undefined,
+      sort: { column: this.currentSort.column === 'award_name' ? 'award_name' : this.currentSort.column, ascending: this.currentSort.direction === 'asc' },
+      page,
+      pageSize: this._pagination.pageSize
+    });
+
+    // Discard stale responses
+    if (fetchId !== this._fetchId) return;
+
+    // Enrich current page with region data and assignment counts
+    const pageData = result.data || [];
+    await this._enrichPageData(pageData);
+
+    STATE.allAwards = pageData;
+    STATE.filteredAwards = pageData;
+    this._pagination = { page: result.page, totalPages: result.totalPages, count: result.count, pageSize: result.pageSize };
+
+    this.updateStats();
+    this.renderAwards();
+  },
+
+  /**
+   * Enrich a page of award records with region lookups and assignment counts.
+   * @param {Array} awards - The page of award records to enrich
+   */
+  async _enrichPageData(awards) {
+    // Batch lookup regions for counties on this page
+    const uniqueCounties = [...new Set(awards.map(a => a.county).filter(Boolean))];
+    const countyRegionMap = {};
+    if (uniqueCounties.length > 0) {
+      try {
+        const { data: countyData } = await apiClient.select('counties', {
+          select: 'Name, regions(name)',
+          filters: { Name: { op: 'in', value: uniqueCounties } },
+          pageSize: 1000
+        });
+        (countyData || []).forEach(c => {
+          countyRegionMap[c.Name] = c.regions?.name || null;
+        });
+      } catch (_e) { /* ignore — counties table may not exist */ }
+    }
+
+    // Batch lookup assignment counts for awards on this page
+    const awardIds = awards.map(a => a.id).filter(Boolean);
+    const counts = {};
+    const winners = {};
+    if (awardIds.length > 0) {
+      try {
+        const { data: assignments } = await apiClient.select('award_assignments', {
+          select: 'award_id, status, winner_position, organisations(company_name)',
+          filters: { award_id: { op: 'in', value: awardIds } },
+          pageSize: 1000
+        });
+        (assignments || []).forEach(a => {
+          if (!counts[a.award_id]) counts[a.award_id] = { total: 0, nominated: 0, shortlisted: 0, winner: 0 };
+          counts[a.award_id].total++;
+          counts[a.award_id][a.status] = (counts[a.award_id][a.status] || 0) + 1;
+          if (a.status === 'winner') {
+            if (!winners[a.award_id]) winners[a.award_id] = {};
+            winners[a.award_id][a.winner_position || 1] = a.organisations?.company_name || 'Winner';
+          }
+        });
+      } catch (_e) { /* ignore — assignments table may not exist */ }
+    }
+
+    // Attach enriched data to each award
+    awards.forEach(award => {
+      award._actualRegion = award.county ? (countyRegionMap[award.county] || null) : null;
+      award._countyName = award.county;
+      award._assignmentCounts = counts[award.id] || { total: 0, nominated: 0, shortlisted: 0, winner: 0 };
+      const awardWinners = winners[award.id];
+      if (awardWinners) {
+        award._winnerName = awardWinners[1] || Object.values(awardWinners)[0] || null;
+        award._runnerUpName = awardWinners[2] || null;
+      }
+    });
+  },
+
+  /**
+   * Navigate to a specific page (called from pagination controls)
+   */
+  async _goToPage(page) {
+    page = Math.max(1, Math.min(page, this._pagination.totalPages));
+    if (page === this._pagination.page) return;
+    try {
+      utils.showLoading();
+      await this._fetchPage(page);
+    } catch (error) {
+      console.error('Error navigating awards page:', error);
+      utils.showToast('Error loading page: ' + error.message, 'error');
+    } finally {
+      utils.hideLoading();
     }
   },
   /**
@@ -289,6 +418,12 @@ const awardsModule = {
     utils.saveSortState('awards', this.currentSort.column, this.currentSort.direction);
     this._updateSortIndicators();
 
+    // Server-side: re-fetch with new sort order
+    if (this._serverPagination) {
+      this._fetchPage(1).catch(err => console.error('Error sorting awards:', err));
+      return;
+    }
+
     this.applySorting();
     this.renderAwards();
   },
@@ -366,17 +501,26 @@ const awardsModule = {
    * @returns {void}
    */
   filterAwards() {
-    const year = document.getElementById('awardsYearFilterSelect').value;
-    const status = document.getElementById('awardsStatusFilterSelect').value;
-    const sector = document.getElementById('awardsSectorFilterSelect').value;
-    const county = document.getElementById('awardsCountyFilterSelect').value;
-    const region = document.getElementById('awardsRegionFilterSelect').value;
-    const search = document.getElementById('awardsSearchBox').value.toLowerCase().trim();
+    const year = document.getElementById('awardsYearFilterSelect')?.value || '';
+    const status = document.getElementById('awardsStatusFilterSelect')?.value || '';
+    const sector = document.getElementById('awardsSectorFilterSelect')?.value || '';
+    const county = document.getElementById('awardsCountyFilterSelect')?.value || '';
+    const region = document.getElementById('awardsRegionFilterSelect')?.value || '';
+    const search = (document.getElementById('awardsSearchBox')?.value || '').toLowerCase().trim();
 
     try { localStorage.setItem('awardsFilters', JSON.stringify({ year, status, sector, county, region, search })); } catch(e) { console.warn('Failed to save filter state:', e.message); }
 
+    // Server-side pagination: send filters to server and re-fetch page 1
+    if (this._serverPagination) {
+      this._fetchPage(1).catch(err => {
+        console.error('Error filtering awards:', err);
+        utils.showToast('Error filtering awards: ' + err.message, 'error');
+      });
+      return;
+    }
+
+    // Client-side fallback (used by tests and when data is pre-loaded)
     STATE.filteredAwards = STATE.allAwards.filter(award => {
-      // Year filter - handle both date strings and year numbers
       if (year) {
         let awardYear;
         if (typeof award.year === 'string' && award.year.includes('-')) {
@@ -386,43 +530,23 @@ const awardsModule = {
         }
         if (String(awardYear) !== String(year)) return false;
       }
-
-      // Status filter
       if (status && award.status?.toLowerCase() !== status.toLowerCase()) return false;
-
-      // Sector filter
       if (sector && award.sector !== sector) return false;
-
-      // County filter
       if (county && award.county !== county) return false;
-
-      // Region filter (actual region like "South West")
       if (region && award._actualRegion !== region) return false;
-
-      // Search filter (award name, county, sector, status, winner, description)
       if (search) {
         const searchFields = [
-          utils.formatAwardName(award),
-          award.county || '',
-          award.sector || '',
-          award.status || '',
-          award._winnerName || '',
-          award.description || ''
+          utils.formatAwardName(award), award.county || '', award.sector || '',
+          award.status || '', award._winnerName || '', award.description || ''
         ].join(' ').toLowerCase();
-
-        if (!searchFields.includes(search)) {
-          return false;
-        }
+        if (!searchFields.includes(search)) return false;
       }
-
       return true;
     });
 
-    // If search query is active and no exact matches found, try fuzzy search
     if (search && STATE.filteredAwards.length === 0) {
       STATE.filteredAwards = utils.fuzzyFilter(STATE.allAwards, search, ['award_name', 'county']);
-      // Also apply non-search filters to fuzzy results
-      if (year) STATE.filteredAwards = STATE.filteredAwards.filter(a => { let ay = (typeof a.year === 'string' && a.year.includes('-')) ? a.year.split('-')[0] : a.year; return String(ay) === String(year); });
+      if (year) STATE.filteredAwards = STATE.filteredAwards.filter(a => { const ay = (typeof a.year === 'string' && a.year.includes('-')) ? a.year.split('-')[0] : a.year; return String(ay) === String(year); });
       if (status) STATE.filteredAwards = STATE.filteredAwards.filter(a => a.status?.toLowerCase() === status.toLowerCase());
       if (sector) STATE.filteredAwards = STATE.filteredAwards.filter(a => a.sector === sector);
       if (county) STATE.filteredAwards = STATE.filteredAwards.filter(a => a.county === county);
@@ -491,10 +615,15 @@ const awardsModule = {
     const tbody = document.getElementById('awardsTableBody');
     const count = document.getElementById('awardsCount');
 
-    count.textContent = STATE.filteredAwards.length;
+    // Use server total count when in server pagination mode
+    const displayCount = this._serverPagination ? this._pagination.count : STATE.filteredAwards.length;
+    count.textContent = displayCount;
 
     if (STATE.filteredAwards.length === 0) {
       utils.showEmptyState('awardsTableBody', 10, 'No awards found matching your filters');
+      // Clear pagination
+      const pagEl = document.getElementById('awardsPagination');
+      if (pagEl) pagEl.innerHTML = '';
       return;
     }
 
@@ -612,6 +741,18 @@ const awardsModule = {
     }).join('');
 
     this.updateSortIndicators();
+
+    // Render server-side pagination controls
+    if (this._serverPagination) {
+      // Create pagination container if it doesn't exist
+      let pagEl = document.getElementById('awardsPagination');
+      if (!pagEl) {
+        pagEl = document.createElement('div');
+        pagEl.id = 'awardsPagination';
+        tbody.closest('table')?.parentElement?.appendChild(pagEl);
+      }
+      utils.renderServerPagination('awardsPagination', this._pagination, 'awardsModule._goToPage');
+    }
   },
 
   /**
@@ -873,7 +1014,9 @@ const awardsModule = {
     const awards = STATE.allAwards;
     const el = (id, val) => { const e = document.getElementById(id); if (e) e.textContent = val; };
 
-    el('statsTotalAwards', awards.length);
+    // Use server total when in paginated mode; page data for breakdowns
+    const totalCount = this._serverPagination ? this._pagination.count : awards.length;
+    el('statsTotalAwards', totalCount);
     el('statsActiveAwards', awards.filter(a => a.status?.toLowerCase() === 'active').length);
     el('statsWithNominees', awards.filter(a => (a._assignmentCounts?.total || 0) > 0).length);
     el('statsWithWinners', awards.filter(a => (a._assignmentCounts?.winner || 0) > 0).length);
@@ -2371,4 +2514,4 @@ const awardsModule = {
 };
 
 // Export to window for global access
-window.awardsModule = awardsModule;
+ModuleRegistry.register('awardsModule', awardsModule);

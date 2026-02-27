@@ -56,9 +56,21 @@
     "aiVettingModule": "readonly",
     "marketingModule": "readonly",
     "apiClient": "readonly",
+    "actionRegistry": "readonly",
+    "serverQuery": "readonly",
     "L": "readonly",
     "Sentry": "readonly",
-    "Stripe": "readonly"
+    "Stripe": "readonly",
+    "Chart": "readonly",
+    "XLSX": "readonly",
+    "a11yModule": "readonly",
+    "i18n": "readonly",
+    "tenantModule": "readonly",
+    "multiTenancyModule": "readonly",
+    "emailBuilder": "readonly",
+    "jsPDF": "readonly",
+    "jspdf": "readonly",
+    "Choices": "readonly"
   },
   "parserOptions": {
     "ecmaVersion": 2020,

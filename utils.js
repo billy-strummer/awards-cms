@@ -2346,7 +2346,13 @@ const actionRegistry = {
       const argsJson = el.getAttribute('data-args');
       let extraArgs = [];
       if (argsJson) {
-        try { extraArgs = JSON.parse(argsJson); if (!Array.isArray(extraArgs)) extraArgs = [extraArgs]; } catch (e) { extraArgs = []; }
+        try {
+          const parsed = JSON.parse(argsJson);
+          extraArgs = Array.isArray(parsed) ? parsed : [parsed];
+        } catch (_e) {
+          console.warn(`[actionRegistry] Invalid JSON in data-args for action "${actionName}":`, argsJson);
+          extraArgs = [];
+        }
       }
 
       if (id !== null && id !== undefined) {
@@ -2393,21 +2399,61 @@ const apiClient = {
    * @param {Object} body - Request payload (table, operation, filters, etc.)
    * @returns {Promise<Object>} Parsed JSON response
    */
-  async _call(body) {
+  /** Request timeout in milliseconds */
+  TIMEOUT_MS: 30000,
+
+  /** Maximum retry attempts for transient failures */
+  MAX_RETRIES: 2,
+
+  async _call(body, attempt = 0) {
     const token = await this._getToken();
     if (!token) throw new Error('Not authenticated');
 
-    const res = await fetch('/api/data-proxy', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`
-      },
-      body: JSON.stringify(body)
-    });
+    let res;
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), this.TIMEOUT_MS);
 
-    const json = await res.json();
-    if (!res.ok) throw new Error(json.error || `API error ${res.status}`);
+      res = await fetch('/api/data-proxy', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify(body),
+        signal: controller.signal
+      });
+
+      clearTimeout(timeoutId);
+    } catch (err) {
+      // Retry on network/timeout errors (not on abort from user)
+      if (attempt < this.MAX_RETRIES && (err.name === 'AbortError' || err.name === 'TypeError')) {
+        const delay = Math.pow(2, attempt) * 1000; // 1s, 2s
+        await new Promise(r => setTimeout(r, delay));
+        return this._call(body, attempt + 1);
+      }
+      throw new Error(err.name === 'AbortError' ? 'Request timed out' : `Network error: ${err.message}`);
+    }
+
+    // Parse response safely — server may return non-JSON on 500s
+    let json;
+    try {
+      json = await res.json();
+    } catch (_parseErr) {
+      throw new Error(`API error ${res.status}: invalid response`);
+    }
+
+    // Retry on 429 (rate-limited) or 5xx server errors
+    if ((res.status === 429 || res.status >= 500) && attempt < this.MAX_RETRIES) {
+      const delay = Math.pow(2, attempt) * 1000;
+      await new Promise(r => setTimeout(r, delay));
+      return this._call(body, attempt + 1);
+    }
+
+    if (!res.ok) {
+      const errorMsg = json.error || json.message || (json.details && json.details[0]) || `API error ${res.status}`;
+      throw new Error(errorMsg);
+    }
     return json;
   },
 

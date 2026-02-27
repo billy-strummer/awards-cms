@@ -236,7 +236,7 @@ async function executeQuery(body, user) {
     if (error) throw error;
 
     // Log the activity
-    await logActivity(table, 'insert', user, result);
+    await logActivity(table, 'insert', user, result, {});
 
     return { data: result };
   }
@@ -263,7 +263,7 @@ async function executeQuery(body, user) {
     const { data: result, error } = await query.select();
     if (error) throw error;
 
-    await logActivity(table, 'update', user, result);
+    await logActivity(table, 'update', user, result, { id, filters });
 
     return { data: result };
   }
@@ -285,7 +285,7 @@ async function executeQuery(body, user) {
     const { data: result, error } = await query.select();
     if (error) throw error;
 
-    await logActivity(table, 'delete', user, result);
+    await logActivity(table, 'delete', user, result, { id, filters });
 
     return { data: result };
   }
@@ -295,14 +295,26 @@ async function executeQuery(body, user) {
 
 /**
  * Log data mutation to activity_log table.
+ * Captures which records were affected and the type of operation.
  */
-async function logActivity(table, action, user, result) {
+async function logActivity(table, action, user, result, context = {}) {
   try {
     const count = Array.isArray(result) ? result.length : 1;
+    const recordIds = Array.isArray(result)
+      ? result.slice(0, 10).map(r => r.id).filter(Boolean)
+      : [];
+
+    const detailParts = [`${action} ${count} record(s) in ${table} via API proxy`];
+    if (context.id) detailParts.push(`target_id=${context.id}`);
+    if (recordIds.length > 0) detailParts.push(`affected=[${recordIds.join(',')}]`);
+    if (context.filters && Object.keys(context.filters).length > 0) {
+      detailParts.push(`filters=${JSON.stringify(context.filters)}`);
+    }
+
     await supabase.from('activity_log').insert([{
       entity_type: table,
       action: `proxy_${action}`,
-      details: `${action} ${count} record(s) in ${table} via API proxy`,
+      details: detailParts.join(' | '),
       performed_by: user.email
     }]);
   } catch (e) {
@@ -319,8 +331,21 @@ const rateLimits = new Map();
 const RATE_LIMIT_WINDOW = 60 * 1000; // 1 minute
 const RATE_LIMIT_MAX = 120;           // 120 requests per minute
 
+let lastCleanup = Date.now();
+
 function checkRateLimit(userId) {
   const now = Date.now();
+
+  // Inline cleanup: sweep stale entries every 2 windows (works in serverless)
+  if (now - lastCleanup > RATE_LIMIT_WINDOW * 2) {
+    for (const [key, value] of rateLimits.entries()) {
+      if (now - value.windowStart > RATE_LIMIT_WINDOW * 2) {
+        rateLimits.delete(key);
+      }
+    }
+    lastCleanup = now;
+  }
+
   const userLimits = rateLimits.get(userId) || { count: 0, windowStart: now };
 
   if (now - userLimits.windowStart > RATE_LIMIT_WINDOW) {
@@ -334,17 +359,6 @@ function checkRateLimit(userId) {
   rateLimits.set(userId, userLimits);
   return userLimits.count <= RATE_LIMIT_MAX;
 }
-
-// Periodically clean up old rate limit entries (unref so it doesn't prevent process exit)
-const _cleanupTimer = setInterval(() => {
-  const now = Date.now();
-  for (const [key, value] of rateLimits.entries()) {
-    if (now - value.windowStart > RATE_LIMIT_WINDOW * 2) {
-      rateLimits.delete(key);
-    }
-  }
-}, RATE_LIMIT_WINDOW * 2);
-if (_cleanupTimer.unref) _cleanupTimer.unref();
 
 // ============================================
 // MAIN HANDLER

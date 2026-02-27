@@ -193,4 +193,139 @@ describe('actionRegistry', () => {
 
     btn.remove();
   });
+
+  // --- Edge Cases ---
+
+  test('data-args with object JSON wraps in array', () => {
+    const handler = jest.fn();
+    actionRegistry.register('objargs.test', handler);
+
+    const btn = document.createElement('button');
+    btn.setAttribute('data-action', 'objargs.test');
+    btn.setAttribute('data-args', '{"key":"value"}');
+    document.getElementById('testContainer').appendChild(btn);
+
+    btn.click();
+    expect(handler).toHaveBeenCalledWith({ key: 'value' }, expect.any(Object));
+
+    btn.remove();
+  });
+
+  test('invalid data-args JSON warns and passes no extra args', () => {
+    const handler = jest.fn();
+    actionRegistry.register('badargs.test', handler);
+    const warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
+
+    const btn = document.createElement('button');
+    btn.setAttribute('data-action', 'badargs.test');
+    btn.setAttribute('data-args', '{not valid json}');
+    document.getElementById('testContainer').appendChild(btn);
+
+    btn.click();
+    expect(handler).toHaveBeenCalledWith(expect.any(Object)); // just event
+    expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('[actionRegistry]'), expect.any(String));
+
+    warnSpy.mockRestore();
+    btn.remove();
+  });
+
+  test('data-id and data-args are combined correctly', () => {
+    const handler = jest.fn();
+    actionRegistry.register('combo.test', handler);
+
+    const btn = document.createElement('button');
+    btn.setAttribute('data-action', 'combo.test');
+    btn.setAttribute('data-id', 'rec-456');
+    btn.setAttribute('data-args', '["extra"]');
+    document.getElementById('testContainer').appendChild(btn);
+
+    btn.click();
+    expect(handler).toHaveBeenCalledWith('rec-456', 'extra', expect.any(Object));
+
+    btn.remove();
+  });
+
+  test('unknown action logs warning', () => {
+    const warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
+
+    const btn = document.createElement('button');
+    btn.setAttribute('data-action', 'totally.unknown.action');
+    document.getElementById('testContainer').appendChild(btn);
+
+    btn.click();
+    expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('No handler found'));
+
+    warnSpy.mockRestore();
+    btn.remove();
+  });
+
+  test('empty data-action attribute does not trigger handler', () => {
+    const handler = jest.fn();
+    actionRegistry.register('', handler);
+
+    const btn = document.createElement('button');
+    btn.setAttribute('data-action', '');
+    document.getElementById('testContainer').appendChild(btn);
+
+    btn.click();
+    expect(handler).not.toHaveBeenCalled();
+
+    btn.remove();
+  });
+
+  test('keydown Enter triggers click on non-button data-action element', () => {
+    const handler = jest.fn();
+    actionRegistry.register('key.test', handler);
+
+    const div = document.createElement('div');
+    div.setAttribute('data-action', 'key.test');
+    div.setAttribute('tabindex', '0');
+    document.getElementById('testContainer').appendChild(div);
+
+    const event = new dom.window.KeyboardEvent('keydown', {
+      key: 'Enter', bubbles: true, cancelable: true
+    });
+    div.dispatchEvent(event);
+    expect(handler).toHaveBeenCalled();
+
+    div.remove();
+  });
+
+  test('keydown Space triggers click on non-button data-action element', () => {
+    const handler = jest.fn();
+    actionRegistry.register('space.test', handler);
+
+    const div = document.createElement('div');
+    div.setAttribute('data-action', 'space.test');
+    div.setAttribute('tabindex', '0');
+    document.getElementById('testContainer').appendChild(div);
+
+    const event = new dom.window.KeyboardEvent('keydown', {
+      key: ' ', bubbles: true, cancelable: true
+    });
+    div.dispatchEvent(event);
+    expect(handler).toHaveBeenCalled();
+
+    div.remove();
+  });
+
+  test('keydown on native button does NOT trigger extra click', () => {
+    const handler = jest.fn();
+    actionRegistry.register('nativekey.test', handler);
+
+    const btn = document.createElement('button');
+    btn.setAttribute('data-action', 'nativekey.test');
+    document.getElementById('testContainer').appendChild(btn);
+
+    // Dispatch keydown — this should be ignored by our handler (browser handles it)
+    const event = new dom.window.KeyboardEvent('keydown', {
+      key: 'Enter', bubbles: true, cancelable: true
+    });
+    btn.dispatchEvent(event);
+    // The handler should NOT be called by our keydown listener
+    // (it would only be called by the native button's click)
+    expect(handler).not.toHaveBeenCalled();
+
+    btn.remove();
+  });
 });

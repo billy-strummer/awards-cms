@@ -305,4 +305,149 @@ describe('Data Proxy API', () => {
     expect(res.headers['Access-Control-Allow-Origin']).toBeDefined();
     expect(res.headers['Access-Control-Allow-Methods']).toContain('POST');
   });
+
+  // --- Edge Cases ---
+
+  test('rejects empty body', async () => {
+    const req = createReq({ body: null });
+    req.body = null;
+    const res = createRes();
+    await handler(req, res);
+    expect(res.statusCode).toBe(400);
+    expect(res.body.error).toContain('JSON object');
+  });
+
+  test('rejects negative page number', async () => {
+    const req = createReq({
+      body: { table: 'awards', operation: 'select', page: -1 }
+    });
+    const res = createRes();
+    await handler(req, res);
+    expect(res.statusCode).toBe(400);
+    expect(res.body.details[0]).toContain('page');
+  });
+
+  test('rejects zero pageSize', async () => {
+    const req = createReq({
+      body: { table: 'awards', operation: 'select', pageSize: 0 }
+    });
+    const res = createRes();
+    await handler(req, res);
+    expect(res.statusCode).toBe(400);
+  });
+
+  test('rejects select string exceeding max length', async () => {
+    const req = createReq({
+      body: { table: 'awards', operation: 'select', select: 'x'.repeat(501) }
+    });
+    const res = createRes();
+    await handler(req, res);
+    expect(res.statusCode).toBe(400);
+    expect(res.body.details[0]).toContain('select');
+  });
+
+  test('rejects sort without column', async () => {
+    const req = createReq({
+      body: { table: 'awards', operation: 'select', sort: { ascending: true } }
+    });
+    const res = createRes();
+    await handler(req, res);
+    expect(res.statusCode).toBe(400);
+    expect(res.body.details[0]).toContain('sort');
+  });
+
+  test('rejects filters as non-object', async () => {
+    const req = createReq({
+      body: { table: 'awards', operation: 'select', filters: 'bad' }
+    });
+    const res = createRes();
+    await handler(req, res);
+    expect(res.statusCode).toBe(400);
+    expect(res.body.details[0]).toContain('filters');
+  });
+
+  test('all allowed tables can be selected', async () => {
+    const allowed = ['awards', 'organisations', 'entries', 'winners', 'events',
+      'invoices', 'payments', 'award_assignments', 'contacts',
+      'activity_log', 'email_templates', 'user_preferences',
+      'counties', 'regions', 'award_years'];
+
+    for (const table of allowed) {
+      const req = createReq({ body: { table, operation: 'select' } });
+      const res = createRes();
+      await handler(req, res);
+      expect(res.statusCode).toBe(200);
+    }
+  });
+
+  test('read-only tables reject insert', async () => {
+    for (const table of ['counties', 'regions', 'award_years']) {
+      const req = createReq({
+        body: { table, operation: 'insert', data: { name: 'test' } }
+      });
+      const res = createRes();
+      await handler(req, res);
+      expect(res.statusCode).toBe(400);
+    }
+  });
+
+  test('read-only tables reject delete', async () => {
+    for (const table of ['counties', 'regions', 'award_years']) {
+      const req = createReq({
+        body: { table, operation: 'delete', id: 'abc' }
+      });
+      const res = createRes();
+      await handler(req, res);
+      expect(res.statusCode).toBe(400);
+    }
+  });
+
+  test('multiple validation errors are returned together', async () => {
+    const req = createReq({
+      body: { table: 'secret', operation: 'drop', pageSize: -5 }
+    });
+    const res = createRes();
+    await handler(req, res);
+    expect(res.statusCode).toBe(400);
+    expect(res.body.details.length).toBeGreaterThan(1);
+  });
+
+  test('valid sort with ascending=false is accepted', async () => {
+    const req = createReq({
+      body: {
+        table: 'awards',
+        operation: 'select',
+        sort: { column: 'created_at', ascending: false }
+      }
+    });
+    const res = createRes();
+    await handler(req, res);
+    expect(res.statusCode).toBe(200);
+  });
+
+  test('insert with array data is accepted', async () => {
+    const req = createReq({
+      body: {
+        table: 'awards',
+        operation: 'insert',
+        data: [{ award_name: 'A' }, { award_name: 'B' }]
+      }
+    });
+    const res = createRes();
+    await handler(req, res);
+    expect(res.statusCode).toBe(200);
+  });
+
+  test('delete with filters (no id) is accepted', async () => {
+    const req = createReq({
+      body: {
+        table: 'awards',
+        operation: 'delete',
+        filters: { status: 'draft' }
+      }
+    });
+    const res = createRes();
+    await handler(req, res);
+    expect(res.statusCode).toBe(200);
+  });
 });

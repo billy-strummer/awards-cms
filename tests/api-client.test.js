@@ -226,4 +226,151 @@ describe('apiClient', () => {
     const headers = global.fetch.mock.calls[0][1].headers;
     expect(headers.Authorization).toBe('Bearer test-jwt-token');
   });
+
+  // --- Timeout & Retry Tests ---
+
+  test('throws "Request timed out" when fetch is aborted', async () => {
+    global.fetch.mockImplementation(() => {
+      const err = new Error('The operation was aborted');
+      err.name = 'AbortError';
+      return Promise.reject(err);
+    });
+
+    // Override timeout so tests don't actually wait 30s
+    const origTimeout = apiClient.TIMEOUT_MS;
+    apiClient.TIMEOUT_MS = 10;
+    apiClient.MAX_RETRIES = 0; // disable retries for this test
+
+    await expect(apiClient.select('awards')).rejects.toThrow('Request timed out');
+
+    apiClient.TIMEOUT_MS = origTimeout;
+    apiClient.MAX_RETRIES = 2;
+  });
+
+  test('throws "Network error" on fetch TypeError', async () => {
+    global.fetch.mockImplementation(() => {
+      const err = new TypeError('Failed to fetch');
+      return Promise.reject(err);
+    });
+
+    apiClient.MAX_RETRIES = 0;
+    await expect(apiClient.select('awards')).rejects.toThrow('Network error: Failed to fetch');
+    apiClient.MAX_RETRIES = 2;
+  });
+
+  test('handles non-JSON response gracefully', async () => {
+    global.fetch.mockResolvedValue({
+      ok: false,
+      status: 502,
+      json: () => Promise.reject(new Error('not json'))
+    });
+
+    apiClient.MAX_RETRIES = 0;
+    await expect(apiClient.select('awards')).rejects.toThrow('API error 502: invalid response');
+    apiClient.MAX_RETRIES = 2;
+  });
+
+  test('retries on 429 rate limit response', async () => {
+    let callCount = 0;
+    global.fetch.mockImplementation(() => {
+      callCount++;
+      if (callCount === 1) {
+        return Promise.resolve({
+          ok: false,
+          status: 429,
+          json: () => Promise.resolve({ error: 'Rate limit exceeded' })
+        });
+      }
+      return Promise.resolve({
+        ok: true,
+        json: () => Promise.resolve({ data: [{ id: 1 }], count: 1 })
+      });
+    });
+
+    const result = await apiClient.select('awards');
+    expect(result.data).toEqual([{ id: 1 }]);
+    expect(callCount).toBe(2);
+  });
+
+  test('retries on 500 server error', async () => {
+    let callCount = 0;
+    global.fetch.mockImplementation(() => {
+      callCount++;
+      if (callCount === 1) {
+        return Promise.resolve({
+          ok: false,
+          status: 500,
+          json: () => Promise.resolve({ error: 'Internal server error' })
+        });
+      }
+      return Promise.resolve({
+        ok: true,
+        json: () => Promise.resolve({ data: [], count: 0 })
+      });
+    });
+
+    const result = await apiClient.select('awards');
+    expect(result.data).toEqual([]);
+    expect(callCount).toBe(2);
+  });
+
+  test('uses validation details array in error message', async () => {
+    global.fetch.mockResolvedValue({
+      ok: false,
+      status: 400,
+      json: () => Promise.resolve({ error: null, details: ['Table "x" is not allowed'] })
+    });
+
+    apiClient.MAX_RETRIES = 0;
+    await expect(apiClient.select('awards')).rejects.toThrow('Table "x" is not allowed');
+    apiClient.MAX_RETRIES = 2;
+  });
+
+  // --- Edge Cases ---
+
+  test('select sends default options when none provided', async () => {
+    global.fetch.mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve({ data: [], count: 0, page: 1, pageSize: 50, totalPages: 0 })
+    });
+
+    await apiClient.select('awards');
+
+    const sentBody = JSON.parse(global.fetch.mock.calls[0][1].body);
+    expect(sentBody.select).toBe('*');
+    expect(sentBody.page).toBe(1);
+    expect(sentBody.pageSize).toBe(50);
+    expect(sentBody.filters).toEqual({});
+  });
+
+  test('count sends filters correctly', async () => {
+    global.fetch.mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve({ count: 5 })
+    });
+
+    await apiClient.count('entries', { status: 'submitted', year: 2026 });
+
+    const sentBody = JSON.parse(global.fetch.mock.calls[0][1].body);
+    expect(sentBody.operation).toBe('count');
+    expect(sentBody.filters).toEqual({ status: 'submitted', year: 2026 });
+  });
+
+  test('select passes sort and custom select', async () => {
+    global.fetch.mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve({ data: [], count: 0 })
+    });
+
+    await apiClient.select('awards', {
+      select: 'id,award_name',
+      sort: { column: 'created_at', ascending: false },
+      filters: { year: 2026 }
+    });
+
+    const sentBody = JSON.parse(global.fetch.mock.calls[0][1].body);
+    expect(sentBody.select).toBe('id,award_name');
+    expect(sentBody.sort).toEqual({ column: 'created_at', ascending: false });
+    expect(sentBody.filters).toEqual({ year: 2026 });
+  });
 });

@@ -32,15 +32,42 @@ window.entryRevisionModule = {
 
   async _sendRevisionEmail(entry, feedback) {
     try {
-      await STATE.client.functions.invoke('send-email', {
-        body: {
-          to: entry.contact_email,
-          subject: `Action Required: Changes Requested – ${entry.entry_title}`,
-          html: `<p>Dear ${utils.escapeHtml(entry.contact_name)},</p>
+      // Try to load editable template from CMS
+      let subject, html;
+      const { data: tpl } = await STATE.client
+        .from('email_templates')
+        .select('subject, body')
+        .eq('template_type', 'revision_request')
+        .eq('is_active', true)
+        .order('is_default', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (tpl) {
+        const placeholders = {
+          CONTACT_NAME: entry.contact_name || '',
+          ENTRY_TITLE:  entry.entry_title || '',
+          ENTRY_NUMBER: entry.entry_number || '',
+          FEEDBACK:     feedback || '',
+        };
+        subject = tpl.subject;
+        let bodyText = tpl.body;
+        for (const [key, value] of Object.entries(placeholders)) {
+          const regex = new RegExp(`\\{${key}\\}`, 'g');
+          subject = subject.replace(regex, utils.escapeHtml(value));
+          bodyText = bodyText.replace(regex, utils.escapeHtml(value));
+        }
+        html = bodyText.replace(/\n/g, '<br>');
+      } else {
+        subject = `Action Required: Changes Requested \u2013 ${entry.entry_title}`;
+        html = `<p>Dear ${utils.escapeHtml(entry.contact_name)},</p>
 <p>Your entry <strong>${utils.escapeHtml(entry.entry_title)}</strong> (${utils.escapeHtml(entry.entry_number)}) requires changes.</p>
 <p><strong>Feedback:</strong><br>${utils.escapeHtml(feedback).replace(/\n/g, '<br>')}</p>
-<p>Please log in to resubmit your entry.</p>`
-        }
+<p>Please log in to resubmit your entry.</p>`;
+      }
+
+      await STATE.client.functions.invoke('send-email', {
+        body: { to: entry.contact_email, subject, html }
       });
     } catch (err) { console.warn('Revision email failed (non-fatal):', err.message); }
   },

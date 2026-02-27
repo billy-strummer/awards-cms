@@ -72,7 +72,51 @@ function wrapEmailTemplate(bodyContent, branding = {}, subtitle = '') {
 }
 
 /**
- * Email template body content (without wrapper).
+ * Map template keys (used in code) to database template_type values.
+ * sendTemplateEmail() tries to load from the DB first using these types.
+ */
+const DB_TEMPLATE_TYPE_MAP = {
+  ENTRY_CONFIRMATION:     'confirmation',
+  PAYMENT_REMINDER:       'payment_reminder',
+  SHORTLIST_NOTIFICATION: 'approval',
+  WINNER_ANNOUNCEMENT:    'winner_announcement',
+  JUDGE_ASSIGNMENT:       'judge_assignment',
+  JUDGE_REMINDER:         'judge_reminder',
+  DEADLINE_REMINDER:      'deadline_reminder',
+};
+
+/**
+ * Load an active email template from the database by type.
+ * Returns { subject, body } or null if none found.
+ */
+async function loadDbTemplate(templateType) {
+  try {
+    const { data } = await supabase
+      .from('email_templates')
+      .select('subject, body')
+      .eq('template_type', templateType)
+      .eq('is_active', true)
+      .order('is_default', { ascending: false })
+      .limit(1)
+      .single();
+    return data;
+  } catch { return null; }
+}
+
+/**
+ * Convert plain-text template body (from CMS) to styled HTML.
+ */
+function textToHtml(text) {
+  const escaped = String(text)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  const html = escaped
+    .replace(/\n\n/g, '</p><p style="margin:0 0 16px 0;">')
+    .replace(/\n/g, '<br>');
+  return `<div style="padding:30px 40px;"><p style="margin:0 0 16px 0;">${html}</p></div>`;
+}
+
+/**
+ * Hardcoded email template body content (fallback when no DB template found).
  * The wrapper is applied at send time using tenant branding.
  * The {{brand_name}} placeholder is replaced with the tenant's company name.
  */
@@ -329,23 +373,67 @@ const EMAIL_TEMPLATES = {
 };
 
 /**
- * Send email using template with tenant branding
+ * Send email using template with tenant branding.
+ * Tries to load the editable template from the CMS database first;
+ * falls back to the hardcoded EMAIL_TEMPLATES if no DB row is found.
+ *
+ * DB templates use {PLACEHOLDER} syntax (single braces, uppercase).
+ * Hardcoded templates use {{placeholder}} syntax (double braces, lowercase).
  */
 async function sendTemplateEmail(templateKey, toEmail, variables) {
   try {
+    // Load tenant branding
+    const branding = await loadTenantBranding();
+    const brandName = branding.company_name || process.env.FROM_NAME || 'British Trade Awards';
+
+    const subtitle = HEADER_SUBTITLES[templateKey] || '';
+
+    // --- Try database template first ---
+    const dbType = DB_TEMPLATE_TYPE_MAP[templateKey];
+    const dbTpl = dbType ? await loadDbTemplate(dbType) : null;
+
+    if (dbTpl) {
+      // DB templates use {KEY} placeholders (uppercase, single brace)
+      // Map common variable names to uppercase placeholder keys
+      const upperVars = {};
+      for (const [k, v] of Object.entries(variables || {})) {
+        upperVars[k.toUpperCase()] = v || '';
+      }
+      upperVars.BRAND_NAME = brandName;
+
+      let subject = dbTpl.subject;
+      let bodyText = dbTpl.body;
+      for (const [key, value] of Object.entries(upperVars)) {
+        const regex = new RegExp(`\\{${key}\\}`, 'g');
+        subject = subject.replace(regex, value);
+        bodyText = bodyText.replace(regex, value);
+      }
+
+      const bodyHtml = textToHtml(bodyText);
+      const html = wrapEmailTemplate(bodyHtml, branding, subtitle);
+
+      const fromEmail = branding.email_from || process.env.FROM_EMAIL || 'awards@britishtradeawards.com';
+      await resend.emails.send({
+        to: toEmail,
+        from: `${brandName} <${fromEmail}>`,
+        subject,
+        html,
+        ...(branding.email_reply_to ? { reply_to: branding.email_reply_to } : {})
+      });
+
+      await logEmailSent(templateKey, toEmail, subject);
+      console.log(`✅ Email sent (DB template): ${templateKey} to ${toEmail}`);
+      return true;
+    }
+
+    // --- Fallback: hardcoded template ---
     const template = EMAIL_TEMPLATES[templateKey];
     if (!template) {
       throw new Error(`Template ${templateKey} not found`);
     }
 
-    // Load tenant branding
-    const branding = await loadTenantBranding();
-    const brandName = branding.company_name || process.env.FROM_NAME || 'British Trade Awards';
-
-    // Add brand_name to variables so templates can reference it
     const allVariables = { brand_name: brandName, ...variables };
 
-    // Replace variables in subject and body
     let subject = template.subject;
     let bodyContent = template.body;
 
@@ -356,34 +444,24 @@ async function sendTemplateEmail(templateKey, toEmail, variables) {
       bodyContent = bodyContent.replace(regex, escapeHtml(value || ''));
     }
 
-    // Wrap body content with branded email template (dynamic subtitle per template type)
-    const subtitle = HEADER_SUBTITLES[templateKey] || '';
-    const html = await wrapEmailTemplate(bodyContent, branding, subtitle);
+    const html = wrapEmailTemplate(bodyContent, branding, subtitle);
 
-    // Use branded from address
     const fromEmail = branding.email_from || process.env.FROM_EMAIL || 'awards@britishtradeawards.com';
-    const fromAddress = `${brandName} <${fromEmail}>`;
-
     await resend.emails.send({
       to: toEmail,
-      from: fromAddress,
-      subject: subject,
-      html: html,
+      from: `${brandName} <${fromEmail}>`,
+      subject,
+      html,
       ...(branding.email_reply_to ? { reply_to: branding.email_reply_to } : {})
     });
 
-    // Log email sent
     await logEmailSent(templateKey, toEmail, subject);
-
-    console.log(`✅ Email sent: ${templateKey} to ${toEmail}`);
+    console.log(`✅ Email sent (hardcoded fallback): ${templateKey} to ${toEmail}`);
     return true;
 
   } catch (error) {
     console.error(`❌ Error sending email:`, error);
-
-    // Log email failure
     await logEmailFailure(templateKey, toEmail, error.message);
-
     return false;
   }
 }

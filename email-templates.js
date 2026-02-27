@@ -8,9 +8,10 @@ const emailTemplatesModule = {
 
   /**
    * Default template content for reverting edits.
-   * Keyed by template_name as defined in the schema seed data.
+   * Keyed by template_name as defined in the database seed data.
    */
   _defaultTemplates: {
+    // -- Entry & Submissions --
     'Entry Confirmation': {
       subject: 'Entry Received - {ENTRY_NUMBER} | British Trade Awards',
       body: `Dear {CONTACT_NAME},
@@ -70,6 +71,84 @@ If you have already uploaded your documents, please disregard this message. If y
 Kind regards,
 The British Trade Awards Team`
     },
+    'Changes Requested': {
+      subject: 'Action Required: Changes Requested - {ENTRY_TITLE}',
+      body: `Dear {CONTACT_NAME},
+
+Your entry {ENTRY_TITLE} ({ENTRY_NUMBER}) requires changes before it can proceed.
+
+Feedback:
+{FEEDBACK}
+
+Please log in to review the feedback and resubmit your entry.
+
+Kind regards,
+The British Trade Awards Team`
+    },
+
+    // -- Payments --
+    'Payment Confirmation': {
+      subject: 'Entry Confirmed: {ENTRY_NUMBER} - British Trade Awards',
+      body: `Dear {CONTACT_NAME},
+
+Thank you for your entry! Your entry {ENTRY_NUMBER} has been received and payment confirmed.
+
+Entry: {ENTRY_TITLE}
+Company: {COMPANY_NAME}
+
+You can upload supporting documents at:
+{UPLOAD_LINK}
+
+We will be in touch with next steps. Good luck!
+
+Kind regards,
+The British Trade Awards Team`
+    },
+    'Payment Failed': {
+      subject: 'Payment Issue: {ENTRY_NUMBER} - British Trade Awards',
+      body: `Dear {CONTACT_NAME},
+
+We were unable to process payment for entry {ENTRY_NUMBER}.
+
+Reason: {ERROR_MESSAGE}
+
+Please try again or contact us for assistance at {CONTACT_EMAIL}
+
+Kind regards,
+The British Trade Awards Team`
+    },
+    'Refund Confirmation': {
+      subject: 'Refund Processed: {ENTRY_NUMBER} - British Trade Awards',
+      body: `Dear {CONTACT_NAME},
+
+A refund has been processed for entry {ENTRY_NUMBER}.
+
+The refund should appear on your statement within 5-10 business days.
+
+If you have any questions, please contact us at {CONTACT_EMAIL}
+
+Kind regards,
+The British Trade Awards Team`
+    },
+    'Payment Reminder': {
+      subject: 'Payment Pending - Entry {ENTRY_NUMBER}',
+      body: `Dear {CONTACT_NAME},
+
+Your entry {ENTRY_NUMBER} is currently pending payment.
+
+Amount Due: £{ENTRY_FEE}
+Entry: {ENTRY_TITLE}
+
+Please complete your payment to confirm your entry:
+{PAYMENT_LINK}
+
+If you have any questions, please contact us at {CONTACT_EMAIL}
+
+Kind regards,
+The British Trade Awards Team`
+    },
+
+    // -- Judging & Results --
     'Entry Approved/Shortlisted': {
       subject: 'You Have Been Shortlisted - {ENTRY_NUMBER} | British Trade Awards',
       body: `Dear {CONTACT_NAME},
@@ -109,6 +188,114 @@ We would very much welcome an entry from you again next year and wish you contin
 Kind regards,
 The British Trade Awards Team`
     },
+    'Winner Announcement': {
+      subject: 'WINNER - {AWARD_NAME}!',
+      body: `Dear {CONTACT_NAME},
+
+Congratulations! We are thrilled to announce that {COMPANY_NAME} is the winner of the {AWARD_NAME} at the British Trade Awards!
+
+Your exceptional work has set the standard for excellence.
+
+Your Winner's Package Includes:
+- Digital winner's certificate
+- Winner's logo and badge for your marketing
+- Press release and media coverage
+- Feature on our website and social media
+- Winner's trophy (presented at ceremony)
+
+Awards Ceremony: {CEREMONY_DATE} at {CEREMONY_VENUE}
+
+We look forward to celebrating with you!
+
+Kind regards,
+The British Trade Awards Team`
+    },
+    'Judge Assignment': {
+      subject: 'New Judging Assignment - British Trade Awards',
+      body: `Dear {JUDGE_NAME},
+
+You have been assigned {ENTRY_COUNT} new entries to judge for the British Trade Awards.
+
+Judging Deadline: {DEADLINE}
+
+Please log in to the Judge Portal to begin scoring:
+{JUDGE_PORTAL_LINK}
+
+Please complete your scoring by the deadline. If you have any questions or conflicts of interest, please contact us immediately.
+
+Thank you for your contribution to the awards!
+
+Kind regards,
+The British Trade Awards Team`
+    },
+    'Judge Reminder': {
+      subject: 'Judging Deadline Reminder - {DAYS_LEFT} Days Left',
+      body: `Dear {JUDGE_NAME},
+
+This is a reminder that the judging deadline is approaching in {DAYS_LEFT} days.
+
+Deadline: {DEADLINE}
+
+Your Progress:
+- Completed: {SCORED_COUNT}/{TOTAL_COUNT} entries
+- Remaining: {PENDING_COUNT} entries
+
+Please log in to the Judge Portal to continue scoring:
+{JUDGE_PORTAL_LINK}
+
+Thank you for your time and expertise!
+
+Kind regards,
+The British Trade Awards Team`
+    },
+
+    // -- Events --
+    'Event Invitation': {
+      subject: "You're Invited: {EVENT_NAME}",
+      body: `Dear {CONTACT_NAME},
+
+You are cordially invited to attend the {EVENT_NAME}.
+
+Date: {EVENT_DATE}
+Venue: {VENUE}
+
+We would be honoured by your presence at this special occasion.
+
+Please RSVP at your earliest convenience:
+{RSVP_URL}
+
+Kind regards,
+The British Trade Awards Team`
+    },
+    'Ticket Issued': {
+      subject: 'Your Ticket: {EVENT_NAME}',
+      body: `Dear {CONTACT_NAME},
+
+Your ticket for {EVENT_NAME} has been issued.
+
+Ticket Number: {TICKET_NUMBER}
+Date: {EVENT_DATE}
+Venue: {VENUE}
+
+Please present this ticket at check-in.
+
+Kind regards,
+The British Trade Awards Team`
+    },
+    'Deadline Reminder': {
+      subject: 'Reminder: {DEADLINE_TYPE} Deadline in {DAYS_LEFT} Days',
+      body: `Dear {RECIPIENT_NAME},
+
+This is a reminder that the {DEADLINE_TYPE} deadline is approaching.
+
+{DAYS_LEFT} Days Remaining
+Deadline: {DEADLINE_DATE}
+
+{ACTION_REQUIRED}
+
+Kind regards,
+The British Trade Awards Team`
+    },
   },
 
   /**
@@ -116,11 +303,24 @@ The British Trade Awards Team`
    * These appear below the brand name in the email header.
    */
   _headerSubtitles: {
-    'confirmation': 'Self-Nomination Entry Confirmation',
-    'reminder':     'Document Upload Reminder',
-    'approval':     'Entry Approved/Shortlisted',
-    'rejection':    'Entry Not Shortlisted',
-    'general':      'Entry Approved',
+    'confirmation':         'Self-Nomination Entry Confirmation',
+    'reminder':             'Document Upload Reminder',
+    'revision_request':     'Action Required',
+    'payment_confirmation': 'Self-Nomination Entry Confirmation',
+    'payment_failed':       'Payment Reminder',
+    'refund_confirmation':  'Refund Confirmation',
+    'payment_reminder':     'Payment Reminder',
+    'approval':             'Entry Approved/Shortlisted',
+    'rejection':            'Entry Not Shortlisted',
+    'winner_announcement':  'Winner Announcement',
+    'judge_assignment':     'Judging Assignment',
+    'judge_reminder':       'Judging Reminder',
+    'event_invitation':     'Event Invitation',
+    'ticket_issued':        'Ticket Issued',
+    'deadline_reminder':    'Deadline Reminder',
+    'general':              'Notification',
+    'notification':         'Notification',
+    'invite':               'Invitation',
   },
 
   /**
@@ -143,6 +343,7 @@ The British Trade Awards Team`
       try { defaults = JSON.parse(localStorage.getItem('emailPlaceholderDefaults') || 'null'); } catch (_) {}
     }
     return {
+      // Entry & Submissions
       ENTRY_NUMBER: defaults?.ENTRY_NUMBER || 'BTA-2025-0001',
       CONTACT_NAME: defaults?.CONTACT_NAME || 'John Smith',
       COMPANY_NAME: defaults?.COMPANY_NAME || 'Acme Corporation Ltd',
@@ -152,7 +353,37 @@ The British Trade Awards Team`
       UPLOAD_LINK: defaults?.UPLOAD_LINK || 'https://yourdomain.com/upload-documents.html?entry=BTA-2025-0001',
       DEADLINE_DATE: defaults?.DEADLINE_DATE || '31st December 2025',
       ANNOUNCEMENT_DATE: defaults?.ANNOUNCEMENT_DATE || '15th February 2026',
-      CONTACT_EMAIL: defaults?.CONTACT_EMAIL || 'awards@britishtrade.org'
+      CONTACT_EMAIL: defaults?.CONTACT_EMAIL || 'awards@britishtrade.org',
+      ENTRY_TITLE: defaults?.ENTRY_TITLE || 'Acme Corporation - Export Excellence Award',
+      FEEDBACK: defaults?.FEEDBACK || 'Please provide additional supporting documentation for your entry.',
+      // Payments
+      ERROR_MESSAGE: defaults?.ERROR_MESSAGE || 'Card declined',
+      ENTRY_FEE: defaults?.ENTRY_FEE || '149.00',
+      PAYMENT_LINK: defaults?.PAYMENT_LINK || 'https://yourdomain.com/pay?entry=BTA-2025-0001',
+      // Judging
+      JUDGE_NAME: defaults?.JUDGE_NAME || 'Dr. Sarah Williams',
+      ENTRY_COUNT: defaults?.ENTRY_COUNT || '12',
+      DEADLINE: defaults?.DEADLINE || '28th February 2026',
+      JUDGE_PORTAL_LINK: defaults?.JUDGE_PORTAL_LINK || 'https://yourdomain.com/judge-portal.html',
+      SCORED_COUNT: defaults?.SCORED_COUNT || '5',
+      TOTAL_COUNT: defaults?.TOTAL_COUNT || '12',
+      PENDING_COUNT: defaults?.PENDING_COUNT || '7',
+      DAYS_LEFT: defaults?.DAYS_LEFT || '7',
+      // Results
+      CEREMONY_DATE: defaults?.CEREMONY_DATE || '15th March 2026',
+      CEREMONY_VENUE: defaults?.CEREMONY_VENUE || 'The Grand Hall, London',
+      WINNERS_PORTAL_LINK: defaults?.WINNERS_PORTAL_LINK || 'https://yourdomain.com/winners-portal.html',
+      // Events
+      EVENT_NAME: defaults?.EVENT_NAME || 'British Trade Awards Ceremony 2026',
+      EVENT_DATE: defaults?.EVENT_DATE || '15th March 2026',
+      VENUE: defaults?.VENUE || 'The Grand Hall, London',
+      RSVP_URL: defaults?.RSVP_URL || 'https://yourdomain.com/rsvp',
+      TICKET_NUMBER: defaults?.TICKET_NUMBER || 'TKT-2026-00042',
+      // General
+      RECIPIENT_NAME: defaults?.RECIPIENT_NAME || 'John Smith',
+      DEADLINE_TYPE: defaults?.DEADLINE_TYPE || 'Entry Submission',
+      ACTION_REQUIRED: defaults?.ACTION_REQUIRED || 'Please submit your entry before the deadline.',
+      ACTION_LINK: defaults?.ACTION_LINK || 'https://yourdomain.com/submit-entry.html',
     };
   },
 
@@ -208,9 +439,11 @@ The British Trade Awards Team`
    */
   // Group definitions: map template_type to a workflow group
   templateGroups: {
-    'Entry Submissions': { types: ['confirmation', 'reminder'], icon: 'bi-pencil-square' },
-    'Judging & Results': { types: ['approval', 'rejection'], icon: 'bi-trophy' },
-    'General': { types: ['general', 'notification', 'invite'], icon: 'bi-megaphone' }
+    'Entry & Submissions':  { types: ['confirmation', 'reminder', 'revision_request'], icon: 'bi-pencil-square' },
+    'Payments':             { types: ['payment_confirmation', 'payment_failed', 'refund_confirmation', 'payment_reminder'], icon: 'bi-credit-card' },
+    'Judging & Results':    { types: ['approval', 'rejection', 'winner_announcement', 'judge_assignment', 'judge_reminder'], icon: 'bi-trophy' },
+    'Events & Invitations': { types: ['event_invitation', 'ticket_issued', 'deadline_reminder'], icon: 'bi-calendar-event' },
+    'General':              { types: ['general', 'notification', 'invite'], icon: 'bi-megaphone' },
   },
 
   getGroupForType(type) {
@@ -218,6 +451,21 @@ The British Trade Awards Team`
       if (config.types.includes(type)) return groupName;
     }
     return 'Other';
+  },
+
+  /**
+   * Auto-triggered templates are sent automatically by the system
+   * (e.g. after payment, on entry submission, by cron jobs).
+   * These get an "Auto" badge so admins know editing them affects live emails.
+   */
+  _isAutoTemplate(type) {
+    const autoTypes = [
+      'confirmation', 'reminder', 'revision_request',
+      'payment_confirmation', 'payment_failed', 'refund_confirmation', 'payment_reminder',
+      'approval', 'rejection', 'winner_announcement',
+      'judge_assignment', 'judge_reminder', 'deadline_reminder',
+    ];
+    return autoTypes.includes(type);
   },
 
   renderTemplatesList() {
@@ -245,7 +493,7 @@ The British Trade Awards Team`
     });
 
     // Render with group headers in a defined order
-    const groupOrder = ['Entry Submissions', 'Judging & Results', 'General', 'Other'];
+    const groupOrder = ['Entry & Submissions', 'Payments', 'Judging & Results', 'Events & Invitations', 'General', 'Other'];
     let html = '';
 
     groupOrder.forEach(groupName => {
@@ -259,22 +507,28 @@ The British Trade Awards Team`
         </div>
       `;
 
-      html += templates.map(template => `
+      html += templates.map(template => {
+        const isAuto = this._isAutoTemplate(template.template_type);
+        const descTip = template.description ? ` title="${template.description.replace(/"/g, '&quot;')}"` : '';
+        return `
         <a href="#" class="list-group-item list-group-item-action ${this.currentTemplate?.id === template.id ? 'active' : ''}"
-           onclick="emailTemplatesModule.selectTemplate('${template.id}'); return false;">
+           onclick="emailTemplatesModule.selectTemplate('${template.id}'); return false;"${descTip}>
           <div class="d-flex justify-content-between align-items-start">
             <div>
               <strong>${template.template_name || template.name || 'Untitled'}</strong>
               <br>
               <small class="${this.currentTemplate?.id === template.id ? 'text-white-50' : 'text-muted'}">${this.getTypeLabel(template.template_type)}</small>
             </div>
-            <div>
-              ${template.is_active ? '<span class="badge bg-success">Active</span>' : '<span class="badge bg-secondary">Inactive</span>'}
+            <div class="d-flex flex-column align-items-end gap-1">
+              <div>
+                ${template.is_active ? '<span class="badge bg-success">Active</span>' : '<span class="badge bg-secondary">Inactive</span>'}
               ${template.is_default ? '<span class="badge bg-primary ms-1">Default</span>' : ''}
+              </div>
+              ${isAuto ? '<span class="badge bg-info bg-opacity-75" style="font-size:0.6rem;">Auto</span>' : ''}
             </div>
           </div>
         </a>
-      `).join('');
+      `}).join('');
     });
 
     container.innerHTML = html;
@@ -282,13 +536,24 @@ The British Trade Awards Team`
 
   getTypeLabel(type) {
     const labels = {
-      'confirmation': 'Confirmation',
-      'reminder': 'Reminder',
-      'approval': 'Approval / Shortlisted',
-      'rejection': 'Not Shortlisted',
-      'general': 'General',
-      'notification': 'Notification',
-      'invite': 'Invitation'
+      'confirmation':         'Entry Confirmation',
+      'reminder':             'Upload Reminder',
+      'revision_request':     'Changes Requested',
+      'payment_confirmation': 'Payment Confirmation',
+      'payment_failed':       'Payment Failed',
+      'refund_confirmation':  'Refund Confirmation',
+      'payment_reminder':     'Payment Reminder',
+      'approval':             'Approved / Shortlisted',
+      'rejection':            'Not Shortlisted',
+      'winner_announcement':  'Winner Announcement',
+      'judge_assignment':     'Judge Assignment',
+      'judge_reminder':       'Judge Reminder',
+      'event_invitation':     'Event Invitation',
+      'ticket_issued':        'Ticket Issued',
+      'deadline_reminder':    'Deadline Reminder',
+      'general':              'General',
+      'notification':         'Notification',
+      'invite':               'Invitation',
     };
     return labels[type] || type || '';
   },
@@ -341,11 +606,34 @@ The British Trade Awards Team`
           <div class="col-md-6">
             <label class="form-label">Template Type</label>
             <select class="form-select" id="templateType" required>
-              <option value="confirmation" ${template.template_type === 'confirmation' ? 'selected' : ''}>Confirmation</option>
-              <option value="reminder" ${template.template_type === 'reminder' ? 'selected' : ''}>Reminder</option>
-              <option value="approval" ${template.template_type === 'approval' ? 'selected' : ''}>Approval</option>
-              <option value="rejection" ${template.template_type === 'rejection' ? 'selected' : ''}>Rejection</option>
-              <option value="general" ${template.template_type === 'general' ? 'selected' : ''}>General</option>
+              <optgroup label="Entry & Submissions">
+                <option value="confirmation" ${template.template_type === 'confirmation' ? 'selected' : ''}>Entry Confirmation</option>
+                <option value="reminder" ${template.template_type === 'reminder' ? 'selected' : ''}>Upload Reminder</option>
+                <option value="revision_request" ${template.template_type === 'revision_request' ? 'selected' : ''}>Changes Requested</option>
+              </optgroup>
+              <optgroup label="Payments">
+                <option value="payment_confirmation" ${template.template_type === 'payment_confirmation' ? 'selected' : ''}>Payment Confirmation</option>
+                <option value="payment_failed" ${template.template_type === 'payment_failed' ? 'selected' : ''}>Payment Failed</option>
+                <option value="refund_confirmation" ${template.template_type === 'refund_confirmation' ? 'selected' : ''}>Refund Confirmation</option>
+                <option value="payment_reminder" ${template.template_type === 'payment_reminder' ? 'selected' : ''}>Payment Reminder</option>
+              </optgroup>
+              <optgroup label="Judging & Results">
+                <option value="approval" ${template.template_type === 'approval' ? 'selected' : ''}>Approved / Shortlisted</option>
+                <option value="rejection" ${template.template_type === 'rejection' ? 'selected' : ''}>Not Shortlisted</option>
+                <option value="winner_announcement" ${template.template_type === 'winner_announcement' ? 'selected' : ''}>Winner Announcement</option>
+                <option value="judge_assignment" ${template.template_type === 'judge_assignment' ? 'selected' : ''}>Judge Assignment</option>
+                <option value="judge_reminder" ${template.template_type === 'judge_reminder' ? 'selected' : ''}>Judge Reminder</option>
+              </optgroup>
+              <optgroup label="Events & Invitations">
+                <option value="event_invitation" ${template.template_type === 'event_invitation' ? 'selected' : ''}>Event Invitation</option>
+                <option value="ticket_issued" ${template.template_type === 'ticket_issued' ? 'selected' : ''}>Ticket Issued</option>
+                <option value="deadline_reminder" ${template.template_type === 'deadline_reminder' ? 'selected' : ''}>Deadline Reminder</option>
+              </optgroup>
+              <optgroup label="General">
+                <option value="general" ${template.template_type === 'general' ? 'selected' : ''}>General</option>
+                <option value="notification" ${template.template_type === 'notification' ? 'selected' : ''}>Notification</option>
+                <option value="invite" ${template.template_type === 'invite' ? 'selected' : ''}>Invitation</option>
+              </optgroup>
             </select>
           </div>
         </div>
@@ -700,11 +988,34 @@ The British Trade Awards Team`
                   <div class="col-md-6">
                     <label class="form-label">Template Type <span class="text-danger">*</span></label>
                     <select class="form-select" id="newTemplateType" required>
-                      <option value="confirmation">Confirmation</option>
-                      <option value="reminder">Reminder</option>
-                      <option value="approval">Approval</option>
-                      <option value="rejection">Rejection</option>
-                      <option value="general" selected>General</option>
+                      <optgroup label="Entry & Submissions">
+                        <option value="confirmation">Entry Confirmation</option>
+                        <option value="reminder">Upload Reminder</option>
+                        <option value="revision_request">Changes Requested</option>
+                      </optgroup>
+                      <optgroup label="Payments">
+                        <option value="payment_confirmation">Payment Confirmation</option>
+                        <option value="payment_failed">Payment Failed</option>
+                        <option value="refund_confirmation">Refund Confirmation</option>
+                        <option value="payment_reminder">Payment Reminder</option>
+                      </optgroup>
+                      <optgroup label="Judging & Results">
+                        <option value="approval">Approved / Shortlisted</option>
+                        <option value="rejection">Not Shortlisted</option>
+                        <option value="winner_announcement">Winner Announcement</option>
+                        <option value="judge_assignment">Judge Assignment</option>
+                        <option value="judge_reminder">Judge Reminder</option>
+                      </optgroup>
+                      <optgroup label="Events & Invitations">
+                        <option value="event_invitation">Event Invitation</option>
+                        <option value="ticket_issued">Ticket Issued</option>
+                        <option value="deadline_reminder">Deadline Reminder</option>
+                      </optgroup>
+                      <optgroup label="General">
+                        <option value="general" selected>General</option>
+                        <option value="notification">Notification</option>
+                        <option value="invite">Invitation</option>
+                      </optgroup>
                     </select>
                   </div>
                 </div>

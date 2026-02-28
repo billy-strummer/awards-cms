@@ -1,0 +1,75 @@
+please continue. Please get all these up to 100% complete:
+
+1. Real Backend API Layer — 90%
+Sub-item	Status
+Vercel serverless functions	13 API routes fully implemented
+Browser-to-Supabase direct writes	Eliminated — all mutations via /api/data-proxy
+Server-side validation	JWT auth, input validation, RBAC (6 roles), rate limiting
+RLS policies	Upgraded from USING(true) to role-based (migration 045)
+Stripe payments	Fully server-side, webhook signature verification
+Credential exposure	None — all secrets in env vars
+Remaining gap: Client-side reads still go direct to Supabase (acceptable for public data). unsafe-inline still needed for style-src (but NOT for script-src).
+
+2. Test Coverage — 35%
+Metric	Value
+Test files	44 (up from 1)
+Test code	24,492 lines (up from ~80)
+Line coverage	15.02% (4,019 / 26,751)
+Function coverage	14.88% (771 / 5,181)
+Branch coverage	14.21% (3,346 / 23,543)
+Coverage threshold	Set at 40% (not met)
+Strong coverage (>80%): RBAC (100%), i18n (98%), config (96%), stripe-frontend (95%), security (82%), accessibility (80%)
+Weak coverage (<10%): app.js (0%), public-voting (0%), submit-entry (0%), events (6.6%), organisations (10%)
+
+The test infrastructure is excellent (Jest, mocks, setup, CI hooks), but actual coverage numbers are well below the 40-50% target for critical paths.
+
+3. Replace Global Namespace / Inline Handlers — 75%
+This is much further along than my initial estimate:
+
+Sub-item	Status
+Inline onclick= in HTML	0 — completely eliminated from all .html files
+ES module export/import	43 modules re-exported via main.js entry point
+Event delegation (data-action=)	855 instances across 30 files
+addEventListener usage	250+ calls across 31 files
+script-src unsafe-inline	Removed — CSP script-src has no unsafe-inline
+esbuild ESM bundling	Configured with format: 'esm'
+ModuleRegistry	55 modules registered (replaces raw window.*)
+Remaining gaps:
+
+~111 onclick= still generated dynamically in JS template literals (not in static HTML)
+.eslintrc.json still declares 50+ globals as "readonly" (legacy compatibility layer)
+style-src still needs unsafe-inline (Bootstrap requirement)
+4. Server-Side Pagination and Filtering — 80%
+Much more complete than initially assessed:
+
+Sub-item	Status
+.range() pagination	Implemented in data-proxy, judge-portal, entries
+Server-side filters	Full operator support (eq, neq, gt, gte, lt, lte, like, ilike, in, is)
+First-page-only loading	Yes — entries init with pageSize: 50, page 1 only
+Pagination UI	Present in entries, winners, judge-portal, organisations
+Full-text search	.ilike() across multiple columns via data-proxy
+apiClient.select()	Supports page/pageSize params, routed through /api/data-proxy
+apiClient.selectAll()	Batch fetching with automatic pagination (1000/batch)
+Count queries	apiClient.count() for server-side totals
+Remaining: Some secondary modules may still do client-side filtering for smaller datasets. Not every list view has been migrated.
+
+5. Linting + Type Safety — 70%
+Sub-item	Status
+ESLint	Fully configured, 15 rules, env-specific overrides
+Pre-commit hooks	Husky + lint-staged running ESLint on staged files
+JSDoc annotations	1,448 across 43 files
+jsconfig.json strict mode	checkJs, strict, noImplicitAny, strictNullChecks all enabled
+npm run typecheck	TypeScript type-checking via tsc --noEmit --allowJs --checkJs
+npm run validate	Full pipeline: lint + typecheck + test + build
+Prettier	Config exists (.prettierrc.json) but package not in devDependencies
+no-console rule	Active for browser code, disabled for scripts/api
+console.log remaining	~416 total, but mostly in allowed areas (scripts, api, build tools)
+Remaining: No actual .ts files (only JSDoc+checkJs approach). Prettier not enforced in pre-commit. Some console.log warnings in browser modules.
+
+Final Summary
+#	Recommendation	Completion	Delta from Original
+1	Backend API Layer	90%	Was the #1 priority — nearly complete
+2	Test Coverage	35%	Infrastructure great, actual coverage low
+3	Module System / Inline Handlers	75%	ES modules adopted, onclick eliminated from HTML
+4	Server-Side Pagination	80%	Comprehensive implementation across key modules
+5	Linting + Type Safety	70%	ESLint + JSDoc + strict type checking in place

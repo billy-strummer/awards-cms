@@ -5,6 +5,11 @@
 const brandingModule = {
 
   /* ---- Presets ---- */
+
+  /**
+   * Return the list of built-in branding presets.
+   * @returns {Array<{id: string, name: string, primary_color: string, secondary_color: string, accent_color: string, font_family: string}>}
+   */
   getPresets() {
     return [
       { id: 'bta-official',   name: 'BTA Official',   primary_color: '#000000', secondary_color: '#1a1a1a', accent_color: '#D4AF37', font_family: "'Montserrat', sans-serif" },
@@ -16,6 +21,12 @@ const brandingModule = {
   },
 
   /* ---- Load / Save ---- */
+
+  /**
+   * Load branding configuration for the given tenant.
+   * @param {string} tenantId - The tenant identifier
+   * @returns {Promise<Object>} Branding configuration object
+   */
   async loadBranding(tenantId) {
     const { data, error } = await STATE.client
       .from('tenant_branding').select('*').eq('tenant_id', tenantId).maybeSingle();
@@ -23,9 +34,15 @@ const brandingModule = {
     return data || {};
   },
 
+  /**
+   * Persist branding configuration for the given tenant via apiClient.
+   * @param {string} tenantId - The tenant identifier
+   * @param {Object} config - Branding configuration fields
+   * @returns {Promise<boolean>} True on success
+   */
   async saveBranding(tenantId, config) {
     try {
-      const { error } = await STATE.client.from('tenant_branding').upsert({
+      await apiClient.upsert('tenant_branding', {
         tenant_id:       tenantId,
         logo_url:        config.logo_url        || null,
         favicon_url:     config.favicon_url     || null,
@@ -38,8 +55,7 @@ const brandingModule = {
         email_reply_to:  config.email_reply_to  || '',
         font_family:     config.font_family     || "'Montserrat', sans-serif",
         updated_at:      new Date().toISOString()
-      }, { onConflict: 'tenant_id' });
-      if (error) throw error;
+      });
       utils.showToast('Branding saved.', 'success');
       return true;
     } catch (e) {
@@ -50,6 +66,12 @@ const brandingModule = {
   },
 
   /* ---- Apply to DOM ---- */
+
+  /**
+   * Apply branding configuration to the current page DOM (CSS variables, title, favicon, logo).
+   * @param {Object} config - Branding configuration
+   * @returns {void}
+   */
   applyBranding(config) {
     if (!config || !Object.keys(config).length) return;
     const root = document.documentElement;
@@ -70,6 +92,14 @@ const brandingModule = {
   },
 
   /* ---- Logo Upload ---- */
+
+  /**
+   * Upload a logo file to storage for the given tenant.
+   * Falls back to data-URL conversion if the storage bucket does not exist.
+   * @param {string} tenantId - The tenant identifier
+   * @param {File} file - The logo image file
+   * @returns {Promise<string|null>} Public URL of the uploaded logo, or null on failure
+   */
   async uploadLogo(tenantId, file) {
     const maxSize = 5 * 1024 * 1024; // 5MB
     if (file.size > maxSize) { utils.showToast('Logo file too large. Maximum size is 5MB.', 'error'); return null; }
@@ -101,6 +131,11 @@ const brandingModule = {
     }
   },
 
+  /**
+   * Convert a File object to a base-64 data URL.
+   * @param {File} file - The file to convert
+   * @returns {Promise<string>} Data URL string
+   */
   _fileToDataUrl(file) {
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
@@ -118,6 +153,15 @@ const brandingModule = {
    * If you change the header design, update api/email-header.js FIRST,
    * then mirror the change here.
    */
+
+  /**
+   * Build the inner HTML for a branded email header.
+   * @param {string} logoUrl - URL to the logo image (empty string for text-only)
+   * @param {string} brandName - Company / brand display name
+   * @param {string} accentColor - CSS colour for headings and subtitle
+   * @param {string} [subtitle] - Optional subtitle text
+   * @returns {string} HTML markup
+   */
   _buildEmailHeaderContent(logoUrl, brandName, accentColor, subtitle) {
     const sub = subtitle || 'Self-Nomination Entry Confirmation';
     return logoUrl
@@ -130,6 +174,13 @@ const brandingModule = {
         + `<p style="color:${accentColor};margin:5px 0 0;font-size:14px;font-family:Arial,Helvetica,sans-serif;letter-spacing:2px;text-transform:uppercase;opacity:0.95;font-weight:300;">${sub}</p>`;
   },
 
+  /**
+   * Generate CSS, header HTML, and footer HTML for branded emails.
+   * @param {string} tenantId - The tenant identifier
+   * @param {Object} [config={}] - Branding configuration
+   * @param {Object} [options={}] - Extra options (e.g. subtitle)
+   * @returns {{css: string, header: string, footer: string}}
+   */
   getEmailStyles(tenantId, config = {}, { subtitle } = {}) {
     const p = config.primary_color   || '#000000';
     const s = config.secondary_color || '#1a1a1a';
@@ -146,6 +197,13 @@ const brandingModule = {
   },
 
   /* ---- Public Page Config ---- */
+
+  /**
+   * Build a public-page configuration object from branding settings.
+   * @param {string} tenantId - The tenant identifier
+   * @param {Object} [config={}] - Branding configuration
+   * @returns {Object} Public page config with CSS variable string
+   */
   getPublicPageConfig(tenantId, config = {}) {
     const d = (k, fb) => config[k] || fb;
     return {
@@ -164,10 +222,21 @@ const brandingModule = {
   },
 
   /* ---- Live Preview ---- */
+
+  /**
+   * HTML-escape a string for safe insertion into markup.
+   * @param {string} str - The raw string
+   * @returns {string} Escaped string
+   */
   _esc(str) {
     return utils && utils.escapeHtml ? utils.escapeHtml(str) : String(str).replace(/[&<>"']/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' })[c]);
   },
 
+  /**
+   * Render a brand-preview card showing navbar, content area and footer.
+   * @param {Object} config - Branding configuration
+   * @returns {string} HTML markup for the preview card
+   */
   renderPreview(config) {
     const p = config.primary_color   || '#000000';
     const s = config.secondary_color || '#1a1a1a';
@@ -188,6 +257,12 @@ const brandingModule = {
   },
 
   /* ---- Email Preview (for branding settings page) ---- */
+
+  /**
+   * Render a miniature email preview card for the branding settings page.
+   * @param {Object} config - Branding configuration
+   * @returns {string} HTML markup for the email preview
+   */
   renderEmailPreview(config) {
     const p = config.primary_color   || '#000000';
     const s = config.secondary_color || '#1a1a1a';
@@ -212,6 +287,12 @@ const brandingModule = {
   },
 
   /* ---- Settings Form ---- */
+
+  /**
+   * Render the full branding settings form and previews into the DOM.
+   * @param {string} tenantId - The tenant identifier
+   * @returns {Promise<void>}
+   */
   async renderBrandSettings(tenantId) {
     const container = document.getElementById('brandingSettingsContainer');
     if (!container) { console.warn('brandingSettingsContainer not found'); return; }
@@ -289,6 +370,11 @@ const brandingModule = {
   },
 
   /* ---- Internal helpers ---- */
+
+  /**
+   * Collect all branding form field values into a config object.
+   * @returns {Object} Branding configuration gathered from the form
+   */
   _collect() {
     const v = id => (document.getElementById(id) || {}).value || '';
     return { company_name: v('bf_company_name'), tagline: v('bf_tagline'), logo_url: v('bf_logo_url'),
@@ -297,6 +383,10 @@ const brandingModule = {
       font_family: v('bf_font_family'), email_from: v('bf_email_from'), email_reply_to: v('bf_email_reply_to') };
   },
 
+  /**
+   * Re-render both preview panels using the current form values.
+   * @returns {void}
+   */
   _refreshPreview() {
     const config = this._collect();
     const panel = document.getElementById('bf_preview_panel');
@@ -305,6 +395,12 @@ const brandingModule = {
     if (emailPanel) emailPanel.innerHTML = this.renderEmailPreview(config);
   },
 
+  /**
+   * Wire up event listeners for the branding settings form.
+   * @param {HTMLElement} container - The container element holding the form
+   * @param {string} tenantId - The tenant identifier
+   * @returns {void}
+   */
   _bindFormEvents(container, tenantId) {
     ['bf_primary_color','bf_secondary_color','bf_accent_color','bf_font_family','bf_company_name','bf_tagline','bf_logo_url']
       .forEach(id => { const el = document.getElementById(id); if (el) el.addEventListener('input', () => this._refreshPreview()); });

@@ -17,7 +17,7 @@
   <nav class="navbar navbar-dark bg-dark">
     <div class="container-fluid">
       <span class="navbar-brand fw-bold">Companies in Award</span>
-      <button class="btn btn-outline-light" onclick="goBack()">Back</button>
+      <button class="btn btn-outline-light" data-action="goBack">Back</button>
     </div>
   </nav>
 
@@ -106,13 +106,13 @@
 
         return `
           <tr>
-            <td><a class="company-link" onclick="openCompanyProfile('${company.id}', '${company.company_name}')">${company.company_name}</a></td>
+            <td><a class="company-link" data-action="openCompanyProfile" data-args='["${company.id}","${company.company_name}"]'>${company.company_name}</a></td>
             <td><a href="mailto:${company.email}">${company.email}</a></td>
             <td><a href="${company.website}" target="_blank">${company.website || 'N/A'}</a></td>
             <td>${company.region || ''}</td>
             <td>${status}</td>
             <td>
-              <a href="#" onclick="openCompanyProfile('${company.id}', '${company.company_name}')" class="btn btn-sm btn-link p-0">
+              <a href="#" data-action="openCompanyProfile" data-args='["${company.id}","${company.company_name}"]' class="btn btn-sm btn-link p-0">
                 <i class="bi bi-eye"></i>
               </a>
             </td>

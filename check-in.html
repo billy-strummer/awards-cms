@@ -163,10 +163,10 @@
 
     <!-- Mode Toggle -->
     <div class="mode-toggle">
-      <button class="btn btn-primary" id="btnScanMode" onclick="switchMode('scan')">
+      <button class="btn btn-primary" id="btnScanMode" data-action="switchMode" data-id="scan">
         <i class="bi bi-camera me-1"></i>Scan QR
       </button>
-      <button class="btn btn-outline-light" id="btnSearchMode" onclick="switchMode('search')">
+      <button class="btn btn-outline-light" id="btnSearchMode" data-action="switchMode" data-id="search">
         <i class="bi bi-search me-1"></i>Search Name
       </button>
     </div>
@@ -192,7 +192,7 @@
   </div>
 
   <!-- Check-in result overlay -->
-  <div id="checkInResult" onclick="dismissResult()">
+  <div id="checkInResult" data-action="dismissResult">
     <div class="result-card" id="resultCard">
       <div class="icon" id="resultIcon"></div>
       <h2 id="resultTitle"></h2>
@@ -332,7 +332,7 @@
           <div class="text-center p-4" style="background:rgba(255,255,255,0.05); border-radius:12px;">
             <i class="bi bi-camera-video-off display-4 mb-3 d-block" style="opacity:0.3;"></i>
             <p style="opacity:0.5;">Camera not available. Use name search instead.</p>
-            <button class="btn btn-outline-light btn-sm" onclick="switchMode('search')">
+            <button class="btn btn-outline-light btn-sm" data-action="switchMode" data-id="search">
               <i class="bi bi-search me-1"></i>Switch to Search
             </button>
           </div>`;
@@ -519,7 +519,7 @@
           : '';
 
         return `
-          <div class="guest-item ${isChecked ? 'checked-in' : ''}" onclick="checkInByButton('${g.id}')">
+          <div class="guest-item ${isChecked ? 'checked-in' : ''}" data-action="checkInByButton" data-id="${g.id}">
             <div class="guest-info">
               <div class="guest-name">
                 ${isChecked ? '<i class="bi bi-check-circle-fill text-success me-1"></i>' : '<i class="bi bi-circle text-muted me-1"></i>'}
@@ -534,8 +534,8 @@
             </div>
             <div>
               ${isChecked
-                ? '<button class="btn btn-sm btn-outline-warning" onclick="event.stopPropagation(); checkInByButton(\'' + g.id + '\')"><i class="bi bi-arrow-counterclockwise"></i></button>'
-                : '<button class="btn btn-sm btn-success" onclick="event.stopPropagation(); checkInByButton(\'' + g.id + '\')"><i class="bi bi-check-lg me-1"></i>Check In</button>'
+                ? '<button class="btn btn-sm btn-outline-warning" data-action="checkInByButton" data-id="' + g.id + '" data-stop-propagation="true"><i class="bi bi-arrow-counterclockwise"></i></button>'
+                : '<button class="btn btn-sm btn-success" data-action="checkInByButton" data-id="' + g.id + '" data-stop-propagation="true"><i class="bi bi-check-lg me-1"></i>Check In</button>'
               }
             </div>
           </div>`;
@@ -558,6 +558,16 @@
 
     // ---- START ----
     init();
+  </script>
+  <script>
+    // Event delegation for data-action buttons
+    document.addEventListener('click', function(e) {
+      var target = e.target.closest('[data-action]');
+      if (!target) return;
+      if (e.target.closest('[data-stop-propagation]') && e.target.closest('[data-stop-propagation]') !== target) return;
+      var fn = window[target.getAttribute('data-action')];
+      if (typeof fn === 'function') fn(target.getAttribute('data-id'));
+    });
   </script>
 </body>
 </html>

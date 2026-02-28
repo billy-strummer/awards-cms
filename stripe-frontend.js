@@ -4,11 +4,13 @@
 /* ==================================================== */
 
 const stripeFrontend = {
+  /** @type {Object|null} Stripe.js instance */
   stripe: null,
+  /** @type {string} Base URL for the payment API endpoints */
   apiBase: '/api', // Override if API is hosted elsewhere
 
   /**
-   * Initialize Stripe.js
+   * Initialize Stripe.js with the stored publishable key.
    */
   init() {
     const pk = this.getPublishableKey();
@@ -21,14 +23,19 @@ const stripeFrontend = {
   },
 
   /**
-   * Get Stripe publishable key from settings
+   * Get the Stripe publishable key from localStorage.
+   * @returns {string} The Stripe publishable key or empty string
    */
   getPublishableKey() {
     return localStorage.getItem('bta_stripe_pk') || '';
   },
 
   /**
-   * Create a checkout session for entry payment
+   * Create a Stripe checkout session and redirect the user to the hosted checkout page.
+   * @param {string} entryId - The entry ID to pay for
+   * @param {number} amount - Amount in GBP (e.g. 50.00)
+   * @param {string} [description] - Payment description
+   * @returns {Promise<void>}
    */
   async createCheckoutSession(entryId, amount, description) {
     if (!rbacModule.guard('create', 'payments')) return;
@@ -75,7 +82,9 @@ const stripeFrontend = {
   },
 
   /**
-   * Check payment status for an entry
+   * Check the payment status for an entry via the backend API.
+   * @param {string} entryId - The entry ID to check status for
+   * @returns {Promise<Object>} Payment status object with status and optional error
    */
   async checkPaymentStatus(entryId) {
     try {
@@ -97,7 +106,10 @@ const stripeFrontend = {
   },
 
   /**
-   * Show payment button in entry detail view
+   * Render a payment button and status-check button into the specified container.
+   * @param {string} entryId - The entry ID
+   * @param {number} amount - Payment amount in GBP
+   * @param {string} containerId - The DOM element ID for the button container
    */
   renderPaymentButton(entryId, amount, containerId) {
     const container = document.getElementById(containerId);
@@ -112,11 +124,11 @@ const stripeFrontend = {
     }
 
     container.innerHTML = `
-      <button class="btn btn-success" onclick="stripeFrontend.createCheckoutSession('${entryId}', ${amount}, 'Entry Fee')"
+      <button class="btn btn-success" data-action="stripeFrontend.createCheckoutSession" data-id="${entryId}" data-amount="${amount}" data-description="Entry Fee"
               aria-label="Pay entry fee of ${amount} pounds">
         <i class="bi bi-credit-card me-2"></i>Pay &pound;${parseFloat(amount).toFixed(2)}
       </button>
-      <button class="btn btn-outline-secondary ms-2" onclick="stripeFrontend.checkPaymentStatus('${entryId}').then(s => utils.showToast('Status: ' + s.status, 'info'))"
+      <button class="btn btn-outline-secondary ms-2" data-action="stripeFrontend.checkPaymentStatus" data-id="${entryId}"
               aria-label="Check payment status">
         <i class="bi bi-arrow-clockwise me-1"></i>Check Status
       </button>

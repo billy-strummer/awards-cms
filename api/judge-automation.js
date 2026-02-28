@@ -1,5 +1,6 @@
 /**
- * Judge Assignment & Shortlist Generation Automation
+ * @module judge-automation
+ * Judge Assignment and Shortlist Generation Automation.
  *
  * Features:
  * - Automated judge assignment based on expertise
@@ -12,6 +13,11 @@
 const { createClient } = require('@supabase/supabase-js');
 const { Resend } = require('resend');
 
+/**
+ * Escape a string for safe inclusion in HTML.
+ * @param {string} str - The string to escape.
+ * @returns {string} The HTML-escaped string.
+ */
 const escHtml = (str) => String(str || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 
 const supabase = createClient(
@@ -23,12 +29,14 @@ const resend = new Resend(process.env.RESEND_API_KEY);
 const APP_URL = process.env.APP_URL || 'https://admin.britishtrade.com';
 
 /**
- * Assign judges to entries automatically
- * Algorithm: Round-robin with expertise matching and conflict checking
+ * Assign judges to entries automatically using round-robin with expertise matching and conflict checking.
+ * @param {string|null} [awardId=null] - Optional award ID to limit assignment to a specific award.
+ * @returns {Promise<{assigned: number, conflicts: number, totalEntries: number, totalJudges: number}>} Assignment statistics.
+ * @throws {Error} If no active judges are found or a database error occurs.
  */
 async function assignJudgesToEntries(awardId = null) {
   try {
-    console.warn('🎯 Starting automated judge assignment...');
+    console.log('🎯 Starting automated judge assignment...');
 
     // Get all judges (from contacts or separate judges table)
     const { data: judges, error: judgesError } = await supabase
@@ -58,12 +66,12 @@ async function assignJudgesToEntries(awardId = null) {
     if (entriesError) throw entriesError;
 
     if (!entries || entries.length === 0) {
-      console.warn('ℹ️ No entries found that need judging');
+      console.log('ℹ️ No entries found that need judging');
       return { assigned: 0, conflicts: 0 };
     }
 
-    console.warn(`📝 Found ${entries.length} entries to assign`);
-    console.warn(`👨‍⚖️ Found ${judges.length} available judges`);
+    console.log(`📝 Found ${entries.length} entries to assign`);
+    console.log(`👨‍⚖️ Found ${judges.length} available judges`);
 
     // Number of judges per entry (typically 3-5)
     const judgesPerEntry = 3;
@@ -125,9 +133,9 @@ async function assignJudgesToEntries(awardId = null) {
       conflictCount += judgesWithScores.filter(j => j.conflict).length;
     }
 
-    console.warn(`✅ Assignment complete:`);
-    console.warn(`   - Assigned: ${assignedCount} judge-entry pairs`);
-    console.warn(`   - Conflicts detected: ${conflictCount}`);
+    console.log(`✅ Assignment complete:`);
+    console.log(`   - Assigned: ${assignedCount} judge-entry pairs`);
+    console.log(`   - Conflicts detected: ${conflictCount}`);
 
     return {
       assigned: assignedCount,
@@ -143,7 +151,11 @@ async function assignJudgesToEntries(awardId = null) {
 }
 
 /**
- * Check for conflicts of interest
+ * Check for conflicts of interest between a judge and an entry.
+ * Checks email domain matches and company name overlaps.
+ * @param {Object} judge - The judge contact record.
+ * @param {Object} entry - The entry record with organisation details.
+ * @returns {Promise<boolean>} True if a conflict of interest is detected.
  */
 async function checkConflict(judge, entry) {
   // Check email domain match
@@ -171,7 +183,10 @@ async function checkConflict(judge, entry) {
 }
 
 /**
- * Calculate expertise score for judge-entry matching
+ * Calculate expertise score for judge-entry matching based on category and industry keywords.
+ * @param {Object} judge - The judge contact record with notes containing expertise info.
+ * @param {Object} entry - The entry record with award category details.
+ * @returns {number} Expertise score (higher means better match).
  */
 function calculateExpertiseScore(judge, entry) {
   let score = 0;
@@ -200,11 +215,16 @@ function calculateExpertiseScore(judge, entry) {
 }
 
 /**
- * Generate shortlist based on judge scores
+ * Generate shortlist based on judge scores for a specific award.
+ * Uses composite scoring with standard deviation penalty for consistency.
+ * @param {string} awardId - The award ID to generate the shortlist for.
+ * @param {number} [topN=5] - The number of top entries to shortlist.
+ * @returns {Promise<Array<Object>>} Array of shortlisted entry objects with scoring details.
+ * @throws {Error} If a database error occurs.
  */
 async function generateShortlist(awardId, topN = 5) {
   try {
-    console.warn(`📊 Generating shortlist for award ${awardId}...`);
+    console.log(`📊 Generating shortlist for award ${awardId}...`);
 
     // Get all entries for this award with complete scores
     const { data: entries, error } = await supabase
@@ -223,7 +243,7 @@ async function generateShortlist(awardId, topN = 5) {
     if (error) throw error;
 
     if (!entries || entries.length === 0) {
-      console.warn('ℹ️ No entries with scores found for this award');
+      console.log('ℹ️ No entries with scores found for this award');
       return [];
     }
 
@@ -234,7 +254,7 @@ async function generateShortlist(awardId, topN = 5) {
       return completeScores.length >= minScores;
     });
 
-    console.warn(`📝 ${validEntries.length} entries have sufficient scores`);
+    console.log(`📝 ${validEntries.length} entries have sufficient scores`);
 
     // Calculate composite scores (average + consistency)
     const entriesWithScores = validEntries.map(entry => {
@@ -290,9 +310,9 @@ async function generateShortlist(awardId, topN = 5) {
       await sendShortlistNotificationEmail(entry);
     }
 
-    console.warn(`✅ Shortlist generated:`);
+    console.log(`✅ Shortlist generated:`);
     shortlist.forEach((entry, index) => {
-      console.warn(`   ${index + 1}. ${entry.organisations.company_name} - Score: ${entry.averageScore.toFixed(2)} (σ: ${entry.scoreConsistency.toFixed(2)})`);
+      console.log(`   ${index + 1}. ${entry.organisations.company_name} - Score: ${entry.averageScore.toFixed(2)} (σ: ${entry.scoreConsistency.toFixed(2)})`);
     });
 
     return shortlist;
@@ -304,11 +324,14 @@ async function generateShortlist(awardId, topN = 5) {
 }
 
 /**
- * Generate shortlists for all awards
+ * Generate shortlists for all active awards.
+ * @param {number} [topN=5] - The number of top entries to shortlist per award.
+ * @returns {Promise<Array<{awardId: string, awardName: string, shortlistCount: number}>>} Results for each award.
+ * @throws {Error} If a database error occurs.
  */
 async function generateAllShortlists(topN = 5) {
   try {
-    console.warn('🎯 Generating shortlists for all awards...');
+    console.log('🎯 Generating shortlists for all awards...');
 
     // Get all active awards
     const { data: awards, error } = await supabase
@@ -321,7 +344,7 @@ async function generateAllShortlists(topN = 5) {
     const results = [];
 
     for (const award of awards) {
-      console.warn(`\n📋 Processing: ${award.award_name}`);
+      console.log(`\n📋 Processing: ${award.award_name}`);
       const shortlist = await generateShortlist(award.id, topN);
       results.push({
         awardId: award.id,
@@ -330,7 +353,7 @@ async function generateAllShortlists(topN = 5) {
       });
     }
 
-    console.warn('\n✅ All shortlists generated');
+    console.log('\n✅ All shortlists generated');
     return results;
 
   } catch (error) {
@@ -340,7 +363,10 @@ async function generateAllShortlists(topN = 5) {
 }
 
 /**
- * Send judge assignment email
+ * Send judge assignment email notification for a specific entry.
+ * @param {Object} judge - The judge contact record with email and full_name.
+ * @param {Object} entry - The entry record with award details.
+ * @returns {Promise<void>}
  */
 async function sendJudgeAssignmentEmail(judge, entry) {
   try {
@@ -363,14 +389,16 @@ async function sendJudgeAssignmentEmail(judge, entry) {
         <p><em>British Trade Awards Team</em></p>
       `
     });
-    console.warn(`Email sent: judge assignment to ${judge.email}`);
+    console.log(`Email sent: judge assignment to ${judge.email}`);
   } catch (e) {
     console.error(`Failed to send judge assignment email to ${judge.email}:`, e.message);
   }
 }
 
 /**
- * Send shortlist notification email
+ * Send shortlist notification email to the entry contact.
+ * @param {Object} entry - The entry record with contact, organisation, and award details.
+ * @returns {Promise<void>}
  */
 async function sendShortlistNotificationEmail(entry) {
   try {
@@ -396,14 +424,17 @@ async function sendShortlistNotificationEmail(entry) {
         <p><em>British Trade Awards Team</em></p>
       `
     });
-    console.warn(`Email sent: shortlist notification to ${toEmail}`);
+    console.log(`Email sent: shortlist notification to ${toEmail}`);
   } catch (e) {
     console.error(`Failed to send shortlist notification:`, e.message);
   }
 }
 
 /**
- * Get judging statistics
+ * Get judging statistics for all entries or a specific award.
+ * @param {string|null} [awardId=null] - Optional award ID to filter statistics.
+ * @returns {Promise<{totalEntries: number, entriesWithScores: number, entriesFullyJudged: number, averageScoresPerEntry: number|string, completionRate: string}>} Judging statistics.
+ * @throws {Error} If a database error occurs.
  */
 async function getJudgingStatistics(awardId = null) {
   try {
@@ -461,10 +492,12 @@ async function getJudgingStatistics(awardId = null) {
 }
 
 /**
- * API Endpoints
+ * API endpoint to trigger automated judge assignment.
+ * POST /api/assign-judges
+ * @param {Object} req - Express request object with optional body.awardId.
+ * @param {Object} res - Express response object.
+ * @returns {Promise<void>}
  */
-
-// POST /api/assign-judges
 async function assignJudgesEndpoint(req, res) {
   try {
     const { awardId } = req.body;
@@ -475,7 +508,13 @@ async function assignJudgesEndpoint(req, res) {
   }
 }
 
-// POST /api/generate-shortlist
+/**
+ * API endpoint to generate shortlist for a specific award.
+ * POST /api/generate-shortlist
+ * @param {Object} req - Express request object with body.awardId and optional body.topN.
+ * @param {Object} res - Express response object.
+ * @returns {Promise<void>}
+ */
 async function generateShortlistEndpoint(req, res) {
   try {
     const { awardId, topN } = req.body;
@@ -486,7 +525,13 @@ async function generateShortlistEndpoint(req, res) {
   }
 }
 
-// POST /api/generate-all-shortlists
+/**
+ * API endpoint to generate shortlists for all active awards.
+ * POST /api/generate-all-shortlists
+ * @param {Object} req - Express request object with optional body.topN.
+ * @param {Object} res - Express response object.
+ * @returns {Promise<void>}
+ */
 async function generateAllShortlistsEndpoint(req, res) {
   try {
     const { topN } = req.body;
@@ -497,7 +542,13 @@ async function generateAllShortlistsEndpoint(req, res) {
   }
 }
 
-// GET /api/judging-stats
+/**
+ * API endpoint to retrieve judging statistics.
+ * GET /api/judging-stats
+ * @param {Object} req - Express request object with optional query.awardId.
+ * @param {Object} res - Express response object.
+ * @returns {Promise<void>}
+ */
 async function getJudgingStatsEndpoint(req, res) {
   try {
     const { awardId } = req.query;

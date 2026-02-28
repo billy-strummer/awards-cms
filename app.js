@@ -8,6 +8,10 @@
 const reportsScheduler = {
   _scheduledReports: [],
 
+  /**
+   * Load scheduled reports from user_preferences or localStorage fallback.
+   * @returns {Promise<void>}
+   */
   async _loadScheduledReports() {
     try {
       if (typeof STATE !== 'undefined' && STATE.client) {
@@ -18,15 +22,23 @@ const reportsScheduler = {
     try { this._scheduledReports = JSON.parse(localStorage.getItem('orgScheduledReports') || '[]'); } catch (e) { this._scheduledReports = []; }
   },
 
+  /**
+   * Persist scheduled reports to user_preferences via apiClient and localStorage.
+   * @returns {Promise<void>}
+   */
   async _saveScheduledReports() {
     try {
-      if (typeof STATE !== 'undefined' && STATE.client) {
-        await STATE.client.from('user_preferences').upsert({ key: 'orgScheduledReports', value: JSON.stringify(this._scheduledReports), updated_at: new Date().toISOString() }, { onConflict: 'key' });
+      if (typeof STATE !== 'undefined' && typeof apiClient !== 'undefined') {
+        await apiClient.upsert('user_preferences', { key: 'orgScheduledReports', value: JSON.stringify(this._scheduledReports), updated_at: new Date().toISOString() });
       }
     } catch (e) { console.warn('Scheduled reports: ' + e.message); }
     localStorage.setItem('orgScheduledReports', JSON.stringify(this._scheduledReports));
   },
 
+  /**
+   * Render the scheduled reports grid into the DOM.
+   * @returns {Promise<void>}
+   */
   async loadReports() {
     const container = document.getElementById('scheduledReportsGrid');
     if (!container) return;
@@ -57,6 +69,10 @@ const reportsScheduler = {
       </div>`).join('');
   },
 
+  /**
+   * Display the modal for creating a new scheduled report.
+   * @returns {void}
+   */
   showCreateReport() {
     const existingModal = document.getElementById('createScheduledReportModal');
     if (existingModal) existingModal.remove();
@@ -89,6 +105,10 @@ const reportsScheduler = {
     new bootstrap.Modal(document.getElementById('createScheduledReportModal')).show();
   },
 
+  /**
+   * Save the report from the create-report modal form.
+   * @returns {Promise<void>}
+   */
   async _saveReport() {
     const name = document.getElementById('reportName')?.value?.trim();
     const frequency = document.getElementById('reportFrequency')?.value;
@@ -105,6 +125,11 @@ const reportsScheduler = {
     });
   },
 
+  /**
+   * Show a live preview modal for a scheduled report.
+   * @param {number} index - Index within the _scheduledReports array
+   * @returns {void}
+   */
   previewReport(index) {
     const r = this._scheduledReports[index]; if (!r) return;
     const orgs = (typeof STATE !== 'undefined' && STATE.allOrganisations) ? STATE.allOrganisations : [];
@@ -127,6 +152,11 @@ const reportsScheduler = {
     new bootstrap.Modal(document.getElementById('reportPreviewModal')).show();
   },
 
+  /**
+   * Delete a scheduled report after confirmation.
+   * @param {number} i - Index within the _scheduledReports array
+   * @returns {Promise<void>}
+   */
   async deleteReport(i) {
     if (!await utils.confirmDialog({ title: 'Delete Report Schedule', message: 'Delete this report schedule?', confirmText: 'Delete', danger: true })) return;
     this._scheduledReports.splice(i, 1);
@@ -144,6 +174,10 @@ const reportsAnalytics = {
   _selectedYear: 'all',
   _lastLoaded: null,
 
+  /**
+   * Load and render all analytics charts, stats, and scheduled reports.
+   * @returns {void}
+   */
   loadAnalytics() {
     const orgs = (typeof STATE !== 'undefined' && STATE.allOrganisations) ? STATE.allOrganisations : [];
     const awards = (typeof STATE !== 'undefined' && STATE.allAwards) ? STATE.allAwards : [];
@@ -179,6 +213,11 @@ const reportsAnalytics = {
     reportsScheduler.loadReports();
   },
 
+  /**
+   * Extract the year from a record using various field conventions.
+   * @param {Object} record - Data record
+   * @returns {string} Four-digit year string or empty string
+   */
   _getYear(record) {
     if (record.year) return String(record.year);
     if (record.award_year) return String(record.award_year);
@@ -186,6 +225,14 @@ const reportsAnalytics = {
     return '';
   },
 
+  /**
+   * Populate the year filter dropdown from available data.
+   * @param {Array} awards - Awards records
+   * @param {Array} winners - Winners records
+   * @param {Array} orgs - Organisation records
+   * @param {Array} entries - Entry records
+   * @returns {void}
+   */
   _populateYearFilter(awards, winners, orgs, entries) {
     const select = document.getElementById('reportsYearFilter');
     if (!select) return;
@@ -199,11 +246,20 @@ const reportsAnalytics = {
       sortedYears.map(y => `<option value="${y}"${y === this._selectedYear ? ' selected' : ''}>${y}</option>`).join('');
   },
 
+  /**
+   * Apply a year filter and re-render analytics.
+   * @param {string} year - Four-digit year or 'all'
+   * @returns {void}
+   */
   filterByYear(year) {
     this._selectedYear = year;
     this.loadAnalytics();
   },
 
+  /**
+   * Update the data-freshness indicator in the reports panel.
+   * @returns {void}
+   */
   updateFreshness() {
     this._lastLoaded = new Date();
     const el = document.getElementById('reportsDataFreshness');
@@ -213,10 +269,20 @@ const reportsAnalytics = {
     el.innerHTML = `<i class="bi bi-check-circle text-success"></i><span>Data loaded: ${date} at ${time}</span>`;
   },
 
+  /**
+   * Destroy a Chart.js instance by key if it exists.
+   * @param {string} key - Chart key name
+   * @returns {void}
+   */
   _destroyChart(key) {
     if (this._charts[key]) { this._charts[key].destroy(); delete this._charts[key]; }
   },
 
+  /**
+   * Render the pipeline doughnut chart.
+   * @param {Array} orgs - Organisation records
+   * @returns {void}
+   */
   renderPipelineChart(orgs) {
     this._destroyChart('pipeline');
     const canvas = document.getElementById('reportsPipelineChart');
@@ -235,6 +301,11 @@ const reportsAnalytics = {
     });
   },
 
+  /**
+   * Render the sector horizontal bar chart.
+   * @param {Array} orgs - Organisation records
+   * @returns {void}
+   */
   renderSectorChart(orgs) {
     this._destroyChart('sector');
     const canvas = document.getElementById('reportsSectorChart');
@@ -253,6 +324,11 @@ const reportsAnalytics = {
     });
   },
 
+  /**
+   * Render the regional distribution bar chart.
+   * @param {Array} orgs - Organisation records
+   * @returns {void}
+   */
   renderRegionChart(orgs) {
     this._destroyChart('region');
     const canvas = document.getElementById('reportsRegionChart');
@@ -271,6 +347,11 @@ const reportsAnalytics = {
     });
   },
 
+  /**
+   * Render the tier distribution polar-area chart.
+   * @param {Array} orgs - Organisation records
+   * @returns {void}
+   */
   renderTierChart(orgs) {
     this._destroyChart('tier');
     const canvas = document.getElementById('reportsTierChart');
@@ -293,7 +374,14 @@ const reportsAnalytics = {
     });
   },
 
-  // ---- NEW: Year-over-Year comparison chart ----
+  /**
+   * Render the year-over-year comparison line chart.
+   * @param {Array} awards - Awards records
+   * @param {Array} winners - Winners records
+   * @param {Array} entries - Entry records
+   * @param {Array} orgs - Organisation records
+   * @returns {void}
+   */
   renderYoYChart(awards, winners, entries, orgs) {
     this._destroyChart('yoy');
     const canvas = document.getElementById('reportsYoYChart');

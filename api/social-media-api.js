@@ -1,8 +1,9 @@
-/* ==================================================== */
-/* SOCIAL MEDIA API CONNECTOR                            */
-/* Server-side integration with Twitter/X, LinkedIn,     */
-/* Facebook, and Instagram APIs                          */
-/* ==================================================== */
+/**
+ * @module social-media-api
+ * Social Media API Connector.
+ * Server-side integration with Twitter/X, LinkedIn,
+ * Facebook, and Instagram APIs.
+ */
 
 const { createClient } = require('@supabase/supabase-js');
 
@@ -15,6 +16,13 @@ const supabase = createClient(
 // Twitter/X API v2
 // ==========================================
 
+/**
+ * Post a tweet to Twitter/X via the v2 API.
+ * @param {string} content - The text content of the tweet.
+ * @param {string|null} [imageUrl=null] - Optional image URL to attach.
+ * @returns {Promise<{platform: string, postId: string, url: string}>} The posted tweet details.
+ * @throws {Error} If the Twitter API token is not configured or the API returns an error.
+ */
 async function postToTwitter(content, imageUrl = null) {
   const token = process.env.TWITTER_BEARER_TOKEN;
   if (!token) throw new Error('Twitter API token not configured');
@@ -49,6 +57,13 @@ async function postToTwitter(content, imageUrl = null) {
   return { platform: 'twitter', postId: data.data.id, url: `https://x.com/i/status/${data.data.id}` };
 }
 
+/**
+ * Upload media to Twitter via the v1.1 media upload endpoint.
+ * @param {string} imageUrl - The URL of the image to upload.
+ * @param {string} token - Twitter bearer token for authentication.
+ * @returns {Promise<string>} The media ID string for use in tweets.
+ * @throws {Error} If the media upload fails.
+ */
 async function uploadTwitterMedia(imageUrl, token) {
   // Download image
   const imgRes = await fetch(imageUrl);
@@ -74,6 +89,13 @@ async function uploadTwitterMedia(imageUrl, token) {
 // LinkedIn API v2
 // ==========================================
 
+/**
+ * Post content to a LinkedIn organisation page via the UGC API.
+ * @param {string} content - The text content of the post.
+ * @param {string|null} [imageUrl=null] - Optional image URL to attach.
+ * @returns {Promise<{platform: string, postId: string, url: string}>} The posted content details.
+ * @throws {Error} If LinkedIn API credentials are not configured or the API returns an error.
+ */
 async function postToLinkedIn(content, imageUrl = null) {
   const accessToken = process.env.LINKEDIN_ACCESS_TOKEN;
   const orgId = process.env.LINKEDIN_ORG_ID;
@@ -125,6 +147,13 @@ async function postToLinkedIn(content, imageUrl = null) {
   return { platform: 'linkedin', postId: data.id, url: `https://www.linkedin.com/feed/update/${data.id}` };
 }
 
+/**
+ * Upload an image to LinkedIn for use in a post.
+ * @param {string} imageUrl - The URL of the image to download and re-upload.
+ * @param {string} accessToken - LinkedIn OAuth access token.
+ * @param {string} orgId - LinkedIn organisation ID.
+ * @returns {Promise<string>} The LinkedIn asset URN for the uploaded image.
+ */
 async function uploadLinkedInImage(imageUrl, accessToken, orgId) {
   // Register upload
   const registerRes = await fetch('https://api.linkedin.com/v2/assets?action=registerUpload', {
@@ -169,6 +198,13 @@ async function uploadLinkedInImage(imageUrl, accessToken, orgId) {
 // Facebook Graph API
 // ==========================================
 
+/**
+ * Post content to a Facebook page via the Graph API.
+ * @param {string} content - The text content of the post.
+ * @param {string|null} [imageUrl=null] - Optional image URL to attach as a photo post.
+ * @returns {Promise<{platform: string, postId: string, url: string}>} The posted content details.
+ * @throws {Error} If Facebook API credentials are not configured or the API returns an error.
+ */
 async function postToFacebook(content, imageUrl = null) {
   const pageToken = process.env.FACEBOOK_PAGE_TOKEN;
   const pageId = process.env.FACEBOOK_PAGE_ID;
@@ -209,6 +245,13 @@ async function postToFacebook(content, imageUrl = null) {
 // Instagram Graph API (via Facebook)
 // ==========================================
 
+/**
+ * Post an image with caption to Instagram via the Facebook Graph API.
+ * @param {string} content - The caption text for the Instagram post.
+ * @param {string} imageUrl - The publicly accessible image URL (required for Instagram).
+ * @returns {Promise<{platform: string, postId: string, url: string}>} The posted content details.
+ * @throws {Error} If Instagram API credentials are not configured, no image is provided, or the API returns an error.
+ */
 async function postToInstagram(content, imageUrl) {
   const accessToken = process.env.FACEBOOK_PAGE_TOKEN;
   const igAccountId = process.env.INSTAGRAM_ACCOUNT_ID;
@@ -260,6 +303,13 @@ async function postToInstagram(content, imageUrl) {
 // Unified publish handler
 // ==========================================
 
+/**
+ * Publish a social media post to all configured platforms.
+ * Reads the post from the database and dispatches to each platform handler.
+ * @param {string} postId - The ID of the social_media_posts record to publish.
+ * @returns {Promise<{results: Array, errors: Array, status: string}>} Aggregated results and errors from all platforms.
+ * @throws {Error} If the post is not found in the database.
+ */
 async function publishToSocialMedia(postId) {
   const { data: post, error } = await supabase
     .from('social_media_posts')
@@ -314,6 +364,11 @@ async function publishToSocialMedia(postId) {
 // Scheduled post processor (call via cron)
 // ==========================================
 
+/**
+ * Process all scheduled posts that are due for publishing.
+ * Intended to be called via a cron job.
+ * @returns {Promise<{processed: number}>} The count of posts successfully processed.
+ */
 async function processScheduledPosts() {
   const now = new Date().toISOString();
 

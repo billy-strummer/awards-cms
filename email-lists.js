@@ -4,15 +4,31 @@
 // ============================================
 
 const emailListsModule = {
+  /** @type {Array} Current loaded email lists */
   currentLists: [],
-  currentView: 'lists', // 'lists' or 'subscribers'
+  /** @type {string} Current view mode: 'lists' or 'subscribers' */
+  currentView: 'lists',
+  /** @type {string|null} Currently viewed list ID */
   currentListId: null,
+
+  // Server-side pagination state
+  /** @type {boolean} Whether server-side pagination is enabled */
+  _serverPagination: true,
+  /** @type {Object} Pagination state */
+  _pagination: { page: 1, totalPages: 1, count: 0, pageSize: 50 },
+  /** @type {string} Active search term */
+  _searchTerm: '',
 
   // ============================================
   // MAIN LOAD FUNCTION
   // ============================================
+
+  /**
+   * Load all email lists data and statistics
+   * @returns {Promise<void>}
+   */
   async loadAllData() {
-    console.warn('📧 Loading email lists data...');
+    console.warn('Loading email lists data...');
     try {
       await this.loadEmailLists();
       await this.loadStats();
@@ -23,21 +39,58 @@ const emailListsModule = {
   },
 
   // ============================================
-  // LOAD EMAIL LISTS
+  // LOAD EMAIL LISTS (with server-side pagination)
   // ============================================
+
+  /**
+   * Fetch a page of email lists from the server
+   * @param {number} page - The page number to fetch
+   * @returns {Promise<Array>} The fetched lists
+   */
+  async _fetchPage(page) {
+    this._pagination.page = page;
+    const filters = this._buildServerFilters();
+    const result = await apiClient.select('email_lists_with_stats', {
+      filters,
+      search: this._searchTerm ? { term: this._searchTerm, columns: ['list_name', 'description'] } : undefined,
+      sort: { column: 'created_at', ascending: false },
+      page,
+      pageSize: this._pagination.pageSize
+    });
+    this._pagination = { ...this._pagination, ...result, page };
+    return result.data;
+  },
+
+  /**
+   * Navigate to a specific page and re-render
+   * @param {number} page - Target page number
+   * @returns {void}
+   */
+  _goToPage(page) {
+    this._fetchPage(page).then(data => {
+      this.currentLists = data || [];
+      this.renderEmailLists();
+    });
+  },
+
+  /**
+   * Build server-side filter object from current state
+   * @returns {Object} Filters for apiClient.select
+   */
+  _buildServerFilters() {
+    const f = {};
+    return f;
+  },
+
+  /**
+   * Load email lists from the server
+   * @returns {Promise<void>}
+   */
   async loadEmailLists() {
     try {
-      const { data: lists, error } = await STATE.client
-        .from('email_lists_with_stats')
-        .select('*')
-        .order('created_at', { ascending: false })
-        .limit(500);
-
-      if (error) throw error;
-
-      this.currentLists = lists || [];
+      const data = await this._fetchPage(1);
+      this.currentLists = data || [];
       this.renderEmailLists();
-
     } catch (error) {
       console.error('Error loading email lists:', error);
       document.getElementById('emailListsGrid').innerHTML = `
@@ -54,11 +107,16 @@ const emailListsModule = {
   // ============================================
   // LOAD STATISTICS
   // ============================================
+
+  /**
+   * Load and display list statistics (counts, open rates)
+   * @returns {Promise<void>}
+   */
   async loadStats() {
     try {
       // Compute from loaded lists (email_lists_with_stats view includes subscriber counts)
       const lists = this.currentLists || [];
-      const totalLists = lists.length;
+      const totalLists = this._pagination.count || lists.length;
       const totalSubscribers = lists.reduce((sum, l) => sum + (l.total_subscribers || 0), 0);
       const activeSubscribers = lists.reduce((sum, l) => sum + (l.active_subscribers || 0), 0);
 
@@ -93,6 +151,11 @@ const emailListsModule = {
   // ============================================
   // RENDER EMAIL LISTS
   // ============================================
+
+  /**
+   * Render email lists grid and pagination controls
+   * @returns {void}
+   */
   renderEmailLists() {
     const container = document.getElementById('emailListsGrid');
     if (!container) return;
@@ -110,8 +173,35 @@ const emailListsModule = {
     }
 
     container.innerHTML = this.currentLists.map(list => this.renderListCard(list)).join('');
+
+    // Attach delegated click handler for list card actions
+    container.addEventListener('click', (e) => {
+      const actionEl = e.target.closest('[data-action]');
+      if (!actionEl) return;
+      e.preventDefault();
+      const action = actionEl.getAttribute('data-action');
+      const id = actionEl.getAttribute('data-id');
+      const name = actionEl.getAttribute('data-name');
+
+      switch (action) {
+        case 'emailListsModule.viewSubscribers': this.viewSubscribers(id, name); break;
+        case 'emailListsModule.addSubscriber': this.addSubscriber(id); break;
+        case 'emailListsModule.openImportModal': this.openImportModal(id); break;
+        case 'emailListsModule.editList': this.editList(id); break;
+        case 'emailListsModule.exportList': this.exportList(id); break;
+        case 'emailListsModule.deleteList': this.deleteList(id); break;
+      }
+    });
+
+    // Render pagination
+    this._renderPaginationControls();
   },
 
+  /**
+   * Render a single list card
+   * @param {Object} list - Email list object
+   * @returns {string} HTML string for the list card
+   */
   renderListCard(list) {
     const typeBadge = this.getListTypeBadge(list.list_type);
     const statusBadge = list.is_active
@@ -119,6 +209,7 @@ const emailListsModule = {
       : '<span class="badge bg-secondary">Inactive</span>';
 
     const avgOpenRate = list.avg_open_rate ? Math.round(list.avg_open_rate * 100) : 0;
+    const escapedName = utils.escapeHtml(list.list_name);
 
     return `
       <div class="col-md-6 col-lg-4">
@@ -128,7 +219,7 @@ const emailListsModule = {
               <div>
                 <h5 class="card-title mb-1">
                   <i class="bi bi-${list.icon || 'list-ul'} me-2" style="color: ${list.color || '#6c757d'}"></i>
-                  ${list.list_name}
+                  ${escapedName}
                 </h5>
                 <p class="card-text text-muted small mb-2">${list.description || 'No description'}</p>
               </div>
@@ -169,7 +260,7 @@ const emailListsModule = {
 
             <!-- Actions -->
             <div class="d-grid gap-2">
-              <button class="btn btn-sm btn-primary" data-action="emailListsModule.viewSubscribers" data-args='${JSON.stringify([list.id, list.list_name]).replace(/'/g, "&#39;")}'>
+              <button class="btn btn-sm btn-primary" data-action="emailListsModule.viewSubscribers" data-id="${list.id}" data-name="${escapedName}">
                 <i class="bi bi-people me-1"></i>View Subscribers (${list.total_subscribers || 0})
               </button>
               <div class="btn-group">
@@ -196,6 +287,51 @@ const emailListsModule = {
     `;
   },
 
+  /**
+   * Render pagination controls for the lists grid
+   * @returns {void}
+   */
+  _renderPaginationControls() {
+    let container = document.getElementById('emailListsPaginationControls');
+    if (!container) {
+      container = document.createElement('div');
+      container.id = 'emailListsPaginationControls';
+      document.getElementById('emailListsGrid')?.parentElement?.appendChild(container);
+    }
+
+    const { page, totalPages, count } = this._pagination;
+    if (totalPages <= 1) {
+      container.innerHTML = count > 0 ? `<small class="text-muted">${count} list(s)</small>` : '';
+      return;
+    }
+
+    container.innerHTML = `
+      <nav aria-label="Email lists pagination" class="mt-3">
+        <div class="d-flex justify-content-between align-items-center">
+          <small class="text-muted">${count} list(s) - Page ${page} of ${totalPages}</small>
+          <div class="btn-group btn-group-sm">
+            <button class="btn btn-outline-secondary" ${page <= 1 ? 'disabled' : ''} data-action="emailListsModule.goToPage" data-page="1">First</button>
+            <button class="btn btn-outline-secondary" ${page <= 1 ? 'disabled' : ''} data-action="emailListsModule.goToPage" data-page="${page - 1}">Prev</button>
+            <button class="btn btn-outline-secondary" ${page >= totalPages ? 'disabled' : ''} data-action="emailListsModule.goToPage" data-page="${page + 1}">Next</button>
+            <button class="btn btn-outline-secondary" ${page >= totalPages ? 'disabled' : ''} data-action="emailListsModule.goToPage" data-page="${totalPages}">Last</button>
+          </div>
+        </div>
+      </nav>
+    `;
+
+    container.addEventListener('click', (e) => {
+      const btn = e.target.closest('[data-action="emailListsModule.goToPage"]');
+      if (btn && !btn.disabled) {
+        this._goToPage(parseInt(btn.getAttribute('data-page')));
+      }
+    });
+  },
+
+  /**
+   * Get badge HTML for a list type
+   * @param {string} type - The list type identifier
+   * @returns {string} HTML badge string
+   */
   getListTypeBadge(type) {
     const types = {
       'general': '<span class="badge bg-secondary">General</span>',
@@ -213,6 +349,11 @@ const emailListsModule = {
   // ============================================
   // CREATE LIST MODAL
   // ============================================
+
+  /**
+   * Open the create list modal dialog
+   * @returns {Promise<void>}
+   */
   async openCreateListModal() {
     const modalHtml = `
       <div class="modal fade" id="createListModal" tabindex="-1">
@@ -286,11 +427,27 @@ const emailListsModule = {
     if (existing) existing.remove();
 
     document.body.insertAdjacentHTML('beforeend', modalHtml);
-    const modal = new bootstrap.Modal(document.getElementById('createListModal'));
+    const modalEl = document.getElementById('createListModal');
+
+    // Delegated click handler
+    modalEl.addEventListener('click', (e) => {
+      const actionEl = e.target.closest('[data-action]');
+      if (!actionEl) return;
+      if (actionEl.getAttribute('data-action') === 'emailListsModule.saveList') {
+        e.preventDefault();
+        this.saveList();
+      }
+    });
+
+    const modal = new bootstrap.Modal(modalEl);
     modal.show();
     utils.initInlineValidation('createListForm');
   },
 
+  /**
+   * Save a new email list to the database
+   * @returns {Promise<void>}
+   */
   async saveList() {
     const form = document.getElementById('createListForm');
     if (!form.checkValidity()) {
@@ -310,12 +467,7 @@ const emailListsModule = {
 
     try {
       await utils.protectModalDuringSave('createListModal', async () => {
-        const { error } = await STATE.client
-          .from('email_lists')
-          .insert([listData]);
-
-        if (error) throw error;
-
+        await apiClient.insert('email_lists', listData);
         bootstrap.Modal.getInstance(document.getElementById('createListModal')).hide();
         this.loadAllData();
       });
@@ -335,13 +487,19 @@ const emailListsModule = {
   // ============================================
   // IMPORT SUBSCRIBERS MODAL
   // ============================================
+
+  /**
+   * Open the import subscribers modal
+   * @param {string|null} [listId=null] - Pre-selected list ID
+   * @returns {Promise<void>}
+   */
   async openImportModal(listId = null) {
-    // Load lists for dropdown
-    const { data: lists } = await STATE.client
-      .from('email_lists')
-      .select('id, list_name')
-      .eq('is_active', true)
-      .order('list_name');
+    // Load active lists for dropdown
+    const lists = await apiClient.selectAll('email_lists', {
+      select: 'id, list_name',
+      filters: { is_active: true },
+      sort: { column: 'list_name', ascending: true }
+    });
 
     const modalHtml = `
       <div class="modal fade" id="importModal" tabindex="-1">
@@ -358,7 +516,7 @@ const emailListsModule = {
                 <label class="form-label fw-bold">Select List <span class="text-danger">*</span></label>
                 <select class="form-select" id="importListSelect" ${listId ? 'disabled' : ''}>
                   <option value="">Choose a list...</option>
-                  ${lists.map(list => `
+                  ${(lists || []).map(list => `
                     <option value="${list.id}" ${list.id === listId ? 'selected' : ''}>${list.list_name}</option>
                   `).join('')}
                 </select>
@@ -491,10 +649,25 @@ const emailListsModule = {
       });
     }, 100);
 
-    const modal = new bootstrap.Modal(document.getElementById('importModal'));
+    const modalEl = document.getElementById('importModal');
+    // Delegated click handler for import action
+    modalEl.addEventListener('click', (e) => {
+      const actionEl = e.target.closest('[data-action="emailListsModule.processImport"]');
+      if (actionEl) {
+        e.preventDefault();
+        this.processImport();
+      }
+    });
+
+    const modal = new bootstrap.Modal(modalEl);
     modal.show();
   },
 
+  /**
+   * Preview a CSV file showing its first few rows
+   * @param {File} file - The CSV file to preview
+   * @returns {void}
+   */
   async previewCSV(file) {
     if (!file) return;
 
@@ -519,6 +692,10 @@ const emailListsModule = {
     reader.readAsText(file);
   },
 
+  /**
+   * Process the subscriber import from the active tab (CSV, manual, or CRM)
+   * @returns {Promise<void>}
+   */
   async processImport() {
     const listId = document.getElementById('importListSelect').value;
     if (!listId) {
@@ -550,16 +727,14 @@ const emailListsModule = {
         }
 
         // Log import batch
-        const { data: batch } = await STATE.client
-          .from('email_import_batches')
-          .insert([{
-            file_name: activeTab.replace('-tab', '') + '-import-' + new Date().toISOString(),
-            total_records: subscribers.length,
-            imported: 0,
-            status: 'processing'
-          }])
-          .select()
-          .single();
+        const batchResult = await apiClient.insert('email_import_batches', {
+          file_name: activeTab.replace('-tab', '') + '-import-' + new Date().toISOString(),
+          total_records: subscribers.length,
+          imported: 0,
+          status: 'processing'
+        });
+
+        const batch = batchResult.data;
 
         // Insert subscribers (only columns that exist in the table)
         const subscribersToInsert = subscribers.map(sub => ({
@@ -580,14 +755,11 @@ const emailListsModule = {
         if (error) throw error;
 
         // Update batch as completed
-        if (batch) {
-          await STATE.client
-            .from('email_import_batches')
-            .update({
-              status: 'completed',
-              imported: subscribers.length
-            })
-            .eq('id', batch.id);
+        if (batch?.id) {
+          await apiClient.update('email_import_batches', batch.id, {
+            status: 'completed',
+            imported: subscribers.length
+          });
         }
 
         utils.showToast(`Successfully imported ${subscribers.length} subscribers`, 'success');
@@ -602,6 +774,10 @@ const emailListsModule = {
     }
   },
 
+  /**
+   * Parse CSV file contents into subscriber objects
+   * @returns {Promise<Array<Object>>} Parsed subscriber records
+   */
   async parseCSV() {
     const file = document.getElementById('csvFile').files[0];
     if (!file) throw new Error('No file selected');
@@ -626,12 +802,20 @@ const emailListsModule = {
     });
   },
 
+  /**
+   * Parse manually entered email addresses from a textarea
+   * @returns {Promise<Array<Object>>} Parsed subscriber records
+   */
   async parseManualEmails() {
     const text = document.getElementById('manualEmails').value;
     const emails = text.split(/[\n,]/).map(e => e.trim()).filter(e => e && e.includes('@'));
     return emails.map(email => ({ email }));
   },
 
+  /**
+   * Import subscribers from CRM segments
+   * @returns {Promise<Array<Object>>} Subscriber records from CRM segments
+   */
   async importFromCRM() {
     const selectedSegments = Array.from(document.getElementById('crmSegmentSelect')?.selectedOptions || [])
       .map(opt => opt.value);
@@ -743,17 +927,21 @@ const emailListsModule = {
   // ============================================
   // VIEW SUBSCRIBERS
   // ============================================
+
+  /**
+   * View subscribers for a specific list in a modal
+   * @param {string} listId - The list ID to view subscribers for
+   * @param {string} listName - The display name of the list
+   * @returns {Promise<void>}
+   */
   async viewSubscribers(listId, listName) {
     this.currentListId = listId;
 
     try {
-      const { data: subscribers, error } = await STATE.client
-        .from('email_list_subscribers')
-        .select('*')
-        .eq('list_id', listId)
-        .order('created_at', { ascending: false });
-
-      if (error) throw error;
+      const subscribers = await apiClient.selectAll('email_list_subscribers', {
+        filters: { list_id: listId },
+        sort: { column: 'created_at', ascending: false }
+      });
 
       const subs = subscribers || [];
       this._currentSubscribers = subs;
@@ -789,9 +977,9 @@ const emailListsModule = {
                 <td>${openRate}%</td>
                 <td><small>${addedDate}</small></td>
                 <td class="text-nowrap">
-                  ${s.status === 'active' ? `<button class="btn btn-outline-warning btn-sm py-0 px-1" data-action="emailListsModule.updateSubscriberStatus" data-args='${JSON.stringify([s.id, 'unsubscribed']).replace(/'/g, "&#39;")}' title="Unsubscribe"><i class="bi bi-person-dash"></i></button>` : ''}
-                  ${s.status === 'unsubscribed' ? `<button class="btn btn-outline-success btn-sm py-0 px-1" data-action="emailListsModule.updateSubscriberStatus" data-args='${JSON.stringify([s.id, 'active']).replace(/'/g, "&#39;")}' title="Resubscribe"><i class="bi bi-person-check"></i></button>` : ''}
-                  <button class="btn btn-outline-danger btn-sm py-0 px-1" data-action="emailListsModule.deleteSubscriber" data-args='${JSON.stringify([s.id, listId]).replace(/'/g, "&#39;")}' title="Remove"><i class="bi bi-trash"></i></button>
+                  ${s.status === 'active' ? `<button class="btn btn-outline-warning btn-sm py-0 px-1" data-action="emailListsModule.updateSubscriberStatus" data-id="${s.id}" data-status="unsubscribed" title="Unsubscribe"><i class="bi bi-person-dash"></i></button>` : ''}
+                  ${s.status === 'unsubscribed' ? `<button class="btn btn-outline-success btn-sm py-0 px-1" data-action="emailListsModule.updateSubscriberStatus" data-id="${s.id}" data-status="active" title="Resubscribe"><i class="bi bi-person-check"></i></button>` : ''}
+                  <button class="btn btn-outline-danger btn-sm py-0 px-1" data-action="emailListsModule.deleteSubscriber" data-id="${s.id}" data-list="${listId}" title="Remove"><i class="bi bi-trash"></i></button>
                 </td>
               </tr>
             `;
@@ -838,7 +1026,7 @@ const emailListsModule = {
                 <!-- Search & Filter -->
                 <div class="d-flex gap-2 mb-3">
                   <input type="text" class="form-control form-control-sm" id="subscriberSearch" placeholder="Search by email or name...">
-                  <select class="form-select form-select-sm" id="subscriberStatusFilter" style="width: 150px;" data-on-change="emailListsModule.filterSubscriberTable">
+                  <select class="form-select form-select-sm" id="subscriberStatusFilter" style="width: 150px;" data-action="emailListsModule.filterSubscriberTable">
                     <option value="all">All Status</option>
                     <option value="active">Active</option>
                     <option value="unsubscribed">Unsubscribed</option>
@@ -882,11 +1070,33 @@ const emailListsModule = {
 
       document.getElementById('subscribersModal')?.remove();
       document.body.insertAdjacentHTML('beforeend', modalHtml);
-      const modal = new bootstrap.Modal(document.getElementById('subscribersModal'));
+
+      const modalEl = document.getElementById('subscribersModal');
+
+      // Delegated event handlers
+      modalEl.addEventListener('click', (e) => {
+        const actionEl = e.target.closest('[data-action]');
+        if (!actionEl) return;
+        e.preventDefault();
+        const action = actionEl.getAttribute('data-action');
+        const id = actionEl.getAttribute('data-id');
+        if (action === 'emailListsModule.updateSubscriberStatus') {
+          this.updateSubscriberStatus(id, actionEl.getAttribute('data-status'));
+        } else if (action === 'emailListsModule.deleteSubscriber') {
+          this.deleteSubscriber(id, actionEl.getAttribute('data-list'));
+        } else if (action === 'emailListsModule.addSubscriber') {
+          this.addSubscriber(id);
+        }
+      });
+
+      // Status filter change handler
+      modalEl.querySelector('#subscriberStatusFilter')?.addEventListener('change', () => this.filterSubscriberTable());
+
+      const modal = new bootstrap.Modal(modalEl);
       modal.show();
       // Attach debounced search after dynamic modal is in the DOM
       utils.initDebouncedSearch('subscriberSearch', () => this.filterSubscriberTable());
-      document.getElementById('subscribersModal').addEventListener('hidden.bs.modal', function() { this.remove(); });
+      modalEl.addEventListener('hidden.bs.modal', function() { this.remove(); });
 
     } catch (error) {
       console.error('Error loading subscribers:', error);
@@ -895,7 +1105,8 @@ const emailListsModule = {
   },
 
   /**
-   * Filter subscriber table by search and status
+   * Filter subscriber table rows by search text and status
+   * @returns {void}
    */
   filterSubscriberTable() {
     const search = (document.getElementById('subscriberSearch')?.value || '').toLowerCase();
@@ -926,16 +1137,14 @@ const emailListsModule = {
   },
 
   /**
-   * Update subscriber status
+   * Update a subscriber's status (e.g. active/unsubscribed)
+   * @param {string} subscriberId - The subscriber ID to update
+   * @param {string} newStatus - The new status value
+   * @returns {Promise<void>}
    */
   async updateSubscriberStatus(subscriberId, newStatus) {
     try {
-      const { error } = await STATE.client
-        .from('email_list_subscribers')
-        .update({ status: newStatus })
-        .eq('id', subscriberId);
-
-      if (error) throw error;
+      await apiClient.update('email_list_subscribers', subscriberId, { status: newStatus });
 
       utils.showToast(`Subscriber ${newStatus === 'active' ? 'resubscribed' : 'unsubscribed'} successfully`, 'success');
 
@@ -956,17 +1165,15 @@ const emailListsModule = {
 
   /**
    * Delete a subscriber from a list
+   * @param {string} subscriberId - The subscriber ID to remove
+   * @param {string} listId - The list ID the subscriber belongs to
+   * @returns {Promise<void>}
    */
   async deleteSubscriber(subscriberId, listId) {
     if (!await utils.confirmDialog({ title: 'Remove Subscriber', message: 'Remove this subscriber from the list?', confirmText: 'Remove', danger: true })) return;
 
     try {
-      const { error } = await STATE.client
-        .from('email_list_subscribers')
-        .delete()
-        .eq('id', subscriberId);
-
-      if (error) throw error;
+      await apiClient.delete('email_list_subscribers', subscriberId);
 
       utils.showToast('Subscriber removed', 'success');
 
@@ -988,6 +1195,12 @@ const emailListsModule = {
   // ============================================
   // OTHER ACTIONS
   // ============================================
+
+  /**
+   * Open the add single subscriber modal
+   * @param {string} listId - The list ID to add the subscriber to
+   * @returns {void}
+   */
   async addSubscriber(listId) {
     const modalHtml = `
       <div class="modal fade" id="addSubscriberModal" tabindex="-1">
@@ -1032,13 +1245,25 @@ const emailListsModule = {
 
     document.getElementById('addSubscriberModal')?.remove();
     document.body.insertAdjacentHTML('beforeend', modalHtml);
-    const modal = new bootstrap.Modal(document.getElementById('addSubscriberModal'));
+
+    const modalEl = document.getElementById('addSubscriberModal');
+    modalEl.addEventListener('click', (e) => {
+      const actionEl = e.target.closest('[data-action="emailListsModule.saveSubscriber"]');
+      if (actionEl) {
+        e.preventDefault();
+        this.saveSubscriber(actionEl.getAttribute('data-id'));
+      }
+    });
+
+    const modal = new bootstrap.Modal(modalEl);
     modal.show();
     utils.initInlineValidation('addSubscriberForm');
   },
 
   /**
    * Save a new subscriber to a list
+   * @param {string} listId - The list ID to add the subscriber to
+   * @returns {Promise<void>}
    */
   async saveSubscriber(listId) {
     const form = document.getElementById('addSubscriberForm');
@@ -1065,16 +1290,14 @@ const emailListsModule = {
 
     try {
       await utils.protectModalDuringSave('addSubscriberModal', async () => {
-        const { error } = await STATE.client
-          .from('email_list_subscribers')
-          .insert(subData);
-
-        if (error) {
-          if (error.message?.includes('duplicate') || error.code === '23505') {
+        try {
+          await apiClient.insert('email_list_subscribers', subData);
+        } catch (insertError) {
+          if (insertError.message?.includes('duplicate') || insertError.code === '23505') {
             utils.showToast('This email already exists in this list', 'warning');
             return;
           }
-          throw error;
+          throw insertError;
         }
 
         bootstrap.Modal.getInstance(document.getElementById('addSubscriberModal'))?.hide();
@@ -1105,7 +1328,9 @@ const emailListsModule = {
   },
 
   /**
-   * Edit list details
+   * Open the edit list modal for a given list
+   * @param {string} listId - The list ID to edit
+   * @returns {Promise<void>}
    */
   async editList(listId) {
     const list = this.currentLists.find(l => l.id === listId);
@@ -1178,13 +1403,25 @@ const emailListsModule = {
 
     document.getElementById('editListModal')?.remove();
     document.body.insertAdjacentHTML('beforeend', modalHtml);
-    const modal = new bootstrap.Modal(document.getElementById('editListModal'));
+
+    const modalEl = document.getElementById('editListModal');
+    modalEl.addEventListener('click', (e) => {
+      const actionEl = e.target.closest('[data-action="emailListsModule.saveEditedList"]');
+      if (actionEl) {
+        e.preventDefault();
+        this.saveEditedList(actionEl.getAttribute('data-id'));
+      }
+    });
+
+    const modal = new bootstrap.Modal(modalEl);
     modal.show();
     utils.initInlineValidation('editListForm');
   },
 
   /**
-   * Save edited list details
+   * Save edited list details to the database
+   * @param {string} listId - The list ID being edited
+   * @returns {Promise<void>}
    */
   async saveEditedList(listId) {
     const form = document.getElementById('editListForm');
@@ -1195,20 +1432,15 @@ const emailListsModule = {
 
     try {
       await utils.protectModalDuringSave('editListModal', async () => {
-        const { error } = await STATE.client
-          .from('email_lists')
-          .update({
-            list_name: document.getElementById('editListName').value,
-            description: document.getElementById('editListDescription').value || null,
-            list_type: document.getElementById('editListType').value,
-            color: document.getElementById('editListColor').value,
-            icon: document.getElementById('editListIcon').value || null,
-            is_active: document.getElementById('editListActive').checked,
-            auto_clean: document.getElementById('editListAutoClean').checked
-          })
-          .eq('id', listId);
-
-        if (error) throw error;
+        await apiClient.update('email_lists', listId, {
+          list_name: document.getElementById('editListName').value,
+          description: document.getElementById('editListDescription').value || null,
+          list_type: document.getElementById('editListType').value,
+          color: document.getElementById('editListColor').value,
+          icon: document.getElementById('editListIcon').value || null,
+          is_active: document.getElementById('editListActive').checked,
+          auto_clean: document.getElementById('editListAutoClean').checked
+        });
 
         bootstrap.Modal.getInstance(document.getElementById('editListModal'))?.hide();
         this.loadAllData();
@@ -1226,19 +1458,22 @@ const emailListsModule = {
     }
   },
 
+  /**
+   * Export list subscribers as a CSV download
+   * @param {string} listId - The list ID to export
+   * @returns {Promise<void>}
+   */
   async exportList(listId) {
     try {
-      const { data: subscribers, error } = await STATE.client
-        .from('email_list_subscribers')
-        .select('email, first_name, last_name, company_name, status')
-        .eq('list_id', listId);
-
-      if (error) throw error;
+      const subscribers = await apiClient.selectAll('email_list_subscribers', {
+        select: 'email, first_name, last_name, company_name, status',
+        filters: { list_id: listId }
+      });
 
       // Create CSV
       const csv = [
         'Email,First Name,Last Name,Company Name,Status',
-        ...subscribers.map(s =>
+        ...(subscribers || []).map(s =>
           `${s.email},${s.first_name || ''},${s.last_name || ''},${s.company_name || ''},${s.status}`
         )
       ].join('\n');
@@ -1259,18 +1494,18 @@ const emailListsModule = {
     }
   },
 
+  /**
+   * Delete an email list and all its subscribers
+   * @param {string} listId - The list ID to delete
+   * @returns {Promise<void>}
+   */
   async deleteList(listId) {
     if (!await utils.confirmDialog({ title: 'Delete Email List', message: 'Are you sure you want to delete this list? All subscribers will be removed. This cannot be undone.', confirmText: 'Delete', danger: true })) {
       return;
     }
 
     try {
-      const { error } = await STATE.client
-        .from('email_lists')
-        .delete()
-        .eq('id', listId);
-
-      if (error) throw error;
+      await apiClient.delete('email_lists', listId);
 
       utils.showToast('Email list deleted successfully', 'success');
       this.loadAllData();
@@ -1284,5 +1519,5 @@ const emailListsModule = {
 // ============================================
 // INITIALIZATION
 // ============================================
-console.warn('✅ Email Lists Module loaded');
+console.warn('Email Lists Module loaded');
 ModuleRegistry.register('emailListsModule', emailListsModule);

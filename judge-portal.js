@@ -2,13 +2,22 @@
 /* JUDGE PORTAL - Judging Interface and Scoring */
 /* ==================================================== */
 
-// HTML escape helper for safe rendering
+/**
+ * HTML escape helper for safe rendering
+ * @param {string} str - The string to escape
+ * @returns {string} Escaped HTML string
+ */
 function esc(str) {
   if (!str) return '';
   return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 }
 
-// Lightweight toast for judge portal (replaces alert())
+/**
+ * Lightweight toast for judge portal (replaces alert())
+ * @param {string} msg - Message to display
+ * @param {string} [type='info'] - Toast type ('info', 'success', 'warning', 'error')
+ * @returns {void}
+ */
 function showPortalToast(msg, type = 'info') {
   let container = document.getElementById('portalToastContainer');
   if (!container) {
@@ -26,18 +35,18 @@ function showPortalToast(msg, type = 'info') {
   setTimeout(() => { toast.style.opacity = '0'; setTimeout(() => toast.remove(), 300); }, 4000);
 }
 
-// Initialize Supabase using shared config
-const supabase = window.supabase.createClient(
-  window.SUPABASE_CONFIG.url,
-  window.SUPABASE_CONFIG.anonKey
-);
-
 const judgePortal = {
+  /** @type {Object|null} Current judge info */
   currentJudge: null,
+  /** @type {Array} Entries assigned to this judge */
   assignedEntries: [],
+  /** @type {Object|null} Currently selected entry */
   currentEntry: null,
+  /** @type {Object|null} Current judge score for selected entry */
   currentScore: null,
-  blindMode: true, // Anonymise company names and logos for impartial judging
+  /** @type {boolean} Whether blind judging mode is active */
+  blindMode: true,
+  /** @type {Array} Scoring criteria with weights */
   scoringCriteria: [
     { id: 'innovation_score', name: 'Innovation & Creativity', maxScore: 10, weight: 0.2 },
     { id: 'impact_score', name: 'Business Impact', maxScore: 10, weight: 0.3 },
@@ -45,11 +54,16 @@ const judgePortal = {
     { id: 'presentation_score', name: 'Presentation', maxScore: 10, weight: 0.25 }
   ],
 
+  // Server-side pagination state
+  _serverPagination: true,
+  _pagination: { page: 1, totalPages: 1, count: 0, pageSize: 50 },
+
   /**
-   * Initialize judge portal
+   * Initialize judge portal - check auth, load judge data and entries
+   * @returns {Promise<void>}
    */
   async initialize() {
-    // Check if judge is logged in (you'd implement proper auth)
+    // Check if judge is logged in
     const judgeEmail = this.getJudgeFromSession();
     if (!judgeEmail) {
       window.location.href = '/judge-login.html';
@@ -58,17 +72,18 @@ const judgePortal = {
 
     // Try to get judge details from database
     try {
-      const { data: _judgeData } = await supabase
-        .from('user_roles')
-        .select('email, role')
-        .eq('email', judgeEmail)
-        .single();
+      const _roleResult = await apiClient.select('user_roles', {
+        select: 'email, role',
+        filters: { email: judgeEmail },
+        pageSize: 1
+      });
 
-      const { data: contactData } = await supabase
-        .from('organisation_contacts')
-        .select('first_name, last_name')
-        .eq('email', judgeEmail)
-        .single();
+      const contactResult = await apiClient.select('organisation_contacts', {
+        select: 'first_name, last_name',
+        filters: { email: judgeEmail },
+        pageSize: 1
+      });
+      const contactData = contactResult.data?.[0] || null;
 
       const judgeName = contactData
         ? `${contactData.first_name} ${contactData.last_name}`
@@ -88,23 +103,57 @@ const judgePortal = {
 
     // Update progress
     this.updateProgress();
+
+    // Attach delegated event listeners
+    this._attachEventListeners();
   },
 
   /**
-   * Get judge from session - uses Supabase auth session with localStorage fallback
+   * Attach delegated event listeners for data-action buttons
+   * @returns {void}
+   */
+  _attachEventListeners() {
+    document.body.addEventListener('click', (e) => {
+      const actionEl = e.target.closest('[data-action]');
+      if (!actionEl) return;
+      const action = actionEl.getAttribute('data-action');
+      const id = actionEl.getAttribute('data-id');
+
+      if (action === 'judgePortal.selectEntry') {
+        e.preventDefault();
+        this.selectEntry(id);
+      } else if (action === 'judgePortal.saveScore') {
+        e.preventDefault();
+        this.saveScore(actionEl.getAttribute('data-complete') === 'true');
+      } else if (action === 'judgePortal.nextEntry') {
+        e.preventDefault();
+        this.nextEntry();
+      } else if (action === 'judgePortal.goToPage') {
+        e.preventDefault();
+        this._goToPage(parseInt(actionEl.getAttribute('data-page')));
+      }
+    });
+  },
+
+  /**
+   * Get judge from session - uses shared STATE.client auth session with localStorage fallback
+   * @returns {string|null} Judge email address or null
    */
   getJudgeFromSession() {
-    // Prefer Supabase session if available (set by magic link or password login)
-    const session = supabase.auth?.getSession?.();
-    if (session?.data?.session?.user?.email) {
-      return session.data.session.user.email;
+    // Prefer shared STATE.client session if available
+    if (typeof STATE !== 'undefined' && STATE.client?.auth?.getSession) {
+      const session = STATE.client.auth.getSession();
+      if (session?.data?.session?.user?.email) {
+        return session.data.session.user.email;
+      }
     }
     return localStorage.getItem('judgeEmail') || null;
   },
 
   /**
-   * Anonymise a company name for blind judging
-   * Uses a consistent hash so the same company always gets the same code
+   * Anonymise a company name for blind judging using a consistent hash
+   * @param {string} text - Text to anonymise
+   * @returns {string} Anonymised entry code or original text if blind mode is off
    */
   anonymise(text) {
     if (!this.blindMode || !text) return text;
@@ -117,7 +166,9 @@ const judgePortal = {
   },
 
   /**
-   * Get display name — anonymised in blind mode
+   * Get display name for a company -- anonymised in blind mode
+   * @param {Object} entry - Entry object with organisations relation
+   * @returns {string} Escaped display name
    */
   getCompanyDisplay(entry) {
     if (this.blindMode) return esc(this.anonymise(entry.organisations?.company_name || entry.id));
@@ -125,43 +176,83 @@ const judgePortal = {
   },
 
   /**
-   * Load entries assigned to this judge
+   * Fetch a page of assigned entries from the server
+   * @param {number} page - The page number to fetch
+   * @returns {Promise<Array>} The fetched entries
+   */
+  async _fetchPage(page) {
+    this._pagination.page = page;
+
+    // Use STATE.client for complex joins (select with nested relations)
+    const { data: entries, error, count } = await STATE.client
+      .from('entries')
+      .select(`
+        *,
+        organisations(company_name, logo_url),
+        awards:award_years(award_name, award_category),
+        entry_files(*),
+        judge_scores!judge_scores_entry_id_fkey(*)
+      `, { count: 'exact' })
+      .eq('status', 'submitted')
+      .order('submission_date', { ascending: true })
+      .range((page - 1) * this._pagination.pageSize, page * this._pagination.pageSize - 1);
+
+    if (error) throw error;
+
+    const totalCount = count || 0;
+    this._pagination = {
+      ...this._pagination,
+      page,
+      count: totalCount,
+      totalPages: Math.ceil(totalCount / this._pagination.pageSize)
+    };
+
+    return entries || [];
+  },
+
+  /**
+   * Navigate to a specific page of entries
+   * @param {number} page - Target page number
+   * @returns {void}
+   */
+  _goToPage(page) {
+    page = Math.max(1, Math.min(page, this._pagination.totalPages));
+    this._fetchPage(page).then(entries => {
+      this.assignedEntries = this._enrichEntries(entries);
+      this.renderEntriesList();
+    }).catch(err => {
+      console.error('Error navigating page:', err);
+      showPortalToast('Error loading page: ' + err.message, 'error');
+    });
+  },
+
+  /**
+   * Enrich entries with judge scoring status
+   * @param {Array} entries - Raw entry data from API
+   * @returns {Array} Entries with hasScored and myScore properties
+   */
+  _enrichEntries(entries) {
+    return (entries || []).map(entry => {
+      const existingScore = entry.judge_scores?.find(
+        score => score.judge_email === this.currentJudge.email
+      );
+      return {
+        ...entry,
+        hasScored: !!existingScore,
+        myScore: existingScore || null
+      };
+    });
+  },
+
+  /**
+   * Load entries assigned to this judge with pagination
+   * @returns {Promise<void>}
    */
   async loadAssignedEntries() {
     try {
-      // In a real system, you'd have a judge_assignments table
-      // For now, we'll load entries that need judging
-
-      const { data: entries, error } = await supabase
-        .from('entries')
-        .select(`
-          *,
-          organisations(company_name, logo_url),
-          awards:award_years(award_name, award_category),
-          entry_files(*),
-          judge_scores!judge_scores_entry_id_fkey(*)
-        `)
-        .eq('status', 'submitted')
-        .order('submission_date', { ascending: true });
-
-      if (error) throw error;
-
-      this.assignedEntries = entries || [];
-
-      // Check which entries this judge has already scored
-      this.assignedEntries = this.assignedEntries.map(entry => {
-        const existingScore = entry.judge_scores?.find(
-          score => score.judge_email === this.currentJudge.email
-        );
-        return {
-          ...entry,
-          hasScored: !!existingScore,
-          myScore: existingScore || null
-        };
-      });
-
+      const entries = await this._fetchPage(1);
+      this.assignedEntries = this._enrichEntries(entries);
       this.renderEntriesList();
-
     } catch (error) {
       console.error('Error loading entries:', error);
       showPortalToast('Failed to load entries: ' + error.message, 'error');
@@ -169,13 +260,14 @@ const judgePortal = {
   },
 
   /**
-   * Render entries list
+   * Render entries list in sidebar
+   * @returns {void}
    */
   renderEntriesList() {
     const container = document.getElementById('entriesList');
     const totalCount = document.getElementById('totalEntriesCount');
 
-    totalCount.textContent = this.assignedEntries.length;
+    totalCount.textContent = this._pagination.count;
 
     if (this.assignedEntries.length === 0) {
       container.innerHTML = `
@@ -189,7 +281,7 @@ const judgePortal = {
 
     container.innerHTML = this.assignedEntries.map(entry => `
       <div class="entry-card ${entry.hasScored ? 'scored' : ''} ${this.currentEntry?.id === entry.id ? 'active' : ''}"
-           data-action="judgePortal.selectEntry" data-id="${esc(entry.id)}">
+           data-action="judgePortal.selectEntry" data-id="${esc(entry.id)}" style="cursor:pointer;">
         <div class="d-flex justify-content-between align-items-start mb-2">
           <strong class="text-truncate">${this.getCompanyDisplay(entry)}</strong>
           ${entry.hasScored ? '<i class="bi bi-check-circle-fill text-success"></i>' : ''}
@@ -199,10 +291,45 @@ const judgePortal = {
         ${entry.hasScored ? `<div class="small text-success mt-2">Score: ${parseInt(entry.myScore?.total_score) || 0}/40</div>` : ''}
       </div>
     `).join('');
+
+    // Render pagination if needed
+    this._renderPaginationControls();
   },
 
   /**
-   * Filter entries
+   * Render pagination controls for entries list
+   * @returns {void}
+   */
+  _renderPaginationControls() {
+    let container = document.getElementById('entriesListPagination');
+    if (!container) {
+      container = document.createElement('div');
+      container.id = 'entriesListPagination';
+      document.getElementById('entriesList')?.parentElement?.appendChild(container);
+    }
+
+    const { page, totalPages } = this._pagination;
+    if (totalPages <= 1) {
+      container.innerHTML = '';
+      return;
+    }
+
+    container.innerHTML = `
+      <nav aria-label="Entries pagination" class="mt-2">
+        <div class="d-flex justify-content-between align-items-center">
+          <small class="text-muted">Page ${page}/${totalPages}</small>
+          <div class="btn-group btn-group-sm">
+            <button class="btn btn-outline-secondary" ${page <= 1 ? 'disabled' : ''} data-action="judgePortal.goToPage" data-page="${page - 1}">Prev</button>
+            <button class="btn btn-outline-secondary" ${page >= totalPages ? 'disabled' : ''} data-action="judgePortal.goToPage" data-page="${page + 1}">Next</button>
+          </div>
+        </div>
+      </nav>
+    `;
+  },
+
+  /**
+   * Filter entries by status (all, pending, scored)
+   * @returns {void}
    */
   filterEntries() {
     const filter = document.getElementById('entriesFilter').value;
@@ -219,14 +346,15 @@ const judgePortal = {
   },
 
   /**
-   * Render filtered entries
+   * Render a filtered subset of entries
+   * @param {Array} entries - Filtered entries to render
+   * @returns {void}
    */
   renderFilteredEntries(entries) {
     const container = document.getElementById('entriesList');
-    // Same rendering logic as renderEntriesList but with filtered array
     container.innerHTML = entries.map(entry => `
       <div class="entry-card ${entry.hasScored ? 'scored' : ''} ${this.currentEntry?.id === entry.id ? 'active' : ''}"
-           data-action="judgePortal.selectEntry" data-id="${esc(entry.id)}">
+           data-action="judgePortal.selectEntry" data-id="${esc(entry.id)}" style="cursor:pointer;">
         <div class="d-flex justify-content-between align-items-start mb-2">
           <strong class="text-truncate">${this.getCompanyDisplay(entry)}</strong>
           ${entry.hasScored ? '<i class="bi bi-check-circle-fill text-success"></i>' : ''}
@@ -240,6 +368,8 @@ const judgePortal = {
 
   /**
    * Select entry for judging
+   * @param {string} entryId - ID of the entry to select
+   * @returns {Promise<void>}
    */
   async selectEntry(entryId) {
     this.currentEntry = this.assignedEntries.find(e => e.id === entryId);
@@ -260,7 +390,9 @@ const judgePortal = {
   },
 
   /**
-   * Check for conflict of interest
+   * Check for conflict of interest between judge and entry
+   * @param {Object} entry - The entry to check against
+   * @returns {Promise<boolean>} Whether a conflict was detected
    */
   async checkConflictOfInterest(entry) {
     try {
@@ -271,7 +403,6 @@ const judgePortal = {
       // Check 1: Judge's email domain matches company website/email domain
       if (judgeDomain && judgeDomain !== 'gmail.com' && judgeDomain !== 'hotmail.com' &&
           judgeDomain !== 'yahoo.com' && judgeDomain !== 'outlook.com') {
-        // Check if company name appears in domain
         const domainParts = judgeDomain.replace('.co.uk', '').replace('.com', '').replace('.org', '');
         if (companyName.includes(domainParts) || domainParts.includes(companyName.replace(/\s+/g, ''))) {
           return true;
@@ -279,26 +410,25 @@ const judgePortal = {
       }
 
       // Check 2: Check for declared conflicts in the database
-      const { data: conflicts } = await supabase
-        .from('judge_scores')
-        .select('conflict_declared')
-        .eq('entry_id', entry.id)
-        .eq('judge_email', judgeEmail)
-        .eq('conflict_declared', true);
+      const conflictResult = await apiClient.select('judge_scores', {
+        select: 'conflict_declared',
+        filters: { entry_id: entry.id, judge_email: judgeEmail, conflict_declared: true },
+        pageSize: 1
+      });
 
-      if (conflicts && conflicts.length > 0) {
+      if (conflictResult.data && conflictResult.data.length > 0) {
         return true;
       }
 
       // Check 3: Check if judge is listed as a contact for the organisation
       if (entry.organisation_id) {
-        const { data: contacts } = await supabase
-          .from('organisation_contacts')
-          .select('email')
-          .eq('organisation_id', entry.organisation_id)
-          .eq('email', judgeEmail);
+        const contactResult = await apiClient.select('organisation_contacts', {
+          select: 'email',
+          filters: { organisation_id: entry.organisation_id, email: judgeEmail },
+          pageSize: 1
+        });
 
-        if (contacts && contacts.length > 0) {
+        if (contactResult.data && contactResult.data.length > 0) {
           return true;
         }
       }
@@ -311,7 +441,9 @@ const judgePortal = {
   },
 
   /**
-   * Render judging panel
+   * Render the judging panel for the selected entry
+   * @param {boolean} hasConflict - Whether a conflict of interest was detected
+   * @returns {void}
    */
   renderJudgingPanel(hasConflict) {
     const panel = document.getElementById('judgingPanel');
@@ -425,10 +557,10 @@ const judgePortal = {
 
       <!-- Action Buttons -->
       <div class="d-flex gap-2 mt-4">
-        <button class="btn btn-success flex-fill" data-action="judgePortal.saveScore" data-args='[true]'>
+        <button class="btn btn-success flex-fill" data-action="judgePortal.saveScore" data-complete="true">
           <i class="bi bi-check-circle me-2"></i>Submit Score
         </button>
-        <button class="btn btn-outline-secondary" data-action="judgePortal.saveScore" data-args='[false]'>
+        <button class="btn btn-outline-secondary" data-action="judgePortal.saveScore" data-complete="false">
           <i class="bi bi-save me-2"></i>Save Draft
         </button>
         <button class="btn btn-outline-primary" data-action="judgePortal.nextEntry">
@@ -442,7 +574,8 @@ const judgePortal = {
   },
 
   /**
-   * Render supporting files
+   * Render supporting files section for the current entry
+   * @returns {string} HTML string for supporting files
    */
   renderSupportingFiles() {
     if (!this.currentEntry.entry_files || this.currentEntry.entry_files.length === 0) {
@@ -469,7 +602,8 @@ const judgePortal = {
   },
 
   /**
-   * Render scoring criteria
+   * Render scoring criteria sliders
+   * @returns {string} HTML string for scoring criteria
    */
   renderScoringCriteria() {
     return this.scoringCriteria.map(criterion => `
@@ -479,15 +613,15 @@ const judgePortal = {
           <small class="d-block text-muted">Weight: ${(criterion.weight * 100)}%</small>
         </div>
         <input type="range" class="form-range score-slider" min="0" max="${criterion.maxScore}" step="0.5"
-               id="${criterion.id}" value="${this.currentScore?.[criterion.id] || 0}"
-               data-on-change="judgePortal.updateTotalScore">
+               id="${criterion.id}" value="${this.currentScore?.[criterion.id] || 0}">
         <div class="score-value" id="${criterion.id}_value">${this.currentScore?.[criterion.id] || 0}</div>
       </div>
     `).join('');
   },
 
   /**
-   * Setup score sliders
+   * Setup score slider event listeners
+   * @returns {void}
    */
   setupScoreSliders() {
     this.scoringCriteria.forEach(criterion => {
@@ -504,7 +638,8 @@ const judgePortal = {
   },
 
   /**
-   * Calculate total score
+   * Calculate total score from all criteria sliders
+   * @returns {string} Total score formatted to 1 decimal place
    */
   calculateTotalScore() {
     let total = 0;
@@ -520,7 +655,8 @@ const judgePortal = {
   },
 
   /**
-   * Update total score display
+   * Update total score display element
+   * @returns {void}
    */
   updateTotalScore() {
     const display = document.getElementById('totalScoreDisplay');
@@ -530,7 +666,9 @@ const judgePortal = {
   },
 
   /**
-   * Save score
+   * Save or submit a judge score for the current entry
+   * @param {boolean} isComplete - Whether to submit (true) or save as draft (false)
+   * @returns {Promise<void>}
    */
   async saveScore(isComplete) {
     try {
@@ -579,8 +717,8 @@ const judgePortal = {
         scored_at: new Date().toISOString()
       };
 
-      // Upsert score (update if exists, insert if new)
-      const { error } = await supabase
+      // Upsert score (update if exists, insert if new) - use STATE.client for upsert with onConflict
+      const { error } = await STATE.client
         .from('judge_scores')
         .upsert([scoreData], {
           onConflict: 'entry_id,judge_email'
@@ -606,7 +744,8 @@ const judgePortal = {
   },
 
   /**
-   * Move to next entry
+   * Move to the next entry in the list
+   * @returns {void}
    */
   nextEntry() {
     const currentIndex = this.assignedEntries.findIndex(e => e.id === this.currentEntry.id);
@@ -620,7 +759,8 @@ const judgePortal = {
   },
 
   /**
-   * Update progress tracker
+   * Update progress tracker display
+   * @returns {void}
    */
   updateProgress() {
     const scored = this.assignedEntries.filter(e => e.hasScored).length;
@@ -636,7 +776,8 @@ const judgePortal = {
   },
 
   /**
-   * Logout
+   * Logout the current judge and redirect to login page
+   * @returns {void}
    */
   logout() {
     localStorage.removeItem('judgeEmail');

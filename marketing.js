@@ -3,8 +3,18 @@
 /* ==================================================== */
 
 const marketingModule = {
+  /** @type {Array} Current loaded banners */
   currentBanners: [],
+  /** @type {Array} Current loaded sponsors */
   currentSponsors: [],
+
+  // Server-side pagination state for banners
+  /** @type {boolean} Whether server-side pagination is enabled */
+  _serverPagination: true,
+  /** @type {Object} Banner pagination state */
+  _bannerPagination: { page: 1, totalPages: 1, count: 0, pageSize: 50 },
+  /** @type {Object} Sponsor pagination state */
+  _sponsorPagination: { page: 1, totalPages: 1, count: 0, pageSize: 50 },
 
   /* ==================================================== */
   /* INITIALIZATION */
@@ -34,17 +44,40 @@ const marketingModule = {
   /* ==================================================== */
 
   /**
-   * Load all banners
+   * Fetch a page of banners from the server
+   * @param {number} page - The page number to fetch
+   * @returns {Promise<Array>} The fetched banners
+   */
+  async _fetchBannerPage(page) {
+    this._bannerPagination.page = page;
+    const result = await apiClient.select('banners', {
+      sort: { column: 'display_order', ascending: true },
+      page,
+      pageSize: this._bannerPagination.pageSize
+    });
+    this._bannerPagination = { ...this._bannerPagination, ...result, page };
+    return result.data;
+  },
+
+  /**
+   * Navigate to a specific page of banners
+   * @param {number} page - Target page number
+   * @returns {void}
+   */
+  _goToBannerPage(page) {
+    this._fetchBannerPage(page).then(data => {
+      this.currentBanners = data || [];
+      this.renderBanners();
+    });
+  },
+
+  /**
+   * Load all banners with pagination
+   * @returns {Promise<void>}
    */
   async loadBanners() {
     try {
-      const { data, error } = await STATE.client
-        .from('banners')
-        .select('*')
-        .order('display_order', { ascending: true });
-
-      if (error) throw error;
-
+      const data = await this._fetchBannerPage(1);
       this.currentBanners = data || [];
       this.renderBanners();
     } catch (error) {
@@ -59,7 +92,8 @@ const marketingModule = {
   },
 
   /**
-   * Render banners grid
+   * Render banners grid with delegated event handling
+   * @returns {void}
    */
   renderBanners() {
     const container = document.getElementById('bannersGrid');
@@ -79,6 +113,25 @@ const marketingModule = {
         ${this.currentBanners.map(banner => this.renderBannerCard(banner)).join('')}
       </div>
     `;
+
+    // Attach delegated click handler for banner actions
+    container.addEventListener('click', (e) => {
+      const actionEl = e.target.closest('[data-action]');
+      if (!actionEl) return;
+      e.preventDefault();
+      const action = actionEl.getAttribute('data-action');
+      const id = actionEl.getAttribute('data-id');
+      switch (action) {
+        case 'marketingModule.viewBannerFull':
+          this.viewBannerFull(actionEl.getAttribute('data-url'), actionEl.getAttribute('data-title'));
+          break;
+        case 'marketingModule.editBanner': this.editBanner(id); break;
+        case 'marketingModule.toggleBannerActive':
+          this.toggleBannerActive(id, actionEl.getAttribute('data-active') === 'true');
+          break;
+        case 'marketingModule.deleteBanner': this.deleteBanner(id); break;
+      }
+    });
   },
 
   /**
@@ -97,7 +150,7 @@ const marketingModule = {
         <div class="card h-100">
           <img src="${utils.escapeHtml(banner.image_url)}" class="card-img-top" alt="${utils.escapeHtml(banner.title)}"
             style="height: 200px; object-fit: cover; cursor: pointer;"
-            data-action="marketingModule.viewBannerFull" data-args='${JSON.stringify([banner.image_url, banner.title]).replace(/'/g, "&#39;")}'>
+            data-action="marketingModule.viewBannerFull" data-url="${utils.escapeHtml(banner.image_url)}" data-title="${utils.escapeHtml(banner.title)}">
           <div class="card-body">
             <div class="d-flex justify-content-between align-items-start mb-2">
               <h6 class="card-title mb-0">${utils.escapeHtml(banner.title)}</h6>
@@ -121,14 +174,14 @@ const marketingModule = {
               ${banner.start_date ? `<span><i class="bi bi-calendar"></i> ${utils.formatDate(banner.start_date)}</span>` : ''}
             </div>
             <div class="btn-group w-100" role="group">
-              <button class="btn btn-sm btn-outline-primary" data-action="marketingModule.editBanner" data-id="${utils.escapeHtml(banner.id)}">
+              <button class="btn btn-sm btn-outline-primary" data-action="marketingModule.editBanner" data-id="${banner.id}">
                 <i class="bi bi-pencil"></i> Edit
               </button>
               <button class="btn btn-sm ${isActive ? 'btn-outline-warning' : 'btn-outline-success'}"
-                data-action="marketingModule.toggleBannerActive" data-args='${JSON.stringify([banner.id, !isActive]).replace(/'/g, "&#39;")}'>
+                data-action="marketingModule.toggleBannerActive" data-id="${banner.id}" data-active="${!isActive}">
                 <i class="bi bi-${isActive ? 'pause' : 'play'}"></i> ${isActive ? 'Pause' : 'Activate'}
               </button>
-              <button class="btn btn-sm btn-outline-danger" data-action="marketingModule.deleteBanner" data-id="${utils.escapeHtml(banner.id)}">
+              <button class="btn btn-sm btn-outline-danger" data-action="marketingModule.deleteBanner" data-id="${banner.id}">
                 <i class="bi bi-trash"></i>
               </button>
             </div>
@@ -214,7 +267,7 @@ const marketingModule = {
             </div>
             <div class="modal-footer">
               <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-              <button type="button" class="btn btn-primary" data-action="marketingModule.saveBanner" data-id="${isEdit ? utils.escapeHtml(existingBanner.id) : ''}">
+              <button type="button" class="btn btn-primary" onclick="marketingModule.saveBanner(${isEdit ? `'${existingBanner.id}'` : 'null'})">
                 <i class="bi bi-save me-2"></i>${btnText}
               </button>
             </div>
@@ -452,10 +505,10 @@ const marketingModule = {
           </div>
           <div class="card-footer bg-transparent">
             <div class="btn-group w-100" role="group">
-              <button class="btn btn-sm btn-outline-primary" data-action="marketingModule.editSponsor" data-id="${utils.escapeHtml(sponsor.id)}">
+              <button class="btn btn-sm btn-outline-primary" onclick="marketingModule.editSponsor('${sponsor.id}')">
                 <i class="bi bi-pencil"></i>
               </button>
-              <button class="btn btn-sm btn-outline-danger" data-action="marketingModule.deleteSponsor" data-id="${utils.escapeHtml(sponsor.id)}">
+              <button class="btn btn-sm btn-outline-danger" onclick="marketingModule.deleteSponsor('${sponsor.id}')">
                 <i class="bi bi-trash"></i>
               </button>
             </div>
@@ -547,7 +600,7 @@ const marketingModule = {
             </div>
             <div class="modal-footer">
               <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-              <button type="button" class="btn btn-warning" data-action="marketingModule.saveSponsor" data-id="${isEdit ? utils.escapeHtml(existingSponsor.id) : ''}">
+              <button type="button" class="btn btn-warning" onclick="marketingModule.saveSponsor(${isEdit ? `'${existingSponsor.id}'` : 'null'})">
                 <i class="bi bi-save me-2"></i>${btnText}
               </button>
             </div>
@@ -734,7 +787,7 @@ const marketingModule = {
         </div>
         <div class="alert alert-info mt-4 mb-0">
           <i class="bi bi-info-circle me-2"></i>
-          <strong>How branding is used:</strong> These settings are automatically applied to email templates, campaign headers/footers, certificates, public pages, and event materials. Edit them in <a href="#" data-prevent-default="true" onclick="document.getElementById('settings-tab').click()">Settings</a> to update across the entire CMS.
+          <strong>How branding is used:</strong> These settings are automatically applied to email templates, campaign headers/footers, certificates, public pages, and event materials. Edit them in <a href="#" onclick="document.getElementById('settings-tab').click(); return false;">Settings</a> to update across the entire CMS.
         </div>
       `;
     } catch (e) {
@@ -829,7 +882,7 @@ const marketingModule = {
         </div>
         <div class="d-flex gap-2 mt-4">
           <button type="submit" class="btn btn-primary"><i class="bi bi-save me-2"></i>Save Placeholder Defaults</button>
-          <button type="button" class="btn btn-outline-secondary" data-action="marketingModule.resetPlaceholderDefaults"><i class="bi bi-arrow-counterclockwise me-2"></i>Reset to Defaults</button>
+          <button type="button" class="btn btn-outline-secondary" onclick="marketingModule.resetPlaceholderDefaults()"><i class="bi bi-arrow-counterclockwise me-2"></i>Reset to Defaults</button>
         </div>
       </form>
       <div class="card mt-4">
@@ -918,8 +971,8 @@ const marketingModule = {
               <div class="text-muted small">Trigger: ${utils.escapeHtml(seq.trigger)} &middot; ${seq.steps.length} step(s) &middot; ${seq.enrolled || 0} enrolled</div>
             </div>
             <div>
-              <button class="btn btn-sm btn-outline-${seq.active ? 'warning' : 'success'}" data-action="marketingModule.toggleSequence" data-id="${i}">${seq.active ? 'Pause' : 'Activate'}</button>
-              <button class="btn btn-sm btn-outline-danger ms-1" data-action="marketingModule.deleteSequence" data-id="${i}"><i class="bi bi-trash"></i></button>
+              <button class="btn btn-sm btn-outline-${seq.active ? 'warning' : 'success'}" onclick="marketingModule.toggleSequence(${i})">${seq.active ? 'Pause' : 'Activate'}</button>
+              <button class="btn btn-sm btn-outline-danger ms-1" onclick="marketingModule.deleteSequence(${i})"><i class="bi bi-trash"></i></button>
             </div>
           </div>
         </div>
@@ -951,11 +1004,11 @@ const marketingModule = {
             <div class="col-4"><label class="form-label small">Subject</label><input type="text" class="form-control form-control-sm seq-subject" placeholder="Subject..."></div>
             <div class="col-5"><label class="form-label small">Body</label><textarea class="form-control form-control-sm seq-body" rows="2" placeholder="Use {{company_name}}, {{contact_name}}..."></textarea></div>
           </div></div></div>
-          <button class="btn btn-sm btn-outline-secondary mb-3" data-action="marketingModule._addSequenceStep"><i class="bi bi-plus me-1"></i>Add Step</button>
+          <button class="btn btn-sm btn-outline-secondary mb-3" onclick="marketingModule._addSequenceStep()"><i class="bi bi-plus me-1"></i>Add Step</button>
         </div>
         <div class="modal-footer">
           <button class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-          <button class="btn btn-primary" data-action="marketingModule._saveSequence"><i class="bi bi-check-circle me-2"></i>Save Sequence</button>
+          <button class="btn btn-primary" onclick="marketingModule._saveSequence()"><i class="bi bi-check-circle me-2"></i>Save Sequence</button>
         </div>
       </div></div>
     </div>`;

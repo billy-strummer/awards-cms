@@ -6,7 +6,7 @@
   <title>Event Registration</title>
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
-  <!-- Supabase client removed: all DB access routed through /api/registration-proxy -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://js.stripe.com/v3/"></script>
   <style>
     :root { --brand-primary: #1a1a2e; --brand-accent: #0d6efd; }
@@ -122,7 +122,7 @@
             <div id="additionalGuestsContainer"></div>
 
             <div class="mt-3" id="addGuestBtnContainer" style="display:none;">
-              <button class="btn btn-sm btn-outline-primary" onclick="addGuestRow()">
+              <button class="btn btn-sm btn-outline-primary" data-action="addGuestRow">
                 <i class="bi bi-plus-circle me-1"></i>Add Another Guest
               </button>
               <small class="text-muted ms-2">(<span id="guestCountLabel">0</span> of <span id="guestMaxLabel">0</span> guests added)</small>
@@ -140,10 +140,10 @@
             </div>
 
             <div class="d-flex justify-content-between mt-4">
-              <button class="btn btn-outline-secondary" onclick="goToStep(1)">
+              <button class="btn btn-outline-secondary" data-action="goToStep" data-id="1">
                 <i class="bi bi-arrow-left me-1"></i>Back
               </button>
-              <button class="btn btn-primary" onclick="goToStep(3)">
+              <button class="btn btn-primary" data-action="goToStep" data-id="3">
                 Continue to Payment<i class="bi bi-arrow-right ms-1"></i>
               </button>
             </div>
@@ -167,10 +167,10 @@
         </div>
 
         <div class="d-flex justify-content-between">
-          <button class="btn btn-outline-secondary" onclick="goToStep(2)">
+          <button class="btn btn-outline-secondary" data-action="goToStep" data-id="2">
             <i class="bi bi-arrow-left me-1"></i>Back
           </button>
-          <button class="btn btn-success btn-lg" onclick="submitRegistration()" id="submitBtn">
+          <button class="btn btn-success btn-lg" data-action="submitRegistration" id="submitBtn">
             <i class="bi bi-check-circle me-1"></i><span id="submitBtnText">Confirm Registration</span>
           </button>
         </div>
@@ -195,7 +195,7 @@
             </div>
 
             <div class="d-flex justify-content-center gap-2 mt-3">
-              <button class="btn btn-outline-primary" onclick="downloadQR()">
+              <button class="btn btn-outline-primary" data-action="downloadQR">
                 <i class="bi bi-download me-1"></i>Save QR Code
               </button>
               <button class="btn btn-outline-secondary" data-action="window.print">
@@ -217,18 +217,13 @@
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="config.js"></script>
   <script>
-    // ---- API PROXY ----
-    async function registrationApi(payload) {
-      const res = await fetch('/api/registration-proxy', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Request failed');
-      return data;
-    }
+    // ---- CONFIG ----
+    const SUPABASE_URL = window.SUPABASE_CONFIG.url;
+    const SUPABASE_ANON_KEY = window.SUPABASE_CONFIG.anonKey;
+
+    const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
     let currentEvent = null;
     let selectedPackage = null;
@@ -279,15 +274,18 @@
       }
 
       try {
-        const result = await registrationApi({ action: 'get_event', eventId });
-        const event = result.event;
+        const { data: event, error } = await supabase
+          .from('events')
+          .select('*')
+          .eq('id', eventId)
+          .single();
 
-        if (!event) {
+        if (error || !event) {
           showError('Event not found or registration is closed.');
           return;
         }
 
-        if (event.status === 'cancelled' || event.event_status === 'cancelled') {
+        if (event.event_status === 'cancelled') {
           showError('This event has been cancelled.');
           return;
         }
@@ -333,7 +331,7 @@
         const price = basePrice > 0 ? (basePrice * pkg.priceMultiplier).toFixed(2) : 0;
         return `
           <div class="col-md-3 col-6">
-            <div class="package-card" onclick="selectPackage('${pkg.id}')" id="pkg-${pkg.id}">
+            <div class="package-card" data-action="selectPackage" data-id="${pkg.id}" id="pkg-${pkg.id}">
               ${pkg.popular ? '<span class="badge bg-primary position-absolute" style="top:-10px;right:10px;">Most Popular</span>' : ''}
               <div class="pkg-name">${pkg.name}</div>
               <div class="price">
@@ -410,7 +408,7 @@
       row.innerHTML = `
         <div class="d-flex justify-content-between align-items-center mb-2">
           <strong>Guest ${guestCount}</strong>
-          <button class="btn btn-sm btn-outline-danger" onclick="removeGuestRow(${guestCount})"><i class="bi bi-x"></i></button>
+          <button class="btn btn-sm btn-outline-danger" data-action="removeGuestRow" data-id="${guestCount}"><i class="bi bi-x"></i></button>
         </div>
         <div class="row g-2">
           <div class="col-md-4"><input type="text" class="form-control form-control-sm" id="guestName${guestCount}" placeholder="Full Name"></div>
@@ -562,23 +560,27 @@
     async function completeRegistration(guests, packageName) {
       const primaryGuest = guests.find(g => g.isPrimary) || guests[0];
 
-      // Register guests via server-side proxy
+      // Insert all guests into event_guests
       const guestRows = guests.map(g => ({
+        event_id: currentEvent.id,
         guest_name: g.name,
         guest_email: g.email || '',
         guest_type: g.isPrimary ? (packageName.toLowerCase().includes('vip') ? 'vip' : 'guest') : 'guest',
+        rsvp_status: 'confirmed',
+        rsvp_date: new Date().toISOString(),
         dietary_requirements: g.dietary || null,
         plus_ones: g.isPrimary ? guests.length - 1 : 0,
         notes: g.isPrimary ? [g.company ? `Company: ${g.company}` : '', g.notes || '', `Package: ${packageName}`].filter(Boolean).join(' | ') : null
       }));
 
-      const result = await registrationApi({
-        action: 'register_guest',
-        eventId: currentEvent.id,
-        guests: guestRows
-      });
+      const { data: insertedGuests, error } = await supabase
+        .from('event_guests')
+        .insert(guestRows)
+        .select();
 
-      registrationId = result.guests?.[0]?.id;
+      if (error) throw error;
+
+      registrationId = insertedGuests[0]?.id;
 
       // Show confirmation with QR code
       document.getElementById('confirmGuestName').textContent = primaryGuest.name;
@@ -678,6 +680,33 @@
 
     // ---- START ----
     init();
+  </script>
+
+  <!-- Standalone event delegation for data-action attributes (this page does not include utils.js) -->
+  <script>
+    document.addEventListener('click', function(event) {
+      var el = event.target.closest('[data-action]');
+      if (!el) return;
+      var actionName = el.getAttribute('data-action');
+      if (!actionName) return;
+
+      // Resolve the function by walking the dotted path on window
+      var parts = actionName.split('.');
+      var obj = window;
+      for (var i = 0; i < parts.length - 1; i++) {
+        obj = obj[parts[i]];
+        if (!obj) { console.warn('[data-action] No handler found:', actionName); return; }
+      }
+      var fn = obj[parts[parts.length - 1]];
+      if (typeof fn !== 'function') { console.warn('[data-action] No handler found:', actionName); return; }
+
+      var id = el.getAttribute('data-id');
+      if (id !== null) {
+        fn.call(obj, id, event);
+      } else {
+        fn.call(obj, event);
+      }
+    });
   </script>
 </body>
 </html>

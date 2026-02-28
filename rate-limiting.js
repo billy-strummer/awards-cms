@@ -1,21 +1,30 @@
 /* ==================================================== */
 /* RATE LIMITING & USAGE DASHBOARD — British Trade Awards CMS
-   Depends: STATE.client, Bootstrap 5, Chart.js, utils.showToast()  */
+   Depends: apiClient, Bootstrap 5, Chart.js, utils.showToast()  */
 /* ==================================================== */
 
 const rateLimitModule = {
 
-  _store: new Map(),   // sliding-window: `${endpoint}::${id}` → [timestamps]
-  _alerts: new Map(),  // endpoint → maxPerMinute
+  /** @type {Map<string, number[]>} Sliding-window store: `${endpoint}::${id}` -> [timestamps] */
+  _store: new Map(),
+  /** @type {Map<string, number>} Alert thresholds: endpoint -> maxPerMinute */
+  _alerts: new Map(),
+  /** @type {Object} Chart.js instances for the dashboard */
   _charts: {},
 
+  /** @type {Object} Default rate limit configurations per endpoint */
   _defaults: {
     '/api/vote':    { max: 5,  windowMs: 60 * 60 * 1000 },      // 5 / hour
     '/api/entries': { max: 10, windowMs: 24 * 60 * 60 * 1000 }, // 10 / day
     '*':            { max: 30, windowMs: 60 * 1000 }             // 30 / min
   },
 
-  // 1. CLIENT-SIDE RATE LIMITER
+  /**
+   * Check whether a request is within the rate limit for the given endpoint and identifier.
+   * @param {string} endpoint - The API endpoint path
+   * @param {string} identifier - Unique caller identifier (e.g. IP, session ID)
+   * @returns {{ allowed: boolean, remaining: number, resetAt: Date }}
+   */
   checkRateLimit(endpoint, identifier) {
     const cfg   = this._defaults[endpoint] || this._defaults['*'];
     const key   = `${endpoint}::${identifier}`;
@@ -26,7 +35,15 @@ const rateLimitModule = {
     return { allowed, remaining: Math.max(0, cfg.max - ts.length), resetAt: new Date((ts[0] || now) + cfg.windowMs) };
   },
 
-  // 2. REQUEST LOGGING → api_request_logs
+  /**
+   * Log an API request to the api_request_logs table.
+   * @param {string} endpoint - The API endpoint path
+   * @param {string} method - HTTP method (GET, POST, etc.)
+   * @param {number} statusCode - Response status code
+   * @param {number} responseTime - Response time in milliseconds
+   * @param {string} [ip] - Client IP address
+   * @returns {Promise<void>}
+   */
   async logRequest(endpoint, method, statusCode, responseTime, ip) {
     if (!STATE?.client) return;
     try {
@@ -44,7 +61,11 @@ const rateLimitModule = {
     } catch (e) { console.warn('rateLimitModule.logRequest:', e.message); }
   },
 
-  // 3. USAGE DASHBOARD
+  /**
+   * Render the API usage dashboard into the specified container.
+   * @param {string} containerId - The DOM element ID for the dashboard container
+   * @returns {Promise<void>}
+   */
   async renderUsageDashboard(containerId) {
     const el = document.getElementById(containerId);
     if (!el) return;
@@ -94,21 +115,27 @@ const rateLimitModule = {
     await this._loadDashboardData('24h');
   },
 
+  /**
+   * Load dashboard data for the specified time range and update all charts/stats.
+   * @param {string} range - Time range ('24h', '7d', or '30d')
+   * @returns {Promise<void>}
+   * @private
+   */
   async _loadDashboardData(range) {
     if (!STATE?.client) return;
     const hours = range === '24h' ? 24 : range === '7d' ? 168 : 720;
     const since = new Date(Date.now() - hours * 3600000).toISOString();
     try {
-      const logsResult = await apiClient.select('api_request_logs', { filters: { created_at: { op: 'gte', value: since } }, pageSize: 1000 });
-      const rows = logsResult.data || [];
+      const { data: logs } = await STATE.client.from('api_request_logs').select('*').gte('created_at', since).limit(5000);
+      const rows = logs || [];
       const total = rows.length;
       const errors = rows.filter(r => r.status_code >= 400).length;
       const setText = (id, v) => { const n = document.getElementById(id); if (n) n.textContent = v; };
       setText('rl-total-req',  total);
       setText('rl-error-rate', total ? `${((errors / total) * 100).toFixed(1)}%` : '0%');
       setText('rl-avg-rt',     total ? Math.round(rows.reduce((s, r) => s + (r.response_time_ms || 0), 0) / total) : 0);
-      const blockedResult = await apiClient.count('ip_blocklist');
-      setText('rl-blocked', blockedResult.count || 0);
+      const { count } = await STATE.client.from('ip_blocklist').select('id', { count: 'exact', head: true });
+      setText('rl-blocked', count || 0);
       this._renderLineChart(rows, range);
       this._renderBarChart(rows);
       this._renderTopIPs(rows);
@@ -116,6 +143,12 @@ const rateLimitModule = {
     } catch (e) { console.warn('rateLimitModule dashboard:', e.message); }
   },
 
+  /**
+   * Render the requests-over-time line chart.
+   * @param {Array<Object>} rows - Request log rows
+   * @param {string} range - Time range ('24h', '7d', or '30d')
+   * @private
+   */
   _renderLineChart(rows, range) {
     const buckets = range === '24h' ? 24 : range === '7d' ? 7 : 30;
     const ms = (range === '24h' ? 1 : 24) * 3600000;
@@ -135,6 +168,11 @@ const rateLimitModule = {
     });
   },
 
+  /**
+   * Render the top-endpoints horizontal bar chart.
+   * @param {Array<Object>} rows - Request log rows
+   * @private
+   */
   _renderBarChart(rows) {
     const c = {};
     rows.forEach(r => { c[r.endpoint] = (c[r.endpoint] || 0) + 1; });
@@ -149,6 +187,11 @@ const rateLimitModule = {
     });
   },
 
+  /**
+   * Render the top IP addresses list.
+   * @param {Array<Object>} rows - Request log rows
+   * @private
+   */
   _renderTopIPs(rows) {
     const el = document.getElementById('rl-top-ips');
     if (!el) return;
@@ -160,27 +203,38 @@ const rateLimitModule = {
     ).join('') : '<span class="text-muted">No data</span>';
   },
 
+  /**
+   * Render recent rate-limit alerts from the database.
+   * @returns {Promise<void>}
+   * @private
+   */
   async _renderAlerts() {
     const el = document.getElementById('rl-alerts-list');
     if (!el || !STATE?.client) return;
     try {
-      const alertResult = await apiClient.select('rate_limit_alerts', { sort: { column: 'created_at', ascending: false }, pageSize: 6 });
-      const data = alertResult.data;
+      const { data } = await STATE.client.from('rate_limit_alerts').select('*').order('created_at', { ascending: false }).limit(6);
       el.innerHTML = (data || []).length ? data.map(a =>
         `<div class="border-bottom py-1"><span class="badge bg-warning text-dark me-1">${a.endpoint}</span>${a.ip_address} — ${a.actual_count}/${a.threshold} per ${a.window_minutes}m</div>`
       ).join('') : '<span class="text-muted">No recent alerts</span>';
     } catch { el.innerHTML = '<span class="text-muted">Unavailable</span>'; }
   },
 
-  // 4. ALERT THRESHOLDS → rate_limit_alerts
+  /**
+   * Set an alert threshold for a specific endpoint.
+   * @param {string} endpoint - The endpoint path
+   * @param {number} maxPerMinute - Maximum requests per minute before alerting
+   */
   setAlertThreshold(endpoint, maxPerMinute) { this._alerts.set(endpoint, maxPerMinute); },
 
+  /**
+   * Check recent request logs against alert thresholds and record violations.
+   * @returns {Promise<void>}
+   */
   async checkAlerts() {
     if (!STATE?.client) return;
     const since = new Date(Date.now() - 60000).toISOString();
     try {
-      const alertLogsResult = await apiClient.select('api_request_logs', { select: 'endpoint, ip_address', filters: { created_at: { op: 'gte', value: since } }, pageSize: 1000 });
-      const logs = alertLogsResult.data;
+      const { data: logs } = await STATE.client.from('api_request_logs').select('endpoint, ip_address').gte('created_at', since);
       const counts = {};
       (logs || []).forEach(r => { const k = `${r.endpoint}::${r.ip_address}`; counts[k] = (counts[k] || 0) + 1; });
       for (const [key, count] of Object.entries(counts)) {
@@ -194,46 +248,59 @@ const rateLimitModule = {
     } catch (e) { console.warn('rateLimitModule.checkAlerts:', e.message); }
   },
 
-  // 5. BLOCK / ALLOW LIST → ip_blocklist
+  /**
+   * Block an IP address by adding it to the ip_blocklist table.
+   * @param {string} ip - The IP address to block
+   * @param {string} reason - Reason for blocking
+   * @param {string|null} [expiresAt] - Optional ISO expiry timestamp
+   * @returns {Promise<void>}
+   */
   async blockIP(ip, reason, expiresAt = null) {
     if (!STATE?.client) return;
     const session  = await STATE.client.auth.getSession();
     const blocked_by = session?.data?.session?.user?.email || 'system';
-    // upsert not supported by apiClient — try insert, fall back to update
     try {
-      try {
-        await apiClient.insert('ip_blocklist', { ip_address: ip, reason, blocked_by, created_at: new Date().toISOString(), expires_at: expiresAt });
-      } catch (_) {
-        await apiClient.updateByFilters('ip_blocklist', { ip_address: ip }, { reason, blocked_by, expires_at: expiresAt });
-      }
+      await apiClient.insert('ip_blocklist', { ip_address: ip, reason, blocked_by, created_at: new Date().toISOString(), expires_at: expiresAt });
       utils.showToast(`IP ${ip} blocked`, 'success');
-    } catch (err) {
-      utils.showToast('Block failed: ' + err.message, 'error');
+    } catch (e) {
+      utils.showToast('Block failed: ' + e.message, 'error');
     }
   },
 
+  /**
+   * Unblock an IP address by removing it from the ip_blocklist table.
+   * @param {string} ip - The IP address to unblock
+   * @returns {Promise<void>}
+   */
   async unblockIP(ip) {
     if (!STATE?.client) return;
     try {
       await apiClient.deleteByFilters('ip_blocklist', { ip_address: ip });
       utils.showToast(`IP ${ip} unblocked`, 'success');
-    } catch (err) {
-      utils.showToast('Unblock failed: ' + err.message, 'error');
+    } catch (e) {
+      utils.showToast('Unblock failed: ' + e.message, 'error');
     }
   },
 
+  /**
+   * Retrieve the full IP blocklist from the database.
+   * @returns {Promise<Array<Object>>} Array of blocked IP records
+   */
   async getAllowList() {
     if (!STATE?.client) return [];
-    const result = await apiClient.select('ip_blocklist', { sort: { column: 'created_at', ascending: false }, pageSize: 1000 });
-    return result.data || [];
+    const { data } = await STATE.client.from('ip_blocklist').select('*').order('created_at', { ascending: false }).limit(1000);
+    return data || [];
   },
 
-  // 6. RATE LIMIT CONFIG (admin form) → rate_limit_config
+  /**
+   * Render the rate-limit configuration admin form.
+   * @param {string} [containerId='rl-config-container'] - The container element ID
+   * @returns {Promise<void>}
+   */
   async renderRateLimitConfig(containerId = 'rl-config-container') {
     const el = document.getElementById(containerId);
     if (!el) return;
-    let configs = [];
-    try { const cfgRes = await apiClient.select('rate_limit_config', { sort: { column: 'endpoint', ascending: true }, pageSize: 500 }); configs = cfgRes.data || []; } catch (_) {}
+    const { data: configs } = STATE?.client ? await STATE.client.from('rate_limit_config').select('*').order('endpoint').limit(500) : { data: [] };
     el.innerHTML = `
       <div class="card p-3">
         <h6 class="mb-3">Rate Limit Configuration</h6>
@@ -256,20 +323,31 @@ const rateLimitModule = {
       if (!endpoint || !max_requests || !window_seconds) return;
       try {
         await apiClient.insert('rate_limit_config', { endpoint, max_requests, window_seconds, created_at: new Date().toISOString() });
-      } catch (insertErr) { utils.showToast(insertErr.message, 'error'); return; }
-      this._defaults[endpoint] = { max: max_requests, windowMs: window_seconds * 1000 };
-      utils.showToast(`Limit saved for ${endpoint}`, 'success');
-      this.renderRateLimitConfig(containerId);
+        this._defaults[endpoint] = { max: max_requests, windowMs: window_seconds * 1000 };
+        utils.showToast(`Limit saved for ${endpoint}`, 'success');
+        this.renderRateLimitConfig(containerId);
+      } catch (err) {
+        utils.showToast(err.message, 'error');
+      }
     });
     el.querySelectorAll('.rl-del').forEach(btn => btn.addEventListener('click', async () => {
       const id = btn.closest('tr').dataset.id;
-      try { await apiClient.delete('rate_limit_config', id); } catch (_) {}
-      utils.showToast('Config removed', 'info');
-      this.renderRateLimitConfig(containerId);
+      try {
+        await apiClient.delete('rate_limit_config', id);
+        utils.showToast('Config removed', 'info');
+        this.renderRateLimitConfig(containerId);
+      } catch (err) {
+        utils.showToast('Failed to delete config: ' + err.message, 'error');
+      }
     }));
   },
 
-  // 7. MIDDLEWARE HELPER
+  /**
+   * Create a rate-limit middleware function for the given endpoint.
+   * Returns a function that checks limits for a caller identifier.
+   * @param {string} endpoint - The API endpoint path
+   * @returns {function(string): { allowed: boolean, remaining: number, headers: Object }}
+   */
   createRateLimitMiddleware(endpoint) {
     return (identifier) => {
       const id = identifier || this._getSessionId();
@@ -287,6 +365,11 @@ const rateLimitModule = {
     };
   },
 
+  /**
+   * Get or create a session ID for anonymous rate limiting.
+   * @returns {string} A stable session identifier
+   * @private
+   */
   _getSessionId() {
     let sid = sessionStorage.getItem('_rl_sid');
     if (!sid) { sid = Math.random().toString(36).slice(2); sessionStorage.setItem('_rl_sid', sid); }

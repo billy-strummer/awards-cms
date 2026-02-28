@@ -445,12 +445,13 @@ describe('Email Lists Module - renderListCard()', () => {
 
   test('renders action buttons with correct list id', () => {
     const html = emailListsModule.renderListCard(sampleLists[0]);
-    expect(html).toContain("emailListsModule.viewSubscribers('list-1'");
-    expect(html).toContain("emailListsModule.addSubscriber('list-1')");
-    expect(html).toContain("emailListsModule.openImportModal('list-1')");
-    expect(html).toContain("emailListsModule.editList('list-1')");
-    expect(html).toContain("emailListsModule.exportList('list-1')");
-    expect(html).toContain("emailListsModule.deleteList('list-1')");
+    expect(html).toContain('data-action="emailListsModule.viewSubscribers"');
+    expect(html).toContain('data-action="emailListsModule.addSubscriber"');
+    expect(html).toContain('data-action="emailListsModule.openImportModal"');
+    expect(html).toContain('data-action="emailListsModule.editList"');
+    expect(html).toContain('data-action="emailListsModule.exportList"');
+    expect(html).toContain('data-action="emailListsModule.deleteList"');
+    expect(html).toContain('data-id="list-1"');
   });
 
   test('renders View Subscribers button with count', () => {
@@ -815,7 +816,8 @@ describe('Email Lists Module - addSubscriber() DOM setup', () => {
   test('addSubscriber embeds the correct listId in save button', async () => {
     await emailListsModule.addSubscriber('list-42');
     const modal = document.getElementById('addSubscriberModal');
-    expect(modal.innerHTML).toContain("emailListsModule.saveSubscriber('list-42')");
+    expect(modal.innerHTML).toContain('data-action="emailListsModule.saveSubscriber"');
+    expect(modal.innerHTML).toContain('data-id="list-42"');
   });
 
   test('addSubscriber removes existing modal before creating new one', async () => {
@@ -824,7 +826,8 @@ describe('Email Lists Module - addSubscriber() DOM setup', () => {
     const modals = document.querySelectorAll('#addSubscriberModal');
     expect(modals.length).toBe(1);
     // Should reference the latest list id
-    expect(modals[0].innerHTML).toContain("emailListsModule.saveSubscriber('list-2')");
+    expect(modals[0].innerHTML).toContain('data-action="emailListsModule.saveSubscriber"');
+    expect(modals[0].innerHTML).toContain('data-id="list-2"');
   });
 });
 

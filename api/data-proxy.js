@@ -1,5 +1,6 @@
 /**
- * Secure Data Proxy API
+ * @module data-proxy
+ * Secure Data Proxy API.
  *
  * Server-side proxy for Supabase operations that should not be performed
  * directly from the browser. This endpoint:
@@ -58,10 +59,11 @@ const ALLOWED_TABLES = new Set([
   'table_assignments', 'event_room_fixtures', 'event_milestones',
   'meeting_notes', 'organisation_segments', 'contact_segments',
   'banners', 'sponsors', 'tenants', 'cms_config', 'shortlists',
-  'notification_preferences'
+  'notification_preferences', 'communications', 'deals',
+  'user_roles', 'organisations_with_crm_summary'
 ]);
 
-/** Tables that can be mutated (insert/update/delete) */
+/** Tables that can be mutated (insert/update/delete/upsert) */
 const MUTABLE_TABLES = new Set([
   'awards', 'organisations', 'entries', 'winners', 'events',
   'invoices', 'payments', 'award_assignments', 'contacts',
@@ -84,7 +86,7 @@ const MUTABLE_TABLES = new Set([
   'table_assignments', 'event_room_fixtures', 'event_milestones',
   'meeting_notes', 'organisation_segments', 'contact_segments',
   'banners', 'sponsors', 'tenants', 'cms_config', 'shortlists',
-  'notification_preferences'
+  'notification_preferences', 'communications', 'deals'
 ]);
 
 /** Maximum page size to prevent abuse */
@@ -120,8 +122,8 @@ const ROLE_PERMISSIONS = {
     write: new Set(['user_preferences'])
   },
   judge: {
-    read: new Set(['awards', 'award_years', 'entries', 'organisations', 'user_preferences']),
-    write: new Set(['user_preferences'])
+    read: new Set(['awards', 'award_years', 'entries', 'organisations', 'user_preferences', 'judge_scores', 'organisation_contacts', 'user_roles']),
+    write: new Set(['user_preferences', 'judge_scores'])
   },
   marketing: {
     read: '*',
@@ -148,6 +150,8 @@ const READ_ONLY_TABLES = new Set([
 /**
  * Fetch user role from user_preferences or a roles table.
  * Falls back to 'viewer' if no role is found.
+ * @param {string} userId - The user ID to look up.
+ * @returns {Promise<string>} The user's role string (defaults to 'viewer').
  */
 async function getUserRole(userId) {
   try {
@@ -165,6 +169,10 @@ async function getUserRole(userId) {
 
 /**
  * Check if a user's role permits an operation on a table.
+ * @param {string} role - The user's role (e.g. 'admin', 'editor', 'viewer').
+ * @param {string} table - The database table name.
+ * @param {string} operation - The operation type ('select', 'insert', 'update', 'delete', 'count').
+ * @returns {boolean} True if the role permits the operation on the table.
  */
 function checkPermission(role, table, operation) {
   const perms = ROLE_PERMISSIONS[role];
@@ -192,6 +200,9 @@ function checkPermission(role, table, operation) {
 /**
  * Verify the caller's Supabase JWT.
  * Returns the authenticated user or sends 401 and returns null.
+ * @param {Object} req - Express request object.
+ * @param {Object} res - Express response object.
+ * @returns {Promise<Object|null>} The authenticated user object, or null if authentication fails.
  */
 async function verifyAuth(req, res) {
   const authHeader = req.headers.authorization;
@@ -219,7 +230,9 @@ async function verifyAuth(req, res) {
 // ============================================
 
 /**
- * Validate and sanitize query parameters.
+ * Validate and sanitize query parameters from the request body.
+ * @param {Object} body - The request body containing query parameters.
+ * @returns {string[]} Array of validation error messages (empty if valid).
  */
 function validateQueryParams(body) {
   const errors = [];
@@ -232,11 +245,11 @@ function validateQueryParams(body) {
     errors.push(`Table "${table}" is not allowed`);
   }
 
-  if (!operation || !['select', 'insert', 'update', 'delete', 'count'].includes(operation)) {
-    errors.push('Operation must be one of: select, insert, update, delete, count');
+  if (!operation || !['select', 'insert', 'update', 'delete', 'count', 'upsert'].includes(operation)) {
+    errors.push('Operation must be one of: select, insert, update, delete, count, upsert');
   }
 
-  if (['insert', 'update', 'delete'].includes(operation) && table && !MUTABLE_TABLES.has(table)) {
+  if (['insert', 'update', 'delete', 'upsert'].includes(operation) && table && !MUTABLE_TABLES.has(table)) {
     errors.push(`Table "${table}" does not allow ${operation} operations`);
   }
 
@@ -272,7 +285,7 @@ function validateQueryParams(body) {
   }
 
   if (operation === 'insert' && (!data || typeof data !== 'object')) {
-    errors.push('"data" is required for insert operations');
+    errors.push('"data" is required for insert/upsert operations');
   }
 
   if (operation === 'update' && !id && (!filters || Object.keys(filters).length === 0)) {
@@ -291,7 +304,11 @@ function validateQueryParams(body) {
 // ============================================
 
 /**
- * Execute a validated Supabase query.
+ * Execute a validated Supabase query (select, insert, update, or delete).
+ * @param {Object} body - The validated request body with table, operation, filters, etc.
+ * @param {Object} user - The authenticated user object from JWT verification.
+ * @returns {Promise<Object>} Query result with data, count, and pagination metadata.
+ * @throws {Error} If the operation is unsupported or the Supabase query fails.
  */
 async function executeQuery(body, user) {
   const {
@@ -388,6 +405,24 @@ async function executeQuery(body, user) {
     return { data: result };
   }
 
+  // UPSERT
+  if (operation === 'upsert') {
+    const upsertData = Array.isArray(data) ? data : [data];
+    const enriched = upsertData.map(row => ({
+      ...row,
+      updated_at: new Date().toISOString()
+    }));
+    const upsertOpts = {};
+    if (body.onConflict) upsertOpts.onConflict = body.onConflict;
+    const { data: result, error } = await supabase
+      .from(table)
+      .upsert(enriched, upsertOpts)
+      .select();
+    if (error) throw error;
+    await logActivity(table, 'upsert', user, result, {});
+    return { data: result };
+  }
+
   // UPDATE
   if (operation === 'update') {
     const updateData = {
@@ -443,6 +478,12 @@ async function executeQuery(body, user) {
 /**
  * Log data mutation to activity_log table.
  * Captures which records were affected and the type of operation.
+ * @param {string} table - The table that was modified.
+ * @param {string} action - The action performed ('insert', 'update', 'delete').
+ * @param {Object} user - The authenticated user who performed the action.
+ * @param {Array|Object} result - The affected records returned by the query.
+ * @param {Object} [context={}] - Additional context (id, filters) for the log entry.
+ * @returns {Promise<void>}
  */
 async function logActivity(table, action, user, result, context = {}) {
   try {
@@ -480,6 +521,12 @@ const RATE_LIMIT_MAX = 120;           // 120 requests per minute
 
 let lastCleanup = Date.now();
 
+/**
+ * Check if a user has exceeded the rate limit (120 requests per minute).
+ * Uses in-memory tracking with periodic cleanup of stale entries.
+ * @param {string} userId - The user ID to check rate limits for.
+ * @returns {boolean} True if the request is within rate limits, false if exceeded.
+ */
 function checkRateLimit(userId) {
   const now = Date.now();
 

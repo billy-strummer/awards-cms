@@ -3,13 +3,19 @@
 /* ==================================================== */
 
 const assignmentsModule = {
+  /** @type {string|null} Currently selected award ID */
   currentAwardId: null,
+  /** @type {string|null} Currently selected award name */
   currentAwardName: null,
+  /** @type {string} Current sort column */
   currentSortColumn: 'company',
+  /** @type {string} Current sort direction */
   currentSortDirection: 'asc',
 
   /**
-   * Get all assignments for a specific award
+   * Get all assignments for a specific award, enriched with other nomination data.
+   * @param {string} awardId - The award record ID
+   * @returns {Promise<Array>} Sorted array of assignment records
    */
   async getAwardAssignments(awardId) {
     try {
@@ -54,20 +60,23 @@ const assignmentsModule = {
   },
 
   /**
-   * Open assignments modal for an award
+   * Open the assignments modal for a specific award.
+   * @param {string} awardId - The award record ID
+   * @param {string} awardName - Display name of the award
+   * @returns {Promise<void>}
    */
   async openAssignmentsModal(awardId, awardName) {
     this.currentAwardId = awardId;
     this.currentAwardName = awardName;
-    
+
     const modal = new bootstrap.Modal(document.getElementById('assignmentsModal'));
     const titleEl = document.getElementById('assignmentsModalTitle');
     const contentEl = document.getElementById('assignmentsContent');
-    
+
     titleEl.innerHTML = `
       <i class="bi bi-trophy me-2"></i>${utils.escapeHtml(awardName)} - Manage Nominees
     `;
-    
+
     // Show loading
     contentEl.innerHTML = `
       <div class="text-center py-5">
@@ -77,7 +86,7 @@ const assignmentsModule = {
         <p class="text-muted mt-2">Loading assignments...</p>
       </div>
     `;
-    
+
     modal.show();
 
     // Ensure proper z-index for stacked modals
@@ -96,7 +105,8 @@ const assignmentsModule = {
   },
 
   /**
-   * Refresh assignments display
+   * Refresh the assignments display within the currently open modal.
+   * @returns {Promise<void>}
    */
   async refreshAssignments() {
     const contentEl = document.getElementById('assignmentsContent');
@@ -128,8 +138,6 @@ const assignmentsModule = {
       // Filter out already assigned organisations
       const assignedOrgIds = validAssignments.map(a => a.organisations.id);
       const availableOrgs = (allOrgs || []).filter(org => !assignedOrgIds.includes(org.id));
-
-      // validAssignments.length assigned, availableOrgs.length available
 
       // Store all assignments for filtering
       this.allAssignments = validAssignments;
@@ -244,7 +252,9 @@ const assignmentsModule = {
   },
 
   /**
-   * Render assigned company as table row
+   * Render a single assigned company as a table row.
+   * @param {Object} assignment - The assignment record with nested organisation
+   * @returns {string} HTML table row
    */
   renderAssignedCompany(assignment) {
     const org = assignment.organisations;
@@ -294,7 +304,7 @@ const assignmentsModule = {
             }
             <a href="javascript:void(0);"
                class="text-decoration-none fw-semibold text-primary"
-               data-action="orgsModule.openCompanyProfile" data-args='${JSON.stringify([org.id, utils.escapeHtml(org.company_name).replace(/'/g, "\\'")])}'
+               data-action="orgsModule.openCompanyProfile" data-args='${JSON.stringify([org.id, org.company_name])}'
                title="View company profile">
               ${utils.escapeHtml(org.company_name)}
             </a>
@@ -334,12 +344,12 @@ const assignmentsModule = {
               </ul>
             </div>
             <button class="btn btn-outline-secondary btn-sm"
-              data-action="orgsModule.openCompanyProfile" data-args='${JSON.stringify([org.id, utils.escapeHtml(org.company_name).replace(/'/g, "\\'")])}'
+              data-action="orgsModule.openCompanyProfile" data-args='${JSON.stringify([org.id, org.company_name])}'
               title="View Profile">
               <i class="bi bi-eye"></i>
             </button>
             <button class="btn btn-outline-danger btn-sm"
-              data-action="assignmentsModule.removeAssignment" data-id="assignment.id"
+              data-action="assignmentsModule.removeAssignment" data-id="${assignment.id}"
               title="Remove">
               <i class="bi bi-trash"></i>
             </button>
@@ -350,7 +360,9 @@ const assignmentsModule = {
   },
 
   /**
-   * Render available company card
+   * Render an available company card for the add-company list.
+   * @param {Object} org - Organisation record with id, company_name, email, logo_url
+   * @returns {string} HTML card markup
    */
   renderAvailableCompany(org) {
     return `
@@ -358,9 +370,9 @@ const assignmentsModule = {
         <div class="card-body p-3">
           <div class="d-flex justify-content-between align-items-center">
             <div class="d-flex align-items-center flex-grow-1">
-              ${org.logo_url ? 
-                `<img src="${org.logo_url}" alt="${utils.escapeHtml(org.company_name)}" 
-                  style="width: 32px; height: 32px; object-fit: contain; margin-right: 10px;">` : 
+              ${org.logo_url ?
+                `<img src="${org.logo_url}" alt="${utils.escapeHtml(org.company_name)}"
+                  style="width: 32px; height: 32px; object-fit: contain; margin-right: 10px;">` :
                 `<div class="company-initial-avatar-sm me-2">${org.company_name.charAt(0)}</div>`
               }
               <div>
@@ -368,9 +380,9 @@ const assignmentsModule = {
                 <small class="text-muted">${utils.escapeHtml(org.email || 'No email')}</small>
               </div>
             </div>
-            <button 
-              class="btn btn-sm btn-primary" 
-              data-action="assignmentsModule.assignCompany" data-args='${JSON.stringify([org.id, utils.escapeHtml(org.company_name).replace(/'/g, "\\'")])}'>
+            <button
+              class="btn btn-sm btn-primary"
+              data-action="assignmentsModule.assignCompany" data-args='${JSON.stringify([org.id, org.company_name])}'>
               <i class="bi bi-plus-lg"></i> Add
             </button>
           </div>
@@ -380,7 +392,8 @@ const assignmentsModule = {
   },
 
   /**
-   * Filter available companies
+   * Filter available companies by the search box value.
+   * @returns {void}
    */
   filterAvailableCompanies() {
     const search = document.getElementById('assignmentSearchBox').value.toLowerCase();
@@ -397,7 +410,9 @@ const assignmentsModule = {
   },
 
   /**
-   * Filter assigned companies by nomination type
+   * Filter assigned companies by nomination type.
+   * @param {string} filterType - One of 'all', 'self_nomination', 'previous_winner', 'new'
+   * @returns {void}
    */
   filterAssignments(filterType) {
     this.currentFilter = filterType;
@@ -439,7 +454,9 @@ const assignmentsModule = {
   },
 
   /**
-   * Sort assignments by column
+   * Sort assignments by the specified column, toggling direction on repeated clicks.
+   * @param {string} column - Column name ('company', 'votes', 'position')
+   * @returns {void}
    */
   sortAssignments(column) {
     // Toggle direction if clicking same column
@@ -505,7 +522,10 @@ const assignmentsModule = {
   },
 
   /**
-   * Assign company to award
+   * Assign a company to the current award.
+   * @param {string} orgId - Organisation ID
+   * @param {string} companyName - Company display name
+   * @returns {Promise<void>}
    */
   async assignCompany(orgId, companyName) {
     try {
@@ -548,7 +568,9 @@ const assignmentsModule = {
   },
 
   /**
-   * Remove assignment
+   * Remove an assignment after user confirmation.
+   * @param {string} assignmentId - Assignment record ID
+   * @returns {Promise<void>}
    */
   async removeAssignment(assignmentId) {
     // Find the assignment to show context in confirmation
@@ -557,20 +579,20 @@ const assignmentsModule = {
     if (!await utils.confirmDialog({ title: 'Remove Assignment', message: `Remove <strong>${utils.escapeHtml(companyName)}</strong> from the award?`, confirmText: 'Remove', danger: true })) {
       return;
     }
-    
+
     try {
       utils.showLoading();
-      
+
       await apiClient.delete('award_assignments', assignmentId);
 
       utils.showToast('Company removed from award', 'success');
       await this.refreshAssignments();
-      
+
       // Refresh awards list
       if (typeof awardsModule !== 'undefined' && awardsModule.loadAwards) {
         await awardsModule.loadAwards();
       }
-      
+
     } catch (error) {
       console.error('Error removing assignment:', error);
       utils.showToast('Failed to remove assignment: ' + error.message, 'error');
@@ -580,7 +602,10 @@ const assignmentsModule = {
   },
 
   /**
-   * Change assignment status
+   * Change the status of an assignment (nominated, shortlisted, winner, rejected).
+   * @param {string} assignmentId - Assignment record ID
+   * @param {string} newStatus - New status value
+   * @returns {Promise<void>}
    */
   async changeStatus(assignmentId, newStatus) {
     try {
@@ -592,7 +617,6 @@ const assignmentsModule = {
       };
 
       // If marking as winner, add announcement date AND set actual_winner flag
-      // This actual_winner flag is used for year-over-year carry-over of previous winners
       if (newStatus === 'winner') {
         updates.announcement_date = new Date().toISOString().split('T')[0];
         updates.actual_winner = true;
@@ -603,12 +627,7 @@ const assignmentsModule = {
         updates.actual_winner = false;
       }
 
-      const { error } = await STATE.client
-        .from('award_assignments')
-        .update(updates)
-        .eq('id', assignmentId);
-
-      if (error) throw error;
+      await apiClient.update('award_assignments', assignmentId, updates);
 
       const statusLabels = {
         'nominated': 'Nominated',
@@ -637,7 +656,9 @@ const assignmentsModule = {
   },
 
   /**
-   * Get status badge HTML
+   * Return the HTML badge for an assignment status.
+   * @param {string} status - Assignment status
+   * @returns {string} HTML badge markup
    */
   getStatusBadge(status) {
     const badges = {
@@ -651,7 +672,9 @@ const assignmentsModule = {
   },
 
   /**
-   * Get winner position badge (Top 3)
+   * Return the HTML badge for a winner position (1st/2nd/3rd).
+   * @param {Object} assignment - Assignment record
+   * @returns {string} HTML badge markup or empty string
    */
   getWinnerPositionBadge(assignment) {
     if (!assignment.winner_position) {
@@ -668,7 +691,10 @@ const assignmentsModule = {
   },
 
   /**
-   * Set winner position (1st, 2nd, 3rd)
+   * Set a winner position (1st, 2nd, 3rd) on an assignment.
+   * @param {string} assignmentId - Assignment record ID
+   * @param {number} position - Winner position (1, 2, or 3)
+   * @returns {Promise<void>}
    */
   async setWinnerPosition(assignmentId, position) {
     try {
@@ -676,18 +702,13 @@ const assignmentsModule = {
 
       const positionLabels = { 1: '1st Place (Gold)', 2: '2nd Place (Silver)', 3: '3rd Place (Bronze)' };
 
-      const { error } = await STATE.client
-        .from('award_assignments')
-        .update({
-          status: 'winner',
-          winner_position: position,
-          actual_winner: true,
-          announcement_date: new Date().toISOString().split('T')[0],
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', assignmentId);
-
-      if (error) throw error;
+      await apiClient.update('award_assignments', assignmentId, {
+        status: 'winner',
+        winner_position: position,
+        actual_winner: true,
+        announcement_date: new Date().toISOString().split('T')[0],
+        updated_at: new Date().toISOString()
+      });
 
       utils.showToast(`Set as ${positionLabels[position]}!`, 'success');
       await this.refreshAssignments();
@@ -701,7 +722,8 @@ const assignmentsModule = {
   },
 
   /**
-   * Email all assigned companies for current award
+   * Open email-nominees modal for the current award.
+   * @returns {void}
    */
   emailAllAssigned() {
     if (!this.currentAwardId) { utils.showToast('No award selected', 'warning'); return; }
@@ -743,7 +765,7 @@ const assignmentsModule = {
         <textarea class="form-control form-control-sm" rows="4" id="nomineeEmailList" readonly>${uniqueEmails.join('; ')}</textarea>
       </div>
       <div class="mt-3 d-flex gap-2">
-        <button class="btn btn-primary btn-sm" data-action="assignmentsModule._copyNomineeEmails">
+        <button class="btn btn-primary btn-sm" data-action="assignmentsModule._copyEmails">
           <i class="bi bi-clipboard me-1"></i>Copy All Emails
         </button>
         <button class="btn btn-success btn-sm" data-action="assignmentsModule._openEmailClient">
@@ -768,24 +790,44 @@ const assignmentsModule = {
     new bootstrap.Modal(document.getElementById('dynamicAssignModal')).show();
   },
 
+  /** @type {Array} Cached assignments for email feature */
   _cachedAssignments: [],
 
-  _copyNomineeEmails() {
-    const val = document.getElementById('nomineeEmailList')?.value || '';
-    navigator.clipboard.writeText(val);
-    utils.showToast('Emails copied to clipboard!', 'success');
+  /**
+   * Copy the nominee email list to clipboard.
+   * @returns {void}
+   */
+  _copyEmails() {
+    const text = document.getElementById('nomineeEmailList')?.value;
+    if (text) {
+      navigator.clipboard.writeText(text);
+      utils.showToast('Emails copied to clipboard!', 'success');
+    }
   },
 
+  /**
+   * Open the default email client with nominees as BCC recipients.
+   * @returns {void}
+   */
   _openEmailClient() {
-    const val = document.getElementById('nomineeEmailList')?.value || '';
-    window.open('mailto:?bcc=' + encodeURIComponent(val.replace(/;\s*/g, ',')));
+    const text = document.getElementById('nomineeEmailList')?.value;
+    if (text) {
+      window.open('mailto:?bcc=' + encodeURIComponent(text.replace(/;\s*/g, ',')));
+    }
   },
 
-  _filterEmailList(status, event) {
-    // Update button states - derive button from event or use status as fallback
-    const btn = event?.target?.closest?.('[data-action]') || event;
-    btn.closest('.btn-group').querySelectorAll('.btn').forEach(b => b.classList.remove('active'));
-    btn.classList.add('active');
+  /**
+   * Filter the email list by assignment status.
+   * @param {string} status - Status to filter by, or 'all'
+   * @returns {void}
+   */
+  _filterEmailList(status) {
+    // Update button states
+    const btn = event?.target?.closest('[data-action]');
+    if (btn) {
+      btn.closest('.btn-group')?.querySelectorAll('.btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+    }
 
     const assignments = this._cachedAssignments || [];
     const filtered = status === 'all' ? assignments : assignments.filter(a => a.status === status);
@@ -795,27 +837,26 @@ const assignmentsModule = {
   },
 
   /**
-   * Bulk assign companies
+   * Bulk assign multiple companies to an award at once.
+   * @param {string} awardId - Award record ID
+   * @param {Array<string>} orgIds - Array of organisation IDs to assign
+   * @returns {Promise<void>}
    */
   async bulkAssignCompanies(awardId, orgIds) {
     try {
       utils.showLoading();
-      
+
       const assignments = orgIds.map(orgId => ({
         award_id: awardId,
         organisation_id: orgId,
         status: 'nominated',
         assigned_by: STATE.currentUser?.email
       }));
-      
-      const { error } = await STATE.client
-        .from('award_assignments')
-        .insert(assignments);
-      
-      if (error) throw error;
-      
+
+      await apiClient.insert('award_assignments', assignments);
+
       utils.showToast(`${orgIds.length} companies assigned successfully!`, 'success');
-      
+
     } catch (error) {
       console.error('Error bulk assigning:', error);
       utils.showToast('Failed to bulk assign: ' + error.message, 'error');
@@ -825,7 +866,8 @@ const assignmentsModule = {
   },
 
   /**
-   * Filter the bulk add company list by search input
+   * Filter the bulk-add company list by search input.
+   * @returns {void}
    */
   filterBulkAdd() {
     const searchVal = (document.getElementById('bulkAddSearchBox')?.value || '').toLowerCase();
@@ -840,7 +882,8 @@ const assignmentsModule = {
   },
 
   /**
-   * Add all selected companies from the bulk add modal
+   * Add all selected companies from the bulk-add modal.
+   * @returns {Promise<void>}
    */
   async addSelectedCompanies() {
     const checkboxes = document.querySelectorAll('.bulk-add-check:checked');
@@ -874,7 +917,8 @@ const assignmentsModule = {
   },
 
   /**
-   * Update the selected count display
+   * Update the selected-count display in the bulk-add UI.
+   * @returns {void}
    */
   updateSelectedCount() {
     const count = document.querySelectorAll('.bulk-add-check:checked').length;

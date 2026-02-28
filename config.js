@@ -1,11 +1,21 @@
+/**
+ * @module config
+ * @description Application configuration, constants, shared state, and module registry.
+ * All data mutations route through /api/data-proxy server-side.
+ */
+
 /* ==================================================== */
 /* CONFIGURATION & CONSTANTS */
 /* ==================================================== */
 
-// Supabase Configuration
-// Credentials are injected via environment-specific meta tags or build-time
-// variables. In production, all data mutations route through /api/data-proxy
-// which uses SUPABASE_SERVICE_KEY server-side (never exposed to the browser).
+/**
+ * Supabase connection configuration.
+ * Credentials are injected via environment-specific meta tags or build-time
+ * variables. The anon key is safe for client-side use — RLS policies restrict
+ * access. All data mutations route through /api/data-proxy which uses
+ * SUPABASE_SERVICE_KEY server-side (never exposed to the browser).
+ * @type {{ url: string, anonKey: string }}
+ */
 const SUPABASE_CONFIG = {
   url: document.querySelector('meta[name="supabase-url"]')?.content
     || window.__SUPABASE_URL__
@@ -15,7 +25,10 @@ const SUPABASE_CONFIG = {
     || ''
 };
 
-// Status Constants
+/**
+ * Entry/record status constants.
+ * @type {{ DRAFT: string, PENDING: string, APPROVED: string, PUBLISHED: string, REJECTED: string }}
+ */
 const STATUS = {
   DRAFT: 'Draft',
   PENDING: 'Pending',
@@ -73,7 +86,10 @@ const REGIONS = [
   'Southampton', 'Swansea'
 ];
 
-// Application State
+/**
+ * Global application state shared across all modules.
+ * @type {{ client: Object|null, currentUser: Object|null, inactivityTimer: number|null, allAwards: Array, filteredAwards: Array, allOrganisations: Array, filteredOrganisations: Array, allWinners: Array, filteredWinners: Array, allMedia: Array, filteredMedia: Array, allEvents: Array, allEntries: Array, filteredEntries: Array }}
+ */
 const STATE = {
   client: null,
   currentUser: null,

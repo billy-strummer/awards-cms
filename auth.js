@@ -1,3 +1,10 @@
+/**
+ * @module authModule
+ * @description Handles Supabase authentication — login, logout, session management,
+ * inactivity timeouts, and periodic connection health checks.
+ * Auth operations MUST remain client-side (Supabase auth requires direct JWT handling).
+ */
+
 /* ==================================================== */
 /* AUTHENTICATION MODULE */
 /* ==================================================== */

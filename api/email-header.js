@@ -1,30 +1,37 @@
-/* ==================================================== */
-/* SHARED EMAIL HEADER & WRAPPER                        */
-/* Single source of truth for the branded email layout. */
-/* All email-sending paths import from this module.     */
-/*                                                      */
-/* IMPORTANT: Every outbound email MUST be wrapped with */
-/* wrapEmail() so that the branded header and footer    */
-/* are included. This applies to:                       */
-/*   - Templated emails (resend-email.js)               */
-/*   - Automated workflows (email-automation.js)        */
-/*   - Notification queue processing                    */
-/*   - Any future email-sending paths                   */
-/*                                                      */
-/* For Supabase Edge Functions (Deno), use the mirror   */
-/* module: supabase/functions/_shared/email-wrapper.ts  */
-/*                                                      */
-/* Header/footer are built from tenant_branding values. */
-/* The subtitle text changes per email type (e.g.       */
-/* "Self-Nomination Entry Confirmation").                */
-/* ==================================================== */
+/**
+ * @module email-header
+ * Shared Email Header and Wrapper.
+ * Single source of truth for the branded email layout.
+ * All email-sending paths import from this module.
+ *
+ * Every outbound email MUST be wrapped with wrapEmail() so that the
+ * branded header and footer are included. This applies to:
+ *   - Templated emails (resend-email.js)
+ *   - Automated workflows (email-automation.js)
+ *   - Notification queue processing
+ *   - Any future email-sending paths
+ *
+ * For Supabase Edge Functions (Deno), use the mirror
+ * module: supabase/functions/_shared/email-wrapper.ts
+ *
+ * Header/footer are built from tenant_branding values.
+ * The subtitle text changes per email type (e.g.
+ * "Self-Nomination Entry Confirmation").
+ */
 
+/**
+ * Escape a string for safe inclusion in HTML.
+ * @param {string} s - The string to escape.
+ * @returns {string} The HTML-escaped string.
+ */
 const escHtml = (s) =>
   String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 
 /**
  * Resolve branding fields with sensible defaults.
  * Accepts a row from tenant_branding (or a partial object).
+ * @param {Object} [branding={}] - Partial branding configuration from tenant_branding table.
+ * @returns {{brandName: string, primaryColor: string, secondaryColor: string, accentColor: string, logoUrl: string, contactEmail: string, websiteUrl: string}} Resolved branding with defaults.
  */
 function resolveBranding(branding = {}) {
   return {
@@ -41,12 +48,12 @@ function resolveBranding(branding = {}) {
 /**
  * Build the email header HTML block.
  * Exact replica of the website header in submit-entry.html.
- * Logo present  → side-by-side (logo left, brand name + subtitle right)
- * No logo       → centred brand name + subtitle
- *
- * Matches: padding 35px 40px, logo 100px, heading ~2rem (28px email-safe),
- * Cinzel-like Georgia serif, Montserrat-like subtitle at 14px weight 300,
- * text-shadow on heading, gold drop-shadow on logo.
+ * Logo present  -> side-by-side (logo left, brand name + subtitle right)
+ * No logo       -> centred brand name + subtitle
+ * @param {Object} [branding={}] - Tenant branding configuration.
+ * @param {Object} [options] - Header options.
+ * @param {string} [options.subtitle='Self-Nomination Entry Confirmation'] - Subtitle text below the brand name.
+ * @returns {string} HTML string for the email header block.
  */
 function buildEmailHeader(branding = {}, { subtitle = 'Self-Nomination Entry Confirmation' } = {}) {
   const b = resolveBranding(branding);
@@ -72,6 +79,8 @@ function buildEmailHeader(branding = {}, { subtitle = 'Self-Nomination Entry Con
 
 /**
  * Build the email footer HTML block.
+ * @param {Object} [branding={}] - Tenant branding configuration.
+ * @returns {string} HTML string for the email footer block.
  */
 function buildEmailFooter(branding = {}) {
   const b = resolveBranding(branding);
@@ -85,11 +94,13 @@ function buildEmailFooter(branding = {}) {
 
 /**
  * Wrap arbitrary body HTML in a complete branded email document.
- *
- * Options:
- *   subject   – email subject (used in <title>)
- *   preheader – hidden preheader text
- *   subtitle  – text shown below the brand name in the header
+ * @param {string} bodyContent - The HTML body content to wrap.
+ * @param {Object} [branding={}] - Tenant branding configuration.
+ * @param {Object} [options] - Wrapping options.
+ * @param {string} [options.subject=''] - Email subject (used in the HTML title tag).
+ * @param {string} [options.preheader=''] - Hidden preheader text for email clients.
+ * @param {string} [options.subtitle=''] - Text shown below the brand name in the header.
+ * @returns {string} Complete HTML email document with branded header and footer.
  */
 function wrapEmail(bodyContent, branding = {}, { subject = '', preheader = '', subtitle = '' } = {}) {
   const b = resolveBranding(branding);

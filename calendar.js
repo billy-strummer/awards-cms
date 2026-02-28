@@ -9,6 +9,12 @@ const calendarModule = {
 
   /* ---------- DATA FETCHING ---------- */
 
+  /**
+   * Fetch all calendar items (events, deadlines, follow-ups, invoices) for a given month.
+   * @param {number} month - Zero-based month index
+   * @param {number} year - Full year number
+   * @returns {Promise<Object>} Map of date-strings to arrays of calendar items
+   */
   async _fetchAllItems(month, year) {
     const start = new Date(year, month, 1).toISOString().slice(0, 10);
     const end   = new Date(year, month + 1, 0).toISOString().slice(0, 10);
@@ -53,6 +59,13 @@ const calendarModule = {
 
   /* ---------- CALENDAR RENDER ---------- */
 
+  /**
+   * Render the monthly calendar grid into the specified container.
+   * @param {string} containerId - DOM element ID to render into
+   * @param {number} [month] - Zero-based month (defaults to current)
+   * @param {number} [year] - Full year (defaults to current)
+   * @returns {Promise<void>}
+   */
   async renderCalendar(containerId, month, year) {
     const container = document.getElementById(containerId);
     if (!container) return;
@@ -112,6 +125,12 @@ const calendarModule = {
     container.innerHTML = html;
   },
 
+  /**
+   * Navigate forward or backward by one month and re-render the calendar.
+   * @param {number} dir - Direction: -1 for previous, +1 for next
+   * @param {string} containerId - DOM element ID of the calendar container
+   * @returns {void}
+   */
   _navigate(dir, containerId) {
     this._currentMonth += dir;
     if (this._currentMonth > 11) { this._currentMonth = 0;  this._currentYear++; }
@@ -119,6 +138,12 @@ const calendarModule = {
     this.renderCalendar(containerId);
   },
 
+  /**
+   * Show the day detail panel for a specific date.
+   * @param {string} dateStr - ISO date string (YYYY-MM-DD)
+   * @param {string} containerId - DOM element ID of the calendar container
+   * @returns {void}
+   */
   _showDayPanel(dateStr, containerId) {
     const panel = document.getElementById(`cal-day-panel-${containerId}`);
     if (!panel) return;
@@ -132,22 +157,29 @@ const calendarModule = {
     </div>`).join('');
     panel.style.display='block';
     panel.innerHTML=`<div class="d-flex justify-content-between align-items-center mb-2"><strong>${label}</strong>
-      <button class="btn btn-sm btn-outline-secondary" data-action="calendarModule._exportDayICS" data-id="${dateStr}"><i class="bi bi-download"></i> Export</button>
+      <button class="btn btn-sm btn-outline-secondary" data-action="calendarModule.exportICS" data-id="${dateStr}"><i class="bi bi-download"></i> Export</button>
     </div>${rows}`;
-  },
-
-  _exportDayICS(dateStr) {
-    this.exportICS(this._dayItems[dateStr]);
   },
 
   /* ---------- ICS HELPERS ---------- */
 
+  /**
+   * Convert a date string to ICS-formatted UTC datetime.
+   * @param {string} ds - Date or datetime string
+   * @param {boolean} [endTime] - If true, use 17:00 instead of 09:00
+   * @returns {string} ICS datetime string (YYYYMMDDTHHmmssZ)
+   */
   _toICSDate(ds, endTime) {
     if (!ds) return '';
     const d = new Date(ds.length === 10 ? ds+(endTime?'T17:00:00Z':'T09:00:00Z') : ds);
     return d.toISOString().replace(/[-:]/g,'').slice(0,15)+'Z';
   },
 
+  /**
+   * Build a single VEVENT block for ICS output.
+   * @param {Object} item - Calendar item with type, label, detail, ref
+   * @returns {string} ICS VEVENT block
+   */
   _buildVEvent(item) {
     const ds  = item.ref && (item.ref.event_date||item.ref.entry_close_date||item.ref.judging_close_date||item.ref.follow_up_date||item.ref.due_date);
     const uid = `${item.type}-${item.ref&&item.ref.id?item.ref.id:Date.now()}@bta-cms`;
@@ -158,7 +190,18 @@ const calendarModule = {
       'END:VEVENT'].filter(Boolean).join('\r\n');
   },
 
+  /**
+   * Export calendar items as an ICS file download.
+   * If called with a date-string argument (from data-action), looks up
+   * that day's items in the _dayItems cache.
+   * @param {Array<Object>|string} items - Array of calendar items, or a date string
+   * @returns {void}
+   */
   exportICS(items) {
+    // Support being called via data-action with a date string
+    if (typeof items === 'string') {
+      items = this._dayItems[items];
+    }
     if (!items||!items.length) { utils.showToast('No items to export','warning'); return; }
     const ics = ['BEGIN:VCALENDAR','VERSION:2.0','PRODID:-//British Trade Awards//CMS//EN','CALSCALE:GREGORIAN','METHOD:PUBLISH',
       items.map(i=>this._buildVEvent(i)).join('\r\n'),'END:VCALENDAR'].join('\r\n');
@@ -171,6 +214,11 @@ const calendarModule = {
 
   /* ---------- EXPORT VARIANTS ---------- */
 
+  /**
+   * Export a single event as an ICS file.
+   * @param {string} eventId - The event record ID
+   * @returns {Promise<void>}
+   */
   async exportEventICS(eventId) {
     try {
       const result = await apiClient.select('events', { select: '*', filters: { id: { eq: eventId } }, pageSize: 1 });
@@ -180,6 +228,10 @@ const calendarModule = {
     } catch (err) { utils.showToast('Failed to export event: '+err.message,'error'); }
   },
 
+  /**
+   * Export all upcoming events as an ICS file.
+   * @returns {Promise<void>}
+   */
   async exportAllEventsICS() {
     try {
       const today = new Date().toISOString().slice(0,10);
@@ -188,6 +240,10 @@ const calendarModule = {
     } catch (err) { utils.showToast('Failed to export events: '+err.message,'error'); }
   },
 
+  /**
+   * Export all upcoming award-season deadlines as an ICS file.
+   * @returns {Promise<void>}
+   */
   async exportDeadlinesICS() {
     try {
       const today = new Date().toISOString().slice(0,10);
@@ -201,6 +257,10 @@ const calendarModule = {
     } catch (err) { utils.showToast('Failed to export deadlines: '+err.message,'error'); }
   },
 
+  /**
+   * Export a combined ICS feed with all upcoming events, deadlines, follow-ups, and invoices.
+   * @returns {Promise<void>}
+   */
   async exportMyCalendarICS() {
     try {
       const today = new Date().toISOString().slice(0,10);
@@ -229,6 +289,12 @@ const calendarModule = {
 
   /* ---------- UPCOMING WIDGET ---------- */
 
+  /**
+   * Render a compact list of upcoming calendar items into the specified container.
+   * @param {string} containerId - DOM element ID to render into
+   * @param {number} [limit=8] - Maximum number of items to show
+   * @returns {Promise<void>}
+   */
   async renderUpcomingWidget(containerId, limit = 8) {
     const container = document.getElementById(containerId);
     if (!container) return;
@@ -283,6 +349,10 @@ const calendarModule = {
 
   /* ---------- SUBSCRIBE FEED URL ---------- */
 
+  /**
+   * Generate a unique calendar feed URL for subscription by external calendar apps.
+   * @returns {Promise<string>} The feed URL
+   */
   async generateCalendarFeedUrl() {
     try {
       const token  = (crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).slice(2)+Date.now().toString(36));

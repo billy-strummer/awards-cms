@@ -2135,13 +2135,13 @@ utils.renderServerPagination = function(containerId, pagination, goToPageFn) {
 
   // Previous button
   html += `<li class="page-item ${page <= 1 ? 'disabled' : ''}">
-    <a class="page-link" href="#" onclick="event.preventDefault(); ${goToPageFn}(${page - 1})" aria-label="Previous">&laquo;</a></li>`;
+    <a class="page-link" href="#" data-action="${goToPageFn}" data-id="${page - 1}" data-prevent-default="true" aria-label="Previous">&laquo;</a></li>`;
 
   // Page numbers with ellipsis
   for (let i = 1; i <= totalPages; i++) {
     if (i === 1 || i === totalPages || (i >= page - 2 && i <= page + 2)) {
       html += `<li class="page-item ${i === page ? 'active' : ''}">
-        <a class="page-link" href="#" onclick="event.preventDefault(); ${goToPageFn}(${i})">${i}</a></li>`;
+        <a class="page-link" href="#" data-action="${goToPageFn}" data-id="${i}" data-prevent-default="true">${i}</a></li>`;
     } else if (i === page - 3 || i === page + 3) {
       html += '<li class="page-item disabled"><span class="page-link">&hellip;</span></li>';
     }
@@ -2149,7 +2149,7 @@ utils.renderServerPagination = function(containerId, pagination, goToPageFn) {
 
   // Next button
   html += `<li class="page-item ${page >= totalPages ? 'disabled' : ''}">
-    <a class="page-link" href="#" onclick="event.preventDefault(); ${goToPageFn}(${page + 1})" aria-label="Next">&raquo;</a></li>`;
+    <a class="page-link" href="#" data-action="${goToPageFn}" data-id="${page + 1}" data-prevent-default="true" aria-label="Next">&raquo;</a></li>`;
 
   html += '</ul></nav>';
 
@@ -2846,6 +2846,23 @@ const apiClient = {
    */
   async deleteByFilters(table, filters) {
     return this._call({ table, operation: 'delete', filters });
+  },
+
+  /**
+   * Upsert (insert or update on conflict) records via the server-side proxy.
+   * @param {string} table
+   * @param {Object|Array} data - Record(s) to upsert
+   * @param {Object} [options]
+   * @param {string} [options.onConflict] - Conflict target column(s), e.g. 'entry_id,judge_email'
+   * @returns {Promise<{data: Array}>}
+   */
+  async upsert(table, data, options = {}) {
+    return this._call({
+      table,
+      operation: 'upsert',
+      data,
+      onConflict: options.onConflict || undefined
+    });
   },
 
   /**

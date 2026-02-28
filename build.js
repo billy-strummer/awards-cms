@@ -70,6 +70,19 @@ async function build() {
   const startTime = Date.now();
   console.log('Building BTA Awards CMS...\n');
 
+  // 0. Run lint check before building
+  try {
+    const { execSync } = require('child_process');
+    console.log('  Lint: checking...');
+    execSync('npx eslint *.js api/*.js --max-warnings 0', { stdio: 'pipe', cwd: __dirname });
+    console.log('  Lint: passed ✓');
+  } catch (lintErr) {
+    const output = lintErr.stdout ? lintErr.stdout.toString() : '';
+    const errorCount = (output.match(/\d+ error/)?.[0]) || 'errors found';
+    console.warn(`  Lint: ${errorCount} (run "npm run lint:fix" to auto-fix)`);
+    // Don't fail build on lint warnings, but log them
+  }
+
   ensureDir(DIST_DIR);
 
   // 1. Concatenate and minify JS

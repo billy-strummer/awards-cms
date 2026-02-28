@@ -432,6 +432,9 @@ const nomineeVoting = {
   }
 };
 
+// Expose globally for tests and external access
+if (typeof window !== 'undefined') window.nomineeVoting = nomineeVoting;
+
 // Initialize on page load
 document.addEventListener('DOMContentLoaded', () => {
   nomineeVoting.initialize();

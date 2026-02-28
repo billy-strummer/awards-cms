@@ -1,8 +1,9 @@
-/* ==================================================== */
-/* RESEND.COM EMAIL INTEGRATION                          */
-/* Replaces SendGrid - uses Resend for transactional     */
-/* and campaign emails                                   */
-/* ==================================================== */
+/**
+ * @module resend-email
+ * Resend.com Email Integration.
+ * Replaces SendGrid - uses Resend for transactional
+ * and campaign emails.
+ */
 
 const { Resend } = require('resend');
 const { createClient } = require('@supabase/supabase-js');
@@ -36,13 +37,27 @@ const HEADER_SUBTITLES = {
 /**
  * Wrap email content in branded HTML template.
  * Header/footer are built from branding; subtitle changes per email type.
+ * @param {string} subject - The email subject line.
+ * @param {string} bodyHtml - The HTML body content to wrap.
+ * @param {string} [preheader=''] - Hidden preheader text for email clients.
+ * @param {Object} [branding={}] - Tenant branding configuration.
+ * @param {string} [subtitle=''] - Subtitle text displayed in the email header.
+ * @returns {string} Complete branded HTML email document.
  */
 function wrapEmailTemplate(subject, bodyHtml, preheader = '', branding = {}, subtitle = '') {
   return wrapEmail(bodyHtml, branding, { subject, preheader, subtitle });
 }
 
 /**
- * Send a single email via Resend
+ * Send a single email via Resend and log the result to the notification queue.
+ * @param {Object} options - Email options.
+ * @param {string|string[]} options.to - Recipient email address(es).
+ * @param {string} options.subject - Email subject line.
+ * @param {string} options.html - HTML body content.
+ * @param {string} [options.text] - Plain text fallback body.
+ * @param {string} [options.replyTo] - Reply-to email address.
+ * @param {Array<{name: string, value: string}>} [options.tags] - Email tags for tracking.
+ * @returns {Promise<{success: boolean, id?: string, error?: string}>} Send result.
  */
 async function sendEmail({ to, subject, html, text, replyTo, tags }) {
   try {
@@ -87,7 +102,12 @@ async function sendEmail({ to, subject, html, text, replyTo, tags }) {
 }
 
 /**
- * Send a templated email (winner notification, invite, etc.)
+ * Send a templated email (winner notification, invite, etc.).
+ * @param {Object} options - Templated email options.
+ * @param {string} options.to - Recipient email address.
+ * @param {string} options.templateType - Template identifier (e.g. 'winner_notification', 'event_invitation').
+ * @param {Object} options.data - Template variable data for placeholder replacement.
+ * @returns {Promise<{success: boolean, id?: string, error?: string}>} Send result.
  */
 async function sendTemplatedEmail({ to, templateType, data }) {
   // Escape user-provided values to prevent HTML injection in emails
@@ -163,7 +183,10 @@ async function sendTemplatedEmail({ to, templateType, data }) {
 }
 
 /**
- * Send a campaign email to a list of recipients
+ * Send a campaign email to all active subscribers in the campaign's email list.
+ * Sends in batches of 10 with rate-limiting delays.
+ * @param {string} campaignId - The ID of the email campaign to send.
+ * @returns {Promise<{success: boolean, sent?: number, failed?: number, total?: number, error?: string}>} Campaign send results.
  */
 async function sendCampaignEmail(campaignId) {
   try {
@@ -246,7 +269,12 @@ async function sendCampaignEmail(campaignId) {
 }
 
 /**
- * Send a test email for previewing templates
+ * Send a test email for previewing templates.
+ * Prefixes subject with "[TEST]" to distinguish from production emails.
+ * @param {string} to - Recipient email address.
+ * @param {string} subject - Email subject line.
+ * @param {string} htmlContent - HTML body content to preview.
+ * @returns {Promise<{success: boolean, id?: string, error?: string}>} Send result.
  */
 async function sendTestEmail(to, subject, htmlContent) {
   const html = await wrapEmailTemplate(subject, htmlContent);
@@ -255,8 +283,10 @@ async function sendTestEmail(to, subject, htmlContent) {
 
 /**
  * Process the notification queue (called by cron).
- * Each queued notification is wrapped with the branded header & footer
+ * Each queued notification is wrapped with the branded header and footer
  * so every outbound email has a consistent look.
+ * Processes up to 50 pending notifications per invocation with retry support.
+ * @returns {Promise<{processed: number, total?: number}>} Count of processed and total pending notifications.
  */
 async function processNotificationQueue() {
   const { data: pending } = await supabase

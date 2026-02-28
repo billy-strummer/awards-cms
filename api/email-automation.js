@@ -1,5 +1,6 @@
 /**
- * Email Automation & Workflow Engine
+ * @module email-automation
+ * Email Automation and Workflow Engine.
  *
  * Features:
  * - Trigger-based email workflows
@@ -23,7 +24,8 @@ const supabase = createClient(
 const resend = new Resend(process.env.RESEND_API_KEY);
 
 /**
- * Load tenant branding from database (cached for 5 minutes)
+ * Load tenant branding from database (cached for 5 minutes).
+ * @returns {Promise<Object>} Branding configuration object.
  */
 let _brandingCache = null;
 let _brandingCacheTime = 0;
@@ -66,6 +68,10 @@ const HEADER_SUBTITLES = {
 /**
  * Email wrapper - delegates to shared email-header.js module.
  * Header/footer are built from branding; subtitle changes per email type.
+ * @param {string} bodyContent - The HTML body content to wrap.
+ * @param {Object} [branding={}] - Tenant branding configuration.
+ * @param {string} [subtitle=''] - Subtitle text for the email header.
+ * @returns {string} Complete branded HTML email document.
  */
 function wrapEmailTemplate(bodyContent, branding = {}, subtitle = '') {
   return wrapEmail(bodyContent, branding, { subtitle });
@@ -87,7 +93,8 @@ const DB_TEMPLATE_TYPE_MAP = {
 
 /**
  * Load an active email template from the database by type.
- * Returns { subject, body } or null if none found.
+ * @param {string} templateType - The template type identifier (e.g. 'confirmation', 'winner_announcement').
+ * @returns {Promise<{subject: string, body: string}|null>} Template data or null if none found.
  */
 async function loadDbTemplate(templateType) {
   try {
@@ -104,7 +111,9 @@ async function loadDbTemplate(templateType) {
 }
 
 /**
- * Convert plain-text template body (from CMS) to styled HTML.
+ * Convert plain-text template body (from CMS) to styled HTML with paragraph wrapping.
+ * @param {string} text - Plain text content to convert.
+ * @returns {string} HTML string with paragraphs and line breaks.
  */
 function textToHtml(text) {
   const escaped = String(text)
@@ -379,6 +388,10 @@ const EMAIL_TEMPLATES = {
  *
  * DB templates use {PLACEHOLDER} syntax (single braces, uppercase).
  * Hardcoded templates use {{placeholder}} syntax (double braces, lowercase).
+ * @param {string} templateKey - The template key (e.g. 'ENTRY_CONFIRMATION', 'WINNER_ANNOUNCEMENT').
+ * @param {string} toEmail - The recipient email address.
+ * @param {Object} variables - Key-value pairs for template placeholder replacement.
+ * @returns {Promise<boolean>} True if the email was sent successfully, false otherwise.
  */
 async function sendTemplateEmail(templateKey, toEmail, variables) {
   try {
@@ -422,7 +435,7 @@ async function sendTemplateEmail(templateKey, toEmail, variables) {
       });
 
       await logEmailSent(templateKey, toEmail, subject);
-      console.warn(`✅ Email sent (DB template): ${templateKey} to ${toEmail}`);
+      console.log(`✅ Email sent (DB template): ${templateKey} to ${toEmail}`);
       return true;
     }
 
@@ -456,7 +469,7 @@ async function sendTemplateEmail(templateKey, toEmail, variables) {
     });
 
     await logEmailSent(templateKey, toEmail, subject);
-    console.warn(`✅ Email sent (hardcoded fallback): ${templateKey} to ${toEmail}`);
+    console.log(`✅ Email sent (hardcoded fallback): ${templateKey} to ${toEmail}`);
     return true;
 
   } catch (error) {
@@ -467,7 +480,9 @@ async function sendTemplateEmail(templateKey, toEmail, variables) {
 }
 
 /**
- * Send entry confirmation email
+ * Send entry confirmation email for a submitted entry.
+ * @param {string} entryId - The ID of the entry to confirm.
+ * @returns {Promise<boolean>} True if the email was sent successfully, false otherwise.
  */
 async function sendEntryConfirmation(entryId) {
   try {
@@ -500,11 +515,12 @@ async function sendEntryConfirmation(entryId) {
 }
 
 /**
- * Send deadline reminders
+ * Send deadline reminders to judges with pending scoring assignments.
+ * @returns {Promise<boolean>} True if reminders were sent successfully, false otherwise.
  */
 async function sendDeadlineReminders() {
   try {
-    console.warn('📧 Sending deadline reminders...');
+    console.log('📧 Sending deadline reminders...');
 
     const now = new Date();
     const reminders = [7, 3, 1]; // Days before deadline
@@ -549,7 +565,7 @@ async function sendDeadlineReminders() {
       }
     }
 
-    console.warn('✅ Deadline reminders sent');
+    console.log('✅ Deadline reminders sent');
     return true;
 
   } catch (error) {
@@ -559,7 +575,10 @@ async function sendDeadlineReminders() {
 }
 
 /**
- * Send judge assignments
+ * Send judge assignment notification email with the list of entries to judge.
+ * @param {string} judgeEmail - The email address of the judge.
+ * @param {string[]} entryIds - Array of entry IDs assigned to the judge.
+ * @returns {Promise<boolean>} True if the email was sent successfully, false otherwise.
  */
 async function sendJudgeAssignments(judgeEmail, entryIds) {
   try {
@@ -598,11 +617,13 @@ async function sendJudgeAssignments(judgeEmail, entryIds) {
 }
 
 /**
- * Send winner announcements
+ * Send winner announcement emails to all entries with 'winner' status.
+ * @param {string|null} [awardId=null] - Optional award ID to filter announcements to a specific award.
+ * @returns {Promise<number>} The number of winner announcements sent.
  */
 async function sendWinnerAnnouncements(awardId = null) {
   try {
-    console.warn('🏆 Sending winner announcements...');
+    console.log('🏆 Sending winner announcements...');
 
     let query = supabase
       .from('entries')
@@ -631,7 +652,7 @@ async function sendWinnerAnnouncements(awardId = null) {
       // TODO: Integrate with social-media.js
     }
 
-    console.warn(`✅ Sent ${(winners || []).length} winner announcements`);
+    console.log(`✅ Sent ${(winners || []).length} winner announcements`);
     return (winners || []).length;
 
   } catch (error) {
@@ -641,11 +662,13 @@ async function sendWinnerAnnouncements(awardId = null) {
 }
 
 /**
- * Send shortlist notifications
+ * Send shortlist notification emails to all shortlisted entries.
+ * @param {string|null} [awardId=null] - Optional award ID to filter to a specific award.
+ * @returns {Promise<number>} The number of shortlist notifications sent.
  */
 async function sendShortlistNotifications(awardId = null) {
   try {
-    console.warn('🌟 Sending shortlist notifications...');
+    console.log('🌟 Sending shortlist notifications...');
 
     let query = supabase
       .from('entries')
@@ -672,7 +695,7 @@ async function sendShortlistNotifications(awardId = null) {
       await sendTemplateEmail('SHORTLIST_NOTIFICATION', entry.contact_email, variables);
     }
 
-    console.warn(`✅ Sent ${shortlisted.length} shortlist notifications`);
+    console.log(`✅ Sent ${shortlisted.length} shortlist notifications`);
     return shortlisted.length;
 
   } catch (error) {
@@ -682,7 +705,11 @@ async function sendShortlistNotifications(awardId = null) {
 }
 
 /**
- * Log email sent
+ * Log a successfully sent email to the email_log table.
+ * @param {string} templateKey - The template key used for the email.
+ * @param {string} toEmail - The recipient email address.
+ * @param {string} subject - The email subject line.
+ * @returns {Promise<void>}
  */
 async function logEmailSent(templateKey, toEmail, subject) {
   await supabase.from('email_log').insert([{
@@ -695,7 +722,11 @@ async function logEmailSent(templateKey, toEmail, subject) {
 }
 
 /**
- * Log email failure
+ * Log a failed email send attempt to the email_log table.
+ * @param {string} templateKey - The template key used for the email.
+ * @param {string} toEmail - The intended recipient email address.
+ * @param {string} error - The error message describing the failure.
+ * @returns {Promise<void>}
  */
 async function logEmailFailure(templateKey, toEmail, error) {
   await supabase.from('email_log').insert([{
@@ -708,10 +739,12 @@ async function logEmailFailure(templateKey, toEmail, error) {
 }
 
 /**
- * API Endpoints
+ * API endpoint to send a template email (requires authentication).
+ * POST /api/send-email
+ * @param {Object} req - Express request object with body containing templateKey, toEmail, variables.
+ * @param {Object} res - Express response object.
+ * @returns {Promise<void>}
  */
-
-// POST /api/send-email (requires authentication)
 async function sendEmailEndpoint(req, res) {
   try {
     // Verify caller is authenticated

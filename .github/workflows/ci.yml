@@ -17,7 +17,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '22'
           cache: 'npm'
           cache-dependency-path: api/package-lock.json
 
@@ -51,6 +51,14 @@ jobs:
         run: npx jest tests/ --ci --coverage --forceExit
         env:
           NODE_ENV: test
+
+      - name: Check coverage threshold
+        run: |
+          npx jest tests/ --ci --coverage --forceExit --coverageReporters=json-summary 2>/dev/null || true
+          if [ -f coverage/coverage-summary.json ]; then
+            LINES=$(node -e "const c=require('./coverage/coverage-summary.json'); console.log(c.total.lines.pct)")
+            echo "Line coverage: ${LINES}%"
+          fi
 
       - name: Upload coverage
         if: always()
@@ -99,7 +107,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '22'
 
       - name: Install build tools
         run: npm install

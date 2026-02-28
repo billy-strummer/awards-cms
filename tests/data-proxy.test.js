@@ -191,7 +191,7 @@ describe('Data Proxy API', () => {
     const res = createRes();
     await handler(req, res);
     expect(res.statusCode).toBe(400);
-    expect(res.body.details).toContain('"data" is required for insert operations');
+    expect(res.body.details).toContain('"data" is required for insert/upsert operations');
   });
 
   test('rejects delete without id or filters', async () => {

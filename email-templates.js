@@ -3,8 +3,16 @@
 /* ==================================================== */
 
 const emailTemplatesModule = {
+  /** @type {Array} Loaded email templates */
   templates: [],
+  /** @type {Object|null} Currently selected template for editing */
   currentTemplate: null,
+
+  // Server-side pagination state
+  /** @type {boolean} Whether server-side pagination is enabled */
+  _serverPagination: true,
+  /** @type {Object} Pagination state */
+  _pagination: { page: 1, totalPages: 1, count: 0, pageSize: 100 },
 
   /**
    * Default template content for reverting edits.
@@ -325,6 +333,7 @@ The British Trade Awards Team`
 
   /**
    * Get sample data for preview/test, using saved placeholder defaults from Marketing > Placeholders
+   * @returns {Promise<Object>} Sample placeholder data keyed by placeholder name
    */
   async _getSampleData() {
     let defaults = null;
@@ -387,6 +396,7 @@ The British Trade Awards Team`
 
   /**
    * Get branding config for email styling
+   * @returns {Promise<Object>} Branding configuration object
    */
   async _getBrandingConfig() {
     try {
@@ -397,7 +407,8 @@ The British Trade Awards Team`
   },
 
   /**
-   * Initialize Email Templates Module
+   * Initialize Email Templates Module - loads templates and shows loading state
+   * @returns {Promise<void>}
    */
   async initialize() {
     try {
@@ -412,20 +423,51 @@ The British Trade Awards Team`
   },
 
   /**
-   * Load all email templates
+   * Fetch a page of email templates from the server
+   * @param {number} page - The page number to fetch
+   * @returns {Promise<Array>} The fetched templates
+   */
+  async _fetchPage(page) {
+    this._pagination.page = page;
+    const result = await apiClient.select('email_templates', {
+      sort: { column: 'template_type', ascending: true },
+      page,
+      pageSize: this._pagination.pageSize
+    });
+    this._pagination = { ...this._pagination, ...result, page };
+    return result.data;
+  },
+
+  /**
+   * Navigate to a specific page and re-render the template list
+   * @param {number} page - Target page number
+   * @returns {void}
+   */
+  _goToPage(page) {
+    this._fetchPage(page).then(data => {
+      this.templates = data || [];
+      this.renderTemplatesList();
+    });
+  },
+
+  /**
+   * Build server-side filters from current state
+   * @returns {Object} Filter object for apiClient
+   */
+  _buildServerFilters() {
+    const f = {};
+    return f;
+  },
+
+  /**
+   * Load all email templates with pagination
+   * @returns {Promise<void>}
    */
   async loadTemplates() {
     try {
-      const { data: templates, error } = await STATE.client
-        .from('email_templates')
-        .select('*')
-        .order('template_type', { ascending: true, nullsFirst: false });
-
-      if (error) throw error;
-
-      this.templates = templates || [];
+      const data = await this._fetchPage(1);
+      this.templates = data || [];
       this.renderTemplatesList();
-
     } catch (error) {
       console.error('Error loading templates:', error);
       throw error;
@@ -444,6 +486,11 @@ The British Trade Awards Team`
     'General':              { types: ['general', 'notification', 'invite'], icon: 'bi-megaphone' },
   },
 
+  /**
+   * Get the workflow group name for a given template type
+   * @param {string} type - Template type identifier
+   * @returns {string} Group name (e.g. 'Payments', 'Entry & Submissions')
+   */
   getGroupForType(type) {
     for (const [groupName, config] of Object.entries(this.templateGroups)) {
       if (config.types.includes(type)) return groupName;
@@ -456,6 +503,11 @@ The British Trade Awards Team`
    * (e.g. after payment, on entry submission, by cron jobs).
    * These get an "Auto" badge so admins know editing them affects live emails.
    */
+  /**
+   * Check if a template type is auto-triggered by the system
+   * @param {string} type - Template type identifier
+   * @returns {boolean} Whether the template is automatically sent
+   */
   _isAutoTemplate(type) {
     const autoTypes = [
       'confirmation', 'reminder', 'revision_request',
@@ -466,6 +518,10 @@ The British Trade Awards Team`
     return autoTypes.includes(type);
   },
 
+  /**
+   * Render the templates sidebar list grouped by workflow stage
+   * @returns {void}
+   */
   renderTemplatesList() {
     const container = document.getElementById('templatesList');
 
@@ -510,7 +566,7 @@ The British Trade Awards Team`
         const descTip = template.description ? ` title="${template.description.replace(/"/g, '&quot;')}"` : '';
         return `
         <a href="#" class="list-group-item list-group-item-action ${this.currentTemplate?.id === template.id ? 'active' : ''}"
-           data-action="emailTemplatesModule.selectTemplate" data-id="${template.id}" data-prevent-default="true"${descTip}>
+           data-action="emailTemplatesModule.selectTemplate" data-id="${template.id}"${descTip}>
           <div class="d-flex justify-content-between align-items-start">
             <div>
               <strong>${template.template_name || template.name || 'Untitled'}</strong>
@@ -530,8 +586,22 @@ The British Trade Awards Team`
     });
 
     container.innerHTML = html;
+
+    // Attach delegated click handler for template selection
+    container.addEventListener('click', (e) => {
+      const actionEl = e.target.closest('[data-action="emailTemplatesModule.selectTemplate"]');
+      if (actionEl) {
+        e.preventDefault();
+        this.selectTemplate(actionEl.getAttribute('data-id'));
+      }
+    });
   },
 
+  /**
+   * Get a human-readable label for a template type
+   * @param {string} type - Template type identifier
+   * @returns {string} Human-readable label
+   */
   getTypeLabel(type) {
     const labels = {
       'confirmation':         'Entry Confirmation',
@@ -581,7 +651,7 @@ The British Trade Awards Team`
           <div class="mt-2">
             ${template.available_placeholders.map(p => `
               <span class="badge bg-light text-dark me-1 mb-1" style="cursor: pointer;"
-                    data-action="emailTemplatesModule.insertPlaceholder" data-id="{${p}}"
+                    data-action="emailTemplatesModule.insertPlaceholder" data-placeholder="{${p}}"
                     title="Click to insert">
                 {${p}}
               </span>
@@ -700,10 +770,28 @@ The British Trade Awards Team`
         </div>
       </form>
     `;
+
+    // Attach delegated click handler for editor action buttons
+    editor.addEventListener('click', (e) => {
+      const actionEl = e.target.closest('[data-action]');
+      if (!actionEl) return;
+      e.preventDefault();
+      const action = actionEl.getAttribute('data-action');
+      const id = actionEl.getAttribute('data-id');
+      switch (action) {
+        case 'emailTemplatesModule.saveTemplate': this.saveTemplate(); break;
+        case 'emailTemplatesModule.previewTemplate': this.previewTemplate(); break;
+        case 'emailTemplatesModule.sendTestEmail': this.sendTestEmail(); break;
+        case 'emailTemplatesModule.revertToDefault': this.revertToDefault(); break;
+        case 'emailTemplatesModule.deleteTemplate': this.deleteTemplate(id); break;
+        case 'emailTemplatesModule.insertPlaceholder': this.insertPlaceholder(actionEl.getAttribute('data-placeholder')); break;
+      }
+    });
   },
 
   /**
-   * Insert placeholder at cursor position
+   * Insert placeholder at cursor position in the template body
+   * @param {string} placeholder - The placeholder text to insert
    */
   insertPlaceholder(placeholder) {
     const textarea = document.getElementById('templateBody');
@@ -719,7 +807,8 @@ The British Trade Awards Team`
   },
 
   /**
-   * Save template
+   * Save the currently selected template to the database
+   * @returns {Promise<void>}
    */
   async saveTemplate() {
     let templateData;
@@ -736,12 +825,7 @@ The British Trade Awards Team`
         last_modified_by: STATE.currentUser?.email || 'admin'
       };
 
-      const { error } = await STATE.client
-        .from('email_templates')
-        .update(templateData)
-        .eq('id', this.currentTemplate.id);
-
-      if (error) throw error;
+      await apiClient.update('email_templates', this.currentTemplate.id, templateData);
     } catch (error) {
       console.warn('DB update for template failed, using localStorage:', error);
       localStorage.setItem(`bta_email_template_${this.currentTemplate.id}`, JSON.stringify(templateData));
@@ -927,7 +1011,9 @@ The British Trade Awards Team`
   },
 
   /**
-   * Delete template
+   * Delete a template by ID with confirmation
+   * @param {string} templateId - The template ID to delete
+   * @returns {Promise<void>}
    */
   async deleteTemplate(templateId) {
     const template = (this.templates || []).find(t => t.id === templateId);
@@ -940,12 +1026,7 @@ The British Trade Awards Team`
     }
 
     try {
-      const { error } = await STATE.client
-        .from('email_templates')
-        .delete()
-        .eq('id', templateId);
-
-      if (error) throw error;
+      await apiClient.delete('email_templates', templateId);
 
       utils.showToast('Template deleted successfully', 'success');
       this.currentTemplate = null;
@@ -966,7 +1047,8 @@ The British Trade Awards Team`
   },
 
   /**
-   * Create new template via modal
+   * Open the create new template modal dialog
+   * @returns {void}
    */
   newTemplate() {
     const modalHtml = `
@@ -1066,12 +1148,23 @@ The British Trade Awards Team`
     if (existing) existing.remove();
 
     document.body.insertAdjacentHTML('beforeend', modalHtml);
-    const modal = new bootstrap.Modal(document.getElementById('newTemplateModal'));
+
+    const modalEl = document.getElementById('newTemplateModal');
+    modalEl.addEventListener('click', (e) => {
+      const actionEl = e.target.closest('[data-action="emailTemplatesModule.saveNewTemplate"]');
+      if (actionEl) {
+        e.preventDefault();
+        this.saveNewTemplate();
+      }
+    });
+
+    const modal = new bootstrap.Modal(modalEl);
     modal.show();
   },
 
   /**
    * Save a new template to the database
+   * @returns {Promise<void>}
    */
   async saveNewTemplate() {
     const form = document.getElementById('newTemplateForm');
@@ -1102,20 +1195,14 @@ The British Trade Awards Team`
 
     try {
       await utils.protectModalDuringSave('newTemplateModal', async () => {
-        const { data, error } = await STATE.client
-          .from('email_templates')
-          .insert(templateData)
-          .select()
-          .single();
-
-        if (error) throw error;
+        const result = await apiClient.insert('email_templates', templateData);
 
         bootstrap.Modal.getInstance(document.getElementById('newTemplateModal'))?.hide();
         await this.loadTemplates();
 
         // Auto-select the new template
-        if (data?.id) {
-          this.selectTemplate(data.id);
+        if (result.data?.id) {
+          this.selectTemplate(result.data.id);
         }
       });
       utils.showToast('Template created successfully!', 'success');

@@ -1,5 +1,6 @@
 /**
- * Certificate Generation & QR Code System
+ * @module certificates-qr
+ * Certificate Generation and QR Code System.
  *
  * Features:
  * - PDF certificate generation for winners
@@ -21,11 +22,15 @@ const supabase = createClient(
 );
 
 /**
- * Generate Winner Certificate
+ * Generate a PDF winner certificate for an entry and upload it to Supabase storage.
+ * @param {string} entryId - The ID of the winning entry.
+ * @param {string|null} [outputPath=null] - Optional custom file path for the PDF output.
+ * @returns {Promise<{filepath: string, publicUrl: string, filename: string}>} Certificate file details.
+ * @throws {Error} If the entry is not found, is not a winner, or upload fails.
  */
 async function generateWinnerCertificate(entryId, outputPath = null) {
   try {
-    console.warn(`📜 Generating certificate for entry ${entryId}...`);
+    console.log(`📜 Generating certificate for entry ${entryId}...`);
 
     // Get entry and winner details
     const { data: entry, error } = await supabase
@@ -147,7 +152,7 @@ async function generateWinnerCertificate(entryId, outputPath = null) {
       stream.on('error', reject);
     });
 
-    console.warn(`✅ Certificate generated: ${filepath}`);
+    console.log(`✅ Certificate generated: ${filepath}`);
 
     // Upload to Supabase storage
     const { data: _uploadData, error: uploadError } = await supabase.storage
@@ -185,11 +190,13 @@ async function generateWinnerCertificate(entryId, outputPath = null) {
 }
 
 /**
- * Generate certificates for all winners
+ * Generate PDF certificates for all entries with 'winner' status.
+ * @returns {Promise<Array<{entryId: string, entryNumber: string, company?: string, success: boolean, url?: string, error?: string}>>} Results for each winner.
+ * @throws {Error} If a database error occurs.
  */
 async function generateAllWinnerCertificates() {
   try {
-    console.warn('📜 Generating certificates for all winners...');
+    console.log('📜 Generating certificates for all winners...');
 
     const { data: winners, error } = await supabase
       .from('entries')
@@ -210,7 +217,7 @@ async function generateAllWinnerCertificates() {
           success: true,
           url: result.publicUrl
         });
-        console.warn(`✅ ${winner.entry_number}: ${winner.organisations.company_name}`);
+        console.log(`✅ ${winner.entry_number}: ${winner.organisations.company_name}`);
       } catch (err) {
         console.error(`❌ ${winner.entry_number}: ${err.message}`);
         results.push({
@@ -222,7 +229,7 @@ async function generateAllWinnerCertificates() {
       }
     }
 
-    console.warn(`\n✅ Generated ${results.filter(r => r.success).length}/${winners.length} certificates`);
+    console.log(`\n✅ Generated ${results.filter(r => r.success).length}/${winners.length} certificates`);
     return results;
 
   } catch (error) {
@@ -232,11 +239,15 @@ async function generateAllWinnerCertificates() {
 }
 
 /**
- * Generate QR Code for event ticket
+ * Generate a QR code for an event ticket and upload it to Supabase storage.
+ * @param {string} attendeeId - The ID of the event attendee.
+ * @param {string} [ticketType='standard'] - The ticket type (e.g. 'standard', 'vip').
+ * @returns {Promise<{qrCodeUrl: string, qrCodeDataURL: string, filename: string}>} QR code details.
+ * @throws {Error} If the attendee is not found or upload fails.
  */
 async function generateEventTicketQR(attendeeId, ticketType = 'standard') {
   try {
-    console.warn(`🎫 Generating QR code for attendee ${attendeeId}...`);
+    console.log(`🎫 Generating QR code for attendee ${attendeeId}...`);
 
     // Get attendee details
     const { data: attendee, error } = await supabase
@@ -296,7 +307,7 @@ async function generateEventTicketQR(attendeeId, ticketType = 'standard') {
       })
       .eq('id', attendeeId);
 
-    console.warn(`✅ QR code generated for ${attendee.contacts?.full_name || attendee.attendee_name}`);
+    console.log(`✅ QR code generated for ${attendee.contacts?.full_name || attendee.attendee_name}`);
 
     return {
       qrCodeUrl: urlData.publicUrl,
@@ -311,11 +322,14 @@ async function generateEventTicketQR(attendeeId, ticketType = 'standard') {
 }
 
 /**
- * Generate event badge with QR code
+ * Generate a printable event badge PDF with embedded QR code for an attendee.
+ * @param {string} attendeeId - The ID of the event attendee.
+ * @returns {Promise<{filepath: string, filename: string, qrCodeUrl: string}>} Badge file details.
+ * @throws {Error} If the attendee is not found or badge generation fails.
  */
 async function generateEventBadge(attendeeId) {
   try {
-    console.warn(`🏷️ Generating badge for attendee ${attendeeId}...`);
+    console.log(`🏷️ Generating badge for attendee ${attendeeId}...`);
 
     // Get attendee details
     const { data: attendee, error } = await supabase
@@ -411,7 +425,7 @@ async function generateEventBadge(attendeeId) {
       stream.on('error', reject);
     });
 
-    console.warn(`✅ Badge generated: ${filepath}`);
+    console.log(`✅ Badge generated: ${filepath}`);
 
     return {
       filepath,
@@ -426,11 +440,14 @@ async function generateEventBadge(attendeeId) {
 }
 
 /**
- * Generate badges for all event attendees
+ * Generate badges for all confirmed attendees of an event.
+ * @param {string} eventId - The ID of the event.
+ * @returns {Promise<Array<{attendeeId: string, name: string, success: boolean, filepath?: string, error?: string}>>} Results for each attendee.
+ * @throws {Error} If a database error occurs.
  */
 async function generateAllEventBadges(eventId) {
   try {
-    console.warn(`🏷️ Generating badges for event ${eventId}...`);
+    console.log(`🏷️ Generating badges for event ${eventId}...`);
 
     const { data: attendees, error } = await supabase
       .from('event_attendees')
@@ -451,7 +468,7 @@ async function generateAllEventBadges(eventId) {
           success: true,
           filepath: result.filepath
         });
-        console.warn(`✅ ${attendee.contacts?.full_name || attendee.attendee_name}`);
+        console.log(`✅ ${attendee.contacts?.full_name || attendee.attendee_name}`);
       } catch (err) {
         console.error(`❌ ${attendee.contacts?.full_name || attendee.attendee_name}: ${err.message}`);
         results.push({
@@ -463,7 +480,7 @@ async function generateAllEventBadges(eventId) {
       }
     }
 
-    console.warn(`\n✅ Generated ${results.filter(r => r.success).length}/${attendees.length} badges`);
+    console.log(`\n✅ Generated ${results.filter(r => r.success).length}/${attendees.length} badges`);
     return results;
 
   } catch (error) {
@@ -473,7 +490,9 @@ async function generateAllEventBadges(eventId) {
 }
 
 /**
- * Verify QR code at event check-in
+ * Verify a QR code at event check-in and mark the attendee as checked in.
+ * @param {string} qrData - The JSON string from the scanned QR code.
+ * @returns {Promise<{valid: boolean, message: string, attendee?: Object, error?: string}>} Verification result.
  */
 async function verifyQRCode(qrData) {
   try {
@@ -527,10 +546,12 @@ async function verifyQRCode(qrData) {
 }
 
 /**
- * API Endpoints
+ * API endpoint to generate a winner certificate.
+ * POST /api/generate-certificate
+ * @param {Object} req - Express request object with body.entryId.
+ * @param {Object} res - Express response object.
+ * @returns {Promise<void>}
  */
-
-// POST /api/generate-certificate
 async function generateCertificateEndpoint(req, res) {
   try {
     const { entryId } = req.body;
@@ -541,7 +562,13 @@ async function generateCertificateEndpoint(req, res) {
   }
 }
 
-// POST /api/generate-all-certificates
+/**
+ * API endpoint to generate certificates for all winners.
+ * POST /api/generate-all-certificates
+ * @param {Object} req - Express request object.
+ * @param {Object} res - Express response object.
+ * @returns {Promise<void>}
+ */
 async function generateAllCertificatesEndpoint(req, res) {
   try {
     const results = await generateAllWinnerCertificates();
@@ -551,7 +578,13 @@ async function generateAllCertificatesEndpoint(req, res) {
   }
 }
 
-// POST /api/generate-qr-ticket
+/**
+ * API endpoint to generate a QR code ticket for an attendee.
+ * POST /api/generate-qr-ticket
+ * @param {Object} req - Express request object with body.attendeeId.
+ * @param {Object} res - Express response object.
+ * @returns {Promise<void>}
+ */
 async function generateQRTicketEndpoint(req, res) {
   try {
     const { attendeeId } = req.body;
@@ -562,7 +595,13 @@ async function generateQRTicketEndpoint(req, res) {
   }
 }
 
-// POST /api/generate-badge
+/**
+ * API endpoint to generate a printable event badge.
+ * POST /api/generate-badge
+ * @param {Object} req - Express request object with body.attendeeId.
+ * @param {Object} res - Express response object.
+ * @returns {Promise<void>}
+ */
 async function generateBadgeEndpoint(req, res) {
   try {
     const { attendeeId } = req.body;
@@ -573,7 +612,13 @@ async function generateBadgeEndpoint(req, res) {
   }
 }
 
-// POST /api/verify-qr
+/**
+ * API endpoint to verify a QR code at event check-in.
+ * POST /api/verify-qr
+ * @param {Object} req - Express request object with body.qrData.
+ * @param {Object} res - Express response object.
+ * @returns {Promise<void>}
+ */
 async function verifyQREndpoint(req, res) {
   try {
     const { qrData } = req.body;

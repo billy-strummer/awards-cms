@@ -1,8 +1,9 @@
-/* ==================================================== */
-/* AI VETTING API PROXY                                  */
-/* Server-side proxy for Claude API calls                */
-/* Keeps the Anthropic API key on the server             */
-/* ==================================================== */
+/**
+ * @module ai-vetting-proxy
+ * AI Vetting API Proxy.
+ * Server-side proxy for Claude API calls.
+ * Keeps the Anthropic API key on the server.
+ */
 
 const { Anthropic } = require('@anthropic-ai/sdk');
 
@@ -11,8 +12,15 @@ const anthropic = new Anthropic({
 });
 
 /**
- * Vet a single company via Claude API
- * Called from the frontend via Supabase Edge Function
+ * Vet a single company via Claude API.
+ * Called from the frontend via Supabase Edge Function.
+ * @param {Object} company - The company details to vet.
+ * @param {string} company.companyName - The name of the company.
+ * @param {string} [company.website] - The company website URL.
+ * @param {string} [company.sector] - The sector or category of the company.
+ * @param {string} [company.county] - The region or county of the company.
+ * @returns {Promise<Object>} Parsed JSON vetting result with reputation score, operational status, etc.
+ * @throws {Error} If the API key is not configured or the AI response is empty.
  */
 async function vetCompany({ companyName, website, sector, county }) {
   if (!process.env.ANTHROPIC_API_KEY) {
@@ -67,7 +75,14 @@ Provide your response in the following JSON format:
 }
 
 /**
- * Batch vet multiple companies
+ * Batch vet multiple companies sequentially with rate limiting.
+ * @param {Array<Object>} companies - Array of company objects to vet.
+ * @param {string} companies[].companyName - The name of the company.
+ * @param {string} [companies[].organisationId] - The organisation ID for tracking.
+ * @param {string} [companies[].website] - The company website URL.
+ * @param {string} [companies[].sector] - The sector or category.
+ * @param {string} [companies[].county] - The region or county.
+ * @returns {Promise<Array<Object>>} Array of vetting results with status ('clear', 'flagged', or 'error').
  */
 async function vetCompanies(companies) {
   const results = [];

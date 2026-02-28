@@ -16,14 +16,22 @@ function showPublicToast(msg, type = 'warning') {
   toast.style.cssText = `background:${colors[type] || colors.warning};color:${type === 'warning' ? '#000' : '#fff'};padding:12px 20px;margin-bottom:8px;border-radius:8px;box-shadow:0 4px 12px rgba(0,0,0,.15);font-size:14px;opacity:0;transition:opacity .3s;`;
   toast.textContent = msg;
   container.appendChild(toast);
-  requestAnimationFrame(() => toast.style.opacity = '1');
-  setTimeout(() => { toast.style.opacity = '0'; setTimeout(() => toast.remove(), 300); }, 4000);
+  requestAnimationFrame(() => (toast.style.opacity = '1'));
+  setTimeout(() => {
+    toast.style.opacity = '0';
+    setTimeout(() => toast.remove(), 300);
+  }, 4000);
 }
 
 // HTML escape helper for safe rendering
 function esc(str) {
   if (!str) return '';
-  return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
 }
 
 /**
@@ -35,7 +43,7 @@ async function votingApi(action, params = {}) {
   const res = await fetch('/api/voting-proxy', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ action, ...params })
+    body: JSON.stringify({ action, ...params }),
   });
   const data = await res.json();
   if (!res.ok) {
@@ -69,9 +77,9 @@ const votingSystem = {
       const { awards } = await votingApi('load_awards');
 
       const filter = document.getElementById('awardFilter');
-      filter.innerHTML = '<option value="">All Categories</option>' +
-        awards.map(a => `<option value="${esc(a.id)}">${esc(a.award_name)}</option>`).join('');
-
+      filter.innerHTML =
+        '<option value="">All Categories</option>' +
+        awards.map((a) => `<option value="${esc(a.id)}">${esc(a.award_name)}</option>`).join('');
     } catch (error) {
       console.error('Error loading awards:', error);
     }
@@ -89,19 +97,18 @@ const votingSystem = {
       // Check which entries user has already voted for
       if (this.voterEmail) {
         const { entry_ids } = await votingApi('check_votes', {
-          voter_email: this.voterEmail
+          voter_email: this.voterEmail,
         });
 
         const votedIds = entry_ids || [];
-        this.allEntries = this.allEntries.map(entry => ({
+        this.allEntries = this.allEntries.map((entry) => ({
           ...entry,
-          hasVoted: votedIds.includes(entry.id)
+          hasVoted: votedIds.includes(entry.id),
         }));
       }
 
       this.renderEntries();
       this.updateTotalVotes();
-
     } catch (error) {
       console.error('Error loading entries:', error);
       document.getElementById('entriesGrid').innerHTML = `
@@ -128,13 +135,16 @@ const votingSystem = {
       return;
     }
 
-    grid.innerHTML = this.allEntries.map(entry => `
+    grid.innerHTML = this.allEntries
+      .map(
+        (entry) => `
       <div class="entry-card ${entry.hasVoted ? 'voted' : ''}">
         <div class="row align-items-center">
           <div class="col-md-2 text-center">
-            ${entry.organisations?.logo_url
-              ? `<img src="${esc(entry.organisations.logo_url)}" alt="${esc(entry.organisations.company_name)}" class="company-logo">`
-              : `<div class="company-logo bg-light d-flex align-items-center justify-content-center">
+            ${
+              entry.organisations?.logo_url
+                ? `<img src="${esc(entry.organisations.logo_url)}" alt="${esc(entry.organisations.company_name)}" class="company-logo">`
+                : `<div class="company-logo bg-light d-flex align-items-center justify-content-center">
                    <i class="bi bi-building fs-1 text-muted"></i>
                  </div>`
             }
@@ -146,10 +156,12 @@ const votingSystem = {
             </p>
             <h6>${esc(entry.entry_title)}</h6>
             <p class="text-muted small">${entry.entry_description ? esc(entry.entry_description.substring(0, 150)) + '...' : ''}</p>
-            ${entry.organisations?.website ?
-              `<a href="${esc(entry.organisations.website)}" target="_blank" rel="noopener noreferrer" class="btn btn-sm btn-outline-primary">
+            ${
+              entry.organisations?.website
+                ? `<a href="${esc(entry.organisations.website)}" target="_blank" rel="noopener noreferrer" class="btn btn-sm btn-outline-primary">
                 <i class="bi bi-link-45deg me-1"></i>Visit Website
-              </a>` : ''
+              </a>`
+                : ''
             }
           </div>
           <div class="col-md-3 text-center">
@@ -158,17 +170,20 @@ const votingSystem = {
               ${parseInt(entry.public_votes) || 0} votes
             </div>
             <button class="vote-button ${entry.hasVoted ? 'btn btn-success' : ''}"
-                    onclick="votingSystem.vote('${esc(entry.id)}')"
+                    data-action="votingSystem.vote" data-id="${esc(entry.id)}"
                     ${entry.hasVoted ? 'disabled' : ''}>
-              ${entry.hasVoted
-                ? '<i class="bi bi-check-circle me-2"></i>Voted'
-                : '<i class="bi bi-hand-thumbs-up me-2"></i>Vote Now'
+              ${
+                entry.hasVoted
+                  ? '<i class="bi bi-check-circle me-2"></i>Voted'
+                  : '<i class="bi bi-hand-thumbs-up me-2"></i>Vote Now'
               }
             </button>
           </div>
         </div>
       </div>
-    `).join('');
+    `
+      )
+      .join('');
   },
 
   /**
@@ -178,7 +193,7 @@ const votingSystem = {
     const awardId = document.getElementById('awardFilter').value;
 
     if (awardId) {
-      this.filteredEntries = this.allEntries.filter(e => e.award_id === awardId);
+      this.filteredEntries = this.allEntries.filter((e) => e.award_id === awardId);
     } else {
       this.filteredEntries = [...this.allEntries];
     }
@@ -258,7 +273,7 @@ const votingSystem = {
 
       // Rate limit: max 10 votes per hour per email (server enforces too)
       const { count: recentVotes } = await votingApi('check_rate_limit', {
-        voter_email: this.voterEmail
+        voter_email: this.voterEmail,
       });
       if (recentVotes >= 10) {
         showPublicToast('You have reached the voting limit. Please try again later.', 'warning');
@@ -269,7 +284,7 @@ const votingSystem = {
       // Check if already voted for this entry
       const { exists } = await votingApi('check_existing_vote', {
         entry_id: this.currentEntryId,
-        voter_email: this.voterEmail
+        voter_email: this.voterEmail,
       });
 
       if (exists) {
@@ -284,7 +299,7 @@ const votingSystem = {
         voter_email: this.voterEmail,
         voter_name: voterName,
         voter_ip: 'unknown',
-        verification_token: this.generateToken()
+        verification_token: this.generateToken(),
       });
 
       // Close verification modal if open
@@ -298,7 +313,6 @@ const votingSystem = {
 
       // Reload entries to update vote counts
       await this.loadEntries();
-
     } catch (error) {
       console.error('Error submitting vote:', error);
       if (error?.status === 409) {
@@ -350,9 +364,9 @@ const votingSystem = {
           templateData: {
             voter_email: this.voterEmail,
             company_name: this.currentVote?.company_name || 'N/A',
-            award_name: this.currentVote?.award_name || 'British Trade Awards'
-          }
-        })
+            award_name: this.currentVote?.award_name || 'British Trade Awards',
+          },
+        }),
       });
     } catch (e) {
       console.warn('Email service unavailable:', e.message);
@@ -365,7 +379,7 @@ const votingSystem = {
   updateTotalVotes() {
     const total = this.allEntries.reduce((sum, entry) => sum + (entry.public_votes || 0), 0);
     document.getElementById('totalVotes').textContent = total.toLocaleString();
-  }
+  },
 };
 
 // Initialize on page load

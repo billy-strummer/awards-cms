@@ -15,11 +15,25 @@ const reportsScheduler = {
   async _loadScheduledReports() {
     try {
       if (typeof STATE !== 'undefined' && STATE.client) {
-        const { data } = await STATE.client.from('user_preferences').select('value').eq('key', 'orgScheduledReports').limit(1);
-        if (data?.[0]) { this._scheduledReports = JSON.parse(data[0].value); return; }
+        const result = await apiClient.select('user_preferences', {
+          select: 'value',
+          filters: { key: { eq: 'orgScheduledReports' } },
+          pageSize: 1,
+        });
+        const data = result?.data;
+        if (data?.[0]) {
+          this._scheduledReports = JSON.parse(data[0].value);
+          return;
+        }
       }
-    } catch (e) { console.warn('Scheduled reports: ' + e.message); }
-    try { this._scheduledReports = JSON.parse(localStorage.getItem('orgScheduledReports') || '[]'); } catch (e) { this._scheduledReports = []; }
+    } catch (e) {
+      console.warn('Scheduled reports: ' + e.message);
+    }
+    try {
+      this._scheduledReports = JSON.parse(localStorage.getItem('orgScheduledReports') || '[]');
+    } catch (e) {
+      this._scheduledReports = [];
+    }
   },
 
   /**
@@ -29,9 +43,15 @@ const reportsScheduler = {
   async _saveScheduledReports() {
     try {
       if (typeof STATE !== 'undefined' && typeof apiClient !== 'undefined') {
-        await apiClient.upsert('user_preferences', { key: 'orgScheduledReports', value: JSON.stringify(this._scheduledReports), updated_at: new Date().toISOString() });
+        await apiClient.upsert('user_preferences', {
+          key: 'orgScheduledReports',
+          value: JSON.stringify(this._scheduledReports),
+          updated_at: new Date().toISOString(),
+        });
       }
-    } catch (e) { console.warn('Scheduled reports: ' + e.message); }
+    } catch (e) {
+      console.warn('Scheduled reports: ' + e.message);
+    }
     localStorage.setItem('orgScheduledReports', JSON.stringify(this._scheduledReports));
   },
 
@@ -51,7 +71,9 @@ const reportsScheduler = {
       </div>`;
       return;
     }
-    container.innerHTML = reports.map((r, i) => `
+    container.innerHTML = reports
+      .map(
+        (r, i) => `
       <div class="card mb-2">
         <div class="card-body py-2">
           <div class="d-flex justify-content-between align-items-center">
@@ -66,7 +88,9 @@ const reportsScheduler = {
             </div>
           </div>
         </div>
-      </div>`).join('');
+      </div>`
+      )
+      .join('');
   },
 
   /**
@@ -113,11 +137,24 @@ const reportsScheduler = {
     const name = document.getElementById('reportName')?.value?.trim();
     const frequency = document.getElementById('reportFrequency')?.value;
     const recipients = document.getElementById('reportRecipients')?.value?.trim();
-    if (!name || !recipients) { utils.showToast('Fill in name and recipients', 'warning'); return; }
-    const sections = Array.from(document.querySelectorAll('.rpt-section:checked')).map(cb => cb.value);
-    if (sections.length === 0) { utils.showToast('Select at least one section', 'warning'); return; }
+    if (!name || !recipients) {
+      utils.showToast('Fill in name and recipients', 'warning');
+      return;
+    }
+    const sections = Array.from(document.querySelectorAll('.rpt-section:checked')).map((cb) => cb.value);
+    if (sections.length === 0) {
+      utils.showToast('Select at least one section', 'warning');
+      return;
+    }
     await utils.protectModalDuringSave('createScheduledReportModal', async () => {
-      this._scheduledReports.push({ name, frequency, recipients, sections, active: true, created: new Date().toISOString() });
+      this._scheduledReports.push({
+        name,
+        frequency,
+        recipients,
+        sections,
+        active: true,
+        created: new Date().toISOString(),
+      });
       await this._saveScheduledReports();
       utils.showToast('Report schedule created', 'success');
       bootstrap.Modal.getInstance(document.getElementById('createScheduledReportModal'))?.hide();
@@ -131,14 +168,35 @@ const reportsScheduler = {
    * @returns {void}
    */
   previewReport(index) {
-    const r = this._scheduledReports[index]; if (!r) return;
-    const orgs = (typeof STATE !== 'undefined' && STATE.allOrganisations) ? STATE.allOrganisations : [];
-    const pipeline = {}; orgs.forEach(o => { const s = o.status || 'prospect'; pipeline[s] = (pipeline[s] || 0) + 1; });
-    const regions = {}; orgs.forEach(o => { const reg = o.region || 'Unknown'; regions[reg] = (regions[reg] || 0) + 1; });
+    const r = this._scheduledReports[index];
+    if (!r) return;
+    const orgs = typeof STATE !== 'undefined' && STATE.allOrganisations ? STATE.allOrganisations : [];
+    const pipeline = {};
+    orgs.forEach((o) => {
+      const s = o.status || 'prospect';
+      pipeline[s] = (pipeline[s] || 0) + 1;
+    });
+    const regions = {};
+    orgs.forEach((o) => {
+      const reg = o.region || 'Unknown';
+      regions[reg] = (regions[reg] || 0) + 1;
+    });
     let preview = `<h5>${utils.escapeHtml(r.name)}</h5><p class="text-muted small">Preview generated ${new Date().toLocaleString('en-GB')}</p><hr>`;
-    if (r.sections.includes('KPI Summary')) preview += `<h6>KPI Summary</h6><div class="row text-center mb-3"><div class="col"><strong>${orgs.length}</strong><br><small>Total Orgs</small></div><div class="col"><strong>${Object.keys(regions).length}</strong><br><small>Regions</small></div></div>`;
-    if (r.sections.includes('Pipeline')) preview += `<h6>Pipeline</h6><div class="mb-3">${Object.entries(pipeline).map(([s, c]) => `<span class="badge bg-primary me-1">${s}: ${c}</span>`).join('')}</div>`;
-    if (r.sections.includes('Regional')) preview += `<h6>Regional</h6><div class="mb-3">${Object.entries(regions).sort((a,b)=>b[1]-a[1]).slice(0,10).map(([r,c])=>`<div class="d-flex justify-content-between small"><span>${utils.escapeHtml(r)}</span><strong>${c}</strong></div>`).join('')}</div>`;
+    if (r.sections.includes('KPI Summary'))
+      preview += `<h6>KPI Summary</h6><div class="row text-center mb-3"><div class="col"><strong>${orgs.length}</strong><br><small>Total Orgs</small></div><div class="col"><strong>${Object.keys(regions).length}</strong><br><small>Regions</small></div></div>`;
+    if (r.sections.includes('Pipeline'))
+      preview += `<h6>Pipeline</h6><div class="mb-3">${Object.entries(pipeline)
+        .map(([s, c]) => `<span class="badge bg-primary me-1">${s}: ${c}</span>`)
+        .join('')}</div>`;
+    if (r.sections.includes('Regional'))
+      preview += `<h6>Regional</h6><div class="mb-3">${Object.entries(regions)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 10)
+        .map(
+          ([r, c]) =>
+            `<div class="d-flex justify-content-between small"><span>${utils.escapeHtml(r)}</span><strong>${c}</strong></div>`
+        )
+        .join('')}</div>`;
 
     const existingModal = document.getElementById('reportPreviewModal');
     if (existingModal) existingModal.remove();
@@ -158,11 +216,19 @@ const reportsScheduler = {
    * @returns {Promise<void>}
    */
   async deleteReport(i) {
-    if (!await utils.confirmDialog({ title: 'Delete Report Schedule', message: 'Delete this report schedule?', confirmText: 'Delete', danger: true })) return;
+    if (
+      !(await utils.confirmDialog({
+        title: 'Delete Report Schedule',
+        message: 'Delete this report schedule?',
+        confirmText: 'Delete',
+        danger: true,
+      }))
+    )
+      return;
     this._scheduledReports.splice(i, 1);
     await this._saveScheduledReports();
     this.loadReports();
-  }
+  },
 };
 ModuleRegistry.register('reportsScheduler', reportsScheduler);
 
@@ -179,23 +245,26 @@ const reportsAnalytics = {
    * @returns {void}
    */
   loadAnalytics() {
-    const orgs = (typeof STATE !== 'undefined' && STATE.allOrganisations) ? STATE.allOrganisations : [];
-    const awards = (typeof STATE !== 'undefined' && STATE.allAwards) ? STATE.allAwards : [];
-    const winners = (typeof STATE !== 'undefined' && STATE.allWinners) ? STATE.allWinners : [];
-    const entries = (typeof STATE !== 'undefined' && STATE.allEntries) ? STATE.allEntries : [];
+    const orgs = typeof STATE !== 'undefined' && STATE.allOrganisations ? STATE.allOrganisations : [];
+    const awards = typeof STATE !== 'undefined' && STATE.allAwards ? STATE.allAwards : [];
+    const winners = typeof STATE !== 'undefined' && STATE.allWinners ? STATE.allWinners : [];
+    const entries = typeof STATE !== 'undefined' && STATE.allEntries ? STATE.allEntries : [];
 
     // Populate year filter options
     this._populateYearFilter(awards, winners, orgs, entries);
 
     // Apply year filter
     const year = this._selectedYear;
-    const fAwards = year === 'all' ? awards : awards.filter(a => this._getYear(a) === year);
-    const fWinners = year === 'all' ? winners : winners.filter(w => this._getYear(w) === year);
-    const fOrgs = year === 'all' ? orgs : orgs.filter(o => this._getYear(o) === year);
-    const fEntries = year === 'all' ? entries : entries.filter(e => this._getYear(e) === year);
+    const fAwards = year === 'all' ? awards : awards.filter((a) => this._getYear(a) === year);
+    const fWinners = year === 'all' ? winners : winners.filter((w) => this._getYear(w) === year);
+    const fOrgs = year === 'all' ? orgs : orgs.filter((o) => this._getYear(o) === year);
+    const fEntries = year === 'all' ? entries : entries.filter((e) => this._getYear(e) === year);
 
     // Update stat counters
-    const el = (id, val) => { const e = document.getElementById(id); if (e) e.textContent = val; };
+    const el = (id, val) => {
+      const e = document.getElementById(id);
+      if (e) e.textContent = val;
+    };
     el('reportsTotal', fAwards.length);
     el('reportsTotalOrgs', fOrgs.length);
     el('reportsTotalWinners', fWinners.length);
@@ -237,13 +306,16 @@ const reportsAnalytics = {
     const select = document.getElementById('reportsYearFilter');
     if (!select) return;
     const years = new Set();
-    [...awards, ...winners, ...orgs, ...entries].forEach(r => {
+    [...awards, ...winners, ...orgs, ...entries].forEach((r) => {
       const y = this._getYear(r);
       if (y && y.length === 4 && !isNaN(y)) years.add(y);
     });
     const sortedYears = [...years].sort((a, b) => b - a);
-    select.innerHTML = '<option value="all">All Years</option>' +
-      sortedYears.map(y => `<option value="${y}"${y === this._selectedYear ? ' selected' : ''}>${y}</option>`).join('');
+    select.innerHTML =
+      '<option value="all">All Years</option>' +
+      sortedYears
+        .map((y) => `<option value="${y}"${y === this._selectedYear ? ' selected' : ''}>${y}</option>`)
+        .join('');
   },
 
   /**
@@ -275,7 +347,10 @@ const reportsAnalytics = {
    * @returns {void}
    */
   _destroyChart(key) {
-    if (this._charts[key]) { this._charts[key].destroy(); delete this._charts[key]; }
+    if (this._charts[key]) {
+      this._charts[key].destroy();
+      delete this._charts[key];
+    }
   },
 
   /**
@@ -289,15 +364,36 @@ const reportsAnalytics = {
     if (!canvas || typeof Chart === 'undefined') return;
 
     const counts = {};
-    orgs.forEach(o => { const s = o.status || 'unknown'; counts[s] = (counts[s] || 0) + 1; });
+    orgs.forEach((o) => {
+      const s = o.status || 'unknown';
+      counts[s] = (counts[s] || 0) + 1;
+    });
     const labels = Object.keys(counts);
     const data = Object.values(counts);
-    const colors = ['#0d6efd', '#198754', '#ffc107', '#dc3545', '#6f42c1', '#20c997', '#fd7e14', '#0dcaf0', '#6c757d', '#d63384'];
+    const colors = [
+      '#0d6efd',
+      '#198754',
+      '#ffc107',
+      '#dc3545',
+      '#6f42c1',
+      '#20c997',
+      '#fd7e14',
+      '#0dcaf0',
+      '#6c757d',
+      '#d63384',
+    ];
 
     this._charts.pipeline = new Chart(canvas.getContext('2d'), {
       type: 'doughnut',
-      data: { labels: labels.map(l => l.charAt(0).toUpperCase() + l.slice(1)), datasets: [{ data, backgroundColor: colors.slice(0, labels.length), borderWidth: 2 }] },
-      options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'right', labels: { boxWidth: 12, font: { size: 11 } } } } }
+      data: {
+        labels: labels.map((l) => l.charAt(0).toUpperCase() + l.slice(1)),
+        datasets: [{ data, backgroundColor: colors.slice(0, labels.length), borderWidth: 2 }],
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: { legend: { position: 'right', labels: { boxWidth: 12, font: { size: 11 } } } },
+      },
     });
   },
 
@@ -312,15 +408,26 @@ const reportsAnalytics = {
     if (!canvas || typeof Chart === 'undefined') return;
 
     const counts = {};
-    orgs.forEach(o => { const s = o.sector || 'Unknown'; counts[s] = (counts[s] || 0) + 1; });
-    const sorted = Object.entries(counts).sort((a, b) => b[1] - a[1]).slice(0, 12);
-    const labels = sorted.map(([k]) => k.length > 20 ? k.slice(0, 18) + '...' : k);
+    orgs.forEach((o) => {
+      const s = o.sector || 'Unknown';
+      counts[s] = (counts[s] || 0) + 1;
+    });
+    const sorted = Object.entries(counts)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 12);
+    const labels = sorted.map(([k]) => (k.length > 20 ? k.slice(0, 18) + '...' : k));
     const data = sorted.map(([, v]) => v);
 
     this._charts.sector = new Chart(canvas.getContext('2d'), {
       type: 'bar',
       data: { labels, datasets: [{ label: 'Organisations', data, backgroundColor: '#0d6efd', borderRadius: 4 }] },
-      options: { responsive: true, maintainAspectRatio: false, indexAxis: 'y', plugins: { legend: { display: false } }, scales: { x: { beginAtZero: true, ticks: { precision: 0 } } } }
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        indexAxis: 'y',
+        plugins: { legend: { display: false } },
+        scales: { x: { beginAtZero: true, ticks: { precision: 0 } } },
+      },
     });
   },
 
@@ -335,15 +442,25 @@ const reportsAnalytics = {
     if (!canvas || typeof Chart === 'undefined') return;
 
     const counts = {};
-    orgs.forEach(o => { const r = o.region || 'Unknown'; counts[r] = (counts[r] || 0) + 1; });
-    const sorted = Object.entries(counts).sort((a, b) => b[1] - a[1]).slice(0, 15);
+    orgs.forEach((o) => {
+      const r = o.region || 'Unknown';
+      counts[r] = (counts[r] || 0) + 1;
+    });
+    const sorted = Object.entries(counts)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 15);
     const labels = sorted.map(([k]) => k);
     const data = sorted.map(([, v]) => v);
 
     this._charts.region = new Chart(canvas.getContext('2d'), {
       type: 'bar',
       data: { labels, datasets: [{ label: 'Organisations', data, backgroundColor: '#198754', borderRadius: 4 }] },
-      options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, ticks: { precision: 0 } } } }
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: { legend: { display: false } },
+        scales: { y: { beginAtZero: true, ticks: { precision: 0 } } },
+      },
     });
   },
 
@@ -357,8 +474,8 @@ const reportsAnalytics = {
     const canvas = document.getElementById('reportsTierChart');
     if (!canvas || typeof Chart === 'undefined') return;
 
-    const counts = { 'Bronze': 0, 'Silver': 0, 'Gold': 0, 'Platinum': 0, 'None': 0 };
-    orgs.forEach(o => {
+    const counts = { Bronze: 0, Silver: 0, Gold: 0, Platinum: 0, None: 0 };
+    orgs.forEach((o) => {
       const t = o.tier || 'None';
       if (counts.hasOwnProperty(t)) counts[t]++;
       else counts['None']++;
@@ -369,8 +486,15 @@ const reportsAnalytics = {
 
     this._charts.tier = new Chart(canvas.getContext('2d'), {
       type: 'polarArea',
-      data: { labels, datasets: [{ data, backgroundColor: colors.map(c => c + '99'), borderColor: colors, borderWidth: 2 }] },
-      options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'right', labels: { boxWidth: 12, font: { size: 11 } } } } }
+      data: {
+        labels,
+        datasets: [{ data, backgroundColor: colors.map((c) => c + '99'), borderColor: colors, borderWidth: 2 }],
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: { legend: { position: 'right', labels: { boxWidth: 12, font: { size: 11 } } } },
+      },
     });
   },
 
@@ -389,16 +513,26 @@ const reportsAnalytics = {
 
     // Collect all years from all datasets
     const yearSet = new Set();
-    const addYears = (arr) => arr.forEach(r => { const y = this._getYear(r); if (y && y.length === 4 && !isNaN(y)) yearSet.add(y); });
-    addYears(awards); addYears(winners); addYears(entries); addYears(orgs);
+    const addYears = (arr) =>
+      arr.forEach((r) => {
+        const y = this._getYear(r);
+        if (y && y.length === 4 && !isNaN(y)) yearSet.add(y);
+      });
+    addYears(awards);
+    addYears(winners);
+    addYears(entries);
+    addYears(orgs);
     const years = [...yearSet].sort();
 
     if (years.length < 1) return;
 
     const countByYear = (arr) => {
       const map = {};
-      arr.forEach(r => { const y = this._getYear(r); if (y) map[y] = (map[y] || 0) + 1; });
-      return years.map(y => map[y] || 0);
+      arr.forEach((r) => {
+        const y = this._getYear(r);
+        if (y) map[y] = (map[y] || 0) + 1;
+      });
+      return years.map((y) => map[y] || 0);
     };
 
     this._charts.yoy = new Chart(canvas.getContext('2d'), {
@@ -406,17 +540,46 @@ const reportsAnalytics = {
       data: {
         labels: years,
         datasets: [
-          { label: 'Awards', data: countByYear(awards), backgroundColor: '#0d6efd99', borderColor: '#0d6efd', borderWidth: 2, borderRadius: 4 },
-          { label: 'Organisations', data: countByYear(orgs), backgroundColor: '#19875499', borderColor: '#198754', borderWidth: 2, borderRadius: 4 },
-          { label: 'Winners', data: countByYear(winners), backgroundColor: '#0dcaf099', borderColor: '#0dcaf0', borderWidth: 2, borderRadius: 4 },
-          { label: 'Entries', data: countByYear(entries), backgroundColor: '#ffc10799', borderColor: '#ffc107', borderWidth: 2, borderRadius: 4 }
-        ]
+          {
+            label: 'Awards',
+            data: countByYear(awards),
+            backgroundColor: '#0d6efd99',
+            borderColor: '#0d6efd',
+            borderWidth: 2,
+            borderRadius: 4,
+          },
+          {
+            label: 'Organisations',
+            data: countByYear(orgs),
+            backgroundColor: '#19875499',
+            borderColor: '#198754',
+            borderWidth: 2,
+            borderRadius: 4,
+          },
+          {
+            label: 'Winners',
+            data: countByYear(winners),
+            backgroundColor: '#0dcaf099',
+            borderColor: '#0dcaf0',
+            borderWidth: 2,
+            borderRadius: 4,
+          },
+          {
+            label: 'Entries',
+            data: countByYear(entries),
+            backgroundColor: '#ffc10799',
+            borderColor: '#ffc107',
+            borderWidth: 2,
+            borderRadius: 4,
+          },
+        ],
       },
       options: {
-        responsive: true, maintainAspectRatio: false,
+        responsive: true,
+        maintainAspectRatio: false,
         plugins: { legend: { position: 'top', labels: { boxWidth: 12, font: { size: 11 } } } },
-        scales: { y: { beginAtZero: true, ticks: { precision: 0 } } }
-      }
+        scales: { y: { beginAtZero: true, ticks: { precision: 0 } } },
+      },
     });
   },
 
@@ -427,20 +590,41 @@ const reportsAnalytics = {
     if (!canvas || typeof Chart === 'undefined') return;
 
     const counts = {};
-    awards.forEach(a => { const c = a.category || a.award_category || 'Uncategorised'; counts[c] = (counts[c] || 0) + 1; });
-    const sorted = Object.entries(counts).sort((a, b) => b[1] - a[1]).slice(0, 10);
-    const labels = sorted.map(([k]) => k.length > 22 ? k.slice(0, 20) + '...' : k);
+    awards.forEach((a) => {
+      const c = a.category || a.award_category || 'Uncategorised';
+      counts[c] = (counts[c] || 0) + 1;
+    });
+    const sorted = Object.entries(counts)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 10);
+    const labels = sorted.map(([k]) => (k.length > 22 ? k.slice(0, 20) + '...' : k));
     const data = sorted.map(([, v]) => v);
-    const palette = ['#0d6efd', '#198754', '#ffc107', '#dc3545', '#6f42c1', '#20c997', '#fd7e14', '#0dcaf0', '#d63384', '#6c757d'];
+    const palette = [
+      '#0d6efd',
+      '#198754',
+      '#ffc107',
+      '#dc3545',
+      '#6f42c1',
+      '#20c997',
+      '#fd7e14',
+      '#0dcaf0',
+      '#d63384',
+      '#6c757d',
+    ];
 
     this._charts.category = new Chart(canvas.getContext('2d'), {
       type: 'bar',
-      data: { labels, datasets: [{ label: 'Awards', data, backgroundColor: palette.slice(0, data.length), borderRadius: 4 }] },
+      data: {
+        labels,
+        datasets: [{ label: 'Awards', data, backgroundColor: palette.slice(0, data.length), borderRadius: 4 }],
+      },
       options: {
-        responsive: true, maintainAspectRatio: false, indexAxis: 'y',
+        responsive: true,
+        maintainAspectRatio: false,
+        indexAxis: 'y',
         plugins: { legend: { display: false } },
-        scales: { x: { beginAtZero: true, ticks: { precision: 0 } } }
-      }
+        scales: { x: { beginAtZero: true, ticks: { precision: 0 } } },
+      },
     });
   },
 
@@ -452,11 +636,24 @@ const reportsAnalytics = {
 
     // Build funnel stages: Total Orgs → Entrants → Nominees/Shortlisted → Winners
     const statusCounts = {};
-    orgs.forEach(o => { const s = (o.status || 'unknown').toLowerCase(); statusCounts[s] = (statusCounts[s] || 0) + 1; });
+    orgs.forEach((o) => {
+      const s = (o.status || 'unknown').toLowerCase();
+      statusCounts[s] = (statusCounts[s] || 0) + 1;
+    });
 
     const totalOrgs = orgs.length;
-    const totalEntries = entries.length || (statusCounts['entrant'] || 0) + (statusCounts['nominee'] || 0) + (statusCounts['shortlisted'] || 0) + (statusCounts['winner'] || 0) + (statusCounts['past_winner'] || 0);
-    const shortlisted = (statusCounts['shortlisted'] || 0) + (statusCounts['nominee'] || 0) + (statusCounts['winner'] || 0) + (statusCounts['past_winner'] || 0);
+    const totalEntries =
+      entries.length ||
+      (statusCounts['entrant'] || 0) +
+        (statusCounts['nominee'] || 0) +
+        (statusCounts['shortlisted'] || 0) +
+        (statusCounts['winner'] || 0) +
+        (statusCounts['past_winner'] || 0);
+    const shortlisted =
+      (statusCounts['shortlisted'] || 0) +
+      (statusCounts['nominee'] || 0) +
+      (statusCounts['winner'] || 0) +
+      (statusCounts['past_winner'] || 0);
     const totalWinners = winners.length || (statusCounts['winner'] || 0) + (statusCounts['past_winner'] || 0);
 
     const stages = ['Organisations', 'Entries', 'Shortlisted', 'Winners'];
@@ -467,10 +664,21 @@ const reportsAnalytics = {
       type: 'bar',
       data: {
         labels: stages,
-        datasets: [{ data: values, backgroundColor: colors.map(c => c + 'cc'), borderColor: colors, borderWidth: 2, borderRadius: 6, barPercentage: 0.7 }]
+        datasets: [
+          {
+            data: values,
+            backgroundColor: colors.map((c) => c + 'cc'),
+            borderColor: colors,
+            borderWidth: 2,
+            borderRadius: 6,
+            barPercentage: 0.7,
+          },
+        ],
       },
       options: {
-        responsive: true, maintainAspectRatio: false, indexAxis: 'y',
+        responsive: true,
+        maintainAspectRatio: false,
+        indexAxis: 'y',
         plugins: {
           legend: { display: false },
           tooltip: {
@@ -480,48 +688,71 @@ const reportsAnalytics = {
                 const prevVal = ctx.dataIndex > 0 ? values[ctx.dataIndex - 1] : val;
                 const rate = prevVal > 0 ? ((val / prevVal) * 100).toFixed(1) : '0';
                 return ctx.dataIndex === 0 ? `${val} total` : `${val} (${rate}% conversion)`;
-              }
-            }
-          }
+              },
+            },
+          },
         },
-        scales: { x: { beginAtZero: true, ticks: { precision: 0 } } }
-      }
+        scales: { x: { beginAtZero: true, ticks: { precision: 0 } } },
+      },
     });
   },
 
   // ---- NEW: Print/PDF Summary Report ----
   printSummaryReport() {
-    const allOrgs = (typeof STATE !== 'undefined' && STATE.allOrganisations) ? STATE.allOrganisations : [];
-    const allAwards = (typeof STATE !== 'undefined' && STATE.allAwards) ? STATE.allAwards : [];
-    const allWinners = (typeof STATE !== 'undefined' && STATE.allWinners) ? STATE.allWinners : [];
-    const allEntries = (typeof STATE !== 'undefined' && STATE.allEntries) ? STATE.allEntries : [];
+    const allOrgs = typeof STATE !== 'undefined' && STATE.allOrganisations ? STATE.allOrganisations : [];
+    const allAwards = typeof STATE !== 'undefined' && STATE.allAwards ? STATE.allAwards : [];
+    const allWinners = typeof STATE !== 'undefined' && STATE.allWinners ? STATE.allWinners : [];
+    const allEntries = typeof STATE !== 'undefined' && STATE.allEntries ? STATE.allEntries : [];
 
     // Apply year filter (same logic as loadAnalytics)
     const year = this._selectedYear;
-    const orgs = year === 'all' ? allOrgs : allOrgs.filter(o => this._getYear(o) === year);
-    const awards = year === 'all' ? allAwards : allAwards.filter(a => this._getYear(a) === year);
-    const winners = year === 'all' ? allWinners : allWinners.filter(w => this._getYear(w) === year);
-    const entries = year === 'all' ? allEntries : allEntries.filter(e => this._getYear(e) === year);
+    const orgs = year === 'all' ? allOrgs : allOrgs.filter((o) => this._getYear(o) === year);
+    const awards = year === 'all' ? allAwards : allAwards.filter((a) => this._getYear(a) === year);
+    const winners = year === 'all' ? allWinners : allWinners.filter((w) => this._getYear(w) === year);
+    const entries = year === 'all' ? allEntries : allEntries.filter((e) => this._getYear(e) === year);
 
-    const esc = (s) => (typeof utils !== 'undefined' && utils.escapeHtml) ? utils.escapeHtml(s) : s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    const esc = (s) =>
+      typeof utils !== 'undefined' && utils.escapeHtml
+        ? utils.escapeHtml(s)
+        : s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 
     // Build status breakdown
     const statusCounts = {};
-    orgs.forEach(o => { const s = o.status || 'unknown'; statusCounts[s] = (statusCounts[s] || 0) + 1; });
-    const statusRows = Object.entries(statusCounts).sort((a, b) => b[1] - a[1])
-      .map(([s, c]) => `<tr><td style="text-transform:capitalize;">${esc(s)}</td><td style="text-align:right;">${c}</td><td style="text-align:right;">${((c / (orgs.length || 1)) * 100).toFixed(1)}%</td></tr>`).join('');
+    orgs.forEach((o) => {
+      const s = o.status || 'unknown';
+      statusCounts[s] = (statusCounts[s] || 0) + 1;
+    });
+    const statusRows = Object.entries(statusCounts)
+      .sort((a, b) => b[1] - a[1])
+      .map(
+        ([s, c]) =>
+          `<tr><td style="text-transform:capitalize;">${esc(s)}</td><td style="text-align:right;">${c}</td><td style="text-align:right;">${((c / (orgs.length || 1)) * 100).toFixed(1)}%</td></tr>`
+      )
+      .join('');
 
     // Build sector breakdown
     const sectorCounts = {};
-    orgs.forEach(o => { const s = o.sector || 'Unknown'; sectorCounts[s] = (sectorCounts[s] || 0) + 1; });
-    const sectorRows = Object.entries(sectorCounts).sort((a, b) => b[1] - a[1]).slice(0, 15)
-      .map(([s, c]) => `<tr><td>${esc(s)}</td><td style="text-align:right;">${c}</td></tr>`).join('');
+    orgs.forEach((o) => {
+      const s = o.sector || 'Unknown';
+      sectorCounts[s] = (sectorCounts[s] || 0) + 1;
+    });
+    const sectorRows = Object.entries(sectorCounts)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 15)
+      .map(([s, c]) => `<tr><td>${esc(s)}</td><td style="text-align:right;">${c}</td></tr>`)
+      .join('');
 
     // Build region breakdown
     const regionCounts = {};
-    orgs.forEach(o => { const r = o.region || 'Unknown'; regionCounts[r] = (regionCounts[r] || 0) + 1; });
-    const regionRows = Object.entries(regionCounts).sort((a, b) => b[1] - a[1]).slice(0, 15)
-      .map(([r, c]) => `<tr><td>${esc(r)}</td><td style="text-align:right;">${c}</td></tr>`).join('');
+    orgs.forEach((o) => {
+      const r = o.region || 'Unknown';
+      regionCounts[r] = (regionCounts[r] || 0) + 1;
+    });
+    const regionRows = Object.entries(regionCounts)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 15)
+      .map(([r, c]) => `<tr><td>${esc(r)}</td><td style="text-align:right;">${c}</td></tr>`)
+      .join('');
 
     const yearLabel = this._selectedYear === 'all' ? 'All Years' : this._selectedYear;
     const now = new Date().toLocaleString();
@@ -571,34 +802,49 @@ const reportsAnalytics = {
     if (!tbody) return;
 
     const counts = {};
-    orgs.forEach(o => { const s = o.status || 'unknown'; counts[s] = (counts[s] || 0) + 1; });
+    orgs.forEach((o) => {
+      const s = o.status || 'unknown';
+      counts[s] = (counts[s] || 0) + 1;
+    });
     const total = orgs.length || 1;
     const sorted = Object.entries(counts).sort((a, b) => b[1] - a[1]);
-    const colors = { prospect: 'primary', entrant: 'info', nominee: 'warning', shortlisted: 'secondary', winner: 'success', sponsor: 'dark', past_winner: 'secondary', archived: 'danger', unknown: 'light' };
+    const colors = {
+      prospect: 'primary',
+      entrant: 'info',
+      nominee: 'warning',
+      shortlisted: 'secondary',
+      winner: 'success',
+      sponsor: 'dark',
+      past_winner: 'secondary',
+      archived: 'danger',
+      unknown: 'light',
+    };
 
-    tbody.innerHTML = sorted.map(([status, count]) => {
-      const pct = ((count / total) * 100).toFixed(1);
-      const color = colors[status] || 'secondary';
-      return `<tr>
+    tbody.innerHTML = sorted
+      .map(([status, count]) => {
+        const pct = ((count / total) * 100).toFixed(1);
+        const color = colors[status] || 'secondary';
+        return `<tr>
         <td><span class="badge bg-${color}">${status.charAt(0).toUpperCase() + status.slice(1)}</span></td>
         <td class="text-center fw-semibold">${count}</td>
         <td>${pct}%</td>
         <td><div class="progress" style="height:8px;"><div class="progress-bar bg-${color}" style="width:${pct}%"></div></div></td>
       </tr>`;
-    }).join('');
-  }
+      })
+      .join('');
+  },
 };
 ModuleRegistry.register('reportsAnalytics', reportsAnalytics);
 
 // Wait for DOM to be fully loaded before initializing
-document.addEventListener('DOMContentLoaded', function() {
+document.addEventListener('DOMContentLoaded', function () {
   console.warn('🚀 Initializing British Trade Awards Admin...');
-  
+
   // ==========================================
   // STEP 1: Initialize Supabase
   // ==========================================
   authModule.initSupabase();
-  
+
   // ==========================================
   // STEP 1b: Initialize Security, Accessibility, and Stripe
   // ==========================================
@@ -622,61 +868,64 @@ document.addEventListener('DOMContentLoaded', function() {
   const loginBtn = document.getElementById('loginBtn');
   const loginEmail = document.getElementById('loginEmail');
   const loginPassword = document.getElementById('loginPassword');
-  
+
   // Login button click
-  if (loginBtn) loginBtn.addEventListener('click', (e) => {
-    e.preventDefault();
-    authModule.handleLogin();
-  });
-
-  // Login form submit
-  if (loginForm) loginForm.addEventListener('submit', (e) => {
-    e.preventDefault();
-    authModule.handleLogin();
-  });
-
-  // Enter key on password field
-  if (loginPassword) loginPassword.addEventListener('keypress', (e) => {
-    if (e.key === 'Enter') {
+  if (loginBtn)
+    loginBtn.addEventListener('click', (e) => {
       e.preventDefault();
       authModule.handleLogin();
-    }
-  });
+    });
+
+  // Login form submit
+  if (loginForm)
+    loginForm.addEventListener('submit', (e) => {
+      e.preventDefault();
+      authModule.handleLogin();
+    });
+
+  // Enter key on password field
+  if (loginPassword)
+    loginPassword.addEventListener('keypress', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        authModule.handleLogin();
+      }
+    });
 
   // Enter key on email field (focus password)
-  if (loginEmail) loginEmail.addEventListener('keypress', (e) => {
-    if (e.key === 'Enter') {
-      e.preventDefault();
-      if (loginPassword) loginPassword.focus();
-    }
-  });
+  if (loginEmail)
+    loginEmail.addEventListener('keypress', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        if (loginPassword) loginPassword.focus();
+      }
+    });
 
   // --- Logout ---
   const logoutBtn = document.getElementById('logoutBtn');
-  if (logoutBtn) logoutBtn.addEventListener('click', () => {
-    authModule.handleLogout();
-  });
+  if (logoutBtn)
+    logoutBtn.addEventListener('click', () => {
+      authModule.handleLogout();
+    });
 
   // --- Dark Mode Toggle ---
   const darkModeToggle = document.getElementById('darkModeToggle');
-  if (darkModeToggle) darkModeToggle.addEventListener('click', () => {
-    document.body.classList.toggle('dark-mode');
-    const icon = document.querySelector('#darkModeToggle i');
-    if (icon) {
-      icon.classList.toggle('bi-moon');
-      icon.classList.toggle('bi-sun');
-    }
+  if (darkModeToggle)
+    darkModeToggle.addEventListener('click', () => {
+      document.body.classList.toggle('dark-mode');
+      const icon = document.querySelector('#darkModeToggle i');
+      if (icon) {
+        icon.classList.toggle('bi-moon');
+        icon.classList.toggle('bi-sun');
+      }
 
-    // Save preference
-    const isDark = document.body.classList.contains('dark-mode');
-    localStorage.setItem('darkMode', isDark);
+      // Save preference
+      const isDark = document.body.classList.contains('dark-mode');
+      localStorage.setItem('darkMode', isDark);
 
-    utils.showToast(
-      isDark ? 'Dark mode enabled' : 'Light mode enabled',
-      'info'
-    );
-  });
-  
+      utils.showToast(isDark ? 'Dark mode enabled' : 'Light mode enabled', 'info');
+    });
+
   // Restore dark mode preference
   if (localStorage.getItem('darkMode') === 'true') {
     document.body.classList.add('dark-mode');
@@ -688,7 +937,7 @@ document.addEventListener('DOMContentLoaded', function() {
   // --- Table dropdown z-index fix ---
   // When a dropdown opens inside a table, elevate its row so the menu
   // renders above buttons/badges in every other row.
-  document.addEventListener('show.bs.dropdown', function(e) {
+  document.addEventListener('show.bs.dropdown', function (e) {
     const tr = e.target.closest('.table-responsive tr');
     if (tr) {
       tr.classList.add('dropdown-row-active');
@@ -696,7 +945,7 @@ document.addEventListener('DOMContentLoaded', function() {
       if (wrapper) wrapper.classList.add('dropdown-open');
     }
   });
-  document.addEventListener('hide.bs.dropdown', function(e) {
+  document.addEventListener('hide.bs.dropdown', function (e) {
     const tr = e.target.closest('.table-responsive tr');
     if (tr) {
       tr.classList.remove('dropdown-row-active');
@@ -709,7 +958,7 @@ document.addEventListener('DOMContentLoaded', function() {
   // Cards with [data-stat-filter] attributes filter the data below them.
   // data-stat-filter = "filterId:value" or "callback:module.method"
   // Make stat cards keyboard accessible
-  document.querySelectorAll('[data-stat-filter]').forEach(card => {
+  document.querySelectorAll('[data-stat-filter]').forEach((card) => {
     if (!card.hasAttribute('tabindex')) card.setAttribute('tabindex', '0');
     if (!card.getAttribute('role')) card.setAttribute('role', 'button');
     card.style.cursor = 'pointer';
@@ -724,7 +973,7 @@ document.addEventListener('DOMContentLoaded', function() {
     // Highlight active card, deactivate siblings
     const container = card.closest('.row, .d-flex');
     if (container) {
-      container.querySelectorAll('[data-stat-filter]').forEach(c => c.classList.remove('stat-card-active'));
+      container.querySelectorAll('[data-stat-filter]').forEach((c) => c.classList.remove('stat-card-active'));
     }
 
     // If clicking the same "show all" or toggling off, just clear
@@ -746,9 +995,7 @@ document.addEventListener('DOMContentLoaded', function() {
       }
     } else {
       // e.g. "invoiceStatusFilter:paid" or "clear:invoiceStatusFilter"
-      const [target, value] = isShowAll
-        ? [spec.replace('clear:', ''), '']
-        : spec.split(':');
+      const [target, value] = isShowAll ? [spec.replace('clear:', ''), ''] : spec.split(':');
       const el = document.getElementById(target);
       if (el) {
         el.value = value || '';
@@ -757,10 +1004,13 @@ document.addEventListener('DOMContentLoaded', function() {
     }
   }
   document.addEventListener('click', handleStatCardAction);
-  document.addEventListener('keydown', function(e) {
+  document.addEventListener('keydown', function (e) {
     if (e.key === 'Enter' || e.key === ' ') {
       const card = e.target.closest('[data-stat-filter]');
-      if (card) { e.preventDefault(); handleStatCardAction(e); }
+      if (card) {
+        e.preventDefault();
+        handleStatCardAction(e);
+      }
     }
   });
 
@@ -787,30 +1037,35 @@ document.addEventListener('DOMContentLoaded', function() {
 
   // --- Awards Filters ---
   const awardsYearFilter = document.getElementById('awardsYearFilterSelect');
-  if (awardsYearFilter) awardsYearFilter.addEventListener('change', () => {
-    awardsModule.filterAwards();
-  });
+  if (awardsYearFilter)
+    awardsYearFilter.addEventListener('change', () => {
+      awardsModule.filterAwards();
+    });
 
   const awardsStatusFilter = document.getElementById('awardsStatusFilterSelect');
-  if (awardsStatusFilter) awardsStatusFilter.addEventListener('change', () => {
-    awardsModule.filterAwards();
-  });
+  if (awardsStatusFilter)
+    awardsStatusFilter.addEventListener('change', () => {
+      awardsModule.filterAwards();
+    });
 
   const awardsSectorFilter = document.getElementById('awardsSectorFilterSelect');
-  if (awardsSectorFilter) awardsSectorFilter.addEventListener('change', () => {
-    awardsModule.filterAwards();
-  });
+  if (awardsSectorFilter)
+    awardsSectorFilter.addEventListener('change', () => {
+      awardsModule.filterAwards();
+    });
 
   const awardsRegionFilter = document.getElementById('awardsRegionFilterSelect');
-  if (awardsRegionFilter) awardsRegionFilter.addEventListener('change', () => {
-    awardsModule.updateCountyFilterByRegion();
-    awardsModule.filterAwards();
-  });
+  if (awardsRegionFilter)
+    awardsRegionFilter.addEventListener('change', () => {
+      awardsModule.updateCountyFilterByRegion();
+      awardsModule.filterAwards();
+    });
 
   const awardsCountyFilter = document.getElementById('awardsCountyFilterSelect');
-  if (awardsCountyFilter) awardsCountyFilter.addEventListener('change', () => {
-    awardsModule.filterAwards();
-  });
+  if (awardsCountyFilter)
+    awardsCountyFilter.addEventListener('change', () => {
+      awardsModule.filterAwards();
+    });
 
   // Note: awardsSearchBox debounced search is initialized via utils.initDebouncedSearch below
 
@@ -819,72 +1074,81 @@ document.addEventListener('DOMContentLoaded', function() {
 
   // --- Winners Filters ---
   const winnerYearFilter = document.getElementById('winnerYearFilterSelect');
-  if (winnerYearFilter) winnerYearFilter.addEventListener('change', () => {
-    winnersModule.filterWinners();
-  });
+  if (winnerYearFilter)
+    winnerYearFilter.addEventListener('change', () => {
+      winnersModule.filterWinners();
+    });
 
   const winnerAwardFilter = document.getElementById('winnerAwardFilterSelect');
-  if (winnerAwardFilter) winnerAwardFilter.addEventListener('change', () => {
-    winnersModule.filterWinners();
-  });
+  if (winnerAwardFilter)
+    winnerAwardFilter.addEventListener('change', () => {
+      winnersModule.filterWinners();
+    });
 
   // Note: winnerSearchBox debounced search is initialized via utils.initDebouncedSearch below
 
   // --- Tab Navigation ---
   // Load winners data when Winners tab is clicked (lazy loading)
   const winnersTab = document.getElementById('winners-tab');
-  if (winnersTab) winnersTab.addEventListener('click', () => {
-    if (STATE.allWinners.length === 0) {
-      winnersModule.loadWinners();
-    }
-  });
+  if (winnersTab)
+    winnersTab.addEventListener('click', () => {
+      if (STATE.allWinners.length === 0) {
+        winnersModule.loadWinners();
+      }
+    });
 
   // Load media gallery data when Media Gallery tab is clicked (lazy loading)
   let mediaGalleryInitialized = false;
   const mediaGalleryTab = document.getElementById('media-gallery-tab');
-  if (mediaGalleryTab) mediaGalleryTab.addEventListener('click', () => {
-    if (!mediaGalleryInitialized) {
-      mediaGalleryInitialized = true;
-      mediaGalleryModule.initialize();
-    }
-  });
+  if (mediaGalleryTab)
+    mediaGalleryTab.addEventListener('click', () => {
+      if (!mediaGalleryInitialized) {
+        mediaGalleryInitialized = true;
+        mediaGalleryModule.initialize();
+      }
+    });
 
   // Load events data when Events tab is clicked (lazy loading)
   const eventsTab = document.getElementById('events-tab');
-  if (eventsTab) eventsTab.addEventListener('click', () => {
-    if (STATE.allEvents.length === 0) {
-      eventsModule.loadEvents();
-    }
-  });
+  if (eventsTab)
+    eventsTab.addEventListener('click', () => {
+      if (STATE.allEvents.length === 0) {
+        eventsModule.loadEvents();
+      }
+    });
 
   // Refresh stats when Dashboard tab is clicked
   const dashboardTab = document.getElementById('dashboard-tab');
-  if (dashboardTab) dashboardTab.addEventListener('click', () => {
-    dashboardModule.updateStats();
-  });
+  if (dashboardTab)
+    dashboardTab.addEventListener('click', () => {
+      dashboardModule.updateStats();
+    });
 
   // Initialize settings when Settings tab is clicked
   const settingsTab = document.getElementById('settings-tab');
-  if (settingsTab) settingsTab.addEventListener('click', () => {
-    settingsModule.init();
-  });
+  if (settingsTab)
+    settingsTab.addEventListener('click', () => {
+      settingsModule.init();
+    });
 
   // --- Media Upload ---
   const uploadMediaBtn = document.getElementById('uploadMediaBtn');
-  if (uploadMediaBtn) uploadMediaBtn.addEventListener('click', () => {
-    winnersModule.handleUploadMedia();
-  });
+  if (uploadMediaBtn)
+    uploadMediaBtn.addEventListener('click', () => {
+      winnersModule.handleUploadMedia();
+    });
 
   // File input change - show file name
   const mediaFile = document.getElementById('mediaFile');
-  if (mediaFile) mediaFile.addEventListener('change', (e) => {
-    const file = e.target.files[0];
-    if (file) {
-      const fileSize = utils.formatFileSize(file.size);
-      utils.showToast(`Selected: ${file.name} (${fileSize})`, 'info');
-    }
-  });
-  
+  if (mediaFile)
+    mediaFile.addEventListener('change', (e) => {
+      const file = e.target.files[0];
+      if (file) {
+        const fileSize = utils.formatFileSize(file.size);
+        utils.showToast(`Selected: ${file.name} (${fileSize})`, 'info');
+      }
+    });
+
   // Load Reports analytics + scheduled reports when Reports tab is opened
   const reportsTab = document.getElementById('reports-tab');
   if (reportsTab) {
@@ -894,21 +1158,25 @@ document.addEventListener('DOMContentLoaded', function() {
       }
     });
   }
-  
+
   // ==========================================
   // STEP 3: User Activity Monitoring
   // ==========================================
   // Reset inactivity timer on any user activity
   const activityEvents = ['mousemove', 'mousedown', 'keypress', 'scroll', 'touchstart', 'click'];
-  
-  activityEvents.forEach(event => {
-    document.addEventListener(event, () => {
-      if (STATE.currentUser) {
-        authModule.resetInactivityTimer();
-      }
-    }, { passive: true });
+
+  activityEvents.forEach((event) => {
+    document.addEventListener(
+      event,
+      () => {
+        if (STATE.currentUser) {
+          authModule.resetInactivityTimer();
+        }
+      },
+      { passive: true }
+    );
   });
-  
+
   // ==========================================
   // STEP 4: Connection Monitoring
   // ==========================================
@@ -917,12 +1185,12 @@ document.addEventListener('DOMContentLoaded', function() {
     authModule.updateConnectionStatus(true);
     utils.showToast('Connection restored', 'success');
   });
-  
+
   window.addEventListener('offline', () => {
     authModule.updateConnectionStatus(false);
     utils.showToast('Connection lost', 'warning');
   });
-  
+
   // ==========================================
   // STEP 5: Keyboard Shortcuts
   // ==========================================
@@ -930,11 +1198,11 @@ document.addEventListener('DOMContentLoaded', function() {
     // Ctrl/Cmd + K to focus search (if on appropriate tab)
     if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
       e.preventDefault();
-      
+
       const activeTab = document.querySelector('.nav-link.active');
       if (activeTab) {
         const tabId = activeTab.id;
-        
+
         if (tabId === 'awards-tab') {
           document.getElementById('awardsSearchBox').focus();
         } else if (tabId === 'organisations-tab') {
@@ -944,11 +1212,11 @@ document.addEventListener('DOMContentLoaded', function() {
         }
       }
     }
-    
+
     // Escape key to close modals
     if (e.key === 'Escape') {
       const openModals = document.querySelectorAll('.modal.show');
-      openModals.forEach(modal => {
+      openModals.forEach((modal) => {
         const bsModal = bootstrap.Modal.getInstance(modal);
         if (bsModal) {
           bsModal.hide();
@@ -963,13 +1231,13 @@ document.addEventListener('DOMContentLoaded', function() {
       new bootstrap.Modal(document.getElementById('shortcutsHelpModal')).show();
     }
   });
-  
+
   // ==========================================
   // STEP 6: Form Validation
   // ==========================================
   // Add Bootstrap validation styling to all forms
   const forms = document.querySelectorAll('form');
-  forms.forEach(form => {
+  forms.forEach((form) => {
     form.addEventListener('submit', (e) => {
       if (!form.checkValidity()) {
         e.preventDefault();
@@ -982,31 +1250,39 @@ document.addEventListener('DOMContentLoaded', function() {
   // ==========================================
   // STEP 6b: Enhanced Field-level Validation (HIGH-3)
   // ==========================================
-  document.addEventListener('submit', (e) => {
-    const form = e.target;
-    if (!form.checkValidity || form.checkValidity()) return;
+  document.addEventListener(
+    'submit',
+    (e) => {
+      const form = e.target;
+      if (!form.checkValidity || form.checkValidity()) return;
 
-    // Add is-invalid to each invalid field with feedback message
-    form.querySelectorAll(':invalid').forEach(field => {
-      field.classList.add('is-invalid');
-      if (!field.nextElementSibling?.classList.contains('invalid-feedback')) {
-        const feedback = document.createElement('div');
-        feedback.className = 'invalid-feedback';
-        feedback.textContent = field.validationMessage || 'This field is required';
-        field.parentNode.insertBefore(feedback, field.nextSibling);
-      }
-    });
+      // Add is-invalid to each invalid field with feedback message
+      form.querySelectorAll(':invalid').forEach((field) => {
+        field.classList.add('is-invalid');
+        if (!field.nextElementSibling?.classList.contains('invalid-feedback')) {
+          const feedback = document.createElement('div');
+          feedback.className = 'invalid-feedback';
+          feedback.textContent = field.validationMessage || 'This field is required';
+          field.parentNode.insertBefore(feedback, field.nextSibling);
+        }
+      });
 
-    // Clear validation on input
-    form.querySelectorAll('.is-invalid').forEach(field => {
-      field.addEventListener('input', () => {
-        field.classList.remove('is-invalid');
-        const fb = field.nextElementSibling;
-        if (fb?.classList.contains('invalid-feedback')) fb.remove();
-      }, { once: true });
-    });
-  }, true);
-  
+      // Clear validation on input
+      form.querySelectorAll('.is-invalid').forEach((field) => {
+        field.addEventListener(
+          'input',
+          () => {
+            field.classList.remove('is-invalid');
+            const fb = field.nextElementSibling;
+            if (fb?.classList.contains('invalid-feedback')) fb.remove();
+          },
+          { once: true }
+        );
+      });
+    },
+    true
+  );
+
   // ==========================================
   // STEP 7: Error Handling + Sentry Monitoring
   // ==========================================
@@ -1020,9 +1296,12 @@ document.addEventListener('DOMContentLoaded', function() {
       tracesSampleRate: 0.2,
       beforeSend(event) {
         // Strip PII from error reports
-        if (event.user) { delete event.user.email; delete event.user.ip_address; }
+        if (event.user) {
+          delete event.user.email;
+          delete event.user.ip_address;
+        }
         return event;
-      }
+      },
     });
     console.warn('Sentry error monitoring initialized');
   }
@@ -1040,7 +1319,7 @@ document.addEventListener('DOMContentLoaded', function() {
     if (typeof Sentry !== 'undefined') Sentry.captureException(e.reason);
     utils.showToast('An unexpected error occurred', 'error');
   });
-  
+
   // ==========================================
   // STEP 8: Check for existing session
   // ==========================================
@@ -1054,7 +1333,7 @@ document.addEventListener('DOMContentLoaded', function() {
       authModule.showLogin();
     }
   }, 10000);
-  
+
   // ==========================================
   // STEP 9: Page Visibility API
   // ==========================================
@@ -1069,7 +1348,7 @@ document.addEventListener('DOMContentLoaded', function() {
       }
     }
   });
-  
+
   // ==========================================
   // STEP 10: Performance Monitoring
   // ==========================================
@@ -1079,7 +1358,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const pageLoadTime = perfData.loadEventEnd - perfData.navigationStart;
     console.warn(`📊 Page loaded in ${pageLoadTime}ms`);
   });
-  
+
   // ==========================================
   // STEP 11: Marketing Tab Event Listener
   // ==========================================
@@ -1191,10 +1470,10 @@ document.addEventListener('DOMContentLoaded', function() {
     'meetings-subtab': 'meetings',
     'segments-subtab': 'segments',
     'smart-segments-subtab': 'smart-segments',
-    'my-tasks-subtab': 'my-tasks'
+    'my-tasks-subtab': 'my-tasks',
   };
 
-  Object.keys(crmSubTabs).forEach(tabId => {
+  Object.keys(crmSubTabs).forEach((tabId) => {
     const tab = document.getElementById(tabId);
     if (tab) {
       tab.addEventListener('click', (e) => {
@@ -1224,18 +1503,68 @@ document.addEventListener('DOMContentLoaded', function() {
     if (!STATE.client) return;
     // Guard against duplicate subscriptions
     if (window._cmsRealtimeChannel) {
-      try { STATE.client.removeChannel(window._cmsRealtimeChannel); } catch (e) { /* ignore */ }
+      try {
+        STATE.client.removeChannel(window._cmsRealtimeChannel);
+      } catch (e) {
+        /* ignore */
+      }
     }
     const tables = [
-      { table: 'awards', handler: () => { if (typeof awardsModule !== 'undefined' && STATE.allAwards.length > 0) awardsModule.loadAwards(); } },
-      { table: 'winners', handler: () => { if (typeof winnersModule !== 'undefined' && STATE.allWinners.length > 0) winnersModule.loadWinners(); } },
-      { table: 'entries', handler: () => { if (typeof entriesModule !== 'undefined' && entriesModule.allEntries.length > 0) entriesModule.loadEntries(); } },
-      { table: 'events', handler: () => { if (typeof eventsModule !== 'undefined' && STATE.allEvents.length > 0) eventsModule.loadEvents(); } },
-      { table: 'invoices', handler: () => { if (typeof paymentsModule !== 'undefined' && paymentsModule.currentInvoices.length > 0) paymentsModule.loadAllData(); } },
-      { table: 'organisations', handler: () => { if (typeof orgsModule !== 'undefined' && STATE.allOrganisations.length > 0) orgsModule.loadOrganisations(); } },
-      { table: 'payments', handler: () => { if (typeof paymentsModule !== 'undefined') paymentsModule.loadAllData(); } },
-      { table: 'communications', handler: () => { if (typeof crmModule !== 'undefined') crmModule.loadCommunications(); } },
-      { table: 'deals', handler: () => { if (typeof crmModule !== 'undefined') crmModule.loadDeals(); } }
+      {
+        table: 'awards',
+        handler: () => {
+          if (typeof awardsModule !== 'undefined' && STATE.allAwards.length > 0) awardsModule.loadAwards();
+        },
+      },
+      {
+        table: 'winners',
+        handler: () => {
+          if (typeof winnersModule !== 'undefined' && STATE.allWinners.length > 0) winnersModule.loadWinners();
+        },
+      },
+      {
+        table: 'entries',
+        handler: () => {
+          if (typeof entriesModule !== 'undefined' && entriesModule.allEntries.length > 0) entriesModule.loadEntries();
+        },
+      },
+      {
+        table: 'events',
+        handler: () => {
+          if (typeof eventsModule !== 'undefined' && STATE.allEvents.length > 0) eventsModule.loadEvents();
+        },
+      },
+      {
+        table: 'invoices',
+        handler: () => {
+          if (typeof paymentsModule !== 'undefined' && paymentsModule.currentInvoices.length > 0)
+            paymentsModule.loadAllData();
+        },
+      },
+      {
+        table: 'organisations',
+        handler: () => {
+          if (typeof orgsModule !== 'undefined' && STATE.allOrganisations.length > 0) orgsModule.loadOrganisations();
+        },
+      },
+      {
+        table: 'payments',
+        handler: () => {
+          if (typeof paymentsModule !== 'undefined') paymentsModule.loadAllData();
+        },
+      },
+      {
+        table: 'communications',
+        handler: () => {
+          if (typeof crmModule !== 'undefined') crmModule.loadCommunications();
+        },
+      },
+      {
+        table: 'deals',
+        handler: () => {
+          if (typeof crmModule !== 'undefined') crmModule.loadDeals();
+        },
+      },
     ];
 
     const debouncedHandlers = {};
@@ -1253,9 +1582,13 @@ document.addEventListener('DOMContentLoaded', function() {
       .on('postgres_changes', { event: '*', schema: 'public', table: 'entries' }, () => debouncedHandlers.entries())
       .on('postgres_changes', { event: '*', schema: 'public', table: 'events' }, () => debouncedHandlers.events())
       .on('postgres_changes', { event: '*', schema: 'public', table: 'invoices' }, () => debouncedHandlers.invoices())
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'organisations' }, () => debouncedHandlers.organisations())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'organisations' }, () =>
+        debouncedHandlers.organisations()
+      )
       .on('postgres_changes', { event: '*', schema: 'public', table: 'payments' }, () => debouncedHandlers.payments())
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'communications' }, () => debouncedHandlers.communications())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'communications' }, () =>
+        debouncedHandlers.communications()
+      )
       .on('postgres_changes', { event: '*', schema: 'public', table: 'deals' }, () => debouncedHandlers.deals())
       .subscribe((status) => {
         if (status === 'SUBSCRIBED') console.warn('Realtime subscriptions active');
@@ -1267,11 +1600,15 @@ document.addEventListener('DOMContentLoaded', function() {
   // Real-time presence indicators (LOW-10)
   window._activeUsers = new Map();
 
-  window._initPresence = function() {
+  window._initPresence = function () {
     if (!STATE.client) return;
     // Guard against duplicate presence subscriptions
     if (window._presenceChannel) {
-      try { STATE.client.removeChannel(window._presenceChannel); } catch (e) { /* ignore */ }
+      try {
+        STATE.client.removeChannel(window._presenceChannel);
+      } catch (e) {
+        /* ignore */
+      }
     }
     try {
       const channel = STATE.client.channel('online-users');
@@ -1279,11 +1616,11 @@ document.addEventListener('DOMContentLoaded', function() {
       channel.on('presence', { event: 'sync' }, () => {
         const state = channel.presenceState();
         const users = [];
-        Object.values(state).forEach(presences => {
-          presences.forEach(p => users.push(p));
+        Object.values(state).forEach((presences) => {
+          presences.forEach((p) => users.push(p));
         });
         window._activeUsers.clear();
-        users.forEach(u => window._activeUsers.set(u.email, u));
+        users.forEach((u) => window._activeUsers.set(u.email, u));
         window._renderPresenceIndicator();
       });
       channel.subscribe(async (status) => {
@@ -1291,7 +1628,7 @@ document.addEventListener('DOMContentLoaded', function() {
           await channel.track({
             email: STATE.currentUser?.email || 'unknown',
             tab: document.querySelector('.nav-link.active')?.textContent?.trim() || 'Dashboard',
-            online_at: new Date().toISOString()
+            online_at: new Date().toISOString(),
           });
         }
       });
@@ -1300,7 +1637,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
   };
 
-  window._renderPresenceIndicator = function() {
+  window._renderPresenceIndicator = function () {
     let el = document.getElementById('presenceIndicator');
     if (!el) {
       el = document.createElement('div');
@@ -1310,8 +1647,11 @@ document.addEventListener('DOMContentLoaded', function() {
       document.body.appendChild(el);
     }
     const count = window._activeUsers.size;
-    if (count <= 1) { el.innerHTML = ''; return; }
-    const names = [...window._activeUsers.values()].map(u => u.email).slice(0, 5);
+    if (count <= 1) {
+      el.innerHTML = '';
+      return;
+    }
+    const names = [...window._activeUsers.values()].map((u) => u.email).slice(0, 5);
     el.innerHTML = `
       <div class="badge bg-success-subtle text-success border px-2 py-1" title="${names.join(', ')}" style="cursor:pointer;">
         <i class="bi bi-people-fill me-1"></i>${count} online
@@ -1319,12 +1659,14 @@ document.addEventListener('DOMContentLoaded', function() {
   };
 
   // Initialize presence after a delay
-  setTimeout(() => { if (window._initPresence) window._initPresence(); }, 4000);
+  setTimeout(() => {
+    if (window._initPresence) window._initPresence();
+  }, 4000);
 
   // ==========================================
   // STEP 14: Stale Data Auto-Refresh on Tab Switch
   // ==========================================
-  document.querySelectorAll('[data-bs-toggle="tab"]').forEach(tab => {
+  document.querySelectorAll('[data-bs-toggle="tab"]').forEach((tab) => {
     tab.addEventListener('shown.bs.tab', (e) => {
       // Stale data auto-refresh
       const tabId = e.target.id;
@@ -1383,7 +1725,7 @@ document.addEventListener('DOMContentLoaded', function() {
   // STEP 14c: URL Filter State / Deep Linking (MEDIUM-4)
   // ==========================================
   // URL filter state management
-  window._saveFilterState = function(module, filters) {
+  window._saveFilterState = function (module, filters) {
     const params = new URLSearchParams(window.location.search);
     Object.entries(filters).forEach(([k, v]) => {
       if (v) params.set(`${module}_${k}`, v);
@@ -1393,7 +1735,7 @@ document.addEventListener('DOMContentLoaded', function() {
     history.replaceState(null, '', newUrl);
   };
 
-  window._loadFilterState = function(module) {
+  window._loadFilterState = function (module) {
     const params = new URLSearchParams(window.location.search);
     const filters = {};
     params.forEach((v, k) => {
@@ -1429,7 +1771,7 @@ document.addEventListener('DOMContentLoaded', function() {
   // ==========================================
   // STEP 17: Breadcrumb Navigation (MEDIUM-5)
   // ==========================================
-  utils._updateBreadcrumb = function(tabName) {
+  utils._updateBreadcrumb = function (tabName) {
     let bc = document.getElementById('mainBreadcrumb');
     if (!bc) {
       bc = document.createElement('nav');
@@ -1441,7 +1783,7 @@ document.addEventListener('DOMContentLoaded', function() {
       if (tabContent) tabContent.parentElement.insertBefore(bc, tabContent);
     }
     const label = tabName.charAt(0).toUpperCase() + tabName.slice(1);
-    bc.innerHTML = `<ol class="breadcrumb mb-0 bg-transparent p-0"><li class="breadcrumb-item"><a href="#" onclick="event.preventDefault(); document.querySelector('[data-bs-target=\\'#dashboard\\']')?.click();">Dashboard</a></li><li class="breadcrumb-item active" aria-current="page">${label}</li></ol>`;
+    bc.innerHTML = `<ol class="breadcrumb mb-0 bg-transparent p-0"><li class="breadcrumb-item"><a href="#" data-action="app.navigateDashboard">Dashboard</a></li><li class="breadcrumb-item active" aria-current="page">${label}</li></ol>`;
   };
 
   // ==========================================
@@ -1454,18 +1796,40 @@ document.addEventListener('DOMContentLoaded', function() {
 
   // Initialize debounced search for main search boxes
   if (utils.initDebouncedSearch) {
-    utils.initDebouncedSearch('awardsSearchBox', () => { if (window.awardsModule) awardsModule.filterAwards(); });
-    utils.initDebouncedSearch('entriesSearchInput', () => { if (window.entriesModule) entriesModule.applyFilters(); });
-    utils.initDebouncedSearch('winnerSearchBox', () => { if (window.winnersModule) winnersModule.filterWinners(); });
-    utils.initDebouncedSearch('eventsSearchBox', () => { if (window.eventsModule) eventsModule.filterEvents(); });
-    utils.initDebouncedSearch('orgsSearchBox', () => { if (window.orgsModule) orgsModule.filterOrganisations(); });
-    utils.initDebouncedSearch('invoiceSearchBox', () => { if (window.paymentsModule) paymentsModule.filterInvoices(); });
-    utils.initDebouncedSearch('paymentSearchBox', () => { if (window.paymentsModule) paymentsModule.filterPayments(); });
-    utils.initDebouncedSearch('crmCompanySearch', () => { if (window.crmModule) crmModule.filterCompanies(); });
+    utils.initDebouncedSearch('awardsSearchBox', () => {
+      if (window.awardsModule) awardsModule.filterAwards();
+    });
+    utils.initDebouncedSearch('entriesSearchInput', () => {
+      if (window.entriesModule) entriesModule.applyFilters();
+    });
+    utils.initDebouncedSearch('winnerSearchBox', () => {
+      if (window.winnersModule) winnersModule.filterWinners();
+    });
+    utils.initDebouncedSearch('eventsSearchBox', () => {
+      if (window.eventsModule) eventsModule.filterEvents();
+    });
+    utils.initDebouncedSearch('orgsSearchBox', () => {
+      if (window.orgsModule) orgsModule.filterOrganisations();
+    });
+    utils.initDebouncedSearch('invoiceSearchBox', () => {
+      if (window.paymentsModule) paymentsModule.filterInvoices();
+    });
+    utils.initDebouncedSearch('paymentSearchBox', () => {
+      if (window.paymentsModule) paymentsModule.filterPayments();
+    });
+    utils.initDebouncedSearch('crmCompanySearch', () => {
+      if (window.crmModule) crmModule.filterCompanies();
+    });
     // Note: subscriberSearch is in a dynamic modal (email-lists.js), debounced search is attached there after modal creation
-    utils.initDebouncedSearch('campaignLogSearchInput', () => { if (window.emailBuilder) emailBuilder.searchCampaigns(document.getElementById('campaignLogSearchInput')?.value); });
-    utils.initDebouncedSearch('attendeeSearchFilter', () => { if (window.eventsModule) eventsModule.filterAttendeesList(); });
-    utils.initDebouncedSearch('checkInSearch', () => { if (window.eventsModule) eventsModule.filterCheckInList(); });
+    utils.initDebouncedSearch('campaignLogSearchInput', () => {
+      if (window.emailBuilder) emailBuilder.searchCampaigns(document.getElementById('campaignLogSearchInput')?.value);
+    });
+    utils.initDebouncedSearch('attendeeSearchFilter', () => {
+      if (window.eventsModule) eventsModule.filterAttendeesList();
+    });
+    utils.initDebouncedSearch('checkInSearch', () => {
+      if (window.eventsModule) eventsModule.filterCheckInList();
+    });
   }
 
   // ==========================================
@@ -1482,7 +1846,10 @@ document.addEventListener('DOMContentLoaded', function() {
 window.addEventListener('beforeunload', (e) => {
   // Warn if there's a save in progress or email builder has unsaved changes
   const isSaving = document.querySelector('.btn:disabled .spinner-border');
-  const emailUnsaved = typeof emailBuilderModule !== 'undefined' && emailBuilderModule.hasUnsavedChanges && emailBuilderModule.blocks?.length > 0;
+  const emailUnsaved =
+    typeof emailBuilderModule !== 'undefined' &&
+    emailBuilderModule.hasUnsavedChanges &&
+    emailBuilderModule.blocks?.length > 0;
   if (STATE.currentUser && (isSaving || emailUnsaved)) {
     e.preventDefault();
     e.returnValue = 'You have unsaved changes. Are you sure you want to leave?';

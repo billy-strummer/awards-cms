@@ -14,7 +14,7 @@ const dashboardModule = {
       const [awardsRes, orgsRes, winnersRes] = await Promise.allSettled([
         awardsModule.loadAwards(),
         orgsModule.loadOrganisations(),
-        winnersModule.loadWinners()
+        winnersModule.loadWinners(),
       ]);
       if (awardsRes.status === 'rejected') console.warn('Failed to load awards:', awardsRes.reason);
       if (orgsRes.status === 'rejected') console.warn('Failed to load organisations:', orgsRes.reason);
@@ -65,7 +65,6 @@ const dashboardModule = {
       updateTabCounts();
 
       console.warn('Dashboard data loaded');
-
     } catch (error) {
       console.error('Error loading dashboard data:', error);
       utils.showErrorWithRetry(error, 'loading dashboard', () => this.loadAllData());
@@ -80,7 +79,9 @@ const dashboardModule = {
   async updateStats() {
     // Count statistics
     const totalAwards = STATE.allAwards.length;
-    const pendingAwards = STATE.allAwards.filter(a => a.status === STATUS.DRAFT || a.status === STATUS.PENDING).length;
+    const pendingAwards = STATE.allAwards.filter(
+      (a) => a.status === STATUS.DRAFT || a.status === STATUS.PENDING
+    ).length;
     const totalOrgs = STATE.allOrganisations.length;
     const totalWinners = STATE.allWinners.length;
 
@@ -109,7 +110,7 @@ const dashboardModule = {
 
   renderTrendIndicator(current, previous) {
     if (!previous || previous === 0) return '';
-    const change = ((current - previous) / previous * 100).toFixed(1);
+    const change = (((current - previous) / previous) * 100).toFixed(1);
     const up = change > 0;
     const color = up ? 'text-success' : 'text-danger';
     const icon = up ? 'bi-arrow-up-short' : 'bi-arrow-down-short';
@@ -127,17 +128,20 @@ const dashboardModule = {
       // Use already-loaded awards; fetch only assignments and entries (not in global state)
       const awards = STATE.allAwards || [];
 
+      // selectAll required: cross-referencing assignment/entry award_ids against per-year award sets
       const [assignments, entries] = await Promise.all([
         apiClient.selectAll('award_assignments', { select: 'award_id, status' }),
-        apiClient.selectAll('entries', { select: 'id, award_id' })
+        apiClient.selectAll('entries', { select: 'id, award_id' }),
       ]);
 
       // Build a map of award_id -> year
       const awardYearMap = {};
-      awards.forEach(a => { awardYearMap[a.id] = a.year; });
+      awards.forEach((a) => {
+        awardYearMap[a.id] = a.year;
+      });
 
       // Get distinct years and sort descending
-      const years = [...new Set(awards.map(a => a.year).filter(Boolean))].sort((a, b) => b - a);
+      const years = [...new Set(awards.map((a) => a.year).filter(Boolean))].sort((a, b) => b - a);
 
       if (years.length === 0) {
         tbody.innerHTML = `
@@ -152,29 +156,31 @@ const dashboardModule = {
 
       // Build award IDs set per year for quick lookup
       const awardIdsByYear = {};
-      years.forEach(y => {
-        awardIdsByYear[y] = new Set(awards.filter(a => String(a.year) === String(y)).map(a => a.id));
+      years.forEach((y) => {
+        awardIdsByYear[y] = new Set(awards.filter((a) => String(a.year) === String(y)).map((a) => a.id));
       });
 
       // Count nominees (distinct organisations assigned) per year
       const nomineesByYear = {};
-      years.forEach(y => {
+      years.forEach((y) => {
         const yearAwardIds = awardIdsByYear[y];
-        nomineesByYear[y] = assignments.filter(a => yearAwardIds.has(a.award_id)).length;
+        nomineesByYear[y] = assignments.filter((a) => yearAwardIds.has(a.award_id)).length;
       });
 
       // Count nominations (entries) per year
       const nominationsByYear = {};
-      years.forEach(y => {
+      years.forEach((y) => {
         const yearAwardIds = awardIdsByYear[y];
-        nominationsByYear[y] = entries.filter(e => yearAwardIds.has(e.award_id)).length;
+        nominationsByYear[y] = entries.filter((e) => yearAwardIds.has(e.award_id)).length;
       });
 
       // Build totals row
-      let totalAwards = 0, totalNominees = 0, totalNominations = 0;
+      let totalAwards = 0,
+        totalNominees = 0,
+        totalNominations = 0;
 
       let html = '';
-      years.forEach(y => {
+      years.forEach((y) => {
         const numAwards = awardIdsByYear[y].size;
         const numNominees = nomineesByYear[y] || 0;
         const numNominations = nominationsByYear[y] || 0;
@@ -202,7 +208,6 @@ const dashboardModule = {
         </tr>`;
 
       tbody.innerHTML = html;
-
     } catch (error) {
       console.error('Error loading awards year summary:', error);
       tbody.innerHTML = `
@@ -226,7 +231,9 @@ const dashboardModule = {
       // Get upcoming events count (next 30 days)
       const today = new Date().toISOString().split('T')[0];
       const futureDate = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
-      const upcomingCount = events.filter(e => e.event_date && e.event_date >= today && e.event_date <= futureDate).length;
+      const upcomingCount = events.filter(
+        (e) => e.event_date && e.event_date >= today && e.event_date <= futureDate
+      ).length;
       document.getElementById('upcomingEvents').textContent = upcomingCount;
     } catch (error) {
       console.error('Error loading extended stats:', error);
@@ -268,11 +275,13 @@ const dashboardModule = {
         // Load untagged photos
         const { data: untagged, error } = await STATE.client
           .from('media_gallery')
-          .select(`
+          .select(
+            `
             *,
             organisations!media_gallery_organisation_id_fkey (*),
             awards:award_years!media_gallery_award_id_fkey (*)
-          `)
+          `
+          )
           .or('organisation_id.is.null,award_id.is.null')
           .order('uploaded_at', { ascending: false });
 
@@ -303,7 +312,7 @@ const dashboardModule = {
 
         // Use already-loaded events data
         const upcoming = (STATE.allEvents || [])
-          .filter(e => e.event_date && e.event_date >= today && e.event_date <= futureDate)
+          .filter((e) => e.event_date && e.event_date >= today && e.event_date <= futureDate)
           .sort((a, b) => (a.event_date || '').localeCompare(b.event_date || ''));
 
         if (upcoming.length > 0) {
@@ -328,19 +337,23 @@ const dashboardModule = {
       try {
         // Use paymentsModule.allInvoices if loaded, else fallback to API
         let pending;
-        if (typeof paymentsModule !== 'undefined' && paymentsModule.allInvoices && paymentsModule.allInvoices.length > 0) {
-          pending = paymentsModule.allInvoices.filter(i =>
-            ['pending', 'unpaid'].includes(i.payment_status) && i.status === 'sent'
-          ).sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+        if (
+          typeof paymentsModule !== 'undefined' &&
+          paymentsModule.allInvoices &&
+          paymentsModule.allInvoices.length > 0
+        ) {
+          pending = paymentsModule.allInvoices
+            .filter((i) => ['pending', 'unpaid'].includes(i.payment_status) && i.status === 'sent')
+            .sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
         } else {
           try {
             const result = await apiClient.selectAll('invoices', {
               select: 'id, invoice_number, total_amount, organisations(company_name)',
               filters: {
                 payment_status: { op: 'in', value: ['pending', 'unpaid'] },
-                status: 'sent'
+                status: 'sent',
               },
-              sort: { column: 'created_at', ascending: false }
+              sort: { column: 'created_at', ascending: false },
             });
             pending = result;
           } catch (selectErr) {
@@ -350,9 +363,9 @@ const dashboardModule = {
                 select: 'id, invoice_number, total_amount',
                 filters: {
                   payment_status: { op: 'in', value: ['pending', 'unpaid'] },
-                  status: 'sent'
+                  status: 'sent',
                 },
-                sort: { column: 'created_at', ascending: false }
+                sort: { column: 'created_at', ascending: false },
               });
               pending = result;
             } else {
@@ -363,7 +376,10 @@ const dashboardModule = {
 
         if (pending && pending.length > 0) {
           const totalValue = pending.reduce((sum, inv) => sum + parseFloat(inv.total_amount || 0), 0);
-          utils.showToast(`${pending.length} unpaid invoice(s) totaling £${totalValue.toLocaleString('en-GB', { minimumFractionDigits: 2 })}`, 'warning');
+          utils.showToast(
+            `${pending.length} unpaid invoice(s) totaling £${totalValue.toLocaleString('en-GB', { minimumFractionDigits: 2 })}`,
+            'warning'
+          );
         } else {
           utils.showToast('All invoices are up to date!', 'success');
         }
@@ -389,7 +405,7 @@ const dashboardModule = {
         const entriesResult = await apiClient.select('entries', {
           select: '*, organisations(company_name), award_years(award_name)',
           sort: { column: 'created_at', ascending: false },
-          pageSize: 5
+          pageSize: 5,
         });
         recentEntries = entriesResult.data;
       } catch (entriesErr) {
@@ -398,7 +414,7 @@ const dashboardModule = {
           const entriesResult = await apiClient.select('entries', {
             select: '*',
             sort: { column: 'created_at', ascending: false },
-            pageSize: 5
+            pageSize: 5,
           });
           recentEntries = entriesResult.data;
         } else {
@@ -407,7 +423,7 @@ const dashboardModule = {
       }
 
       if (recentEntries) {
-        recentEntries.forEach(entry => {
+        recentEntries.forEach((entry) => {
           const isSelfNom = entry.is_self_nomination;
           activities.push({
             type: 'entry',
@@ -415,7 +431,7 @@ const dashboardModule = {
             color: isSelfNom ? 'info' : 'warning',
             title: isSelfNom ? 'New Self-Nomination' : 'New Entry',
             description: `${entry.organisations?.company_name || entry.company_name || 'Unknown'} - ${entry.award_years?.award_name || entry.award_name || 'Unknown Award'}`,
-            time: entry.created_at
+            time: entry.created_at,
           });
         });
       }
@@ -425,14 +441,14 @@ const dashboardModule = {
         .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
         .slice(0, 5);
 
-      recentAwards.forEach(award => {
+      recentAwards.forEach((award) => {
         activities.push({
           type: 'award',
           icon: 'trophy',
           color: 'primary',
           title: 'New Award Added',
           description: `${utils.formatAwardName(award)}`,
-          time: award.created_at
+          time: award.created_at,
         });
       });
 
@@ -440,14 +456,14 @@ const dashboardModule = {
         .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
         .slice(0, 3);
 
-      recentOrgs.forEach(org => {
+      recentOrgs.forEach((org) => {
         activities.push({
           type: 'organisation',
           icon: 'building',
           color: 'success',
           title: 'New Organisation',
           description: org.company_name || 'Unknown Company',
-          time: org.created_at
+          time: org.created_at,
         });
       });
 
@@ -459,14 +475,14 @@ const dashboardModule = {
         .limit(3);
 
       if (recentMedia) {
-        recentMedia.forEach(media => {
+        recentMedia.forEach((media) => {
           activities.push({
             type: 'media',
             icon: 'images',
             color: 'info',
             title: 'Media Uploaded',
             description: media.title || 'Untitled',
-            time: media.uploaded_at
+            time: media.uploaded_at,
           });
         });
       }
@@ -475,19 +491,19 @@ const dashboardModule = {
         .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
         .slice(0, 2);
 
-      recentEvents.forEach(event => {
+      recentEvents.forEach((event) => {
         activities.push({
           type: 'event',
           icon: 'calendar-event',
           color: 'purple',
           title: 'Event Created',
           description: event.event_name || 'Unnamed Event',
-          time: event.created_at
+          time: event.created_at,
         });
       });
 
       // Sort all activities by time (most recent first)
-      activities.sort((a, b) => (new Date(b.time || 0)) - (new Date(a.time || 0)));
+      activities.sort((a, b) => new Date(b.time || 0) - new Date(a.time || 0));
 
       // Take only the 10 most recent
       const recentActivities = activities.slice(0, 10);
@@ -503,7 +519,9 @@ const dashboardModule = {
       }
 
       // Render activity feed
-      feedContainer.innerHTML = recentActivities.map(activity => `
+      feedContainer.innerHTML = recentActivities
+        .map(
+          (activity) => `
         <div class="activity-item">
           <div class="activity-icon bg-${activity.color}-subtle">
             <i class="bi bi-${activity.icon} text-${activity.color}"></i>
@@ -516,8 +534,9 @@ const dashboardModule = {
             </div>
           </div>
         </div>
-      `).join('');
-
+      `
+        )
+        .join('');
     } catch (error) {
       console.error('Error loading activity feed:', error);
       feedContainer.innerHTML = `
@@ -548,7 +567,7 @@ const dashboardModule = {
       // Check for pending self-nominations needing approval
       const { count: pendingEntries } = await apiClient.count('entries', {
         status: 'submitted',
-        is_self_nomination: true
+        is_self_nomination: true,
       });
 
       if (pendingEntries > 0) {
@@ -557,7 +576,7 @@ const dashboardModule = {
           icon: 'person-raised-hand',
           title: `${pendingEntries} Self-Nomination${pendingEntries > 1 ? 's' : ''} Pending`,
           description: 'New self-nominations awaiting review',
-          action: () => this.navigateToSection('entries')
+          action: () => this.navigateToSection('entries'),
         });
       }
 
@@ -573,7 +592,7 @@ const dashboardModule = {
           icon: 'exclamation-triangle',
           title: `${untaggedCount} Untagged Photo${untaggedCount > 1 ? 's' : ''}`,
           description: 'Some photos need organisation or award tags',
-          action: 'showUntaggedPhotos'
+          action: 'showUntaggedPhotos',
         });
       }
 
@@ -581,8 +600,8 @@ const dashboardModule = {
       const today = new Date().toISOString().split('T')[0];
       const nextWeek = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
 
-      const upcomingCount = (STATE.allEvents || []).filter(e =>
-        e.event_date && e.event_date >= today && e.event_date <= nextWeek
+      const upcomingCount = (STATE.allEvents || []).filter(
+        (e) => e.event_date && e.event_date >= today && e.event_date <= nextWeek
       ).length;
 
       if (upcomingCount > 0) {
@@ -591,13 +610,13 @@ const dashboardModule = {
           icon: 'calendar-check',
           title: `${upcomingCount} Upcoming Event${upcomingCount > 1 ? 's' : ''}`,
           description: 'Events in the next 7 days',
-          action: 'showUpcomingEvents'
+          action: 'showUpcomingEvents',
         });
       }
 
       // Check for awards without winners
-      const awardsWithoutWinners = STATE.allAwards.filter(a => {
-        const hasWinner = STATE.allWinners.some(w => w.award_id === a.id);
+      const awardsWithoutWinners = STATE.allAwards.filter((a) => {
+        const hasWinner = STATE.allWinners.some((w) => w.award_id === a.id);
         return !hasWinner && a.status === STATUS.APPROVED;
       });
 
@@ -607,14 +626,12 @@ const dashboardModule = {
           icon: 'award',
           title: `${awardsWithoutWinners.length} Award${awardsWithoutWinners.length > 1 ? 's' : ''} Without Winners`,
           description: 'Approved awards that need winners assigned',
-          action: () => this.navigateToSection('winners')
+          action: () => this.navigateToSection('winners'),
         });
       }
 
       // Check for incomplete organisation data
-      const incompleteOrgs = STATE.allOrganisations.filter(org =>
-        !org.email || !org.contact_phone || !org.website
-      );
+      const incompleteOrgs = STATE.allOrganisations.filter((org) => !org.email || !org.contact_phone || !org.website);
 
       if (incompleteOrgs.length > 5) {
         notifications.push({
@@ -622,7 +639,7 @@ const dashboardModule = {
           icon: 'info-circle',
           title: `${incompleteOrgs.length} Incomplete Profiles`,
           description: 'Organisations missing contact information',
-          action: () => this.navigateToSection('organisations')
+          action: () => this.navigateToSection('organisations'),
         });
       }
 
@@ -633,9 +650,9 @@ const dashboardModule = {
           select: 'id, invoice_number, total_amount, organisations(company_name)',
           filters: {
             payment_status: { op: 'in', value: ['pending', 'unpaid'] },
-            status: 'sent'
+            status: 'sent',
           },
-          sort: { column: 'created_at', ascending: false }
+          sort: { column: 'created_at', ascending: false },
         });
         pendingInvoices = invoiceResult;
       } catch (invoiceErr) {
@@ -645,9 +662,9 @@ const dashboardModule = {
             select: 'id, invoice_number, total_amount',
             filters: {
               payment_status: { op: 'in', value: ['pending', 'unpaid'] },
-              status: 'sent'
+              status: 'sent',
             },
-            sort: { column: 'created_at', ascending: false }
+            sort: { column: 'created_at', ascending: false },
           });
           pendingInvoices = invoiceResult;
         } else {
@@ -662,7 +679,7 @@ const dashboardModule = {
           icon: 'cart-check',
           title: `${pendingInvoices.length} Pending Order${pendingInvoices.length > 1 ? 's' : ''}`,
           description: `£${totalValue.toLocaleString('en-GB', { minimumFractionDigits: 2 })} in unpaid invoices need action`,
-          action: 'showPendingOrders'
+          action: 'showPendingOrders',
         });
       }
 
@@ -677,7 +694,9 @@ const dashboardModule = {
         return;
       }
 
-      notificationsPanel.innerHTML = notifications.map(notif => `
+      notificationsPanel.innerHTML = notifications
+        .map(
+          (notif) => `
         <div class="notification-item notification-${notif.type}" data-action="dashboardModule.${typeof notif.action === 'string' ? notif.action : 'navigateToSection'}">
           <div class="notification-icon">
             <i class="bi bi-${notif.icon}"></i>
@@ -690,8 +709,9 @@ const dashboardModule = {
             <i class="bi bi-chevron-right"></i>
           </div>
         </div>
-      `).join('');
-
+      `
+        )
+        .join('');
     } catch (error) {
       console.error('Error loading notifications:', error);
       notificationsPanel.innerHTML = `
@@ -771,13 +791,12 @@ const dashboardModule = {
       // Update table headers
       thead.innerHTML = `
         <tr>
-          ${headers.map(h => `<th ${h === '#' ? 'width="60"' : ''}>${h}</th>`).join('')}
+          ${headers.map((h) => `<th ${h === '#' ? 'width="60"' : ''}>${h}</th>`).join('')}
         </tr>
       `;
 
       // Update table body
       tbody.innerHTML = topCompanies.map((org, idx) => this.renderCompanyRow(org, idx, metric)).join('');
-
     } catch (error) {
       console.error('Error updating top companies:', error);
       tbody.innerHTML = `
@@ -875,14 +894,14 @@ const dashboardModule = {
   async getCompaniesByAwardCount() {
     // Use already-loaded organisations with awards_count
     return (STATE.allOrganisations || [])
-      .filter(o => o.awards_count > 0)
+      .filter((o) => o.awards_count > 0)
       .sort((a, b) => (b.awards_count || 0) - (a.awards_count || 0))
       .slice(0, 5)
-      .map(o => ({
+      .map((o) => ({
         company_name: o.company_name,
         award_count: o.awards_count || 0,
         first_win: o.created_at,
-        latest_win: o.updated_at || o.created_at
+        latest_win: o.updated_at || o.created_at,
       }));
   },
 
@@ -891,19 +910,19 @@ const dashboardModule = {
    */
   async getCompaniesBySpending() {
     const payments = await apiClient.selectAll('payments', {
-      select: 'organisation_id, amount, payment_date, organisations(company_name)'
+      select: 'organisation_id, amount, payment_date, organisations(company_name)',
     });
 
     // Group by organisation and sum spending
     const orgMap = {};
-    payments?.forEach(p => {
+    payments?.forEach((p) => {
       if (p.organisation_id && p.organisations) {
         if (!orgMap[p.organisation_id]) {
           orgMap[p.organisation_id] = {
             company_name: p.organisations.company_name,
             total_spent: 0,
             order_count: 0,
-            last_payment: p.payment_date
+            last_payment: p.payment_date,
           };
         }
         orgMap[p.organisation_id].total_spent += parseFloat(p.amount || 0);
@@ -933,7 +952,7 @@ const dashboardModule = {
    */
   async getCompaniesByRevenue() {
     return STATE.allOrganisations
-      .filter(org => org.annual_revenue && org.annual_revenue > 0)
+      .filter((org) => org.annual_revenue && org.annual_revenue > 0)
       .sort((a, b) => (b.annual_revenue || 0) - (a.annual_revenue || 0))
       .slice(0, 5);
   },
@@ -942,9 +961,7 @@ const dashboardModule = {
    * Get newest companies
    */
   async getNewestCompanies() {
-    return STATE.allOrganisations
-      .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
-      .slice(0, 5);
+    return STATE.allOrganisations.sort((a, b) => new Date(b.created_at) - new Date(a.created_at)).slice(0, 5);
   },
 
   /**
@@ -968,7 +985,9 @@ const dashboardModule = {
     // Get top 5 companies (or all if less than 5)
     const topCompanies = STATE.allOrganisations.slice(0, 5);
 
-    tbody.innerHTML = topCompanies.map((org, idx) => `
+    tbody.innerHTML = topCompanies
+      .map(
+        (org, idx) => `
       <tr class="fade-in">
         <td>
           <div class="d-flex align-items-center">
@@ -980,7 +999,7 @@ const dashboardModule = {
         <td>
           <a 
             class="company-link" 
-            data-action="orgsModule.openCompanyProfile" data-args='${JSON.stringify([org.id, org.company_name || '']).replace(/'/g, "&#39;")}'>
+            data-action="orgsModule.openCompanyProfile" data-args='${JSON.stringify([org.id, org.company_name || '']).replace(/'/g, '&#39;')}'>
             <i class="bi bi-building me-2"></i>${utils.escapeHtml(org.company_name || 'N/A')}
           </a>
         </td>
@@ -988,11 +1007,14 @@ const dashboardModule = {
           ${org.email ? `<a href="mailto:${org.email}" class="text-decoration-none"><i class="bi bi-envelope me-1"></i>${utils.escapeHtml(org.email)}</a>` : '-'}
         </td>
         <td>
-          ${org.website ? 
-            `<a href="${org.website}" target="_blank" rel="noopener noreferrer" class="text-decoration-none">
+          ${
+            org.website
+              ? `<a href="${org.website}" target="_blank" rel="noopener noreferrer" class="text-decoration-none">
               <i class="bi bi-globe me-1"></i>${utils.truncate(org.website, 25)}
               <i class="bi bi-box-arrow-up-right ms-1 small"></i>
-            </a>` : '-'}
+            </a>`
+              : '-'
+          }
         </td>
         <td>
           <span class="badge bg-success-subtle text-success">
@@ -1000,7 +1022,9 @@ const dashboardModule = {
           </span>
         </td>
       </tr>
-    `).join('');
+    `
+      )
+      .join('');
   },
 
   /**
@@ -1011,17 +1035,17 @@ const dashboardModule = {
       utils.showToast('No awards data to export', 'warning');
       return;
     }
-    
-    const exportData = STATE.allAwards.map(award => ({
+
+    const exportData = STATE.allAwards.map((award) => ({
       'Company Name': award.organisations?.company_name || 'N/A',
-      'Year': award.year || '',
+      Year: award.year || '',
       'Award Category': award.award_category || '',
-      'Sector': award.sector || '',
+      Sector: award.sector || '',
       'County/City': award.county || '',
-      'Status': award.status || '',
-      'Created At': utils.formatDate(award.created_at)
+      Status: award.status || '',
+      'Created At': utils.formatDate(award.created_at),
     }));
-    
+
     const filename = `awards_export_${new Date().toISOString().split('T')[0]}.csv`;
     utils.exportToCSV(exportData, filename);
   },
@@ -1034,18 +1058,18 @@ const dashboardModule = {
       utils.showToast('No organisations data to export', 'warning');
       return;
     }
-    
-    const exportData = STATE.allOrganisations.map(org => ({
+
+    const exportData = STATE.allOrganisations.map((org) => ({
       'Company Name': org.company_name || '',
       'Contact Name': org.contact_name || '',
       'Contact Phone': org.contact_phone || '',
-      'Email': org.email || '',
-      'Website': org.website || '',
-      'Region': org.region || '',
-      'Address': org.address || '',
-      'Created At': utils.formatDate(org.created_at)
+      Email: org.email || '',
+      Website: org.website || '',
+      Region: org.region || '',
+      Address: org.address || '',
+      'Created At': utils.formatDate(org.created_at),
     }));
-    
+
     const filename = `organisations_export_${new Date().toISOString().split('T')[0]}.csv`;
     utils.exportToCSV(exportData, filename);
   },
@@ -1059,13 +1083,13 @@ const dashboardModule = {
       return;
     }
 
-    const exportData = STATE.allWinners.map(winner => ({
+    const exportData = STATE.allWinners.map((winner) => ({
       'Winner Name': winner.winner_name || '',
       'Award Category': winner.awards?.award_category || '',
-      'Year': winner.awards?.year || '',
-      'Photos': winner.winner_media?.filter(m => m.media_type === MEDIA_TYPES.PHOTO).length || 0,
-      'Videos': winner.winner_media?.filter(m => m.media_type === MEDIA_TYPES.VIDEO).length || 0,
-      'Created At': utils.formatDate(winner.created_at)
+      Year: winner.awards?.year || '',
+      Photos: winner.winner_media?.filter((m) => m.media_type === MEDIA_TYPES.PHOTO).length || 0,
+      Videos: winner.winner_media?.filter((m) => m.media_type === MEDIA_TYPES.VIDEO).length || 0,
+      'Created At': utils.formatDate(winner.created_at),
     }));
 
     const filename = `winners_export_${new Date().toISOString().split('T')[0]}.csv`;
@@ -1085,9 +1109,11 @@ const dashboardModule = {
         this.renderWinnersYearChart(),
         this.renderCategoryChart(),
         this.renderSectorChart(),
-        this.renderRegionChart()
+        this.renderRegionChart(),
       ]);
-      results.forEach((r, i) => { if (r.status === 'rejected') console.warn(`Chart ${i} failed:`, r.reason); });
+      results.forEach((r, i) => {
+        if (r.status === 'rejected') console.warn(`Chart ${i} failed:`, r.reason);
+      });
     } catch (error) {
       console.error('Error loading charts:', error);
     }
@@ -1118,9 +1144,21 @@ const dashboardModule = {
    * Color palette for charts
    */
   _chartColors: [
-    '#4361ee', '#3a0ca3', '#7209b7', '#f72585', '#4cc9f0',
-    '#06d6a0', '#ffd166', '#ef476f', '#118ab2', '#073b4c',
-    '#e63946', '#457b9d', '#2a9d8f', '#e9c46a', '#264653'
+    '#4361ee',
+    '#3a0ca3',
+    '#7209b7',
+    '#f72585',
+    '#4cc9f0',
+    '#06d6a0',
+    '#ffd166',
+    '#ef476f',
+    '#118ab2',
+    '#073b4c',
+    '#e63946',
+    '#457b9d',
+    '#2a9d8f',
+    '#e9c46a',
+    '#264653',
   ],
 
   /**
@@ -1136,7 +1174,7 @@ const dashboardModule = {
     }
 
     const yearCounts = {};
-    STATE.allWinners.forEach(winner => {
+    STATE.allWinners.forEach((winner) => {
       const year = winner.awards?.year || new Date(winner.created_at).getFullYear();
       yearCounts[year] = (yearCounts[year] || 0) + 1;
     });
@@ -1153,20 +1191,22 @@ const dashboardModule = {
       type: 'line',
       data: {
         labels: years,
-        datasets: [{
-          label: 'Winners',
-          data: years.map(y => yearCounts[y]),
-          borderColor: '#4361ee',
-          backgroundColor: gradient,
-          fill: true,
-          tension: 0.35,
-          borderWidth: 3,
-          pointBackgroundColor: '#fff',
-          pointBorderColor: '#4361ee',
-          pointBorderWidth: 2,
-          pointRadius: 5,
-          pointHoverRadius: 8
-        }]
+        datasets: [
+          {
+            label: 'Winners',
+            data: years.map((y) => yearCounts[y]),
+            borderColor: '#4361ee',
+            backgroundColor: gradient,
+            fill: true,
+            tension: 0.35,
+            borderWidth: 3,
+            pointBackgroundColor: '#fff',
+            pointBorderColor: '#4361ee',
+            pointBorderWidth: 2,
+            pointRadius: 5,
+            pointHoverRadius: 8,
+          },
+        ],
       },
       options: {
         responsive: true,
@@ -1180,22 +1220,22 @@ const dashboardModule = {
             padding: 10,
             cornerRadius: 8,
             callbacks: {
-              label: ctx => `${ctx.parsed.y} winners`
-            }
-          }
+              label: (ctx) => `${ctx.parsed.y} winners`,
+            },
+          },
         },
         scales: {
           y: {
             beginAtZero: true,
             ticks: { precision: 0, font: { size: 11 } },
-            grid: { color: 'rgba(0,0,0,0.06)' }
+            grid: { color: 'rgba(0,0,0,0.06)' },
           },
           x: {
             grid: { display: false },
-            ticks: { font: { size: 11 } }
-          }
-        }
-      }
+            ticks: { font: { size: 11 } },
+          },
+        },
+      },
     });
   },
 
@@ -1212,28 +1252,32 @@ const dashboardModule = {
     }
 
     const categoryCounts = {};
-    STATE.allAwards.forEach(award => {
+    STATE.allAwards.forEach((award) => {
       const category = award.award_category || 'Unknown';
       categoryCounts[category] = (categoryCounts[category] || 0) + 1;
     });
 
-    const sorted = Object.entries(categoryCounts).sort((a, b) => b[1] - a[1]).slice(0, 8);
+    const sorted = Object.entries(categoryCounts)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 8);
     if (sorted.length === 0) return;
 
-    const labels = sorted.map(([l]) => l.length > 25 ? l.substring(0, 25) + '...' : l);
+    const labels = sorted.map(([l]) => (l.length > 25 ? l.substring(0, 25) + '...' : l));
     const values = sorted.map(([, v]) => v);
 
     this._chartInstances['category'] = new Chart(canvas.getContext('2d'), {
       type: 'doughnut',
       data: {
         labels,
-        datasets: [{
-          data: values,
-          backgroundColor: this._chartColors.slice(0, sorted.length),
-          borderWidth: 2,
-          borderColor: '#fff',
-          hoverOffset: 8
-        }]
+        datasets: [
+          {
+            data: values,
+            backgroundColor: this._chartColors.slice(0, sorted.length),
+            borderWidth: 2,
+            borderColor: '#fff',
+            hoverOffset: 8,
+          },
+        ],
       },
       options: {
         responsive: true,
@@ -1242,22 +1286,22 @@ const dashboardModule = {
         plugins: {
           legend: {
             position: 'right',
-            labels: { font: { size: 11 }, padding: 8, boxWidth: 12, usePointStyle: true }
+            labels: { font: { size: 11 }, padding: 8, boxWidth: 12, usePointStyle: true },
           },
           tooltip: {
             backgroundColor: 'rgba(0,0,0,0.8)',
             padding: 10,
             cornerRadius: 8,
             callbacks: {
-              label: ctx => {
+              label: (ctx) => {
                 const total = ctx.dataset.data.reduce((a, b) => a + b, 0);
                 const pct = ((ctx.parsed / total) * 100).toFixed(1);
                 return ` ${ctx.parsed} awards (${pct}%)`;
-              }
-            }
-          }
-        }
-      }
+              },
+            },
+          },
+        },
+      },
     });
   },
 
@@ -1274,30 +1318,34 @@ const dashboardModule = {
     }
 
     const sectorCounts = {};
-    STATE.allAwards.forEach(award => {
+    STATE.allAwards.forEach((award) => {
       const sector = award.sector || 'Unknown';
       sectorCounts[sector] = (sectorCounts[sector] || 0) + 1;
     });
 
-    const sorted = Object.entries(sectorCounts).sort((a, b) => b[1] - a[1]).slice(0, 10);
+    const sorted = Object.entries(sectorCounts)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 10);
     if (sorted.length === 0) return;
 
-    const labels = sorted.map(([l]) => l.length > 22 ? l.substring(0, 22) + '...' : l);
+    const labels = sorted.map(([l]) => (l.length > 22 ? l.substring(0, 22) + '...' : l));
     const values = sorted.map(([, v]) => v);
 
     this._chartInstances['sector'] = new Chart(canvas.getContext('2d'), {
       type: 'bar',
       data: {
         labels,
-        datasets: [{
-          label: 'Awards',
-          data: values,
-          backgroundColor: this._chartColors.slice(0, sorted.length).map(c => c + 'cc'),
-          borderColor: this._chartColors.slice(0, sorted.length),
-          borderWidth: 1,
-          borderRadius: 4,
-          barPercentage: 0.7
-        }]
+        datasets: [
+          {
+            label: 'Awards',
+            data: values,
+            backgroundColor: this._chartColors.slice(0, sorted.length).map((c) => c + 'cc'),
+            borderColor: this._chartColors.slice(0, sorted.length),
+            borderWidth: 1,
+            borderRadius: 4,
+            barPercentage: 0.7,
+          },
+        ],
       },
       options: {
         responsive: true,
@@ -1310,22 +1358,22 @@ const dashboardModule = {
             padding: 10,
             cornerRadius: 8,
             callbacks: {
-              label: ctx => ` ${ctx.parsed.x} awards`
-            }
-          }
+              label: (ctx) => ` ${ctx.parsed.x} awards`,
+            },
+          },
         },
         scales: {
           x: {
             beginAtZero: true,
             ticks: { precision: 0, font: { size: 11 } },
-            grid: { color: 'rgba(0,0,0,0.06)' }
+            grid: { color: 'rgba(0,0,0,0.06)' },
           },
           y: {
             grid: { display: false },
-            ticks: { font: { size: 11 } }
-          }
-        }
-      }
+            ticks: { font: { size: 11 } },
+          },
+        },
+      },
     });
   },
 
@@ -1342,12 +1390,14 @@ const dashboardModule = {
     }
 
     const regionCounts = {};
-    STATE.allAwards.forEach(award => {
+    STATE.allAwards.forEach((award) => {
       const region = award.county || 'Unknown';
       regionCounts[region] = (regionCounts[region] || 0) + 1;
     });
 
-    const sorted = Object.entries(regionCounts).sort((a, b) => b[1] - a[1]).slice(0, 12);
+    const sorted = Object.entries(regionCounts)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 12);
     if (sorted.length === 0) return;
 
     const labels = sorted.map(([l]) => l);
@@ -1357,12 +1407,14 @@ const dashboardModule = {
       type: 'polarArea',
       data: {
         labels,
-        datasets: [{
-          data: values,
-          backgroundColor: this._chartColors.slice(0, sorted.length).map(c => c + '99'),
-          borderColor: this._chartColors.slice(0, sorted.length),
-          borderWidth: 1
-        }]
+        datasets: [
+          {
+            data: values,
+            backgroundColor: this._chartColors.slice(0, sorted.length).map((c) => c + '99'),
+            borderColor: this._chartColors.slice(0, sorted.length),
+            borderWidth: 1,
+          },
+        ],
       },
       options: {
         responsive: true,
@@ -1370,24 +1422,24 @@ const dashboardModule = {
         plugins: {
           legend: {
             position: 'right',
-            labels: { font: { size: 10 }, padding: 6, boxWidth: 10, usePointStyle: true }
+            labels: { font: { size: 10 }, padding: 6, boxWidth: 10, usePointStyle: true },
           },
           tooltip: {
             backgroundColor: 'rgba(0,0,0,0.8)',
             padding: 10,
             cornerRadius: 8,
             callbacks: {
-              label: ctx => ` ${ctx.parsed.r} awards`
-            }
-          }
+              label: (ctx) => ` ${ctx.parsed.r} awards`,
+            },
+          },
         },
         scales: {
           r: {
             ticks: { display: false },
-            grid: { color: 'rgba(0,0,0,0.06)' }
-          }
-        }
-      }
+            grid: { color: 'rgba(0,0,0,0.06)' },
+          },
+        },
+      },
     });
   },
 
@@ -1404,12 +1456,12 @@ const dashboardModule = {
       const lastYear = currentYear - 1;
 
       // Calculate growth for Total Awards
-      const currentYearAwards = STATE.allAwards.filter(a => {
+      const currentYearAwards = STATE.allAwards.filter((a) => {
         const year = parseInt(a.year) || new Date(a.created_at).getFullYear();
         return year === currentYear;
       }).length;
 
-      const lastYearAwards = STATE.allAwards.filter(a => {
+      const lastYearAwards = STATE.allAwards.filter((a) => {
         const year = parseInt(a.year) || new Date(a.created_at).getFullYear();
         return year === lastYear;
       }).length;
@@ -1417,39 +1469,34 @@ const dashboardModule = {
       this.renderGrowthBadge('totalAwardsGrowth', currentYearAwards, lastYearAwards);
 
       // Calculate growth for Organisations
-      const currentYearOrgs = STATE.allOrganisations.filter(o =>
-        new Date(o.created_at).getFullYear() === currentYear
+      const currentYearOrgs = STATE.allOrganisations.filter(
+        (o) => new Date(o.created_at).getFullYear() === currentYear
       ).length;
 
-      const lastYearOrgs = STATE.allOrganisations.filter(o =>
-        new Date(o.created_at).getFullYear() === lastYear
+      const lastYearOrgs = STATE.allOrganisations.filter(
+        (o) => new Date(o.created_at).getFullYear() === lastYear
       ).length;
 
       this.renderGrowthBadge('totalOrgsGrowth', currentYearOrgs, lastYearOrgs);
 
       // Calculate growth for Winners
-      const currentYearWinners = STATE.allWinners.filter(w =>
-        new Date(w.created_at).getFullYear() === currentYear
+      const currentYearWinners = STATE.allWinners.filter(
+        (w) => new Date(w.created_at).getFullYear() === currentYear
       ).length;
 
-      const lastYearWinners = STATE.allWinners.filter(w =>
-        new Date(w.created_at).getFullYear() === lastYear
-      ).length;
+      const lastYearWinners = STATE.allWinners.filter((w) => new Date(w.created_at).getFullYear() === lastYear).length;
 
       this.renderGrowthBadge('totalWinnersGrowth', currentYearWinners, lastYearWinners);
 
       // Events growth (use already-loaded STATE.allEvents)
       const allEvents = STATE.allEvents || [];
-      const currentYearEventsCount = allEvents.filter(e =>
-        new Date(e.created_at).getFullYear() === currentYear
+      const currentYearEventsCount = allEvents.filter(
+        (e) => new Date(e.created_at).getFullYear() === currentYear
       ).length;
 
-      const lastYearEventsCount = allEvents.filter(e =>
-        new Date(e.created_at).getFullYear() === lastYear
-      ).length;
+      const lastYearEventsCount = allEvents.filter((e) => new Date(e.created_at).getFullYear() === lastYear).length;
 
       this.renderGrowthBadge('totalEventsGrowth', currentYearEventsCount, lastYearEventsCount);
-
     } catch (error) {
       console.error('Error updating growth indicators:', error);
     }
@@ -1472,7 +1519,7 @@ const dashboardModule = {
       return;
     }
 
-    const percentChange = ((currentValue - previousValue) / previousValue * 100).toFixed(1);
+    const percentChange = (((currentValue - previousValue) / previousValue) * 100).toFixed(1);
     const absChange = Math.abs(percentChange);
 
     if (percentChange > 0) {
@@ -1499,50 +1546,50 @@ const dashboardModule = {
 
       // Awards with winners assigned
       const totalAwards = STATE.allAwards.length;
-      const awardsWithWinners = STATE.allAwards.filter(a => {
-        return STATE.allWinners.some(w => w.award_id === a.id);
+      const awardsWithWinners = STATE.allAwards.filter((a) => {
+        return STATE.allWinners.some((w) => w.award_id === a.id);
       }).length;
-      const awardCompletionRate = totalAwards > 0 ? (awardsWithWinners / totalAwards * 100).toFixed(0) : 0;
+      const awardCompletionRate = totalAwards > 0 ? ((awardsWithWinners / totalAwards) * 100).toFixed(0) : 0;
 
       metrics.push({
         title: 'Awards with Winners',
         value: `${awardsWithWinners}/${totalAwards}`,
         percentage: awardCompletionRate,
-        level: awardCompletionRate >= 80 ? 'high' : awardCompletionRate >= 50 ? 'medium' : 'low'
+        level: awardCompletionRate >= 80 ? 'high' : awardCompletionRate >= 50 ? 'medium' : 'low',
       });
 
       // Organisations with complete data
       const totalOrgs = STATE.allOrganisations.length;
-      const completeOrgs = STATE.allOrganisations.filter(org =>
-        org.email && org.contact_phone && org.website && org.contact_name
+      const completeOrgs = STATE.allOrganisations.filter(
+        (org) => org.email && org.contact_phone && org.website && org.contact_name
       ).length;
-      const orgCompletionRate = totalOrgs > 0 ? (completeOrgs / totalOrgs * 100).toFixed(0) : 0;
+      const orgCompletionRate = totalOrgs > 0 ? ((completeOrgs / totalOrgs) * 100).toFixed(0) : 0;
 
       metrics.push({
         title: 'Complete Organisation Profiles',
         value: `${completeOrgs}/${totalOrgs}`,
         percentage: orgCompletionRate,
-        level: orgCompletionRate >= 80 ? 'high' : orgCompletionRate >= 50 ? 'medium' : 'low'
+        level: orgCompletionRate >= 80 ? 'high' : orgCompletionRate >= 50 ? 'medium' : 'low',
       });
 
       // Tagged media (only fetch columns needed for counting)
-      const { data: allMedia } = await STATE.client
-        .from('media_gallery')
-        .select('id, organisation_id, award_id');
+      const { data: allMedia } = await STATE.client.from('media_gallery').select('id, organisation_id, award_id');
 
       const totalMedia = allMedia?.length || 0;
-      const taggedMedia = allMedia?.filter(m => m.organisation_id || m.award_id).length || 0;
-      const mediaTaggingRate = totalMedia > 0 ? (taggedMedia / totalMedia * 100).toFixed(0) : 0;
+      const taggedMedia = allMedia?.filter((m) => m.organisation_id || m.award_id).length || 0;
+      const mediaTaggingRate = totalMedia > 0 ? ((taggedMedia / totalMedia) * 100).toFixed(0) : 0;
 
       metrics.push({
         title: 'Tagged Media Files',
         value: `${taggedMedia}/${totalMedia}`,
         percentage: mediaTaggingRate,
-        level: mediaTaggingRate >= 80 ? 'high' : mediaTaggingRate >= 50 ? 'medium' : 'low'
+        level: mediaTaggingRate >= 80 ? 'high' : mediaTaggingRate >= 50 ? 'medium' : 'low',
       });
 
       // Render metrics
-      container.innerHTML = metrics.map(metric => `
+      container.innerHTML = metrics
+        .map(
+          (metric) => `
         <div class="completion-metric ${metric.level}">
           <div class="completion-metric-header">
             <span class="completion-metric-title">
@@ -1556,8 +1603,9 @@ const dashboardModule = {
           </div>
           <small class="text-muted mt-2 d-block">${metric.value} completed</small>
         </div>
-      `).join('');
-
+      `
+        )
+        .join('');
     } catch (error) {
       console.error('Error loading completion rate widget:', error);
       container.innerHTML = `
@@ -1582,7 +1630,7 @@ const dashboardModule = {
 
       // Use already-loaded STATE.allEvents
       const upcomingEvents = (STATE.allEvents || [])
-        .filter(e => e.event_date && e.event_date >= todayStr && e.event_date <= futureDateStr)
+        .filter((e) => e.event_date && e.event_date >= todayStr && e.event_date <= futureDateStr)
         .sort((a, b) => new Date(a.event_date) - new Date(b.event_date))
         .slice(0, 5);
 
@@ -1597,26 +1645,27 @@ const dashboardModule = {
       }
 
       // Render deadlines
-      container.innerHTML = upcomingEvents.map(event => {
-        const eventDate = new Date(event.event_date);
-        const daysUntil = Math.ceil((eventDate - today) / (1000 * 60 * 60 * 24));
+      container.innerHTML = upcomingEvents
+        .map((event) => {
+          const eventDate = new Date(event.event_date);
+          const daysUntil = Math.ceil((eventDate - today) / (1000 * 60 * 60 * 24));
 
-        let urgency, badge;
-        if (daysUntil <= 7) {
-          urgency = 'urgent';
-          badge = `${daysUntil} day${daysUntil !== 1 ? 's' : ''} away`;
-        } else if (daysUntil <= 14) {
-          urgency = 'soon';
-          badge = `${daysUntil} days away`;
-        } else {
-          urgency = 'upcoming';
-          badge = `${daysUntil} days away`;
-        }
+          let urgency, badge;
+          if (daysUntil <= 7) {
+            urgency = 'urgent';
+            badge = `${daysUntil} day${daysUntil !== 1 ? 's' : ''} away`;
+          } else if (daysUntil <= 14) {
+            urgency = 'soon';
+            badge = `${daysUntil} days away`;
+          } else {
+            urgency = 'upcoming';
+            badge = `${daysUntil} days away`;
+          }
 
-        const day = eventDate.getDate();
-        const month = eventDate.toLocaleDateString('en-US', { month: 'short' });
+          const day = eventDate.getDate();
+          const month = eventDate.toLocaleDateString('en-US', { month: 'short' });
 
-        return `
+          return `
           <div class="deadline-item ${urgency}" data-action="dashboardModule.navigateToSection" data-id="events">
             <div class="deadline-date-block">
               <div class="deadline-date-day">${day}</div>
@@ -1633,8 +1682,8 @@ const dashboardModule = {
             <div class="deadline-badge ${urgency}">${badge}</div>
           </div>
         `;
-      }).join('');
-
+        })
+        .join('');
     } catch (error) {
       console.error('Error loading upcoming deadlines widget:', error);
       container.innerHTML = `
@@ -1657,7 +1706,7 @@ const dashboardModule = {
       const invoicesResult = await apiClient.select('invoices', {
         select: '*, organisations(company_name), invoice_line_items(item_name, quantity, unit_price, line_total)',
         sort: { column: 'created_at', ascending: false },
-        pageSize: 10
+        pageSize: 10,
       });
       const invoices = invoicesResult.data;
 
@@ -1674,27 +1723,27 @@ const dashboardModule = {
       }
 
       // Render orders
-      tbody.innerHTML = invoices.map(invoice => {
-        const companyName = invoice.organisations?.company_name || 'Unknown';
-        const invoiceDate = new Date(invoice.invoice_date).toLocaleDateString();
+      tbody.innerHTML = invoices
+        .map((invoice) => {
+          const companyName = invoice.organisations?.company_name || 'Unknown';
+          const invoiceDate = new Date(invoice.invoice_date).toLocaleDateString();
 
-        // Build items list
-        const items = invoice.invoice_line_items || [];
-        const itemsList = items.length > 0
-          ? items.map(item => `${item.quantity}x ${item.item_name}`).join(', ')
-          : this.getInvoiceTypeDescription(invoice.invoice_type, invoice.package_type);
+          // Build items list
+          const items = invoice.invoice_line_items || [];
+          const itemsList =
+            items.length > 0
+              ? items.map((item) => `${item.quantity}x ${item.item_name}`).join(', ')
+              : this.getInvoiceTypeDescription(invoice.invoice_type, invoice.package_type);
 
-        const itemsDisplay = itemsList.length > 50
-          ? itemsList.substring(0, 50) + '...'
-          : itemsList;
+          const itemsDisplay = itemsList.length > 50 ? itemsList.substring(0, 50) + '...' : itemsList;
 
-        // Format amount
-        const amount = `£${parseFloat(invoice.total_amount || 0).toLocaleString('en-GB', { minimumFractionDigits: 2 })}`;
+          // Format amount
+          const amount = `£${parseFloat(invoice.total_amount || 0).toLocaleString('en-GB', { minimumFractionDigits: 2 })}`;
 
-        // Status badge
-        const statusBadge = this.getOrderStatusBadge(invoice.status, invoice.payment_status);
+          // Status badge
+          const statusBadge = this.getOrderStatusBadge(invoice.status, invoice.payment_status);
 
-        return `
+          return `
           <tr>
             <td>
               <strong>${invoice.invoice_number}</strong>
@@ -1714,8 +1763,8 @@ const dashboardModule = {
             </td>
           </tr>
         `;
-      }).join('');
-
+        })
+        .join('');
     } catch (error) {
       console.error('Error loading recent orders:', error);
       tbody.innerHTML = `
@@ -1733,11 +1782,11 @@ const dashboardModule = {
    */
   getInvoiceTypeDescription(type, packageType) {
     const descriptions = {
-      'entry_fee': 'Award Entry Fee',
-      'package': `${packageType ? packageType.charAt(0).toUpperCase() + packageType.slice(1) : ''} Package`,
-      'sponsorship': 'Sponsorship Package',
-      'tickets': 'Event Tickets',
-      'other': 'Other Items'
+      entry_fee: 'Award Entry Fee',
+      package: `${packageType ? packageType.charAt(0).toUpperCase() + packageType.slice(1) : ''} Package`,
+      sponsorship: 'Sponsorship Package',
+      tickets: 'Event Tickets',
+      other: 'Other Items',
     };
     return descriptions[type] || 'Order Items';
   },
@@ -1747,11 +1796,11 @@ const dashboardModule = {
    */
   getInvoiceTypeBadge(type) {
     const badges = {
-      'entry_fee': '<span class="badge bg-primary">Entry Fee</span>',
-      'package': '<span class="badge bg-success">Package</span>',
-      'sponsorship': '<span class="badge bg-warning text-dark">Sponsorship</span>',
-      'tickets': '<span class="badge bg-info">Tickets</span>',
-      'other': '<span class="badge bg-secondary">Other</span>'
+      entry_fee: '<span class="badge bg-primary">Entry Fee</span>',
+      package: '<span class="badge bg-success">Package</span>',
+      sponsorship: '<span class="badge bg-warning text-dark">Sponsorship</span>',
+      tickets: '<span class="badge bg-info">Tickets</span>',
+      other: '<span class="badge bg-secondary">Other</span>',
     };
     return badges[type] || '';
   },
@@ -1773,14 +1822,15 @@ const dashboardModule = {
 
     // Fall back to invoice status
     const badges = {
-      'draft': '<span class="badge bg-secondary">Draft</span>',
-      'sent': '<span class="badge bg-primary"><i class="bi bi-send me-1"></i>Sent</span>',
-      'viewed': '<span class="badge bg-info"><i class="bi bi-eye me-1"></i>Viewed</span>',
-      'paid': '<span class="badge bg-success"><i class="bi bi-check-circle me-1"></i>Paid</span>',
-      'partially_paid': '<span class="badge bg-warning text-dark"><i class="bi bi-hourglass-split me-1"></i>Partially Paid</span>',
-      'overdue': '<span class="badge bg-danger"><i class="bi bi-exclamation-triangle me-1"></i>Overdue</span>',
-      'cancelled': '<span class="badge bg-danger"><i class="bi bi-x-circle me-1"></i>Cancelled</span>',
-      'refunded': '<span class="badge bg-secondary"><i class="bi bi-arrow-counterclockwise me-1"></i>Refunded</span>'
+      draft: '<span class="badge bg-secondary">Draft</span>',
+      sent: '<span class="badge bg-primary"><i class="bi bi-send me-1"></i>Sent</span>',
+      viewed: '<span class="badge bg-info"><i class="bi bi-eye me-1"></i>Viewed</span>',
+      paid: '<span class="badge bg-success"><i class="bi bi-check-circle me-1"></i>Paid</span>',
+      partially_paid:
+        '<span class="badge bg-warning text-dark"><i class="bi bi-hourglass-split me-1"></i>Partially Paid</span>',
+      overdue: '<span class="badge bg-danger"><i class="bi bi-exclamation-triangle me-1"></i>Overdue</span>',
+      cancelled: '<span class="badge bg-danger"><i class="bi bi-x-circle me-1"></i>Cancelled</span>',
+      refunded: '<span class="badge bg-secondary"><i class="bi bi-arrow-counterclockwise me-1"></i>Refunded</span>',
     };
     return badges[status] || '<span class="badge bg-secondary">Unknown</span>';
   },
@@ -1833,7 +1883,6 @@ const dashboardModule = {
 
       // Load all sales data
       await this.loadSalesData();
-
     } catch (error) {
       console.error('Error opening sales dashboard:', error);
       utils.showErrorWithRetry(error, 'loading sales data', () => this.openSalesDashboard());
@@ -1849,12 +1898,12 @@ const dashboardModule = {
       const [allInvoices, allPayments] = await Promise.all([
         apiClient.selectAll('invoices', {
           select: '*, organisations(company_name)',
-          sort: { column: 'created_at', ascending: false }
+          sort: { column: 'created_at', ascending: false },
         }),
         apiClient.selectAll('payments', {
           select: '*, organisations(company_name)',
-          sort: { column: 'payment_date', ascending: false }
-        })
+          sort: { column: 'payment_date', ascending: false },
+        }),
       ]);
 
       this.loadSalesSummary(allInvoices, allPayments);
@@ -1862,7 +1911,6 @@ const dashboardModule = {
       this.loadPendingInvoices(allInvoices);
       this.loadPaymentMethodBreakdown(allPayments);
       this.loadOrderTypeBreakdown(allInvoices);
-
     } catch (error) {
       console.error('Error loading sales data:', error);
       throw error;
@@ -1877,10 +1925,9 @@ const dashboardModule = {
       // Calculate statistics
       const totalRevenue = payments?.reduce((sum, p) => sum + parseFloat(p.amount || 0), 0) || 0;
       const totalOrders = invoices?.length || 0;
-      const paidInvoices = invoices?.filter(i => i.payment_status === 'paid') || [];
-      const pendingInvoices = invoices?.filter(i =>
-        i.payment_status === 'unpaid' || i.payment_status === 'partial'
-      ) || [];
+      const paidInvoices = invoices?.filter((i) => i.payment_status === 'paid') || [];
+      const pendingInvoices =
+        invoices?.filter((i) => i.payment_status === 'unpaid' || i.payment_status === 'partial') || [];
       const pendingAmount = pendingInvoices.reduce((sum, i) => sum + parseFloat(i.balance_due || 0), 0);
       const avgOrderValue = totalOrders > 0 ? totalRevenue / totalOrders : 0;
 
@@ -1891,7 +1938,6 @@ const dashboardModule = {
       document.getElementById('salesTotalOrders').textContent = totalOrders;
       document.getElementById('salesPaidCount').textContent = paidInvoices.length;
       document.getElementById('salesAvgOrder').textContent = `£${avgOrderValue.toFixed(2)}`;
-
     } catch (error) {
       console.error('Error loading sales summary:', error);
       throw error;
@@ -1919,13 +1965,14 @@ const dashboardModule = {
         return;
       }
 
-      tbody.innerHTML = payments.map(payment => {
-        const date = new Date(payment.payment_date).toLocaleDateString();
-        const company = payment.organisations?.company_name || 'N/A';
-        const method = this.formatPaymentMethod(payment.payment_method);
-        const amount = parseFloat(payment.amount || 0).toFixed(2);
+      tbody.innerHTML = payments
+        .map((payment) => {
+          const date = new Date(payment.payment_date).toLocaleDateString();
+          const company = payment.organisations?.company_name || 'N/A';
+          const method = this.formatPaymentMethod(payment.payment_method);
+          const amount = parseFloat(payment.amount || 0).toFixed(2);
 
-        return `
+          return `
           <tr>
             <td>${utils.escapeHtml(date)}</td>
             <td>${utils.escapeHtml(company)}</td>
@@ -1935,8 +1982,8 @@ const dashboardModule = {
             <td class="text-end text-success fw-bold">£${amount}</td>
           </tr>
         `;
-      }).join('');
-
+        })
+        .join('');
     } catch (error) {
       console.error('Error loading recent payments:', error);
       tbody.innerHTML = `
@@ -1958,7 +2005,7 @@ const dashboardModule = {
 
     try {
       const invoices = allInvoices
-        .filter(i => i.payment_status === 'unpaid' || i.payment_status === 'partial')
+        .filter((i) => i.payment_status === 'unpaid' || i.payment_status === 'partial')
         .sort((a, b) => new Date(a.due_date || 0) - new Date(b.due_date || 0))
         .slice(0, 20);
 
@@ -1973,14 +2020,15 @@ const dashboardModule = {
         return;
       }
 
-      tbody.innerHTML = invoices.map(invoice => {
-        const dueDate = new Date(invoice.due_date);
-        const isOverdue = dueDate < new Date();
-        const dueDateStr = dueDate.toLocaleDateString();
-        const company = invoice.organisations?.company_name || 'N/A';
-        const amount = parseFloat(invoice.balance_due || 0).toFixed(2);
+      tbody.innerHTML = invoices
+        .map((invoice) => {
+          const dueDate = new Date(invoice.due_date);
+          const isOverdue = dueDate < new Date();
+          const dueDateStr = dueDate.toLocaleDateString();
+          const company = invoice.organisations?.company_name || 'N/A';
+          const amount = parseFloat(invoice.balance_due || 0).toFixed(2);
 
-        return `
+          return `
           <tr class="${isOverdue ? 'table-danger' : ''}">
             <td>
               ${utils.escapeHtml(invoice.invoice_number)}
@@ -1991,8 +2039,8 @@ const dashboardModule = {
             <td class="text-end fw-bold">£${amount}</td>
           </tr>
         `;
-      }).join('');
-
+        })
+        .join('');
     } catch (error) {
       console.error('Error loading pending invoices:', error);
       tbody.innerHTML = `
@@ -2022,7 +2070,7 @@ const dashboardModule = {
       const methodTotals = {};
       let grandTotal = 0;
 
-      payments.forEach(payment => {
+      payments.forEach((payment) => {
         const method = payment.payment_method || 'other';
         const amount = parseFloat(payment.amount || 0);
         methodTotals[method] = (methodTotals[method] || 0) + amount;
@@ -2033,7 +2081,7 @@ const dashboardModule = {
       const html = Object.entries(methodTotals)
         .sort((a, b) => b[1] - a[1])
         .map(([method, total]) => {
-          const percentage = grandTotal > 0 ? (total / grandTotal * 100).toFixed(1) : 0;
+          const percentage = grandTotal > 0 ? ((total / grandTotal) * 100).toFixed(1) : 0;
           const methodLabel = this.formatPaymentMethod(method);
 
           return `
@@ -2051,10 +2099,10 @@ const dashboardModule = {
               </div>
             </div>
           `;
-        }).join('');
+        })
+        .join('');
 
       container.innerHTML = html || '<div class="text-center text-muted">No data</div>';
-
     } catch (error) {
       console.error('Error loading payment method breakdown:', error);
       container.innerHTML = '<div class="text-center text-danger">Error loading data</div>';
@@ -2078,7 +2126,7 @@ const dashboardModule = {
       const typeTotals = {};
       let grandTotal = 0;
 
-      invoices.forEach(invoice => {
+      invoices.forEach((invoice) => {
         const type = invoice.invoice_type || 'other';
         const amount = parseFloat(invoice.total_amount || 0);
         typeTotals[type] = (typeTotals[type] || 0) + amount;
@@ -2089,7 +2137,7 @@ const dashboardModule = {
       const html = Object.entries(typeTotals)
         .sort((a, b) => b[1] - a[1])
         .map(([type, total]) => {
-          const percentage = grandTotal > 0 ? (total / grandTotal * 100).toFixed(1) : 0;
+          const percentage = grandTotal > 0 ? ((total / grandTotal) * 100).toFixed(1) : 0;
           const typeLabel = this.formatInvoiceType(type);
 
           return `
@@ -2107,10 +2155,10 @@ const dashboardModule = {
               </div>
             </div>
           `;
-        }).join('');
+        })
+        .join('');
 
       container.innerHTML = html || '<div class="text-center text-muted">No data</div>';
-
     } catch (error) {
       console.error('Error loading order type breakdown:', error);
       container.innerHTML = '<div class="text-center text-danger">Error loading data</div>';
@@ -2122,13 +2170,13 @@ const dashboardModule = {
    */
   formatPaymentMethod(method) {
     const methods = {
-      'bank_transfer': 'Bank Transfer',
-      'card': 'Credit/Debit Card',
-      'paypal': 'PayPal',
-      'stripe': 'Stripe',
-      'cash': 'Cash',
-      'cheque': 'Cheque',
-      'other': 'Other'
+      bank_transfer: 'Bank Transfer',
+      card: 'Credit/Debit Card',
+      paypal: 'PayPal',
+      stripe: 'Stripe',
+      cash: 'Cash',
+      cheque: 'Cheque',
+      other: 'Other',
     };
     return methods[method] || method;
   },
@@ -2138,11 +2186,11 @@ const dashboardModule = {
    */
   formatInvoiceType(type) {
     const types = {
-      'entry_fee': 'Entry Fees',
-      'package': 'Packages',
-      'sponsorship': 'Sponsorships',
-      'tickets': 'Event Tickets',
-      'other': 'Other'
+      entry_fee: 'Entry Fees',
+      package: 'Packages',
+      sponsorship: 'Sponsorships',
+      tickets: 'Event Tickets',
+      other: 'Other',
     };
     return types[type] || type;
   },
@@ -2158,12 +2206,12 @@ const dashboardModule = {
       const [invoices, payments] = await Promise.all([
         apiClient.selectAll('invoices', {
           select: '*, organisations(company_name)',
-          sort: { column: 'created_at', ascending: false }
+          sort: { column: 'created_at', ascending: false },
         }),
         apiClient.selectAll('payments', {
           select: '*, organisations(company_name)',
-          sort: { column: 'payment_date', ascending: false }
-        })
+          sort: { column: 'payment_date', ascending: false },
+        }),
       ]);
 
       // Create CSV content
@@ -2174,32 +2222,38 @@ const dashboardModule = {
       csv += 'INVOICES\n';
       csv += 'Invoice Number,Company,Date,Due Date,Type,Status,Total,Paid,Balance\n';
 
-      invoices?.forEach(inv => {
-        csv += [
-          inv.invoice_number,
-          inv.organisations?.company_name || 'N/A',
-          inv.invoice_date,
-          inv.due_date,
-          inv.invoice_type,
-          inv.payment_status,
-          inv.total_amount,
-          inv.paid_amount,
-          inv.balance_due
-        ].map(f => `"${String(f).replace(/"/g, '""')}"`).join(',') + '\n';
+      invoices?.forEach((inv) => {
+        csv +=
+          [
+            inv.invoice_number,
+            inv.organisations?.company_name || 'N/A',
+            inv.invoice_date,
+            inv.due_date,
+            inv.invoice_type,
+            inv.payment_status,
+            inv.total_amount,
+            inv.paid_amount,
+            inv.balance_due,
+          ]
+            .map((f) => `"${String(f).replace(/"/g, '""')}"`)
+            .join(',') + '\n';
       });
 
       csv += '\n\nPAYMENTS\n';
       csv += 'Reference,Company,Date,Method,Amount,Status\n';
 
-      payments?.forEach(pay => {
-        csv += [
-          pay.payment_reference,
-          pay.organisations?.company_name || 'N/A',
-          pay.payment_date,
-          pay.payment_method,
-          pay.amount,
-          pay.status
-        ].map(f => `"${String(f).replace(/"/g, '""')}"`).join(',') + '\n';
+      payments?.forEach((pay) => {
+        csv +=
+          [
+            pay.payment_reference,
+            pay.organisations?.company_name || 'N/A',
+            pay.payment_date,
+            pay.payment_method,
+            pay.amount,
+            pay.status,
+          ]
+            .map((f) => `"${String(f).replace(/"/g, '""')}"`)
+            .join(',') + '\n';
       });
 
       // Download file
@@ -2216,7 +2270,6 @@ const dashboardModule = {
       document.body.removeChild(link);
 
       utils.showToast('Sales report exported successfully', 'success');
-
     } catch (error) {
       console.error('Error exporting sales data:', error);
       utils.showToast('Failed to export sales data', 'error');
@@ -2237,9 +2290,9 @@ const dashboardModule = {
 
       // Summary statistics
       const totalAwards = awards.length;
-      const activeAwards = awards.filter(a => a.status === 'published' || a.status === 'active').length;
-      const pendingAwards = awards.filter(a => a.status === STATUS.DRAFT || a.status === STATUS.PENDING).length;
-      const categories = [...new Set(awards.map(a => a.category).filter(c => c))];
+      const activeAwards = awards.filter((a) => a.status === 'published' || a.status === 'active').length;
+      const pendingAwards = awards.filter((a) => a.status === STATUS.DRAFT || a.status === STATUS.PENDING).length;
+      const categories = [...new Set(awards.map((a) => a.category).filter((c) => c))];
 
       document.getElementById('summaryTotalAwards').textContent = totalAwards;
       document.getElementById('summaryActiveAwards').textContent = activeAwards;
@@ -2253,21 +2306,29 @@ const dashboardModule = {
 
       const tbody = document.getElementById('summaryRecentAwardsTable');
       if (recentAwards.length === 0) {
-        utils.showEnhancedEmptyState('summaryRecentAwardsTable', 4, { icon: 'bi-trophy', message: 'No awards found', description: 'Awards will appear here once created' });
+        utils.showEnhancedEmptyState('summaryRecentAwardsTable', 4, {
+          icon: 'bi-trophy',
+          message: 'No awards found',
+          description: 'Awards will appear here once created',
+        });
       } else {
-        tbody.innerHTML = recentAwards.map(award => `
+        tbody.innerHTML = recentAwards
+          .map(
+            (award) => `
           <tr>
             <td>${utils.escapeHtml(utils.formatAwardName(award))}</td>
             <td>${utils.escapeHtml(award.category || 'N/A')}</td>
             <td><span class="badge bg-${this.getStatusColor(award.status)}">${award.status || 'N/A'}</span></td>
             <td>${award.created_at ? new Date(award.created_at).toLocaleDateString() : 'N/A'}</td>
           </tr>
-        `).join('');
+        `
+          )
+          .join('');
       }
 
       // Status breakdown
       const statusCounts = {};
-      awards.forEach(a => {
+      awards.forEach((a) => {
         const status = a.status || 'unknown';
         statusCounts[status] = (statusCounts[status] || 0) + 1;
       });
@@ -2276,7 +2337,7 @@ const dashboardModule = {
       breakdown.innerHTML = Object.entries(statusCounts)
         .sort((a, b) => b[1] - a[1])
         .map(([status, count]) => {
-          const percentage = totalAwards > 0 ? (count / totalAwards * 100).toFixed(0) : 0;
+          const percentage = totalAwards > 0 ? ((count / totalAwards) * 100).toFixed(0) : 0;
           return `
             <div class="mb-3">
               <div class="d-flex justify-content-between align-items-center mb-1">
@@ -2288,8 +2349,8 @@ const dashboardModule = {
               </div>
             </div>
           `;
-        }).join('');
-
+        })
+        .join('');
     } catch (error) {
       console.error('Error loading awards summary:', error);
       utils.showToast('Failed to load awards summary', 'error');
@@ -2308,13 +2369,13 @@ const dashboardModule = {
 
       // Use already-loaded data — awards_count is computed during org load
       const totalOrgs = orgs.length;
-      const winnersCount = orgs.filter(o => o.awards_count > 0).length;
-      const sectors = [...new Set(orgs.map(o => o.sector).filter(s => s))];
+      const winnersCount = orgs.filter((o) => o.awards_count > 0).length;
+      const sectors = [...new Set(orgs.map((o) => o.sector).filter((s) => s))];
 
       // New this month
       const thisMonth = new Date();
       thisMonth.setDate(1);
-      const newThisMonth = orgs.filter(o => o.created_at && new Date(o.created_at) >= thisMonth).length;
+      const newThisMonth = orgs.filter((o) => o.created_at && new Date(o.created_at) >= thisMonth).length;
 
       document.getElementById('summaryTotalOrgs').textContent = totalOrgs;
       document.getElementById('summaryOrgWinners').textContent = winnersCount;
@@ -2328,9 +2389,15 @@ const dashboardModule = {
 
       const tbody = document.getElementById('summaryRecentOrgsTable');
       if (recentOrgs.length === 0) {
-        utils.showEnhancedEmptyState('summaryRecentOrgsTable', 5, { icon: 'bi-building', message: 'No organisations found', description: 'Organisations will appear here once added' });
+        utils.showEnhancedEmptyState('summaryRecentOrgsTable', 5, {
+          icon: 'bi-building',
+          message: 'No organisations found',
+          description: 'Organisations will appear here once added',
+        });
       } else {
-        tbody.innerHTML = recentOrgs.map(org => `
+        tbody.innerHTML = recentOrgs
+          .map(
+            (org) => `
           <tr>
             <td>${utils.escapeHtml(org.company_name || 'Untitled')}</td>
             <td>${utils.escapeHtml(org.sector || 'N/A')}</td>
@@ -2338,12 +2405,14 @@ const dashboardModule = {
             <td><span class="badge bg-primary">${org.awards_count || 0}</span></td>
             <td>${org.created_at ? new Date(org.created_at).toLocaleDateString() : 'N/A'}</td>
           </tr>
-        `).join('');
+        `
+          )
+          .join('');
       }
 
       // Sector breakdown
       const sectorCounts = {};
-      orgs.forEach(o => {
+      orgs.forEach((o) => {
         const sector = o.sector || 'Unspecified';
         sectorCounts[sector] = (sectorCounts[sector] || 0) + 1;
       });
@@ -2352,7 +2421,7 @@ const dashboardModule = {
       breakdown.innerHTML = Object.entries(sectorCounts)
         .sort((a, b) => b[1] - a[1])
         .map(([sector, count]) => {
-          const percentage = totalOrgs > 0 ? (count / totalOrgs * 100).toFixed(0) : 0;
+          const percentage = totalOrgs > 0 ? ((count / totalOrgs) * 100).toFixed(0) : 0;
           return `
             <div class="mb-3">
               <div class="d-flex justify-content-between align-items-center mb-1">
@@ -2364,8 +2433,8 @@ const dashboardModule = {
               </div>
             </div>
           `;
-        }).join('');
-
+        })
+        .join('');
     } catch (error) {
       console.error('Error loading organisations summary:', error);
       utils.showToast('Failed to load organisations summary', 'error');
@@ -2381,25 +2450,24 @@ const dashboardModule = {
 
     try {
       // Use already-loaded winners data (from winners table, consistent with Winners tab)
-      const winners = [...(STATE.allWinners || [])]
-        .sort((a, b) => (b.award_year || 0) - (a.award_year || 0));
+      const winners = [...(STATE.allWinners || [])].sort((a, b) => (b.award_year || 0) - (a.award_year || 0));
 
       const totalWinners = winners.length;
 
       // This year's winners
       const currentYear = new Date().getFullYear();
-      const winnersThisYear = winners.filter(w => w.award_year === currentYear).length;
+      const winnersThisYear = winners.filter((w) => w.award_year === currentYear).length;
 
       // Multi-award winners (group by winner_name)
       const nameWinCounts = {};
-      winners.forEach(w => {
+      winners.forEach((w) => {
         const key = w.winner_name || w.organisation_id || 'unknown';
         nameWinCounts[key] = (nameWinCounts[key] || 0) + 1;
       });
-      const multiWinners = Object.values(nameWinCounts).filter(count => count >= 2).length;
+      const multiWinners = Object.values(nameWinCounts).filter((count) => count >= 2).length;
 
       // Average per year
-      const years = [...new Set(winners.map(w => w.award_year).filter(y => y))];
+      const years = [...new Set(winners.map((w) => w.award_year).filter((y) => y))];
       const avgPerYear = years.length > 0 ? Math.round(totalWinners / years.length) : 0;
 
       document.getElementById('summaryTotalWinners').textContent = totalWinners;
@@ -2412,21 +2480,29 @@ const dashboardModule = {
 
       const tbody = document.getElementById('summaryRecentWinnersTable');
       if (recentWinners.length === 0) {
-        utils.showEnhancedEmptyState('summaryRecentWinnersTable', 4, { icon: 'bi-star', message: 'No winners found', description: 'Winners will appear here once announced' });
+        utils.showEnhancedEmptyState('summaryRecentWinnersTable', 4, {
+          icon: 'bi-star',
+          message: 'No winners found',
+          description: 'Winners will appear here once announced',
+        });
       } else {
-        tbody.innerHTML = recentWinners.map(winner => `
+        tbody.innerHTML = recentWinners
+          .map(
+            (winner) => `
           <tr>
             <td>${utils.escapeHtml(winner.winner_name || 'N/A')}</td>
             <td>${utils.escapeHtml(utils.formatAwardName(winner.awards) || 'N/A')}</td>
             <td>${winner.award_year || 'N/A'}</td>
             <td><span class="badge bg-success">Winner</span></td>
           </tr>
-        `).join('');
+        `
+          )
+          .join('');
       }
 
       // Winners by year
       const yearCounts = {};
-      winners.forEach(w => {
+      winners.forEach((w) => {
         const year = w.award_year || 'Unknown';
         yearCounts[year] = (yearCounts[year] || 0) + 1;
       });
@@ -2436,7 +2512,7 @@ const dashboardModule = {
         .sort((a, b) => b[0] - a[0])
         .map(([year, count]) => {
           const maxCount = Math.max(...Object.values(yearCounts));
-          const percentage = maxCount > 0 ? (count / maxCount * 100).toFixed(0) : 0;
+          const percentage = maxCount > 0 ? ((count / maxCount) * 100).toFixed(0) : 0;
           return `
             <div class="mb-3">
               <div class="d-flex justify-content-between align-items-center mb-1">
@@ -2448,8 +2524,8 @@ const dashboardModule = {
               </div>
             </div>
           `;
-        }).join('');
-
+        })
+        .join('');
     } catch (error) {
       console.error('Error loading winners summary:', error);
       utils.showToast('Failed to load winners summary', 'error');
@@ -2465,21 +2541,24 @@ const dashboardModule = {
 
     try {
       // Use already-loaded events data
-      const events = [...(STATE.allEvents || [])]
-        .sort((a, b) => new Date(b.event_date || 0) - new Date(a.event_date || 0));
+      const events = [...(STATE.allEvents || [])].sort(
+        (a, b) => new Date(b.event_date || 0) - new Date(a.event_date || 0)
+      );
 
       const totalEvents = events.length;
       const today = new Date().toISOString().split('T')[0];
       const futureDate = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
 
-      const upcomingEvents = events?.filter(e => e.event_date && e.event_date >= today && e.event_date <= futureDate).length || 0;
-      const pastEvents = events?.filter(e => e.event_date && e.event_date < today).length || 0;
+      const upcomingEvents =
+        events?.filter((e) => e.event_date && e.event_date >= today && e.event_date <= futureDate).length || 0;
+      const pastEvents = events?.filter((e) => e.event_date && e.event_date < today).length || 0;
 
       // Calculate average attendance
-      const eventsWithCapacity = events?.filter(e => e.capacity && e.capacity > 0) || [];
-      const avgAttendance = eventsWithCapacity.length > 0
-        ? Math.round(eventsWithCapacity.reduce((sum, e) => sum + (e.capacity || 0), 0) / eventsWithCapacity.length)
-        : 0;
+      const eventsWithCapacity = events?.filter((e) => e.capacity && e.capacity > 0) || [];
+      const avgAttendance =
+        eventsWithCapacity.length > 0
+          ? Math.round(eventsWithCapacity.reduce((sum, e) => sum + (e.capacity || 0), 0) / eventsWithCapacity.length)
+          : 0;
 
       document.getElementById('summaryTotalEvents').textContent = totalEvents;
       document.getElementById('summaryUpcomingEvents').textContent = upcomingEvents;
@@ -2487,13 +2566,19 @@ const dashboardModule = {
       document.getElementById('summaryAvgAttendance').textContent = avgAttendance;
 
       // Upcoming events table
-      const upcoming = events?.filter(e => e.event_date && e.event_date >= today).slice(0, 10) || [];
+      const upcoming = events?.filter((e) => e.event_date && e.event_date >= today).slice(0, 10) || [];
 
       const tbody = document.getElementById('summaryUpcomingEventsTable');
       if (upcoming.length === 0) {
-        utils.showEnhancedEmptyState('summaryUpcomingEventsTable', 5, { icon: 'bi-calendar-event', message: 'No upcoming events', description: 'Events will appear here once scheduled' });
+        utils.showEnhancedEmptyState('summaryUpcomingEventsTable', 5, {
+          icon: 'bi-calendar-event',
+          message: 'No upcoming events',
+          description: 'Events will appear here once scheduled',
+        });
       } else {
-        tbody.innerHTML = upcoming.map(event => `
+        tbody.innerHTML = upcoming
+          .map(
+            (event) => `
           <tr>
             <td>${utils.escapeHtml(event.event_name || 'Untitled')}</td>
             <td>${event.event_date ? new Date(event.event_date).toLocaleDateString() : 'N/A'}</td>
@@ -2501,7 +2586,9 @@ const dashboardModule = {
             <td>${event.capacity || 'N/A'}</td>
             <td><span class="badge bg-success">Upcoming</span></td>
           </tr>
-        `).join('');
+        `
+          )
+          .join('');
       }
 
       // Recent events timeline
@@ -2511,12 +2598,13 @@ const dashboardModule = {
       if (recentEvents.length === 0) {
         timeline.innerHTML = '<div class="text-center text-muted py-4">No events found</div>';
       } else {
-        timeline.innerHTML = recentEvents.map(event => {
-          const isPast = event.event_date && event.event_date < today;
-          const badgeClass = isPast ? 'bg-secondary' : 'bg-success';
-          const badgeText = isPast ? 'Past' : 'Upcoming';
+        timeline.innerHTML = recentEvents
+          .map((event) => {
+            const isPast = event.event_date && event.event_date < today;
+            const badgeClass = isPast ? 'bg-secondary' : 'bg-success';
+            const badgeText = isPast ? 'Past' : 'Upcoming';
 
-          return `
+            return `
             <div class="d-flex gap-3 mb-3 pb-3 border-bottom">
               <div>
                 <span class="badge ${badgeClass}">${badgeText}</span>
@@ -2531,9 +2619,9 @@ const dashboardModule = {
               </div>
             </div>
           `;
-        }).join('');
+          })
+          .join('');
       }
-
     } catch (error) {
       console.error('Error loading events summary:', error);
       utils.showToast('Failed to load events summary', 'error');
@@ -2556,19 +2644,18 @@ const dashboardModule = {
           .select('media_type, organisation_id, award_id, event_id');
 
         const items = mediaItems || [];
-        const totalPhotos = items.filter(m => m.media_type === 'image').length;
-        const totalVideos = items.filter(m => m.media_type === 'video').length;
-        const untaggedPhotos = items.filter(m =>
-          m.media_type === 'image' && (!m.organisation_id || !m.award_id)
+        const totalPhotos = items.filter((m) => m.media_type === 'image').length;
+        const totalVideos = items.filter((m) => m.media_type === 'video').length;
+        const untaggedPhotos = items.filter(
+          (m) => m.media_type === 'image' && (!m.organisation_id || !m.award_id)
         ).length;
-        const uniqueEvents = new Set(items.filter(m => m.event_id).map(m => m.event_id));
+        const uniqueEvents = new Set(items.filter((m) => m.event_id).map((m) => m.event_id));
 
         // Update modal elements
         document.getElementById('modalTotalPhotosCount').textContent = totalPhotos || 0;
         document.getElementById('modalTotalVideosCount').textContent = totalVideos || 0;
         document.getElementById('modalUntaggedPhotosCount').textContent = untaggedPhotos || 0;
         document.getElementById('modalEventsWithMediaCount').textContent = uniqueEvents.size || 0;
-
       } catch (error) {
         console.error('Error loading media gallery statistics:', error);
         utils.showToast('Failed to load media gallery statistics', 'error');
@@ -2581,12 +2668,12 @@ const dashboardModule = {
    */
   getStatusColor(status) {
     const statusColors = {
-      'published': 'success',
-      'active': 'success',
-      'draft': 'secondary',
-      'pending': 'warning',
-      'review': 'info',
-      'archived': 'dark'
+      published: 'success',
+      active: 'success',
+      draft: 'secondary',
+      pending: 'warning',
+      review: 'info',
+      archived: 'dark',
     };
     return statusColors[status?.toLowerCase()] || 'secondary';
   },
@@ -2602,12 +2689,12 @@ const dashboardModule = {
 
       // award_assignments not in global state — query API
       const assignments = await apiClient.selectAll('award_assignments', {
-        select: 'award_id, organisation_id'
+        select: 'award_id, organisation_id',
       });
 
       // Build county → org count map
       const awardCountyMap = {};
-      (awardData || []).forEach(a => {
+      (awardData || []).forEach((a) => {
         if (a.county) awardCountyMap[a.id] = a.county;
       });
 
@@ -2615,7 +2702,7 @@ const dashboardModule = {
       const countyAwardCounts = {};
 
       // Count awards per county
-      (awards || []).forEach(a => {
+      (awards || []).forEach((a) => {
         if (a.county) {
           countyAwardCounts[a.county] = (countyAwardCounts[a.county] || 0) + 1;
         }
@@ -2623,7 +2710,7 @@ const dashboardModule = {
 
       // Count orgs per county (through assignments)
       const orgsByCounty = {};
-      (assignments || []).forEach(a => {
+      (assignments || []).forEach((a) => {
         const county = awardCountyMap[a.award_id];
         if (county) {
           if (!orgsByCounty[county]) orgsByCounty[county] = new Set();
@@ -2639,7 +2726,7 @@ const dashboardModule = {
       const orgsWithCounty = STATE.allOrganisations || [];
 
       const csvOrgCounts = {};
-      (orgsWithCounty || []).forEach(org => {
+      (orgsWithCounty || []).forEach((org) => {
         if (org.catchment_area) {
           csvOrgCounts[org.catchment_area] = (csvOrgCounts[org.catchment_area] || 0) + 1;
         }
@@ -2649,14 +2736,16 @@ const dashboardModule = {
       let importedCounties = {};
       try {
         importedCounties = JSON.parse(localStorage.getItem('csvImportedCounties') || '{}');
-      } catch (e) { /* ignore */ }
+      } catch (e) {
+        /* ignore */
+      }
 
       // Update each county item in the dashboard
       const allCountyItems = document.querySelectorAll('[data-county]');
       let coveredCount = 0;
       const totalCount = allCountyItems.length;
 
-      allCountyItems.forEach(item => {
+      allCountyItems.forEach((item) => {
         const countyName = item.getAttribute('data-county');
         const orgCount = (countyOrgCounts[countyName] || 0) + (csvOrgCounts[countyName] || 0);
         const awardCount = countyAwardCounts[countyName] || 0;
@@ -2674,7 +2763,8 @@ const dashboardModule = {
           const tooltipParts = [];
           if (orgCount > 0) tooltipParts.push(`${orgCount} orgs`);
           if (awardCount > 0) tooltipParts.push(`${awardCount} awards`);
-          if (csvImported) tooltipParts.push(`CSV imported ${new Date(csvImported.lastImport).toLocaleDateString('en-GB')}`);
+          if (csvImported)
+            tooltipParts.push(`CSV imported ${new Date(csvImported.lastImport).toLocaleDateString('en-GB')}`);
 
           const badge = document.createElement('span');
           badge.className = 'county-coverage float-end';
@@ -2698,7 +2788,6 @@ const dashboardModule = {
       this._updateSectionCoverage('regScot', countyOrgCounts);
       this._updateSectionCoverage('regWales', countyOrgCounts);
       this._updateSectionCoverage('regCities', countyOrgCounts);
-
     } catch (error) {
       console.error('Error updating county coverage:', error);
     }
@@ -2710,7 +2799,7 @@ const dashboardModule = {
 
     const items = section.querySelectorAll('[data-county]');
     let covered = 0;
-    items.forEach(item => {
+    items.forEach((item) => {
       const county = item.getAttribute('data-county');
       if (countyOrgCounts[county] > 0) covered++;
     });
@@ -2745,17 +2834,108 @@ const dashboardModule = {
     try {
       // Use already-loaded organisations data
       const orgs = STATE.allOrganisations || [];
-      const activeOrgs = orgs.filter(o => o.status !== 'archived');
+      const activeOrgs = orgs.filter((o) => o.status !== 'archived');
       const totalOrgs = activeOrgs.length;
 
       // England counties, Scotland regions, Wales areas, Cities
-      const englandCounties = ['Bedfordshire','Berkshire','Buckinghamshire','Cambridgeshire','Cheshire','Cornwall','Cumbria','Derbyshire','Devon','Dorset','County Durham','East Riding of Yorkshire','Essex','Gloucestershire','Hampshire','Herefordshire','Hertfordshire','Isle of Wight','Kent','Lancashire','Leicestershire','Lincolnshire','Norfolk','Northamptonshire','North Yorkshire','Northumberland','Nottinghamshire','Oxfordshire','Rutland','Shropshire','Somerset','South Yorkshire','Staffordshire','Suffolk','Surrey','Sussex','Tyne & Wear','Warwickshire','West Yorkshire','Wiltshire','Worcestershire'];
-      const scotlandRegions = ['Argyll & Bute','Ayrshire','Central Scotland','Dumfries & Galloway','Dunbartonshire','Fife','Grampian','Highlands','Lanarkshire','Lothian','Renfrewshire','Scottish Borders','Scottish Islands','Tayside'];
-      const walesAreas = ['Anglesey','Carmarthenshire','Ceredigion','Conwy','Denbighshire','Flintshire','Glamorgan','Gwent','Gwynedd','Pembrokeshire','Powys','Wrexham'];
-      const cities = ['Birmingham','Bournemouth','Bradford','Brighton & Hove','Bristol','Cardiff','Coventry','Edinburgh','Glasgow','Leeds','Leicester','Liverpool','London','Manchester','Middlesborough','Newcastle','Nottingham','Sheffield','Southampton','Swansea'];
+      const englandCounties = [
+        'Bedfordshire',
+        'Berkshire',
+        'Buckinghamshire',
+        'Cambridgeshire',
+        'Cheshire',
+        'Cornwall',
+        'Cumbria',
+        'Derbyshire',
+        'Devon',
+        'Dorset',
+        'County Durham',
+        'East Riding of Yorkshire',
+        'Essex',
+        'Gloucestershire',
+        'Hampshire',
+        'Herefordshire',
+        'Hertfordshire',
+        'Isle of Wight',
+        'Kent',
+        'Lancashire',
+        'Leicestershire',
+        'Lincolnshire',
+        'Norfolk',
+        'Northamptonshire',
+        'North Yorkshire',
+        'Northumberland',
+        'Nottinghamshire',
+        'Oxfordshire',
+        'Rutland',
+        'Shropshire',
+        'Somerset',
+        'South Yorkshire',
+        'Staffordshire',
+        'Suffolk',
+        'Surrey',
+        'Sussex',
+        'Tyne & Wear',
+        'Warwickshire',
+        'West Yorkshire',
+        'Wiltshire',
+        'Worcestershire',
+      ];
+      const scotlandRegions = [
+        'Argyll & Bute',
+        'Ayrshire',
+        'Central Scotland',
+        'Dumfries & Galloway',
+        'Dunbartonshire',
+        'Fife',
+        'Grampian',
+        'Highlands',
+        'Lanarkshire',
+        'Lothian',
+        'Renfrewshire',
+        'Scottish Borders',
+        'Scottish Islands',
+        'Tayside',
+      ];
+      const walesAreas = [
+        'Anglesey',
+        'Carmarthenshire',
+        'Ceredigion',
+        'Conwy',
+        'Denbighshire',
+        'Flintshire',
+        'Glamorgan',
+        'Gwent',
+        'Gwynedd',
+        'Pembrokeshire',
+        'Powys',
+        'Wrexham',
+      ];
+      const cities = [
+        'Birmingham',
+        'Bournemouth',
+        'Bradford',
+        'Brighton & Hove',
+        'Bristol',
+        'Cardiff',
+        'Coventry',
+        'Edinburgh',
+        'Glasgow',
+        'Leeds',
+        'Leicester',
+        'Liverpool',
+        'London',
+        'Manchester',
+        'Middlesborough',
+        'Newcastle',
+        'Nottingham',
+        'Sheffield',
+        'Southampton',
+        'Swansea',
+      ];
 
       const countyCounts = {};
-      activeOrgs.forEach(org => {
+      activeOrgs.forEach((org) => {
         if (org.catchment_area) {
           countyCounts[org.catchment_area] = (countyCounts[org.catchment_area] || 0) + 1;
         }
@@ -2763,7 +2943,9 @@ const dashboardModule = {
 
       const countRegion = (list) => {
         let count = 0;
-        list.forEach(c => { count += (countyCounts[c] || 0); });
+        list.forEach((c) => {
+          count += countyCounts[c] || 0;
+        });
         return count;
       };
 
@@ -2780,16 +2962,32 @@ const dashboardModule = {
       // Render country breakdown
       if (geoWidget) {
         const regions = [
-          { name: 'England', count: engCount, color: 'danger', icon: '&#127988;&#917607;&#917602;&#917605;&#917614;&#917607;&#917631;' },
-          { name: 'Scotland', count: scotCount, color: 'primary', icon: '&#127988;&#917607;&#917602;&#917619;&#917603;&#917620;&#917631;' },
-          { name: 'Wales', count: walesCount, color: 'success', icon: '&#127988;&#917607;&#917602;&#917623;&#917612;&#917619;&#917631;' },
+          {
+            name: 'England',
+            count: engCount,
+            color: 'danger',
+            icon: '&#127988;&#917607;&#917602;&#917605;&#917614;&#917607;&#917631;',
+          },
+          {
+            name: 'Scotland',
+            count: scotCount,
+            color: 'primary',
+            icon: '&#127988;&#917607;&#917602;&#917619;&#917603;&#917620;&#917631;',
+          },
+          {
+            name: 'Wales',
+            count: walesCount,
+            color: 'success',
+            icon: '&#127988;&#917607;&#917602;&#917623;&#917612;&#917619;&#917631;',
+          },
           { name: 'Cities', count: citiesCount, color: 'info', icon: '<i class="bi bi-buildings"></i>' },
-          { name: 'Unassigned', count: unassigned, color: 'secondary', icon: '<i class="bi bi-question-circle"></i>' }
+          { name: 'Unassigned', count: unassigned, color: 'secondary', icon: '<i class="bi bi-question-circle"></i>' },
         ];
 
-        geoWidget.innerHTML = regions.map(r => {
-          const pct = totalOrgs > 0 ? Math.round((r.count / totalOrgs) * 100) : 0;
-          return `<div class="d-flex align-items-center mb-2">
+        geoWidget.innerHTML = regions
+          .map((r) => {
+            const pct = totalOrgs > 0 ? Math.round((r.count / totalOrgs) * 100) : 0;
+            return `<div class="d-flex align-items-center mb-2">
             <span class="me-2" style="width: 24px; text-align: center;">${r.icon}</span>
             <span class="small fw-semibold" style="width: 80px;">${r.name}</span>
             <div class="progress flex-grow-1 me-2" style="height: 20px;">
@@ -2797,7 +2995,8 @@ const dashboardModule = {
             </div>
             <span class="small text-muted" style="width: 40px; text-align: right;">${pct}%</span>
           </div>`;
-        }).join('');
+          })
+          .join('');
       }
 
       // Render top counties
@@ -2807,12 +3006,14 @@ const dashboardModule = {
           .slice(0, 10);
 
         if (sorted.length === 0) {
-          topWidget.innerHTML = '<p class="text-muted small text-center py-3">No county data yet. Import CSVs to see distribution.</p>';
+          topWidget.innerHTML =
+            '<p class="text-muted small text-center py-3">No county data yet. Import CSVs to see distribution.</p>';
         } else {
           const maxCount = sorted[0][1];
-          topWidget.innerHTML = sorted.map(([county, count], i) => {
-            const pct = Math.round((count / maxCount) * 100);
-            return `<div class="d-flex align-items-center mb-2">
+          topWidget.innerHTML = sorted
+            .map(([county, count], i) => {
+              const pct = Math.round((count / maxCount) * 100);
+              return `<div class="d-flex align-items-center mb-2">
               <span class="badge bg-light text-dark me-2" style="width: 24px; text-align: center;">${i + 1}</span>
               <span class="small fw-semibold" style="width: 140px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${county}">${county}</span>
               <div class="progress flex-grow-1 me-2" style="height: 16px;">
@@ -2820,14 +3021,15 @@ const dashboardModule = {
               </div>
               <span class="badge bg-primary">${count}</span>
             </div>`;
-          }).join('');
+            })
+            .join('');
         }
       }
     } catch (error) {
       console.error('Error loading geo distribution:', error);
       if (geoWidget) geoWidget.innerHTML = '<p class="text-muted small">Error loading data</p>';
     }
-  }
+  },
 };
 
 // Export to window for global access
@@ -2850,7 +3052,9 @@ function updateTabCounts() {
   setBadge('entriesTabCount', (STATE.allEntries || []).length);
   setBadge('eventsTabCount', (STATE.allEvents || []).length);
   // For payments, show overdue count in red if > 0
-  const overdueCount = ((typeof paymentsModule !== 'undefined' && paymentsModule.allInvoices) || []).filter(i => i.status === 'overdue').length;
+  const overdueCount = ((typeof paymentsModule !== 'undefined' && paymentsModule.allInvoices) || []).filter(
+    (i) => i.status === 'overdue'
+  ).length;
   setBadge('paymentsTabCount', overdueCount, overdueCount > 0 ? 'bg-danger' : 'bg-secondary');
 }
 ModuleRegistry.register('updateTabCounts', updateTabCounts);

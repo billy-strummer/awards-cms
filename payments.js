@@ -33,11 +33,7 @@ const paymentsModule = {
   async loadAllData() {
     try {
       utils.showLoading();
-      await Promise.all([
-        this.loadInvoices(),
-        this.loadPayments(),
-        this.loadOrganisationsForFilters()
-      ]);
+      await Promise.all([this.loadInvoices(), this.loadPayments(), this.loadOrganisationsForFilters()]);
       // Restore saved invoice filters from localStorage
       try {
         const savedInv = JSON.parse(localStorage.getItem('invoiceFilters') || '{}');
@@ -46,7 +42,9 @@ const paymentsModule = {
         if (savedInv.orgId) document.getElementById('invoiceOrgFilter').value = savedInv.orgId;
         if (savedInv.month) document.getElementById('invoiceMonthFilter').value = savedInv.month;
         this.filterInvoices();
-      } catch(e) { console.warn('Failed to restore invoice filters:', e.message); }
+      } catch (e) {
+        console.warn('Failed to restore invoice filters:', e.message);
+      }
 
       // Restore saved payment filters from localStorage
       try {
@@ -56,7 +54,9 @@ const paymentsModule = {
         if (savedPay.status) document.getElementById('paymentStatusFilter').value = savedPay.status;
         if (savedPay.month) document.getElementById('paymentMonthFilter').value = savedPay.month;
         this.filterPayments();
-      } catch(e) { console.warn('Failed to restore payment filters:', e.message); }
+      } catch (e) {
+        console.warn('Failed to restore payment filters:', e.message);
+      }
 
       this.updateStatistics();
       console.warn('Payments data loaded');
@@ -89,10 +89,12 @@ const paymentsModule = {
         utils.initTableKeyboardNav({
           tableBodyId: 'invoicesTableBody',
           searchBoxId: 'invoiceSearchBox',
-          onEnter: (row) => { const btn = row.querySelector('.dropdown-toggle'); if (btn) btn.click(); }
+          onEnter: (row) => {
+            const btn = row.querySelector('.dropdown-toggle');
+            if (btn) btn.click();
+          },
         });
       }
-
     } catch (error) {
       console.error('Error loading invoices:', error);
       utils.showErrorWithRetry(error, 'loading invoices', () => this.loadInvoices());
@@ -141,7 +143,7 @@ const paymentsModule = {
       search: search ? { term: search, columns: ['invoice_number', 'notes', 'description'] } : undefined,
       sort: { column: this._invoiceSortField || 'created_at', ascending: this._invoiceSortDir === 'asc' },
       page,
-      pageSize: this._invPageSize
+      pageSize: this._invPageSize,
     });
 
     // Discard stale responses
@@ -151,17 +153,27 @@ const paymentsModule = {
     this.allInvoices = pageData;
     this.currentInvoices = pageData;
     this._invCurrentPage = result.page || page;
-    this._pagination = { page: result.page || page, totalPages: result.totalPages || 1, count: result.count || 0, pageSize: result.pageSize || this._invPageSize };
+    this._pagination = {
+      page: result.page || page,
+      totalPages: result.totalPages || 1,
+      count: result.count || 0,
+      pageSize: result.pageSize || this._invPageSize,
+    };
 
     // Save current filter state to localStorage
     try {
-      localStorage.setItem('invoiceFilters', JSON.stringify({
-        search: document.getElementById('invoiceSearchBox')?.value || '',
-        status: document.getElementById('invoiceStatusFilter')?.value || '',
-        orgId: document.getElementById('invoiceOrgFilter')?.value || '',
-        month: document.getElementById('invoiceMonthFilter')?.value || ''
-      }));
-    } catch(e) { console.warn('Failed to save invoice filters:', e.message); }
+      localStorage.setItem(
+        'invoiceFilters',
+        JSON.stringify({
+          search: document.getElementById('invoiceSearchBox')?.value || '',
+          status: document.getElementById('invoiceStatusFilter')?.value || '',
+          orgId: document.getElementById('invoiceOrgFilter')?.value || '',
+          month: document.getElementById('invoiceMonthFilter')?.value || '',
+        })
+      );
+    } catch (e) {
+      console.warn('Failed to save invoice filters:', e.message);
+    }
 
     this.renderInvoices();
     this.updateStatistics();
@@ -194,7 +206,7 @@ const paymentsModule = {
 
     // Server-side pagination: send filters to server and re-fetch page 1
     if (this._serverPagination) {
-      this._fetchInvoicePage(1).catch(err => {
+      this._fetchInvoicePage(1).catch((err) => {
         console.error('Error filtering invoices:', err);
         utils.showToast('Error filtering invoices: ' + err.message, 'error');
       });
@@ -207,9 +219,16 @@ const paymentsModule = {
     const orgId = document.getElementById('invoiceOrgFilter')?.value || '';
     const month = document.getElementById('invoiceMonthFilter')?.value || '';
 
-    try { localStorage.setItem('invoiceFilters', JSON.stringify({ search: document.getElementById('invoiceSearchBox')?.value || '', status, orgId, month })); } catch(e) { console.warn('Failed to save invoice filters:', e.message); }
+    try {
+      localStorage.setItem(
+        'invoiceFilters',
+        JSON.stringify({ search: document.getElementById('invoiceSearchBox')?.value || '', status, orgId, month })
+      );
+    } catch (e) {
+      console.warn('Failed to save invoice filters:', e.message);
+    }
 
-    this.currentInvoices = this.allInvoices.filter(inv => {
+    this.currentInvoices = this.allInvoices.filter((inv) => {
       // Search filter
       if (search) {
         const invoiceNum = (inv.invoice_number || '').toLowerCase();
@@ -230,9 +249,13 @@ const paymentsModule = {
     if (search && this.currentInvoices.length === 0) {
       this.currentInvoices = utils.fuzzyFilter(this.allInvoices, search, ['invoice_number', 'notes', 'description']);
       // Also apply non-search filters to fuzzy results
-      if (status) this.currentInvoices = this.currentInvoices.filter(inv => inv.status === status || inv.payment_status === status);
-      if (orgId) this.currentInvoices = this.currentInvoices.filter(inv => inv.organisation_id === orgId);
-      if (month) this.currentInvoices = this.currentInvoices.filter(inv => (inv.invoice_date || '').startsWith(month));
+      if (status)
+        this.currentInvoices = this.currentInvoices.filter(
+          (inv) => inv.status === status || inv.payment_status === status
+        );
+      if (orgId) this.currentInvoices = this.currentInvoices.filter((inv) => inv.organisation_id === orgId);
+      if (month)
+        this.currentInvoices = this.currentInvoices.filter((inv) => (inv.invoice_date || '').startsWith(month));
     }
 
     this._applySortInvoices();
@@ -266,11 +289,17 @@ const paymentsModule = {
     }
 
     if (this.currentInvoices.length === 0) {
-      utils.showEnhancedEmptyState('invoicesTableBody', 10, { icon: 'bi-receipt', message: 'No invoices found', description: 'Create your first invoice to get started' });
+      utils.showEnhancedEmptyState('invoicesTableBody', 10, {
+        icon: 'bi-receipt',
+        message: 'No invoices found',
+        description: 'Create your first invoice to get started',
+      });
       return;
     }
 
-    tbody.innerHTML = pageInvoices.map(invoice => `
+    tbody.innerHTML = pageInvoices
+      .map(
+        (invoice) => `
       <tr>
         <td><input type="checkbox" class="form-check-input invoice-checkbox" value="${invoice.id}" ${this._selectedInvoiceIds.has(invoice.id) ? 'checked' : ''} data-on-check="paymentsModule.toggleInvoiceSelect" data-id="invoice.id"></td>
         <td>
@@ -280,14 +309,15 @@ const paymentsModule = {
           </button>
         </td>
         <td>
-          ${invoice.organisations?.id && invoice.organisations?.company_name ?
-            `<a href="javascript:void(0);"
+          ${
+            invoice.organisations?.id && invoice.organisations?.company_name
+              ? `<a href="javascript:void(0);"
                 class="text-decoration-none text-primary fw-semibold"
                 data-action="orgsModule.openCompanyProfile" data-args='${JSON.stringify([invoice.organisations.id, utils.escapeHtml(invoice.organisations.company_name).replace(/'/g, "\\'")])}'
                 title="View company profile">
                 ${utils.escapeHtml(invoice.organisations.company_name)}
-             </a>` :
-            utils.escapeHtml(invoice.organisations?.company_name || 'N/A')
+             </a>`
+              : utils.escapeHtml(invoice.organisations?.company_name || 'N/A')
           }
         </td>
         <td>${invoice.invoice_date ? new Date(invoice.invoice_date).toLocaleDateString() : 'N/A'}</td>
@@ -300,9 +330,12 @@ const paymentsModule = {
           <select class="form-select form-select-sm d-inline-block" style="width:auto; font-size:0.75rem;"
             data-on-change="paymentsModule.inlineUpdateInvoiceStatus" data-id="invoice.id"
             aria-label="Change invoice status">
-            ${['draft','sent','viewed','paid','partially_paid','overdue','cancelled'].map(s =>
-              `<option value="${s}" ${(invoice.status || '').toLowerCase() === s ? 'selected' : ''}>${s === 'partially_paid' ? 'Partially Paid' : s.charAt(0).toUpperCase() + s.slice(1)}</option>`
-            ).join('')}
+            ${['draft', 'sent', 'viewed', 'paid', 'partially_paid', 'overdue', 'cancelled']
+              .map(
+                (s) =>
+                  `<option value="${s}" ${(invoice.status || '').toLowerCase() === s ? 'selected' : ''}>${s === 'partially_paid' ? 'Partially Paid' : s.charAt(0).toUpperCase() + s.slice(1)}</option>`
+              )
+              .join('')}
           </select>
         </td>
         <td>
@@ -322,7 +355,9 @@ const paymentsModule = {
           </div>
         </td>
       </tr>
-    `).join('');
+    `
+      )
+      .join('');
 
     // Render pagination
     let paginationEl = document.getElementById('invoicesPagination');
@@ -347,7 +382,7 @@ const paymentsModule = {
       }
       html += `<li class="page-item ${this._invCurrentPage >= totalPages ? 'disabled' : ''}"><a class="page-link" href="javascript:void(0);" data-action="paymentsModule.goToInvoicePage" data-id="${this._invCurrentPage + 1}">Next</a></li>`;
       html += '</ul></nav>';
-      html += `<div class="text-center text-muted small">Showing ${invStart+1}-${Math.min(invEnd, this.currentInvoices.length)} of ${this.currentInvoices.length}</div>`;
+      html += `<div class="text-center text-muted small">Showing ${invStart + 1}-${Math.min(invEnd, this.currentInvoices.length)} of ${this.currentInvoices.length}</div>`;
       paginationEl.innerHTML = html;
     } else if (paginationEl) {
       paginationEl.innerHTML = '';
@@ -365,7 +400,7 @@ const paymentsModule = {
       package: 'Package',
       sponsorship: 'Sponsorship',
       tickets: 'Tickets',
-      other: 'Other'
+      other: 'Other',
     };
     return types[type] || type;
   },
@@ -385,7 +420,7 @@ const paymentsModule = {
       partially_paid: '<span class="badge bg-warning">Partially Paid</span>',
       overdue: '<span class="badge bg-danger">Overdue</span>',
       cancelled: '<span class="badge bg-dark">Cancelled</span>',
-      refunded: '<span class="badge bg-secondary">Refunded</span>'
+      refunded: '<span class="badge bg-secondary">Refunded</span>',
     };
     return badges[status] || badges[paymentStatus] || '<span class="badge bg-secondary">Unknown</span>';
   },
@@ -415,12 +450,13 @@ const paymentsModule = {
 
       const orgs = await apiClient.selectAll('organisations', {
         select: 'id, company_name',
-        sort: { column: 'company_name', ascending: true }
+        sort: { column: 'company_name', ascending: true },
       });
 
       const orgSelect = document.getElementById('invoiceOrganisation');
-      orgSelect.innerHTML = '<option value="">Select Company...</option>' +
-        orgs.map(org => `<option value="${org.id}">${utils.escapeHtml(org.company_name)}</option>`).join('');
+      orgSelect.innerHTML =
+        '<option value="">Select Company...</option>' +
+        orgs.map((org) => `<option value="${org.id}">${utils.escapeHtml(org.company_name)}</option>`).join('');
 
       modal.show();
       utils.initInlineValidation('createInvoiceForm');
@@ -449,10 +485,13 @@ const paymentsModule = {
       }));
 
       // Stop auto-save when modal is closed
-      document.getElementById('createInvoiceModal').addEventListener('hidden.bs.modal', () => {
-        utils.stopFormAutoSave('invoice_new');
-      }, { once: true });
-
+      document.getElementById('createInvoiceModal').addEventListener(
+        'hidden.bs.modal',
+        () => {
+          utils.stopFormAutoSave('invoice_new');
+        },
+        { once: true }
+      );
     } catch (error) {
       console.error('Error opening invoice creation modal:', error);
       utils.showToast('Error opening invoice modal: ' + error.message, 'error');
@@ -558,7 +597,7 @@ const paymentsModule = {
         const description = document.getElementById('invoiceDescription').value;
 
         const lineItemElements = document.querySelectorAll('.invoice-line-item');
-        const lineItems = Array.from(lineItemElements).map(el => {
+        const lineItems = Array.from(lineItemElements).map((el) => {
           const inputs = el.querySelectorAll('input');
           const quantity = parseInt(inputs[2].value) || 1;
           const unitPrice = parseFloat(inputs[3].value) || 0;
@@ -568,7 +607,7 @@ const paymentsModule = {
             description: inputs[1].value,
             quantity: quantity,
             unit_price: unitPrice,
-            line_total: quantity * unitPrice
+            line_total: quantity * unitPrice,
           };
         });
 
@@ -587,8 +626,7 @@ const paymentsModule = {
         // Generate invoice number
         let invoiceNumber;
         try {
-          const { data: invoiceNumberData, error: genError } = await STATE.client
-            .rpc('generate_invoice_number');
+          const { data: invoiceNumberData, error: genError } = await STATE.client.rpc('generate_invoice_number');
           if (genError) throw genError;
           invoiceNumber = invoiceNumberData;
         } catch (e) {
@@ -599,29 +637,29 @@ const paymentsModule = {
         }
 
         const invoiceResult = await apiClient.insert('invoices', {
-            invoice_number: invoiceNumber,
-            organisation_id: organisationId,
-            invoice_date: invoiceDate,
-            due_date: dueDate,
-            invoice_type: invoiceType,
-            package_type: packageType || null,
-            subtotal: subtotal,
-            discount_percentage: discountPercentage,
-            discount_amount: discountAmount,
-            tax_rate: taxRate,
-            tax_amount: taxAmount,
-            total_amount: totalAmount,
-            balance_due: totalAmount,
-            status: 'draft',
-            payment_status: 'unpaid',
-            description: description
-          });
+          invoice_number: invoiceNumber,
+          organisation_id: organisationId,
+          invoice_date: invoiceDate,
+          due_date: dueDate,
+          invoice_type: invoiceType,
+          package_type: packageType || null,
+          subtotal: subtotal,
+          discount_percentage: discountPercentage,
+          discount_amount: discountAmount,
+          tax_rate: taxRate,
+          tax_amount: taxAmount,
+          total_amount: totalAmount,
+          balance_due: totalAmount,
+          status: 'draft',
+          payment_status: 'unpaid',
+          description: description,
+        });
 
         const invoice = invoiceResult.data?.[0] || invoiceResult.data;
 
-        const lineItemsWithInvoiceId = lineItems.map(item => ({
+        const lineItemsWithInvoiceId = lineItems.map((item) => ({
           ...item,
-          invoice_id: invoice.id
+          invoice_id: invoice.id,
         }));
 
         await apiClient.insert('invoice_line_items', lineItemsWithInvoiceId);
@@ -636,7 +674,6 @@ const paymentsModule = {
         await this.loadInvoices();
         this.updateStatistics();
       });
-
     } catch (error) {
       console.error('Error creating invoice:', error);
       utils.showToast('Error creating invoice: ' + error.message, 'error');
@@ -659,13 +696,13 @@ const paymentsModule = {
       const [invoiceData, lineItemsData] = await Promise.all([
         apiClient.select('invoices', {
           select: '*, organisations(id, company_name, email, contact_phone)',
-          filters: { id: invoiceId }
+          filters: { id: invoiceId },
         }),
         apiClient.selectAll('invoice_line_items', {
           select: '*',
           filters: { invoice_id: invoiceId },
-          sort: { column: 'created_at', ascending: true }
-        })
+          sort: { column: 'created_at', ascending: true },
+        }),
       ]);
 
       const invoice = invoiceData.data?.[0];
@@ -709,7 +746,9 @@ const paymentsModule = {
               </tr>
             </thead>
             <tbody>
-              ${lineItems.map(item => `
+              ${lineItems
+                .map(
+                  (item) => `
                 <tr>
                   <td>${utils.escapeHtml(item.item_name || '')}</td>
                   <td>${utils.escapeHtml(item.description || '')}</td>
@@ -717,7 +756,9 @@ const paymentsModule = {
                   <td class="text-end">&pound;${parseFloat(item.unit_price || 0).toFixed(2)}</td>
                   <td class="text-end">&pound;${parseFloat(item.line_total || 0).toFixed(2)}</td>
                 </tr>
-              `).join('')}
+              `
+                )
+                .join('')}
             </tbody>
           </table>
         </div>
@@ -818,14 +859,22 @@ const paymentsModule = {
       </tr>
     </thead>
     <tbody>
-      ${items.length > 0 ? items.map(item => `
+      ${
+        items.length > 0
+          ? items
+              .map(
+                (item) => `
         <tr>
           <td>${utils.escapeHtml(item.item_name || item.description || inv.invoice_type || 'Service')}</td>
           <td class="amount-col">${item.quantity || 1}</td>
           <td class="amount-col">&pound;${parseFloat(item.unit_price || 0).toFixed(2)}</td>
           <td class="amount-col">&pound;${parseFloat(item.line_total || 0).toFixed(2)}</td>
         </tr>
-      `).join('') : `<tr><td>${utils.escapeHtml(inv.invoice_type || 'Service')}</td><td class="amount-col">1</td><td class="amount-col">&pound;${parseFloat(inv.total_amount || 0).toFixed(2)}</td><td class="amount-col">&pound;${parseFloat(inv.total_amount || 0).toFixed(2)}</td></tr>`}
+      `
+              )
+              .join('')
+          : `<tr><td>${utils.escapeHtml(inv.invoice_type || 'Service')}</td><td class="amount-col">1</td><td class="amount-col">&pound;${parseFloat(inv.total_amount || 0).toFixed(2)}</td><td class="amount-col">&pound;${parseFloat(inv.total_amount || 0).toFixed(2)}</td></tr>`
+      }
     </tbody>
   </table>
 
@@ -856,7 +905,6 @@ const paymentsModule = {
         printWindow.document.write(printHtml);
         printWindow.document.close();
       };
-
     } catch (error) {
       console.error('Error viewing invoice:', error);
       utils.showToast('Failed to load invoice details: ' + error.message, 'error');
@@ -869,7 +917,12 @@ const paymentsModule = {
    * @returns {Promise<void>}
    */
   async deleteInvoice(invoiceId) {
-    if (!await utils.confirmDialog({ title: 'Delete Invoice', message: 'Are you sure you want to delete this invoice? This action cannot be undone.' })) {
+    if (
+      !(await utils.confirmDialog({
+        title: 'Delete Invoice',
+        message: 'Are you sure you want to delete this invoice? This action cannot be undone.',
+      }))
+    ) {
       return;
     }
 
@@ -877,7 +930,7 @@ const paymentsModule = {
       utils.showLoading();
 
       // Save to trash before deleting
-      const inv = this.allInvoices.find(i => i.id === invoiceId);
+      const inv = this.allInvoices.find((i) => i.id === invoiceId);
       if (inv) utils.softDelete('invoices', inv);
 
       // Delete line items first
@@ -885,7 +938,10 @@ const paymentsModule = {
 
       await apiClient.delete('invoices', invoiceId);
 
-      utils.showToast('Invoice deleted. <a href="#" onclick="event.preventDefault(); utils.undoLastDelete(\'invoices\')">Undo</a>', 'info');
+      utils.showToast(
+        'Invoice deleted. <a href="#" onclick="event.preventDefault(); utils.undoLastDelete(\'invoices\')">Undo</a>',
+        'info'
+      );
       await this.loadInvoices();
       this.updateStatistics();
     } catch (error) {
@@ -901,7 +957,7 @@ const paymentsModule = {
    */
   async sendInvoice(invoiceId) {
     try {
-      const invoice = this.currentInvoices.find(i => i.id === invoiceId);
+      const invoice = this.currentInvoices.find((i) => i.id === invoiceId);
       if (!invoice) {
         utils.showToast('Invoice not found', 'error');
         return;
@@ -919,7 +975,6 @@ const paymentsModule = {
 
       const modal = new bootstrap.Modal(document.getElementById('sendInvoiceModal'));
       modal.show();
-
     } catch (error) {
       console.error('Error preparing invoice email:', error);
       utils.showToast('Error preparing email: ' + error.message, 'error');
@@ -946,7 +1001,7 @@ const paymentsModule = {
         const message = document.getElementById('sendInvoiceMessage').value;
 
         // Log communication in the database
-        const invoice = this.currentInvoices.find(i => i.id === this.currentSendInvoiceId);
+        const invoice = this.currentInvoices.find((i) => i.id === this.currentSendInvoiceId);
 
         if (invoice) {
           // Log to communications table
@@ -958,7 +1013,7 @@ const paymentsModule = {
               content: message,
               direction: 'outbound',
               status: 'sent',
-              created_at: new Date().toISOString()
+              created_at: new Date().toISOString(),
             });
           } catch (commError) {
             console.warn('Could not log communication:', commError);
@@ -967,16 +1022,18 @@ const paymentsModule = {
           // Update invoice status to 'sent'
           await apiClient.update('invoices', this.currentSendInvoiceId, {
             status: 'sent',
-            sent_at: new Date().toISOString()
+            sent_at: new Date().toISOString(),
           });
         }
 
         bootstrap.Modal.getInstance(document.getElementById('sendInvoiceModal'))?.hide();
-        utils.showToast(`Invoice email prepared for ${recipientEmail}. Note: Email delivery requires SendGrid API configuration.`, 'success');
+        utils.showToast(
+          `Invoice email prepared for ${recipientEmail}. Note: Email delivery requires SendGrid API configuration.`,
+          'success'
+        );
 
         await this.loadInvoices();
       });
-
     } catch (error) {
       console.error('Error sending invoice:', error);
       utils.showToast('Error sending invoice: ' + error.message, 'error');
@@ -997,7 +1054,7 @@ const paymentsModule = {
     try {
       const data = await apiClient.selectAll('payments', {
         select: '*, organisations (id, company_name), invoices (invoice_number)',
-        sort: { column: 'payment_date', ascending: false }
+        sort: { column: 'payment_date', ascending: false },
       });
 
       this.allPayments = data || [];
@@ -1018,9 +1075,16 @@ const paymentsModule = {
     const status = document.getElementById('paymentStatusFilter')?.value || '';
     const month = document.getElementById('paymentMonthFilter')?.value || '';
 
-    try { localStorage.setItem('paymentFilters', JSON.stringify({ search: document.getElementById('paymentSearchBox')?.value || '', method, status, month })); } catch(e) { console.warn('Failed to save payment filters:', e.message); }
+    try {
+      localStorage.setItem(
+        'paymentFilters',
+        JSON.stringify({ search: document.getElementById('paymentSearchBox')?.value || '', method, status, month })
+      );
+    } catch (e) {
+      console.warn('Failed to save payment filters:', e.message);
+    }
 
-    this.currentPayments = this.allPayments.filter(p => {
+    this.currentPayments = this.allPayments.filter((p) => {
       // Search filter
       if (search) {
         const ref = (p.payment_reference || '').toLowerCase();
@@ -1037,9 +1101,9 @@ const paymentsModule = {
     if (search && this.currentPayments.length === 0) {
       this.currentPayments = utils.fuzzyFilter(this.allPayments, search, ['payment_reference']);
       // Also apply non-search filters to fuzzy results
-      if (method) this.currentPayments = this.currentPayments.filter(p => p.payment_method === method);
-      if (status) this.currentPayments = this.currentPayments.filter(p => p.status === status);
-      if (month) this.currentPayments = this.currentPayments.filter(p => (p.payment_date || '').startsWith(month));
+      if (method) this.currentPayments = this.currentPayments.filter((p) => p.payment_method === method);
+      if (status) this.currentPayments = this.currentPayments.filter((p) => p.status === status);
+      if (month) this.currentPayments = this.currentPayments.filter((p) => (p.payment_date || '').startsWith(month));
     }
 
     this.renderPayments();
@@ -1071,11 +1135,17 @@ const paymentsModule = {
     const pagePayments = this.currentPayments.slice(payStart, payEnd);
 
     if (this.currentPayments.length === 0) {
-      utils.showEnhancedEmptyState('paymentsTableBody', 8, { icon: 'bi-credit-card', message: 'No payments found', description: 'Payments will appear here once recorded' });
+      utils.showEnhancedEmptyState('paymentsTableBody', 8, {
+        icon: 'bi-credit-card',
+        message: 'No payments found',
+        description: 'Payments will appear here once recorded',
+      });
       return;
     }
 
-    tbody.innerHTML = pagePayments.map(payment => `
+    tbody.innerHTML = pagePayments
+      .map(
+        (payment) => `
       <tr>
         <td>
           <strong>${utils.escapeHtml(payment.payment_reference)}</strong>
@@ -1085,17 +1155,18 @@ const paymentsModule = {
         </td>
         <td>${payment.payment_date ? new Date(payment.payment_date).toLocaleDateString() : 'N/A'}</td>
         <td>
-          ${payment.organisations?.id && payment.organisations?.company_name ?
-            `<a href="javascript:void(0);"
+          ${
+            payment.organisations?.id && payment.organisations?.company_name
+              ? `<a href="javascript:void(0);"
                 class="text-decoration-none text-primary fw-semibold"
                 data-action="orgsModule.openCompanyProfile" data-args='${JSON.stringify([payment.organisations.id, utils.escapeHtml(payment.organisations.company_name).replace(/'/g, "\\'")])}'
                 title="View company profile">
                 ${utils.escapeHtml(payment.organisations.company_name)}
-             </a>` :
-            utils.escapeHtml(payment.organisations?.company_name || 'N/A')
+             </a>`
+              : utils.escapeHtml(payment.organisations?.company_name || 'N/A')
           }
         </td>
-        <td>${payment.invoices?.invoice_number ? `<a href="#" onclick="paymentsModule.viewInvoice('${payment.invoice_id}'); return false;">${payment.invoices.invoice_number}</a>` : 'N/A'}</td>
+        <td>${payment.invoices?.invoice_number ? `<a href="#" data-action="paymentsModule.viewInvoice" data-id="${payment.invoice_id}">${payment.invoices.invoice_number}</a>` : 'N/A'}</td>
         <td><span class="badge bg-secondary">${this.formatPaymentMethod(payment.payment_method)}</span></td>
         <td><strong>&pound;${parseFloat(payment.amount || 0).toFixed(2)}</strong></td>
         <td>${this.getPaymentStatusBadge(payment.status)}</td>
@@ -1110,7 +1181,9 @@ const paymentsModule = {
           </div>
         </td>
       </tr>
-    `).join('');
+    `
+      )
+      .join('');
 
     // Render pagination
     let payPaginationEl = document.getElementById('paymentsPagination');
@@ -1132,7 +1205,7 @@ const paymentsModule = {
       }
       html += `<li class="page-item ${this._payCurrentPage >= payTotalPages ? 'disabled' : ''}"><a class="page-link" href="javascript:void(0);" data-action="paymentsModule.goToPaymentPage" data-id="${this._payCurrentPage + 1}">Next</a></li>`;
       html += '</ul></nav>';
-      html += `<div class="text-center text-muted small">Showing ${payStart+1}-${Math.min(payEnd, this.currentPayments.length)} of ${this.currentPayments.length}</div>`;
+      html += `<div class="text-center text-muted small">Showing ${payStart + 1}-${Math.min(payEnd, this.currentPayments.length)} of ${this.currentPayments.length}</div>`;
       payPaginationEl.innerHTML = html;
     } else if (payPaginationEl) {
       payPaginationEl.innerHTML = '';
@@ -1152,7 +1225,7 @@ const paymentsModule = {
       stripe: 'Stripe',
       cash: 'Cash',
       cheque: 'Cheque',
-      other: 'Other'
+      other: 'Other',
     };
     return methods[method] || method;
   },
@@ -1168,7 +1241,7 @@ const paymentsModule = {
       completed: '<span class="badge bg-success">Completed</span>',
       failed: '<span class="badge bg-danger">Failed</span>',
       refunded: '<span class="badge bg-secondary">Refunded</span>',
-      cancelled: '<span class="badge bg-dark">Cancelled</span>'
+      cancelled: '<span class="badge bg-dark">Cancelled</span>',
     };
     return badges[status] || '<span class="badge bg-secondary">Unknown</span>';
   },
@@ -1204,23 +1277,30 @@ const paymentsModule = {
 
       // Use already-loaded data
       const orgsData = (STATE.allOrganisations || [])
-        .map(o => ({ id: o.id, company_name: o.company_name }))
+        .map((o) => ({ id: o.id, company_name: o.company_name }))
         .sort((a, b) => (a.company_name || '').localeCompare(b.company_name || ''));
 
       const unpaidInvoices = (this.allInvoices || [])
-        .filter(i => i.payment_status !== 'paid')
+        .filter((i) => i.payment_status !== 'paid')
         .sort((a, b) => (a.invoice_number || '').localeCompare(b.invoice_number || ''));
 
       const orgSelect = document.getElementById('paymentOrganisation');
-      orgSelect.innerHTML = '<option value="">Select Company...</option>' +
-        orgsData.map(org => `<option value="${org.id}">${utils.escapeHtml(org.company_name)}</option>`).join('');
+      orgSelect.innerHTML =
+        '<option value="">Select Company...</option>' +
+        orgsData.map((org) => `<option value="${org.id}">${utils.escapeHtml(org.company_name)}</option>`).join('');
 
       const invoiceSelect = document.getElementById('paymentInvoice');
-      invoiceSelect.innerHTML = '<option value="">None (General Payment)</option>' +
-        unpaidInvoices.map(inv => `<option value="${inv.id}">${inv.invoice_number} - ${inv.organisations?.company_name} (&pound;${parseFloat(inv.total_amount - inv.paid_amount).toFixed(2)} due)</option>`).join('');
+      invoiceSelect.innerHTML =
+        '<option value="">None (General Payment)</option>' +
+        unpaidInvoices
+          .map(
+            (inv) =>
+              `<option value="${inv.id}">${inv.invoice_number} - ${inv.organisations?.company_name} (&pound;${parseFloat(inv.total_amount - inv.paid_amount).toFixed(2)} due)</option>`
+          )
+          .join('');
 
       if (invoiceId) {
-        const invoice = unpaidInvoices.find(i => i.id === invoiceId);
+        const invoice = unpaidInvoices.find((i) => i.id === invoiceId);
         if (invoice) {
           invoiceSelect.value = invoiceId;
           orgSelect.value = invoice.organisation_id;
@@ -1230,7 +1310,6 @@ const paymentsModule = {
 
       modal.show();
       utils.initInlineValidation('recordPaymentForm');
-
     } catch (error) {
       console.error('Error opening payment modal:', error);
       utils.showToast('Error opening payment modal: ' + error.message, 'error');
@@ -1283,15 +1362,15 @@ const paymentsModule = {
         }
 
         const paymentResult = await apiClient.insert('payments', {
-            payment_reference: paymentReference,
-            invoice_id: invoiceId,
-            organisation_id: organisationId,
-            payment_date: paymentDate,
-            amount: amount,
-            payment_method: paymentMethod,
-            status: 'completed',
-            notes: notes
-          });
+          payment_reference: paymentReference,
+          invoice_id: invoiceId,
+          organisation_id: organisationId,
+          payment_date: paymentDate,
+          amount: amount,
+          payment_method: paymentMethod,
+          status: 'completed',
+          notes: notes,
+        });
 
         const _payment = paymentResult.data?.[0] || paymentResult.data;
 
@@ -1300,7 +1379,7 @@ const paymentsModule = {
           try {
             const invoiceResult = await apiClient.select('invoices', {
               select: 'paid_amount, total_amount',
-              filters: { id: invoiceId }
+              filters: { id: invoiceId },
             });
 
             const invoice = invoiceResult.data?.[0];
@@ -1324,7 +1403,7 @@ const paymentsModule = {
                 paid_amount: newPaidAmount,
                 balance_due: balanceDue,
                 payment_status: paymentStatus,
-                status: status
+                status: status,
               });
             }
           } catch (invoiceUpdateError) {
@@ -1340,7 +1419,6 @@ const paymentsModule = {
         await this.loadInvoices();
         this.updateStatistics();
       });
-
     } catch (error) {
       console.error('Error recording payment:', error);
       utils.showToast('Error recording payment: ' + error.message, 'error');
@@ -1361,7 +1439,7 @@ const paymentsModule = {
 
       const paymentResult = await apiClient.select('payments', {
         select: '*, organisations(id, company_name), invoices(invoice_number)',
-        filters: { id: paymentId }
+        filters: { id: paymentId },
       });
 
       const payment = paymentResult.data?.[0];
@@ -1382,7 +1460,6 @@ const paymentsModule = {
           </table>
         </div>
       `;
-
     } catch (error) {
       console.error('Error viewing payment:', error);
       utils.showToast('Failed to load payment details: ' + error.message, 'error');
@@ -1399,7 +1476,12 @@ const paymentsModule = {
       utils.showToast('You do not have permission to delete payments', 'error');
       return;
     }
-    if (!await utils.confirmDialog({ title: 'Delete Payment', message: 'Are you sure you want to delete this payment record?' })) {
+    if (
+      !(await utils.confirmDialog({
+        title: 'Delete Payment',
+        message: 'Are you sure you want to delete this payment record?',
+      }))
+    ) {
       return;
     }
 
@@ -1409,7 +1491,7 @@ const paymentsModule = {
       // Get payment details to reverse invoice update
       const paymentResult = await apiClient.select('payments', {
         select: 'invoice_id, amount',
-        filters: { id: paymentId }
+        filters: { id: paymentId },
       });
       const payment = paymentResult.data?.[0];
 
@@ -1420,7 +1502,7 @@ const paymentsModule = {
         try {
           const invoiceResult = await apiClient.select('invoices', {
             select: 'paid_amount, total_amount',
-            filters: { id: payment.invoice_id }
+            filters: { id: payment.invoice_id },
           });
           const invoice = invoiceResult.data?.[0];
 
@@ -1442,7 +1524,7 @@ const paymentsModule = {
               paid_amount: newPaidAmount,
               balance_due: balanceDue,
               payment_status: paymentStatus,
-              status: status
+              status: status,
             });
           }
         } catch (invoiceUpdateError) {
@@ -1481,7 +1563,7 @@ const paymentsModule = {
 
     // Server-side: re-fetch with new sort order
     if (this._serverPagination) {
-      this._fetchInvoicePage(1).catch(err => console.error('Error sorting invoices:', err));
+      this._fetchInvoicePage(1).catch((err) => console.error('Error sorting invoices:', err));
       return;
     }
 
@@ -1523,7 +1605,7 @@ const paymentsModule = {
       return;
     }
     const headers = ['Invoice #', 'Organisation', 'Date', 'Due Date', 'Type', 'Amount', 'Paid', 'Balance', 'Status'];
-    const rows = this.currentInvoices.map(inv => [
+    const rows = this.currentInvoices.map((inv) => [
       inv.invoice_number || '',
       inv.organisations?.company_name || '',
       inv.invoice_date || '',
@@ -1532,7 +1614,7 @@ const paymentsModule = {
       parseFloat(inv.total_amount || 0).toFixed(2),
       parseFloat(inv.paid_amount || 0).toFixed(2),
       parseFloat(inv.balance_due || 0).toFixed(2),
-      inv.status || ''
+      inv.status || '',
     ]);
     this._downloadCSV(headers, rows, 'invoices_export.csv');
   },
@@ -1546,14 +1628,14 @@ const paymentsModule = {
       return;
     }
     const headers = ['Reference', 'Date', 'Organisation', 'Invoice', 'Method', 'Amount', 'Status'];
-    const rows = this.currentPayments.map(p => [
+    const rows = this.currentPayments.map((p) => [
       p.payment_reference || '',
       p.payment_date || '',
       p.organisations?.company_name || '',
       p.invoices?.invoice_number || '',
       this.formatPaymentMethod(p.payment_method),
       parseFloat(p.amount || 0).toFixed(2),
-      p.status || ''
+      p.status || '',
     ]);
     this._downloadCSV(headers, rows, 'payments_export.csv');
   },
@@ -1572,7 +1654,7 @@ const paymentsModule = {
         return str;
       };
       const csvContent = [headers.map(escapeCSV).join(',')]
-        .concat(rows.map(row => row.map(escapeCSV).join(',')))
+        .concat(rows.map((row) => row.map(escapeCSV).join(',')))
         .join('\n');
       const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' });
       const url = URL.createObjectURL(blob);
@@ -1595,8 +1677,11 @@ const paymentsModule = {
    */
   exportInvoicesExcel() {
     const invoices = this.currentInvoices || [];
-    if (invoices.length === 0) { utils.showToast('No invoices to export', 'warning'); return; }
-    const exportData = invoices.map(inv => ({
+    if (invoices.length === 0) {
+      utils.showToast('No invoices to export', 'warning');
+      return;
+    }
+    const exportData = invoices.map((inv) => ({
       invoice_number: inv.invoice_number || '',
       organisation: inv.organisations?.company_name || '',
       invoice_date: inv.invoice_date || '',
@@ -1605,7 +1690,7 @@ const paymentsModule = {
       total_amount: parseFloat(inv.total_amount || 0).toFixed(2),
       paid_amount: parseFloat(inv.paid_amount || 0).toFixed(2),
       balance_due: parseFloat(inv.balance_due || 0).toFixed(2),
-      status: inv.status || ''
+      status: inv.status || '',
     }));
     utils.exportToExcel(exportData, `invoices_export_${new Date().toISOString().split('T')[0]}`);
   },
@@ -1615,17 +1700,22 @@ const paymentsModule = {
    */
   exportInvoicesPDF() {
     const invoices = this.currentInvoices || [];
-    if (invoices.length === 0) { utils.showToast('No invoices to export', 'warning'); return; }
-    const exportData = invoices.map(inv => ({
+    if (invoices.length === 0) {
+      utils.showToast('No invoices to export', 'warning');
+      return;
+    }
+    const exportData = invoices.map((inv) => ({
       invoice_number: inv.invoice_number || '',
       organisation: inv.organisations?.company_name || '',
       date: inv.invoice_date || '',
       due_date: inv.due_date || '',
       amount: parseFloat(inv.total_amount || 0).toFixed(2),
       balance: parseFloat(inv.balance_due || 0).toFixed(2),
-      status: inv.status || ''
+      status: inv.status || '',
     }));
-    utils.exportToPrintablePDF(exportData, 'Invoices Report', { columns: ['invoice_number', 'organisation', 'date', 'due_date', 'amount', 'balance', 'status'] });
+    utils.exportToPrintablePDF(exportData, 'Invoices Report', {
+      columns: ['invoice_number', 'organisation', 'date', 'due_date', 'amount', 'balance', 'status'],
+    });
   },
 
   /**
@@ -1633,15 +1723,18 @@ const paymentsModule = {
    */
   exportPaymentsExcel() {
     const payments = this.currentPayments || [];
-    if (payments.length === 0) { utils.showToast('No payments to export', 'warning'); return; }
-    const exportData = payments.map(p => ({
+    if (payments.length === 0) {
+      utils.showToast('No payments to export', 'warning');
+      return;
+    }
+    const exportData = payments.map((p) => ({
       payment_reference: p.payment_reference || '',
       payment_date: p.payment_date || '',
       organisation: p.organisations?.company_name || '',
       invoice: p.invoices?.invoice_number || '',
       method: this.formatPaymentMethod(p.payment_method),
       amount: parseFloat(p.amount || 0).toFixed(2),
-      status: p.status || ''
+      status: p.status || '',
     }));
     utils.exportToExcel(exportData, `payments_export_${new Date().toISOString().split('T')[0]}`);
   },
@@ -1651,17 +1744,22 @@ const paymentsModule = {
    */
   exportPaymentsPDF() {
     const payments = this.currentPayments || [];
-    if (payments.length === 0) { utils.showToast('No payments to export', 'warning'); return; }
-    const exportData = payments.map(p => ({
+    if (payments.length === 0) {
+      utils.showToast('No payments to export', 'warning');
+      return;
+    }
+    const exportData = payments.map((p) => ({
       reference: p.payment_reference || '',
       date: p.payment_date || '',
       organisation: p.organisations?.company_name || '',
       invoice: p.invoices?.invoice_number || '',
       method: this.formatPaymentMethod(p.payment_method),
       amount: parseFloat(p.amount || 0).toFixed(2),
-      status: p.status || ''
+      status: p.status || '',
     }));
-    utils.exportToPrintablePDF(exportData, 'Payments Report', { columns: ['reference', 'date', 'organisation', 'invoice', 'method', 'amount', 'status'] });
+    utils.exportToPrintablePDF(exportData, 'Payments Report', {
+      columns: ['reference', 'date', 'organisation', 'invoice', 'method', 'amount', 'status'],
+    });
   },
 
   /* ==================================================== */
@@ -1673,8 +1771,8 @@ const paymentsModule = {
    */
   updateStatistics() {
     const totalInvoices = this.currentInvoices.length;
-    const paidInvoices = this.currentInvoices.filter(i => i.payment_status === 'paid').length;
-    const overdueInvoices = this.currentInvoices.filter(i => i.status === 'overdue').length;
+    const paidInvoices = this.currentInvoices.filter((i) => i.payment_status === 'paid').length;
+    const overdueInvoices = this.currentInvoices.filter((i) => i.status === 'overdue').length;
     const totalOutstanding = this.currentInvoices.reduce((sum, i) => sum + parseFloat(i.balance_due || 0), 0);
 
     const totalInvoicesEl = document.getElementById('totalInvoicesCount');
@@ -1689,12 +1787,12 @@ const paymentsModule = {
 
     const totalPayments = this.currentPayments.length;
     const totalReceived = this.currentPayments
-      .filter(p => p.status === 'completed')
+      .filter((p) => p.status === 'completed')
       .reduce((sum, p) => sum + parseFloat(p.amount || 0), 0);
 
     const currentMonth = new Date().toISOString().slice(0, 7);
     const monthlyTotal = this.currentPayments
-      .filter(p => p.status === 'completed' && p.payment_date?.startsWith(currentMonth))
+      .filter((p) => p.status === 'completed' && p.payment_date?.startsWith(currentMonth))
       .reduce((sum, p) => sum + parseFloat(p.amount || 0), 0);
 
     const totalPaymentsEl = document.getElementById('totalPaymentsCount');
@@ -1724,7 +1822,7 @@ const paymentsModule = {
     try {
       utils.showLoading();
 
-      const filteredInvoices = this.currentInvoices.filter(invoice => {
+      const filteredInvoices = this.currentInvoices.filter((invoice) => {
         const invoiceDate = invoice.invoice_date;
         return invoiceDate >= startDate && invoiceDate <= endDate;
       });
@@ -1755,7 +1853,6 @@ const paymentsModule = {
       }
 
       displayArea.innerHTML = reportHTML;
-
     } catch (error) {
       console.error('Error generating report:', error);
       utils.showToast('Failed to generate report: ' + error.message, 'error');
@@ -1814,7 +1911,7 @@ const paymentsModule = {
    * @returns {string} HTML markup
    */
   generateOutstandingReport(invoices) {
-    const outstanding = invoices.filter(i => parseFloat(i.balance_due || 0) > 0);
+    const outstanding = invoices.filter((i) => parseFloat(i.balance_due || 0) > 0);
 
     return `
       <h5 class="mb-4">Outstanding Invoices (${outstanding.length})</h5>
@@ -1831,7 +1928,9 @@ const paymentsModule = {
             </tr>
           </thead>
           <tbody>
-            ${outstanding.map(inv => `
+            ${outstanding
+              .map(
+                (inv) => `
               <tr>
                 <td>${inv.invoice_number}</td>
                 <td>${inv.organisations?.company_name || 'N/A'}</td>
@@ -1840,7 +1939,9 @@ const paymentsModule = {
                 <td class="text-danger fw-bold">&pound;${parseFloat(inv.balance_due).toFixed(2)}</td>
                 <td>${this.getInvoiceStatusBadge(inv.status, inv.payment_status)}</td>
               </tr>
-            `).join('')}
+            `
+              )
+              .join('')}
           </tbody>
         </table>
       </div>
@@ -1854,13 +1955,13 @@ const paymentsModule = {
    * @returns {string} HTML markup
    */
   generatePaymentHistoryReport(startDate, endDate) {
-    const filteredPayments = this.currentPayments.filter(p => {
+    const filteredPayments = this.currentPayments.filter((p) => {
       const paymentDate = p.payment_date;
       return paymentDate >= startDate && paymentDate <= endDate;
     });
 
     const totalReceived = filteredPayments
-      .filter(p => p.status === 'completed')
+      .filter((p) => p.status === 'completed')
       .reduce((sum, p) => sum + parseFloat(p.amount || 0), 0);
 
     return `
@@ -1881,7 +1982,9 @@ const paymentsModule = {
             </tr>
           </thead>
           <tbody>
-            ${filteredPayments.map(payment => `
+            ${filteredPayments
+              .map(
+                (payment) => `
               <tr>
                 <td>${new Date(payment.payment_date).toLocaleDateString()}</td>
                 <td>${payment.payment_reference}</td>
@@ -1890,7 +1993,9 @@ const paymentsModule = {
                 <td>&pound;${parseFloat(payment.amount).toFixed(2)}</td>
                 <td>${this.getPaymentStatusBadge(payment.status)}</td>
               </tr>
-            `).join('')}
+            `
+              )
+              .join('')}
           </tbody>
         </table>
       </div>
@@ -1904,7 +2009,7 @@ const paymentsModule = {
    */
   generateByOrganisationReport(invoices) {
     const byOrg = {};
-    invoices.forEach(inv => {
+    invoices.forEach((inv) => {
       const orgName = inv.organisations?.company_name || 'Unknown';
       if (!byOrg[orgName]) {
         byOrg[orgName] = { total: 0, paid: 0, outstanding: 0, count: 0 };
@@ -1929,7 +2034,9 @@ const paymentsModule = {
             </tr>
           </thead>
           <tbody>
-            ${Object.entries(byOrg).map(([org, data]) => `
+            ${Object.entries(byOrg)
+              .map(
+                ([org, data]) => `
               <tr>
                 <td>${org}</td>
                 <td>${data.count}</td>
@@ -1937,7 +2044,9 @@ const paymentsModule = {
                 <td class="text-success">&pound;${data.paid.toFixed(2)}</td>
                 <td class="text-danger">&pound;${data.outstanding.toFixed(2)}</td>
               </tr>
-            `).join('')}
+            `
+              )
+              .join('')}
           </tbody>
         </table>
       </div>
@@ -1950,10 +2059,10 @@ const paymentsModule = {
    * @returns {string} HTML markup
    */
   generateByPackageReport(invoices) {
-    const packageInvoices = invoices.filter(i => i.invoice_type === 'package');
+    const packageInvoices = invoices.filter((i) => i.invoice_type === 'package');
 
     const byPackage = {};
-    packageInvoices.forEach(inv => {
+    packageInvoices.forEach((inv) => {
       const pkg = inv.package_type || 'Unspecified';
       if (!byPackage[pkg]) {
         byPackage[pkg] = { total: 0, paid: 0, count: 0 };
@@ -1976,14 +2085,18 @@ const paymentsModule = {
             </tr>
           </thead>
           <tbody>
-            ${Object.entries(byPackage).map(([pkg, data]) => `
+            ${Object.entries(byPackage)
+              .map(
+                ([pkg, data]) => `
               <tr>
                 <td><span class="badge bg-primary">${pkg}</span></td>
                 <td>${data.count}</td>
                 <td>&pound;${data.total.toFixed(2)}</td>
                 <td class="text-success">&pound;${data.paid.toFixed(2)}</td>
               </tr>
-            `).join('')}
+            `
+              )
+              .join('')}
           </tbody>
         </table>
       </div>
@@ -1997,7 +2110,7 @@ const paymentsModule = {
    */
   generateByEventReport(invoices) {
     // Group invoices by their related events (via entries/tickets)
-    const eventInvoices = invoices.filter(i => i.invoice_type === 'tickets');
+    const eventInvoices = invoices.filter((i) => i.invoice_type === 'tickets');
 
     if (eventInvoices.length === 0) {
       return `
@@ -2037,7 +2150,9 @@ const paymentsModule = {
         <table class="table table-sm table-striped">
           <thead><tr><th>Invoice</th><th>Company</th><th>Date</th><th>Amount</th><th>Status</th></tr></thead>
           <tbody>
-            ${eventInvoices.map(inv => `
+            ${eventInvoices
+              .map(
+                (inv) => `
               <tr>
                 <td>${inv.invoice_number}</td>
                 <td>${inv.organisations?.company_name || 'N/A'}</td>
@@ -2045,7 +2160,9 @@ const paymentsModule = {
                 <td>&pound;${parseFloat(inv.total_amount).toFixed(2)}</td>
                 <td>${this.getInvoiceStatusBadge(inv.status, inv.payment_status)}</td>
               </tr>
-            `).join('')}
+            `
+              )
+              .join('')}
           </tbody>
         </table>
       </div>
@@ -2060,7 +2177,7 @@ const paymentsModule = {
    * Open the overdue-reminders modal listing all overdue invoices.
    */
   sendOverdueReminders() {
-    const overdueInvoices = this.allInvoices.filter(inv => inv.status === 'overdue');
+    const overdueInvoices = this.allInvoices.filter((inv) => inv.status === 'overdue');
 
     if (overdueInvoices.length === 0) {
       utils.showToast('No overdue invoices found', 'info');
@@ -2086,7 +2203,7 @@ const paymentsModule = {
           </thead>
           <tbody>`;
 
-    overdueInvoices.forEach(inv => {
+    overdueInvoices.forEach((inv) => {
       const dueDate = inv.due_date ? new Date(inv.due_date) : null;
       const daysOverdue = dueDate ? Math.floor((now - dueDate) / (1000 * 60 * 60 * 24)) : 0;
       const companyName = inv.organisations?.company_name || 'N/A';
@@ -2121,7 +2238,7 @@ const paymentsModule = {
    * @param {boolean} checked - Whether to check or uncheck
    */
   toggleAllOverdueCheckboxes(checked) {
-    document.querySelectorAll('.overdue-reminder-check').forEach(cb => {
+    document.querySelectorAll('.overdue-reminder-check').forEach((cb) => {
       cb.checked = checked;
     });
   },
@@ -2132,7 +2249,7 @@ const paymentsModule = {
    */
   async executeOverdueReminders() {
     const checkboxes = document.querySelectorAll('.overdue-reminder-check:checked');
-    const invoiceIds = Array.from(checkboxes).map(cb => cb.dataset.invoiceId);
+    const invoiceIds = Array.from(checkboxes).map((cb) => cb.dataset.invoiceId);
 
     if (invoiceIds.length === 0) {
       utils.showToast('No invoices selected', 'warning');
@@ -2144,7 +2261,10 @@ const paymentsModule = {
     const modalInstance = bootstrap.Modal.getInstance(modalEl);
     if (modalInstance) modalInstance.hide();
 
-    utils.showToast(`Sending reminders for ${invoiceIds.length} invoice${invoiceIds.length !== 1 ? 's' : ''}...`, 'info');
+    utils.showToast(
+      `Sending reminders for ${invoiceIds.length} invoice${invoiceIds.length !== 1 ? 's' : ''}...`,
+      'info'
+    );
 
     let sentCount = 0;
     let failCount = 0;
@@ -2175,11 +2295,14 @@ const paymentsModule = {
    * @param {string} text - The text to copy
    */
   copyToClipboard(text) {
-    navigator.clipboard.writeText(text).then(() => {
-      utils.showToast('Copied to clipboard: ' + text, 'success');
-    }).catch(() => {
-      utils.showToast('Failed to copy', 'error');
-    });
+    navigator.clipboard
+      .writeText(text)
+      .then(() => {
+        utils.showToast('Copied to clipboard: ' + text, 'success');
+      })
+      .catch(() => {
+        utils.showToast('Failed to copy', 'error');
+      });
   },
 
   /**
@@ -2192,12 +2315,12 @@ const paymentsModule = {
       let data;
       if (STATE.allOrganisations && STATE.allOrganisations.length > 0) {
         data = STATE.allOrganisations
-          .map(o => ({ id: o.id, company_name: o.company_name }))
+          .map((o) => ({ id: o.id, company_name: o.company_name }))
           .sort((a, b) => (a.company_name || '').localeCompare(b.company_name || ''));
       } else {
         data = await apiClient.selectAll('organisations', {
           select: 'id, company_name',
-          sort: { column: 'company_name', ascending: true }
+          sort: { column: 'company_name', ascending: true },
         });
       }
 
@@ -2205,10 +2328,11 @@ const paymentsModule = {
 
       const select = document.getElementById('invoiceOrgFilter');
       if (select) {
-        select.innerHTML = '<option value="">All Organisations</option>' +
-          this.currentOrganisations.map(org =>
-            `<option value="${org.id}">${utils.escapeHtml(org.company_name)}</option>`
-          ).join('');
+        select.innerHTML =
+          '<option value="">All Organisations</option>' +
+          this.currentOrganisations
+            .map((org) => `<option value="${org.id}">${utils.escapeHtml(org.company_name)}</option>`)
+            .join('');
       }
     } catch (error) {
       console.error('Error loading organisations:', error);
@@ -2229,12 +2353,22 @@ const paymentsModule = {
         const result = await apiClient.select('user_preferences', {
           select: 'value',
           filters: { key: 'orgAccountingConfig' },
-          pageSize: 1
+          pageSize: 1,
         });
-        if (result.data?.[0]) { this._accountingConfig = JSON.parse(result.data[0].value); return; }
+        if (result.data?.[0]) {
+          this._accountingConfig = JSON.parse(result.data[0].value);
+          return;
+        }
       }
-    } catch (e) { console.warn('Failed to load accounting config from database:', e.message); }
-    try { this._accountingConfig = JSON.parse(localStorage.getItem('orgAccountingConfig') || '{}'); } catch (e) { console.warn('Failed to parse accounting config from localStorage:', e.message); this._accountingConfig = {}; }
+    } catch (e) {
+      console.warn('Failed to load accounting config from database:', e.message);
+    }
+    try {
+      this._accountingConfig = JSON.parse(localStorage.getItem('orgAccountingConfig') || '{}');
+    } catch (e) {
+      console.warn('Failed to parse accounting config from localStorage:', e.message);
+      this._accountingConfig = {};
+    }
   },
 
   /**
@@ -2248,22 +2382,24 @@ const paymentsModule = {
         const existing = await apiClient.select('user_preferences', {
           select: 'id',
           filters: { key: 'orgAccountingConfig' },
-          pageSize: 1
+          pageSize: 1,
         });
         if (existing.data && existing.data.length > 0) {
           await apiClient.update('user_preferences', existing.data[0].id, {
             value: configValue,
-            updated_at: new Date().toISOString()
+            updated_at: new Date().toISOString(),
           });
         } else {
           await apiClient.insert('user_preferences', {
             key: 'orgAccountingConfig',
             value: configValue,
-            updated_at: new Date().toISOString()
+            updated_at: new Date().toISOString(),
           });
         }
       }
-    } catch (e) { console.warn('Failed to save accounting config to database:', e.message); }
+    } catch (e) {
+      console.warn('Failed to save accounting config to database:', e.message);
+    }
     localStorage.setItem('orgAccountingConfig', JSON.stringify(this._accountingConfig));
   },
 
@@ -2285,24 +2421,26 @@ const paymentsModule = {
       </div>
       <div class="row mb-4">
         <div class="col-6">
-          <div class="card ${provider==='xero'?'border-primary':''}" style="cursor:pointer" onclick="paymentsModule._setAccountingProvider('xero')">
+          <div class="card ${provider === 'xero' ? 'border-primary' : ''}" style="cursor:pointer" onclick="paymentsModule._setAccountingProvider('xero')">
             <div class="card-body text-center py-3"><i class="bi bi-x-diamond fs-2 text-primary"></i><div class="fw-bold mt-1">Xero</div><small class="text-muted">Cloud accounting</small></div>
           </div>
         </div>
         <div class="col-6">
-          <div class="card ${provider==='quickbooks'?'border-success':''}" style="cursor:pointer" onclick="paymentsModule._setAccountingProvider('quickbooks')">
+          <div class="card ${provider === 'quickbooks' ? 'border-success' : ''}" style="cursor:pointer" onclick="paymentsModule._setAccountingProvider('quickbooks')">
             <div class="card-body text-center py-3"><i class="bi bi-book fs-2 text-success"></i><div class="fw-bold mt-1">QuickBooks</div><small class="text-muted">Intuit accounting</small></div>
           </div>
         </div>
       </div>
-      ${!connected ? `
+      ${
+        !connected
+          ? `
         <div class="card mb-3"><div class="card-body">
-          <h6 class="fw-semibold mb-3">Connect ${provider==='xero'?'Xero':'QuickBooks'}</h6>
-          <div class="mb-3"><label class="form-label small">API Client ID</label><input type="text" class="form-control form-control-sm" id="accountingClientId" placeholder="Enter client ID..." value="${utils.escapeHtml(config.clientId||'')}"></div>
+          <h6 class="fw-semibold mb-3">Connect ${provider === 'xero' ? 'Xero' : 'QuickBooks'}</h6>
+          <div class="mb-3"><label class="form-label small">API Client ID</label><input type="text" class="form-control form-control-sm" id="accountingClientId" placeholder="Enter client ID..." value="${utils.escapeHtml(config.clientId || '')}"></div>
           <div class="mb-3"><label class="form-label small">API Client Secret</label><input type="password" class="form-control form-control-sm" id="accountingClientSecret" placeholder="Enter client secret..."></div>
           <button class="btn btn-primary w-100" data-action="paymentsModule._connectAccounting"><i class="bi bi-plug me-2"></i>Connect</button>
-        </div></div>` :
-      `<div class="alert alert-success"><i class="bi bi-check-circle me-2"></i>Connected to ${provider==='xero'?'Xero':'QuickBooks'}
+        </div></div>`
+          : `<div class="alert alert-success"><i class="bi bi-check-circle me-2"></i>Connected to ${provider === 'xero' ? 'Xero' : 'QuickBooks'}
         <button class="btn btn-sm btn-outline-danger float-end" data-action="paymentsModule._disconnectAccounting">Disconnect</button></div>
       <div class="card mb-3"><div class="card-body"><h6 class="fw-semibold mb-3">Sync Settings</h6>
         <div class="form-check mb-2"><input class="form-check-input" type="checkbox" checked><label class="form-check-label">Sync Invoices</label></div>
@@ -2310,11 +2448,20 @@ const paymentsModule = {
         <div class="form-check mb-2"><input class="form-check-input" type="checkbox"><label class="form-check-label">Sync Contacts</label></div><hr>
         <div class="d-flex gap-2"><button class="btn btn-sm btn-primary" data-action="paymentsModule._runAccountingSync"><i class="bi bi-arrow-repeat me-1"></i>Sync Now</button>
         <span class="text-muted small align-self-center">Last sync: ${config.lastSync ? new Date(config.lastSync).toLocaleString('en-GB') : 'Never'}</span></div>
-      </div></div>`}
+      </div></div>`
+      }
       <div class="card"><div class="card-body"><h6 class="fw-semibold mb-2">Sync History</h6>
-        ${(config.syncHistory||[]).length===0?'<p class="text-muted small mb-0">No sync history</p>':
-          (config.syncHistory||[]).slice(0,10).map(s=>`<div class="d-flex justify-content-between py-1 border-bottom small">
-            <span>${new Date(s.date).toLocaleString('en-GB')}</span><span class="badge bg-${s.status==='success'?'success':'danger'}">${s.status}</span><span class="text-muted">${s.details||''}</span></div>`).join('')}
+        ${
+          (config.syncHistory || []).length === 0
+            ? '<p class="text-muted small mb-0">No sync history</p>'
+            : (config.syncHistory || [])
+                .slice(0, 10)
+                .map(
+                  (s) => `<div class="d-flex justify-content-between py-1 border-bottom small">
+            <span>${new Date(s.date).toLocaleString('en-GB')}</span><span class="badge bg-${s.status === 'success' ? 'success' : 'danger'}">${s.status}</span><span class="text-muted">${s.details || ''}</span></div>`
+                )
+                .join('')
+        }
       </div></div>`;
   },
 
@@ -2326,18 +2473,28 @@ const paymentsModule = {
 
   async _connectAccounting() {
     const clientId = document.getElementById('accountingClientId')?.value?.trim();
-    if (!clientId) { utils.showToast('Enter a Client ID', 'warning'); return; }
+    if (!clientId) {
+      utils.showToast('Enter a Client ID', 'warning');
+      return;
+    }
     this._accountingConfig.connected = true;
     this._accountingConfig.clientId = clientId;
     this._accountingConfig.connectedAt = new Date().toISOString();
     this._accountingConfig.syncHistory = this._accountingConfig.syncHistory || [];
     await this._saveAccountingConfig();
-    utils.showToast('Connected to ' + (this._accountingConfig.provider==='xero'?'Xero':'QuickBooks'), 'success');
+    utils.showToast('Connected to ' + (this._accountingConfig.provider === 'xero' ? 'Xero' : 'QuickBooks'), 'success');
     this.loadAccountingIntegration();
   },
 
   async _disconnectAccounting() {
-    if (!await utils.confirmDialog({ title: 'Disconnect Integration', message: 'Disconnect accounting integration?', confirmText: 'Disconnect' })) return;
+    if (
+      !(await utils.confirmDialog({
+        title: 'Disconnect Integration',
+        message: 'Disconnect accounting integration?',
+        confirmText: 'Disconnect',
+      }))
+    )
+      return;
     this._accountingConfig.connected = false;
     await this._saveAccountingConfig();
     utils.showToast('Disconnected', 'success');
@@ -2349,7 +2506,11 @@ const paymentsModule = {
     setTimeout(async () => {
       this._accountingConfig.lastSync = new Date().toISOString();
       this._accountingConfig.syncHistory = this._accountingConfig.syncHistory || [];
-      this._accountingConfig.syncHistory.unshift({ date: new Date().toISOString(), status: 'success', details: `Synced ${Math.floor(Math.random()*20)+5} invoices, ${Math.floor(Math.random()*10)+1} payments` });
+      this._accountingConfig.syncHistory.unshift({
+        date: new Date().toISOString(),
+        status: 'success',
+        details: `Synced ${Math.floor(Math.random() * 20) + 5} invoices, ${Math.floor(Math.random() * 10) + 1} payments`,
+      });
       await this._saveAccountingConfig();
       utils.showToast('Sync complete', 'success');
       this.loadAccountingIntegration();
@@ -2370,11 +2531,11 @@ const paymentsModule = {
     try {
       await apiClient.update('invoices', invoiceId, { status: newStatus });
       // Update local state
-      const invoice = this.allInvoices.find(i => i.id === invoiceId);
+      const invoice = this.allInvoices.find((i) => i.id === invoiceId);
       if (invoice) invoice.status = newStatus;
       this.filterInvoices();
       utils.showToast('Invoice status updated to ' + newStatus, 'success');
-    } catch(e) {
+    } catch (e) {
       utils.showToast('Failed to update invoice status', 'error');
     }
   },
@@ -2423,7 +2584,7 @@ const paymentsModule = {
    */
   toggleAllInvoices(checked) {
     const checkboxes = document.querySelectorAll('.invoice-checkbox');
-    checkboxes.forEach(cb => {
+    checkboxes.forEach((cb) => {
       cb.checked = checked;
       if (checked) this._selectedInvoiceIds.add(cb.value);
       else this._selectedInvoiceIds.delete(cb.value);
@@ -2438,7 +2599,9 @@ const paymentsModule = {
       bar.id = 'invoiceBulkBar';
       bar.className = 'alert alert-info d-flex align-items-center gap-2 mt-2';
       bar.style.display = 'none';
-      const tableParent = document.getElementById('invoicesTableBody')?.closest('.table-responsive') || document.getElementById('invoicesTableBody')?.parentElement;
+      const tableParent =
+        document.getElementById('invoicesTableBody')?.closest('.table-responsive') ||
+        document.getElementById('invoicesTableBody')?.parentElement;
       if (tableParent) tableParent.before(bar);
     }
     if (this._selectedInvoiceIds.size > 0) {
@@ -2463,12 +2626,24 @@ const paymentsModule = {
   async bulkUpdateInvoiceStatus(status) {
     if (this._selectedInvoiceIds.size === 0) return;
     const ids = [...this._selectedInvoiceIds];
-    if (!await utils.confirmDialog({ title: 'Bulk Status Update', message: `Update ${ids.length} invoice(s) to "${status}"?`, confirmText: 'Update', danger: false })) return;
+    if (
+      !(await utils.confirmDialog({
+        title: 'Bulk Status Update',
+        message: `Update ${ids.length} invoice(s) to "${status}"?`,
+        confirmText: 'Update',
+        danger: false,
+      }))
+    )
+      return;
     try {
       utils.showLoading();
-      const result = await utils.runBatchOperation(ids, async (id) => {
-        await apiClient.update('invoices', id, { status });
-      }, 'Updating invoices');
+      const result = await utils.runBatchOperation(
+        ids,
+        async (id) => {
+          await apiClient.update('invoices', id, { status });
+        },
+        'Updating invoices'
+      );
       this._selectedInvoiceIds.clear();
       utils.showToast(`${result.succeeded.length} invoice(s) updated to ${status}`, 'success');
       await this.loadInvoices();
@@ -2487,14 +2662,26 @@ const paymentsModule = {
   async bulkDeleteInvoices() {
     if (this._selectedInvoiceIds.size === 0) return;
     const ids = [...this._selectedInvoiceIds];
-    if (!await utils.confirmDialog({ title: 'Bulk Delete Invoices', message: `Delete ${ids.length} invoice(s)? This cannot be undone.`, confirmText: 'Delete All', danger: true })) return;
+    if (
+      !(await utils.confirmDialog({
+        title: 'Bulk Delete Invoices',
+        message: `Delete ${ids.length} invoice(s)? This cannot be undone.`,
+        confirmText: 'Delete All',
+        danger: true,
+      }))
+    )
+      return;
     try {
       utils.showLoading();
-      const result = await utils.runBatchOperation(ids, async (id) => {
-        // Delete line items first to prevent orphaned records
-        await apiClient.deleteByFilters('invoice_line_items', { invoice_id: id });
-        await apiClient.delete('invoices', id);
-      }, 'Deleting invoices');
+      const result = await utils.runBatchOperation(
+        ids,
+        async (id) => {
+          // Delete line items first to prevent orphaned records
+          await apiClient.deleteByFilters('invoice_line_items', { invoice_id: id });
+          await apiClient.delete('invoices', id);
+        },
+        'Deleting invoices'
+      );
       this._selectedInvoiceIds.clear();
       utils.showToast(`${result.succeeded.length} invoice(s) deleted`, 'success');
       await this.loadInvoices();
@@ -2514,12 +2701,15 @@ const paymentsModule = {
       const file = e.target.files[0];
       if (!file) return;
       const text = await file.text();
-      const lines = text.split('\n').filter(l => l.trim());
-      if (lines.length < 2) { utils.showToast('CSV file is empty', 'warning'); return; }
-      const headers = lines[0].split(',').map(h => h.trim().toLowerCase().replace(/"/g, ''));
+      const lines = text.split('\n').filter((l) => l.trim());
+      if (lines.length < 2) {
+        utils.showToast('CSV file is empty', 'warning');
+        return;
+      }
+      const headers = lines[0].split(',').map((h) => h.trim().toLowerCase().replace(/"/g, ''));
       const records = [];
       for (let i = 1; i < lines.length; i++) {
-        const values = lines[i].match(/(".*?"|[^,]+)/g)?.map(v => v.replace(/^"|"$/g, '').trim()) || [];
+        const values = lines[i].match(/(".*?"|[^,]+)/g)?.map((v) => v.replace(/^"|"$/g, '').trim()) || [];
         const record = {};
         headers.forEach((h, idx) => {
           if (h.includes('number') || h === 'invoice_number') record.invoice_number = values[idx];
@@ -2531,8 +2721,19 @@ const paymentsModule = {
         });
         if (record.invoice_number || record.total_amount) records.push(record);
       }
-      if (records.length === 0) { utils.showToast('No valid records', 'warning'); return; }
-      if (!await utils.confirmDialog({ title: 'Import Invoices', message: `Import ${records.length} invoices from CSV?`, confirmText: 'Import', danger: false })) return;
+      if (records.length === 0) {
+        utils.showToast('No valid records', 'warning');
+        return;
+      }
+      if (
+        !(await utils.confirmDialog({
+          title: 'Import Invoices',
+          message: `Import ${records.length} invoices from CSV?`,
+          confirmText: 'Import',
+          danger: false,
+        }))
+      )
+        return;
       try {
         utils.showLoading();
         let imported = 0;
@@ -2554,7 +2755,7 @@ const paymentsModule = {
       }
     };
     input.click();
-  }
+  },
 };
 
 ModuleRegistry.register('paymentsModule', paymentsModule);

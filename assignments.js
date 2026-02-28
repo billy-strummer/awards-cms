@@ -929,3 +929,5 @@ const assignmentsModule = {
 
 // Export to window
 ModuleRegistry.register('assignmentsModule', assignmentsModule);
+
+export { assignmentsModule };

@@ -66,24 +66,25 @@ const securityModule = {
    * Set CSP headers via meta tag
    */
   _setupCSP() {
-    let cspMeta = document.querySelector('meta[http-equiv="Content-Security-Policy"]');
-    if (!cspMeta) {
-      cspMeta = document.createElement('meta');
-      cspMeta.httpEquiv = 'Content-Security-Policy';
-      // Permissive CSP that still blocks inline event handlers from injected content
-      cspMeta.content = [
-        "default-src 'self' https://*.supabase.co",
-        "script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://unpkg.com https://js.stripe.com https://browser.sentry-cdn.com https://s3.tradingview.com",
-        "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://unpkg.com",
-        "img-src 'self' data: blob: https://*.supabase.co https://i.ytimg.com https://*.tile.openstreetmap.org",
-        "font-src 'self' https://cdn.jsdelivr.net",
-        "connect-src 'self' https://*.supabase.co https://api.resend.com https://*.sentry.io wss://*.supabase.co https://*.tradingview.com wss://*.tradingview.com https://*.tradingview-widget.com wss://*.tradingview-widget.com https://www.youtube.com https://vimeo.com https://api.company-information.service.gov.uk https://*.stripe.com https://*.vercel-scripts.com https://*.vercel-insights.com https://cdn.jsdelivr.net https://unpkg.com https://cdnjs.cloudflare.com https://browser.sentry-cdn.com",
-        "frame-src 'self' https://js.stripe.com https://www.youtube.com https://s3.tradingview.com https://*.tradingview.com https://*.tradingview-widget.com",
-        "object-src 'none'",
-        "base-uri 'self'"
-      ].join('; ');
-      document.head.appendChild(cspMeta);
-    }
+    // Only create a CSP meta tag if one does not already exist in the HTML.
+    // The primary CSP is defined in index.html and should NOT be overridden.
+    const existingCSP = document.querySelector('meta[http-equiv="Content-Security-Policy"]');
+    if (existingCSP) return;
+
+    const cspMeta = document.createElement('meta');
+    cspMeta.httpEquiv = 'Content-Security-Policy';
+    cspMeta.content = [
+      "default-src 'self' https://*.supabase.co",
+      "script-src 'self' https://cdn.jsdelivr.net https://unpkg.com https://cdnjs.cloudflare.com https://js.stripe.com https://browser.sentry-cdn.com https://s3.tradingview.com",
+      "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://unpkg.com https://cdnjs.cloudflare.com",
+      "img-src 'self' data: blob: https://*.supabase.co https://i.ytimg.com https://*.tile.openstreetmap.org",
+      "font-src 'self' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com",
+      "connect-src 'self' https://*.supabase.co https://api.resend.com https://*.sentry.io wss://*.supabase.co https://*.tradingview.com wss://*.tradingview.com https://*.tradingview-widget.com wss://*.tradingview-widget.com https://www.youtube.com https://vimeo.com https://api.company-information.service.gov.uk https://*.stripe.com https://*.vercel-scripts.com https://*.vercel-insights.com https://cdn.jsdelivr.net https://unpkg.com https://cdnjs.cloudflare.com https://browser.sentry-cdn.com",
+      "frame-src 'self' https://js.stripe.com https://www.youtube.com https://s3.tradingview.com https://*.tradingview.com https://*.tradingview-widget.com",
+      "object-src 'none'",
+      "base-uri 'self'"
+    ].join('; ');
+    document.head.appendChild(cspMeta);
   },
 
   // ==========================================
@@ -263,3 +264,5 @@ const securityModule = {
 };
 
 ModuleRegistry.register('securityModule', securityModule);
+
+export { securityModule };

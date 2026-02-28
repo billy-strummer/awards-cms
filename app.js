@@ -1508,3 +1508,5 @@ if ('serviceWorker' in navigator) {
 */
 
 console.warn('📱 British Trade Awards Admin - Version 2.0');
+
+export { reportsScheduler };

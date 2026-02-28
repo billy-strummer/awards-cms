@@ -439,3 +439,5 @@ if (typeof window !== 'undefined') window.nomineeVoting = nomineeVoting;
 document.addEventListener('DOMContentLoaded', () => {
   nomineeVoting.initialize();
 });
+
+export { nomineeVoting };

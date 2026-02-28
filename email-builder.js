@@ -2554,7 +2554,7 @@ ${content}
 
       // Log the campaign with full data for cloning
       try {
-        await STATE.client.from('email_campaigns').insert({
+        await apiClient.insert('email_campaigns', {
           campaign_name: campaignName || subject,
           subject: subject,
           recipients: listName,
@@ -2584,7 +2584,7 @@ ${content}
 
       // Log the failed campaign so it appears in the log
       try {
-        await STATE.client.from('email_campaigns').insert({
+        await apiClient.insert('email_campaigns', {
           campaign_name: campaignName || subject,
           subject: subject,
           recipients: listName,
@@ -3790,7 +3790,7 @@ ${content}
       if (errorA) {
         // Log failed A variant
         try {
-          await STATE.client.from('email_campaigns').insert({
+          await apiClient.insert('email_campaigns', {
             campaign_name: (campaignName || subjectA) + ' [A/B Test - A]',
             subject: subjectA, recipients: listName, status: 'Failed',
             total_recipients: countA,
@@ -3816,45 +3816,41 @@ ${content}
       if (errorB) {
         // A succeeded but B failed - log both with correct status
         try {
-          await STATE.client.from('email_campaigns').insert([
-            {
+          await apiClient.insert('email_campaigns', {
               campaign_name: (campaignName || subjectA) + ' [A/B Test - A]',
               subject: subjectA, recipients: listName, status: 'Sent',
               sent_date: new Date().toISOString(), total_recipients: countA,
               notes: JSON.stringify({ html, from_name: fromName, from_email: fromEmail, reply_to: replyTo, list_id: listId, ab_test: true, variant: 'A', split: splitPercent })
-            },
-            {
+            });
+          await apiClient.insert('email_campaigns', {
               campaign_name: (campaignName || subjectB) + ' [A/B Test - B]',
               subject: subjectB, recipients: listName, status: 'Failed',
               total_recipients: countB,
               notes: JSON.stringify({ error: errorB.message, list_id: listId, ab_test: true, variant: 'B' })
-            }
-          ]);
+            });
         } catch (e) { /* ignore log error */ }
         throw new Error('Variant A sent but Variant B failed: ' + errorB.message);
       }
 
       // Both succeeded - log both campaigns
-      await STATE.client.from('email_campaigns').insert([
-        {
-          campaign_name: (campaignName || subjectA) + ' [A/B Test - A]',
-          subject: subjectA,
-          recipients: listName,
-          status: 'Sent',
-          sent_date: new Date().toISOString(),
-          total_recipients: countA,
-          notes: JSON.stringify({ html, from_name: fromName, from_email: fromEmail, reply_to: replyTo, list_id: listId, ab_test: true, variant: 'A', split: splitPercent })
-        },
-        {
-          campaign_name: (campaignName || subjectB) + ' [A/B Test - B]',
-          subject: subjectB,
-          recipients: listName,
-          status: 'Sent',
-          sent_date: new Date().toISOString(),
-          total_recipients: countB,
-          notes: JSON.stringify({ html, from_name: fromName, from_email: fromEmail, reply_to: replyTo, list_id: listId, ab_test: true, variant: 'B', split: 100 - splitPercent })
-        }
-      ]);
+      await apiClient.insert('email_campaigns', {
+        campaign_name: (campaignName || subjectA) + ' [A/B Test - A]',
+        subject: subjectA,
+        recipients: listName,
+        status: 'Sent',
+        sent_date: new Date().toISOString(),
+        total_recipients: countA,
+        notes: JSON.stringify({ html, from_name: fromName, from_email: fromEmail, reply_to: replyTo, list_id: listId, ab_test: true, variant: 'A', split: splitPercent })
+      });
+      await apiClient.insert('email_campaigns', {
+        campaign_name: (campaignName || subjectB) + ' [A/B Test - B]',
+        subject: subjectB,
+        recipients: listName,
+        status: 'Sent',
+        sent_date: new Date().toISOString(),
+        total_recipients: countB,
+        notes: JSON.stringify({ html, from_name: fromName, from_email: fromEmail, reply_to: replyTo, list_id: listId, ab_test: true, variant: 'B', split: 100 - splitPercent })
+      });
 
       utils.showToast(`A/B test sent! A: ${countA} recipients, B: ${countB} recipients`, 'success');
       this.loadCampaignLog();
@@ -4257,3 +4253,5 @@ ${content}
 
 // Export to window
 ModuleRegistry.register('emailBuilder', emailBuilder);
+
+export { emailBuilder };

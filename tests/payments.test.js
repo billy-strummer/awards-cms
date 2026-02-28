@@ -38,8 +38,11 @@ const dom = new JSDOM(`<!DOCTYPE html><html><head></head><body>
   <div id="totalInvoicesAmount">0</div>
   <div id="totalPaidAmount">0</div>
   <div id="totalOutstandingAmount">0</div>
+  <div id="paidInvoicesCount">0</div>
+  <div id="overdueInvoicesCount">0</div>
   <div id="totalPaymentsCount">0</div>
   <div id="totalPaymentsAmount">0</div>
+  <div id="monthlyPaymentsAmount">0</div>
   <div id="invoicesPagination"></div>
   <div id="paymentsPagination"></div>
   <div id="confirmDialogModal"></div>
@@ -689,5 +692,861 @@ describe('Payments Module - Edge Cases', () => {
   test('getInvoiceStatusBadge handles both null params', () => {
     const badge = paymentsModule.getInvoiceStatusBadge(null, null);
     expect(badge).toContain('Unknown');
+  });
+});
+
+// ==========================================
+// EXPANDED TEST COVERAGE
+// ==========================================
+
+describe('Payments Module - Invoice Status Badge Comprehensive', () => {
+  test('returns correct badge for every defined status', () => {
+    const statuses = ['draft', 'sent', 'viewed', 'paid', 'partially_paid', 'overdue', 'cancelled', 'refunded'];
+    statuses.forEach(status => {
+      const badge = paymentsModule.getInvoiceStatusBadge(status);
+      expect(badge).toContain('<span');
+      expect(badge).toContain('badge');
+    });
+  });
+
+  test('viewed badge has primary class', () => {
+    expect(paymentsModule.getInvoiceStatusBadge('viewed')).toContain('bg-primary');
+  });
+
+  test('refunded badge has secondary class', () => {
+    expect(paymentsModule.getInvoiceStatusBadge('refunded')).toContain('bg-secondary');
+  });
+
+  test('falls back to payment_status when status unknown', () => {
+    expect(paymentsModule.getInvoiceStatusBadge('unknown', 'paid')).toContain('bg-success');
+  });
+
+  test('returns Unknown for both unknown status and paymentStatus', () => {
+    expect(paymentsModule.getInvoiceStatusBadge('xxx', 'yyy')).toContain('Unknown');
+  });
+
+  test('each status badge text matches expected label', () => {
+    expect(paymentsModule.getInvoiceStatusBadge('draft')).toContain('Draft');
+    expect(paymentsModule.getInvoiceStatusBadge('sent')).toContain('Sent');
+    expect(paymentsModule.getInvoiceStatusBadge('viewed')).toContain('Viewed');
+    expect(paymentsModule.getInvoiceStatusBadge('paid')).toContain('Paid');
+    expect(paymentsModule.getInvoiceStatusBadge('partially_paid')).toContain('Partially Paid');
+    expect(paymentsModule.getInvoiceStatusBadge('overdue')).toContain('Overdue');
+    expect(paymentsModule.getInvoiceStatusBadge('cancelled')).toContain('Cancelled');
+    expect(paymentsModule.getInvoiceStatusBadge('refunded')).toContain('Refunded');
+  });
+});
+
+describe('Payments Module - Payment Method Formatting Advanced', () => {
+  test('formats all known methods', () => {
+    expect(paymentsModule.formatPaymentMethod('bank_transfer')).toBe('Bank Transfer');
+    expect(paymentsModule.formatPaymentMethod('card')).toBe('Card');
+    expect(paymentsModule.formatPaymentMethod('paypal')).toBe('PayPal');
+    expect(paymentsModule.formatPaymentMethod('stripe')).toBe('Stripe');
+    expect(paymentsModule.formatPaymentMethod('cash')).toBe('Cash');
+    expect(paymentsModule.formatPaymentMethod('cheque')).toBe('Cheque');
+    expect(paymentsModule.formatPaymentMethod('other')).toBe('Other');
+  });
+
+  test('returns input for unknown method', () => {
+    expect(paymentsModule.formatPaymentMethod('bitcoin')).toBe('bitcoin');
+  });
+
+  test('returns empty string for empty string', () => {
+    expect(paymentsModule.formatPaymentMethod('')).toBe('');
+  });
+});
+
+describe('Payments Module - Payment Status Badge Comprehensive', () => {
+  test('returns correct badge for every defined status', () => {
+    const statuses = ['pending', 'completed', 'failed', 'refunded', 'cancelled'];
+    statuses.forEach(status => {
+      const badge = paymentsModule.getPaymentStatusBadge(status);
+      expect(badge).toContain('<span');
+      expect(badge).toContain('badge');
+    });
+  });
+
+  test('pending has warning class', () => {
+    expect(paymentsModule.getPaymentStatusBadge('pending')).toContain('bg-warning');
+  });
+
+  test('completed has success class', () => {
+    expect(paymentsModule.getPaymentStatusBadge('completed')).toContain('bg-success');
+  });
+
+  test('failed has danger class', () => {
+    expect(paymentsModule.getPaymentStatusBadge('failed')).toContain('bg-danger');
+  });
+
+  test('cancelled has dark class', () => {
+    expect(paymentsModule.getPaymentStatusBadge('cancelled')).toContain('bg-dark');
+  });
+
+  test('refunded has secondary class', () => {
+    expect(paymentsModule.getPaymentStatusBadge('refunded')).toContain('bg-secondary');
+  });
+
+  test('unknown status returns Unknown', () => {
+    expect(paymentsModule.getPaymentStatusBadge('xxx')).toContain('Unknown');
+  });
+
+  test('undefined status returns Unknown', () => {
+    expect(paymentsModule.getPaymentStatusBadge(undefined)).toContain('Unknown');
+  });
+});
+
+describe('Payments Module - Invoice Filtering Advanced', () => {
+  beforeEach(() => {
+    paymentsModule.allInvoices = JSON.parse(JSON.stringify(sampleInvoices));
+    paymentsModule.currentInvoices = [...paymentsModule.allInvoices];
+    paymentsModule._invCurrentPage = 1;
+    paymentsModule._invPageSize = 50;
+    document.getElementById('invoiceSearchBox').value = '';
+    document.getElementById('invoiceStatusFilter').value = '';
+    document.getElementById('invoiceOrgFilter').value = '';
+    document.getElementById('invoiceMonthFilter').value = '';
+  });
+
+  test('filters by overdue status', () => {
+    paymentsModule.allInvoices.push({
+      id: 'inv-overdue',
+      invoice_number: 'INV-OD-001',
+      organisation_id: 'org-1',
+      invoice_date: '2025-01-01',
+      due_date: '2025-02-01',
+      status: 'overdue',
+      payment_status: 'unpaid',
+      total_amount: 100, paid_amount: 0, balance_due: 100,
+      organisations: { company_name: 'OD Co', id: 'org-1' }
+    });
+    document.getElementById('invoiceStatusFilter').value = 'overdue';
+    paymentsModule.filterInvoices();
+    expect(paymentsModule.currentInvoices.length).toBe(1);
+    expect(paymentsModule.currentInvoices[0].id).toBe('inv-overdue');
+  });
+
+  test('combines search and org filter', () => {
+    document.getElementById('invoiceSearchBox').value = 'INV-2026';
+    document.getElementById('invoiceOrgFilter').value = 'org-1';
+    paymentsModule.filterInvoices();
+    paymentsModule.currentInvoices.forEach(inv => {
+      expect(inv.organisation_id).toBe('org-1');
+      expect(inv.invoice_number.toLowerCase()).toContain('inv-2026');
+    });
+  });
+
+  test('combines search, status, and org', () => {
+    document.getElementById('invoiceSearchBox').value = 'INV';
+    document.getElementById('invoiceStatusFilter').value = 'paid';
+    document.getElementById('invoiceOrgFilter').value = 'org-2';
+    paymentsModule.filterInvoices();
+    expect(paymentsModule.currentInvoices.length).toBe(1);
+    expect(paymentsModule.currentInvoices[0].id).toBe('inv-5');
+  });
+
+  test('search with special characters does not crash', () => {
+    document.getElementById('invoiceSearchBox').value = '<script>alert(1)</script>';
+    expect(() => paymentsModule.filterInvoices()).not.toThrow();
+  });
+
+  test('filter by February 2026 month', () => {
+    document.getElementById('invoiceMonthFilter').value = '2026-02';
+    paymentsModule.filterInvoices();
+    paymentsModule.currentInvoices.forEach(inv => {
+      expect(inv.invoice_date.startsWith('2026-02')).toBe(true);
+    });
+  });
+
+  test('filter with non-matching month returns empty', () => {
+    document.getElementById('invoiceMonthFilter').value = '2020-01';
+    paymentsModule.filterInvoices();
+    expect(paymentsModule.currentInvoices.length).toBe(0);
+  });
+});
+
+describe('Payments Module - Payment Filtering Advanced', () => {
+  beforeEach(() => {
+    paymentsModule.allPayments = JSON.parse(JSON.stringify(samplePayments));
+    paymentsModule.currentPayments = [...paymentsModule.allPayments];
+    paymentsModule._payCurrentPage = 1;
+    paymentsModule._payPageSize = 50;
+    document.getElementById('paymentSearchBox').value = '';
+    document.getElementById('paymentMethodFilter').value = '';
+    document.getElementById('paymentStatusFilter').value = '';
+    document.getElementById('paymentMonthFilter').value = '';
+  });
+
+  test('filters by bank_transfer method', () => {
+    document.getElementById('paymentMethodFilter').value = 'bank_transfer';
+    paymentsModule.filterPayments();
+    expect(paymentsModule.currentPayments.length).toBe(1);
+    expect(paymentsModule.currentPayments[0].payment_method).toBe('bank_transfer');
+  });
+
+  test('filters by completed status', () => {
+    document.getElementById('paymentStatusFilter').value = 'completed';
+    paymentsModule.filterPayments();
+    paymentsModule.currentPayments.forEach(p => {
+      expect(p.status).toBe('completed');
+    });
+  });
+
+  test('filters by January 2026 month', () => {
+    document.getElementById('paymentMonthFilter').value = '2026-01';
+    paymentsModule.filterPayments();
+    paymentsModule.currentPayments.forEach(p => {
+      expect(p.payment_date.startsWith('2026-01')).toBe(true);
+    });
+  });
+
+  test('search is case insensitive', () => {
+    document.getElementById('paymentSearchBox').value = 'pay-ref';
+    paymentsModule.filterPayments();
+    const lower = paymentsModule.currentPayments.length;
+    document.getElementById('paymentSearchBox').value = 'PAY-REF';
+    paymentsModule.filterPayments();
+    expect(paymentsModule.currentPayments.length).toBe(lower);
+  });
+
+  test('resets page to 1 on filter', () => {
+    paymentsModule._payCurrentPage = 5;
+    paymentsModule.filterPayments();
+    expect(paymentsModule._payCurrentPage).toBe(1);
+  });
+
+  test('saves filters to localStorage', () => {
+    document.getElementById('paymentSearchBox').value = 'ref-test';
+    document.getElementById('paymentMethodFilter').value = 'card';
+    paymentsModule.filterPayments();
+    const saved = JSON.parse(localStorage.getItem('paymentFilters'));
+    expect(saved.search).toBe('ref-test');
+    expect(saved.method).toBe('card');
+  });
+
+  test('filter by stripe method', () => {
+    document.getElementById('paymentMethodFilter').value = 'stripe';
+    paymentsModule.filterPayments();
+    expect(paymentsModule.currentPayments.length).toBe(1);
+    expect(paymentsModule.currentPayments[0].id).toBe('pay-3');
+  });
+
+  test('combines method and month filters', () => {
+    document.getElementById('paymentMethodFilter').value = 'card';
+    document.getElementById('paymentMonthFilter').value = '2026-01';
+    paymentsModule.filterPayments();
+    expect(paymentsModule.currentPayments.length).toBe(1);
+    expect(paymentsModule.currentPayments[0].id).toBe('pay-2');
+  });
+});
+
+describe('Payments Module - Invoice Sorting Advanced', () => {
+  beforeEach(() => {
+    paymentsModule.currentInvoices = JSON.parse(JSON.stringify(sampleInvoices));
+    paymentsModule._invoiceSortField = 'created_at';
+    paymentsModule._invoiceSortDir = 'desc';
+  });
+
+  test('sort by total_amount ascending', () => {
+    paymentsModule._invoiceSortField = 'total_amount';
+    paymentsModule._invoiceSortDir = 'asc';
+    paymentsModule._applySortInvoices();
+    const amounts = paymentsModule.currentInvoices.map(inv => parseFloat(inv.total_amount || 0));
+    for (let i = 0; i < amounts.length - 1; i++) {
+      expect(amounts[i] <= amounts[i + 1]).toBe(true);
+    }
+  });
+
+  test('sort by total_amount descending', () => {
+    paymentsModule._invoiceSortField = 'total_amount';
+    paymentsModule._invoiceSortDir = 'desc';
+    paymentsModule._applySortInvoices();
+    const amounts = paymentsModule.currentInvoices.map(inv => parseFloat(inv.total_amount || 0));
+    for (let i = 0; i < amounts.length - 1; i++) {
+      expect(amounts[i] >= amounts[i + 1]).toBe(true);
+    }
+  });
+
+  test('sort by org_name ascending', () => {
+    paymentsModule._invoiceSortField = 'org_name';
+    paymentsModule._invoiceSortDir = 'asc';
+    paymentsModule._applySortInvoices();
+    const names = paymentsModule.currentInvoices.map(inv =>
+      (inv.organisations?.company_name || '').toLowerCase()
+    );
+    for (let i = 0; i < names.length - 1; i++) {
+      expect(names[i] <= names[i + 1]).toBe(true);
+    }
+  });
+
+  test('sort by balance_due descending', () => {
+    paymentsModule._invoiceSortField = 'balance_due';
+    paymentsModule._invoiceSortDir = 'desc';
+    paymentsModule._applySortInvoices();
+    const balances = paymentsModule.currentInvoices.map(inv => parseFloat(inv.balance_due || 0));
+    for (let i = 0; i < balances.length - 1; i++) {
+      expect(balances[i] >= balances[i + 1]).toBe(true);
+    }
+  });
+
+  test('sort by paid_amount ascending', () => {
+    paymentsModule._invoiceSortField = 'paid_amount';
+    paymentsModule._invoiceSortDir = 'asc';
+    paymentsModule._applySortInvoices();
+    const paid = paymentsModule.currentInvoices.map(inv => parseFloat(inv.paid_amount || 0));
+    for (let i = 0; i < paid.length - 1; i++) {
+      expect(paid[i] <= paid[i + 1]).toBe(true);
+    }
+  });
+
+  test('sortInvoices toggles direction for same field', () => {
+    paymentsModule._invoiceSortField = 'total_amount';
+    paymentsModule._invoiceSortDir = 'asc';
+    paymentsModule.sortInvoices('total_amount');
+    expect(paymentsModule._invoiceSortDir).toBe('desc');
+  });
+
+  test('sortInvoices resets to asc for new field', () => {
+    paymentsModule._invoiceSortField = 'total_amount';
+    paymentsModule._invoiceSortDir = 'desc';
+    paymentsModule.sortInvoices('invoice_date');
+    expect(paymentsModule._invoiceSortField).toBe('invoice_date');
+    expect(paymentsModule._invoiceSortDir).toBe('asc');
+  });
+
+  test('sort by invoice_number ascending', () => {
+    paymentsModule._invoiceSortField = 'invoice_number';
+    paymentsModule._invoiceSortDir = 'asc';
+    paymentsModule._applySortInvoices();
+    const nums = paymentsModule.currentInvoices.map(inv => (inv.invoice_number || '').toLowerCase());
+    for (let i = 0; i < nums.length - 1; i++) {
+      expect(nums[i] <= nums[i + 1]).toBe(true);
+    }
+  });
+
+  test('sort by status ascending', () => {
+    paymentsModule._invoiceSortField = 'status';
+    paymentsModule._invoiceSortDir = 'asc';
+    paymentsModule._applySortInvoices();
+    const statuses = paymentsModule.currentInvoices.map(inv => (inv.status || '').toLowerCase());
+    for (let i = 0; i < statuses.length - 1; i++) {
+      expect(statuses[i] <= statuses[i + 1]).toBe(true);
+    }
+  });
+});
+
+describe('Payments Module - Invoice Pagination Advanced', () => {
+  let manyInvoices;
+
+  beforeEach(() => {
+    manyInvoices = [];
+    for (let i = 0; i < 125; i++) {
+      manyInvoices.push({
+        id: `inv-pg-${i}`,
+        invoice_number: `INV-PG-${String(i).padStart(4, '0')}`,
+        organisation_id: 'org-1',
+        organisations: { company_name: 'Test Co', id: 'org-1' },
+        invoice_date: '2026-01-15',
+        due_date: '2026-02-15',
+        invoice_type: 'entry_fee',
+        total_amount: 100 + i,
+        paid_amount: 0,
+        balance_due: 100 + i,
+        status: 'sent',
+        payment_status: 'unpaid'
+      });
+    }
+    paymentsModule.currentInvoices = manyInvoices;
+    paymentsModule._invCurrentPage = 1;
+    paymentsModule._invPageSize = 50;
+    paymentsModule._selectedInvoiceIds = new Set();
+  });
+
+  test('goToInvoicePage with negative page clamps to 1', () => {
+    paymentsModule.goToInvoicePage(-5);
+    expect(paymentsModule._invCurrentPage).toBe(1);
+  });
+
+  test('goToInvoicePage with very large page clamps to max', () => {
+    paymentsModule.goToInvoicePage(99999);
+    const totalPages = Math.ceil(manyInvoices.length / paymentsModule._invPageSize);
+    expect(paymentsModule._invCurrentPage).toBe(totalPages);
+  });
+
+  test('goToInvoicePage page 2 sets correctly', () => {
+    paymentsModule.goToInvoicePage(2);
+    expect(paymentsModule._invCurrentPage).toBe(2);
+  });
+
+  test('goToInvoicePage page 3 (last page) works', () => {
+    paymentsModule.goToInvoicePage(3);
+    expect(paymentsModule._invCurrentPage).toBe(3);
+  });
+
+  test('renderInvoices shows correct rows on page 1', () => {
+    paymentsModule.renderInvoices();
+    const tbody = document.getElementById('invoicesTableBody');
+    const rows = tbody.querySelectorAll('tr');
+    expect(rows.length).toBe(50);
+  });
+
+  test('renderInvoices shows pagination controls', () => {
+    paymentsModule.renderInvoices();
+    const paginationEl = document.getElementById('invoicesPagination');
+    expect(paginationEl).toBeTruthy();
+    expect(paginationEl.innerHTML).toContain('Prev');
+    expect(paginationEl.innerHTML).toContain('Next');
+  });
+
+  test('renderInvoices shows correct showing text', () => {
+    paymentsModule._invCurrentPage = 2;
+    paymentsModule.renderInvoices();
+    const paginationEl = document.getElementById('invoicesPagination');
+    expect(paginationEl.innerHTML).toContain('51-100');
+  });
+});
+
+describe('Payments Module - Payment Pagination Advanced', () => {
+  let manyPayments;
+
+  beforeEach(() => {
+    manyPayments = [];
+    for (let i = 0; i < 80; i++) {
+      manyPayments.push({
+        id: `pay-pg-${i}`,
+        payment_reference: `PAY-PG-${String(i).padStart(4, '0')}`,
+        payment_date: '2026-01-20',
+        amount: 50 + i,
+        payment_method: 'card',
+        status: 'completed',
+        organisations: { company_name: 'Test Co', id: 'org-1' },
+        invoices: { invoice_number: `INV-${i}` },
+        invoice_id: `inv-${i}`
+      });
+    }
+    paymentsModule.currentPayments = manyPayments;
+    paymentsModule._payCurrentPage = 1;
+    paymentsModule._payPageSize = 50;
+  });
+
+  test('goToPaymentPage with negative page clamps to 1', () => {
+    paymentsModule.goToPaymentPage(-5);
+    expect(paymentsModule._payCurrentPage).toBe(1);
+  });
+
+  test('goToPaymentPage with very large page clamps to max', () => {
+    paymentsModule.goToPaymentPage(99999);
+    const totalPages = Math.ceil(manyPayments.length / paymentsModule._payPageSize);
+    expect(paymentsModule._payCurrentPage).toBe(totalPages);
+  });
+
+  test('goToPaymentPage page 2 sets correctly', () => {
+    paymentsModule.goToPaymentPage(2);
+    expect(paymentsModule._payCurrentPage).toBe(2);
+  });
+
+  test('renderPayments shows correct rows on page 1', () => {
+    paymentsModule.renderPayments();
+    const tbody = document.getElementById('paymentsTableBody');
+    const rows = tbody.querySelectorAll('tr');
+    expect(rows.length).toBe(50);
+  });
+
+  test('renderPayments shows pagination for many payments', () => {
+    paymentsModule.renderPayments();
+    const paginationEl = document.getElementById('paymentsPagination');
+    expect(paginationEl).toBeTruthy();
+    expect(paginationEl.innerHTML).toContain('Prev');
+  });
+});
+
+describe('Payments Module - Statistics Advanced', () => {
+  beforeEach(() => {
+    paymentsModule.currentInvoices = JSON.parse(JSON.stringify(sampleInvoices));
+    paymentsModule.currentPayments = JSON.parse(JSON.stringify(samplePayments));
+  });
+
+  test('updates overdue count', () => {
+    paymentsModule.updateStatistics();
+    const overdueCount = parseInt(document.getElementById('overdueInvoicesCount').textContent);
+    const expected = sampleInvoices.filter(i => i.status === 'overdue').length;
+    expect(overdueCount).toBe(expected);
+  });
+
+  test('updates paid count', () => {
+    paymentsModule.updateStatistics();
+    const paidCount = parseInt(document.getElementById('paidInvoicesCount').textContent);
+    const expected = sampleInvoices.filter(i => i.payment_status === 'paid').length;
+    expect(paidCount).toBe(expected);
+  });
+
+  test('updates total payments count', () => {
+    paymentsModule.updateStatistics();
+    const count = parseInt(document.getElementById('totalPaymentsCount').textContent);
+    expect(count).toBe(samplePayments.length);
+  });
+
+  test('updates total payments amount for completed only', () => {
+    paymentsModule.updateStatistics();
+    const amountEl = document.getElementById('totalPaymentsAmount');
+    const completedTotal = samplePayments
+      .filter(p => p.status === 'completed')
+      .reduce((s, p) => s + parseFloat(p.amount || 0), 0);
+    expect(amountEl.textContent).toContain(completedTotal.toFixed(2));
+  });
+
+  test('statistics with empty invoices show zeros', () => {
+    paymentsModule.currentInvoices = [];
+    paymentsModule.currentPayments = [];
+    paymentsModule.updateStatistics();
+    expect(document.getElementById('totalInvoicesCount').textContent).toBe('0');
+    expect(document.getElementById('paidInvoicesCount').textContent).toBe('0');
+    expect(document.getElementById('overdueInvoicesCount').textContent).toBe('0');
+    expect(document.getElementById('totalPaymentsCount').textContent).toBe('0');
+  });
+
+  test('outstanding amount is sum of balance_due', () => {
+    paymentsModule.updateStatistics();
+    const expected = sampleInvoices.reduce((s, i) => s + parseFloat(i.balance_due || 0), 0);
+    const el = document.getElementById('totalOutstandingAmount');
+    expect(el.textContent).toContain(expected.toFixed(2));
+  });
+
+  test('statistics with all paid invoices', () => {
+    paymentsModule.currentInvoices = sampleInvoices.map(inv => ({
+      ...inv,
+      status: 'paid',
+      payment_status: 'paid',
+      balance_due: 0
+    }));
+    paymentsModule.updateStatistics();
+    const paidCount = parseInt(document.getElementById('paidInvoicesCount').textContent);
+    expect(paidCount).toBe(sampleInvoices.length);
+    const outstanding = document.getElementById('totalOutstandingAmount').textContent;
+    expect(outstanding).toContain('0.00');
+  });
+
+  test('statistics with null amount values', () => {
+    paymentsModule.currentInvoices = [{
+      id: 'null-amt',
+      balance_due: null,
+      status: 'sent',
+      payment_status: 'unpaid'
+    }];
+    paymentsModule.currentPayments = [];
+    expect(() => paymentsModule.updateStatistics()).not.toThrow();
+  });
+});
+
+describe('Payments Module - Invoice Select Toggle Advanced', () => {
+  test('toggleInvoiceSelect adds to set when checked', () => {
+    paymentsModule._selectedInvoiceIds = new Set();
+    paymentsModule.toggleInvoiceSelect('inv-1', true);
+    expect(paymentsModule._selectedInvoiceIds.has('inv-1')).toBe(true);
+    expect(paymentsModule._selectedInvoiceIds.size).toBe(1);
+  });
+
+  test('toggleInvoiceSelect removes from set when unchecked', () => {
+    paymentsModule._selectedInvoiceIds = new Set(['inv-1']);
+    paymentsModule.toggleInvoiceSelect('inv-1', false);
+    expect(paymentsModule._selectedInvoiceIds.has('inv-1')).toBe(false);
+  });
+
+  test('multiple toggles accumulate', () => {
+    paymentsModule._selectedInvoiceIds = new Set();
+    paymentsModule.toggleInvoiceSelect('inv-1', true);
+    paymentsModule.toggleInvoiceSelect('inv-2', true);
+    paymentsModule.toggleInvoiceSelect('inv-3', true);
+    expect(paymentsModule._selectedInvoiceIds.size).toBe(3);
+  });
+
+  test('deselecting one keeps others', () => {
+    paymentsModule._selectedInvoiceIds = new Set(['inv-1', 'inv-2', 'inv-3']);
+    paymentsModule.toggleInvoiceSelect('inv-2', false);
+    expect(paymentsModule._selectedInvoiceIds.size).toBe(2);
+    expect(paymentsModule._selectedInvoiceIds.has('inv-1')).toBe(true);
+    expect(paymentsModule._selectedInvoiceIds.has('inv-3')).toBe(true);
+  });
+});
+
+describe('Payments Module - Render Invoices Content', () => {
+  beforeEach(() => {
+    paymentsModule.currentInvoices = JSON.parse(JSON.stringify(sampleInvoices));
+    paymentsModule._invCurrentPage = 1;
+    paymentsModule._invPageSize = 50;
+    paymentsModule._selectedInvoiceIds = new Set();
+  });
+
+  test('renderInvoices displays invoice numbers', () => {
+    paymentsModule.renderInvoices();
+    const tbody = document.getElementById('invoicesTableBody');
+    sampleInvoices.forEach(inv => {
+      expect(tbody.innerHTML).toContain(inv.invoice_number);
+    });
+  });
+
+  test('renderInvoices formats amounts with two decimal places', () => {
+    paymentsModule.renderInvoices();
+    const tbody = document.getElementById('invoicesTableBody');
+    expect(tbody.innerHTML).toContain('500.00');
+    expect(tbody.innerHTML).toContain('1200.00');
+  });
+
+  test('renderInvoices shows status dropdown', () => {
+    paymentsModule.renderInvoices();
+    const tbody = document.getElementById('invoicesTableBody');
+    expect(tbody.innerHTML).toContain('form-select');
+  });
+
+  test('renderInvoices shows action buttons', () => {
+    paymentsModule.renderInvoices();
+    const tbody = document.getElementById('invoicesTableBody');
+    expect(tbody.innerHTML).toContain('bi-eye');
+    expect(tbody.innerHTML).toContain('bi-cash');
+    expect(tbody.innerHTML).toContain('bi-envelope');
+  });
+});
+
+describe('Payments Module - Render Payments Content', () => {
+  beforeEach(() => {
+    paymentsModule.currentPayments = JSON.parse(JSON.stringify(samplePayments));
+    paymentsModule._payCurrentPage = 1;
+    paymentsModule._payPageSize = 50;
+  });
+
+  test('renderPayments displays payment references', () => {
+    paymentsModule.renderPayments();
+    const tbody = document.getElementById('paymentsTableBody');
+    expect(tbody.innerHTML).toContain('PAY-REF-001');
+  });
+
+  test('renderPayments displays amounts', () => {
+    paymentsModule.renderPayments();
+    const tbody = document.getElementById('paymentsTableBody');
+    expect(tbody.innerHTML).toContain('500.00');
+  });
+
+  test('renderPayments shows empty state when no payments', () => {
+    paymentsModule.currentPayments = [];
+    paymentsModule.renderPayments();
+    const tbody = document.getElementById('paymentsTableBody');
+    expect(tbody.innerHTML).toContain('No payments found');
+  });
+
+  test('renderPayments shows payment method badges', () => {
+    paymentsModule.renderPayments();
+    const tbody = document.getElementById('paymentsTableBody');
+    expect(tbody.innerHTML).toContain('Bank Transfer');
+  });
+});
+
+describe('Payments Module - XSS Prevention', () => {
+  beforeEach(() => {
+    paymentsModule._invCurrentPage = 1;
+    paymentsModule._invPageSize = 50;
+    paymentsModule._selectedInvoiceIds = new Set();
+    paymentsModule._payCurrentPage = 1;
+    paymentsModule._payPageSize = 50;
+  });
+
+  test('renderInvoices escapes HTML in invoice number', () => {
+    paymentsModule.currentInvoices = [{
+      ...sampleInvoices[0],
+      id: 'xss-inv',
+      invoice_number: '<script>alert(1)</script>'
+    }];
+    paymentsModule.renderInvoices();
+    const tbody = document.getElementById('invoicesTableBody');
+    expect(tbody.querySelector('script')).toBeNull();
+  });
+
+  test('renderInvoices escapes HTML in company name', () => {
+    paymentsModule.currentInvoices = [{
+      ...sampleInvoices[0],
+      id: 'xss-co',
+      organisations: { company_name: '<img src=x onerror=alert(1)>', id: 'org-x' }
+    }];
+    paymentsModule.renderInvoices();
+    const tbody = document.getElementById('invoicesTableBody');
+    expect(tbody.querySelector('img[onerror]')).toBeNull();
+  });
+
+  test('renderPayments escapes HTML in payment reference', () => {
+    paymentsModule.currentPayments = [{
+      ...samplePayments[0],
+      id: 'xss-pay',
+      payment_reference: '<img src=x onerror=alert(1)>'
+    }];
+    paymentsModule.renderPayments();
+    const tbody = document.getElementById('paymentsTableBody');
+    expect(tbody.querySelector('img[onerror]')).toBeNull();
+  });
+});
+
+describe('Payments Module - Export Edge Cases', () => {
+  test('exportInvoicesCSV with no invoices shows warning toast', () => {
+    paymentsModule.currentInvoices = [];
+    const spy = jest.spyOn(utils, 'showToast');
+    paymentsModule.exportInvoicesCSV();
+    expect(spy).toHaveBeenCalledWith('No invoices to export', 'warning');
+    spy.mockRestore();
+  });
+
+  test('exportPaymentsCSV with no payments shows warning toast', () => {
+    paymentsModule.currentPayments = [];
+    const spy = jest.spyOn(utils, 'showToast');
+    paymentsModule.exportPaymentsCSV();
+    expect(spy).toHaveBeenCalledWith('No payments to export', 'warning');
+    spy.mockRestore();
+  });
+
+  test('exportInvoicesCSV with data does not throw', () => {
+    paymentsModule.currentInvoices = JSON.parse(JSON.stringify(sampleInvoices));
+    expect(() => paymentsModule.exportInvoicesCSV()).not.toThrow();
+  });
+
+  test('exportPaymentsCSV with data does not throw', () => {
+    paymentsModule.currentPayments = JSON.parse(JSON.stringify(samplePayments));
+    expect(() => paymentsModule.exportPaymentsCSV()).not.toThrow();
+  });
+
+  test('_downloadCSV escapes formula injection', () => {
+    let capturedContent = '';
+    const OrigBlob = global.Blob;
+    global.Blob = class extends OrigBlob {
+      constructor(parts, opts) {
+        super(parts, opts);
+        capturedContent = parts.join('');
+      }
+    };
+    paymentsModule._downloadCSV(['A'], [['=SUM(1,2)']], 'test.csv');
+    global.Blob = OrigBlob;
+    expect(capturedContent).toContain("'=SUM(1,2)");
+  });
+
+  test('_downloadCSV handles special characters in data', () => {
+    expect(() => {
+      paymentsModule._downloadCSV(
+        ['Name', 'Amount'],
+        [['Smith & Co, Ltd', '100.00'], ['O\'Brien', '200.00']],
+        'test.csv'
+      );
+    }).not.toThrow();
+  });
+
+  test('_downloadCSV escapes at-sign injection', () => {
+    let capturedContent = '';
+    const OrigBlob = global.Blob;
+    global.Blob = class extends OrigBlob {
+      constructor(parts, opts) {
+        super(parts, opts);
+        capturedContent = parts.join('');
+      }
+    };
+    paymentsModule._downloadCSV(['A'], [['@cmd']], 'test.csv');
+    global.Blob = OrigBlob;
+    expect(capturedContent).toContain("'@cmd");
+  });
+
+  test('_downloadCSV escapes plus-sign injection', () => {
+    let capturedContent = '';
+    const OrigBlob = global.Blob;
+    global.Blob = class extends OrigBlob {
+      constructor(parts, opts) {
+        super(parts, opts);
+        capturedContent = parts.join('');
+      }
+    };
+    paymentsModule._downloadCSV(['A'], [['+cmd']], 'test.csv');
+    global.Blob = OrigBlob;
+    expect(capturedContent).toContain("'+cmd");
+  });
+});
+
+describe('Payments Module - Null Safety', () => {
+  test('renderInvoices handles invoice with null organisations', () => {
+    paymentsModule.currentInvoices = [{
+      id: 'null-org',
+      invoice_number: 'INV-NULL',
+      organisations: null,
+      invoice_date: '2026-01-01',
+      due_date: '2026-02-01',
+      total_amount: 100,
+      paid_amount: 0,
+      balance_due: 100,
+      status: 'draft',
+      invoice_type: 'entry_fee'
+    }];
+    paymentsModule._invCurrentPage = 1;
+    paymentsModule._invPageSize = 50;
+    paymentsModule._selectedInvoiceIds = new Set();
+    expect(() => paymentsModule.renderInvoices()).not.toThrow();
+  });
+
+  test('renderPayments handles payment with null organisations', () => {
+    paymentsModule.currentPayments = [{
+      id: 'null-org-pay',
+      payment_reference: 'PAY-NULL',
+      payment_date: '2026-01-01',
+      amount: 50,
+      payment_method: 'card',
+      status: 'completed',
+      organisations: null,
+      invoices: null,
+      invoice_id: null
+    }];
+    paymentsModule._payCurrentPage = 1;
+    paymentsModule._payPageSize = 50;
+    expect(() => paymentsModule.renderPayments()).not.toThrow();
+  });
+
+  test('updateStatistics with null balance_due values', () => {
+    paymentsModule.currentInvoices = [{
+      id: 'null-bal',
+      balance_due: null,
+      status: 'sent',
+      payment_status: 'unpaid'
+    }];
+    paymentsModule.currentPayments = [];
+    expect(() => paymentsModule.updateStatistics()).not.toThrow();
+  });
+
+  test('filterInvoices with empty allInvoices', () => {
+    paymentsModule.allInvoices = [];
+    document.getElementById('invoiceSearchBox').value = '';
+    document.getElementById('invoiceStatusFilter').value = '';
+    document.getElementById('invoiceOrgFilter').value = '';
+    document.getElementById('invoiceMonthFilter').value = '';
+    expect(() => paymentsModule.filterInvoices()).not.toThrow();
+    expect(paymentsModule.currentInvoices.length).toBe(0);
+  });
+
+  test('filterPayments with empty allPayments', () => {
+    paymentsModule.allPayments = [];
+    document.getElementById('paymentSearchBox').value = '';
+    document.getElementById('paymentMethodFilter').value = '';
+    document.getElementById('paymentStatusFilter').value = '';
+    document.getElementById('paymentMonthFilter').value = '';
+    expect(() => paymentsModule.filterPayments()).not.toThrow();
+    expect(paymentsModule.currentPayments.length).toBe(0);
+  });
+
+  test('renderInvoices handles invoice with null amounts', () => {
+    paymentsModule.currentInvoices = [{
+      id: 'null-amts',
+      invoice_number: 'INV-NA',
+      organisations: { company_name: 'Test', id: 'org-1' },
+      invoice_date: null,
+      due_date: null,
+      total_amount: null,
+      paid_amount: null,
+      balance_due: null,
+      status: null,
+      invoice_type: null
+    }];
+    paymentsModule._invCurrentPage = 1;
+    paymentsModule._invPageSize = 50;
+    paymentsModule._selectedInvoiceIds = new Set();
+    expect(() => paymentsModule.renderInvoices()).not.toThrow();
   });
 });

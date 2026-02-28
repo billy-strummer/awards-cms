@@ -792,3 +792,5 @@ ModuleRegistry.register('judgePortal', judgePortal);
 document.addEventListener('DOMContentLoaded', () => {
   judgePortal.initialize();
 });
+
+export { judgePortal };

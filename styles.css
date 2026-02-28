@@ -3370,6 +3370,24 @@ mark.search-highlight { background: #fff3cd; color: #000; padding: 0 2px; border
 [data-bs-theme="dark"] mark.search-highlight { background: #664d03; color: #fff3cd; }
 
 /* ==================================================== */
+/* UTILITY CLASSES (replace inline styles for CSP)      */
+/* ==================================================== */
+.u-hidden { display: none; }
+.u-pointer { cursor: pointer; }
+.u-transition-transform { transition: transform 0.2s; }
+.u-scroll-y-400 { max-height: 400px; overflow-y: auto; }
+.u-overlay-badge { z-index: 10; padding: 0.25rem 0.5rem; }
+.u-text-xxs { font-size: 0.65rem; }
+.u-text-xs { font-size: 0.7rem; }
+.u-text-xxxs { font-size: 0.6rem; }
+.u-chart-container { position: relative; height: 300px; }
+.u-chart-sm { height: 280px; position: relative; }
+.u-columns-2 { columns: 2; column-gap: 1.5rem; }
+.u-card-hover { cursor: pointer; transition: box-shadow 0.15s, transform 0.15s; }
+.u-text-2xl { font-size: 2rem; }
+.u-w-full { width: 100%; }
+
+/* ==================================================== */
 /* CRM KANBAN BOARD (MEDIUM-11)                         */
 /* ==================================================== */
 /* CRM Kanban board */

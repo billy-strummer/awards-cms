@@ -643,8 +643,7 @@ const utils = {
     try {
       // Remove internal fields
       const { _deletedAt, _assignmentCounts, _winnerName, _runnerUpName, _actualRegion, _countyName, ...data } = record;
-      const { error } = await supabaseClient.from(table).insert(data);
-      if (error) throw error;
+      await apiClient.insert(table, data);
 
       // Remove from trash
       const trash = this.getTrash(table);
@@ -723,11 +722,11 @@ const utils = {
         let synced = 0;
         const remaining = [];
         for (const item of stored) {
-          const { error } = await STATE.client.from(table).insert([item]);
-          if (error) {
-            remaining.push(item);
-          } else {
+          try {
+            await apiClient.insert(table, [item]);
             synced++;
+          } catch (_insertErr) {
+            remaining.push(item);
           }
         }
         if (synced > 0) {
@@ -2903,3 +2902,5 @@ ModuleRegistry.register('utils', utils);
 ModuleRegistry.register('serverQuery', serverQuery);
 ModuleRegistry.register('actionRegistry', actionRegistry);
 ModuleRegistry.register('apiClient', apiClient);
+
+export { utils, apiClient, serverQuery, actionRegistry };

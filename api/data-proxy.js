@@ -300,6 +300,43 @@ function validateQueryParams(body) {
 }
 
 // ============================================
+// SHARED FILTER HELPER
+// ============================================
+
+/**
+ * Apply filters to a Supabase query builder.
+ * Supports equality checks and operator-based filters (neq, gt, gte, lt, lte,
+ * like, ilike, in, is).
+ * @param {Object} query - Supabase query builder instance.
+ * @param {Object} filters - Filter object where keys are column names and values
+ *   are either plain values (for equality) or objects with { op, value } for operators.
+ * @returns {Object} The query builder with filters applied.
+ */
+function applyFilters(query, filters) {
+  for (const [key, value] of Object.entries(filters)) {
+    if (value === null || value === undefined || value === '') continue;
+
+    if (typeof value === 'object' && value.op) {
+      switch (value.op) {
+        case 'neq':   query = query.neq(key, value.value); break;
+        case 'gt':    query = query.gt(key, value.value); break;
+        case 'gte':   query = query.gte(key, value.value); break;
+        case 'lt':    query = query.lt(key, value.value); break;
+        case 'lte':   query = query.lte(key, value.value); break;
+        case 'like':  query = query.like(key, value.value); break;
+        case 'ilike': query = query.ilike(key, value.value); break;
+        case 'in':    query = query.in(key, value.value); break;
+        case 'is':    query = query.is(key, value.value); break;
+        default:      query = query.eq(key, value);
+      }
+    } else {
+      query = query.eq(key, value);
+    }
+  }
+  return query;
+}
+
+// ============================================
 // QUERY EXECUTION
 // ============================================
 
@@ -323,27 +360,8 @@ async function executeQuery(body, user) {
       .from(table)
       .select(select, isCount ? { count: 'exact', head: true } : { count: 'exact' });
 
-    // Apply equality filters
-    for (const [key, value] of Object.entries(filters)) {
-      if (value === null || value === undefined || value === '') continue;
-
-      // Support basic filter operators
-      if (typeof value === 'object' && value.op) {
-        switch (value.op) {
-          case 'neq': query = query.neq(key, value.value); break;
-          case 'gt':  query = query.gt(key, value.value); break;
-          case 'gte': query = query.gte(key, value.value); break;
-          case 'lt':  query = query.lt(key, value.value); break;
-          case 'lte': query = query.lte(key, value.value); break;
-          case 'like': query = query.like(key, value.value); break;
-          case 'ilike': query = query.ilike(key, value.value); break;
-          case 'in':  query = query.in(key, value.value); break;
-          default: query = query.eq(key, value);
-        }
-      } else {
-        query = query.eq(key, value);
-      }
-    }
+    // Apply filters (supports eq, neq, gt, gte, lt, lte, like, ilike, in, is)
+    query = applyFilters(query, filters);
 
     // Apply full-text search (OR across multiple columns via ilike)
     if (search && search.term && search.columns && search.columns.length > 0) {
@@ -435,11 +453,7 @@ async function executeQuery(body, user) {
     if (id) {
       query = query.eq('id', id);
     } else {
-      for (const [key, value] of Object.entries(filters)) {
-        if (value !== null && value !== undefined && value !== '') {
-          query = query.eq(key, value);
-        }
-      }
+      query = applyFilters(query, filters);
     }
 
     const { data: result, error } = await query.select();
@@ -457,11 +471,7 @@ async function executeQuery(body, user) {
     if (id) {
       query = query.eq('id', id);
     } else {
-      for (const [key, value] of Object.entries(filters)) {
-        if (value !== null && value !== undefined && value !== '') {
-          query = query.eq(key, value);
-        }
-      }
+      query = applyFilters(query, filters);
     }
 
     const { data: result, error } = await query.select();

@@ -513,3 +513,5 @@ const aiVettingModule = {
 
 // Export to window
 ModuleRegistry.register('aiVettingModule', aiVettingModule);
+
+export { aiVettingModule };

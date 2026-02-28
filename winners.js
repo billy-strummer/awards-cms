@@ -3346,3 +3346,5 @@ const winnersModule = {
 
 // Export to window for global access
 ModuleRegistry.register('winnersModule', winnersModule);
+
+export { winnersModule };

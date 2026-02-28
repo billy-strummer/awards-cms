@@ -218,3 +218,5 @@ const rbacModule = {
 };
 
 ModuleRegistry.register('rbacModule', rbacModule);
+
+export { rbacModule };

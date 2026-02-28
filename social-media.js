@@ -1544,3 +1544,5 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 });
 ModuleRegistry.register('socialMediaModule', socialMediaModule);
+
+export { socialMediaModule };

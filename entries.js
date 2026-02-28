@@ -2012,3 +2012,5 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 });
+
+export { entriesModule };

@@ -277,3 +277,5 @@ const i18n = {
 };
 
 ModuleRegistry.register('i18n', i18n);
+
+export { i18n };

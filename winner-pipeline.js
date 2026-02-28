@@ -49,11 +49,10 @@ const winnerPipelineModule = {
       if (!ranked.length) { utils.showToast('No scored entries found for this award.', 'warning'); return []; }
       const top = ranked.slice(0, topN);
       for (const item of top) {
-        const { error } = await STATE.client.from('shortlists').upsert(
+        await apiClient.upsert('shortlists',
           { award_id: awardId, entry_id: item.entry_id, rank: item.rank, avg_score: item.avg_score, status: 'shortlisted' },
           { onConflict: 'award_id,entry_id' }
         );
-        if (error) throw error;
       }
       utils.showToast(`Shortlist generated: top ${top.length} entries.`, 'success');
       return top;
@@ -320,3 +319,5 @@ const winnerPipelineModule = {
   },
 };
 ModuleRegistry.register('winnerPipelineModule', winnerPipelineModule);
+
+export { winnerPipelineModule };

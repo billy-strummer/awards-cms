@@ -1521,3 +1521,5 @@ const testDataManager = {
 
 // Export to window
 ModuleRegistry.register('testDataManager', testDataManager);
+
+export { testDataManager };

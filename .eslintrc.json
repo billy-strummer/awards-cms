@@ -75,7 +75,7 @@
   },
   "parserOptions": {
     "ecmaVersion": 2022,
-    "sourceType": "script"
+    "sourceType": "module"
   },
   "rules": {
     "no-unused-vars": ["warn", { "argsIgnorePattern": "^_", "varsIgnorePattern": "^_" }],
@@ -107,7 +107,7 @@
   },
   "overrides": [
     {
-      "files": ["build.js", "check-schema.js", "diagnose.js", "bulk-csv-importer.js", "jest.config.js", "scripts/**/*.js"],
+      "files": ["build.js", "check-schema.js", "diagnose.js", "bulk-csv-importer.js", "jest.config.js", "jest-esm-transform.js", "scripts/**/*.js"],
       "env": {
         "node": true,
         "browser": false

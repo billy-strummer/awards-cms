@@ -2515,3 +2515,5 @@ const awardsModule = {
 
 // Export to window for global access
 ModuleRegistry.register('awardsModule', awardsModule);
+
+export { awardsModule };

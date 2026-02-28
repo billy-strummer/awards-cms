@@ -85,37 +85,67 @@ async function build() {
 
   ensureDir(DIST_DIR);
 
-  // 1. Concatenate and minify JS
-  let jsContent = '';
+  // 1. Bundle JS using esbuild ESM bundler with main.js entry point
   let totalJsSize = 0;
-
   JS_FILES.forEach(file => {
     const filePath = path.join(__dirname, file);
     if (fs.existsSync(filePath)) {
-      const content = fs.readFileSync(filePath, 'utf8');
-      totalJsSize += content.length;
-      jsContent += `\n/* === ${file} === */\n${content}\n`;
-    } else {
-      console.warn(`  WARN: ${file} not found, skipping`);
+      totalJsSize += fs.statSync(filePath).size;
     }
   });
 
-  // Try esbuild for minification, fallback to basic concatenation
   try {
     const esbuild = require('esbuild');
-    const result = await esbuild.transform(jsContent, {
-      minify: true,
-      target: 'es2020',
-      format: 'iife',
-      drop: ['console', 'debugger']
-    });
-    fs.writeFileSync(path.join(DIST_DIR, 'app.min.js'), result.code);
-    const minSize = result.code.length;
-    console.log(`  JS: ${(totalJsSize / 1024).toFixed(0)}KB -> ${(minSize / 1024).toFixed(0)}KB (${((1 - minSize / totalJsSize) * 100).toFixed(0)}% reduction)`);
+    const entryPoint = path.join(__dirname, 'main.js');
+
+    if (fs.existsSync(entryPoint)) {
+      // Primary: Use esbuild bundler with ESM entry point
+      const result = await esbuild.build({
+        entryPoints: [entryPoint],
+        bundle: true,
+        minify: true,
+        target: 'es2020',
+        format: 'esm',
+        outfile: path.join(DIST_DIR, 'app.min.js'),
+        drop: ['debugger'],
+        sourcemap: false,
+        metafile: true
+      });
+      const minSize = fs.statSync(path.join(DIST_DIR, 'app.min.js')).size;
+      const moduleCount = Object.keys(result.metafile.inputs).length;
+      console.log(`  JS: ${(totalJsSize / 1024).toFixed(0)}KB -> ${(minSize / 1024).toFixed(0)}KB (${((1 - minSize / totalJsSize) * 100).toFixed(0)}% reduction, ${moduleCount} ES modules bundled)`);
+    } else {
+      // Fallback: concatenate and transform (legacy mode)
+      let jsContent = '';
+      JS_FILES.forEach(file => {
+        const filePath = path.join(__dirname, file);
+        if (fs.existsSync(filePath)) {
+          jsContent += `\n/* === ${file} === */\n${fs.readFileSync(filePath, 'utf8')}\n`;
+        } else {
+          console.warn(`  WARN: ${file} not found, skipping`);
+        }
+      });
+      const result = await esbuild.transform(jsContent, {
+        minify: true,
+        target: 'es2020',
+        format: 'iife',
+        drop: ['debugger']
+      });
+      fs.writeFileSync(path.join(DIST_DIR, 'app.min.js'), result.code);
+      const minSize = result.code.length;
+      console.log(`  JS: ${(totalJsSize / 1024).toFixed(0)}KB -> ${(minSize / 1024).toFixed(0)}KB (${((1 - minSize / totalJsSize) * 100).toFixed(0)}% reduction, legacy IIFE mode)`);
+    }
   } catch (e) {
-    // Fallback: just concatenate without minification (use same filename so HTML references work)
+    // Last resort: concatenate without minification
+    let jsContent = '';
+    JS_FILES.forEach(file => {
+      const filePath = path.join(__dirname, file);
+      if (fs.existsSync(filePath)) {
+        jsContent += `\n/* === ${file} === */\n${fs.readFileSync(filePath, 'utf8')}\n`;
+      }
+    });
     fs.writeFileSync(path.join(DIST_DIR, 'app.min.js'), jsContent);
-    console.log(`  JS: ${(totalJsSize / 1024).toFixed(0)}KB (concatenated, not minified - install esbuild for minification)`);
+    console.log(`  JS: ${(totalJsSize / 1024).toFixed(0)}KB (concatenated, not minified - esbuild error: ${e.message})`);
   }
 
   // 2. Concatenate CSS
@@ -162,7 +192,7 @@ async function build() {
     // Keep only one bundled script tag
     html = html.replace(
       /\s*<!-- Application Scripts[\s\S]*?<script src="app\.js"><\/script>/,
-      '\n  <script src="app.min.js"></script>'
+      '\n  <script type="module" src="app.min.js"></script>'
     );
 
     // Inject Supabase environment variables into meta tags

@@ -17,6 +17,11 @@ const paymentsModule = {
   _payPageSize: 50,
   _selectedInvoiceIds: new Set(),
 
+  // Server-side pagination state (invoices)
+  _serverPagination: false,
+  _pagination: { page: 1, totalPages: 1, count: 0, pageSize: 50 },
+  _fetchId: 0,
+
   /* ==================================================== */
   /* INITIALIZATION */
   /* ==================================================== */
@@ -74,13 +79,9 @@ const paymentsModule = {
    */
   async loadInvoices() {
     try {
-      const allData = await apiClient.selectAll('invoices', {
-        select: '*, organisations (id, company_name, email, contact_phone)',
-        sort: { column: 'created_at', ascending: false }
-      });
-
-      this.allInvoices = allData;
-      this.filterInvoices();
+      // Enable server-side pagination and fetch first page
+      this._serverPagination = true;
+      await this._fetchInvoicePage(1);
 
       // Initialise reusable keyboard navigation (once)
       if (!this._keyboardNavInit) {
@@ -99,10 +100,108 @@ const paymentsModule = {
   },
 
   /**
+   * Build server-side filters from current invoice filter UI state.
+   * @returns {Object} Filters object for apiClient.select
+   */
+  _buildInvoiceServerFilters() {
+    const filters = {};
+    const status = document.getElementById('invoiceStatusFilter')?.value || '';
+    const orgId = document.getElementById('invoiceOrgFilter')?.value || '';
+    const month = document.getElementById('invoiceMonthFilter')?.value || '';
+
+    if (status) {
+      filters.status = status;
+    }
+    if (orgId) {
+      filters.organisation_id = orgId;
+    }
+    if (month) {
+      filters.invoice_date = { op: 'gte', value: month + '-01' };
+      // Add end-of-month filter: use a second filter via special key
+      const [y, m] = month.split('-').map(Number);
+      const nextMonth = m === 12 ? `${y + 1}-01` : `${y}-${String(m + 1).padStart(2, '0')}`;
+      filters['invoice_date@lt'] = { op: 'lt', value: nextMonth + '-01' };
+    }
+    return filters;
+  },
+
+  /**
+   * Fetch a specific page of invoices from the server with current filters and sort.
+   * @param {number} page - 1-based page number
+   * @returns {Promise<void>}
+   */
+  async _fetchInvoicePage(page) {
+    const fetchId = ++this._fetchId;
+    const filters = this._buildInvoiceServerFilters();
+    const search = (document.getElementById('invoiceSearchBox')?.value || '').trim();
+
+    const result = await apiClient.select('invoices', {
+      select: '*, organisations (id, company_name, email, contact_phone)',
+      filters,
+      search: search ? { term: search, columns: ['invoice_number', 'notes', 'description'] } : undefined,
+      sort: { column: this._invoiceSortField || 'created_at', ascending: this._invoiceSortDir === 'asc' },
+      page,
+      pageSize: this._invPageSize
+    });
+
+    // Discard stale responses
+    if (fetchId !== this._fetchId) return;
+
+    const pageData = result.data || [];
+    this.allInvoices = pageData;
+    this.currentInvoices = pageData;
+    this._invCurrentPage = result.page || page;
+    this._pagination = { page: result.page || page, totalPages: result.totalPages || 1, count: result.count || 0, pageSize: result.pageSize || this._invPageSize };
+
+    // Save current filter state to localStorage
+    try {
+      localStorage.setItem('invoiceFilters', JSON.stringify({
+        search: document.getElementById('invoiceSearchBox')?.value || '',
+        status: document.getElementById('invoiceStatusFilter')?.value || '',
+        orgId: document.getElementById('invoiceOrgFilter')?.value || '',
+        month: document.getElementById('invoiceMonthFilter')?.value || ''
+      }));
+    } catch(e) { console.warn('Failed to save invoice filters:', e.message); }
+
+    this.renderInvoices();
+    this.updateStatistics();
+  },
+
+  /**
+   * Navigate to a specific invoice page (called from server-side pagination controls).
+   * @param {number} page - 1-based page number
+   * @returns {Promise<void>}
+   */
+  async _goToInvoicePage(page) {
+    page = Math.max(1, Math.min(page, this._pagination.totalPages));
+    if (page === this._pagination.page) return;
+    try {
+      utils.showLoading();
+      await this._fetchInvoicePage(page);
+    } catch (error) {
+      console.error('Error navigating invoice page:', error);
+      utils.showToast('Error loading page: ' + error.message, 'error');
+    } finally {
+      utils.hideLoading();
+    }
+  },
+
+  /**
    * Filter the in-memory invoice list based on current UI filter values and re-render.
    */
   filterInvoices() {
     this._invCurrentPage = 1;
+
+    // Server-side pagination: send filters to server and re-fetch page 1
+    if (this._serverPagination) {
+      this._fetchInvoicePage(1).catch(err => {
+        console.error('Error filtering invoices:', err);
+        utils.showToast('Error filtering invoices: ' + err.message, 'error');
+      });
+      return;
+    }
+
+    // Client-side fallback (used by tests and when data is pre-loaded)
     const search = (document.getElementById('invoiceSearchBox')?.value || '').trim().toLowerCase();
     const status = document.getElementById('invoiceStatusFilter')?.value || '';
     const orgId = document.getElementById('invoiceOrgFilter')?.value || '';
@@ -148,12 +247,23 @@ const paymentsModule = {
     const tbody = document.getElementById('invoicesTableBody');
     if (!tbody) return;
 
-    // Pagination
-    const totalPages = Math.ceil(this.currentInvoices.length / this._invPageSize);
-    if (this._invCurrentPage > totalPages) this._invCurrentPage = totalPages || 1;
-    const invStart = (this._invCurrentPage - 1) * this._invPageSize;
-    const invEnd = invStart + this._invPageSize;
-    const pageInvoices = this.currentInvoices.slice(invStart, invEnd);
+    // Pagination: server-side mode uses data as-is (already a single page), client-side slices
+    let pageInvoices;
+    let totalPages;
+    let invStart;
+    let invEnd;
+    if (this._serverPagination) {
+      pageInvoices = this.currentInvoices;
+      totalPages = this._pagination.totalPages;
+      invStart = (this._pagination.page - 1) * this._pagination.pageSize;
+      invEnd = invStart + pageInvoices.length;
+    } else {
+      totalPages = Math.ceil(this.currentInvoices.length / this._invPageSize);
+      if (this._invCurrentPage > totalPages) this._invCurrentPage = totalPages || 1;
+      invStart = (this._invCurrentPage - 1) * this._invPageSize;
+      invEnd = invStart + this._invPageSize;
+      pageInvoices = this.currentInvoices.slice(invStart, invEnd);
+    }
 
     if (this.currentInvoices.length === 0) {
       utils.showEnhancedEmptyState('invoicesTableBody', 10, { icon: 'bi-receipt', message: 'No invoices found', description: 'Create your first invoice to get started' });
@@ -222,7 +332,10 @@ const paymentsModule = {
       const tableParent = tbody.closest('.table-responsive') || tbody.parentElement;
       if (tableParent) tableParent.after(paginationEl);
     }
-    if (totalPages > 1) {
+    if (this._serverPagination && paginationEl) {
+      // Use shared server-side pagination renderer
+      utils.renderServerPagination('invoicesPagination', this._pagination, 'paymentsModule._goToInvoicePage');
+    } else if (totalPages > 1) {
       let html = '<nav><ul class="pagination pagination-sm justify-content-center mt-3">';
       html += `<li class="page-item ${this._invCurrentPage <= 1 ? 'disabled' : ''}"><a class="page-link" href="javascript:void(0);" data-action="paymentsModule.goToInvoicePage" data-id="${this._invCurrentPage - 1}">Prev</a></li>`;
       for (let i = 1; i <= totalPages; i++) {
@@ -1365,6 +1478,13 @@ const paymentsModule = {
       this._invoiceSortDir = 'asc';
     }
     utils.saveSortState('invoices', this._invoiceSortField, this._invoiceSortDir);
+
+    // Server-side: re-fetch with new sort order
+    if (this._serverPagination) {
+      this._fetchInvoicePage(1).catch(err => console.error('Error sorting invoices:', err));
+      return;
+    }
+
     this._applySortInvoices();
     this.renderInvoices();
   },
@@ -2438,3 +2558,5 @@ const paymentsModule = {
 };
 
 ModuleRegistry.register('paymentsModule', paymentsModule);
+
+export { paymentsModule };

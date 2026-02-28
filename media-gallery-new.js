@@ -613,8 +613,7 @@ const mediaGalleryModule = {
       const secResult = await apiClient.select('event_galleries', { select: 'id', filters: { event_id: this.currentEventId }, pageSize: 1000 });
       const sectionIds = (secResult.data || []).map(s => s.id);
       if (sectionIds.length > 0) {
-        // Direct call: complex query not supported by apiClient (.in + .eq combined filter for update)
-        await STATE.client.from('media_gallery').update({ published: true }).in('gallery_section_id', sectionIds).eq('published', false);
+        await apiClient.updateByFilters('media_gallery', { gallery_section_id: { op: 'in', value: sectionIds }, published: false }, { published: true });
       }
       utils.showToast('All photos published', 'success');
       await this.loadPhotosProduction();
@@ -722,8 +721,7 @@ const mediaGalleryModule = {
       const secRes2 = await apiClient.select('event_galleries', { select: 'id', filters: { event_id: this.currentEventId }, pageSize: 1000 });
       const sectionIds = (secRes2.data || []).map(s => s.id);
       if (sectionIds.length > 0) {
-        // Direct call: complex query not supported by apiClient (.in + .is combined filter for update)
-        await STATE.client.from('media_gallery').update({ photographer: name.trim() }).in('gallery_section_id', sectionIds).is('photographer', null);
+        await apiClient.updateByFilters('media_gallery', { gallery_section_id: { op: 'in', value: sectionIds }, photographer: { op: 'is', value: null } }, { photographer: name.trim() });
       }
       utils.showToast(`Photographer "${name.trim()}" set for uncredited photos`, 'success');
       await this.loadPhotosProduction();
@@ -6787,3 +6785,5 @@ const mediaGalleryModule = {
 
 // Export to window for global access
 ModuleRegistry.register('mediaGalleryModule', mediaGalleryModule);
+
+export { mediaGalleryModule };

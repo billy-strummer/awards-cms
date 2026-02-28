@@ -528,16 +528,16 @@ const gdprModule = {
       if (document.getElementById('retentionAuditLogs')?.checked) {
         const cutoff = new Date();
         cutoff.setFullYear(cutoff.getFullYear() - 2);
-        const { count } = await STATE.client.from('cms_audit_logs').delete({ count: 'exact' }).lt('created_at', cutoff.toISOString());
-        deleted += count || 0;
+        const result = await apiClient.deleteByFilters('cms_audit_logs', { created_at: { op: 'lt', value: cutoff.toISOString() } });
+        deleted += result.data?.length || 0;
       }
 
       // Delete old email logs (>1 year)
       if (document.getElementById('retentionEmailLogs')?.checked) {
         const cutoff = new Date();
         cutoff.setFullYear(cutoff.getFullYear() - 1);
-        const { count } = await STATE.client.from('notification_queue').delete({ count: 'exact' }).lt('created_at', cutoff.toISOString()).eq('status', 'sent');
-        deleted += count || 0;
+        const result = await apiClient.deleteByFilters('notification_queue', { created_at: { op: 'lt', value: cutoff.toISOString() }, status: 'sent' });
+        deleted += result.data?.length || 0;
       }
 
       utils.showToast(`Cleanup complete. ${deleted} records removed.`, 'success');
@@ -551,3 +551,5 @@ const gdprModule = {
 };
 
 ModuleRegistry.register('gdprModule', gdprModule);
+
+export { gdprModule };

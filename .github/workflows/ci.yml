@@ -47,6 +47,10 @@ jobs:
       - name: Lint JavaScript
         run: npm run lint
 
+      - name: Type check JavaScript (JSDoc)
+        run: npm run typecheck
+        continue-on-error: true
+
       - name: Run tests
         run: npx jest tests/ --ci --coverage --forceExit
         env:

@@ -548,3 +548,5 @@ const documentModule = {
   }
 };
 ModuleRegistry.register('documentModule', documentModule);
+
+export { documentModule };

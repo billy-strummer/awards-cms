@@ -2854,3 +2854,5 @@ function updateTabCounts() {
   setBadge('paymentsTabCount', overdueCount, overdueCount > 0 ? 'bg-danger' : 'bg-secondary');
 }
 ModuleRegistry.register('updateTabCounts', updateTabCounts);
+
+export { dashboardModule };

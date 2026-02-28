@@ -350,3 +350,5 @@ const reportingModule = {
   }
 };
 ModuleRegistry.register('reportingModule', reportingModule);
+
+export { reportingModule };

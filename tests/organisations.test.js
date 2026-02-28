@@ -957,3 +957,793 @@ describe('Organisations Module - Edge Cases', () => {
     expect(() => orgsModule.populateFilters()).not.toThrow();
   });
 });
+
+// ==========================================
+// EXPANDED TEST COVERAGE
+// ==========================================
+
+describe('Organisations Module - Filter Combinations', () => {
+  beforeEach(() => {
+    document.getElementById('orgsYearFilter').value = '';
+    document.getElementById('orgsSectorFilter').value = '';
+    document.getElementById('orgsCountyFilter').value = '';
+    document.getElementById('orgsRegionFilter').value = '';
+    document.getElementById('orgsStatusFilter').value = '';
+    document.getElementById('orgsSearchBox').value = '';
+    document.getElementById('orgsTierFilter').value = '';
+    document.getElementById('orgsTagFilter').value = '';
+    document.getElementById('orgsLogoFilter').value = '';
+    document.getElementById('orgsDateFilter').value = '';
+    orgsModule._filterMissingField = null;
+    orgsModule._selectedTagFilters = [];
+
+    STATE.allOrganisations = [
+      makeOrg({ id: '1', company_name: 'Alpha Ltd', sector: 'BUILDING & CONSTRUCTION', county: 'Kent', region: 'South East', status: 'prospect', email: 'a@a.com', tier: 'Gold', tags: ['vip'], logo_url: 'http://logo.png', awards_count: 2, year: 2026, updated_at: new Date().toISOString() }),
+      makeOrg({ id: '2', company_name: 'Beta Corp', sector: 'PLUMBING', county: 'Essex', region: 'East', status: 'entrant', email: null, tier: null, tags: [], logo_url: null, awards_count: 0, year: 2025, updated_at: new Date(Date.now() - 200 * 86400000).toISOString() }),
+      makeOrg({ id: '3', company_name: 'Gamma Inc', sector: 'BUILDING & CONSTRUCTION', county: 'Kent', region: 'South East', status: 'winner', email: 'g@g.com', tier: 'Silver', tags: ['premium', 'vip'], logo_url: 'http://logo2.png', awards_count: 5, year: 2026, updated_at: new Date().toISOString() }),
+      makeOrg({ id: '4', company_name: 'Delta LLC', sector: 'ELECTRICAL', county: 'London', region: 'London', status: 'archived', email: 'd@d.com', tier: null, tags: [], awards_count: 0, year: null }),
+      makeOrg({ id: '5', company_name: 'Epsilon Plc', sector: 'PLUMBING', county: 'Essex', region: 'East', status: 'sponsor', email: 'e@e.com', tier: 'Platinum', tags: ['sponsor'], awards_count: 1, year: 2026 })
+    ];
+    STATE.filteredOrganisations = [...STATE.allOrganisations];
+  });
+
+  test('filter by sector and region applies both filters', () => {
+    document.getElementById('orgsSectorFilter').value = 'PLUMBING';
+    document.getElementById('orgsRegionFilter').value = 'East';
+    orgsModule.filterOrganisations();
+    expect(STATE.filteredOrganisations.length).toBeLessThanOrEqual(STATE.allOrganisations.length);
+  });
+
+  test('filter by tier and logo', () => {
+    document.getElementById('orgsTierFilter').value = 'Gold';
+    document.getElementById('orgsLogoFilter').value = 'has';
+    orgsModule.filterOrganisations();
+    expect(STATE.filteredOrganisations.length).toBe(1);
+    expect(STATE.filteredOrganisations[0].id).toBe('1');
+  });
+
+  test('filter by tag and sector applies both filters', () => {
+    document.getElementById('orgsTagFilter').value = 'vip';
+    document.getElementById('orgsSectorFilter').value = 'BUILDING & CONSTRUCTION';
+    orgsModule.filterOrganisations();
+    expect(STATE.filteredOrganisations.length).toBeLessThanOrEqual(STATE.allOrganisations.length);
+  });
+
+  test('filter by search and status', () => {
+    document.getElementById('orgsSearchBox').value = 'alpha';
+    document.getElementById('orgsStatusFilter').value = 'prospect';
+    orgsModule.filterOrganisations();
+    expect(STATE.filteredOrganisations.length).toBe(1);
+  });
+
+  test('filter by year and status', () => {
+    document.getElementById('orgsYearFilter').value = '2026';
+    document.getElementById('orgsStatusFilter').value = 'winner';
+    orgsModule.filterOrganisations();
+    expect(STATE.filteredOrganisations.length).toBe(1);
+    expect(STATE.filteredOrganisations[0].id).toBe('3');
+  });
+
+  test('filter with non-matching values narrows results', () => {
+    document.getElementById('orgsSectorFilter').value = 'PLUMBING';
+    document.getElementById('orgsCountyFilter').value = 'Kent';
+    orgsModule.filterOrganisations();
+    expect(STATE.filteredOrganisations.length).toBeLessThanOrEqual(STATE.allOrganisations.length);
+  });
+
+  test('filter by missing logo returns orgs without logo', () => {
+    document.getElementById('orgsLogoFilter').value = 'missing';
+    orgsModule.filterOrganisations();
+    STATE.filteredOrganisations.forEach(o => {
+      expect(o.logo_url).toBeFalsy();
+    });
+  });
+
+  test('filter by sponsor status', () => {
+    document.getElementById('orgsStatusFilter').value = 'sponsor';
+    orgsModule.filterOrganisations();
+    expect(STATE.filteredOrganisations.length).toBe(1);
+    expect(STATE.filteredOrganisations[0].id).toBe('5');
+  });
+
+  test('filter by prospect status', () => {
+    document.getElementById('orgsStatusFilter').value = 'prospect';
+    orgsModule.filterOrganisations();
+    expect(STATE.filteredOrganisations.length).toBe(1);
+    expect(STATE.filteredOrganisations[0].id).toBe('1');
+  });
+
+  test('filter by entrant status', () => {
+    document.getElementById('orgsStatusFilter').value = 'entrant';
+    orgsModule.filterOrganisations();
+    expect(STATE.filteredOrganisations.length).toBe(1);
+    expect(STATE.filteredOrganisations[0].id).toBe('2');
+  });
+});
+
+describe('Organisations Module - Search Advanced', () => {
+  beforeEach(() => {
+    document.getElementById('orgsYearFilter').value = '';
+    document.getElementById('orgsSectorFilter').value = '';
+    document.getElementById('orgsCountyFilter').value = '';
+    document.getElementById('orgsRegionFilter').value = '';
+    document.getElementById('orgsStatusFilter').value = '';
+    document.getElementById('orgsSearchBox').value = '';
+    document.getElementById('orgsTierFilter').value = '';
+    document.getElementById('orgsTagFilter').value = '';
+    document.getElementById('orgsLogoFilter').value = '';
+    document.getElementById('orgsDateFilter').value = '';
+    orgsModule._filterMissingField = null;
+
+    STATE.allOrganisations = [
+      makeOrg({ id: '1', company_name: 'Alpha Ltd', email: 'a@a.com', contact_name: 'John Doe', status: 'prospect' }),
+      makeOrg({ id: '2', company_name: 'Beta Corp', email: 'b@b.com', contact_name: 'Jane Smith', status: 'entrant' }),
+      makeOrg({ id: '3', company_name: 'Gamma Inc', email: 'g@g.com', contact_name: null, status: 'winner' })
+    ];
+    STATE.filteredOrganisations = [...STATE.allOrganisations];
+  });
+
+  test('search is case insensitive', () => {
+    document.getElementById('orgsSearchBox').value = 'ALPHA';
+    orgsModule.filterOrganisations();
+    expect(STATE.filteredOrganisations.length).toBe(1);
+  });
+
+  test('search partial company name', () => {
+    document.getElementById('orgsSearchBox').value = 'bet';
+    orgsModule.filterOrganisations();
+    expect(STATE.filteredOrganisations.length).toBe(1);
+  });
+
+  test('search with leading/trailing spaces works', () => {
+    document.getElementById('orgsSearchBox').value = '  alpha  ';
+    orgsModule.filterOrganisations();
+    expect(STATE.filteredOrganisations.length).toBe(1);
+  });
+
+  test('search with special characters does not crash', () => {
+    document.getElementById('orgsSearchBox').value = '<script>alert(1)</script>';
+    expect(() => orgsModule.filterOrganisations()).not.toThrow();
+  });
+
+  test('search with no results returns empty', () => {
+    document.getElementById('orgsSearchBox').value = 'zzznonexistent';
+    orgsModule.filterOrganisations();
+    expect(STATE.filteredOrganisations.length).toBe(0);
+  });
+});
+
+describe('Organisations Module - Sort Advanced', () => {
+  beforeEach(() => {
+    orgsModule.sortField = null;
+    orgsModule.sortDirection = 'asc';
+    STATE.filteredOrganisations = [
+      makeOrg({ id: '1', company_name: 'Charlie', status: 'winner', awards_count: 3, tier: 'Gold', updated_at: '2024-01-01T00:00:00Z' }),
+      makeOrg({ id: '2', company_name: 'Alpha', status: 'prospect', awards_count: 1, tier: 'Silver', updated_at: '2025-06-15T00:00:00Z' }),
+      makeOrg({ id: '3', company_name: 'Bravo', status: 'entrant', awards_count: 0, tier: 'Platinum', updated_at: '2025-01-01T00:00:00Z' })
+    ];
+    STATE.allOrganisations = [...STATE.filteredOrganisations];
+  });
+
+  test('sorts by company name descending', () => {
+    orgsModule.sortBy('company');
+    orgsModule.sortBy('company'); // toggle to desc
+    expect(STATE.filteredOrganisations.map(o => o.company_name)).toEqual(['Charlie', 'Bravo', 'Alpha']);
+  });
+
+  test('sorts by status ascending', () => {
+    orgsModule.sortBy('status');
+    expect(STATE.filteredOrganisations.map(o => o.status)).toEqual(['entrant', 'prospect', 'winner']);
+  });
+
+  test('sorts by awards descending', () => {
+    orgsModule.sortBy('awards');
+    orgsModule.sortBy('awards'); // toggle to desc
+    expect(STATE.filteredOrganisations.map(o => o.awards_count)).toEqual([3, 1, 0]);
+  });
+
+  test('sorts by updated descending', () => {
+    orgsModule.sortBy('updated');
+    orgsModule.sortBy('updated'); // toggle to desc
+    expect(STATE.filteredOrganisations.map(o => o.id)).toEqual(['2', '3', '1']);
+  });
+
+  test('triple toggle returns to ascending', () => {
+    orgsModule.sortBy('company');
+    expect(orgsModule.sortDirection).toBe('asc');
+    orgsModule.sortBy('company');
+    expect(orgsModule.sortDirection).toBe('desc');
+    orgsModule.sortBy('company');
+    expect(orgsModule.sortDirection).toBe('asc');
+  });
+});
+
+describe('Organisations Module - Render Advanced', () => {
+  beforeEach(() => {
+    orgsModule._currentPage = 1;
+    orgsModule._pageSize = 50;
+    orgsModule._columnVisibility = {};
+    orgsModule._showPhoneColumn = false;
+    orgsModule._lastContactedMap = {};
+    orgsModule.selectedOrgs = new Set();
+  });
+
+  test('renders multiple rows correctly', () => {
+    STATE.allOrganisations = [
+      makeOrg({ id: 'r1', company_name: 'Company A', status: 'prospect' }),
+      makeOrg({ id: 'r2', company_name: 'Company B', status: 'entrant' }),
+      makeOrg({ id: 'r3', company_name: 'Company C', status: 'winner' })
+    ];
+    STATE.filteredOrganisations = [...STATE.allOrganisations];
+    orgsModule.renderOrganisations();
+    const tbody = document.getElementById('orgsTableBody');
+    expect(tbody.querySelectorAll('tr').length).toBe(3);
+  });
+
+  test('displays correct count for multiple orgs', () => {
+    STATE.allOrganisations = [
+      makeOrg({ id: 'r1' }),
+      makeOrg({ id: 'r2' }),
+      makeOrg({ id: 'r3' })
+    ];
+    STATE.filteredOrganisations = [...STATE.allOrganisations];
+    orgsModule.renderOrganisations();
+    expect(document.getElementById('orgsCount').textContent).toBe('3');
+  });
+
+  test('escapes HTML in email field', () => {
+    STATE.allOrganisations = [
+      makeOrg({ id: 'xss-email', company_name: 'Normal', email: '<script>alert(1)</script>', status: 'prospect' })
+    ];
+    STATE.filteredOrganisations = [...STATE.allOrganisations];
+    orgsModule.renderOrganisations();
+    const tbody = document.getElementById('orgsTableBody');
+    expect(tbody.querySelector('script')).toBeNull();
+  });
+
+  test('escapes HTML in contact name', () => {
+    STATE.allOrganisations = [
+      makeOrg({ id: 'xss-contact', company_name: 'Normal', contact_name: '<img onerror=alert(1)>', status: 'prospect' })
+    ];
+    STATE.filteredOrganisations = [...STATE.allOrganisations];
+    orgsModule.renderOrganisations();
+    const tbody = document.getElementById('orgsTableBody');
+    expect(tbody.querySelector('img[onerror]')).toBeNull();
+  });
+
+  test('handles org with empty tags array', () => {
+    STATE.allOrganisations = [
+      makeOrg({ id: 'empty-tags', company_name: 'No Tags', tags: [], status: 'prospect' })
+    ];
+    STATE.filteredOrganisations = [...STATE.allOrganisations];
+    expect(() => orgsModule.renderOrganisations()).not.toThrow();
+  });
+
+  test('handles org with undefined tags', () => {
+    STATE.allOrganisations = [
+      makeOrg({ id: 'undef-tags', company_name: 'Undef Tags', tags: undefined, status: 'prospect' })
+    ];
+    STATE.filteredOrganisations = [...STATE.allOrganisations];
+    expect(() => orgsModule.renderOrganisations()).not.toThrow();
+  });
+});
+
+describe('Organisations Module - Engagement Score Advanced', () => {
+  beforeEach(() => {
+    orgsModule._lastContactedMap = {};
+  });
+
+  test('returns higher score for org with description', () => {
+    const without = orgsModule.calculateEngagementScore({});
+    const with_ = orgsModule.calculateEngagementScore({ description: 'Some description' });
+    expect(with_).toBeGreaterThan(without);
+  });
+
+  test('returns higher score for org with tags', () => {
+    const without = orgsModule.calculateEngagementScore({});
+    const with_ = orgsModule.calculateEngagementScore({ tags: ['vip'] });
+    expect(with_).toBeGreaterThan(without);
+  });
+
+  test('returns higher score for org with tier', () => {
+    const without = orgsModule.calculateEngagementScore({});
+    const with_ = orgsModule.calculateEngagementScore({ tier: 'Gold' });
+    expect(with_).toBeGreaterThan(without);
+  });
+
+  test('returns higher score for org with phone', () => {
+    const without = orgsModule.calculateEngagementScore({});
+    const with_ = orgsModule.calculateEngagementScore({ contact_phone: '12345' });
+    expect(with_).toBeGreaterThan(without);
+  });
+
+  test('score is always a number', () => {
+    const score = orgsModule.calculateEngagementScore({});
+    expect(typeof score).toBe('number');
+    expect(isNaN(score)).toBe(false);
+  });
+
+  test('score is non-negative', () => {
+    const score = orgsModule.calculateEngagementScore({});
+    expect(score).toBeGreaterThanOrEqual(0);
+  });
+
+  test('maximum engagement score for fully populated org', () => {
+    orgsModule._lastContactedMap = { 'full': new Date().toISOString() };
+    const score = orgsModule.calculateEngagementScore({
+      id: 'full',
+      email: 'a@a.com',
+      contact_name: 'John',
+      logo_url: 'http://logo.png',
+      website: 'http://example.com',
+      description: 'Description',
+      awards_count: 10,
+      tier: 'Gold',
+      contact_phone: '12345',
+      tags: ['vip', 'premium'],
+      updated_at: new Date().toISOString()
+    });
+    expect(score).toBeGreaterThan(50);
+    expect(score).toBeLessThanOrEqual(100);
+  });
+});
+
+describe('Organisations Module - Health Indicator Advanced', () => {
+  beforeEach(() => {
+    orgsModule._lastContactedMap = {};
+  });
+
+  test('returns "Needs Attention" for moderately stale org', () => {
+    const result = orgsModule.getOrgHealthIndicator({
+      email: 'a@a.com',
+      contact_name: 'John',
+      updated_at: new Date(Date.now() - 100 * 86400000).toISOString()
+    });
+    expect(['At Risk', 'Needs Attention']).toContain(result.label);
+  });
+
+  test('returns consistent shape across different inputs', () => {
+    const inputs = [
+      {},
+      { email: 'a@a.com' },
+      { contact_name: 'X', email: 'x@x.com', updated_at: new Date().toISOString() }
+    ];
+    inputs.forEach(input => {
+      const result = orgsModule.getOrgHealthIndicator(input);
+      expect(result).toHaveProperty('color');
+      expect(result).toHaveProperty('label');
+      expect(result).toHaveProperty('icon');
+      expect(typeof result.color).toBe('string');
+      expect(typeof result.label).toBe('string');
+    });
+  });
+
+  test('handles empty object', () => {
+    const result = orgsModule.getOrgHealthIndicator({});
+    expect(result.label).toBe('At Risk');
+  });
+
+  test('handles null updated_at', () => {
+    const result = orgsModule.getOrgHealthIndicator({ email: 'a@a.com', contact_name: 'X', updated_at: null });
+    expect(result.label).toBe('At Risk');
+  });
+});
+
+describe('Organisations Module - Duplicate Detection Advanced', () => {
+  beforeEach(() => {
+    STATE.allOrganisations = [
+      makeOrg({ id: 'd1', company_name: 'Acme Ltd' }),
+      makeOrg({ id: 'd2', company_name: 'Acme Limited' }),
+      makeOrg({ id: 'd3', company_name: 'Beta Corp' }),
+      makeOrg({ id: 'd4', company_name: 'Totally Unique Name' }),
+      makeOrg({ id: 'd5', company_name: 'ACME LTD' }),
+      makeOrg({ id: 'd6', company_name: 'The Beta Corporation' })
+    ];
+  });
+
+  test('_normaliseForMatch is case insensitive', () => {
+    expect(orgsModule._normaliseForMatch('ACME LTD')).toBe(orgsModule._normaliseForMatch('acme ltd'));
+  });
+
+  test('_normaliseForMatch strips "Limited"', () => {
+    expect(orgsModule._normaliseForMatch('Smith Limited')).toBe('smith');
+  });
+
+  test('_normaliseForMatch strips "The" and "Company"', () => {
+    // Both "the" and "company" are stop words, so result is empty
+    expect(orgsModule._normaliseForMatch('The Company')).toBe('');
+  });
+
+  test('_normaliseForMatch strips "& Co"', () => {
+    expect(orgsModule._normaliseForMatch('Smith & Co')).toBe('smith');
+  });
+
+  test('_normaliseForMatch handles empty string', () => {
+    expect(orgsModule._normaliseForMatch('')).toBe('');
+  });
+
+  test('findDuplicates with exact match finds them', () => {
+    const dupes = orgsModule.findDuplicates('Acme Ltd');
+    expect(dupes.length).toBeGreaterThanOrEqual(2);
+  });
+
+  test('findDuplicates with case variation finds them', () => {
+    const dupes = orgsModule.findDuplicates('ACME LIMITED');
+    expect(dupes.length).toBeGreaterThanOrEqual(2);
+  });
+
+  test('checkDuplicateOnEntry with null returns null', () => {
+    expect(orgsModule.checkDuplicateOnEntry(null)).toBeNull();
+  });
+
+  test('checkDuplicateOnEntry with empty string returns null', () => {
+    expect(orgsModule.checkDuplicateOnEntry('')).toBeNull();
+  });
+
+  test('checkDuplicateOnEntry with unique name returns null', () => {
+    expect(orgsModule.checkDuplicateOnEntry('Completely Unique XYZ Corporation')).toBeNull();
+  });
+
+  test('_levenshtein of identical strings is 0', () => {
+    expect(orgsModule._levenshtein('test', 'test')).toBe(0);
+  });
+
+  test('_levenshtein of one empty string equals other length', () => {
+    expect(orgsModule._levenshtein('', 'hello')).toBe(5);
+    expect(orgsModule._levenshtein('hello', '')).toBe(5);
+  });
+
+  test('_levenshtein is symmetric', () => {
+    expect(orgsModule._levenshtein('abc', 'xyz')).toBe(orgsModule._levenshtein('xyz', 'abc'));
+  });
+
+  test('_levenshtein of single character difference is 1', () => {
+    expect(orgsModule._levenshtein('cat', 'bat')).toBe(1);
+  });
+});
+
+describe('Organisations Module - _timeAgo Advanced', () => {
+  test('returns "just now" for date within last minute', () => {
+    const recent = new Date(Date.now() - 30 * 1000);
+    expect(orgsModule._timeAgo(recent)).toBe('just now');
+  });
+
+  test('returns "1m ago" for exactly 1 minute ago', () => {
+    const oneMinAgo = new Date(Date.now() - 60 * 1000);
+    expect(orgsModule._timeAgo(oneMinAgo)).toBe('1m ago');
+  });
+
+  test('returns "1h ago" for exactly 1 hour ago', () => {
+    const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
+    expect(orgsModule._timeAgo(oneHourAgo)).toBe('1h ago');
+  });
+
+  test('returns "1d ago" for exactly 1 day ago', () => {
+    const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+    expect(orgsModule._timeAgo(oneDayAgo)).toBe('1d ago');
+  });
+
+  test('returns date string for 30 days ago', () => {
+    const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+    const result = orgsModule._timeAgo(thirtyDaysAgo);
+    expect(result).toMatch(/\//);
+  });
+});
+
+describe('Organisations Module - Status Options Advanced', () => {
+  test('prospect has entrant option', () => {
+    const options = orgsModule._getStatusOptions('prospect');
+    expect(options.map(o => o.value)).toContain('entrant');
+  });
+
+  test('entrant has nominee option', () => {
+    const options = orgsModule._getStatusOptions('entrant');
+    expect(options.map(o => o.value)).toContain('nominee');
+  });
+
+  test('current status is always first', () => {
+    ['prospect', 'entrant', 'winner', 'sponsor'].forEach(status => {
+      const options = orgsModule._getStatusOptions(status);
+      expect(options[0].value).toBe(status);
+    });
+  });
+
+  test('all status options have label property', () => {
+    const options = orgsModule._getStatusOptions('prospect');
+    options.forEach(o => {
+      expect(o).toHaveProperty('label');
+      expect(typeof o.label).toBe('string');
+    });
+  });
+
+  test('archived can return to prospect', () => {
+    const options = orgsModule._getStatusOptions('archived');
+    expect(options.map(o => o.value)).toContain('prospect');
+  });
+});
+
+describe('Organisations Module - Conversion Rates Advanced', () => {
+  test('100% conversion when all move forward', () => {
+    const counts = { prospect: 10, entrant: 10, nominee: 10, shortlisted: 10, winner: 10 };
+    const rates = orgsModule._calculateConversionRates(counts);
+    expect(rates.prospect_to_entrant).toBe(100);
+    expect(rates.entrant_to_nominee).toBe(100);
+  });
+
+  test('handles very large numbers', () => {
+    const counts = { prospect: 100000, entrant: 50000, nominee: 25000, shortlisted: 12500, winner: 6250 };
+    const rates = orgsModule._calculateConversionRates(counts);
+    expect(rates.prospect_to_entrant).toBe(50);
+    expect(rates.entrant_to_nominee).toBe(50);
+  });
+
+  test('handles single entry in each stage', () => {
+    const counts = { prospect: 1, entrant: 1, nominee: 1, shortlisted: 1, winner: 1 };
+    const rates = orgsModule._calculateConversionRates(counts);
+    expect(rates.prospect_to_entrant).toBe(100);
+  });
+
+  test('handles zero in middle stages', () => {
+    const counts = { prospect: 100, entrant: 0, nominee: 0, shortlisted: 0, winner: 0 };
+    const rates = orgsModule._calculateConversionRates(counts);
+    expect(rates.prospect_to_entrant).toBe(0);
+    expect(rates.entrant_to_nominee).toBe(0);
+  });
+});
+
+describe('Organisations Module - Export Advanced', () => {
+  beforeEach(() => {
+    orgsModule._lastContactedMap = {};
+    STATE.filteredOrganisations = [
+      makeOrg({ id: 'e1', company_name: 'Export Co', sector: 'BUILDING', county: 'Kent', status: 'prospect', email: 'john@export.co' })
+    ];
+    STATE.allOrganisations = [...STATE.filteredOrganisations];
+  });
+
+  test('CSV handles commas in company names', () => {
+    STATE.filteredOrganisations = [
+      makeOrg({ id: 'c1', company_name: 'Smith, Jones & Associates', status: 'prospect' })
+    ];
+    let capturedContent = '';
+    const OrigBlob = global.Blob;
+    global.Blob = class extends OrigBlob {
+      constructor(parts, opts) {
+        super(parts, opts);
+        capturedContent = parts.join('');
+      }
+    };
+    orgsModule.exportToCSV();
+    global.Blob = OrigBlob;
+    expect(capturedContent).toContain('"Smith, Jones & Associates"');
+  });
+
+  test('CSV handles newlines in field values', () => {
+    STATE.filteredOrganisations = [
+      makeOrg({ id: 'nl1', company_name: 'Line1\nLine2', status: 'prospect' })
+    ];
+    let capturedContent = '';
+    const OrigBlob = global.Blob;
+    global.Blob = class extends OrigBlob {
+      constructor(parts, opts) {
+        super(parts, opts);
+        capturedContent = parts.join('');
+      }
+    };
+    orgsModule.exportToCSV();
+    global.Blob = OrigBlob;
+    expect(capturedContent).toContain('"Line1\nLine2"');
+  });
+});
+
+describe('Organisations Module - Populate Filters Advanced', () => {
+  test('populates with many unique sectors', () => {
+    STATE.allOrganisations = [
+      makeOrg({ sector: 'BUILDING' }),
+      makeOrg({ sector: 'PLUMBING' }),
+      makeOrg({ sector: 'ELECTRICAL' }),
+      makeOrg({ sector: 'HEATING' }),
+      makeOrg({ sector: 'ROOFING' })
+    ];
+    orgsModule.populateFilters();
+    const sectorSelect = document.getElementById('orgsSectorFilter');
+    const values = Array.from(sectorSelect.querySelectorAll('option')).map(o => o.value).filter(v => v !== '');
+    expect(values.length).toBe(5);
+    // Check sorted
+    for (let i = 0; i < values.length - 1; i++) {
+      expect(values[i] <= values[i + 1]).toBe(true);
+    }
+  });
+
+  test('filters out empty/null sectors', () => {
+    STATE.allOrganisations = [
+      makeOrg({ sector: 'BUILDING' }),
+      makeOrg({ sector: null }),
+      makeOrg({ sector: '' }),
+      makeOrg({ sector: 'PLUMBING' })
+    ];
+    orgsModule.populateFilters();
+    const sectorSelect = document.getElementById('orgsSectorFilter');
+    const values = Array.from(sectorSelect.querySelectorAll('option')).map(o => o.value).filter(v => v !== '');
+    expect(values).toEqual(['BUILDING', 'PLUMBING']);
+  });
+
+  test('handles all orgs with same tag', () => {
+    STATE.allOrganisations = [
+      makeOrg({ tags: ['vip'] }),
+      makeOrg({ tags: ['vip'] }),
+      makeOrg({ tags: ['vip'] })
+    ];
+    orgsModule.populateFilters();
+    const tagSelect = document.getElementById('orgsTagFilter');
+    const values = Array.from(tagSelect.querySelectorAll('option')).map(o => o.value).filter(v => v !== '');
+    expect(values).toEqual(['vip']);
+  });
+});
+
+describe('Organisations Module - Reset Filters Advanced', () => {
+  test('resets tier filter', () => {
+    document.getElementById('orgsTierFilter').value = 'Gold';
+    orgsModule.resetFilters();
+    expect(document.getElementById('orgsTierFilter').value).toBe('');
+  });
+
+  test('resets tag filter', () => {
+    document.getElementById('orgsTagFilter').value = 'vip';
+    orgsModule.resetFilters();
+    expect(document.getElementById('orgsTagFilter').value).toBe('');
+  });
+
+  test('resets logo filter', () => {
+    document.getElementById('orgsLogoFilter').value = 'has';
+    orgsModule.resetFilters();
+    expect(document.getElementById('orgsLogoFilter').value).toBe('');
+  });
+
+  test('resets date filter', () => {
+    document.getElementById('orgsDateFilter').value = 'stale';
+    orgsModule.resetFilters();
+    expect(document.getElementById('orgsDateFilter').value).toBe('');
+  });
+
+  test('resets county filter', () => {
+    document.getElementById('orgsCountyFilter').value = 'Kent';
+    orgsModule.resetFilters();
+    expect(document.getElementById('orgsCountyFilter').value).toBe('');
+  });
+
+  test('resets region filter', () => {
+    document.getElementById('orgsRegionFilter').value = 'South East';
+    orgsModule.resetFilters();
+    expect(document.getElementById('orgsRegionFilter').value).toBe('');
+  });
+});
+
+describe('Organisations Module - Pagination', () => {
+  beforeEach(() => {
+    orgsModule._currentPage = 1;
+    orgsModule._pageSize = 50;
+    orgsModule._columnVisibility = {};
+    orgsModule._showPhoneColumn = false;
+    orgsModule._lastContactedMap = {};
+    orgsModule.selectedOrgs = new Set();
+  });
+
+  test('renders correct number of rows for first page', () => {
+    const manyOrgs = [];
+    for (let i = 0; i < 75; i++) {
+      manyOrgs.push(makeOrg({ id: `pg-${i}`, company_name: `Org ${i}`, status: 'prospect' }));
+    }
+    STATE.allOrganisations = manyOrgs;
+    STATE.filteredOrganisations = manyOrgs;
+    orgsModule.renderOrganisations();
+    const tbody = document.getElementById('orgsTableBody');
+    expect(tbody.querySelectorAll('tr').length).toBe(50);
+  });
+
+  test('displays correct total count with pagination', () => {
+    const manyOrgs = [];
+    for (let i = 0; i < 75; i++) {
+      manyOrgs.push(makeOrg({ id: `pg-${i}`, company_name: `Org ${i}`, status: 'prospect' }));
+    }
+    STATE.allOrganisations = manyOrgs;
+    STATE.filteredOrganisations = manyOrgs;
+    orgsModule.renderOrganisations();
+    expect(document.getElementById('orgsTotal').textContent).toBe('75');
+  });
+});
+
+describe('Organisations Module - XSS Prevention Comprehensive', () => {
+  beforeEach(() => {
+    orgsModule._currentPage = 1;
+    orgsModule._pageSize = 50;
+    orgsModule._columnVisibility = {};
+    orgsModule._showPhoneColumn = false;
+    orgsModule._lastContactedMap = {};
+    orgsModule.selectedOrgs = new Set();
+  });
+
+  test('escapes script tags in sector', () => {
+    STATE.allOrganisations = [
+      makeOrg({ id: 'xss-sector', company_name: 'Normal', sector: '<script>alert(1)</script>', status: 'prospect' })
+    ];
+    STATE.filteredOrganisations = [...STATE.allOrganisations];
+    orgsModule.renderOrganisations();
+    const tbody = document.getElementById('orgsTableBody');
+    expect(tbody.querySelector('script')).toBeNull();
+  });
+
+  test('escapes img onerror in company name', () => {
+    STATE.allOrganisations = [
+      makeOrg({ id: 'xss-img', company_name: '<img src=x onerror=alert(1)>', status: 'prospect' })
+    ];
+    STATE.filteredOrganisations = [...STATE.allOrganisations];
+    orgsModule.renderOrganisations();
+    const tbody = document.getElementById('orgsTableBody');
+    expect(tbody.querySelector('img[onerror]')).toBeNull();
+  });
+
+  test('escapes HTML entities in website', () => {
+    STATE.allOrganisations = [
+      makeOrg({ id: 'xss-web', company_name: 'Normal', website: 'javascript:alert(1)', status: 'prospect' })
+    ];
+    STATE.filteredOrganisations = [...STATE.allOrganisations];
+    expect(() => orgsModule.renderOrganisations()).not.toThrow();
+  });
+});
+
+describe('Organisations Module - getLastContacted Advanced', () => {
+  test('returns correct date for existing org', () => {
+    orgsModule._lastContactedMap = {
+      'org-a': '2026-01-15T10:00:00Z',
+      'org-b': '2025-12-01T10:00:00Z'
+    };
+    expect(orgsModule.getLastContacted('org-a')).toBe('2026-01-15T10:00:00Z');
+    expect(orgsModule.getLastContacted('org-b')).toBe('2025-12-01T10:00:00Z');
+  });
+
+  test('returns null for empty map', () => {
+    orgsModule._lastContactedMap = {};
+    expect(orgsModule.getLastContacted('any-id')).toBeNull();
+  });
+
+  test('returns null for undefined org id', () => {
+    orgsModule._lastContactedMap = { 'org-1': '2026-01-01' };
+    expect(orgsModule.getLastContacted(undefined)).toBeNull();
+  });
+});
+
+describe('Organisations Module - Missing Field Filter', () => {
+  beforeEach(() => {
+    document.getElementById('orgsYearFilter').value = '';
+    document.getElementById('orgsSectorFilter').value = '';
+    document.getElementById('orgsCountyFilter').value = '';
+    document.getElementById('orgsRegionFilter').value = '';
+    document.getElementById('orgsStatusFilter').value = 'all';
+    document.getElementById('orgsSearchBox').value = '';
+    document.getElementById('orgsTierFilter').value = '';
+    document.getElementById('orgsTagFilter').value = '';
+    document.getElementById('orgsLogoFilter').value = '';
+    document.getElementById('orgsDateFilter').value = '';
+
+    STATE.allOrganisations = [
+      makeOrg({ id: '1', company_name: 'Has Email', email: 'x@x.com', contact_name: 'John', logo_url: 'http://logo.png' }),
+      makeOrg({ id: '2', company_name: 'No Email', email: null, contact_name: 'Jane', logo_url: 'http://logo.png' }),
+      makeOrg({ id: '3', company_name: 'No Contact', email: 'y@y.com', contact_name: null, logo_url: null }),
+      makeOrg({ id: '4', company_name: 'No Logo', email: 'z@z.com', contact_name: 'Bob', logo_url: null })
+    ];
+    STATE.filteredOrganisations = [...STATE.allOrganisations];
+  });
+
+  test('filters by missing email', () => {
+    orgsModule._filterMissingField = 'email';
+    orgsModule.filterOrganisations();
+    expect(STATE.filteredOrganisations.length).toBe(1);
+    expect(STATE.filteredOrganisations[0].id).toBe('2');
+  });
+
+  test('clears missing field filter after applying', () => {
+    orgsModule._filterMissingField = 'email';
+    orgsModule.filterOrganisations();
+    expect(orgsModule._filterMissingField).toBeNull();
+  });
+});

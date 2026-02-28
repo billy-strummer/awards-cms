@@ -360,3 +360,5 @@ const ticketModule = {
   }
 };
 ModuleRegistry.register('ticketModule', ticketModule);
+
+export { ticketModule };

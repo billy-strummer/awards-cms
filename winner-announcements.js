@@ -395,3 +395,5 @@ const winnerAnnouncementsModule = {
   }
 };
 ModuleRegistry.register('winnerAnnouncementsModule', winnerAnnouncementsModule);
+
+export { winnerAnnouncementsModule };

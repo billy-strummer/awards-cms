@@ -431,3 +431,5 @@ const authModule = {
 
 // Export to window for global access
 ModuleRegistry.register('authModule', authModule);
+
+export { authModule };

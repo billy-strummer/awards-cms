@@ -1242,3 +1242,5 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 });
+
+export { emailTemplatesModule };

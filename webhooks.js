@@ -331,3 +331,5 @@ const webhooksModule = {
   }
 };
 ModuleRegistry.register('webhooksModule', webhooksModule);
+
+export { webhooksModule };

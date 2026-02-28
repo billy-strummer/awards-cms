@@ -1521,3 +1521,5 @@ const emailListsModule = {
 // ============================================
 console.warn('Email Lists Module loaded');
 ModuleRegistry.register('emailListsModule', emailListsModule);
+
+export { emailListsModule };

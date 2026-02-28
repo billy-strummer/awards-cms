@@ -329,3 +329,5 @@ const entryRevisionModule = {
   }
 };
 ModuleRegistry.register('entryRevisionModule', entryRevisionModule);
+
+export { entryRevisionModule };

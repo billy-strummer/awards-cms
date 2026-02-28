@@ -156,3 +156,5 @@ ModuleRegistry.register('STATE', STATE);
 // Expose ModuleRegistry globally (works in both browser and Node/test)
 if (typeof globalThis !== 'undefined') globalThis.ModuleRegistry = ModuleRegistry;
 if (typeof window !== 'undefined') window.ModuleRegistry = ModuleRegistry;
+
+export { SUPABASE_CONFIG, STATUS, MEDIA_TYPES, INACTIVITY_TIMEOUT, YEARS, SECTORS, REGIONS, STATE, ModuleRegistry };

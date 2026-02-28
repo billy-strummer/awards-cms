@@ -223,12 +223,12 @@ const settingsModule = {
           // Upsert in batches of 500
           for (let i = 0; i < rows.length; i += 500) {
             const batch = rows.slice(i, i + 500);
-            const { error } = await STATE.client.from(table).upsert(batch, { onConflict: 'id', ignoreDuplicates: false });
-            if (error) {
-              console.error(`Restore error for ${table}:`, error);
-              utils.showToast(`Warning: Some ${table} records failed to restore`, 'warning');
-            } else {
+            try {
+              await apiClient.upsert(table, batch, { onConflict: 'id' });
               restored += batch.length;
+            } catch (upsertErr) {
+              console.error(`Restore error for ${table}:`, upsertErr);
+              utils.showToast(`Warning: Some ${table} records failed to restore`, 'warning');
             }
           }
         }
@@ -888,3 +888,5 @@ const settingsModule = {
 
 // Export to window for global access
 ModuleRegistry.register('settingsModule', settingsModule);
+
+export { settingsModule };

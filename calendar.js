@@ -369,3 +369,5 @@ const calendarModule = {
   }
 };
 ModuleRegistry.register('calendarModule', calendarModule);
+
+export { calendarModule };

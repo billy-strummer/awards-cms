@@ -5,6 +5,10 @@ module.exports = {
   setupFiles: ['<rootDir>/tests/setup.js'],
   forceExit: true,
   modulePathIgnorePatterns: ['<rootDir>/.claude/'],
+  transform: {
+    '^.+\\.js$': '<rootDir>/jest-esm-transform.js'
+  },
+  transformIgnorePatterns: ['/node_modules/'],
   collectCoverageFrom: [
     '*.js',
     'api/*.js',
@@ -13,6 +17,8 @@ module.exports = {
     '!diagnose.js',
     '!bulk-csv-importer.js',
     '!jest.config.js',
+    '!jest-esm-transform.js',
+    '!main.js',
     '!dist/**',
     '!scripts/**',
     '!node_modules/**'

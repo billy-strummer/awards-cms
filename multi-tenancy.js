@@ -332,3 +332,5 @@ const tenantModule = {
 };
 
 ModuleRegistry.register('tenantModule', tenantModule);
+
+export { tenantModule };

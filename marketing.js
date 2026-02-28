@@ -307,15 +307,11 @@ const marketingModule = {
 
     try {
       await utils.protectModalDuringSave('bannerFormModal', async () => {
-        let error;
         if (bannerId) {
-          bannerData.updated_at = new Date().toISOString();
-          ({ error } = await STATE.client.from('banners').update(bannerData).eq('id', bannerId));
+          await apiClient.update('banners', bannerId, bannerData);
         } else {
-          ({ error } = await STATE.client.from('banners').insert([bannerData]));
+          await apiClient.insert('banners', bannerData);
         }
-
-        if (error) throw error;
 
         bootstrap.Modal.getInstance(document.getElementById('bannerFormModal'))?.hide();
         await this.loadBanners();
@@ -641,15 +637,11 @@ const marketingModule = {
 
     try {
       await utils.protectModalDuringSave('sponsorFormModal', async () => {
-        let error;
         if (sponsorId) {
-          sponsorData.updated_at = new Date().toISOString();
-          ({ error } = await STATE.client.from('sponsors').update(sponsorData).eq('id', sponsorId));
+          await apiClient.update('sponsors', sponsorId, sponsorData);
         } else {
-          ({ error } = await STATE.client.from('sponsors').insert([sponsorData]));
+          await apiClient.insert('sponsors', sponsorData);
         }
-
-        if (error) throw error;
 
         bootstrap.Modal.getInstance(document.getElementById('sponsorFormModal'))?.hide();
         await this.loadSponsors();
@@ -680,8 +672,7 @@ const marketingModule = {
   async deleteSponsor(sponsorId) {
     if (!await utils.confirmDialog({ title: 'Delete Sponsor', message: 'Are you sure you want to delete this sponsor?', confirmText: 'Delete', danger: true })) return;
     try {
-      const { error } = await STATE.client.from('sponsors').delete().eq('id', sponsorId);
-      if (error) throw error;
+      await apiClient.delete('sponsors', sponsorId);
       utils.showToast('Sponsor deleted successfully', 'success');
       await this.loadSponsors();
     } catch (error) {
@@ -910,9 +901,7 @@ const marketingModule = {
       if (el && el.value.trim()) defaults[k] = el.value.trim();
     });
     try {
-      if (STATE.client) {
-        await STATE.client.from('user_preferences').upsert({ key: 'emailPlaceholderDefaults', value: JSON.stringify(defaults), updated_at: new Date().toISOString() }, { onConflict: 'key' });
-      }
+      await apiClient.upsert('user_preferences', { key: 'emailPlaceholderDefaults', value: JSON.stringify(defaults), updated_at: new Date().toISOString() }, { onConflict: 'key' });
     } catch (e) { console.warn('Failed to save placeholder defaults to DB:', e.message); }
     localStorage.setItem('emailPlaceholderDefaults', JSON.stringify(defaults));
     this._placeholderDefaults = defaults;
@@ -942,9 +931,7 @@ const marketingModule = {
 
   async _saveEmailSequences() {
     try {
-      if (typeof STATE !== 'undefined' && STATE.client) {
-        await STATE.client.from('user_preferences').upsert({ key: 'orgEmailSequences', value: JSON.stringify(this._emailSequences), updated_at: new Date().toISOString() }, { onConflict: 'key' });
-      }
+      await apiClient.upsert('user_preferences', { key: 'orgEmailSequences', value: JSON.stringify(this._emailSequences), updated_at: new Date().toISOString() }, { onConflict: 'key' });
     } catch (e) { console.warn('Failed to save email sequences to database:', e.message); }
     localStorage.setItem('orgEmailSequences', JSON.stringify(this._emailSequences));
   },
@@ -1059,3 +1046,5 @@ const marketingModule = {
 
 // Export to window for global access
 ModuleRegistry.register('marketingModule', marketingModule);
+
+export { marketingModule };

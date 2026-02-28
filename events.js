@@ -12360,3 +12360,5 @@ ModuleRegistry.register('eventsModule', eventsModule);
 
 // Initialize seating enhancements (seat-level assignment, VIP, dietary, place cards, undo/redo)
 if (window.seatingEnhancements) window.seatingEnhancements.init();
+
+export { eventsModule };

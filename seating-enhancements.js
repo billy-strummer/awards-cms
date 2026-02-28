@@ -681,3 +681,5 @@ const seatingEnhancements = {
   }
 };
 ModuleRegistry.register('seatingEnhancements', seatingEnhancements);
+
+export { seatingEnhancements };

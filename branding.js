@@ -436,3 +436,5 @@ const brandingModule = {
   }
 };
 ModuleRegistry.register('brandingModule', brandingModule);
+
+export { brandingModule };

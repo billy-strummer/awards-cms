@@ -277,3 +277,5 @@ const a11yModule = {
 };
 
 ModuleRegistry.register('a11yModule', a11yModule);
+
+export { a11yModule };

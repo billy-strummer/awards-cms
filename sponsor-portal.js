@@ -308,3 +308,5 @@ const sponsorPortalModule = {
   }
 };
 ModuleRegistry.register('sponsorPortalModule', sponsorPortalModule);
+
+export { sponsorPortalModule };

@@ -8065,3 +8065,5 @@ updateCountyFilterByRegion() {
 
 // Export to window for global access
 ModuleRegistry.register('orgsModule', orgsModule);
+
+export { orgsModule };

@@ -137,3 +137,5 @@ const stripeFrontend = {
 };
 
 ModuleRegistry.register('stripeFrontend', stripeFrontend);
+
+export { stripeFrontend };

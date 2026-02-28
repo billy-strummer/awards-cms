@@ -396,10 +396,9 @@ const notificationsModule = {
    */
   async _savePref(type, enabled) {
     try {
-      const { error } = await STATE.client.from('notification_preferences').upsert(
+      await apiClient.upsert('notification_preferences',
         { user_email: STATE.currentUser.email, type, enabled,
           created_at: new Date().toISOString() }, { onConflict: 'user_email,type' });
-      if (error) throw error;
     } catch (e) {
       utils.showToast('Failed to save preference.', 'error');
       console.error('_savePref error:', e.message);
@@ -423,3 +422,5 @@ const notificationsModule = {
   }
 };
 ModuleRegistry.register('notificationsModule', notificationsModule);
+
+export { notificationsModule };

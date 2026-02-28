@@ -32,6 +32,13 @@ const crmModule = {
   _selectedMeetingIds: new Set(),
   _kanbanView: false,
 
+  // Server-side pagination state (companies)
+  _serverPagination: false,
+  _pagination: { page: 1, totalPages: 1, count: 0, pageSize: 50 },
+  _fetchId: 0,
+  _companiesSortField: 'last_communication_date',
+  _companiesSortDir: 'desc',
+
   // ============================================
   // MAIN LOAD FUNCTION
   // ============================================
@@ -84,65 +91,116 @@ const crmModule = {
     console.warn('Loading companies CRM view...');
 
     try {
-      // Load organisations with CRM summary from view
-      const { data: companies, error } = await STATE.client
-        .from('organisations_with_crm_summary')
-        .select('*')
-        .order('last_communication_date', { ascending: false, nullsFirst: false })
-        .limit(1000);
-
-      if (error) throw error;
-
-      // Calculate quick stats
-      const stats = {
-        totalCompanies: companies.length,
-        activeDeals: companies.reduce((sum, c) => sum + (c.active_deals || 0), 0),
-        recentCommunications: companies.filter(c => {
-          if (!c.last_communication_date) return false;
-          const lastComm = new Date(c.last_communication_date);
-          const daysAgo = (Date.now() - lastComm.getTime()) / (1000 * 60 * 60 * 24);
-          return daysAgo <= 7;
-        }).length,
-        pendingFollowUps: companies.reduce((sum, c) => sum + (c.pending_follow_ups || 0), 0)
-      };
-
-      // Update stats display (elements may not exist in all views)
-      const el1 = document.getElementById('totalCompaniesCount');
-      const el2 = document.getElementById('activeDealsCount');
-      const el3 = document.getElementById('recentCommunicationsCount');
-      const el4 = document.getElementById('pendingFollowUpsCount');
-      if (el1) el1.textContent = stats.totalCompanies;
-      if (el2) el2.textContent = stats.activeDeals;
-      if (el3) el3.textContent = stats.recentCommunications;
-      if (el4) el4.textContent = stats.pendingFollowUps;
-
-      // Store full companies list for client-side filtering
-      this.allCompanies = companies;
-
-      // Populate segment filter dropdown from unique segments
-      const segmentFilter = document.getElementById('crmSegmentFilter');
-      if (segmentFilter) {
-        const segments = new Set();
-        companies.forEach(c => {
-          if (c.segments) {
-            c.segments.split(',').forEach(s => {
-              const trimmed = s.trim();
-              if (trimmed) segments.add(trimmed);
-            });
-          }
-        });
-        const currentVal = segmentFilter.value;
-        segmentFilter.innerHTML = '<option value="">All Companies</option>' +
-          [...segments].sort().map(s => `<option value="${utils.escapeHtml(s)}">${utils.escapeHtml(s)}</option>`).join('');
-        segmentFilter.value = currentVal;
-      }
-
-      // Render companies table
-      this.renderCompaniesTable(companies);
+      // Enable server-side pagination and fetch first page
+      this._serverPagination = true;
+      await this._fetchCompaniesPage(1);
 
     } catch (error) {
       console.error('Error loading companies:', error);
       utils.showErrorWithRetry(error, 'loading companies', () => this.loadCompanies());
+    }
+  },
+
+  /**
+   * Build server-side filters from current companies filter UI state.
+   * @returns {Object} Filters object for apiClient.select
+   */
+  _buildCompaniesServerFilters() {
+    const filters = {};
+    const segmentVal = document.getElementById('crmSegmentFilter')?.value || '';
+    if (segmentVal) {
+      filters.segments = { op: 'ilike', value: `%${segmentVal}%` };
+    }
+    return filters;
+  },
+
+  /**
+   * Fetch a specific page of companies from the server with current filters and sort.
+   * @param {number} page - 1-based page number
+   * @returns {Promise<void>}
+   */
+  async _fetchCompaniesPage(page) {
+    const fetchId = ++this._fetchId;
+    const filters = this._buildCompaniesServerFilters();
+    const search = (document.getElementById('crmCompanySearch')?.value || '').trim();
+
+    const result = await apiClient.select('organisations_with_crm_summary', {
+      select: '*',
+      filters,
+      search: search ? { term: search, columns: ['company_name'] } : undefined,
+      sort: { column: this._companiesSortField || 'last_communication_date', ascending: this._companiesSortDir === 'asc' },
+      page,
+      pageSize: this._crmPageSize
+    });
+
+    // Discard stale responses
+    if (fetchId !== this._fetchId) return;
+
+    const pageData = result.data || [];
+    this.allCompanies = pageData;
+    this._pagination = { page: result.page || page, totalPages: result.totalPages || 1, count: result.count || 0, pageSize: result.pageSize || this._crmPageSize };
+
+    // Calculate quick stats from current page data (best effort with paginated data)
+    const stats = {
+      totalCompanies: this._pagination.count,
+      activeDeals: pageData.reduce((sum, c) => sum + (c.active_deals || 0), 0),
+      recentCommunications: pageData.filter(c => {
+        if (!c.last_communication_date) return false;
+        const lastComm = new Date(c.last_communication_date);
+        const daysAgo = (Date.now() - lastComm.getTime()) / (1000 * 60 * 60 * 24);
+        return daysAgo <= 7;
+      }).length,
+      pendingFollowUps: pageData.reduce((sum, c) => sum + (c.pending_follow_ups || 0), 0)
+    };
+
+    // Update stats display (elements may not exist in all views)
+    const el1 = document.getElementById('totalCompaniesCount');
+    const el2 = document.getElementById('activeDealsCount');
+    const el3 = document.getElementById('recentCommunicationsCount');
+    const el4 = document.getElementById('pendingFollowUpsCount');
+    if (el1) el1.textContent = stats.totalCompanies;
+    if (el2) el2.textContent = stats.activeDeals;
+    if (el3) el3.textContent = stats.recentCommunications;
+    if (el4) el4.textContent = stats.pendingFollowUps;
+
+    // Populate segment filter dropdown from unique segments on current page
+    const segmentFilter = document.getElementById('crmSegmentFilter');
+    if (segmentFilter) {
+      const segments = new Set();
+      pageData.forEach(c => {
+        if (c.segments) {
+          c.segments.split(',').forEach(s => {
+            const trimmed = s.trim();
+            if (trimmed) segments.add(trimmed);
+          });
+        }
+      });
+      const currentVal = segmentFilter.value;
+      segmentFilter.innerHTML = '<option value="">All Companies</option>' +
+        [...segments].sort().map(s => `<option value="${utils.escapeHtml(s)}">${utils.escapeHtml(s)}</option>`).join('');
+      segmentFilter.value = currentVal;
+    }
+
+    // Render companies table
+    this.renderCompaniesTable(pageData);
+  },
+
+  /**
+   * Navigate to a specific companies page (called from server-side pagination controls).
+   * @param {number} page - 1-based page number
+   * @returns {Promise<void>}
+   */
+  async _goToCompaniesPage(page) {
+    page = Math.max(1, Math.min(page, this._pagination.totalPages));
+    if (page === this._pagination.page) return;
+    try {
+      utils.showLoading();
+      await this._fetchCompaniesPage(page);
+    } catch (error) {
+      console.error('Error navigating companies page:', error);
+      utils.showToast('Error loading page: ' + error.message, 'error');
+    } finally {
+      utils.hideLoading();
     }
   },
 
@@ -202,10 +260,34 @@ const crmModule = {
         </tr>
       `;
     }).join('');
+
+    // Render pagination controls
+    let paginationEl = document.getElementById('crmCompaniesPagination');
+    if (!paginationEl) {
+      paginationEl = document.createElement('div');
+      paginationEl.id = 'crmCompaniesPagination';
+      const tableParent = tbody.closest('.table-responsive') || tbody.parentElement;
+      if (tableParent) tableParent.after(paginationEl);
+    }
+    if (this._serverPagination && paginationEl) {
+      utils.renderServerPagination('crmCompaniesPagination', this._pagination, 'crmModule._goToCompaniesPage');
+    } else if (paginationEl) {
+      paginationEl.innerHTML = '';
+    }
   },
 
   /** Apply active filters to the companies list and re-render. */
   filterCompanies() {
+    // Server-side pagination: send filters to server and re-fetch page 1
+    if (this._serverPagination) {
+      this._fetchCompaniesPage(1).catch(err => {
+        console.error('Error filtering companies:', err);
+        utils.showToast('Error filtering companies: ' + err.message, 'error');
+      });
+      return;
+    }
+
+    // Client-side fallback (used by tests and when data is pre-loaded)
     const searchVal = (document.getElementById('crmCompanySearch')?.value || '').toLowerCase();
     const segmentVal = document.getElementById('crmSegmentFilter')?.value || '';
 
@@ -2327,7 +2409,7 @@ const crmModule = {
   async _saveSegments(segments) {
     try {
       if (typeof STATE !== 'undefined' && STATE.client) {
-        await STATE.client.from('user_preferences').upsert({ key: 'orgsSegments', value: JSON.stringify(segments), updated_at: new Date().toISOString() }, { onConflict: 'key' });
+        await apiClient.upsert('user_preferences', { key: 'orgsSegments', value: JSON.stringify(segments), updated_at: new Date().toISOString() }, { onConflict: 'key' });
       }
     } catch (e) { console.warn('Failed to save segments to database:', e.message); }
     localStorage.setItem('orgsSegments', JSON.stringify(segments));
@@ -2430,7 +2512,7 @@ const crmModule = {
 
   async completeTask(orgId, followUpId) {
     try {
-      await STATE.client.from('organisation_follow_ups').update({ done: true }).eq('id', followUpId);
+      await apiClient.update('organisation_follow_ups', followUpId, { done: true });
       utils.showToast('Task completed', 'success');
       this.loadMyTasks();
     } catch (e) {
@@ -2596,8 +2678,7 @@ const crmModule = {
 
     try {
       await utils.protectModalDuringSave('createMeetingNoteModal', async () => {
-        const { error } = await STATE.client.from('meeting_notes').insert(data);
-        if (error) throw error;
+        await apiClient.insert('meeting_notes', data);
 
         bootstrap.Modal.getInstance(document.getElementById('createMeetingNoteModal')).hide();
       });
@@ -2699,8 +2780,7 @@ const crmModule = {
           segment_id: cb.value
         }));
 
-        const { error } = await STATE.client.from('organisation_segments').upsert(assignments, { onConflict: 'organisation_id,segment_id' });
-        if (error) throw error;
+        await apiClient.upsert('organisation_segments', assignments, { onConflict: 'organisation_id,segment_id' });
 
         bootstrap.Modal.getInstance(document.getElementById('assignSegmentsModal')).hide();
       });
@@ -2795,8 +2875,7 @@ const crmModule = {
 
     try {
       await utils.protectModalDuringSave('createSegmentModal', async () => {
-        const { error } = await STATE.client.from('contact_segments').insert(data);
-        if (error) throw error;
+        await apiClient.insert('contact_segments', data);
 
         bootstrap.Modal.getInstance(document.getElementById('createSegmentModal')).hide();
       });
@@ -2951,8 +3030,7 @@ const crmModule = {
       utils.showLoading();
       const ids = [...set];
       const result = await utils.runBatchOperation(ids, async (id) => {
-        const { error } = await STATE.client.from(table).delete().eq('id', id);
-        if (error) throw error;
+        await apiClient.delete(table, id);
       }, `Deleting ${type} records`);
       utils.showToast(`${result.succeeded.length} ${type} record(s) deleted`, 'success');
       set.clear();
@@ -3091,3 +3169,5 @@ const crmModule = {
 // ============================================
 ModuleRegistry.register('crmModule', crmModule);
 console.warn('✅ CRM Module loaded');
+
+export { crmModule };

@@ -377,3 +377,5 @@ const rateLimitModule = {
   }
 };
 ModuleRegistry.register('rateLimitModule', rateLimitModule);
+
+export { rateLimitModule };

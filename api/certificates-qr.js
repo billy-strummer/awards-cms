@@ -25,7 +25,7 @@ const supabase = createClient(
  */
 async function generateWinnerCertificate(entryId, outputPath = null) {
   try {
-    console.log(`📜 Generating certificate for entry ${entryId}...`);
+    console.warn(`📜 Generating certificate for entry ${entryId}...`);
 
     // Get entry and winner details
     const { data: entry, error } = await supabase
@@ -147,7 +147,7 @@ async function generateWinnerCertificate(entryId, outputPath = null) {
       stream.on('error', reject);
     });
 
-    console.log(`✅ Certificate generated: ${filepath}`);
+    console.warn(`✅ Certificate generated: ${filepath}`);
 
     // Upload to Supabase storage
     const { data: _uploadData, error: uploadError } = await supabase.storage
@@ -189,7 +189,7 @@ async function generateWinnerCertificate(entryId, outputPath = null) {
  */
 async function generateAllWinnerCertificates() {
   try {
-    console.log('📜 Generating certificates for all winners...');
+    console.warn('📜 Generating certificates for all winners...');
 
     const { data: winners, error } = await supabase
       .from('entries')
@@ -210,7 +210,7 @@ async function generateAllWinnerCertificates() {
           success: true,
           url: result.publicUrl
         });
-        console.log(`✅ ${winner.entry_number}: ${winner.organisations.company_name}`);
+        console.warn(`✅ ${winner.entry_number}: ${winner.organisations.company_name}`);
       } catch (err) {
         console.error(`❌ ${winner.entry_number}: ${err.message}`);
         results.push({
@@ -222,7 +222,7 @@ async function generateAllWinnerCertificates() {
       }
     }
 
-    console.log(`\n✅ Generated ${results.filter(r => r.success).length}/${winners.length} certificates`);
+    console.warn(`\n✅ Generated ${results.filter(r => r.success).length}/${winners.length} certificates`);
     return results;
 
   } catch (error) {
@@ -236,7 +236,7 @@ async function generateAllWinnerCertificates() {
  */
 async function generateEventTicketQR(attendeeId, ticketType = 'standard') {
   try {
-    console.log(`🎫 Generating QR code for attendee ${attendeeId}...`);
+    console.warn(`🎫 Generating QR code for attendee ${attendeeId}...`);
 
     // Get attendee details
     const { data: attendee, error } = await supabase
@@ -296,7 +296,7 @@ async function generateEventTicketQR(attendeeId, ticketType = 'standard') {
       })
       .eq('id', attendeeId);
 
-    console.log(`✅ QR code generated for ${attendee.contacts?.full_name || attendee.attendee_name}`);
+    console.warn(`✅ QR code generated for ${attendee.contacts?.full_name || attendee.attendee_name}`);
 
     return {
       qrCodeUrl: urlData.publicUrl,
@@ -315,7 +315,7 @@ async function generateEventTicketQR(attendeeId, ticketType = 'standard') {
  */
 async function generateEventBadge(attendeeId) {
   try {
-    console.log(`🏷️ Generating badge for attendee ${attendeeId}...`);
+    console.warn(`🏷️ Generating badge for attendee ${attendeeId}...`);
 
     // Get attendee details
     const { data: attendee, error } = await supabase
@@ -411,7 +411,7 @@ async function generateEventBadge(attendeeId) {
       stream.on('error', reject);
     });
 
-    console.log(`✅ Badge generated: ${filepath}`);
+    console.warn(`✅ Badge generated: ${filepath}`);
 
     return {
       filepath,
@@ -430,7 +430,7 @@ async function generateEventBadge(attendeeId) {
  */
 async function generateAllEventBadges(eventId) {
   try {
-    console.log(`🏷️ Generating badges for event ${eventId}...`);
+    console.warn(`🏷️ Generating badges for event ${eventId}...`);
 
     const { data: attendees, error } = await supabase
       .from('event_attendees')
@@ -451,7 +451,7 @@ async function generateAllEventBadges(eventId) {
           success: true,
           filepath: result.filepath
         });
-        console.log(`✅ ${attendee.contacts?.full_name || attendee.attendee_name}`);
+        console.warn(`✅ ${attendee.contacts?.full_name || attendee.attendee_name}`);
       } catch (err) {
         console.error(`❌ ${attendee.contacts?.full_name || attendee.attendee_name}: ${err.message}`);
         results.push({
@@ -463,7 +463,7 @@ async function generateAllEventBadges(eventId) {
       }
     }
 
-    console.log(`\n✅ Generated ${results.filter(r => r.success).length}/${attendees.length} badges`);
+    console.warn(`\n✅ Generated ${results.filter(r => r.success).length}/${attendees.length} badges`);
     return results;
 
   } catch (error) {

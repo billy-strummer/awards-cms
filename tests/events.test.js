@@ -159,7 +159,7 @@ syncWindowToGlobal();
 // SAMPLE DATA
 // ==========================================
 
-const today = new Date().toISOString().split('T')[0];
+const _today = new Date().toISOString().split('T')[0];
 const futureDate = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]; // 30 days from now
 const pastDate = '2025-06-15';
 const thisYear = new Date().getFullYear();

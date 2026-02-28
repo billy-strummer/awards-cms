@@ -24,7 +24,7 @@ const supabase = createClient(
  * Daily automation tasks (runs at 9:00 AM)
  */
 cron.schedule('0 9 * * *', async () => {
-  console.log('\nRunning daily automation tasks...');
+  console.warn('\nRunning daily automation tasks...');
 
   try {
     // Send deadline reminders
@@ -33,7 +33,7 @@ cron.schedule('0 9 * * *', async () => {
     // Check for overdue invoices and send payment reminders
     await sendPaymentReminders();
 
-    console.log('Daily automation complete\n');
+    console.warn('Daily automation complete\n');
   } catch (error) {
     console.error('Error in daily automation:', error);
   }
@@ -45,7 +45,7 @@ cron.schedule('0 9 * * *', async () => {
  * Weekly automation tasks (runs Monday at 8:00 AM)
  */
 cron.schedule('0 8 * * 1', async () => {
-  console.log('\nRunning weekly automation tasks...');
+  console.warn('\nRunning weekly automation tasks...');
 
   try {
     // Send judge progress reports
@@ -54,7 +54,7 @@ cron.schedule('0 8 * * 1', async () => {
     // Generate weekly statistics
     await generateWeeklyStats();
 
-    console.log('Weekly automation complete\n');
+    console.warn('Weekly automation complete\n');
   } catch (error) {
     console.error('Error in weekly automation:', error);
   }
@@ -66,14 +66,14 @@ cron.schedule('0 8 * * 1', async () => {
  * Judging deadline check (runs daily at 10:00 AM during judging period)
  */
 cron.schedule('0 10 * * *', async () => {
-  console.log('\nChecking judging progress...');
+  console.warn('\nChecking judging progress...');
 
   try {
     // Get judging deadline from active awards
     const judgingDeadline = await getJudgingDeadline();
 
     if (!judgingDeadline) {
-      console.log('No active judging deadline found');
+      console.warn('No active judging deadline found');
       return;
     }
 
@@ -81,15 +81,15 @@ cron.schedule('0 10 * * *', async () => {
     const daysUntilDeadline = Math.ceil((judgingDeadline - now) / (1000 * 60 * 60 * 24));
 
     if (daysUntilDeadline <= 7 && daysUntilDeadline > 0) {
-      console.log(`Judging deadline in ${daysUntilDeadline} days`);
+      console.warn(`Judging deadline in ${daysUntilDeadline} days`);
     }
 
     if (daysUntilDeadline === 0) {
-      console.log('Judging deadline reached - generating shortlists');
+      console.warn('Judging deadline reached - generating shortlists');
       await generateAllShortlists();
     }
 
-    console.log('Judging check complete\n');
+    console.warn('Judging check complete\n');
   } catch (error) {
     console.error('Error in judging check:', error);
   }
@@ -137,11 +137,11 @@ async function sendPaymentReminders() {
     if (error) throw error;
 
     if (!overdueInvoices || overdueInvoices.length === 0) {
-      console.log('No overdue invoices found');
+      console.warn('No overdue invoices found');
       return;
     }
 
-    console.log(`Found ${overdueInvoices.length} overdue invoices`);
+    console.warn(`Found ${overdueInvoices.length} overdue invoices`);
 
     // Update status to overdue
     for (const invoice of overdueInvoices) {
@@ -176,7 +176,7 @@ async function sendPaymentReminders() {
           status: 'sent'
         });
 
-      console.log(`Payment reminder logged for invoice ${invoice.invoice_number} (${invoice.organisations?.company_name})`);
+      console.warn(`Payment reminder logged for invoice ${invoice.invoice_number} (${invoice.organisations?.company_name})`);
     }
 
   } catch (error) {
@@ -212,7 +212,7 @@ async function sendJudgeProgressReports() {
 
       const progress = totalEntries > 0 ? ((scoredEntries / totalEntries) * 100).toFixed(1) : 0;
 
-      console.log(`Award: ${award.award_name} - ${scoredEntries}/${totalEntries} entries scored (${progress}%)`);
+      console.warn(`Award: ${award.award_name} - ${scoredEntries}/${totalEntries} entries scored (${progress}%)`);
 
       // Log to activity_logs for admin dashboard visibility
       await supabase
@@ -230,7 +230,7 @@ async function sendJudgeProgressReports() {
         });
     }
 
-    console.log('Judge progress reports generated');
+    console.warn('Judge progress reports generated');
 
   } catch (error) {
     console.error('Error generating judge progress reports:', error);
@@ -267,7 +267,7 @@ async function generateWeeklyStats() {
       .select('id', { count: 'exact', head: true })
       .gte('created_at', weekStart);
 
-    console.log(`Weekly Stats: ${newEntries || 0} new entries, ${newOrgs || 0} new orgs, GBP ${weeklyRevenue.toFixed(2)} revenue`);
+    console.warn(`Weekly Stats: ${newEntries || 0} new entries, ${newOrgs || 0} new orgs, GBP ${weeklyRevenue.toFixed(2)} revenue`);
 
     // Log stats
     await supabase
@@ -293,14 +293,14 @@ async function generateWeeklyStats() {
  */
 
 async function triggerWinnerAnnouncements() {
-  console.log('Triggering winner announcements...');
+  console.warn('Triggering winner announcements...');
 
   try {
     const emailCount = await sendWinnerAnnouncements();
     const certResults = await generateAllWinnerCertificates();
 
-    console.log(`Announced ${emailCount} winners`);
-    console.log(`Generated ${certResults.filter(r => r.success).length} certificates`);
+    console.warn(`Announced ${emailCount} winners`);
+    console.warn(`Generated ${certResults.filter(r => r.success).length} certificates`);
 
     return {
       success: true,
@@ -315,12 +315,12 @@ async function triggerWinnerAnnouncements() {
 }
 
 async function triggerJudgeAssignments(awardId = null) {
-  console.log('Triggering judge assignments...');
+  console.warn('Triggering judge assignments...');
 
   try {
     const result = await assignJudgesToEntries(awardId);
 
-    console.log(`Assigned ${result.assigned} judges to entries`);
+    console.warn(`Assigned ${result.assigned} judges to entries`);
 
     return result;
 
@@ -331,7 +331,7 @@ async function triggerJudgeAssignments(awardId = null) {
 }
 
 async function triggerShortlistGeneration(awardId = null) {
-  console.log('Triggering shortlist generation...');
+  console.warn('Triggering shortlist generation...');
 
   try {
     let results;
@@ -347,7 +347,7 @@ async function triggerShortlistGeneration(awardId = null) {
     const { sendShortlistNotifications } = require('./email-automation');
     await sendShortlistNotifications(awardId);
 
-    console.log('Shortlists generated and notifications sent');
+    console.warn('Shortlists generated and notifications sent');
 
     return results;
 
@@ -416,17 +416,17 @@ function setupAutomationEndpoints(app) {
     }
   });
 
-  console.log('Automation endpoints registered');
+  console.warn('Automation endpoints registered');
 }
 
 /**
  * Start scheduler
  */
 function startScheduler() {
-  console.log('Automation scheduler started');
-  console.log('Daily tasks: 9:00 AM GMT');
-  console.log('Weekly tasks: Monday 8:00 AM GMT');
-  console.log('Judging checks: 10:00 AM GMT');
+  console.warn('Automation scheduler started');
+  console.warn('Daily tasks: 9:00 AM GMT');
+  console.warn('Weekly tasks: Monday 8:00 AM GMT');
+  console.warn('Judging checks: 10:00 AM GMT');
 }
 
 module.exports = {
@@ -443,5 +443,5 @@ module.exports = {
 // Start scheduler if running directly
 if (require.main === module) {
   startScheduler();
-  console.log('\nScheduler is running. Press Ctrl+C to stop.\n');
+  console.warn('\nScheduler is running. Press Ctrl+C to stop.\n');
 }

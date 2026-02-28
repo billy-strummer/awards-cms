@@ -164,7 +164,7 @@ const seatingEnhancements = {
     const c = document.getElementById('unassignedGuestsList'); if(!c) return;
     const bar = c.closest('.tp-sidebar')?.querySelector('.border-bottom:nth-child(2)');
     if (bar && !bar.querySelector('.se-vip-filter'))
-      bar.insertAdjacentHTML('beforeend', `<button class="btn btn-xs ${this._vipFilterOn?'btn-warning':'btn-outline-warning'} se-vip-filter" onclick="seatingEnhancements._toggleVipFilter()" title="VIP filter" style="font-size:0.65rem;padding:1px 6px">VIP</button>`);
+      bar.insertAdjacentHTML('beforeend', `<button class="btn btn-xs ${this._vipFilterOn?'btn-warning':'btn-outline-warning'} se-vip-filter" data-action="seatingEnhancements._toggleVipFilter" title="VIP filter" style="font-size:0.65rem;padding:1px 6px">VIP</button>`);
     em.tables.forEach(t=>(t.assignments||[]).filter(a=>a.is_vip).forEach(a=>{
       const ch = c.querySelector(`[data-guest-id="${a.guest_id}"]`);
       if (ch && !ch.querySelector('.se-vip-badge'))
@@ -304,13 +304,13 @@ const seatingEnhancements = {
           <span class="badge bg-primary">${totalSeated} seated</span>
           <span class="badge bg-secondary">${totalSeats} total seats</span>
           ${unassigned > 0 ? `<span class="badge bg-warning text-dark">${unassigned} unassigned</span>` : ''}
-          <button class="btn btn-sm btn-outline-primary" onclick="seatingEnhancements.printSeatingList()" title="Print Seating List"><i class="bi bi-printer me-1"></i>Print</button>
+          <button class="btn btn-sm btn-outline-primary" data-action="seatingEnhancements.printSeatingList" title="Print Seating List"><i class="bi bi-printer me-1"></i>Print</button>
           <button class="btn btn-sm btn-outline-secondary" onclick="document.getElementById('seSeatingListOverlay').remove()"><i class="bi bi-x-lg"></i></button>
         </div>
       </div>
       <div class="d-flex gap-1 mb-3">
-        <button class="btn btn-sm ${this._slSort === 'table' ? 'btn-dark' : 'btn-outline-secondary'}" onclick="seatingEnhancements._setSlSort('table')"><i class="bi bi-grid-3x3-gap me-1"></i>By Table</button>
-        <button class="btn btn-sm ${this._slSort === 'company' ? 'btn-dark' : 'btn-outline-secondary'}" onclick="seatingEnhancements._setSlSort('company')"><i class="bi bi-building me-1"></i>By Company A-Z</button>
+        <button class="btn btn-sm ${this._slSort === 'table' ? 'btn-dark' : 'btn-outline-secondary'}" data-action="seatingEnhancements._setSlSort" data-id="table"><i class="bi bi-grid-3x3-gap me-1"></i>By Table</button>
+        <button class="btn btn-sm ${this._slSort === 'company' ? 'btn-dark' : 'btn-outline-secondary'}" data-action="seatingEnhancements._setSlSort" data-id="company"><i class="bi bi-building me-1"></i>By Company A-Z</button>
       </div>
       <div id="seSlContent">${this._renderSlContent()}</div>
     </div>`;
@@ -516,7 +516,7 @@ const seatingEnhancements = {
         @media print { .toolbar { display:none } .content { margin-top:0 !important; padding:0 !important } body { -webkit-print-color-adjust:exact; print-color-adjust:exact } }
         .content { margin-top:56px; padding:20px }
       </style></head><body>
-      <div class="toolbar"><div><strong>Seating List</strong> &mdash; ${esc(eventName)} &mdash; ${sortLabel}</div><div><button onclick="window.print()">Print / Save as PDF</button></div></div>
+      <div class="toolbar"><div><strong>Seating List</strong> &mdash; ${esc(eventName)} &mdash; ${sortLabel}</div><div><button data-action="window.print">Print / Save as PDF</button></div></div>
       <div class="content">
         <div style="text-align:center;margin-bottom:20px">
           <h1 style="font-size:20pt;margin-bottom:4px">Seating List</h1>
@@ -626,24 +626,24 @@ const seatingEnhancements = {
     if(!tb||tb.querySelector('.se-injected')) return;
     const f=document.createElement('span'); f.className='se-injected d-contents';
     f.innerHTML=`<div class="vr"></div>
-      <button class="btn btn-sm btn-outline-secondary" onclick="seatingEnhancements.showSeatingList()" title="Seating List"><i class="bi bi-list-columns-reverse me-1"></i>Seating List</button>
+      <button class="btn btn-sm btn-outline-secondary" data-action="seatingEnhancements.showSeatingList" title="Seating List"><i class="bi bi-list-columns-reverse me-1"></i>Seating List</button>
       <div class="btn-group btn-group-sm"><button class="btn btn-sm btn-outline-secondary dropdown-toggle" data-bs-toggle="dropdown" data-bs-display="static"><i class="bi bi-layers me-1"></i>Sections</button>
         <ul class="dropdown-menu">
-          <li><a class="dropdown-item" href="#" onclick="seatingEnhancements.addSection('VIP Area','#ffc107');return false"><i class="bi bi-star-fill me-2" style="color:#ffc107;"></i>VIP Area</a></li>
-          <li><a class="dropdown-item" href="#" onclick="seatingEnhancements.addSection('Stage','#6f42c1');return false"><i class="bi bi-mic-fill me-2" style="color:#6f42c1;"></i>Stage</a></li>
-          <li><a class="dropdown-item" href="#" onclick="seatingEnhancements.addSection('Bar','#20c997');return false"><i class="bi bi-cup-straw me-2" style="color:#20c997;"></i>Bar</a></li>
-          <li><a class="dropdown-item" href="#" onclick="seatingEnhancements.addSection('General','#6c757d');return false"><i class="bi bi-people me-2" style="color:#6c757d;"></i>General</a></li>
+          <li><a class="dropdown-item" href="#" data-action="seatingEnhancements.addSection" data-prevent-default="true" data-args='["VIP Area","#ffc107"]'><i class="bi bi-star-fill me-2" style="color:#ffc107;"></i>VIP Area</a></li>
+          <li><a class="dropdown-item" href="#" data-action="seatingEnhancements.addSection" data-prevent-default="true" data-args='["Stage","#6f42c1"]'><i class="bi bi-mic-fill me-2" style="color:#6f42c1;"></i>Stage</a></li>
+          <li><a class="dropdown-item" href="#" data-action="seatingEnhancements.addSection" data-prevent-default="true" data-args='["Bar","#20c997"]'><i class="bi bi-cup-straw me-2" style="color:#20c997;"></i>Bar</a></li>
+          <li><a class="dropdown-item" href="#" data-action="seatingEnhancements.addSection" data-prevent-default="true" data-args='["General","#6c757d"]'><i class="bi bi-people me-2" style="color:#6c757d;"></i>General</a></li>
           <li><hr class="dropdown-divider"></li>
           <li><a class="dropdown-item" href="#" onclick="let n=prompt('Section name:');if(n)seatingEnhancements.addSection(n,prompt('Color hex:','#0d6efd')||'#0d6efd');return false"><i class="bi bi-plus-circle text-primary me-2"></i>Custom...</a></li>
         </ul></div>
-      <button class="btn btn-sm btn-outline-secondary" onclick="seatingEnhancements.showDietarySummary()" title="Dietary Summary"><i class="bi bi-egg-fried"></i></button>
+      <button class="btn btn-sm btn-outline-secondary" data-action="seatingEnhancements.showDietarySummary" title="Dietary Summary"><i class="bi bi-egg-fried"></i></button>
       <div class="dropdown"><button class="btn btn-sm btn-outline-secondary dropdown-toggle" data-bs-toggle="dropdown" title="Print"><i class="bi bi-printer"></i></button>
         <ul class="dropdown-menu">
-          <li><a class="dropdown-item" href="#" onclick="seatingEnhancements.generatePlaceCards();return false"><i class="bi bi-card-text me-2"></i>Place Cards</a></li>
-          <li><a class="dropdown-item" href="#" onclick="seatingEnhancements.generateNameTents();return false"><i class="bi bi-file-richtext me-2"></i>Name Tents</a></li>
+          <li><a class="dropdown-item" href="#" data-action="seatingEnhancements.generatePlaceCards" data-prevent-default="true"><i class="bi bi-card-text me-2"></i>Place Cards</a></li>
+          <li><a class="dropdown-item" href="#" data-action="seatingEnhancements.generateNameTents" data-prevent-default="true"><i class="bi bi-file-richtext me-2"></i>Name Tents</a></li>
         </ul></div>
-      <button class="btn btn-sm btn-outline-secondary" onclick="seatingEnhancements.undo()" title="Undo (Ctrl+Z)"><i class="bi bi-arrow-counterclockwise"></i></button>
-      <button class="btn btn-sm btn-outline-secondary" onclick="seatingEnhancements.redo()" title="Redo (Ctrl+Y)"><i class="bi bi-arrow-clockwise"></i></button>`;
+      <button class="btn btn-sm btn-outline-secondary" data-action="seatingEnhancements.undo" title="Undo (Ctrl+Z)"><i class="bi bi-arrow-counterclockwise"></i></button>
+      <button class="btn btn-sm btn-outline-secondary" data-action="seatingEnhancements.redo" title="Redo (Ctrl+Y)"><i class="bi bi-arrow-clockwise"></i></button>`;
     tb.appendChild(f);
   },
 

@@ -358,12 +358,12 @@ const winnersModule = {
 
       return `
         <tr class="fade-in">
-          <td><input type="checkbox" class="form-check-input winner-checkbox" value="${winner.id}" ${winnerChecked} onchange="winnersModule.toggleWinnerSelect('${winner.id}', this.checked)"></td>
+          <td><input type="checkbox" class="form-check-input winner-checkbox" value="${winner.id}" ${winnerChecked} data-on-check="winnersModule.toggleWinnerSelect" data-id="winner.id"></td>
           <td>
             <div class="fw-semibold">${utils.escapeHtml(winner.winner_name || 'N/A')}</div>
           </td>
           <td>
-            <a href="#" class="text-decoration-none fw-semibold" onclick="event.preventDefault(); winnersModule.showAwardPlacements('${awardId}', '${utils.escapeHtml(awardDisplay)}')" title="View placements and nominees">
+            <a href="#" class="text-decoration-none fw-semibold" data-action="winnersModule.showAwardPlacements" data-args='${JSON.stringify([awardId, utils.escapeHtml(awardDisplay)])}' data-prevent-default="true" title="View placements and nominees">
               ${utils.escapeHtml(awardDisplay)} <i class="bi bi-chevron-right small"></i>
             </a>
           </td>
@@ -383,7 +383,7 @@ const winnersModule = {
               </button>
               <ul class="dropdown-menu dropdown-menu-end">
                 ${Object.entries(statusConfig).map(([key, cfg]) => `
-                  <li><a class="dropdown-item ${key === status ? 'active' : ''}" href="#" onclick="event.preventDefault(); winnersModule.updateWinnerStatus('${winner.id}', '${key}')">
+                  <li><a class="dropdown-item ${key === status ? 'active' : ''}" href="#" data-action="winnersModule.updateWinnerStatus" data-args='${JSON.stringify([winner.id, key])}' data-prevent-default="true">
                     <i class="bi ${cfg.icon} ${cfg.color} me-2"></i>${cfg.label}
                   </a></li>
                 `).join('')}
@@ -398,28 +398,28 @@ const winnersModule = {
                   <i class="bi bi-collection"></i>
                 </button>
                 <ul class="dropdown-menu dropdown-menu-end">
-                  <li><a class="dropdown-item" href="#" onclick="event.preventDefault(); winnersModule.viewMedia('${winner.id}', '${MEDIA_TYPES.PHOTO}')"><i class="bi bi-images text-primary me-2"></i>View Photos (${photoCount})</a></li>
-                  <li><a class="dropdown-item" href="#" onclick="event.preventDefault(); winnersModule.viewMedia('${winner.id}', '${MEDIA_TYPES.VIDEO}')"><i class="bi bi-play-circle text-info me-2"></i>View Videos (${videoCount})</a></li>
+                  <li><a class="dropdown-item" href="#" data-action="winnersModule.viewMedia" data-args='${JSON.stringify([winner.id, MEDIA_TYPES.PHOTO])}' data-prevent-default="true"><i class="bi bi-images text-primary me-2"></i>View Photos (${photoCount})</a></li>
+                  <li><a class="dropdown-item" href="#" data-action="winnersModule.viewMedia" data-args='${JSON.stringify([winner.id, MEDIA_TYPES.VIDEO])}' data-prevent-default="true"><i class="bi bi-play-circle text-info me-2"></i>View Videos (${videoCount})</a></li>
                 </ul>
               </div>
               ` : ''}
               <button
                 class="btn btn-outline-secondary btn-sm"
-                onclick="winnersModule.downloadMediaPack('${winner.id}')"
+                data-action="winnersModule.downloadMediaPack" data-id="winner.id"
                 title="Download Media Pack"
                 aria-label="Download media pack">
                 <i class="bi bi-newspaper"></i>
               </button>
               <button
                 class="btn btn-outline-primary btn-sm"
-                onclick="winnersModule.downloadWinnerPackage('${winner.id}')"
+                data-action="winnersModule.downloadWinnerPackage" data-id="winner.id"
                 title="Download Winner Package"
                 aria-label="Download winner package">
                 <i class="bi bi-gift"></i>
               </button>
               <button
                 class="btn btn-outline-danger btn-sm"
-                onclick="winnersModule.deleteWinner('${winner.id}')"
+                data-action="winnersModule.deleteWinner" data-id="winner.id"
                 title="Delete Winner"
                 aria-label="Delete winner">
                 <i class="bi bi-trash"></i>
@@ -446,15 +446,15 @@ const winnersModule = {
         const start = (this._currentPage - 1) * this._pageSize;
         const end = start + this._pageSize;
         let html = '<nav><ul class="pagination pagination-sm justify-content-center mt-3">';
-        html += `<li class="page-item ${this._currentPage <= 1 ? 'disabled' : ''}"><a class="page-link" href="#" onclick="event.preventDefault(); winnersModule.goToPage(${this._currentPage - 1})">Prev</a></li>`;
+        html += `<li class="page-item ${this._currentPage <= 1 ? 'disabled' : ''}"><a class="page-link" href="#" data-action="winnersModule.goToPage" data-id="${this._currentPage - 1}" data-prevent-default="true">Prev</a></li>`;
         for (let i = 1; i <= totalPages; i++) {
           if (i === 1 || i === totalPages || (i >= this._currentPage - 2 && i <= this._currentPage + 2)) {
-            html += `<li class="page-item ${i === this._currentPage ? 'active' : ''}"><a class="page-link" href="#" onclick="event.preventDefault(); winnersModule.goToPage(${i})">${i}</a></li>`;
+            html += `<li class="page-item ${i === this._currentPage ? 'active' : ''}"><a class="page-link" href="#" data-action="winnersModule.goToPage" data-id="${i}" data-prevent-default="true">${i}</a></li>`;
           } else if (i === this._currentPage - 3 || i === this._currentPage + 3) {
             html += '<li class="page-item disabled"><span class="page-link">...</span></li>';
           }
         }
-        html += `<li class="page-item ${this._currentPage >= totalPages ? 'disabled' : ''}"><a class="page-link" href="#" onclick="event.preventDefault(); winnersModule.goToPage(${this._currentPage + 1})">Next</a></li>`;
+        html += `<li class="page-item ${this._currentPage >= totalPages ? 'disabled' : ''}"><a class="page-link" href="#" data-action="winnersModule.goToPage" data-id="${this._currentPage + 1}" data-prevent-default="true">Next</a></li>`;
         html += '</ul></nav>';
         html += `<div class="text-center text-muted small">Showing ${start+1}-${Math.min(end, STATE.filteredWinners.length)} of ${STATE.filteredWinners.length}</div>`;
         paginationEl.innerHTML = html;
@@ -742,7 +742,7 @@ const winnersModule = {
             }
             <div class="card-body">
               <p class="card-text small mb-3">${utils.escapeHtml(m.caption || 'No caption')}</p>
-              <button class="btn btn-sm btn-danger w-100" onclick="winnersModule.deleteMedia('${m.id}')">
+              <button class="btn btn-sm btn-danger w-100" data-action="winnersModule.deleteMedia" data-id="m.id">
                 <i class="bi bi-trash me-1"></i> Delete
               </button>
             </div>
@@ -902,7 +902,7 @@ const winnersModule = {
                 <input class="form-check-input" type="checkbox"
                   id="winner_${winner.id}"
                   ${isSelected ? 'checked' : ''}
-                  onchange="winnersModule.toggleWinnerSelection('${winner.id}')">
+                  data-on-change="winnersModule.toggleWinnerSelection" data-id="winner.id">
               </div>
               <div class="flex-grow-1">
                 <div class="d-flex justify-content-between align-items-start mb-2">
@@ -927,7 +927,7 @@ const winnersModule = {
                             <input class="form-check-input" type="checkbox"
                               id="photo_${photo.id}"
                               checked
-                              onchange="winnersModule.togglePhotoSelection('${winner.id}', '${photo.id}')">
+                              data-on-change="winnersModule.togglePhotoSelection" data-args='${JSON.stringify([winner.id, photo.id])}'>
                             <label class="form-check-label small" for="photo_${photo.id}">
                               <img src="${photo.media_url}" alt="${photo.caption || 'Photo'}"
                                 style="width: 60px; height: 60px; object-fit: cover;"
@@ -1347,7 +1347,7 @@ const winnersModule = {
                 <input class="form-check-input" type="checkbox"
                   id="cert_winner_${winner.id}"
                   ${isSelected ? 'checked' : ''}
-                  onchange="winnersModule.toggleCertificateWinnerSelection('${winner.id}')">
+                  data-on-change="winnersModule.toggleCertificateWinnerSelection" data-id="winner.id">
               </div>
               <div class="flex-grow-1">
                 <h6 class="mb-1">${utils.escapeHtml(winner.winner_name || 'Unnamed Winner')}</h6>
@@ -2240,7 +2240,7 @@ const winnersModule = {
         <div class="col-md-2">
           <div class="form-check">
             <input class="form-check-input" type="checkbox" id="year_${year}" value="${year}"
-              onchange="winnersModule.toggleYearSelection('${year}')">
+              data-on-change="winnersModule.toggleYearSelection" data-id="year">
             <label class="form-check-label" for="year_${year}">
               ${year}
             </label>

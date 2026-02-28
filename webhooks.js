@@ -165,17 +165,17 @@ const webhooksModule = {
         <td>${(h.events || []).map(e => `<span class="badge bg-secondary me-1">${utils.escapeHtml(e)}</span>`).join('')}</td>
         <td><span class="badge ${h.is_active ? 'bg-success' : 'bg-danger'}">${h.is_active ? 'Active' : 'Inactive'}</span></td>
         <td>
-          <button class="btn btn-sm btn-outline-primary me-1" onclick="webhooksModule.openWebhookModal(${h.id})">Edit</button>
-          <button class="btn btn-sm btn-outline-info me-1" onclick="webhooksModule.testWebhook(${h.id})">Test</button>
-          <button class="btn btn-sm btn-outline-secondary me-1" onclick="webhooksModule.renderWebhookLogs(${h.id})">Logs</button>
-          <button class="btn btn-sm btn-outline-danger" onclick="webhooksModule.deleteWebhook(${h.id})">Delete</button>
+          <button class="btn btn-sm btn-outline-primary me-1" data-action="webhooksModule.openWebhookModal" data-id="${h.id}">Edit</button>
+          <button class="btn btn-sm btn-outline-info me-1" data-action="webhooksModule.testWebhook" data-id="${h.id}">Test</button>
+          <button class="btn btn-sm btn-outline-secondary me-1" data-action="webhooksModule.renderWebhookLogs" data-id="${h.id}">Logs</button>
+          <button class="btn btn-sm btn-outline-danger" data-action="webhooksModule.deleteWebhook" data-id="${h.id}">Delete</button>
         </td>
       </tr>`).join('');
 
     container.innerHTML = `
       <div class="d-flex justify-content-between align-items-center mb-3">
         <h5 class="mb-0">Registered Webhooks</h5>
-        <button class="btn btn-primary btn-sm" onclick="webhooksModule.openWebhookModal()">+ Add Webhook</button>
+        <button class="btn btn-primary btn-sm" data-action="webhooksModule.openWebhookModal">+ Add Webhook</button>
       </div>
       ${hooks.length === 0 ? '<p class="text-muted">No webhooks registered.</p>' : `
       <div class="table-responsive">
@@ -208,7 +208,7 @@ const webhooksModule = {
             </div>
             <div class="modal-footer">
               <button class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-              <button class="btn btn-primary" onclick="webhooksModule.saveWebhook()">Save</button>
+              <button class="btn btn-primary" data-action="webhooksModule.saveWebhook">Save</button>
             </div>
           </div>
         </div>
@@ -319,7 +319,7 @@ const webhooksModule = {
     container.innerHTML = `
       <div class="d-flex justify-content-between align-items-center mb-3">
         <h5 class="mb-0">Delivery Logs</h5>
-        <button class="btn btn-sm btn-outline-secondary" onclick="webhooksModule.renderWebhookManager()">Back</button>
+        <button class="btn btn-sm btn-outline-secondary" data-action="webhooksModule.renderWebhookManager">Back</button>
       </div>
       ${logs.length === 0 ? '<p class="text-muted">No log entries.</p>' : `
       <div class="table-responsive">

@@ -746,10 +746,10 @@ Vote now: {{website}}
               </div>
             </div>
             <div class="d-flex gap-2">
-              <button class="btn btn-sm btn-outline-primary" onclick="socialMediaModule.editScheduledPost('${post.id}')">
+              <button class="btn btn-sm btn-outline-primary" data-action="socialMediaModule.editScheduledPost" data-id="${post.id}">
                 <i class="bi bi-pencil"></i>
               </button>
-              <button class="btn btn-sm btn-outline-danger" onclick="socialMediaModule.deleteScheduledPost('${post.id}')">
+              <button class="btn btn-sm btn-outline-danger" data-action="socialMediaModule.deleteScheduledPost" data-id="${post.id}">
                 <i class="bi bi-trash"></i>
               </button>
             </div>
@@ -786,10 +786,10 @@ Vote now: {{website}}
               <small class="text-muted">${new Date(post.created_at).toLocaleDateString()}</small>
             </div>
             <div class="d-flex gap-1">
-              <button class="btn btn-sm btn-outline-primary" onclick="socialMediaModule.editScheduledPost('${post.id}')" title="Edit">
+              <button class="btn btn-sm btn-outline-primary" data-action="socialMediaModule.editScheduledPost" data-id="${post.id}" title="Edit">
                 <i class="bi bi-pencil"></i>
               </button>
-              <button class="btn btn-sm btn-outline-danger" onclick="socialMediaModule.deleteScheduledPost('${post.id}')" title="Delete">
+              <button class="btn btn-sm btn-outline-danger" data-action="socialMediaModule.deleteScheduledPost" data-id="${post.id}" title="Delete">
                 <i class="bi bi-trash"></i>
               </button>
             </div>
@@ -910,7 +910,7 @@ Vote now: {{website}}
         banner.className = 'alert alert-warning mb-0 rounded-0 d-flex justify-content-between align-items-center';
         banner.innerHTML = `
           <span><i class="bi bi-pencil-square me-2"></i><strong>Editing post</strong> — changes will update the existing post</span>
-          <button class="btn btn-sm btn-outline-warning" onclick="socialMediaModule.clearForm()">
+          <button class="btn btn-sm btn-outline-warning" data-action="socialMediaModule.clearForm">
             <i class="bi bi-x-circle me-1"></i>Cancel Edit
           </button>
         `;
@@ -1077,7 +1077,7 @@ Vote now: {{website}}
                 <div class="platform-badges">${platformBadges}</div>
               </div>
             </div>
-            <button class="btn btn-sm btn-outline-primary" onclick="socialMediaModule.reusePost('${post.id}')" title="Reuse this post">
+            <button class="btn btn-sm btn-outline-primary" data-action="socialMediaModule.reusePost" data-id="${post.id}" title="Reuse this post">
               <i class="bi bi-arrow-repeat"></i>
             </button>
           </div>

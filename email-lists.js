@@ -169,23 +169,23 @@ const emailListsModule = {
 
             <!-- Actions -->
             <div class="d-grid gap-2">
-              <button class="btn btn-sm btn-primary" onclick="emailListsModule.viewSubscribers('${list.id}', '${list.list_name}')">
+              <button class="btn btn-sm btn-primary" data-action="emailListsModule.viewSubscribers" data-args='${JSON.stringify([list.id, list.list_name]).replace(/'/g, "&#39;")}'>
                 <i class="bi bi-people me-1"></i>View Subscribers (${list.total_subscribers || 0})
               </button>
               <div class="btn-group">
-                <button class="btn btn-sm btn-outline-success" onclick="emailListsModule.addSubscriber('${list.id}')" title="Add Subscriber">
+                <button class="btn btn-sm btn-outline-success" data-action="emailListsModule.addSubscriber" data-id="${list.id}" title="Add Subscriber">
                   <i class="bi bi-person-plus"></i>
                 </button>
-                <button class="btn btn-sm btn-outline-success" onclick="emailListsModule.openImportModal('${list.id}')" title="Import">
+                <button class="btn btn-sm btn-outline-success" data-action="emailListsModule.openImportModal" data-id="${list.id}" title="Import">
                   <i class="bi bi-upload"></i>
                 </button>
-                <button class="btn btn-sm btn-outline-secondary" onclick="emailListsModule.editList('${list.id}')" title="Edit">
+                <button class="btn btn-sm btn-outline-secondary" data-action="emailListsModule.editList" data-id="${list.id}" title="Edit">
                   <i class="bi bi-pencil"></i>
                 </button>
-                <button class="btn btn-sm btn-outline-secondary" onclick="emailListsModule.exportList('${list.id}')" title="Export">
+                <button class="btn btn-sm btn-outline-secondary" data-action="emailListsModule.exportList" data-id="${list.id}" title="Export">
                   <i class="bi bi-download"></i>
                 </button>
-                <button class="btn btn-sm btn-outline-danger" onclick="emailListsModule.deleteList('${list.id}')" title="Delete">
+                <button class="btn btn-sm btn-outline-danger" data-action="emailListsModule.deleteList" data-id="${list.id}" title="Delete">
                   <i class="bi bi-trash"></i>
                 </button>
               </div>
@@ -272,7 +272,7 @@ const emailListsModule = {
             </div>
             <div class="modal-footer">
               <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-              <button type="button" class="btn btn-primary" onclick="emailListsModule.saveList()">
+              <button type="button" class="btn btn-primary" data-action="emailListsModule.saveList">
                 <i class="bi bi-save me-2"></i>Create List
               </button>
             </div>
@@ -469,7 +469,7 @@ const emailListsModule = {
             </div>
             <div class="modal-footer">
               <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-              <button type="button" class="btn btn-primary" onclick="emailListsModule.processImport()">
+              <button type="button" class="btn btn-primary" data-action="emailListsModule.processImport">
                 <i class="bi bi-upload me-2"></i>Import Subscribers
               </button>
             </div>
@@ -789,9 +789,9 @@ const emailListsModule = {
                 <td>${openRate}%</td>
                 <td><small>${addedDate}</small></td>
                 <td class="text-nowrap">
-                  ${s.status === 'active' ? `<button class="btn btn-outline-warning btn-sm py-0 px-1" onclick="emailListsModule.updateSubscriberStatus('${s.id}', 'unsubscribed')" title="Unsubscribe"><i class="bi bi-person-dash"></i></button>` : ''}
-                  ${s.status === 'unsubscribed' ? `<button class="btn btn-outline-success btn-sm py-0 px-1" onclick="emailListsModule.updateSubscriberStatus('${s.id}', 'active')" title="Resubscribe"><i class="bi bi-person-check"></i></button>` : ''}
-                  <button class="btn btn-outline-danger btn-sm py-0 px-1" onclick="emailListsModule.deleteSubscriber('${s.id}', '${listId}')" title="Remove"><i class="bi bi-trash"></i></button>
+                  ${s.status === 'active' ? `<button class="btn btn-outline-warning btn-sm py-0 px-1" data-action="emailListsModule.updateSubscriberStatus" data-args='${JSON.stringify([s.id, 'unsubscribed']).replace(/'/g, "&#39;")}' title="Unsubscribe"><i class="bi bi-person-dash"></i></button>` : ''}
+                  ${s.status === 'unsubscribed' ? `<button class="btn btn-outline-success btn-sm py-0 px-1" data-action="emailListsModule.updateSubscriberStatus" data-args='${JSON.stringify([s.id, 'active']).replace(/'/g, "&#39;")}' title="Resubscribe"><i class="bi bi-person-check"></i></button>` : ''}
+                  <button class="btn btn-outline-danger btn-sm py-0 px-1" data-action="emailListsModule.deleteSubscriber" data-args='${JSON.stringify([s.id, listId]).replace(/'/g, "&#39;")}' title="Remove"><i class="bi bi-trash"></i></button>
                 </td>
               </tr>
             `;
@@ -838,14 +838,14 @@ const emailListsModule = {
                 <!-- Search & Filter -->
                 <div class="d-flex gap-2 mb-3">
                   <input type="text" class="form-control form-control-sm" id="subscriberSearch" placeholder="Search by email or name...">
-                  <select class="form-select form-select-sm" id="subscriberStatusFilter" style="width: 150px;" onchange="emailListsModule.filterSubscriberTable()">
+                  <select class="form-select form-select-sm" id="subscriberStatusFilter" style="width: 150px;" data-on-change="emailListsModule.filterSubscriberTable">
                     <option value="all">All Status</option>
                     <option value="active">Active</option>
                     <option value="unsubscribed">Unsubscribed</option>
                     <option value="bounced">Bounced</option>
                     <option value="pending">Pending</option>
                   </select>
-                  <button class="btn btn-sm btn-outline-primary" onclick="emailListsModule.addSubscriber('${listId}')">
+                  <button class="btn btn-sm btn-outline-primary" data-action="emailListsModule.addSubscriber" data-id="${listId}">
                     <i class="bi bi-person-plus me-1"></i>Add
                   </button>
                 </div>
@@ -1021,7 +1021,7 @@ const emailListsModule = {
             </div>
             <div class="modal-footer">
               <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-              <button type="button" class="btn btn-primary" onclick="emailListsModule.saveSubscriber('${listId}')">
+              <button type="button" class="btn btn-primary" data-action="emailListsModule.saveSubscriber" data-id="${listId}">
                 <i class="bi bi-person-plus me-2"></i>Add Subscriber
               </button>
             </div>
@@ -1167,7 +1167,7 @@ const emailListsModule = {
             </div>
             <div class="modal-footer">
               <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-              <button type="button" class="btn btn-primary" onclick="emailListsModule.saveEditedList('${listId}')">
+              <button type="button" class="btn btn-primary" data-action="emailListsModule.saveEditedList" data-id="${listId}">
                 <i class="bi bi-save me-2"></i>Save Changes
               </button>
             </div>

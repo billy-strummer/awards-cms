@@ -50,11 +50,11 @@ const gdprModule = {
             <label class="form-label fw-semibold">Search Entity</label>
             <div class="input-group">
               <input type="text" class="form-control" id="gdprEntitySearch" placeholder="Search by name or email..." aria-label="Search entity">
-              <button class="btn btn-outline-primary" onclick="gdprModule.searchEntity()" aria-label="Search"><i class="bi bi-search"></i></button>
+              <button class="btn btn-outline-primary" data-action="gdprModule.searchEntity" aria-label="Search"><i class="bi bi-search"></i></button>
             </div>
             <div id="gdprSearchResults" class="mt-2"></div>
           </div>
-          <button class="btn btn-warning" onclick="gdprModule.submitRequest()" aria-label="Submit GDPR request">
+          <button class="btn btn-warning" data-action="gdprModule.submitRequest" aria-label="Submit GDPR request">
             <i class="bi bi-shield-exclamation me-2"></i>Submit Request
           </button>
         </div>
@@ -92,7 +92,7 @@ const gdprModule = {
               </div>
             </div>
             <div class="col-md-6">
-              <button class="btn btn-outline-danger btn-sm" onclick="gdprModule.runRetentionCleanup()" aria-label="Run cleanup now">
+              <button class="btn btn-outline-danger btn-sm" data-action="gdprModule.runRetentionCleanup" aria-label="Run cleanup now">
                 <i class="bi bi-trash me-2"></i>Run Cleanup Now
               </button>
             </div>
@@ -143,7 +143,7 @@ const gdprModule = {
         resultsDiv.innerHTML = '<small class="text-muted">No results found</small>';
       } else {
         resultsDiv.innerHTML = data.map(d =>
-          `<button class="btn btn-sm btn-outline-secondary me-1 mb-1" onclick="gdprModule.selectEntity('${d.id}')">${utils.escapeHtml(d.label)}</button>`
+          `<button class="btn btn-sm btn-outline-secondary me-1 mb-1" data-action="gdprModule.selectEntity" data-id="${d.id}">${utils.escapeHtml(d.label)}</button>`
         ).join('');
       }
       this._selectedEntityId = null;
@@ -188,15 +188,13 @@ const gdprModule = {
     }
 
     try {
-      const { error } = await STATE.client.from('gdpr_requests').insert({
+      await apiClient.insert('gdpr_requests', {
         request_type: requestType,
         entity_type: entityType,
         entity_id: this._selectedEntityId,
         requester_email: requesterEmail,
         status: 'pending'
       });
-
-      if (error) throw error;
 
       utils.showToast('GDPR request submitted', 'success');
       this._selectedEntityId = null;
@@ -217,13 +215,11 @@ const gdprModule = {
     if (!tbody) return;
 
     try {
-      const { data, error } = await STATE.client
-        .from('gdpr_requests')
-        .select('*')
-        .order('created_at', { ascending: false })
-        .limit(50);
-
-      if (error) throw error;
+      const result = await apiClient.select('gdpr_requests', {
+        sort: { column: 'created_at', ascending: false },
+        pageSize: 50
+      });
+      const data = result.data;
 
       if (!data || data.length === 0) {
         utils.showEmptyState('gdprRequestsTable', 6, 'No GDPR requests', 'bi-shield-check');
@@ -242,10 +238,10 @@ const gdprModule = {
           <td><span class="badge ${statusBadges[r.status] || 'bg-secondary'}">${r.status}</span></td>
           <td>
             ${r.status === 'pending' ? `
-              <button class="btn btn-sm btn-outline-success" onclick="gdprModule.processRequest('${r.id}', '${r.request_type}', '${r.entity_id}')" aria-label="Process request">
+              <button class="btn btn-sm btn-outline-success" data-action="gdprModule.processRequest" data-args='${JSON.stringify([r.id, r.request_type, r.entity_id])}' aria-label="Process request">
                 <i class="bi bi-check"></i>
               </button>
-              <button class="btn btn-sm btn-outline-danger" onclick="gdprModule.rejectRequest('${r.id}')" aria-label="Reject request">
+              <button class="btn btn-sm btn-outline-danger" data-action="gdprModule.rejectRequest" data-id="${r.id}" aria-label="Reject request">
                 <i class="bi bi-x"></i>
               </button>
             ` : ''}
@@ -268,7 +264,7 @@ const gdprModule = {
       utils.showLoading();
 
       // Mark as processing
-      await STATE.client.from('gdpr_requests').update({ status: 'processing' }).eq('id', requestId);
+      await apiClient.update('gdpr_requests', requestId, { status: 'processing' });
 
       if (requestType === 'export') {
         await this._exportEntityData(entityId);

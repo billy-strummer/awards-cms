@@ -20,11 +20,26 @@ function showPublicToast(msg, type = 'warning') {
   setTimeout(() => { toast.style.opacity = '0'; setTimeout(() => toast.remove(), 300); }, 4000);
 }
 
-// Initialize Supabase using shared config
-const supabase = window.supabase.createClient(
-  window.SUPABASE_CONFIG.url,
-  window.SUPABASE_CONFIG.anonKey
-);
+/**
+ * Call the voting proxy API.
+ * All database access is routed through /api/voting-proxy instead of
+ * direct Supabase client calls.
+ */
+async function votingApi(action, params = {}) {
+  const res = await fetch('/api/voting-proxy', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ action, ...params })
+  });
+  const data = await res.json();
+  if (!res.ok) {
+    const err = new Error(data.error || 'API request failed');
+    err.status = res.status;
+    err.code = data.code;
+    throw err;
+  }
+  return data;
+}
 
 const nomineeVoting = {
   entry: null,
@@ -58,34 +73,22 @@ const nomineeVoting = {
    */
   async loadEntry(entryNumber, entryId) {
     try {
-      let query = supabase
-        .from('entries')
-        .select(`
-          *,
-          organisations(company_name, logo_url, website),
-          awards:award_years(award_name, award_category)
-        `)
-        .eq('is_public', true)
-        .eq('allow_public_voting', true)
-        .in('status', ['shortlisted', 'submitted']);
-
-      // Query by entry number or ID
+      const params = {};
       if (entryNumber) {
-        query = query.eq('entry_number', entryNumber);
+        params.entry_number = entryNumber;
       } else if (entryId) {
-        query = query.eq('id', entryId);
+        params.entry_id = entryId;
       }
 
-      const { data, error } = await query.single();
+      const { entry } = await votingApi('load_entry', params);
 
-      if (error || !data) {
-        console.error('Entry not found:', error);
+      if (!entry) {
         this.showError();
         return;
       }
 
-      this.entry = data;
-      this.entryId = data.id;
+      this.entry = entry;
+      this.entryId = entry.id;
 
       // Check if user has already voted
       if (this.voterEmail) {
@@ -106,16 +109,12 @@ const nomineeVoting = {
    */
   async checkIfVoted() {
     try {
-      const { data, _error } = await supabase
-        .from('public_votes')
-        .select('id')
-        .eq('entry_id', this.entryId)
-        .eq('voter_email', this.voterEmail)
-        .single();
+      const { exists } = await votingApi('check_existing_vote', {
+        entry_id: this.entryId,
+        voter_email: this.voterEmail
+      });
 
-      if (data) {
-        this.hasVoted = true;
-      }
+      this.hasVoted = !!exists;
     } catch (error) {
       // No vote found, which is fine
       this.hasVoted = false;
@@ -266,13 +265,10 @@ const nomineeVoting = {
     try {
       const voterName = sessionStorage.getItem('voterName') || '';
 
-      // Rate limit: max 10 votes per hour per email
-      const oneHourAgo = new Date(Date.now() - 3600000).toISOString();
-      const { count: recentVotes } = await supabase
-        .from('public_votes')
-        .select('id', { count: 'exact', head: true })
-        .eq('voter_email', this.voterEmail)
-        .gte('created_at', oneHourAgo);
+      // Rate limit: max 10 votes per hour per email (server enforces too)
+      const { count: recentVotes } = await votingApi('check_rate_limit', {
+        voter_email: this.voterEmail
+      });
       if (recentVotes >= 10) {
         showPublicToast('You have reached the voting limit. Please try again later.', 'warning');
         this.closeVerificationModal();
@@ -280,14 +276,12 @@ const nomineeVoting = {
       }
 
       // Check if already voted for this entry
-      const { data: existingVote } = await supabase
-        .from('public_votes')
-        .select('id')
-        .eq('entry_id', this.entryId)
-        .eq('voter_email', this.voterEmail)
-        .single();
+      const { exists } = await votingApi('check_existing_vote', {
+        entry_id: this.entryId,
+        voter_email: this.voterEmail
+      });
 
-      if (existingVote) {
+      if (exists) {
         showPublicToast('You have already voted for this entry!', 'warning');
         this.closeVerificationModal();
         this.hasVoted = true;
@@ -295,24 +289,14 @@ const nomineeVoting = {
         return;
       }
 
-      // Get IP address
-      const ipAddress = await this.getIPAddress();
-
-      // Insert vote (DB UNIQUE constraint on entry_id+voter_email prevents race condition duplicates)
-      const { error } = await supabase
-        .from('public_votes')
-        .insert([{
-          entry_id: this.entryId,
-          voter_email: this.voterEmail,
-          voter_name: voterName,
-          voter_ip: ipAddress,
-          vote_value: 1,
-          email_verified: false,
-          verification_token: this.generateToken(),
-          verification_sent_at: new Date().toISOString()
-        }]);
-
-      if (error) throw error;
+      // Submit vote via API (rate limit + duplicate check enforced server-side too)
+      await votingApi('submit_vote', {
+        entry_id: this.entryId,
+        voter_email: this.voterEmail,
+        voter_name: voterName,
+        voter_ip: 'unknown',
+        verification_token: this.generateToken()
+      });
 
       // Update local vote count
       this.entry.public_votes = (this.entry.public_votes || 0) + 1;
@@ -328,13 +312,13 @@ const nomineeVoting = {
       this.hasVoted = true;
       this.updateVoteButton();
 
-      // Send verification email (TODO: implement backend)
+      // Send verification email
       await this.sendVerificationEmail();
 
     } catch (error) {
       console.error('Error submitting vote:', error);
-      // Handle unique constraint violation gracefully
-      if (error?.code === '23505') {
+      // Handle duplicate vote (409 from server)
+      if (error?.status === 409) {
         showPublicToast('You have already voted for this entry!', 'warning');
         this.hasVoted = true;
         this.updateVoteButton();
@@ -370,20 +354,6 @@ const nomineeVoting = {
   },
 
   /**
-   * Get IP address (for duplicate detection)
-   */
-  async getIPAddress() {
-    try {
-      // Use server-side function to avoid third-party IP exposure
-      const { data, error } = await this.supabase.functions.invoke('get-client-ip');
-      if (error || !data?.ip) throw error;
-      return data.ip;
-    } catch {
-      return 'unknown';
-    }
-  },
-
-  /**
    * Generate verification token
    */
   generateToken() {
@@ -391,14 +361,16 @@ const nomineeVoting = {
   },
 
   /**
-   * Send verification email
+   * Send verification email via the resend-email API
    */
   async sendVerificationEmail() {
     try {
-      const { error } = await this.supabase.functions.invoke('send-email', {
-        body: {
+      await fetch('/api/resend-email', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
           to: this.voterEmail,
-          subject: `Vote Confirmation - British Trade Awards`,
+          subject: 'Vote Confirmation - British Trade Awards',
           template: 'entry_confirmation',
           templateData: {
             voter_email: this.voterEmail,
@@ -406,9 +378,8 @@ const nomineeVoting = {
             award_name: this.entry.awards?.award_name || 'British Trade Awards',
             entry_number: this.entry.entry_number || ''
           }
-        }
+        })
       });
-      if (error) console.warn('Verification email failed:', error);
     } catch (e) {
       console.warn('Email service unavailable:', e.message);
     }

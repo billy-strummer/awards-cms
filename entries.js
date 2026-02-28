@@ -299,7 +299,7 @@ const entriesModule = {
         <tr>
           <td>
             <input type="checkbox" class="entry-checkbox" value="${entry.id}"
-                   onchange="entriesModule.toggleSelectEntry('${entry.id}')"
+                   data-on-change="entriesModule.toggleSelectEntry" data-id="entry.id"
                    ${this.selectedEntryIds.has(entry.id) ? 'checked' : ''}>
           </td>
           <td><strong>${utils.escapeHtml(entry.entry_number)}</strong></td>
@@ -313,7 +313,7 @@ const entriesModule = {
           </td>
           <td>
             <select class="form-select form-select-sm d-inline-block" style="width:auto; font-size:0.75rem;"
-              onchange="entriesModule.inlineUpdateEntryStatus('${entry.id}', this.value)"
+              data-on-change="entriesModule.inlineUpdateEntryStatus" data-id="entry.id"
               aria-label="Change entry status">
               ${['draft','submitted','under_review','shortlisted','winner','rejected'].map(s =>
                 `<option value="${s}" ${(entry.status || '').toLowerCase() === s ? 'selected' : ''}>${s === 'under_review' ? 'Under Review' : s.charAt(0).toUpperCase() + s.slice(1)}</option>`
@@ -325,16 +325,16 @@ const entriesModule = {
           <td>${submittedDate}</td>
           <td>
             <div class="btn-group btn-group-sm">
-              <button class="btn btn-outline-primary" onclick="entriesModule.viewEntry('${entry.id}')" title="View">
+              <button class="btn btn-outline-primary" data-action="entriesModule.viewEntry" data-id="entry.id" title="View">
                 <i class="bi bi-eye"></i>
               </button>
-              <button class="btn btn-outline-secondary" onclick="entriesModule.editEntry('${entry.id}')" title="Edit">
+              <button class="btn btn-outline-secondary" data-action="entriesModule.editEntry" data-id="entry.id" title="Edit">
                 <i class="bi bi-pencil"></i>
               </button>
-              <button class="btn btn-outline-info" onclick="entriesModule.showVotingLink('${entry.id}')" title="Get Voting Link">
+              <button class="btn btn-outline-info" data-action="entriesModule.showVotingLink" data-id="entry.id" title="Get Voting Link">
                 <i class="bi bi-link-45deg"></i>
               </button>
-              <button class="btn btn-outline-danger" onclick="entriesModule.deleteEntry('${entry.id}')" title="Delete">
+              <button class="btn btn-outline-danger" data-action="entriesModule.deleteEntry" data-id="entry.id" title="Delete">
                 <i class="bi bi-trash"></i>
               </button>
             </div>
@@ -352,15 +352,15 @@ const entriesModule = {
       const totalPages = Math.ceil(this.filteredEntries.length / this._pageSize);
       if (totalPages > 1) {
         let html = '<nav><ul class="pagination pagination-sm justify-content-center mt-3">';
-        html += `<li class="page-item ${this._currentPage <= 1 ? 'disabled' : ''}"><a class="page-link" href="#" onclick="event.preventDefault(); entriesModule.goToEntriesPage(${this._currentPage - 1})">Prev</a></li>`;
+        html += `<li class="page-item ${this._currentPage <= 1 ? 'disabled' : ''}"><a class="page-link" href="javascript:void(0);" data-action="entriesModule.goToEntriesPage" data-id="${this._currentPage - 1}">Prev</a></li>`;
         for (let i = 1; i <= totalPages; i++) {
           if (i === 1 || i === totalPages || (i >= this._currentPage - 2 && i <= this._currentPage + 2)) {
-            html += `<li class="page-item ${i === this._currentPage ? 'active' : ''}"><a class="page-link" href="#" onclick="event.preventDefault(); entriesModule.goToEntriesPage(${i})">${i}</a></li>`;
+            html += `<li class="page-item ${i === this._currentPage ? 'active' : ''}"><a class="page-link" href="javascript:void(0);" data-action="entriesModule.goToEntriesPage" data-id="${i}">${i}</a></li>`;
           } else if (i === this._currentPage - 3 || i === this._currentPage + 3) {
             html += '<li class="page-item disabled"><span class="page-link">...</span></li>';
           }
         }
-        html += `<li class="page-item ${this._currentPage >= totalPages ? 'disabled' : ''}"><a class="page-link" href="#" onclick="event.preventDefault(); entriesModule.goToEntriesPage(${this._currentPage + 1})">Next</a></li>`;
+        html += `<li class="page-item ${this._currentPage >= totalPages ? 'disabled' : ''}"><a class="page-link" href="javascript:void(0);" data-action="entriesModule.goToEntriesPage" data-id="${this._currentPage + 1}">Next</a></li>`;
         html += '</ul></nav>';
         html += `<div class="text-center text-muted small">Showing ${((this._currentPage-1)*this._pageSize)+1}-${Math.min(this._currentPage*this._pageSize, this.filteredEntries.length)} of ${this.filteredEntries.length}</div>`;
         paginationEl.innerHTML = html;
@@ -856,11 +856,11 @@ const entriesModule = {
 
             </div>
             <div class="modal-footer">
-              <button type="button" class="btn btn-outline-info me-auto" onclick="entriesModule.openUploadLink('${entry.entry_number}')">
+              <button type="button" class="btn btn-outline-info me-auto" data-action="entriesModule.openUploadLink" data-id="entry.entry_number">
                 <i class="bi bi-paperclip me-2"></i>View Upload Link
               </button>
               <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-              <button type="button" class="btn btn-primary" onclick="entriesModule.updateEntryStatus('${entry.id}')">
+              <button type="button" class="btn btn-primary" data-action="entriesModule.updateEntryStatus" data-id="entry.id">
                 <i class="bi bi-check-lg me-1"></i>Save &amp; Confirm
               </button>
             </div>
@@ -1038,7 +1038,7 @@ const entriesModule = {
                 <label class="form-label fw-bold">Upload Link:</label>
                 <div class="input-group">
                   <input type="text" class="form-control" value="${uploadUrl}" id="uploadLinkInput" readonly>
-                  <button class="btn btn-primary" onclick="entriesModule.copyUploadLink('${uploadUrl}')">
+                  <button class="btn btn-primary" data-action="entriesModule.copyUploadLink" data-id="uploadUrl">
                     <i class="bi bi-clipboard"></i> Copy
                   </button>
                 </div>
@@ -1056,7 +1056,7 @@ const entriesModule = {
             </div>
             <div class="modal-footer">
               <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-              <button type="button" class="btn btn-primary" onclick="window.open('${uploadUrl}', '_blank')">
+              <button type="button" class="btn btn-primary" data-action="window.open" data-args='${JSON.stringify([uploadUrl, "_blank"])}'>
                 <i class="bi bi-box-arrow-up-right me-2"></i>Open Upload Page
               </button>
             </div>
@@ -1263,7 +1263,7 @@ const entriesModule = {
               </div>
               <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                <button type="button" class="btn btn-primary" onclick="entriesModule.saveEntryEdit('${entry.id}')">
+                <button type="button" class="btn btn-primary" data-action="entriesModule.saveEntryEdit" data-id="entry.id">
                   <i class="bi bi-save me-2"></i>Save Changes
                 </button>
               </div>
@@ -1533,37 +1533,37 @@ const entriesModule = {
               <p class="text-muted mb-3">Select an action to apply to <strong>${count}</strong> selected entr${count === 1 ? 'y' : 'ies'}:</p>
 
               <div class="list-group">
-                <button class="list-group-item list-group-item-action d-flex align-items-center" onclick="entriesModule.executeBulkAction('status', 'submitted')">
+                <button class="list-group-item list-group-item-action d-flex align-items-center" data-action="entriesModule.executeBulkAction" data-args='["status", "submitted"]'>
                   <span class="badge bg-info me-3">Status</span>
                   <span>Mark as Submitted</span>
                 </button>
-                <button class="list-group-item list-group-item-action d-flex align-items-center" onclick="entriesModule.executeBulkAction('status', 'under_review')">
+                <button class="list-group-item list-group-item-action d-flex align-items-center" data-action="entriesModule.executeBulkAction" data-args='["status", "under_review"]'>
                   <span class="badge bg-warning me-3">Status</span>
                   <span>Move to Under Review</span>
                 </button>
-                <button class="list-group-item list-group-item-action d-flex align-items-center" onclick="entriesModule.executeBulkAction('status', 'shortlisted')">
+                <button class="list-group-item list-group-item-action d-flex align-items-center" data-action="entriesModule.executeBulkAction" data-args='["status", "shortlisted"]'>
                   <span class="badge bg-primary me-3">Status</span>
                   <span>Mark as Shortlisted</span>
                 </button>
-                <button class="list-group-item list-group-item-action d-flex align-items-center" onclick="entriesModule.executeBulkAction('status', 'winner')">
+                <button class="list-group-item list-group-item-action d-flex align-items-center" data-action="entriesModule.executeBulkAction" data-args='["status", "winner"]'>
                   <span class="badge bg-success me-3">Status</span>
                   <span>Mark as Winner</span>
                 </button>
-                <button class="list-group-item list-group-item-action d-flex align-items-center" onclick="entriesModule.executeBulkAction('status', 'rejected')">
+                <button class="list-group-item list-group-item-action d-flex align-items-center" data-action="entriesModule.executeBulkAction" data-args='["status", "rejected"]'>
                   <span class="badge bg-danger me-3">Status</span>
                   <span>Reject Entries</span>
                 </button>
                 <hr class="my-2">
-                <button class="list-group-item list-group-item-action d-flex align-items-center" onclick="entriesModule.executeBulkAction('payment', 'paid')">
+                <button class="list-group-item list-group-item-action d-flex align-items-center" data-action="entriesModule.executeBulkAction" data-args='["payment", "paid"]'>
                   <span class="badge bg-success me-3">Payment</span>
                   <span>Mark as Paid</span>
                 </button>
-                <button class="list-group-item list-group-item-action d-flex align-items-center" onclick="entriesModule.executeBulkAction('payment', 'waived')">
+                <button class="list-group-item list-group-item-action d-flex align-items-center" data-action="entriesModule.executeBulkAction" data-args='["payment", "waived"]'>
                   <span class="badge bg-info me-3">Payment</span>
                   <span>Waive Payment</span>
                 </button>
                 <hr class="my-2">
-                <button class="list-group-item list-group-item-action d-flex align-items-center text-danger" onclick="entriesModule.executeBulkAction('delete')">
+                <button class="list-group-item list-group-item-action d-flex align-items-center text-danger" data-action="entriesModule.executeBulkAction" data-args='["delete"]'>
                   <span class="badge bg-danger me-3">Delete</span>
                   <span>Delete Selected Entries</span>
                 </button>
@@ -1707,7 +1707,7 @@ const entriesModule = {
                   <label class="form-label fw-bold">Voting Link:</label>
                   <div class="input-group">
                     <input type="text" class="form-control" value="${safeVotingUrl}" id="votingLinkInput" readonly>
-                    <button class="btn btn-primary" onclick="utils.copyToClipboard('${safeVotingUrl}', 'Link copied!')">
+                    <button class="btn btn-primary" data-action="utils.copyToClipboard" data-args='${JSON.stringify([safeVotingUrl, "Link copied!"])}'>
                       <i class="bi bi-clipboard"></i> Copy
                     </button>
                   </div>
@@ -1723,7 +1723,7 @@ const entriesModule = {
                   <div class="form-check form-switch">
                     <input class="form-check-input" type="checkbox" id="allowPublicVotingToggle"
                            ${entry.allow_public_voting ? 'checked' : ''}
-                           onchange="entriesModule.togglePublicVoting('${entryId}', this.checked)">
+                           data-on-check="entriesModule.togglePublicVoting" data-id="entryId">
                     <label class="form-check-label" for="allowPublicVotingToggle">
                       Allow public voting for this entry
                     </label>
@@ -1731,7 +1731,7 @@ const entriesModule = {
                   <div class="form-check form-switch">
                     <input class="form-check-input" type="checkbox" id="isPublicToggle"
                            ${entry.is_public ? 'checked' : ''}
-                           onchange="entriesModule.togglePublicVisibility('${entryId}', this.checked)">
+                           data-on-check="entriesModule.togglePublicVisibility" data-id="entryId">
                     <label class="form-check-label" for="isPublicToggle">
                       Show entry publicly
                     </label>
@@ -1750,7 +1750,7 @@ const entriesModule = {
               </div>
               <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-                <button type="button" class="btn btn-primary" onclick="window.open('${safeVotingUrl}', '_blank')">
+                <button type="button" class="btn btn-primary" data-action="window.open" data-args='${JSON.stringify([safeVotingUrl, "_blank"])}'>
                   <i class="bi bi-box-arrow-up-right me-2"></i>Open Voting Page
                 </button>
               </div>

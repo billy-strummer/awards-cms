@@ -159,7 +159,7 @@ const mediaGalleryModule = {
       untaggedView.style.display = 'block';
       untaggedView.innerHTML = `
         <div class="mb-4">
-          <button class="btn btn-outline-secondary btn-sm" onclick="mediaGalleryModule.showEventsListView()">
+          <button class="btn btn-outline-secondary btn-sm" data-action="mediaGalleryModule.showEventsListView">
             <i class="bi bi-arrow-left me-2"></i>Back to Events
           </button>
           <h3 class="mt-3">
@@ -190,7 +190,7 @@ const mediaGalleryModule = {
                   </p>
                   ${photo.caption ? `<p class="small text-muted mb-2">${utils.escapeHtml(photo.caption)}</p>` : ''}
                   <button class="btn btn-sm btn-primary w-100"
-                          onclick="mediaGalleryModule.editPhotoTags('${photo.id}')">
+                          data-action="mediaGalleryModule.editPhotoTags" data-id="photo.id">
                     <i class="bi bi-tags me-1"></i>Add Tags
                   </button>
                 </div>
@@ -262,7 +262,7 @@ const mediaGalleryModule = {
               </div>
               <div class="modal-footer">
                 <button class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                <button class="btn btn-primary" onclick="mediaGalleryModule._saveEditPhotoTags('${photoId}')"><i class="bi bi-save me-1"></i>Save</button>
+                <button class="btn btn-primary" data-action="mediaGalleryModule._saveEditPhotoTags" data-id="photoId"><i class="bi bi-save me-1"></i>Save</button>
               </div>
             </div>
           </div>
@@ -373,7 +373,7 @@ const mediaGalleryModule = {
 
       return `
         <div class="col-md-6 col-lg-4">
-          <div class="card h-100" style="cursor: pointer;" onclick="mediaGalleryModule.showEventContentsView('${event.id}')">
+          <div class="card h-100" style="cursor: pointer;" data-action="mediaGalleryModule.showEventContentsView" data-id="event.id">
             <div class="card-body">
               <div class="d-flex justify-content-between align-items-start mb-3">
                 <h5 class="card-title mb-0">
@@ -552,14 +552,14 @@ const mediaGalleryModule = {
 
         <!-- Quick Actions -->
         <div class="d-flex gap-2 mb-4 flex-wrap">
-          <button class="btn btn-primary btn-sm" onclick="mediaGalleryModule.openAddSectionModal()"><i class="bi bi-folder-plus me-1"></i>Add Section</button>
-          <button class="btn btn-outline-success btn-sm" onclick="mediaGalleryModule._bulkPublishAll()"><i class="bi bi-check-all me-1"></i>Publish All</button>
-          <button class="btn btn-outline-secondary btn-sm" onclick="mediaGalleryModule.downloadAllEventPhotos()"><i class="bi bi-download me-1"></i>Download All</button>
-          <button class="btn btn-outline-info btn-sm" onclick="mediaGalleryModule.openPublicGalleryPreview()"><i class="bi bi-eye me-1"></i>Public Gallery Preview</button>
-          <button class="btn btn-outline-warning btn-sm" onclick="mediaGalleryModule._setPhotographer()"><i class="bi bi-person-badge me-1"></i>Set Photographer</button>
-          <button class="btn btn-outline-danger btn-sm" onclick="mediaGalleryModule.openAutoTagFromRunningOrder()"><i class="bi bi-lightning me-1"></i>Auto-Tag from Running Order</button>
-          <button class="btn btn-sm btn-outline-dark" onclick="mediaGalleryModule.openNamingGuide()"><i class="bi bi-card-checklist me-1"></i>Naming Guide</button>
-          <button class="btn btn-sm btn-outline-dark" onclick="mediaGalleryModule.exportPhotographerCheatSheet()"><i class="bi bi-printer me-1"></i>Photographer Cheat Sheet</button>
+          <button class="btn btn-primary btn-sm" data-action="mediaGalleryModule.openAddSectionModal"><i class="bi bi-folder-plus me-1"></i>Add Section</button>
+          <button class="btn btn-outline-success btn-sm" data-action="mediaGalleryModule._bulkPublishAll"><i class="bi bi-check-all me-1"></i>Publish All</button>
+          <button class="btn btn-outline-secondary btn-sm" data-action="mediaGalleryModule.downloadAllEventPhotos"><i class="bi bi-download me-1"></i>Download All</button>
+          <button class="btn btn-outline-info btn-sm" data-action="mediaGalleryModule.openPublicGalleryPreview"><i class="bi bi-eye me-1"></i>Public Gallery Preview</button>
+          <button class="btn btn-outline-warning btn-sm" data-action="mediaGalleryModule._setPhotographer"><i class="bi bi-person-badge me-1"></i>Set Photographer</button>
+          <button class="btn btn-outline-danger btn-sm" data-action="mediaGalleryModule.openAutoTagFromRunningOrder"><i class="bi bi-lightning me-1"></i>Auto-Tag from Running Order</button>
+          <button class="btn btn-sm btn-outline-dark" data-action="mediaGalleryModule.openNamingGuide"><i class="bi bi-card-checklist me-1"></i>Naming Guide</button>
+          <button class="btn btn-sm btn-outline-dark" data-action="mediaGalleryModule.exportPhotographerCheatSheet"><i class="bi bi-printer me-1"></i>Photographer Cheat Sheet</button>
         </div>
 
         <!-- Sections with Photo Thumbnails -->
@@ -570,7 +570,7 @@ const mediaGalleryModule = {
           const sectionPublished = sectionPhotos.filter(p => p.published !== false).length;
           return `
           <div class="card mb-3">
-            <div class="card-header d-flex justify-content-between align-items-center" style="cursor:pointer;" onclick="mediaGalleryModule.viewSectionPhotos('${section.id}', '${utils.escapeHtml(section.gallery_name)}')">
+            <div class="card-header d-flex justify-content-between align-items-center" style="cursor:pointer;" data-action="mediaGalleryModule.viewSectionPhotos" data-args='${JSON.stringify([section.id, utils.escapeHtml(section.gallery_name)])}'>
               <div>
                 <h6 class="mb-0"><i class="bi bi-folder me-2"></i>${utils.escapeHtml(section.gallery_name)}
                   <span class="badge bg-primary ms-2">${sectionPhotos.length}</span>
@@ -579,8 +579,8 @@ const mediaGalleryModule = {
                 ${section.gallery_description ? `<small class="text-muted">${utils.escapeHtml(section.gallery_description)}</small>` : ''}
               </div>
               <div class="d-flex gap-2">
-                <button class="btn btn-sm btn-outline-primary" onclick="event.stopPropagation(); mediaGalleryModule.viewSectionPhotos('${section.id}', '${utils.escapeHtml(section.gallery_name)}')"><i class="bi bi-images me-1"></i>Open</button>
-                <button class="btn btn-sm btn-outline-secondary" onclick="event.stopPropagation(); mediaGalleryModule.editSection('${section.id}')"><i class="bi bi-pencil"></i></button>
+                <button class="btn btn-sm btn-outline-primary" data-action="mediaGalleryModule.viewSectionPhotos" data-args='${JSON.stringify([section.id, section.gallery_name])}' data-stop-propagation="true"><i class="bi bi-images me-1"></i>Open</button>
+                <button class="btn btn-sm btn-outline-secondary" data-action="mediaGalleryModule.editSection" data-id="${section.id}" data-stop-propagation="true"><i class="bi bi-pencil"></i></button>
               </div>
             </div>
             ${sectionPhotos.length > 0 ? `
@@ -590,7 +590,7 @@ const mediaGalleryModule = {
                   const isYT = p.file_type === 'video/youtube';
                   const thumb = isYT ? `https://img.youtube.com/vi/${p.file_url}/mqdefault.jpg` : p.thumbnail_url || p.file_url;
                   return `<div style="min-width:80px;width:80px;height:60px;border-radius:6px;overflow:hidden;flex-shrink:0;cursor:pointer;position:relative;${!p.published ? 'opacity:0.5;' : ''}"
-                    onclick="mediaGalleryModule.viewPhotoFull('${p.id}', '${utils.escapeHtml(p.file_url)}', '${utils.escapeHtml(p.title || '')}', '${isYT ? 'youtube' : 'image'}')">
+                    data-action="mediaGalleryModule.viewPhotoFull" data-args='${JSON.stringify([p.id, p.file_url, p.title || "", isYT ? "youtube" : "image"])}'>
                     <img src="${thumb}" style="width:100%;height:100%;object-fit:cover;">
                     ${p.featured ? '<div style="position:absolute;top:2px;right:2px;"><i class="bi bi-star-fill text-warning" style="font-size:0.7rem;filter:drop-shadow(0 0 2px black);"></i></div>' : ''}
                   </div>`;
@@ -610,9 +610,10 @@ const mediaGalleryModule = {
   async _bulkPublishAll() {
     if (!await utils.confirmDialog({ title: 'Publish All Photos', message: 'Publish all draft photos across all sections?', confirmText: 'Publish All', danger: false })) return;
     try {
-      const { data: sections } = await STATE.client.from('event_galleries').select('id').eq('event_id', this.currentEventId);
-      const sectionIds = (sections || []).map(s => s.id);
+      const secResult = await apiClient.select('event_galleries', { select: 'id', filters: { event_id: this.currentEventId }, pageSize: 1000 });
+      const sectionIds = (secResult.data || []).map(s => s.id);
       if (sectionIds.length > 0) {
+        // Direct call: complex query not supported by apiClient (.in + .eq combined filter for update)
         await STATE.client.from('media_gallery').update({ published: true }).in('gallery_section_id', sectionIds).eq('published', false);
       }
       utils.showToast('All photos published', 'success');
@@ -624,9 +625,10 @@ const mediaGalleryModule = {
 
   async downloadAllEventPhotos() {
     utils.showToast('Starting download of all event photos...', 'info');
-    const { data: sections } = await STATE.client.from('event_galleries').select('id, gallery_name').eq('event_id', this.currentEventId);
-    for (const section of (sections || [])) {
-      const { data: photos } = await STATE.client.from('media_gallery').select('file_url, title').eq('gallery_section_id', section.id);
+    const secRes = await apiClient.select('event_galleries', { select: 'id, gallery_name', filters: { event_id: this.currentEventId }, pageSize: 1000 });
+    for (const section of (secRes.data || [])) {
+      const photoRes = await apiClient.select('media_gallery', { select: 'file_url, title', filters: { gallery_section_id: section.id }, pageSize: 1000 });
+      const photos = photoRes.data;
       (photos || []).forEach((p, i) => {
         if (p.file_url && !p.file_url.includes('youtube')) {
           setTimeout(() => {
@@ -649,10 +651,12 @@ const mediaGalleryModule = {
     const esc = (str) => String(str || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#039;');
 
     try {
-      const { data: sections } = await STATE.client.from('event_galleries').select('*').eq('event_id', this.currentEventId).order('display_order');
-      const sectionIds = (sections || []).map(s => s.id);
+      const secResult = await apiClient.select('event_galleries', { filters: { event_id: this.currentEventId }, sort: { column: 'display_order', ascending: true }, pageSize: 1000 });
+      const sections = secResult.data || [];
+      const sectionIds = sections.map(s => s.id);
       let allPhotos = [];
       if (sectionIds.length > 0) {
+        // Direct call: complex query not supported by apiClient (.in + .eq combined filter)
         const { data } = await STATE.client.from('media_gallery').select('*, organisations!media_gallery_organisation_id_fkey(company_name)').in('gallery_section_id', sectionIds).eq('published', true).order('display_order');
         allPhotos = data || [];
       }
@@ -715,9 +719,10 @@ const mediaGalleryModule = {
     const name = prompt('Photographer name (will be applied to all photos without a photographer credit):');
     if (!name || !name.trim()) return;
     try {
-      const { data: sections } = await STATE.client.from('event_galleries').select('id').eq('event_id', this.currentEventId);
-      const sectionIds = (sections || []).map(s => s.id);
+      const secRes2 = await apiClient.select('event_galleries', { select: 'id', filters: { event_id: this.currentEventId }, pageSize: 1000 });
+      const sectionIds = (secRes2.data || []).map(s => s.id);
       if (sectionIds.length > 0) {
+        // Direct call: complex query not supported by apiClient (.in + .is combined filter for update)
         await STATE.client.from('media_gallery').update({ photographer: name.trim() }).in('gallery_section_id', sectionIds).is('photographer', null);
       }
       utils.showToast(`Photographer "${name.trim()}" set for uncredited photos`, 'success');
@@ -802,7 +807,7 @@ const mediaGalleryModule = {
     container.innerHTML = `
       <div class="d-flex justify-content-between align-items-center mb-3">
         <small class="text-muted">${videos.length} video(s)</small>
-        <button class="btn btn-sm ${this._videoReorderMode ? 'btn-primary' : 'btn-outline-primary'}" onclick="mediaGalleryModule.toggleVideoReorderMode()">
+        <button class="btn btn-sm ${this._videoReorderMode ? 'btn-primary' : 'btn-outline-primary'}" data-action="mediaGalleryModule.toggleVideoReorderMode">
           <i class="bi bi-${this._videoReorderMode ? 'check-circle' : 'arrows-move'} me-1"></i>
           ${this._videoReorderMode ? 'Done Reordering' : 'Reorder Videos'}
         </button>
@@ -878,13 +883,13 @@ const mediaGalleryModule = {
                 </div>
                 <div class="card-footer bg-transparent">
                   <div class="btn-group btn-group-sm w-100">
-                    <button class="btn btn-outline-primary" onclick="mediaGalleryModule.viewVideo('${video.id}')" title="View">
+                    <button class="btn btn-outline-primary" data-action="mediaGalleryModule.viewVideo" data-id="video.id" title="View">
                       <i class="bi bi-eye"></i>
                     </button>
-                    <button class="btn btn-outline-secondary" onclick="mediaGalleryModule.editVideo('${video.id}')" title="Edit">
+                    <button class="btn btn-outline-secondary" data-action="mediaGalleryModule.editVideo" data-id="video.id" title="Edit">
                       <i class="bi bi-pencil"></i>
                     </button>
-                    <button class="btn btn-outline-danger" onclick="mediaGalleryModule.deleteVideo('${video.id}')" title="Delete">
+                    <button class="btn btn-outline-danger" data-action="mediaGalleryModule.deleteVideo" data-id="video.id" title="Delete">
                       <i class="bi bi-trash"></i>
                     </button>
                   </div>
@@ -1032,11 +1037,10 @@ const mediaGalleryModule = {
     const prefix = context === 'bulk' ? 'bulkVideo' : 'video';
     const container = document.getElementById(`${prefix}TagsContainer`);
     if (!container) return;
-    const ctx = context === 'bulk' ? "'bulk'" : '';
     container.innerHTML = this.videoTags.map(tag => `
       <span class="badge bg-primary" style="font-size: 14px;">
         <i class="bi bi-building me-1"></i>${utils.escapeHtml(tag.name)}
-        <i class="bi bi-x-circle ms-1" style="cursor: pointer;" onclick="mediaGalleryModule.removeVideoTag('${tag.id}', ${ctx})"></i>
+        <i class="bi bi-x-circle ms-1" style="cursor: pointer;" data-action="mediaGalleryModule.removeVideoTag" data-args='${JSON.stringify([tag.id, context || ""])}'></i>
       </span>
     `).join('');
   },
@@ -1071,11 +1075,10 @@ const mediaGalleryModule = {
     const prefix = context === 'bulk' ? 'bulkVideo' : 'video';
     const container = document.getElementById(`${prefix}AwardTagsContainer`);
     if (!container) return;
-    const ctx = context === 'bulk' ? "'bulk'" : '';
     container.innerHTML = this.videoAwardTags.map(tag => `
       <span class="badge bg-success" style="font-size: 14px;">
         <i class="bi bi-trophy me-1"></i>${utils.escapeHtml(tag.name)}
-        <i class="bi bi-x-circle ms-1" style="cursor: pointer;" onclick="mediaGalleryModule.removeVideoAwardTag('${tag.id}', ${ctx})"></i>
+        <i class="bi bi-x-circle ms-1" style="cursor: pointer;" data-action="mediaGalleryModule.removeVideoAwardTag" data-args='${JSON.stringify([tag.id, context || ""])}'></i>
       </span>
     `).join('');
   },
@@ -1329,7 +1332,7 @@ const mediaGalleryModule = {
               </div>
               <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                <button type="button" class="btn btn-primary" onclick="mediaGalleryModule.saveVideoEdit('${videoId}')">
+                <button type="button" class="btn btn-primary" data-action="mediaGalleryModule.saveVideoEdit" data-id="videoId">
                   <i class="bi bi-check-lg me-1"></i>Save Changes
                 </button>
               </div>
@@ -1592,7 +1595,7 @@ const mediaGalleryModule = {
                     </td>
                     <td class="text-center">
                       <button class="btn btn-sm btn-outline-primary"
-                        onclick="mediaGalleryModule.onEventSelected('${item.event.id}');">
+                        data-action="mediaGalleryModule.onEventSelected" data-id="${item.event.id}">
                         <i class="bi bi-eye me-1"></i>View
                       </button>
                     </td>
@@ -1660,7 +1663,7 @@ const mediaGalleryModule = {
     contentDiv.innerHTML = `
       <div class="d-flex justify-content-between align-items-center mb-4">
         <h5><i class="bi bi-grid-3x3-gap me-2"></i>Gallery Sections (${sections.length})</h5>
-        <button class="btn btn-primary" onclick="mediaGalleryModule.openAddSectionModal()">
+        <button class="btn btn-primary" data-action="mediaGalleryModule.openAddSectionModal">
           <i class="bi bi-plus-circle me-2"></i>Add Gallery Section
         </button>
       </div>
@@ -1721,9 +1724,7 @@ const mediaGalleryModule = {
   renderSectionCard(section) {
     return `
       <div class="col-md-4">
-        <div class="card h-100 section-card" style="cursor: pointer; transition: transform 0.2s;"
-             onmouseover="this.style.transform='translateY(-5px)'"
-             onmouseout="this.style.transform='translateY(0)'">
+        <div class="card h-100 section-card hover-lift" style="cursor: pointer; transition: transform 0.2s;">
           <div class="card-body">
             <div class="d-flex justify-content-between align-items-start mb-3">
               <h5 class="card-title mb-0">
@@ -1736,12 +1737,12 @@ const mediaGalleryModule = {
                 </button>
                 <ul class="dropdown-menu dropdown-menu-end">
                   <li>
-                    <a class="dropdown-item" href="#" onclick="mediaGalleryModule.editSection('${section.id}'); return false;">
+                    <a class="dropdown-item" href="#" data-action="mediaGalleryModule.editSection" data-id="${section.id}" data-prevent-default="true">
                       <i class="bi bi-pencil text-warning me-2"></i>Edit
                     </a>
                   </li>
                   <li>
-                    <a class="dropdown-item text-danger" href="#" onclick="mediaGalleryModule.deleteSection('${section.id}', '${utils.escapeHtml(section.gallery_name).replace(/'/g, "\\'")}'); return false;">
+                    <a class="dropdown-item text-danger" href="#" data-action="mediaGalleryModule.deleteSection" data-args='${JSON.stringify([section.id, section.gallery_name])}' data-prevent-default="true">
                       <i class="bi bi-trash me-2"></i>Delete
                     </a>
                   </li>
@@ -1755,7 +1756,7 @@ const mediaGalleryModule = {
               <span class="badge bg-info" id="photoCount_${section.id}">
                 <i class="bi bi-camera me-1"></i>Loading...
               </span>
-              <button class="btn btn-sm btn-outline-primary" onclick="mediaGalleryModule.viewSectionPhotos('${section.id}', '${utils.escapeHtml(section.gallery_name).replace(/'/g, "\\'")}')">
+              <button class="btn btn-sm btn-outline-primary" data-action="mediaGalleryModule.viewSectionPhotos" data-args='${JSON.stringify([section.id, utils.escapeHtml(section.gallery_name).replace(/'/g, "\\'")])}'>
                 <i class="bi bi-eye me-1"></i>View Photos
               </button>
             </div>
@@ -2017,35 +2018,35 @@ const mediaGalleryModule = {
 
     contentDiv.innerHTML = `
       <div class="mb-4">
-        <button class="btn btn-link p-0 mb-3" onclick="mediaGalleryModule.onEventSelected('${this.currentEventId}')">
+        <button class="btn btn-link p-0 mb-3" data-action="mediaGalleryModule.onEventSelected" data-id="this.currentEventId">
           <i class="bi bi-arrow-left me-2"></i>Back to Gallery Sections
         </button>
 
         <div class="d-flex justify-content-between align-items-center mb-3">
           <h5><i class="bi bi-images me-2"></i>${utils.escapeHtml(sectionName)}</h5>
           <div class="btn-group flex-wrap">
-            <button class="btn btn-sm btn-primary" onclick="mediaGalleryModule.openUploadPhotosModal()">
+            <button class="btn btn-sm btn-primary" data-action="mediaGalleryModule.openUploadPhotosModal">
               <i class="bi bi-upload me-1"></i>Upload Photos
             </button>
-            <button class="btn btn-sm btn-outline-primary" onclick="mediaGalleryModule.openYouTubeVideoModal()">
+            <button class="btn btn-sm btn-outline-primary" data-action="mediaGalleryModule.openYouTubeVideoModal">
               <i class="bi bi-youtube me-1"></i>Add YouTube
             </button>
-            <button class="btn btn-sm btn-outline-warning" onclick="mediaGalleryModule.openAutoTagFromRunningOrder()" title="Auto-tag photos by matching filename prefixes to running order numbers">
+            <button class="btn btn-sm btn-outline-warning" data-action="mediaGalleryModule.openAutoTagFromRunningOrder" title="Auto-tag photos by matching filename prefixes to running order numbers">
               <i class="bi bi-lightning me-1"></i>Auto-Tag
             </button>
-            <button class="btn btn-sm btn-outline-info" onclick="mediaGalleryModule.findDuplicates()" title="Find duplicate or similar photos">
+            <button class="btn btn-sm btn-outline-info" data-action="mediaGalleryModule.findDuplicates" title="Find duplicate or similar photos">
               <i class="bi bi-files me-1"></i>Find Duplicates
             </button>
-            <button class="btn btn-sm btn-outline-dark" onclick="mediaGalleryModule.openNamingGuide()" title="Photo naming convention guide">
+            <button class="btn btn-sm btn-outline-dark" data-action="mediaGalleryModule.openNamingGuide" title="Photo naming convention guide">
               <i class="bi bi-card-checklist me-1"></i>Naming Guide
             </button>
-            <button class="btn btn-sm btn-outline-secondary" onclick="mediaGalleryModule.viewActivityLog()" title="View activity log">
+            <button class="btn btn-sm btn-outline-secondary" data-action="mediaGalleryModule.viewActivityLog" title="View activity log">
               <i class="bi bi-clock-history me-1"></i>Log
             </button>
-            <button class="btn btn-sm btn-outline-secondary" onclick="mediaGalleryModule.downloadAllPhotos('${utils.escapeHtml(sectionName).replace(/'/g, "\\'")}')">
+            <button class="btn btn-sm btn-outline-secondary" data-action="mediaGalleryModule.downloadAllPhotos" data-id="utils.escapeHtml(sectionName).replace(/'/g, "\\'")">
               <i class="bi bi-download me-1"></i>Download All
             </button>
-            <button class="btn btn-sm btn-outline-success" onclick="mediaGalleryModule.launchSlideshow()" title="Launch slideshow of published photos">
+            <button class="btn btn-sm btn-outline-success" data-action="mediaGalleryModule.launchSlideshow" title="Launch slideshow of published photos">
               <i class="bi bi-play-circle me-1"></i>Slideshow
             </button>
           </div>
@@ -2059,22 +2060,22 @@ const mediaGalleryModule = {
                 <label class="form-label small mb-1">Filter by Status:</label>
                 <div class="btn-group w-100" role="group">
                   <button type="button" class="btn btn-sm ${this.currentFilter === 'all' ? 'btn-primary' : 'btn-outline-primary'}"
-                    onclick="mediaGalleryModule.setFilter('all')">
+                    data-action="mediaGalleryModule.setFilter" data-id="all">
                     All <span class="badge ${this.currentFilter === 'all' ? 'bg-light text-primary' : 'bg-primary'}">${totalCount}</span>
                   </button>
                   <button type="button" class="btn btn-sm ${this.currentFilter === 'published' ? 'btn-success' : 'btn-outline-success'}"
-                    onclick="mediaGalleryModule.setFilter('published')">
+                    data-action="mediaGalleryModule.setFilter" data-id="published">
                     Published <span class="badge ${this.currentFilter === 'published' ? 'bg-light text-success' : 'bg-success'}">${publishedCount}</span>
                   </button>
                   <button type="button" class="btn btn-sm ${this.currentFilter === 'drafts' ? 'btn-secondary' : 'btn-outline-secondary'}"
-                    onclick="mediaGalleryModule.setFilter('drafts')">
+                    data-action="mediaGalleryModule.setFilter" data-id="drafts">
                     Drafts <span class="badge ${this.currentFilter === 'drafts' ? 'bg-light text-secondary' : 'bg-secondary'}">${draftCount}</span>
                   </button>
                 </div>
               </div>
               <div class="col-md-3">
                 <label class="form-label small mb-1"><i class="bi bi-sort-down me-1"></i>Sort by:</label>
-                <select class="form-select form-select-sm" onchange="mediaGalleryModule.setSortBy(this.value)">
+                <select class="form-select form-select-sm" data-on-change="mediaGalleryModule.setSortBy">
                   <option value="display_order" ${this.currentSortBy === 'display_order' ? 'selected' : ''}>Manual Order (drag)</option>
                   <option value="name_asc" ${this.currentSortBy === 'name_asc' ? 'selected' : ''}>Name A-Z</option>
                   <option value="name_desc" ${this.currentSortBy === 'name_desc' ? 'selected' : ''}>Name Z-A</option>
@@ -2092,9 +2093,9 @@ const mediaGalleryModule = {
                   <input type="text" class="form-control" id="gallerySearchBox"
                     placeholder="Search by title, organisation, or award..."
                     value="${utils.escapeHtml(this.currentSearchTerm)}"
-                    onkeyup="mediaGalleryModule.debouncedSearch(this.value)">
+                    data-on-input="mediaGalleryModule.debouncedSearch">
                   ${this.currentSearchTerm ? `
-                    <button class="btn btn-outline-secondary" onclick="mediaGalleryModule.setSearch('')">
+                    <button class="btn btn-outline-secondary" data-action="mediaGalleryModule.clearSearch">
                       <i class="bi bi-x"></i>
                     </button>
                   ` : ''}
@@ -2109,13 +2110,13 @@ const mediaGalleryModule = {
         <div class="d-flex justify-content-between align-items-center mb-2">
           <div class="d-flex align-items-center gap-2">
             <button class="btn btn-sm ${allPageSelected ? 'btn-primary' : 'btn-outline-primary'}"
-              onclick="mediaGalleryModule.selectAllPage()" title="Select/deselect all on this page">
+              data-action="mediaGalleryModule.selectAllPage" title="Select/deselect all on this page">
               <i class="bi bi-${allPageSelected ? 'check-square-fill' : 'square'} me-1"></i>
               ${allPageSelected ? 'Deselect Page' : 'Select Page'} (${pagePhotos.length})
             </button>
             ${filteredPhotos.length > this.photosPerPage ? `
             <button class="btn btn-sm btn-outline-secondary"
-              onclick="mediaGalleryModule.selectAllFiltered()" title="Select all ${filteredPhotos.length} filtered photos">
+              data-action="mediaGalleryModule.selectAllFiltered" title="Select all ${filteredPhotos.length} filtered photos">
               <i class="bi bi-check-all me-1"></i>Select All ${filteredPhotos.length}
             </button>` : ''}
             ${this.selectedPhotoIds.size > 0 ? `
@@ -2155,13 +2156,13 @@ const mediaGalleryModule = {
         <nav class="mt-4">
           <ul class="pagination justify-content-center">
             <li class="page-item ${this.currentPage === 1 ? 'disabled' : ''}">
-              <a class="page-link" href="#" onclick="event.preventDefault(); mediaGalleryModule.goToPage(${this.currentPage - 1})">
+              <a class="page-link" href="#" data-action="mediaGalleryModule.goToPage" data-id="${this.currentPage - 1}" data-prevent-default="true">
                 <i class="bi bi-chevron-left"></i>
               </a>
             </li>
             ${this._buildPaginationItems(this.currentPage, totalPages)}
             <li class="page-item ${this.currentPage === totalPages ? 'disabled' : ''}">
-              <a class="page-link" href="#" onclick="event.preventDefault(); mediaGalleryModule.goToPage(${this.currentPage + 1})">
+              <a class="page-link" href="#" data-action="mediaGalleryModule.goToPage" data-id="${this.currentPage + 1}" data-prevent-default="true">
                 <i class="bi bi-chevron-right"></i>
               </a>
             </li>
@@ -2180,26 +2181,26 @@ const mediaGalleryModule = {
                 <span id="selectedCount">0</span> selected
               </div>
               <div class="btn-group btn-group-sm">
-                <button class="btn btn-success" onclick="mediaGalleryModule.bulkPublish()" title="Publish selected">
+                <button class="btn btn-success" data-action="mediaGalleryModule.bulkPublish" title="Publish selected">
                   <i class="bi bi-eye me-1"></i>Publish
                 </button>
-                <button class="btn btn-secondary" onclick="mediaGalleryModule.bulkUnpublish()" title="Unpublish selected">
+                <button class="btn btn-secondary" data-action="mediaGalleryModule.bulkUnpublish" title="Unpublish selected">
                   <i class="bi bi-eye-slash me-1"></i>Unpublish
                 </button>
-                <button class="btn btn-outline-primary" onclick="mediaGalleryModule.bulkTag()" title="Tag selected photos to org/award">
+                <button class="btn btn-outline-primary" data-action="mediaGalleryModule.bulkTag" title="Tag selected photos to org/award">
                   <i class="bi bi-tags me-1"></i>Bulk Tag
                 </button>
-                <button class="btn btn-outline-info" onclick="mediaGalleryModule.bulkMoveToSection()" title="Move to another section">
+                <button class="btn btn-outline-info" data-action="mediaGalleryModule.bulkMoveToSection" title="Move to another section">
                   <i class="bi bi-arrow-left-right me-1"></i>Move
                 </button>
-                <button class="btn btn-outline-secondary" onclick="mediaGalleryModule.bulkDownload()" title="Download selected">
+                <button class="btn btn-outline-secondary" data-action="mediaGalleryModule.bulkDownload" title="Download selected">
                   <i class="bi bi-download me-1"></i>Download
                 </button>
-                <button class="btn btn-danger" onclick="mediaGalleryModule.bulkDelete()" title="Delete selected">
+                <button class="btn btn-danger" data-action="mediaGalleryModule.bulkDelete" title="Delete selected">
                   <i class="bi bi-trash me-1"></i>Delete
                 </button>
               </div>
-              <button class="btn btn-sm btn-outline-secondary" onclick="mediaGalleryModule.clearSelection()">
+              <button class="btn btn-sm btn-outline-secondary" data-action="mediaGalleryModule.clearSelection">
                 <i class="bi bi-x-circle me-1"></i>Clear
               </button>
             </div>
@@ -2285,17 +2286,17 @@ const mediaGalleryModule = {
     if (end - start < maxVisible - 1) start = Math.max(1, end - maxVisible + 1);
 
     if (start > 1) {
-      items += `<li class="page-item"><a class="page-link" href="#" onclick="event.preventDefault(); mediaGalleryModule.goToPage(1)">1</a></li>`;
+      items += `<li class="page-item"><a class="page-link" href="#" data-action="mediaGalleryModule.goToPage" data-id="1" data-prevent-default="true">1</a></li>`;
       if (start > 2) items += `<li class="page-item disabled"><span class="page-link">...</span></li>`;
     }
     for (let i = start; i <= end; i++) {
       items += `<li class="page-item ${i === current ? 'active' : ''}">
-        <a class="page-link" href="#" onclick="event.preventDefault(); mediaGalleryModule.goToPage(${i})">${i}</a>
+        <a class="page-link" href="#" data-action="mediaGalleryModule.goToPage" data-id="${i}" data-prevent-default="true">${i}</a>
       </li>`;
     }
     if (end < total) {
       if (end < total - 1) items += `<li class="page-item disabled"><span class="page-link">...</span></li>`;
-      items += `<li class="page-item"><a class="page-link" href="#" onclick="event.preventDefault(); mediaGalleryModule.goToPage(${total})">${total}</a></li>`;
+      items += `<li class="page-item"><a class="page-link" href="#" data-action="mediaGalleryModule.goToPage" data-id="${total}" data-prevent-default="true">${total}</a></li>`;
     }
     return items;
   },
@@ -2372,8 +2373,8 @@ const mediaGalleryModule = {
     try {
       // Load orgs and awards for dropdowns
       const [orgsResult, awardsResult] = await Promise.all([
-        STATE.client.from('organisations').select('id, company_name').order('company_name'),
-        STATE.client.from('awards').select('id, award_name').eq('event_id', this.currentEventId).order('award_name')
+        apiClient.select('organisations', { select: 'id, company_name', sort: { column: 'company_name', ascending: true }, pageSize: 1000 }),
+        apiClient.select('awards', { select: 'id, award_name', filters: { event_id: this.currentEventId }, sort: { column: 'award_name', ascending: true }, pageSize: 1000 })
       ]);
 
       const orgs = orgsResult.data || [];
@@ -2410,7 +2411,7 @@ const mediaGalleryModule = {
               </div>
               <div class="modal-footer">
                 <button class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                <button class="btn btn-primary" onclick="mediaGalleryModule.executeBulkTag()">
+                <button class="btn btn-primary" data-action="mediaGalleryModule.executeBulkTag">
                   <i class="bi bi-check-circle me-1"></i>Apply Tags
                 </button>
               </div>
@@ -2544,7 +2545,7 @@ const mediaGalleryModule = {
                 <div class="card mb-3">
                   <div class="card-header py-2 d-flex justify-content-between align-items-center">
                     <span><span class="badge bg-warning text-dark me-2">${dup.type}</span> <code>${utils.escapeHtml(dup.detail)}</code> (${dup.photos.length} photos)</span>
-                    <button class="btn btn-sm btn-outline-primary" onclick="mediaGalleryModule.selectDuplicateGroup(${gi})" title="Select all in this group for bulk action">
+                    <button class="btn btn-sm btn-outline-primary" data-action="mediaGalleryModule.selectDuplicateGroup" data-id="${gi}" title="Select all in this group for bulk action">
                       <i class="bi bi-check-all me-1"></i>Select Group
                     </button>
                   </div>
@@ -2873,7 +2874,7 @@ const mediaGalleryModule = {
           ondragleave="mediaGalleryModule.handlePhotoDragLeave(event, '${photo.id}')"
           ondragend="mediaGalleryModule.handlePhotoDragEnd(event)"
           ` : ''}
-          onclick="mediaGalleryModule.toggleCardSelection(event, '${photo.id}')"
+          data-action="mediaGalleryModule.toggleCardSelection" data-id="${photo.id}"
           style="cursor: pointer; transition: all 0.2s; ${isSelected ? 'box-shadow: 0 0 15px rgba(13, 110, 253, 0.5);' : ''}">
           ${canDrag ? `
           <div class="position-absolute top-0 start-0 m-2" style="z-index: 10;">
@@ -2886,10 +2887,10 @@ const mediaGalleryModule = {
           ${isImage ?
             `<img src="${photo.file_url}" class="card-img-top ${!isPublished ? 'opacity-50' : ''}" alt="${utils.escapeHtml(photo.title || 'Photo')}"
               style="height: 200px; object-fit: cover; cursor: pointer;"
-              onclick="mediaGalleryModule.viewPhotoFull('${photo.id}', '${utils.escapeHtml(photo.file_url)}', '${utils.escapeHtml(photo.title || 'Photo')}', 'image')">` :
+              data-action="mediaGalleryModule.viewPhotoFull" data-args='${JSON.stringify([photo.id, photo.file_url, photo.title || "Photo", "image"]).replace(/'/g, "&#39;")}'>` :
             isYouTube ?
             `<div class="card-img-top ${!isPublished ? 'opacity-50' : ''}" style="height: 200px; position: relative; cursor: pointer;"
-              onclick="mediaGalleryModule.viewPhotoFull('${photo.id}', '${utils.escapeHtml(photo.file_url)}', '${utils.escapeHtml(photo.title || 'Video')}', 'youtube')">
+              data-action="mediaGalleryModule.viewPhotoFull" data-args='${JSON.stringify([photo.id, photo.file_url, photo.title || "Video", "youtube"]).replace(/'/g, "&#39;")}'>
               <img src="https://img.youtube.com/vi/${photo.file_url}/mqdefault.jpg"
                 alt="${utils.escapeHtml(photo.title || 'YouTube Video')}"
                 style="width: 100%; height: 100%; object-fit: cover;">
@@ -2915,13 +2916,13 @@ const mediaGalleryModule = {
               ${videoTypeLabel ? `<span class="badge bg-danger me-1"><i class="bi bi-camera-video me-1"></i>${videoTypeLabel}</span>` : ''}
               <span class="badge ${orgName ? 'bg-success' : 'bg-warning'} me-1"
                 style="cursor: pointer;"
-                onclick="mediaGalleryModule.quickEditTag('${photo.id}', 'org')"
+                data-action="mediaGalleryModule.quickEditTag" data-args='${JSON.stringify([photo.id, "org"])}'
                 title="Click to change organisation">
                 <i class="bi bi-building me-1"></i>${orgName ? utils.escapeHtml(orgName) : 'No Org'}
               </span>
               <span class="badge ${awardName ? 'bg-info' : 'bg-warning'}"
                 style="cursor: pointer;"
-                onclick="mediaGalleryModule.quickEditTag('${photo.id}', 'award')"
+                data-action="mediaGalleryModule.quickEditTag" data-args='${JSON.stringify([photo.id, "award"])}'
                 title="Click to change award">
                 <i class="bi bi-trophy me-1"></i>${awardName ? utils.escapeHtml(awardName) : 'No Award'}
               </span>
@@ -2936,23 +2937,23 @@ const mediaGalleryModule = {
             </div>
 
             <div class="btn-group btn-group-sm w-100 mt-2">
-              <button class="btn btn-outline-primary" onclick="mediaGalleryModule.tagPhoto('${photo.id}')" title="Tag">
+              <button class="btn btn-outline-primary" data-action="mediaGalleryModule.tagPhoto" data-id="photo.id" title="Tag">
                 <i class="bi bi-tag"></i>
               </button>
-              <button class="btn ${photo.featured ? 'btn-warning' : 'btn-outline-warning'}" onclick="mediaGalleryModule.toggleFeatured('${photo.id}', ${!photo.featured})" title="${photo.featured ? 'Unfeature' : 'Feature'}">
+              <button class="btn ${photo.featured ? 'btn-warning' : 'btn-outline-warning'}" data-action="mediaGalleryModule.toggleFeatured" data-args='${JSON.stringify([photo.id, !photo.featured])}' title="${photo.featured ? 'Unfeature' : 'Feature'}">
                 <i class="bi bi-star${photo.featured ? '-fill' : ''}"></i>
               </button>
               ${!isYouTube ? `
-                <button class="btn btn-outline-secondary" onclick="mediaGalleryModule.downloadPhoto('${photo.file_url}', '${utils.escapeHtml(photo.title || 'photo').replace(/'/g, "\\'")}'); event.stopPropagation();" title="Download">
+                <button class="btn btn-outline-secondary" data-action="mediaGalleryModule.downloadPhoto" data-args='${JSON.stringify([photo.file_url, photo.title || "photo"]).replace(/'/g, "&#39;")}' data-stop-propagation="true" title="Download">
                   <i class="bi bi-download"></i>
                 </button>
               ` : ''}
               <button class="btn ${isPublished ? 'btn-outline-secondary' : 'btn-outline-success'}"
-                onclick="mediaGalleryModule.togglePublish('${photo.id}', ${!isPublished})"
+                data-action="mediaGalleryModule.togglePublish" data-args='${JSON.stringify([photo.id, !isPublished])}'
                 title="${isPublished ? 'Unpublish' : 'Publish'}">
                 <i class="bi bi-${isPublished ? 'eye-slash' : 'eye'}"></i>
               </button>
-              <button class="btn btn-outline-danger" onclick="mediaGalleryModule.deletePhoto('${photo.id}')" title="Delete">
+              <button class="btn btn-outline-danger" data-action="mediaGalleryModule.deletePhoto" data-id="photo.id" title="Delete">
                 <i class="bi bi-trash"></i>
               </button>
             </div>
@@ -3037,7 +3038,7 @@ const mediaGalleryModule = {
                 <img src="${e.target.result}" class="card-img-top" alt="${file.name}"
                   style="height: 100px; object-fit: cover;">
                 <button type="button" class="btn btn-sm btn-danger position-absolute top-0 end-0 m-1"
-                  onclick="mediaGalleryModule.removeFileFromPreview(${index})"
+                  data-action="mediaGalleryModule.removeFileFromPreview" data-id="${index}"
                   title="Remove">
                   <i class="bi bi-x"></i>
                 </button>
@@ -3060,7 +3061,7 @@ const mediaGalleryModule = {
                 <i class="bi bi-play-circle text-white" style="font-size: 2rem;"></i>
               </div>
               <button type="button" class="btn btn-sm btn-danger position-absolute top-0 end-0 m-1"
-                onclick="mediaGalleryModule.removeFileFromPreview(${index})"
+                data-action="mediaGalleryModule.removeFileFromPreview" data-id="${index}"
                 title="Remove">
                 <i class="bi bi-x"></i>
               </button>
@@ -4006,19 +4007,19 @@ const mediaGalleryModule = {
             <div class="modal-body">
               <div class="text-center mb-3">
                 <div class="btn-group mb-3">
-                  <button class="btn btn-outline-secondary" onclick="mediaGalleryModule._rotatePreview(-90)" title="Rotate left">
+                  <button class="btn btn-outline-secondary" data-action="mediaGalleryModule._rotatePreview" data-id="-90" title="Rotate left">
                     <i class="bi bi-arrow-counterclockwise me-1"></i>Rotate Left
                   </button>
-                  <button class="btn btn-outline-secondary" onclick="mediaGalleryModule._rotatePreview(90)" title="Rotate right">
+                  <button class="btn btn-outline-secondary" data-action="mediaGalleryModule._rotatePreview" data-id="90" title="Rotate right">
                     <i class="bi bi-arrow-clockwise me-1"></i>Rotate Right
                   </button>
-                  <button class="btn btn-outline-secondary" onclick="mediaGalleryModule._flipPreview('h')" title="Flip horizontal">
+                  <button class="btn btn-outline-secondary" data-action="mediaGalleryModule._flipPreview" data-id="h" title="Flip horizontal">
                     <i class="bi bi-symmetry-vertical me-1"></i>Flip H
                   </button>
-                  <button class="btn btn-outline-secondary" onclick="mediaGalleryModule._flipPreview('v')" title="Flip vertical">
+                  <button class="btn btn-outline-secondary" data-action="mediaGalleryModule._flipPreview" data-id="v" title="Flip vertical">
                     <i class="bi bi-symmetry-horizontal me-1"></i>Flip V
                   </button>
-                  <button class="btn btn-outline-warning" onclick="mediaGalleryModule._resetCropRotate()" title="Reset all changes">
+                  <button class="btn btn-outline-warning" data-action="mediaGalleryModule._resetCropRotate" title="Reset all changes">
                     <i class="bi bi-arrow-repeat me-1"></i>Reset
                   </button>
                 </div>
@@ -4032,25 +4033,25 @@ const mediaGalleryModule = {
                   <div class="col-3">
                     <div class="input-group input-group-sm">
                       <span class="input-group-text">X</span>
-                      <input type="number" class="form-control" id="cropX" value="0" min="0" onchange="mediaGalleryModule._updateCropFromInputs()">
+                      <input type="number" class="form-control" id="cropX" value="0" min="0" data-on-change="mediaGalleryModule._updateCropFromInputs">
                     </div>
                   </div>
                   <div class="col-3">
                     <div class="input-group input-group-sm">
                       <span class="input-group-text">Y</span>
-                      <input type="number" class="form-control" id="cropY" value="0" min="0" onchange="mediaGalleryModule._updateCropFromInputs()">
+                      <input type="number" class="form-control" id="cropY" value="0" min="0" data-on-change="mediaGalleryModule._updateCropFromInputs">
                     </div>
                   </div>
                   <div class="col-3">
                     <div class="input-group input-group-sm">
                       <span class="input-group-text">W</span>
-                      <input type="number" class="form-control" id="cropW" value="0" min="0" onchange="mediaGalleryModule._updateCropFromInputs()">
+                      <input type="number" class="form-control" id="cropW" value="0" min="0" data-on-change="mediaGalleryModule._updateCropFromInputs">
                     </div>
                   </div>
                   <div class="col-3">
                     <div class="input-group input-group-sm">
                       <span class="input-group-text">H</span>
-                      <input type="number" class="form-control" id="cropH" value="0" min="0" onchange="mediaGalleryModule._updateCropFromInputs()">
+                      <input type="number" class="form-control" id="cropH" value="0" min="0" data-on-change="mediaGalleryModule._updateCropFromInputs">
                     </div>
                   </div>
                 </div>
@@ -4058,7 +4059,7 @@ const mediaGalleryModule = {
             </div>
             <div class="modal-footer">
               <button class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-              <button class="btn btn-success" onclick="mediaGalleryModule._saveCropRotate('${photoId}')">
+              <button class="btn btn-success" data-action="mediaGalleryModule._saveCropRotate" data-id="photoId">
                 <i class="bi bi-check-circle me-1"></i>Save Changes
               </button>
             </div>
@@ -4277,7 +4278,7 @@ const mediaGalleryModule = {
       user: STATE.currentUser?.email || 'unknown'
     };
     try {
-      const { error } = await STATE.client.from('cms_audit_logs').insert({
+      await apiClient.insert('cms_audit_logs', {
         action: action,
         entity: 'media_gallery',
         entity_id: targetId,
@@ -4290,7 +4291,6 @@ const mediaGalleryModule = {
         },
         created_at: entry.timestamp
       });
-      if (error) throw error;
     } catch (e) {
       // Fallback to localStorage
       try {
@@ -4378,7 +4378,7 @@ const mediaGalleryModule = {
               `}
             </div>
             <div class="modal-footer">
-              <button class="btn btn-outline-danger btn-sm" onclick="(async()=>{if(!await utils.confirmDialog({title:'Clear Logs',message:'Clear all activity logs?',confirmText:'Clear',danger:true}))return;try{await STATE.client.from('cms_audit_logs').delete().eq('entity','media_gallery');} catch(e){localStorage.removeItem('mediaGalleryActivityLog');}bootstrap.Modal.getInstance(document.getElementById('activityLogModal'))?.hide();utils.showToast('Activity log cleared','success');})()">
+              <button class="btn btn-outline-danger btn-sm" onclick="(async()=>{if(!await utils.confirmDialog({title:'Clear Logs',message:'Clear all activity logs?',confirmText:'Clear',danger:true}))return;try{await apiClient.deleteByFilters('cms_audit_logs',{entity:'media_gallery'});} catch(e){localStorage.removeItem('mediaGalleryActivityLog');}bootstrap.Modal.getInstance(document.getElementById('activityLogModal'))?.hide();utils.showToast('Activity log cleared','success');})()">
                 <i class="bi bi-trash me-1"></i>Clear Log
               </button>
               <button class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
@@ -4503,7 +4503,7 @@ const mediaGalleryModule = {
             <div class="col-md-2 col-sm-3">
               <div class="card h-100 ${!p.published ? 'border-secondary opacity-75' : ''}">
                 <img src="${thumb}" class="card-img-top" style="height:120px;object-fit:cover;cursor:pointer;"
-                  onclick="mediaGalleryModule.viewPhotoFull('${p.id}', '${utils.escapeHtml(p.file_url)}', '${utils.escapeHtml(p.title || '')}', '${isYT ? 'youtube' : 'image'}')">
+                  data-action="mediaGalleryModule.viewPhotoFull" data-args='${JSON.stringify([p.id, p.file_url, p.title || "", isYT ? "youtube" : "image"]).replace(/'/g, "&#39;")}'>
                 <div class="card-body p-1">
                   <small class="d-block text-truncate fw-semibold">${utils.escapeHtml(p.title || 'Untitled')}</small>
                   ${awardName ? `<small class="badge bg-info">${utils.escapeHtml(awardName)}</small>` : ''}
@@ -4639,8 +4639,8 @@ const mediaGalleryModule = {
               </div>
             </div>
             <div class="modal-footer">
-              <button class="btn btn-outline-secondary" onclick="mediaGalleryModule._printNamingGuide()"><i class="bi bi-printer me-1"></i>Print Guide</button>
-              <button class="btn btn-outline-primary" onclick="mediaGalleryModule.exportPhotographerCheatSheet()"><i class="bi bi-download me-1"></i>Download Cheat Sheet</button>
+              <button class="btn btn-outline-secondary" data-action="mediaGalleryModule._printNamingGuide"><i class="bi bi-printer me-1"></i>Print Guide</button>
+              <button class="btn btn-outline-primary" data-action="mediaGalleryModule.exportPhotographerCheatSheet"><i class="bi bi-download me-1"></i>Download Cheat Sheet</button>
               <button class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
             </div>
           </div>
@@ -4663,7 +4663,7 @@ const mediaGalleryModule = {
     </head><body>
       <h2 class="mb-4">Photo Naming Convention Guide</h2>
       ${content}
-      <div class="text-center mt-4 no-print"><button class="btn btn-primary" onclick="window.print()">Print</button></div>
+      <div class="text-center mt-4 no-print"><button class="btn btn-primary" data-action="window.print">Print</button></div>
     </body></html>`);
     win.document.close();
   },
@@ -4780,7 +4780,7 @@ const mediaGalleryModule = {
   </div>
 
   <div class="text-center mt-4 no-print" style="text-align:center;margin-top:20px;">
-    <button onclick="window.print()" style="padding:10px 30px;font-size:1rem;background:#0d6efd;color:white;border:none;border-radius:6px;cursor:pointer;">Print Cheat Sheet</button>
+    <button data-action="window.print" style="padding:10px 30px;font-size:1rem;background:#0d6efd;color:white;border:none;border-radius:6px;cursor:pointer;">Print Cheat Sheet</button>
   </div>
 </body></html>`;
 
@@ -5094,7 +5094,7 @@ const mediaGalleryModule = {
             </div>
             <div class="modal-footer">
               <button class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-              <button class="btn btn-warning" onclick="mediaGalleryModule._executeAutoTag()" ${newMatches.length === 0 ? 'disabled' : ''}>
+              <button class="btn btn-warning" data-action="mediaGalleryModule._executeAutoTag" ${newMatches.length === 0 ? 'disabled' : ''}>
                 <i class="bi bi-lightning me-1"></i>Apply Tags (${newMatches.length} photos)
               </button>
             </div>
@@ -5300,12 +5300,12 @@ const mediaGalleryModule = {
             created_at: new Date().toISOString()
           };
 
-          const { error } = await STATE.client.from('media_items').insert([videoData]);
-          if (error) {
-            console.error('Error inserting video:', youtubeId, error);
-            failCount++;
-          } else {
+          try {
+            await apiClient.insert('media_items', videoData);
             successCount++;
+          } catch (insertErr) {
+            console.error('Error inserting video:', youtubeId, insertErr);
+            failCount++;
           }
         }
 
@@ -5401,11 +5401,10 @@ const mediaGalleryModule = {
 
     // Load a sample photo from the event to preview
     const sectionVal = document.getElementById('watermarkSection').value;
-    let query = STATE.client.from('media_gallery').select('file_url').eq('event_id', this.currentEventId).limit(1);
-    if (sectionVal !== 'all') {
-      query = query.eq('gallery_section_id', sectionVal);
-    }
-    const { data: photos } = await query;
+    const wmFilters = { event_id: this.currentEventId };
+    if (sectionVal !== 'all') wmFilters.gallery_section_id = sectionVal;
+    const wmResult = await apiClient.select('media_gallery', { select: 'file_url', filters: wmFilters, pageSize: 1 });
+    const photos = wmResult.data;
 
     if (!photos || photos.length === 0) {
       utils.showToast('No photos found to preview', 'warning');
@@ -5473,13 +5472,15 @@ const mediaGalleryModule = {
     const opacity = parseInt(document.getElementById('watermarkOpacity').value) / 100;
 
     // Load all photos for the selected scope
-    let query = STATE.client.from('media_gallery').select('id, file_url, title').eq('event_id', this.currentEventId);
-    if (sectionVal !== 'all') {
-      query = query.eq('gallery_section_id', sectionVal);
-    }
-    const { data: photos, error } = await query;
+    const wmFilters2 = { event_id: this.currentEventId };
+    if (sectionVal !== 'all') wmFilters2.gallery_section_id = sectionVal;
+    let photos, wmError;
+    try {
+      const wmRes = await apiClient.select('media_gallery', { select: 'id, file_url, title', filters: wmFilters2, pageSize: 1000 });
+      photos = wmRes.data;
+    } catch (e) { wmError = e; }
 
-    if (error || !photos || photos.length === 0) {
+    if (wmError || !photos || photos.length === 0) {
       utils.showToast('No photos found to watermark', 'warning');
       return;
     }
@@ -5519,7 +5520,7 @@ const mediaGalleryModule = {
       document.getElementById('watermarkPreviewResult').innerHTML = `
         <div class="alert alert-success">
           <i class="bi bi-check-circle me-2"></i>${successCount} photos watermarked successfully.
-          <button class="btn btn-sm btn-success ms-2" onclick="mediaGalleryModule.downloadWatermarked()">
+          <button class="btn btn-sm btn-success ms-2" data-action="mediaGalleryModule.downloadWatermarked">
             <i class="bi bi-download me-1"></i>Download All (${successCount} files)
           </button>
         </div>`;
@@ -5879,7 +5880,7 @@ const mediaGalleryModule = {
           <label class="form-label">Paste video URLs from this playlist (one per line):</label>
           <textarea class="form-control" id="playlistVideoUrls" rows="8" placeholder="https://www.youtube.com/watch?v=VIDEO_ID_1&#10;https://www.youtube.com/watch?v=VIDEO_ID_2&#10;..."></textarea>
         </div>
-        <button class="btn btn-outline-primary btn-sm" onclick="mediaGalleryModule.previewPlaylistVideos()">
+        <button class="btn btn-outline-primary btn-sm" data-action="mediaGalleryModule.previewPlaylistVideos">
           <i class="bi bi-eye me-1"></i>Preview Videos
         </button>`;
       previewEl.innerHTML = '';
@@ -6116,26 +6117,30 @@ const mediaGalleryModule = {
 
     try {
       // Fetch photos for event 1
-      let q1 = STATE.client.from('media_gallery').select('id, file_url, title, caption, organisation_id, organisations!media_gallery_organisation_id_fkey(company_name)').eq('event_id', event1Id);
-      let q2 = STATE.client.from('media_gallery').select('id, file_url, title, caption, organisation_id, organisations!media_gallery_organisation_id_fkey(company_name)').eq('event_id', event2Id);
+      const photoFilters1 = { event_id: event1Id };
+      const photoFilters2 = { event_id: event2Id };
+      if (orgId) { photoFilters1.organisation_id = orgId; photoFilters2.organisation_id = orgId; }
 
-      if (orgId) {
-        q1 = q1.eq('organisation_id', orgId);
-        q2 = q2.eq('organisation_id', orgId);
-      }
-
-      const [{ data: photos1 }, { data: photos2 }] = await Promise.all([q1, q2]);
+      const photoSelect = 'id, file_url, title, caption, organisation_id, organisations!media_gallery_organisation_id_fkey(company_name)';
+      const [pRes1, pRes2] = await Promise.all([
+        apiClient.select('media_gallery', { select: photoSelect, filters: photoFilters1, pageSize: 1000 }),
+        apiClient.select('media_gallery', { select: photoSelect, filters: photoFilters2, pageSize: 1000 })
+      ]);
+      const photos1 = pRes1.data;
+      const photos2 = pRes2.data;
 
       // Fetch videos for both events
-      let vq1 = STATE.client.from('media_items').select('id, title, youtube_id, organisation_id, organisations(company_name)').eq('event_id', event1Id).eq('media_type', 'video');
-      let vq2 = STATE.client.from('media_items').select('id, title, youtube_id, organisation_id, organisations(company_name)').eq('event_id', event2Id).eq('media_type', 'video');
+      const videoFilters1 = { event_id: event1Id, media_type: 'video' };
+      const videoFilters2 = { event_id: event2Id, media_type: 'video' };
+      if (orgId) { videoFilters1.organisation_id = orgId; videoFilters2.organisation_id = orgId; }
 
-      if (orgId) {
-        vq1 = vq1.eq('organisation_id', orgId);
-        vq2 = vq2.eq('organisation_id', orgId);
-      }
-
-      const [{ data: videos1 }, { data: videos2 }] = await Promise.all([vq1, vq2]);
+      const videoSelect = 'id, title, youtube_id, organisation_id, organisations(company_name)';
+      const [vRes1, vRes2] = await Promise.all([
+        apiClient.select('media_items', { select: videoSelect, filters: videoFilters1, pageSize: 1000 }),
+        apiClient.select('media_items', { select: videoSelect, filters: videoFilters2, pageSize: 1000 })
+      ]);
+      const videos1 = vRes1.data;
+      const videos2 = vRes2.data;
 
       const event1Name = document.getElementById('comparisonEvent1').options[document.getElementById('comparisonEvent1').selectedIndex].text;
       const event2Name = document.getElementById('comparisonEvent2').options[document.getElementById('comparisonEvent2').selectedIndex].text;
@@ -6321,10 +6326,10 @@ const mediaGalleryModule = {
                     <td>${v.organisations?.company_name ? utils.escapeHtml(v.organisations.company_name) : '<span class="text-muted">-</span>'}</td>
                     <td><span class="badge bg-danger">${v.status === 'broken' ? `HTTP ${v.httpStatus}` : 'Network Error'}</span></td>
                     <td>
-                      <button class="btn btn-sm btn-outline-danger" onclick="mediaGalleryModule.deleteVideo('${v.id}')" title="Delete broken video">
+                      <button class="btn btn-sm btn-outline-danger" data-action="mediaGalleryModule.deleteVideo" data-id="v.id" title="Delete broken video">
                         <i class="bi bi-trash"></i>
                       </button>
-                      <button class="btn btn-sm btn-outline-secondary" onclick="mediaGalleryModule.editVideo('${v.id}')" title="Edit/fix video">
+                      <button class="btn btn-sm btn-outline-secondary" data-action="mediaGalleryModule.editVideo" data-id="v.id" title="Edit/fix video">
                         <i class="bi bi-pencil"></i>
                       </button>
                     </td>
@@ -6506,7 +6511,7 @@ const mediaGalleryModule = {
           <div class="list-group">
             ${otherSections.map(s => `
               <button class="list-group-item list-group-item-action d-flex justify-content-between align-items-center"
-                onclick="mediaGalleryModule._executeBulkMove('${s.id}', '${utils.escapeHtml(s.gallery_name).replace(/'/g, "\\'")}')">
+                data-action="mediaGalleryModule._executeBulkMove" data-args='${JSON.stringify([s.id, utils.escapeHtml(s.gallery_name).replace(/'/g, "\\'")])}'>
                 <span><i class="bi bi-folder me-2"></i>${utils.escapeHtml(s.gallery_name)}</span>
                 <i class="bi bi-arrow-right"></i>
               </button>

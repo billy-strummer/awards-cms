@@ -857,7 +857,7 @@ const utils = {
     el.innerHTML = recent.map(r => {
       const icon = icons[r.type] || 'bi-clock-history';
       const ago = this._timeAgo(r.timestamp);
-      return `<li><a class="dropdown-item small" href="#" onclick="event.preventDefault(); utils.openRecentItem('${r.type}', '${r.id}', '${utils.escapeHtml(r.name).replace(/'/g, "\\'")}')">
+      return `<li><a class="dropdown-item small" href="#" data-action="utils.openRecentItem" data-prevent-default="true" data-args='${JSON.stringify([r.type, r.id, utils.escapeHtml(r.name)]).replace(/'/g, "&#39;")}'>
         <i class="bi ${icon} me-2 text-muted"></i>${utils.escapeHtml(r.name)}
         <span class="text-muted float-end" style="font-size:0.7rem">${ago}</span>
       </a></li>`;
@@ -985,7 +985,7 @@ const utils = {
     ];
     const resultsEl = document.getElementById('commandPaletteResults');
     resultsEl.innerHTML = tabs.map(t => `
-      <div class="cp-item" onclick="utils._commandPaletteAction('tab', '${t.tab}')">
+      <div class="cp-item" data-action="utils._commandPaletteAction" data-args='["tab", "${t.tab}"]'>
         <span class="cp-icon"><i class="bi ${t.icon}"></i></span>
         <span class="cp-label">Go to ${t.label}</span>
         <span class="cp-hint">Tab</span>
@@ -1041,7 +1041,7 @@ const utils = {
       return;
     }
     resultsEl.innerHTML = results.slice(0, 20).map((r, i) => `
-      <div class="cp-item ${i === 0 ? 'active' : ''}" onclick="utils._commandPaletteAction('${r.type}', '${r.id}')">
+      <div class="cp-item ${i === 0 ? 'active' : ''}" data-action="utils._commandPaletteAction" data-args='["${r.type}", "${r.id}"]'>
         <span class="cp-icon"><i class="bi ${r.icon}"></i></span>
         <span class="cp-label">${utils.escapeHtml(r.label)}</span>
         ${r.hint ? `<span class="cp-hint">${r.hint}</span>` : ''}
@@ -1270,7 +1270,7 @@ const utils = {
         <div class="mb-2">
           <div class="input-group input-group-sm">
             <input type="text" class="form-control" id="noteInput_${containerId}" placeholder="Add a note...">
-            <button class="btn btn-outline-primary" onclick="utils._submitNote('${containerId}', '${tableName}', '${recordId}')"><i class="bi bi-plus"></i></button>
+            <button class="btn btn-outline-primary" data-action="utils._submitNote" data-args='["${containerId}", "${tableName}", "${recordId}"]'><i class="bi bi-plus"></i></button>
           </div>
         </div>
         <div class="notes-list" style="max-height:200px;overflow-y:auto;">
@@ -2465,6 +2465,141 @@ const actionRegistry = {
       if (!handler) return;
       handler(event);
     });
+
+    // Handle dblclick events (inline edit, etc.)
+    document.addEventListener('dblclick', (event) => {
+      const el = event.target.closest('[data-on-dblclick]');
+      if (!el) return;
+      const actionName = el.getAttribute('data-on-dblclick');
+      if (!actionName) return;
+      const handler = this._resolve(actionName);
+      if (!handler) return;
+      const id = el.getAttribute('data-id');
+      const argsJson = el.getAttribute('data-args');
+      let extraArgs = [];
+      if (argsJson) {
+        try {
+          const parsed = JSON.parse(argsJson);
+          extraArgs = Array.isArray(parsed) ? parsed : [parsed];
+        } catch (_e) { extraArgs = []; }
+      }
+      if (id !== null && id !== undefined) {
+        handler(id, ...extraArgs, el, event);
+      } else if (extraArgs.length > 0) {
+        handler(...extraArgs, el, event);
+      } else {
+        handler(el, event);
+      }
+    });
+
+    // Handle Enter key on input fields (data-on-keyenter)
+    document.addEventListener('keydown', (event) => {
+      if (event.key !== 'Enter') return;
+      const el = event.target.closest('[data-on-keyenter]');
+      if (!el) return;
+      event.preventDefault();
+      const actionName = el.getAttribute('data-on-keyenter');
+      if (!actionName) return;
+      const handler = this._resolve(actionName);
+      if (!handler) return;
+      const id = el.getAttribute('data-id');
+      const argsJson = el.getAttribute('data-args');
+      let extraArgs = [];
+      if (argsJson) {
+        try {
+          const parsed = JSON.parse(argsJson);
+          extraArgs = Array.isArray(parsed) ? parsed : [parsed];
+        } catch (_e) { extraArgs = []; }
+      }
+      if (id !== null && id !== undefined) {
+        handler(id, ...extraArgs, event);
+      } else if (extraArgs.length > 0) {
+        handler(...extraArgs, event);
+      } else {
+        handler(event);
+      }
+    });
+
+    // Handle Escape key on input fields (data-on-keyescape)
+    document.addEventListener('keydown', (event) => {
+      if (event.key !== 'Escape') return;
+      const el = event.target.closest('[data-on-keyescape]');
+      if (!el) return;
+      const actionName = el.getAttribute('data-on-keyescape');
+      if (!actionName) return;
+      const handler = this._resolve(actionName);
+      if (!handler) return;
+      const id = el.getAttribute('data-id');
+      const argsJson = el.getAttribute('data-args');
+      let extraArgs = [];
+      if (argsJson) {
+        try {
+          const parsed = JSON.parse(argsJson);
+          extraArgs = Array.isArray(parsed) ? parsed : [parsed];
+        } catch (_e) { extraArgs = []; }
+      }
+      if (id !== null && id !== undefined) {
+        handler(id, ...extraArgs, el, event);
+      } else if (extraArgs.length > 0) {
+        handler(...extraArgs, el, event);
+      } else {
+        handler(el, event);
+      }
+    });
+
+    // Handle change events for checkboxes (passes el.checked instead of el.value)
+    document.addEventListener('change', (event) => {
+      const el = event.target.closest('[data-on-check]');
+      if (!el) return;
+      const actionName = el.getAttribute('data-on-check');
+      if (!actionName) return;
+      const handler = this._resolve(actionName);
+      if (!handler) return;
+      const id = el.getAttribute('data-id');
+      if (id) {
+        handler(id, el.checked, event);
+      } else {
+        handler(el.checked, event);
+      }
+    });
+
+    // Handle change events for file inputs (passes the element itself)
+    document.addEventListener('change', (event) => {
+      const el = event.target.closest('[data-on-file-change]');
+      if (!el) return;
+      const actionName = el.getAttribute('data-on-file-change');
+      if (!actionName) return;
+      const handler = this._resolve(actionName);
+      if (!handler) return;
+      const id = el.getAttribute('data-id');
+      if (id) {
+        handler(id, el, event);
+      } else {
+        handler(el, event);
+      }
+    });
+
+    // Handle mouseover events (data-on-mouseover)
+    document.addEventListener('mouseover', (event) => {
+      const el = event.target.closest('[data-on-mouseover]');
+      if (!el) return;
+      const actionName = el.getAttribute('data-on-mouseover');
+      if (!actionName) return;
+      const handler = this._resolve(actionName);
+      if (!handler) return;
+      handler(el, event);
+    });
+
+    // Handle mouseout events (data-on-mouseout)
+    document.addEventListener('mouseout', (event) => {
+      const el = event.target.closest('[data-on-mouseout]');
+      if (!el) return;
+      const actionName = el.getAttribute('data-on-mouseout');
+      if (!actionName) return;
+      const handler = this._resolve(actionName);
+      if (!handler) return;
+      handler(el, event);
+    });
   }
 };
 
@@ -2493,6 +2628,60 @@ Object.assign(utils, {
     if (args.modal) {
       const modalEl = document.getElementById(args.modal);
       if (modalEl) bootstrap.Modal.getInstance(modalEl)?.hide();
+    }
+  },
+
+  /** Remove the closest .toast ancestor of the clicked element */
+  removeClosestToast(_id, event) {
+    const el = event?.target?.closest?.('[data-action]') || event?.target;
+    const toast = el?.closest('.toast');
+    if (toast) toast.remove();
+  },
+
+  /** Remove the parent element of the clicked element */
+  removeParentElement(_id, event) {
+    const el = event?.target?.closest?.('[data-action]') || event?.target;
+    if (el?.parentElement) el.parentElement.remove();
+  },
+
+  /** Copy the value of an input element by its ID to clipboard */
+  copyInputValueById(inputId) {
+    const input = document.getElementById(inputId);
+    if (input) {
+      navigator.clipboard.writeText(input.value);
+      utils.showToast('Copied!', 'success');
+    }
+  },
+
+  /** Filter elements by text content (used for search inputs) */
+  filterElementsByText(value, event) {
+    const el = event?.target?.closest?.('[data-on-input]') || event?.target;
+    const argsJson = el?.getAttribute('data-args');
+    let selector = '.audit-entry';
+    if (argsJson) {
+      try {
+        const parsed = JSON.parse(argsJson);
+        selector = Array.isArray(parsed) ? parsed[0] : parsed;
+      } catch (_e) { /* use default */ }
+    }
+    const lowerVal = (value || '').toLowerCase();
+    document.querySelectorAll(selector).forEach(item => {
+      item.style.display = item.textContent.toLowerCase().includes(lowerVal) ? '' : 'none';
+    });
+  },
+
+  /** Set a style transform on an element (replaces onmouseover/onmouseout inline handlers) */
+  setTransform(el, _event) {
+    if (el) {
+      const transform = el.getAttribute('data-transform') || '';
+      el.style.transform = transform;
+    }
+  },
+
+  /** Reset a style transform on an element */
+  resetTransform(el, _event) {
+    if (el) {
+      el.style.transform = '';
     }
   }
 });

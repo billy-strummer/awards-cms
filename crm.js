@@ -35,6 +35,11 @@ const crmModule = {
   // ============================================
   // MAIN LOAD FUNCTION
   // ============================================
+  /**
+   * Load CRM data based on the currently active sub-tab.
+   * Delegates to tab-specific loaders (companies, communications, deals, meetings, segments).
+   * @returns {Promise<void>}
+   */
   async loadAllData() {
     console.warn('🎯 Loading CRM data...');
     try {
@@ -71,6 +76,10 @@ const crmModule = {
   // ============================================
   // COMPANIES CRM VIEW
   // ============================================
+  /**
+   * Load organisations with CRM summary data and render the companies table.
+   * @returns {Promise<void>}
+   */
   async loadCompanies() {
     console.warn('Loading companies CRM view...');
 
@@ -137,6 +146,10 @@ const crmModule = {
     }
   },
 
+  /**
+   * Render the companies CRM table with action buttons and pagination.
+   * @param {Array<Object>} companies - Array of organisation records with CRM summary fields
+   */
   renderCompaniesTable(companies) {
     const tbody = document.getElementById('companiesCrmTableBody');
     if (!tbody) return;
@@ -175,13 +188,13 @@ const crmModule = {
           </td>
           <td>
             <div class="btn-group btn-group-sm">
-              <button class="btn btn-outline-primary" onclick="crmModule.viewCompanyProfile('${company.id}')" title="View Profile" aria-label="View company profile">
+              <button class="btn btn-outline-primary" data-action="crmModule.viewCompanyProfile" data-id="company.id" title="View Profile" aria-label="View company profile">
                 <i class="bi bi-eye"></i>
               </button>
-              <button class="btn btn-outline-success" onclick="crmModule.logCommunication('${company.id}')" title="Log Communication" aria-label="Log communication">
+              <button class="btn btn-outline-success" data-action="crmModule.logCommunication" data-id="company.id" title="Log Communication" aria-label="Log communication">
                 <i class="bi bi-chat-dots"></i>
               </button>
-              <button class="btn btn-outline-info" onclick="crmModule.createDeal('${company.id}')" title="Create Deal" aria-label="Create deal">
+              <button class="btn btn-outline-info" data-action="crmModule.createDeal" data-id="company.id" title="Create Deal" aria-label="Create deal">
                 <i class="bi bi-cash-coin"></i>
               </button>
             </div>
@@ -191,6 +204,7 @@ const crmModule = {
     }).join('');
   },
 
+  /** Apply active filters to the companies list and re-render. */
   filterCompanies() {
     const searchVal = (document.getElementById('crmCompanySearch')?.value || '').toLowerCase();
     const segmentVal = document.getElementById('crmSegmentFilter')?.value || '';
@@ -222,6 +236,10 @@ const crmModule = {
   // ============================================
   // COMMUNICATIONS LOG
   // ============================================
+  /**
+   * Load communications log with pagination, filtering, and sorting.
+   * @returns {Promise<void>}
+   */
   async loadCommunications() {
     console.warn('Loading communications...');
 
@@ -317,13 +335,13 @@ const crmModule = {
           <td>${followUpBadge}</td>
           <td>
             <div class="btn-group btn-group-sm">
-              <button class="btn btn-outline-primary" onclick="crmModule.viewCommunication('${comm.id}')" title="View Details">
+              <button class="btn btn-outline-primary" data-action="crmModule.viewCommunication" data-id="comm.id" title="View Details">
                 <i class="bi bi-eye"></i>
               </button>
-              <button class="btn btn-outline-success" onclick="crmModule.editCommunication('${comm.id}')" title="Edit">
+              <button class="btn btn-outline-success" data-action="crmModule.editCommunication" data-id="comm.id" title="Edit">
                 <i class="bi bi-pencil"></i>
               </button>
-              <button class="btn btn-outline-danger" onclick="crmModule.deleteCommunication('${comm.id}')" title="Delete">
+              <button class="btn btn-outline-danger" data-action="crmModule.deleteCommunication" data-id="comm.id" title="Delete">
                 <i class="bi bi-trash"></i>
               </button>
             </div>
@@ -354,6 +372,11 @@ const crmModule = {
     return types[type] || `<span class="badge bg-secondary">${type}</span>`;
   },
 
+  /**
+   * Format a communication's regarding field as a human-readable label.
+   * @param {string|null} regarding - The regarding field value
+   * @returns {string} Formatted HTML string
+   */
   formatRegarding(regarding) {
     if (!regarding) return '<span class="text-muted">General</span>';
     return regarding.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
@@ -362,6 +385,10 @@ const crmModule = {
   // ============================================
   // DEAL PIPELINE
   // ============================================
+  /**
+   * Load deal pipeline data with pagination and sorting.
+   * @returns {Promise<void>}
+   */
   async loadDeals() {
     console.warn('Loading deals...');
 
@@ -479,13 +506,13 @@ const crmModule = {
           <td>${statusBadge}</td>
           <td>
             <div class="btn-group btn-group-sm">
-              <button class="btn btn-outline-primary" onclick="crmModule.viewDeal('${deal.id}')" title="View Details">
+              <button class="btn btn-outline-primary" data-action="crmModule.viewDeal" data-id="deal.id" title="View Details">
                 <i class="bi bi-eye"></i>
               </button>
-              <button class="btn btn-outline-success" onclick="crmModule.editDeal('${deal.id}')" title="Edit">
+              <button class="btn btn-outline-success" data-action="crmModule.editDeal" data-id="deal.id" title="Edit">
                 <i class="bi bi-pencil"></i>
               </button>
-              <button class="btn btn-outline-danger" onclick="crmModule.deleteDeal('${deal.id}')" title="Delete">
+              <button class="btn btn-outline-danger" data-action="crmModule.deleteDeal" data-id="deal.id" title="Delete">
                 <i class="bi bi-trash"></i>
               </button>
             </div>
@@ -543,6 +570,10 @@ const crmModule = {
   // ============================================
   // MEETINGS
   // ============================================
+  /**
+   * Load meetings with pagination, sorting, and type filtering.
+   * @returns {Promise<void>}
+   */
   async loadMeetings() {
     console.warn('Loading meetings...');
 
@@ -625,13 +656,13 @@ const crmModule = {
           <td>${followUpBadge}</td>
           <td>
             <div class="btn-group btn-group-sm">
-              <button class="btn btn-outline-primary" onclick="crmModule.viewMeeting('${meeting.id}')" title="View Details">
+              <button class="btn btn-outline-primary" data-action="crmModule.viewMeeting" data-id="meeting.id" title="View Details">
                 <i class="bi bi-eye"></i>
               </button>
-              <button class="btn btn-outline-success" onclick="crmModule.editMeeting('${meeting.id}')" title="Edit">
+              <button class="btn btn-outline-success" data-action="crmModule.editMeeting" data-id="meeting.id" title="Edit">
                 <i class="bi bi-pencil"></i>
               </button>
-              <button class="btn btn-outline-danger" onclick="crmModule.deleteMeeting('${meeting.id}')" title="Delete">
+              <button class="btn btn-outline-danger" data-action="crmModule.deleteMeeting" data-id="meeting.id" title="Delete">
                 <i class="bi bi-trash"></i>
               </button>
             </div>
@@ -663,6 +694,10 @@ const crmModule = {
   // ============================================
   // SEGMENTS
   // ============================================
+  /**
+   * Load organisation segments with member counts.
+   * @returns {Promise<void>}
+   */
   async loadSegments() {
     console.warn('Loading segments...');
 
@@ -718,10 +753,10 @@ const crmModule = {
               </span>
             </div>
             <div class="d-flex gap-2">
-              <button class="btn btn-sm btn-outline-primary flex-grow-1" onclick="crmModule.viewSegmentCompanies('${segment.id}', '${utils.escapeHtml(segment.segment_name).replace(/'/g, "\\'")}')">
+              <button class="btn btn-sm btn-outline-primary flex-grow-1" data-action="crmModule.viewSegmentCompanies" data-args='${JSON.stringify([segment.id, utils.escapeHtml(segment.segment_name).replace(/'/g, "\\'")])}'>
                 <i class="bi bi-eye me-1"></i>View Companies
               </button>
-              <button class="btn btn-sm btn-outline-secondary" onclick="crmModule.editSegment('${segment.id}')" title="Edit Segment">
+              <button class="btn btn-sm btn-outline-secondary" data-action="crmModule.editSegment" data-id="segment.id" title="Edit Segment">
                 <i class="bi bi-pencil"></i>
               </button>
             </div>
@@ -770,6 +805,10 @@ const crmModule = {
   // ============================================
   // MODAL & ACTION FUNCTIONS
   // ============================================
+  /**
+   * Open the organisation profile modal for a given company.
+   * @param {string} companyId - UUID of the organisation
+   */
   viewCompanyProfile(companyId) {
     // Open the organisation profile modal from organisations.js
     if (typeof orgsModule !== 'undefined' && orgsModule.openCompanyProfile) {
@@ -780,6 +819,11 @@ const crmModule = {
     }
   },
 
+  /**
+   * Open the log communication modal, optionally pre-selecting an organisation.
+   * @param {string|null} organisationId - Optional UUID to pre-select
+   * @returns {Promise<void>}
+   */
   async logCommunication(organisationId = null) {
     console.warn('Log communication for:', organisationId);
     try {
@@ -868,7 +912,7 @@ const crmModule = {
             </div>
             <div class="modal-footer">
               <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-              <button type="button" class="btn btn-primary" onclick="crmModule.saveCommunication()">
+              <button type="button" class="btn btn-primary" data-action="crmModule.saveCommunication">
                 <i class="bi bi-save me-2"></i>Save Communication
               </button>
             </div>
@@ -912,6 +956,10 @@ const crmModule = {
     }
   },
 
+  /**
+   * Save a new communication log entry from the modal form.
+   * @returns {Promise<void>}
+   */
   async saveCommunication() {
     const form = document.getElementById('logCommunicationForm');
     if (!form.checkValidity()) {
@@ -956,6 +1004,11 @@ const crmModule = {
     this.loadCommunications();
   },
 
+  /**
+   * Open the create deal modal, optionally pre-selecting an organisation.
+   * @param {string|null} organisationId - Optional UUID to pre-select
+   * @returns {Promise<void>}
+   */
   async createDeal(organisationId = null) {
     console.warn('Create deal for:', organisationId);
 
@@ -1033,7 +1086,7 @@ const crmModule = {
             </div>
             <div class="modal-footer">
               <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-              <button type="button" class="btn btn-success" onclick="crmModule.saveDeal()">
+              <button type="button" class="btn btn-success" data-action="crmModule.saveDeal">
                 <i class="bi bi-save me-2"></i>Create Deal
               </button>
             </div>
@@ -1083,6 +1136,7 @@ const crmModule = {
     }
   },
 
+  /** Save a new deal from the create deal form. @returns {Promise<void>} */
   async saveDeal() {
     const form = document.getElementById('createDealForm');
     if (!form.checkValidity()) {
@@ -1126,6 +1180,7 @@ const crmModule = {
     this.loadDeals();
   },
 
+  /** View communication details in a modal. @param {string} commId - Communication UUID */
   async viewCommunication(commId) {
     console.warn('View communication:', commId);
 
@@ -1205,6 +1260,7 @@ const crmModule = {
     }
   },
 
+  /** Open edit modal for a communication. @param {string} commId - Communication UUID */
   async editCommunication(commId) {
     console.warn('Edit communication:', commId);
 
@@ -1286,7 +1342,7 @@ const crmModule = {
               </div>
               <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                <button type="button" class="btn btn-success" onclick="crmModule.updateCommunication('${comm.id}')">
+                <button type="button" class="btn btn-success" data-action="crmModule.updateCommunication" data-id="comm.id">
                   <i class="bi bi-save me-2"></i>Save Changes
                 </button>
               </div>
@@ -1313,6 +1369,7 @@ const crmModule = {
     }
   },
 
+  /** Update an existing communication log. @param {string} commId - Communication UUID */
   async updateCommunication(commId) {
     const form = document.getElementById('editCommunicationForm');
     if (!form.checkValidity()) {
@@ -1350,6 +1407,7 @@ const crmModule = {
     }
   },
 
+  /** Delete a communication log entry after confirmation. @param {string} commId */
   async deleteCommunication(commId) {
     if (!await utils.confirmDialog({ title: 'Delete Communication', message: 'Are you sure you want to delete this communication? This action cannot be undone.' })) {
       return;
@@ -1371,6 +1429,7 @@ const crmModule = {
     }
   },
 
+  /** View deal details in a modal. @param {string} dealId - Deal UUID */
   async viewDeal(dealId) {
     console.warn('View deal:', dealId);
 
@@ -1475,6 +1534,7 @@ const crmModule = {
     }
   },
 
+  /** Open edit modal for a deal. @param {string} dealId - Deal UUID */
   async editDeal(dealId) {
     console.warn('Edit deal:', dealId);
 
@@ -1568,7 +1628,7 @@ const crmModule = {
               </div>
               <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                <button type="button" class="btn btn-success" onclick="crmModule.updateDeal('${deal.id}')">
+                <button type="button" class="btn btn-success" data-action="crmModule.updateDeal" data-id="deal.id">
                   <i class="bi bi-save me-2"></i>Save Changes
                 </button>
               </div>
@@ -1590,6 +1650,7 @@ const crmModule = {
     }
   },
 
+  /** Update an existing deal. @param {string} dealId - Deal UUID */
   async updateDeal(dealId) {
     const form = document.getElementById('editDealForm');
     if (!form.checkValidity()) {
@@ -1629,6 +1690,7 @@ const crmModule = {
     }
   },
 
+  /** Delete a deal after confirmation. @param {string} dealId - Deal UUID */
   async deleteDeal(dealId) {
     if (!await utils.confirmDialog({ title: 'Delete Deal', message: 'Are you sure you want to delete this deal? This action cannot be undone.' })) {
       return;
@@ -1650,6 +1712,7 @@ const crmModule = {
     }
   },
 
+  /** View meeting details in a modal. @param {string} meetingId - Meeting UUID */
   async viewMeeting(meetingId) {
     console.warn('View meeting:', meetingId);
 
@@ -1746,6 +1809,7 @@ const crmModule = {
     }
   },
 
+  /** Open edit modal for a meeting. @param {string} meetingId - Meeting UUID */
   async editMeeting(meetingId) {
     console.warn('Edit meeting:', meetingId);
 
@@ -1833,7 +1897,7 @@ const crmModule = {
               </div>
               <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                <button type="button" class="btn btn-success" onclick="crmModule.updateMeeting('${meeting.id}')">
+                <button type="button" class="btn btn-success" data-action="crmModule.updateMeeting" data-id="meeting.id">
                   <i class="bi bi-save me-2"></i>Save Changes
                 </button>
               </div>
@@ -1860,6 +1924,7 @@ const crmModule = {
     }
   },
 
+  /** Update an existing meeting note. @param {string} meetingId - Meeting UUID */
   async updateMeeting(meetingId) {
     const form = document.getElementById('editMeetingForm');
     if (!form.checkValidity()) {
@@ -1906,6 +1971,7 @@ const crmModule = {
     }
   },
 
+  /** Delete a meeting note after confirmation. @param {string} meetingId - Meeting UUID */
   async deleteMeeting(meetingId) {
     if (!await utils.confirmDialog({ title: 'Delete Meeting Note', message: 'Are you sure you want to delete this meeting note? This action cannot be undone.' })) {
       return;
@@ -1927,6 +1993,11 @@ const crmModule = {
     }
   },
 
+  /**
+   * View companies belonging to a segment in a modal.
+   * @param {string} segmentId - Segment UUID
+   * @param {string} segmentName - Segment display name
+   */
   async viewSegmentCompanies(segmentId, segmentName) {
     console.warn('View companies in segment:', segmentName);
 
@@ -1981,10 +2052,10 @@ const crmModule = {
                             <td>${a.organisation.phone ? utils.escapeHtml(a.organisation.phone) : '<span class="text-muted">N/A</span>'}</td>
                             <td>
                               <div class="btn-group btn-group-sm">
-                                <button class="btn btn-outline-primary" onclick="crmModule.viewCompanyProfile('${a.organisation.id}')" title="View Profile">
+                                <button class="btn btn-outline-primary" data-action="crmModule.viewCompanyProfile" data-id="a.organisation.id" title="View Profile">
                                   <i class="bi bi-eye"></i>
                                 </button>
-                                <button class="btn btn-outline-danger" onclick="crmModule.removeFromSegment('${a.id}', '${segmentId}', '${utils.escapeHtml(segmentName).replace(/'/g, "\\'")}')" title="Remove from Segment">
+                                <button class="btn btn-outline-danger" data-action="crmModule.removeFromSegment" data-args='${JSON.stringify([a.id, segmentId, utils.escapeHtml(segmentName).replace(/'/g, "\\'")])}' title="Remove from Segment">
                                   <i class="bi bi-x-circle"></i>
                                 </button>
                               </div>
@@ -2016,6 +2087,7 @@ const crmModule = {
     }
   },
 
+  /** Remove a company from a segment. @param {string} assignmentId @param {string} segmentId @param {string} segmentName */
   async removeFromSegment(assignmentId, segmentId, segmentName) {
     if (!await utils.confirmDialog({ title: 'Remove from Segment', message: 'Remove this company from the segment?', confirmText: 'Remove' })) return;
 
@@ -2101,7 +2173,7 @@ const crmModule = {
               </div>
               <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                <button type="button" class="btn btn-success" onclick="crmModule.updateSegment('${segment.id}')">
+                <button type="button" class="btn btn-success" data-action="crmModule.updateSegment" data-id="segment.id">
                   <i class="bi bi-save me-2"></i>Save Changes
                 </button>
               </div>
@@ -2207,6 +2279,7 @@ const crmModule = {
     });
   },
 
+  /** Apply selected smart segment rules to filter organisations in-memory. */
   applySmartSegment() {
     const rules = this._getSegmentRules();
     if (rules.length === 0) { utils.showToast('Add at least one rule', 'warning'); return; }
@@ -2217,7 +2290,7 @@ const crmModule = {
     if (resultEl) {
       resultEl.innerHTML = `<div class="alert alert-info small py-2">
         <strong>${matching.length}</strong> organisations match this segment.
-        <button class="btn btn-sm btn-outline-primary ms-2" onclick="crmModule.applySegmentAsFilter()">View in Organisations Tab</button>
+        <button class="btn btn-sm btn-outline-primary ms-2" data-action="crmModule.applySegmentAsFilter">View in Organisations Tab</button>
       </div>
       ${matching.length > 0 ? `<div class="table-responsive mt-2"><table class="table table-sm table-hover"><thead><tr><th>Company</th><th>Status</th><th>Sector</th><th>Region</th></tr></thead><tbody>
         ${matching.slice(0, 50).map(o => `<tr><td>${utils.escapeHtml(o.company_name || '')}</td><td><span class="badge bg-primary">${utils.escapeHtml(o.status || '')}</span></td><td>${utils.escapeHtml(o.sector || '-')}</td><td>${utils.escapeHtml(o.region || '-')}</td></tr>`).join('')}
@@ -2282,7 +2355,7 @@ const crmModule = {
     if (resultEl) {
       resultEl.innerHTML = `<h6 class="fw-semibold mb-2">Saved Segments</h6><div class="list-group">${names.map(n => {
         const rules = segments[n];
-        return `<a href="#" class="list-group-item list-group-item-action small" onclick="event.preventDefault(); crmModule._loadAndApplySegment('${utils.escapeHtml(n).replace(/'/g, "\\'")}')">
+        return `<a href="#" class="list-group-item list-group-item-action small" data-action="crmModule._loadAndApplySegment" data-id="utils.escapeHtml(n).replace(/'/g, "\\'")" data-prevent-default="true">
           <strong>${utils.escapeHtml(n)}</strong> &mdash; ${rules.map(r => `${r.field} ${r.op} "${r.val}"`).join(' AND ')}
         </a>`;
       }).join('')}</div>`;
@@ -2301,7 +2374,7 @@ const crmModule = {
       if (resultEl) {
         resultEl.innerHTML = `<div class="alert alert-success small py-2">
           <strong>"${utils.escapeHtml(name)}"</strong>: ${matching.length} organisations match.
-          <button class="btn btn-sm btn-outline-primary ms-2" onclick="crmModule.applySegmentAsFilter()">View in Organisations Tab</button>
+          <button class="btn btn-sm btn-outline-primary ms-2" data-action="crmModule.applySegmentAsFilter">View in Organisations Tab</button>
         </div>`;
       }
     } catch (e) { console.warn('Failed to load and apply segment:', e.message); }
@@ -2310,6 +2383,7 @@ const crmModule = {
   // ============================================
   // MY TASKS & FOLLOW-UPS (moved from Organisations)
   // ============================================
+  /** Load and display follow-up tasks for the current user. @returns {Promise<void>} */
   async loadMyTasks() {
     const container = document.getElementById('myTasksContainer');
     if (!container) return;
@@ -2335,8 +2409,8 @@ const crmModule = {
         <i class="bi ${icons[section]} me-2 fs-5"></i>
         <div class="flex-grow-1"><div class="fw-semibold small">${utils.escapeHtml(f.note || 'Follow up')}</div>
         <div class="text-muted" style="font-size:0.75rem;">${orgName} &middot; ${new Date(f.date).toLocaleDateString('en-GB')}${f.assignee ? ' &middot; ' + utils.escapeHtml(f.assignee) : ''}</div></div>
-        ${!f.done ? `<button class="btn btn-sm btn-outline-success me-1" onclick="crmModule.completeTask('${f.org_id}','${f.id}')"><i class="bi bi-check"></i></button>` : ''}
-        ${org ? `<button class="btn btn-sm btn-outline-primary" onclick="orgsModule.openCompanyProfile('${f.org_id}','${utils.escapeHtml(orgName).replace(/'/g, "\\'")}')"><i class="bi bi-eye"></i></button>` : ''}
+        ${!f.done ? `<button class="btn btn-sm btn-outline-success me-1" data-action="crmModule.completeTask" data-args='${JSON.stringify([f.org_id, f.id])}'><i class="bi bi-check"></i></button>` : ''}
+        ${org ? `<button class="btn btn-sm btn-outline-primary" data-action="orgsModule.openCompanyProfile" data-args='${JSON.stringify([f.org_id, utils.escapeHtml(orgName).replace(/'/g, "\\'")])}'><i class="bi bi-eye"></i></button>` : ''}
       </div>`;
     };
 
@@ -2472,7 +2546,7 @@ const crmModule = {
               </div>
               <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                <button type="button" class="btn btn-primary" onclick="crmModule.saveMeetingNote()">
+                <button type="button" class="btn btn-primary" data-action="crmModule.saveMeetingNote">
                   <i class="bi bi-save me-2"></i>Save Meeting Note
                 </button>
               </div>
@@ -2590,7 +2664,7 @@ const crmModule = {
               </div>
               <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                <button type="button" class="btn btn-primary" onclick="crmModule.saveSegmentAssignments()">
+                <button type="button" class="btn btn-primary" data-action="crmModule.saveSegmentAssignments">
                   <i class="bi bi-save me-2"></i>Assign
                 </button>
               </div>
@@ -2691,7 +2765,7 @@ const crmModule = {
             </div>
             <div class="modal-footer">
               <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-              <button type="button" class="btn btn-primary" onclick="crmModule.saveCustomSegment()">
+              <button type="button" class="btn btn-primary" data-action="crmModule.saveCustomSegment">
                 <i class="bi bi-save me-2"></i>Create Segment
               </button>
             </div>
@@ -2772,6 +2846,7 @@ const crmModule = {
     }
   },
 
+  /** Sort communications table by field, toggling direction. @param {string} field - Column to sort by */
   sortCommunications(field) {
     if (this._crmSortField === field) {
       this._crmSortDir = this._crmSortDir === 'asc' ? 'desc' : 'asc';
@@ -2801,6 +2876,7 @@ const crmModule = {
     this.renderCommunicationsTable(sorted);
   },
 
+  /** Sort deals table by field, toggling direction. @param {string} field */
   sortDeals(field) {
     if (this._dealSortField === field) {
       this._dealSortDir = this._dealSortDir === 'asc' ? 'desc' : 'asc';
@@ -2833,6 +2909,7 @@ const crmModule = {
     this.renderDealsTable(sorted);
   },
 
+  /** Sort meetings table by field, toggling direction. @param {string} field */
   sortMeetings(field) {
     if (this._meetingSortField === field) {
       this._meetingSortDir = this._meetingSortDir === 'asc' ? 'desc' : 'asc';
@@ -2864,6 +2941,7 @@ const crmModule = {
     if (checked) set.add(id); else set.delete(id);
   },
 
+  /** Bulk delete selected CRM records. @param {string} type - 'communication'|'deal'|'meeting' */
   async bulkDeleteCrm(type) {
     const set = type === 'deal' ? this._selectedDealIds : type === 'meeting' ? this._selectedMeetingIds : this._selectedCrmIds;
     if (set.size === 0) return;
@@ -2888,6 +2966,7 @@ const crmModule = {
     }
   },
 
+  /** Export CRM data to CSV. @param {string} type - 'communication'|'deal'|'meeting' */
   exportCrmToCSV(type) {
     let data, filename, headers;
     const checkEmpty = (arr, label) => {

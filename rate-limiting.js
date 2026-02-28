@@ -31,7 +31,7 @@ const rateLimitModule = {
     if (!STATE?.client) return;
     try {
       const session = await STATE.client.auth.getSession();
-      await STATE.client.from('api_request_logs').insert({
+      await apiClient.insert('api_request_logs', {
         endpoint,
         method:           (method || 'GET').toUpperCase(),
         status_code:      statusCode,
@@ -99,16 +99,16 @@ const rateLimitModule = {
     const hours = range === '24h' ? 24 : range === '7d' ? 168 : 720;
     const since = new Date(Date.now() - hours * 3600000).toISOString();
     try {
-      const { data: logs } = await STATE.client.from('api_request_logs').select('*').gte('created_at', since).limit(5000);
-      const rows = logs || [];
+      const logsResult = await apiClient.select('api_request_logs', { filters: { created_at: { op: 'gte', value: since } }, pageSize: 1000 });
+      const rows = logsResult.data || [];
       const total = rows.length;
       const errors = rows.filter(r => r.status_code >= 400).length;
       const setText = (id, v) => { const n = document.getElementById(id); if (n) n.textContent = v; };
       setText('rl-total-req',  total);
       setText('rl-error-rate', total ? `${((errors / total) * 100).toFixed(1)}%` : '0%');
       setText('rl-avg-rt',     total ? Math.round(rows.reduce((s, r) => s + (r.response_time_ms || 0), 0) / total) : 0);
-      const { count } = await STATE.client.from('ip_blocklist').select('id', { count: 'exact', head: true });
-      setText('rl-blocked', count || 0);
+      const blockedResult = await apiClient.count('ip_blocklist');
+      setText('rl-blocked', blockedResult.count || 0);
       this._renderLineChart(rows, range);
       this._renderBarChart(rows);
       this._renderTopIPs(rows);
@@ -164,7 +164,8 @@ const rateLimitModule = {
     const el = document.getElementById('rl-alerts-list');
     if (!el || !STATE?.client) return;
     try {
-      const { data } = await STATE.client.from('rate_limit_alerts').select('*').order('created_at', { ascending: false }).limit(6);
+      const alertResult = await apiClient.select('rate_limit_alerts', { sort: { column: 'created_at', ascending: false }, pageSize: 6 });
+      const data = alertResult.data;
       el.innerHTML = (data || []).length ? data.map(a =>
         `<div class="border-bottom py-1"><span class="badge bg-warning text-dark me-1">${a.endpoint}</span>${a.ip_address} — ${a.actual_count}/${a.threshold} per ${a.window_minutes}m</div>`
       ).join('') : '<span class="text-muted">No recent alerts</span>';
@@ -178,14 +179,15 @@ const rateLimitModule = {
     if (!STATE?.client) return;
     const since = new Date(Date.now() - 60000).toISOString();
     try {
-      const { data: logs } = await STATE.client.from('api_request_logs').select('endpoint, ip_address').gte('created_at', since);
+      const alertLogsResult = await apiClient.select('api_request_logs', { select: 'endpoint, ip_address', filters: { created_at: { op: 'gte', value: since } }, pageSize: 1000 });
+      const logs = alertLogsResult.data;
       const counts = {};
       (logs || []).forEach(r => { const k = `${r.endpoint}::${r.ip_address}`; counts[k] = (counts[k] || 0) + 1; });
       for (const [key, count] of Object.entries(counts)) {
         const [endpoint, ip] = key.split('::');
         const threshold = this._alerts.get(endpoint) || this._alerts.get('*');
         if (threshold && count > threshold) {
-          await STATE.client.from('rate_limit_alerts').insert({ endpoint, ip_address: ip, threshold, actual_count: count, window_minutes: 1, created_at: new Date().toISOString() });
+          await apiClient.insert('rate_limit_alerts', { endpoint, ip_address: ip, threshold, actual_count: count, window_minutes: 1, created_at: new Date().toISOString() });
           utils.showToast(`Rate alert: ${endpoint} — ${ip} (${count} req/min)`, 'warning');
         }
       }
@@ -197,30 +199,41 @@ const rateLimitModule = {
     if (!STATE?.client) return;
     const session  = await STATE.client.auth.getSession();
     const blocked_by = session?.data?.session?.user?.email || 'system';
-    const { error } = await STATE.client.from('ip_blocklist').upsert(
-      { ip_address: ip, reason, blocked_by, created_at: new Date().toISOString(), expires_at: expiresAt },
-      { onConflict: 'ip_address' }
-    );
-    error ? utils.showToast('Block failed: ' + error.message, 'error') : utils.showToast(`IP ${ip} blocked`, 'success');
+    // upsert not supported by apiClient — try insert, fall back to update
+    try {
+      try {
+        await apiClient.insert('ip_blocklist', { ip_address: ip, reason, blocked_by, created_at: new Date().toISOString(), expires_at: expiresAt });
+      } catch (_) {
+        await apiClient.updateByFilters('ip_blocklist', { ip_address: ip }, { reason, blocked_by, expires_at: expiresAt });
+      }
+      utils.showToast(`IP ${ip} blocked`, 'success');
+    } catch (err) {
+      utils.showToast('Block failed: ' + err.message, 'error');
+    }
   },
 
   async unblockIP(ip) {
     if (!STATE?.client) return;
-    const { error } = await STATE.client.from('ip_blocklist').delete().eq('ip_address', ip);
-    error ? utils.showToast('Unblock failed: ' + error.message, 'error') : utils.showToast(`IP ${ip} unblocked`, 'success');
+    try {
+      await apiClient.deleteByFilters('ip_blocklist', { ip_address: ip });
+      utils.showToast(`IP ${ip} unblocked`, 'success');
+    } catch (err) {
+      utils.showToast('Unblock failed: ' + err.message, 'error');
+    }
   },
 
   async getAllowList() {
     if (!STATE?.client) return [];
-    const { data } = await STATE.client.from('ip_blocklist').select('*').order('created_at', { ascending: false }).limit(1000);
-    return data || [];
+    const result = await apiClient.select('ip_blocklist', { sort: { column: 'created_at', ascending: false }, pageSize: 1000 });
+    return result.data || [];
   },
 
   // 6. RATE LIMIT CONFIG (admin form) → rate_limit_config
   async renderRateLimitConfig(containerId = 'rl-config-container') {
     const el = document.getElementById(containerId);
     if (!el) return;
-    const { data: configs } = STATE?.client ? await STATE.client.from('rate_limit_config').select('*').order('endpoint').limit(500) : { data: [] };
+    let configs = [];
+    try { const cfgRes = await apiClient.select('rate_limit_config', { sort: { column: 'endpoint', ascending: true }, pageSize: 500 }); configs = cfgRes.data || []; } catch (_) {}
     el.innerHTML = `
       <div class="card p-3">
         <h6 class="mb-3">Rate Limit Configuration</h6>
@@ -241,17 +254,16 @@ const rateLimitModule = {
       const max_requests = parseInt(el.querySelector('#rl-cfg-max').value);
       const window_seconds = parseInt(el.querySelector('#rl-cfg-win').value);
       if (!endpoint || !max_requests || !window_seconds) return;
-      if (STATE?.client) {
-        const { error } = await STATE.client.from('rate_limit_config').insert({ endpoint, max_requests, window_seconds, created_at: new Date().toISOString() });
-        if (error) { utils.showToast(error.message, 'error'); return; }
-      }
+      try {
+        await apiClient.insert('rate_limit_config', { endpoint, max_requests, window_seconds, created_at: new Date().toISOString() });
+      } catch (insertErr) { utils.showToast(insertErr.message, 'error'); return; }
       this._defaults[endpoint] = { max: max_requests, windowMs: window_seconds * 1000 };
       utils.showToast(`Limit saved for ${endpoint}`, 'success');
       this.renderRateLimitConfig(containerId);
     });
     el.querySelectorAll('.rl-del').forEach(btn => btn.addEventListener('click', async () => {
       const id = btn.closest('tr').dataset.id;
-      if (STATE?.client) await STATE.client.from('rate_limit_config').delete().eq('id', id);
+      try { await apiClient.delete('rate_limit_config', id); } catch (_) {}
       utils.showToast('Config removed', 'info');
       this.renderRateLimitConfig(containerId);
     }));

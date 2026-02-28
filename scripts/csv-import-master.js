@@ -473,7 +473,7 @@ function normalizeWebsite(website) {
   return url;
 }
 
-function validateRow(row, lineNum, fileName) {
+function validateRow(row, lineNum, _fileName) {
   const errors = [];
   const warnings = [];
 
@@ -877,7 +877,7 @@ async function processFiles(options) {
 
     if (newOrgsNeeded.size > 0) {
       console.log('  NOTE: The following organisations will be auto-created on import:');
-      [...newOrgsNeeded.entries()].slice(0, 10).forEach(([key, row]) => {
+      [...newOrgsNeeded.entries()].slice(0, 10).forEach(([_key, row]) => {
         console.log(`    + "${row.organisation}" (${row.region || 'no region'}, ${row.email || 'no email'})`);
       });
       if (newOrgsNeeded.size > 10) {
@@ -911,7 +911,7 @@ async function processFiles(options) {
     console.log(`  Creating ${newOrgsNeeded.size} new organisations...`);
 
     let created = 0;
-    for (const [orgKey, row] of newOrgsNeeded) {
+    for (const [_orgKey, row] of newOrgsNeeded) {
       const orgData = {
         company_name: row.organisation,
         email: row.email || null,

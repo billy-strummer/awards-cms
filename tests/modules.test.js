@@ -1,3 +1,4 @@
+/* global judgePortal */
 /**
  * Integration tests for BTA CMS core modules
  * Run with: npx jest tests/modules.test.js

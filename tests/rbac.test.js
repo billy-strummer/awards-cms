@@ -704,7 +704,7 @@ describe('RBAC Module - ensureAdminExists', () => {
 
 describe('RBAC Module - Cross-Role Access Matrix', () => {
   const sensitiveModules = ['settings', 'payments', 'crm', 'bitcoin'];
-  const destructiveActions = ['delete', 'manage_users', 'manage_roles', 'gdpr'];
+  const _destructiveActions = ['delete', 'manage_users', 'manage_roles', 'gdpr'];
 
   test('only super_admin and admin can access all core modules', () => {
     sensitiveModules.forEach(mod => {
@@ -752,7 +752,7 @@ describe('RBAC Module - Cross-Role Access Matrix', () => {
   });
 
   test('every role label is a non-empty string', () => {
-    Object.entries(rbacModule.ROLES).forEach(([key, role]) => {
+    Object.entries(rbacModule.ROLES).forEach(([_key, role]) => {
       expect(typeof role.label).toBe('string');
       expect(role.label.length).toBeGreaterThan(0);
     });

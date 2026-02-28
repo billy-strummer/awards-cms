@@ -56,7 +56,7 @@ const sponsorPortalModule = {
           <h6 class="card-title">Upload Logo / Banner</h6>
           <div class="input-group">
             <input type="file" class="form-control" id="sponsorAssetFile" accept="image/*,.pdf">
-            <button class="btn btn-primary" onclick="sponsorPortalModule.uploadSponsorAsset('${utils.escapeHtml(sponsorId)}',document.getElementById('sponsorAssetFile').files[0])">
+            <button class="btn btn-primary" data-action="sponsorPortalModule.uploadSponsorAssetFromInput" data-id="${utils.escapeHtml(sponsorId)}">
               <i class="bi bi-cloud-upload me-1"></i>Upload
             </button>
           </div>
@@ -68,6 +68,11 @@ const sponsorPortalModule = {
   },
 
   /* 2. ASSET UPLOAD */
+  uploadSponsorAssetFromInput(sponsorId) {
+    const file = document.getElementById('sponsorAssetFile')?.files[0];
+    this.uploadSponsorAsset(sponsorId, file);
+  },
+
   async uploadSponsorAsset(sponsorId, file) {
     if (!file) { utils.showToast('Please select a file first', 'warning'); return null; }
     const maxSize = 10 * 1024 * 1024; // 10MB
@@ -131,7 +136,7 @@ const sponsorPortalModule = {
                 <td>${utils.escapeHtml(s.name)}</td>
                 <td><span class="badge bg-${s.is_active ? 'success' : 'secondary'}">${s.is_active ? 'Active' : 'Inactive'}</span></td>
                 <td>${s.display_order}</td>
-                <td><button class="btn btn-sm btn-outline-secondary" onclick="sponsorPortalModule.changeTier('${s.id}','${key}')">Change Tier</button></td>
+                <td><button class="btn btn-sm btn-outline-secondary" data-action="sponsorPortalModule.changeTier" data-args='${JSON.stringify([s.id, key])}'>Change Tier</button></td>
               </tr>`).join('')}
             </tbody></table>`}
           </div>
@@ -162,7 +167,7 @@ const sponsorPortalModule = {
       el.innerHTML = `
         <div class="d-flex justify-content-between align-items-center mb-3">
           <h6 class="mb-0">Sponsor Contracts</h6>
-          <button class="btn btn-primary btn-sm" onclick="sponsorPortalModule.openContractModal()"><i class="bi bi-plus-lg me-1"></i>New Contract</button>
+          <button class="btn btn-primary btn-sm" data-action="sponsorPortalModule.openContractModal"><i class="bi bi-plus-lg me-1"></i>New Contract</button>
         </div>
         ${rows.length === 0 ? '<p class="text-muted">No contracts found.</p>' : `
         <div class="table-responsive"><table class="table table-hover align-middle">
@@ -174,8 +179,8 @@ const sponsorPortalModule = {
             <td>${utils.getStatusBadge(c.status)}</td>
             <td class="small">${utils.escapeHtml(c.benefits||'—')}</td>
             <td>
-              <button class="btn btn-sm btn-outline-primary me-1" onclick="sponsorPortalModule.openContractModal(${JSON.stringify(c).replace(/"/g,'&quot;')})"><i class="bi bi-pencil"></i></button>
-              <button class="btn btn-sm btn-outline-danger" onclick="sponsorPortalModule.deleteContract('${c.id}')"><i class="bi bi-trash"></i></button>
+              <button class="btn btn-sm btn-outline-primary me-1" data-action="sponsorPortalModule.editContract" data-id="${c.id}"><i class="bi bi-pencil"></i></button>
+              <button class="btn btn-sm btn-outline-danger" data-action="sponsorPortalModule.deleteContract" data-id="${c.id}"><i class="bi bi-trash"></i></button>
             </td>
           </tr>`).join('')}</tbody>
         </table></div>`}
@@ -185,7 +190,7 @@ const sponsorPortalModule = {
             <div class="modal-body" id="contractModalBody"></div>
             <div class="modal-footer">
               <button class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-              <button class="btn btn-primary" onclick="sponsorPortalModule.saveContract()">Save Contract</button>
+              <button class="btn btn-primary" data-action="sponsorPortalModule.saveContract">Save Contract</button>
             </div>
           </div></div>
         </div>`;
@@ -193,6 +198,11 @@ const sponsorPortalModule = {
       console.error('renderContracts:', err);
       utils.showToast('Failed to load contracts', 'error');
     }
+  },
+
+  async editContract(contractId) {
+    const contracts = await apiClient.selectAll('sponsor_contracts', { filters: { id: { eq: contractId } } });
+    this.openContractModal(contracts?.[0] || null);
   },
 
   async openContractModal(contract = null) {

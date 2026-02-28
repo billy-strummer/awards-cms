@@ -189,7 +189,7 @@ const judgePortal = {
 
     container.innerHTML = this.assignedEntries.map(entry => `
       <div class="entry-card ${entry.hasScored ? 'scored' : ''} ${this.currentEntry?.id === entry.id ? 'active' : ''}"
-           onclick="judgePortal.selectEntry('${esc(entry.id)}')">
+           data-action="judgePortal.selectEntry" data-id="${esc(entry.id)}">
         <div class="d-flex justify-content-between align-items-start mb-2">
           <strong class="text-truncate">${this.getCompanyDisplay(entry)}</strong>
           ${entry.hasScored ? '<i class="bi bi-check-circle-fill text-success"></i>' : ''}
@@ -226,7 +226,7 @@ const judgePortal = {
     // Same rendering logic as renderEntriesList but with filtered array
     container.innerHTML = entries.map(entry => `
       <div class="entry-card ${entry.hasScored ? 'scored' : ''} ${this.currentEntry?.id === entry.id ? 'active' : ''}"
-           onclick="judgePortal.selectEntry('${esc(entry.id)}')">
+           data-action="judgePortal.selectEntry" data-id="${esc(entry.id)}">
         <div class="d-flex justify-content-between align-items-start mb-2">
           <strong class="text-truncate">${this.getCompanyDisplay(entry)}</strong>
           ${entry.hasScored ? '<i class="bi bi-check-circle-fill text-success"></i>' : ''}
@@ -425,13 +425,13 @@ const judgePortal = {
 
       <!-- Action Buttons -->
       <div class="d-flex gap-2 mt-4">
-        <button class="btn btn-success flex-fill" onclick="judgePortal.saveScore(true)">
+        <button class="btn btn-success flex-fill" data-action="judgePortal.saveScore" data-args='[true]'>
           <i class="bi bi-check-circle me-2"></i>Submit Score
         </button>
-        <button class="btn btn-outline-secondary" onclick="judgePortal.saveScore(false)">
+        <button class="btn btn-outline-secondary" data-action="judgePortal.saveScore" data-args='[false]'>
           <i class="bi bi-save me-2"></i>Save Draft
         </button>
-        <button class="btn btn-outline-primary" onclick="judgePortal.nextEntry()">
+        <button class="btn btn-outline-primary" data-action="judgePortal.nextEntry">
           Next Entry <i class="bi bi-arrow-right ms-2"></i>
         </button>
       </div>
@@ -480,7 +480,7 @@ const judgePortal = {
         </div>
         <input type="range" class="form-range score-slider" min="0" max="${criterion.maxScore}" step="0.5"
                id="${criterion.id}" value="${this.currentScore?.[criterion.id] || 0}"
-               onchange="judgePortal.updateTotalScore()">
+               data-on-change="judgePortal.updateTotalScore">
         <div class="score-value" id="${criterion.id}_value">${this.currentScore?.[criterion.id] || 0}</div>
       </div>
     `).join('');

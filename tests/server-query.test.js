@@ -45,7 +45,7 @@ function createChainableMock(resolveValue = { data: [], error: null, count: 0 })
 // Setup mock Supabase client
 let lastMock;
 const mockClient = {
-  from: jest.fn((table) => {
+  from: jest.fn((_table) => {
     lastMock = createChainableMock({ data: [], error: null, count: 0 });
     return lastMock;
   }),
@@ -97,7 +97,7 @@ describe('serverQuery', () => {
   });
 
   test('execute applies default pagination (page 1, size 50)', async () => {
-    const result = await serverQuery.execute({ table: 'awards' });
+    await serverQuery.execute({ table: 'awards' });
     // Check that range was called
     const rangeCalls = lastMock._calls.filter(c => c.method === 'range');
     expect(rangeCalls.length).toBe(1);

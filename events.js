@@ -540,17 +540,17 @@ const eventsModule = {
             </div>
             <div class="btn-group btn-group-sm ms-3" role="group">
               <button class="btn btn-outline-success btn-icon"
-                onclick="eventsModule.useTemplate(${index})"
+                data-action="eventsModule.useTemplate" data-id="${index}"
                 title="Use Template">
                 <i class="bi bi-play-fill"></i>
               </button>
               <button class="btn btn-outline-primary btn-icon"
-                onclick="eventsModule.editTemplate(${index})"
+                data-action="eventsModule.editTemplate" data-id="${index}"
                 title="Edit">
                 <i class="bi bi-pencil"></i>
               </button>
               <button class="btn btn-outline-danger btn-icon"
-                onclick="eventsModule.deleteTemplate(${index})"
+                data-action="eventsModule.deleteTemplate" data-id="${index}"
                 title="Delete">
                 <i class="bi bi-trash"></i>
               </button>
@@ -912,13 +912,13 @@ const eventsModule = {
         <td class="text-center">
           <div class="btn-group btn-group-sm">
             ${a.email ? `<button class="btn btn-outline-info btn-sm"
-              onclick="eventsModule.sendInviteEmail('${a.id}')"
+              data-action="eventsModule.sendInviteEmail" data-id="a.id"
               title="Send invite" aria-label="Send invite"><i class="bi bi-envelope"></i></button>` : ''}
             <button class="btn btn-outline-primary btn-sm"
-              onclick="eventsModule.updateAttendeeStatus('${a.id}', '${a.status === 'attending' ? 'not_attending' : 'attending'}')"
+              data-action="eventsModule.updateAttendeeStatus" data-args='${JSON.stringify([a.id, a.status === 'attending' ? 'not_attending' : 'attending'])}'
               title="Toggle RSVP" aria-label="Toggle RSVP"><i class="bi bi-arrow-repeat"></i></button>
             <button class="btn btn-outline-danger btn-sm"
-              onclick="eventsModule.deleteAttendee('${a.id}')" title="Remove" aria-label="Remove attendee"><i class="bi bi-trash"></i></button>
+              data-action="eventsModule.deleteAttendee" data-id="a.id" title="Remove" aria-label="Remove attendee"><i class="bi bi-trash"></i></button>
           </div>
         </td>
       </tr>
@@ -1088,7 +1088,7 @@ const eventsModule = {
         }
         resultsEl.innerHTML = data.map(o => `
           <div class="p-2 small" style="cursor:pointer;" onmouseover="this.style.background='#e3f2fd'" onmouseout="this.style.background=''"
-            onclick="eventsModule._selectOrgForAttendee('${o.id}', '${utils.escapeHtml(o.company_name).replace(/'/g, "\\'")}')">
+            data-action="eventsModule._selectOrgForAttendee" data-args='${JSON.stringify([o.id, utils.escapeHtml(o.company_name).replace(/'/g, "\\'")])}'>
             <i class="bi bi-building me-1 text-muted"></i>${utils.escapeHtml(o.company_name)}
           </div>
         `).join('');
@@ -1230,8 +1230,8 @@ const eventsModule = {
         <td><small>${a.checkedIn && a.checkInTime ? new Date(a.checkInTime).toLocaleTimeString('en-GB', {hour:'2-digit', minute:'2-digit'}) : '-'}</small></td>
         <td class="text-center">
           ${a.checkedIn
-            ? `<button class="btn btn-sm btn-outline-secondary" onclick="eventsModule.toggleCheckIn('${a.id}')"><i class="bi bi-x-circle me-1"></i>Undo</button>`
-            : `<button class="btn btn-sm btn-success" onclick="eventsModule.toggleCheckIn('${a.id}')"><i class="bi bi-check-lg me-1"></i>Check In</button>`
+            ? `<button class="btn btn-sm btn-outline-secondary" data-action="eventsModule.toggleCheckIn" data-id="a.id"><i class="bi bi-x-circle me-1"></i>Undo</button>`
+            : `<button class="btn btn-sm btn-success" data-action="eventsModule.toggleCheckIn" data-id="a.id"><i class="bi bi-check-lg me-1"></i>Check In</button>`
           }
         </td>
       </tr>
@@ -1353,16 +1353,16 @@ const eventsModule = {
           <h6 class="card-title"><i class="bi bi-lightning me-2"></i>Batch Issue Tickets</h6>
           <p class="small text-muted mb-2">Issue tickets to groups of attendees. Tickets include unique reference numbers for check-in.</p>
           <div class="d-flex gap-2 flex-wrap">
-            <button class="btn btn-primary btn-sm" onclick="eventsModule.batchIssueTickets('confirmed')">
+            <button class="btn btn-primary btn-sm" data-action="eventsModule.batchIssueTickets" data-id="confirmed">
               <i class="bi bi-people me-1"></i>All Confirmed RSVPs (${unissued.length})
             </button>
-            <button class="btn btn-warning btn-sm" onclick="eventsModule.batchIssueTickets('vip')">
+            <button class="btn btn-warning btn-sm" data-action="eventsModule.batchIssueTickets" data-id="vip">
               <i class="bi bi-star me-1"></i>VIP Guests Only
             </button>
-            <button class="btn btn-outline-primary btn-sm" onclick="eventsModule.emailAllTickets()">
+            <button class="btn btn-outline-primary btn-sm" data-action="eventsModule.emailAllTickets">
               <i class="bi bi-envelope me-1"></i>Email All Tickets
             </button>
-            <button class="btn btn-outline-secondary btn-sm" onclick="eventsModule.exportTicketsList()">
+            <button class="btn btn-outline-secondary btn-sm" data-action="eventsModule.exportTicketsList">
               <i class="bi bi-download me-1"></i>Export Tickets CSV
             </button>
           </div>
@@ -1382,7 +1382,7 @@ const eventsModule = {
                   <td>${utils.escapeHtml(a.name)}</td>
                   <td>${a.email ? utils.escapeHtml(a.email) : '<span class="text-muted">-</span>'}</td>
                   <td><span class="badge bg-secondary">${(a.guestType || 'guest').toUpperCase()}</span></td>
-                  <td class="text-center"><button class="btn btn-sm btn-outline-primary" onclick="eventsModule.issueTicketToAttendee('${a.id}')"><i class="bi bi-ticket-perforated me-1"></i>Issue</button></td>
+                  <td class="text-center"><button class="btn btn-sm btn-outline-primary" data-action="eventsModule.issueTicketToAttendee" data-id="a.id"><i class="bi bi-ticket-perforated me-1"></i>Issue</button></td>
                 </tr>`).join('')}
               </tbody>
             </table>
@@ -1408,8 +1408,8 @@ const eventsModule = {
                   <td class="small">${t.issuedAt ? new Date(t.issuedAt).toLocaleDateString('en-GB') : '-'}</td>
                   <td class="text-center">
                     ${t.status === 'issued' ? `
-                      <button class="btn btn-sm btn-outline-primary me-1" onclick="eventsModule.resendTicket('${t.id}')" title="Email ticket"><i class="bi bi-envelope"></i></button>
-                      <button class="btn btn-sm btn-outline-danger" onclick="eventsModule.revokeTicket('${t.id}')" title="Revoke"><i class="bi bi-x-circle"></i></button>
+                      <button class="btn btn-sm btn-outline-primary me-1" data-action="eventsModule.resendTicket" data-id="t.id" title="Email ticket"><i class="bi bi-envelope"></i></button>
+                      <button class="btn btn-sm btn-outline-danger" data-action="eventsModule.revokeTicket" data-id="t.id" title="Revoke"><i class="bi bi-x-circle"></i></button>
                     ` : '<span class="text-muted small">Revoked</span>'}
                   </td>
                 </tr>`).join('')}
@@ -1763,7 +1763,7 @@ const eventsModule = {
     this._showEmailPreview(subject, body, emails, eventId);
   },
 
-  _showEmailPreview(subject, body, recipients, eventId) {
+  _showEmailPreview(subject, body, recipients, _eventId) {
     const recipientStr = recipients.length > 3 ? `${recipients.slice(0, 3).join(', ')} + ${recipients.length - 3} more` : recipients.join(', ');
     const html = `
       <div class="modal fade" id="emailPreviewModal" tabindex="-1" style="z-index:1070;">
@@ -1794,9 +1794,9 @@ const eventsModule = {
               </div>
             </div>
             <div class="modal-footer">
-              <button class="btn btn-outline-secondary" onclick="eventsModule._copyEmailContent()"><i class="bi bi-clipboard me-1"></i>Copy Content</button>
-              <button class="btn btn-outline-primary" onclick="eventsModule._downloadMailMerge('${eventId}')"><i class="bi bi-download me-1"></i>Download CSV for Mail Merge</button>
-              <button class="btn btn-primary" onclick="eventsModule._openMailto()"><i class="bi bi-send me-1"></i>Open in Email Client</button>
+              <button class="btn btn-outline-secondary" data-action="eventsModule._copyEmailContent"><i class="bi bi-clipboard me-1"></i>Copy Content</button>
+              <button class="btn btn-outline-primary" data-action="eventsModule._downloadMailMerge" data-id="eventId"><i class="bi bi-download me-1"></i>Download CSV for Mail Merge</button>
+              <button class="btn btn-primary" data-action="eventsModule._openMailto"><i class="bi bi-send me-1"></i>Open in Email Client</button>
             </div>
           </div>
         </div>
@@ -1970,10 +1970,10 @@ const eventsModule = {
         <td>${w.promoted ? '<span class="badge bg-success">Promoted</span>' : '<span class="badge bg-warning">Waiting</span>'}</td>
         <td class="text-center">
           ${w.promoted ? '' : `
-            <button class="btn btn-sm btn-success me-1" onclick="eventsModule.promoteFromWaitlist('${w.id}')" title="Promote to attendee">
+            <button class="btn btn-sm btn-success me-1" data-action="eventsModule.promoteFromWaitlist" data-id="w.id" title="Promote to attendee">
               <i class="bi bi-person-plus"></i>
             </button>`}
-          <button class="btn btn-sm btn-outline-danger" onclick="eventsModule.removeFromWaitlist('${w.id}')" title="Remove">
+          <button class="btn btn-sm btn-outline-danger" data-action="eventsModule.removeFromWaitlist" data-id="w.id" title="Remove">
             <i class="bi bi-trash"></i>
           </button>
         </td>
@@ -2238,7 +2238,7 @@ const eventsModule = {
           <div class="stat"><div class="stat-val">${totalSeats > 0 ? Math.round(totalSeated / totalSeats * 100) : 0}%</div><div>Occupancy</div></div>
         </div>
         <div style="text-align:center;padding:12px;" class="no-print">
-          <button onclick="window.print()" style="padding:8px 24px;background:#0d6efd;color:white;border:none;border-radius:6px;cursor:pointer;font-size:0.9rem;">Print Seating Chart</button>
+          <button data-action="window.print" style="padding:8px 24px;background:#0d6efd;color:white;border:none;border-radius:6px;cursor:pointer;font-size:0.9rem;">Print Seating Chart</button>
         </div>
         <div class="grid">${tableCards}</div>
         <div style="text-align:center;padding:20px;color:#adb5bd;font-size:0.8rem;">Generated ${new Date().toLocaleString()} | British Trade Awards</div>
@@ -2396,8 +2396,8 @@ const eventsModule = {
         <td class="${diffClass}">${diff !== 0 ? (diff > 0 ? '+' : '') + '\u00A3' + diff.toFixed(2) : '-'}</td>
         <td>${utils.escapeHtml(item.status || 'Pending')}</td>
         <td class="text-center">
-          <button class="btn btn-sm btn-outline-primary me-1" onclick="eventsModule.editBudgetItem(${idx})" title="Edit"><i class="bi bi-pencil"></i></button>
-          <button class="btn btn-sm btn-outline-danger" onclick="eventsModule.deleteBudgetItem(${idx})" title="Delete"><i class="bi bi-trash"></i></button>
+          <button class="btn btn-sm btn-outline-primary me-1" data-action="eventsModule.editBudgetItem" data-id="${idx}" title="Edit"><i class="bi bi-pencil"></i></button>
+          <button class="btn btn-sm btn-outline-danger" data-action="eventsModule.deleteBudgetItem" data-id="${idx}" title="Delete"><i class="bi bi-trash"></i></button>
         </td>
       </tr>`;
     }).join('');
@@ -2437,7 +2437,7 @@ const eventsModule = {
             </div>
             <div class="modal-footer">
               <button class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-              <button class="btn btn-primary" onclick="eventsModule._saveBudgetItem()"><i class="bi bi-save me-1"></i>Save</button>
+              <button class="btn btn-primary" data-action="eventsModule._saveBudgetItem"><i class="bi bi-save me-1"></i>Save</button>
             </div>
           </div>
         </div>
@@ -2596,8 +2596,8 @@ const eventsModule = {
         <td>${v.cost ? '\u00A3' + parseFloat(v.cost).toFixed(2) : '-'}</td>
         <td><span class="badge bg-${statusColors[v.status] || 'secondary'}">${utils.escapeHtml((v.status || 'pending').charAt(0).toUpperCase() + (v.status || 'pending').slice(1))}</span></td>
         <td class="text-center">
-          <button class="btn btn-sm btn-outline-primary me-1" onclick="eventsModule.editVendor(${idx})" title="Edit"><i class="bi bi-pencil"></i></button>
-          <button class="btn btn-sm btn-outline-danger" onclick="eventsModule.deleteVendor(${idx})" title="Delete"><i class="bi bi-trash"></i></button>
+          <button class="btn btn-sm btn-outline-primary me-1" data-action="eventsModule.editVendor" data-id="${idx}" title="Edit"><i class="bi bi-pencil"></i></button>
+          <button class="btn btn-sm btn-outline-danger" data-action="eventsModule.deleteVendor" data-id="${idx}" title="Delete"><i class="bi bi-trash"></i></button>
         </td>
       </tr>`).join('');
   },
@@ -2631,7 +2631,7 @@ const eventsModule = {
             </div>
             <div class="modal-footer">
               <button class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-              <button class="btn btn-primary" onclick="eventsModule._saveVendor()"><i class="bi bi-save me-1"></i>Save</button>
+              <button class="btn btn-primary" data-action="eventsModule._saveVendor"><i class="bi bi-save me-1"></i>Save</button>
             </div>
           </div>
         </div>
@@ -2777,7 +2777,7 @@ const eventsModule = {
               <div class="form-control form-control-sm bg-light" id="parkingPassesRemaining">${(reqsSummary.parkingTotal || 0) - (reqsSummary.parkingAllocated || 0)}</div>
             </div>
             <div class="col-md-3">
-              <button class="btn btn-sm btn-primary w-100" onclick="eventsModule.saveSpecialReqs()"><i class="bi bi-save me-1"></i>Save</button>
+              <button class="btn btn-sm btn-primary w-100" data-action="eventsModule.saveSpecialReqs"><i class="bi bi-save me-1"></i>Save</button>
             </div>
           </div>
           <div class="mt-2"><small class="text-muted">
@@ -2838,7 +2838,7 @@ const eventsModule = {
             </div>
           </div>
           <div class="mt-2 text-end">
-            <button class="btn btn-sm btn-primary" onclick="eventsModule.saveSpecialReqs()"><i class="bi bi-save me-1"></i>Save Emergency Info</button>
+            <button class="btn btn-sm btn-primary" data-action="eventsModule.saveSpecialReqs"><i class="bi bi-save me-1"></i>Save Emergency Info</button>
           </div>
         </div>
       </div>
@@ -2870,7 +2870,7 @@ const eventsModule = {
             </div>
           </div>
           <div class="mt-2 text-end">
-            <button class="btn btn-sm btn-primary" onclick="eventsModule.saveSpecialReqs()"><i class="bi bi-save me-1"></i>Save</button>
+            <button class="btn btn-sm btn-primary" data-action="eventsModule.saveSpecialReqs"><i class="bi bi-save me-1"></i>Save</button>
           </div>
         </div>
       </div>`;
@@ -2986,12 +2986,12 @@ const eventsModule = {
         <div class="card-body py-2">
           <h6 class="mb-2"><i class="bi bi-lightning me-2"></i>Quick Actions</h6>
           <div class="d-flex gap-2 flex-wrap">
-            <button class="btn btn-primary btn-sm" onclick="eventsModule.sendThankYouEmails()" title="Opens email compose with thank-you template for all attending guests"><i class="bi bi-envelope-heart me-1"></i>Send Thank You Emails</button>
-            <button class="btn btn-outline-primary btn-sm" onclick="eventsModule.generateAttendanceReport()" title="Downloads attendance report as CSV spreadsheet"><i class="bi bi-download me-1"></i>Download Attendance Report</button>
-            <button class="btn btn-outline-success btn-sm" onclick="eventsModule.generateWinnerPackage()" title="Jump to Winner Highlights section below"><i class="bi bi-stars me-1"></i>Winner Highlights</button>
-            <button class="btn btn-outline-warning btn-sm" onclick="eventsModule.generateWinnersCertificates()" title="Generate PDF certificates for all confirmed winners"><i class="bi bi-file-earmark-pdf me-1"></i>Winner Certificates PDF</button>
-            <button class="btn btn-outline-info btn-sm" onclick="eventsModule.generateSponsorReport()" title="Jump to Sponsor ROI section below"><i class="bi bi-graph-up me-1"></i>Sponsor ROI Report</button>
-            <button class="btn btn-outline-secondary btn-sm" onclick="eventsModule.exportPostEventPack()" title="Downloads all reports (attendance, budget, vendors, debrief, sponsor) as CSV files"><i class="bi bi-file-earmark-zip me-1"></i>Export Full Pack</button>
+            <button class="btn btn-primary btn-sm" data-action="eventsModule.sendThankYouEmails" title="Opens email compose with thank-you template for all attending guests"><i class="bi bi-envelope-heart me-1"></i>Send Thank You Emails</button>
+            <button class="btn btn-outline-primary btn-sm" data-action="eventsModule.generateAttendanceReport" title="Downloads attendance report as CSV spreadsheet"><i class="bi bi-download me-1"></i>Download Attendance Report</button>
+            <button class="btn btn-outline-success btn-sm" data-action="eventsModule.generateWinnerPackage" title="Jump to Winner Highlights section below"><i class="bi bi-stars me-1"></i>Winner Highlights</button>
+            <button class="btn btn-outline-warning btn-sm" data-action="eventsModule.generateWinnersCertificates" title="Generate PDF certificates for all confirmed winners"><i class="bi bi-file-earmark-pdf me-1"></i>Winner Certificates PDF</button>
+            <button class="btn btn-outline-info btn-sm" data-action="eventsModule.generateSponsorReport" title="Jump to Sponsor ROI section below"><i class="bi bi-graph-up me-1"></i>Sponsor ROI Report</button>
+            <button class="btn btn-outline-secondary btn-sm" data-action="eventsModule.exportPostEventPack" title="Downloads all reports (attendance, budget, vendors, debrief, sponsor) as CSV files"><i class="bi bi-file-earmark-zip me-1"></i>Export Full Pack</button>
           </div>
         </div>
       </div>
@@ -3001,7 +3001,7 @@ const eventsModule = {
         <div class="card-body">
           <div class="d-flex justify-content-between align-items-center mb-3">
             <h6 class="card-title mb-0"><i class="bi bi-chat-square-text me-2"></i>Post-Event Survey & Feedback</h6>
-            <button class="btn btn-sm btn-primary" onclick="eventsModule.sendSurveyEmails()"><i class="bi bi-send me-1"></i>Send Survey</button>
+            <button class="btn btn-sm btn-primary" data-action="eventsModule.sendSurveyEmails"><i class="bi bi-send me-1"></i>Send Survey</button>
           </div>
           <div id="surveyConfig">
             <div class="row g-3 mb-3">
@@ -3011,7 +3011,7 @@ const eventsModule = {
               </div>
               <div class="col-md-4">
                 <label class="form-label small">&nbsp;</label>
-                <button class="btn btn-sm btn-outline-primary w-100" onclick="eventsModule.savePostEventData()"><i class="bi bi-save me-1"></i>Save</button>
+                <button class="btn btn-sm btn-outline-primary w-100" data-action="eventsModule.savePostEventData"><i class="bi bi-save me-1"></i>Save</button>
               </div>
             </div>
             <div class="row g-3" id="surveyResponseStats">
@@ -3037,8 +3037,8 @@ const eventsModule = {
           <div class="d-flex justify-content-between align-items-center mb-3">
             <h6 class="card-title mb-0"><i class="bi bi-stars me-2"></i>Winner Highlights & Social Assets</h6>
             <div class="d-flex gap-2">
-              <button class="btn btn-sm btn-outline-primary" onclick="eventsModule.generatePressRelease()"><i class="bi bi-newspaper me-1"></i>Press Release</button>
-              <button class="btn btn-sm btn-outline-success" onclick="eventsModule.generateSocialCards()"><i class="bi bi-share me-1"></i>Social Cards</button>
+              <button class="btn btn-sm btn-outline-primary" data-action="eventsModule.generatePressRelease"><i class="bi bi-newspaper me-1"></i>Press Release</button>
+              <button class="btn btn-sm btn-outline-success" data-action="eventsModule.generateSocialCards"><i class="bi bi-share me-1"></i>Social Cards</button>
             </div>
           </div>
           <div id="winnerHighlightsContent">
@@ -3128,7 +3128,7 @@ const eventsModule = {
       </div></div></div>
       <div class="col-md-3"><div class="card text-center"><div class="card-body py-2">
         <div class="input-group input-group-sm">
-          <input type="number" class="form-control text-center fw-bold" id="surveyResponseCount" value="${responses}" min="0" onchange="eventsModule.savePostEventData()">
+          <input type="number" class="form-control text-center fw-bold" id="surveyResponseCount" value="${responses}" min="0" data-on-change="eventsModule.savePostEventData">
         </div>
         <small class="text-muted">Responses</small>
       </div></div></div>
@@ -3137,7 +3137,7 @@ const eventsModule = {
       </div></div></div>
       <div class="col-md-3"><div class="card text-center"><div class="card-body py-2">
         <div class="input-group input-group-sm">
-          <input type="number" class="form-control text-center fw-bold" id="surveyAvgRating" value="${data.avgRating || ''}" min="1" max="10" step="0.1" placeholder="-" onchange="eventsModule.savePostEventData()">
+          <input type="number" class="form-control text-center fw-bold" id="surveyAvgRating" value="${data.avgRating || ''}" min="1" max="10" step="0.1" placeholder="-" data-on-change="eventsModule.savePostEventData">
           <span class="input-group-text">/10</span>
         </div>
         <small class="text-muted">Avg Rating</small>
@@ -3315,7 +3315,7 @@ const eventsModule = {
       <p class="text-muted mb-3">Generate shareable assets to celebrate your winners and promote the awards.</p>
       <div class="row g-3">
         <div class="col-md-4">
-          <div class="card text-center h-100" style="cursor:pointer;" onclick="eventsModule.generatePressRelease()">
+          <div class="card text-center h-100" style="cursor:pointer;" data-action="eventsModule.generatePressRelease">
             <div class="card-body py-3">
               <i class="bi bi-newspaper display-4 text-primary mb-2 d-block"></i>
               <h6>Press Release</h6>
@@ -3324,7 +3324,7 @@ const eventsModule = {
           </div>
         </div>
         <div class="col-md-4">
-          <div class="card text-center h-100" style="cursor:pointer;" onclick="eventsModule.generateSocialCards()">
+          <div class="card text-center h-100" style="cursor:pointer;" data-action="eventsModule.generateSocialCards">
             <div class="card-body py-3">
               <i class="bi bi-share display-4 text-success mb-2 d-block"></i>
               <h6>Social Media Cards</h6>
@@ -3333,7 +3333,7 @@ const eventsModule = {
           </div>
         </div>
         <div class="col-md-4">
-          <div class="card text-center h-100" style="cursor:pointer;" onclick="eventsModule.generateWinnersCertificates()">
+          <div class="card text-center h-100" style="cursor:pointer;" data-action="eventsModule.generateWinnersCertificates">
             <div class="card-body py-3">
               <i class="bi bi-award display-4 text-warning mb-2 d-block"></i>
               <h6>Winner Certificates</h6>
@@ -3438,7 +3438,7 @@ const eventsModule = {
       <div class="col-md-6 mb-3">
         <canvas id="socialCard${idx}" width="1200" height="630" style="width:100%;border-radius:8px;box-shadow:0 2px 8px rgba(0,0,0,0.1);"></canvas>
         <div class="text-center mt-1">
-          <button class="btn btn-sm btn-outline-primary" onclick="eventsModule._downloadSocialCard(${idx})"><i class="bi bi-download me-1"></i>Download</button>
+          <button class="btn btn-sm btn-outline-primary" data-action="eventsModule._downloadSocialCard" data-id="${idx}"><i class="bi bi-download me-1"></i>Download</button>
         </div>
       </div>`).join('');
 
@@ -3453,7 +3453,7 @@ const eventsModule = {
               <div class="row">${cardsHtml}</div>
             </div>
             <div class="modal-footer">
-              <button class="btn btn-primary" onclick="eventsModule._downloadAllSocialCards(${cards.length})"><i class="bi bi-download me-1"></i>Download All</button>
+              <button class="btn btn-primary" data-action="eventsModule._downloadAllSocialCards" data-id="${cards.length}"><i class="bi bi-download me-1"></i>Download All</button>
             </div>
           </div>
         </div>
@@ -3715,17 +3715,17 @@ const eventsModule = {
             <div class="row g-2">
               <div class="col-4">
                 <label class="form-label small mb-0">Social Reach</label>
-                <input type="text" class="form-control form-control-sm" id="sponsorSocialReach" value="${utils.escapeHtml(data.socialReach || '')}" placeholder="e.g., 50K" onchange="eventsModule.savePostEventData()">
+                <input type="text" class="form-control form-control-sm" id="sponsorSocialReach" value="${utils.escapeHtml(data.socialReach || '')}" placeholder="e.g., 50K" data-on-change="eventsModule.savePostEventData">
               </div>
               <div class="col-4">
                 <label class="form-label small mb-0">Press Mentions</label>
-                <input type="number" class="form-control form-control-sm" id="sponsorPressMentions" value="${data.pressMentions || ''}" min="0" onchange="eventsModule.savePostEventData()">
+                <input type="number" class="form-control form-control-sm" id="sponsorPressMentions" value="${data.pressMentions || ''}" min="0" data-on-change="eventsModule.savePostEventData">
               </div>
               <div class="col-4">
                 <label class="form-label small mb-0">Media Value</label>
                 <div class="input-group input-group-sm">
                   <span class="input-group-text">\u00A3</span>
-                  <input type="number" class="form-control" id="sponsorMediaValue" value="${data.mediaValue || ''}" min="0" onchange="eventsModule.savePostEventData()">
+                  <input type="number" class="form-control" id="sponsorMediaValue" value="${data.mediaValue || ''}" min="0" data-on-change="eventsModule.savePostEventData">
                 </div>
               </div>
             </div>
@@ -3734,7 +3734,7 @@ const eventsModule = {
       </div>
 
       <div class="text-end">
-        <button class="btn btn-sm btn-outline-primary" onclick="eventsModule.exportSponsorReport()"><i class="bi bi-download me-1"></i>Export Sponsor Report CSV</button>
+        <button class="btn btn-sm btn-outline-primary" data-action="eventsModule.exportSponsorReport"><i class="bi bi-download me-1"></i>Export Sponsor Report CSV</button>
       </div>`;
   },
 
@@ -3816,8 +3816,8 @@ const eventsModule = {
           <textarea class="form-control form-control-sm" id="debriefNotes" rows="3" placeholder="Any other observations, feedback from team members, or notes for the record...">${utils.escapeHtml(debrief.notes || '')}</textarea>
         </div>
         <div class="col-12 text-end">
-          <button class="btn btn-sm btn-outline-secondary me-2" onclick="eventsModule.exportDebrief()"><i class="bi bi-download me-1"></i>Export Debrief</button>
-          <button class="btn btn-sm btn-primary" onclick="eventsModule.saveDebrief()"><i class="bi bi-save me-1"></i>Save Debrief</button>
+          <button class="btn btn-sm btn-outline-secondary me-2" data-action="eventsModule.exportDebrief"><i class="bi bi-download me-1"></i>Export Debrief</button>
+          <button class="btn btn-sm btn-primary" data-action="eventsModule.saveDebrief"><i class="bi bi-save me-1"></i>Save Debrief</button>
         </div>
       </div>`;
   },
@@ -3967,7 +3967,7 @@ const eventsModule = {
                     </span>
                   </div>
                   <button class="btn btn-sm ${this.isPublished ? 'btn-outline-primary' : 'btn-success'}"
-                          onclick="eventsModule.togglePublishMode()">
+                          data-action="eventsModule.togglePublishMode">
                     <i class="bi ${this.isPublished ? 'bi-unlock' : 'bi-lock'} me-1"></i>
                     ${this.isPublished ? 'Unpublish' : 'Publish'}
                   </button>
@@ -3987,22 +3987,22 @@ const eventsModule = {
                   <label class="form-label mb-0 small fw-semibold text-nowrap">Start Time:</label>
                   <input type="time" class="form-control form-control-sm" id="roCeremonyStartTime"
                          value="${this._roCeremonyStartTime || ''}"
-                         onchange="eventsModule.setCeremonyStartTime(this.value)"
+                         data-on-change="eventsModule.setCeremonyStartTime"
                          style="width:100px;" ${this.isPublished ? 'disabled' : ''}>
                   <div class="form-check form-switch ms-2 mb-0">
                     <input class="form-check-input" type="checkbox" id="roAutoScheduleToggle"
                            ${this._roAutoSchedule ? 'checked' : ''}
-                           onchange="eventsModule.toggleAutoSchedule(this.checked)"
+                           data-on-change="eventsModule.toggleAutoSchedule"
                            ${this.isPublished ? 'disabled' : ''}>
                     <label class="form-check-label small" for="roAutoScheduleToggle">Auto-schedule</label>
                   </div>
                   ${this._roAutoSchedule && this._roCeremonyStartTime ? `
-                    <button class="btn btn-sm btn-outline-info ms-1" onclick="eventsModule.recalcAutoSchedule()" title="Recalculate all times">
+                    <button class="btn btn-sm btn-outline-info ms-1" data-action="eventsModule.recalcAutoSchedule" title="Recalculate all times">
                       <i class="bi bi-calculator me-1"></i>Recalc
                     </button>
                   ` : ''}
                   <div class="ms-auto">
-                    <button class="btn btn-sm btn-dark" onclick="eventsModule.openBackstageView()" title="Open backstage/stage manager view">
+                    <button class="btn btn-sm btn-dark" data-action="eventsModule.openBackstageView" title="Open backstage/stage manager view">
                       <i class="bi bi-display me-1"></i>Backstage View
                     </button>
                   </div>
@@ -4010,34 +4010,34 @@ const eventsModule = {
 
                 <!-- Actions Bar -->
                 <div class="d-flex gap-2 flex-wrap align-items-center mb-2">
-                  <button class="btn btn-sm btn-success" onclick="eventsModule.openAddWinnersChecklist()" ${this.isPublished ? 'disabled' : ''}>
+                  <button class="btn btn-sm btn-success" data-action="eventsModule.openAddWinnersChecklist" ${this.isPublished ? 'disabled' : ''}>
                     <i class="bi bi-trophy me-1"></i>Add Winners
                   </button>
-                  <button class="btn btn-sm btn-primary" onclick="eventsModule.syncFromRSVPs()" ${this.isPublished ? 'disabled' : ''}>
+                  <button class="btn btn-sm btn-primary" data-action="eventsModule.syncFromRSVPs" ${this.isPublished ? 'disabled' : ''}>
                     <i class="bi bi-arrow-repeat me-1"></i>Sync RSVPs
                   </button>
-                  <button class="btn btn-sm btn-outline-secondary" onclick="eventsModule.addManualEntry()" ${this.isPublished ? 'disabled' : ''}>
+                  <button class="btn btn-sm btn-outline-secondary" data-action="eventsModule.addManualEntry" ${this.isPublished ? 'disabled' : ''}>
                     <i class="bi bi-plus-circle me-1"></i>Add Entry
                   </button>
-                  <button class="btn btn-sm btn-outline-dark" onclick="eventsModule.addSectionBreak()" ${this.isPublished ? 'disabled' : ''}>
+                  <button class="btn btn-sm btn-outline-dark" data-action="eventsModule.addSectionBreak" ${this.isPublished ? 'disabled' : ''}>
                     <i class="bi bi-dash-lg me-1"></i>Add Break
                   </button>
-                  <button class="btn btn-sm btn-outline-secondary" onclick="eventsModule.openSectionManager()" title="Manage acts/sections">
+                  <button class="btn btn-sm btn-outline-secondary" data-action="eventsModule.openSectionManager" title="Manage acts/sections">
                     <i class="bi bi-palette me-1"></i>Sections
                   </button>
-                  <button class="btn btn-sm btn-outline-secondary" onclick="eventsModule.exportRunningOrder()">
+                  <button class="btn btn-sm btn-outline-secondary" data-action="eventsModule.exportRunningOrder">
                     <i class="bi bi-download me-1"></i>Export
                   </button>
-                  <button class="btn btn-sm btn-outline-secondary" onclick="eventsModule.printRunningOrder()">
+                  <button class="btn btn-sm btn-outline-secondary" data-action="eventsModule.printRunningOrder">
                     <i class="bi bi-printer me-1"></i>Print
                   </button>
-                  <button class="btn btn-sm btn-outline-secondary" onclick="eventsModule.exportWinnerCards()" title="Print winner cards - 2 per A4 portrait">
+                  <button class="btn btn-sm btn-outline-secondary" data-action="eventsModule.exportWinnerCards" title="Print winner cards - 2 per A4 portrait">
                     <i class="bi bi-trophy me-1"></i>Winner Cards
                   </button>
-                  <button class="btn btn-sm btn-outline-secondary" onclick="eventsModule.exportEnvelopeLabels()" title="Print envelope labels - 4 per A4 landscape">
+                  <button class="btn btn-sm btn-outline-secondary" data-action="eventsModule.exportEnvelopeLabels" title="Print envelope labels - 4 per A4 landscape">
                     <i class="bi bi-envelope me-1"></i>Envelopes
                   </button>
-                  <button class="btn btn-sm btn-outline-warning" id="roUndoBtn" onclick="eventsModule.undoROReorder()" disabled title="Undo last reorder">
+                  <button class="btn btn-sm btn-outline-warning" id="roUndoBtn" data-action="eventsModule.undoROReorder" disabled title="Undo last reorder">
                     <i class="bi bi-arrow-counterclockwise me-1"></i>Undo
                   </button>
                   <div class="ms-auto d-flex align-items-center gap-2">
@@ -4054,11 +4054,11 @@ const eventsModule = {
               <!-- Tabs: Running Order / Checklist / Cue Sheet -->
               <div class="px-3 pt-2">
                 <ul class="nav nav-tabs nav-tabs-sm" id="roViewTabs" role="tablist" style="font-size:0.8rem;">
-                  <li class="nav-item"><a class="nav-link active" data-ro-tab="main" onclick="eventsModule.switchROTab('main')" style="cursor:pointer;"><i class="bi bi-list-ol me-1"></i>Running Order</a></li>
-                  <li class="nav-item"><a class="nav-link" data-ro-tab="checklist" onclick="eventsModule.switchROTab('checklist')" style="cursor:pointer;"><i class="bi bi-check2-square me-1"></i>Checklist</a></li>
-                  <li class="nav-item"><a class="nav-link" data-ro-tab="cuesheet" onclick="eventsModule.switchROTab('cuesheet')" style="cursor:pointer;"><i class="bi bi-camera-reels me-1"></i>Cue Sheet</a></li>
-                  <li class="nav-item"><a class="nav-link" data-ro-tab="trophies" onclick="eventsModule.switchROTab('trophies')" style="cursor:pointer;"><i class="bi bi-trophy me-1"></i>Trophies</a></li>
-                  <li class="nav-item"><a class="nav-link" data-ro-tab="versions" onclick="eventsModule.switchROTab('versions')" style="cursor:pointer;"><i class="bi bi-clock-history me-1"></i>Versions</a></li>
+                  <li class="nav-item"><a class="nav-link active" data-ro-tab="main" data-action="eventsModule.switchROTab" data-id="main" style="cursor:pointer;"><i class="bi bi-list-ol me-1"></i>Running Order</a></li>
+                  <li class="nav-item"><a class="nav-link" data-ro-tab="checklist" data-action="eventsModule.switchROTab" data-id="checklist" style="cursor:pointer;"><i class="bi bi-check2-square me-1"></i>Checklist</a></li>
+                  <li class="nav-item"><a class="nav-link" data-ro-tab="cuesheet" data-action="eventsModule.switchROTab" data-id="cuesheet" style="cursor:pointer;"><i class="bi bi-camera-reels me-1"></i>Cue Sheet</a></li>
+                  <li class="nav-item"><a class="nav-link" data-ro-tab="trophies" data-action="eventsModule.switchROTab" data-id="trophies" style="cursor:pointer;"><i class="bi bi-trophy me-1"></i>Trophies</a></li>
+                  <li class="nav-item"><a class="nav-link" data-ro-tab="versions" data-action="eventsModule.switchROTab" data-id="versions" style="cursor:pointer;"><i class="bi bi-clock-history me-1"></i>Versions</a></li>
                 </ul>
               </div>
 
@@ -4085,13 +4085,13 @@ const eventsModule = {
                   <i class="bi bi-inbox display-4 d-block mb-3 opacity-25"></i>
                   <p class="text-muted">No items in running order yet.</p>
                   <div class="d-flex gap-2 justify-content-center flex-wrap">
-                    <button class="btn btn-success" onclick="eventsModule.openAddWinnersChecklist()">
+                    <button class="btn btn-success" data-action="eventsModule.openAddWinnersChecklist">
                       <i class="bi bi-trophy me-2"></i>Add Winners
                     </button>
-                    <button class="btn btn-primary" onclick="eventsModule.syncFromRSVPs()">
+                    <button class="btn btn-primary" data-action="eventsModule.syncFromRSVPs">
                       <i class="bi bi-arrow-repeat me-2"></i>Sync from RSVPs
                     </button>
-                    <button class="btn btn-outline-secondary" onclick="eventsModule.addManualEntry()">
+                    <button class="btn btn-outline-secondary" data-action="eventsModule.addManualEntry">
                       <i class="bi bi-plus-circle me-2"></i>Add Manual Entry
                     </button>
                   </div>
@@ -4135,7 +4135,7 @@ const eventsModule = {
               </div>
               <div>
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-                <button type="button" class="btn btn-primary" onclick="eventsModule.saveRunningOrder()">
+                <button type="button" class="btn btn-primary" data-action="eventsModule.saveRunningOrder">
                   <i class="bi bi-save me-2"></i>Save Changes
                 </button>
               </div>
@@ -4469,7 +4469,7 @@ const eventsModule = {
             </div>
             <div class="ro-time">
               <input type="time" value="${scheduledTime}"
-                     onchange="eventsModule.setROItemTime('${item.id}', this.value)"
+                     data-on-change="eventsModule.setROItemTime" data-id="item.id"
                      ${this.isPublished ? 'disabled' : ''}>
               <div class="duration">${duration}m</div>
             </div>
@@ -4482,22 +4482,22 @@ const eventsModule = {
             <div class="ro-sponsor"></div>
             <div class="ro-recipient" style="width:120px;"></div>
             <div class="ro-status">
-              <select onchange="eventsModule.setROItemStatus('${item.id}', this.value)" ${this.isPublished ? 'disabled' : ''}>
+              <select data-on-change="eventsModule.setROItemStatus" data-id="item.id" ${this.isPublished ? 'disabled' : ''}>
                 ${statusOpts}
               </select>
             </div>
             <div class="ro-actions" style="width:140px;">
               ${!this.isPublished ? `
-                <button class="btn btn-sm btn-outline-secondary" onclick="eventsModule.moveROItem('${item.id}', -1)" title="Move up" ${isFirst ? 'disabled' : ''}>
+                <button class="btn btn-sm btn-outline-secondary" data-action="eventsModule.moveROItem" data-args='["${item.id}", -1]' title="Move up" ${isFirst ? 'disabled' : ''}>
                   <i class="bi bi-arrow-up"></i>
                 </button>
-                <button class="btn btn-sm btn-outline-secondary" onclick="eventsModule.moveROItem('${item.id}', 1)" title="Move down" ${isLast ? 'disabled' : ''}>
+                <button class="btn btn-sm btn-outline-secondary" data-action="eventsModule.moveROItem" data-args='["${item.id}", 1]' title="Move down" ${isLast ? 'disabled' : ''}>
                   <i class="bi bi-arrow-down"></i>
                 </button>
-                <button class="btn btn-sm btn-outline-primary" onclick="eventsModule.editRunningOrderItem('${item.id}')" title="Edit">
+                <button class="btn btn-sm btn-outline-primary" data-action="eventsModule.editRunningOrderItem" data-id="item.id" title="Edit">
                   <i class="bi bi-pencil"></i>
                 </button>
-                <button class="btn btn-sm btn-outline-danger" onclick="eventsModule.deleteRunningOrderItem('${item.id}')" title="Delete">
+                <button class="btn btn-sm btn-outline-danger" data-action="eventsModule.deleteRunningOrderItem" data-id="item.id" title="Delete">
                   <i class="bi bi-trash"></i>
                 </button>
               ` : `<span class="badge bg-success"><i class="bi bi-check-circle me-1"></i>Locked</span>`}
@@ -4539,7 +4539,7 @@ const eventsModule = {
             <div class="ro-number">${presentationNumber}<span class="sub">GROUP</span></div>
             <div class="ro-time">
               <input type="time" value="${groupMembers[0]?.scheduled_time || ''}"
-                     onchange="eventsModule.setROItemTime('${item.id}', this.value)"
+                     data-on-change="eventsModule.setROItemTime" data-id="item.id"
                      ${this.isPublished ? 'disabled' : ''}>
               <div class="duration">${groupDuration}m</div>
             </div>
@@ -4561,19 +4561,19 @@ const eventsModule = {
               ${recipientDietary ? `<small class="text-warning d-block" style="font-size:0.6rem;" title="${utils.escapeHtml(recipientDietary)}"><i class="bi bi-egg-fried"></i> ${utils.escapeHtml(recipientDietary)}</small>` : ''}
             </div>
             <div class="ro-status">
-              <select onchange="eventsModule.setROItemStatus('${item.id}', this.value)" ${this.isPublished ? 'disabled' : ''}>
+              <select data-on-change="eventsModule.setROItemStatus" data-id="item.id" ${this.isPublished ? 'disabled' : ''}>
                 ${statusOpts}
               </select>
             </div>
             <div class="ro-actions" style="width:140px;">
               ${!this.isPublished ? `
-                <button class="btn btn-sm btn-outline-secondary" onclick="eventsModule.moveROItem('${item.id}', -1)" title="Move group up" ${isFirst ? 'disabled' : ''}>
+                <button class="btn btn-sm btn-outline-secondary" data-action="eventsModule.moveROItem" data-args='["${item.id}", -1]' title="Move group up" ${isFirst ? 'disabled' : ''}>
                   <i class="bi bi-arrow-up"></i>
                 </button>
-                <button class="btn btn-sm btn-outline-secondary" onclick="eventsModule.moveROItem('${item.id}', 1)" title="Move group down" ${isLast ? 'disabled' : ''}>
+                <button class="btn btn-sm btn-outline-secondary" data-action="eventsModule.moveROItem" data-args='["${item.id}", 1]' title="Move group down" ${isLast ? 'disabled' : ''}>
                   <i class="bi bi-arrow-down"></i>
                 </button>
-                <button class="btn btn-sm btn-outline-warning" onclick="eventsModule.splitAllPresentation('${item.id}')" title="Split all into separate presentations">
+                <button class="btn btn-sm btn-outline-warning" data-action="eventsModule.splitAllPresentation" data-id="item.id" title="Split all into separate presentations">
                   <i class="bi bi-scissors"></i>
                 </button>
               ` : `<span class="badge bg-success"><i class="bi bi-check-circle me-1"></i>Locked</span>`}
@@ -4604,13 +4604,13 @@ const eventsModule = {
             <div class="ro-status"></div>
             <div class="ro-actions" style="width:140px;">
               ${!this.isPublished ? `
-                <button class="btn btn-sm btn-outline-primary" onclick="eventsModule.editRunningOrderItem('${item.id}')" title="Edit">
+                <button class="btn btn-sm btn-outline-primary" data-action="eventsModule.editRunningOrderItem" data-id="item.id" title="Edit">
                   <i class="bi bi-pencil"></i>
                 </button>
-                <button class="btn btn-sm btn-outline-warning" onclick="eventsModule.splitPresentation('${item.id}')" title="Split into separate presentation">
+                <button class="btn btn-sm btn-outline-warning" data-action="eventsModule.splitPresentation" data-id="item.id" title="Split into separate presentation">
                   <i class="bi bi-box-arrow-right"></i>
                 </button>
-                <button class="btn btn-sm btn-outline-danger" onclick="eventsModule.deleteRunningOrderItem('${item.id}')" title="Delete">
+                <button class="btn btn-sm btn-outline-danger" data-action="eventsModule.deleteRunningOrderItem" data-id="item.id" title="Delete">
                   <i class="bi bi-trash"></i>
                 </button>
               ` : ''}
@@ -4643,7 +4643,7 @@ const eventsModule = {
           </div>
           <div class="ro-time">
             <input type="time" value="${scheduledTime}"
-                   onchange="eventsModule.setROItemTime('${item.id}', this.value)"
+                   data-on-change="eventsModule.setROItemTime" data-id="item.id"
                    ${this.isPublished ? 'disabled' : ''}
                    title="Scheduled time">
             <div class="duration" title="Cumulative: ${cumTime} min">${duration}m ${scheduleIndicator}</div>
@@ -4666,29 +4666,29 @@ const eventsModule = {
             ${recipientDietary ? `<small class="text-warning d-block" style="font-size:0.6rem;" title="${utils.escapeHtml(recipientDietary)}"><i class="bi bi-egg-fried"></i> ${utils.escapeHtml(recipientDietary)}</small>` : ''}
           </div>
           <div class="ro-status">
-            <select onchange="eventsModule.setROItemStatus('${item.id}', this.value)" ${this.isPublished ? 'disabled' : ''}>
+            <select data-on-change="eventsModule.setROItemStatus" data-id="item.id" ${this.isPublished ? 'disabled' : ''}>
               ${statusOpts}
             </select>
           </div>
           <div class="ro-actions" style="width:140px;">
             ${!this.isPublished ? `
-              <button class="btn btn-sm btn-outline-secondary" onclick="eventsModule.moveROItem('${item.id}', -1)" title="Move up" ${isFirst ? 'disabled' : ''}>
+              <button class="btn btn-sm btn-outline-secondary" data-action="eventsModule.moveROItem" data-args='["${item.id}", -1]' title="Move up" ${isFirst ? 'disabled' : ''}>
                 <i class="bi bi-arrow-up"></i>
               </button>
-              <button class="btn btn-sm btn-outline-secondary" onclick="eventsModule.moveROItem('${item.id}', 1)" title="Move down" ${isLast ? 'disabled' : ''}>
+              <button class="btn btn-sm btn-outline-secondary" data-action="eventsModule.moveROItem" data-args='["${item.id}", 1]' title="Move down" ${isLast ? 'disabled' : ''}>
                 <i class="bi bi-arrow-down"></i>
               </button>
-              <button class="btn btn-sm btn-outline-primary" onclick="eventsModule.editRunningOrderItem('${item.id}')" title="Edit">
+              <button class="btn btn-sm btn-outline-primary" data-action="eventsModule.editRunningOrderItem" data-id="item.id" title="Edit">
                 <i class="bi bi-pencil"></i>
               </button>
-              <button class="btn btn-sm btn-outline-secondary" onclick="eventsModule.duplicateROItem('${item.id}')" title="Duplicate">
+              <button class="btn btn-sm btn-outline-secondary" data-action="eventsModule.duplicateROItem" data-id="item.id" title="Duplicate">
                 <i class="bi bi-copy"></i>
               </button>
               ${orgAwardCount > 1 && !isGrouped ? `
-              <button class="btn btn-sm btn-outline-info" onclick="eventsModule.groupPresentation('${item.id}')" title="Group all awards for this org into one presentation">
+              <button class="btn btn-sm btn-outline-info" data-action="eventsModule.groupPresentation" data-id="item.id" title="Group all awards for this org into one presentation">
                 <i class="bi bi-collection"></i>
               </button>` : ''}
-              <button class="btn btn-sm btn-outline-danger" onclick="eventsModule.deleteRunningOrderItem('${item.id}')" title="Delete">
+              <button class="btn btn-sm btn-outline-danger" data-action="eventsModule.deleteRunningOrderItem" data-id="item.id" title="Delete">
                 <i class="bi bi-trash"></i>
               </button>
             ` : `<span class="badge bg-success"><i class="bi bi-check-circle me-1"></i>Locked</span>`}
@@ -4769,7 +4769,7 @@ const eventsModule = {
     const container = target.parentElement;
     const afterElement = this.getDragAfterElement(container, event.clientY);
 
-    if (afterElement == null) {
+    if (afterElement === null) {
       container.appendChild(draggable);
     } else {
       container.insertBefore(draggable, afterElement);
@@ -4832,7 +4832,7 @@ const eventsModule = {
     if (!container) return;
 
     const afterElement = this.getDragAfterElement(container, touch.clientY);
-    if (afterElement == null) {
+    if (afterElement === null) {
       container.appendChild(this._roTouchItem);
     } else {
       container.insertBefore(this._roTouchItem, afterElement);
@@ -5020,7 +5020,7 @@ const eventsModule = {
             </div>
             <div class="modal-footer">
               <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-              <button type="button" class="btn text-white" style="background:#7e57c2;" onclick="eventsModule.saveSectionBreak()">
+              <button type="button" class="btn text-white" style="background:#7e57c2;" data-action="eventsModule.saveSectionBreak">
                 <i class="bi bi-plus-circle me-2"></i>Add to Running Order
               </button>
             </div>
@@ -5497,22 +5497,22 @@ const eventsModule = {
 
             <!-- Bottom Navigation -->
             <div class="d-flex justify-content-between align-items-center px-4 py-3" style="background:#16213e; border-top:2px solid #0f3460;">
-              <button class="btn btn-outline-light btn-lg" onclick="eventsModule.backstagePrev()" ${currentIdx === 0 ? 'disabled' : ''}>
+              <button class="btn btn-outline-light btn-lg" data-action="eventsModule.backstagePrev" ${currentIdx === 0 ? 'disabled' : ''}>
                 <i class="bi bi-arrow-left me-2"></i>Previous
               </button>
               <div class="text-center">
                 <small style="color:#666;">Use <kbd style="background:#333; padding:2px 8px; border-radius:3px;">&larr;</kbd> <kbd style="background:#333; padding:2px 8px; border-radius:3px;">&rarr;</kbd> arrow keys or <kbd style="background:#333; padding:2px 8px; border-radius:3px;">Space</kbd> to navigate</small>
               </div>
               <div class="d-flex gap-2">
-                <button class="btn btn-warning btn-lg" onclick="eventsModule.backstageMarkStatus('announced')"
+                <button class="btn btn-warning btn-lg" data-action="eventsModule.backstageMarkStatus" data-id="announced"
                         ${current?.status === 'announced' || current?.status === 'completed' ? 'disabled' : ''}>
                   <i class="bi bi-broadcast me-1"></i>Mark Announced
                 </button>
-                <button class="btn btn-success btn-lg" onclick="eventsModule.backstageMarkStatus('completed')"
+                <button class="btn btn-success btn-lg" data-action="eventsModule.backstageMarkStatus" data-id="completed"
                         ${current?.status === 'completed' ? 'disabled' : ''}>
                   <i class="bi bi-check-circle me-1"></i>Mark Complete
                 </button>
-                <button class="btn btn-primary btn-lg" onclick="eventsModule.backstageNext()" ${currentIdx >= items.length - 1 ? 'disabled' : ''}>
+                <button class="btn btn-primary btn-lg" data-action="eventsModule.backstageNext" ${currentIdx >= items.length - 1 ? 'disabled' : ''}>
                   Next<i class="bi bi-arrow-right ms-2"></i>
                 </button>
               </div>
@@ -5686,19 +5686,19 @@ const eventsModule = {
           </td>
           <td class="text-center">
             <input type="checkbox" class="form-check-input" ${item.checklist_trophy_ready ? 'checked' : ''}
-              onchange="eventsModule.updateChecklist('${item.id}', 'checklist_trophy_ready', this.checked)">
+              data-on-change="eventsModule.updateChecklist" data-id="${item.id}" data-args='["checklist_trophy_ready"]'>
           </td>
           <td class="text-center">
             <input type="checkbox" class="form-check-input" ${item.checklist_engraving_correct ? 'checked' : ''}
-              onchange="eventsModule.updateChecklist('${item.id}', 'checklist_engraving_correct', this.checked)">
+              data-on-change="eventsModule.updateChecklist" data-id="${item.id}" data-args='["checklist_engraving_correct"]'>
           </td>
           <td class="text-center">
             <input type="checkbox" class="form-check-input" ${item.checklist_recipient_confirmed ? 'checked' : ''}
-              onchange="eventsModule.updateChecklist('${item.id}', 'checklist_recipient_confirmed', this.checked)">
+              data-on-change="eventsModule.updateChecklist" data-id="${item.id}" data-args='["checklist_recipient_confirmed"]'>
           </td>
           <td class="text-center">
             <input type="checkbox" class="form-check-input" ${item.checklist_special_reqs_handled ? 'checked' : ''}
-              onchange="eventsModule.updateChecklist('${item.id}', 'checklist_special_reqs_handled', this.checked)">
+              data-on-change="eventsModule.updateChecklist" data-id="${item.id}" data-args='["checklist_special_reqs_handled"]'>
           </td>
         </tr>`;
     });
@@ -5796,7 +5796,7 @@ const eventsModule = {
           <td>${utils.escapeHtml(item.recipient_collecting || 'TBC')}</td>
           <td>
             <select class="form-select form-select-sm" style="font-size:0.75rem; border-color:${statusInfo.colour};"
-                    onchange="eventsModule.updateTrophyStatus('${item.id}', this.value)">
+                    data-on-change="eventsModule.updateTrophyStatus" data-id="item.id">
               ${opts}
             </select>
           </td>
@@ -5841,7 +5841,7 @@ const eventsModule = {
           <strong>AV / Lighting Cue Sheet</strong>
           <span class="ms-2 text-muted small">${itemsWithCues.length} items with cues out of ${items.length} total</span>
         </div>
-        <button class="btn btn-sm btn-outline-dark" onclick="eventsModule.printCueSheet()">
+        <button class="btn btn-sm btn-outline-dark" data-action="eventsModule.printCueSheet">
           <i class="bi bi-printer me-1"></i>Print Cue Sheet
         </button>
       </div>
@@ -5869,7 +5869,7 @@ const eventsModule = {
                 <div style="font-size:0.75rem; color:#aaa; font-style:italic;">No cue notes</div>
               `}
             </div>
-            <button class="btn btn-sm btn-outline-secondary" onclick="eventsModule.editCueNote('${item.id}')" title="Edit cue note">
+            <button class="btn btn-sm btn-outline-secondary" data-action="eventsModule.editCueNote" data-id="item.id" title="Edit cue note">
               <i class="bi bi-pencil"></i>
             </button>
           </div>
@@ -6003,13 +6003,13 @@ const eventsModule = {
                   </div>
                 `).join('')}
               </div>
-              <button class="btn btn-sm btn-outline-secondary mt-2" onclick="eventsModule.addSectionConfigRow()">
+              <button class="btn btn-sm btn-outline-secondary mt-2" data-action="eventsModule.addSectionConfigRow">
                 <i class="bi bi-plus me-1"></i>Add Section
               </button>
             </div>
             <div class="modal-footer">
               <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-              <button type="button" class="btn btn-dark" onclick="eventsModule.saveSectionConfig()">
+              <button type="button" class="btn btn-dark" data-action="eventsModule.saveSectionConfig">
                 <i class="bi bi-save me-2"></i>Save Sections
               </button>
             </div>
@@ -6089,7 +6089,7 @@ const eventsModule = {
             <strong>Version History</strong>
             <span class="ms-2 text-muted small">${this._roVersions.length} saved version(s)</span>
           </div>
-          <button class="btn btn-sm btn-primary" onclick="eventsModule.saveVersion()" ${this.isPublished ? 'disabled' : ''}>
+          <button class="btn btn-sm btn-primary" data-action="eventsModule.saveVersion" ${this.isPublished ? 'disabled' : ''}>
             <i class="bi bi-save me-1"></i>Save Current as Version
           </button>
         </div>
@@ -6109,10 +6109,10 @@ const eventsModule = {
                 <small class="text-muted d-block">v${v.version_number} | ${itemCount} items | ${date}</small>
               </div>
               <div class="d-flex gap-2">
-                <button class="btn btn-sm btn-outline-warning" onclick="eventsModule.restoreVersion('${v.id}')" ${this.isPublished ? 'disabled' : ''} title="Restore this version">
+                <button class="btn btn-sm btn-outline-warning" data-action="eventsModule.restoreVersion" data-id="v.id" ${this.isPublished ? 'disabled' : ''} title="Restore this version">
                   <i class="bi bi-arrow-counterclockwise me-1"></i>Restore
                 </button>
-                <button class="btn btn-sm btn-outline-danger" onclick="eventsModule.deleteVersion('${v.id}')" title="Delete version">
+                <button class="btn btn-sm btn-outline-danger" data-action="eventsModule.deleteVersion" data-id="v.id" title="Delete version">
                   <i class="bi bi-trash"></i>
                 </button>
               </div>
@@ -7096,8 +7096,8 @@ const eventsModule = {
                       ${alreadyCount > 0 ? `<span class="badge bg-secondary ms-1">${alreadyCount}</span> already in running order` : ''}
                     </div>
                     <div class="d-flex gap-2">
-                      <button class="btn btn-sm btn-outline-success" onclick="eventsModule._winnersChecklistSelectAll(true)">Select All Winners</button>
-                      <button class="btn btn-sm btn-outline-secondary" onclick="eventsModule._winnersChecklistSelectAll(false)">Deselect All</button>
+                      <button class="btn btn-sm btn-outline-success" data-action="eventsModule._winnersChecklistSelectAll" data-id="true">Select All Winners</button>
+                      <button class="btn btn-sm btn-outline-secondary" data-action="eventsModule._winnersChecklistSelectAll" data-id="false">Deselect All</button>
                     </div>
                   </div>
                   <div class="input-group input-group-sm">
@@ -7112,7 +7112,7 @@ const eventsModule = {
               <div class="modal-footer">
                 <span class="text-muted small me-auto" id="winnersSelectedCount">0 selected</span>
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                <button type="button" class="btn btn-success" id="addWinnersSubmitBtn" onclick="eventsModule._submitWinnersChecklist()" disabled>
+                <button type="button" class="btn btn-success" id="addWinnersSubmitBtn" data-action="eventsModule._submitWinnersChecklist" disabled>
                   <i class="bi bi-plus-circle me-2"></i>Add Selected to Running Order
                 </button>
               </div>
@@ -7160,7 +7160,7 @@ const eventsModule = {
         <div class="winners-checklist-row px-3 py-2 border-bottom d-flex align-items-center gap-2 ${disabled ? 'opacity-50' : ''}" data-idx="${idx}" data-award-name="${utils.escapeHtml(row.awardName.toLowerCase())}" data-sector="${utils.escapeHtml(row.sector.toLowerCase())}">
           <input type="checkbox" class="form-check-input winners-cb" data-idx="${idx}"
                  ${checked} ${disabled ? 'disabled' : ''}
-                 onchange="eventsModule._updateWinnersSelectedCount()">
+                 data-on-change="eventsModule._updateWinnersSelectedCount">
           <div class="flex-grow-1">
             <div class="fw-semibold" style="font-size:0.9rem;">${utils.escapeHtml(row.awardName)}</div>
             <div class="small text-muted">${utils.escapeHtml(row.category)}</div>
@@ -7322,19 +7322,19 @@ const eventsModule = {
                     <div class="row g-2">
                       <div class="col-md-4">
                         <label class="form-label small mb-1">Sector</label>
-                        <select class="form-select form-select-sm" id="manualSectorFilter" onchange="eventsModule._onManualSectorChange()">
+                        <select class="form-select form-select-sm" id="manualSectorFilter" data-on-change="eventsModule._onManualSectorChange">
                           <option value="">-- Select Sector --</option>
                         </select>
                       </div>
                       <div class="col-md-4">
                         <label class="form-label small mb-1">Category</label>
-                        <select class="form-select form-select-sm" id="manualCategoryFilter" onchange="eventsModule._onManualCategoryChange()" disabled>
+                        <select class="form-select form-select-sm" id="manualCategoryFilter" data-on-change="eventsModule._onManualCategoryChange" disabled>
                           <option value="">-- Select Sector first --</option>
                         </select>
                       </div>
                       <div class="col-md-4">
                         <label class="form-label small mb-1">Award</label>
-                        <select class="form-select form-select-sm" id="manualAwardSelect" onchange="eventsModule._onManualAwardSelect()" disabled>
+                        <select class="form-select form-select-sm" id="manualAwardSelect" data-on-change="eventsModule._onManualAwardSelect" disabled>
                           <option value="">-- Select Category first --</option>
                         </select>
                       </div>
@@ -7373,7 +7373,7 @@ const eventsModule = {
             </div>
             <div class="modal-footer">
               <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-              <button type="button" class="btn btn-primary" onclick="eventsModule.saveManualEntry()">
+              <button type="button" class="btn btn-primary" data-action="eventsModule.saveManualEntry">
                 <i class="bi bi-plus-circle me-2"></i>Add to Running Order
               </button>
             </div>
@@ -7682,7 +7682,7 @@ const eventsModule = {
             </div>
             <div class="modal-footer">
               <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-              <button type="button" class="btn btn-success" onclick="eventsModule.updateRunningOrderItem('${itemId}')">
+              <button type="button" class="btn btn-success" data-action="eventsModule.updateRunningOrderItem" data-id="itemId">
                 <i class="bi bi-save me-2"></i>Save Changes
               </button>
             </div>
@@ -7813,7 +7813,7 @@ const eventsModule = {
                 <span class="badge bg-warning text-dark" id="tpUnassignedBadge">${totalGuests} unassigned</span>
               </div>
               <div class="d-flex align-items-center gap-1 flex-shrink-0">
-                <button class="btn btn-sm btn-outline-light" onclick="eventsModule.autoAssignGuests()" title="Auto Assign">
+                <button class="btn btn-sm btn-outline-light" data-action="eventsModule.autoAssignGuests" title="Auto Assign">
                   <i class="bi bi-magic me-1"></i>Auto Assign
                 </button>
                 <div class="btn-group btn-group-sm">
@@ -7821,13 +7821,13 @@ const eventsModule = {
                     <i class="bi bi-download me-1"></i>Export
                   </button>
                   <ul class="dropdown-menu dropdown-menu-end">
-                    <li><a class="dropdown-item" href="#" onclick="eventsModule.exportTablePlanExcel(); return false;"><i class="bi bi-file-earmark-spreadsheet text-success me-2"></i>Export Excel (.xlsx)</a></li>
-                    <li><a class="dropdown-item" href="#" onclick="eventsModule.exportTablePlanPDF(); return false;"><i class="bi bi-printer text-primary me-2"></i>Print Document</a></li>
+                    <li><a class="dropdown-item" href="javascript:void(0);" data-action="eventsModule.exportTablePlanExcel"><i class="bi bi-file-earmark-spreadsheet text-success me-2"></i>Export Excel (.xlsx)</a></li>
+                    <li><a class="dropdown-item" href="javascript:void(0);" data-action="eventsModule.exportTablePlanPDF"><i class="bi bi-printer text-primary me-2"></i>Print Document</a></li>
                     <li><hr class="dropdown-divider"></li>
-                    <li><a class="dropdown-item" href="#" onclick="eventsModule.openTVDisplay(); return false;"><i class="bi bi-tv text-info me-2"></i>TV / Projector Display</a></li>
+                    <li><a class="dropdown-item" href="javascript:void(0);" data-action="eventsModule.openTVDisplay"><i class="bi bi-tv text-info me-2"></i>TV / Projector Display</a></li>
                   </ul>
                 </div>
-                <button class="btn btn-sm btn-outline-light" onclick="eventsModule.showTablePlanStats()" title="Stats Summary">
+                <button class="btn btn-sm btn-outline-light" data-action="eventsModule.showTablePlanStats" title="Stats Summary">
                   <i class="bi bi-bar-chart"></i>
                 </button>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
@@ -7881,7 +7881,7 @@ const eventsModule = {
                           <option value="circle">Circle / Horseshoe</option>
                         </select>
                       </div>
-                      <button class="btn btn-primary w-100" onclick="eventsModule.generateTableLayout()">
+                      <button class="btn btn-primary w-100" data-action="eventsModule.generateTableLayout">
                         <i class="bi bi-grid-3x3-gap me-1"></i>Generate Layout
                       </button>
                       ${hasTables ? `<button class="btn btn-sm btn-link text-muted w-100 mt-1" onclick="document.getElementById('tpSetupPanel').style.display='none'; document.getElementById('tpGuestsPanel').style.display='flex';">Cancel</button>` : ''}
@@ -7906,13 +7906,13 @@ const eventsModule = {
                         </button>
                       </div>
                       <div class="d-flex gap-1">
-                        <button class="btn btn-sm btn-outline-dark flex-fill" onclick="eventsModule.addRoomFixture('stage')" title="Add Stage">
+                        <button class="btn btn-sm btn-outline-dark flex-fill" data-action="eventsModule.addRoomFixture" data-id="stage" title="Add Stage">
                           <i class="bi bi-easel me-1"></i>Stage
                         </button>
-                        <button class="btn btn-sm btn-outline-dark flex-fill" onclick="eventsModule.addRoomFixture('photowall')" title="Add Photo Wall">
+                        <button class="btn btn-sm btn-outline-dark flex-fill" data-action="eventsModule.addRoomFixture" data-id="photowall" title="Add Photo Wall">
                           <i class="bi bi-camera me-1"></i>Photo Wall
                         </button>
-                        <button class="btn btn-sm btn-outline-dark flex-fill" onclick="eventsModule.addRoomFixture('av_booth')" title="Add AV Booth">
+                        <button class="btn btn-sm btn-outline-dark flex-fill" data-action="eventsModule.addRoomFixture" data-id="av_booth" title="Add AV Booth">
                           <i class="bi bi-soundwave me-1"></i>AV Booth
                         </button>
                       </div>
@@ -7933,28 +7933,28 @@ const eventsModule = {
                 <div class="flex-grow-1 d-flex flex-column position-relative" style="min-width: 0; overflow: hidden;">
                   <!-- Canvas Toolbar -->
                   <div class="d-flex align-items-center gap-2 p-2 border-bottom bg-white" style="flex-wrap: wrap;">
-                    <button class="btn btn-sm btn-primary" onclick="eventsModule.addNewTable()">
+                    <button class="btn btn-sm btn-primary" data-action="eventsModule.addNewTable">
                       <i class="bi bi-plus-circle me-1"></i>Add Table
                     </button>
                     <div class="vr"></div>
-                    <button class="btn btn-sm btn-outline-secondary" onclick="eventsModule.canvasZoom(0.1)" title="Zoom In">
+                    <button class="btn btn-sm btn-outline-secondary" data-action="eventsModule.canvasZoom" data-id="0.1" title="Zoom In">
                       <i class="bi bi-zoom-in"></i>
                     </button>
-                    <button class="btn btn-sm btn-outline-secondary" onclick="eventsModule.canvasZoom(-0.1)" title="Zoom Out">
+                    <button class="btn btn-sm btn-outline-secondary" data-action="eventsModule.canvasZoom" data-id="-0.1" title="Zoom Out">
                       <i class="bi bi-zoom-out"></i>
                     </button>
                     <button class="btn btn-sm btn-outline-secondary" onclick="eventsModule.canvasZoom(0, true)" title="Reset Zoom (100%)">
                       <i class="bi bi-aspect-ratio"></i>
                     </button>
                     <small class="text-muted" id="tpZoomLevel" style="cursor:pointer; user-select:none;" onclick="eventsModule.canvasZoom(0, true)" title="Click to reset zoom">100%</small>
-                    <button class="btn btn-sm btn-outline-secondary" onclick="eventsModule.toggleCanvasFullscreen()" title="Fullscreen" id="tpFullscreenBtn">
+                    <button class="btn btn-sm btn-outline-secondary" data-action="eventsModule.toggleCanvasFullscreen" title="Fullscreen" id="tpFullscreenBtn">
                       <i class="bi bi-arrows-fullscreen"></i>
                     </button>
                     <div class="vr"></div>
-                    <button class="btn btn-sm btn-outline-info" onclick="eventsModule.showTableIndex()" title="Table Index">
+                    <button class="btn btn-sm btn-outline-info" data-action="eventsModule.showTableIndex" title="Table Index">
                       <i class="bi bi-card-list me-1"></i>Index
                     </button>
-                    <button class="btn btn-sm btn-outline-danger" onclick="eventsModule.resetCanvas()" title="Reset Canvas">
+                    <button class="btn btn-sm btn-outline-danger" data-action="eventsModule.resetCanvas" title="Reset Canvas">
                       <i class="bi bi-arrow-counterclockwise me-1"></i>Reset
                     </button>
                     <small class="text-muted"><i class="bi bi-arrows-move me-1"></i>Drag to position. Drop guests onto tables.</small>
@@ -7974,7 +7974,7 @@ const eventsModule = {
                     <div id="tpBottomIndexDragHandle" style="height:6px; cursor:ns-resize; background:linear-gradient(180deg, #dee2e6 0%, #f8f9fa 100%); display:flex; align-items:center; justify-content:center;">
                       <div style="width:36px; height:3px; border-radius:2px; background:#adb5bd;"></div>
                     </div>
-                    <div class="d-flex align-items-center justify-content-between px-3 py-1 bg-light border-bottom" style="cursor:pointer;" onclick="eventsModule.toggleBottomIndex()">
+                    <div class="d-flex align-items-center justify-content-between px-3 py-1 bg-light border-bottom" style="cursor:pointer;" data-action="eventsModule.toggleBottomIndex">
                       <small class="fw-bold text-muted"><i class="bi bi-card-list me-1"></i>TABLE INDEX <span id="tpBottomIndexCount" class="badge bg-info ms-1">0</span></small>
                       <i class="bi bi-chevron-down" id="tpBottomIndexChevron" style="transition:transform 0.3s;"></i>
                     </div>
@@ -7982,8 +7982,8 @@ const eventsModule = {
                       <table class="table table-sm table-hover mb-0" style="font-size:0.78rem;">
                         <thead class="table-light sticky-top">
                           <tr>
-                            <th style="width:30%" class="tp-sortable" data-sort="table" onclick="eventsModule.sortBottomIndex('table')">Table <i class="bi bi-chevron-expand tp-sort-icon"></i></th>
-                            <th style="width:25%" class="tp-sortable" data-sort="guest" onclick="eventsModule.sortBottomIndex('guest')">Guest <i class="bi bi-chevron-expand tp-sort-icon"></i></th>
+                            <th style="width:30%" class="tp-sortable" data-sort="table" data-action="eventsModule.sortBottomIndex" data-id="table">Table <i class="bi bi-chevron-expand tp-sort-icon"></i></th>
+                            <th style="width:25%" class="tp-sortable" data-sort="guest" data-action="eventsModule.sortBottomIndex" data-id="guest">Guest <i class="bi bi-chevron-expand tp-sort-icon"></i></th>
                             <th style="width:25%" class="tp-sortable" data-sort="company" onclick="eventsModule.sortBottomIndex('company')">Company <i class="bi bi-chevron-expand tp-sort-icon"></i></th>
                             <th style="width:10%" class="text-center">Seat</th>
                             <th style="width:10%" class="text-center">VIP</th>
@@ -8888,7 +8888,7 @@ const eventsModule = {
             <i class="bi ${config.icon} me-1"></i>${utils.escapeHtml(label)}
           </div>
           ${selected ? `<div class="tp-fixture-actions">
-            <button class="btn btn-sm btn-outline-danger py-0 px-1" onmousedown="event.stopPropagation();" onclick="eventsModule.removeFixture('${f.id}')" title="Remove">
+            <button class="btn btn-sm btn-outline-danger py-0 px-1" onmousedown="event.stopPropagation();" data-action="eventsModule.removeFixture" data-id="f.id" title="Remove">
               <i class="bi bi-trash" style="font-size:0.7rem;"></i>
             </button>
           </div>` : ''}
@@ -9234,7 +9234,7 @@ const eventsModule = {
     content.innerHTML = `
       <div class="detail-header">
         <h6 class="mb-0">${table.table_name ? utils.escapeHtml(table.table_name) : 'Table ' + table.table_number}</h6>
-        <button class="btn btn-sm btn-outline-light" onclick="eventsModule.closeTableDetail()">
+        <button class="btn btn-sm btn-outline-light" data-action="eventsModule.closeTableDetail">
           <i class="bi bi-x-lg"></i>
         </button>
       </div>
@@ -9258,17 +9258,17 @@ const eventsModule = {
             </select>
           </div>
         </div>
-        <button class="btn btn-sm btn-primary mb-2" onclick="eventsModule.saveTableProperties('${table.id}')">
+        <button class="btn btn-sm btn-primary mb-2" data-action="eventsModule.saveTableProperties" data-id="table.id">
           <i class="bi bi-check-lg me-1"></i>Save Changes
         </button>
         <div class="d-flex gap-2 mb-2">
-          <button class="btn btn-sm btn-outline-secondary flex-fill" onclick="eventsModule.duplicateTable('${table.id}')">
+          <button class="btn btn-sm btn-outline-secondary flex-fill" data-action="eventsModule.duplicateTable" data-id="table.id">
             <i class="bi bi-copy me-1"></i>Duplicate
           </button>
-          <button class="btn btn-sm btn-outline-warning flex-fill" onclick="eventsModule.clearTable('${table.id}')" ${assignedCount === 0 ? 'disabled' : ''}>
+          <button class="btn btn-sm btn-outline-warning flex-fill" data-action="eventsModule.clearTable" data-id="table.id" ${assignedCount === 0 ? 'disabled' : ''}>
             <i class="bi bi-eraser me-1"></i>Clear All
           </button>
-          <button class="btn btn-sm btn-outline-danger flex-fill" onclick="eventsModule.deleteTable('${table.id}')">
+          <button class="btn btn-sm btn-outline-danger flex-fill" data-action="eventsModule.deleteTable" data-id="table.id">
             <i class="bi bi-trash me-1"></i>Delete
           </button>
         </div>
@@ -9293,7 +9293,7 @@ const eventsModule = {
                 ${a.company_name ? `<small class="text-muted">${utils.escapeHtml(a.company_name)}</small>` : ''}
                 ${a.dietary_requirements ? `<small class="text-warning d-block" style="font-size:0.7rem;"><i class="bi bi-egg-fried me-1"></i>${utils.escapeHtml(a.dietary_requirements)}</small>` : ''}
               </div>
-              <span class="remove-x" onclick="eventsModule.removeGuestFromTable('${a.id}')" title="Remove">
+              <span class="remove-x" data-action="eventsModule.removeGuestFromTable" data-id="a.id" title="Remove">
                 <i class="bi bi-x-circle-fill"></i>
               </span>
             </div>
@@ -9367,22 +9367,18 @@ const eventsModule = {
         dietary_requirements: g.dietary_requirements || null
       }));
 
-      const { error } = await STATE.client
-        .from('table_assignments')
-        .insert(assignments);
-
-      // If batch fails (e.g. FK constraint), fall back to one-by-one
-      if (error) {
-        console.warn('Batch org-assign failed, trying one-by-one:', error.message);
+      try {
+        await apiClient.insert('table_assignments', assignments);
+        utils.showToast(`${toAssign.length} guest(s) assigned`, 'success');
+      } catch (batchErr) {
+        // If batch fails (e.g. FK constraint), fall back to one-by-one
+        console.warn('Batch org-assign failed, trying one-by-one:', batchErr.message);
         let inserted = 0;
         for (const row of assignments) {
-          const res = await STATE.client.from('table_assignments').insert([row]);
-          if (!res.error) inserted++;
+          try { await apiClient.insert('table_assignments', row); inserted++; } catch (_) {}
         }
-        if (inserted === 0) throw error;
+        if (inserted === 0) throw batchErr;
         utils.showToast(`${inserted} of ${assignments.length} guest(s) assigned${inserted < assignments.length ? ' (some failed)' : ''}`, inserted < assignments.length ? 'warning' : 'success');
-      } else {
-        utils.showToast(`${toAssign.length} guest(s) assigned`, 'success');
       }
 
       await this.loadTablePlan();
@@ -9536,22 +9532,25 @@ const eventsModule = {
           guest_type: g.guest_type || 'guest',
           dietary_requirements: g.dietary_requirements || null
         }));
-        const { error } = await STATE.client.from('table_assignments').insert(rows);
-        // If batch fails (e.g. FK constraint), fall back to one-by-one
-        if (error) {
-          console.warn('Batch insert failed, trying one-by-one:', error.message);
+        let batchInsertOk = true;
+        try {
+          await apiClient.insert('table_assignments', rows);
+        } catch (batchErr2) {
+          batchInsertOk = false;
+          // If batch fails (e.g. FK constraint), fall back to one-by-one
+          console.warn('Batch insert failed, trying one-by-one:', batchErr2.message);
           let inserted = 0;
           for (const row of rows) {
-            const res = await STATE.client.from('table_assignments').insert([row]);
-            if (!res.error) inserted++;
+            try { await apiClient.insert('table_assignments', row); inserted++; } catch (_) {}
           }
-          if (inserted === 0) throw error;
+          if (inserted === 0) throw batchErr2;
           if (inserted < rows.length) {
             utils.showToast(`${inserted} of ${rows.length} guest(s) assigned (some failed)`, 'warning');
           } else {
             utils.showToast(`${inserted} guest(s) assigned to table`, 'success');
           }
-        } else {
+        }
+        if (batchInsertOk) {
           utils.showToast(`${toAssign.length} guest(s) assigned to table`, 'success');
         }
         if (toAssign.length < this.draggedCompanyGuests.length) {
@@ -10242,7 +10241,7 @@ const eventsModule = {
   <div class="print-toolbar no-print">
     <div><strong>Table Plan</strong> &mdash; ${esc(eventName)}</div>
     <div>
-      <button onclick="window.print()">Print / Save as PDF</button>
+      <button data-action="window.print">Print / Save as PDF</button>
     </div>
   </div>
   <div class="content">
@@ -10757,7 +10756,7 @@ const eventsModule = {
       if (fixtureCount > 0) {
         for (const f of this.roomFixtures) {
           try {
-            await STATE.client.from('event_room_fixtures').delete().eq('id', f.id);
+            await apiClient.delete('event_room_fixtures', f.id);
           } catch (e) { /* continue */ }
         }
         this.roomFixtures = [];
@@ -11117,7 +11116,7 @@ const eventsModule = {
           </button>
           <ul class="dropdown-menu dropdown-menu-end">
             ${statusOptions.map(s => `
-              <li><a class="dropdown-item ${s === evtStatus ? 'active' : ''}" href="#" onclick="event.preventDefault(); eventsModule.quickSetStatus('${event.id}', '${s}')">
+              <li><a class="dropdown-item ${s === evtStatus ? 'active' : ''}" href="#" data-action="eventsModule.quickSetStatus" data-args='${JSON.stringify([event.id, s])}' data-prevent-default="true">
                 <i class="bi ${statusIcons[s]} me-2"></i>${s.charAt(0).toUpperCase() + s.slice(1)}
               </a></li>
             `).join('')}
@@ -11136,7 +11135,7 @@ const eventsModule = {
 
       return `
         <tr class="fade-in">
-          <td><input type="checkbox" class="form-check-input event-checkbox" value="${event.id}" ${checked} onchange="eventsModule.toggleEventSelect('${event.id}', this.checked)"></td>
+          <td><input type="checkbox" class="form-check-input event-checkbox" value="${event.id}" ${checked} data-on-check="eventsModule.toggleEventSelect" data-id="event.id"></td>
           <td class="fw-semibold">${utils.escapeHtml(event.event_name)}${!event.venue ? ' <i class="bi bi-exclamation-triangle text-warning small" title="Missing venue"></i>' : ''}</td>
           <td><span class="badge bg-primary">${utils.escapeHtml(String(event.year || '-'))}</span></td>
           <td>${eventDate}${countdown}</td>
@@ -11148,13 +11147,13 @@ const eventsModule = {
           <td class="text-center">${statusDropdown}</td>
           <td class="text-center">
             <div class="btn-group btn-group-sm" role="group">
-              <button class="btn btn-outline-warning btn-icon" onclick="eventsModule.openRunningOrderModal('${event.id}', '${eName}')" title="Running Order" aria-label="Running order"><i class="bi bi-list-ol"></i></button>
-              <button class="btn btn-outline-secondary btn-icon" onclick="eventsModule.openTablePlanModal('${event.id}', '${eName}')" title="Table Plan" aria-label="Table plan"><i class="bi bi-table"></i></button>
-              <button class="btn btn-outline-info btn-icon" onclick="eventsModule.openAttendeesModal('${event.id}')" title="Attendees" aria-label="Attendees"><i class="bi bi-people"></i></button>
-              <button class="btn btn-outline-primary btn-icon" onclick="eventsModule.openEditModal('${event.id}')" title="Edit" aria-label="Edit event"><i class="bi bi-pencil"></i></button>
-              <button class="btn btn-outline-success btn-icon" onclick="eventsModule.openCloneModal('${event.id}')" title="Clone" aria-label="Clone event"><i class="bi bi-files"></i></button>
-              <button class="btn btn-outline-dark btn-icon" onclick="eventsModule.cloneForNextYear('${event.id}')" title="Clone for Next Year" aria-label="Clone for next year"><i class="bi bi-calendar-plus"></i></button>
-              <button class="btn btn-outline-danger btn-icon" onclick="eventsModule.deleteEvent('${event.id}', '${eName}')" title="Delete" aria-label="Delete event"><i class="bi bi-trash"></i></button>
+              <button class="btn btn-outline-warning btn-icon" data-action="eventsModule.openRunningOrderModal" data-args='${JSON.stringify([event.id, eName])}' title="Running Order" aria-label="Running order"><i class="bi bi-list-ol"></i></button>
+              <button class="btn btn-outline-secondary btn-icon" data-action="eventsModule.openTablePlanModal" data-args='${JSON.stringify([event.id, eName])}' title="Table Plan" aria-label="Table plan"><i class="bi bi-table"></i></button>
+              <button class="btn btn-outline-info btn-icon" data-action="eventsModule.openAttendeesModal" data-id="event.id" title="Attendees" aria-label="Attendees"><i class="bi bi-people"></i></button>
+              <button class="btn btn-outline-primary btn-icon" data-action="eventsModule.openEditModal" data-id="event.id" title="Edit" aria-label="Edit event"><i class="bi bi-pencil"></i></button>
+              <button class="btn btn-outline-success btn-icon" data-action="eventsModule.openCloneModal" data-id="event.id" title="Clone" aria-label="Clone event"><i class="bi bi-files"></i></button>
+              <button class="btn btn-outline-dark btn-icon" data-action="eventsModule.cloneForNextYear" data-id="event.id" title="Clone for Next Year" aria-label="Clone for next year"><i class="bi bi-calendar-plus"></i></button>
+              <button class="btn btn-outline-danger btn-icon" data-action="eventsModule.deleteEvent" data-args='${JSON.stringify([event.id, eName])}' title="Delete" aria-label="Delete event"><i class="bi bi-trash"></i></button>
             </div>
           </td>
         </tr>`;
@@ -11437,8 +11436,7 @@ const eventsModule = {
     if (!await utils.confirmDialog({ title: 'Delete Events', message: `Delete ${ids.length} event(s)? This cannot be undone.` })) return;
     try {
       const result = await utils.runBatchOperation(ids, async (id) => {
-        const { error } = await STATE.client.from('events').delete().eq('id', id);
-        if (error) throw error;
+        await apiClient.delete('events', id);
       }, 'Deleting events');
       utils.showToast(`${result.succeeded.length} event(s) deleted`, 'success');
       this.clearEventSelection();
@@ -11456,7 +11454,7 @@ const eventsModule = {
       const result = await utils.runBatchOperation(ids, async (id) => {
         const src = STATE.allEvents.find(e => e.id === id);
         if (!src) throw new Error('Event not found');
-        const { error } = await STATE.client.from('events').insert([{
+        await apiClient.insert('events', {
           event_name: src.event_name + ' (Copy)',
           event_date: src.event_date,
           year: src.year,
@@ -11464,8 +11462,7 @@ const eventsModule = {
           description: src.description,
           capacity: src.capacity || null,
           event_status: 'draft'
-        }]);
-        if (error) throw error;
+        });
       }, 'Cloning events');
       utils.showToast(`${result.succeeded.length} event(s) cloned`, 'success');
       this.clearEventSelection();
@@ -11479,8 +11476,7 @@ const eventsModule = {
     const ids = Array.from(this._selectedEvents);
     if (ids.length === 0) return;
     await utils.runBatchOperation(ids, async (id) => {
-      const { error } = await STATE.client.from('events').update({ event_status: status }).eq('id', id);
-      if (error) throw error;
+      await apiClient.update('events', id, { event_status: status });
     }, 'Setting event status');
     this.clearEventSelection();
     await this.loadEvents();
@@ -11515,8 +11511,7 @@ const eventsModule = {
 
     const ids = Array.from(this._selectedEvents);
     await utils.runBatchOperation(ids, async (id) => {
-      const { error } = await STATE.client.from('events').delete().eq('id', id);
-      if (error) throw error;
+      await apiClient.delete('events', id);
     }, 'Deleting events');
     this._selectedEvents.clear();
     this.updateBulkBar();
@@ -11610,9 +11605,9 @@ const eventsModule = {
           </div>
         </div>
         <div class="modal-footer">
-          <button class="btn btn-outline-info" onclick="eventsModule._previewImport()"><i class="bi bi-eye me-1"></i>Preview</button>
+          <button class="btn btn-outline-info" data-action="eventsModule._previewImport"><i class="bi bi-eye me-1"></i>Preview</button>
           <button class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-          <button class="btn btn-primary" onclick="eventsModule.executeImportAttendees()"><i class="bi bi-upload me-2"></i>Import</button>
+          <button class="btn btn-primary" data-action="eventsModule.executeImportAttendees"><i class="bi bi-upload me-2"></i>Import</button>
         </div>
       </div></div></div>`;
     document.body.insertAdjacentHTML('beforeend', modalHtml);
@@ -12079,7 +12074,7 @@ const eventsModule = {
         <div class="rounded p-2 ${bgClass}" style="min-height:70px;">
           <div class="small ${isToday ? 'fw-bold text-primary' : ''}">${day}</div>
           ${dayEvents.map(e => `<div class="badge bg-primary d-block mt-1 text-truncate" style="font-size:0.65rem; max-width:100%; cursor:pointer;"
-            title="${utils.escapeHtml(e.event_name)}" onclick="eventsModule.openEditModal('${e.id}')">${utils.escapeHtml(e.event_name)}</div>`).join('')}
+            title="${utils.escapeHtml(e.event_name)}" data-action="eventsModule.openEditModal" data-id="e.id">${utils.escapeHtml(e.event_name)}</div>`).join('')}
         </div>
       </div>`;
 
@@ -12141,7 +12136,7 @@ const eventsModule = {
 
   async _saveMilestones(eventId, milestones) {
     try {
-      await STATE.client.from('event_milestones').delete().eq('event_id', eventId);
+      await apiClient.deleteByFilters('event_milestones', { event_id: eventId });
       if (milestones.length > 0) {
         const rows = milestones.map(m => ({
           event_id: eventId, milestone_id: m.id,
@@ -12150,8 +12145,7 @@ const eventsModule = {
           is_custom: m.custom ?? m.is_custom ?? false,
           completed_at: m.completedAt || null
         }));
-        const { error } = await STATE.client.from('event_milestones').insert(rows);
-        if (error) throw error;
+        await apiClient.insert('event_milestones', rows);
       }
     } catch (e) {
       localStorage.setItem(this._milestonesKey(eventId), JSON.stringify(milestones));
@@ -12210,18 +12204,18 @@ const eventsModule = {
         ${milestones.filter(m => m.category === cat).map(m => `
           <div class="form-check d-flex align-items-center mb-1">
             <input class="form-check-input me-2" type="checkbox" ${m.done ? 'checked' : ''}
-              onchange="eventsModule.toggleMilestone('${eventId}', '${m.id}')" id="ms_${m.id}">
+              data-on-change="eventsModule.toggleMilestone" data-id="${eventId}" data-args='["${m.id}"]' id="ms_${m.id}">
             <label class="form-check-label small ${m.done ? 'text-decoration-line-through text-muted' : ''}" for="ms_${m.id}">
               ${utils.escapeHtml(m.label)}
               ${m.completedAt ? `<span class="text-success ms-1" style="font-size:0.65rem;">${new Date(m.completedAt).toLocaleDateString('en-GB')}</span>` : ''}
             </label>
-            ${m.custom ? `<button class="btn btn-sm ms-auto p-0 text-danger" onclick="eventsModule.removeCustomMilestone('${eventId}', '${m.id}')" title="Remove"><i class="bi bi-x"></i></button>` : ''}
+            ${m.custom ? `<button class="btn btn-sm ms-auto p-0 text-danger" data-action="eventsModule.removeCustomMilestone" data-args='${JSON.stringify([eventId, m.id])}' title="Remove"><i class="bi bi-x"></i></button>` : ''}
           </div>
         `).join('')}
       `).join('')}
       <div class="input-group input-group-sm mt-3">
         <input type="text" class="form-control" id="newMilestoneInput" placeholder="Add custom milestone...">
-        <button class="btn btn-outline-primary" onclick="eventsModule.addCustomMilestone('${eventId}')"><i class="bi bi-plus"></i></button>
+        <button class="btn btn-outline-primary" data-action="eventsModule.addCustomMilestone" data-id="eventId"><i class="bi bi-plus"></i></button>
       </div>`;
   },
 
@@ -12241,7 +12235,7 @@ const eventsModule = {
     }
 
     try {
-      const { data, error } = await STATE.client.from('events').insert([{
+      const insertRes = await apiClient.insert('events', {
         event_name: src.event_name.replace(/\d{4}/, nextYear) !== src.event_name
           ? src.event_name.replace(/\d{4}/, nextYear)
           : src.event_name + ` ${nextYear}`,
@@ -12252,9 +12246,8 @@ const eventsModule = {
         capacity: src.capacity || null,
         ticket_price: src.ticket_price || null,
         event_status: 'draft'
-      }]).select();
-
-      if (error) throw error;
+      });
+      const data = insertRes.data;
 
       // Copy budget template
       const budget = await this.getBudget(eventId);
@@ -12347,8 +12340,7 @@ const eventsModule = {
         utils.showLoading();
         let imported = 0;
         for (const record of records) {
-          const { error } = await STATE.client.from('events').insert([record]);
-          if (!error) imported++;
+          try { await apiClient.insert('events', record); imported++; } catch (_) {}
           if (utils.showBulkProgress) utils.showBulkProgress(imported, records.length, 'Importing events');
         }
         utils.showToast(`Imported ${imported} of ${records.length} events`, 'success');

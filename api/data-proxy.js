@@ -51,7 +51,14 @@ const ALLOWED_TABLES = new Set([
   'org_audit_log', 'organisation_images', 'organisation_contacts',
   'org_activity_notes', 'event_galleries',
   'entry_revisions', 'winner_announcements', 'calendar_events',
-  'report_schedules'
+  'report_schedules', 'api_request_logs', 'ip_blocklist',
+  'rate_limit_alerts', 'rate_limit_config', 'social_media_posts',
+  'notification_queue', 'judge_scores', 'email_log', 'public_votes',
+  'gdpr_requests', 'media_gallery', 'media_items', 'cms_audit_logs',
+  'table_assignments', 'event_room_fixtures', 'event_milestones',
+  'meeting_notes', 'organisation_segments', 'contact_segments',
+  'banners', 'sponsors', 'tenants', 'cms_config', 'shortlists',
+  'notification_preferences'
 ]);
 
 /** Tables that can be mutated (insert/update/delete) */
@@ -69,7 +76,15 @@ const MUTABLE_TABLES = new Set([
   'organisation_comms_log', 'org_audit_log',
   'organisation_images', 'organisation_contacts',
   'org_activity_notes', 'event_galleries', 'entry_revisions',
-  'winner_announcements', 'calendar_events', 'report_schedules'
+  'winner_announcements', 'calendar_events', 'report_schedules',
+  'api_request_logs', 'ip_blocklist', 'rate_limit_alerts',
+  'rate_limit_config', 'social_media_posts', 'notification_queue',
+  'judge_scores', 'email_log', 'public_votes', 'gdpr_requests',
+  'media_gallery', 'media_items', 'cms_audit_logs',
+  'table_assignments', 'event_room_fixtures', 'event_milestones',
+  'meeting_notes', 'organisation_segments', 'contact_segments',
+  'banners', 'sponsors', 'tenants', 'cms_config', 'shortlists',
+  'notification_preferences'
 ]);
 
 /** Maximum page size to prevent abuse */

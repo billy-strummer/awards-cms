@@ -606,13 +606,13 @@ const settingsModule = {
         <td>${s.is_default ? '<span class="badge bg-success">Default</span>' : ''}</td>
         <td class="text-center">
           <div class="btn-group btn-group-sm">
-            <button class="btn btn-outline-warning btn-sm" onclick="settingsModule.editSeason('${s.id}')" title="Edit">
+            <button class="btn btn-outline-warning btn-sm" data-action="settingsModule.editSeason" data-id="${s.id}" title="Edit">
               <i class="bi bi-pencil"></i>
             </button>
-            <button class="btn btn-outline-success btn-sm" onclick="settingsModule.applySeasonToAll('${s.id}')" title="Apply to all awards for this year">
+            <button class="btn btn-outline-success btn-sm" data-action="settingsModule.applySeasonToAll" data-id="${s.id}" title="Apply to all awards for this year">
               <i class="bi bi-calendar-check"></i>
             </button>
-            <button class="btn btn-outline-danger btn-sm" onclick="settingsModule.deleteSeason('${s.id}')" title="Delete">
+            <button class="btn btn-outline-danger btn-sm" data-action="settingsModule.deleteSeason" data-id="${s.id}" title="Delete">
               <i class="bi bi-trash"></i>
             </button>
           </div>
@@ -825,7 +825,7 @@ const settingsModule = {
           <div class="row g-3">
             <div class="col-md-4">
               <label class="form-label fw-semibold">Layout Density</label>
-              <select class="form-select" id="densitySetting" onchange="settingsModule.saveDensity(this.value)">
+              <select class="form-select" id="densitySetting" data-on-change="settingsModule.saveDensity">
                 <option value="comfortable" ${density === 'comfortable' ? 'selected' : ''}>Comfortable (Default)</option>
                 <option value="compact" ${density === 'compact' ? 'selected' : ''}>Compact</option>
               </select>
@@ -833,7 +833,7 @@ const settingsModule = {
             </div>
             <div class="col-md-4">
               <label class="form-label fw-semibold">Default Landing Tab</label>
-              <select class="form-select" id="defaultTabSetting" onchange="settingsModule.saveDefaultTab(this.value)">
+              <select class="form-select" id="defaultTabSetting" data-on-change="settingsModule.saveDefaultTab">
                 <option value="" ${!defaultTab ? 'selected' : ''}>Dashboard (Default)</option>
                 <option value="awards" ${defaultTab === 'awards' ? 'selected' : ''}>Awards</option>
                 <option value="organisations" ${defaultTab === 'organisations' ? 'selected' : ''}>Organisations</option>
@@ -847,7 +847,7 @@ const settingsModule = {
             </div>
             <div class="col-md-4">
               <label class="form-label fw-semibold">Table Page Size</label>
-              <select class="form-select" id="pageSizeSetting" onchange="settingsModule.savePageSize(this.value)">
+              <select class="form-select" id="pageSizeSetting" data-on-change="settingsModule.savePageSize">
                 <option value="25" ${pageSize === '25' ? 'selected' : ''}>25 per page</option>
                 <option value="50" ${pageSize === '50' ? 'selected' : ''}>50 per page (Default)</option>
                 <option value="100" ${pageSize === '100' ? 'selected' : ''}>100 per page</option>

@@ -106,7 +106,7 @@ async function checkDuplicates() {
 
     // Find duplicates
     const duplicateMap = {};
-    const duplicateRecords = [];
+    const _duplicateRecords = [];
 
     assignmentsWithDetails.forEach(assignment => {
       const key = `${assignment.organisation_id}_${assignment.award_id}`;

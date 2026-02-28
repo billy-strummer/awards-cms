@@ -97,7 +97,7 @@ const marketingModule = {
         <div class="card h-100">
           <img src="${utils.escapeHtml(banner.image_url)}" class="card-img-top" alt="${utils.escapeHtml(banner.title)}"
             style="height: 200px; object-fit: cover; cursor: pointer;"
-            onclick="marketingModule.viewBannerFull('${utils.escapeHtml(banner.image_url).replace(/'/g, "\\'")}', '${utils.escapeHtml(banner.title).replace(/'/g, "\\'")}')">
+            data-action="marketingModule.viewBannerFull" data-args='${JSON.stringify([banner.image_url, banner.title]).replace(/'/g, "&#39;")}'>
           <div class="card-body">
             <div class="d-flex justify-content-between align-items-start mb-2">
               <h6 class="card-title mb-0">${utils.escapeHtml(banner.title)}</h6>
@@ -121,14 +121,14 @@ const marketingModule = {
               ${banner.start_date ? `<span><i class="bi bi-calendar"></i> ${utils.formatDate(banner.start_date)}</span>` : ''}
             </div>
             <div class="btn-group w-100" role="group">
-              <button class="btn btn-sm btn-outline-primary" onclick="marketingModule.editBanner('${banner.id}')">
+              <button class="btn btn-sm btn-outline-primary" data-action="marketingModule.editBanner" data-id="${utils.escapeHtml(banner.id)}">
                 <i class="bi bi-pencil"></i> Edit
               </button>
               <button class="btn btn-sm ${isActive ? 'btn-outline-warning' : 'btn-outline-success'}"
-                onclick="marketingModule.toggleBannerActive('${banner.id}', ${!isActive})">
+                data-action="marketingModule.toggleBannerActive" data-args='${JSON.stringify([banner.id, !isActive]).replace(/'/g, "&#39;")}'>
                 <i class="bi bi-${isActive ? 'pause' : 'play'}"></i> ${isActive ? 'Pause' : 'Activate'}
               </button>
-              <button class="btn btn-sm btn-outline-danger" onclick="marketingModule.deleteBanner('${banner.id}')">
+              <button class="btn btn-sm btn-outline-danger" data-action="marketingModule.deleteBanner" data-id="${utils.escapeHtml(banner.id)}">
                 <i class="bi bi-trash"></i>
               </button>
             </div>
@@ -214,7 +214,7 @@ const marketingModule = {
             </div>
             <div class="modal-footer">
               <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-              <button type="button" class="btn btn-primary" onclick="marketingModule.saveBanner(${isEdit ? `'${existingBanner.id}'` : 'null'})">
+              <button type="button" class="btn btn-primary" data-action="marketingModule.saveBanner" data-id="${isEdit ? utils.escapeHtml(existingBanner.id) : ''}">
                 <i class="bi bi-save me-2"></i>${btnText}
               </button>
             </div>
@@ -452,10 +452,10 @@ const marketingModule = {
           </div>
           <div class="card-footer bg-transparent">
             <div class="btn-group w-100" role="group">
-              <button class="btn btn-sm btn-outline-primary" onclick="marketingModule.editSponsor('${sponsor.id}')">
+              <button class="btn btn-sm btn-outline-primary" data-action="marketingModule.editSponsor" data-id="${utils.escapeHtml(sponsor.id)}">
                 <i class="bi bi-pencil"></i>
               </button>
-              <button class="btn btn-sm btn-outline-danger" onclick="marketingModule.deleteSponsor('${sponsor.id}')">
+              <button class="btn btn-sm btn-outline-danger" data-action="marketingModule.deleteSponsor" data-id="${utils.escapeHtml(sponsor.id)}">
                 <i class="bi bi-trash"></i>
               </button>
             </div>
@@ -547,7 +547,7 @@ const marketingModule = {
             </div>
             <div class="modal-footer">
               <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-              <button type="button" class="btn btn-warning" onclick="marketingModule.saveSponsor(${isEdit ? `'${existingSponsor.id}'` : 'null'})">
+              <button type="button" class="btn btn-warning" data-action="marketingModule.saveSponsor" data-id="${isEdit ? utils.escapeHtml(existingSponsor.id) : ''}">
                 <i class="bi bi-save me-2"></i>${btnText}
               </button>
             </div>
@@ -734,7 +734,7 @@ const marketingModule = {
         </div>
         <div class="alert alert-info mt-4 mb-0">
           <i class="bi bi-info-circle me-2"></i>
-          <strong>How branding is used:</strong> These settings are automatically applied to email templates, campaign headers/footers, certificates, public pages, and event materials. Edit them in <a href="#" onclick="document.getElementById('settings-tab').click(); return false;">Settings</a> to update across the entire CMS.
+          <strong>How branding is used:</strong> These settings are automatically applied to email templates, campaign headers/footers, certificates, public pages, and event materials. Edit them in <a href="#" data-prevent-default="true" onclick="document.getElementById('settings-tab').click()">Settings</a> to update across the entire CMS.
         </div>
       `;
     } catch (e) {
@@ -829,7 +829,7 @@ const marketingModule = {
         </div>
         <div class="d-flex gap-2 mt-4">
           <button type="submit" class="btn btn-primary"><i class="bi bi-save me-2"></i>Save Placeholder Defaults</button>
-          <button type="button" class="btn btn-outline-secondary" onclick="marketingModule.resetPlaceholderDefaults()"><i class="bi bi-arrow-counterclockwise me-2"></i>Reset to Defaults</button>
+          <button type="button" class="btn btn-outline-secondary" data-action="marketingModule.resetPlaceholderDefaults"><i class="bi bi-arrow-counterclockwise me-2"></i>Reset to Defaults</button>
         </div>
       </form>
       <div class="card mt-4">
@@ -918,8 +918,8 @@ const marketingModule = {
               <div class="text-muted small">Trigger: ${utils.escapeHtml(seq.trigger)} &middot; ${seq.steps.length} step(s) &middot; ${seq.enrolled || 0} enrolled</div>
             </div>
             <div>
-              <button class="btn btn-sm btn-outline-${seq.active ? 'warning' : 'success'}" onclick="marketingModule.toggleSequence(${i})">${seq.active ? 'Pause' : 'Activate'}</button>
-              <button class="btn btn-sm btn-outline-danger ms-1" onclick="marketingModule.deleteSequence(${i})"><i class="bi bi-trash"></i></button>
+              <button class="btn btn-sm btn-outline-${seq.active ? 'warning' : 'success'}" data-action="marketingModule.toggleSequence" data-id="${i}">${seq.active ? 'Pause' : 'Activate'}</button>
+              <button class="btn btn-sm btn-outline-danger ms-1" data-action="marketingModule.deleteSequence" data-id="${i}"><i class="bi bi-trash"></i></button>
             </div>
           </div>
         </div>
@@ -951,11 +951,11 @@ const marketingModule = {
             <div class="col-4"><label class="form-label small">Subject</label><input type="text" class="form-control form-control-sm seq-subject" placeholder="Subject..."></div>
             <div class="col-5"><label class="form-label small">Body</label><textarea class="form-control form-control-sm seq-body" rows="2" placeholder="Use {{company_name}}, {{contact_name}}..."></textarea></div>
           </div></div></div>
-          <button class="btn btn-sm btn-outline-secondary mb-3" onclick="marketingModule._addSequenceStep()"><i class="bi bi-plus me-1"></i>Add Step</button>
+          <button class="btn btn-sm btn-outline-secondary mb-3" data-action="marketingModule._addSequenceStep"><i class="bi bi-plus me-1"></i>Add Step</button>
         </div>
         <div class="modal-footer">
           <button class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-          <button class="btn btn-primary" onclick="marketingModule._saveSequence()"><i class="bi bi-check-circle me-2"></i>Save Sequence</button>
+          <button class="btn btn-primary" data-action="marketingModule._saveSequence"><i class="bi bi-check-circle me-2"></i>Save Sequence</button>
         </div>
       </div></div>
     </div>`;

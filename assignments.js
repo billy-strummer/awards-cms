@@ -155,16 +155,16 @@ const assignmentsModule = {
               </div>
             ` : `
               <div class="btn-group btn-group-sm mb-3 d-flex" role="group">
-                <button type="button" class="btn btn-outline-secondary active" id="filter-all" onclick="assignmentsModule.filterAssignments('all')">
+                <button type="button" class="btn btn-outline-secondary active" id="filter-all" data-action="assignmentsModule.filterAssignments" data-id="all">
                   All
                 </button>
-                <button type="button" class="btn btn-outline-info" id="filter-self_nomination" onclick="assignmentsModule.filterAssignments('self_nomination')">
+                <button type="button" class="btn btn-outline-info" id="filter-self_nomination" data-action="assignmentsModule.filterAssignments" data-id="self_nomination">
                   <i class="bi bi-hand-index me-1"></i>Self Nominated
                 </button>
-                <button type="button" class="btn btn-outline-warning" id="filter-previous_winner" onclick="assignmentsModule.filterAssignments('previous_winner')">
+                <button type="button" class="btn btn-outline-warning" id="filter-previous_winner" data-action="assignmentsModule.filterAssignments" data-id="previous_winner">
                   <i class="bi bi-trophy me-1"></i>Previous Winners
                 </button>
-                <button type="button" class="btn btn-outline-primary" id="filter-new" onclick="assignmentsModule.filterAssignments('new')">
+                <button type="button" class="btn btn-outline-primary" id="filter-new" data-action="assignmentsModule.filterAssignments" data-id="new">
                   <i class="bi bi-star me-1"></i>New Nominees
                 </button>
               </div>
@@ -172,11 +172,11 @@ const assignmentsModule = {
               <table class="table table-sm table-hover align-middle" style="font-size: 0.875rem;">
                 <thead class="table-light">
                   <tr>
-                    <th style="cursor: pointer;" onclick="assignmentsModule.sortAssignments('company')">
+                    <th style="cursor: pointer;" data-action="assignmentsModule.sortAssignments" data-id="company">
                       Company <i class="bi bi-arrow-down-up ms-1"></i>
                     </th>
                     <th>Badges</th>
-                    <th style="cursor: pointer;" onclick="assignmentsModule.sortAssignments('votes')">
+                    <th style="cursor: pointer;" data-action="assignmentsModule.sortAssignments" data-id="votes">
                       Votes <i class="bi bi-arrow-down-up ms-1"></i>
                     </th>
                     <th>Contact</th>
@@ -294,7 +294,7 @@ const assignmentsModule = {
             }
             <a href="javascript:void(0);"
                class="text-decoration-none fw-semibold text-primary"
-               onclick="orgsModule.openCompanyProfile('${org.id}', '${utils.escapeHtml(org.company_name).replace(/'/g, "\\'")}')"
+               data-action="orgsModule.openCompanyProfile" data-args='${JSON.stringify([org.id, utils.escapeHtml(org.company_name).replace(/'/g, "\\'")])}'
                title="View company profile">
               ${utils.escapeHtml(org.company_name)}
             </a>
@@ -316,7 +316,7 @@ const assignmentsModule = {
         <td>
           <div class="btn-group btn-group-sm" role="group">
             <button class="btn btn-outline-primary btn-sm"
-              onclick="assignmentsModule.changeStatus('${assignment.id}', 'shortlisted')"
+              data-action="assignmentsModule.changeStatus" data-args='${JSON.stringify([assignment.id, "shortlisted"])}'
               title="Mark as Shortlisted">
               <i class="bi bi-star"></i>
             </button>
@@ -326,20 +326,20 @@ const assignmentsModule = {
                 <i class="bi bi-trophy"></i>
               </button>
               <ul class="dropdown-menu dropdown-menu-end">
-                <li><a class="dropdown-item" href="javascript:void(0);" onclick="assignmentsModule.setWinnerPosition('${assignment.id}', 1)"><i class="bi bi-star-fill me-2" style="color: #ffd700;"></i>1st Place (Gold)</a></li>
-                <li><a class="dropdown-item" href="javascript:void(0);" onclick="assignmentsModule.setWinnerPosition('${assignment.id}', 2)"><i class="bi bi-star-fill me-2" style="color: #c0c0c0;"></i>2nd Place (Silver)</a></li>
-                <li><a class="dropdown-item" href="javascript:void(0);" onclick="assignmentsModule.setWinnerPosition('${assignment.id}', 3)"><i class="bi bi-star-fill me-2" style="color: #cd7f32;"></i>3rd Place (Bronze)</a></li>
+                <li><a class="dropdown-item" href="javascript:void(0);" data-action="assignmentsModule.setWinnerPosition" data-args='${JSON.stringify([assignment.id, 1])}'><i class="bi bi-star-fill me-2" style="color: #ffd700;"></i>1st Place (Gold)</a></li>
+                <li><a class="dropdown-item" href="javascript:void(0);" data-action="assignmentsModule.setWinnerPosition" data-args='${JSON.stringify([assignment.id, 2])}'><i class="bi bi-star-fill me-2" style="color: #c0c0c0;"></i>2nd Place (Silver)</a></li>
+                <li><a class="dropdown-item" href="javascript:void(0);" data-action="assignmentsModule.setWinnerPosition" data-args='${JSON.stringify([assignment.id, 3])}'><i class="bi bi-star-fill me-2" style="color: #cd7f32;"></i>3rd Place (Bronze)</a></li>
                 <li><hr class="dropdown-divider"></li>
-                <li><a class="dropdown-item" href="javascript:void(0);" onclick="assignmentsModule.changeStatus('${assignment.id}', 'winner')"><i class="bi bi-trophy me-2 text-success"></i>Winner (no position)</a></li>
+                <li><a class="dropdown-item" href="javascript:void(0);" data-action="assignmentsModule.changeStatus" data-args='${JSON.stringify([assignment.id, "winner"])}'><i class="bi bi-trophy me-2 text-success"></i>Winner (no position)</a></li>
               </ul>
             </div>
             <button class="btn btn-outline-secondary btn-sm"
-              onclick="orgsModule.openCompanyProfile('${org.id}', '${utils.escapeHtml(org.company_name).replace(/'/g, "\\'")}')"
+              data-action="orgsModule.openCompanyProfile" data-args='${JSON.stringify([org.id, utils.escapeHtml(org.company_name).replace(/'/g, "\\'")])}'
               title="View Profile">
               <i class="bi bi-eye"></i>
             </button>
             <button class="btn btn-outline-danger btn-sm"
-              onclick="assignmentsModule.removeAssignment('${assignment.id}')"
+              data-action="assignmentsModule.removeAssignment" data-id="assignment.id"
               title="Remove">
               <i class="bi bi-trash"></i>
             </button>
@@ -370,7 +370,7 @@ const assignmentsModule = {
             </div>
             <button 
               class="btn btn-sm btn-primary" 
-              onclick="assignmentsModule.assignCompany('${org.id}', '${utils.escapeHtml(org.company_name).replace(/'/g, "\\'")}')">
+              data-action="assignmentsModule.assignCompany" data-args='${JSON.stringify([org.id, utils.escapeHtml(org.company_name).replace(/'/g, "\\'")])}'>
               <i class="bi bi-plus-lg"></i> Add
             </button>
           </div>
@@ -733,20 +733,20 @@ const assignmentsModule = {
       <div class="mb-3">
         <h6 class="fw-semibold">Filter by status:</h6>
         <div class="btn-group btn-group-sm mb-2">
-          <button class="btn btn-outline-secondary active" onclick="assignmentsModule._filterEmailList('all', this)">All (${assignments.length})</button>
-          <button class="btn btn-outline-warning" onclick="assignmentsModule._filterEmailList('shortlisted', this)">Shortlisted (${assignments.filter(a => a.status === 'shortlisted').length})</button>
-          <button class="btn btn-outline-success" onclick="assignmentsModule._filterEmailList('winner', this)">Winners (${assignments.filter(a => a.status === 'winner').length})</button>
-          <button class="btn btn-outline-primary" onclick="assignmentsModule._filterEmailList('nominated', this)">Nominated (${assignments.filter(a => a.status === 'nominated').length})</button>
+          <button class="btn btn-outline-secondary active" data-action="assignmentsModule._filterEmailList" data-id="all">All (${assignments.length})</button>
+          <button class="btn btn-outline-warning" data-action="assignmentsModule._filterEmailList" data-id="shortlisted">Shortlisted (${assignments.filter(a => a.status === 'shortlisted').length})</button>
+          <button class="btn btn-outline-success" data-action="assignmentsModule._filterEmailList" data-id="winner">Winners (${assignments.filter(a => a.status === 'winner').length})</button>
+          <button class="btn btn-outline-primary" data-action="assignmentsModule._filterEmailList" data-id="nominated">Nominated (${assignments.filter(a => a.status === 'nominated').length})</button>
         </div>
       </div>
       <div id="emailListPreview">
         <textarea class="form-control form-control-sm" rows="4" id="nomineeEmailList" readonly>${uniqueEmails.join('; ')}</textarea>
       </div>
       <div class="mt-3 d-flex gap-2">
-        <button class="btn btn-primary btn-sm" onclick="navigator.clipboard.writeText(document.getElementById('nomineeEmailList').value); utils.showToast('Emails copied to clipboard!', 'success');">
+        <button class="btn btn-primary btn-sm" data-action="assignmentsModule._copyNomineeEmails">
           <i class="bi bi-clipboard me-1"></i>Copy All Emails
         </button>
-        <button class="btn btn-success btn-sm" onclick="window.open('mailto:?bcc=' + encodeURIComponent(document.getElementById('nomineeEmailList').value.replace(/;\\s*/g, ',')))">
+        <button class="btn btn-success btn-sm" data-action="assignmentsModule._openEmailClient">
           <i class="bi bi-envelope me-1"></i>Open Email Client (BCC)
         </button>
       </div>
@@ -770,8 +770,20 @@ const assignmentsModule = {
 
   _cachedAssignments: [],
 
-  _filterEmailList(status, btn) {
-    // Update button states
+  _copyNomineeEmails() {
+    const val = document.getElementById('nomineeEmailList')?.value || '';
+    navigator.clipboard.writeText(val);
+    utils.showToast('Emails copied to clipboard!', 'success');
+  },
+
+  _openEmailClient() {
+    const val = document.getElementById('nomineeEmailList')?.value || '';
+    window.open('mailto:?bcc=' + encodeURIComponent(val.replace(/;\s*/g, ',')));
+  },
+
+  _filterEmailList(status, event) {
+    // Update button states - derive button from event or use status as fallback
+    const btn = event?.target?.closest?.('[data-action]') || event;
     btn.closest('.btn-group').querySelectorAll('.btn').forEach(b => b.classList.remove('active'));
     btn.classList.add('active');
 

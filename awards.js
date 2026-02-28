@@ -656,12 +656,12 @@ const awardsModule = {
 
       return `
         <tr class="fade-in">
-          <td><input type="checkbox" class="form-check-input award-select-cb" value="${award.id}" onchange="awardsModule.toggleSelection('${award.id}', this.checked)" ${this.selectedAwards.has(award.id) ? 'checked' : ''}></td>
+          <td><input type="checkbox" class="form-check-input award-select-cb" value="${award.id}" data-on-change="awardsModule.toggleSelection" data-id="${award.id}" ${this.selectedAwards.has(award.id) ? 'checked' : ''}></td>
           <td class="text-center"><span class="badge bg-light text-dark">${award.year || '-'}</span></td>
           <td>
             <a href="javascript:void(0);"
                class="text-decoration-none fw-semibold text-primary"
-               onclick="assignmentsModule.openAssignmentsModal('${award.id}', '${utils.escapeHtml(fullName).replace(/'/g, "\\'")}')">
+               data-action="assignmentsModule.openAssignmentsModal" data-args='${JSON.stringify([award.id, fullName]).replace(/'/g, "&#39;")}'>
               ${utils.escapeHtml(fullName)}
             </a>
           </td>
@@ -673,7 +673,7 @@ const awardsModule = {
           </td>
           <td>
             <select class="form-select form-select-sm d-inline-block" style="width:auto; font-size:0.75rem;"
-              onchange="awardsModule.inlineUpdateStatus('${award.id}', this.value)"
+              data-on-change="awardsModule.inlineUpdateStatus" data-id="${award.id}"
               aria-label="Change award status">
               ${['draft','pending','published','active','archived'].map(s =>
                 `<option value="${s}" ${(award.status || '').toLowerCase() === s ? 'selected' : ''}>${s.charAt(0).toUpperCase() + s.slice(1)}</option>`
@@ -683,7 +683,7 @@ const awardsModule = {
           <td class="text-center">
             <div class="assignment-count-badge ${countBadgeClass}"
               style="cursor: pointer;"
-              onclick="assignmentsModule.openAssignmentsModal('${award.id}', '${utils.escapeHtml(fullName).replace(/'/g, "\\'")}')"
+              data-action="assignmentsModule.openAssignmentsModal" data-args='${JSON.stringify([award.id, fullName]).replace(/'/g, "&#39;")}'
               title="${counts.nominated} nominated, ${counts.shortlisted} shortlisted, ${counts.winner} winner">
               <i class="bi bi-people-fill"></i>
               <span>${counts.total}</span>
@@ -698,38 +698,38 @@ const awardsModule = {
               </button>
               <ul class="dropdown-menu dropdown-menu-end">
                 <li>
-                  <a class="dropdown-item" href="javascript:void(0);" onclick="assignmentsModule.openAssignmentsModal('${award.id}', '${utils.escapeHtml(fullName).replace(/'/g, "\\'")}')">
+                  <a class="dropdown-item" href="javascript:void(0);" data-action="assignmentsModule.openAssignmentsModal" data-args='${JSON.stringify([award.id, fullName]).replace(/'/g, "&#39;")}'>
                     <i class="bi bi-people text-primary me-2"></i>Manage Nominees
                   </a>
                 </li>
                 <li>
-                  <a class="dropdown-item" href="javascript:void(0);" onclick="awardsModule.openEditModal('${award.id}')">
+                  <a class="dropdown-item" href="javascript:void(0);" data-action="awardsModule.openEditModal" data-id="${award.id}">
                     <i class="bi bi-pencil text-warning me-2"></i>Edit Award
                   </a>
                 </li>
                 <li>
-                  <a class="dropdown-item" href="javascript:void(0);" onclick="awardsModule.viewDetails('${award.id}')">
+                  <a class="dropdown-item" href="javascript:void(0);" data-action="awardsModule.viewDetails" data-id="${award.id}">
                     <i class="bi bi-eye text-info me-2"></i>View Details
                   </a>
                 </li>
                 <li>
-                  <a class="dropdown-item" href="javascript:void(0);" onclick="awardsModule.showVisualTimeline('${award.id}')">
+                  <a class="dropdown-item" href="javascript:void(0);" data-action="awardsModule.showVisualTimeline" data-id="${award.id}">
                     <i class="bi bi-calendar-range text-success me-2"></i>Timeline
                   </a>
                 </li>
                 <li>
-                  <a class="dropdown-item" href="javascript:void(0);" onclick="awardsModule.cloneAward('${award.id}')">
+                  <a class="dropdown-item" href="javascript:void(0);" data-action="awardsModule.cloneAward" data-id="${award.id}">
                     <i class="bi bi-copy text-purple me-2" style="color:#6f42c1;"></i>Clone to Year
                   </a>
                 </li>
                 <li>
-                  <a class="dropdown-item" href="javascript:void(0);" onclick="awardsModule.showAwardAuditLog('${award.id}', '${utils.escapeHtml(fullName).replace(/'/g, "\\'")}')">
+                  <a class="dropdown-item" href="javascript:void(0);" data-action="awardsModule.showAwardAuditLog" data-args='${JSON.stringify([award.id, fullName]).replace(/'/g, "&#39;")}'>
                     <i class="bi bi-journal-text text-secondary me-2"></i>Audit Log
                   </a>
                 </li>
                 <li><hr class="dropdown-divider"></li>
                 <li>
-                  <a class="dropdown-item text-danger" href="javascript:void(0);" onclick="awardsModule.deleteAward('${award.id}')">
+                  <a class="dropdown-item text-danger" href="javascript:void(0);" data-action="awardsModule.deleteAward" data-id="${award.id}">
                     <i class="bi bi-trash me-2"></i>Delete
                   </a>
                 </li>
@@ -922,7 +922,7 @@ const awardsModule = {
                       <td>${assign.score ? `<strong>${assign.score}</strong>` : '-'}</td>
                       <td>
                         <button class="btn btn-sm btn-outline-primary"
-                          onclick="assignmentsModule.openAssignmentsModal('${award.id}', '${utils.escapeHtml(award.award_name).replace(/'/g, "\\'")}')">
+                          data-action="assignmentsModule.openAssignmentsModal" data-args='${JSON.stringify([award.id, award.award_name]).replace(/'/g, "&#39;")}'>
                           <i class="bi bi-pencil"></i> Manage
                         </button>
                       </td>

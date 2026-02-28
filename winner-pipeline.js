@@ -86,10 +86,10 @@ const winnerPipelineModule = {
         return `<tr>
           <td>${sl.rank}</td><td>${title}</td><td>${sl.avg_score}</td><td>${badge(sl.status)}</td>
           <td>
-            <button class="btn btn-sm btn-outline-primary me-1" onclick="winnerPipelineModule.promoteEntry('${awardId}','${id}','finalist')">Finalist</button>
-            <button class="btn btn-sm btn-success me-1" onclick="winnerPipelineModule.confirmWinner('${awardId}','${id}','winner')">Winner</button>
-            <button class="btn btn-sm btn-outline-warning me-1" onclick="winnerPipelineModule.confirmWinner('${awardId}','${id}','runner_up')">Runner-up</button>
-            <button class="btn btn-sm btn-outline-secondary" onclick="winnerPipelineModule._openNoteModal('${awardId}','${id}','${userEmail}')">Note</button>
+            <button class="btn btn-sm btn-outline-primary me-1" data-action="winnerPipelineModule.promoteEntry" data-args='${JSON.stringify([awardId, id, "finalist"])}'>Finalist</button>
+            <button class="btn btn-sm btn-success me-1" data-action="winnerPipelineModule.confirmWinner" data-args='${JSON.stringify([awardId, id, "winner"])}'>Winner</button>
+            <button class="btn btn-sm btn-outline-warning me-1" data-action="winnerPipelineModule.confirmWinner" data-args='${JSON.stringify([awardId, id, "runner_up"])}'>Runner-up</button>
+            <button class="btn btn-sm btn-outline-secondary" data-action="winnerPipelineModule._openNoteModal" data-args='${JSON.stringify([awardId, id, userEmail]).replace(/'/g, "&#39;")}'>Note</button>
           </td></tr>`;
       }).join('');
 
@@ -97,7 +97,7 @@ const winnerPipelineModule = {
         <div class="card mb-4">
           <div class="card-header d-flex justify-content-between align-items-center">
             <h5 class="mb-0">Panel Deliberation</h5>
-            <button class="btn btn-sm btn-outline-secondary" onclick="winnerPipelineModule.renderScoreChart('${awardId}')">Score Chart</button>
+            <button class="btn btn-sm btn-outline-secondary" data-action="winnerPipelineModule.renderScoreChart" data-id="${awardId}">Score Chart</button>
           </div>
           <div class="card-body p-0">
             <table class="table table-hover mb-0">
@@ -245,8 +245,8 @@ const winnerPipelineModule = {
                 ${slCount ? `<div class="small text-muted">${slCount} shortlisted</div>` : ''}
               </div>
               <div class="card-footer d-flex gap-1 flex-wrap">
-                <button class="btn btn-sm btn-outline-primary" onclick="winnerPipelineModule.generateShortlist('${a.id}')">Shortlist</button>
-                <button class="btn btn-sm btn-outline-secondary" onclick="winnerPipelineModule.renderDeliberationPanel('${a.id}')">Deliberate</button>
+                <button class="btn btn-sm btn-outline-primary" data-action="winnerPipelineModule.generateShortlist" data-id="${a.id}">Shortlist</button>
+                <button class="btn btn-sm btn-outline-secondary" data-action="winnerPipelineModule.renderDeliberationPanel" data-id="${a.id}">Deliberate</button>
               </div>
             </div>
           </div>`;

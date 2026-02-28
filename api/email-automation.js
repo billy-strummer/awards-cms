@@ -422,7 +422,7 @@ async function sendTemplateEmail(templateKey, toEmail, variables) {
       });
 
       await logEmailSent(templateKey, toEmail, subject);
-      console.log(`✅ Email sent (DB template): ${templateKey} to ${toEmail}`);
+      console.warn(`✅ Email sent (DB template): ${templateKey} to ${toEmail}`);
       return true;
     }
 
@@ -456,7 +456,7 @@ async function sendTemplateEmail(templateKey, toEmail, variables) {
     });
 
     await logEmailSent(templateKey, toEmail, subject);
-    console.log(`✅ Email sent (hardcoded fallback): ${templateKey} to ${toEmail}`);
+    console.warn(`✅ Email sent (hardcoded fallback): ${templateKey} to ${toEmail}`);
     return true;
 
   } catch (error) {
@@ -504,7 +504,7 @@ async function sendEntryConfirmation(entryId) {
  */
 async function sendDeadlineReminders() {
   try {
-    console.log('📧 Sending deadline reminders...');
+    console.warn('📧 Sending deadline reminders...');
 
     const now = new Date();
     const reminders = [7, 3, 1]; // Days before deadline
@@ -549,7 +549,7 @@ async function sendDeadlineReminders() {
       }
     }
 
-    console.log('✅ Deadline reminders sent');
+    console.warn('✅ Deadline reminders sent');
     return true;
 
   } catch (error) {
@@ -602,7 +602,7 @@ async function sendJudgeAssignments(judgeEmail, entryIds) {
  */
 async function sendWinnerAnnouncements(awardId = null) {
   try {
-    console.log('🏆 Sending winner announcements...');
+    console.warn('🏆 Sending winner announcements...');
 
     let query = supabase
       .from('entries')
@@ -631,7 +631,7 @@ async function sendWinnerAnnouncements(awardId = null) {
       // TODO: Integrate with social-media.js
     }
 
-    console.log(`✅ Sent ${(winners || []).length} winner announcements`);
+    console.warn(`✅ Sent ${(winners || []).length} winner announcements`);
     return (winners || []).length;
 
   } catch (error) {
@@ -645,7 +645,7 @@ async function sendWinnerAnnouncements(awardId = null) {
  */
 async function sendShortlistNotifications(awardId = null) {
   try {
-    console.log('🌟 Sending shortlist notifications...');
+    console.warn('🌟 Sending shortlist notifications...');
 
     let query = supabase
       .from('entries')
@@ -672,7 +672,7 @@ async function sendShortlistNotifications(awardId = null) {
       await sendTemplateEmail('SHORTLIST_NOTIFICATION', entry.contact_email, variables);
     }
 
-    console.log(`✅ Sent ${shortlisted.length} shortlist notifications`);
+    console.warn(`✅ Sent ${shortlisted.length} shortlist notifications`);
     return shortlisted.length;
 
   } catch (error) {

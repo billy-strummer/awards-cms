@@ -28,7 +28,7 @@ const APP_URL = process.env.APP_URL || 'https://admin.britishtrade.com';
  */
 async function assignJudgesToEntries(awardId = null) {
   try {
-    console.log('🎯 Starting automated judge assignment...');
+    console.warn('🎯 Starting automated judge assignment...');
 
     // Get all judges (from contacts or separate judges table)
     const { data: judges, error: judgesError } = await supabase
@@ -58,12 +58,12 @@ async function assignJudgesToEntries(awardId = null) {
     if (entriesError) throw entriesError;
 
     if (!entries || entries.length === 0) {
-      console.log('ℹ️ No entries found that need judging');
+      console.warn('ℹ️ No entries found that need judging');
       return { assigned: 0, conflicts: 0 };
     }
 
-    console.log(`📝 Found ${entries.length} entries to assign`);
-    console.log(`👨‍⚖️ Found ${judges.length} available judges`);
+    console.warn(`📝 Found ${entries.length} entries to assign`);
+    console.warn(`👨‍⚖️ Found ${judges.length} available judges`);
 
     // Number of judges per entry (typically 3-5)
     const judgesPerEntry = 3;
@@ -125,9 +125,9 @@ async function assignJudgesToEntries(awardId = null) {
       conflictCount += judgesWithScores.filter(j => j.conflict).length;
     }
 
-    console.log(`✅ Assignment complete:`);
-    console.log(`   - Assigned: ${assignedCount} judge-entry pairs`);
-    console.log(`   - Conflicts detected: ${conflictCount}`);
+    console.warn(`✅ Assignment complete:`);
+    console.warn(`   - Assigned: ${assignedCount} judge-entry pairs`);
+    console.warn(`   - Conflicts detected: ${conflictCount}`);
 
     return {
       assigned: assignedCount,
@@ -204,7 +204,7 @@ function calculateExpertiseScore(judge, entry) {
  */
 async function generateShortlist(awardId, topN = 5) {
   try {
-    console.log(`📊 Generating shortlist for award ${awardId}...`);
+    console.warn(`📊 Generating shortlist for award ${awardId}...`);
 
     // Get all entries for this award with complete scores
     const { data: entries, error } = await supabase
@@ -223,7 +223,7 @@ async function generateShortlist(awardId, topN = 5) {
     if (error) throw error;
 
     if (!entries || entries.length === 0) {
-      console.log('ℹ️ No entries with scores found for this award');
+      console.warn('ℹ️ No entries with scores found for this award');
       return [];
     }
 
@@ -234,7 +234,7 @@ async function generateShortlist(awardId, topN = 5) {
       return completeScores.length >= minScores;
     });
 
-    console.log(`📝 ${validEntries.length} entries have sufficient scores`);
+    console.warn(`📝 ${validEntries.length} entries have sufficient scores`);
 
     // Calculate composite scores (average + consistency)
     const entriesWithScores = validEntries.map(entry => {
@@ -290,9 +290,9 @@ async function generateShortlist(awardId, topN = 5) {
       await sendShortlistNotificationEmail(entry);
     }
 
-    console.log(`✅ Shortlist generated:`);
+    console.warn(`✅ Shortlist generated:`);
     shortlist.forEach((entry, index) => {
-      console.log(`   ${index + 1}. ${entry.organisations.company_name} - Score: ${entry.averageScore.toFixed(2)} (σ: ${entry.scoreConsistency.toFixed(2)})`);
+      console.warn(`   ${index + 1}. ${entry.organisations.company_name} - Score: ${entry.averageScore.toFixed(2)} (σ: ${entry.scoreConsistency.toFixed(2)})`);
     });
 
     return shortlist;
@@ -308,7 +308,7 @@ async function generateShortlist(awardId, topN = 5) {
  */
 async function generateAllShortlists(topN = 5) {
   try {
-    console.log('🎯 Generating shortlists for all awards...');
+    console.warn('🎯 Generating shortlists for all awards...');
 
     // Get all active awards
     const { data: awards, error } = await supabase
@@ -321,7 +321,7 @@ async function generateAllShortlists(topN = 5) {
     const results = [];
 
     for (const award of awards) {
-      console.log(`\n📋 Processing: ${award.award_name}`);
+      console.warn(`\n📋 Processing: ${award.award_name}`);
       const shortlist = await generateShortlist(award.id, topN);
       results.push({
         awardId: award.id,
@@ -330,7 +330,7 @@ async function generateAllShortlists(topN = 5) {
       });
     }
 
-    console.log('\n✅ All shortlists generated');
+    console.warn('\n✅ All shortlists generated');
     return results;
 
   } catch (error) {
@@ -363,7 +363,7 @@ async function sendJudgeAssignmentEmail(judge, entry) {
         <p><em>British Trade Awards Team</em></p>
       `
     });
-    console.log(`Email sent: judge assignment to ${judge.email}`);
+    console.warn(`Email sent: judge assignment to ${judge.email}`);
   } catch (e) {
     console.error(`Failed to send judge assignment email to ${judge.email}:`, e.message);
   }
@@ -396,7 +396,7 @@ async function sendShortlistNotificationEmail(entry) {
         <p><em>British Trade Awards Team</em></p>
       `
     });
-    console.log(`Email sent: shortlist notification to ${toEmail}`);
+    console.warn(`Email sent: shortlist notification to ${toEmail}`);
   } catch (e) {
     console.error(`Failed to send shortlist notification:`, e.message);
   }

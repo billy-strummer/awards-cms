@@ -22,7 +22,7 @@ const notificationsModule = {
     li.innerHTML =
       `<a class="nav-link p-1" id="notifBellBtn" href="#" data-bs-toggle="dropdown"
           aria-expanded="false" title="Notifications" style="line-height:1"
-          onclick="notificationsModule.renderNotificationDropdown()">
+          data-action="notificationsModule.renderNotificationDropdown">
          <i class="bi bi-bell fs-5"></i>
          <span id="notifBadge" class="position-absolute top-0 start-100 translate-middle
                badge rounded-pill bg-danger d-none" style="font-size:.65rem"></span>
@@ -86,9 +86,9 @@ const notificationsModule = {
         <span class="fw-semibold small">Notifications</span>
         <div class="d-flex gap-2">
           <a href="#" class="small text-primary text-decoration-none"
-             onclick="notificationsModule.markAllRead();return false">Mark all read</a>
+             data-action="notificationsModule.markAllRead" data-prevent-default="true">Mark all read</a>
           <a href="#" class="small text-secondary text-decoration-none"
-             onclick="notificationsModule.renderPreferences();return false">
+             data-action="notificationsModule.renderPreferences" data-prevent-default="true">
             <i class="bi bi-gear"></i></a></div></div>`;
       const items = data || [];
       const rows = items.length === 0
@@ -102,10 +102,10 @@ const notificationsModule = {
               <div class="flex-grow-1 overflow-hidden">
                 <div class="d-flex justify-content-between align-items-start">
                   <a ${href} class="text-dark text-decoration-none small fw-semibold text-truncate"
-                     onclick="notificationsModule.markRead('${n.id}');${n.link ? '' : 'return false'}">
+                     data-action="notificationsModule.markRead" data-id="${n.id}"${n.link ? '' : ' data-prevent-default="true"'}>
                     ${esc(n.title)}${dot}</a>
                   <button class="btn btn-sm p-0 ms-1 text-muted lh-1"
-                          onclick="notificationsModule.dismissNotification('${n.id}')"
+                          data-action="notificationsModule.dismissNotification" data-id="${n.id}"
                           title="Dismiss">&times;</button></div>
                 <p class="mb-0 text-muted small text-truncate">${esc(n.message)}</p>
                 <span class="text-muted" style="font-size:.7rem">${this._timeAgo(n.created_at)}</span>
@@ -235,7 +235,7 @@ const notificationsModule = {
          <div class="form-check form-switch mb-0">
            <input class="form-check-input" type="checkbox" role="switch" id="pref-${type}"
                   ${prefs[type] !== false ? 'checked' : ''}
-                  onchange="notificationsModule._savePref('${type}',this.checked)">
+                  data-on-change="notificationsModule._savePref" data-id="${type}">
          </div></div>`).join('');
 
     const wrap = document.createElement('div');
@@ -255,7 +255,8 @@ const notificationsModule = {
     new bootstrap.Modal(modalEl).show();
   },
 
-  async _savePref(type, enabled) {
+  async _savePref(type, _value, event) {
+    const enabled = event?.target?.checked ?? _value;
     try {
       const { error } = await STATE.client.from('notification_preferences').upsert(
         { user_email: STATE.currentUser.email, type, enabled,

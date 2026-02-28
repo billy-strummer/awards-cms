@@ -695,7 +695,7 @@ updateCountyFilterByRegion() {
         <td class="text-center">
           <input type="checkbox" class="form-check-input"
                  ${isSelected ? 'checked' : ''}
-                 onchange="orgsModule.toggleOrgSelection('${org.id}')">
+                 data-on-change="orgsModule.toggleOrgSelection" data-id="org.id">
         </td>
         <td>
           <div class="d-flex align-items-center">
@@ -709,12 +709,12 @@ updateCountyFilterByRegion() {
             }
             <a class="text-primary text-decoration-none fw-semibold"
                style="cursor: pointer;"
-               onclick="orgsModule.openCompanyProfile('${org.id}', '${escapedName}')">
+               data-action="orgsModule.openCompanyProfile" data-args='${JSON.stringify([org.id, escapedName])}'>
               ${utils.escapeHtml(org.company_name || 'N/A')}
             </a>
           </div>
         </td>
-        <td style="${cv('sector')}cursor: pointer;" ondblclick="orgsModule.startInlineEdit('${org.id}', 'sector', '${utils.escapeHtml(org.sector || '').replace(/'/g, "\\'")}', this)" title="Double-click to edit">
+        <td style="${cv('sector')}cursor: pointer;" data-on-dblclick="orgsModule.startInlineEdit" data-args='${JSON.stringify([org.id, "sector", org.sector || ""])}' title="Double-click to edit">
           <span class="badge bg-info-subtle text-info small">
             ${utils.escapeHtml(org.sector || '-')}
           </span>
@@ -724,10 +724,10 @@ updateCountyFilterByRegion() {
             ${utils.escapeHtml(org.county || '-')}
           </span>
         </td>
-        <td class="small" style="${cv('contact')}cursor: pointer;" ondblclick="orgsModule.startInlineEdit('${org.id}', 'contact', '${utils.escapeHtml(org.contact_name || '').replace(/'/g, "\\'")}', this)" title="Double-click to edit">
+        <td class="small" style="${cv('contact')}cursor: pointer;" data-on-dblclick="orgsModule.startInlineEdit" data-args='${JSON.stringify([org.id, "contact", org.contact_name || ""])}' title="Double-click to edit">
           ${utils.escapeHtml(org.contact_name ? (org.contact_name.length > 18 ? org.contact_name.substring(0, 18) + '...' : org.contact_name) : '-')}
         </td>
-        <td class="small" style="${cv('email')}cursor: pointer;" ondblclick="orgsModule.startInlineEdit('${org.id}', 'email', '${utils.escapeHtml(org.email || '').replace(/'/g, "\\'")}', this)" title="Double-click to edit">
+        <td class="small" style="${cv('email')}cursor: pointer;" data-on-dblclick="orgsModule.startInlineEdit" data-args='${JSON.stringify([org.id, "email", org.email || ""])}' title="Double-click to edit">
           ${org.email ?
             `<a href="mailto:${org.email}" class="text-decoration-none" title="${utils.escapeHtml(org.email)}">
               ${org.email.length > 22 ? utils.escapeHtml(org.email.substring(0, 22)) + '...' : utils.escapeHtml(org.email)}
@@ -756,7 +756,7 @@ updateCountyFilterByRegion() {
         <td class="text-center" style="${cv('status')}">
           <select class="form-select form-select-sm border-0 p-0 text-center"
                   style="font-size: 0.75rem; background-position: right 0.25rem center; padding-right: 1.2rem !important; cursor: pointer;"
-                  onchange="orgsModule.quickUpdateStatus('${org.id}', this.value)"
+                  data-on-change="orgsModule.quickUpdateStatus" data-id="org.id"
                   title="Click to change status">
             ${this._getStatusOptions(org.status || 'prospect').map(s =>
               `<option value="${s.value}" ${(org.status || 'prospect') === s.value ? 'selected' : ''}>${s.label}</option>`
@@ -788,16 +788,16 @@ updateCountyFilterByRegion() {
         <td class="text-center">
           <div class="btn-group btn-group-sm">
             <button class="btn btn-sm btn-outline-secondary"
-                    onclick="orgsModule.openCompanyProfile('${org.id}', '${escapedName}')"
+                    data-action="orgsModule.openCompanyProfile" data-args='${JSON.stringify([org.id, escapedName])}'
                     title="View Profile">
               <i class="bi bi-eye"></i>
             </button>
             ${(org.status || 'prospect') === 'archived'
               ? `<button class="btn btn-sm btn-outline-success"
-                      onclick="orgsModule.restoreOrganisation('${org.id}', '${escapedName}')"
+                      data-action="orgsModule.restoreOrganisation" data-args='${JSON.stringify([org.id, escapedName])}'
                       title="Restore"><i class="bi bi-arrow-counterclockwise"></i></button>`
               : `<button class="btn btn-sm btn-outline-danger"
-                      onclick="orgsModule.deleteOrganisation('${org.id}', '${escapedName}')"
+                      data-action="orgsModule.deleteOrganisation" data-args='${JSON.stringify([org.id, escapedName])}'
                       title="Archive"><i class="bi bi-archive"></i></button>`
             }
           </div>
@@ -966,14 +966,14 @@ updateCountyFilterByRegion() {
                   </div>`
                 }
                 <input type="file" id="logoUploadInput" class="form-control form-control-sm mb-2"
-                  accept="image/*" onchange="orgsModule.validateAndUploadLogo('${org.id}', this)">
+                  accept="image/*" data-on-file-change="orgsModule.validateAndUploadLogo" data-id="org.id">
                 <button type="button" class="btn btn-sm btn-outline-primary w-100 mb-2"
-                  onclick="orgsModule.openLogoGalleryModal('${org.id}')">
+                  data-action="orgsModule.openLogoGalleryModal" data-id="org.id">
                   <i class="bi bi-images me-1"></i>Choose from Media Gallery
                 </button>
                 ${org.website ?
                   `<button type="button" class="btn btn-sm btn-outline-success w-100 mb-2"
-                    onclick="orgsModule.fetchLogoFromWebsite('${org.id}')">
+                    data-action="orgsModule.fetchLogoFromWebsite" data-id="org.id">
                     <i class="bi bi-globe me-1"></i>Fetch from Website
                   </button>` : ''
                 }
@@ -1048,7 +1048,7 @@ updateCountyFilterByRegion() {
                     rows="3" style="display: none;" placeholder="e.g., London, Southeast England, National">${utils.escapeHtml(org.catchment_area || '')}</textarea>
                 </div>
                 <hr class="my-2">
-                <button class="btn btn-sm btn-outline-info w-100" onclick="orgsModule.companiesHouseLookup('${org.id}')">
+                <button class="btn btn-sm btn-outline-info w-100" data-action="orgsModule.companiesHouseLookup" data-id="org.id">
                   <i class="bi bi-bank me-1"></i>Companies House Lookup
                 </button>
               </div>
@@ -1065,7 +1065,7 @@ updateCountyFilterByRegion() {
                 <div class="d-flex flex-wrap gap-1">
                   ${['prospect','entrant','nominee','shortlisted','winner','sponsor','past_winner'].map(s => `
                     <button class="btn btn-sm ${org.status === s ? 'btn-primary' : 'btn-outline-secondary'}"
-                      onclick="orgsModule.updateOrgStatus('${org.id}', '${s}')">
+                      data-action="orgsModule.updateOrgStatus" data-args='${JSON.stringify([org.id, s])}'>
                       ${s.charAt(0).toUpperCase() + s.slice(1).replace('_', ' ')}
                     </button>
                   `).join('')}
@@ -1081,8 +1081,8 @@ updateCountyFilterByRegion() {
                 <hr class="my-2">
                 <div class="input-group input-group-sm">
                   <input type="text" class="form-control" id="newNoteContent" placeholder="Add a note..."
-                    onkeydown="if(event.key==='Enter'){event.preventDefault();orgsModule.addThreadedNote('${org.id}');}">
-                  <button class="btn btn-primary" onclick="orgsModule.addThreadedNote('${org.id}')"><i class="bi bi-send"></i></button>
+                    data-on-keyenter="orgsModule.addThreadedNote" data-id="org.id">
+                  <button class="btn btn-primary" data-action="orgsModule.addThreadedNote" data-id="org.id"><i class="bi bi-send"></i></button>
                 </div>
               </div>
             </div>
@@ -1182,13 +1182,13 @@ updateCountyFilterByRegion() {
                   <strong><i class="bi bi-tags me-1"></i>Tags:</strong>
                   <div id="orgTagsContainer">
                     ${(org.tags && org.tags.length > 0)
-                      ? org.tags.map(t => `<span class="badge bg-secondary me-1 mb-1">${utils.escapeHtml(t)} <a href="javascript:void(0);" class="text-white ms-1" onclick="orgsModule.removeTag('${org.id}', '${utils.escapeHtml(t).replace(/'/g, "\\'")}')"><i class="bi bi-x-circle-fill"></i></a></span>`).join('')
+                      ? org.tags.map(t => `<span class="badge bg-secondary me-1 mb-1">${utils.escapeHtml(t)} <a href="javascript:void(0);" class="text-white ms-1" data-action="orgsModule.removeTag" data-args='${JSON.stringify([org.id, utils.escapeHtml(t).replace(/'/g, "\\'")])}'><i class="bi bi-x-circle-fill"></i></a></span>`).join('')
                       : '<span class="text-muted small">No tags</span>'
                     }
                   </div>
                   <div class="input-group input-group-sm mt-2">
-                    <input type="text" class="form-control" id="newTagInput" placeholder="Add tag..." onkeydown="if(event.key==='Enter'){event.preventDefault();orgsModule.addTag('${org.id}');}">
-                    <button class="btn btn-outline-primary" onclick="orgsModule.addTag('${org.id}')"><i class="bi bi-plus"></i></button>
+                    <input type="text" class="form-control" id="newTagInput" placeholder="Add tag..." data-on-keyenter="orgsModule.addTag" data-id="org.id">
+                    <button class="btn btn-outline-primary" data-action="orgsModule.addTag" data-id="org.id"><i class="bi bi-plus"></i></button>
                   </div>
                 </div>
               </div>
@@ -1224,7 +1224,7 @@ updateCountyFilterByRegion() {
                   </div>
                   <div class="col-md-4 text-end">
                     <button type="button" class="btn btn-primary"
-                      onclick="orgsModule.viewOrganisationInvoices('${org.id}', '${utils.escapeHtml(org.company_name).replace(/'/g, "\\'")}')">
+                      data-action="orgsModule.viewOrganisationInvoices" data-args='${JSON.stringify([org.id, utils.escapeHtml(org.company_name).replace(/'/g, "\\'")])}'>
                       <i class="bi bi-file-earmark-text me-2"></i>View All Invoices
                     </button>
                   </div>
@@ -1257,7 +1257,7 @@ updateCountyFilterByRegion() {
                       <td>
                         <a href="javascript:void(0);"
                            class="text-decoration-none fw-semibold text-primary"
-                           onclick="assignmentsModule.openAssignmentsModal('${award.id}', '${utils.escapeHtml(utils.formatAwardName(award)).replace(/'/g, "\\'")}')">
+                           data-action="assignmentsModule.openAssignmentsModal" data-args='${JSON.stringify([award.id, utils.escapeHtml(utils.formatAwardName(award)).replace(/'/g, "\\'")])}'>
                           ${utils.escapeHtml(utils.formatAwardName(award))}
                         </a>
                       </td>
@@ -1266,7 +1266,7 @@ updateCountyFilterByRegion() {
                       <td>
                         ${['bronze', 'silver', 'gold'].includes(award.package_type) ?
                           `<a href="javascript:void(0);"
-                              onclick="orgsModule.openCompanyProfile('${org.id}', '${utils.escapeHtml(org.company_name).replace(/'/g, "\\'")}')">
+                              data-action="orgsModule.openCompanyProfile" data-args='${JSON.stringify([org.id, utils.escapeHtml(org.company_name).replace(/'/g, "\\'")])}'>
                               ${orgsModule.getPackageBadge(award.package_type)}
                            </a>` :
                           '<span class="text-muted">-</span>'
@@ -1327,7 +1327,7 @@ updateCountyFilterByRegion() {
                               <div class="input-group input-group-sm" style="max-width: 400px;">
                                 <input type="text" class="form-control" value="${safeVotingUrl}" readonly id="votingUrl_${entry.id}">
                                 <button class="btn btn-outline-primary" type="button"
-                                  onclick="utils.copyToClipboard('${safeVotingUrl}', 'Voting link copied!')">
+                                  data-action="utils.copyToClipboard" data-args='${JSON.stringify([safeVotingUrl, "Voting link copied!"])}'>
                                   <i class="bi bi-clipboard"></i>
                                 </button>
                               </div>
@@ -1355,12 +1355,12 @@ updateCountyFilterByRegion() {
             <div class="btn-group btn-group-sm" role="group">
               <button type="button"
                 class="btn ${org.winner_profile_status === 'published' ? 'btn-success' : 'btn-outline-success'}"
-                onclick="orgsModule.setWinnerProfileStatus('${org.id}', 'published')">
+                data-action="orgsModule.setWinnerProfileStatus" data-args='${JSON.stringify([org.id, "published"])}'>
                 <i class="bi bi-check-circle me-1"></i>Published
               </button>
               <button type="button"
                 class="btn ${org.winner_profile_status === 'draft' || !org.winner_profile_status ? 'btn-secondary' : 'btn-outline-secondary'}"
-                onclick="orgsModule.setWinnerProfileStatus('${org.id}', 'draft')">
+                data-action="orgsModule.setWinnerProfileStatus" data-args='${JSON.stringify([org.id, "draft"])}'>
                 <i class="bi bi-file-earmark me-1"></i>Draft
               </button>
             </div>
@@ -1404,10 +1404,10 @@ updateCountyFilterByRegion() {
                 </div>
 
                 <div class="d-flex gap-2">
-                  <button type="button" class="btn btn-primary" onclick="orgsModule.saveWinnerProfile('${org.id}')">
+                  <button type="button" class="btn btn-primary" data-action="orgsModule.saveWinnerProfile" data-id="org.id">
                     <i class="bi bi-save me-2"></i>Save Profile
                   </button>
-                  <button type="button" class="btn btn-secondary" onclick="orgsModule.cancelWinnerProfile('${org.id}', '${utils.escapeHtml(org.company_name || '').replace(/'/g, "\\'")}')">
+                  <button type="button" class="btn btn-secondary" data-action="orgsModule.cancelWinnerProfile" data-args='${JSON.stringify([org.id, utils.escapeHtml(org.company_name || '').replace(/'/g, "\\'")])}'>
                     <i class="bi bi-x-circle me-2"></i>Cancel
                   </button>
                 </div>
@@ -1420,7 +1420,7 @@ updateCountyFilterByRegion() {
         <div class="mt-4">
           <div class="d-flex justify-content-between align-items-center mb-3">
             <h6 class="text-muted mb-0"><i class="bi bi-images me-2"></i>Company Images for Marketing (${(companyImages || []).length})</h6>
-            <button type="button" class="btn btn-sm btn-primary" onclick="orgsModule.openUploadImagesModal('${org.id}')">
+            <button type="button" class="btn btn-sm btn-primary" data-action="orgsModule.openUploadImagesModal" data-id="org.id">
               <i class="bi bi-cloud-upload me-1"></i>Upload Images
             </button>
           </div>
@@ -1432,12 +1432,12 @@ updateCountyFilterByRegion() {
                   <div class="card h-100">
                     <img src="${img.file_url}" class="card-img-top" alt="${utils.escapeHtml(img.title || 'Company Image')}"
                       style="height: 180px; object-fit: cover; cursor: pointer;"
-                      onclick="orgsModule.viewImageFull('${utils.escapeHtml(img.file_url)}', '${utils.escapeHtml(img.title || 'Company Image')}')">
+                      data-action="orgsModule.viewImageFull" data-args='${JSON.stringify([utils.escapeHtml(img.file_url), utils.escapeHtml(img.title || 'Company Image')])}'>
                     <div class="card-body p-2">
                       <p class="card-text small mb-1 fw-semibold">${utils.escapeHtml(img.title || 'Untitled')}</p>
                       ${img.caption ? `<p class="card-text small text-muted mb-2">${utils.escapeHtml(img.caption)}</p>` : ''}
                       <button class="btn btn-sm btn-outline-danger w-100"
-                        onclick="orgsModule.deleteCompanyImage('${img.id}', '${org.id}')">
+                        data-action="orgsModule.deleteCompanyImage" data-args='${JSON.stringify([img.id, org.id])}'>
                         <i class="bi bi-trash me-1"></i>Delete
                       </button>
                     </div>
@@ -1510,7 +1510,7 @@ updateCountyFilterByRegion() {
                 <div class="form-check form-check-inline"><input class="form-check-input" type="checkbox" id="newContactReceiveEmails" checked><label class="form-check-label small">Emails</label></div>
               </div>
             </div>
-            <button class="btn btn-sm btn-primary mt-2" onclick="orgsModule.addContact('${orgId}')"><i class="bi bi-plus me-1"></i>Add Contact</button>
+            <button class="btn btn-sm btn-primary mt-2" data-action="orgsModule.addContact" data-id="orgId"><i class="bi bi-plus me-1"></i>Add Contact</button>
           </div></div>
         </div>
 
@@ -1518,9 +1518,9 @@ updateCountyFilterByRegion() {
         <div class="mt-4">
           <h6 class="text-muted mb-3"><i class="bi bi-clock-history me-2"></i>Activity Timeline
             <span class="badge bg-light text-muted ms-1" style="font-size: 0.6rem;">emails, notes, awards, invoices, status changes</span>
-            <button class="btn btn-sm btn-outline-primary ms-2" onclick="orgsModule.showAddActivityNote('${orgId}')"><i class="bi bi-plus me-1"></i>Add Note</button>
-            <button class="btn btn-sm btn-outline-info ms-1" onclick="orgsModule.showFieldLevelAudit('${orgId}')"><i class="bi bi-clock-history me-1"></i>Change History</button>
-            <button class="btn btn-sm btn-outline-secondary ms-1" onclick="orgsModule.generateShareLink('${orgId}')"><i class="bi bi-share me-1"></i>Share</button>
+            <button class="btn btn-sm btn-outline-primary ms-2" data-action="orgsModule.showAddActivityNote" data-id="orgId"><i class="bi bi-plus me-1"></i>Add Note</button>
+            <button class="btn btn-sm btn-outline-info ms-1" data-action="orgsModule.showFieldLevelAudit" data-id="orgId"><i class="bi bi-clock-history me-1"></i>Change History</button>
+            <button class="btn btn-sm btn-outline-secondary ms-1" data-action="orgsModule.generateShareLink" data-id="orgId"><i class="bi bi-share me-1"></i>Share</button>
           </h6>
           <div class="card"><div class="card-body" id="orgActivityTimeline">Loading activity...</div></div>
         </div>
@@ -1541,14 +1541,14 @@ updateCountyFilterByRegion() {
                   <div class="col-4"><input type="date" class="form-control form-control-sm" id="followUpDate" min="${new Date().toISOString().split('T')[0]}"></div>
                   <div class="col-3"><input type="text" class="form-control form-control-sm" id="followUpNote" placeholder="Reminder note..."></div>
                   <div class="col-3"><input type="email" class="form-control form-control-sm" id="followUpAssignee" placeholder="Assign to (email)"></div>
-                  <div class="col-2"><button class="btn btn-sm btn-primary w-100" onclick="orgsModule.addFollowUp('${orgId}')"><i class="bi bi-plus"></i></button></div>
+                  <div class="col-2"><button class="btn btn-sm btn-primary w-100" data-action="orgsModule.addFollowUp" data-id="orgId"><i class="bi bi-plus"></i></button></div>
                 </div>
               </div></div>
             </div>
           </div>
           <div class="mt-2 d-flex gap-2">
-            <button class="btn btn-sm btn-outline-primary" onclick="orgsModule.openEmailTemplate('${orgId}')"><i class="bi bi-envelope me-1"></i>Email Templates</button>
-            <button class="btn btn-sm btn-outline-success" onclick="orgsModule.openSMSTemplate('${orgId}')"><i class="bi bi-chat-dots me-1"></i>SMS / WhatsApp</button>
+            <button class="btn btn-sm btn-outline-primary" data-action="orgsModule.openEmailTemplate" data-id="orgId"><i class="bi bi-envelope me-1"></i>Email Templates</button>
+            <button class="btn btn-sm btn-outline-success" data-action="orgsModule.openSMSTemplate" data-id="orgId"><i class="bi bi-chat-dots me-1"></i>SMS / WhatsApp</button>
           </div>
         </div>
 
@@ -1561,7 +1561,7 @@ updateCountyFilterByRegion() {
             <div class="row g-2 align-items-end">
               <div class="col-md-4"><input type="file" class="form-control form-control-sm" id="docUploadInput"></div>
               <div class="col-md-4"><input type="text" class="form-control form-control-sm" id="docTitle" placeholder="Document title..."></div>
-              <div class="col-md-4"><button class="btn btn-sm btn-primary" onclick="orgsModule.uploadDocument('${orgId}')"><i class="bi bi-cloud-upload me-1"></i>Upload</button></div>
+              <div class="col-md-4"><button class="btn btn-sm btn-primary" data-action="orgsModule.uploadDocument" data-id="orgId"><i class="bi bi-cloud-upload me-1"></i>Upload</button></div>
             </div>
           </div></div>
         </div>
@@ -1575,7 +1575,7 @@ updateCountyFilterByRegion() {
             <div class="row g-2 align-items-end">
               <div class="col-md-4"><input type="text" class="form-control form-control-sm" id="customFieldName" placeholder="Field name..."></div>
               <div class="col-md-4"><input type="text" class="form-control form-control-sm" id="customFieldValue" placeholder="Value..."></div>
-              <div class="col-md-4"><button class="btn btn-sm btn-primary" onclick="orgsModule.addCustomField('${orgId}')"><i class="bi bi-plus me-1"></i>Add Field</button></div>
+              <div class="col-md-4"><button class="btn btn-sm btn-primary" data-action="orgsModule.addCustomField" data-id="orgId"><i class="bi bi-plus me-1"></i>Add Field</button></div>
             </div>
           </div></div>
         </div>
@@ -1605,7 +1605,7 @@ updateCountyFilterByRegion() {
                   <option value="supplier">Supplier</option>
                 </select>
               </div>
-              <div class="col-md-4"><button class="btn btn-sm btn-primary" onclick="orgsModule.addRelationship('${orgId}')"><i class="bi bi-link me-1"></i>Link</button></div>
+              <div class="col-md-4"><button class="btn btn-sm btn-primary" data-action="orgsModule.addRelationship" data-id="orgId"><i class="bi bi-link me-1"></i>Link</button></div>
             </div>
           </div></div>
         </div>
@@ -1623,7 +1623,7 @@ updateCountyFilterByRegion() {
             <div class="mb-2">
               <textarea class="form-control form-control-sm" id="profileEmailBody" rows="3" placeholder="Message..."></textarea>
             </div>
-            <button class="btn btn-sm btn-primary" onclick="orgsModule.composeEmailFromProfile('${orgId}')" ${!org.email ? 'disabled' : ''}>
+            <button class="btn btn-sm btn-primary" data-action="orgsModule.composeEmailFromProfile" data-id="orgId" ${!org.email ? 'disabled' : ''}>
               <i class="bi bi-send me-1"></i>Open Email Client
             </button>
           </div></div>
@@ -1668,7 +1668,7 @@ updateCountyFilterByRegion() {
                 <div class="mt-1">
                   <textarea class="form-control form-control-sm" id="spkgBenefits" rows="2" placeholder="Benefits (one per line)..."></textarea>
                 </div>
-                <button class="btn btn-sm btn-primary mt-2" onclick="orgsModule.addSponsorshipPackage('${orgId}')"><i class="bi bi-plus me-1"></i>Add Package</button>
+                <button class="btn btn-sm btn-primary mt-2" data-action="orgsModule.addSponsorshipPackage" data-id="orgId"><i class="bi bi-plus me-1"></i>Add Package</button>
               </div>
             </details>
           </div></div>
@@ -1770,8 +1770,8 @@ updateCountyFilterByRegion() {
                 <div class="small ${f.done ? 'text-decoration-line-through' : 'fw-semibold'}">${utils.escapeHtml(f.note || 'Follow up')}</div>
                 <div class="text-muted" style="font-size: 0.7rem;">${new Date(f.date).toLocaleDateString('en-GB')} ${isOverdue && !f.done ? '<span class="text-danger">OVERDUE</span>' : ''}</div>
               </div>
-              ${!f.done ? `<button class="btn btn-sm btn-outline-success me-1" onclick="orgsModule.completeFollowUp('${orgId}','${fId}')"><i class="bi bi-check"></i></button>` : ''}
-              <button class="btn btn-sm btn-outline-danger" onclick="orgsModule.deleteFollowUp('${orgId}','${fId}')"><i class="bi bi-x"></i></button>
+              ${!f.done ? `<button class="btn btn-sm btn-outline-success me-1" data-action="orgsModule.completeFollowUp" data-args='${JSON.stringify([orgId, fId])}'><i class="bi bi-check"></i></button>` : ''}
+              <button class="btn btn-sm btn-outline-danger" data-action="orgsModule.deleteFollowUp" data-args='${JSON.stringify([orgId, fId])}'><i class="bi bi-x"></i></button>
             </div>`;
           }).join('')}
         </div>`;
@@ -1810,7 +1810,7 @@ updateCountyFilterByRegion() {
           <div class="d-flex align-items-center mb-1">
             <span class="small fw-semibold me-2" style="width: 120px;">${utils.escapeHtml(name)}:</span>
             <span class="small flex-grow-1">${utils.escapeHtml(value)}</span>
-            <button class="btn btn-sm btn-outline-danger py-0" onclick="orgsModule.removeCustomField('${orgId}','${utils.escapeHtml(name).replace(/'/g, "\\'")}')"><i class="bi bi-x"></i></button>
+            <button class="btn btn-sm btn-outline-danger py-0" data-action="orgsModule.removeCustomField" data-args='${JSON.stringify([orgId, utils.escapeHtml(name).replace(/'/g, "\\'")])}'><i class="bi bi-x"></i></button>
           </div>
         `).join('');
       }
@@ -2075,7 +2075,7 @@ updateCountyFilterByRegion() {
           ${validLogos.map(media => `
             <div class="col-md-3">
               <div class="card h-100 logo-option" style="cursor: pointer;"
-                   onclick="orgsModule.setLogoFromGallery('${orgId}', '${utils.escapeHtml(media.file_url)}', '${media.id}')">
+                   data-action="orgsModule.setLogoFromGallery" data-args='${JSON.stringify([orgId, utils.escapeHtml(media.file_url), media.id])}'>
                 <img src="${media.file_url}" class="card-img-top"
                      alt="${utils.escapeHtml(media.title || 'Logo')}"
                      style="height: 170px; object-fit: contain; background: #f8f9fa;">
@@ -3079,7 +3079,7 @@ updateCountyFilterByRegion() {
         </div>
         <div class="col-12">
           <label class="form-label small fw-semibold">Template</label>
-          <select class="form-select form-select-sm" id="bulkEmailTemplate" onchange="orgsModule._populateBulkEmailFromTemplate()">
+          <select class="form-select form-select-sm" id="bulkEmailTemplate" data-on-change="orgsModule._populateBulkEmailFromTemplate">
             <option value="">-- Custom email --</option>
             ${templates.map(t => `<option value="${t.id}">${utils.escapeHtml(t.name)}</option>`).join('')}
           </select>
@@ -3094,8 +3094,8 @@ updateCountyFilterByRegion() {
         </div>
         <div class="col-12">
           <div class="d-flex gap-2">
-            <button class="btn btn-sm btn-outline-info" onclick="orgsModule._previewBulkEmail()"><i class="bi bi-eye me-1"></i>Preview</button>
-            <button class="btn btn-sm btn-primary ms-auto" onclick="orgsModule._sendBulkEmail()"><i class="bi bi-send me-1"></i>Send Campaign</button>
+            <button class="btn btn-sm btn-outline-info" data-action="orgsModule._previewBulkEmail"><i class="bi bi-eye me-1"></i>Preview</button>
+            <button class="btn btn-sm btn-primary ms-auto" data-action="orgsModule._sendBulkEmail"><i class="bi bi-send me-1"></i>Send Campaign</button>
           </div>
         </div>
         <div class="col-12" id="bulkEmailPreview" style="display:none;"></div>
@@ -3348,7 +3348,7 @@ updateCountyFilterByRegion() {
       STATE.filteredOrganisations = STATE.filteredOrganisations.filter(o => o.id !== orgId);
       this.selectedOrgs.delete(orgId);
 
-      utils.showToast(`"${companyName}" permanently deleted. <a href="#" onclick="event.preventDefault(); utils.undoLastDelete('organisations')">Undo</a>`, 'info');
+      utils.showToast(`"${companyName}" permanently deleted. <a href="#" data-action="utils.undoLastDelete" data-id="organisations" data-prevent-default="true">Undo</a>`, 'info');
       this.renderOrganisations();
       this.updateBulkActionsBar();
     } catch (error) {
@@ -3660,7 +3660,7 @@ updateCountyFilterByRegion() {
             <td class="small">${utils.escapeHtml(org.email || '-')}</td>
             <td><span class="badge bg-secondary">${org.status || 'prospect'}</span></td>
             <td class="text-center">${org.awards_count || 0}</td>
-            <td><button class="btn btn-sm btn-outline-danger" onclick="orgsModule.deleteOrganisation('${org.id}', '${utils.escapeHtml(org.company_name).replace(/'/g, "\\'")}')">Archive</button></td>
+            <td><button class="btn btn-sm btn-outline-danger" data-action="orgsModule.deleteOrganisation" data-args='${JSON.stringify([org.id, utils.escapeHtml(org.company_name).replace(/'/g, "\\'")])}'>Archive</button></td>
           </tr>`).join('')}
           </tbody>
         </table></div>
@@ -3716,7 +3716,7 @@ updateCountyFilterByRegion() {
         const body = t.body.replace(/{company_name}/g, org.company_name || '').replace(/{contact_name}/g, org.contact_name || 'Sir/Madam');
         return `<a href="mailto:${org.email || ''}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}"
                    class="list-group-item list-group-item-action"
-                   onclick="orgsModule._logComms('${orgId}', '${t.id}', '${utils.escapeHtml(org.company_name || '').replace(/'/g, "\\'")}')">
+                   data-action="orgsModule._logComms" data-args='${JSON.stringify([orgId, t.id, utils.escapeHtml(org.company_name || '').replace(/'/g, "\\'")])}'>
           <div class="d-flex justify-content-between align-items-center">
             <div>
               <h6 class="mb-1">${t.name}</h6>
@@ -3863,10 +3863,10 @@ updateCountyFilterByRegion() {
       <div class="input-group input-group-sm">
         <input type="${inputType}" class="form-control form-control-sm" id="inlineEdit_${field}"
                value="${escaped}" autofocus${listAttr} autocomplete="off"
-               onkeydown="if(event.key==='Enter')orgsModule.saveInlineEdit('${orgId}','${field}');if(event.key==='Escape')orgsModule.cancelInlineEdit(this,'${orgId}');"
+               data-on-keyenter="orgsModule.saveInlineEdit" data-on-keyescape="orgsModule.cancelInlineEdit" data-args='${JSON.stringify([orgId, field])}'
                style="font-size: 0.8rem;">
-        <button class="btn btn-success btn-sm" onclick="orgsModule.saveInlineEdit('${orgId}','${field}')"><i class="bi bi-check"></i></button>
-        <button class="btn btn-outline-secondary btn-sm" onclick="orgsModule.cancelInlineEdit(this,'${orgId}')"><i class="bi bi-x"></i></button>
+        <button class="btn btn-success btn-sm" data-action="orgsModule.saveInlineEdit" data-args='${JSON.stringify([orgId, field])}'><i class="bi bi-check"></i></button>
+        <button class="btn btn-outline-secondary btn-sm" data-action="orgsModule.cancelInlineEdit" data-id="${orgId}"><i class="bi bi-x"></i></button>
       </div>
     `;
 
@@ -3929,8 +3929,8 @@ updateCountyFilterByRegion() {
       <div class="toast-body d-flex align-items-center gap-2 bg-dark text-white rounded shadow">
         <i class="bi bi-pencil-square"></i>
         <span class="small">${utils.escapeHtml(field)} updated</span>
-        <button class="btn btn-sm btn-warning ms-2 py-0 px-2" onclick="orgsModule.undoLastInlineEdit()"><i class="bi bi-arrow-counterclockwise me-1"></i>Undo</button>
-        <button type="button" class="btn-close btn-close-white ms-1" onclick="this.closest('.toast').remove()"></button>
+        <button class="btn btn-sm btn-warning ms-2 py-0 px-2" data-action="orgsModule.undoLastInlineEdit"><i class="bi bi-arrow-counterclockwise me-1"></i>Undo</button>
+        <button type="button" class="btn-close btn-close-white ms-1" data-action="utils.removeClosestToast"></button>
       </div>
     </div>`;
     document.body.insertAdjacentHTML('beforeend', toastHtml);
@@ -3964,14 +3964,7 @@ updateCountyFilterByRegion() {
     }
   },
 
-  cancelInlineEdit(element, _orgId) {
-    const td = element.closest('td');
-    if (td) {
-      td.classList.remove('inline-edit-active');
-      // Re-render to restore original state
-      this.renderOrganisations();
-    }
-  },
+  // cancelInlineEdit is defined below with full delegation support
 
   // ============================================
   // BULK FIELD UPDATES
@@ -4044,12 +4037,7 @@ updateCountyFilterByRegion() {
             </div>
             <div class="modal-footer">
               <button class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
-              <button class="btn btn-primary btn-sm" onclick="
-                const val = document.getElementById('bulkFieldValue').value;
-                if (!val) { utils.showToast('Please select a value', 'warning'); return; }
-                bootstrap.Modal.getInstance(document.getElementById('bulkFieldModal'))?.hide();
-                orgsModule.bulkUpdateField('${field}', val);
-              ">Apply</button>
+              <button class="btn btn-primary btn-sm" data-action="orgsModule._applyBulkFieldUpdate" data-id="${field}">Apply</button>
             </div>
           </div>
         </div>
@@ -4282,7 +4270,7 @@ updateCountyFilterByRegion() {
             CSV: "${utils.escapeHtml(header)}"
             <span class="text-muted">(sample: ${utils.escapeHtml(this._csvData[0]?.[idx] || '')})</span>
           </label>
-          <select class="form-select form-select-sm" onchange="orgsModule._updateColumnMap(${idx}, this.value)">
+          <select class="form-select form-select-sm" data-on-change="orgsModule._updateColumnMap" data-id="${idx}">
             <option value="">-- Skip --</option>
             <optgroup label="Organisation Fields">
               ${this._dbFields.map(f => `<option value="${f}" ${mapped === f ? 'selected' : ''}>${f.replace(/_/g, ' ')}</option>`).join('')}
@@ -4298,7 +4286,7 @@ updateCountyFilterByRegion() {
     // Add apply mapping button
     container.innerHTML += `
       <div class="col-12 mt-2">
-        <button class="btn btn-primary" onclick="orgsModule._applyMapping()">
+        <button class="btn btn-primary" data-action="orgsModule._applyMapping">
           <i class="bi bi-eye me-1"></i>Preview Import
         </button>
       </div>
@@ -4842,9 +4830,9 @@ updateCountyFilterByRegion() {
             <td class="small">${utils.escapeHtml(c.job_title || '-')}</td>
             <td class="small">${c.email ? `<a href="mailto:${c.email}">${utils.escapeHtml(c.email)}</a>` : '-'}</td>
             <td class="small">${utils.escapeHtml(c.phone || c.mobile || '-')}</td>
-            <td class="text-center">${c.is_primary ? '<i class="bi bi-star-fill text-warning"></i>' : '<i class="bi bi-star text-muted" style="cursor:pointer" onclick="orgsModule.setPrimaryContact(\''+orgId+'\',\''+c.id+'\')"></i>'}</td>
-            <td class="text-center">${c.receive_emails ? '<i class="bi bi-check-circle text-success"></i>' : '<i class="bi bi-x-circle text-muted" style="cursor:pointer" onclick="orgsModule.toggleContactEmails(\''+orgId+'\',\''+c.id+'\',true)"></i>'}</td>
-            <td><button class="btn btn-sm btn-outline-danger" onclick="orgsModule.deleteContact('${orgId}','${c.id}')"><i class="bi bi-trash"></i></button></td>
+            <td class="text-center">${c.is_primary ? '<i class="bi bi-star-fill text-warning"></i>' : `<i class="bi bi-star text-muted" style="cursor:pointer" data-action="orgsModule.setPrimaryContact" data-args='${JSON.stringify([orgId, c.id])}'></i>`}</td>
+            <td class="text-center">${c.receive_emails ? '<i class="bi bi-check-circle text-success"></i>' : `<i class="bi bi-x-circle text-muted" style="cursor:pointer" data-action="orgsModule.toggleContactEmails" data-args='${JSON.stringify([orgId, c.id, true])}'></i>`}</td>
+            <td><button class="btn btn-sm btn-outline-danger" data-action="orgsModule.deleteContact" data-args='${JSON.stringify([orgId, c.id])}'><i class="bi bi-trash"></i></button></td>
           </tr>`).join('')}
         </tbody>
       </table>
@@ -4936,10 +4924,12 @@ updateCountyFilterByRegion() {
   async saveCustomField(orgId, fieldName, fieldValue) {
     try {
       if (fieldValue) {
-        // upsert not supported by apiClient — use STATE.client directly
-        await STATE.client.from('organisation_custom_fields').upsert({
-          organisation_id: orgId, field_name: fieldName, field_value: fieldValue, updated_at: new Date().toISOString()
-        }, { onConflict: 'organisation_id,field_name' });
+        // upsert not supported by apiClient — try update, fall back to insert
+        try {
+          await apiClient.updateByFilters('organisation_custom_fields', { organisation_id: orgId, field_name: fieldName }, { field_value: fieldValue });
+        } catch (_) {
+          await apiClient.insert('organisation_custom_fields', { organisation_id: orgId, field_name: fieldName, field_value: fieldValue });
+        }
       } else {
         await apiClient.deleteByFilters('organisation_custom_fields', { organisation_id: orgId, field_name: fieldName });
       }
@@ -5124,16 +5114,16 @@ updateCountyFilterByRegion() {
     try {
       const log = await this.getAuditLog(null);
       const html = `<div class="row g-2 mb-3">
-        <div class="col-md-3"><select class="form-select form-select-sm" id="auditActionFilter" onchange="orgsModule._filterAuditLog()">
+        <div class="col-md-3"><select class="form-select form-select-sm" id="auditActionFilter" data-on-change="orgsModule._filterAuditLog">
           <option value="">All Actions</option>
           <option value="status_change">Status Change</option><option value="archived">Archived</option>
           <option value="restored">Restored</option><option value="created">Created</option>
           <option value="email_sent">Email Sent</option><option value="note_added">Note Added</option>
           <option value="csv_import">CSV Import</option>
         </select></div>
-        <div class="col-md-3"><input type="date" class="form-control form-control-sm" id="auditDateFrom" onchange="orgsModule._filterAuditLog()" placeholder="From"></div>
-        <div class="col-md-3"><input type="date" class="form-control form-control-sm" id="auditDateTo" onchange="orgsModule._filterAuditLog()" placeholder="To"></div>
-        <div class="col-md-3"><input type="text" class="form-control form-control-sm" id="auditSearchFilter" oninput="orgsModule._filterAuditLog()" placeholder="Search..."></div>
+        <div class="col-md-3"><input type="date" class="form-control form-control-sm" id="auditDateFrom" data-on-change="orgsModule._filterAuditLog" placeholder="From"></div>
+        <div class="col-md-3"><input type="date" class="form-control form-control-sm" id="auditDateTo" data-on-change="orgsModule._filterAuditLog" placeholder="To"></div>
+        <div class="col-md-3"><input type="text" class="form-control form-control-sm" id="auditSearchFilter" data-on-input="orgsModule._filterAuditLog" placeholder="Search..."></div>
       </div>
       <div id="auditLogContent" style="max-height: 500px; overflow-y: auto;">
         ${this._renderAuditEntries(log)}
@@ -5229,7 +5219,7 @@ updateCountyFilterByRegion() {
         <div class="input-group">
           <input type="text" class="form-control" id="bulkTagInput" list="bulkTagSuggestions" placeholder="Enter tag name...">
           <datalist id="bulkTagSuggestions">${[...allTags].sort().map(t => `<option value="${utils.escapeHtml(t)}">`).join('')}</datalist>
-          <button class="btn btn-primary" onclick="orgsModule.executeBulkTagAdd()"><i class="bi bi-plus me-1"></i>Add</button>
+          <button class="btn btn-primary" data-action="orgsModule.executeBulkTagAdd"><i class="bi bi-plus me-1"></i>Add</button>
         </div>
       </div>
       <div class="mb-3">
@@ -5238,7 +5228,7 @@ updateCountyFilterByRegion() {
           <option value="">-- Select tag to remove --</option>
           ${[...allTags].sort().map(t => `<option value="${utils.escapeHtml(t)}">${utils.escapeHtml(t)}</option>`).join('')}
         </select>
-        <button class="btn btn-outline-danger btn-sm mt-2" onclick="orgsModule.executeBulkTagRemove()"><i class="bi bi-trash me-1"></i>Remove from Selected</button>
+        <button class="btn btn-outline-danger btn-sm mt-2" data-action="orgsModule.executeBulkTagRemove"><i class="bi bi-trash me-1"></i>Remove from Selected</button>
       </div>`;
 
     this._showDynamicModal('Bulk Tag Assignment', html, 'bi-tags');
@@ -5332,7 +5322,7 @@ updateCountyFilterByRegion() {
             <option value="nominated">Nominated</option><option value="shortlisted">Shortlisted</option><option value="winner">Winner</option>
           </select>
         </div>
-        <button class="btn btn-primary" onclick="orgsModule.executeBulkAssignAward()"><i class="bi bi-trophy me-1"></i>Assign</button>`;
+        <button class="btn btn-primary" data-action="orgsModule.executeBulkAssignAward"><i class="bi bi-trophy me-1"></i>Assign</button>`;
 
       this._showDynamicModal('Bulk Assign to Award', html, 'bi-trophy');
     } catch (e) { utils.showToast('Error loading awards', 'error'); }
@@ -5348,8 +5338,14 @@ updateCountyFilterByRegion() {
       utils.showLoading();
       const orgIds = Array.from(this.selectedOrgs);
       const records = orgIds.map(orgId => ({ award_id: awardId, organisation_id: orgId, status }));
-      const { error } = await STATE.client.from('award_assignments').upsert(records, { onConflict: 'award_id,organisation_id' });
-      if (error) throw error;
+      // upsert not supported by apiClient — insert with conflict handled server-side
+      for (const record of records) {
+        try {
+          await apiClient.insert('award_assignments', record);
+        } catch (_) {
+          await apiClient.updateByFilters('award_assignments', { award_id: record.award_id, organisation_id: record.organisation_id }, { status: record.status });
+        }
+      }
       // Auto-promote prospects/entrants to nominee
       await this._autoPromoteStatus(orgIds);
       utils.showToast(`${orgIds.length} org(s) assigned to award`, 'success');
@@ -5386,7 +5382,7 @@ updateCountyFilterByRegion() {
       </tr>`;
     }).join('')}
     </tbody></table>
-    <button class="btn btn-danger" onclick="orgsModule.executeMerge('${id1}','${id2}')"><i class="bi bi-intersect me-1"></i>Merge (keeps selected values, deletes other)</button>`;
+    <button class="btn btn-danger" data-action="orgsModule.executeMerge" data-args='${JSON.stringify([id1, id2])}'><i class="bi bi-intersect me-1"></i>Merge (keeps selected values, deletes other)</button>`;
 
     this._showDynamicModal('Merge Organisations', html, 'bi-intersect', 'modal-lg');
   },
@@ -5513,7 +5509,7 @@ updateCountyFilterByRegion() {
           { label: 'Missing Description', count: missingDescription.length, field: 'description', icon: 'bi-text-paragraph' }
         ].map(item => `
           <a href="javascript:void(0);" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center"
-             onclick="orgsModule._filterMissingField='${item.field}'; orgsModule.filterOrganisations(); bootstrap.Modal.getInstance(document.getElementById('dynamicOrgModal'))?.hide();">
+             data-action="orgsModule.filterByMissingField" data-id="${item.field}">
             <span><i class="bi ${item.icon} me-2"></i>${item.label}</span>
             <span class="badge ${item.count > 0 ? 'bg-warning text-dark' : 'bg-success'}">${item.count}</span>
           </a>
@@ -5861,19 +5857,23 @@ updateCountyFilterByRegion() {
       // Also load award assignments for this org
       let assignments = [];
       try {
-        const { data } = await STATE.client.from('award_assignments')
-          .select('*, awards:award_years!award_assignments_award_id_fkey(award_name, year)')
-          .eq('organisation_id', orgId);
-        assignments = data || [];
+        const result = await apiClient.select('award_assignments', {
+          select: '*, awards:award_years!award_assignments_award_id_fkey(award_name, year)',
+          filters: { organisation_id: orgId },
+          pageSize: 1000
+        });
+        assignments = result.data || [];
       } catch (e) { /* ignore */ }
 
       // Also load invoices
       let invoices = [];
       try {
-        const { data } = await STATE.client.from('invoices')
-          .select('id, invoice_number, total_amount, status, created_at')
-          .eq('organisation_id', orgId);
-        invoices = data || [];
+        const result = await apiClient.select('invoices', {
+          select: 'id, invoice_number, total_amount, status, created_at',
+          filters: { organisation_id: orgId },
+          pageSize: 1000
+        });
+        invoices = result.data || [];
       } catch (e) { /* ignore */ }
 
       const timeline = [
@@ -5920,12 +5920,18 @@ updateCountyFilterByRegion() {
   // ============================================
   async getRelationships(orgId) {
     try {
-      const { data: outgoing } = await STATE.client.from('organisation_relationships')
-        .select('*, related:related_organisation_id(id, company_name, logo_url, status)')
-        .eq('organisation_id', orgId);
-      const { data: incoming } = await STATE.client.from('organisation_relationships')
-        .select('*, source:organisation_id(id, company_name, logo_url, status)')
-        .eq('related_organisation_id', orgId);
+      const outRes = await apiClient.select('organisation_relationships', {
+        select: '*, related:related_organisation_id(id, company_name, logo_url, status)',
+        filters: { organisation_id: orgId },
+        pageSize: 1000
+      });
+      const inRes = await apiClient.select('organisation_relationships', {
+        select: '*, source:organisation_id(id, company_name, logo_url, status)',
+        filters: { related_organisation_id: orgId },
+        pageSize: 1000
+      });
+      const outgoing = outRes.data;
+      const incoming = inRes.data;
       return { outgoing: outgoing || [], incoming: incoming || [] };
     } catch (e) { return { outgoing: [], incoming: [] }; }
   },
@@ -5941,10 +5947,9 @@ updateCountyFilterByRegion() {
     if (!related) { utils.showToast('Organisation not found', 'error'); return; }
 
     try {
-      const { error } = await STATE.client.from('organisation_relationships').insert([{
+      await apiClient.insert('organisation_relationships', {
         organisation_id: orgId, related_organisation_id: related.id, relationship_type: relType
-      }]);
-      if (error) throw error;
+      });
       utils.showToast('Relationship added', 'success');
       const org = STATE.allOrganisations.find(o => o.id === orgId);
       if (org) this.openCompanyProfile(orgId, org.company_name);
@@ -5953,7 +5958,7 @@ updateCountyFilterByRegion() {
 
   async removeRelationship(relId, orgId) {
     try {
-      await STATE.client.from('organisation_relationships').delete().eq('id', relId);
+      await apiClient.delete('organisation_relationships', relId);
       utils.showToast('Relationship removed', 'success');
       const org = STATE.allOrganisations.find(o => o.id === orgId);
       if (org) this.openCompanyProfile(orgId, org.company_name);
@@ -5974,10 +5979,10 @@ updateCountyFilterByRegion() {
           `<div class="me-2 d-flex align-items-center justify-content-center rounded" style="width:30px;height:21px;background:#f5f5f5;border:1px solid #e0e0e0;"><i class="bi bi-building text-muted" style="font-size:0.6rem;"></i></div>`}
         <div class="flex-grow-1">
           <a href="javascript:void(0);" class="small fw-semibold text-primary text-decoration-none"
-            onclick="orgsModule.openCompanyProfile('${r.org?.id}', '${utils.escapeHtml(r.org?.company_name || '').replace(/'/g, "\\'")}')">${utils.escapeHtml(r.org?.company_name || 'Unknown')}</a>
+            data-action="orgsModule.openCompanyProfile" data-args='${JSON.stringify([r.org?.id, utils.escapeHtml(r.org?.company_name || '').replace(/'/g, "\\'")])}'>${utils.escapeHtml(r.org?.company_name || 'Unknown')}</a>
           <span class="badge bg-light text-muted ms-1" style="font-size:0.6rem;">${typeLabels[r.type] || r.type}${r.direction === 'incoming' ? ' (of this)' : ''}</span>
         </div>
-        <button class="btn btn-sm btn-outline-danger py-0" onclick="orgsModule.removeRelationship('${r.id}','${orgId}')"><i class="bi bi-x"></i></button>
+        <button class="btn btn-sm btn-outline-danger py-0" data-action="orgsModule.removeRelationship" data-args='${JSON.stringify([r.id, orgId])}'><i class="bi bi-x"></i></button>
       </div>`).join('')}
     </div>`;
   },
@@ -5996,9 +6001,9 @@ updateCountyFilterByRegion() {
 
     // Log the communication
     try {
-      await STATE.client.from('organisation_comms_log').insert([{
+      await apiClient.insert('organisation_comms_log', {
         organisation_id: orgId, template_name: subject, subject, message: body, channel: 'email', direction: 'outbound'
-      }]);
+      });
     } catch (e) { /* ignore */ }
     this._logAudit(orgId, 'email_sent', org.company_name, `Email composed: ${subject}`);
 
@@ -6082,7 +6087,7 @@ updateCountyFilterByRegion() {
                           <div class="d-flex align-items-center mb-1">
                             ${org.logo_url ? `<img src="${org.logo_url}" class="me-1 rounded" style="width:24px;height:17px;object-fit:contain;">` : ''}
                             <a href="javascript:void(0);" class="small fw-semibold text-primary text-decoration-none text-truncate"
-                              onclick="orgsModule.openCompanyProfile('${org.id}', '${utils.escapeHtml(org.company_name || '').replace(/'/g, "\\'")}')"
+                              data-action="orgsModule.openCompanyProfile" data-args='${JSON.stringify([org.id, utils.escapeHtml(org.company_name || '').replace(/'/g, "\\'")])}'
                               style="max-width: 150px;">${utils.escapeHtml(org.company_name || 'N/A')}</a>
                           </div>
                           <div class="text-muted" style="font-size: 0.65rem;">${utils.escapeHtml(org.sector || '-')} &middot; ${utils.escapeHtml(org.county || '-')}</div>
@@ -6090,9 +6095,9 @@ updateCountyFilterByRegion() {
                         </div>
                       </div>
                     `).join('') + (remaining > 0
-                      ? `<button class="btn btn-sm btn-outline-secondary w-100 mt-1" onclick="orgsModule.expandKanbanColumn('${stage.key}')"><i class="bi bi-chevron-down me-1"></i>Show ${remaining} more</button>`
+                      ? `<button class="btn btn-sm btn-outline-secondary w-100 mt-1" data-action="orgsModule.expandKanbanColumn" data-id="stage.key"><i class="bi bi-chevron-down me-1"></i>Show ${remaining} more</button>`
                       : (isExpanded && stageOrgs.length > 30
-                        ? `<button class="btn btn-sm btn-outline-secondary w-100 mt-1" onclick="orgsModule.collapseKanbanColumn('${stage.key}')"><i class="bi bi-chevron-up me-1"></i>Show less</button>`
+                        ? `<button class="btn btn-sm btn-outline-secondary w-100 mt-1" data-action="orgsModule.collapseKanbanColumn" data-id="stage.key"><i class="bi bi-chevron-up me-1"></i>Show less</button>`
                         : ''));
                   })()}
                 </div>
@@ -6173,12 +6178,16 @@ updateCountyFilterByRegion() {
   // ============================================
   async getThreadedNotes(orgId) {
     try {
-      const { data, error } = await STATE.client.from('organisation_notes')
-        .select('*').eq('organisation_id', orgId)
-        .order('pinned', { ascending: false })
-        .order('created_at', { ascending: false });
-      if (error) throw error;
-      return data || [];
+      // Direct call: complex query not supported by apiClient (dual order by)
+      const result = await apiClient.select('organisation_notes', {
+        filters: { organisation_id: orgId },
+        sort: { column: 'created_at', ascending: false },
+        pageSize: 1000
+      });
+      const data = result.data || [];
+      // Sort pinned first, then by created_at descending (apiClient only supports single sort)
+      data.sort((a, b) => (b.pinned ? 1 : 0) - (a.pinned ? 1 : 0) || new Date(b.created_at) - new Date(a.created_at));
+      return data;
     } catch (e) { return []; }
   },
 
@@ -6187,10 +6196,9 @@ updateCountyFilterByRegion() {
     if (!content) { utils.showToast('Enter a note', 'warning'); return; }
     try {
       const userEmail = STATE.client?.auth?.getUser ? (await STATE.client.auth.getUser())?.data?.user?.email : 'admin';
-      const { error } = await STATE.client.from('organisation_notes').insert([{
+      await apiClient.insert('organisation_notes', {
         organisation_id: orgId, content, author: userEmail || 'admin'
-      }]);
-      if (error) throw error;
+      });
       this._logAudit(orgId, 'note_added', '', `Note added: ${content.substring(0, 50)}`);
       utils.showToast('Note added', 'success');
       const org = STATE.allOrganisations.find(o => o.id === orgId);
@@ -6201,7 +6209,7 @@ updateCountyFilterByRegion() {
   async deleteThreadedNote(noteId, orgId) {
     if (!await utils.confirmDialog({ title: 'Delete Note', message: 'Delete this note?' })) return;
     try {
-      await STATE.client.from('organisation_notes').delete().eq('id', noteId);
+      await apiClient.delete('organisation_notes', noteId);
       utils.showToast('Note deleted', 'success');
       const org = STATE.allOrganisations.find(o => o.id === orgId);
       if (org) this.openCompanyProfile(orgId, org.company_name);
@@ -6210,7 +6218,7 @@ updateCountyFilterByRegion() {
 
   async togglePinNote(noteId, pinned, orgId) {
     try {
-      await STATE.client.from('organisation_notes').update({ pinned: !pinned }).eq('id', noteId);
+      await apiClient.update('organisation_notes', noteId, { pinned: !pinned });
       const org = STATE.allOrganisations.find(o => o.id === orgId);
       if (org) this.openCompanyProfile(orgId, org.company_name);
     } catch (e) { utils.showToast('Error: ' + e.message, 'error'); }
@@ -6230,8 +6238,8 @@ updateCountyFilterByRegion() {
             </div>
           </div>
           <div class="btn-group btn-group-sm">
-            <button class="btn btn-sm btn-outline-warning py-0" onclick="orgsModule.togglePinNote('${n.id}', ${n.pinned}, '${orgId}')" title="${n.pinned ? 'Unpin' : 'Pin'}"><i class="bi bi-pin"></i></button>
-            <button class="btn btn-sm btn-outline-danger py-0" onclick="orgsModule.deleteThreadedNote('${n.id}', '${orgId}')"><i class="bi bi-trash"></i></button>
+            <button class="btn btn-sm btn-outline-warning py-0" data-action="orgsModule.togglePinNote" data-args='${JSON.stringify([n.id, n.pinned, orgId])}' title="${n.pinned ? 'Unpin' : 'Pin'}"><i class="bi bi-pin"></i></button>
+            <button class="btn btn-sm btn-outline-danger py-0" data-action="orgsModule.deleteThreadedNote" data-args='${JSON.stringify([n.id, orgId])}'><i class="bi bi-trash"></i></button>
           </div>
         </div>
       </div>`).join('')}
@@ -6243,11 +6251,12 @@ updateCountyFilterByRegion() {
   // ============================================
   async getSponsorshipPackages(orgId) {
     try {
-      const { data, error } = await STATE.client.from('sponsorship_packages')
-        .select('*').eq('organisation_id', orgId)
-        .order('created_at', { ascending: false });
-      if (error) throw error;
-      return data || [];
+      const result = await apiClient.select('sponsorship_packages', {
+        filters: { organisation_id: orgId },
+        sort: { column: 'created_at', ascending: false },
+        pageSize: 1000
+      });
+      return result.data || [];
     } catch (e) { return []; }
   },
 
@@ -6264,12 +6273,11 @@ updateCountyFilterByRegion() {
 
     if (!pkgName) { utils.showToast('Enter package name', 'warning'); return; }
     try {
-      const { error } = await STATE.client.from('sponsorship_packages').insert([{
+      await apiClient.insert('sponsorship_packages', {
         organisation_id: orgId, package_name: pkgName, tier, amount,
         start_date: startDate, end_date: endDate, renewal_date: renewalDate,
         payment_schedule: schedule, benefits: JSON.stringify(benefits), status: 'active'
-      }]);
-      if (error) throw error;
+      });
       utils.showToast('Package added', 'success');
       const org = STATE.allOrganisations.find(o => o.id === orgId);
       if (org) this.openCompanyProfile(orgId, org.company_name);
@@ -6279,7 +6287,7 @@ updateCountyFilterByRegion() {
   async deleteSponsorshipPackage(pkgId, orgId) {
     if (!await utils.confirmDialog({ title: 'Delete Sponsorship Package', message: 'Delete this sponsorship package?' })) return;
     try {
-      await STATE.client.from('sponsorship_packages').delete().eq('id', pkgId);
+      await apiClient.delete('sponsorship_packages', pkgId);
       utils.showToast('Package deleted', 'success');
       const org = STATE.allOrganisations.find(o => o.id === orgId);
       if (org) this.openCompanyProfile(orgId, org.company_name);
@@ -6309,7 +6317,7 @@ updateCountyFilterByRegion() {
               ${isExpiring ? `<div class="text-warning small fw-semibold mt-1"><i class="bi bi-exclamation-triangle me-1"></i>Renewal: ${new Date(pkg.renewal_date).toLocaleDateString('en-GB')}</div>` : ''}
               ${benefits.length > 0 ? `<div class="mt-1">${benefits.map(b => `<span class="badge bg-light text-dark me-1 mb-1" style="font-size:0.65rem;">${utils.escapeHtml(b)}</span>`).join('')}</div>` : ''}
             </div>
-            <button class="btn btn-sm btn-outline-danger py-0" onclick="orgsModule.deleteSponsorshipPackage('${pkg.id}','${orgId}')"><i class="bi bi-trash"></i></button>
+            <button class="btn btn-sm btn-outline-danger py-0" data-action="orgsModule.deleteSponsorshipPackage" data-args='${JSON.stringify([pkg.id, orgId])}'><i class="bi bi-trash"></i></button>
           </div>
         </div>
       </div>`;
@@ -6345,7 +6353,7 @@ updateCountyFilterByRegion() {
           <div style="max-height: 400px; overflow-y: auto;">
             ${sortedRegions.map(([region, count]) => {
               const pct = ((count / STATE.filteredOrganisations.length) * 100).toFixed(1);
-              return `<div class="d-flex align-items-center mb-2 cursor-pointer" onclick="document.getElementById('orgsRegionFilter').value='${utils.escapeHtml(region)}'; orgsModule.filterOrganisations(); bootstrap.Modal.getInstance(document.getElementById('dynamicOrgModal'))?.hide();" style="cursor:pointer;">
+              return `<div class="d-flex align-items-center mb-2 cursor-pointer" data-action="orgsModule.filterByRegion" data-id="${utils.escapeHtml(region)}" style="cursor:pointer;">
                 <div class="me-2" style="width: 20px; height: 20px; border-radius: 4px; background: ${getHeatColor(count)};"></div>
                 <div class="flex-grow-1 small fw-semibold">${utils.escapeHtml(region)}</div>
                 <div class="text-end">
@@ -6493,9 +6501,12 @@ updateCountyFilterByRegion() {
   // ============================================
   async loadLastContactedDates() {
     try {
-      const { data } = await STATE.client.from('organisation_comms_log')
-        .select('organisation_id, created_at')
-        .order('created_at', { ascending: false });
+      const result = await apiClient.select('organisation_comms_log', {
+        select: 'organisation_id, created_at',
+        sort: { column: 'created_at', ascending: false },
+        pageSize: 1000
+      });
+      const data = result.data;
       const lastContacted = {};
       (data || []).forEach(r => {
         if (!lastContacted[r.organisation_id]) {
@@ -6610,20 +6621,20 @@ updateCountyFilterByRegion() {
             (${totalFiltered} filtered)
           </small>
           <select class="form-select form-select-sm" style="width: auto; font-size: 0.75rem;"
-                  onchange="orgsModule.changePageSize(parseInt(this.value))">
+                  data-on-change="orgsModule.changePageSize">
             ${pageSizes.map(s => `<option value="${s}" ${s === this._pageSize ? 'selected' : ''}>${s} per page</option>`).join('')}
           </select>
         </div>
         <div class="d-flex align-items-center gap-1">
           <button class="btn btn-sm btn-outline-secondary" ${page <= 1 ? 'disabled' : ''}
-                  onclick="orgsModule.goToPage(1)" title="First"><i class="bi bi-chevron-double-left"></i></button>
+                  data-action="orgsModule.goToPage" data-id="1" title="First"><i class="bi bi-chevron-double-left"></i></button>
           <button class="btn btn-sm btn-outline-secondary" ${page <= 1 ? 'disabled' : ''}
-                  onclick="orgsModule.goToPage(${page - 1})" title="Previous"><i class="bi bi-chevron-left"></i></button>
+                  data-action="orgsModule.goToPage" data-id="${page - 1}" title="Previous"><i class="bi bi-chevron-left"></i></button>
           <span class="small text-muted mx-1">Page ${page} of ${totalPages}</span>
           <button class="btn btn-sm btn-outline-secondary" ${page >= totalPages ? 'disabled' : ''}
-                  onclick="orgsModule.goToPage(${page + 1})" title="Next"><i class="bi bi-chevron-right"></i></button>
+                  data-action="orgsModule.goToPage" data-id="${page + 1}" title="Next"><i class="bi bi-chevron-right"></i></button>
           <button class="btn btn-sm btn-outline-secondary" ${page >= totalPages ? 'disabled' : ''}
-                  onclick="orgsModule.goToPage(${totalPages})" title="Last"><i class="bi bi-chevron-double-right"></i></button>
+                  data-action="orgsModule.goToPage" data-id="${totalPages}" title="Last"><i class="bi bi-chevron-double-right"></i></button>
         </div>
         <small class="text-muted">
           <i class="bi bi-clock me-1"></i>Last refreshed: ${new Date().toLocaleTimeString('en-GB')}
@@ -6688,11 +6699,11 @@ updateCountyFilterByRegion() {
               const isOverdue = f.date < today;
               const safeName = utils.escapeHtml((f.companyName || '').replace(/'/g, "\\'"));
               return `<tr class="${isOverdue ? 'table-danger' : 'table-warning'}">
-                <td><a href="#" class="text-decoration-none" onclick="event.preventDefault(); document.getElementById('dynamicOrgModal')?.querySelector('.btn-close')?.click(); setTimeout(() => orgsModule.openCompanyProfile('${f.orgId}', '${safeName}'), 300);">${utils.escapeHtml(f.companyName || 'Unknown')}</a></td>
+                <td><a href="#" class="text-decoration-none" data-action="orgsModule.closeModalAndOpenProfile" data-args='${JSON.stringify([f.orgId, safeName])}' data-prevent-default="true">${utils.escapeHtml(f.companyName || 'Unknown')}</a></td>
                 <td class="small">${f.date || '-'}</td>
                 <td class="small">${utils.escapeHtml(f.note || '-')}</td>
                 <td><span class="badge ${isOverdue ? 'bg-danger' : 'bg-warning text-dark'}">${isOverdue ? 'Overdue' : 'Due Soon'}</span></td>
-                <td><button class="btn btn-sm btn-outline-success" onclick="orgsModule.completeFollowUp('${f.orgId}', '${f.id}')"><i class="bi bi-check"></i></button></td>
+                <td><button class="btn btn-sm btn-outline-success" data-action="orgsModule.completeFollowUp" data-args='${JSON.stringify([f.orgId, f.id])}'><i class="bi bi-check"></i></button></td>
               </tr>`;
             }).join('')}
           </tbody>
@@ -6729,7 +6740,7 @@ updateCountyFilterByRegion() {
           return `<div class="col-6">
             <div class="form-check form-switch">
               <input class="form-check-input" type="checkbox" id="colVis_${c.key}" ${checked}
-                     onchange="orgsModule.toggleColumnVisibility('${c.key}', this.checked)">
+                     data-on-check="orgsModule.toggleColumnVisibility" data-id="c.key">
               <label class="form-check-label small" for="colVis_${c.key}">${c.label}</label>
             </div>
           </div>`;
@@ -6737,10 +6748,10 @@ updateCountyFilterByRegion() {
       </div>
       <hr>
       <div class="d-flex gap-2">
-        <button class="btn btn-sm btn-outline-primary" onclick="orgsModule.resetColumnVisibility()">
+        <button class="btn btn-sm btn-outline-primary" data-action="orgsModule.resetColumnVisibility">
           <i class="bi bi-arrow-counterclockwise me-1"></i>Show All
         </button>
-        <button class="btn btn-sm btn-outline-secondary" onclick="orgsModule.hideAllColumns()">
+        <button class="btn btn-sm btn-outline-secondary" data-action="orgsModule.hideAllColumns">
           <i class="bi bi-eye-slash me-1"></i>Hide All Optional
         </button>
       </div>`;
@@ -6856,7 +6867,7 @@ updateCountyFilterByRegion() {
     }
     for (const batch of batches) {
       await Promise.all(batch.map(id =>
-        STATE.client.from('organisations').update({ status: 'nominee', updated_at: new Date().toISOString() }).eq('id', id)
+        apiClient.update('organisations', id, { status: 'nominee' })
       ));
     }
 
@@ -6881,7 +6892,7 @@ updateCountyFilterByRegion() {
         };
       });
       if (auditLogs.length > 0) {
-        await STATE.client.from('org_audit_log').insert(auditLogs);
+        await apiClient.insert('org_audit_log', auditLogs);
       }
     } catch (e) {
       console.warn('Failed to batch write audit logs:', e.message);
@@ -6919,7 +6930,7 @@ updateCountyFilterByRegion() {
     const alertHtml = `<div id="followUpAlert" class="alert alert-danger alert-dismissible fade show d-flex align-items-center gap-2 mb-3" role="alert" style="animation: fadeIn 0.3s;">
       <i class="bi bi-bell-fill"></i>
       <div>You have <strong>${overdue.length}</strong> overdue follow-up${overdue.length > 1 ? 's' : ''} —
-        <a href="#" class="alert-link" onclick="event.preventDefault(); orgsModule.showOverdueFollowUps();">View all</a>
+        <a href="#" class="alert-link" data-action="orgsModule.showOverdueFollowUps" data-prevent-default="true">View all</a>
       </div>
       <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
     </div>`;
@@ -6933,10 +6944,12 @@ updateCountyFilterByRegion() {
   // ============================================
   async _getContactEmails(orgIds) {
     try {
-      const { data } = await STATE.client.from('organisation_contacts')
-        .select('organisation_id, first_name, last_name, email')
-        .in('organisation_id', orgIds);
-      return data || [];
+      const result = await apiClient.select('organisation_contacts', {
+        select: 'organisation_id, first_name, last_name, email',
+        filters: { organisation_id: { op: 'in', value: orgIds } },
+        pageSize: 1000
+      });
+      return result.data || [];
     } catch (e) { return []; }
   },
 
@@ -6956,7 +6969,7 @@ updateCountyFilterByRegion() {
         <label class="form-label fw-semibold small">Field Value</label>
         <input type="text" class="form-control form-control-sm" id="bulkCustomFieldValue" placeholder="Enter value (leave empty to delete field)">
       </div>
-      <button class="btn btn-primary btn-sm" onclick="orgsModule.executeBulkCustomField()">
+      <button class="btn btn-primary btn-sm" data-action="orgsModule.executeBulkCustomField">
         <i class="bi bi-pencil-square me-1"></i>Apply to ${this.selectedOrgs.size} org(s)
       </button>`;
 
@@ -6991,11 +7004,10 @@ updateCountyFilterByRegion() {
 
     const org = STATE.allOrganisations.find(o => o.id === orgId);
     try {
-      const { error } = await STATE.client.from('organisation_follow_ups').insert([{
+      await apiClient.insert('organisation_follow_ups', {
         organisation_id: orgId, company_name: org?.company_name || '',
         follow_up_date: date, note: note || null, assigned_to: assignee
-      }]);
-      if (error) throw error;
+      });
       utils.showToast('Follow-up scheduled' + (assignee ? ` (assigned to ${assignee})` : ''), 'success');
       if (org) this.openCompanyProfile(orgId, org.company_name);
     } catch (e) { utils.showToast('Error: ' + e.message, 'error'); }
@@ -7041,13 +7053,13 @@ updateCountyFilterByRegion() {
       <div class="d-flex flex-wrap gap-2 mb-3">
         ${allTags.map(t => {
           const active = this._selectedTagFilters.includes(t);
-          return `<button class="btn btn-sm ${active ? 'btn-primary' : 'btn-outline-secondary'}" onclick="orgsModule.toggleTagFilter('${utils.escapeHtml(t).replace(/'/g, "\\'")}'); document.getElementById('dynamicOrgModal')?.querySelector('.btn-close')?.click(); setTimeout(() => orgsModule.showTagFilterModal(), 200);">
+          return `<button class="btn btn-sm ${active ? 'btn-primary' : 'btn-outline-secondary'}" data-action="orgsModule.toggleTagFilterAndRefresh" data-id="${utils.escapeHtml(t)}">
             ${utils.escapeHtml(t)}
           </button>`;
         }).join('')}
       </div>
       <div class="d-flex gap-2">
-        <button class="btn btn-sm btn-outline-danger" onclick="orgsModule._selectedTagFilters = []; orgsModule.filterOrganisations(); document.getElementById('dynamicOrgModal')?.querySelector('.btn-close')?.click();">
+        <button class="btn btn-sm btn-outline-danger" data-action="orgsModule.clearAllTagFilters">
           <i class="bi bi-x-circle me-1"></i>Clear All Tags
         </button>
       </div>
@@ -7211,8 +7223,8 @@ updateCountyFilterByRegion() {
             <div class="small text-muted">${Object.entries(views[n].filters).filter(([_k,v]) => v).map(([k,v]) => `${k}: ${utils.escapeHtml(v)}`).join(', ') || 'No filters'}</div>
           </div>
           <div class="d-flex gap-1">
-            <button class="btn btn-sm btn-primary" onclick="orgsModule.loadView('${utils.escapeHtml(n).replace(/'/g, "\\'")}')"><i class="bi bi-box-arrow-in-right"></i></button>
-            <button class="btn btn-sm btn-outline-danger" onclick="orgsModule.deleteView('${utils.escapeHtml(n).replace(/'/g, "\\'")}')"><i class="bi bi-trash"></i></button>
+            <button class="btn btn-sm btn-primary" data-action="orgsModule.loadView" data-id="utils.escapeHtml(n).replace(/'/g, "\\'")"><i class="bi bi-box-arrow-in-right"></i></button>
+            <button class="btn btn-sm btn-outline-danger" data-action="orgsModule.deleteView" data-id="utils.escapeHtml(n).replace(/'/g, "\\'")"><i class="bi bi-trash"></i></button>
           </div>
         </div>`).join('')}
       </div>`;
@@ -7340,11 +7352,11 @@ updateCountyFilterByRegion() {
           <input type="text" class="form-control form-control-sm" style="width:150px;" id="segVal0" placeholder="Value...">
         </div>
       </div>
-      <button class="btn btn-sm btn-outline-secondary mb-3" onclick="orgsModule._addSegmentRule()"><i class="bi bi-plus me-1"></i>Add Rule</button>
+      <button class="btn btn-sm btn-outline-secondary mb-3" data-action="orgsModule._addSegmentRule"><i class="bi bi-plus me-1"></i>Add Rule</button>
       <div class="d-flex gap-2">
-        <button class="btn btn-sm btn-primary" onclick="orgsModule._applySegment()"><i class="bi bi-funnel me-1"></i>Apply Segment</button>
-        <button class="btn btn-sm btn-outline-success" onclick="orgsModule._saveSegment()"><i class="bi bi-save me-1"></i>Save Segment</button>
-        <button class="btn btn-sm btn-outline-secondary" onclick="orgsModule._loadSegments()"><i class="bi bi-folder-open me-1"></i>Load Saved</button>
+        <button class="btn btn-sm btn-primary" data-action="orgsModule._applySegment"><i class="bi bi-funnel me-1"></i>Apply Segment</button>
+        <button class="btn btn-sm btn-outline-success" data-action="orgsModule._saveSegment"><i class="bi bi-save me-1"></i>Save Segment</button>
+        <button class="btn btn-sm btn-outline-secondary" data-action="orgsModule._loadSegments"><i class="bi bi-folder-open me-1"></i>Load Saved</button>
       </div>
       <div id="segmentResult" class="mt-3"></div>`;
 
@@ -7367,7 +7379,7 @@ updateCountyFilterByRegion() {
         <option value="contains">contains</option>
       </select>
       <input type="text" class="form-control form-control-sm" style="width:150px;" id="segVal${i}" placeholder="Value...">
-      <button class="btn btn-sm btn-outline-danger" onclick="this.parentElement.remove()"><i class="bi bi-x"></i></button>
+      <button class="btn btn-sm btn-outline-danger" data-action="utils.removeParentElement"><i class="bi bi-x"></i></button>
     </div>`;
     document.getElementById('segmentRules')?.insertAdjacentHTML('beforeend', ruleHtml);
   },
@@ -7411,7 +7423,7 @@ updateCountyFilterByRegion() {
     if (resultEl) {
       resultEl.innerHTML = `<div class="alert alert-info small py-2">
         <strong>${matching.length}</strong> organisations match this segment.
-        <button class="btn btn-sm btn-outline-primary ms-2" onclick="orgsModule._applySegmentAsFilter()">Apply as Filter</button>
+        <button class="btn btn-sm btn-outline-primary ms-2" data-action="orgsModule._applySegmentAsFilter">Apply as Filter</button>
       </div>`;
     }
     this._lastSegmentMatches = matching;
@@ -7533,7 +7545,7 @@ updateCountyFilterByRegion() {
               <button class="btn btn-sm btn-outline-primary"
                 data-ch-address="${utils.escapeHtml(c.address_snippet || '')}"
                 data-ch-number="${utils.escapeHtml(c.company_number || '')}"
-                onclick="orgsModule._applyCompaniesHouseData('${orgId}', { address: this.dataset.chAddress, company_number: this.dataset.chNumber })">
+                data-action="orgsModule._applyCompaniesHouseDataFromEl" data-id="${orgId}">
                 <i class="bi bi-arrow-down-circle me-1"></i>Apply
               </button>
             </div>
@@ -7556,8 +7568,7 @@ updateCountyFilterByRegion() {
       if (data.company_number) updates.company_number = data.company_number;
       updates.updated_at = new Date().toISOString();
 
-      const { error } = await STATE.client.from('organisations').update(updates).eq('id', orgId);
-      if (error) throw error;
+      await apiClient.update('organisations', orgId, updates);
 
       const org = STATE.allOrganisations.find(o => o.id === orgId);
       if (org) Object.assign(org, updates);
@@ -7570,7 +7581,7 @@ updateCountyFilterByRegion() {
   // ============================================
   // FEATURE: ADD ACTIVITY NOTE
   // ============================================
-  showAddActivityNote(orgId) {
+  showAddActivityNote(_orgId) {
     const html = `
       <div class="mb-3"><label class="form-label fw-semibold">Note Type</label>
         <select class="form-select" id="activityNoteType">
@@ -7583,7 +7594,7 @@ updateCountyFilterByRegion() {
         <select class="form-select" id="activityNotePriority">
           <option value="normal">Normal</option><option value="high">High</option><option value="low">Low</option>
         </select></div>
-      <button class="btn btn-primary w-100" onclick="orgsModule.saveActivityNote('${orgId}')"><i class="bi bi-plus-circle me-2"></i>Add Note</button>`;
+      <button class="btn btn-primary w-100" data-action="orgsModule.saveActivityNote" data-id="orgId"><i class="bi bi-plus-circle me-2"></i>Add Note</button>`;
     this._showDynamicModal('Add Activity Note', html, 'bi-journal-plus', '');
   },
 
@@ -7594,8 +7605,7 @@ updateCountyFilterByRegion() {
     if (!content) { utils.showToast('Please enter note content', 'warning'); return; }
     try {
       const user = await this._getCurrentUserEmail();
-      const { error } = await STATE.client.from('org_activity_notes').insert([{ organisation_id: orgId, type, content, priority, created_by: user }]);
-      if (error) throw error;
+      await apiClient.insert('org_activity_notes', { organisation_id: orgId, type, content, priority, created_by: user });
     } catch (e) {
       console.warn('DB insert for activity note failed, using localStorage:', e);
       const key = `bta_org_notes_${orgId}`;
@@ -7624,7 +7634,7 @@ updateCountyFilterByRegion() {
   // ============================================
   async showMyTasks() {
     let followUps = [];
-    try { const { data } = await STATE.client.from('organisation_follow_ups').select('*').order('date', { ascending: true }).limit(1000); followUps = data || []; } catch (e) { console.warn('Could not load follow-ups:', e); }
+    try { const result = await apiClient.select('organisation_follow_ups', { sort: { column: 'date', ascending: true }, pageSize: 1000 }); followUps = result.data || []; } catch (e) { console.warn('Could not load follow-ups:', e); }
     const today = new Date().toISOString().split('T')[0];
     const overdue = followUps.filter(f => !f.done && f.date < today);
     const todayTasks = followUps.filter(f => !f.done && f.date === today);
@@ -7639,8 +7649,8 @@ updateCountyFilterByRegion() {
         <i class="bi ${icons[section]} me-2 fs-5"></i>
         <div class="flex-grow-1"><div class="fw-semibold small">${utils.escapeHtml(f.note || 'Follow up')}</div>
         <div class="text-muted" style="font-size:0.75rem;">${orgName} · ${new Date(f.date).toLocaleDateString('en-GB')}${f.assignee ? ' · ' + utils.escapeHtml(f.assignee) : ''}</div></div>
-        ${!f.done ? `<button class="btn btn-sm btn-outline-success me-1" onclick="orgsModule.completeFollowUp('${f.org_id}','${f.id}'); setTimeout(()=>orgsModule.showMyTasks(),500);"><i class="bi bi-check"></i></button>` : ''}
-        ${org ? `<button class="btn btn-sm btn-outline-primary" onclick="orgsModule.openCompanyProfile('${f.org_id}')"><i class="bi bi-eye"></i></button>` : ''}
+        ${!f.done ? `<button class="btn btn-sm btn-outline-success me-1" data-action="orgsModule.completeFollowUpAndRefresh" data-args='${JSON.stringify([f.org_id, f.id])}'><i class="bi bi-check"></i></button>` : ''}
+        ${org ? `<button class="btn btn-sm btn-outline-primary" data-action="orgsModule.openCompanyProfile" data-id="${f.org_id}"><i class="bi bi-eye"></i></button>` : ''}
       </div>`;
     };
 
@@ -7666,7 +7676,7 @@ updateCountyFilterByRegion() {
     try { const { data } = await STATE.client.from('org_audit_log').select('*').eq('org_id', orgId).order('created_at', { ascending: false }).limit(100); logs = data || []; } catch (e) { console.warn('Audit log load error:', e); }
     if (logs.length === 0) { this._showDynamicModal('Change History', '<div class="text-center py-4 text-muted"><i class="bi bi-clock-history fs-1 d-block mb-2"></i>No change history recorded.</div>', 'bi-clock-history', ''); return; }
     const iconMap = { status_change: 'bi-arrow-repeat text-warning', archived: 'bi-archive text-danger', restored: 'bi-box-arrow-up text-success', note_added: 'bi-journal-plus text-info', email_sent: 'bi-envelope text-primary', field_update: 'bi-pencil text-secondary' };
-    const html = `<div class="mb-3"><input type="text" class="form-control form-control-sm" placeholder="Filter history..." oninput="document.querySelectorAll('.audit-entry').forEach(el=>{el.style.display=el.textContent.toLowerCase().includes(this.value.toLowerCase())?'':'none';})"></div>
+    const html = `<div class="mb-3"><input type="text" class="form-control form-control-sm" placeholder="Filter history..." data-on-input="utils.filterElementsByText" data-args='${JSON.stringify([".audit-entry"])}'></div>
       <div style="max-height:500px;overflow-y:auto;">${logs.map(log => {
         const icon = iconMap[log.action] || 'bi-circle text-muted';
         return `<div class="audit-entry d-flex align-items-start py-2 border-bottom">
@@ -7747,9 +7757,9 @@ updateCountyFilterByRegion() {
     const renderG = (groups, label, icon) => groups.length === 0 ? '' :
       `<h6 class="fw-bold mt-3"><i class="bi ${icon} me-2"></i>${label} (${groups.length})</h6>` +
       groups.slice(0, 15).map(g => `<div class="card mb-2"><div class="card-body py-2"><div class="d-flex flex-wrap gap-2">
-        ${g.map(o => `<div class="border rounded px-2 py-1 small"><a href="#" class="text-primary text-decoration-none" onclick="orgsModule.openCompanyProfile('${o.id}')">${utils.escapeHtml(o.company_name)}</a>
+        ${g.map(o => `<div class="border rounded px-2 py-1 small"><a href="#" class="text-primary text-decoration-none" data-action="orgsModule.openCompanyProfile" data-id="o.id">${utils.escapeHtml(o.company_name)}</a>
         <span class="text-muted ms-1">${utils.escapeHtml(o.region || '')}</span></div>`).join('')}
-        <button class="btn btn-sm btn-outline-warning" onclick="orgsModule.selectedOrgs=new Set([${g.map(o=>`'${o.id}'`).join(',')}]);orgsModule.showMergeDuplicatesModal();bootstrap.Modal.getInstance(document.getElementById('dynamicOrgModal'))?.hide();">
+        <button class="btn btn-sm btn-outline-warning" data-action="orgsModule.mergeDuplicateGroup" data-args='${JSON.stringify(g.map(o=>o.id))}'>
           <i class="bi bi-intersect me-1"></i>Merge</button>
       </div></div></div>`).join('');
 
@@ -7780,9 +7790,9 @@ updateCountyFilterByRegion() {
         <h6>Share <strong>${utils.escapeHtml(org.company_name)}</strong></h6>
         <p class="text-muted small">Read-only profile link.</p></div>
       <div class="input-group mb-3"><input type="text" class="form-control" id="shareLinkUrl" value="${utils.escapeHtml(shareUrl)}" readonly>
-        <button class="btn btn-primary" onclick="navigator.clipboard.writeText(document.getElementById('shareLinkUrl').value);utils.showToast('Copied!','success');"><i class="bi bi-clipboard me-1"></i>Copy</button></div>
+        <button class="btn btn-primary" data-action="utils.copyInputValueById" data-id="shareLinkUrl"><i class="bi bi-clipboard me-1"></i>Copy</button></div>
       <div class="row text-center"><div class="col-6"><a href="mailto:?subject=${encodeURIComponent('Profile: ' + org.company_name)}&body=${encodeURIComponent(shareUrl)}" class="btn btn-outline-primary w-100"><i class="bi bi-envelope me-1"></i>Email</a></div>
-      <div class="col-6"><button class="btn btn-outline-danger w-100" onclick="orgsModule.revokeShareLink('${token}')"><i class="bi bi-x-circle me-1"></i>Revoke</button></div></div>`;
+      <div class="col-6"><button class="btn btn-outline-danger w-100" data-action="orgsModule.revokeShareLink" data-id="${token}"><i class="bi bi-x-circle me-1"></i>Revoke</button></div></div>`;
     this._showDynamicModal('Share Organisation Profile', html, 'bi-share', '');
   },
 
@@ -7928,7 +7938,7 @@ updateCountyFilterByRegion() {
           ${org.email?`<div style="font-size:12px;"><i class="bi bi-envelope"></i> ${utils.escapeHtml(org.email)}</div>`:''}
           ${org.phone?`<div style="font-size:12px;"><i class="bi bi-telephone"></i> ${utils.escapeHtml(org.phone)}</div>`:''}
           ${org.website?`<div style="font-size:12px;"><i class="bi bi-globe"></i> <a href="${utils.escapeHtml(org.website)}" target="_blank">${utils.escapeHtml(org.website)}</a></div>`:''}
-          <div style="margin-top:8px;"><button class="btn btn-sm btn-primary" style="font-size:11px;" onclick="orgsModule.openCompanyProfile('${org.id}')"><i class="bi bi-eye me-1"></i>View Profile</button></div>
+          <div style="margin-top:8px;"><button class="btn btn-sm btn-primary" style="font-size:11px;" data-action="orgsModule.openCompanyProfile" data-id="org.id"><i class="bi bi-eye me-1"></i>View Profile</button></div>
         </div>`);
         this._mapMarkers.push(marker);
         plotted++;
@@ -7959,6 +7969,97 @@ updateCountyFilterByRegion() {
     </div>`;
     document.body.insertAdjacentHTML('beforeend', modalHtml);
     new bootstrap.Modal(document.getElementById('dynamicOrgModal')).show();
+  },
+
+  // ============================================
+  // DATA-ACTION DELEGATION HELPER METHODS
+  // ============================================
+
+  /** Helper for data-action: apply bulk field update from modal */
+  _applyBulkFieldUpdate(field) {
+    const val = document.getElementById('bulkFieldValue')?.value;
+    if (!val) { utils.showToast('Please select a value', 'warning'); return; }
+    bootstrap.Modal.getInstance(document.getElementById('bulkFieldModal'))?.hide();
+    this.bulkUpdateField(field, val);
+  },
+
+  /** Helper for data-action: filter by missing field from data quality modal */
+  filterByMissingField(field) {
+    this._filterMissingField = field;
+    this.filterOrganisations();
+    bootstrap.Modal.getInstance(document.getElementById('dynamicOrgModal'))?.hide();
+  },
+
+  /** Helper for data-action: filter by region from map/chart */
+  filterByRegion(region) {
+    const el = document.getElementById('orgsRegionFilter');
+    if (el) el.value = region;
+    this.filterOrganisations();
+    bootstrap.Modal.getInstance(document.getElementById('dynamicOrgModal'))?.hide();
+  },
+
+  /** Helper for data-action: close modal and open company profile */
+  closeModalAndOpenProfile(orgId, name) {
+    document.getElementById('dynamicOrgModal')?.querySelector('.btn-close')?.click();
+    setTimeout(() => this.openCompanyProfile(orgId, name), 300);
+  },
+
+  /** Helper for data-action: complete follow-up and refresh tasks view */
+  completeFollowUpAndRefresh(orgId, followUpId) {
+    this.completeFollowUp(orgId, followUpId);
+    setTimeout(() => this.showMyTasks(), 500);
+  },
+
+  /** Helper for data-action: toggle tag filter and refresh modal */
+  toggleTagFilterAndRefresh(tag) {
+    this.toggleTagFilter(tag);
+    document.getElementById('dynamicOrgModal')?.querySelector('.btn-close')?.click();
+    setTimeout(() => this.showTagFilterModal(), 200);
+  },
+
+  /** Helper for data-action: clear all tag filters */
+  clearAllTagFilters() {
+    this._selectedTagFilters = [];
+    this.filterOrganisations();
+    document.getElementById('dynamicOrgModal')?.querySelector('.btn-close')?.click();
+  },
+
+  /** Helper for data-action: merge duplicate group */
+  mergeDuplicateGroup(ids) {
+    if (Array.isArray(ids)) {
+      this.selectedOrgs = new Set(ids);
+    }
+    this.showMergeDuplicatesModal();
+    bootstrap.Modal.getInstance(document.getElementById('dynamicOrgModal'))?.hide();
+  },
+
+  /** Helper for data-action: apply Companies House data from element dataset */
+  _applyCompaniesHouseDataFromEl(orgId, _extraArgs, event) {
+    const el = event?.target?.closest('[data-action]') || event?.target;
+    if (el) {
+      this._applyCompaniesHouseData(orgId, {
+        address: el.dataset.chAddress,
+        company_number: el.dataset.chNumber
+      });
+    }
+  },
+
+  /** Helper for data-action: cancel inline edit (receives orgId from data-id) */
+  cancelInlineEdit(elOrId, orgIdOrEvent) {
+    // Support both old signature (el, orgId) and new delegation signature (orgId, event)
+    if (typeof elOrId === 'string' && (orgIdOrEvent instanceof Event || orgIdOrEvent === undefined)) {
+      // Called via data-action: elOrId is the orgId from data-id
+      const td = document.querySelector(`[data-original-html]`) || document.querySelector('.input-group')?.closest('td');
+      if (td && td.dataset.originalHtml) {
+        td.innerHTML = td.dataset.originalHtml;
+      }
+      return;
+    }
+    // Legacy call with (element, orgId)
+    const td = elOrId?.closest?.('td');
+    if (td && td.dataset.originalHtml) {
+      td.innerHTML = td.dataset.originalHtml;
+    }
   }
 };
 

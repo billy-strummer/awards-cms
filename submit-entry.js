@@ -5,11 +5,17 @@
 (function() {
 'use strict';
 
-// Initialize Supabase client
-const db = window.supabase.createClient(
-  window.SUPABASE_CONFIG.url,
-  window.SUPABASE_CONFIG.anonKey
-);
+// API proxy for entry submission (no direct DB access)
+async function entryApi(payload) {
+  const res = await fetch('/api/entry-proxy', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload)
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || 'Submission failed');
+  return data;
+}
 
 // =====================================================
 // AWARD CATEGORIES (mirrors award-categories-config.js)
@@ -664,181 +670,29 @@ window.entryFormApp = {
       submitBtn.disabled = true;
       submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Submitting...';
 
-      // 1. Find or create organisation
-      let organisationId = null;
+      // Submit via server-side proxy (no direct DB access)
+      const result = await entryApi({
+        action: 'submit_entry',
+        companyName: this.formData.companyName,
+        region: this.formData.region,
+        sector: this.formData.sector,
+        contactEmail: this.formData.contactEmail,
+        contactName: this.formData.contactName,
+        contactPhone: this.formData.contactPhone,
+        companyWebsite: this.formData.companyWebsite,
+        awardCategory: this.formData.awardCategory,
+        entryDescription: this.formData.entryDescription,
+        whyShouldWin: this.formData.whyShouldWin,
+        supportingInfo: this.formData.supportingInfo,
+        tradeBodies: this.formData.tradeBodies,
+        accreditations: this.formData.accreditations,
+        employeeCount: this.formData.employeeCount,
+        contactPosition: this.formData.contactPosition
+      });
 
-      const { data: existingOrgs, error: searchError } = await db
-        .from('organisations')
-        .select('id')
-        .ilike('company_name', this.formData.companyName)
-        .limit(1);
+      const entryNumber = result.entry.entry_number;
 
-      if (searchError) {
-        console.error('Organisation lookup failed:', searchError);
-        throw new Error('Could not search for existing company. Please try again.');
-      }
-
-      if (existingOrgs && existingOrgs.length > 0) {
-        organisationId = existingOrgs[0].id;
-      } else {
-        const { data: newOrg, error: orgError } = await db
-          .from('organisations')
-          .insert({
-            company_name: this.formData.companyName,
-            region: this.formData.region,
-            sector: this.formData.sector,
-            email: this.formData.contactEmail,
-            contact_name: this.formData.contactName,
-            contact_phone: this.formData.contactPhone || null,
-            website: this.formData.companyWebsite || null,
-            status: 'active'
-          })
-          .select()
-          .single();
-
-        if (orgError) {
-          console.error('Organisation creation failed:', orgError);
-          throw new Error('Could not save company details. Please try again.');
-        }
-        organisationId = newOrg.id;
-      }
-
-      // 2. Find matching award in database (by category name, sector, region)
-      let awardId = null;
-      const currentYear = new Date().getFullYear();
-
-      const { data: matchingAwards, error: awardError } = await db
-        .from('awards')
-        .select('id')
-        .eq('award_name', this.formData.awardCategory)
-        .eq('sector', this.formData.sector)
-        .eq('county', this.formData.region)
-        .eq('status', 'Active')
-        .order('year', { ascending: false })
-        .limit(1);
-
-      if (awardError) {
-        console.error('Award lookup failed:', awardError);
-        // Non-fatal: continue without linking to an award record
-      }
-
-      if (matchingAwards && matchingAwards.length > 0) {
-        awardId = matchingAwards[0].id;
-      }
-      // If no matching award record exists, we still create the entry
-      // with the category stored in the title. Admin can link later.
-
-      // 3. Generate entry number
-      const entryNumber = await this.generateEntryNumber();
-
-      // 4. Build supporting info string
-      const supportParts = [];
-      if (this.formData.supportingInfo) supportParts.push(this.formData.supportingInfo);
-      if (this.formData.tradeBodies) supportParts.push('Trade Bodies: ' + this.formData.tradeBodies);
-      if (this.formData.accreditations) supportParts.push('Accreditations: ' + this.formData.accreditations);
-      if (this.formData.companyWebsite) supportParts.push('Website: ' + this.formData.companyWebsite);
-      if (this.formData.employeeCount) supportParts.push('Employees: ' + this.formData.employeeCount);
-      const supportingInformation = supportParts.join('\n\n');
-
-      // 5. Create entry (use only base-schema columns to avoid errors
-      //    if migration 010 hasn't been applied yet)
-      const entryPayload = {
-        entry_number: entryNumber,
-        organisation_id: organisationId,
-        award_id: awardId,
-        entry_title: `${this.formData.companyName} - ${this.formData.awardCategory}`,
-        entry_description: this.formData.entryDescription,
-        contact_name: this.formData.contactName,
-        contact_email: this.formData.contactEmail,
-        status: 'submitted',
-        payment_status: 'pending',
-        submission_date: new Date().toISOString(),
-        allow_public_voting: false
-      };
-
-      // Try inserting with extended columns first (migration 010+)
-      const extendedFields = {
-        why_should_win: this.formData.whyShouldWin,
-        supporting_information: supportingInformation || null,
-        contact_phone: this.formData.contactPhone || null,
-        contact_position: this.formData.contactPosition || null,
-        year: currentYear,
-        award_category: this.formData.awardCategory || null,
-        sector: this.formData.sector || null,
-        region: this.formData.region || null
-      };
-
-      let entry = null;
-      const _insertError = null;
-
-      // Attempt full insert (with extended columns)
-      const fullPayload = Object.assign({}, entryPayload, extendedFields);
-      const { data: fullEntry, error: fullError } = await db
-        .from('entries')
-        .insert(fullPayload)
-        .select()
-        .single();
-
-      if (!fullError) {
-        entry = fullEntry;
-      } else {
-        console.warn('Full insert failed (likely missing columns), trying base columns:', fullError.message);
-        // Fallback: insert with base columns only, then concat extra info into entry_description
-        const fallbackDescription = [
-          this.formData.entryDescription,
-          this.formData.whyShouldWin ? '\n\nWhy we should win:\n' + this.formData.whyShouldWin : '',
-          supportingInformation ? '\n\nSupporting information:\n' + supportingInformation : ''
-        ].join('');
-        entryPayload.entry_description = fallbackDescription;
-
-        const { data: baseEntry, error: baseError } = await db
-          .from('entries')
-          .insert(entryPayload)
-          .select()
-          .single();
-
-        if (baseError) {
-          console.error('Entry creation failed:', baseError);
-          throw new Error('Could not save your entry. Please try again or contact support.');
-        }
-        entry = baseEntry;
-
-        // Try setting extended fields as a non-blocking update
-        try {
-          await db.from('entries').update(extendedFields).eq('id', entry.id);
-        } catch (e) {
-          console.warn('Could not set extended entry fields:', e.message);
-        }
-      }
-
-      // Mark as self-nomination (non-blocking - column may not exist yet)
-      try {
-        await db.from('entries').update({ is_self_nomination: true }).eq('id', entry.id);
-      } catch (e) {
-        console.warn('Could not set is_self_nomination flag:', e.message);
-      }
-
-      // 6. Try sending confirmation email via database RPC (non-blocking)
-      try {
-        const { data: emailData, error: emailError } = await db.rpc(
-          'send_entry_confirmation_email',
-          { p_entry_id: entry.id }
-        );
-        if (emailError) {
-          console.error('Confirmation email error:', emailError);
-          showPublicToast('Entry saved but confirmation email could not be sent. Check your inbox or contact support.', 'warning');
-        } else if (emailData && emailData.error) {
-          console.error('Confirmation email function error:', emailData.error);
-          showPublicToast('Entry saved but confirmation email could not be sent. Check your inbox or contact support.', 'warning');
-        } else {
-          console.warn('Confirmation email sent successfully');
-        }
-      } catch (emailErr) {
-        console.error('Confirmation email failed:', emailErr);
-        showPublicToast('Entry saved but confirmation email could not be sent.', 'warning');
-      }
-
-      // 7. Show success
+      // Show success
       document.getElementById('entryReference').textContent = entryNumber;
       document.querySelectorAll('.form-step').forEach(s => s.classList.remove('active'));
       document.getElementById('stepSuccess').classList.add('active');
@@ -857,33 +711,7 @@ window.entryFormApp = {
     }
   },
 
-  // --------------------------------------------------
-  // Generate sequential entry number
-  // --------------------------------------------------
-  async generateEntryNumber() {
-    try {
-      const currentYear = new Date().getFullYear();
-      const { data, error } = await db
-        .from('entries')
-        .select('entry_number')
-        .like('entry_number', `${currentYear}-%`)
-        .order('created_at', { ascending: false })
-        .limit(1);
-
-      if (error) throw error;
-
-      let nextNumber = 1;
-      if (data && data.length > 0) {
-        const lastNumber = parseInt(data[0].entry_number.split('-')[1]);
-        if (!isNaN(lastNumber)) nextNumber = lastNumber + 1;
-      }
-
-      return `${currentYear}-${String(nextNumber).padStart(4, '0')}`;
-    } catch (error) {
-      console.error('Error generating entry number:', error);
-      return `${new Date().getFullYear()}-${Date.now().toString().slice(-4)}`;
-    }
-  },
+  // Entry number generation is now handled server-side via /api/entry-proxy
 
   // --------------------------------------------------
   // Utilities

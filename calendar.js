@@ -70,9 +70,9 @@ const calendarModule = {
     const pad = n => String(n).padStart(2,'0');
 
     let html = `<div class="d-flex align-items-center justify-content-between mb-3">
-      <button class="btn btn-sm btn-outline-secondary" onclick="calendarModule._navigate(-1,'${containerId}')"><i class="bi bi-chevron-left"></i></button>
+      <button class="btn btn-sm btn-outline-secondary" data-action="calendarModule._navigate" data-args='${JSON.stringify([-1, containerId])}'><i class="bi bi-chevron-left"></i></button>
       <h5 class="mb-0 fw-semibold">${monthName}</h5>
-      <button class="btn btn-sm btn-outline-secondary" onclick="calendarModule._navigate(1,'${containerId}')"><i class="bi bi-chevron-right"></i></button>
+      <button class="btn btn-sm btn-outline-secondary" data-action="calendarModule._navigate" data-args='${JSON.stringify([1, containerId])}'><i class="bi bi-chevron-right"></i></button>
     </div>
     <div class="d-flex mb-1">${['Su','Mo','Tu','We','Th','Fr','Sa'].map(d=>`<div class="flex-fill text-center small fw-semibold text-muted">${d}</div>`).join('')}</div>
     <div class="d-flex flex-wrap">`;
@@ -84,7 +84,7 @@ const calendarModule = {
       const ds    = `${year}-${pad(month+1)}-${pad(d)}`;
       const itms  = this._dayItems[ds] || [];
       const dots  = [...new Set(itms.map(i=>i.color))].slice(0,5).map(c=>`<span class="cal-dot bg-${c}"></span>`).join('');
-      html += `<div class="cal-cell${ds===todayStr?' cal-today':''}${itms.length?' cal-has-items':''}" onclick="calendarModule._showDayPanel('${ds}','${containerId}')"><span class="cal-day-num">${d}</span><div class="cal-dots">${dots}</div></div>`;
+      html += `<div class="cal-cell${ds===todayStr?' cal-today':''}${itms.length?' cal-has-items':''}" data-action="calendarModule._showDayPanel" data-args='${JSON.stringify([ds, containerId])}'><span class="cal-day-num">${d}</span><div class="cal-dots">${dots}</div></div>`;
       cells++;
     }
     for (let i=0; i<(7-(cells%7))%7; i++) html += `<div class="cal-cell cal-empty"></div>`;
@@ -132,8 +132,12 @@ const calendarModule = {
     </div>`).join('');
     panel.style.display='block';
     panel.innerHTML=`<div class="d-flex justify-content-between align-items-center mb-2"><strong>${label}</strong>
-      <button class="btn btn-sm btn-outline-secondary" onclick="calendarModule.exportICS(calendarModule._dayItems['${dateStr}'])"><i class="bi bi-download"></i> Export</button>
+      <button class="btn btn-sm btn-outline-secondary" data-action="calendarModule._exportDayICS" data-id="${dateStr}"><i class="bi bi-download"></i> Export</button>
     </div>${rows}`;
+  },
+
+  _exportDayICS(dateStr) {
+    this.exportICS(this._dayItems[dateStr]);
   },
 
   /* ---------- ICS HELPERS ---------- */

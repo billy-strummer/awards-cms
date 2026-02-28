@@ -510,7 +510,7 @@ The British Trade Awards Team`
         const descTip = template.description ? ` title="${template.description.replace(/"/g, '&quot;')}"` : '';
         return `
         <a href="#" class="list-group-item list-group-item-action ${this.currentTemplate?.id === template.id ? 'active' : ''}"
-           onclick="emailTemplatesModule.selectTemplate('${template.id}'); return false;"${descTip}>
+           data-action="emailTemplatesModule.selectTemplate" data-id="${template.id}" data-prevent-default="true"${descTip}>
           <div class="d-flex justify-content-between align-items-start">
             <div>
               <strong>${template.template_name || template.name || 'Untitled'}</strong>
@@ -581,7 +581,7 @@ The British Trade Awards Team`
           <div class="mt-2">
             ${template.available_placeholders.map(p => `
               <span class="badge bg-light text-dark me-1 mb-1" style="cursor: pointer;"
-                    onclick="emailTemplatesModule.insertPlaceholder('{${p}}')"
+                    data-action="emailTemplatesModule.insertPlaceholder" data-id="{${p}}"
                     title="Click to insert">
                 {${p}}
               </span>
@@ -680,21 +680,21 @@ The British Trade Awards Team`
 
         <!-- Action Buttons -->
         <div class="d-flex gap-2 flex-wrap">
-          <button type="button" class="btn btn-primary" onclick="emailTemplatesModule.saveTemplate()">
+          <button type="button" class="btn btn-primary" data-action="emailTemplatesModule.saveTemplate">
             <i class="bi bi-save me-2"></i>Save Template
           </button>
-          <button type="button" class="btn btn-outline-secondary" onclick="emailTemplatesModule.previewTemplate()">
+          <button type="button" class="btn btn-outline-secondary" data-action="emailTemplatesModule.previewTemplate">
             <i class="bi bi-eye me-2"></i>Preview
           </button>
-          <button type="button" class="btn btn-outline-info" onclick="emailTemplatesModule.sendTestEmail()">
+          <button type="button" class="btn btn-outline-info" data-action="emailTemplatesModule.sendTestEmail">
             <i class="bi bi-envelope me-2"></i>Send Test
           </button>
           ${this._defaultTemplates[template.template_name] ? `
-            <button type="button" class="btn btn-outline-warning" onclick="emailTemplatesModule.revertToDefault()">
+            <button type="button" class="btn btn-outline-warning" data-action="emailTemplatesModule.revertToDefault">
               <i class="bi bi-arrow-counterclockwise me-2"></i>Revert to Default
             </button>
           ` : ''}
-          <button type="button" class="btn btn-outline-danger ms-auto" onclick="emailTemplatesModule.deleteTemplate('${template.id}')">
+          <button type="button" class="btn btn-outline-danger ms-auto" data-action="emailTemplatesModule.deleteTemplate" data-id="${template.id}">
             <i class="bi bi-trash me-2"></i>Delete
           </button>
         </div>
@@ -1053,7 +1053,7 @@ The British Trade Awards Team`
             </div>
             <div class="modal-footer">
               <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-              <button type="button" class="btn btn-primary" onclick="emailTemplatesModule.saveNewTemplate()">
+              <button type="button" class="btn btn-primary" data-action="emailTemplatesModule.saveNewTemplate">
                 <i class="bi bi-save me-2"></i>Create Template
               </button>
             </div>

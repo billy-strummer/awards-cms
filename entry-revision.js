@@ -124,7 +124,7 @@ const entryRevisionModule = {
               <div class="form-text">Optional – attach updated supporting documents.</div>
             </div>
             <button type="button" class="btn btn-primary"
-              onclick="window.entryRevisionModule.submitResubmission('${eid}')">
+              data-action="window.entryRevisionModule.submitResubmission" data-id="${eid}">
               <i class="bi bi-send me-1"></i>Resubmit Entry
             </button>
           </form>
@@ -227,13 +227,13 @@ const entryRevisionModule = {
           ${fileList ? `<div class="mb-3"><strong>Files:</strong><ul class="mb-0">${fileList}</ul></div>` : ''}
           <div class="d-flex gap-2">
             <button class="btn btn-success btn-sm"
-              onclick="window.entryRevisionModule._adminDecision('${eid}','Approved')">
+              data-action="window.entryRevisionModule._adminDecision" data-args='${JSON.stringify([eid, "Approved"])}'>
               <i class="bi bi-check-lg me-1"></i>Approve</button>
             <button class="btn btn-danger btn-sm"
-              onclick="window.entryRevisionModule._adminDecision('${eid}','Rejected')">
+              data-action="window.entryRevisionModule._adminDecision" data-args='${JSON.stringify([eid, "Rejected"])}'>
               <i class="bi bi-x-lg me-1"></i>Reject</button>
             <button class="btn btn-warning btn-sm"
-              onclick="window.entryRevisionModule._showRequestChangesModal('${eid}')">
+              data-action="window.entryRevisionModule._showRequestChangesModal" data-id="${eid}">
               <i class="bi bi-pencil me-1"></i>Request Further Changes</button>
           </div>
         </div>`;
@@ -268,7 +268,7 @@ const entryRevisionModule = {
           <div class="modal-footer">
             <button class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
             <button class="btn btn-warning"
-              onclick="window.entryRevisionModule._submitModalChanges('${eid}')">Send</button>
+              data-action="window.entryRevisionModule._submitModalChanges" data-id="${eid}">Send</button>
           </div>
         </div></div>
       </div>`);

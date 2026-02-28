@@ -150,7 +150,7 @@ async function handleStripeWebhook(req, res) {
       break;
 
     default:
-      console.log(`Unhandled event type: ${event.type}`);
+      console.warn(`Unhandled event type: ${event.type}`);
   }
 
   res.json({ received: true });
@@ -210,7 +210,7 @@ async function handleCheckoutSessionCompleted(session) {
       }]);
     }
 
-    console.log(`✅ Payment completed for entry ${entryId}`);
+    console.warn(`Payment completed for entry ${entryId}`);
 
   } catch (error) {
     console.error('Error handling checkout session:', error);
@@ -221,7 +221,7 @@ async function handleCheckoutSessionCompleted(session) {
  * Handle successful payment intent
  */
 async function handlePaymentIntentSucceeded(paymentIntent) {
-  console.log(`Payment succeeded: ${paymentIntent.id}`);
+  console.warn(`Payment succeeded: ${paymentIntent.id}`);
   const { data: entries } = await supabase
     .from('entries')
     .select('*')
@@ -264,7 +264,7 @@ async function handlePaymentIntentFailed(paymentIntent) {
  * Handle refund
  */
 async function handleChargeRefunded(charge) {
-  console.log(`🔄 Charge refunded: ${charge.id}`);
+  console.warn(`Charge refunded: ${charge.id}`);
 
   // Find entry by payment reference
   const { data: entries } = await supabase
@@ -358,7 +358,7 @@ const SUBTITLE_MAP = {
  * Loads editable template from CMS; falls back to hardcoded default.
  */
 async function sendEntryConfirmationEmail(entry) {
-  if (!process.env.RESEND_API_KEY) { console.log('RESEND_API_KEY not set, skipping email'); return; }
+  if (!process.env.RESEND_API_KEY) { console.warn('RESEND_API_KEY not set, skipping email'); return; }
   try {
     const branding = await loadBranding();
     const contactEmail = branding.email_from || process.env.CONTACT_EMAIL || 'awards@britishtrade.org';
@@ -394,7 +394,7 @@ async function sendEntryConfirmationEmail(entry) {
  * Loads editable template from CMS; falls back to hardcoded default.
  */
 async function sendPaymentFailedEmail(entry, errorMessage) {
-  if (!process.env.RESEND_API_KEY) { console.log('RESEND_API_KEY not set, skipping email'); return; }
+  if (!process.env.RESEND_API_KEY) { console.warn('RESEND_API_KEY not set, skipping email'); return; }
   try {
     const branding = await loadBranding();
     const contactEmail = branding.email_from || process.env.CONTACT_EMAIL || 'awards@britishtrade.org';
@@ -428,7 +428,7 @@ async function sendPaymentFailedEmail(entry, errorMessage) {
  * Loads editable template from CMS; falls back to hardcoded default.
  */
 async function sendRefundConfirmationEmail(entry) {
-  if (!process.env.RESEND_API_KEY) { console.log('RESEND_API_KEY not set, skipping email'); return; }
+  if (!process.env.RESEND_API_KEY) { console.warn('RESEND_API_KEY not set, skipping email'); return; }
   try {
     const branding = await loadBranding();
     const contactEmail = branding.email_from || process.env.CONTACT_EMAIL || 'awards@britishtrade.org';

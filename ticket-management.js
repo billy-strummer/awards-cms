@@ -24,12 +24,12 @@ const ticketModule = {
           <div class="d-flex justify-content-between"><span class="fw-bold">&pound;${parseFloat(t.price).toFixed(2)}</span><span class="text-muted small">Qty: ${t.quantity}</span></div>
           ${t.includes_table ? '<span class="badge bg-success">Includes Table</span>' : ''}
         </div><div class="card-footer bg-transparent d-flex gap-2">
-          <button class="btn btn-sm btn-outline-primary" onclick="ticketModule._openTTModal('${eventId}',decodeURIComponent('${safe}'))">Edit</button>
-          <button class="btn btn-sm btn-outline-danger" onclick="ticketModule.deleteTicketType('${t.id}','${eventId}')">Delete</button>
+          <button class="btn btn-sm btn-outline-primary" data-action="ticketModule._openTTModal" data-args='${JSON.stringify([eventId, decodeURIComponent(safe)]).replace(/'/g, "&#39;")}'>Edit</button>
+          <button class="btn btn-sm btn-outline-danger" data-action="ticketModule.deleteTicketType" data-args='${JSON.stringify([t.id, eventId])}'>Delete</button>
         </div></div></div>`;
       }).join('') || '<p class="text-muted">No ticket types defined.</p>';
       el.innerHTML = `<div class="d-flex justify-content-between mb-3"><h5 class="mb-0">Ticket Types</h5>
-        <button class="btn btn-sm btn-primary" onclick="ticketModule._openTTModal('${eventId}')"><i class="bi bi-plus-lg me-1"></i>Add</button></div>
+        <button class="btn btn-sm btn-primary" data-action="ticketModule._openTTModal" data-id="${eventId}"><i class="bi bi-plus-lg me-1"></i>Add</button></div>
         <div class="row g-3">${cards}</div>` + this._ttModalHTML(eventId);
     } catch (err) {
       utils.showToast('Failed to load ticket types: ' + err.message, 'error');
@@ -50,7 +50,7 @@ const ticketModule = {
         <div class="form-check"><input class="form-check-input" type="checkbox" id="ttTable"><label class="form-check-label" for="ttTable">Includes Table</label></div>
       </div>
       <div class="modal-footer"><button class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-        <button class="btn btn-primary" onclick="ticketModule.saveTicketType('${eventId}')">Save</button></div>
+        <button class="btn btn-primary" data-action="ticketModule.saveTicketType" data-id="${eventId}">Save</button></div>
     </div></div></div>`;
   },
 
@@ -146,7 +146,7 @@ const ticketModule = {
           <thead><tr><th>Type</th><th>Price</th><th>Available</th><th>Qty</th></tr></thead><tbody>${rows}</tbody></table></div>
           <div class="d-flex justify-content-between align-items-center mt-3">
             <strong>Total: <span id="ticketTotal">&pound;0.00</span></strong>
-            <button class="btn btn-success" onclick="ticketModule.createTicketCheckout('${eventId}')"><i class="bi bi-credit-card me-1"></i>Proceed to Payment</button>
+            <button class="btn btn-success" data-action="ticketModule.createTicketCheckout" data-id="${eventId}"><i class="bi bi-credit-card me-1"></i>Proceed to Payment</button>
           </div>` : '<p class="text-muted">No tickets available.</p>'}</div></div>`;
       el.querySelectorAll('.ticket-qty').forEach(inp => inp.addEventListener('input', () => {
         let total = 0;
@@ -240,7 +240,7 @@ const ticketModule = {
           <div class="mb-3"><label class="form-label">Dietary Requirements</label><select class="form-select" id="gpDietary">${dietOptions}</select></div>
           <div class="mb-3"><label class="form-label">Accessibility &amp; Additional Notes</label>
             <textarea class="form-control" id="gpNotes" rows="3" placeholder="Wheelchair access, hearing loop, etc.">${utils.escapeHtml(g.notes || '')}</textarea></div>
-          <button class="btn btn-primary" onclick="ticketModule.saveGuestPreferences('${guestId}')"><i class="bi bi-save me-1"></i>Save Preferences</button>
+          <button class="btn btn-primary" data-action="ticketModule.saveGuestPreferences" data-id="${guestId}"><i class="bi bi-save me-1"></i>Save Preferences</button>
         </div></div>`;
     } catch (err) { utils.showToast('Failed to load preferences: ' + err.message, 'error'); } finally { utils.hideLoading(); }
   },

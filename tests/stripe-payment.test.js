@@ -30,13 +30,13 @@ jest.mock('resend', () => ({
 }), { virtual: true });
 
 // Mock Supabase
-const mockSelect = jest.fn();
-const mockInsert = jest.fn();
-const mockUpdate = jest.fn();
-const mockEq = jest.fn();
-const mockSingle = jest.fn();
-const mockOrder = jest.fn();
-const mockLimit = jest.fn();
+const _mockSelect = jest.fn();
+const _mockInsert = jest.fn();
+const _mockUpdate = jest.fn();
+const _mockEq = jest.fn();
+const _mockSingle = jest.fn();
+const _mockOrder = jest.fn();
+const _mockLimit = jest.fn();
 
 function chainable(resolveWith = { data: null, error: null }) {
   const obj = {
@@ -83,7 +83,7 @@ process.env.RESEND_API_KEY = 'test-resend-key';
 const {
   createCheckoutSession,
   handleStripeWebhook,
-  getPaymentStatus,
+  getPaymentStatus: _getPaymentStatus,
   verifyPayment
 } = require('../api/stripe-payment');
 

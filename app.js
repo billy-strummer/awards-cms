@@ -49,8 +49,8 @@ const reportsScheduler = {
               <div class="text-muted small">${utils.escapeHtml(r.frequency)} &middot; ${r.sections.join(', ')} &middot; To: ${utils.escapeHtml(r.recipients)}</div>
             </div>
             <div>
-              <button class="btn btn-sm btn-outline-primary me-1" onclick="reportsScheduler.previewReport(${i})"><i class="bi bi-eye"></i> Preview</button>
-              <button class="btn btn-sm btn-outline-danger" onclick="reportsScheduler.deleteReport(${i})"><i class="bi bi-trash"></i></button>
+              <button class="btn btn-sm btn-outline-primary me-1" data-action="reportsScheduler.previewReport" data-id="${i}"><i class="bi bi-eye"></i> Preview</button>
+              <button class="btn btn-sm btn-outline-danger" data-action="reportsScheduler.deleteReport" data-id="${i}"><i class="bi bi-trash"></i></button>
             </div>
           </div>
         </div>
@@ -81,7 +81,7 @@ const reportsScheduler = {
         </div>
         <div class="modal-footer">
           <button class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-          <button class="btn btn-primary" onclick="reportsScheduler._saveReport()"><i class="bi bi-check-circle me-2"></i>Save</button>
+          <button class="btn btn-primary" data-action="reportsScheduler._saveReport"><i class="bi bi-check-circle me-2"></i>Save</button>
         </div>
       </div></div>
     </div>`;

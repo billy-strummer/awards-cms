@@ -140,14 +140,14 @@ const tenantModule = {
         ${this._tenants.map(t => `
           <li>
             <a class="dropdown-item ${t.id === this._currentTenant?.id ? 'active' : ''}" href="#"
-               onclick="event.preventDefault(); tenantModule.switchTenant('${t.id}')">
+               data-action="tenantModule.switchTenant" data-id="${t.id}" data-prevent-default="true">
               ${t.logo_url ? `<img src="${utils.escapeHtml(t.logo_url)}" alt="" style="width:20px;height:20px;object-fit:contain" class="me-2">` : '<i class="bi bi-trophy me-2"></i>'}
               ${utils.escapeHtml(t.name)}
             </a>
           </li>
         `).join('')}
         <li><hr class="dropdown-divider"></li>
-        <li><a class="dropdown-item text-muted" href="#" onclick="event.preventDefault(); tenantModule.openManageTenants()"><i class="bi bi-gear me-2"></i>Manage Programmes</a></li>
+        <li><a class="dropdown-item text-muted" href="#" data-action="tenantModule.openManageTenants" data-prevent-default="true"><i class="bi bi-gear me-2"></i>Manage Programmes</a></li>
       </ul>
     `;
   },
@@ -220,7 +220,7 @@ const tenantModule = {
 
     body.innerHTML = `
       <div class="mb-3">
-        <button class="btn btn-primary btn-sm" onclick="tenantModule.addTenant()">
+        <button class="btn btn-primary btn-sm" data-action="tenantModule.addTenant">
           <i class="bi bi-plus-circle me-1"></i>Add Programme
         </button>
       </div>
@@ -236,8 +236,8 @@ const tenantModule = {
               <td><span class="badge bg-${t.is_active ? 'success' : 'secondary'}">${t.is_active ? 'Active' : 'Inactive'}</span></td>
               <td>
                 ${t.id !== 'default' ? `
-                  <button class="btn btn-sm btn-outline-primary" onclick="tenantModule.editTenant('${t.id}')" aria-label="Edit"><i class="bi bi-pencil"></i></button>
-                  <button class="btn btn-sm btn-outline-danger" onclick="tenantModule.deleteTenant('${t.id}')" aria-label="Delete"><i class="bi bi-trash"></i></button>
+                  <button class="btn btn-sm btn-outline-primary" data-action="tenantModule.editTenant" data-id="${t.id}" aria-label="Edit"><i class="bi bi-pencil"></i></button>
+                  <button class="btn btn-sm btn-outline-danger" data-action="tenantModule.deleteTenant" data-id="${t.id}" aria-label="Delete"><i class="bi bi-trash"></i></button>
                 ` : '<small class="text-muted">Default</small>'}
               </td>
             </tr>

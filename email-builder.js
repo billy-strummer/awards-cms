@@ -481,7 +481,7 @@ const emailBuilder = {
             <div class="email-video-controls" style="margin-bottom: 8px;">
               <div class="input-group input-group-sm">
                 <span class="input-group-text"><i class="bi bi-youtube"></i></span>
-                <input type="text" class="form-control form-control-sm" placeholder="Paste YouTube or Vimeo URL..." data-video-id="${blockId}" onchange="emailBuilder.updateVideoThumbnail(this)">
+                <input type="text" class="form-control form-control-sm" placeholder="Paste YouTube or Vimeo URL..." data-video-id="${blockId}" data-on-change="emailBuilder._onVideoUrlChange">
               </div>
             </div>
             <a href="#" data-video-link="${blockId}" style="display: block; position: relative; text-decoration: none;">
@@ -558,10 +558,10 @@ const emailBuilder = {
             <div class="email-countdown-controls" style="margin-bottom: 12px;">
               <div class="row g-1 justify-content-center">
                 <div class="col-auto">
-                  <input type="date" class="form-control form-control-sm" data-cd-date="${blockId}" value="${defaultDate}" onchange="emailBuilder.updateCountdown('${blockId}')">
+                  <input type="date" class="form-control form-control-sm" data-cd-date="${blockId}" value="${defaultDate}" data-on-change="emailBuilder.updateCountdown" data-id="${blockId}">
                 </div>
                 <div class="col-auto">
-                  <input type="text" class="form-control form-control-sm" data-cd-label="${blockId}" placeholder="Event label..." value="Event starts in" onchange="emailBuilder.updateCountdown('${blockId}')" style="width: 160px;">
+                  <input type="text" class="form-control form-control-sm" data-cd-label="${blockId}" placeholder="Event label..." value="Event starts in" data-on-change="emailBuilder.updateCountdown" data-id="${blockId}" style="width: 160px;">
                 </div>
               </div>
             </div>
@@ -683,7 +683,7 @@ const emailBuilder = {
     return `
       <div class="email-richtext-toolbar" data-for="${blockId}">
         <div class="richtext-toolbar-row">
-          <select class="richtext-font-size" onchange="emailBuilder.richTextCmd('fontSize', this.value, '${blockId}'); this.selectedIndex=0;" title="Font Size">
+          <select class="richtext-font-size" data-on-change="emailBuilder._onRichTextFontSize" data-id="${blockId}" title="Font Size">
             <option value="" disabled selected>Size</option>
             <option value="1">Small</option>
             <option value="3">Normal</option>
@@ -693,32 +693,32 @@ const emailBuilder = {
             <option value="7">Huge</option>
           </select>
           <div class="richtext-btn-group">
-            <button type="button" onclick="emailBuilder.richTextCmd('bold', null, '${blockId}')" title="Bold"><i class="bi bi-type-bold"></i></button>
-            <button type="button" onclick="emailBuilder.richTextCmd('italic', null, '${blockId}')" title="Italic"><i class="bi bi-type-italic"></i></button>
-            <button type="button" onclick="emailBuilder.richTextCmd('underline', null, '${blockId}')" title="Underline"><i class="bi bi-type-underline"></i></button>
-            <button type="button" onclick="emailBuilder.richTextCmd('strikeThrough', null, '${blockId}')" title="Strikethrough"><i class="bi bi-type-strikethrough"></i></button>
+            <button type="button" data-action="emailBuilder.richTextCmd" data-args='${JSON.stringify(["bold", null, blockId]).replace(/'/g, "&#39;")}' title="Bold"><i class="bi bi-type-bold"></i></button>
+            <button type="button" data-action="emailBuilder.richTextCmd" data-args='${JSON.stringify(["italic", null, blockId]).replace(/'/g, "&#39;")}' title="Italic"><i class="bi bi-type-italic"></i></button>
+            <button type="button" data-action="emailBuilder.richTextCmd" data-args='${JSON.stringify(["underline", null, blockId]).replace(/'/g, "&#39;")}' title="Underline"><i class="bi bi-type-underline"></i></button>
+            <button type="button" data-action="emailBuilder.richTextCmd" data-args='${JSON.stringify(["strikeThrough", null, blockId]).replace(/'/g, "&#39;")}' title="Strikethrough"><i class="bi bi-type-strikethrough"></i></button>
           </div>
           <div class="richtext-btn-group">
-            <button type="button" onclick="emailBuilder.richTextCmd('justifyLeft', null, '${blockId}')" title="Align Left"><i class="bi bi-text-left"></i></button>
-            <button type="button" onclick="emailBuilder.richTextCmd('justifyCenter', null, '${blockId}')" title="Align Center"><i class="bi bi-text-center"></i></button>
-            <button type="button" onclick="emailBuilder.richTextCmd('justifyRight', null, '${blockId}')" title="Align Right"><i class="bi bi-text-right"></i></button>
+            <button type="button" data-action="emailBuilder.richTextCmd" data-args='${JSON.stringify(["justifyLeft", null, blockId]).replace(/'/g, "&#39;")}' title="Align Left"><i class="bi bi-text-left"></i></button>
+            <button type="button" data-action="emailBuilder.richTextCmd" data-args='${JSON.stringify(["justifyCenter", null, blockId]).replace(/'/g, "&#39;")}' title="Align Center"><i class="bi bi-text-center"></i></button>
+            <button type="button" data-action="emailBuilder.richTextCmd" data-args='${JSON.stringify(["justifyRight", null, blockId]).replace(/'/g, "&#39;")}' title="Align Right"><i class="bi bi-text-right"></i></button>
           </div>
           <div class="richtext-btn-group">
-            <button type="button" onclick="emailBuilder.richTextCmd('insertUnorderedList', null, '${blockId}')" title="Bullet List"><i class="bi bi-list-ul"></i></button>
-            <button type="button" onclick="emailBuilder.richTextCmd('insertOrderedList', null, '${blockId}')" title="Numbered List"><i class="bi bi-list-ol"></i></button>
+            <button type="button" data-action="emailBuilder.richTextCmd" data-args='${JSON.stringify(["insertUnorderedList", null, blockId]).replace(/'/g, "&#39;")}' title="Bullet List"><i class="bi bi-list-ul"></i></button>
+            <button type="button" data-action="emailBuilder.richTextCmd" data-args='${JSON.stringify(["insertOrderedList", null, blockId]).replace(/'/g, "&#39;")}' title="Numbered List"><i class="bi bi-list-ol"></i></button>
           </div>
           <div class="richtext-btn-group">
-            <button type="button" onclick="emailBuilder.insertLink('${blockId}')" title="Insert Link"><i class="bi bi-link-45deg"></i></button>
-            <button type="button" onclick="emailBuilder.richTextCmd('removeFormat', null, '${blockId}')" title="Clear Formatting"><i class="bi bi-eraser"></i></button>
+            <button type="button" data-action="emailBuilder.insertLink" data-id="${blockId}" title="Insert Link"><i class="bi bi-link-45deg"></i></button>
+            <button type="button" data-action="emailBuilder.richTextCmd" data-args='${JSON.stringify(["removeFormat", null, blockId]).replace(/'/g, "&#39;")}' title="Clear Formatting"><i class="bi bi-eraser"></i></button>
           </div>
           <div class="richtext-btn-group">
             <label title="Text Color" class="richtext-color-label">
               <i class="bi bi-palette"></i>
-              <input type="color" value="#212529" onchange="emailBuilder.richTextCmd('foreColor', this.value, '${blockId}')" class="richtext-color-input">
+              <input type="color" value="#212529" data-on-change="emailBuilder._onRichTextForeColor" data-id="${blockId}" class="richtext-color-input">
             </label>
             <label title="Highlight Color" class="richtext-color-label">
               <i class="bi bi-paint-bucket"></i>
-              <input type="color" value="#ffffff" onchange="emailBuilder.richTextCmd('hiliteColor', this.value, '${blockId}')" class="richtext-color-input">
+              <input type="color" value="#ffffff" data-on-change="emailBuilder._onRichTextHiliteColor" data-id="${blockId}" class="richtext-color-input">
             </label>
           </div>
         </div>
@@ -739,12 +739,12 @@ const emailBuilder = {
     return `
       <div class="email-html-code-header" data-for="${blockId}">
         <span><i class="bi bi-code-slash me-1"></i>HTML Code</span>
-        <button type="button" class="btn btn-outline-primary btn-sm" onclick="emailBuilder.previewHtmlBlock('${blockId}')" title="Preview HTML">
+        <button type="button" class="btn btn-outline-primary btn-sm" data-action="emailBuilder.previewHtmlBlock" data-id="${blockId}" title="Preview HTML">
           <i class="bi bi-eye me-1"></i>Preview
         </button>
       </div>
       <div class="email-html-code-wrap">
-        <textarea class="email-html-code-editor" data-block="${blockId}" placeholder="Paste or write your HTML here..." spellcheck="false" oninput="emailBuilder.onHtmlBlockInput('${blockId}')">&lt;table width="100%" cellpadding="0" cellspacing="0" border="0"&gt;
+        <textarea class="email-html-code-editor" data-block="${blockId}" placeholder="Paste or write your HTML here..." spellcheck="false" data-on-input="emailBuilder.onHtmlBlockInput">&lt;table width="100%" cellpadding="0" cellspacing="0" border="0"&gt;
   &lt;tr&gt;
     &lt;td style="padding: 30px 40px;"&gt;
       &lt;p style="font-family: Arial, sans-serif; font-size: 16px; color: #212529;"&gt;
@@ -767,17 +767,17 @@ const emailBuilder = {
       <button class="block-drag-handle" title="Drag to reorder" style="cursor: grab;">
         <i class="bi bi-grip-vertical"></i>
       </button>
-      <button onclick="emailBuilder.moveBlockUp('${blockId}')" title="Move Up">
+      <button data-action="emailBuilder.moveBlockUp" data-id="${blockId}" title="Move Up">
         <i class="bi bi-arrow-up"></i>
       </button>
-      <button onclick="emailBuilder.moveBlockDown('${blockId}')" title="Move Down">
+      <button data-action="emailBuilder.moveBlockDown" data-id="${blockId}" title="Move Down">
         <i class="bi bi-arrow-down"></i>
       </button>
-      <input type="color" value="#ffffff" class="block-bg-picker" title="Block background colour" onchange="emailBuilder.setBlockBackground('${blockId}', this.value)" style="width:24px; height:24px; padding:0; border:1px solid #555; border-radius:3px; cursor:pointer;">
-      <button onclick="emailBuilder.duplicateBlock('${blockId}')" title="Duplicate">
+      <input type="color" value="#ffffff" class="block-bg-picker" title="Block background colour" data-on-change="emailBuilder.setBlockBackground" data-id="${blockId}" style="width:24px; height:24px; padding:0; border:1px solid #555; border-radius:3px; cursor:pointer;">
+      <button data-action="emailBuilder.duplicateBlock" data-id="${blockId}" title="Duplicate">
         <i class="bi bi-copy"></i>
       </button>
-      <button class="btn-outline-danger" onclick="emailBuilder.deleteBlock('${blockId}')" title="Delete">
+      <button class="btn-outline-danger" data-action="emailBuilder.deleteBlock" data-id="${blockId}" title="Delete">
         <i class="bi bi-trash"></i>
       </button>
     `;
@@ -1870,12 +1870,12 @@ ${content}
     blockWrapper.innerHTML = `
       <div class="email-html-code-header" data-for="${blockId}">
         <span><i class="bi bi-code-slash me-1"></i>Paste Your HTML</span>
-        <button type="button" class="btn btn-outline-primary btn-sm" onclick="emailBuilder.previewHtmlBlock('${blockId}')" title="Preview HTML">
+        <button type="button" class="btn btn-outline-primary btn-sm" data-action="emailBuilder.previewHtmlBlock" data-id="${blockId}" title="Preview HTML">
           <i class="bi bi-eye me-1"></i>Preview
         </button>
       </div>
       <div class="email-html-code-wrap">
-        <textarea class="email-html-code-editor" data-block="${blockId}" placeholder="Paste your full email HTML here..." spellcheck="false" oninput="emailBuilder.onHtmlBlockInput('${blockId}')" style="min-height: 500px;"></textarea>
+        <textarea class="email-html-code-editor" data-block="${blockId}" placeholder="Paste your full email HTML here..." spellcheck="false" data-on-input="emailBuilder.onHtmlBlockInput" style="min-height: 500px;"></textarea>
       </div>
     `;
 
@@ -2122,10 +2122,10 @@ ${content}
         <div class="mb-4">
           <label class="form-label fw-bold">Promotion Type</label>
           <div class="btn-group w-100" role="group">
-            <button type="button" class="btn btn-sm ${this.promotionMode === 'nominee' ? 'btn-primary' : 'btn-outline-primary'}" onclick="emailBuilder.setPromotionMode('nominee')">
+            <button type="button" class="btn btn-sm ${this.promotionMode === 'nominee' ? 'btn-primary' : 'btn-outline-primary'}" data-action="emailBuilder.setPromotionMode" data-id="nominee">
               ⭐ Nominee
             </button>
-            <button type="button" class="btn btn-sm ${this.promotionMode === 'winner' ? 'btn-success' : 'btn-outline-success'}" onclick="emailBuilder.setPromotionMode('winner')">
+            <button type="button" class="btn btn-sm ${this.promotionMode === 'winner' ? 'btn-success' : 'btn-outline-success'}" data-action="emailBuilder.setPromotionMode" data-id="winner">
               🏆 Winner
             </button>
           </div>
@@ -2134,7 +2134,7 @@ ${content}
         <!-- Company Selector -->
         <div class="mb-4">
           <label class="form-label fw-bold">Select Company</label>
-          <select class="form-select form-select-sm" id="promotionCompanySelect" onchange="emailBuilder.loadCompanyContent(this.value)">
+          <select class="form-select form-select-sm" id="promotionCompanySelect" data-on-change="emailBuilder.loadCompanyContent">
             <option value="">Choose company...</option>
             ${organisations.map(org => `
               <option value="${org.id}">
@@ -3092,16 +3092,16 @@ ${content}
             <div class="email-image-controls" style="margin-bottom: 8px;">
               <div class="input-group input-group-sm mb-1">
                 <span class="input-group-text"><i class="bi bi-link-45deg"></i></span>
-                <input type="text" class="form-control form-control-sm email-image-url" placeholder="Paste image URL..." data-img-id="${blockId}" onchange="emailBuilder.updateImageFromUrl(this)">
-                <button class="btn btn-outline-primary btn-sm" type="button" onclick="document.getElementById('imgUpload-${blockId}').click()" title="Upload image">
+                <input type="text" class="form-control form-control-sm email-image-url" placeholder="Paste image URL..." data-img-id="${blockId}" data-on-change="emailBuilder._onImageUrlChange">
+                <button class="btn btn-outline-primary btn-sm" type="button" data-action="emailBuilder.triggerImageUpload" data-id="${blockId}" title="Upload image">
                   <i class="bi bi-upload"></i> Upload
                 </button>
               </div>
               <div class="input-group input-group-sm">
                 <span class="input-group-text"><i class="bi bi-fonts"></i></span>
-                <input type="text" class="form-control form-control-sm" placeholder="Alt text (accessibility)..." data-alt-id="${blockId}" onchange="emailBuilder.updateImageAlt(this)">
+                <input type="text" class="form-control form-control-sm" placeholder="Alt text (accessibility)..." data-alt-id="${blockId}" data-on-change="emailBuilder._onImageAltChange">
               </div>
-              <input type="file" id="imgUpload-${blockId}" accept="image/*" style="display:none" onchange="emailBuilder.uploadImageForBlock(this, '${blockId}')">
+              <input type="file" id="imgUpload-${blockId}" accept="image/*" style="display:none" data-on-change="emailBuilder._onImageFileChange" data-id="${blockId}">
             </div>
             <img src="data:image/svg+xml,${encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="520" height="300"><rect width="520" height="300" fill="#dee2e6" rx="8"/><text x="260" y="145" text-anchor="middle" font-family="Arial,sans-serif" font-size="18" fill="#6c757d">Paste an image URL or click Upload</text><text x="260" y="170" text-anchor="middle" font-family="Arial,sans-serif" font-size="14" fill="#adb5bd">or drag an image from your media gallery</text></svg>')}" alt="Image" data-img-target="${blockId}" style="width: 100%; max-width: 520px; height: auto; display: block; border-radius: 8px;" class="mob-full-img">
           </td>
@@ -3233,13 +3233,13 @@ ${content}
             <div class="email-button-controls" style="margin-bottom: 8px;">
               <div class="row g-1">
                 <div class="col-5">
-                  <input type="text" class="form-control form-control-sm" placeholder="Button text" value="View Your Profile" data-btn-text="${blockId}" onchange="emailBuilder.updateButtonFromControls('${blockId}')">
+                  <input type="text" class="form-control form-control-sm" placeholder="Button text" value="View Your Profile" data-btn-text="${blockId}" data-on-change="emailBuilder.updateButtonFromControls" data-id="${blockId}">
                 </div>
                 <div class="col-5">
-                  <input type="text" class="form-control form-control-sm" placeholder="Button URL" value="{{website}}" data-btn-url="${blockId}" onchange="emailBuilder.updateButtonFromControls('${blockId}')">
+                  <input type="text" class="form-control form-control-sm" placeholder="Button URL" value="{{website}}" data-btn-url="${blockId}" data-on-change="emailBuilder.updateButtonFromControls" data-id="${blockId}">
                 </div>
                 <div class="col-2">
-                  <input type="color" class="form-control form-control-sm form-control-color w-100" value="#0d6efd" data-btn-color="${blockId}" onchange="emailBuilder.updateButtonFromControls('${blockId}')" title="Button colour">
+                  <input type="color" class="form-control form-control-sm form-control-color w-100" value="#0d6efd" data-btn-color="${blockId}" data-on-change="emailBuilder.updateButtonFromControls" data-id="${blockId}" title="Button colour">
                 </div>
               </div>
             </div>
@@ -3965,10 +3965,10 @@ ${content}
             <td>${c.bounced_count || 0}</td>
             <td><small>${displayDate}</small></td>
             <td class="text-nowrap">
-              ${c.status === 'Draft' ? `<button class="btn btn-outline-success btn-sm py-0 px-1" onclick="emailBuilder.loadDraft('${c.id}')" title="Load Draft"><i class="bi bi-pencil-square"></i></button>` : ''}
-              ${c.status === 'Scheduled' ? `<button class="btn btn-outline-danger btn-sm py-0 px-1" onclick="emailBuilder.cancelScheduledCampaign('${c.id}')" title="Cancel"><i class="bi bi-x-circle"></i></button>` : ''}
-              ${c.status !== 'Scheduled' && c.status !== 'Sending' && c.status !== 'Draft' ? `<button class="btn btn-outline-primary btn-sm py-0 px-1" onclick="emailBuilder.cloneCampaign('${c.id}')" title="Clone &amp; Resend"><i class="bi bi-copy"></i></button>` : ''}
-              <button class="btn btn-outline-secondary btn-sm py-0 px-1" onclick="emailBuilder.viewCampaignDetail('${c.id}')" title="View Details"><i class="bi bi-eye"></i></button>
+              ${c.status === 'Draft' ? `<button class="btn btn-outline-success btn-sm py-0 px-1" data-action="emailBuilder.loadDraft" data-id="${utils.escapeHtml(c.id)}" title="Load Draft"><i class="bi bi-pencil-square"></i></button>` : ''}
+              ${c.status === 'Scheduled' ? `<button class="btn btn-outline-danger btn-sm py-0 px-1" data-action="emailBuilder.cancelScheduledCampaign" data-id="${utils.escapeHtml(c.id)}" title="Cancel"><i class="bi bi-x-circle"></i></button>` : ''}
+              ${c.status !== 'Scheduled' && c.status !== 'Sending' && c.status !== 'Draft' ? `<button class="btn btn-outline-primary btn-sm py-0 px-1" data-action="emailBuilder.cloneCampaign" data-id="${utils.escapeHtml(c.id)}" title="Clone &amp; Resend"><i class="bi bi-copy"></i></button>` : ''}
+              <button class="btn btn-outline-secondary btn-sm py-0 px-1" data-action="emailBuilder.viewCampaignDetail" data-id="${utils.escapeHtml(c.id)}" title="View Details"><i class="bi bi-eye"></i></button>
             </td>
           </tr>`;
       }).join('');
@@ -4003,19 +4003,19 @@ ${content}
       <div class="d-flex align-items-center gap-2">
         <small class="text-muted">${startRecord}-${endRecord} of ${this.campaignLogTotal}</small>
         <div class="btn-group btn-group-sm">
-          <button class="btn btn-outline-secondary" ${currentPage === 0 ? 'disabled' : ''} onclick="emailBuilder.campaignLogPage = 0; emailBuilder.loadCampaignLog();" title="First">
+          <button class="btn btn-outline-secondary" ${currentPage === 0 ? 'disabled' : ''} data-action="emailBuilder.goToCampaignPage" data-id="0" title="First">
             <i class="bi bi-chevron-double-left"></i>
           </button>
-          <button class="btn btn-outline-secondary" ${currentPage === 0 ? 'disabled' : ''} onclick="emailBuilder.campaignLogPage--; emailBuilder.loadCampaignLog();" title="Previous">
+          <button class="btn btn-outline-secondary" ${currentPage === 0 ? 'disabled' : ''} data-action="emailBuilder.goToCampaignPage" data-id="${currentPage - 1}" title="Previous">
             <i class="bi bi-chevron-left"></i>
           </button>
           <button class="btn btn-outline-secondary" disabled>
             ${currentPage + 1} / ${totalPages}
           </button>
-          <button class="btn btn-outline-secondary" ${currentPage >= totalPages - 1 ? 'disabled' : ''} onclick="emailBuilder.campaignLogPage++; emailBuilder.loadCampaignLog();" title="Next">
+          <button class="btn btn-outline-secondary" ${currentPage >= totalPages - 1 ? 'disabled' : ''} data-action="emailBuilder.goToCampaignPage" data-id="${currentPage + 1}" title="Next">
             <i class="bi bi-chevron-right"></i>
           </button>
-          <button class="btn btn-outline-secondary" ${currentPage >= totalPages - 1 ? 'disabled' : ''} onclick="emailBuilder.campaignLogPage = ${totalPages - 1}; emailBuilder.loadCampaignLog();" title="Last">
+          <button class="btn btn-outline-secondary" ${currentPage >= totalPages - 1 ? 'disabled' : ''} data-action="emailBuilder.goToCampaignPage" data-id="${totalPages - 1}" title="Last">
             <i class="bi bi-chevron-double-right"></i>
           </button>
         </div>
@@ -4111,10 +4111,10 @@ ${content}
         <div class="flex-grow-1">
           <strong>Unsaved work found</strong>${campaignInfo} from ${timeAgo}
         </div>
-        <button class="btn btn-sm btn-primary me-2" onclick="emailBuilder.recoverAutosave()">
+        <button class="btn btn-sm btn-primary me-2" data-action="emailBuilder.recoverAutosave">
           <i class="bi bi-arrow-counterclockwise me-1"></i>Recover
         </button>
-        <button type="button" class="btn-close" onclick="localStorage.removeItem('emailBuilder_autosave'); this.parentElement.remove();"></button>
+        <button type="button" class="btn-close" data-action="emailBuilder.dismissAutosave"></button>
       `;
 
       const canvas = document.getElementById('emailCanvas');
@@ -4193,6 +4193,65 @@ ${content}
         </div>
       </div>
     `;
+  },
+
+  // ── Delegation adapter methods ──────────────────────────────
+  // Thin wrappers so that the actionRegistry's calling conventions
+  // (value, event) / (id, value, event) map onto the existing method
+  // signatures without touching internal logic.
+
+  /** data-on-change adapter for updateVideoThumbnail (needs DOM element) */
+  _onVideoUrlChange(value, event) {
+    this.updateVideoThumbnail(event.target);
+  },
+
+  /** data-on-change adapter for updateImageFromUrl (needs DOM element) */
+  _onImageUrlChange(value, event) {
+    this.updateImageFromUrl(event.target);
+  },
+
+  /** data-on-change adapter for updateImageAlt (needs DOM element) */
+  _onImageAltChange(value, event) {
+    this.updateImageAlt(event.target);
+  },
+
+  /** data-on-change adapter for uploadImageForBlock (needs DOM element + blockId) */
+  _onImageFileChange(blockId, value, event) {
+    this.uploadImageForBlock(event.target, blockId);
+  },
+
+  /** data-on-change adapter for richTextCmd foreColor */
+  _onRichTextForeColor(blockId, value) {
+    this.richTextCmd('foreColor', value, blockId);
+  },
+
+  /** data-on-change adapter for richTextCmd hiliteColor */
+  _onRichTextHiliteColor(blockId, value) {
+    this.richTextCmd('hiliteColor', value, blockId);
+  },
+
+  /** data-on-change adapter for richTextCmd fontSize (also resets select) */
+  _onRichTextFontSize(blockId, value, event) {
+    this.richTextCmd('fontSize', value, blockId);
+    event.target.selectedIndex = 0;
+  },
+
+  /** Campaign log pagination — navigate to a specific page */
+  goToCampaignPage(page) {
+    this.campaignLogPage = Number(page);
+    this.loadCampaignLog();
+  },
+
+  /** Dismiss autosave banner */
+  dismissAutosave(event) {
+    localStorage.removeItem('emailBuilder_autosave');
+    event.target.closest('.alert')?.remove();
+  },
+
+  /** Trigger the hidden file-upload input for a given image block */
+  triggerImageUpload(blockId) {
+    const input = document.getElementById('imgUpload-' + blockId);
+    if (input) input.click();
   }
 };
 

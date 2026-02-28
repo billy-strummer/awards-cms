@@ -162,10 +162,10 @@ const paymentsModule = {
 
     tbody.innerHTML = pageInvoices.map(invoice => `
       <tr>
-        <td><input type="checkbox" class="form-check-input invoice-checkbox" value="${invoice.id}" ${this._selectedInvoiceIds.has(invoice.id) ? 'checked' : ''} onchange="paymentsModule.toggleInvoiceSelect('${invoice.id}', this.checked)"></td>
+        <td><input type="checkbox" class="form-check-input invoice-checkbox" value="${invoice.id}" ${this._selectedInvoiceIds.has(invoice.id) ? 'checked' : ''} data-on-check="paymentsModule.toggleInvoiceSelect" data-id="invoice.id"></td>
         <td>
           <strong>${utils.escapeHtml(invoice.invoice_number)}</strong>
-          <button class="btn btn-link btn-sm p-0 ms-1" onclick="event.stopPropagation(); paymentsModule.copyToClipboard('${utils.escapeHtml(invoice.invoice_number)}')" title="Copy invoice number" aria-label="Copy invoice number">
+          <button class="btn btn-link btn-sm p-0 ms-1" data-action="paymentsModule.copyToClipboard" data-id="${utils.escapeHtml(invoice.invoice_number)}" data-stop-propagation="true" title="Copy invoice number" aria-label="Copy invoice number">
             <i class="bi bi-clipboard text-muted small"></i>
           </button>
         </td>
@@ -173,7 +173,7 @@ const paymentsModule = {
           ${invoice.organisations?.id && invoice.organisations?.company_name ?
             `<a href="javascript:void(0);"
                 class="text-decoration-none text-primary fw-semibold"
-                onclick="orgsModule.openCompanyProfile('${invoice.organisations.id}', '${utils.escapeHtml(invoice.organisations.company_name).replace(/'/g, "\\'")}')"
+                data-action="orgsModule.openCompanyProfile" data-args='${JSON.stringify([invoice.organisations.id, utils.escapeHtml(invoice.organisations.company_name).replace(/'/g, "\\'")])}'
                 title="View company profile">
                 ${utils.escapeHtml(invoice.organisations.company_name)}
              </a>` :
@@ -188,7 +188,7 @@ const paymentsModule = {
         <td class="text-danger">&pound;${parseFloat(invoice.balance_due || 0).toFixed(2)}</td>
         <td>
           <select class="form-select form-select-sm d-inline-block" style="width:auto; font-size:0.75rem;"
-            onchange="paymentsModule.inlineUpdateInvoiceStatus('${invoice.id}', this.value)"
+            data-on-change="paymentsModule.inlineUpdateInvoiceStatus" data-id="invoice.id"
             aria-label="Change invoice status">
             ${['draft','sent','viewed','paid','partially_paid','overdue','cancelled'].map(s =>
               `<option value="${s}" ${(invoice.status || '').toLowerCase() === s ? 'selected' : ''}>${s === 'partially_paid' ? 'Partially Paid' : s.charAt(0).toUpperCase() + s.slice(1)}</option>`
@@ -197,16 +197,16 @@ const paymentsModule = {
         </td>
         <td>
           <div class="btn-group btn-group-sm" role="group">
-            <button class="btn btn-outline-primary" onclick="paymentsModule.viewInvoice('${invoice.id}')" title="View" aria-label="View invoice">
+            <button class="btn btn-outline-primary" data-action="paymentsModule.viewInvoice" data-id="invoice.id" title="View" aria-label="View invoice">
               <i class="bi bi-eye"></i>
             </button>
-            <button class="btn btn-outline-success" onclick="paymentsModule.recordPaymentForInvoice('${invoice.id}')" title="Record Payment" aria-label="Record payment">
+            <button class="btn btn-outline-success" data-action="paymentsModule.recordPaymentForInvoice" data-id="invoice.id" title="Record Payment" aria-label="Record payment">
               <i class="bi bi-cash"></i>
             </button>
-            <button class="btn btn-outline-secondary" onclick="paymentsModule.sendInvoice('${invoice.id}')" title="Send" aria-label="Send invoice">
+            <button class="btn btn-outline-secondary" data-action="paymentsModule.sendInvoice" data-id="invoice.id" title="Send" aria-label="Send invoice">
               <i class="bi bi-envelope"></i>
             </button>
-            <button class="btn btn-outline-danger" onclick="paymentsModule.deleteInvoice('${invoice.id}')" title="Delete" aria-label="Delete invoice">
+            <button class="btn btn-outline-danger" data-action="paymentsModule.deleteInvoice" data-id="invoice.id" title="Delete" aria-label="Delete invoice">
               <i class="bi bi-trash"></i>
             </button>
           </div>
@@ -224,15 +224,15 @@ const paymentsModule = {
     }
     if (totalPages > 1) {
       let html = '<nav><ul class="pagination pagination-sm justify-content-center mt-3">';
-      html += `<li class="page-item ${this._invCurrentPage <= 1 ? 'disabled' : ''}"><a class="page-link" href="#" onclick="event.preventDefault(); paymentsModule.goToInvoicePage(${this._invCurrentPage - 1})">Prev</a></li>`;
+      html += `<li class="page-item ${this._invCurrentPage <= 1 ? 'disabled' : ''}"><a class="page-link" href="javascript:void(0);" data-action="paymentsModule.goToInvoicePage" data-id="${this._invCurrentPage - 1}">Prev</a></li>`;
       for (let i = 1; i <= totalPages; i++) {
         if (i === 1 || i === totalPages || (i >= this._invCurrentPage - 2 && i <= this._invCurrentPage + 2)) {
-          html += `<li class="page-item ${i === this._invCurrentPage ? 'active' : ''}"><a class="page-link" href="#" onclick="event.preventDefault(); paymentsModule.goToInvoicePage(${i})">${i}</a></li>`;
+          html += `<li class="page-item ${i === this._invCurrentPage ? 'active' : ''}"><a class="page-link" href="javascript:void(0);" data-action="paymentsModule.goToInvoicePage" data-id="${i}">${i}</a></li>`;
         } else if (i === this._invCurrentPage - 3 || i === this._invCurrentPage + 3) {
           html += '<li class="page-item disabled"><span class="page-link">...</span></li>';
         }
       }
-      html += `<li class="page-item ${this._invCurrentPage >= totalPages ? 'disabled' : ''}"><a class="page-link" href="#" onclick="event.preventDefault(); paymentsModule.goToInvoicePage(${this._invCurrentPage + 1})">Next</a></li>`;
+      html += `<li class="page-item ${this._invCurrentPage >= totalPages ? 'disabled' : ''}"><a class="page-link" href="javascript:void(0);" data-action="paymentsModule.goToInvoicePage" data-id="${this._invCurrentPage + 1}">Next</a></li>`;
       html += '</ul></nav>';
       html += `<div class="text-center text-muted small">Showing ${invStart+1}-${Math.min(invEnd, this.currentInvoices.length)} of ${this.currentInvoices.length}</div>`;
       paginationEl.innerHTML = html;
@@ -400,7 +400,7 @@ const paymentsModule = {
           <input type="number" class="form-control form-control-sm" placeholder="Price" step="0.01" min="0" required>
         </div>
         <div class="col-md-1">
-          <button type="button" class="btn btn-sm btn-danger w-100" onclick="paymentsModule.removeInvoiceLineItem(${itemId})" aria-label="Remove line item">
+          <button type="button" class="btn btn-sm btn-danger w-100" data-action="paymentsModule.removeInvoiceLineItem" data-id="${itemId}" aria-label="Remove line item">
             <i class="bi bi-trash"></i>
           </button>
         </div>
@@ -733,7 +733,7 @@ const paymentsModule = {
   </div>
 
   <div class="no-print" style="text-align:center; margin-top:20px;">
-    <button onclick="window.print()" style="padding:10px 30px; background:#0d6efd; color:#fff; border:none; border-radius:6px; cursor:pointer; font-size:1rem;">Print Invoice</button>
+    <button data-action="window.print" style="padding:10px 30px; background:#0d6efd; color:#fff; border:none; border-radius:6px; cursor:pointer; font-size:1rem;">Print Invoice</button>
   </div>
 
   <script>window.onload = function() { window.print(); }</script>
@@ -966,7 +966,7 @@ const paymentsModule = {
       <tr>
         <td>
           <strong>${utils.escapeHtml(payment.payment_reference)}</strong>
-          <button class="btn btn-link btn-sm p-0 ms-1" onclick="event.stopPropagation(); paymentsModule.copyToClipboard('${utils.escapeHtml(payment.payment_reference)}')" title="Copy payment reference" aria-label="Copy payment reference">
+          <button class="btn btn-link btn-sm p-0 ms-1" data-action="paymentsModule.copyToClipboard" data-id="${utils.escapeHtml(payment.payment_reference)}" data-stop-propagation="true" title="Copy payment reference" aria-label="Copy payment reference">
             <i class="bi bi-clipboard text-muted small"></i>
           </button>
         </td>
@@ -975,7 +975,7 @@ const paymentsModule = {
           ${payment.organisations?.id && payment.organisations?.company_name ?
             `<a href="javascript:void(0);"
                 class="text-decoration-none text-primary fw-semibold"
-                onclick="orgsModule.openCompanyProfile('${payment.organisations.id}', '${utils.escapeHtml(payment.organisations.company_name).replace(/'/g, "\\'")}')"
+                data-action="orgsModule.openCompanyProfile" data-args='${JSON.stringify([payment.organisations.id, utils.escapeHtml(payment.organisations.company_name).replace(/'/g, "\\'")])}'
                 title="View company profile">
                 ${utils.escapeHtml(payment.organisations.company_name)}
              </a>` :
@@ -988,10 +988,10 @@ const paymentsModule = {
         <td>${this.getPaymentStatusBadge(payment.status)}</td>
         <td>
           <div class="btn-group btn-group-sm" role="group">
-            <button class="btn btn-outline-primary" onclick="paymentsModule.viewPayment('${payment.id}')" title="View" aria-label="View payment">
+            <button class="btn btn-outline-primary" data-action="paymentsModule.viewPayment" data-id="payment.id" title="View" aria-label="View payment">
               <i class="bi bi-eye"></i>
             </button>
-            <button class="btn btn-outline-danger" onclick="paymentsModule.deletePayment('${payment.id}')" title="Delete" aria-label="Delete payment">
+            <button class="btn btn-outline-danger" data-action="paymentsModule.deletePayment" data-id="payment.id" title="Delete" aria-label="Delete payment">
               <i class="bi bi-trash"></i>
             </button>
           </div>
@@ -1009,15 +1009,15 @@ const paymentsModule = {
     }
     if (payTotalPages > 1) {
       let html = '<nav><ul class="pagination pagination-sm justify-content-center mt-3">';
-      html += `<li class="page-item ${this._payCurrentPage <= 1 ? 'disabled' : ''}"><a class="page-link" href="#" onclick="event.preventDefault(); paymentsModule.goToPaymentPage(${this._payCurrentPage - 1})">Prev</a></li>`;
+      html += `<li class="page-item ${this._payCurrentPage <= 1 ? 'disabled' : ''}"><a class="page-link" href="javascript:void(0);" data-action="paymentsModule.goToPaymentPage" data-id="${this._payCurrentPage - 1}">Prev</a></li>`;
       for (let i = 1; i <= payTotalPages; i++) {
         if (i === 1 || i === payTotalPages || (i >= this._payCurrentPage - 2 && i <= this._payCurrentPage + 2)) {
-          html += `<li class="page-item ${i === this._payCurrentPage ? 'active' : ''}"><a class="page-link" href="#" onclick="event.preventDefault(); paymentsModule.goToPaymentPage(${i})">${i}</a></li>`;
+          html += `<li class="page-item ${i === this._payCurrentPage ? 'active' : ''}"><a class="page-link" href="javascript:void(0);" data-action="paymentsModule.goToPaymentPage" data-id="${i}">${i}</a></li>`;
         } else if (i === this._payCurrentPage - 3 || i === this._payCurrentPage + 3) {
           html += '<li class="page-item disabled"><span class="page-link">...</span></li>';
         }
       }
-      html += `<li class="page-item ${this._payCurrentPage >= payTotalPages ? 'disabled' : ''}"><a class="page-link" href="#" onclick="event.preventDefault(); paymentsModule.goToPaymentPage(${this._payCurrentPage + 1})">Next</a></li>`;
+      html += `<li class="page-item ${this._payCurrentPage >= payTotalPages ? 'disabled' : ''}"><a class="page-link" href="javascript:void(0);" data-action="paymentsModule.goToPaymentPage" data-id="${this._payCurrentPage + 1}">Next</a></li>`;
       html += '</ul></nav>';
       html += `<div class="text-center text-muted small">Showing ${payStart+1}-${Math.min(payEnd, this.currentPayments.length)} of ${this.currentPayments.length}</div>`;
       payPaginationEl.innerHTML = html;
@@ -2180,15 +2180,15 @@ const paymentsModule = {
           <h6 class="fw-semibold mb-3">Connect ${provider==='xero'?'Xero':'QuickBooks'}</h6>
           <div class="mb-3"><label class="form-label small">API Client ID</label><input type="text" class="form-control form-control-sm" id="accountingClientId" placeholder="Enter client ID..." value="${utils.escapeHtml(config.clientId||'')}"></div>
           <div class="mb-3"><label class="form-label small">API Client Secret</label><input type="password" class="form-control form-control-sm" id="accountingClientSecret" placeholder="Enter client secret..."></div>
-          <button class="btn btn-primary w-100" onclick="paymentsModule._connectAccounting()"><i class="bi bi-plug me-2"></i>Connect</button>
+          <button class="btn btn-primary w-100" data-action="paymentsModule._connectAccounting"><i class="bi bi-plug me-2"></i>Connect</button>
         </div></div>` :
       `<div class="alert alert-success"><i class="bi bi-check-circle me-2"></i>Connected to ${provider==='xero'?'Xero':'QuickBooks'}
-        <button class="btn btn-sm btn-outline-danger float-end" onclick="paymentsModule._disconnectAccounting()">Disconnect</button></div>
+        <button class="btn btn-sm btn-outline-danger float-end" data-action="paymentsModule._disconnectAccounting">Disconnect</button></div>
       <div class="card mb-3"><div class="card-body"><h6 class="fw-semibold mb-3">Sync Settings</h6>
         <div class="form-check mb-2"><input class="form-check-input" type="checkbox" checked><label class="form-check-label">Sync Invoices</label></div>
         <div class="form-check mb-2"><input class="form-check-input" type="checkbox" checked><label class="form-check-label">Sync Payments</label></div>
         <div class="form-check mb-2"><input class="form-check-input" type="checkbox"><label class="form-check-label">Sync Contacts</label></div><hr>
-        <div class="d-flex gap-2"><button class="btn btn-sm btn-primary" onclick="paymentsModule._runAccountingSync()"><i class="bi bi-arrow-repeat me-1"></i>Sync Now</button>
+        <div class="d-flex gap-2"><button class="btn btn-sm btn-primary" data-action="paymentsModule._runAccountingSync"><i class="bi bi-arrow-repeat me-1"></i>Sync Now</button>
         <span class="text-muted small align-self-center">Last sync: ${config.lastSync ? new Date(config.lastSync).toLocaleString('en-GB') : 'Never'}</span></div>
       </div></div>`}
       <div class="card"><div class="card-body"><h6 class="fw-semibold mb-2">Sync History</h6>
@@ -2325,10 +2325,10 @@ const paymentsModule = {
       bar.style.display = 'flex';
       bar.innerHTML = `
         <strong>${this._selectedInvoiceIds.size} invoice(s) selected</strong>
-        <button class="btn btn-sm btn-success ms-2" onclick="paymentsModule.bulkUpdateInvoiceStatus('paid')"><i class="bi bi-check-circle me-1"></i>Mark Paid</button>
-        <button class="btn btn-sm btn-warning ms-2" onclick="paymentsModule.bulkUpdateInvoiceStatus('sent')"><i class="bi bi-envelope me-1"></i>Mark Sent</button>
-        <button class="btn btn-sm btn-danger ms-2" onclick="paymentsModule.bulkDeleteInvoices()"><i class="bi bi-trash me-1"></i>Delete</button>
-        <button class="btn btn-sm btn-outline-secondary ms-auto" onclick="paymentsModule.toggleAllInvoices(false)">Clear</button>
+        <button class="btn btn-sm btn-success ms-2" data-action="paymentsModule.bulkUpdateInvoiceStatus" data-id="paid"><i class="bi bi-check-circle me-1"></i>Mark Paid</button>
+        <button class="btn btn-sm btn-warning ms-2" data-action="paymentsModule.bulkUpdateInvoiceStatus" data-id="sent"><i class="bi bi-envelope me-1"></i>Mark Sent</button>
+        <button class="btn btn-sm btn-danger ms-2" data-action="paymentsModule.bulkDeleteInvoices"><i class="bi bi-trash me-1"></i>Delete</button>
+        <button class="btn btn-sm btn-outline-secondary ms-auto" data-action="paymentsModule.toggleAllInvoices" data-id="false">Clear</button>
       `;
     } else {
       bar.style.display = 'none';

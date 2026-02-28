@@ -678,7 +678,7 @@ const dashboardModule = {
       }
 
       notificationsPanel.innerHTML = notifications.map(notif => `
-        <div class="notification-item notification-${notif.type}" onclick="dashboardModule.${typeof notif.action === 'string' ? notif.action : 'navigateToSection'}()">
+        <div class="notification-item notification-${notif.type}" data-action="dashboardModule.${typeof notif.action === 'string' ? notif.action : 'navigateToSection'}">
           <div class="notification-icon">
             <i class="bi bi-${notif.icon}"></i>
           </div>
@@ -980,7 +980,7 @@ const dashboardModule = {
         <td>
           <a 
             class="company-link" 
-            onclick="orgsModule.openCompanyProfile('${org.id}', '${utils.escapeHtml(org.company_name || '').replace(/'/g, "\\'")}')">
+            data-action="orgsModule.openCompanyProfile" data-args='${JSON.stringify([org.id, org.company_name || '']).replace(/'/g, "&#39;")}'>
             <i class="bi bi-building me-2"></i>${utils.escapeHtml(org.company_name || 'N/A')}
           </a>
         </td>
@@ -1617,7 +1617,7 @@ const dashboardModule = {
         const month = eventDate.toLocaleDateString('en-US', { month: 'short' });
 
         return `
-          <div class="deadline-item ${urgency}" onclick="dashboardModule.navigateToSection('events')">
+          <div class="deadline-item ${urgency}" data-action="dashboardModule.navigateToSection" data-id="events">
             <div class="deadline-date-block">
               <div class="deadline-date-day">${day}</div>
               <div class="deadline-date-month">${month}</div>
@@ -1708,7 +1708,7 @@ const dashboardModule = {
             <td><strong>${amount}</strong></td>
             <td>${statusBadge}</td>
             <td>
-              <button class="btn btn-sm btn-outline-primary" onclick="dashboardModule.viewOrderDetails('${invoice.id}')" title="View Order">
+              <button class="btn btn-sm btn-outline-primary" data-action="dashboardModule.viewOrderDetails" data-id="${invoice.id}" title="View Order">
                 <i class="bi bi-eye"></i>
               </button>
             </td>
